@@ -37,13 +37,14 @@ from core.modules.vistrails_module import (Module, NotCacheable,
                                            ModuleError, new_module)
 from core.bundles import py_import
 import os, sys
-
+import qtbrowser
+qtbrowser.use_vistrails=True
 #cdat specific packages
 vcs = py_import('vcs',{})
 cdms2 = py_import('cdms2', {})
 cdutil = py_import('cdutil', {})
 
 #local python modules
-from cdat_window import QCDATWindow
+from qtbrowser.cdat_window import QCDATWindow
 from cdat_cell import QCDATWidget
 from quickplot import quickplot
