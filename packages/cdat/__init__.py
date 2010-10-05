@@ -36,21 +36,19 @@ import core.modules.module_registry
 from core.modules.vistrails_module import (Module, NotCacheable,
                                            ModuleError, new_module)
 from core.bundles import py_import
-import os, sys, re
-
+import os, sys
+import qtbrowser
+qtbrowser.use_vistrails=True
 #cdat specific packages
 vcs = py_import('vcs',{})
 cdms2 = py_import('cdms2', {})
 cdutil = py_import('cdutil', {})
-import MV2
-import genutil
 
 #local python modules
-from cdat_window import QCDATWindow
-from cdat_cell import QCDATWidget, CDATCell, Variable, GraphicsMethod, Quickplot
-#from quickplot import quickplot
-from packages.spreadsheet.basic_widgets import CellLocation
-from packages.spreadsheet.basic_widgets import SpreadsheetCell
+from qtbrowser.cdat_window import QCDATWindow
+from cdat_cell import QCDATWidget
+from quickplot import quickplot
+
 
 version = "0.2"
 identifier = "edu.utah.sci.vistrails.cdat"
@@ -87,7 +85,7 @@ TransientVariable = new_module(Module,'TransientVariable')
 vt_type_dict['cdms2.tvariable.TransientVariable'] = TransientVariable
 
 
-class boxfill(SpreadsheetCell,NotCacheable):
+class boxfill(Module,NotCacheable):
     """
 			Function: boxfill                        # Generate a boxfill plot
 
@@ -123,376 +121,17 @@ class boxfill(SpreadsheetCell,NotCacheable):
     def compute(self):
         if self.hasInputFromPort('canvas'):
             canvas = self.getInputFromPort('canvas')
-            print 'got canvas'
-            print canvas
         else:
-            print 'no canvas'
             canvas = vcs.init()
-
-        # Build the argument list
-        args = []        
+        args = []
         slab = None
         if self.hasInputFromPort('slab_0'):
             slab = self.getInputFromPort('slab_0')
             args.append(slab)
+
         # slab is a required port
-        if slab is None:
+        if slab == None:
             raise ModuleError(self, "'slab' is a mandatory port")
-
-        template = None
-        if self.hasInputFromPort('template'):
-            template = self.getInputFromPort('template')
-            args.append(template)
-        # template is a required port
-        if template is None:
-            raise ModuleError(self, "'template' is a mandatory port")
-
-        args.append('Boxfill')
-
-        gm_name = None
-        if self.hasInputFromPort('gm_name'):
-            gm_name = self.getInputFromPort('gm_name')
-            args.append(gm_name)
-        # gm_name is a required port
-        if gm_name is None:
-            raise ModuleError(self, "'template' is a mandatory port")        
-
-        # build up the keyword arguments from the optional inputs.
-        kwargs = {}
-        if self.hasInputFromPort('datawc_timeunits'):
-            kwargs['datawc_timeunits'] = self.getInputFromPort('datawc_timeunits')
-        if self.hasInputFromPort('long_name'):
-            kwargs['long_name'] = self.getInputFromPort('long_name')
-        if self.hasInputFromPort('projection_0'):
-            kwargs['projection'] = self.getInputFromPort('projection_0')
-        if self.hasInputFromPort('xticlabels2_0'):
-            kwargs['xticlabels2'] = self.getInputFromPort('xticlabels2_0')
-        if self.hasInputFromPort('xarray_0'):
-            kwargs['xarray'] = self.getInputFromPort('xarray_0')
-        if self.hasInputFromPort('yweights_0'):
-            kwargs['yweights'] = self.getInputFromPort('yweights_0')
-        if self.hasInputFromPort('xweights_0'):
-            kwargs['xweights'] = self.getInputFromPort('xweights_0')
-        if self.hasInputFromPort('warray_0'):
-            kwargs['warray'] = self.getInputFromPort('warray_0')
-        if self.hasInputFromPort('tunits'):
-            kwargs['tunits'] = self.getInputFromPort('tunits')
-        if self.hasInputFromPort('ymtics1_0'):
-            kwargs['ymtics1'] = self.getInputFromPort('ymtics1_0')
-        if self.hasInputFromPort('ymtics2_0'):
-            kwargs['ymtics2'] = self.getInputFromPort('ymtics2_0')
-        if self.hasInputFromPort('datawc_x1'):
-            kwargs['datawc_x1'] = self.getInputFromPort('datawc_x1')
-        if self.hasInputFromPort('datawc_x2'):
-            kwargs['datawc_x2'] = self.getInputFromPort('datawc_x2')
-        if self.hasInputFromPort('continents'):
-            kwargs['continents'] = self.getInputFromPort('continents')
-        if self.hasInputFromPort('xmtics1_0'):
-            kwargs['xmtics1'] = self.getInputFromPort('xmtics1_0')
-        if self.hasInputFromPort('xmtics2_0'):
-            kwargs['xmtics2'] = self.getInputFromPort('xmtics2_0')
-        if self.hasInputFromPort('xbounds_0'):
-            kwargs['xbounds'] = self.getInputFromPort('xbounds_0')
-        if self.hasInputFromPort('ybounds_0'):
-            kwargs['ybounds'] = self.getInputFromPort('ybounds_0')
-        if self.hasInputFromPort('datawc_y2'):
-            kwargs['datawc_y2'] = self.getInputFromPort('datawc_y2')
-        if self.hasInputFromPort('wname'):
-            kwargs['wname'] = self.getInputFromPort('wname')
-        if self.hasInputFromPort('file_comment'):
-            kwargs['file_comment'] = self.getInputFromPort('file_comment')
-        if self.hasInputFromPort('datawc_calendar'):
-            kwargs['datawc_calendar'] = self.getInputFromPort('datawc_calendar')
-        if self.hasInputFromPort('wunits'):
-            kwargs['wunits'] = self.getInputFromPort('wunits')
-        if self.hasInputFromPort('xrev'):
-            kwargs['xrev'] = self.getInputFromPort('xrev')
-        if self.hasInputFromPort('ymd'):
-            kwargs['ymd'] = self.getInputFromPort('ymd')
-        if self.hasInputFromPort('yarray_0'):
-            kwargs['yarray'] = self.getInputFromPort('yarray_0')
-        if self.hasInputFromPort('units'):
-            kwargs['units'] = self.getInputFromPort('units')
-        if self.hasInputFromPort('yunits'):
-            kwargs['yunits'] = self.getInputFromPort('yunits')
-        if self.hasInputFromPort('zarray_0'):
-            kwargs['zarray'] = self.getInputFromPort('zarray_0')
-        if self.hasInputFromPort('xname'):
-            kwargs['xname'] = self.getInputFromPort('xname')
-        if self.hasInputFromPort('tarray_0'):
-            kwargs['tarray'] = self.getInputFromPort('tarray_0')
-        if self.hasInputFromPort('bg_0'):
-            kwargs['bg'] = self.getInputFromPort('bg_0')
-        elif self.hasInputFromPort('bg_1'):
-            kwargs['bg'] = self.getInputFromPort('bg_1')
-        if self.hasInputFromPort('xaxisconvert'):
-            kwargs['xaxisconvert'] = self.getInputFromPort('xaxisconvert')
-        if self.hasInputFromPort('zname'):
-            kwargs['zname'] = self.getInputFromPort('zname')
-        if self.hasInputFromPort('hms'):
-            kwargs['hms'] = self.getInputFromPort('hms')
-        if self.hasInputFromPort('tname'):
-            kwargs['tname'] = self.getInputFromPort('tname')
-        if self.hasInputFromPort('yname'):
-            kwargs['yname'] = self.getInputFromPort('yname')
-        if self.hasInputFromPort('ratio_0'):
-            kwargs['ratio'] = self.getInputFromPort('ratio_0')
-        elif self.hasInputFromPort('ratio_1'):
-            kwargs['ratio'] = self.getInputFromPort('ratio_1')
-        if self.hasInputFromPort('datawc_y1'):
-            kwargs['datawc_y1'] = self.getInputFromPort('datawc_y1')
-        if self.hasInputFromPort('yaxisconvert'):
-            kwargs['yaxisconvert'] = self.getInputFromPort('yaxisconvert')
-        if self.hasInputFromPort('xunits'):
-            kwargs['xunits'] = self.getInputFromPort('xunits')
-        if self.hasInputFromPort('name'):
-            kwargs['name'] = self.getInputFromPort('name')
-        if self.hasInputFromPort('yticlabels1_0'):
-            kwargs['yticlabels1'] = self.getInputFromPort('yticlabels1_0')
-        if self.hasInputFromPort('yticlabels2_0'):
-            kwargs['yticlabels2'] = self.getInputFromPort('yticlabels2_0')
-        if self.hasInputFromPort('comment1'):
-            kwargs['comment1'] = self.getInputFromPort('comment1')
-        if self.hasInputFromPort('zunits'):
-            kwargs['zunits'] = self.getInputFromPort('zunits')
-        if self.hasInputFromPort('comment3'):
-            kwargs['comment3'] = self.getInputFromPort('comment3')
-        if self.hasInputFromPort('comment2'):
-            kwargs['comment2'] = self.getInputFromPort('comment2')
-        if self.hasInputFromPort('xticlabels1_0'):
-            kwargs['xticlabels1'] = self.getInputFromPort('xticlabels1_0')
-        if self.hasInputFromPort('comment4'):
-            kwargs['comment4'] = self.getInputFromPort('comment4')
-        if self.hasInputFromPort('yrev'):
-            kwargs['yrev'] = self.getInputFromPort('yrev')
-            
-        # force images to be created in the background
-        # kwargs['bg'] = 1
-
-        # TODO
-
-        #res = canvas.boxfill(*args,**kwargs)
-        #res = canvas.plot(slab, 'ASD', 'Boxfill', 'ASD')
-
-        #plotArgs = (graphics_method, 'ASD', dataset)
-        inputPorts = (canvas, args, kwargs)
-        self.displayAndWait(QCDATWidget, inputPorts)
-        
-        # self.setResult('display', res) 
-        self.setResult('canvas',canvas)
-
-class createboxfill(Module):
-    """
-			Function: createboxfill                # Construct a new boxfill graphics method
-
- Description of Function:
-    Create a new boxfill graphics method given the the name and the existing
-    boxfill graphics method to copy the attributes from. If no existing
-    boxfill graphics method name is given, then the default boxfill graphics
-    method will be used as the graphics method to which the attributes will
-    be copied from.
-
-    If the name provided already exists, then a error will be returned. Graphics
-    method names must be unique.
-
- Example of Use:
-    a=vcs.init()
-    a.show('boxfill')
-    box=a.createboxfill('example1',)
-    a.show('boxfill')
-    box=a.createboxfill('example2','quick')
-    a.show('boxfill')
-
-#########################################################################################################################
-###########################################                               ###############################################
-########################################## End createboxfill Description ################################################
-#########################################                               #################################################
-#########################################################################################################################
-		
-    """
-    def compute(self):
-        if self.hasInputFromPort('canvas'):
-            canvas = self.getInputFromPort('canvas')
-        else:
-            canvas = vcs.init()
-        args = []
-        new_GM_name = None
-        if self.hasInputFromPort('new_GM_name'):
-            new_GM_name = self.getInputFromPort('new_GM_name')
-            args.append(new_GM_name)
-            
-        source_GM_name = None
-        if self.hasInputFromPort('source_GM_name'):
-            source_GM_name = self.getInputFromPort('source_GM_name')
-            args.append(source_GM_name)
-
-        slab = None
-        if self.hasInputFromPort('slab_0'):
-            slab = self.getInputFromPort('slab_0')
-        self.setResult('slab_0_out', slab)
-
-        # build up the keyword arguments from the optional inputs.
-        kwargs = {}
-        if self.hasInputFromPort('datawc_timeunits'):
-            kwargs['datawc_timeunits'] = self.getInputFromPort('datawc_timeunits')
-        if self.hasInputFromPort('long_name'):
-            kwargs['long_name'] = self.getInputFromPort('long_name')
-        if self.hasInputFromPort('projection_0'):
-            kwargs['projection'] = self.getInputFromPort('projection_0')
-        if self.hasInputFromPort('xticlabels2_0'):
-            kwargs['xticlabels2'] = self.getInputFromPort('xticlabels2_0')
-        if self.hasInputFromPort('xarray_0'):
-            kwargs['xarray'] = self.getInputFromPort('xarray_0')
-        if self.hasInputFromPort('yweights_0'):
-            kwargs['yweights'] = self.getInputFromPort('yweights_0')
-        if self.hasInputFromPort('xweights_0'):
-            kwargs['xweights'] = self.getInputFromPort('xweights_0')
-        if self.hasInputFromPort('warray_0'):
-            kwargs['warray'] = self.getInputFromPort('warray_0')
-        if self.hasInputFromPort('tunits'):
-            kwargs['tunits'] = self.getInputFromPort('tunits')
-        if self.hasInputFromPort('ymtics1_0'):
-            kwargs['ymtics1'] = self.getInputFromPort('ymtics1_0')
-        if self.hasInputFromPort('ymtics2_0'):
-            kwargs['ymtics2'] = self.getInputFromPort('ymtics2_0')
-        if self.hasInputFromPort('datawc_x1'):
-            kwargs['datawc_x1'] = self.getInputFromPort('datawc_x1')
-        if self.hasInputFromPort('datawc_x2'):
-            kwargs['datawc_x2'] = self.getInputFromPort('datawc_x2')
-        if self.hasInputFromPort('continents'):
-            kwargs['continents'] = self.getInputFromPort('continents')
-        if self.hasInputFromPort('xmtics1_0'):
-            kwargs['xmtics1'] = self.getInputFromPort('xmtics1_0')
-        if self.hasInputFromPort('xmtics2_0'):
-            kwargs['xmtics2'] = self.getInputFromPort('xmtics2_0')
-        if self.hasInputFromPort('xbounds_0'):
-            kwargs['xbounds'] = self.getInputFromPort('xbounds_0')
-        if self.hasInputFromPort('ybounds_0'):
-            kwargs['ybounds'] = self.getInputFromPort('ybounds_0')
-        if self.hasInputFromPort('datawc_y2'):
-            kwargs['datawc_y2'] = self.getInputFromPort('datawc_y2')
-        if self.hasInputFromPort('wname'):
-            kwargs['wname'] = self.getInputFromPort('wname')
-        if self.hasInputFromPort('file_comment'):
-            kwargs['file_comment'] = self.getInputFromPort('file_comment')
-        if self.hasInputFromPort('datawc_calendar'):
-            kwargs['datawc_calendar'] = self.getInputFromPort('datawc_calendar')
-        if self.hasInputFromPort('wunits'):
-            kwargs['wunits'] = self.getInputFromPort('wunits')
-        if self.hasInputFromPort('xrev'):
-            kwargs['xrev'] = self.getInputFromPort('xrev')
-        if self.hasInputFromPort('ymd'):
-            kwargs['ymd'] = self.getInputFromPort('ymd')
-        if self.hasInputFromPort('yarray_0'):
-            kwargs['yarray'] = self.getInputFromPort('yarray_0')
-        if self.hasInputFromPort('units'):
-            kwargs['units'] = self.getInputFromPort('units')
-        if self.hasInputFromPort('yunits'):
-            kwargs['yunits'] = self.getInputFromPort('yunits')
-        if self.hasInputFromPort('zarray_0'):
-            kwargs['zarray'] = self.getInputFromPort('zarray_0')
-        if self.hasInputFromPort('xname'):
-            kwargs['xname'] = self.getInputFromPort('xname')
-        if self.hasInputFromPort('tarray_0'):
-            kwargs['tarray'] = self.getInputFromPort('tarray_0')
-        if self.hasInputFromPort('bg_0'):
-            kwargs['bg'] = self.getInputFromPort('bg_0')
-        elif self.hasInputFromPort('bg_1'):
-            kwargs['bg'] = self.getInputFromPort('bg_1')
-        if self.hasInputFromPort('xaxisconvert'):
-            kwargs['xaxisconvert'] = self.getInputFromPort('xaxisconvert')
-        if self.hasInputFromPort('zname'):
-            kwargs['zname'] = self.getInputFromPort('zname')
-        if self.hasInputFromPort('hms'):
-            kwargs['hms'] = self.getInputFromPort('hms')
-        if self.hasInputFromPort('tname'):
-            kwargs['tname'] = self.getInputFromPort('tname')
-        if self.hasInputFromPort('yname'):
-            kwargs['yname'] = self.getInputFromPort('yname')
-        if self.hasInputFromPort('ratio_0'):
-            kwargs['ratio'] = self.getInputFromPort('ratio_0')
-        elif self.hasInputFromPort('ratio_1'):
-            kwargs['ratio'] = self.getInputFromPort('ratio_1')
-        if self.hasInputFromPort('datawc_y1'):
-            kwargs['datawc_y1'] = self.getInputFromPort('datawc_y1')
-        if self.hasInputFromPort('yaxisconvert'):
-            kwargs['yaxisconvert'] = self.getInputFromPort('yaxisconvert')
-        if self.hasInputFromPort('xunits'):
-            kwargs['xunits'] = self.getInputFromPort('xunits')
-        if self.hasInputFromPort('name'):
-            kwargs['name'] = self.getInputFromPort('name')
-        if self.hasInputFromPort('yticlabels1_0'):
-            kwargs['yticlabels1'] = self.getInputFromPort('yticlabels1_0')
-        if self.hasInputFromPort('yticlabels2_0'):
-            kwargs['yticlabels2'] = self.getInputFromPort('yticlabels2_0')
-        if self.hasInputFromPort('comment1'):
-            kwargs['comment1'] = self.getInputFromPort('comment1')
-        if self.hasInputFromPort('zunits'):
-            kwargs['zunits'] = self.getInputFromPort('zunits')
-        if self.hasInputFromPort('comment3'):
-            kwargs['comment3'] = self.getInputFromPort('comment3')
-        if self.hasInputFromPort('comment2'):
-            kwargs['comment2'] = self.getInputFromPort('comment2')
-        if self.hasInputFromPort('xticlabels1_0'):
-            kwargs['xticlabels1'] = self.getInputFromPort('xticlabels1_0')
-        if self.hasInputFromPort('comment4'):
-            kwargs['comment4'] = self.getInputFromPort('comment4')
-        if self.hasInputFromPort('yrev'):
-            kwargs['yrev'] = self.getInputFromPort('yrev')
-
-        gm = canvas.createboxfill(*args,**kwargs)
-        self.setResult('boxfill', gm)
-        self.setResult('canvas', canvas)
-
-class createisofill(Module):
-    """
-			Function: createisofill  # Construct a new isofill graphics method
-
- Description of Function:
-    Create a new isofill graphics method given the the name and the existing
-    isofill graphics method to copy the attributes from. If no existing
-    isofill graphics method name is given, then the default isofill graphics
-    method will be used as the graphics method to which the attributes will
-    be copied from.
-
-    If the name provided already exists, then a error will be returned. Graphics
-    method names must be unique.
-
- Example of Use:
-    a=vcs.init()
-    a.show('isofill')
-    iso=a.createisofill('example1',)
-    a.show('isofill')
-    iso=a.createisofill('example2','quick')
-    a.show('isofill')
-
-#########################################################################################################################
-###########################################                               ###############################################
-########################################## End createisofill Description ################################################
-#########################################                               #################################################
-#########################################################################################################################
-		
-    """
-    def compute(self):
-        if self.hasInputFromPort('canvas'):
-            canvas = self.getInputFromPort('canvas')
-        else:
-            canvas = vcs.init()
-        args = []
-        new_GM_name = None
-        if self.hasInputFromPort('new_GM_name'):
-            new_GM_name = self.getInputFromPort('new_GM_name')
-            args.append(new_GM_name)
-
-        source_GM_name = None
-        if self.hasInputFromPort('source_GM_name'):
-            source_GM_name = self.getInputFromPort('source_GM_name')
-            args.append(source_GM_name)
-
-        slab = None
-        if self.hasInputFromPort('slab_0'):
-            slab = self.getInputFromPort('slab_0')
-        self.setResult('slab_0_out', slab)            
 
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
@@ -603,7 +242,323 @@ class createisofill(Module):
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
         #force images to be created in the background
-        #kwargs['bg'] = 1
+        kwargs['bg'] = 1
+        res = canvas.boxfill(*args,**kwargs)
+        self.setResult('display',res)
+        self.setResult('canvas',canvas)
+
+class createboxfill(Module):
+    """
+			Function: createboxfill                # Construct a new boxfill graphics method
+
+ Description of Function:
+    Create a new boxfill graphics method given the the name and the existing
+    boxfill graphics method to copy the attributes from. If no existing
+    boxfill graphics method name is given, then the default boxfill graphics
+    method will be used as the graphics method to which the attributes will
+    be copied from.
+
+    If the name provided already exists, then a error will be returned. Graphics
+    method names must be unique.
+
+ Example of Use:
+    a=vcs.init()
+    a.show('boxfill')
+    box=a.createboxfill('example1',)
+    a.show('boxfill')
+    box=a.createboxfill('example2','quick')
+    a.show('boxfill')
+
+#########################################################################################################################
+###########################################                               ###############################################
+########################################## End createboxfill Description ################################################
+#########################################                               #################################################
+#########################################################################################################################
+		
+    """
+    def compute(self):
+        if self.hasInputFromPort('canvas'):
+            canvas = self.getInputFromPort('canvas')
+        else:
+            canvas = vcs.init()
+        args = []
+        new_GM_name = None
+        if self.hasInputFromPort('new_GM_name'):
+            new_GM_name = self.getInputFromPort('new_GM_name')
+            args.append(new_GM_name)
+        source_GM_name = None
+        if self.hasInputFromPort('source_GM_name'):
+            source_GM_name = self.getInputFromPort('source_GM_name')
+            args.append(source_GM_name)
+
+        # build up the keyword arguments from the optional inputs.
+        kwargs = {}
+        if self.hasInputFromPort('datawc_timeunits'):
+            kwargs['datawc_timeunits'] = self.getInputFromPort('datawc_timeunits')
+        if self.hasInputFromPort('long_name'):
+            kwargs['long_name'] = self.getInputFromPort('long_name')
+        if self.hasInputFromPort('projection_0'):
+            kwargs['projection'] = self.getInputFromPort('projection_0')
+        if self.hasInputFromPort('xticlabels2_0'):
+            kwargs['xticlabels2'] = self.getInputFromPort('xticlabels2_0')
+        if self.hasInputFromPort('xarray_0'):
+            kwargs['xarray'] = self.getInputFromPort('xarray_0')
+        if self.hasInputFromPort('yweights_0'):
+            kwargs['yweights'] = self.getInputFromPort('yweights_0')
+        if self.hasInputFromPort('xweights_0'):
+            kwargs['xweights'] = self.getInputFromPort('xweights_0')
+        if self.hasInputFromPort('warray_0'):
+            kwargs['warray'] = self.getInputFromPort('warray_0')
+        if self.hasInputFromPort('tunits'):
+            kwargs['tunits'] = self.getInputFromPort('tunits')
+        if self.hasInputFromPort('ymtics1_0'):
+            kwargs['ymtics1'] = self.getInputFromPort('ymtics1_0')
+        if self.hasInputFromPort('ymtics2_0'):
+            kwargs['ymtics2'] = self.getInputFromPort('ymtics2_0')
+        if self.hasInputFromPort('datawc_x1'):
+            kwargs['datawc_x1'] = self.getInputFromPort('datawc_x1')
+        if self.hasInputFromPort('datawc_x2'):
+            kwargs['datawc_x2'] = self.getInputFromPort('datawc_x2')
+        if self.hasInputFromPort('continents'):
+            kwargs['continents'] = self.getInputFromPort('continents')
+        if self.hasInputFromPort('xmtics1_0'):
+            kwargs['xmtics1'] = self.getInputFromPort('xmtics1_0')
+        if self.hasInputFromPort('xmtics2_0'):
+            kwargs['xmtics2'] = self.getInputFromPort('xmtics2_0')
+        if self.hasInputFromPort('xbounds_0'):
+            kwargs['xbounds'] = self.getInputFromPort('xbounds_0')
+        if self.hasInputFromPort('ybounds_0'):
+            kwargs['ybounds'] = self.getInputFromPort('ybounds_0')
+        if self.hasInputFromPort('datawc_y2'):
+            kwargs['datawc_y2'] = self.getInputFromPort('datawc_y2')
+        if self.hasInputFromPort('wname'):
+            kwargs['wname'] = self.getInputFromPort('wname')
+        if self.hasInputFromPort('file_comment'):
+            kwargs['file_comment'] = self.getInputFromPort('file_comment')
+        if self.hasInputFromPort('datawc_calendar'):
+            kwargs['datawc_calendar'] = self.getInputFromPort('datawc_calendar')
+        if self.hasInputFromPort('wunits'):
+            kwargs['wunits'] = self.getInputFromPort('wunits')
+        if self.hasInputFromPort('xrev'):
+            kwargs['xrev'] = self.getInputFromPort('xrev')
+        if self.hasInputFromPort('ymd'):
+            kwargs['ymd'] = self.getInputFromPort('ymd')
+        if self.hasInputFromPort('yarray_0'):
+            kwargs['yarray'] = self.getInputFromPort('yarray_0')
+        if self.hasInputFromPort('units'):
+            kwargs['units'] = self.getInputFromPort('units')
+        if self.hasInputFromPort('yunits'):
+            kwargs['yunits'] = self.getInputFromPort('yunits')
+        if self.hasInputFromPort('zarray_0'):
+            kwargs['zarray'] = self.getInputFromPort('zarray_0')
+        if self.hasInputFromPort('xname'):
+            kwargs['xname'] = self.getInputFromPort('xname')
+        if self.hasInputFromPort('tarray_0'):
+            kwargs['tarray'] = self.getInputFromPort('tarray_0')
+        if self.hasInputFromPort('bg_0'):
+            kwargs['bg'] = self.getInputFromPort('bg_0')
+        elif self.hasInputFromPort('bg_1'):
+            kwargs['bg'] = self.getInputFromPort('bg_1')
+        if self.hasInputFromPort('xaxisconvert'):
+            kwargs['xaxisconvert'] = self.getInputFromPort('xaxisconvert')
+        if self.hasInputFromPort('zname'):
+            kwargs['zname'] = self.getInputFromPort('zname')
+        if self.hasInputFromPort('hms'):
+            kwargs['hms'] = self.getInputFromPort('hms')
+        if self.hasInputFromPort('tname'):
+            kwargs['tname'] = self.getInputFromPort('tname')
+        if self.hasInputFromPort('yname'):
+            kwargs['yname'] = self.getInputFromPort('yname')
+        if self.hasInputFromPort('ratio_0'):
+            kwargs['ratio'] = self.getInputFromPort('ratio_0')
+        elif self.hasInputFromPort('ratio_1'):
+            kwargs['ratio'] = self.getInputFromPort('ratio_1')
+        if self.hasInputFromPort('datawc_y1'):
+            kwargs['datawc_y1'] = self.getInputFromPort('datawc_y1')
+        if self.hasInputFromPort('yaxisconvert'):
+            kwargs['yaxisconvert'] = self.getInputFromPort('yaxisconvert')
+        if self.hasInputFromPort('xunits'):
+            kwargs['xunits'] = self.getInputFromPort('xunits')
+        if self.hasInputFromPort('name'):
+            kwargs['name'] = self.getInputFromPort('name')
+        if self.hasInputFromPort('yticlabels1_0'):
+            kwargs['yticlabels1'] = self.getInputFromPort('yticlabels1_0')
+        if self.hasInputFromPort('yticlabels2_0'):
+            kwargs['yticlabels2'] = self.getInputFromPort('yticlabels2_0')
+        if self.hasInputFromPort('comment1'):
+            kwargs['comment1'] = self.getInputFromPort('comment1')
+        if self.hasInputFromPort('zunits'):
+            kwargs['zunits'] = self.getInputFromPort('zunits')
+        if self.hasInputFromPort('comment3'):
+            kwargs['comment3'] = self.getInputFromPort('comment3')
+        if self.hasInputFromPort('comment2'):
+            kwargs['comment2'] = self.getInputFromPort('comment2')
+        if self.hasInputFromPort('xticlabels1_0'):
+            kwargs['xticlabels1'] = self.getInputFromPort('xticlabels1_0')
+        if self.hasInputFromPort('comment4'):
+            kwargs['comment4'] = self.getInputFromPort('comment4')
+        if self.hasInputFromPort('yrev'):
+            kwargs['yrev'] = self.getInputFromPort('yrev')
+        #force images to be created in the background
+        kwargs['bg'] = 1
+        res = canvas.createboxfill(*args,**kwargs)
+        self.setResult('boxfill',res)
+        self.setResult('canvas',canvas)
+
+class createisofill(Module):
+    """
+			Function: createisofill  # Construct a new isofill graphics method
+
+ Description of Function:
+    Create a new isofill graphics method given the the name and the existing
+    isofill graphics method to copy the attributes from. If no existing
+    isofill graphics method name is given, then the default isofill graphics
+    method will be used as the graphics method to which the attributes will
+    be copied from.
+
+    If the name provided already exists, then a error will be returned. Graphics
+    method names must be unique.
+
+ Example of Use:
+    a=vcs.init()
+    a.show('isofill')
+    iso=a.createisofill('example1',)
+    a.show('isofill')
+    iso=a.createisofill('example2','quick')
+    a.show('isofill')
+
+#########################################################################################################################
+###########################################                               ###############################################
+########################################## End createisofill Description ################################################
+#########################################                               #################################################
+#########################################################################################################################
+		
+    """
+    def compute(self):
+        if self.hasInputFromPort('canvas'):
+            canvas = self.getInputFromPort('canvas')
+        else:
+            canvas = vcs.init()
+        args = []
+        new_GM_name = None
+        if self.hasInputFromPort('new_GM_name'):
+            new_GM_name = self.getInputFromPort('new_GM_name')
+            args.append(new_GM_name)
+        source_GM_name = None
+        if self.hasInputFromPort('source_GM_name'):
+            source_GM_name = self.getInputFromPort('source_GM_name')
+            args.append(source_GM_name)
+
+        # build up the keyword arguments from the optional inputs.
+        kwargs = {}
+        if self.hasInputFromPort('datawc_timeunits'):
+            kwargs['datawc_timeunits'] = self.getInputFromPort('datawc_timeunits')
+        if self.hasInputFromPort('long_name'):
+            kwargs['long_name'] = self.getInputFromPort('long_name')
+        if self.hasInputFromPort('projection_0'):
+            kwargs['projection'] = self.getInputFromPort('projection_0')
+        if self.hasInputFromPort('xticlabels2_0'):
+            kwargs['xticlabels2'] = self.getInputFromPort('xticlabels2_0')
+        if self.hasInputFromPort('xarray_0'):
+            kwargs['xarray'] = self.getInputFromPort('xarray_0')
+        if self.hasInputFromPort('yweights_0'):
+            kwargs['yweights'] = self.getInputFromPort('yweights_0')
+        if self.hasInputFromPort('xweights_0'):
+            kwargs['xweights'] = self.getInputFromPort('xweights_0')
+        if self.hasInputFromPort('warray_0'):
+            kwargs['warray'] = self.getInputFromPort('warray_0')
+        if self.hasInputFromPort('tunits'):
+            kwargs['tunits'] = self.getInputFromPort('tunits')
+        if self.hasInputFromPort('ymtics1_0'):
+            kwargs['ymtics1'] = self.getInputFromPort('ymtics1_0')
+        if self.hasInputFromPort('ymtics2_0'):
+            kwargs['ymtics2'] = self.getInputFromPort('ymtics2_0')
+        if self.hasInputFromPort('datawc_x1'):
+            kwargs['datawc_x1'] = self.getInputFromPort('datawc_x1')
+        if self.hasInputFromPort('datawc_x2'):
+            kwargs['datawc_x2'] = self.getInputFromPort('datawc_x2')
+        if self.hasInputFromPort('continents'):
+            kwargs['continents'] = self.getInputFromPort('continents')
+        if self.hasInputFromPort('xmtics1_0'):
+            kwargs['xmtics1'] = self.getInputFromPort('xmtics1_0')
+        if self.hasInputFromPort('xmtics2_0'):
+            kwargs['xmtics2'] = self.getInputFromPort('xmtics2_0')
+        if self.hasInputFromPort('xbounds_0'):
+            kwargs['xbounds'] = self.getInputFromPort('xbounds_0')
+        if self.hasInputFromPort('ybounds_0'):
+            kwargs['ybounds'] = self.getInputFromPort('ybounds_0')
+        if self.hasInputFromPort('datawc_y2'):
+            kwargs['datawc_y2'] = self.getInputFromPort('datawc_y2')
+        if self.hasInputFromPort('wname'):
+            kwargs['wname'] = self.getInputFromPort('wname')
+        if self.hasInputFromPort('file_comment'):
+            kwargs['file_comment'] = self.getInputFromPort('file_comment')
+        if self.hasInputFromPort('datawc_calendar'):
+            kwargs['datawc_calendar'] = self.getInputFromPort('datawc_calendar')
+        if self.hasInputFromPort('wunits'):
+            kwargs['wunits'] = self.getInputFromPort('wunits')
+        if self.hasInputFromPort('xrev'):
+            kwargs['xrev'] = self.getInputFromPort('xrev')
+        if self.hasInputFromPort('ymd'):
+            kwargs['ymd'] = self.getInputFromPort('ymd')
+        if self.hasInputFromPort('yarray_0'):
+            kwargs['yarray'] = self.getInputFromPort('yarray_0')
+        if self.hasInputFromPort('units'):
+            kwargs['units'] = self.getInputFromPort('units')
+        if self.hasInputFromPort('yunits'):
+            kwargs['yunits'] = self.getInputFromPort('yunits')
+        if self.hasInputFromPort('zarray_0'):
+            kwargs['zarray'] = self.getInputFromPort('zarray_0')
+        if self.hasInputFromPort('xname'):
+            kwargs['xname'] = self.getInputFromPort('xname')
+        if self.hasInputFromPort('tarray_0'):
+            kwargs['tarray'] = self.getInputFromPort('tarray_0')
+        if self.hasInputFromPort('bg_0'):
+            kwargs['bg'] = self.getInputFromPort('bg_0')
+        elif self.hasInputFromPort('bg_1'):
+            kwargs['bg'] = self.getInputFromPort('bg_1')
+        if self.hasInputFromPort('xaxisconvert'):
+            kwargs['xaxisconvert'] = self.getInputFromPort('xaxisconvert')
+        if self.hasInputFromPort('zname'):
+            kwargs['zname'] = self.getInputFromPort('zname')
+        if self.hasInputFromPort('hms'):
+            kwargs['hms'] = self.getInputFromPort('hms')
+        if self.hasInputFromPort('tname'):
+            kwargs['tname'] = self.getInputFromPort('tname')
+        if self.hasInputFromPort('yname'):
+            kwargs['yname'] = self.getInputFromPort('yname')
+        if self.hasInputFromPort('ratio_0'):
+            kwargs['ratio'] = self.getInputFromPort('ratio_0')
+        elif self.hasInputFromPort('ratio_1'):
+            kwargs['ratio'] = self.getInputFromPort('ratio_1')
+        if self.hasInputFromPort('datawc_y1'):
+            kwargs['datawc_y1'] = self.getInputFromPort('datawc_y1')
+        if self.hasInputFromPort('yaxisconvert'):
+            kwargs['yaxisconvert'] = self.getInputFromPort('yaxisconvert')
+        if self.hasInputFromPort('xunits'):
+            kwargs['xunits'] = self.getInputFromPort('xunits')
+        if self.hasInputFromPort('name'):
+            kwargs['name'] = self.getInputFromPort('name')
+        if self.hasInputFromPort('yticlabels1_0'):
+            kwargs['yticlabels1'] = self.getInputFromPort('yticlabels1_0')
+        if self.hasInputFromPort('yticlabels2_0'):
+            kwargs['yticlabels2'] = self.getInputFromPort('yticlabels2_0')
+        if self.hasInputFromPort('comment1'):
+            kwargs['comment1'] = self.getInputFromPort('comment1')
+        if self.hasInputFromPort('zunits'):
+            kwargs['zunits'] = self.getInputFromPort('zunits')
+        if self.hasInputFromPort('comment3'):
+            kwargs['comment3'] = self.getInputFromPort('comment3')
+        if self.hasInputFromPort('comment2'):
+            kwargs['comment2'] = self.getInputFromPort('comment2')
+        if self.hasInputFromPort('xticlabels1_0'):
+            kwargs['xticlabels1'] = self.getInputFromPort('xticlabels1_0')
+        if self.hasInputFromPort('comment4'):
+            kwargs['comment4'] = self.getInputFromPort('comment4')
+        if self.hasInputFromPort('yrev'):
+            kwargs['yrev'] = self.getInputFromPort('yrev')
+        #force images to be created in the background
+        kwargs['bg'] = 1
         res = canvas.createisofill(*args,**kwargs)
         self.setResult('isofill',res)
         self.setResult('canvas',canvas)
@@ -649,15 +604,9 @@ class createisoline(Module):
             new_GM_name = self.getInputFromPort('new_GM_name')
             args.append(new_GM_name)
         source_GM_name = None
-
         if self.hasInputFromPort('source_GM_name'):
             source_GM_name = self.getInputFromPort('source_GM_name')
             args.append(source_GM_name)
-
-        slab = None
-        if self.hasInputFromPort('slab_0'):
-            slab = self.getInputFromPort('slab_0')
-        self.setResult('slab_0_out', slab)            
 
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
@@ -768,7 +717,7 @@ class createisoline(Module):
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
         #force images to be created in the background
-        #kwargs['bg'] = 1
+        kwargs['bg'] = 1
         res = canvas.createisoline(*args,**kwargs)
         self.setResult('isoline',res)
         self.setResult('canvas',canvas)
@@ -808,22 +757,15 @@ class createoutfill(Module):
             canvas = self.getInputFromPort('canvas')
         else:
             canvas = vcs.init()
-            
         args = []
         new_GM_name = None
         if self.hasInputFromPort('new_GM_name'):
             new_GM_name = self.getInputFromPort('new_GM_name')
             args.append(new_GM_name)
-        
         source_GM_name = None
         if self.hasInputFromPort('source_GM_name'):
             source_GM_name = self.getInputFromPort('source_GM_name')
             args.append(source_GM_name)
-
-        slab = None
-        if self.hasInputFromPort('slab_0'):
-            slab = self.getInputFromPort('slab_0')
-        self.setResult('slab_0_out', slab)            
 
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
@@ -934,7 +876,7 @@ class createoutfill(Module):
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
         #force images to be created in the background
-        #kwargs['bg'] = 1
+        kwargs['bg'] = 1
         res = canvas.createoutfill(*args,**kwargs)
         self.setResult('outfill',res)
         self.setResult('canvas',canvas)
@@ -980,15 +922,9 @@ class createoutline(Module):
             new_GM_name = self.getInputFromPort('new_GM_name')
             args.append(new_GM_name)
         source_GM_name = None
-
         if self.hasInputFromPort('source_GM_name'):
             source_GM_name = self.getInputFromPort('source_GM_name')
             args.append(source_GM_name)
-
-        slab = None
-        if self.hasInputFromPort('slab_0'):
-            slab = self.getInputFromPort('slab_0')
-        self.setResult('slab_0_out', slab)            
 
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
@@ -1099,7 +1035,7 @@ class createoutline(Module):
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
         #force images to be created in the background
-        #kwargs['bg'] = 1
+        kwargs['bg'] = 1
         res = canvas.createoutline(*args,**kwargs)
         self.setResult('outline',res)
         self.setResult('canvas',canvas)
@@ -1143,16 +1079,10 @@ class createscatter(Module):
         if self.hasInputFromPort('new_GM_name'):
             new_GM_name = self.getInputFromPort('new_GM_name')
             args.append(new_GM_name)
-
         source_GM_name = None
         if self.hasInputFromPort('source_GM_name'):
             source_GM_name = self.getInputFromPort('source_GM_name')
             args.append(source_GM_name)
-
-        slab = None
-        if self.hasInputFromPort('slab_0'):
-            slab = self.getInputFromPort('slab_0')
-        self.setResult('slab_0_out', slab)            
 
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
@@ -1263,7 +1193,7 @@ class createscatter(Module):
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
         #force images to be created in the background
-        #kwargs['bg'] = 1
+        kwargs['bg'] = 1
         res = canvas.createscatter(*args,**kwargs)
         self.setResult('scatter',res)
         self.setResult('canvas',canvas)
@@ -1308,15 +1238,9 @@ class createxvsy(Module):
             new_GM_name = self.getInputFromPort('new_GM_name')
             args.append(new_GM_name)
         source_GM_name = None
-
         if self.hasInputFromPort('source_GM_name'):
             source_GM_name = self.getInputFromPort('source_GM_name')
             args.append(source_GM_name)
-
-        slab = None
-        if self.hasInputFromPort('slab_0'):
-            slab = self.getInputFromPort('slab_0')
-        self.setResult('slab_0_out', slab)            
 
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
@@ -1427,7 +1351,7 @@ class createxvsy(Module):
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
         #force images to be created in the background
-        #kwargs['bg'] = 1
+        kwargs['bg'] = 1
         res = canvas.createxvsy(*args,**kwargs)
         self.setResult('xvsy',res)
         self.setResult('canvas',canvas)
@@ -1473,15 +1397,9 @@ class createxyvsy(Module):
             new_GM_name = self.getInputFromPort('new_GM_name')
             args.append(new_GM_name)
         source_GM_name = None
-
         if self.hasInputFromPort('source_GM_name'):
             source_GM_name = self.getInputFromPort('source_GM_name')
             args.append(source_GM_name)
-
-        slab = None
-        if self.hasInputFromPort('slab_0'):
-            slab = self.getInputFromPort('slab_0')
-        self.setResult('slab_0_out', slab)            
 
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
@@ -1592,7 +1510,7 @@ class createxyvsy(Module):
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
         #force images to be created in the background
-        #kwargs['bg'] = 1
+        kwargs['bg'] = 1
         res = canvas.createxyvsy(*args,**kwargs)
         self.setResult('xyvsy',res)
         self.setResult('canvas',canvas)
@@ -1638,15 +1556,9 @@ class createyxvsx(Module):
             new_GM_name = self.getInputFromPort('new_GM_name')
             args.append(new_GM_name)
         source_GM_name = None
-
         if self.hasInputFromPort('source_GM_name'):
             source_GM_name = self.getInputFromPort('source_GM_name')
             args.append(source_GM_name)
-
-        slab = None
-        if self.hasInputFromPort('slab_0'):
-            slab = self.getInputFromPort('slab_0')
-        self.setResult('slab_0_out', slab)            
 
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
@@ -1757,8 +1669,7 @@ class createyxvsx(Module):
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
         #force images to be created in the background
-        #kwargs['bg'] = 1
-
+        kwargs['bg'] = 1
         res = canvas.createyxvsx(*args,**kwargs)
         self.setResult('yxvsx',res)
         self.setResult('canvas',canvas)
@@ -1796,7 +1707,6 @@ class getboxfill(Module):
         else:
             canvas = vcs.init()
         args = []
-        
         GM_name = None
         if self.hasInputFromPort('GM_name'):
             GM_name = self.getInputFromPort('GM_name')
@@ -1910,8 +1820,9 @@ class getboxfill(Module):
             kwargs['comment4'] = self.getInputFromPort('comment4')
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
-
-        res = canvas.getboxfill(*args)
+        #force images to be created in the background
+        kwargs['bg'] = 1
+        res = canvas.getboxfill(*args,**kwargs)
         self.setResult('boxfill',res)
         self.setResult('canvas',canvas)
 
@@ -2061,9 +1972,9 @@ class getisofill(Module):
             kwargs['comment4'] = self.getInputFromPort('comment4')
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
-
-        res = canvas.getisofill(*args)
-        
+        #force images to be created in the background
+        kwargs['bg'] = 1
+        res = canvas.getisofill(*args,**kwargs)
         self.setResult('isofill',res)
         self.setResult('canvas',canvas)
 
@@ -2213,8 +2124,9 @@ class getisoline(Module):
             kwargs['comment4'] = self.getInputFromPort('comment4')
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
-
-        res = canvas.getisoline(*args)
+        #force images to be created in the background
+        kwargs['bg'] = 1
+        res = canvas.getisoline(*args,**kwargs)
         self.setResult('isoline',res)
         self.setResult('canvas',canvas)
 
@@ -2365,7 +2277,8 @@ class getoutfill(Module):
             kwargs['comment4'] = self.getInputFromPort('comment4')
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
-
+        #force images to be created in the background
+        kwargs['bg'] = 1
         res = canvas.getoutfill(*args,**kwargs)
         self.setResult('outfill',res)
         self.setResult('canvas',canvas)
@@ -2517,8 +2430,9 @@ class getoutline(Module):
             kwargs['comment4'] = self.getInputFromPort('comment4')
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
-
-        res = canvas.getoutline(*args)
+        #force images to be created in the background
+        kwargs['bg'] = 1
+        res = canvas.getoutline(*args,**kwargs)
         self.setResult('outline',res)
         self.setResult('canvas',canvas)
 
@@ -2669,8 +2583,9 @@ class getscatter(Module):
             kwargs['comment4'] = self.getInputFromPort('comment4')
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
-
-        res = canvas.getscatter(*args)
+        #force images to be created in the background
+        kwargs['bg'] = 1
+        res = canvas.getscatter(*args,**kwargs)
         self.setResult('scatter',res)
         self.setResult('canvas',canvas)
 
@@ -2821,8 +2736,9 @@ class getxvsy(Module):
             kwargs['comment4'] = self.getInputFromPort('comment4')
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
-
-        res = canvas.getxvsy(*args)
+        #force images to be created in the background
+        kwargs['bg'] = 1
+        res = canvas.getxvsy(*args,**kwargs)
         self.setResult('xvsy',res)
         self.setResult('canvas',canvas)
 
@@ -2972,8 +2888,9 @@ class getxyvsy(Module):
             kwargs['comment4'] = self.getInputFromPort('comment4')
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
-
-        res = canvas.getxyvsy(*args)
+        #force images to be created in the background
+        kwargs['bg'] = 1
+        res = canvas.getxyvsy(*args,**kwargs)
         self.setResult('xyvsy',res)
         self.setResult('canvas',canvas)
 
@@ -3123,7 +3040,8 @@ class getyxvsx(Module):
             kwargs['comment4'] = self.getInputFromPort('comment4')
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
-
+        #force images to be created in the background
+        kwargs['bg'] = 1
         res = canvas.getyxvsx(*args,**kwargs)
         self.setResult('yxvsx',res)
         self.setResult('canvas',canvas)
@@ -3159,30 +3077,11 @@ class isofill(Module,NotCacheable):
             canvas = self.getInputFromPort('canvas')
         else:
             canvas = vcs.init()
-            
         args = []
         slab = None
         if self.hasInputFromPort('slab_0'):
             slab = self.getInputFromPort('slab_0')
             args.append(slab)
-            
-        template = None
-        if self.hasInputFromPort('template'):
-            template = self.getInputFromPort('template')
-            args.append(template)
-        # template is a required port
-        if template is None:
-            raise ModuleError(self, "'template' is a mandatory port")
-
-        args.append('Isofill')
-
-        gm_name = None
-        if self.hasInputFromPort('gm_name'):
-            gm_name = self.getInputFromPort('gm_name')
-            args.append(gm_name)
-        # gm_name is a required port
-        if gm_name is None:
-            raise ModuleError(self, "'template' is a mandatory port")                    
 
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
@@ -3329,30 +3228,11 @@ class isoline(Module,NotCacheable):
             canvas = self.getInputFromPort('canvas')
         else:
             canvas = vcs.init()
-            
         args = []
         slab = None
         if self.hasInputFromPort('slab_0'):
             slab = self.getInputFromPort('slab_0')
             args.append(slab)
-
-        template = None
-        if self.hasInputFromPort('template'):
-            template = self.getInputFromPort('template')
-            args.append(template)
-        # template is a required port
-        if template is None:
-            raise ModuleError(self, "'template' is a mandatory port")
-
-        args.append('Isoline')
-
-        gm_name = None
-        if self.hasInputFromPort('gm_name'):
-            gm_name = self.getInputFromPort('gm_name')
-            args.append(gm_name)
-        # gm_name is a required port
-        if gm_name is None:
-            raise ModuleError(self, "'template' is a mandatory port")                    
 
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
@@ -3499,30 +3379,11 @@ class outfill(Module):
             canvas = self.getInputFromPort('canvas')
         else:
             canvas = vcs.init()
-
         args = []
         slab = None
         if self.hasInputFromPort('slab_0'):
             slab = self.getInputFromPort('slab_0')
             args.append(slab)
-
-        template = None
-        if self.hasInputFromPort('template'):
-            template = self.getInputFromPort('template')
-            args.append(template)
-        # template is a required port
-        if template is None:
-            raise ModuleError(self, "'template' is a mandatory port")
-
-        args.append('Outfill')
-
-        gm_name = None
-        if self.hasInputFromPort('gm_name'):
-            gm_name = self.getInputFromPort('gm_name')
-            args.append(gm_name)
-        # gm_name is a required port
-        if gm_name is None:
-            raise ModuleError(self, "'template' is a mandatory port")                    
 
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
@@ -3670,29 +3531,10 @@ class outline(Module):
         else:
             canvas = vcs.init()
         args = []
-
         slab = None
         if self.hasInputFromPort('slab_0'):
             slab = self.getInputFromPort('slab_0')
             args.append(slab)
-
-        template = None
-        if self.hasInputFromPort('template'):
-            template = self.getInputFromPort('template')
-            args.append(template)
-        # template is a required port
-        if template is None:
-            raise ModuleError(self, "'template' is a mandatory port")
-
-        args.append('Outline')
-
-        gm_name = None
-        if self.hasInputFromPort('gm_name'):
-            gm_name = self.getInputFromPort('gm_name')
-            args.append(gm_name)
-        # gm_name is a required port
-        if gm_name is None:
-            raise ModuleError(self, "'template' is a mandatory port")                    
 
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
@@ -3808,7 +3650,7 @@ class outline(Module):
         self.setResult('display',res)
         self.setResult('canvas',canvas)
 
-class plot(SpreadsheetCell,NotCacheable):
+class plot(Module,NotCacheable):
     """
 			Function: plot
 
@@ -3920,8 +3762,6 @@ class plot(SpreadsheetCell,NotCacheable):
             canvas = self.getInputFromPort('canvas')
         else:
             canvas = vcs.init()
-            
-        # Build up the argument list
         args = []
         slab2 = None
         if self.hasInputFromPort('slab2_0'):
@@ -3931,32 +3771,11 @@ class plot(SpreadsheetCell,NotCacheable):
         if self.hasInputFromPort('slab1_0'):
             slab1 = self.getInputFromPort('slab1_0')
             args.append(slab1)
-        template = None
-        if self.hasInputFromPort('template'):
-            template = self.getInputFromPort('template')
-            args.append(template)
-        plot_type = None
-        if self.hasInputFromPort('plot_type'):
-            plot_type = self.getInputFromPort('plot_type')
-            args.append(plot_type)
-        gm_name = None
-        if self.hasInputFromPort('gm_name'):
-            gm_name = self.getInputFromPort('gm_name')
-            args.append(gm_name)
 
         # slab1 is a required port
-        if slab1 is None:
+        if slab1 == None:
             raise ModuleError(self, "'slab1' is a mandatory port")
-        # template is a required port
-        if template is None:
-            raise ModuleError(self, "'template' is a mandatory port")
-        # plot_type is a required port
-        if plot_type is None:
-            raise ModuleError(self, "'plot_type' is a mandatory port")
-        # gm_name is a required port
-        if gm_name is None:
-            raise ModuleError(self, "'gm_name' is a mandatory port")
-        
+
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
         if self.hasInputFromPort('datawc_timeunits'):
@@ -4065,18 +3884,10 @@ class plot(SpreadsheetCell,NotCacheable):
             kwargs['comment4'] = self.getInputFromPort('comment4')
         if self.hasInputFromPort('yrev'):
             kwargs['yrev'] = self.getInputFromPort('yrev')
-
-        # Set the cell row / col
-        self.location = CellLocation()
-        if self.hasInputFromPort('row'):
-            self.location.row = self.getInputFromPort('row')
-        if self.hasInputFromPort('col'):
-            self.location.col = self.getInputFromPort('col')            
-
-        # Plot into the cell
-        inputPorts = (canvas, args, kwargs)
-        self.displayAndWait(QCDATWidget, inputPorts)
-        
+        #force images to be created in the background
+        kwargs['bg'] = 1
+        res = canvas.plot(*args,**kwargs)
+        self.setResult('display',res)
         self.setResult('canvas',canvas)
 
 class scatter(Module):
@@ -4794,94 +4605,20 @@ Description of Function:
     
     """
     def compute(self):
-        # Check ports
-        if not self.hasInputFromPort('cdmsfile'):
-            raise ModuleError(self, "'cdmsfile' is mandatory.")
-        if not self.hasInputFromPort('type'):
-            raise ModuleError(self, "'type' is mandatory.")
-        if not self.hasInputFromPort('id'):
-            raise ModuleError(self, "'id' is mandatory.")        
-        if not self.hasInputFromPort('axes'):
-            raise ModuleError(self, "'axes' is mandatory.")
-        if not self.hasInputFromPort('axesOperations'):
-            raise ModuleError(self, "'axesOperations' is mandatory.")
-
-        # Get input from ports
+        self.checkInputPort('cdmsfile')
         cdmsfile = self.getInputFromPort('cdmsfile')
-        varType = self.getInputFromPort('type')
-        id = self.getInputFromPort('id')
-        axes = self.getInputFromPort('axes')
-        axesOperations = self.getInputFromPort('axesOperations')                
+        args = []
+        id = None
+        if self.hasInputFromPort('id'):
+            id = self.getInputFromPort('id')
+            args.append(id)
 
-        # Get the variable
-        if (varType == 'variable'):
-            var = cdmsfile.__call__(id)
-        elif (varType == 'axis'):
-            varID = self.getAxisID(id)            
-            axis = getattr(cdmsfile, 'axes')[varID]
-            var = MV2.array(axis)
-            var.setAxis(0, axis)
-        elif (varType == 'weighted-axis'):
-            varID, axisID = self.getVarAndAxisID(id)
-            var = cdmsfile.__call__(varID)            
-            var = genutil.getAxisWeightByName(var, axisID)
-            var.id = varID +'_' + axisID + '_weight'
-        else:
-            var = None
+        # id is a required port
+        if id is None:
+            raise ModuleError(self, "'id' is a mandatory port")
+        res = cdmsfile.__call__(*args)
+        self.setResult('variable',res)
 
-        # Get the updated variable
-        if axes is not None and var is not None:
-            try:
-                kwargs = eval(axes)
-                var = var(**kwargs)
-            except:
-                raise ModuleError(self, "Invalid 'axes' specification", axes)
-
-        # Apply axes ops to the variable
-        var = self.applyAxesOperations(var, axesOperations)
-
-        self.setResult('variable', var)
-
-    def applyAxesOperations(self, var, axesOperations):
-        """ Apply kwargs / axis operations to update the dataset """
-        try:
-            axesOperations = eval(axesOperations)
-        except:
-            raise TypeError("Invalid string 'axesOperations'")
-
-        for axis in list(axesOperations):
-            if axesOperations[axis] == 'sum':
-                var = cdutil.averager(var, axis="(%s)" % axis, weight='equal',
-                                      action='sum')
-            elif axesOperations[axis] == 'avg':
-                var = cdutil.averager(var, axis="(%s)" % axis, weight='equal')
-            elif axesOperations[axis] == 'wgt':
-                var = cdutil.averager(var, axis="(%s)" % axis)
-            elif axesOperations[axis] == 'gtm':
-                var = genutil.statistics.geometricmean(var, axis="(%s)" % axis)
-            elif axesOperations[axis] == 'std':
-                var = genutil.statistics.std(var, axis="(%s)" % axis)                
-                
-        return var
-
-    def getVarAndAxisID(self, varID):
-        """ get the varID and axisID from a string with format
-        varID_axisID_weight """
-        
-        match = re.compile('(.+)(_)(.+)(_)(weight)').match(varID)
-        if match:
-            return (match.group(1), match.group(3))
-
-        return None
-
-    def getAxisID(self, varID):
-        """ get the axisID from a string with format varID_axisID_axis """
-
-        match = re.compile('(.+)(_)(.+)(_)(axis)').match(varID)
-        if match:
-            return match.group(3)
-
-        return varID
 
 def initialize(*args, **keywords):
     reg = core.modules.module_registry.get_module_registry()
@@ -4900,7 +4637,6 @@ def initialize(*args, **keywords):
     reg.add_module(Gi,namespace='vcs|isoline')
     reg.add_module(Gfo,namespace='vcs|outfill')
 
-    
     ##########################################################################
     # included from cdatwindow_init_inc.py
     #display = sip.unwrapinstance(QtGui.QX11Info.display())
@@ -4910,7 +4646,6 @@ def initialize(*args, **keywords):
     global cdatWindow
     cdatWindow = QCDATWindow()
     cdatWindow.show()
-
 
     reg.add_module(CDATCell,namespace='cdat')
     reg.add_input_port(CDATCell, 'slab1',
@@ -4932,8 +4667,6 @@ def initialize(*args, **keywords):
     reg.add_input_port(CDATCell, 'continents', 
                        (core.modules.basic_modules.Integer,
                         "continents type number"), True)    
-    reg.add_output_port(CDATCell, 'canvas', 
-                       (Canvas, ""), True)    
 
     reg.add_module(Variable, namespace='cdat')
     reg.add_module(Quickplot, namespace='cdat')    
@@ -4986,19 +4719,14 @@ def initialize(*args, **keywords):
     
     # end of cdatwindow_init_inc.py
     ##########################################################################
+
     
-    
+
     #Module boxfill
     reg.add_module(boxfill,namespace='vcs|Canvas')
     reg.add_input_port(boxfill, 'slab_0', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),
                         "Data at least 2D, last 2 dimensions will be plotted"))
-    reg.add_input_port(boxfill, 'template', 
-                       (core.modules.basic_modules.String,
-                        "Name of the template")) 
-    reg.add_input_port(boxfill, 'gm_name', 
-                       (core.modules.basic_modules.String,
-                        "Name of the graphics method"))
     reg.add_input_port(boxfill, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -5161,15 +4889,9 @@ def initialize(*args, **keywords):
     reg.add_output_port(boxfill, 'display', 
                        (get_late_type('vcs.displayplot.Dp'),
                         "no default"))
-    
+
     #Module createboxfill
     reg.add_module(createboxfill,namespace='vcs|Canvas')
-    reg.add_input_port(createboxfill, 'slab_0', 
-                       (get_late_type('cdms2.tvariable.TransientVariable'),
-                        "Data at least 2D, last 2 dimensions will be plotted"))
-    reg.add_output_port(createboxfill, 'slab_0_out', 
-                        (get_late_type('cdms2.tvariable.TransientVariable'),
-                         "Data at least 2D, last 2 dimensions will be plotted"))        
     reg.add_input_port(createboxfill, 'new_GM_name', 
                        (core.modules.basic_modules.String,
                         "name of the new graphics method object. If no name is given, then one will be created for use."))
@@ -5347,12 +5069,6 @@ def initialize(*args, **keywords):
     reg.add_input_port(createisofill, 'source_GM_name', 
                        (core.modules.basic_modules.String,
                         "copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object."))
-    reg.add_input_port(createisofill, 'slab_0', 
-                       (get_late_type('cdms2.tvariable.TransientVariable'),
-                        "Data at least 2D, last 2 dimensions will be plotted"))
-    reg.add_output_port(createisofill, 'slab_0_out', 
-                        (get_late_type('cdms2.tvariable.TransientVariable'),
-                         "Data at least 2D, last 2 dimensions will be plotted"))            
     reg.add_input_port(createisofill, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -5524,12 +5240,6 @@ def initialize(*args, **keywords):
     reg.add_input_port(createisoline, 'source_GM_name', 
                        (core.modules.basic_modules.String,
                         "copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object."))
-    reg.add_input_port(createisoline, 'slab_0', 
-                       (get_late_type('cdms2.tvariable.TransientVariable'),
-                        "Data at least 2D, last 2 dimensions will be plotted"))
-    reg.add_output_port(createisoline, 'slab_0_out', 
-                        (get_late_type('cdms2.tvariable.TransientVariable'),
-                         "Data at least 2D, last 2 dimensions will be plotted"))            
     reg.add_input_port(createisoline, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -5701,12 +5411,6 @@ def initialize(*args, **keywords):
     reg.add_input_port(createoutfill, 'source_GM_name', 
                        (core.modules.basic_modules.String,
                         "copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object."))
-    reg.add_input_port(createoutfill, 'slab_0', 
-                       (get_late_type('cdms2.tvariable.TransientVariable'),
-                        "Data at least 2D, last 2 dimensions will be plotted"))
-    reg.add_output_port(createoutfill, 'slab_0_out', 
-                        (get_late_type('cdms2.tvariable.TransientVariable'),
-                         "Data at least 2D, last 2 dimensions will be plotted"))        
     reg.add_input_port(createoutfill, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -5878,12 +5582,6 @@ def initialize(*args, **keywords):
     reg.add_input_port(createoutline, 'source_GM_name', 
                        (core.modules.basic_modules.String,
                         "copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object."))
-    reg.add_input_port(createoutline, 'slab_0', 
-                       (get_late_type('cdms2.tvariable.TransientVariable'),
-                        "Data at least 2D, last 2 dimensions will be plotted"))
-    reg.add_output_port(createoutline, 'slab_0_out', 
-                        (get_late_type('cdms2.tvariable.TransientVariable'),
-                         "Data at least 2D, last 2 dimensions will be plotted"))        
     reg.add_input_port(createoutline, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -6055,12 +5753,6 @@ def initialize(*args, **keywords):
     reg.add_input_port(createscatter, 'source_GM_name', 
                        (core.modules.basic_modules.String,
                         "copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object."))
-    reg.add_input_port(createscatter, 'slab_0', 
-                       (get_late_type('cdms2.tvariable.TransientVariable'),
-                        "Data at least 2D, last 2 dimensions will be plotted"))
-    reg.add_output_port(createscatter, 'slab_0_out', 
-                        (get_late_type('cdms2.tvariable.TransientVariable'),
-                         "Data at least 2D, last 2 dimensions will be plotted"))            
     reg.add_input_port(createscatter, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -6232,12 +5924,6 @@ def initialize(*args, **keywords):
     reg.add_input_port(createxvsy, 'source_GM_name', 
                        (core.modules.basic_modules.String,
                         "copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object."))
-    reg.add_input_port(createxvsy, 'slab_0', 
-                       (get_late_type('cdms2.tvariable.TransientVariable'),
-                        "Data at least 2D, last 2 dimensions will be plotted"))
-    reg.add_output_port(createxvsy, 'slab_0_out', 
-                        (get_late_type('cdms2.tvariable.TransientVariable'),
-                         "Data at least 2D, last 2 dimensions will be plotted"))        
     reg.add_input_port(createxvsy, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -6409,12 +6095,6 @@ def initialize(*args, **keywords):
     reg.add_input_port(createxyvsy, 'source_GM_name', 
                        (core.modules.basic_modules.String,
                         "copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object."))
-    reg.add_input_port(createxyvsy, 'slab_0', 
-                       (get_late_type('cdms2.tvariable.TransientVariable'),
-                        "Data at least 2D, last 2 dimensions will be plotted"))
-    reg.add_output_port(createxyvsy, 'slab_0_out', 
-                        (get_late_type('cdms2.tvariable.TransientVariable'),
-                         "Data at least 2D, last 2 dimensions will be plotted"))            
     reg.add_input_port(createxyvsy, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -6586,12 +6266,6 @@ def initialize(*args, **keywords):
     reg.add_input_port(createyxvsx, 'source_GM_name', 
                        (core.modules.basic_modules.String,
                         "copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object."))
-    reg.add_input_port(createyxvsx, 'slab_0', 
-                       (get_late_type('cdms2.tvariable.TransientVariable'),
-                        "Data at least 2D, last 2 dimensions will be plotted"))
-    reg.add_output_port(createyxvsx, 'slab_0_out', 
-                        (get_late_type('cdms2.tvariable.TransientVariable'),
-                         "Data at least 2D, last 2 dimensions will be plotted"))            
     reg.add_input_port(createyxvsx, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -8272,12 +7946,6 @@ def initialize(*args, **keywords):
     reg.add_input_port(isofill, 'slab_0', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),
                         "Data at least 2D, last 2 dimensions will be plotted"))
-    reg.add_input_port(isofill, 'template', 
-                       (core.modules.basic_modules.String,
-                        "Name of the template")) 
-    reg.add_input_port(isofill, 'gm_name', 
-                       (core.modules.basic_modules.String,
-                        "Name of the graphics method"))    
     reg.add_input_port(isofill, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -8446,12 +8114,6 @@ def initialize(*args, **keywords):
     reg.add_input_port(isoline, 'slab_0', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),
                         "Data at least 2D, last 2 dimensions will be plotted"))
-    reg.add_input_port(isoline, 'template', 
-                       (core.modules.basic_modules.String,
-                        "Name of the template")) 
-    reg.add_input_port(isoline, 'gm_name', 
-                       (core.modules.basic_modules.String,
-                        "Name of the graphics method"))    
     reg.add_input_port(isoline, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -8620,12 +8282,6 @@ def initialize(*args, **keywords):
     reg.add_input_port(outfill, 'slab_0', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),
                         "Data at least 2D, last 2 dimensions will be plotted"))
-    reg.add_input_port(outfill, 'template', 
-                       (core.modules.basic_modules.String,
-                        "Name of the template")) 
-    reg.add_input_port(outfill, 'gm_name', 
-                       (core.modules.basic_modules.String,
-                        "Name of the graphics method"))    
     reg.add_input_port(outfill, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -8794,12 +8450,6 @@ def initialize(*args, **keywords):
     reg.add_input_port(outline, 'slab_0', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),
                         "Data at least 2D, last 2 dimensions will be plotted"))
-    reg.add_input_port(outline, 'template', 
-                       (core.modules.basic_modules.String,
-                        "Name of the template")) 
-    reg.add_input_port(outline, 'gm_name', 
-                       (core.modules.basic_modules.String,
-                        "Name of the graphics method"))
     reg.add_input_port(outline, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -8965,26 +8615,12 @@ def initialize(*args, **keywords):
 
     #Module plot
     reg.add_module(plot,namespace='vcs|Canvas')
-    reg.add_input_port(plot, 'row',
-                       (core.modules.basic_modules.Integer, "Cell Row"))
-    reg.add_input_port(plot, 'col',
-                       (core.modules.basic_modules.Integer, "Cell Col"))
-    reg.add_input_port(plot, 'template', 
-                       (core.modules.basic_modules.String,
-                        "Name of the template")) 
-    reg.add_input_port(plot, 'gm_name', 
-                       (core.modules.basic_modules.String,
-                        "Name of the graphics method"))
-    reg.add_input_port(plot, 'plot_type', 
-                       (core.modules.basic_modules.String,
-                        "Type of plot - boxfill, isoline, etc"))
     reg.add_input_port(plot, 'slab2_0', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),
                         "Data at least 1D, last dimension will be plotted"))
     reg.add_input_port(plot, 'slab1_0', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),
                         "Data at least 1D, last dimension will be plotted"))
-    
     reg.add_input_port(plot, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -9150,18 +8786,12 @@ def initialize(*args, **keywords):
 
     #Module scatter
     reg.add_module(scatter,namespace='vcs|Canvas')
-    reg.add_input_port(scatter, 'template', 
-                       (core.modules.basic_modules.String,
-                        "Name of the template")) 
-    reg.add_input_port(scatter, 'gm_name', 
-                       (core.modules.basic_modules.String,
-                        "Name of the graphics method"))        
     reg.add_input_port(scatter, 'slab2_0', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),
                         "Data at least 1D, last dimension will be plotted"))
     reg.add_input_port(scatter, 'slab1_0', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),
-                        "Data at least 1D, last dimension will be plotted"))    
+                        "Data at least 1D, last dimension will be plotted"))
     reg.add_input_port(scatter, 'datawc_timeunits', 
                        (core.modules.basic_modules.String,
                         "units to use when disaplaying time dimension auto tick"), True)
@@ -9327,12 +8957,6 @@ def initialize(*args, **keywords):
 
     #Module xvsy
     reg.add_module(xvsy,namespace='vcs|Canvas')
-    reg.add_input_port(xvsy, 'template', 
-                       (core.modules.basic_modules.String,
-                        "Name of the template")) 
-    reg.add_input_port(xvsy, 'gm_name', 
-                       (core.modules.basic_modules.String,
-                        "Name of the graphics method"))        
     reg.add_input_port(xvsy, 'slab2_0', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),
                         "Data at least 1D, last dimension will be plotted"))
@@ -9504,12 +9128,6 @@ def initialize(*args, **keywords):
 
     #Module xyvsy
     reg.add_module(xyvsy,namespace='vcs|Canvas')
-    reg.add_input_port(xyvsy, 'template', 
-                       (core.modules.basic_modules.String,
-                        "Name of the template")) 
-    reg.add_input_port(xyvsy, 'gm_name', 
-                       (core.modules.basic_modules.String,
-                        "Name of the graphics method"))        
     reg.add_input_port(xyvsy, 'slab_0', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),
                         "Data at least 1D, last dimension will be plotted"))
@@ -9675,12 +9293,6 @@ def initialize(*args, **keywords):
 
     #Module yxvsx
     reg.add_module(yxvsx,namespace='vcs|Canvas')
-    reg.add_input_port(yxvsx, 'template', 
-                       (core.modules.basic_modules.String,
-                        "Name of the template")) 
-    reg.add_input_port(yxvsx, 'gm_name', 
-                       (core.modules.basic_modules.String,
-                        "Name of the graphics method"))        
     reg.add_input_port(yxvsx, 'slab_0', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),
                         "Data at least 1D, last dimension will be plotted"))
@@ -10063,23 +9675,19 @@ def initialize(*args, **keywords):
     reg.add_input_port(__call__, 'id', 
                        (core.modules.basic_modules.String,
                         ""))
-    reg.add_input_port(__call__, 'type', 
-                       (core.modules.basic_modules.String,
-                        "variable, axis, or weighted-axis"))    
     reg.add_output_port(__call__, 'variable', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),
                         ""))
 
     #extra input ports not available in the xml file
-    reg.add_input_port(__call__, 'axes',
-                       (core.modules.basic_modules.String, "Axes of variables"))
-    reg.add_input_port(__call__, 'axesOperations',
-                       (core.modules.basic_modules.String, "Axes Operations"))
     reg.add_input_port(__call__, 'cdmsfile', 
-                       (CdmsFile, "cdmsfile"))
+                       (CdmsFile,
+                        "cdmsfile"))
+
 
 def package_dependencies():
   return []
+
 
 def package_requirements():
     import core.requirements
