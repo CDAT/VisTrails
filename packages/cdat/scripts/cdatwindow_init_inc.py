@@ -6,6 +6,8 @@
 
     #cdat GUI modules
     global cdatWindow
+    import qtbrowser
+    qtbrowser.use_vistrails=True
     cdatWindow = QCDATWindow()
     cdatWindow.show()
 
