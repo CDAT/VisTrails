@@ -46,7 +46,7 @@ cdutil = py_import('cdutil', {})
 
 #local python modules
 from qtbrowser.cdat_window import QCDATWindow
-from cdat_cell import QCDATWidget
+from cdat_cell import QCDATWidget, CDATCell, Variable, GraphicsMethod
 from quickplot import quickplot
 
 
@@ -4671,7 +4671,7 @@ def initialize(*args, **keywords):
                         "continents type number"), True)    
 
     reg.add_module(Variable, namespace='cdat')
-    reg.add_module(Quickplot, namespace='cdat')    
+    reg.add_module(quickplot, namespace='cdat')    
     reg.add_input_port(Variable, 'id', 
                        (core.modules.basic_modules.String,
                         ""))
@@ -9688,7 +9688,7 @@ def initialize(*args, **keywords):
 
 
 def package_dependencies():
-  return []
+  return ['edu.utah.sci.vistrails.spreadsheet']
 
 
 def package_requirements():
