@@ -29,7 +29,7 @@ from core.data_structures.graph import Graph
 from core import debug
 from core.modules.module_descriptor import ModuleDescriptor
 from core.modules.module_registry import get_module_registry, \
-    ModuleRegistryException, MissingModule, PortMismatch
+    ModuleRegistryException, MissingModuleVersion, PortMismatch
 from core.utils import VistrailsInternalError
 from core.utils import expression, append_to_dict_of_lists
 from core.utils.uxml import named_elements
@@ -809,6 +809,13 @@ class Pipeline(DBWorkflow):
                     module.is_valid = False
                     e._module_id = module.id
                     exceptions.add(e)
+                if module.is_abstraction():
+                    try:
+                        desc = module.module_descriptor
+                        if module.internal_version != desc.version:
+                            exceptions.add(MissingModuleVersion(desc.package, desc.name, desc.namespace, desc.version, desc.package_version, module.id))
+                    except:
+                        pass
         try:
             self.ensure_port_specs()
         except InvalidPipeline, e:
@@ -860,7 +867,7 @@ class Pipeline(DBWorkflow):
                                             port_type_map.inverse[port.type])
                 # print 'got spec', spec, spec.sigstring
             except ModuleRegistryException, e:
-                print 'CONNECTION EXCEPTION', e
+                debug.critical('CONNECTION EXCEPTION: %s' % e)
                 exceptions.add(e)
             else:
                 if port.spec.is_valid:
@@ -912,6 +919,8 @@ class Pipeline(DBWorkflow):
             exceptions = set()
             for mid in module_ids:
                 module = pipeline.modules[mid]
+                if module.version == '':
+                    module.version = '0'
                 try:
                     # FIXME check for upgrades, otherwise use similar
                     # descriptor, the old behavior

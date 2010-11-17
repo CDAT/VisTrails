@@ -80,6 +80,7 @@ class VistrailsStartup(object):
         #the problem is that maybe the logFile now points to a different place
         self.setupLogFile()
         
+        self.setupDefaultFolders()
         #package_manager needs the persistent configuration    
         self._package_manager = core.packagemanager.PackageManager(
             self.configuration)
@@ -96,7 +97,6 @@ class VistrailsStartup(object):
         """
         if self._do_load_packages:
             self.load_packages()
-        self.setupDefaultFolders()
         if self._do_load_packages:
             # don't call this anymore since we do an add_package for it now
             # self.setupBaseModules()
@@ -409,7 +409,7 @@ by startup.py. This should only be called after init()."""
                         not exist.""")
                         sys.exit(1)
                     debug.critical('%s not found' % startup)
-                    debug.critical('Will try to install default ' +
+                    debug.critical('Will try to install default '
                                               'startup file')
                     install_default_startup()
                     install_default_startupxml_if_needed()
@@ -443,21 +443,21 @@ by startup.py. This should only be called after init()."""
                 self.temp_configuration.fileDirectory)
         if (self.temp_configuration.has('verbosenessLevel') and
             self.temp_configuration.verbosenessLevel != -1):
-            dbg = debug.DebugPrint.getInstance()
             verbose = self.temp_configuration.verbosenessLevel
             if verbose < 0:
                 msg = ("""Don't know how to set verboseness level to %s - "
                        "setting to the lowest one I know of: 0""" % verbose)
-                dbg.critical(msg)
+                debug.critical(msg)
                 verbose = 0
             if verbose > 2:
                 msg = ("""Don't know how to set verboseness level to %s - "
                        "setting to the highest one I know of: 2""" % verbose)
-                dbg.critical(msg)
+                debug.critical(msg)
                 verbose = 2
+            dbg = debug.DebugPrint.getInstance()
             levels = [dbg.Critical, dbg.Warning, dbg.Log]
             dbg.set_message_level(levels[verbose])
-            dbg.log("Set verboseness level to %s" % verbose)
+            debug.log("Set verboseness level to %s" % verbose)
         
         #these checks may need to update the persistent configuration, so
         # we have to change both objects

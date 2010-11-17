@@ -28,7 +28,7 @@ import os
 import traceback
 
 from core.data_structures.graph import Graph
-import core.debug
+from core import debug
 import core.modules
 import core.modules.vistrails_module
 from core.modules.module_descriptor import ModuleDescriptor
@@ -126,10 +126,14 @@ class ModuleRegistrySignals(QtCore.QObject):
 
     # new_module_signal is emitted with descriptor of new module
     new_module_signal = QtCore.SIGNAL("new_module")
+    # new_abstraction_signal is emitted with descriptor of new abstraction
+    new_abstraction_signal = QtCore.SIGNAL("new_abstraction")
     # new_package_signal is emitted with identifier of new package (only for abstractions)
     new_package_signal = QtCore.SIGNAL("new_package")
     # deleted_module_signal is emitted with descriptor of deleted module
     deleted_module_signal = QtCore.SIGNAL("deleted_module")
+    # deleted_abstraction_signal is emitted with descriptor of deleted abstraction
+    deleted_abstraction_signal = QtCore.SIGNAL("deleted_abstraction")
     # deleted_package_signal is emitted with package identifier
     deleted_package_signal = QtCore.SIGNAL("deleted_package")
     # new_input_port_signal is emitted with identifier and name of module, 
@@ -151,6 +155,12 @@ class ModuleRegistrySignals(QtCore.QObject):
 
     def emit_new_module(self, descriptor):
         self.emit(self.new_module_signal, descriptor)
+        
+    def emit_new_abstraction(self, descriptor):
+        self.emit(self.new_abstraction_signal, descriptor)
+        
+    def emit_deleted_abstraction(self, descriptor):
+        self.emit(self.deleted_abstraction_signal, descriptor)
     
     def emit_deleted_module(self, descriptor):
         self.emit(self.deleted_module_signal, descriptor)
@@ -275,9 +285,9 @@ class MissingPackageVersion(ModuleRegistryException):
 
 class MissingModuleVersion(ModuleRegistryException):
     def __init__(self, identifier, name, namespace, module_version, 
-                 package_version=None):
+                 package_version=None, module_id=None):
         ModuleRegistryException.__init__(self, identifier, name, namespace,
-                                         package_version, module_version)
+                                         package_version, module_version, module_id)
 
     def __str__(self):
         return "Missing version %s of module %s from package %s" % \
@@ -1035,6 +1045,8 @@ class ModuleRegistry(DBRegistry):
             descriptor.set_module_fringe(moduleLeftFringe, moduleRightFringe)
                  
         self.signals.emit_new_module(descriptor)
+        if self.is_abstraction(descriptor):
+            self.signals.emit_new_abstraction(descriptor)
         return descriptor
 
     def auto_add_subworkflow(self, subworkflow):
@@ -1075,8 +1087,8 @@ class ModuleRegistry(DBRegistry):
         if not os.path.isabs(vt_fname):
             vt_fname = os.path.join(package.package_dir, vt_fname)
         else:
-            print "WARNING: using absolute path for subworkflow: '%s'" % \
-                vt_fname
+            debug.warning("Using absolute path for subworkflow: '%s'" % \
+                vt_fname)
         
         # create module from workflow
         module = new_abstraction(name, vt_fname, None, version)
@@ -1134,7 +1146,7 @@ class ModuleRegistry(DBRegistry):
             return self.get_port_spec_from_descriptor(desc, port_name, 
                                                       port_type)
         except ModuleRegistryException, e:
-            print e
+            debug.critical(e)
             raise
         return None
 
@@ -1151,7 +1163,7 @@ class ModuleRegistry(DBRegistry):
             return self.has_port_spec_from_descriptor(desc, port_name, 
                                                       port_type)
         except ModuleRegistryException, e:
-            print e
+            debug.critical(e)
             raise
         return None        
 
@@ -1229,7 +1241,8 @@ class ModuleRegistry(DBRegistry):
     def initialize_package(self, package):
         if package.initialized():
             return
-        print "Initializing", package.codepath
+        debug.splashMessage("Initializing " + package.codepath)
+        debug.log("Initializing " + package.codepath)
         if (package.identifier, package.version) not in self.package_versions:
             self.add_package(package)
         self.set_current_package(package)
@@ -1280,6 +1293,7 @@ class ModuleRegistry(DBRegistry):
 
         # The package might have decided to rename itself, let's store that
         self.set_current_package(None)
+        debug.splashMessage('done')
         package._initialized = True 
 
     def delete_module(self, identifier, module_name, namespace=None):
@@ -1288,6 +1302,8 @@ class ModuleRegistry(DBRegistry):
                                                  namespace)
         assert len(descriptor.children) == 0
         self.signals.emit_deleted_module(descriptor)
+        if self.is_abstraction(descriptor):
+            self.signals.emit_deleted_abstraction(descriptor)
         package = self.packages[descriptor.identifier]
         self.delete_descriptor(descriptor, package)
         if descriptor.module is not None:
@@ -1582,8 +1598,13 @@ class ModuleRegistry(DBRegistry):
 
     def is_abstraction(self, descriptor):
         basic_pkg = core.modules.basic_modules.identifier
-        abstraction_desc = self.get_descriptor_by_name(basic_pkg, 
+        try:
+            abstraction_desc = self.get_descriptor_by_name(basic_pkg, 
                                                        'SubWorkflow')
+        except MissingModule:
+            # No abstractions can be loaded before the basic
+            # SubWorkflow descriptor is initialized
+            return False
         return abstraction_desc != descriptor and \
             self.is_descriptor_subclass(descriptor, abstraction_desc)
             
@@ -1652,10 +1673,17 @@ class ModuleRegistry(DBRegistry):
             port_spec = port_spec[1:]
         if port_spec.endswith(')'):
             port_spec = port_spec[:-1]
+        if port_spec.strip() == '':
+            return '()'
         new_spec_list = []
         for spec in port_spec.split(','):
+            spec_arr = spec.split(':', 2)
+            if len(spec_arr) > 2:
+                # switch format of spec to more natural
+                # <package>:<namespace>|<name> for descriptor parsing
+                spec = '%s:%s|%s' % (spec_arr[0], spec_arr[2], spec_arr[1])
             (package, name, namespace) = \
-                expand_descriptor_string(spec, cur_package)
+                self.expand_descriptor_string(spec, cur_package)
             if namespace:
                 namespace = ':' + namespace
             new_spec_list.append('%s:%s%s' % \

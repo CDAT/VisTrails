@@ -44,6 +44,7 @@ class ModuleBreakpoint(Exception):
     def __init__(self, module):
         self.module = module
         self.msg = "Hit breakpoint"
+        self.errorTrace = ''
 
     def __str__(self):
         retstr = "Encoutered breakpoint at Module %s:\n" % (self.module)
@@ -78,6 +79,8 @@ error and the error message as a string."""
         Exception.__init__(self, errormsg)
         self.module = module
         self.msg = errormsg
+        import traceback
+        self.errorTrace = traceback.format_exc()
 
 class ModuleErrors(Exception):
     """Exception representing a list of VisTrails module runtime errors.

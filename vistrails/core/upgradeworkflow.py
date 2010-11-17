@@ -39,9 +39,12 @@ import copy
 
 class UpgradeWorkflowError(Exception):
 
-    def __init__(self, msg):
+    def __init__(self, msg, module=None, port_name=None, port_type=None):
         Exception.__init__(self, msg)
         self._msg = msg
+        self._module = module
+        self._port_name = port_name
+        self._port_type = port_type.lower() if port_type else None
         
     def __str__(self):
         return "Upgrading workflow failed.\n" + self._msg
@@ -56,7 +59,7 @@ class UpgradeWorkflowHandler(object):
             # It is possible that some other upgrade request has
             # already removed the invalid module of this request. In
             # that case, disregard the request.
-            print "module %s already handled. skipping" % module_id
+            debug.log("module %s already handled. skipping" % module_id)
             return []
         invalid_module = current_pipeline.modules[module_id]
         pkg = pm.get_package_by_identifier(invalid_module.package)
@@ -64,14 +67,16 @@ class UpgradeWorkflowHandler(object):
             f = pkg.module.handle_module_upgrade_request
             return f(controller, module_id, current_pipeline)
         else:
-            debug.critical('Package cannot handle upgrade request. ' +
-                           'VisTrails will attempt automatic upgrade.')
+            debug.warning('Package cannot handle upgrade request. '
+                          'VisTrails will attempt automatic upgrade.')
             auto_upgrade = UpgradeWorkflowHandler.attempt_automatic_upgrade
             return auto_upgrade(controller, current_pipeline, module_id)
 
     @staticmethod
     def check_port_spec(module, port_name, port_type, descriptor=None, 
                         sigstring=None):
+        from core.modules.basic_modules import identifier as basic_pkg
+
         reg = get_module_registry()
         found = False
         try:
@@ -79,12 +84,13 @@ class UpgradeWorkflowHandler(object):
                 s = reg.get_port_spec_from_descriptor(descriptor, port_name,
                                                       port_type)
                 found = True
+                sigstring = reg.expand_port_spec_string(sigstring, basic_pkg)
                 if s.sigstring != sigstring:
                     msg = ('%s port "%s" of module "%s" exists, but '
                            'signatures differ "%s" != "%s"') % \
                            (port_type.capitalize(), port_name, module.name,
                             s.sigstring, sigstring)
-                    raise UpgradeWorkflowError(msg)
+                    raise UpgradeWorkflowError(msg, module, port_name, port_type)
         except MissingPort:
             pass
 
@@ -92,10 +98,12 @@ class UpgradeWorkflowHandler(object):
                 not module.has_portSpec_with_name((port_name, port_type)):
             msg = '%s port "%s" of module "%s" does not exist.' % \
                 (port_type.capitalize(), port_name, module.name)
-            raise UpgradeWorkflowError(msg)
+            raise UpgradeWorkflowError(msg, module, port_name, port_type)
 
     @staticmethod
-    def attempt_automatic_upgrade(controller, pipeline, module_id):
+    def attempt_automatic_upgrade(controller, pipeline, module_id,
+                                  function_remap={}, src_port_remap={}, 
+                                  dst_port_remap={}, annotation_remap={}):
         """attempt_automatic_upgrade(module_id, pipeline): [Action]
 
         Attempts to automatically upgrade module by simply adding a
@@ -116,15 +124,51 @@ class UpgradeWorkflowHandler(object):
                                         invalid_module.namespace,
                                         invalid_module.id)
         pkg = pm.get_package_by_identifier(mpkg)
+        desired_version = ''
+        if invalid_module.is_abstraction():
+            desc = None
+            try:
+                # If we can't get a module descriptor (in the case of a missing package version)
+                # we'll just use the most recent version in the registry as a best-effort attempt.
+                # Package developers should implement their own upgrades, rather than relying on
+                # automatic upgrades, if this behavior isn't desirable.
+                desc = invalid_module.module_descriptor
+            except:
+                pass
+            if desc is not None:
+                if invalid_module.internal_version != desc.version:
+                    # If descriptor version doesn't match internal version, the version of the abstraction
+                    # associated with this module was upgraded (and the upgraded version was added to the
+                    # module registry), but this module hasn't been replaced with the upgraded version yet.
+                    # So we use the upgraded descriptor when replacing, rather than the newest available.
+                    # (The module_descriptor references the upgraded version, while the internal_version
+                    #  number is still assigned to the original version number).
+                    pass
+                else:
+                    # Otherwise, this is an automatic upgrade initiated by a user-initiated
+                    # "Upgrade Subworkflow", in which case we want to use the newest available
+                    # descriptor (which may or may not have already been added to the module registry).
+                    abs_fname = invalid_module.module_descriptor.module.vt_fname
+                    abs_name = controller.parse_abstraction_name(abs_fname)
+                    lookup = {abs_name: abs_fname}
+                    descriptor_info = invalid_module.descriptor_info
+                    newest_version = str(invalid_module.vistrail.get_latest_version())
+                    desc = controller.check_abstraction((descriptor_info[0],
+                                                         descriptor_info[1],
+                                                         descriptor_info[2],
+                                                         descriptor_info[3],
+                                                         newest_version),
+                                                        lookup)
+                desired_version = desc.version
         try:
             try:
-                d = get_descriptor(mpkg, mname, mnamespace)
+                d = get_descriptor(mpkg, mname, mnamespace, '', desired_version)
             except MissingModule, e:
                 r = None
                 if pkg.can_handle_missing_modules():
                     r = pkg.handle_missing_module(controller, module_id, 
                                                   pipeline)
-                    d = get_descriptor(mpkg, mname, mnamespace)
+                    d = get_descriptor(mpkg, mname, mnamespace, '', desired_version)
                 if not r:
                     raise e
         except MissingModule, e:
@@ -146,18 +190,21 @@ class UpgradeWorkflowHandler(object):
         # check if connections are still valid
         for _, conn_id in pipeline.graph.edges_from(module_id):
             port = pipeline.connections[conn_id].source
-            check_connection_port(port)
+            if port.name not in src_port_remap:
+                check_connection_port(port)
         for _, conn_id in pipeline.graph.edges_to(module_id):
             port = pipeline.connections[conn_id].destination
-            check_connection_port(port)
+            if port.name not in dst_port_remap:
+                check_connection_port(port)
 
         # check if function values are still valid
         for function in invalid_module.functions:
             # function_spec = function.get_spec('input')
-            UpgradeWorkflowHandler.check_port_spec(invalid_module,
-                                                   function.name, 
-                                                   'input', d,
-                                                   function.sigstring)
+            if function.name not in function_remap:
+                UpgradeWorkflowHandler.check_port_spec(invalid_module,
+                                                       function.name, 
+                                                       'input', d,
+                                                       function.sigstring)
 
         # If we passed all of these checks, then we consider module to
         # be automatically upgradeable. Now create actions that will delete
@@ -165,7 +212,9 @@ class UpgradeWorkflowHandler(object):
         # functions and connections.
 
         return UpgradeWorkflowHandler.replace_module(controller, pipeline, 
-                                                     module_id, d)
+                                                     module_id, d, function_remap,
+                                                     src_port_remap, dst_port_remap,
+                                                     annotation_remap)
 
     @staticmethod
     def create_new_connection(controller, src_module, src_port, 
@@ -348,22 +397,20 @@ class UpgradeWorkflowHandler(object):
         new_group.pipeline = new_subpipeline
         return UpgradeWorkflowHandler.replace_generic(controller, pipeline, 
                                                       old_group, new_group)
-    
-    @staticmethod
-    def replace_abstraction(controller, pipeline, module_id, new_actions):
-        old_abstraction = pipeline.modules[module_id]
-        # new_abstraction = controller.
-        # FIXME complete this!
 
     @staticmethod
     def replace_module(controller, pipeline, module_id, new_descriptor,
                        function_remap={}, src_port_remap={}, dst_port_remap={},
                        annotation_remap={}):
         old_module = pipeline.modules[module_id]
+        internal_version = -1
+        if old_module.is_abstraction():
+            internal_version = new_descriptor.version
         new_module = \
             controller.create_module_from_descriptor(new_descriptor,
                                                      old_module.location.x,
-                                                     old_module.location.y)
+                                                     old_module.location.y,
+                                                     internal_version)
 
         return UpgradeWorkflowHandler.replace_generic(controller, pipeline, 
                                                       old_module, new_module,
@@ -467,3 +514,4 @@ class UpgradeWorkflowHandler(object):
         return UpgradeWorkflowHandler.attempt_automatic_upgrade(controller, 
                                                                 pipeline,
                                                                 module_id)
+    

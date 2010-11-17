@@ -22,15 +22,15 @@
 from PyQt4 import QtCore, QtGui
 from core.common import *
 from core.configuration import get_vistrails_configuration
+from core import debug
 import core.db.action
 import core.db.locator
-import core.modules.module_registry
 import core.modules.vistrails_module
 from core.data_structures.graph import Graph
 from core.utils import VistrailsInternalError, InvalidPipeline
 from core.log.opm_graph import OpmGraph
 from core.modules.abstraction import identifier as abstraction_pkg
-from core.modules.module_registry import MissingPort
+from core.modules.module_registry import get_module_registry, MissingPort
 from core.modules.package import Package
 from core.packagemanager import PackageManager
 from core.query.version import TrueSearch
@@ -68,10 +68,6 @@ class VistrailController(QtCore.QObject, BaseController):
     vistrailChanged(): emitted when the version tree needs to be
     recreated (for example, a node was added/deleted or the layout
     changed).
-
-    flushMoveActions(): emitted as a request to commit move actions to
-    the vistrail, typically prior to adding other actions to the
-    vistrail.
 
     versionWasChanged(): emitted when the current version (the one
     being displayed by the pipeline view) has changed.
@@ -148,8 +144,11 @@ class VistrailController(QtCore.QObject, BaseController):
         finally:
             self.reset_version_view = True
 
+    def has_move_actions(self):
+        return self.current_pipeline_view.hasMoveActions()
+
     def flush_move_actions(self):
-        self.emit(QtCore.SIGNAL("flushMoveActions()"))
+        return self.current_pipeline_view.flushMoveActions()
 
     ##########################################################################
     # Autosave
@@ -1478,7 +1477,7 @@ class VistrailController(QtCore.QObject, BaseController):
                     if hasattr(module, attr):
                         found_lists[attr] = getattr(module, attr)
             except Exception, e:
-                print e
+                debug.critical("Exception: %s" % e)
                 pass
             return (found_attrs, found_lists)
 
@@ -1532,8 +1531,7 @@ class VistrailController(QtCore.QObject, BaseController):
             if abstraction.is_abstraction() and \
                     abstraction.package == abstraction_pkg:
                 abstractions.append(abstraction)
-                abstractions.extend(self.find_abstractions(
-                        abstraction.vistrail))
+                [abstractions.extend(v) for v in self.find_abstractions(abstraction.vistrail).itervalues()]
         pkg_subworkflows = []
         pkg_dependencies = set()
         for abstraction in abstractions:
@@ -1595,7 +1593,8 @@ class VistrailController(QtCore.QObject, BaseController):
                 log = self.log
             opm_graph = OpmGraph(log=log, 
                                  version=self.current_version,
-                                 workflow=self.current_pipeline)
+                                 workflow=self.current_pipeline,
+                                 registry=get_module_registry())
             locator.save_as(opm_graph)
 
     def query_by_example(self, pipeline):
