@@ -32,28 +32,43 @@ cp_version = '0.2'
 cp_identifier = 'edu.utah.sci.vistrails.cdat'
 cp_name = 'CDAT'
 
+def write__init__(output_file):
+    """write__init__(output_file: str, init_lines: list) -> None
+    Writes the necessary contents for the package __init__.py file.
+    
+    """
+    header = open("__init__inc.py").readlines()
+    header.append("\n\n")
+    header.append('version = "' + cp_version + '"\n')
+    header.append('identifier = "' + cp_identifier + '"\n')
+    header.append('name = "' + cp_name + '"\n\n')
+    
+    header.append("\n\n")
+    header.append("def package_dependencies():\n")
+    #header.append("  return ['edu.utah.sci.vistrails.numpyscipy']\n")
+    header.append("  return ['edu.utah.sci.vistrails.spreadsheet']\n")
+    header.append("\n\n")
+    header.append("def package_requirements():\n")
+    header.append("    import core.requirements\n")
+    header.append("    if not core.requirements.python_module_exists('vcs'):\n")
+    header.append("        raise core.requirements.MissingRequirements('vcs')\n")
+    header.append("    if not core.requirements.python_module_exists('cdms2'):\n")
+    header.append("        raise core.requirements.MissingRequirements('cdms2')\n")
+    header.append("    if not core.requirements.python_module_exists('cdutil'):\n")
+    header.append("        raise core.requirements.MissingRequirements('cdutil')\n")
+    header.append("    import vcs, cdms2, cdutil\n")
+    header.append("\n")
+
+    outfile = open(output_file, "w")
+    outfile.writelines(header)
+    outfile.close()
+    
 def write_init(output_file, classes_lines, init_lines):
     """write_init(output_file: str, classes_lines: list, init_lines: list)
                                 -> None
        Writes the necessary contents for the package init file"""
 
     # cdat dependencies
-    init_lines.append("\n\n")
-    init_lines.append("def package_dependencies():\n")
-    #init_lines.append("  return ['edu.utah.sci.vistrails.numpyscipy']\n")
-    init_lines.append("  return []\n")
-    init_lines.append("\n\n")
-    init_lines.append("def package_requirements():\n")
-    init_lines.append("    import core.requirements\n")
-    init_lines.append("    if not core.requirements.python_module_exists('vcs'):\n")
-    init_lines.append("        raise core.requirements.MissingRequirements('vcs')\n")
-    init_lines.append("    if not core.requirements.python_module_exists('cdms2'):\n")
-    init_lines.append("        raise core.requirements.MissingRequirements('cdms2')\n")
-    init_lines.append("    if not core.requirements.python_module_exists('cdutil'):\n")
-    init_lines.append("        raise core.requirements.MissingRequirements('cdutil')\n")
-    init_lines.append("    import vcs, cdms2, cdutil\n")
-    init_lines.append("\n\n")
-
     header = open("init_inc.py").readlines()
     header.append("\n\n")
     header.append('version = "' + cp_version + '"\n')
@@ -177,13 +192,18 @@ def get_CdmsFile_compute_method(action, ident=''):
 if __name__ == '__main__':
     # usage:
     args = sys.argv
-    if len(args) > 2:
+    if len(args) > 3:
         root_dir = args[1]
-        output_file = args[2]
+        output__init__ = args[2]
+        outputinit = args[3]
     else:
-        print "Usage: %s root_dir output_file" % args[0]
+        print "Usage: %s root_dir outputfile__init__.py outputfileinit.py" % args[0]
         sys.exit(0)
 
+    print "Writing contents of %s" % output__init__
+    write__init__(output__init__)
+
+    print "Generating contents of %s" % outputinit
     xmlfiles = []
     input_files = os.walk(root_dir)
     for (d, tree, files) in input_files:
@@ -264,4 +284,4 @@ if __name__ == '__main__':
     
     extra_init_lines.extend(init_lines)
     extra_class_lines.extend(class_lines)
-    write_init(output_file, extra_class_lines, extra_init_lines)
+    write_init(outputinit, extra_class_lines, extra_init_lines)

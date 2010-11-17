@@ -33,7 +33,7 @@
                         "continents type number"), True)    
 
     reg.add_module(Variable, namespace='cdat')
-    reg.add_module(Quickplot, namespace='cdat')    
+    reg.add_module(quickplot, namespace='cdat')    
     reg.add_input_port(Variable, 'id', 
                        (core.modules.basic_modules.String,
                         ""))

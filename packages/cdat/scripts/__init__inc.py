@@ -29,25 +29,3 @@ version : description
   0.1   : First automatically generated package based on xml descriptions
 
 """
-
-
-version = "0.2"
-identifier = "edu.utah.sci.vistrails.cdat"
-name = "CDAT"
-
-
-
-def package_dependencies():
-  return ['edu.utah.sci.vistrails.spreadsheet']
-
-
-def package_requirements():
-    import core.requirements
-    if not core.requirements.python_module_exists('vcs'):
-        raise core.requirements.MissingRequirements('vcs')
-    if not core.requirements.python_module_exists('cdms2'):
-        raise core.requirements.MissingRequirements('cdms2')
-    if not core.requirements.python_module_exists('cdutil'):
-        raise core.requirements.MissingRequirements('cdutil')
-    import vcs, cdms2, cdutil
-
