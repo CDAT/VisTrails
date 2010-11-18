@@ -1763,9 +1763,12 @@ class VistrailController(object):
                             
                     # set id to None so db saves correctly
                     new_pipeline.id = None
+                    old_id_scope = self.id_scope
+                    self.id_scope = id_scope
                     inner_actions = \
                         process_package_exceptions(new_exception_set,
                                                    new_pipeline)
+                    self.id_scope = old_id_scope
                     if len(inner_actions) > 0:
                         # create action that recreates group/subworkflow
                         old_module = pipeline.modules[err._module_id]
@@ -2248,13 +2251,6 @@ class VistrailController(object):
             save_bundle = SaveBundle(pipeline.vtType,workflow=pipeline)
             locator.save_as(save_bundle)
 
-    def write_expanded_workflow(self, locator):
-        if self.current_pipeline:
-            (workflow, _) = core.db.io.expand_workflow(self.vistrail, 
-                                                       self.current_pipeline)
-            locator.save_as(workflow)
-        
-    
     def write_log(self, locator):
         if self.log:
             if self.vistrail.db_log_filename is not None:
