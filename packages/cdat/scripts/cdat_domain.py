@@ -147,9 +147,12 @@ class CDATAction:
                         lines.append(ident + "        args.append(%s)\n"%inp._name)
                 if inp._required:
                     lines.append("\n"+ ident +"    # %s is a required port\n" % inp._name)
-                    lines.append(ident + "    if %s == None:\n" % inp._name)
-                    lines.append(ident + "        raise ModuleError(self, \"'%s' is a mandatory port\")\n" % inp._name)
-
+                    lines.append(ident + "    try:\n")
+                    lines.append(ident + "        if %s == None:\n" % inp._name)
+                    lines.append(ident + "            raise ModuleError(self, \"'%s' is a mandatory port\")\n" % inp._name)
+                    lines.append(ident + "    except ValueError:\n")
+                    lines.append(ident + "        pass #this means it is an array that we can't compare to None:\n")
+                    lines.append(ident + "             #and so there is a value attached to it:\n")
             lines.append("\n"+ident +"    # build up the keyword arguments from the optional inputs.\n")
             lines.append(ident +"    kwargs = {}\n")
 

@@ -130,8 +130,12 @@ class boxfill(Module,NotCacheable):
             args.append(slab)
 
         # slab is a required port
-        if slab == None:
-            raise ModuleError(self, "'slab' is a mandatory port")
+        try:
+            if slab == None:
+                raise ModuleError(self, "'slab' is a mandatory port")
+        except ValueError:
+            pass #this means it is an array that we can't compare to None:
+                 #and so there is a value attached to it:
 
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
@@ -3773,8 +3777,12 @@ class plot(Module,NotCacheable):
             args.append(slab1)
 
         # slab1 is a required port
-        if slab1 == None:
-            raise ModuleError(self, "'slab1' is a mandatory port")
+        try:
+            if slab1 == None:
+                raise ModuleError(self, "'slab1' is a mandatory port")
+        except ValueError:
+            pass #this means it is an array that we can't compare to None:
+                 #and so there is a value attached to it:
 
         # build up the keyword arguments from the optional inputs.
         kwargs = {}
