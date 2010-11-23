@@ -22,16 +22,19 @@
 from PyQt4 import QtCore, QtGui
 import core.debug
 import StringIO
+import api
 
 ################################################################################
 
 
 class DebugView(QtGui.QDialog):
-    """ Class used for debugging QT signals.
+    """ Class used for showing error messages and
+        debugging QT signals.
+
         Example of usage:
            import gui.debug
            gui.debug.watch_signal(my_signal)
-        """
+     """
     #Singleton technique
     _instance = None
     class DebugViewSingleton():
@@ -49,18 +52,71 @@ class DebugView(QtGui.QDialog):
         self.setWindowTitle('VisTrails messages')
         layout = QtGui.QVBoxLayout()
         self.setLayout(layout)
-        self.text = QtGui.QTextEdit('')
+        self.list = QtGui.QListWidget()
+        self.connect(self.list,
+                     QtCore.SIGNAL('itemDoubleClicked(QListWidgetItem *)'),
+                     self.showMessage)
+        self.msg_box = None
+       
+#        self.text = QtGui.QTextEdit('')
 #        text.insertPlainText(errorTrace)
-        self.text.setReadOnly(True)
-        self.text.setLineWrapMode(QtGui.QTextEdit.NoWrap)
-        layout.addWidget(self.text)
-        close = QtGui.QPushButton('Close', self)
-        close.setFixedWidth(100)
-        layout.addWidget(close)
+#        self.text.setReadOnly(True)
+#        self.text.setLineWrapMode(QtGui.QTextEdit.NoWrap)
+        self.resize(700, 400)
+        layout.addWidget(self.list)
+        buttons = QtGui.QHBoxLayout()
+        layout.addLayout(buttons)
+        close = QtGui.QPushButton('&Hide', self)
+        close.setFixedWidth(120)
+        buttons.addWidget(close)
         self.connect(close, QtCore.SIGNAL('clicked()'),
                      self, QtCore.SLOT('close()'))
+        details = QtGui.QPushButton('&Show details', self)
+        details.setFixedWidth(120)
+        buttons.addWidget(details)
+        self.connect(details, QtCore.SIGNAL('clicked()'),
+                     self.details)
+        copy = QtGui.QPushButton('Copy &Message', self)
+        copy.setToolTip('Copy selected message to clipboard')
+        copy.setFixedWidth(120)
+        buttons.addWidget(copy)
+        self.connect(copy, QtCore.SIGNAL('clicked()'),
+                     self.copyMessage)
+        copyAll = QtGui.QPushButton('Copy &All', self)
+        copyAll.setToolTip('Copy all messages to clipboard (Can be a lot)')
+        copyAll.setFixedWidth(120)
+        buttons.addWidget(copyAll)
+        self.connect(copyAll, QtCore.SIGNAL('clicked()'),
+                     self.copyAll)
+
 #        sp = StackPopup(errorTrace)
 #        sp.exec_()
+
+    def details(self):
+        """ call showMessage on selected message """
+        items = self.list.selectedItems()
+        if len(items)>0:
+            self.showMessage(items[0])
+            
+    def copyMessage(self):
+        """ copy selected message to clipboard """
+        items = self.list.selectedItems()
+        if len(items)>0:
+            text = str(items[0].data(32).toString())
+            api.VistrailsApplication.clipboard().setText(text)
+
+    def copyAll(self):
+        """ copy selected message to clipboard """
+
+        texts = []
+        for i in range(self.list.count()):
+            texts.append(str(self.list.item(i).data(32).toString()))
+        text = '\n'.join(texts)
+        api.VistrailsApplication.clipboard().setText(text)
+
+    def showMessage(self, item):
+        """ show item data in a messagebox """
+        self.showMessageBox(str(item.data(32).toString()))
 
     def watch_signal(self, obj, sig):
         """self.watch_signal(QObject, QSignal) -> None. Connects a debugging
@@ -70,17 +126,67 @@ class DebugView(QtGui.QDialog):
         self.connect(obj, sig, self.__debugSignal)
 
     def __debugSignal(self, *args):
+        """ Receives debug signal """
         debug(str(args))
 
+    def showMessageBox(self, s):
+        s = str(s).strip()
+        msgs = s.split('\n')
+        if self.msg_box and self.msg_box.isVisible():
+            self.msg_box.close()
+        msg_box = QtGui.QMessageBox(self.parent())
+        self.msg_box = msg_box
+        if msgs[0] == "INFO":
+            msg_box.setIcon(QtGui.QMessageBox.Information)
+            msg_box.setWindowTitle("Information")
+        elif msgs[0] == "WARNING":
+            msg_box.setIcon(QtGui.QMessageBox.Warning)
+            msg_box.setWindowTitle("Warning")
+        elif msgs[0] == "CRITICAL":
+            msg_box.setIcon(QtGui.QMessageBox.Critical)
+            msg_box.setWindowTitle("Critical error")
+        msg_box.setText(msgs[3])
+        text = "Time: %s\n Location: %s\n Message:\n%s" % \
+                                            (msgs[1], msgs[2],
+                                             '\n'.join(msgs[3:]))
+        msg_box.setInformativeText('\n'.join(msgs[4:]))
+        msg_box.setStandardButtons(QtGui.QMessageBox.Ok)
+        msg_box.setDefaultButton(QtGui.QMessageBox.Ok)
+        msg_box.setDetailedText(text)
+        msg_box.show()
+
     def write(self, s):
-        t = self.text.toPlainText() if self.isVisible() else ''
-        self.text.setPlainText(t+s)
-        slider = self.text.verticalScrollBar()
-        slider.setValue(slider.maximum())
-        # show on screen
-        if not self.isVisible():
-            self.resize(700, 400)
-            self.show()
+#        t = self.text.toPlainText() if self.isVisible() else ''
+#        self.text.setPlainText(t+s)
+        s = str(s).strip()
+        msgs = s.split('\n')
+        text = msgs[3] if len(msgs)>2 else ''
+        if msgs[0] == "CRITICAL":
+            self.showMessageBox(s)
+        item = QtGui.QListWidgetItem(text)
+        item.setData(32, s)
+        item.setFlags(item.flags()&~QtCore.Qt.ItemIsEditable)
+        if msgs[0] == "INFO":
+            item.setForeground(QtGui.QBrush(QtCore.Qt.black))
+        elif msgs[0] == "WARNING":
+            item.setForeground(QtGui.QBrush(QtGui.QColor("#D0D000")))
+        elif msgs[0] == "CRITICAL":
+            item.setForeground(QtGui.QBrush(QtCore.Qt.red))
+        self.list.addItem(item)
+        self.list.scrollToItem(item)
+
+    def closeEvent(self, e):
+        """closeEvent(e) -> None
+        Event handler called when the dialog is about to close."""
+        self.emit(QtCore.SIGNAL("messagesView(bool)"), False)
+
+    def showEvent(self, e):
+        """closeEvent(e) -> None
+        Event handler called when the dialog is about to close."""
+        count = self.list.count()
+        if count:
+            self.list.scrollToItem(self.list.item(count-1))
+        self.emit(QtCore.SIGNAL("messagesView(bool)"), True)
 
 class debugStream(StringIO.StringIO):
     def __init__(self, write):
