@@ -7,8 +7,8 @@
     #cdat GUI modules
     global cdatWindow
     import qtbrowser
-    qtbrowser.use_vistrails=True
-    cdatWindow = QCDATWindow()
+    qtbrowser.useVistrails=True
+    cdatWindow = qtbrowser.vcdatWindow.QCDATWindow()
     cdatWindow.show()
 
     reg.add_module(CDATCell,namespace='cdat')

@@ -45,7 +45,6 @@ cdms2 = py_import('cdms2', {})
 cdutil = py_import('cdutil', {})
 
 #local python modules
-from qtbrowser.cdat_window import QCDATWindow
 from cdat_cell import QCDATWidget, CDATCell, Variable, GraphicsMethod
 from quickplot import quickplot
 
@@ -4653,8 +4652,8 @@ def initialize(*args, **keywords):
     #cdat GUI modules
     global cdatWindow
     import qtbrowser
-    qtbrowser.use_vistrails=True
-    cdatWindow = QCDATWindow()
+    qtbrowser.useVistrails=True
+    cdatWindow = qtbrowser.vcdatWindow.QCDATWindow()
     cdatWindow.show()
 
     reg.add_module(CDATCell,namespace='cdat')
