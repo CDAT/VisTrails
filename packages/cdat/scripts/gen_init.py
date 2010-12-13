@@ -71,9 +71,6 @@ def write_init(output_file, classes_lines, init_lines):
     # cdat dependencies
     header = open("init_inc.py").readlines()
     header.append("\n\n")
-    header.append('version = "' + cp_version + '"\n')
-    header.append('identifier = "' + cp_identifier + '"\n')
-    header.append('name = "' + cp_name + '"\n\n')
 
     outfile = open(output_file, "w")
     outfile.writelines(header)

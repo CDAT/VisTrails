@@ -47,11 +47,8 @@ cdutil = py_import('cdutil', {})
 #local python modules
 from cdat_cell import QCDATWidget, CDATCell, Variable, GraphicsMethod
 from quickplot import quickplot
+from translator import QTranslator
 
-
-version = "0.2"
-identifier = "edu.utah.sci.vistrails.cdat"
-name = "CDAT"
 
 vt_type_dict = {}
 def get_late_type(type):
@@ -4651,11 +4648,15 @@ def initialize(*args, **keywords):
 
     #cdat GUI modules
     global cdatWindow
+    global translator
     import qtbrowser
     qtbrowser.useVistrails=True
+    translator = QTranslator()
     cdatWindow = qtbrowser.vcdatWindow.QCDATWindow()
     cdatWindow.show()
-
+    translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
+                           translator.commandsReceived)
+    
     reg.add_module(CDATCell,namespace='cdat')
     reg.add_input_port(CDATCell, 'slab1',
                        (TransientVariable, "variable to be plotted"))

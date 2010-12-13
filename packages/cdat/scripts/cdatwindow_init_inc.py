@@ -6,11 +6,15 @@
 
     #cdat GUI modules
     global cdatWindow
+    global translator
     import qtbrowser
     qtbrowser.useVistrails=True
+    translator = QTranslator()
     cdatWindow = qtbrowser.vcdatWindow.QCDATWindow()
     cdatWindow.show()
-
+    translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
+                           translator.commandsReceived)
+    
     reg.add_module(CDATCell,namespace='cdat')
     reg.add_input_port(CDATCell, 'slab1',
                        (TransientVariable, "variable to be plotted"))
