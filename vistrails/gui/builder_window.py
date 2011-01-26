@@ -1006,7 +1006,14 @@ class QBuilderWindow(QtGui.QMainWindow):
             if locator.has_temporaries():
                 if not locator_class.prompt_autosave(self):
                     locator.clean_temporaries()
-            self.open_vistrail_without_prompt(locator)
+            if hasattr(locator, '_vnode'):
+                version = locator._vnode
+                if hasattr(locator,'_vtag'):
+                    # if a tag is set, it should be used instead of the
+                    # version number
+                    if locator._vtag != '':
+                        version = locator._vtag
+            self.open_vistrail_without_prompt(locator, version)
             self.set_current_locator(locator)
             
     def open_vistrail_without_prompt(self, locator, version=None,
@@ -1021,7 +1028,7 @@ class QBuilderWindow(QtGui.QMainWindow):
         If is_abstraction is True, the vistrail is flagged as abstraction
         """
         if not locator.is_valid():
-            ok = locator.update_from_gui()
+            ok = locator.update_from_gui(self)
         else:
             ok = True
         if ok:
@@ -1031,6 +1038,7 @@ class QBuilderWindow(QtGui.QMainWindow):
             self.exportFileAction.setEnabled(True)
             self.vistrailMenu.menuAction().setEnabled(True)
             self.mergeMenu.menuAction().setEnabled(True)
+            self.viewManager.changeCursor(self.interactionToolBar.cursorMode)
             if version:
                 self.viewModeChanged(0)
             else:
@@ -1191,7 +1199,7 @@ class QBuilderWindow(QtGui.QMainWindow):
         locator = locator_class.load_from_gui(self, Pipeline.vtType)
         if locator:
             if not locator.is_valid():
-                ok = locator.update_from_gui()
+                ok = locator.update_from_gui(self, Pipeline.vtType)
             else:
                 ok = True
             if ok:
@@ -1702,6 +1710,7 @@ class QBuilderWindow(QtGui.QMainWindow):
         try:
             self.emit(QtCore.SIGNAL("executeEnabledChanged(bool)"),
                       False)
+            self.viewModeChanged(3)
             self.viewManager.executeCurrentExploration()
         finally:
             self._executing = False

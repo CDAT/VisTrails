@@ -19,6 +19,7 @@
 ## WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 ##
 ############################################################################
+from __future__ import with_statement
 
 from datetime import datetime
 from core import debug
@@ -187,6 +188,9 @@ def test_db_connection(config):
     except get_db_lib().Error, e:
         msg = "connection test failed (%d: %s)" % (e.args[0], e.args[1])
         raise VistrailsDBException(msg)
+    except TypeError, e:
+        msg = "connection test failed (%s)" %str(e)
+        raise VistrailsDBException(msg)
 
 def ping_db_connection(db_connection):
     """ping_db_connection(db_connection) -> boolean 
@@ -196,7 +200,7 @@ def ping_db_connection(db_connection):
     """
     try:
         db_connection.ping()
-    except get_db_lib().OperationalError, e:
+    except get_db_lib().OperationalError:
         return False
     return True
     
