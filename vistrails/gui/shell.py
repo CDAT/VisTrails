@@ -490,9 +490,10 @@ class QShell(QtGui.QTextEdit):
         cursor = self.textCursor()
         cursor.movePosition(QtGui.QTextCursor.End)
         self.setTextCursor(cursor)
-      
+        app = QtGui.QApplication.instance()
+        
         while self.reading:
-            qApp.processOneEvent()
+            app.processOneEvent()
         if self.line.length() == 0:
             return '\n'
         else:
@@ -512,13 +513,22 @@ class QShell(QtGui.QTextEdit):
         cursor = self.textCursor()
         self.last = cursor.position()
 
+    def write_input(self, text):
+        cursor = self.textCursor()
+        cursor.movePosition(QtGui.QTextCursor.End)
+        cursor.clearSelection()
+        self.setTextCursor(cursor)
+        self.__insertText(text)
+        
+    def write_and_exec(self, commandlist):
+        for command in commandlist:
+            self.write_input(command)
+            self.__run()
+        
     def insertFromMimeData(self, source):
         if source.hasText():
-            cursor = self.textCursor()
-            cursor.movePosition(QtGui.QTextCursor.End)
-            cursor.clearSelection()
-            self.setTextCursor(cursor)
-            self.__insertText(source.text())
+            cmds = source.text().split(QtCore.QString('\n'))
+            self.write_and_exec(cmds)
         
     def scroll_bar_at_bottom(self):
         """Returns true if vertical bar exists and is at bottom, or if
@@ -591,12 +601,18 @@ class QShell(QtGui.QTextEdit):
         cmd = 'modules = self.vistrails_interpreter.find_persistent_entities(active_pipeline)[0]'
         self.interpreter.runcode(cmd)
 
+    def run_pipeline(self):
+        if self.controller:
+            if self.interpreter.active_pipeline:
+                self.controller.execute_current_workflow()
+                
     def add_controller(self, c):
         """add_controller(c) -> None
         Add a working VistrailsController to the shell.
         """
         self.controller = c
-        pipe = c.current_pipeline
+        cmd = 'run_pipeline = self.shell.run_pipeline'
+        self.interpreter.runcode(cmd)
 
     def set_active_pipeline(self):
         """set_active_pipeline() -> None
