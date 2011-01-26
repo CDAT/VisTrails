@@ -105,8 +105,12 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.connectSignals()
 
         gui.debug.DebugView.getInstance(self)
-
-        self.shell = None
+        
+        #creating shell upon creation, so packages can use it right away
+        self.shell = self.shell = QShellDialog(self)
+        self.connect(self.shell,QtCore.SIGNAL("shellHidden()"),
+                     self.shellAction.toggle)
+        
         self.debugger = None
         
         # If this is true, we're currently executing a pipeline, so
@@ -367,6 +371,7 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.shellAction = QtGui.QAction(CurrentTheme.CONSOLE_MODE_ICON,
                                          'VisTrails Console', self)
         self.shellAction.setCheckable(True)
+        self.shellAction.setChecked(True)
         self.shellAction.setShortcut('Ctrl+H')
 
         self.debugAction = QtGui.QAction('VisTrails Debugger', self)

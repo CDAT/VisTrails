@@ -502,6 +502,7 @@ class VistrailsApplicationSingleton(VistrailsApplicationInterface,
             self.builderWindow.activateWindow()
             self.builderWindow.show()
             self.builderWindow.raise_()
+            self.builderWindow.showShell(True)
         else:
             self.builderWindow.hide()
 
