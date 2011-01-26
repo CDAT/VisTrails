@@ -239,9 +239,10 @@ class QParameterExplorationTab(QDockContainer, QToolWindowInterface):
             #       exploration - Later we should parse the root tree and select
             #       the active exploration based on date, or user choice
             xmlString = self.controller.vistrail.get_paramexp(self.currentVersion)
-            striplen = len("<paramexps>")
-            xmlString = xmlString[striplen:-(striplen+1)].strip()
-            self.setParameterExploration(xmlString)
+            if xmlString is not None:
+                striplen = len("<paramexps>")
+                xmlString = xmlString[striplen:-(striplen+1)].strip()
+                self.setParameterExploration(xmlString)
 
     def performParameterExploration(self):
         """ performParameterExploration() -> None        
@@ -269,7 +270,7 @@ class QParameterExplorationTab(QDockContainer, QToolWindowInterface):
                 modifiedPipelines = self.virtualCell.positionPipelines(
                     'PE#%d %s' % (QParameterExplorationTab.explorationId,
                                   self.controller.name),
-                    dim[2], dim[1], dim[0], pipelines)
+                    dim[2], dim[1], dim[0], pipelines, self.controller)
             else:
                 modifiedPipelines = pipelines
 

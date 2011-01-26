@@ -27,8 +27,9 @@ import subprocess
 import sys
 import platform
 import socket
+import urllib2
 from core import debug
-from core.utils import unimplemented, VistrailsInternalError
+from core.utils import unimplemented, VistrailsInternalError, Chdir
 import core.requirements
 
 ##############################################################################
@@ -212,18 +213,54 @@ def default_connections_file():
     return os.path.join(default_dot_vistrails(), 'connections.xml')
 
 def python_version():
-   """python_version() -> (major, minor, micro, release, serial)
-Returns python version info."""
-   return sys.version_info
+    """python_version() -> (major, minor, micro, release, serial)
+    Returns python version info."""
+    return sys.version_info
 
 def vistrails_version():
-   """vistrails_version() -> string - Returns the current VisTrails version."""
-   # 0.1 was the Vis2005 version
-   # 0.2 was the SIGMOD demo version
-   # 0.3 was the plugin/vtk version
-   # 0.4 is cleaned up version with new GUI
-   # 1.0 is version with new schema
-   return '1.5.1'
+    """vistrails_version() -> string - Returns the current VisTrails version."""
+    # 0.1 was the Vis2005 version
+    # 0.2 was the SIGMOD demo version
+    # 0.3 was the plugin/vtk version
+    # 0.4 is cleaned up version with new GUI
+    # 1.0 is version with new schema
+    return '1.5.1'
+
+def get_latest_vistrails_version():
+    """get_latest_vistrails_version() -> string - Returns latest vistrails
+    release version as queried from vistrails.org"""
+
+    version = ''
+    version_url = \
+            "http://www.vistrails.org/download/download.php?id=release_version.txt"
+    try:
+        request = urllib2.Request(version_url)
+        get_latest_version = urllib2.urlopen(request)
+        version = get_latest_version.read().strip()
+    except urllib2.HTTPError, err:
+        debug.warning("Unable to check for updates: %s" % str(err))
+        return version
+
+    return version
+
+def new_vistrails_release_exists():
+    """ new_vistrail_release_exists() -> (bool, str)
+    Returns (True, new_version_str) if newer version exists
+
+    """
+
+    local_version = [int(x) for x in vistrails_version().split('.')]
+
+    remote_str = get_latest_vistrails_version()
+    if remote_str:
+        remote_version = [int(x) for x in remote_str.split('.')]
+    else:
+        remote_version = [0]
+
+    if cmp(local_version, remote_version) is -1:
+        return (True, remote_str)
+
+    return (False, None)
 
 def vistrails_revision():
     """vistrails_revision() -> str 
@@ -231,21 +268,17 @@ def vistrails_revision():
     shows the latest release revision
 
     """
-    old_dir = os.getcwd()
-    os.chdir(vistrails_root_directory())
-    try:
+    git_dir = os.path.join(vistrails_root_directory(), '..')
+    with Chdir(git_dir):
         release = "2ad813e42ebb"
-        if core.requirements.executable_file_exists('svn'):
+        if core.requirements.executable_file_exists('git'):
             lines = []
-            result = execute_cmdline(['svn', 'info'], lines)
-            if len(lines) > 5:
-                revision_line = lines[4][:-1].split(' ')
+            result = execute_cmdline(['git', 'describe', '--always', '--abbrev=12'],
+                                     lines)
+            if len(lines) == 1:
                 if result == 0:
-                    if revision_line[0] == 'Revision:':
-                        return revision_line[1]
-        return release
-    finally:
-        os.chdir(old_dir)
+                    release = lines[0].strip(" \n")
+    return release
 
 def current_user():
     return getpass.getuser()
@@ -288,12 +321,12 @@ def current_processor():
     return proc
 
 def short_about_string():
-     return """VisTrails version %s.%s -- vistrails@sci.utah.edu""" % (
-         vistrails_version(), vistrails_revision())
- 
+    return """VisTrails version %s.%s -- vistrails@sci.utah.edu""" % \
+            (vistrails_version(), vistrails_revision())
+
 def about_string():
-   """about_string() -> string - Returns the about string for VisTrails."""
-   return """VisTrails version %s.%s -- vistrails@sci.utah.edu
+    """about_string() -> string - Returns the about string for VisTrails."""
+    return """VisTrails version %s.%s -- vistrails@sci.utah.edu
 
 Copyright (c) 2006-2010 University of Utah. All rights reserved.
 http://www.vistrails.org
@@ -331,8 +364,6 @@ def execute_cmdline2(cmd_list):
 ################################################################################
 
 import unittest
-import os
-import os.path
 
 if __name__ == '__main__':
     unittest.main()
@@ -340,25 +371,22 @@ if __name__ == '__main__':
 class TestSystem(unittest.TestCase):
 
     def test_vistrails_revision(self):
-        _starting_dir = os.getcwd()
-        try:
-            r = vistrails_root_directory()
-            os.chdir(r)
+        r = vistrails_root_directory()
+        with Chdir(r):
             v1 = vistrails_revision()
             try:
-                os.chdir(os.path.join(r, '..'))
-                self.assertEquals(v1, vistrails_revision())
+                with Chdir(os.path.join(r, '..')):
+                    self.assertEquals(v1, vistrails_revision())
             except AssertionError:
                 raise
             except:
                 pass
             try:
-                os.chdir(os.path.join(r, '..', '..'))
-                self.assertEquals(v1, vistrails_revision())
+                with Chdir(os.path.join(r, '..', '..')):
+                    self.assertEquals(v1, vistrails_revision())
             except AssertionError:
                 raise
             except:
                 pass
-        finally:
-            os.chdir(_starting_dir)
+            
             

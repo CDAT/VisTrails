@@ -25,9 +25,11 @@ QBuilderWindow
 """
 from PyQt4 import QtCore, QtGui
 from core import system
-from core.configuration import get_vistrails_configuration
+from core.configuration import (get_vistrails_configuration, 
+                                get_vistrails_persistent_configuration)
 from core.db.locator import DBLocator, FileLocator, XMLFileLocator, untitled_locator
 from core.packagemanager import get_package_manager
+from core.recent_vistrails import RecentVistrailList
 import core.interpreter.cached
 import core.system
 from core.vistrail.pipeline import Pipeline
@@ -45,7 +47,7 @@ from gui.theme import CurrentTheme
 from gui.view_manager import QViewManager
 from gui.vistrail_toolbar import QVistrailViewToolBar, QVistrailInteractionToolBar
 from gui.vis_diff import QVisualDiff
-from gui.utils import build_custom_window
+from gui.utils import build_custom_window, show_info
 import sys
 import db.services.vistrail
 from gui import merge_gui
@@ -84,9 +86,20 @@ class QBuilderWindow(QtGui.QMainWindow):
 
         self.viewIndex = 0
         self.dbDefault = False
-
+        
+        self.recentVistrailActs = []
+        conf = get_vistrails_configuration()
+        if conf.check('recentVistrailList'):
+            self.recentVistrailLocators = RecentVistrailList.unserialize(
+                                        conf.recentVistrailList)
+        else:
+            self.recentVistrailLocators = RecentVistrailList()
+            
+        conf.subscribe('maxRecentVistrails', self.max_recent_vistrails_changed)
         self.createActions()
         self.createMenu()
+        self.update_recent_vistrail_actions()
+        
         self.createToolBar()
 
         self.connectSignals()
@@ -195,7 +208,9 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.openFileAction.setShortcut('Ctrl+O')
         self.openFileAction.setStatusTip('Open an existing vistrail from '
                                          'a file')
-
+        
+        self.create_recent_vistrail_actions()
+            
         self.importFileAction = QtGui.QAction(CurrentTheme.OPEN_VISTRAIL_DB_ICON,
                                               'From DB...', self)
         self.importFileAction.setStatusTip('Import an existing vistrail from '
@@ -404,6 +419,8 @@ class QBuilderWindow(QtGui.QMainWindow):
             
         self.helpAction = QtGui.QAction(self.tr('About VisTrails...'), self)
 
+        self.checkUpdateAction = QtGui.QAction(self.tr('Check for Updates'), self)
+
         a = QtGui.QAction(self.tr('Execute Current Workflow\tCtrl+Enter'),
                           self)
         self.executeCurrentWorkflowAction = a
@@ -431,8 +448,6 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.vistrailActionGroup = QtGui.QActionGroup(self)
         self.mergeActionGroup = QtGui.QActionGroup(self)
 
-
-
     def createMenu(self):
         """ createMenu() -> None
         Initialize menu bar of builder window
@@ -441,6 +456,10 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.fileMenu = self.menuBar().addMenu('&File')
         self.fileMenu.addAction(self.newVistrailAction)
         self.fileMenu.addAction(self.openFileAction)
+        self.openRecentMenu = self.fileMenu.addMenu('Open Recent')
+        
+        self.update_recent_vistrail_menu()
+            
         self.fileMenu.addAction(self.saveFileAction)
         self.fileMenu.addAction(self.saveFileAsAction)
         self.fileMenu.addAction(self.closeVistrailAction)
@@ -528,6 +547,7 @@ class QBuilderWindow(QtGui.QMainWindow):
 
         self.helpMenu = self.menuBar().addMenu('Help')
         self.helpMenu.addAction(self.helpAction)
+        self.helpMenu.addAction(self.checkUpdateAction)
 
     def createToolBar(self):
         """ createToolBar() -> None
@@ -621,6 +641,7 @@ class QBuilderWindow(QtGui.QMainWindow):
             (self.hideBranchAction, self.hideBranch),
             (self.showAllAction, self.showAll),
             (self.helpAction, self.showAboutMessage),
+            (self.checkUpdateAction, self.showUpdatesMessage),
             (self.repositoryOptions, self.showRepositoryOptions),
             (self.editPreferencesAction, self.showPreferences),
             (self.executeCurrentWorkflowAction,
@@ -981,7 +1002,8 @@ class QBuilderWindow(QtGui.QMainWindow):
                 if not locator_class.prompt_autosave(self):
                     locator.clean_temporaries()
             self.open_vistrail_without_prompt(locator)
-
+            self.set_current_locator(locator)
+            
     def open_vistrail_without_prompt(self, locator, version=None,
                                      execute_workflow=False, 
                                      is_abstraction=False):
@@ -1022,6 +1044,72 @@ class QBuilderWindow(QtGui.QMainWindow):
         else:
             self.open_vistrail(FileLocator())
 
+    def open_recent_vistrail(self):
+        """ open_recent_vistrail() -> None
+        Opens a vistrail from Open Recent menu list
+        
+        """
+        action = self.sender()
+        if action:
+            locator = self.recentVistrailLocators.get_locator_by_name(str(action.data().toString()))
+            self.open_vistrail_without_prompt(locator)
+            self.set_current_locator(locator)
+            
+    def create_recent_vistrail_actions(self):
+        maxRecentVistrails = int(getattr(get_vistrails_configuration(), 
+                                         'maxRecentVistrails'))
+         #check if we have enough actions
+        while len(self.recentVistrailActs) < maxRecentVistrails:
+            self.recentVistrailActs.append(QtGui.QAction(self, visible=False,
+                            triggered=self.open_recent_vistrail))
+    
+    def update_recent_vistrail_menu(self):
+        #check if we have enough actions
+        for i in range(len(self.openRecentMenu.actions()),
+                       len(self.recentVistrailActs)):
+            self.openRecentMenu.addAction(self.recentVistrailActs[i])
+        
+    def update_recent_vistrail_actions(self):
+        maxRecentVistrails = int(getattr(get_vistrails_configuration(), 
+                                         'maxRecentVistrails'))
+        self.recentVistrailLocators.ensure_no_more_than_max(maxRecentVistrails)
+        #check if we have enough actions
+        self.create_recent_vistrail_actions()
+        self.update_recent_vistrail_menu()
+        
+        for i in range(self.recentVistrailLocators.length()):
+            locator = self.recentVistrailLocators.get_locator(i)
+            text = "&%d %s" % (i + 1, locator.name)
+            self.recentVistrailActs[i].setText(text)
+            self.recentVistrailActs[i].setData(locator.name)
+            self.recentVistrailActs[i].setVisible(True)
+        
+        for j in range(self.recentVistrailLocators.length(),len(self.recentVistrailActs)):
+            self.recentVistrailActs[j].setVisible(False)
+        
+        conf = get_vistrails_persistent_configuration()
+        tconf = get_vistrails_configuration()
+        conf.recentVistrailList = self.recentVistrailLocators.serialize()
+        tconf.recentVistrailList = conf.recentVistrailList
+        VistrailsApplication.save_configuration()
+        
+    def set_current_locator(self, locator):
+        """ set_current_locator(locator: CoreLocator)
+        Updates the list of recent files in the gui and in the configuration
+        
+        """
+        if locator:
+            self.recentVistrailLocators.add_locator(locator)
+            self.update_recent_vistrail_actions()
+    
+    def max_recent_vistrails_changed(self, field, value):
+        """max_recent_vistrails_changed()-> obj
+        callback to create an object to be used as a subscriber when the 
+        configuration changed.
+        
+        """
+        self.update_recent_vistrail_actions()
+                
     def import_vistrail_default(self):
         """ import_vistrail_default() -> None
         Imports a vistrail from the file/db
@@ -1061,12 +1149,14 @@ class QBuilderWindow(QtGui.QMainWindow):
 
         """
         if self.dbDefault:
-            self.viewManager.save_vistrail(DBLocator,
-                                           force_choose_locator=True)
+            locator = self.viewManager.save_vistrail(DBLocator,
+                                                     force_choose_locator=True)
         else:
-            self.viewManager.save_vistrail(FileLocator(),
-                                           force_choose_locator=True)
-
+            locator = self.viewManager.save_vistrail(FileLocator(),
+                                                     force_choose_locator=True)
+        if locator:
+            self.set_current_locator(locator)
+            
     def export_vistrail_default(self):
         """ export_vistrail_default() -> None
         Export the current vistrail to the file/db
@@ -1375,6 +1465,40 @@ class QBuilderWindow(QtGui.QMainWindow):
         #QtGui.QMessageBox.about(self,self.tr("About VisTrails..."),
         #                        self.tr(system.about_string()))
 
+    def showUpdatesMessage(self):
+        """ showUpdatesMessage() -> None
+        Displays Check for Updates message.
+        This queries vistrails.org for new VisTrails Versions
+
+        """
+
+        dlg = QtGui.QDialog(self)
+        dlg.setWindowTitle('Check for VisTrails Updates')
+
+        layout = QtGui.QVBoxLayout()
+        layout.setSpacing(6)
+        layout.setMargin(11)
+        layout.addStrut(400)
+        new_version_exists, version = core.system.new_vistrails_release_exists()
+        if new_version_exists:
+            msg = 'Version %s of VisTrails is available at <a href="%s">%s</a>' % \
+                    (version, "http://www.vistrails.org/index.php/Downloads",
+                     "http://www.vistrails.org/index.php/Downloads")
+            label = QtGui.QLabel(msg)
+        else:
+            label = QtGui.QLabel("No new version of VisTrails available")
+
+        closeButton = QtGui.QPushButton('Ok', dlg)
+        closeButton.setShortcut('Enter')
+
+        layout.addWidget(label)
+        layout.addWidget(closeButton)
+
+        dlg.connect(closeButton, QtCore.SIGNAL('clicked(bool)'), dlg.close)
+
+        dlg.setLayout(layout)
+        dlg.exec_()
+
     def showRepositoryOptions(self):
         """ Displays Repository Options for authentication and pushing VisTrail to Repository """
         dialog = QRepositoryDialog(self)
@@ -1489,9 +1613,14 @@ class QBuilderWindow(QtGui.QMainWindow):
                         abstraction = \
                             currentScene.controller.current_pipeline.modules[id]
                         if abstraction.vtType == 'abstraction':
-                            desc = abstraction.module_descriptor
-                            filename = desc.module.vt_fname
-                            self.openAbstraction(filename)
+                            from core.modules.abstraction import identifier as abstraction_pkg
+                            if abstraction.package == abstraction_pkg and abstraction.vistrail.get_annotation('__abstraction_descriptor_info__') is None:
+                                desc = abstraction.module_descriptor
+                                filename = desc.module.vt_fname
+                                self.openAbstraction(filename)
+                            else:
+                                show_info('Package SubWorkflow is Read-Only',
+                                          'This SubWorkflow is from a package and cannot be modified.\n\nYou can create an editable copy in \'My SubWorkflows\' using\n\'Edit->Import SubWorkflow\'')
 
     def expandBranch(self):
         """ expandBranch() -> None

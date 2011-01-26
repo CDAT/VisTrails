@@ -24,7 +24,7 @@
 
 from core import debug
 from core import system
-from core.utils import InstanceObject
+from core.utils import InstanceObject, Ref
 from core.utils.uxml import (named_elements,
                              elements_filter, eval_xml_value,
                              quote_xml_value)
@@ -80,7 +80,7 @@ class ConfigurationObject(InstanceObject):
         self.field is set.
         """
         append_to_dict_of_lists(self.__subscribers__, field,
-                                weakref.ref(callable_))
+                                Ref(callable_))
                   
     def has(self, key):
         """has(key) -> bool.
@@ -167,6 +167,7 @@ def default():
 
     base_dir = {
         'abstractionsDirectory': (None, str),
+        'alwaysShowDebugPopup': False,
         'autosave': True,
         'dataDirectory': (None, str),
         'dbDefault': False,
@@ -181,11 +182,14 @@ def default():
         'logger': default_logger(),
         'maxMemory': (None, int),
         'maximizeWindows': False,
+        'maxRecentVistrails': 5,
+        'migrateTags': False,
         'minMemory': (None, int),
         'multiHeads': False,
         'nologger': True,
         'packageDirectory': (None, str),
         'pythonPrompt': False,
+        'recentVistrailList': (None, str),
         'repositoryLocalPath': (None, str),
         'repositoryHTTPURL': "http://www.vistrails.org/packages",
         'reviewMode': False,
@@ -206,6 +210,7 @@ def default():
         'workflowInfo': (None, str),
         'webRepositoryLogin': (None, str),
         'webRepositoryURL': "http://www.crowdlabs.org",
+        'isInServerMode': False,
         }
     specific_dir = add_specific_config(base_dir)
     return ConfigurationObject(**specific_dir)

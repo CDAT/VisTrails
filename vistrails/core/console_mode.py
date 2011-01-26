@@ -27,6 +27,7 @@ import core.db.io
 from core.configuration import get_vistrails_configuration
 from core.db.io import load_vistrail
 from core.db.locator import XMLFileLocator, ZIPFileLocator
+from core import debug
 from core.utils import VistrailsInternalError, expression
 from core.vistrail.controller import VistrailController
 from core.vistrail.vistrail import Vistrail
@@ -41,7 +42,7 @@ def run_and_get_results(w_list, parameters='', workflow_info=None,
     version can be a tag name or a version id.
     
     """
-    elements = parameters.split("&&")
+    elements = parameters.split("$&$")
     aliases = {}
     result = []
     for locator, workflow in w_list:
@@ -83,16 +84,18 @@ def run_and_get_results(w_list, parameters='', workflow_info=None,
         if not update_vistrail:
             conf = get_vistrails_configuration()
             if conf.has('thumbs'):
-                conf.thumbs.autoSave = False    
-        (results, _) = controller.execute_current_workflow(aliases,
-                                                                 extra_info)
-        run = results[0]
-        run.workflow_info = (locator.name, version)
-        run.pipeline = controller.current_pipeline
+                conf.thumbs.autoSave = False
         
+        (results, _) = controller.execute_current_workflow(aliases,
+                                                           extra_info)
+        new_version = controller.current_version
+        if new_version != version:
+            debug.warning("Version '%s' (%s) was upgraded. The actual version executed \
+was %s"%(workflow, version, new_version))
+        run = results[0]
+        run.workflow_info = (locator.name, new_version)
+        run.pipeline = controller.current_pipeline
 
-        #not sure if you need to add the abstractions back
-        #but just to be safe
         if update_vistrail:
             controller.write_vistrail(locator)
         result.append(run)
@@ -122,11 +125,9 @@ def cleanup():
 
 import core.packagemanager
 import core.system
-import sys
 import unittest
 import core.vistrail
-import random
-from core.vistrail.module import Module
+import db.domain
 
 class TestConsoleMode(unittest.TestCase):
 
@@ -135,16 +136,14 @@ class TestConsoleMode(unittest.TestCase):
         if manager.has_package('edu.utah.sci.vistrails.console_mode_test'):
             return
 
-#         m = __import__('console_mode_test')
-#         sys.path = old_path
-        old_path = sys.path
-        sys.path.append(core.system.vistrails_root_directory() +
-                        '/tests/resources')
-#         d = {'console_mode_test': 'tests.resources.'}
-        manager.add_package('console_mode_test')
-        manager.initialize_packages()
-        sys.path = old_path
+        d = {'console_mode_test': 'tests.resources.'}
+        manager.late_enable_package('console_mode_test',d)
 
+    def tearDown(self):
+        manager = core.packagemanager.get_package_manager()
+        if manager.has_package('edu.utah.sci.vistrails.console_mode_test'):
+            manager.late_disable_package('console_mode_test')
+            
     def test1(self):
         locator = XMLFileLocator(core.system.vistrails_root_directory() +
                                  '/tests/resources/dummy.xml')
@@ -154,23 +153,33 @@ class TestConsoleMode(unittest.TestCase):
     def test_tuple(self):
         from core.vistrail.module_param import ModuleParam
         from core.vistrail.module_function import ModuleFunction
-        from core.vistrail.module import Module
         from core.utils import DummyView
+        from core.vistrail.module import Module
+       
+        id_scope = db.domain.IdScope()
         interpreter = core.interpreter.default.get_default_interpreter()
         v = DummyView()
         p = core.vistrail.pipeline.Pipeline()
-        params = [ModuleParam(type='Float',
+        params = [ModuleParam(id=id_scope.getNewId(ModuleParam.vtType),
+                              pos=0,
+                              type='Float',
                               val='2.0',
                               ),
-                  ModuleParam(type='Float',
+                  ModuleParam(id=id_scope.getNewId(ModuleParam.vtType),
+                              pos=1,
+                              type='Float',
                               val='2.0',
                               )]
-        p.add_module(Module(id=0,
+        function = ModuleFunction(id=id_scope.getNewId(ModuleFunction.vtType),
+                                  name='input')
+        function.add_parameters(params)
+        module = Module(id=id_scope.getNewId(Module.vtType),
                            name='TestTupleExecution',
-                           package='edu.utah.sci.vistrails.console_mode_test',
-                           functions=[ModuleFunction(name='input',
-                                                     parameters=params)],
-                           ))
+                           package='edu.utah.sci.vistrails.console_mode_test')
+        module.add_function(function)
+        
+        p.add_module(module)
+        
         kwargs = {'locator': XMLFileLocator('foo'),
                   'current_version': 1L,
                   'view': v,

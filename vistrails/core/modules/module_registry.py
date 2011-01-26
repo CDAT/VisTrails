@@ -25,6 +25,7 @@ import __builtin__
 from itertools import izip
 import copy
 import os
+import tempfile
 import traceback
 
 from core.data_structures.graph import Graph
@@ -35,7 +36,7 @@ from core.modules.module_descriptor import ModuleDescriptor
 from core.modules.package import Package
 from core.utils import VistrailsInternalError, memo_method, \
      InvalidModuleClass, ModuleAlreadyExists, append_to_dict_of_lists, \
-     all, profile, versions_increasing
+     all, profile, versions_increasing, InvalidPipeline
 from core.system import vistrails_root_directory, vistrails_version
 from core.vistrail.port import Port, PortEndPoint
 from core.vistrail.port_spec import PortSpec
@@ -306,7 +307,7 @@ class AmbiguousResolution(ModuleRegistryException):
 
 class MissingPort(ModuleRegistryException):
     def __init__(self, descriptor, port_name, port_type):
-        ModuleRegistryException.__init__(self, 
+        ModuleRegistryException.__init__(self,
                                          descriptor.identifier,
                                          descriptor.name,
                                          descriptor.namespace)
@@ -319,19 +320,21 @@ class MissingPort(ModuleRegistryException):
              self._package_name)
 
 class PortMismatch(MissingPort):
-    def __init__(self, identifier, name, namespace, port_name, port_type):
-        ModuleRegistryException.__init__(self, 
+    def __init__(self, identifier, name, namespace, port_name, port_type, port_sigstring):
+        ModuleRegistryException.__init__(self,
                                          identifier,
                                          name,
                                          namespace)
-        
+
         self._port_name = port_name
         self._port_type = port_type
-                             
+        self._port_sigstring = port_sigstring
+
     def __str__(self):
-        return "%s port '%s' has bad specification in module %s of package %s" % \
-            (self._port_type.capitalize(), self._port_name, self._module_name,
-             self._package_name)
+        return ("%s port '%s' of signature '%s' has bad specification"
+                " in module %s of package %s") % \
+                (self._port_type.capitalize(), self._port_name,
+                 self._port_sigstring, self._module_name, self._package_name)
 
 class DuplicateModule(ModuleRegistryException):
     def __init__(self, old_descriptor, new_identifier, new_name, 
@@ -400,13 +403,15 @@ class ModuleRegistry(DBRegistry):
             else:
                 self._default_package = None
                 self._current_package = None
+            self._abs_pkg_upgrades = {}
         else:
             self._constant_hasher_map = copy.copy(other._constant_hasher_map)
             self._current_package = \
                 self.packages[other._current_package.identifier]
             self._default_package = \
                 self.packages[other._default_package.identifier]
-            
+            self._abs_pkg_upgrades = copy.copy(other._abs_pkg_upgrades)
+
     def setup_indices(self):
         self.descriptors_by_id = {}
         self.package_versions = self.db_packages_identifier_index
@@ -528,6 +533,14 @@ class ModuleRegistry(DBRegistry):
                     description="Basic modules for VisTrails")
         self.add_package(self._default_package)
         return self._default_package
+
+    def has_abs_upgrade(self, descriptor_info):
+        return descriptor_info in self._abs_pkg_upgrades
+
+    def get_abs_upgrade(self, descriptor_info):
+        if self.has_abs_upgrade(descriptor_info):
+            return self._abs_pkg_upgrades[descriptor_info]
+        return None
 
     ##########################################################################
     # Per-module registry functions
@@ -896,6 +909,8 @@ class ModuleRegistry(DBRegistry):
           hide_namespace=False,
           hide_descriptor=False,
           is_root=False,
+          ghost_package=None,
+          ghost_package_version=None,
 
         Registers a new module with VisTrails. Receives the class
         itself and an optional name that will be the name of the
@@ -948,6 +963,19 @@ class ModuleRegistry(DBRegistry):
         If is_root is True, the added module will become the root
         module.  Note that this is only possible for the first module
         added.
+        
+        If ghost_package is not None, then the 'ghost_identifier'
+        'ghost_identifier' is set on the descriptor, which will cause
+        the module to be displayed under that package in the module
+        palette, rather than the package specified by the
+        'identifier' attribute of the descriptor.
+        
+        If ghost_package_version is not None, then the attribute
+        'ghost_package_version' is set on the descriptor.  Currently
+        this value is unused, but eventually if multiple packages
+        with the same identifier but different package versions
+        are loaded simultaneously, this will allow overriding of
+        the package_version to associate with in the module palette.
 
         Notice: in the future, more named parameters might be added to
         this method, and the order is not specified. Always call
@@ -980,6 +1008,8 @@ class ModuleRegistry(DBRegistry):
         hide_namespace = fetch('hide_namespace', False)
         hide_descriptor = fetch('hide_descriptor', False)
         is_root = fetch('is_root', False)
+        ghost_identifier = fetch('ghost_package', None)
+        ghost_package_version = fetch('ghost_package_version', None)
 
         if len(kwargs) > 0:
             raise VistrailsInternalError(
@@ -1043,6 +1073,11 @@ class ModuleRegistry(DBRegistry):
             _check_fringe(moduleLeftFringe)
             _check_fringe(moduleRightFringe)
             descriptor.set_module_fringe(moduleLeftFringe, moduleRightFringe)
+        
+        if ghost_identifier:
+            descriptor.ghost_identifier = ghost_identifier
+        if ghost_package_version:
+            descriptor.ghost_package_version = ghost_package_version
                  
         self.signals.emit_new_module(descriptor)
         if self.is_abstraction(descriptor):
@@ -1062,7 +1097,7 @@ class ModuleRegistry(DBRegistry):
             raise TypeError("Expected filename or (filename, kwargs)")
 
     def add_subworkflow(self, vt_fname, **kwargs):
-        from core.modules.sub_module import new_abstraction
+        from core.modules.sub_module import new_abstraction, read_vistrail
 
         # vt_fname is relative to the package path
         if 'package' in kwargs:
@@ -1090,14 +1125,58 @@ class ModuleRegistry(DBRegistry):
             debug.warning("Using absolute path for subworkflow: '%s'" % \
                 vt_fname)
         
+        vistrail = read_vistrail(vt_fname)
+        namespace = kwargs.get('namespace', '')
+        
         # create module from workflow
-        module = new_abstraction(name, vt_fname, None, version)
-        kwargs['version'] = str(module.internal_version)
+        module = None
+        is_upgraded_abstraction = False
+        try:
+            module = new_abstraction(name, vistrail, vt_fname, version)
+        except InvalidPipeline, e:
+            # This import MUST be delayed until this point or it will fail
+            import core.vistrail.controller 
+            from core.db.io import save_vistrail_to_xml
+            from core.modules.abstraction import identifier as \
+                abstraction_pkg, version as abstraction_ver
+            # Use a "dummy" controller to handle the upgrade
+            controller = core.vistrail.controller.VistrailController(vistrail)
+            if version == -1L:
+                version = vistrail.get_latest_version()
+            (new_version, new_pipeline) = \
+                controller.handle_invalid_pipeline(e, long(version), vistrail, 
+                                                   False, True)
+            del controller
+            vistrail.set_annotation('__abstraction_descriptor_info__', 
+                                    (identifier, name, namespace, 
+                                     package_version, str(version)))
+            vt_save_dir = tempfile.mkdtemp(prefix='vt_upgrade_abs')
+            vt_fname = os.path.join(vt_save_dir, os.path.basename(vt_fname))
+            # FIXME: Should delete this upgrade file when vistrails is exited
+            save_vistrail_to_xml(vistrail, vt_fname) 
+            module = new_abstraction(name, vistrail, vt_fname, new_version, 
+                                     new_pipeline)
+            # need to set identifier to local.abstractions and its version
+            kwargs['package'] = abstraction_pkg
+            kwargs['package_version'] = abstraction_ver
+            # Set ghost attributes so module palette shows it in package instead of 'My Subworkflows'
+            kwargs['ghost_package'] = identifier
+            kwargs['ghost_package_version'] = package_version
+            is_upgraded_abstraction = True
+                                    
+        module.internal_version = str(module.internal_version)
+        kwargs['version'] = module.internal_version
         descriptor = None
         if kwargs:
             descriptor = self.add_module(module, **kwargs)
         else:
             descriptor = self.add_module(module)
+        if is_upgraded_abstraction:
+            descriptor_info = (identifier, name, namespace,  
+                               package_version, str(version))
+            self._abs_pkg_upgrades[descriptor_info] = descriptor
+            package._abs_pkg_upgrades[descriptor_info] = descriptor
+            self.auto_add_ports(descriptor.module)
         return descriptor
 
     def has_input_port(self, module, portName):
@@ -1332,6 +1411,13 @@ class ModuleRegistry(DBRegistry):
         # set up fast removal of model
         for sigstring in top_sort:
             self.delete_module(*(sigstring.split(':',2)))
+        
+        # Remove upgraded package subworkflows from registry
+        for descriptor_info, descriptor in package._abs_pkg_upgrades.iteritems():
+            self.delete_module(descriptor.identifier, descriptor.name, descriptor.namespace)
+            del self._abs_pkg_upgrades[descriptor_info]
+        package._abs_pkg_upgrades.clear()
+        
         self.delete_package(package)
         self.signals.emit_deleted_package(package)
 

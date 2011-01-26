@@ -25,6 +25,7 @@ from core import debug
 from core.bundles import py_import
 from core.system import get_elementtree_library, temporary_directory,\
      execute_cmdline, systemType
+from core.utils import Chdir
 import core.requirements
 ElementTree = get_elementtree_library()
 
@@ -254,8 +255,10 @@ def get_db_object_modification_time(db_connection, obj_id, obj_type):
     """
 
     try:
+        db_connection.begin()
         c = db_connection.cursor()
         c.execute(command % (translate_to_tbl_name(obj_type), obj_id))
+        db_connection.commit()
         time = c.fetchall()[0][0]
         c.close()
     except get_db_lib().Error, e:
@@ -591,7 +594,7 @@ def open_vistrail_bundle_from_zip_xml(filename):
     output = []
     cmdline = ['unzip', '-q','-o','-d', vt_save_dir, filename]
     result = execute_cmdline(cmdline, output)
-    
+
     if result != 0 and len(output) != 0:
         raise VistrailsDBException("Unzip of '%s' failed" % filename)
 
@@ -784,21 +787,19 @@ def save_vistrail_bundle_to_zip_xml(save_bundle, filename, vt_save_dir=None, ver
     tmp_zip_file = os.path.join(tmp_zip_dir, "vt.zip")
     output = []
     rel_vt_save_dir = os.path.split(vt_save_dir)[1]
-    cur_dir = os.getcwd()
     # on windows, we assume zip.exe is in the current directory when
     # running from the binary install
     zipcmd = 'zip'
     if systemType in ['Windows', 'Microsoft']:
-        zipcmd = os.path.join(cur_dir,'zip.exe')
+        zipcmd = os.path.join(os.getcwd(),'zip.exe')
         if not os.path.exists(zipcmd):
             zipcmd = 'zip.exe' #assume zip is in path
     cmdline = [zipcmd, '-r', '-q', tmp_zip_file, '.']
     try:
         #if we want that directories are also stored in the zip file
         # we need to run from the vt directory
-        os.chdir(vt_save_dir)
-        result = execute_cmdline(cmdline,output)
-        os.chdir(cur_dir)
+        with Chdir(vt_save_dir):
+            result = execute_cmdline(cmdline,output)
         #print result, output
         if result != 0 or len(output) != 0:
             for line in output:

@@ -803,7 +803,7 @@ class Pipeline(DBWorkflow):
                 if module.is_abstraction():
                     try:
                         desc = module.module_descriptor
-                        if module.internal_version != desc.version:
+                        if long(module.internal_version) != long(desc.version):
                             exceptions.add(MissingModuleVersion(desc.package, desc.name, desc.namespace, desc.version, desc.package_version, module.id))
                     except:
                         pass
@@ -960,7 +960,7 @@ class Pipeline(DBWorkflow):
                                                         p.pos,
                                                         function.name,
                                                         function.real_id))
-                        exceptions.append(e)
+                        exceptions.add(e)
                     pos_map[p.pos] = p
                 function.is_valid = is_valid
         if len(exceptions) > 0:
@@ -975,9 +975,9 @@ class Pipeline(DBWorkflow):
                     try:
                         port_spec.create_entries_and_descriptors()
                     except ModuleRegistryException, e:
-                        e = PortMismatch(module.name, module.package, 
+                        e = PortMismatch(module.package, module.name,
                                          module.namespace, port_spec.name,
-                                         port_spec.type)
+                                         port_spec.type, port_spec.sigstring)
                         port_spec.is_valid = False
                         is_valid = False
                         e._module_id = module.id
@@ -1476,12 +1476,16 @@ class TestPipeline(unittest.TestCase):
 #             print c
 
     def test_incorrect_port_spec(self):
+        import core.modules.basic_modules
         p = Pipeline()
+        basic_version = core.modules.basic_modules.version
         m1 = Module(name="String",
                     package="edu.utah.sci.vistrails.basic",
+                    version=basic_version,
                     id=1L)
         m2 = Module(name="String",
                     package="edu.utah.sci.vistrails.basic",
+                    version=basic_version,
                     id=2L)
         source = Port(id=1L,
                       type='source', 

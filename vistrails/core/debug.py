@@ -22,6 +22,8 @@
 import logging
 import logging.handlers
 import inspect
+import os
+import os.path
 # from core.utils import VersionTooLow
 # from core import system
 import time
@@ -79,8 +81,7 @@ class DebugPrint:
         """
         self.logger = logging.getLogger("VisLog")
         self.logger.setLevel(logging.INFO)
-        self.format = logging.Formatter("%(levelname)s: %(asctime)s %(pathname)s"+\
-                                ":%(lineno)s\n  %(message)s")
+        self.format = logging.Formatter("%(asctime)s %(levelname)s:\n%(message)s")
         # first we define a handler for logging to a file
         if f:
             self.set_logfile(f)
@@ -99,18 +100,45 @@ class DebugPrint:
         self.handlers = []
         self.make_logger()
         self.level = logging.CRITICAL
-        self.debug = self.logger.debug # low importance debugging messages
-        self.log = self.logger.info # low importance info messages
-        self.warning = self.logger.warning # medium importance warning messages
-        self.critical = self.logger.critical # high importance error messages
         self.app = None
 
     def set_logfile(self, f):
         """set_logfile(file) -> None. Redirects debugging
         output to file."""
+        def rotate_file_if_necessary(filename):
+            statinfo = os.stat(filename)
+            if statinfo.st_size > 1024*1024:
+                #rotate file
+                mincount = 1
+                maxcount = 5
+                count = maxcount
+                newfile = "%s.%s"%(filename, count)
+                while not os.path.exists(newfile) and count >= mincount:
+                    count = count - 1
+                    newfile = "%s.%s"%(filename, count)
+                if count == 5:
+                    os.unlink("%s.%s"%(filename, count))
+                    count = 4
+                while count >= mincount:
+                    os.rename("%s.%s"%(filename, count), "%s.%s"%(filename, count+1))
+                    count = count -1
+                os.rename(filename, "%s.%s"%(filename, mincount))
+        
         try:
-            handler = logging.handlers.RotatingFileHandler(f, maxBytes=1024*1024, 
-                                                           backupCount=5)
+            # there's a problem on Windows with RotatingFileHandler and that 
+            # happens when VisTrails starts child processes (it seems related
+            # to the way Windows manages file handlers)
+            # see http://bugs.python.org/issue4749
+            # in this case we will deal with log files differently on Windows:
+            # we will check if we need to rotate the file at the beginning of 
+            # the session.
+            import core.system
+            if core.system.systemType in ["Windows", "Microsoft"]:
+                rotate_file_if_necessary(f)
+                handler = logging.FileHandler(f)
+            else:
+                handler = logging.handlers.RotatingFileHandler(f, maxBytes=1024*1024, 
+                                                               backupCount=5)
             handler.setFormatter(self.format)
             handler.setLevel(logging.DEBUG)
             if self.fhandler:
@@ -126,14 +154,14 @@ class DebugPrint:
         output to a stream object."""
         try:
         #then we define a handler to log to the console
-            format = logging.Formatter('%(levelname)s\n%(asctime)s\n%(pathname)s:%(lineno)s\n%(message)s')
+            format = logging.Formatter('%(levelname)s\n%(asctime)s\n%(message)s')
             handler = logging.StreamHandler(stream)
             handler.setFormatter(format)
             handler.setLevel(self.level)
             self.handlers.append(handler)
             self.logger.addHandler(handler)
         except Exception, e:
-            self.critical("Could not set stream %s: %s"%(stream,str(e)))
+            self.critical("Could not set message stream %s: %s"%(stream,str(e)))
             
     def set_message_level(self,level):
         """self.set_message_level(level) -> None. Sets the logging
@@ -143,17 +171,55 @@ class DebugPrint:
         [h.setLevel(level) for h in self.handlers]
 
     def register_splash(self, app):
-        """ Registers a method splashMessage(message)
+        """ register_splash(self, classname)
+        Registers a method splashMessage(message)
         """
         self.app = app
 
     def splashMessage(self, msg):
-        """ Writes a splashmessage if app is registered
+        """ splashMessage(self, string)
+        Writes a splashmessage if app is registered
         """
         if self.app:
             self.app.splashMessage(msg)
 
-    
+    def message(self, caller, msg, details=''):
+        """self.message(caller, str, str) -> str. Returns a string with a
+        formatted message to be send to the debugging output. This
+        should not be called explicitly from userland. Consider using
+        self.log(), self.warning() or self.critical() instead."""
+        msg = (msg + '\n' + details) if details else msg 
+        source = inspect.getsourcefile(caller)
+        line = caller.f_lineno
+        if source and line:
+            return source + ", line " + str(line) + "\n" + msg
+        else:
+            return "(File info not available)\n" + msg
+        
+    def debug(self, msg, details = ''):
+        """self.log(str, str) -> None. Send information message (low
+        importance) to log with appropriate call site information."""
+        caller = inspect.currentframe().f_back # who called us?
+        self.logger.debug(self.message(caller, msg, details))
+        
+    def log(self, msg, details = ''):
+        """self.log(str, str) -> None. Send information message (low
+        importance) to log with appropriate call site information."""
+        caller = inspect.currentframe().f_back # who called us?
+        self.logger.info(self.message(caller, msg, details))
+        
+    def warning(self, msg, details = ''):
+        """self.warning(str, str) -> None. Send warning message (medium
+        importance) to log with appropriate call site information."""
+        caller = inspect.currentframe().f_back # who called us?
+        self.logger.warning(self.message(caller, msg, details))
+        
+    def critical(self, msg, details = ''):
+        """self.critical(str, str) -> None. Send critical message (high
+        importance) to log with appropriate call site information."""
+        caller = inspect.currentframe().f_back # who called us?
+        self.logger.critical(self.message(caller, msg, details))
+            
 splashMessage = DebugPrint.getInstance().splashMessage
 critical = DebugPrint.getInstance().critical
 warning  = DebugPrint.getInstance().warning

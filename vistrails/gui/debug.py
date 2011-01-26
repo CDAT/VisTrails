@@ -20,9 +20,13 @@
 ##
 ############################################################################
 from PyQt4 import QtCore, QtGui
+from gui.theme import CurrentTheme
 import core.debug
 import StringIO
 import api
+import cgi
+from core.configuration import get_vistrails_configuration
+from gui.application import VistrailsApplication
 
 ################################################################################
 
@@ -49,55 +53,116 @@ class DebugView(QtGui.QDialog):
     def __init__(self, parent = None):
         QtGui.QDialog.__init__(self, parent)
         core.debug.DebugPrint.getInstance().set_stream(debugStream(self.write)) 
-        self.setWindowTitle('VisTrails messages')
+        self.setWindowTitle('VisTrails Messages')
         layout = QtGui.QVBoxLayout()
         self.setLayout(layout)
+
+        # top message filter buttons
+        filterHolder = QtGui.QGridLayout()
+        layout.addLayout(filterHolder)
+        filter = QtGui.QGridLayout()
+        filterHolder.addLayout(filter, 0, 0, QtCore.Qt.AlignLeft)
+
+        filterLabel = QtGui.QLabel('Filter:')
+        filterLabel.setFixedWidth(40)
+        filter.addWidget(filterLabel, 0, 0)
+
+        self.infoFilter = QtGui.QCheckBox('Info', self)
+        self.infoFilter.setCheckable(True)
+        self.infoFilter.setChecked(True)
+        self.infoFilter.setStyleSheet('color:' +
+                                    CurrentTheme.DEBUG_INFO_COLOR.name() +
+                                    ';background-color:' +
+                                    CurrentTheme.DEBUG_FILTER_BACKGROUND_COLOR.name())
+        self.connect(self.infoFilter, QtCore.SIGNAL('stateChanged(int)'),
+                     self.toggleInfo)
+        filter.addWidget(self.infoFilter, 0, 1)
+
+        self.warningFilter = QtGui.QCheckBox('Warning', self)
+        self.warningFilter.setCheckable(True)
+        self.warningFilter.setChecked(True)
+        self.warningFilter.setStyleSheet('color:' +
+                                    CurrentTheme.DEBUG_WARNING_COLOR.name() +
+                                    ';background-color:' +
+                                    CurrentTheme.DEBUG_FILTER_BACKGROUND_COLOR.name())
+        self.connect(self.warningFilter, QtCore.SIGNAL('stateChanged(int)'),
+                     self.toggleWarning)
+        filter.addWidget(self.warningFilter, 0, 2)
+
+        self.criticalFilter = QtGui.QCheckBox('Critical', self)
+        self.criticalFilter.setCheckable(True)
+        self.criticalFilter.setChecked(True)
+        self.criticalFilter.setStyleSheet('color:' +
+                                    CurrentTheme.DEBUG_CRITICAL_COLOR.name() +
+                                    ';background-color:' +
+                                    CurrentTheme.DEBUG_FILTER_BACKGROUND_COLOR.name())
+        self.connect(self.criticalFilter, QtCore.SIGNAL('stateChanged(int)'),
+                     self.toggleCritical)
+        filter.addWidget(self.criticalFilter, 0, 3)
+
+        # message list
         self.list = QtGui.QListWidget()
         self.connect(self.list,
-                     QtCore.SIGNAL('itemDoubleClicked(QListWidgetItem *)'),
+                     QtCore.SIGNAL('currentItemChanged(QListWidgetItem *, QListWidgetItem *)'),
                      self.showMessage)
-        self.msg_box = None
-       
-#        self.text = QtGui.QTextEdit('')
-#        text.insertPlainText(errorTrace)
-#        self.text.setReadOnly(True)
-#        self.text.setLineWrapMode(QtGui.QTextEdit.NoWrap)
-        self.resize(700, 400)
         layout.addWidget(self.list)
-        buttons = QtGui.QHBoxLayout()
+
+        # message details field
+        self.text = QtGui.QTextEdit()
+        self.text.setReadOnly(True)
+        self.text.hide()
+        layout.addWidget(self.text)
+
+        # bottom buttons
+        buttons = QtGui.QGridLayout()
         layout.addLayout(buttons)
-        close = QtGui.QPushButton('&Hide', self)
+        leftbuttons = QtGui.QGridLayout()
+        buttons.addLayout(leftbuttons, 0, 0, QtCore.Qt.AlignLeft)
+        rightbuttons = QtGui.QGridLayout()
+        buttons.addLayout(rightbuttons, 0, 1, QtCore.Qt.AlignRight)
+
+        close = QtGui.QPushButton('&Close', self)
         close.setFixedWidth(120)
-        buttons.addWidget(close)
+        close.setDefault(True)
+        leftbuttons.addWidget(close, 0, 0)
         self.connect(close, QtCore.SIGNAL('clicked()'),
                      self, QtCore.SLOT('close()'))
-        details = QtGui.QPushButton('&Show details', self)
-        details.setFixedWidth(120)
-        buttons.addWidget(details)
-        self.connect(details, QtCore.SIGNAL('clicked()'),
-                     self.details)
+
         copy = QtGui.QPushButton('Copy &Message', self)
         copy.setToolTip('Copy selected message to clipboard')
         copy.setFixedWidth(120)
-        buttons.addWidget(copy)
+        rightbuttons.addWidget(copy, 0, 0)
         self.connect(copy, QtCore.SIGNAL('clicked()'),
                      self.copyMessage)
+
         copyAll = QtGui.QPushButton('Copy &All', self)
         copyAll.setToolTip('Copy all messages to clipboard (Can be a lot)')
         copyAll.setFixedWidth(120)
-        buttons.addWidget(copyAll)
+        rightbuttons.addWidget(copyAll, 0, 1)
         self.connect(copyAll, QtCore.SIGNAL('clicked()'),
                      self.copyAll)
+        self.msg_box = None
+        self.itemQueue = []
+        self.resize(700, 400)
 
-#        sp = StackPopup(errorTrace)
-#        sp.exec_()
+    def toggleType(self, s, visible):
+        if visible == QtCore.Qt.Unchecked:
+            visible = False
+        elif visible == QtCore.Qt.Checked:
+            visible = True
+        for item in [self.list.item(i) for i in xrange(self.list.count())]:
+            if str(item.data(32).toString()).split('\n')[0] == s:
+                self.list.setItemHidden(item, not visible)
 
-    def details(self):
-        """ call showMessage on selected message """
-        items = self.list.selectedItems()
-        if len(items)>0:
-            self.showMessage(items[0])
-            
+    def toggleInfo(self, visible):
+        self.toggleType('INFO', visible)
+
+    def toggleWarning(self, visible):
+        self.toggleType('WARNING', visible)
+
+    def toggleCritical(self, visible):
+        self.toggleType('CRITICAL', visible)
+        
     def copyMessage(self):
         """ copy selected message to clipboard """
         items = self.list.selectedItems()
@@ -107,16 +172,34 @@ class DebugView(QtGui.QDialog):
 
     def copyAll(self):
         """ copy selected message to clipboard """
-
         texts = []
         for i in range(self.list.count()):
             texts.append(str(self.list.item(i).data(32).toString()))
         text = '\n'.join(texts)
         api.VistrailsApplication.clipboard().setText(text)
 
-    def showMessage(self, item):
+    def showMessage(self, item, olditem):
         """ show item data in a messagebox """
-        self.showMessageBox(str(item.data(32).toString()))
+        s = str(item.data(32).toString())
+        msgs = s.split('\n')
+        msgs = [cgi.escape(i) for i in msgs]
+        format = {'INFO': 'Message:',
+                  'WARNING': 'Warning message:',
+                  'CRITICAL': 'Critical message:'}
+        
+        text = '<HTML><BODY BGCOLOR="#FFFFFF">'
+        text += '<H4>%s</H4>' % format.get(msgs[0], 'Message:')
+        text += '<H4>%s<br></H4>' % msgs[3]
+        text += '<table border="0">'
+        if len(msgs)>4:
+            text += '<tr><td>&nbsp;</td><td align=left>%s</td></tr>' % '<br>'.join(msgs[4:])
+            text += '<tr><td>&nbsp;</td><td>&nbsp;</td></tr>'
+        text += '<tr><td align=right><b>Time:</b></td><td>%s</td></tr>' % msgs[1]
+        text += '<tr><td align=right><b>Location:</b></td><td>%s</td></tr>' % msgs[2]
+        text += '</table></BODY></HTML>'
+
+        self.text.setHtml(text)
+        self.text.show()
 
     def watch_signal(self, obj, sig):
         """self.watch_signal(QObject, QSignal) -> None. Connects a debugging
@@ -129,13 +212,12 @@ class DebugView(QtGui.QDialog):
         """ Receives debug signal """
         debug(str(args))
 
-    def showMessageBox(self, s):
-        s = str(s).strip()
+    def updateMessageBox(self, item):
+        self.currentItem = item
+        msg_box = self.msg_box
+        # update messagebox with data from item
+        s = str(item.data(32).toString())
         msgs = s.split('\n')
-        if self.msg_box and self.msg_box.isVisible():
-            self.msg_box.close()
-        msg_box = QtGui.QMessageBox(self.parent())
-        self.msg_box = msg_box
         if msgs[0] == "INFO":
             msg_box.setIcon(QtGui.QMessageBox.Information)
             msg_box.setWindowTitle("Information")
@@ -146,34 +228,103 @@ class DebugView(QtGui.QDialog):
             msg_box.setIcon(QtGui.QMessageBox.Critical)
             msg_box.setWindowTitle("Critical error")
         msg_box.setText(msgs[3])
-        text = "Time: %s\n Location: %s\n Message:\n%s" % \
-                                            (msgs[1], msgs[2],
-                                             '\n'.join(msgs[3:]))
-        msg_box.setInformativeText('\n'.join(msgs[4:]))
-        msg_box.setStandardButtons(QtGui.QMessageBox.Ok)
-        msg_box.setDefaultButton(QtGui.QMessageBox.Ok)
-        msg_box.setDetailedText(text)
-        msg_box.show()
 
+    def showMessageBox(self, item):
+        """ Displays the current message in a messagebox
+            if a message is already shown the same message is shown again
+            but with a "next message"-button
+        """
+        msg_box = self.msg_box
+        if not msg_box or not msg_box.isVisible():
+            # create messagebox
+            # app segfaults if the handle to the old messagebox is removed
+            self.old_msg_box = msg_box
+            msg_box = QtGui.QMessageBox(self.parent())
+            self.msg_box = msg_box
+            msg_box.setStandardButtons(QtGui.QMessageBox.Ok)
+            msg_box.setDefaultButton(QtGui.QMessageBox.Ok)
+            msg_box.setEscapeButton(QtGui.QMessageBox.Ok)
+            msg_box.addButton('&Show Messages', msg_box.RejectRole)
+            self.manyButton = None
+            self.connect(msg_box,
+                         QtCore.SIGNAL('buttonClicked(QAbstractButton *)'),
+                         self.messageButtonClicked)
+            self.connect(msg_box,
+                         QtCore.SIGNAL('rejected()'),
+                         self.rejectMessage)
+            self.updateMessageBox(item)
+        else:
+            self.itemQueue.append(item)
+
+        # check queue
+        if self.itemQueue:
+            # need to set nextmessage-button
+            many = len(self.itemQueue)
+            text = '&Next Message (%s more)' % many
+            if not self.manyButton:
+                # create button
+                self.manyButton=QtGui.QPushButton(text)
+                msg_box.addButton(self.manyButton, msg_box.DestructiveRole)
+            else:
+                self.manyButton.setText(text)
+        else:
+            # remove button if it exist
+            if self.manyButton:
+                msg_box.removeButton(self.manyButton)
+                self.manyButton = None
+        if not msg_box.isVisible():
+            msg_box.show()
+        msg_box.resize(msg_box.sizeHint())
+        msg_box.updateGeometry()
+        msg_box.activateWindow()
+        msg_box.raise_()
+
+    def messageButtonClicked(self, button):
+        role = self.msg_box.buttonRole(button)
+        if role == self.msg_box.RejectRole:
+            self.itemQueue = []
+            self.show()
+            self.list.setCurrentItem(self.currentItem)
+            self.list.scrollToItem(self.currentItem)
+        elif role == self.msg_box.DestructiveRole:
+            # show next message
+            item = self.itemQueue[0]
+            del self.itemQueue[0]
+            self.showMessageBox(item)
+        else:
+            self.itemQueue = []
+        
     def write(self, s):
-#        t = self.text.toPlainText() if self.isVisible() else ''
-#        self.text.setPlainText(t+s)
+        """write(s) -> None
+        adds the string s to the message list and displays it
+        """
+        # adds the string s to the list and 
         s = str(s).strip()
         msgs = s.split('\n')
         text = msgs[3] if len(msgs)>2 else ''
-        if msgs[0] == "CRITICAL":
-            self.showMessageBox(s)
         item = QtGui.QListWidgetItem(text)
         item.setData(32, s)
         item.setFlags(item.flags()&~QtCore.Qt.ItemIsEditable)
-        if msgs[0] == "INFO":
-            item.setForeground(QtGui.QBrush(QtCore.Qt.black))
-        elif msgs[0] == "WARNING":
-            item.setForeground(QtGui.QBrush(QtGui.QColor("#D0D000")))
-        elif msgs[0] == "CRITICAL":
-            item.setForeground(QtGui.QBrush(QtCore.Qt.red))
         self.list.addItem(item)
-        self.list.scrollToItem(item)
+        if msgs[0] == "INFO":
+            item.setForeground(QtGui.QBrush(CurrentTheme.DEBUG_INFO_COLOR))
+            self.list.setItemHidden(item, not self.infoFilter.isChecked())
+        elif msgs[0] == "WARNING":
+            item.setForeground(QtGui.QBrush(CurrentTheme.DEBUG_WARNING_COLOR))
+            self.list.setItemHidden(item, not self.warningFilter.isChecked())
+        elif msgs[0] == "CRITICAL":
+            item.setForeground(QtGui.QBrush(CurrentTheme.DEBUG_CRITICAL_COLOR))
+            self.list.setItemHidden(item, not self.criticalFilter.isChecked())
+        if self.isVisible() and not \
+          getattr(get_vistrails_configuration(),'alwaysShowDebugPopup',False):
+            self.raise_()
+            self.activateWindow()
+            modal = VistrailsApplication.activeModalWidget()
+            if modal:
+                # need to beat modal window
+                self.showMessageBox(item)
+        else:
+            self.showMessageBox(item)
 
     def closeEvent(self, e):
         """closeEvent(e) -> None
@@ -183,10 +334,16 @@ class DebugView(QtGui.QDialog):
     def showEvent(self, e):
         """closeEvent(e) -> None
         Event handler called when the dialog is about to close."""
-        count = self.list.count()
-        if count:
-            self.list.scrollToItem(self.list.item(count-1))
         self.emit(QtCore.SIGNAL("messagesView(bool)"), True)
+
+    def reject(self):
+        """ Captures Escape key and closes window correctly """
+        self.close()
+
+    def rejectMessage(self):
+        """ Captures Escape key and closes messageBox correctly """
+        self.itemQueue = []
+        self.msg_box.close()
 
 class debugStream(StringIO.StringIO):
     def __init__(self, write):

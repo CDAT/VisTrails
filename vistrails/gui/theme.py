@@ -585,10 +585,21 @@ class DefaultTheme(object):
             *ColorByName.get_int('black'))
         self.HOVER_SELECT_COLOR = QtGui.QColor(
             *ColorByName.get_int('blue'))
-
+        
+        # colors for debug messages
+        #self.DEBUG_INFO_COLOR = QtGui.QColor(QtCore.Qt.darkGray)
+        #self.DEBUG_WARNING_COLOR = QtGui.QColor(QtCore.Qt.black)
+        self.DEBUG_INFO_COLOR = QtGui.QColor(QtCore.Qt.black)
+        self.DEBUG_WARNING_COLOR = QtGui.QColor("#707000")
+        self.DEBUG_CRITICAL_COLOR = QtGui.QColor(QtCore.Qt.red)
+        class QTransparentColor(QtGui.QColor):
+            def name(self):
+                return 'transparent'
+        self.DEBUG_FILTER_BACKGROUND_COLOR = QTransparentColor("transparent")
+        
 class MacTheme(DefaultTheme):
-
     def __init__(self):
+        
         DefaultTheme.__init__(self)
         #### ICONS & IMAGES ####
         #The application icon
@@ -614,7 +625,7 @@ class MacTheme(DefaultTheme):
         # Font for Splash Screen messages
         self.SPLASH_SCREEN_FONT = QtGui.QFont('Helvetica', 10,
                                               QtGui.QFont.Light)
-
+        
 class LinuxTheme(DefaultTheme):
     def __init__(self):
         DefaultTheme.__init__(self)
@@ -648,6 +659,8 @@ def get_current_theme():
     Instantiates the theme according to the current platform """
     if core.system.systemType in ['Darwin']:
         return MacTheme()
+    elif core.system.systemType in ['Linux']:
+        return LinuxTheme()
     else:
         return DefaultTheme()
     
