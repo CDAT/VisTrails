@@ -20,4 +20,25 @@ Description of Function:
 ###################################################################################################################
     </doc>
 </action>
+<action name="__getitem__" type="function">
+        <input>
+           <id doc="" instance="str" position="0" required="True"/>
+        </input>
+        <output>
+            <variable doc="" instance="cdms2.tvariable.TransientVariable" position="0"/>
+        </output>
+    <doc>
+        Function: __getitem__     # Call a variable object with the given id
+
+Description of Function:
+    Call a variable object with the given id
+    Exception if not found.
+    Call the variable with the other arguments.
+###################################################################################################################
+###########################################                         ###############################################
+########################################## End _getitem_ Description ################################################
+#########################################                         #################################################
+###################################################################################################################
+    </doc>
+</action>
 </diagnostic>

@@ -247,7 +247,7 @@ if __name__ == '__main__':
 
         elif m._codepath == "cdms2.dataset.CdmsFile":
             for a in m._actions:
-                if a._name == "__call__":
+                if a._name == "__call__" or a._name == "__getitem__":
                     a.write_module_definition(class_lines,
                                               ident='',
                                                compute_method=get_CdmsFile_compute_method(a,

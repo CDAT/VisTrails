@@ -9,7 +9,12 @@
     global translator
     import qtbrowser
     qtbrowser.useVistrails=True
-    translator = QTranslator()
+    try:
+        builder_window = api.get_builder_window()
+        shell = builder_window.shell.shell
+    except api.NoGUI:
+        shell = None
+    translator = QTranslator(shell=shell)
     cdatWindow = qtbrowser.vcdatWindow.QCDATWindow()
     cdatWindow.show()
     translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
@@ -45,7 +50,7 @@
                        (core.modules.basic_modules.String,
                         "variable, axis, or weighted-axis"))
     reg.add_input_port(Variable, 'inputVariable', 
-                       (core.modules.basic_modules.List,
+                       (get_late_type('cdms2.tvariable.TransientVariable'),
                         ""))
     reg.add_output_port(Variable, 'variable', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),

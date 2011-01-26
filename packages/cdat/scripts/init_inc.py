@@ -31,6 +31,7 @@ version : description
 """
 from PyQt4 import QtCore, QtGui
 import sip
+import api
 import core.modules
 import core.modules.module_registry
 from core.modules.vistrails_module import (Module, NotCacheable,

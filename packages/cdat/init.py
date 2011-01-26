@@ -31,6 +31,7 @@ version : description
 """
 from PyQt4 import QtCore, QtGui
 import sip
+import api
 import core.modules
 import core.modules.module_registry
 from core.modules.vistrails_module import (Module, NotCacheable,
@@ -4623,6 +4624,36 @@ Description of Function:
         res = cdmsfile.__call__(*args)
         self.setResult('variable',res)
 
+class __getitem__(Module):
+    """
+        Function: __getitem__     # Call a variable object with the given id
+
+Description of Function:
+    Call a variable object with the given id
+    Exception if not found.
+    Call the variable with the other arguments.
+###################################################################################################################
+###########################################                         ###############################################
+########################################## End _getitem_ Description ################################################
+#########################################                         #################################################
+###################################################################################################################
+    
+    """
+    def compute(self):
+        self.checkInputPort('cdmsfile')
+        cdmsfile = self.getInputFromPort('cdmsfile')
+        args = []
+        id = None
+        if self.hasInputFromPort('id'):
+            id = self.getInputFromPort('id')
+            args.append(id)
+
+        # id is a required port
+        if id is None:
+            raise ModuleError(self, "'id' is a mandatory port")
+        res = cdmsfile.__getitem__(*args)
+        self.setResult('variable',res)
+
 
 def initialize(*args, **keywords):
     reg = core.modules.module_registry.get_module_registry()
@@ -4651,7 +4682,12 @@ def initialize(*args, **keywords):
     global translator
     import qtbrowser
     qtbrowser.useVistrails=True
-    translator = QTranslator()
+    try:
+        builder_window = api.get_builder_window()
+        shell = builder_window.shell.shell
+    except api.NoGUI:
+        shell = None
+    translator = QTranslator(shell=shell)
     cdatWindow = qtbrowser.vcdatWindow.QCDATWindow()
     cdatWindow.show()
     translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
@@ -4687,7 +4723,7 @@ def initialize(*args, **keywords):
                        (core.modules.basic_modules.String,
                         "variable, axis, or weighted-axis"))
     reg.add_input_port(Variable, 'inputVariable', 
-                       (core.modules.basic_modules.List,
+                       (get_late_type('cdms2.tvariable.TransientVariable'),
                         ""))
     reg.add_output_port(Variable, 'variable', 
                        (get_late_type('cdms2.tvariable.TransientVariable'),
@@ -9689,7 +9725,19 @@ def initialize(*args, **keywords):
                        (get_late_type('cdms2.tvariable.TransientVariable'),
                         ""))
 
+    #Module __getitem__
+    reg.add_module(__getitem__,namespace='cdms2|dataset')
+    reg.add_input_port(__getitem__, 'id', 
+                       (core.modules.basic_modules.String,
+                        ""))
+    reg.add_output_port(__getitem__, 'variable', 
+                       (get_late_type('cdms2.tvariable.TransientVariable'),
+                        ""))
+
     #extra input ports not available in the xml file
     reg.add_input_port(__call__, 'cdmsfile', 
+                       (CdmsFile,
+                        "cdmsfile"))
+    reg.add_input_port(__getitem__, 'cdmsfile', 
                        (CdmsFile,
                         "cdmsfile"))

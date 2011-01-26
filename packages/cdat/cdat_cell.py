@@ -18,13 +18,6 @@ import MV2
 boxes).  Eventually Variable and GraphicsMethod should be replaced by generating
 the proper graphics method, cdms2, MV2, etc... modules """
 
-# Index into the VCSQtManager window array so we can communicate with the
-# C++ Qt windows which the plots show up in.  If this number is no longer
-# consistent with the number of C++ Qt windows due to adding or removing
-# vcs.init() calls, then when you plot, it will plot into a
-# separate window instead of in the cell and may crash.
-windowIndex = 1 
-
 class Variable(Module):
     """ Get the updated transient variable """
     
@@ -34,41 +27,45 @@ class Variable(Module):
         # module none of the computation in this method is necessary 
         
         # Check ports
-        if not self.hasInputFromPort('cdmsfile'):
-            raise ModuleError(self, "'cdmsfile' is mandatory.")
-        if not self.hasInputFromPort('id'):
-            raise ModuleError(self, "'id' is mandatory.")
+#        if not self.hasInputFromPort('cdmsfile'):
+#            raise ModuleError(self, "'cdmsfile' is mandatory.")
+#        if not self.hasInputFromPort('id'):
+#            raise ModuleError(self, "'id' is mandatory.")
 
         # Get input from ports
-        cdmsfile = self.getInputFromPort('cdmsfile')
-        id = self.getInputFromPort('id')
+        if self.hasInputFromPort('inputVariable'):
+            var = self.getInputFromPort('inputVariable')
+        else:    
+            if self.hasInputFromPort('cdmsfile'):
+                cdmsfile = self.getInputFromPort('cdmsfile')
+            if self.hasInputFromPort('id'):
+                id = self.getInputFromPort('id')
+            # Get the variable
+            varType = self.getVarType(id, cdmsfile)
+            if (varType == 'variable'):
+                var = cdmsfile.__call__(id)
+            elif (varType == 'axis'):
+                varID = self.getAxisID(id)            
+                axis = getattr(cdmsfile, 'axes')[varID]
+                var = MV2.array(axis)
+                var.setAxis(0, axis)
+            elif (varType == 'weighted-axis'):
+                varID, axisID = self.getVarAndAxisID(id)
+                var = cdmsfile.__call__(varID)            
+                var = genutil.getAxisWeightByName(var, axisID)
+                var.id = varID +'_' + axisID + '_weight'
+            else:
+                var = None
+
+
         axes = self.forceGetInputFromPort('axes') # None if no input
         axesOperations = self.forceGetInputFromPort('axesOperations') # None if no input
-
-        # Get the variable
-        varType = self.getVarType(id, cdmsfile)
-        if (varType == 'variable'):
-            var = cdmsfile.__call__(id)
-        elif (varType == 'axis'):
-            varID = self.getAxisID(id)            
-            axis = getattr(cdmsfile, 'axes')[varID]
-            var = MV2.array(axis)
-            var.setAxis(0, axis)
-        elif (varType == 'weighted-axis'):
-            varID, axisID = self.getVarAndAxisID(id)
-            var = cdmsfile.__call__(varID)            
-            var = genutil.getAxisWeightByName(var, axisID)
-            var.id = varID +'_' + axisID + '_weight'
-        else:
-            var = None
-
         # Eval the variable with the axes
         if axes is not None and var is not None:
             try:
-                kwargs = eval(axes)
-                var = var(**kwargs)
-            except:
-                raise ModuleError(self, "Invalid 'axes' specification", axes)
+                var = eval("var(%s)"%axes)
+            except Exception, e:
+                raise ModuleError(self, "Invalid 'axes' specification: %s"%str(e))
 
         # Apply axes ops to the variable
         if axesOperations is not None:
@@ -187,21 +184,13 @@ class CDATCell(SpreadsheetCell, NotCacheable):
         Dispatch the vtkRenderer to the actual rendering widget
         """
         # Check required input ports
-        if self.hasInputFromPort('canvas'):
-            canvas = self.getInputFromPort('canvas')
-        else:
-            self.cellWidget = self.displayAndWait(QCDATWidget, (None,))
-            self.setResult('canvas', self.cellWidget.canvas)
-            return
-        self.setResult('canvas', canvas)
-        if not self.hasInputFromPort('gmName'):
-            return
-        if not self.hasInputFromPort('plotType'):
-            return
+        
         if not self.hasInputFromPort('slab1'):
-            return
+            raise ModuleError(self, "'slab1' is mandatory.")
         if not self.hasInputFromPort('template'):
-            return
+            raise ModuleError(self, "'template' is mandatory.")
+        if not self.hasInputFromPort('plotType'):
+            raise ModuleError(self, "'plotType' is mandatory.")
 
         # Build up the argument list
         args = []
@@ -209,9 +198,11 @@ class CDATCell(SpreadsheetCell, NotCacheable):
         args.append(self.getInputFromPort('slab1'))
         if self.hasInputFromPort('slab2'):
             args.append(self.getInputFromPort('slab2'))
+        
         args.append(self.getInputFromPort('template'))
         args.append(self.getInputFromPort('plotType'))
-        args.append(self.getInputFromPort('gmName'))
+        if self.hasInputFromPort('gmName'):
+            args.append(self.getInputFromPort('gmName'))
 
         # Build up plot keyword args ...
         kwargs = {}
@@ -224,60 +215,84 @@ class CDATCell(SpreadsheetCell, NotCacheable):
             self.location.row = self.getInputFromPort('row')
         if self.hasInputFromPort('col'):
             self.location.col = self.getInputFromPort('col')
-
+        
+        canvas = None
+        if self.hasInputFromPort('canvas'):
+            canvas = self.getInputFromPort('canvas')
+        
         # Plot into the cell
         inputPorts = (canvas, args, kwargs)
-        self.displayAndWait(QCDATWidget, inputPorts)        
+        self.cellWidget = self.displayAndWait(QCDATWidget, inputPorts)        
+        self.setResult('canvas', self.cellWidget.canvas)        
 
 class QCDATWidget(QCellWidget):
     """ QCDATWidget is the spreadsheet cell widget where the plots are displayed.
     The widget interacts with the underlying C++, VCSQtManager through SIP.
     This enables QCDATWidget to get a reference to the Qt MainWindow that the
     plot will be displayed in and send signals (events) to that window widget.
+    windowIndex is an index to the VCSQtManager window array so we can 
+    communicate with the C++ Qt windows which the plots show up in.  If this 
+    number is no longer consistent with the number of C++ Qt windows due to 
+    adding or removing vcs.init() calls, then when you plot, it will plot into a
+    separate window instead of in the cell and may crash.
+    vcdat already creates 5 canvas objects
+    
     """
+    startIndex = 5 #this should be the current number of canvas objects created 
+    maxIndex = 8
+    usedIndexes = []
     
     def __init__(self, parent=None):
-        QCellWidget.__init__(self, parent)
-        self.window = None        
+        QCellWidget.__init__(self, parent)        
+        self.window = None
         self.canvas =  None
-        self.windowIndex = self.getWindowIndex() #index to get QT Window from VCSQtManager
-
-    def getWindowIndex(self):
-        """ Return the index into the VCSQtManager's array of Qt Windows which
-        plots will be displayed in.
-        """
-        global windowIndex
-
-        windowIndex += 1
-        maxWindows = 8
-        if windowIndex > maxWindows:
-            windowIndex = 1
-        return windowIndex
-
+        self.windowId = -1
+        layout = QtGui.QVBoxLayout()
+        self.setLayout(layout) 
+         
+    def createCanvas(self):
+        windowIndex = self.startIndex
+        while (windowIndex in QCDATWidget.usedIndexes and 
+                   windowIndex <= 8):
+            windowIndex += 1
+        if windowIndex > 8:
+            raise ModuleError(self, "Maximum number of vcs.Canvas objects achieved.\
+Please delete unused CDAT Cells in the spreadsheet.")
+        else:
+            if windowIndex > len(vcs.canvaslist):
+                self.canvas = vcs.init()
+            else:
+                self.canvas = vcs.canvaslist[windowIndex-1]
+            self.windowId = windowIndex
+            QCDATWidget.usedIndexes.append(self.windowId)
+             
     def updateContents(self, inputPorts):
         """ Get the vcs canvas, setup the cell's layout, and plot """        
         spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         spreadsheetWindow.setUpdatesEnabled(False)
 
         # Set the canvas
-        self.canvas = inputPorts[0]
+        if inputPorts[0] is not None:
+            self.canvas = inputPorts[0]
         if self.canvas is None:
-            self.canvas = vcs.init()
-        self.canvas.clear()
-
+            self.createCanvas()
+        #print self.windowId, self.canvas
+        if self.window is not None:
+            self.layout().removeWidget(self.window)
+            
+        self.window = VCSQtManager.window(self.windowId)
+        self.layout().addWidget(self.window)
+        self.window.setVisible(True)    
         # Place the mainwindow that the plot will be displayed in, into this
         # cell widget's layout
-        self.window = VCSQtManager.window(self.windowIndex)
-        layout = QtGui.QVBoxLayout()
-        layout.addWidget(self.window)
-        self.setLayout(layout)        
-
+           
+        self.canvas.clear()
         # Plot
         if len(inputPorts) > 2:
             args = inputPorts[1]
             kwargs = inputPorts[2]
             self.canvas.plot(*args, **kwargs)
-
+        
         spreadsheetWindow.setUpdatesEnabled(True)
 
     def deleteLater(self):
@@ -286,6 +301,13 @@ class QCDATWidget(QCellWidget):
         deallocating. Overriding PyQt deleteLater to free up
         resources
         """
+        #we need to re-parent self.window or it will be deleted together with
+        #this widget. The immediate parent is also deleted, so we will set to
+        # parent of the parent widget
+        self.window.setParent(self.parent().parent())
+        self.window.setVisible(False)
         self.canvas = None
+        self.window = None
+        
+        QCDATWidget.usedIndexes.remove(self.windowId)
         QCellWidget.deleteLater(self)    
-
