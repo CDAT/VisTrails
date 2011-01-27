@@ -50,8 +50,8 @@ class QTranslator(QtCore.QObject):
     def writeCommands(self, commandlist):
         qcommands = []
         for command in commandlist:
-            if not command.endswith("\n"):
-                command += "\n"
+            if command.endswith("\n"):
+                command += command[:-1]
             qcommands.append(QtCore.QString(command))
         self.shell.write_and_exec(qcommands)
         
@@ -76,6 +76,7 @@ class CDATParser(object):
         self.load_modules()
         self.initialize()
         self.obj_map = {}
+        self.obj_dep_map = {}
         
     def initialize(self):
         #building grammar to identify cdat python commands
@@ -124,14 +125,14 @@ class CDATParser(object):
         result = []
         for node in p:
             if hasattr(node, 'lvar') and hasattr(node, 'rfunc'):
-                result.extend(self._convert_attrib_call(node.rfunc[0], 
+                result.extend(self._convert_assign_call(node.rfunc[0], 
                                                         node.lvar[0], 
                                                         node.args[0]))
                 self.obj_map[node.lvar[0]] = self.get_outputtype(node.rfunc[0])
             elif hasattr(node, 'rfunc') and hasattr(node, 'args'):
                 result.extend(self._convert_call(node.rfunc[0], node.args[0]))
             elif hasattr(node, 'lvar') and hasattr(node, 'rvar'):
-                result.extend(self._convert_attrib_vector_access(node.lvar[0],
+                result.extend(self._convert_assign_vector_access(node.lvar[0],
                                                                  node.rvar[0],
                                                                  node.index[0]))
                 self.obj_map[node.lvar[0]] = self.get_outputtype(node.rvar[0])
@@ -158,7 +159,28 @@ class CDATParser(object):
                 res = search("%s.__getitem__"% (self.obj_map[funcname]))
         return res
                 
-    def _convert_attrib_call(self, funcname, var, args):
+    def process_down_stream_modules(self, var):
+        """ This means that there will be a change in var that will require
+removing all dependent modules"""
+        
+        res = ""
+        
+        if self.obj_dep_map.has_key(var):
+            deps = self.obj_dep_map[var]
+            for d in deps:
+                res += "del %s\n"%d
+                res += self.process_down_stream_modules(d)
+                del self.obj_map[d]
+            self.obj_dep_map[var] = set()
+        return res
+    
+    def add_dependency(self, var, dep):
+        if not self.obj_dep_map.has_key(var):
+            self.obj_dep_map[var] = set()
+            
+        self.obj_dep_map[var].add(dep)
+         
+    def _convert_assign_call(self, funcname, var, args):
         #this dictionary will store the full list of commands. Will create
         # necessary modules
         convert_mapping = {'cdms2.open': "%(var)s = cdat.%(funcname)s()\n%(var)s.uri = %(args)s\n",
@@ -172,18 +194,27 @@ class CDATParser(object):
                                   'cdms2.dataset.CdmsFile': "%(var)s.id=%(args)s\n",
                                   'cdms2.tvariable.TransientVariable':"%(var)s.axes=\"%(args)s\"\n"}
         params = {'funcname':funcname, 'var':var, 'args':args}
+        res = ""
+        allowed_objects = ['cdms2.dataset.CdmsFile']
+        
         if not self.obj_map.has_key(var):
             try:
                 res = convert_mapping[funcname]%(params)
             except KeyError:
                 # funcname might be a variable used before, so we translate according to type
                 res = convert_mapping[self.obj_map[funcname]]%(params)
+                self.add_dependency(funcname, var)
         else:
             try:
-                res = convert_mapping_update[funcname]%(params)
+                if self.obj_map[var] in allowed_objects:
+                    res = self.process_down_stream_modules(var)
+                res += convert_mapping_update[funcname]%(params)
+                self.add_dependency(funcname, var)
             except KeyError:
                 # funcname might be a variable used before, so we translate according to type
-                res = convert_mapping_update[self.obj_map[funcname]]%(params)
+                res = self.process_down_stream_modules(var)
+                res += convert_mapping_update[self.obj_map[funcname]]%(params)
+                self.add_dependency(funcname, var)
         
         return res.split("\n")
                 
@@ -194,9 +225,11 @@ class CDATParser(object):
             if not self.obj_map.has_key('plotcell'):
                 res = "plotcell = cdat.cdat.CDATCell()\n"
             res += "plotcell.slab1=%s.variable\n"%args[0]
+            self.add_dependency(args[0],'plotcell')
             args.pop(0)
             if not args[0].startswith("'") and not args[0].startswith('"'):
                 res += "plotcell.slab2=%s.variable\n"%args[0]
+                self.add_dependency(args[0], 'plotcell')
                 args.pop(0)  
             col= args[-1].split("=")[1]
             res+= "plotcell.col=%s\n"%col
@@ -219,7 +252,7 @@ class CDATParser(object):
             self.obj_map['plotcell'] = 'cdat.CDATCell'
         return res.split("\n")
     
-    def _convert_attrib_vector_access(self, lvar, rvar, index):
+    def _convert_assign_vector_access(self, lvar, rvar, index):
         #this dictionary will store the full list of commands. Will create
         # necessary modules
         convert_mapping = {'cdms2.dataset.CdmsFile': "%(lvar)s = cdat.cdms2.dataset.__getitem__()\n\
@@ -237,16 +270,20 @@ class CDATParser(object):
                 # rvar could a variable used before, so we translate 
                 # according to type
                 res = convert_mapping[self.obj_map[rvar]]%(params)
+                self.add_dependency(rvar, lvar)
             except KeyError:
                 # funcname might be a variable used before, so we translate according to type
                 res = convert_mapping[rvar]%(params)
+                self.add_dependency(rvar, lvar)
         else:
             #this means that lvar was used before so we just have to change 
             # its parameters
             try:
                 res = convert_mapping_update[self.obj_map[rvar]]%(params)
+                self.add_dependency(rvar, lvar)
             except KeyError:
                 # funcname might be a variable used before, so we translate according to type
                 res = convert_mapping_update[rvar]%(params)
+                self.add_dependency(rvar, lvar)
         return res.split("\n")
     

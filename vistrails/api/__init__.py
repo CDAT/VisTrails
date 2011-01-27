@@ -122,11 +122,12 @@ def add_module(x, y, identifier, name, namespace, controller=None):
     return result
     
 def add_module_from_descriptor(descriptor, x=0.0, y=0.0, 
-                               internal_version=-1, controller=None):
+                               internal_version=-1, controller=None, 
+                               auto_layout=False):
     if controller is None:
         controller = get_current_controller()
     result = controller.add_module_from_descriptor(descriptor, x, y, 
-                                                   internal_version)
+                                                   internal_version, auto_layout)
     controller.current_pipeline_view.setupScene(controller.current_pipeline)
     result = controller.current_pipeline.modules[result.id]
     return result
@@ -141,6 +142,12 @@ def add_connection(output_id, output_port_spec, input_id, input_port_spec,
     result = controller.current_pipeline.connections[result.id]
     return result
 
+def delete_module(module_id, controller=None):
+    if controller is None:
+        controller = get_current_controller()
+    controller.delete_module(module_id)
+    controller.current_pipeline_view.setupScene(controller.current_pipeline)
+    
 def create_group(module_ids, connection_ids, controller=None):
     if controller is None:
         controller = get_current_controller()

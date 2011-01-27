@@ -155,7 +155,7 @@ class vistrails_module(object):
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_module'):
             self._module = \
-                api.add_module_from_descriptor(self._module_desc)
+                api.add_module_from_descriptor(self._module_desc, auto_layout=True)
             # FIXME if constant, we can use args
             module_desc = self._module_desc
             for attr_name, value in kwargs.iteritems():
@@ -292,6 +292,11 @@ class vistrails_module(object):
             api.change_parameter(self._module.id,
                                  port_spec.name,
                                  [str(x) for x in args])
+            
+    def __del__(self):
+        if hasattr(self,'_module'):
+            if self._module:
+                api.delete_module(self._module.id)
 
 class QShell(QtGui.QTextEdit):
     """This class embeds a python interperter in a QTextEdit Widget

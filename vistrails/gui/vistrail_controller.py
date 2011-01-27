@@ -235,7 +235,13 @@ class VistrailController(QtCore.QObject, BaseController):
         return action
 
     def add_module_from_descriptor(self, descriptor, x=0.0, y=0.0, 
-                                   internal_version=-1):
+                                   internal_version=-1, auto_layout=False):
+        if auto_layout == True:
+            sceneBoundingRect = self.current_pipeline_view.itemsBoundingRect()
+            #we will layout the modules from top to bottom
+            if sceneBoundingRect.height() > 0:
+                y = -(sceneBoundingRect.bottomRight().y() + (54 + 3))
+            x = sceneBoundingRect.center().x()
         module = self.create_module_from_descriptor(descriptor, x, y, 
                                                     internal_version)
         action = self.add_module_action(module)
