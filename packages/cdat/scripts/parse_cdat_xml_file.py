@@ -158,8 +158,14 @@ class CDATModuleNode(XMLNode):
                               actions=actions)
 
 def parse_cdat_xml_file(filename):
-    """ parse_cdat_xml_file(filename:str) -> CDATDiagnostic
+    """ parse_cdat_xml_file(filename:str) -> CDATModuleNode
     """
     tree = ElementTree.parse(filename)
     module = CDATModuleNode.from_xml(tree.getroot())
+    return module
+
+def parse_cdat_xml_string(text):
+    """ parse_cdat_xml_string(text:str) -> CDATModuleNode
+    """
+    module = CDATModuleNode.from_xml(ElementTree.fromstring(text))
     return module

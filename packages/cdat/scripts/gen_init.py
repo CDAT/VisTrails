@@ -56,7 +56,9 @@ def write__init__(output_file):
     header.append("        raise core.requirements.MissingRequirements('cdms2')\n")
     header.append("    if not core.requirements.python_module_exists('cdutil'):\n")
     header.append("        raise core.requirements.MissingRequirements('cdutil')\n")
-    header.append("    import vcs, cdms2, cdutil\n")
+    header.append("    if not core.requirements.python_module_exists('lepl'):\n")
+    header.append("        raise core.requirements.MissingRequirements('lepl')\n")
+    header.append("    import vcs, cdms2, cdutil, lepl\n")
     header.append("\n")
 
     outfile = open(output_file, "w")
