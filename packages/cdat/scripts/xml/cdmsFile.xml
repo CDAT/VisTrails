@@ -1,5 +1,6 @@
-<diagnostic author="PCMDI's software team" programminglanguage="Python" type="class" url="http://cdat.sf.net" version="5.0.0.alpha7" codepath="cdms2.dataset.CdmsFile">
-	<action name="__call__" type="function">
+<diagnostic author="PCMDI's software team" codepath="cdms2.dataset.CdmsFile" programminglanguage="Python" type="class" url="http://cdat.sf.net" version="6.0.alpha">
+	<action name="close" type="function"/>
+    <action name="__call__" type="function">
         <input>
            <id doc="" instance="str" position="0" required="True"/>
         </input>
@@ -41,4 +42,511 @@ Description of Function:
 ###################################################################################################################
     </doc>
 </action>
+	<action name="copyAxis" type="function">
+		<options>
+			<newname default="None" doc="new name for axis" instance="None/str"/>
+			<index default="None" doc="" instance="int/None"/>
+			<extbounds default="None" doc="" instance="None/numpy.ndarray"/>
+			<unlimited default="0" doc="unlimited dimension ?" instance="int/True/False"/>
+		</options>
+		<input>
+			<axis doc="axis to copy" instance="cdms2.axis.FileAxis/cdms2.axis.FileVirtualAxis" position="0"/>
+		</input>
+		<output>
+			<axis doc="copy of input axis" instance="cdms2.axis.FileAxis/cdms2.axis.FileVirtualAxis" position="0"/>
+		</output>
+		<doc>
+			Copy axis description and data from another axis
+		</doc>
+	</action>
+	<action name="copyGrid" type="function">
+		<options>
+			<newname default="None" doc="new name for grid" instance="str/None"/>
+		</options>
+		<input>
+			<grid doc="file grid" instance="cdms2.grid.FileRectGrid/cdms2.hgrid.FileCurveGrid/cdms2.gengrid.FileGenericGrid" position="0"/>
+		</input>
+		<output>
+			<grid doc="file grid" instance="cdms2.grid.FileRectGrid/cdms2.hgrid.FileCurveGrid/cdms2.gengrid.FileGenericGrid" position="0"/>
+		</output>
+		<doc>
+			Create an implicit rectilinear grid. lat, lon, and mask are objects. order and type are strings
+		</doc>
+	</action>
+	<action name="createAxis" type="function">
+		<options>
+			<unlimited default="0" doc="unlimited dimension ?" instance="int/True/False"/>
+		</options>
+		<input>
+			<ar doc="1-D data array containing dimension values, or None for an unlimited axis" instance="numpy.ndarray/None" position="1"/>
+			<name doc="dimension name" instance="str" position="0"/>
+		</input>
+		<output>
+			<axis doc="file axis whose id is name" instance="cdms2.axis.FileAxis" position="0"/>
+		</output>
+		<doc>
+			Create an axis
+        'name' is the string name of the Axis
+        'ar' is the 1-D data array, or None for an unlimited axis
+        Set unlimited to true to designate the axis as unlimited
+        Return an axis object.
+		</doc>
+	</action>
+	<action name="createRectGrid" type="function">
+		<options>
+			<mask default="None" doc="mask" instance="None/numpy.ndarray"/>
+			<type default="'generic'" doc="grid type" instance="str"/>
+		</options>
+		<input>
+			<lat doc="latitude array" instance="numpy.ndarray" position="1"/>
+			<lon doc="longitude array" instance="numpy.ndarray" position="2"/>
+			<id doc="grid name" instance="str" position="0"/>
+			<order doc="order" instance="str" position="3"/>
+		</input>
+		<output>
+			<grid doc="file grid" instance="cdms2.grid.FileRectGrid" position="0"/>
+		</output>
+		<doc>
+			Create an implicit rectilinear grid. lat, lon, and mask are objects. order and type are strings
+		</doc>
+	</action>
+	<action name="createVariable" type="function">
+		<options>
+			<fill_value default="None" doc="fill_value" instance="int/float/None"/>
+		</options>
+		<input>
+			<datatype doc="file variable type" instance="str/type" position="1"/>
+			<axesOrGrids doc="list of FileAxis or FileRectGrid" instance="[cdms2.axis.FileAxis]/[cdms2.grid.FileRectGrid]" position="2"/>
+			<name doc="file variable name" instance="str" position="0"/>
+		</input>
+		<output>
+			<axis doc="file variable" instance="cdms2.fvariable.FileVariable" position="0"/>
+		</output>
+		<doc>
+			Create a variable
+        'name' is the string name of the Variable
+        'datatype' is a CDMS datatype or numpy typecode
+        'axesOrGrids' is a list of axes, grids. (Note: this should be generalized to allow subintervals of axes and/or grids)
+        Return a variable object.
+		</doc>
+	</action>
+	<action name="createVariableCopy" type="function">
+		<input>
+			<var doc="variable to copy" instance="cdms2.tvariable.TransientVariable/cdms2.fvariable.FileVariable" position="0"/>
+		</input>
+		<options>
+			<index doc="the extended dimension index to write to. The default index is determined by lookup relative to the existing extended dimension" instance="None/int"/>
+			<fill_value default="None" doc="the missing value flag" instance="None/float"/>
+			<extend default="0" doc="If 1, define the first dimension as the unlimited dimension. If 0, do not define an unlimited dimension. The default is the define the first dimension as unlimited only if it is a time dimension." instance="int"/>
+			<newname doc="id/newname of new variable" instance="str/None"/>
+			<axes default="None" doc="list of axes to use for the copied variable" instance="None/[cdms2.axis.AbstractAxis]"/>
+			<extbounds default="None" doc="Bounds of the (portion of) the extended dimension being written" instance="None/numpy.ndarray"/>
+			<grid doc="grid to use" instance="None/cdms2.grid.AbstractGrid"/>
+			<attributes default="None" doc="use these attributes instead of the original var ones" instance="None/dict"/>
+			<id default="None" doc="id of copied variable" instance="str/None"/>
+		</options>
+		<output>
+			<variable doc="file variable" instance="cdms2.fvariable.FileVariable" position="0"/>
+		</output>
+		<doc>
+			Define a new variable, with the same axes and attributes as in &lt;var&gt;.
+        This does not copy the data itself.
+        Keywords:
+        attributes: A dictionary of attributes. Default is var.attributes.
+        axes: The list of axis objects. Default is var.getAxisList()
+        extbounds: Bounds of the (portion of) the extended dimension being written.
+        id or newname: String identifier of the new variable.
+        extend: If 1, define the first dimension as the unlimited dimension. If 0, do not define
+          an unlimited dimension. The default is the define the first dimension as unlimited
+          only if it is a time dimension.
+        - fill_value is the missing value flag.
+        - index is the extended dimension index to write to. The default index is determined
+          by lookup relative to the existing extended dimension.
+        grid is the variable grid. If none, the value of var.getGrid() is used.
+		</doc>
+	</action>
+	<action name="createVirtualAxis" type="function">
+		<input>
+			<name doc="dimension name" instance="str" position="0"/>
+			<axislen doc="" instance="int" position="1"/>
+		</input>
+		<output>
+			<axis doc="file axis whose id is name" instance="cdms2.axis.FileVirtualAxis" position="0"/>
+		</output>
+		<doc>
+			Create an axis without any associated coordinate array. This
+        axis is read-only. This is useful for the 'bound' axis.
+        &lt;name&gt; is the string name of the axis.
+        &lt;axislen&gt; is the integer length of the axis.
+
+        Note: for netCDF output, this just creates a dimension without
+        the associated coordinate array. On reads the axis will look like
+        an axis of type float with values [0.0, 1.0, ..., float(axislen-1)].
+        On write attempts an exception is raised.
+		</doc>
+	</action>
+	<action name="dimensionarray" type="function">
+		<options>
+			<vname default="None" doc="variable name" instance="str/None"/>
+		</options>
+		<input>
+			<dname doc="dimension name" instance="str" position="0"/>
+		</input>
+		<output>
+			<axisvalues doc="array with values of axis whose id is vname" instance="numpy.ndarray" position="0"/>
+		</output>
+		<doc>
+			Values of the dimension named dname.
+		</doc>
+	</action>
+	<action name="dimensionobject" type="function">
+		<options>
+			<vname default="None" doc="variable name" instance="str/None"/>
+		</options>
+		<input>
+			<dname doc="dimension name" instance="str" position="0"/>
+		</input>
+		<output>
+			<axis doc="file axis whose id is vname" instance="cdms2.axis.FileAxis" position="0"/>
+		</output>
+		<doc>
+			CDMS axis object for the dimension named dname.
+		</doc>
+	</action>
+	<action name="dump" type="function">
+		<input>
+			<path doc="result file name, None for standard output" instance="None" position="0"/>
+			<format doc="1 if the file is formatted with newlines for readability" instance="int" position="1"/>
+		</input>
+		<output>
+			<None doc="nothing returned" instance="None" position="0"/>
+		</output>
+		<doc>
+			dump(self,path=None,format=1)
+        Dump an XML representation of this object to a file.
+        'path' is the result file name, None for standard output.
+        'format'==1 if the file is formatted with newlines for readability
+		</doc>
+	</action>
+	<action name="getAxis" type="function">
+		<input>
+			<id doc="id of the axis to get" instance="str" position="0"/>
+		</input>
+		<output>
+			<axis doc="file axis" instance="cdms2.axis.FileAxis/None" position="0"/>
+		</output>
+		<doc>
+			Get the axis object with the given id. Returns None if not found.
+		</doc>
+	</action>
+	<action name="getBoundsAxis" type="function">
+		<input>
+			<n doc="?" instance="int" position="0"/>
+		</input>
+		<output>
+			<axis doc="bound axis" instance="cdms2.axis.FileAxis/cdms2.axis.FileVirtualAxis" position="0"/>
+		</output>
+		<doc>
+			Get a bounds axis of length n. Create the bounds axis if necessary.
+		</doc>
+	</action>
+	<action name="getGrid" type="function">
+		<input>
+			<id doc="id of the grid to get" instance="str" position="0"/>
+		</input>
+		<output>
+			<grid doc="file axis" instance="cdms2.hgrid.FileCurveGrid/cdms2.gengrid.FileGenericGrid/cdms2.grid.FileRectGrid/None" position="0"/>
+		</output>
+		<doc>
+			Get the grid object with the given id. Returns None if not found.
+		</doc>
+	</action>
+	<action name="getVariable" type="function">
+		<input>
+			<id doc="id of the variable to get" instance="str" position="0"/>
+		</input>
+		<output>
+			<variable doc="file variable" instance="cdms2.fvariable.FileVariable/None" position="0"/>
+		</output>
+		<doc>
+			Get the variable object with the given id. Returns None if not found.
+		</doc>
+	</action>
+	<action name="getVariables" type="function">
+		<options>
+			<spatial default="0" doc="If spatial=1, only return those axes defined on latitude or longitude, excluding weights and bounds" instance="int/True/False"/>
+		</options>
+		<output>
+			<variables doc="file variables" instance="[cdms2.fvariable.FileVariable]" position="0"/>
+		</output>
+		<doc>
+			Get a list of variable objects. If spatial=1, only return those
+        axes defined on latitude or longitude, excluding weights and bounds.
+		</doc>
+	</action>
+	<action name="getattribute" type="function">
+		<input>
+			<attribute doc="attribute name" instance="str" position="1"/>
+			<vname doc="variable name" instance="str/None" position="0"/>
+		</input>
+		<output>
+			<attribute_value doc="value of requested attribute" instance="str/int/float/numpy.ndarray" position="0"/>
+		</output>
+		<doc>
+			Get the value of attribute for variable vname
+		</doc>
+	</action>
+	<action name="getdimensionunits" type="function">
+		<options>
+			<vname default="None" doc="variable name" instance="str/None"/>
+		</options>
+		<input>
+			<dname doc="dimension name" instance="str" position="0"/>
+		</input>
+		<output>
+			<units doc="units of axis whose id is vname" instance="str" position="0"/>
+		</output>
+		<doc>
+			Get the units for the given dimension.
+		</doc>
+	</action>
+	<action name="getglobal" type="function">
+		<input>
+			<attribute doc="global attribute name" instance="str" position="0"/>
+		</input>
+		<output>
+			<attribute_value doc="value of requested global attribute" instance="str/int/float/numpy.ndarray" position="0"/>
+		</output>
+		<doc>
+			Get the value of the global attribute.
+		</doc>
+	</action>
+	<action name="getslab" type="function">
+		<options>
+			<args doc="tuple of type (val1,val2,'cob') for any given dimension" instance="tuple"/>
+		</options>
+		<input>
+			<vname doc="variable name" instance="str/None" position="0"/>
+		</input>
+		<output>
+			<variable doc="variable requested" instance="cdms2.tvariable.TransientVariable" position="0"/>
+		</output>
+		<doc>
+			getslab('name', arg1, arg2, ....) returns a cdms variable
+           containing the data.
+
+           Arguments for each dimension can be:
+              (1) : or None -- selected entire dimension
+              (2) Ellipsis -- select entire dimensions between the ones given.
+              (3) a pair of successive arguments giving an interval in
+                  world coordinates.
+              (4) a cdms-style tuple of world coordinates e.g. (start, stop, 'cc')
+		</doc>
+	</action>
+	<action name="listall" type="function">
+		<options>
+			<all default="None" doc="include axes information" instance="None/True/False/int"/>
+			<vname default="None" doc="variable name" instance="str/None"/>
+		</options>
+		<doc>
+			Get info about data from the file.
+		</doc>
+	</action>
+	<action name="listattribute" type="function">
+		<options>
+			<vname default="None" doc="variable name" instance="str/None"/>
+		</options>
+		<doc>
+			Get attributes of data from the file.
+		</doc>
+	</action>
+	<action name="listdimension" type="function">
+		<options>
+			<vname default="None" doc="variable name" instance="str/None"/>
+		</options>
+		<doc>
+			Return a list of the dimension names associated with a variable.
+           If no argument, return the file.axes.keys()
+		</doc>
+	</action>
+	<action name="listglobal" type="function">
+		<doc>
+			Returns a list of the global attributes in the file.
+		</doc>
+	</action>
+	<action name="listvariable" type="function">
+		<doc>
+			Return a list of the variables in the file.
+		</doc>
+	</action>
+	<action name="matchPattern" type="function">
+		<input>
+			<pattern doc="pattern" instance="str" position="0"/>
+			<tag doc="node tag" instance="str/None" position="2"/>
+			<attribute doc="attribute name" instance="str/None" position="1"/>
+		</input>
+		<output>
+			<result doc="" instance="list" position="0"/>
+		</output>
+		<doc>
+			Match for a pattern in a string-valued attribute. If attribute is None, search all string attributes. If tag is not None, it must match the internal node tag.
+		</doc>
+	</action>
+	<action name="matchone" type="function">
+		<input>
+			<pattern doc="pattern" instance="str" position="0"/>
+			<attname doc="attribute name" instance="str/None" position="1"/>
+		</input>
+		<output>
+			<result doc="True if the attribute with name attname is a string attribute which matches the compiled regular expression pattern, or if attname is None and pattern matches at least one string attribute, False if the attribute is not found or is not a string" instance="int/True/False" position="0"/>
+		</output>
+		<doc>
+			Return true if the attribute with name attname is a string
+        attribute which matches the compiled regular expression pattern, or
+        if attname is None and pattern matches at least one string
+        attribute. Return false if the attribute is not found or is not a string
+		</doc>
+	</action>
+	<action name="readScripGrid" type="function">
+		<options>
+			<whichGrid default="'destination'" doc="grid to read
+        checkGrid (int) (1) if 1 the grid cells are checked for convexity" instance="str"/>
+		</options>
+		<output>
+			<grid doc="variable requested" instance="cdms2.hgrid.TransientCurveGrid/cdms2.gengrid.TransientGenericGrid" position="0"/>
+		</output>
+		<doc>
+			Read a SCRIP curvilinear or generic grid from the dataset.
+        The dataset can be a SCRIP grid file or mapping file. If a mapping file,
+        'whichGrid' chooses the grid to read, either &quot;source&quot; or &quot;destination&quot;.
+        If 'checkGrid' is 1 (default), the grid cells are checked for convexity,
+        and 'repaired' if necessary.
+        Returns the grid object.
+		</doc>
+	</action>
+	<action name="searchPattern" type="function">
+		<input>
+			<pattern doc="pattern" instance="str" position="0"/>
+			<tag doc="node tag" instance="str/None" position="2"/>
+			<attribute doc="attribute name" instance="str/None" position="1"/>
+		</input>
+		<output>
+			<result doc="" instance="list" position="0"/>
+		</output>
+		<doc>
+			Search for a pattern in a string-valued attribute. If attribute is None, search all string attributes. If tag is not None, it must match the internal node tag.
+		</doc>
+	</action>
+	<action name="searchPredicate" type="function">
+		<input>
+			<predicate doc="predicate" instance="function" position="0"/>
+			<tag doc="node tag" instance="str/None" position="1"/>
+		</input>
+		<output>
+			<result doc="" instance="list" position="0"/>
+		</output>
+		<doc>
+			Apply a truth-valued predicate. Return a list containing a single instance: [self] if the predicate is true and either tag is None or matches the object node tag. If the predicate returns false, return an empty list
+		</doc>
+	</action>
+	<action name="searchone" type="function">
+		<input>
+			<pattern doc="pattern" instance="str" position="0"/>
+			<attname doc="attribute name" instance="str/None" position="1"/>
+		</input>
+		<output>
+			<result doc="True if the attribute with name attname is a string attribute which contains the compiled regular expression pattern, or if attname is None and pattern matches at least one string attribute, False if the attribute is not found or is not a string" instance="int/True/False" position="0"/>
+		</output>
+		<doc>
+			Return true if the attribute with name attname is a string
+        attribute which contains the compiled regular expression pattern, or
+        if attname is None and pattern matches at least one string
+        attribute. Return false if the attribute is not found or is not 
+        a string.
+		</doc>
+	</action>
+	<action name="showall" type="function">
+		<options>
+			<device default="None" doc="output device" instance="None/file"/>
+			<all default="None" doc="include axes information" instance="None/True/False/int"/>
+			<vname default="None" doc="variable name" instance="str/None"/>
+		</options>
+		<doc>
+			Show a full description of the variable.
+		</doc>
+	</action>
+	<action name="showattribute" type="function">
+		<options>
+			<device default="None" doc="output device" instance="None/file"/>
+			<vname default="None" doc="variable name" instance="str/None"/>
+		</options>
+		<doc>
+			Show the attributes of vname.
+		</doc>
+	</action>
+	<action name="showdimension" type="function">
+		<options>
+			<device default="None" doc="output device" instance="None/file"/>
+			<vname default="None" doc="variable name" instance="str/None"/>
+		</options>
+		<doc>
+			Show the dimension names associated with a variable.
+		</doc>
+	</action>
+	<action name="showglobal" type="function">
+		<options>
+			<device default="None" doc="output device" instance="None/file"/>
+		</options>
+		<doc>
+			Show the global attributes in the file.
+		</doc>
+	</action>
+	<action name="showvariable" type="function">
+		<options>
+			<device default="None" doc="output device" instance="None/file"/>
+		</options>
+		<doc>
+			Show the variables in the file.
+		</doc>
+	</action>
+	<action name="sync" type="function"/>
+	<action name="write" type="function">
+		<input>
+			<var doc="variable to copy" instance="cdms2.tvariable.TransientVariable/cdms2.fvariable.FileVariable" position="0"/>
+		</input>
+		<options>
+			<index doc="the extended dimension index to write to. The default index is determined by lookup relative to the existing extended dimension" instance="None/int"/>
+			<fill_value default="None" doc="the missing value flag" instance="None/float"/>
+			<extend default="0" doc="If 1, define the first dimension as the unlimited dimension. If 0, do not define an unlimited dimension. The default is the define the first dimension as unlimited only if it is a time dimension." instance="int"/>
+			<typecode default="None" doc="typdecode to write the variable as" instance="None/str"/>
+			<dtype doc="type to write the variable as; overwrites typecode" instance="None/numpy.dtype"/>
+			<axes default="None" doc="list of axes to use for the copied variable" instance="None/[cdms2.axis.AbstractAxis]"/>
+			<extbounds default="None" doc="Bounds of the (portion of) the extended dimension being written" instance="None/numpy.ndarray"/>
+			<attributes default="None" doc="use these attributes instead of the original var ones" instance="None/dict"/>
+			<id default="None" doc="id of copied variable" instance="str/None"/>
+		</options>
+		<output>
+			<variable doc="file variable" instance="cdms2.fvariable.FileVariable" position="0"/>
+		</output>
+		<doc>
+			Write var to the file. If the variable is not yet defined in the file,
+        a definition is created. By default, the time dimension of the variable is defined as the
+        'extended dimension' of the file. The function returns the corresponding file variable.
+
+        Keywords:
+          - attributes is the attribute dictionary for the variable. The default is var.attributes.
+          - axes is the list of file axes comprising the domain of the variable. The default is to
+            copy var.getAxisList().
+          - extbounds is the extended dimension bounds. Defaults to var.getAxis(0).getBounds()
+          - id is the variable name in the file. Default is var.id.
+          - extend=1 causes the first dimension to be 'extensible': iteratively writeable.
+            The default is None, in which case the first dimension is extensible if it is time.
+            Set to 0 to turn off this behaviour.
+          - fill_value is the missing value flag.
+          - index is the extended dimension index to write to. The default index is determined
+            by lookup relative to the existing extended dimension.
+          - dtype is the numpy dtype
+          - typecode is deprecated, for backward compatibility only
+		</doc>
+	</action>
 </diagnostic>

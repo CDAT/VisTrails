@@ -1,4 +1,4 @@
-<diagnostic author="PCMDI's software team" programminglanguage="Python" type="class" url="http://cdat.sf.net" version="5.0.0.alpha7" codepath="vcs.Canvas.Canvas">
+<diagnostic author="PCMDI's software team" codepath="vcs.Canvas.Canvas" programminglanguage="Python" type="class" url="http://cdat.sf.net" version="6.0.alpha">
 	<action name="boxfill" type="function">
 		<options>
 			<datawc_timeunits default="'days since 2000'" doc="units to use when disaplaying time dimension auto tick" instance="str"/>
@@ -61,7 +61,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<slab doc="Data at least 2D, last 2 dimensions will be plotted" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list" position="0" required="True"/>
+			<slab doc="Data at least 2D, last 2 dimensions will be plotted" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list" position="0"/>
 		</input>
 		<output>
 			<display doc="no default" instance="vcs.displayplot.Dp" position="0"/>
@@ -70,7 +70,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			Function: boxfill                        # Generate a boxfill plot
 
  Description of Function:
-    Generate a boxfill plot given the data, boxfill graphics method, and
+    Generate a boxfill plot given the data, boxfill graphics method, and 
     template. If no boxfill class object is given, then the 'default' boxfill
     graphics method is used. Similarly, if no template class object is given,
     then the 'default' template is used.
@@ -79,7 +79,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
     a=vcs.init()
     a.show('boxfill')                        # Show all the existing boxfill graphics methods
     box=a.getboxfill('quick')                # Create instance of 'quick'
-    a.boxfill(array,box)                # Plot array using specified box and default
+    a.boxfill(array,box)                # Plot array using specified box and default 
                                         #         template
     templt=a.gettemplate('AMIP')        # Create an instance of template 'AMIP'
     a.clear()                           # Clear VCS canvas
@@ -160,8 +160,8 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1" required="False"/>
-			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0" required="False"/>
+			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1"/>
+			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0"/>
 		</input>
 		<output>
 			<boxfill doc="no default" instance="vcs.boxfill.Gfb" position="0"/>
@@ -256,8 +256,8 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1" required="False"/>
-			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0" required="False" />
+			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1"/>
+			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0"/>
 		</input>
 		<output>
 			<isofill doc="no default" instance="vcs.isofill.Gfi" position="0"/>
@@ -352,8 +352,8 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1" required="False"/>
-			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0" required="False"/>
+			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1"/>
+			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0"/>
 		</input>
 		<output>
 			<isoline doc="no default" instance="vcs.isoline.Gi" position="0"/>
@@ -449,8 +449,8 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1" required="False"/>
-			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0" required="False"/>
+			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1"/>
+			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0"/>
 		</input>
 		<output>
 			<outfill doc="no default" instance="vcs.outfill.Gfo" position="0"/>
@@ -546,8 +546,8 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1" required="False"/>
-			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0" required="False"/>
+			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1"/>
+			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0"/>
 		</input>
 		<output>
 			<outline doc="no default" instance="vcs.outline.Go" position="0"/>
@@ -643,8 +643,8 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1" required="False"/>
-			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0" required="False"/>
+			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1"/>
+			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0"/>
 		</input>
 		<output>
 			<scatter doc="no default" instance="vcs.scatter.GSp" position="0"/>
@@ -739,8 +739,8 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1" required="False"/>
-			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0" required="False"/>
+			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1"/>
+			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0"/>
 		</input>
 		<output>
 			<xvsy doc="no default" instance="vcs.xvsy.GXY" position="0"/>
@@ -835,8 +835,8 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1" required="False"/>
-			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0" required="False"/>
+			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1"/>
+			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0"/>
 		</input>
 		<output>
 			<xyvsy doc="no default" instance="vcs.xyvsy.GXy" position="0"/>
@@ -932,8 +932,8 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1" required="False"/>
-			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0" required="False"/>
+			<source_GM_name doc="copy the contents of the source object to the newly created one. If no name is given, then the 'default' graphics methond contents is copied over to the new object." instance="str" position="1"/>
+			<new_GM_name doc="name of the new graphics method object. If no name is given, then one will be created for use." instance="str" position="0"/>
 		</input>
 		<output>
 			<yxvsx doc="no default" instance="vcs.yxvsx.GYx" position="0"/>
@@ -1029,7 +1029,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<GM_name doc="retrieve the graphics method object of the given name. If no name is given, then retrieve the 'default' graphics method." instance="str" position="0" required="False"/>
+			<GM_name doc="retrieve the graphics method object of the given name. If no name is given, then retrieve the 'default' graphics method." instance="str" position="0"/>
 		</input>
 		<output>
 			<boxfill doc="no default" instance="vcs.boxfill.Gfb" position="0"/>
@@ -1043,7 +1043,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
     no boxfill name is given, then boxfill 'default' will be used.
 
     Note, VCS does not allow the modification of `default' attribute
-    sets. However, a `default' attribute set that has been copied under a
+    sets. However, a `default' attribute set that has been copied under a 
     different name can be modified. (See the createboxfill function.)
 
  Example of Use:
@@ -1122,7 +1122,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<GM_name doc="retrieve the graphics method object of the given name. If no name is given, then retrieve the 'default' graphics method." instance="str" position="0" required="False"/>
+			<GM_name doc="retrieve the graphics method object of the given name. If no name is given, then retrieve the 'default' graphics method." instance="str" position="0"/>
 		</input>
 		<output>
 			<isofill doc="no default" instance="vcs.isofill.Gfi" position="0"/>
@@ -1215,7 +1215,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<GM_name doc="retrieve the graphics method object of the given name. If no name is given, then retrieve the 'default' graphics method." instance="str" position="0" required="False"/>
+			<GM_name doc="retrieve the graphics method object of the given name. If no name is given, then retrieve the 'default' graphics method." instance="str" position="0"/>
 		</input>
 		<output>
 			<isoline doc="no default" instance="vcs.isoline.Gi" position="0"/>
@@ -1308,7 +1308,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<GM_name doc="retrieve the graphics method object of the given name. If no name is given, then retrieve the 'default' graphics method." instance="str" position="0" required="False"/>
+			<GM_name doc="retrieve the graphics method object of the given name. If no name is given, then retrieve the 'default' graphics method." instance="str" position="0"/>
 		</input>
 		<output>
 			<outfill doc="no default" instance="vcs.outfill.Gfo" position="0"/>
@@ -1402,7 +1402,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<GM_name doc="retrieve the graphics method object of the given name. If no name is given, then retrieve the 'default' graphics method." instance="str" position="0" required="False"/>
+			<GM_name doc="retrieve the graphics method object of the given name. If no name is given, then retrieve the 'default' graphics method." instance="str" position="0"/>
 		</input>
 		<output>
 			<outline doc="no default" instance="vcs.outline.Go" position="0"/>
@@ -1888,7 +1888,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
     a=vcs.init()
     a.show('isofill')                   # Show all the existing isofill graphics methods
     iso=a.getisofill('quick')           # Create instance of 'quick'
-    a.isofill(array,iso)                # Plot array using specified iso and default
+    a.isofill(array,iso)                # Plot array using specified iso and default 
                                         #       template
     a.clear()                           # Clear VCS canvas
     a.isofill(array,iso,template)       # Plot array using specified iso and template
@@ -1980,7 +1980,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
     a=vcs.init()
     a.show('isoline')                   # Show all the existing isoline graphics methods
     iso=a.getisoline('quick')           # Create instance of 'quick'
-    a.isoline(array,iso)                # Plot array using specified iso and default
+    a.isoline(array,iso)                # Plot array using specified iso and default 
                                         #       template
     a.clear()                           # Clear VCS canvas
     a.isoline(array,iso,template)       # Plot array using specified iso and template
@@ -2072,7 +2072,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
     a=vcs.init()
     a.show('outfill')                   # Show all the existing outfill graphics methods
     out=a.getoutfill('quick')           # Create instance of 'quick'
-    a.outfill(array,out)                # Plot array using specified out and default
+    a.outfill(array,out)                # Plot array using specified out and default 
                                         #       template
     a.clear()                           # Clear VCS canvas
     a.outfill(array,out,template)       # Plot array using specified out and template
@@ -2164,7 +2164,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
     a=vcs.init()
     a.show('outline')                   # Show all the existing outline graphics methods
     out=a.getoutline('quick')           # Create instance of 'quick'
-    a.outline(array,out)                # Plot array using specified out and default
+    a.outline(array,out)                # Plot array using specified out and default 
                                         #       template
     a.clear()                           # Clear VCS canvas
     a.outline(array,out,template)       # Plot array using specified out and template
@@ -2186,12 +2186,12 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<yweights doc="replace xaxis weights used for computing mean" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list"/>
 			<xweights doc="replace xaxis weights used for computing mean" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list"/>
 			<warray doc="Values to use instead of w axis, only if var has more than 4D" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list"/>
+			<datawc_x1 default="1.E20" doc="first value of xaxis on plot" instance="float"/>
 			<tunits doc="replace taxis units on plot (if exists)" instance="str"/>
 			<ymtics1 default="''" doc="dictionary with location of intermediate tics as keys for 1st side of y axis" instance="str/{float:str}"/>
+			<gm default="'default'" doc="graphic method to use" instance="str/vcs.boxfill.Gfb/vcs.isofill.Gfi/vcs.isoline.Gi/vcs.meshfill.Gfm/vcs.vector.Gv/vcs.scatter.GSp/vcs.outline.Go/vcs.outline.Gfo/vcs.taylor.Gtd/vcs.xvsy.GXY/vcs.xyvsy.GXy/vcs.yxvsx.GYx/vcsaddons.core.VCSaddon/vcs.continents.Gcon"/>
 			<ymtics2 default="''" doc="dictionary with location of intermediate tics as keys for 2nd side of y axis" instance="str/{float:str}"/>
-			<datawc_x1 default="1.E20" doc="first value of xaxis on plot" instance="float"/>
 			<datawc_x2 default="1.E20" doc="second value of xaxis on plot" instance="float"/>
-			<continents doc="continents type number" instance="int"/>
 			<xmtics1 default="''" doc="dictionary with location of intermediate tics as keys for 1st side of y axis" instance="str/{float:str}"/>
 			<xmtics2 default="''" doc="dictionary with location of intermediate tics as keys for 2nd side of y axis" instance="str/{float:str}"/>
 			<xbounds doc="Values to use instead of x axis bounds values" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list"/>
@@ -2199,19 +2199,20 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<datawc_y2 default="1.E20" doc="second value of yaxis on plot" instance="float"/>
 			<wname doc="replace waxis name on plot (if exists)" instance="str"/>
 			<file_comment doc="replaces file_comment on plot" instance="str"/>
+			<xaxis doc="Axis object to replace the slab -1 dim axis" instance="cdms2.axis.TransientAxis"/>
 			<datawc_calendar default="135441" doc="calendar to use when displaying time dimension auto tick, default is proleptic gregorian calendar" instance="int"/>
 			<wunits doc="replace waxis units on plot (if exists)" instance="str"/>
 			<xrev doc="reverse x axis" instance="bool"/>
 			<zaxis doc="Axis object to replace the slab -3 dim axis, only if slab has more than 2D" instance="cdms2.axis.TransientAxis"/>
 			<ymd doc="replaces year/month/day on plot" instance="str"/>
-			<yarray doc="Values to use instead of y axis, only if var has more than 1D" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list"/>
+			<template default="'default'" doc="vcs template" instance="str/vcs.template.P"/>
 			<units doc="replaces units value on plot" instance="str"/>
 			<yunits doc="replace yaxis units on plot (if exists)" instance="str"/>
 			<zarray doc="Values to use instead of z axis, only if var has more than 2D" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list"/>
 			<xname doc="replace xaxis name on plot" instance="str"/>
 			<tarray doc="Values to use instead of t axis, only if var has more than 3D" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list"/>
 			<bg doc="plots in background mode" instance="bool/int"/>
-			<xaxis doc="Axis object to replace the slab -1 dim axis" instance="cdms2.axis.TransientAxis"/>
+			<continents doc="continents type number" instance="int"/>
 			<xaxisconvert default="'linear'" doc="converting xaxis linear/log/log10/ln/exp/area_wt" instance="str"/>
 			<zname doc="replace zaxis name on plot (if exists)" instance="str"/>
 			<hms doc="replaces hh/mm/ss on plot" instance="str"/>
@@ -2236,10 +2237,11 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<comment4 doc="replaces comment4 on plot" instance="str"/>
 			<yrev doc="reverse y axis, only if slab has more than 1D" instance="bool"/>
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
+			<slab2 default="None" doc="Data at least 1D, last dimension(s) will be plotted" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list"/>
+			<yarray doc="Values to use instead of y axis, only if var has more than 1D" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list"/>
 		</options>
 		<input>
-			<slab1 doc="Data at least 1D, last dimension will be plotted" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list" position="0" required="True"/>
-			<slab2 doc="Data at least 1D, last dimension will be plotted" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list" position="0" required="False"/>
+			<slab_or_primary_object doc="Data at least 1D, last dimension(s) will be plotted, or primary vcs object" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list/vcs.fillarea.Tf/vcs.line.Tl/vcs.marker.Tm/vcs.textcombined.Tc" position="0"/>
 		</input>
 		<output>
 			<display doc="no default" instance="vcs.displayplot.Dp" position="0"/>
@@ -2249,14 +2251,14 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 
  Description of plot:
     Plot an array(s) of data given a template and graphics method. The VCS template is
-    used to define where the data and variable attributes will be displayed on the VCS
+    used to define where the data and variable attributes will be displayed on the VCS 
     Canvas. The VCS graphics method is used to define how the array(s) will be shown
     on the VCS Canvas.
 
  The form of the call is:
     plot(array1=None, array2=None, template_name=None, graphics_method=None,
             graphics_name=None, [key=value [, key=value [, ...]]])
-
+    
             where array1 and array2 are NumPy arrays.
 
     Plot keywords:
@@ -2266,7 +2268,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
             'auto': computes an automatic ratio
             '3',3: y dim will be 3 times bigger than x dim (restricted to original tempalte.data area
             Adding a 't' at the end of the ratio, makes the tickmarks and boxes move along.
-
+            
     Variable attribute keys:
        comment1         = string   #Comment plotted above file_comment
        comment2         = string   #Comment plotted above comment1
@@ -2280,7 +2282,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
                                     cdtime, reltime or abstime value
        units            = string   #Variable units
        ymd              = string (yy/mm/dd) #Year, month, day
-
+    
     Dimension attribute keys (dimension length=n):
        [x|y|z|t|w]array = NumPy array of length n    # x or y Dimension values
        [x|y|z|t|w]array = NumPy array of length n    # x or y Dimension values
@@ -2289,12 +2291,12 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
        [x|y|z|t|w]units  = string                     # x or y Dimension units
        [x|y]weights      = NumPy array of length n    # x or y Dimension weights (used to
                                                         calculate area-weighted mean)
-
+    
     CDMS object:
        [x|y|z|t|w]axis   = CDMS axis object           # x or y Axis
        grid              = CDMS grid object           # Grid object (e.g. grid=var.getGrid()
        variable          = CDMS variable object       # Variable object
-
+    
     Other:
        [x|y]rev         = 0|1                         # if ==1, reverse the direction of the x
     							     or y axis
@@ -2304,28 +2306,28 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
     							     xname is 'longitude' and yname is
     							     'latitude'
                                                       # The continents-type values are integers
-						      # ranging from 0 to 11, where:
-						      #    0 signifies &quot;No Continents&quot;
-						      #    1 signifies &quot;Fine Continents&quot;
-						      #    2 signifies &quot;Coarse Continents&quot;
+						      # ranging from 0 to 11, where: 
+						      #    0 signifies &quot;No Continents&quot; 
+						      #    1 signifies &quot;Fine Continents&quot; 
+						      #    2 signifies &quot;Coarse Continents&quot; 
 						      #    3 signifies &quot;United States&quot;
 						      #    4 signifies &quot;Political Borders&quot;
 						      #    5 signifies &quot;Rivers&quot;
 
 						      # Values 6 through 11 signify the line type
                                                       # defined by the files data_continent_other7
-                                                      # through data_continent_other12.
+                                                      # through data_continent_other12. 
 
     Graphics Output in Background Mode:
        bg                 = 0|1   # if ==1, create images in the background
                                                              (Don't display the VCS Canvas)
-
+    
  Note:
     More specific attributes take precedence over general attributes. In particular,
     specifie attributes override variable object attributes, dimension attributes and
     arrays override axis objects, which override grid objects, which override variable
     objects.
-
+    
     For example, if both 'file_comment' and 'variable' keywords are specified, the value of
     'file_comment' is used instead of the file comment in the parent of variable. Similarly,
     if both 'xaxis' and 'grid' keywords are specified, the value of 'xaxis' takes precedence
@@ -2334,7 +2336,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
  Example of Use:
     x=vcs.init()        # x is an instance of the VCS class object (constructor)
     x.plot(array)       # this call will use default settings for template and boxfill
-    x.plot(array, 'AMIP', 'isofill','AMIP_psl') # this is specifying the template and
+    x.plot(array, 'AMIP', 'isofill','AMIP_psl') # this is specifying the template and 
                                                   graphics method
     t=x.gettemplate('AMIP')        # get a predefined the template 'AMIP'
     vec=x.getvector('quick')       # get a predefined the vector graphics method 'quick'
@@ -2412,8 +2414,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<slab1 doc="Data at least 1D, last dimension will be plotted" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list" position="0"/>
-			<slab2 doc="Data at least 1D, last dimension will be plotted" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list" position="0"/>
+			<slab_or_primary_object doc="Data at least 1D, last dimension(s) will be plotted, or primary vcs object" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list/vcs.fillarea.Tf/vcs.line.Tl/vcs.marker.Tm/vcs.textcombined.Tc" position="0"/>
 		</input>
 		<output>
 			<display doc="no default" instance="vcs.displayplot.Dp" position="0"/>
@@ -2431,7 +2432,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
     a=vcs.init()
     a.show('scatter')                   # Show all the existing scatter graphics methods
     sct=a.getscatter('quick')           # Create instance of 'quick'
-    a.scatter(array,sct)                # Plot array using specified sct and default
+    a.scatter(array,sct)                # Plot array using specified sct and default 
                                         #       template
     a.clear()                           # Clear VCS canvas
     a.scatter(array,sct,template)       # Plot array using specified sct and template
@@ -2505,8 +2506,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 			<taxis doc="Axis object to replace the slab -4 dim axis, only if slab has more than 3D" instance="cdms2.axis.TransientAxis"/>
 		</options>
 		<input>
-			<slab1 doc="Data at least 1D, last dimension will be plotted" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list" position="0"/>
-			<slab2 doc="Data at least 1D, last dimension will be plotted" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list" position="0"/>
+			<slab_or_primary_object doc="Data at least 1D, last dimension(s) will be plotted, or primary vcs object" instance="cdms2.tvariable.TransientVariable/numpy.core.ma.MaskedArray/numpy.ndarray/list/vcs.fillarea.Tf/vcs.line.Tl/vcs.marker.Tm/vcs.textcombined.Tc" position="0"/>
 		</input>
 		<output>
 			<display doc="no default" instance="vcs.displayplot.Dp" position="0"/>
@@ -2524,7 +2524,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
     a=vcs.init()
     a.show('xvsy')                   # Show all the existing XvsY graphics methods
     xy=a.getxvsy('quick')            # Create instance of 'quick'
-    a.xvsy(array,xy)                 # Plot array using specified xy and default
+    a.xvsy(array,xy)                 # Plot array using specified xy and default 
                                      #       template
     a.clear()                        # Clear VCS canvas
     a.xvsy(array,xy,template)        # Plot array using specified xy and template
@@ -2615,7 +2615,7 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
     a=vcs.init()
     a.show('xyvsy')                   # Show all the existing Xyvsy graphics methods
     xyy=a.getxyvsy('quick')           # Create instance of 'quick'
-    a.xyvsy(array,xyy)                # Plot array using specified xyy and default
+    a.xyvsy(array,xyy)                # Plot array using specified xyy and default 
                                         #       template
     a.clear()                           # Clear VCS canvas
     a.xyvsy(array,xyy,template)       # Plot array using specified xyy and template
@@ -2718,30 +2718,4 @@ time &quot;&quot; (cdtime.comptime/cdtime.reltime/cdtime.abstime) () replaces ti
 #################################################################################################################
 		</doc>
 	</action>
-    <action name="png" type="function">
-		<input>
-			<file doc="" instance="str" position="0" required="True"/>
-			<width doc="" instance="float" position="1" required="False"/>
-			<height doc="" instance="float" position="2" required="False"/>
-			<units doc="" instance="str" position="3" required="False"/>
-		</input>
-		<doc>
-			Function: png
-
- Description of Function:
-    Png output is another form of raster graphics.
-
- Example of Use:
-    a=vcs.init()
-    a.plot(array)
-    a.png('example')       # Overwrite a png file
-    a.png('example', width=11.5, height= 8.5)  # US Legal
-    a.png('example', width=21, height=29.7, units='cm')  # A4
-#################################################################################################################
-###########################################                       ###############################################
-########################################## End png Description ################################################
-#########################################                       #################################################
-#################################################################################################################
-		</doc>
-    </action>
 </diagnostic>

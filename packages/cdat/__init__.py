@@ -49,5 +49,7 @@ def package_requirements():
         raise core.requirements.MissingRequirements('cdms2')
     if not core.requirements.python_module_exists('cdutil'):
         raise core.requirements.MissingRequirements('cdutil')
-    import vcs, cdms2, cdutil
+    if not core.requirements.python_module_exists('lepl'):
+        raise core.requirements.MissingRequirements('lepl')
+    import vcs, cdms2, cdutil, lepl
 

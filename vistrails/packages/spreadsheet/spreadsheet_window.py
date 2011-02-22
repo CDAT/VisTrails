@@ -371,12 +371,18 @@ class SpreadsheetWindow(QtGui.QMainWindow):
                 return q.containedWidget!=None
             p = q
             while (p and (not p.isModal()) and type(p)!=StandardWidgetSheet):
-                p = p.parent()
-            if p and not p.isModal():
-                pos = p.viewport().mapFromGlobal(e.globalPos())
-                p.emit(QtCore.SIGNAL('cellActivated(int, int, bool)'),
-                       p.rowAt(pos.y()), p.columnAt(pos.x()),
-                       e.modifiers()==QtCore.Qt.ControlModifier)
+                try:
+                    p = p.parent()
+                except TypeError:
+                    break
+            try:    
+                if p and not p.isModal():
+                    pos = p.viewport().mapFromGlobal(e.globalPos())
+                    p.emit(QtCore.SIGNAL('cellActivated(int, int, bool)'),
+                           p.rowAt(pos.y()), p.columnAt(pos.x()),
+                           e.modifiers()==QtCore.Qt.ControlModifier)
+            except AttributeError:
+                return False
         return False
         #return QtGui.QMainWindow.eventFilter(self,q,e)
 

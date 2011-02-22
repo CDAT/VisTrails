@@ -46,6 +46,6 @@ cdms2 = py_import('cdms2', {})
 cdutil = py_import('cdutil', {})
 
 #local python modules
-from cdat_cell import QCDATWidget, CDATCell, Variable, GraphicsMethod
+from cdat_cell import QCDATWidget, CDATCell, Variable, GraphicsMethod, Gfb
 from quickplot import quickplot
 from translator import QTranslator

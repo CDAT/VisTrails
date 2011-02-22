@@ -106,7 +106,8 @@ class CDATActionNode(XMLNode):
         options = []
         inputs = []
         outputs = []
-
+        doc = ""
+        
         #read children
         for child in node.getchildren():
             if child.tag == 'options':

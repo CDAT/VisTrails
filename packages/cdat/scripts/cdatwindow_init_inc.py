@@ -30,7 +30,9 @@
     reg.add_input_port(CDATCell, 'template',
                        (core.modules.basic_modules.String, "template name"))
     reg.add_input_port(CDATCell, 'gmName',
-                       (core.modules.basic_modules.String, "graphics method name"))    
+                       (core.modules.basic_modules.String, "graphics method name"))
+    reg.add_input_port(CDATCell, 'gm',
+                       (Module, "boxfill graphics method"))
     reg.add_input_port(CDATCell, 'canvas',
                        (Canvas, "Canvas object"))
     reg.add_input_port(CDATCell, 'col',
@@ -90,6 +92,8 @@
                         "slab2"))            
     reg.add_output_port(GraphicsMethod, 'canvas', (Canvas, "Canvas object"))
     
+    reg.add_module(Gfb, namespace='cdat')
+
     # end of cdatwindow_init_inc.py
     ##########################################################################
 

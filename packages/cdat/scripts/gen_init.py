@@ -182,9 +182,9 @@ def get_CdmsFile_compute_method(action, ident=''):
             lines.append("\n"+ ident +"    # %s is a required port\n" % inp._name)
             lines.append(ident + "    if %s is None:\n" % inp._name)
             lines.append(ident + "        raise ModuleError(self, \"'%s' is a mandatory port\")\n" % inp._name)
-
-    lines.append(ident + "    res = cdmsfile.%s(*args)\n"%action._name)
-    lines.append(ident + "    self.setResult('%s',res)\n"%action._outputs[0]._name)
+    if len(action._outputs) > 0:
+        lines.append(ident + "    res = cdmsfile.%s(*args)\n"%action._name)
+        lines.append(ident + "    self.setResult('%s',res)\n"%action._outputs[0]._name)
     lines.append("\n")
     return lines
 
@@ -249,13 +249,10 @@ if __name__ == '__main__':
 
         elif m._codepath == "cdms2.dataset.CdmsFile":
             for a in m._actions:
-                if a._name == "__call__" or a._name == "__getitem__":
-                    a.write_module_definition(class_lines,
-                                              ident='',
-                                               compute_method=get_CdmsFile_compute_method(a,
-                                                                                  ident="    "))
-                else:
-                    a.write_module_definition(class_lines)
+                a.write_module_definition(class_lines,
+                                          ident='',
+                                          compute_method=get_CdmsFile_compute_method(a,
+                                                                                     ident="    "))
 
             m.add_extra_input_port_to_all_modules(init_lines,
                                                port_name='cdmsfile',

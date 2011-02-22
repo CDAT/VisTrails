@@ -173,12 +173,53 @@ class GraphicsMethod(Module, NotCacheable):
         # Add canvas / slab to output Ports
         self.setResult('slab1', slab1)
         self.setResult('canvas', canvas)
-
+        
+#this will be moved to be parsed from xml        
+class Gfb(Module):
+    _input_ports = [('name', '(edu.utah.sci.vistrails.basic:String)'),
+                    ('datawc_x1', '(edu.utah.sci.vistrails.basic:Float)', True),
+                    ('datawc_x2', '(edu.utah.sci.vistrails.basic:Float)', True),
+                    ('datawc_y1', '(edu.utah.sci.vistrails.basic:Float)', True),
+                    ('datawc_y2', '(edu.utah.sci.vistrails.basic:Float)', True),
+                    ('level_1', '(edu.utah.sci.vistrails.basic:Float)', True),
+                    ('level_2', '(edu.utah.sci.vistrails.basic:Float)', True),
+                    ('projection', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('yticlabels2', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('yticlabels1', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('xticlabels1', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('xticlabels2', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('ymtics1', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('xmtics1', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('ymtics2', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('xmtics2', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('color_1', '(edu.utah.sci.vistrails.basic:Float)', True),
+                    ('color_2', '(edu.utah.sci.vistrails.basic:Float)', True),
+                    ('boxfill_type', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('fillareacolors', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('datawc_calendar', '(edu.utah.sci.vistrails.basic:Integer)', True),
+                    ('missing', '(edu.utah.sci.vistrails.basic:Integer)', True),
+                    ('ext_1', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('levels', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('legend', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('datawc_timeunits', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ('ext_2', '(edu.utah.sci.vistrails.basic:String)', True),
+                    ]
+    def __init__(self):
+        Module.__init__(self)
+        self._name = ''
+        self.options = {}
+        
+    def compute(self):
+        self._name = self.getInputFromPort('name')
+        for port in Gfb._input_ports:
+            if port[0] != 'name' and self.hasInputFromPort(port):
+                self.options[port[0]] = self.getInputFromPort(port)
+                
 class CDATCell(SpreadsheetCell, NotCacheable):
     def __init__(self):
         SpreadsheetCell.__init__(self)
         self.cellWidget = None
-    
+        
     def compute(self):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
@@ -219,9 +260,11 @@ class CDATCell(SpreadsheetCell, NotCacheable):
         canvas = None
         if self.hasInputFromPort('canvas'):
             canvas = self.getInputFromPort('canvas')
-        
+        gm = None
+        if self.hasInputFromPort('gm'):
+            gm = self.getInputFromPort('gm')
         # Plot into the cell
-        inputPorts = (canvas, args, kwargs)
+        inputPorts = (canvas, gm, args, kwargs)
         self.cellWidget = self.displayAndWait(QCDATWidget, inputPorts)        
         self.setResult('canvas', self.cellWidget.canvas)        
 
@@ -288,11 +331,17 @@ Please delete unused CDAT Cells in the spreadsheet.")
            
         self.canvas.clear()
         # Plot
-        if len(inputPorts) > 2:
-            args = inputPorts[1]
-            kwargs = inputPorts[2]
+        if len(inputPorts) > 3:
+            gm = inputPorts[1]
+            args = inputPorts[2]
+            kwargs = inputPorts[3]
+            if gm is not None:
+                if isinstance(gm, Gfb):
+                    cgm = self.canvas.getboxfill(gm._name)
+                    for (k,v) in gm.options.iteritems():
+                        setattr(cgm,k,v)
             self.canvas.plot(*args, **kwargs)
-        
+
         spreadsheetWindow.setUpdatesEnabled(True)
 
     def deleteLater(self):

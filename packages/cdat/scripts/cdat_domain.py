@@ -25,6 +25,14 @@ def convert_to_vt_type(t):
                     'float': 'core.modules.basic_modules.Float',
                     'int':'core.modules.basic_modules.Integer',
                     'bool':'core.modules.basic_modules.Boolean',
+                    'list': 'core.modules.basic_modules.List',
+                    'None': 'core.modules.basic_modules.Null',
+                    'file': 'core.modules.basic_modules.File',
+                    'dict': 'core.modules.basic_modules.Dictionary',
+                    'tuple': 'core.modules.basic_modules.Tuple',
+                    'True' : 'core.modules.basic_modules.Boolean',
+                    'False': 'core.modules.basic_modules.Boolean',
+                    'vcs.boxfill.Gfb' : 'Gfb',
                     #'numpy.ndarray':'reg.get_module_by_name("edu.utah.sci.vistrails.numpyscipy", "Numpy Array", namespace="numpy|array")',
                     }
     if vt_type_dict.has_key(t):
@@ -72,10 +80,12 @@ class CDATModule:
     @staticmethod
     def write_extra_module_definitions(lines):
         for t in CDATModule._extra_modules:
-            namespace,name = CDATModule.split(t)
-            lines.append("%s = new_module(Module,'%s')\n"%(name,name))
-            lines.append("vt_type_dict['%s'] = %s\n"%(t,name))
-            CDATModule._extra_vistrails_modules[name] = namespace
+            e = convert_to_vt_type(t)
+            if e == None:
+                namespace,name = CDATModule.split(t)
+                lines.append("%s = new_module(Module,'%s')\n"%(name,name))
+                lines.append("vt_type_dict['%s'] = %s\n"%(t,name))
+                CDATModule._extra_vistrails_modules[name] = namespace
         lines.append("\n\n")
 
     @staticmethod
@@ -98,7 +108,7 @@ class CDATModule:
 
     def build_vistrails_modules_dict(self):
         for a in self._actions:
-            types = a.check_output_types()
+            types = a.check_extra_types()
             for t in types:
                 if t not in CDATModule._extra_modules:
                     CDATModule._extra_modules.append(t)
@@ -165,11 +175,12 @@ class CDATAction:
                         lines.append(ident +"    elif self.hasInputFromPort('%s'):\n" % inst)
                         lines.append(ident +"        kwargs['%s'] = self.getInputFromPort('%s')\n" % (opt._name, inst))
 
-            lines.append(ident + "    #force images to be created in the background\n")
-            lines.append(ident + "    kwargs['bg'] = 1\n")
-            lines.append(ident + "    res = canvas.%s(*args,**kwargs)\n"%self._name)
-            lines.append(ident + "    self.setResult('%s',res)\n"%(self._outputs[0]._name))
-            lines.append(ident + "    self.setResult('canvas',canvas)\n")
+            if len(self._outputs) > 0:
+                lines.append(ident + "    #force images to be created in the background\n")
+                lines.append(ident + "    kwargs['bg'] = 1\n")
+                lines.append(ident + "    res = canvas.%s(*args,**kwargs)\n"%self._name)
+                lines.append(ident + "    self.setResult('%s',res)\n"%(self._outputs[0]._name))
+                lines.append(ident + "    self.setResult('canvas',canvas)\n")
             lines.append("\n")
         if self._name in do_not_cache_me:
             lines.append(ident + "class %s(Module,NotCacheable):\n" % self._name)
@@ -192,11 +203,16 @@ class CDATAction:
         for out in self._outputs:
             out.write_output_ports(self._name, lines, force=True)
 
-    def check_output_types(self):
+    def check_extra_types(self):
         types = []
         for out in self._outputs:
-            if out._instance[0] not in types:
-                types.append(out._instance[0])
+            for o in out._instance:
+                if o not in types:
+                    types.append(o)
+        for inp in self._inputs:
+            for r in inp._ref_instance:
+                if r not in types:
+                    types.append(r)
         return types
 
     def register_extra_input_port(self, port_name, port_type, lines, doc,
@@ -225,13 +241,50 @@ class CDATItem:
     def __init__(self, tag=None, doc=None, instance=None, required=False):
         self._name = tag
         self._doc = doc
-        self._instance = [i.strip(" \t\n") for i in instance.split('/')]
+        self._instance = []
+        self._ref_instance = []
+        self._parse_instance(instance) 
         self._valid_instances = []
         if required == None:
             self._required = False
         else:
             self._required = required
 
+    def _parse_instance(self, instance):
+        #TODO: improve this by making it recursive
+        if instance.startswith('[') and instance.endswith(']'):
+            self._instance = ['list']
+            if instance.rfind('[') == 0:
+                #single list
+                instance = instance[1:-1]
+                instance = instance.strip(" \t\n")
+                if instance not in self._ref_instance:
+                    self._ref_instance.append(instance)
+            else:
+                data = [i.strip(" \t\n") for i in instance.split('/')]
+                for d in data:
+                    if d.startswith('[') and d.endswith(']'):
+                        if d not in self._ref_instance:
+                            self._ref_instance.append(d[1:-1])
+                    else:
+                        print "Ignoring %s"%d
+        
+#        elif instance.startswith('(') and instance.endswith(')'):
+#            #tuples can have elements of different types
+#            data = set([[i.strip(" \t\n") for i in instance.split('/')]])
+#            self._instance = set()
+        else:
+            data = [i.strip(" \t\n") for i in instance.split('/')]
+            for i in data:
+                if not i.startswith('['):
+                    self._instance.append(i)
+                elif i.startswith('[') and i.endswith(']'):
+                    self._instance.append('list')
+                    i = i[1:-1]
+                    i = i.strip(" \t\n")
+                    if i not in self._ref_instance:
+                        self._ref_instance.append(i)
+                                                   
     def write_input_ports(self, module_name, lines, optional=False, force=False):
         self._write_ports('input',module_name, lines, optional, force)
 
