@@ -265,8 +265,9 @@ class CDATCell(SpreadsheetCell, NotCacheable):
             gm = self.getInputFromPort('gm')
         # Plot into the cell
         inputPorts = (canvas, gm, args, kwargs)
-        self.cellWidget = self.displayAndWait(QCDATWidget, inputPorts)        
-        self.setResult('canvas', self.cellWidget.canvas)        
+        self.cellWidget = self.displayAndWait(QCDATWidget, inputPorts)  
+        if self.cellWidget is not None:
+            self.setResult('canvas', self.cellWidget.canvas)        
 
 class QCDATWidget(QCellWidget):
     """ QCDATWidget is the spreadsheet cell widget where the plots are displayed.
