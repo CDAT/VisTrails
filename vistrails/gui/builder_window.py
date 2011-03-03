@@ -422,6 +422,10 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.showAllAction.setEnabled(True)
         self.showAllAction.setStatusTip('Show all hidden versions')
             
+        self.moduleConfigViewAction = QtGui.QAction('Module Configuration Panel', self)
+        self.moduleConfigViewAction.setCheckable(True)
+        self.moduleConfigViewAction.setChecked(True)
+        
         self.helpAction = QtGui.QAction(self.tr('About VisTrails...'), self)
 
         self.checkUpdateAction = QtGui.QAction(self.tr('Check for Updates'), self)
@@ -533,6 +537,7 @@ class QBuilderWindow(QtGui.QMainWindow):
             self.modulePalette.toolWindow().toggleViewAction())
         self.viewMenu.addAction(self.methodsViewAction)
         self.viewMenu.addAction(self.setMethodsViewAction)
+        self.viewMenu.addAction(self.moduleConfigViewAction)
         self.viewMenu.addAction(self.propertiesViewAction)
         self.viewMenu.addAction(self.propertiesOverlayAction)
 
@@ -682,6 +687,10 @@ class QBuilderWindow(QtGui.QMainWindow):
                      QtCore.SIGNAL('triggered(bool)'),
                      self.viewManager.setPropertiesOverlayMode)
 
+        self.connect(self.moduleConfigViewAction,
+                     QtCore.SIGNAL('triggered(bool)'),
+                     self.viewManager.setModuleConfigMode)
+        
         self.connect(self.vistrailActionGroup,
                      QtCore.SIGNAL('triggered(QAction *)'),
                      self.vistrailSelectFromMenu)
