@@ -7,6 +7,7 @@
     #cdat GUI modules
     global cdatWindow
     global translator
+    global plotRegistry
     import qtbrowser
     qtbrowser.useVistrails=True
     try:
@@ -16,7 +17,11 @@
         shell = None
     translator = QTranslator(shell=shell)
     cdatWindow = qtbrowser.vcdatWindow.QCDATWindow()
+    plotRegistry = PlotRegistry(cdatWindow)
+    plotRegistry.loadPlots()    
+    plotRegistry.registerPlots()
     cdatWindow.show()
+        
     translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
                            translator.commandsReceived)
     

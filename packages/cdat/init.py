@@ -49,7 +49,7 @@ cdutil = py_import('cdutil', {})
 from cdat_cell import QCDATWidget, CDATCell, Variable, GraphicsMethod, Gfb
 from quickplot import quickplot
 from translator import QTranslator
-
+from plot_registry import PlotRegistry
 
 vt_type_dict = {}
 def get_late_type(type):
@@ -6420,6 +6420,7 @@ def initialize(*args, **keywords):
     #cdat GUI modules
     global cdatWindow
     global translator
+    global plotRegistry
     import qtbrowser
     qtbrowser.useVistrails=True
     try:
@@ -6429,7 +6430,11 @@ def initialize(*args, **keywords):
         shell = None
     translator = QTranslator(shell=shell)
     cdatWindow = qtbrowser.vcdatWindow.QCDATWindow()
+    plotRegistry = PlotRegistry(cdatWindow)
+    plotRegistry.loadPlots()    
+    plotRegistry.registerPlots()
     cdatWindow.show()
+        
     translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
                            translator.commandsReceived)
     
@@ -6506,23 +6511,7 @@ def initialize(*args, **keywords):
     reg.add_output_port(GraphicsMethod, 'canvas', (Canvas, "Canvas object"))
     
     reg.add_module(Gfb, namespace='cdat')
-#    reg.add_input_port(Gfb, 'name', 
-#                       (core.modules.basic_modules.String, ""), True)
-#    reg.add_input_port(Gfb, 'datawc_x1', 
-#                       (core.modules.basic_modules.Float, ""), True)
-#    reg.add_input_port(Gfb, 'datawc_x2', 
-#                       (core.modules.basic_modules.Float, ""), True)
-#    reg.add_input_port(Gfb, 'datawc_y1', 
-#                       (core.modules.basic_modules.Float, ""), True)
-#    reg.add_input_port(Gfb, 'datawc_y2', 
-#                       (core.modules.basic_modules.Float, ""), True)
-#    reg.add_input_port(Gfb, 'level_1', 
-#                       (core.modules.basic_modules.Float, ""), True)
-#    reg.add_input_port(Gfb, 'level_2', 
-#                       (core.modules.basic_modules.Float, ""), True)
-#    reg.add_input_port(Gfb, 'projection', 
-#                       (core.modules.basic_modules.String, ""), True)
-#    reg.add_output_port(Gfb, 'gm', (Gfb, "Graphics method"))
+
     # end of cdatwindow_init_inc.py
     ##########################################################################
 

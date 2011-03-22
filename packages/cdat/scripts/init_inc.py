@@ -49,3 +49,4 @@ cdutil = py_import('cdutil', {})
 from cdat_cell import QCDATWidget, CDATCell, Variable, GraphicsMethod, Gfb
 from quickplot import quickplot
 from translator import QTranslator
+from plot_registry import PlotRegistry
