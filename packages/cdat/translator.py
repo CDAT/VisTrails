@@ -36,6 +36,7 @@ class QTranslator(QtCore.QObject):
         self._commands = []
         self.shell = shell 
         self.parser = None
+        self.visApp = QtCore.QCoreApplication.instance()
         self.buildParser()
         self.shell_package_loaded = False
         
@@ -71,7 +72,17 @@ class QTranslator(QtCore.QObject):
                     self.writeCommands(newcommands)
         else:
             core.debug.log("CDAT Package received commands and they were not parsed")
+    
+    def showVisTrails(self):
+        if hasattr(self.visApp, 'builderWindow'):
+            self.visApp.builderWindow.show()
+    
+    def closeVisTrails(self):
+        if not self.visApp.terminating:
+            if hasattr(self.visApp, 'builderWindow'):
+                self.visApp.builderWindow.close()
             
+        
 class CDATParser(object):
     def __init__(self):
         self.parser = None

@@ -441,6 +441,7 @@ class VistrailsApplicationSingleton(VistrailsApplicationInterface,
         if QtCore.QT_VERSION < 0x40200: # 0x40200 = 4.2.0
             raise core.requirements.MissingRequirement("Qt version >= 4.2")
         self._is_running = False
+        self.terminating = False
         # code for single instance of the application
         # based on the C++ solution availabe at
         # http://wiki.qtcentre.org/index.php?title=SingleApplication
@@ -518,11 +519,12 @@ parameters from other instances")
         if not self.temp_configuration.showSpreadsheetOnly:
             # in some systems (Linux and Tiger) we need to make both calls
             # so builderWindow is activated
-            self.setActiveWindow(self.builderWindow)
-            self.builderWindow.activateWindow()
-            self.builderWindow.show()
-            self.builderWindow.raise_()
             self.builderWindow.showShell(True)
+            if self.builderWindow.isVisible():
+                self.setActiveWindow(self.builderWindow)
+                self.builderWindow.activateWindow()
+                self.builderWindow.show()
+                self.builderWindow.raise_()
         else:
             self.builderWindow.hide()
 
@@ -685,12 +687,13 @@ parameters from other instances")
             pass
 
     def finishSession(self):
+        self.terminating = True
         if QtCore.QT_VERSION >= 0x40400:
             self.shared_memory.detach()
             if self.local_server:
                 self.local_server.close()
         if system.systemType in ['Darwin']:
-			self.removeEventFilter(self)
+            self.removeEventFilter(self)
         VistrailsApplicationInterface.finishSession(self)
    
     def eventFilter(self, o, event):

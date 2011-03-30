@@ -29,6 +29,8 @@ from core.db.locator import FileLocator
 from core.modules.constant_configuration import StandardConstantWidget
 from core.modules.module_registry import get_module_registry
 from core.vistrail.controller import VistrailController
+from core.packagemanager import get_package_manager
+from core import debug
 
 #assuming vistrail files and config files for plots are in ./plots
 PLOT_FILES_PATH = os.path.join(os.path.dirname(__file__),
@@ -38,6 +40,7 @@ class PlotRegistry(object):
     def __init__(self, cdatwindow):
         self.cdatwindow = cdatwindow
         self.plots = {}
+        self.registered = []
         
     def loadPlots(self):
         parser = ConfigParser.ConfigParser()
@@ -51,7 +54,9 @@ class PlotRegistry(object):
     
     def registerPlots(self):
         for name, plot in self.plots.iteritems():
-            self.cdatwindow.registerPlotType(name, plot)
+            if plot.loaded == True:
+                self.cdatwindow.registerPlotType(name, plot)
+                self.registered.append(name)
         
 class Plot(object):
     def __init__(self, name, config_file, vt_file):
@@ -62,12 +67,16 @@ class Plot(object):
         self.filenum = 1
         self.workflow_tag = None
         self.workflow = None
-        self.filetype = None
+        self.filetypes = {}
+        self.qt_filter = None
         self.files = []
         self.cells = []
         self.widget = None
         self.alias_widgets = {}
         self.alias_values = {}
+        self.dependencies = []
+        self.unsatisfied_deps = []
+        self.loaded = False
         try:
             self.load()
         except Exception, e:
@@ -78,27 +87,72 @@ class Plot(object):
     def load(self):
         config = ConfigParser.ConfigParser()
         if config.read(self.config_file):
-            self.cellnum = config.getint('global', 'cellnum')
-            self.filenum = config.getint('global', 'filenum')
-            self.workflow_tag = config.get('global', 'workflow_tag') 
-            self.filetype = config.get('global', 'filetype')
-            for y in range(self.filenum):
-                option_name = 'filename_alias' + str(y+1)
-                self.files.append(config.get('global', option_name))
-            for x in range(self.cellnum):
-                section_name = 'cell' + str(x+1)
-                self.cells.append(Cell(config.get(section_name, 'celltype'),
-                                       config.get(section_name, 'row_alias'),
-                                       config.get(section_name, 'col_alias')))
-            #load workflow in vistrail
-            locator = FileLocator(os.path.abspath(self.vt_file))
-            (v, abstractions , thumbnails) = load_vistrail(locator)
-            controller = VistrailController()
-            controller.set_vistrail(v, locator, abstractions, thumbnails)
-            version = v.get_version_number(self.workflow_tag)
-            controller.change_selected_version(version)
-            self.workflow = controller.current_pipeline
-            self.load_widget()
+            if config.has_section('global'):
+                if config.has_option('global', 'cellnum'):
+                    self.cellnum = config.getint('global', 'cellnum')
+                if config.has_option('global', 'filenum'):
+                    self.filenum = config.getint('global', 'filenum')
+                if config.has_option('global', 'workflow_tag'):
+                    self.workflow_tag = config.get('global', 'workflow_tag')
+                else:
+                    debug.warning("CDAT Package: file %s does not contain a \
+required option 'workflow_tag'. Widget will not be loaded."%self.config_file)
+                    self.loaded = False
+                    return
+                if config.has_option('global', 'filetypes'):
+                    types = config.get('global', 'filetypes')
+                    tlist = [t.strip() for t in types.split(";")]
+                    for t in tlist:
+                        kv = t.split(":")
+                        self.filetypes[kv[0].strip()] = [v.strip() 
+                                                         for v in kv[1].split(",")]
+                if config.has_option('global', 'qt_filter'):
+                    self.qt_filter = config.get('global', 'qt_filter')
+                if config.has_option('global', 'dependencies'):
+                    deps = config.get('global', 'dependencies')
+                    self.dependencies = [d.strip() for d in deps.split(",")]
+            
+                for y in range(self.filenum):
+                    option_name = 'filename_alias' + str(y+1)
+                    if config.has_option('global', option_name):
+                        self.files.append(config.get('global', option_name))
+                        
+                for x in range(self.cellnum):
+                    section_name = 'cell' + str(x+1)
+                    if (config.has_section(section_name) and
+                        config.has_option(section_name, 'celltype') and
+                        config.has_option(section_name, 'row_alias') and
+                        config.has_option(section_name, 'col_alias')):
+                        self.cells.append(Cell(config.get(section_name, 'celltype'),
+                                               config.get(section_name, 'row_alias'),
+                                               config.get(section_name, 'col_alias')))
+                
+                #load workflow in vistrail
+                #only if dependencies are enabled
+                manager = get_package_manager()
+                self.unsatisfied_deps = []
+                for dep in self.dependencies:
+                    if not manager.has_package(dep):
+                        self.unsatisfied_deps.append(dep)
+                if len(self.unsatisfied_deps) == 0:
+                    locator = FileLocator(os.path.abspath(self.vt_file))
+                    (v, abstractions , thumbnails) = load_vistrail(locator)
+                    controller = VistrailController()
+                    controller.set_vistrail(v, locator, abstractions, thumbnails)
+                    version = v.get_version_number(self.workflow_tag)
+                    controller.change_selected_version(version)
+                    self.workflow = controller.current_pipeline
+                    self.load_widget()
+                    self.loaded = True
+                else:
+                    debug.warning("CDAT Package: %s widget could not be loaded \
+because it depends on packages that are not loaded:"%self.name)
+                    debug.warning("  %s"%", ".join(self.unsatisfied_deps))
+                    self.loaded = False
+            else:
+                debug.warning("CDAT Package: file %s does not contain a 'global'\
+ section. Widget will not be loaded."%self.config_file)
+                self.loaded = False
             
     def load_widget(self):
         aliases = self.workflow.aliases

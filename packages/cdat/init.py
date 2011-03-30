@@ -6426,6 +6426,7 @@ def initialize(*args, **keywords):
     try:
         builder_window = api.get_builder_window()
         shell = builder_window.shell.shell
+        builder_window.setVisible(False)
     except api.NoGUI:
         shell = None
     translator = QTranslator(shell=shell)
@@ -6434,9 +6435,15 @@ def initialize(*args, **keywords):
     plotRegistry.loadPlots()    
     plotRegistry.registerPlots()
     cdatWindow.show()
-        
+    visApp = QtCore.QCoreApplication.instance()
+    if visApp:
+        visApp.setActiveWindow(cdatWindow)
     translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
                            translator.commandsReceived)
+    translator.connect(cdatWindow, QtCore.SIGNAL("showVisTrails"),
+                       translator.showVisTrails)
+    translator.connect(cdatWindow, QtCore.SIGNAL("closeVisTrails"),
+                       translator.closeVisTrails)
     
     reg.add_module(CDATCell,namespace='cdat')
     reg.add_input_port(CDATCell, 'slab1',
@@ -6459,7 +6466,9 @@ def initialize(*args, **keywords):
                        (core.modules.basic_modules.Integer, "Cell Row"))
     reg.add_input_port(CDATCell, 'continents', 
                        (core.modules.basic_modules.Integer,
-                        "continents type number"), True)    
+                        "continents type number"), True)   
+    reg.add_output_port(CDATCell, 'canvas',
+                       (Canvas, "Canvas object")) 
 
     reg.add_module(Variable, namespace='cdat')
     reg.add_module(quickplot, namespace='cdat')    
