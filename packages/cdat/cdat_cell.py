@@ -282,8 +282,8 @@ class QCDATWidget(QCellWidget):
     vcdat already creates 5 canvas objects
     
     """
-    startIndex = 5 #this should be the current number of canvas objects created 
-    maxIndex = 8
+    startIndex = 1 #this should be the current number of canvas objects created 
+    maxIndex = 6
     usedIndexes = []
     
     def __init__(self, parent=None):
@@ -297,12 +297,13 @@ class QCDATWidget(QCellWidget):
     def createCanvas(self):
         windowIndex = self.startIndex
         while (windowIndex in QCDATWidget.usedIndexes and 
-                   windowIndex <= 8):
+                   windowIndex <= QCDATWidget.maxIndex):
             windowIndex += 1
-        if windowIndex > 8:
+        if windowIndex > QCDATWidget.maxIndex:
             raise ModuleError(self, "Maximum number of vcs.Canvas objects achieved.\
 Please delete unused CDAT Cells in the spreadsheet.")
         else:
+            print "using canvas ", windowIndex
             if windowIndex > len(vcs.canvaslist):
                 self.canvas = vcs.init()
             else:
@@ -319,7 +320,11 @@ Please delete unused CDAT Cells in the spreadsheet.")
         if inputPorts[0] is not None:
             self.canvas = inputPorts[0]
         if self.canvas is None:
-            self.createCanvas()
+            try:
+                self.createCanvas()
+            except ModuleError, e:
+                spreadsheetWindow.setUpdatesEnabled(True)
+                raise e
         #print self.windowId, self.canvas
         if self.window is not None:
             self.layout().removeWidget(self.window)
@@ -354,8 +359,9 @@ Please delete unused CDAT Cells in the spreadsheet.")
         #we need to re-parent self.window or it will be deleted together with
         #this widget. The immediate parent is also deleted, so we will set to
         # parent of the parent widget
-        self.window.setParent(self.parent().parent())
-        self.window.setVisible(False)
+        if self.window is not None:
+            self.window.setParent(self.parent().parent())
+            self.window.setVisible(False)
         self.canvas = None
         self.window = None
         
