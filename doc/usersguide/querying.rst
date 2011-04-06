@@ -132,6 +132,10 @@ will attempt to match logical categories, but if your query is more
 specific, |vistrails| has special syntax to markup the query.
 To execute a query, simply press the 'Enter' key after typing your query.
 
+.. raw:: latex
+
+   \linebreak
+
 .. %Figure :ref:`fig-querying-date` shows an example query.
 
 .. _tab-querying-syntax:
@@ -147,6 +151,10 @@ To execute a query, simply press the 'Enter' key after typing your query.
    Date            ``before:`` *date* ``|`` *relative time*
    \               ``after:`` *date* ``|`` *relative time*
    ==============  ================================================================
+
+.. topic:: Note
+
+   Since we allow regular expressions in our search box, question marks are treated as meta-characters. Thus, searching for "?" returns everything and "abc?" will return everything containing "abc". You need to use "\\?" instead to search for "?". So the search for "??" would be "\\?\\?".
 
 Table :ref:`tab-querying-syntax` lists the different ways to markup a
 query.  Note that you can search by user name to see which changes a
