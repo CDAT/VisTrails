@@ -11,6 +11,10 @@ Created on Dec 7, 2010
 identifier = 'gov.nasa.nccs.vtdv3d'
 name = 'vtDV3D'
 version = '0.1.0'
+
+#Configuration object
+from vtDV3DConfiguration import configuration
+
 vtk_pkg_identifier = 'edu.utah.sci.vistrails.vtk'
 from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
 from core.bundles import py_import
@@ -22,12 +26,7 @@ except Exception, e:
     print>>sys.stderr, "Matplotlib import Exception: %s" % e
 
 def package_dependencies():
-    import core.packagemanager
-    manager = core.packagemanager.get_package_manager()
-    if manager.has_package( vtk_pkg_identifier ):
-        return [ vtk_pkg_identifier ]
-    else:
-        return []
+    return [ vtk_pkg_identifier, 'edu.utah.sci.vistrails.matplotlib' ]
 
 def package_requirements():
     import core.requirements
@@ -199,8 +198,5 @@ def initialize(*args, **keywords):
     reg.add_output_port(SlicePlot, 'FigureManager', MplFigureManager)
     reg.add_output_port(SlicePlot, 'File', File)
     SlicePlot.registerConfigurableFunctions( reg )
-  
-from core.configuration import ConfigurationObject
-configuration = ConfigurationObject( vtk_data_root = (None, str), debug = False )
 
     

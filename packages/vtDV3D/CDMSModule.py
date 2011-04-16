@@ -15,6 +15,7 @@ from core.vistrail.port_spec import PortSpec
 from vtUtilities import *
 from PersistentModule import * 
 from ROISelection import ROISelectionWidget
+from vtDV3DConfiguration import configuration
 import numpy.ma as ma
 from vtk.util.misc import vtkGetDataRoot
 packagePath = os.path.dirname( __file__ ) 
@@ -23,10 +24,9 @@ PortDataVersion = 0
 DataSetVersion = 0
 
 def getDataRoot():
-    import vtDV3D
     DATA_ROOT = vtkGetDataRoot() 
-    if vtDV3D.configuration.check( 'data_root' ): 
-        DATA_ROOT = vtDV3D.configuration.vtk_data_root
+    if configuration.check( 'data_root' ): 
+        DATA_ROOT = configuration.vtk_data_root
     return DATA_ROOT
 
 def getComponentTimeValues( dataset ):
