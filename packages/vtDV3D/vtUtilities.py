@@ -75,8 +75,8 @@ def encodeToString( obj ):
         print>>sys.stderr, "Error pickling object %s: %s" % ( str(obj), str(err) )
     return rv
 
-def decodeFromString( string_value ):
-    obj = None
+def decodeFromString( string_value, default_value=None ):
+    obj = default_value
     try:
         buffer = StringIO.StringIO( string_value )
         pickler = cPickle.Unpickler( buffer )
@@ -204,7 +204,7 @@ def getMetadata( module, **args ):
 #                        pval = [ translateToPython( parmRec ) for parmRec in parameterList ]
 
 
-def getPersistentModule( mid, forceGet = True, controller = None  ):    
+def getWorkflowModule( mid, forceGet = True, controller = None  ):    
     if controller == None: 
         import api
         controller = api.get_current_controller()
@@ -220,6 +220,10 @@ def getPersistentModule( mid, forceGet = True, controller = None  ):
             module_instance = object_map.get( mid, None )
             if module_instance <> None: return module_instance
     return module_instance
+
+def NormalizeLon( lon ): 
+    while lon < 0: lon = lon + 360
+    return lon % 360  
 
 def getPersistentObjectMap( controller = None  ):    
     if controller == None: 
@@ -247,8 +251,8 @@ def getFunctionId( mid, function_name, controller = None ):
     return function.id if function else -1
 
 def translateToPython( parmRec ):
-    if parmRec.type == 'Float':    return float( parmRec.strValue )
-    if parmRec.type == 'Integer':  return int( parmRec.strValue )
+    if parmRec.type == 'Float':    return float( parmRec.strValue ) if parmRec.strValue else 0.0
+    if parmRec.type == 'Integer':  return int( parmRec.strValue ) if parmRec.strValue else 0
     return parmRec.strValue
         
 def getTaggedVersionNumber( tag, controller = None ):
@@ -316,7 +320,7 @@ def getDesignatedConnection( controller,  mid, portName, isDestinationPort = Tru
     return None
 
 def queryUpstreamMetadata( controller, mid, outport=None, metadata={} ):
-    module = getPersistentModule( mid, controller )
+    module = getWorkflowModule( mid, True, controller )
     if module:
         module.getMetadata( metadata, outport )
         if module.primaryMetaDataPort:
@@ -400,10 +404,11 @@ def executeWorkflow():
     controller = api.get_current_controller()        
     controller.execute_current_workflow()
    
-def executeVistrail( vistrail_name ):
+def executeVistrail( *args ):
     import core.requirements, os
     core.requirements.check_pyqt4()
     from core.db.locator import FileLocator
+#    if not isList( vistrail_names ): vistrail_names = [ vistrail_names, ]
 
     from PyQt4 import QtGui
     import gui.application
@@ -411,15 +416,16 @@ def executeVistrail( vistrail_name ):
     import os
      
     try:
-        vistrail_filename = os.path.join( os.path.dirname( __file__ ), vistrail_name + '.vt' )
         v = gui.application.start_application()
         if v != 0:
             if gui.application.VistrailsApplication:
                 gui.application.VistrailsApplication.finishSession()
             sys.exit(v)
         app = gui.application.VistrailsApplication()
-        f = FileLocator(vistrail_filename)
-        app.builderWindow.viewManager.open_vistrail(f) 
+        for vistrail_name in args:
+            vistrail_filename = os.path.join( os.path.dirname( __file__ ), vistrail_name + '.vt' )
+            f = FileLocator(vistrail_filename)
+            app.builderWindow.viewManager.open_vistrail(f) 
         app.builderWindow.viewModeChanged(0)   
     except SystemExit, e:
         if gui.application.VistrailsApplication:

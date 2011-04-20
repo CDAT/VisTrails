@@ -75,7 +75,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         sx, sy, sz = spacing       
         origin = self.input.GetOrigin()
         ox, oy, oz = origin
-        self._range = self.rangeBounds[0:2]
+        self._range = [ self.rangeBounds[0], self.rangeBounds[1], self.rangeBounds[0], 0 ]
         dataType = self.input.GetScalarTypeAsString()
         self.setMaxScalarValue( self.input.GetScalarType() )
         pos = [ spacing[i]*extent[2*i] for i in range(3) ]
@@ -149,7 +149,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             bounds = self.volume.GetBounds() 
             mapper_bounds = self.volumeMapper.GetBounds()   
             position = self.volume.GetPosition () 
-            printArgs( "Volume attrs", center=center,  matrix=matrix, bounds=bounds, mapper_bounds=mapper_bounds, position=position )   
+#            printArgs( "Volume attrs", center=center,  matrix=matrix, bounds=bounds, mapper_bounds=mapper_bounds, position=position )   
 
     def SetCameraPosition( self ):   
         bounds = self.volume.GetBounds()
@@ -169,7 +169,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         bounds = self.volume.GetBounds()
         p = aCamera.GetPosition()
         f = aCamera.GetFocalPoint()
-        printArgs( "ResetCameraClippingRange", focal_point=f, cam_pos=p, vol_bounds=bounds )
+#        printArgs( "ResetCameraClippingRange", focal_point=f, cam_pos=p, vol_bounds=bounds )
         self.renderer.ResetCameraClippingRange() 
 #        bounds = self.volume.GetBounds()
 #        center = ( (bounds[0]+bounds[1])/2.0, (bounds[2]+bounds[3])/2.0, (bounds[4]+bounds[5])/2.0 ) 
@@ -257,70 +257,89 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         print_docs( self.volume.mapper )
         self.print_traits()
         print "Volume: bounds=%s, scale=%s, mapper=%s" % ( str(self.volume.bounds), str(self.volume.scale), str(self.volume_mapper_type) )
+
  
-    def adjustOpacity( self, opacity_data ): 
-        self.max_opacity = opacity_data[1] if opacity_data[1] < 1.0 else 1.0
-        vmin, vmax = self._range[0], self._range[1]
-        filterOutliers = opacity_data[2]
+#    def adjustOpacity1( self, opacity_data ): 
+#        self.max_opacity = opacity_data[1] if opacity_data[1] < 1.0 else 1.0
+#        vmin, vmax = self._range[0], self._range[1]
+#        filterOutliers = opacity_data[2]
+#        range_min, range_max = self.rangeBounds[0], self.rangeBounds[1]
+#        vthresh = opacity_data[0]*range_max if opacity_data[0] > 0.0 else 0.0
+#        
+#        if (vmin >= vmax):
+#            if range_max > range_min:
+#                vmin =  range_min
+#                vmax = range_max
+#            else:
+#                return None
+#            
+#        if (range_min >= range_max): 
+#            range_min = vmin
+#            range_max = vmax
+#        
+#        self._shift = -range_min
+#        self._scale = self._max_scalar_value / ( range_max - range_min )
+##        if self._rescaleInput: 
+##            self._input_rescale_mapper.shift = self._shift
+##            self._input_rescale_mapper.scale = self._scale
+##        print "  --- UpdateVolumeScaling>> (%f %f) (%f %f) %f: mapper=%s" % ( vmin, vmax, self._shift, self._scale, self.max_opacity, str(self.volume_mapper_type) )
+#
+#        scaled_range = [ (vmin+self._shift)*self._scale, (vmax+self._shift)*self._scale, vthresh*self._scale ]
+#        self.updateOFT( scaled_range, filterOutliers )
+#        printArgs( "adjustOpacity", scaled_range=scaled_range,  opacity_data=opacity_data, otf_irange=self._range, irange_bounds=(range_min, range_max), init_range=(self._range[0], self._range[1]) )   
+
+
+    def adjustOpacity( self, opacity_data ):
+        maxop = abs( opacity_data[1] ) 
+        self.max_opacity = maxop if maxop < 1.0 else 1.0
         range_min, range_max = self.rangeBounds[0], self.rangeBounds[1]
-        vthresh = opacity_data[0]*range_max if opacity_data[0] > 0.0 else 0.0
-        
-        if (vmin >= vmax):
-            if range_max > range_min:
-                vmin =  range_min
-                vmax = range_max
-            else:
-                return None
-            
-        if (range_min >= range_max): 
-            range_min = vmin
-            range_max = vmax
-        
-        self._shift = -range_min
-        self._scale = self._max_scalar_value / ( range_max - range_min )
-#        if self._rescaleInput: 
-#            self._input_rescale_mapper.shift = self._shift
-#            self._input_rescale_mapper.scale = self._scale
-#        print "  --- UpdateVolumeScaling>> (%f %f) (%f %f) %f: mapper=%s" % ( vmin, vmax, self._shift, self._scale, self.max_opacity, str(self.volume_mapper_type) )
+        vthresh = opacity_data[0]*(self.seriesScalarRange[1]-self.seriesScalarRange[0])*0.02
+        self._range[3] = self.scaleToImage( vthresh )      
+        self.updateOFT( self._range, self.filterOutliers )
+#        printArgs( "adjustOpacity", irange=self._range,  max_opacity=self.max_opacity, opacity_data=opacity_data, vthresh=vthresh, ithresh=self._range[3] )   
 
-        scaled_range = [ (vmin+self._shift)*self._scale, (vmax+self._shift)*self._scale, vthresh*self._scale ]
-        self.updateOFT( scaled_range, filterOutliers )
-
-           
     def generateOTF( self, otf_data ): 
-        self._range = self.getImageValues( otf_data[0:2] ) 
-        vmin, vmax, vthresh = self._range[0], self._range[1], 0.0
-        range_min, range_max = self.rangeBounds[0], self.rangeBounds[1]
-        filterOutliers = otf_data[2]
-        if (vmin >= vmax):
-            if range_max > range_min:
-                vmin =  range_min
-                vmax = range_max
-            else:
-                return None
-            
-        if (range_min >= range_max): 
-            range_min = vmin
-            range_max = vmax
-        
-        self._shift = -range_min
-        self._scale = self._max_scalar_value / ( range_max - range_min )
-#        if self._rescaleInput: 
-#            self._input_rescale_mapper.shift = self._shift
-#            self._input_rescale_mapper.scale = self._scale
-#        print "  --- UpdateVolumeScaling>> (%f %f) (%f %f) %f: mapper=%s" % ( vmin, vmax, self._shift, self._scale, self.max_opacity, str(self.volume_mapper_type) )
-
-        scaled_range = [ (vmin+self._shift)*self._scale, (vmax+self._shift)*self._scale, vthresh*self._scale ]
-        self.updateOFT( scaled_range, filterOutliers )
+        self._range = self.getImageValues( ( otf_data[0], otf_data[1], 0.0 ) )
+        self._range.append(0.0) 
+        self.filterOutliers = otf_data[2]
+        self.updateOFT( self._range, self.filterOutliers )
+ #       printArgs( "generateOTF", irange=self._range,  otf_data=otf_data )   
+           
+#    def generateOTF1( self, otf_data ): 
+#        self._range = self.getImageValues( otf_data[0:2] ) 
+#        vmin, vmax, vthresh = self._range[0], self._range[1], 0.0
+#        range_min, range_max = self.rangeBounds[0], self.rangeBounds[1]
+#        filterOutliers = otf_data[2]
+#        if (vmin >= vmax):
+#            if range_max > range_min:
+#                vmin =  range_min
+#                vmax = range_max
+#            else:
+#                return None
+#            
+#        if (range_min >= range_max): 
+#            range_min = vmin
+#            range_max = vmax
+#        
+#        self._shift = -range_min
+#        self._scale = self._max_scalar_value / ( range_max - range_min )
+##        if self._rescaleInput: 
+##            self._input_rescale_mapper.shift = self._shift
+##            self._input_rescale_mapper.scale = self._scale
+##        print "  --- UpdateVolumeScaling>> (%f %f) (%f %f) %f: mapper=%s" % ( vmin, vmax, self._shift, self._scale, self.max_opacity, str(self.volume_mapper_type) )
+#
+#        scaled_range = [ (vmin+self._shift)*self._scale, (vmax+self._shift)*self._scale, vthresh*self._scale ]
+#        self.updateOFT( scaled_range, filterOutliers )
+#        printArgs( "generateOTF", scaled_range=scaled_range,  otf_data=otf_data, vrange=(vmin, vmax), vrange_bounds=(range_min, range_max), init_range=(self._range[0], self._range[1]) )   
 
     def updateOFT( self, range, filterOutliers ):
 #        print " Update Volume OFT, range = %s, max opacity = %s " % ( str( range ), str( self.max_opacity ) )
         self.filterOutliers = filterOutliers
         self.opacityTransferFunction.RemoveAllPoints()  
-        dthresh = range[2]
+        dthresh = range[3]
 #        print "Generate OTF: range = ( %f %f ), thresh = %f, max_opacity = %s" % ( range[0], range[1], dthresh, self.max_opacity )
         if self.TransferFunction == PM_VolumeRenderer.AbsValueTransferFunction:
-            zero_point = self._shift * self._scale 
+            zero_point = range[2] 
             if ( zero_point < range[0] ):
                 if range[0] > 0: self.opacityTransferFunction.AddPoint( 0, 0.)
                 self.opacityTransferFunction.AddPoint( range[0], 0.)
@@ -344,6 +363,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             else:
                 d0 = abs(range[0]-zero_point)
                 d1 = abs(range[1]-zero_point)
+                t0 = max( zero_point-dthresh, range[0] )
+                t1 = min( zero_point+dthresh, range[1] )
                 if ( d0 < d1 ):
                     min_opacity = self.max_opacity * ( d0 / d1 )
                     if range[0] > 0: 
@@ -353,8 +374,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
                         else:
                             self.opacityTransferFunction.AddPoint( 0, min_opacity ) 
                     self.opacityTransferFunction.AddPoint( range[0], min_opacity )
-                    self.opacityTransferFunction.AddPoint( zero_point-dthresh, 0.) 
-                    self.opacityTransferFunction.AddPoint( zero_point+dthresh, 0.) 
+                    self.opacityTransferFunction.AddPoint( t0, 0.) 
+                    self.opacityTransferFunction.AddPoint( t1, 0.) 
                     self.opacityTransferFunction.AddPoint( range[1], self.max_opacity )
                     if range[1] < self._max_scalar_value: 
                         if self.filterOutliers:
@@ -370,9 +391,9 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
                             self.opacityTransferFunction.AddPoint( range[0]-0.5, 0.0)               
                         else:
                             self.opacityTransferFunction.AddPoint( 0, self.max_opacity ) 
-                    self.opacityTransferFunction.AddPoint( range[0], self.max_opacity )
-                    self.opacityTransferFunction.AddPoint( zero_point-dthresh, 0.) 
-                    self.opacityTransferFunction.AddPoint( zero_point+dthresh, 0.) 
+                    self.opacityTransferFunction.AddPoint( range[0], self.max_opacity )                    
+                    self.opacityTransferFunction.AddPoint( t0, 0.) 
+                    self.opacityTransferFunction.AddPoint( t1, 0.) 
                     self.opacityTransferFunction.AddPoint( range[1], min_opacity )
                     if range[1] < self._max_scalar_value:
                         if self.filterOutliers:

@@ -374,10 +374,11 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
 #                self.module.portVisible.discard(entry)
         task = str( self.taskCombo.currentText() )
         self.persistParameter( 'task', [ self.getSerializedTaskData( task ) ] )
+        self.pmod.persistVersionMap()   
         if self.pmod:  
             self.pmod.addAnnotation( 'datasetId', self.datasetId  )
             self.pmod.setLabel( task )
         self.close()
 
 if __name__ == '__main__':
-    executeVistrail( 'CDAT_Test_Pipeline' )
+    executeVistrail( 'TestPipeline1', 'TestPipeline2' )

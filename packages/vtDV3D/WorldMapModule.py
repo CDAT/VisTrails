@@ -69,7 +69,7 @@ class PM_WorldFrame(PersistentVisualizationModule):
             if  (self.roi <> None): 
                 if roi_size[0] > 180:             
                     self.ComputeCornerPosition()
-                    self.world_cut = self.NormalizeCut( self.x0 )
+                    self.world_cut = NormalizeLon( self.x0 )
                 else:
                     dataPosition = [ ( self.roi[1] + self.roi[0] ) / 2.0, ( self.roi[3] + self.roi[2] ) / 2.0 ]
             else:
@@ -97,7 +97,7 @@ class PM_WorldFrame(PersistentVisualizationModule):
         self.baseMapActor.SetOrientation( 0.0, 0.0, 0.0 )
         self.baseMapActor.SetOpacity( opacity )
 #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
-        print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( self.NormalizeCut( self.roi[0] ), self.NormalizeCut( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
+        print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
         self.baseMapActor.SetPosition( self.x0, self.y0, 0.1 )
         self.baseMapActor.SetInput( baseImage )
         
@@ -124,7 +124,7 @@ class PM_WorldFrame(PersistentVisualizationModule):
         if self.world_cut == -1: 
             if  (self.roi <> None):               
                 self.ComputeCornerPosition()
-                self.world_cut = self.NormalizeCut( self.x0 )
+                self.world_cut = NormalizeLon( self.x0 )
             else:
                 self.world_cut = self.map_cut
         
@@ -198,8 +198,8 @@ class PM_WorldFrame(PersistentVisualizationModule):
         baseSpacing = baseImage.GetSpacing()
         x0 = baseExtent[0]
         x1 = baseExtent[1]
-        newCut = self.NormalizeCut( self.world_cut )
-        delCut = self.NormalizeCut( self.map_cut - newCut )
+        newCut = NormalizeLon( self.world_cut )
+        delCut = NormalizeLon( self.map_cut - newCut )
         imageLen = x1 - x0 + 1
         sliceSize =  imageLen * ( delCut / 360.0 )
         sliceCoord = int( round( x0 + sliceSize) )        
@@ -240,7 +240,7 @@ class PM_WorldFrame(PersistentVisualizationModule):
         y1 = baseExtent[3]
         imageLen = [ x1 - x0 + 1, y1 - y0 + 1 ]
         selectionDim = [ map_cut_size[0]/2, map_cut_size[1]/2 ]
-        dataXLoc = self.NormalizeCut( dataLocation[0] ) 
+        dataXLoc = NormalizeLon( dataLocation[0] ) 
         imageInfo = vtk.vtkImageChangeInformation()
         dataYbounds = [ dataLocation[1]-selectionDim[1], dataLocation[1]+selectionDim[1] ]
         vertExtent = [ y0, y1 ]
@@ -276,7 +276,7 @@ class PM_WorldFrame(PersistentVisualizationModule):
             imageInfo.SetInputConnection( clip.GetOutputPort() ) 
             
         else:
-            cut0 = self.NormalizeCut( dataXLoc + selectionDim[0] )
+            cut0 = NormalizeLon( dataXLoc + selectionDim[0] )
             sliceSize =  imageLen[0] * ( cut0 / 360.0 )
             sliceCoord = int( round( x0 + sliceSize) )        
             extent = list( baseExtent )         
@@ -286,7 +286,7 @@ class PM_WorldFrame(PersistentVisualizationModule):
             clip0.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             size0 = extent[1] - extent[0] + 1
         
-            cut1 = self.NormalizeCut( dataLocation[0] - selectionDim[0] )
+            cut1 = NormalizeLon( dataLocation[0] - selectionDim[0] )
             sliceSize =  imageLen[0] * ( cut1 / 360.0 )
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[0:2] = [ x0 + sliceCoord, x1 ]

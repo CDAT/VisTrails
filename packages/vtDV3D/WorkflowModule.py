@@ -29,17 +29,21 @@ class WorkflowModule( Module ):
         self.pmod.dvCompute( wmod=self )
     
     @classmethod    
-    def getPersistentModule( klass, mid ):            
+    def forceGetPersistentModule( klass, mid ):            
         return ModuleStoreDatabase.forceGetModule(  mid, klass.PersistentModuleClass( mid ) ) 
+
+    @classmethod    
+    def getPersistentModule( klass, mid ):            
+        return ModuleStoreDatabase.forceGetModule(  mid, None ) 
 
     def updatePersistentModule( self ):            
         if not self.pmod: 
-            self.pmod = self.__class__.getPersistentModule( self.moduleInfo['moduleId'] )
+            self.pmod = self.__class__.forceGetPersistentModule( self.moduleInfo['moduleId'] )
         self.pmod.setWorkflowModule( self )
       
     @classmethod
     def registerConfigurableFunctions( klass, reg ):
-        pmod = klass.PersistentModuleClass( 0 )
+        pmod = klass.PersistentModuleClass( -1 )
         for configFunct in pmod.configurableFunctions.values():
             reg.add_input_port(  klass, configFunct.name, configFunct.args, True )
             reg.add_output_port( klass, configFunct.name, configFunct.args, True )

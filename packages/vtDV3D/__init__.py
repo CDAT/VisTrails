@@ -88,6 +88,7 @@ def initialize(*args, **keywords):
     from TestModule import AddTest
     from VectorCutPlaneModule import VectorCutPlane 
     from packages.pylab.init import MplFigureManager
+    from packages.spreadsheet.basic_widgets import CellLocation
     from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
     import api
         
@@ -107,6 +108,7 @@ def initialize(*args, **keywords):
     
     reg.add_module( DV3DCell ) 
     reg.add_input_port( DV3DCell, "volume", AlgorithmOutputModule3D  )   
+    reg.add_input_port( DV3DCell, "Location", CellLocation)
 
     reg.add_module( WorldFrame )
     reg.add_input_port( WorldFrame, "world_cut", Integer, optional=True  )

@@ -325,7 +325,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     def initLeveling( self, module, **args ):
         self.module = module
         initial_range =  self.defaultRange if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
-        self.range = module.getInputValue( self.name, initial_range ) # if self.parameterInputEnabled else initial_range
+        self.range = module.getInputValue( self.name, initial_range ) if not module.newDataset else initial_range
         self.setLevelDataHandler( self.range )
         self.windowLeveler.setDataRange( self.range )
         module.setParameter( self.name, self.range )
@@ -896,7 +896,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         StandardModuleConfigurationWidget.__init__(self, module, controller, parent)
         self.setWindowTitle( title )
         self.moduleId = module.id
-        self.pmod = self.module_descriptor.module.getPersistentModule( module.id )
+        self.pmod = self.module_descriptor.module.forceGetPersistentModule( module.id )
         self.getParameters( module )
         self.createLayout()
 
@@ -1005,6 +1005,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 
     def persistParameter( self, parameter_name, output, **args ):
         self.pmod.persistParameter( parameter_name, output, True, **args )
+        self.pmod.persistVersionMap() 
         
 #        import api
 #        if self.pmod: 

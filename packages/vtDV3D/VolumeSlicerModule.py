@@ -90,9 +90,11 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
         self.slicePosition = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
         dataType = self.input.GetScalarTypeAsString()
+        bounds = list(self.input.GetBounds()) 
+        origin = self.input.GetOrigin()
         if (dataType <> 'float') and (dataType <> 'double'):
              self.setMaxScalarValue( self.input.GetScalarType() )
-        print "Data Type = %s, range = (%f,%f), extent = %s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input.GetWholeExtent()) )
+        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input.GetWholeExtent()), str(origin), str(bounds) )
       
         # The shared picker enables us to use 3 planes at one time
         # and gets the picking order right
@@ -106,6 +108,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetX.SetSliceIndex( self.slicePosition[0] )
         self.planeWidgetX.SetPicker(picker)
         self.planeWidgetX.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )
+        self.planeWidgetX.SetDisplayText( 1 )
         prop1 = self.planeWidgetX.GetPlaneProperty()
         prop1.SetColor(1, 0, 0)
         self.planeWidgetX.SetUserControlledLookupTable(1)
@@ -113,7 +116,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetX.AddObserver( 'EndInteractionEvent', self.SliceObserver )
         self.planeWidgetX.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
         self.planeWidgetX.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
-#        self.planeWidgetX.AddObserver( 'AnyEvent', self.TestObserver )
+        self.planeWidgetX.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )
+#        if bounds[0] < 0.0: self.planeWidgetX.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
+#        self.planeWidgetX.SetOrigin( self.input.GetOrigin() )
+        self.planeWidgetX.AddObserver( 'AnyEvent', self.TestObserver )
                 
         self.planeWidgetY = vtk.vtkImagePlaneWidget()
         self.planeWidgetY.DisplayTextOn()
@@ -126,10 +132,12 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetY.AddObserver( 'EndInteractionEvent', self.SliceObserver )
         self.planeWidgetY.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
         self.planeWidgetY.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
-#        self.planeWidgetY.AddObserver( 'AnyEvent', self.TestObserver )
+        self.planeWidgetY.AddObserver( 'AnyEvent', self.TestObserver )
+        self.planeWidgetY.SetDisplayText( 1 )
         prop2 = self.planeWidgetY.GetPlaneProperty()
         prop2.SetColor(1, 1, 0)
-        
+#        if bounds[0] < 0.0: self.planeWidgetY.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
+        self.planeWidgetX.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
         self.planeWidgetY.SetUserControlledLookupTable(1)
         self.planeWidgetY.SetLookupTable( self.lut )
         
@@ -143,10 +151,14 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ.AddObserver( 'EndInteractionEvent', self.SliceObserver )
         self.planeWidgetZ.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
         self.planeWidgetZ.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
-#        self.planeWidgetZ.AddObserver( 'AnyEvent', self.TestObserver )
+        self.planeWidgetZ.AddObserver( 'AnyEvent', self.TestObserver )
+        self.planeWidgetZ.SetDisplayText( 1 )
                 
         prop3 = self.planeWidgetZ.GetPlaneProperty()
         prop3.SetColor(0, 0, 1)
+#        if bounds[0] < 0.0: self.planeWidgetZ.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
+        self.planeWidgetX.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )
+
         self.planeWidgetZ.SetUserControlledLookupTable(1)
         self.planeWidgetZ.SetLookupTable( self.lut )
         self.setMarginSize( 0.0 )  
@@ -187,22 +199,22 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #            self.UpdateWidgetPlacement()
            
     def TestObserver( self, caller=None, event = None ):
-        si = self.planeWidgetZ.GetSliceIndex()
-        tableRange = self.lut.GetTableRange()
-        print " TestObserver: event = %s, t= %d, lut=%s, image_range = %s, cm_range = %s, cmap = %s " % ( event, self.iTimestep, addr(self.lut), str(self.imageRange), str(tableRange), self.colormapManager.cmap_name )
+        pass
+#        print " TestObserver: event = %s, " % ( event )
 
     def PickObserver( self, iAxis, caller, event = None ):
         image_value = caller.GetCurrentImageValue() 
         spos = caller.GetSlicePosition()
         dataValue = self.getDataValue( image_value )
-        units = 'X'
-        textDisplay = None
-        if (self.currentButton == self.LEFT_BUTTON):  textDisplay = " value: %s." % str( spos )
-        if (self.currentButton == self.RIGHT_BUTTON): textDisplay = " value: %.5G %s." % ( dataValue, units )
+#        textDisplay = None
+#        if (self.currentButton == self.LEFT_BUTTON):  textDisplay = " value: %s." % str( spos )
+#        if (self.currentButton == self.RIGHT_BUTTON): textDisplay = " value: %.5G %s." % ( dataValue, units )
+        textDisplay = " pos: %.2f, value: %.3G %s." % ( spos, dataValue, self.units )
         self.slicePosition[iAxis] = caller.GetSliceIndex() 
 #        print " Event %s: caller: %s, interaction: %d " % ( str(event), dir( caller ), caller.GetInteraction() )
 #        print "textDisplay: '%s' " % textDisplay
         if textDisplay: self.updateTextDisplay( textDisplay )
+#        print " -- PickObserver: axis %d, dataValue = %f " % ( iAxis, dataValue )
                       
     def SliceObserver( self, caller, event = None ):
         import api

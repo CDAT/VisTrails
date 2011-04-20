@@ -84,11 +84,16 @@ class PersistentModule( QObject ):
     def __init__( self, mid, **args ):
         QObject.__init__(self)
         self.moduleID = mid
+        self.units = ''
+        self.taggedVersionMap = {}
+        self.versionTags = {}
         self.initVersionMap()
         self.datasetId = None
         self.fieldData = None
         self.rangeBounds = None
         self.newDataset = False
+        self.scalarRange = None
+        self.seriesScalarRange = None
         self.wmod = None
         self.allowMultipleInputs = False
         self.newLayerConfiguration = False
@@ -108,7 +113,6 @@ class PersistentModule( QObject ):
         self.primaryMetaDataPort = self.primaryInputPort
         self.documentation = None
         self.parameterCache = {}
-        self.taggedVersionMap = {}
         self.iTimestep = 0
         if self.createColormap:
             self.addConfigurableGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
@@ -239,8 +243,36 @@ class PersistentModule( QObject ):
         if inputList == None:         
             inputList = self.getParameter( inputName, None )
         return inputList  
-      
+    
     def getInputValue( self, inputName, default_value = None, **args ):
+        import api
+        ctrl, tag, pval = api.get_current_controller(), self.getParameterId(), None
+        tv0 = tagged_version_number = ctrl.current_version
+        if self.isLayerDependentParameter( inputName ):
+            versions = self.getTaggedVersionList( tag )
+            if versions: 
+                tv0 = tagged_version_number = versions[-1] 
+                current_test_version_tag = self.versionTags.get( tagged_version_number + 1, None )
+                if (not current_test_version_tag) or (current_test_version_tag == tag): 
+                    tagged_version_number = tagged_version_number + 1   
+        functionID = getFunctionId( self.moduleID, inputName, ctrl )
+        if functionID >= 0:
+            try:
+                tagged_pipeLine =  ctrl.vistrail.getPipeline( tagged_version_number )
+                tagged_module = tagged_pipeLine.modules[ self.moduleID ]
+                tagged_function = tagged_module.functions[functionID]
+                parameterList = tagged_function.parameters
+                pval = [ translateToPython( parmRec ) for parmRec in parameterList ]
+            except Exception, err:
+                print str(err)
+        elif self.wmod:
+            pval = self.wmod.forceGetInputFromPort( inputName, default_value ) 
+        if pval == None:         
+            pval = self.getParameter( inputName, default_value )
+#        print ' ***** GetInputValue[%s] = %s: cv=%d, tv0=%d, tv1=%d ' % ( inputName, str(pval), ctrl.current_version, tv0, tagged_version_number )
+        return pval
+      
+    def getInputValue1( self, inputName, default_value = None, **args ):
         inputVal = None
         portInputIsValid = not ( self.newLayerConfiguration and self.isLayerDependentParameter(inputName) )
         if portInputIsValid: 
@@ -258,7 +290,7 @@ class PersistentModule( QObject ):
         if self.wmod <> None:       self.wmod.setResult( outputName, value )
         self.setParameter( outputName, value )
                     
-    def initializeLayers( self, scalars ):
+    def initializeLayers( self ):
 #        activeLayerInput = self.getInputValue( 'layer' )
 #        if activeLayerInput == None: activeLayerInput = self.getParameter( 'layer' ) 
 #        print " initializeLayers: activeLayerInput = %s " % str( activeLayerInput )
@@ -267,6 +299,9 @@ class PersistentModule( QObject ):
 #            if  newActiveLayer <> self.activeLayer:
 #                self.activeLayer = newActiveLayer
 ##                self.setParameterInputsEnabled( False ) 
+
+        metadata = self.getMetadata()
+        scalars =  metadata.get( 'scalars', None )
         if self.activeLayer == None: 
             self.activeLayer =self.getAnnotation( 'activeLayer' )
         if self.input and not scalars:
@@ -280,6 +315,17 @@ class PersistentModule( QObject ):
             self.updateLayerDependentParameters( self.activeLayer, scalars )
             self.activeLayer = scalars 
             self.addAnnotation( 'activeLayer', self.activeLayer  ) 
+            self.seriesScalarRange = None
+            
+        var_md = metadata.get( scalars , None )
+        if var_md <> None:
+            range = var_md.get( 'range', None )
+            if range: 
+                self.scalarRange = list( range )
+                self.scalarRange.append( 1 )
+                if not self.seriesScalarRange:
+                    self.seriesScalarRange = range
+#        print " --- Update scalar range = %s" % str( self.scalarRange  )
 
     
     def getLayerList(self):
@@ -320,15 +366,18 @@ class PersistentModule( QObject ):
                 dtype =  metadata.get( 'datatype', None )
                 scalars =  metadata.get( 'scalars', None )
                 self.rangeBounds = getRangeBounds( dtype )
-                self.scalarRange = None
-                if scalars <> None:
+                if scalars:
                     var_md = metadata.get( scalars , None )
                     if var_md <> None:
-                        range = var_md.get( 'range', None )
-                        if range: 
-                            self.scalarRange = list( range )
-                            self.scalarRange.append( 1 )
-        return scalars
+                        self.units = var_md.get( 'units' , '' )
+#                        range = var_md.get( 'range', None )
+#                        if range: 
+#                            self.scalarRange = list( range )
+#                            self.scalarRange.append( 1 )
+#            print " --- updateMetadata: scalar range = %s" % str( self.scalarRange  )
+#        return scalars
+    def getUnits():
+        return self.units
            
     def setActiveScalars( self ):
         pass
@@ -380,23 +429,25 @@ class PersistentModule( QObject ):
 #        print " %s.initializeInputs: input Module= %s " % ( self.__class__.__name__, str( input_id ) )
         if  self.inputModule <> None: 
             self.input =  self.inputModule.getOutput() 
-            print " --- %s:initializeInputs---> # Arrays = %d " % ( self.__class__.__name__,  ( self.input.GetFieldData().GetNumberOfArrays() if self.input else -1 ) )   
-            scalars = self.updateMetadata()            
-            self.initializeLayers( scalars )
+#            print " --- %s:initializeInputs---> # Arrays = %d " % ( self.__class__.__name__,  ( self.input.GetFieldData().GetNumberOfArrays() if self.input else -1 ) )   
+            self.updateMetadata()            
+            self.initializeLayers()
 #            self.setActiveScalars()
             
         elif ( self.fieldData == None ): 
             self.initializeMetadata()
 
     def getDataValue( self, image_value):
-        if not self.scalarRange: raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+        if not self.scalarRange: 
+            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
         sval = ( image_value - self.rangeBounds[0] ) / ( self.rangeBounds[1] - self.rangeBounds[0] )
         dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
         return dataValue
 
     def getDataValues( self, image_value_list ):
-        if not self.scalarRange: raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+        if not self.scalarRange: 
+            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
         data_values = []
         for image_value in image_value_list:
@@ -406,14 +457,16 @@ class PersistentModule( QObject ):
         return data_values
 
     def getImageValue( self, data_value ):
-        if not self.scalarRange: raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+        if not self.scalarRange: 
+            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
         sval = ( data_value - valueRange[0] ) / ( valueRange[1] - valueRange[0] )
         imageValue = self.rangeBounds[0] + sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
         return imageValue
 
     def getImageValues( self, data_value_list ):
-        if not self.scalarRange: raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+        if not self.scalarRange: 
+            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
         imageValues = []
         for data_value in data_value_list:
@@ -421,6 +474,13 @@ class PersistentModule( QObject ):
             imageValue = self.rangeBounds[0] + sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
             imageValues.append( imageValue )
         return imageValues
+
+    def scaleToImage( self, data_value ):
+        if not self.scalarRange: 
+            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+        sval = data_value / ( self.scalarRange[1] - self.scalarRange[0] )
+        imageScaledValue =  sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
+        return imageScaledValue
 
     def set2DOutput( self, **args ):
 #        wmod = args.get( 'wmod', self.getWorkflowModule()  )  
@@ -592,11 +652,11 @@ class PersistentModule( QObject ):
 #            function = getFunction( configFunct.name, functionList )
     def persistParameters( self ):
        for configFunct in self.configurableFunctions.values():
-            value = self.getCachedParameter( configFunct.name, self.activeLayer ) 
+            value = self.getCachedParameter( configFunct.name ) 
             if value:
                 self.persistParameter( configFunct.name, value )
-                configFunct.init( self )    
-
+                configFunct.init( self ) 
+       self.persistVersionMap()   
 
     def persistLayerDependentParameters( self ):
        if self.newLayerConfiguration:
@@ -604,7 +664,8 @@ class PersistentModule( QObject ):
                 if configFunct.isLayerDependent: 
                     value = self.getCachedParameter( configFunct.name ) 
                     if value: self.persistParameter( configFunct.name, value ) 
-           self.newLayerConfiguration = False    
+           self.newLayerConfiguration = False
+           self.persistVersionMap()       
                 
     def processParameterChange( self, parameter_name, new_parameter_value ):
         if parameter_name == 'timestep':
@@ -639,6 +700,7 @@ class PersistentModule( QObject ):
                 configData = configFunct.update( self.InteractionState, x, y, wsize )
                 if configData <> None:
 #                    self.wmod = args.get( 'wmod', self.getWorkflowModule( False )  )  
+                    print " Update %s Leveling, data = %s " % ( configFunct.name, str( configData ) )
                     if self.wmod: self.wmod.setResult( configFunct.name, configData )
                     self.setParameter( configFunct.name, configData ) 
                     textDisplay = configFunct.getTextDisplay()
@@ -703,6 +765,7 @@ class PersistentModule( QObject ):
         versionList = self.taggedVersionMap.setdefault( tag, [] )
         if (not versionList) or (versionList[-1] < ctrl.current_version):
             versionList.append( ctrl.current_version )
+        self.versionTags[ ctrl.current_version ] = tag
         return ctrl.current_version
 
     def getTaggedVersionList( self, tag ):
@@ -718,9 +781,17 @@ class PersistentModule( QObject ):
         return default_value
 
     def initVersionMap( self ): 
-        if self.moduleID > 0:
+        if (self.moduleID >= 0):
             serializedVersionMap = self.getAnnotation('taggedVersionMap')
-            if serializedVersionMap: self.taggedVersionMap = decodeFromString( serializedVersionMap.strip() ) 
+            if serializedVersionMap: 
+                try:
+                    self.taggedVersionMap = decodeFromString( serializedVersionMap.strip(), {} ) 
+                    for tagItem in self.taggedVersionMap.items():
+                        for version in tagItem[1]:
+                            self.versionTags[ version ] = tagItem[0]
+                except Exception, err:
+                    print "Error unpacking taggedVersionMap, serialized data: %s, err: %s" % ( serializedVersionMap, str(err) )
+                    self.taggedVersionMap = {}
                 
     def getTaggedVersion( self, tag ):
         versionList = self.taggedVersionMap.get( tag, None )
@@ -746,6 +817,7 @@ class PersistentModule( QObject ):
             output = self.getParameter( parameter_name )
             assert (output <> None), "Attempt to finalize parameter that has not been cached." 
             self.persistParameter( parameter_name, output )  
+            self.persistVersionMap()   
         except Exception, err:
             print "Error changing parameter for %s module: %s", ( self.__class__.__name__, str(err) )
            
@@ -770,7 +842,7 @@ class PersistentModule( QObject ):
     
     def getWorkflowModule(self, forceGet=True ):
         try:
-            return getPersistentModule( self.moduleID, forceGet )
+            return getWorkflowModule( self.moduleID, forceGet )
         except Exception, err:
             print "Exception in getWorkflowModule[%d]: %s" % ( self.moduleID, str(err) )
         
@@ -854,7 +926,7 @@ class PersistentVisualizationModule( PersistentModule ):
             print>>sys.stderr, "Missing wmod in set3DOutput for class %s" % ( self.__class__.__name__ )
         else:
             self.wmod.setResult( portName, outputModule )
-            print "set3DOutput for class %s" % ( self.__class__.__name__ ) 
+#            print "set3DOutput for class %s" % ( self.__class__.__name__ ) 
 
     def updateTextDisplay( self, text = None ):
         if text <> None: self.textBuff = text
@@ -862,6 +934,7 @@ class PersistentVisualizationModule( PersistentModule ):
             self.textActor.SetInput( self.textBuff )
             self.textActor.Modified()
             self.textActor.VisibilityOn()
+#            print "updateTextDisplay: %s" % ( text ) 
             
     def UpdateCamera(self):
         pass

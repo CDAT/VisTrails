@@ -14,7 +14,7 @@ from ModuleStore import ModuleStoreDatabase
 from core.vistrail.port_spec import PortSpec
 from vtUtilities import *
 from PersistentModule import * 
-from ROISelection import ROISelectionWidget
+#from ROISelection import ROISelectionWidget
 from vtDV3DConfiguration import configuration
 import numpy.ma as ma
 from vtk.util.misc import vtkGetDataRoot
@@ -40,10 +40,10 @@ def getComponentTimeValues( dataset ):
                     cdtime.DefaultCalendar = cdtime.GregorianCalendar 
                 if hasattr( axis, 'partition' ):
                     rv = []
+                    tvals = axis.asRelativeTime()
                     for part in axis.partition:
                         for iTime in range( part[0], part[1] ):
-                            tval = cdtime.reltime( iTime, axis.units )
-                            rv.append( tval.tocomp() )
+                            rv.append( tvals[iTime].tocomp() )
                     break
                 else:
                     rv = axis.asComponentTime()
@@ -136,7 +136,7 @@ class CDMSDataset(Module):
             return self.transientVariables[ varName ]
         else: 
             print>>sys.stderr, "Error: can't find variable %s in dataset" % varName
-            return self.NullVariable
+        return self.NullVariable
 
     def getAxisValues( self, axis, roi ):
         values = axis.getValue()
@@ -198,7 +198,8 @@ class CDMSDataset(Module):
                                 dsModule.gridExtent[ iCoord2+1 ] = int( round( ( roiBounds[1] - values[0] )  / spacing ) )
                             roisize = dsModule.gridExtent[ iCoord2+1 ] - dsModule.gridExtent[ iCoord2 ] + 1                  
                             dsModule.gridSpacing[ iCoord ] = spacing
-                            dsModule.gridOrigin[ iCoord ] = values[0]
+                            lonOffset = 360.0 if ( ( iCoord == 0 ) and ( roiBounds[0] < 0.0 ) ) else 0.0
+                            dsModule.gridOrigin[ iCoord ] = values[0] + lonOffset
                             dsModule.gridBounds[ iCoord2 ] = roiBounds[0] if roiBounds else values[0] 
                             dsModule.gridBounds[ iCoord2+1 ] = (roiBounds[0] + roisize*spacing) if roiBounds else values[ size-1 ]
                         else:                                             
@@ -234,6 +235,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 self.setParameter( "timeRange" , time_range )
                 self.setParameter( "roi", roi_data )
                 self.setResult( 'dataset', self.datasetModule )
+                print " ......  Start Workflow, dsid=%s, ctrl=%d, file=%s ......  " % ( self.datasetId, id( api.get_current_controller() ), self.cdmsFile )
 
     def dvUpdate(self):
         pass     
@@ -475,19 +477,20 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         """
         self.cdmsDataRoot = getDataRoot()
         self.timeRange = None
-        self.currentRow = 0
         self.fullRoi = [ -180.0, -90.0, 180.0, 90.0 ]
         self.roi = self.fullRoi
+        self.multiFileSelection = False
         self.currentDatasetId = None
         self.datasets = {}
         DV3DConfigurationWidget.__init__(self, module, controller, 'CDMS Dataset Configuration', parent)
+        self.metadataViewer = MetadataViewerDialog( self )
         if self.currentDatasetId <> None: 
             self.registerCurrentDataset( id=self.currentDatasetId )
-        self.initTimeRange()
-        self.initRoi()
+#        self.initTimeRange()
+#        self.initRoi()
         
     def initTimeRange( self ):
-        timeRangeParams =  self.pmod.getInputValue( "timeRange", dbmod=self.module  ) # getFunctionParmStrValues( self.module, "timeRange"  )
+        timeRangeParams =   self.pmod.getInputValue( "timeRange"  ) # getFunctionParmStrValues( self.module, "timeRange"  )
         tRange = [ int(trs) for trs in timeRangeParams ] if timeRangeParams else None  
         if tRange and (tRange[0] >= 0) and (tRange[0] <= tRange[1]) and ( tRange[1] < self.nTS ):
             self.timeRange = tRange
@@ -497,10 +500,10 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.endIndexEdit.setText( str( self.timeRange[1] ) )  
 
     def initRoi( self ):
-        roiParams = self.pmod.getInputValue( "roi", dbmod=self.module   ) #getFunctionParmStrValues( self.module, "roi"  )
+        roiParams = self.pmod.getInputValue( "roi" ) #getFunctionParmStrValues( self.module, "roi"  )self.getParameterId()
         if roiParams:  self.roi = [ float(rois) for rois in roiParams ]
         else: self.roi = self.fullRoi 
-        self.roiSelector.setROI( self.roi )
+        self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
         
     def getParameters( self, module ):
         global DataSetVersion
@@ -511,11 +514,18 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.currentDatasetId = datasetParams[0]
             self.pmod.datasetId = self.currentDatasetId
             if( len(datasetParams) > 1 ): DataSetVersion = int( datasetParams[1] )
+
+    def setDatasetProperties(self, dataset, cdmsFile ):
+        self.currentDatasetId = dataset.id  
+        self.pmod.datasetId = dataset.id 
+        self.datasets[ self.currentDatasetId ] = cdmsFile  
+        self.cdmsDataRoot = os.path.dirname( cdmsFile )
+        self.metadataViewer.setDatasetProperties( dataset, cdmsFile ) 
         
     def registerCurrentDataset( self, **args ):
         id = args.get( 'id', None ) 
         cdmsFile = args.get( 'file', None )
-        self.pmod.setNewConfiguration( **args )
+        if self.pmod: self.pmod.setNewConfiguration( **args )
         if id: 
             self.currentDatasetId = str( id )
             cdmsFile = self.datasets.get( self.currentDatasetId, None ) 
@@ -526,7 +536,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.updateTimeSeries( dataset )
         self.initTimeRange()
         self.initRoi()
-        self.pmod.clearNewConfiguration()
+        if self.pmod: self.pmod.clearNewConfiguration()
         dataset.close()
         return cdmsFile
          
@@ -536,17 +546,32 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         if file <> None:
             cdmsFile = str( file ).strip() 
             if len( cdmsFile ) > 0:                             
-                self.registerCurrentDataset( file=cdmsFile, newLayerConfig=True )  
-                self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
-                self.dsCombo.setCurrentIndex( 0 )
+                self.registerCurrentDataset( file=cdmsFile, newLayerConfig=True ) 
+                if self.multiFileSelection:
+                    self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
+                    self.dsCombo.setCurrentIndex( 0 )
+                else:
+                    self.dataset_selection.setText( QString( self.currentDatasetId ) ) 
+                global DataSetVersion 
+                DataSetVersion = DataSetVersion + 1 
+                self.persistParameter( 'datasetId', [ self.currentDatasetId, DataSetVersion ] )
+                self.persistParameter( 'datasets', [ serializeStrMap(self.datasets), ] )
 
+    def viewMetadata(self):
+        self.metadataViewer.show()
+        
     def removeDataset(self):
-        del self.datasets[ str(self.dsCombo.currentText()) ]
-        self.dsCombo.removeItem( self.dsCombo.currentIndex() )
-        if self.dsCombo.count() == 0: self.tableWidget.clearContents() 
-        else:
-            self.dsCombo.setCurrentIndex(0)
-            self.registerCurrentDataset( id=self.dsCombo.currentText() )
+        if self.multiFileSelection:
+            del self.datasets[ str(self.dsCombo.currentText()) ]
+            self.dsCombo.removeItem( self.dsCombo.currentIndex() )
+            if self.dsCombo.count() == 0: self.metadataViewer.clear() 
+            else:
+                self.dsCombo.setCurrentIndex(0)
+                self.registerCurrentDataset( id=self.dsCombo.currentText() )
+            self.persistParameter( 'datasets', [ serializeStrMap(self.datasets), ] )
+            global DataSetVersion 
+            DataSetVersion = DataSetVersion + 1 
+            self.persistParameter( 'datasetId', [ self.currentDatasetId, DataSetVersion ] )
      
     def updateTimeSeries( self, dataset ):
         self.startCombo.clear()
@@ -565,51 +590,10 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.endIndexEdit.setText( str( self.timeRange[1] ) )  
        
     def selectDataset(self): 
-        cdmsFile = self.registerCurrentDataset( id=str( self.dsCombo.currentText() ), newLayerConfig=True )
-        
-    def setDatasetProperty(self, property, value ):
-        try:
-            nRows = self.tableWidget.rowCount()
-            if self.currentRow == nRows: self.tableWidget.insertRow(nRows)
-            self.tableWidget.setItem ( self.currentRow, 0, QTableWidgetItem( property ) )
-            self.tableWidget.setItem ( self.currentRow, 1, QTableWidgetItem( value ) )
-            self.currentRow = self.currentRow + 1
-        except:
-            print>>sys.stderr, " Error setting property %s " % property
-
-    def setDatasetAttributes(self, dataset ):
-        for attribute in dataset.attributes:
-            value = dataset.attributes[ attribute ]
-            if type(value) == type(''): self.setDatasetAttribute( attribute, dataset )
-        
-    def setDatasetAttribute(self, attribute, dataset ):
-        try:
-            nRows = self.tableWidget.rowCount()
-            if self.currentRow == nRows: self.tableWidget.insertRow(nRows)
-            value = dataset.attributes.get( attribute, None )
-            if value:
-                self.tableWidget.setItem ( self.currentRow, 0, QTableWidgetItem( attribute ) )
-                self.tableWidget.setItem ( self.currentRow, 1, QTableWidgetItem( value ) )
-                self.currentRow = self.currentRow + 1
-        except Exception, err:
-            print>>sys.stderr, " Error setting dataset attribute %s: %s " % ( attribute, str(err) )
-     
-    def setDatasetProperties(self, dataset, cdmsFile ):
-        self.currentDatasetId = dataset.id  
-        self.pmod.datasetId = dataset.id 
-        self.tableWidget.clearContents () 
-        self.currentRow = 0
-        self.setDatasetProperty( 'id', dataset.id )  
-        self.setDatasetProperty( 'cdmsFile', cdmsFile ) 
-        self.setDatasetAttributes( dataset )   
-#        self.setDatasetAttribute( 'model', dataset )  
-#        self.setDatasetAttribute( 'Conventions', dataset )  
-#        self.setDatasetAttribute( 'center', dataset )  
-#        self.setDatasetAttribute( 'calendar', dataset )  
-#        self.setDatasetAttribute( 'comments', dataset ) 
-        self.datasets[ self.currentDatasetId ] = cdmsFile  
-        self.cdmsDataRoot = os.path.dirname( cdmsFile )
-                                                
+        if self.multiFileSelection:
+            self.registerCurrentDataset( id=str( self.dsCombo.currentText() ), newLayerConfig=True )
+            self.updateController()
+                                                       
     def createLayout(self):
         """ createEditor() -> None
         Configure sections
@@ -631,41 +615,57 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         ds_layout = QHBoxLayout()
         ds_label = QLabel( "Dataset:"  )
         ds_layout.addWidget( ds_label ) 
-
-        self.dsCombo =  QComboBox ( self.parent() )
-        ds_label.setBuddy( self.dsCombo )
-        self.dsCombo.setMaximumHeight( 30 )
-        ds_layout.addWidget( self.dsCombo  )
-        for ds in self.datasets.keys(): self.dsCombo.addItem ( ds )
-        if self.currentDatasetId:
-            iCurrentDsIndex = self.dsCombo.findText( self.currentDatasetId )
-            self.dsCombo.setCurrentIndex( iCurrentDsIndex )   
-        self.connect( self.dsCombo, SIGNAL("currentIndexChanged(QString)"), self.selectDataset ) 
-
-        self.selectDirButton = QPushButton('Add New Dataset', self)
-        ds_layout.addWidget( self.selectDirButton )
-        self.connect( self.selectDirButton, SIGNAL('clicked(bool)'), self.selectFile )
-
-        self.removeDatasetButton = QPushButton('Remove Selected Dataset', self)
-        ds_layout.addWidget( self.removeDatasetButton )
-        self.connect( self.removeDatasetButton, SIGNAL('clicked(bool)'), self.removeDataset )
                 
-        layout.addLayout( ds_layout )
-                      
-        tableGroupBox = QGroupBox("Current Dataset Properties")
-        tableGroupLayout = QVBoxLayout()      
-        tableGroupBox.setLayout( tableGroupLayout )
-        layout.addWidget( tableGroupBox )
-        
-        self.tableWidget = QTableWidget(self)
-        self.tableWidget.setRowCount(0)
-        self.tableWidget.setColumnCount(2)
-        self.tableWidget.setColumnWidth (0,200)
-        self.tableWidget.setColumnWidth (1,1000)
-        self.tableWidget.setFrameStyle( QFrame.Panel | QFrame.Raised )
-        self.tableWidget.setSizePolicy( QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Expanding ) )
-        self.tableWidget.setHorizontalHeaderLabels( [ 'Property', 'Value'  ] )
-        tableGroupLayout.addWidget( self.tableWidget )
+        if self.multiFileSelection:
+            self.dsCombo =  QComboBox ( self.parent() )
+            ds_label.setBuddy( self.dsCombo )
+            self.dsCombo.setMaximumHeight( 30 )
+            ds_layout.addWidget( self.dsCombo  )
+            for ds in self.datasets.keys(): self.dsCombo.addItem ( ds )
+            if self.currentDatasetId:
+                iCurrentDsIndex = self.dsCombo.findText( self.currentDatasetId )
+                self.dsCombo.setCurrentIndex( iCurrentDsIndex )   
+            self.connect( self.dsCombo, SIGNAL("currentIndexChanged(QString)"), self.selectDataset ) 
+            
+            layout.addLayout( ds_layout )
+            ds_button_layout = QHBoxLayout()
+    
+            self.selectDirButton = QPushButton('Add New Dataset', self)
+            ds_button_layout.addWidget( self.selectDirButton )
+            self.connect( self.selectDirButton, SIGNAL('clicked(bool)'), self.selectFile )
+    
+            self.removeDatasetButton = QPushButton('Remove Selected Dataset', self)
+            ds_button_layout.addWidget( self.removeDatasetButton )
+            self.connect( self.removeDatasetButton, SIGNAL('clicked(bool)'), self.removeDataset )
+    
+            layout.addLayout( ds_button_layout )
+            ds_button1_layout = QHBoxLayout()
+    
+            self.viewMetadataButton = QPushButton('View Metadata', self)
+            ds_button1_layout.addWidget( self.viewMetadataButton )
+            self.connect( self.viewMetadataButton, SIGNAL('clicked(bool)'), self.viewMetadata )
+            
+            layout.addLayout( ds_button1_layout )  
+        else:              
+            self.dataset_selection  = QLabel( )
+            self.dataset_selection.setFrameStyle( QFrame.Panel|QFrame.Raised )
+            self.dataset_selection.setLineWidth(2)
+            ds_layout.addWidget( self.dataset_selection )
+            if self.currentDatasetId: self.dataset_selection.setText( QString( self.currentDatasetId ) )  
+            
+            layout.addLayout( ds_layout )
+            ds_button_layout = QHBoxLayout()
+    
+            self.selectDirButton = QPushButton('Select Dataset', self)
+            ds_button_layout.addWidget( self.selectDirButton )
+            self.connect( self.selectDirButton, SIGNAL('clicked(bool)'), self.selectFile )
+    
+            self.viewMetadataButton = QPushButton('View Metadata', self)
+            ds_button_layout.addWidget( self.viewMetadataButton )
+            self.connect( self.viewMetadataButton, SIGNAL('clicked(bool)'), self.viewMetadata )
+    
+            layout.addLayout( ds_button_layout )
+            ds_button1_layout = QHBoxLayout()
 
         timeTab = QWidget()  
         self.tabbedWidget.addTab( timeTab, 'time' )                 
@@ -706,13 +706,26 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         time_layout.addStretch(1)
 
         roiTab = QWidget()  
-        self.tabbedWidget.addTab( roiTab, 'roi' )                 
-        panelLayout = QHBoxLayout()
-        roiTab.setLayout( panelLayout ) 
+        self.tabbedWidget.addTab( roiTab, 'roi' ) 
+        roiTab_layout = QVBoxLayout()
+        roiTab.setLayout( roiTab_layout ) 
         
-        self.roiSelector = ROISelectionWidget( self.parent() )
-        panelLayout.addWidget(self.roiSelector)
+        self.roiLabel = QLabel( "ROI: %s" % str( self.roi )  )
+        roiTab_layout.addWidget(self.roiLabel)
+                
+        self.selectRoiButton = QPushButton('Select ROI', self)
+        roiTab_layout.addWidget( self.selectRoiButton )
+        self.connect( self.selectRoiButton, SIGNAL('clicked(bool)'), self.selectRoi )
+        
+        self.roiSelector = ROISelectionDialog( self.parent() )
         if self.roi: self.roiSelector.setROI( self.roi )
+        self.connect(self.roiSelector, SIGNAL('doneConfigure()'), self.setRoi )
+
+    def setRoi(self):
+        self.roi = self.roiSelector.getROI()
+        self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
+        self.persistParameter( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  )  
+
         
 #        ROICorner0Label = QLabel("<b><u>ROI Corner0:</u></b>")
 #        ROICorner1Label = QLabel("<b><u>ROI Corner1:</u></b>")
@@ -758,7 +771,10 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
 #        w1.setLayout( grid1 )
 #        panelLayout.addWidget( w1 )
         
-                        
+    def selectRoi( self ): 
+        if self.roi: self.roiSelector.setROI( self.roi )
+        self.roiSelector.show()
+                               
     def updateStartTime( self, val ):
 #        print " updateStartTime: %s " % str( val )
         iStartIndex = self.startCombo.currentIndex()
@@ -774,12 +790,16 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
     def updateStartIndex( self ):
         iStartIndex = int( str( self.startIndexEdit.text() ) )
         self.startCombo.setCurrentIndex( iStartIndex )
-        if self.timeRange: self.timeRange[0] = iStartIndex
+        if self.timeRange: 
+            self.timeRange[0] = iStartIndex
+            self.persistParameter( 'timeRange' , [ self.timeRange[0], self.timeRange[1] ]  )   
 
     def updateEndIndex( self ):
         iEndIndex = int( str( self.endIndexEdit.text() ) )
         self.endCombo.setCurrentIndex( iEndIndex )
-        if self.timeRange: self.timeRange[1] = iEndIndex
+        if self.timeRange: 
+            self.timeRange[1] = iEndIndex
+            self.persistParameter( 'timeRange' , [ self.timeRange[0], self.timeRange[1] ]  )   
                           
     def createButtonLayout(self):
         """ createButtonLayout() -> None
@@ -802,7 +822,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close)
 
     def sizeHint(self):
-        return QSize(1000,800)
+        return QSize(500,400)
 
     def updateController(self, controller=None):
         global DataSetVersion
@@ -810,7 +830,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.persistParameter( 'datasets', [ serializeStrMap(self.datasets), ] )
         self.persistParameter( 'datasetId', [ self.currentDatasetId, DataSetVersion ] )
         self.persistParameter( 'timeRange' , [ self.timeRange[0], self.timeRange[1] ]  )       
-        self.persistParameter( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  )       
+        self.persistParameter( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  )  
+        if self.pmod: self.pmod.persistVersionMap()      
            
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None
@@ -818,12 +839,91 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         
         """
         self.timeRange = [ int( str( self.startIndexEdit.text() ) ), int( str( self.endIndexEdit.text() ) ) ]
-        self.roi = self.roiSelector.getROI()
         self.updateController(self.controller)
         self.emit(SIGNAL('doneConfigure()'))
         self.close()
         if self.pmod: self.pmod.execute()
+
+################################################################################
+
+class MetadataViewerDialog( QDialog ):
+    """
+    MetadataViewerDialog is a dialog for showing dataset documentation.  
+
+    """
+    def __init__(self, parent=None):
+        QDialog.__init__(self, parent)
+        self.currentRow = 0
+        self.setWindowTitle('Dataset Metadata')
+        self.setLayout(QVBoxLayout())
+        self.buildTable()
+        self.closeButton = QPushButton('Ok', self)
+        self.layout().addWidget(self.closeButton)
+        self.connect(self.closeButton, SIGNAL('clicked(bool)'), self.close)
+        self.closeButton.setShortcut('Enter')
+
+    def clear(self):
+        self.tableWidget.clearContents() 
+
+    def buildTable(self):
+        tableGroupBox = QGroupBox("Current Dataset Properties")
+        tableGroupLayout = QVBoxLayout()      
+        tableGroupBox.setLayout( tableGroupLayout )
+        self.layout().addWidget( tableGroupBox )
         
+        self.tableWidget = QTableWidget(self)
+        self.tableWidget.setRowCount(0)
+        self.tableWidget.setColumnCount(2)
+        self.tableWidget.setColumnWidth (0,200)
+        self.tableWidget.setColumnWidth (1,1000)
+        self.tableWidget.setFrameStyle( QFrame.Panel | QFrame.Raised )
+        self.tableWidget.setSizePolicy( QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Expanding ) )
+        self.tableWidget.setHorizontalHeaderLabels( [ 'Property', 'Value'  ] )
+        tableGroupLayout.addWidget( self.tableWidget )
+
+    def setDatasetProperty(self, property, value ):
+        try:
+            nRows = self.tableWidget.rowCount()
+            if self.currentRow == nRows: self.tableWidget.insertRow(nRows)
+            self.tableWidget.setItem ( self.currentRow, 0, QTableWidgetItem( property ) )
+            self.tableWidget.setItem ( self.currentRow, 1, QTableWidgetItem( value ) )
+            self.currentRow = self.currentRow + 1
+        except:
+            print>>sys.stderr, " Error setting property %s " % property
+
+    def setDatasetAttributes(self, dataset ):
+        for attribute in dataset.attributes:
+            value = dataset.attributes[ attribute ]
+            if type(value) == type(''): self.setDatasetAttribute( attribute, dataset )
+        
+    def setDatasetAttribute(self, attribute, dataset ):
+        try:
+            nRows = self.tableWidget.rowCount()
+            if self.currentRow == nRows: self.tableWidget.insertRow(nRows)
+            value = dataset.attributes.get( attribute, None )
+            if value:
+                self.tableWidget.setItem ( self.currentRow, 0, QTableWidgetItem( attribute ) )
+                self.tableWidget.setItem ( self.currentRow, 1, QTableWidgetItem( value ) )
+                self.currentRow = self.currentRow + 1
+        except Exception, err:
+            print>>sys.stderr, " Error setting dataset attribute %s: %s " % ( attribute, str(err) )
+     
+    def setDatasetProperties(self, dataset, cdmsFile ):
+        self.tableWidget.clearContents () 
+        self.currentRow = 0
+        self.setDatasetProperty( 'id', dataset.id )  
+        self.setDatasetProperty( 'cdmsFile', cdmsFile ) 
+        self.setDatasetAttributes( dataset )   
+        
+    def getTable(self):
+        return self.tableWidget
+        
+    def addCloseObserver( self, observer ):
+        self.connect(self.closeButton, SIGNAL('clicked(bool)'), observer )
+           
+    def show(self):
+        QDialog.show(self)   
+             
 #class CDMSVariableConfigurationWidget(DV3DConfigurationWidget):
 #    """
 #    DemoDataConfigurationWidget ...
@@ -1083,7 +1183,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
 class PM_CDMSDataReader( PersistentVisualizationModule ):
 
     def __init__(self, mid):
-        PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False )
+        PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['portData'] )
         self.timeIndex = 0
         self.dataCache = {}
         self.imageData = {}
@@ -1162,13 +1262,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             if   orec.ndim == 3: self.set3DOutput( name=orec.name,  output=self.imageData[cachedImageDataName], wmod = wmod )
             elif orec.ndim == 2: self.set2DOutput( name=orec.name,  output=self.imageData[cachedImageDataName], wmod = wmod  )
 
-    def getMetadata( self, metadata={}, port=None ):
-        PersistentVisualizationModule.getMetadata( metadata )
-        portData = self.getPortData()  
-        oRecMgr = OutputRecManager( portData[0] if portData else None )
-        orec = oRecMgr.getOutputRec( self.datasetId, port )
-        if orec: metadata[ 'layers' ] = orec.varList
-        return metadata
+#    def getMetadata( self, metadata={}, port=None ):
+#        PersistentVisualizationModule.getMetadata( metadata )
+#        portData = self.getPortData()  
+#        oRecMgr = OutputRecManager( portData[0] if portData else None )
+#        orec = oRecMgr.getOutputRec( self.datasetId, port )
+#        if orec: metadata[ 'layers' ] = orec.varList
+#        return metadata
           
     def getImageData( self, orec, **args ):
         """
@@ -1176,6 +1276,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         The ds.getVarDataTimeSlice method execution extracts a VDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).   
         The array is then rescaled, converted to a 1D unsigned short array, and then wrapped as a vtkUnsignedShortArray using the vtkdata.SetVoidArray method call.  
         The vtk data array is then attached as point data to a vtkImageData object, which is returned.
+        The CDAT metadata is serialized, wrapped as a vtkStringArray, and then attached as field data to the vtkImageData object.  
         """
         varList = orec.varList
         if len( varList ) == 0: return False
@@ -1421,6 +1522,7 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         global PortDataVersion
         PortDataVersion = PortDataVersion + 1
         self.persistParameter( 'portData', [ self.serializedPortData, PortDataVersion ], parameter_id=self.datasetId )
+        self.pmod.persistVersionMap() 
            
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None
@@ -1540,6 +1642,6 @@ class CDMS_VectorReaderConfigurationWidget(CDMSReaderConfigurationWidget):
 
         
 if __name__ == '__main__':
-    executeVistrail( 'CDMSPipeline' )
-
+#    executeVistrail( 'CDMSPipeline' )
+    executeVistrail( 'TestPipeline2' )
 

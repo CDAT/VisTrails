@@ -163,10 +163,10 @@ class MainForm(QDialog):
         self.setWindowTitle("Array Editor")
         
         
-class ROISelectionWidget(QWidget):
+class ROISelectionDialog(QDialog):
 
     def __init__(self, parent=None):
-        super(QWidget, self).__init__(parent)
+        super(QDialog, self).__init__(parent)
                 
         self.scene = QGraphicsScene(self)
         worldMapFile = QString( defaultMapFile )
@@ -276,6 +276,17 @@ class ROISelectionWidget(QWidget):
         panelLayout.addStretch(1)
 
         self.connect(self.view, SIGNAL("ROISelected"), self.UpdateROICoords )
+        
+        self.okButton = QPushButton('&OK', self)
+        self.okButton.setFixedWidth(100)
+        panelLayout.addWidget(self.okButton)
+        self.cancelButton = QPushButton('&Cancel', self)
+        self.cancelButton.setShortcut('Esc')
+        self.cancelButton.setFixedWidth(100)
+        panelLayout.addWidget(self.cancelButton)
+        self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
+        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close )
+
 
 #        self.renderROIButton = QPushButton("Render ROI")
 #        self.connect(self.renderROIButton, SIGNAL("clicked()"), self.renderROI )
@@ -323,6 +334,10 @@ class ROISelectionWidget(QWidget):
     def UpdateROIRect(self, scenePt0, scenePt1 ):
         self.roiRect.setRect ( scenePt0.x(), scenePt0.y(), scenePt1.x()-scenePt0.x(), scenePt1.y()-scenePt0.y() )
         self.view.update()
+        
+    def okTriggered(self):
+        self.emit(SIGNAL('doneConfigure()'))
+        self.close()
 
     def getROI(self):
          return [ float(self.ROICornerLon0.text()), float(self.ROICornerLat0.text()), float(self.ROICornerLon1.text()), float(self.ROICornerLat1.text())   ]      

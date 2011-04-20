@@ -107,7 +107,7 @@ class CDATTask(QtCore.QObject):
             
     def getInputName( self, iInputIndex  ):
         varName = self.inputMap.get( self.__class__.inputs[ iInputIndex ], None )
-        if not varName: print>>sys.stderr, " No input %d specified for AnomalyTask" % ( iInputIndex )
+#        if not varName: print>>sys.stderr, " No input %d specified for AnomalyTask" % ( iInputIndex )
         return varName
 
     def getOutputName( self, iOutputIndex  ):
