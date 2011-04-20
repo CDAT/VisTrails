@@ -166,7 +166,7 @@ class CDMSDataset(Module):
         return iCoord
     
     @staticmethod
-    def getInstance( dsetId, cdmsFile, timeRange=None, roi = None ):
+    def getInstance( dsetId, cdmsFile, timeRange=None, roi = None, zscale = 1.0 ):
         dsModule = None
         if cdmsFile:
             dataset = cdms2.open( cdmsFile ) 
@@ -203,7 +203,7 @@ class CDMSDataset(Module):
                             dsModule.gridBounds[ iCoord2 ] = roiBounds[0] if roiBounds else values[0] 
                             dsModule.gridBounds[ iCoord2+1 ] = (roiBounds[0] + roisize*spacing) if roiBounds else values[ size-1 ]
                         else:                                             
-                            dsModule.gridSpacing[ iCoord ] = 1.0
+                            dsModule.gridSpacing[ iCoord ] = zscale
                             dsModule.gridOrigin[ iCoord ] = 0.0
                             dsModule.gridBounds[ iCoord2 ] = 0.0
                             dsModule.gridBounds[ iCoord2+1 ] = float( size-1 )
@@ -222,6 +222,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         import api
         dsMapData = self.getInputValue( "datasets" )
         if dsMapData: 
+            zscale = self.getInputValue( "zscale",   1.0  )  
             datasetMap = deserializeStrMap( getItem( dsMapData ) )
             dsData = self.getInputValue( "datasetId" )
             if dsData:
@@ -231,7 +232,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 self.timeRange =[ int(sval) for sval in time_range ]        
                 roi_data = self.getInputValue( "roi" )
                 self.roi =[ float(sroi) for sroi in roi_data ]        
-                self.datasetModule = CDMSDataset.getInstance( self.datasetId, self.cdmsFile, self.timeRange, self.roi )
+                self.datasetModule = CDMSDataset.getInstance( self.datasetId, self.cdmsFile, self.timeRange, self.roi, zscale )
                 self.setParameter( "timeRange" , time_range )
                 self.setParameter( "roi", roi_data )
                 self.setResult( 'dataset', self.datasetModule )
@@ -479,6 +480,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.timeRange = None
         self.fullRoi = [ -180.0, -90.0, 180.0, 90.0 ]
         self.roi = self.fullRoi
+        self.zscale = 1.0
         self.multiFileSelection = False
         self.currentDatasetId = None
         self.datasets = {}
@@ -505,6 +507,12 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         else: self.roi = self.fullRoi 
         self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
         
+    def initZScale( self ):
+        zsParams = self.pmod.getInputValue( "zscale" )
+        if zsParams:  self.zscale = float( zsParams[0] )
+        self.selectZScaleLineEdit.setText( "%.2f" % self.zscale)
+#        self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
+                
     def getParameters( self, module ):
         global DataSetVersion
         datasetMapParams = getFunctionParmStrValues( module, "datasets" )
@@ -536,6 +544,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.updateTimeSeries( dataset )
         self.initTimeRange()
         self.initRoi()
+        self.initZScale()
         if self.pmod: self.pmod.clearNewConfiguration()
         dataset.close()
         return cdmsFile
@@ -721,6 +730,18 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         if self.roi: self.roiSelector.setROI( self.roi )
         self.connect(self.roiSelector, SIGNAL('doneConfigure()'), self.setRoi )
 
+        zscaleTab = QWidget()  
+        self.tabbedWidget.addTab( zscaleTab, 'vertScale' ) 
+        zscaleTab_layout = QVBoxLayout()
+        zscaleTab.setLayout( zscaleTab_layout ) 
+        
+        self.zscaleLabel = QLabel( "Vertical Scale:"  )
+        zscaleTab_layout.addWidget(self.zscaleLabel)
+        
+        self.selectZScaleLineEdit =  QLineEdit( self.parent() )
+        self.selectZScaleLineEdit.setValidator( QDoubleValidator() )
+        self.selectZScaleLineEdit.setText( "%.2f" % self.zscale)
+
     def setRoi(self):
         self.roi = self.roiSelector.getROI()
         self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
@@ -830,7 +851,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.persistParameter( 'datasets', [ serializeStrMap(self.datasets), ] )
         self.persistParameter( 'datasetId', [ self.currentDatasetId, DataSetVersion ] )
         self.persistParameter( 'timeRange' , [ self.timeRange[0], self.timeRange[1] ]  )       
-        self.persistParameter( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  )  
+        self.persistParameter( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  )          
+        self.persistParameter( 'zscale' , [ self.zscale ]  )  
         if self.pmod: self.pmod.persistVersionMap()      
            
     def okTriggered(self, checked = False):
@@ -839,6 +861,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         
         """
         self.timeRange = [ int( str( self.startIndexEdit.text() ) ), int( str( self.endIndexEdit.text() ) ) ]
+        self.zscale = float( self.selectZScaleLineEdit.text() )
         self.updateController(self.controller)
         self.emit(SIGNAL('doneConfigure()'))
         self.close()
