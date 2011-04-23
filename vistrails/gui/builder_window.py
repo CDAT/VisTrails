@@ -122,6 +122,8 @@ class QBuilderWindow(QtGui.QMainWindow):
         self._package_menu_items = {}
 
         self.detachedHistoryView = getattr(get_vistrails_configuration(), 'detachHistoryView')
+        
+        self.is_main_window = True
 
     def create_first_vistrail(self):
         """ create_first_vistrail() -> None

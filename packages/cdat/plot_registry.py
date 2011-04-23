@@ -24,6 +24,8 @@ import os, os.path
 from PyQt4 import QtCore, QtGui
 
 # vistrails imports
+import api
+import core.db.action
 from core.db.io import load_vistrail
 from core.db.locator import FileLocator
 from core.modules.constant_configuration import StandardConstantWidget
@@ -51,40 +53,69 @@ class PlotRegistry(object):
                 vt_file = os.path.join(PLOT_FILES_PATH, 
                                        parser.get(p, 'vt_file'))
                 self.plots[p] = Plot(p, config_file, vt_file)
+                try:
+                    self.plots[p].load()
+                except Exception, e:
+                    print "Error when loading plot %s"%p, str(e)
+                    import traceback
+                    traceback.print_exc()
     
     def registerPlots(self):
         for name, plot in self.plots.iteritems():
             if plot.loaded == True:
                 self.cdatwindow.registerPlotType(name, plot)
                 self.registered.append(name)
+    
+    @staticmethod    
+    def getPlotsDependencies():
+        parser = ConfigParser.ConfigParser()
+        dependencies = []
+        if parser.read(os.path.join(PLOT_FILES_PATH, 'registry.cfg')):
+            for p in parser.sections():
+                config_file = os.path.join(PLOT_FILES_PATH, 
+                                           parser.get(p,'config_file'))
+                vt_file = os.path.join(PLOT_FILES_PATH, 
+                                       parser.get(p, 'vt_file'))
+                plot = Plot(p, config_file, vt_file)
+                plot.load(loadwidget=False)
+                #print plot.dependencies
+                dependencies.extend(plot.dependencies)
+        return list(set(dependencies))
+    
+    def __del__(self):
+        plots = self.plots.keys()
+        while len(plots) > 0:
+            del self.plots[plots[-1]]
+            plots.pop()
         
 class Plot(object):
     def __init__(self, name, config_file, vt_file):
         self.name = name
         self.config_file = config_file
         self.vt_file = vt_file
+        self.locator = FileLocator(os.path.abspath(self.vt_file))
         self.cellnum = 1
         self.filenum = 1
+        self.varnum = 0
         self.workflow_tag = None
         self.workflow = None
         self.filetypes = {}
         self.qt_filter = None
         self.files = []
         self.cells = []
+        self.vars = []
+        self.axes = []
         self.widget = None
         self.alias_widgets = {}
         self.alias_values = {}
         self.dependencies = []
         self.unsatisfied_deps = []
         self.loaded = False
-        try:
-            self.load()
-        except Exception, e:
-            print "Error when loading plot", str(e)
-            import traceback
-            traceback.print_exc()
+        self.plot_vistrail = None
+        self.current_parent_version = 0L
+        self.current_controller = None
             
-    def load(self):
+    def load(self, loadwidget=True):
         config = ConfigParser.ConfigParser()
         if config.read(self.config_file):
             if config.has_section('global'):
@@ -92,6 +123,8 @@ class Plot(object):
                     self.cellnum = config.getint('global', 'cellnum')
                 if config.has_option('global', 'filenum'):
                     self.filenum = config.getint('global', 'filenum')
+                if config.has_option('global', 'varnum'):
+                    self.varnum = config.getint('global', 'varnum')
                 if config.has_option('global', 'workflow_tag'):
                     self.workflow_tag = config.get('global', 'workflow_tag')
                 else:
@@ -117,6 +150,14 @@ required option 'workflow_tag'. Widget will not be loaded."%self.config_file)
                     if config.has_option('global', option_name):
                         self.files.append(config.get('global', option_name))
                         
+                for v in range(self.varnum):
+                    option_name = 'varname_alias' + str(v+1)
+                    if config.has_option('global', option_name):
+                        self.vars.append(config.get('global', option_name))
+                    axes_name = 'axes_alias' + str(v+1)
+                    if config.has_option('global', axes_name):
+                        self.axes.append(config.get('global', axes_name))
+                        
                 for x in range(self.cellnum):
                     section_name = 'cell' + str(x+1)
                     if (config.has_section(section_name) and
@@ -127,38 +168,39 @@ required option 'workflow_tag'. Widget will not be loaded."%self.config_file)
                                                config.get(section_name, 'row_alias'),
                                                config.get(section_name, 'col_alias')))
                 
-                #load workflow in vistrail
-                #only if dependencies are enabled
-                manager = get_package_manager()
-                self.unsatisfied_deps = []
-                for dep in self.dependencies:
-                    if not manager.has_package(dep):
-                        self.unsatisfied_deps.append(dep)
-                if len(self.unsatisfied_deps) == 0:
-                    locator = FileLocator(os.path.abspath(self.vt_file))
-                    (v, abstractions , thumbnails) = load_vistrail(locator)
-                    controller = VistrailController()
-                    controller.set_vistrail(v, locator, abstractions, thumbnails)
-                    version = v.get_version_number(self.workflow_tag)
-                    controller.change_selected_version(version)
-                    self.workflow = controller.current_pipeline
-                    self.load_widget()
-                    self.loaded = True
-                else:
-                    debug.warning("CDAT Package: %s widget could not be loaded \
-because it depends on packages that are not loaded:"%self.name)
-                    debug.warning("  %s"%", ".join(self.unsatisfied_deps))
-                    self.loaded = False
+                if loadwidget:
+                    #load workflow in vistrail
+                    #only if dependencies are enabled
+                    manager = get_package_manager()
+                    self.unsatisfied_deps = []
+                    for dep in self.dependencies:
+                        if not manager.has_package(dep):
+                            self.unsatisfied_deps.append(dep)
+                    if len(self.unsatisfied_deps) == 0:
+                        (self.plot_vistrail, abstractions , thumbnails) = load_vistrail(self.locator)
+                        controller = VistrailController()
+                        controller.set_vistrail(self.plot_vistrail, self.locator, 
+                                                abstractions, thumbnails)
+                        version = self.plot_vistrail.get_version_number(self.workflow_tag)
+                        controller.change_selected_version(version)
+                        self.workflow = controller.current_pipeline
+                        self.loadWidget()
+                        self.loaded = True
+                    else:
+                        debug.warning("CDAT Package: %s widget could not be loaded \
+    because it depends on packages that are not loaded:"%self.name)
+                        debug.warning("  %s"%", ".join(self.unsatisfied_deps))
+                        self.loaded = False
             else:
                 debug.warning("CDAT Package: file %s does not contain a 'global'\
  section. Widget will not be loaded."%self.config_file)
                 self.loaded = False
             
-    def load_widget(self):
+    def loadWidget(self):
         aliases = self.workflow.aliases
         widget = QtGui.QWidget()
         layout = QtGui.QVBoxLayout()
-        hidden_aliases = self.compute_hidden_aliases()
+        hidden_aliases = self.computeHiddenAliases()
         for name, (type, oId, parentType, parentId, mId) in aliases.iteritems():
             if name not in hidden_aliases:
                 p = self.workflow.db_get_object(type, oId)
@@ -184,32 +226,144 @@ because it depends on packages that are not loaded:"%self.name)
         widget.setLayout(layout)
         self.widget = widget
     
-    def compute_hidden_aliases(self):
+    def computeHiddenAliases(self):
         result = []
         result.extend(self.files)
+        result.extend(self.vars)
+        result.extend(self.axes)
         for c in self.cells:
             result.append(c.row_name)
             result.append(c.col_name)
         return result
     
-    def applyChanges(self):
-        print "applyChanges"
+    def writePipelineToCurrentVistrail(self, aliases):
+        """writePipelineToVistrail(aliases: dict) -> None 
+        It will compute necessary actions and add to the current vistrail, 
+        starting at self.parent_version. In the case self.parent_version
+        does not contain a valid workflow, we will start from the root with
+        a new pipeline.
+        
+        """
+        #print self.current_controller
+        if self.current_controller is None:
+            self.current_controller = api.get_current_controller()
+            self.current_parent_version = 0L
+        else:
+            if self.current_parent_version > 0L:
+                pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
+                if len(pipeline.aliases) >= len(self.workflow.aliases):
+                    paliases = set(pipeline.aliases.keys())
+                    waliases = set(self.workflow.aliases.keys())
+                    if len(waliases - paliases) != 0:
+                        self.current_parent_version = 0
+        #print "controller ", self.current_controller
+        #print "version ", self.current_parent_version 
+        if self.current_parent_version == 0L:
+            #create actions and paste them in current vistrail
+            vistrail = self.current_controller.vistrail
+            if vistrail:
+                newid = self.addPipelineAction(self.workflow,
+                                               self.current_controller,
+                                               vistrail, 
+                                               self.current_parent_version)
+                newtag = self.name
+                count = 1
+                while vistrail.hasTag(newtag):
+                    newtag = "%s %s"%(self.name, count)
+                    count += 1 
+                vistrail.addTag(newtag, newid)
+                self.current_parent_version = newid
+                
+        #now we update pipeline with current parameter values
+        pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
+        newid = self.addParameterChangesFromAliasesAction(pipeline, 
+                                        self.current_controller, 
+                                        self.current_controller.vistrail, 
+                                        self.current_parent_version, aliases)
+        self.current_parent_version = newid
+            
+                
+    def applyChanges(self, aliases):
+        #print "applyChanges"
+        self.writePipelineToCurrentVistrail(aliases)
+        pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
+        #print "Controller changed ", self.current_controller.changed
+        controller = VistrailController()
+        controller.set_vistrail(self.current_controller.vistrail,
+                                self.current_controller.locator)
+        controller.change_selected_version(self.current_parent_version)
+        (results, _) = controller.execute_current_workflow()
+        #print results[0]
         
     def previewChanges(self, aliases):
-        #print "previewChanges", aliases
+        print "previewChanges", aliases
         # we will just execute the pipeline with the given alias dictionary
-        locator = FileLocator(os.path.abspath(self.vt_file))
-        (v, abstractions , thumbnails) = load_vistrail(locator)
         controller = VistrailController()
-        controller.set_vistrail(v, locator, abstractions, thumbnails)
-        version = v.get_version_number(self.workflow_tag)
+        controller.set_vistrail(self.plot_vistrail, self.locator)
+        version = self.plot_vistrail.get_version_number(self.workflow_tag)
         controller.change_selected_version(version)
         (results, _) = controller.execute_current_workflow(aliases)
         #print results[0]
         
     def discardChanges(self):
         print "discardChanges"
+        print "FIXME"
         
+    #functions related to provenance
+    # we don't want to use the controller directly because we might be changing
+    # a pipeline that is not the current pipeline
+    def addPipelineAction(self, pipeline, controller, vistrail, 
+                             parent_version):
+        """addPipelineAction(pipeline: Pipeline, controller: VistrailController,
+                             vistrail: Vistrail, parent_version: long) -> long
+        
+        """
+        #print "addPipelineAction(%s,%s,%s,%s)"%(pipeline, controller, vistrail,
+        #                                        parent_version)
+        id_remap = {}
+        action = core.db.action.create_paste_action(pipeline,
+                                                    vistrail.idScope, 
+                                                    id_remap)
+                
+        vistrail.add_action(action, parent_version, 
+                            controller.current_session)
+        controller.set_changed(True)
+        controller.recompute_terse_graph()
+        controller.invalidate_version_tree()
+        #print "will return ", action.id
+        return action.id
+        
+    def addParameterChangesFromAliasesAction(self, pipeline, controller, vistrail,
+                                             parent_version, aliases):
+        param_changes = []
+        newid = parent_version
+        #print "addParameterChangesFromAliasesAction()"
+        for k,value in aliases.iteritems():
+            alias = pipeline.aliases[k] # alias = (type, oId, parentType, parentId, mId)
+            module = pipeline.modules[alias[4]]
+            function = module.function_idx[alias[3]]
+            old_param = function.parameter_idx[alias[1]]
+            #print alias, module, function, old_param
+            if old_param.strValue != value:
+                new_param = VistrailController.update_parameter(controller, 
+                                                                old_param, 
+                                                                value)
+                if new_param is not None:
+                    op = ('change', old_param, new_param, 
+                          function.vtType, function.real_id)
+                    param_changes.append(op)
+                else:
+                    debug.warning("CDAT Package: Change parameter %s in widget %s was not generated"%(k,
+                                                                                                      self.name))
+        if len(param_changes) > 0:
+            action = core.db.action.create_action(param_changes)
+            vistrail.add_action(action, parent_version, controller.current_session)
+            controller.set_changed(True)
+            controller.recompute_terse_graph()
+            controller.invalidate_version_tree()
+            newid = action.id
+        return newid
+    
 class Cell(object):
     def __init__(self, type=None, row_name=None, col_name=None):
         self.type = type

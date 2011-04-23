@@ -4,34 +4,6 @@
     #display = sip.unwrapinstance(QtGui.QX11Info.display())
     #vcs._vcs.setdisplay(display)
 
-    #cdat GUI modules
-    global cdatWindow
-    global translator
-    global plotRegistry
-    import qtbrowser
-    qtbrowser.useVistrails=True
-    try:
-        builder_window = api.get_builder_window()
-        shell = builder_window.shell.shell
-        builder_window.setVisible(False)
-    except api.NoGUI:
-        shell = None
-    translator = QTranslator(shell=shell)
-    cdatWindow = qtbrowser.vcdatWindow.QCDATWindow()
-    plotRegistry = PlotRegistry(cdatWindow)
-    plotRegistry.loadPlots()    
-    plotRegistry.registerPlots()
-    cdatWindow.show()
-    visApp = QtCore.QCoreApplication.instance()
-    if visApp:
-        visApp.setActiveWindow(cdatWindow)
-    translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
-                           translator.commandsReceived)
-    translator.connect(cdatWindow, QtCore.SIGNAL("showVisTrails"),
-                       translator.showVisTrails)
-    translator.connect(cdatWindow, QtCore.SIGNAL("closeVisTrails"),
-                       translator.closeVisTrails)
-    
     reg.add_module(CDATCell,namespace='cdat')
     reg.add_input_port(CDATCell, 'slab1',
                        (TransientVariable, "variable to be plotted"))
@@ -106,7 +78,33 @@
                         "slab2"))            
     reg.add_output_port(GraphicsMethod, 'canvas', (Canvas, "Canvas object"))
     
-    reg.add_module(Gfb, namespace='cdat')
+    #cdat GUI modules
+    global cdatWindow
+    global translator
+    global plotRegistry
+    import qtbrowser
+    qtbrowser.useVistrails=True
+    try:
+        builder_window = api.get_builder_window()
+        shell = builder_window.shell.shell
+        builder_window.is_main_window = False
+    except api.NoGUI:
+        shell = None
+    translator = QTranslator(shell=shell)
+    cdatWindow = qtbrowser.vcdatWindow.QCDATWindow()
+    plotRegistry = PlotRegistry(cdatWindow)
+    plotRegistry.loadPlots()    
+    plotRegistry.registerPlots()
+    cdatWindow.show()
+    visApp = QtCore.QCoreApplication.instance()
+    if visApp:
+        visApp.setActiveWindow(cdatWindow)
+    translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
+                           translator.commandsReceived)
+    translator.connect(cdatWindow, QtCore.SIGNAL("showVisTrails"),
+                       translator.showVisTrails)
+    translator.connect(cdatWindow, QtCore.SIGNAL("closeVisTrails"),
+                       translator.closeVisTrails)
 
     # end of cdatwindow_init_inc.py
     ##########################################################################

@@ -520,11 +520,13 @@ parameters from other instances")
             # in some systems (Linux and Tiger) we need to make both calls
             # so builderWindow is activated
             self.builderWindow.showShell(True)
-            if self.builderWindow.isVisible():
+            if self.builderWindow.is_main_window:
                 self.setActiveWindow(self.builderWindow)
                 self.builderWindow.activateWindow()
                 self.builderWindow.show()
                 self.builderWindow.raise_()
+            else:
+                self.builderWindow.hide()
         else:
             self.builderWindow.hide()
 

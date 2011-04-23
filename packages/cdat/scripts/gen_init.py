@@ -22,10 +22,11 @@
 
 import os, sys
 sys.path.append('../../../vistrails')
+sys.path.append("../")
 from parse_cdat_xml_file import parse_cdat_xml_file
 from cdat_domain import CDATModule
 
-
+from plot_registry import PlotRegistry
 
 #cdat package identifiers
 cp_version = '0.2'
@@ -45,8 +46,16 @@ def write__init__(output_file):
     
     header.append("\n\n")
     header.append("def package_dependencies():\n")
-    #header.append("  return ['edu.utah.sci.vistrails.numpyscipy']\n")
-    header.append("  return ['edu.utah.sci.vistrails.spreadsheet']\n")
+    #header.append("    return ['edu.utah.sci.vistrails.numpyscipy']\n")
+    dependencies = ["'%s'"%d for d in PlotRegistry.getPlotsDependencies()]
+    if len(dependencies) == 0:
+        header.append("    return ['edu.utah.sci.vistrails.spreadsheet']\n")
+    else:
+        
+        depstring = ",\n            ".join(dependencies)
+        header.append("    return ['edu.utah.sci.vistrails.spreadsheet',\n            ")
+        header.append(depstring)
+        header.append("]\n")
     header.append("\n\n")
     header.append("def package_requirements():\n")
     header.append("    import core.requirements\n")
@@ -216,6 +225,7 @@ if __name__ == '__main__':
     init_lines = []
     extra_init_lines.append("\ndef initialize(*args, **keywords):\n")
     extra_init_lines.append("    reg = core.modules.module_registry.get_module_registry()\n\n")
+    extra_init_lines.append("    reg.add_module(Gfb, namespace='cdat')\n")
 
     class_lines = []
     extra_class_lines = []
@@ -276,8 +286,14 @@ if __name__ == '__main__':
     CDATModule.register_extra_vistrails_modules(extra_init_lines)
     
     cdatwindow_init_lines = open("cdatwindow_init_inc.py").readlines()
+    extra_init_lines.extend(init_lines)
     extra_init_lines.extend(cdatwindow_init_lines)
     
-    extra_init_lines.extend(init_lines)
+    extra_init_lines.append("\ndef finalize():\n")
+    extra_init_lines.append("    global plotRegistry\n")
+    extra_init_lines.append("    global cdatWindow\n")
+    extra_init_lines.append("    del plotRegistry\n")
+    extra_init_lines.append("    cdatWindow.close()\n")
+    
     extra_class_lines.extend(class_lines)
     write_init(outputinit, extra_class_lines, extra_init_lines)
