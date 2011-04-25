@@ -267,6 +267,8 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         tasks_layout = QVBoxLayout()
         tasksTab.setLayout( tasks_layout ) 
         
+        self.createButtonLayout()
+        
         task_selection_layout = QHBoxLayout()
         task_selection_label = QLabel( "Tasks:"  )
         task_selection_layout.addWidget( task_selection_label ) 
@@ -296,20 +298,6 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
 #        self.outputPorts = self.module.sourcePorts()
 #        self.outputDict = {}
 #        self.constructList()
-        
-        self.buttonLayout = QtGui.QHBoxLayout()
-        self.buttonLayout.setMargin(5)
-        self.okButton = QtGui.QPushButton('&OK', self)
-        self.okButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.okButton)
-        self.cancelButton = QtGui.QPushButton('&Cancel', self)
-        self.cancelButton.setShortcut('Esc')
-        self.cancelButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.cancelButton)
-        self.layout().addLayout(self.buttonLayout)
-        self.connect(self.okButton, QtCore.SIGNAL('clicked(bool)'), self.okTriggered)
-        self.connect(self.cancelButton, QtCore.SIGNAL('clicked(bool)'), self.close )
-
 #    def checkBoxFromPort(self, port, input_=False):
 #        checkBox = QtGui.QCheckBox(port.name)
 #        if input_:

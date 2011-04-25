@@ -214,26 +214,6 @@ class DemoDataConfigurationWidget(DV3DConfigurationWidget):
 
     def updateDataset( self, dset_name ): 
         self.dataset = dset_name
-        
-    def createButtonLayout(self):
-        """ createButtonLayout() -> None
-        Construct Ok & Cancel button
-        
-        """
-        self.buttonLayout = QHBoxLayout()
-        self.buttonLayout.setMargin(5)
-        self.okButton = QPushButton('&OK', self)
-        self.okButton.setAutoDefault(False)
-        self.okButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.okButton)
-        self.cancelButton = QPushButton('&Cancel', self)
-        self.cancelButton.setAutoDefault(False)
-        self.cancelButton.setShortcut('Esc')
-        self.cancelButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.cancelButton)
-        self.layout().addLayout(self.buttonLayout)
-        self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
-        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close)
 
     def sizeHint(self):
         return QSize(300,200)

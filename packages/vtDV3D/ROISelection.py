@@ -666,7 +666,7 @@ class BoundaryMap:
         self.boundaryMapLayer = str( nvSettings.data['WorldBoundaryMapLayer'] )
         self.checkStride = nvSettings.data['checkStride']
         self.drawStride = nvSettings.data['drawStride']
-   
+ 
     def ReadMap( self, roiPt0, roiPt1 ):
         start = time.time()
         if not os.path.exists(self.boundaryMapFile):

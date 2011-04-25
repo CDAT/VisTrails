@@ -14,7 +14,7 @@ from ModuleStore import ModuleStoreDatabase
 from core.vistrail.port_spec import PortSpec
 from vtUtilities import *
 from PersistentModule import * 
-#from ROISelection import ROISelectionWidget
+from ROISelection import ROISelectionDialog
 from vtDV3DConfiguration import configuration
 import numpy.ma as ma
 from vtk.util.misc import vtkGetDataRoot
@@ -111,8 +111,9 @@ class CDMSDataset(Module):
 
     def getVarDataTimeSlice( self, varName, iTimeIndex ):
         """
-        This method extracts a VDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).
+        This method extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).
         """
+        rv = self.NullVariable
         if varName in self.dataset.variables:
             varData = self.dataset[ varName ]
             order = varData.getOrder()
@@ -127,16 +128,19 @@ class CDMSDataset(Module):
                 if levbounds: args['lev'] = levbounds
                 args['order'] = 'xyz'
     #            args['squeeze'] = 1
-                print "Reading variable %s, time = %s(%d), shape = %s, args = %s " % ( varName, tval, iTimeIndex, str(varData.shape), str(args) )
-                return varData( **args )
+#                print "Reading variable %s, time = %s(%d), shape = %s, args = %s " % ( varName, tval, iTimeIndex, str(varData.shape), str(args) )
+                start_t = time.time() 
+                rv = varData( **args )
+                end_t = time.time() 
+                print  "Reading variable %s, time = %s(%d), shape = %s, args = %s, slice duration = %.4f sec." % ( varName, tval, iTimeIndex, str(varData.shape), str(args), end_t-start_t  ) 
             except Exception, err:
                 print>>sys.stderr, ' Exception getting var slice: %s ' % str( err )
                 pass
         elif varName in self.transientVariables:
-            return self.transientVariables[ varName ]
+            rv = self.transientVariables[ varName ]
         else: 
             print>>sys.stderr, "Error: can't find variable %s in dataset" % varName
-        return self.NullVariable
+        return rv
 
     def getAxisValues( self, axis, roi ):
         values = axis.getValue()
@@ -174,9 +178,11 @@ class CDMSDataset(Module):
                 dsModule = CDMSDataset( dsetId, dataset, cdmsFile )
                 dims = dsModule.dataset.axes.keys()
                 dsModule.gridOrigin = newList( 3, 0.0 )
+                dsModule.outputOrigin = newList( 3, 0.0 )
                 dsModule.gridBounds = newList( 6, 0.0 )
                 dsModule.gridSpacing = newList( 3, 1.0 )
                 dsModule.gridExtent = newList( 6, 0 )
+                dsModule.outputExtent = newList( 6, 0 )
                 dsModule.gridShape = newList( 3, 0 )
                 dsModule.gridSize = 1
                 dsModule.timeRange = timeRange
@@ -190,25 +196,26 @@ class CDMSDataset(Module):
                         iCoord2 = 2*iCoord
                         dsModule.gridShape[ iCoord ] = size
                         dsModule.gridSize = dsModule.gridSize * size
-                        dsModule.gridExtent[ iCoord2+1 ] = size-1                    
+                        dsModule.outputExtent[ iCoord2+1 ] = dsModule.gridExtent[ iCoord2+1 ] = size-1                    
                         if iCoord < 2:
+                            lonOffset = 360.0 if ( ( iCoord == 0 ) and ( roiBounds[0] < 0.0 ) ) else 0.0
+                            dsModule.outputOrigin[ iCoord ] = dsModule.gridOrigin[ iCoord ] = values[0] + lonOffset
                             spacing = (values[size-1] - values[0])/(size-1)
                             if roiBounds:
                                 dsModule.gridExtent[ iCoord2 ] = int( round( ( roiBounds[0] - values[0] )  / spacing ) )                
                                 dsModule.gridExtent[ iCoord2+1 ] = int( round( ( roiBounds[1] - values[0] )  / spacing ) )
+                                dsModule.outputExtent[ iCoord2+1 ] = dsModule.gridExtent[ iCoord2+1 ] - dsModule.gridExtent[ iCoord2 ]
+                                dsModule.outputOrigin[ iCoord ] = lonOffset + roiBounds[0]
                             roisize = dsModule.gridExtent[ iCoord2+1 ] - dsModule.gridExtent[ iCoord2 ] + 1                  
                             dsModule.gridSpacing[ iCoord ] = spacing
-                            lonOffset = 360.0 if ( ( iCoord == 0 ) and ( roiBounds[0] < 0.0 ) ) else 0.0
-                            dsModule.gridOrigin[ iCoord ] = values[0] + lonOffset
                             dsModule.gridBounds[ iCoord2 ] = roiBounds[0] if roiBounds else values[0] 
                             dsModule.gridBounds[ iCoord2+1 ] = (roiBounds[0] + roisize*spacing) if roiBounds else values[ size-1 ]
                         else:                                             
                             dsModule.gridSpacing[ iCoord ] = zscale
-                            dsModule.gridOrigin[ iCoord ] = 0.0
+                            dsModule.outputOrigin[ iCoord ] = dsModule.gridOrigin[ iCoord ] = 0.0
                             dsModule.gridBounds[ iCoord2 ] = 0.0
                             dsModule.gridBounds[ iCoord2+1 ] = float( size-1 )
         return dsModule             
-
     
 class PM_CDMS_FileReader( PersistentVisualizationModule ):
 
@@ -222,7 +229,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         import api
         dsMapData = self.getInputValue( "datasets" )
         if dsMapData: 
-            zscale = self.getInputValue( "zscale",   1.0  )  
+            zscale = getItem( self.getInputValue( "zscale",   1.0  )  )
             datasetMap = deserializeStrMap( getItem( dsMapData ) )
             dsData = self.getInputValue( "datasetId" )
             if dsData:
@@ -259,201 +266,6 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 dataset.close()
         return metadata
       
-#class PM_CDMSVariable( PersistentVisualizationModule ):
-#
-#    def __init__(self, mid):
-#        PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False )
-#        self.timeIndex = 0
-#        self.dataCache = {}
-#        self.imageData = {}
-#        self.currentTime = 0
-#        self.primaryMetaDataPort = "dataset"
-#        
-#    def getCachedData(self, iTimestep, varName ):
-#        if varName == '__zeros__': iTimestep = 0
-#        varData = self.dataCache.setdefault(iTimestep, {} )
-#        return varData.get( varName, ( None, None ) )
-#
-#    def setCachedData(self, iTimestep, varName, varDataTuple ):
-#        if varName == '__zeros__': iTimestep = 0
-#        varData = self.dataCache.setdefault(iTimestep, {} )
-#        varData[ varName ] = varDataTuple
-#        
-##    def initializeOutputPorts( self, reg ):
-##        import api
-###        
-##        descriptor = reg.get_descriptor_by_name( 'gov.nasa.nccs.vtdv3d', 'CDMSModule' )
-##        vistrails_interpreter = getDefaultInterpreter()
-##        controller = api.get_current_controller()
-##        portData = wmod.forceGetInputFromPort( "portData", None )  
-##        print  " --- initializePorts, data: %s "  % portData
-##        if portData:
-##            oRecMgr = OutputRecManager( portData )
-##            for orec in oRecMgr.getOutputRecs():
-##                self.createOutputPort( orec.name )
-##    
-##    def createOutputPort( self, port_name ):
-##        reg = core.modules.module_registry.get_module_registry() 
-##        port_spec = self.getOutputPortSpec( port_name ) 
-##        if port_spec == None: 
-##            reg.add_output_port( CDMSModule, port_name, AlgorithmOutputModule3D ) 
-#
-##    def getOutputPortSpec( self, port_name ):
-##        controller, module = self.getRegisteredModule()
-##        for port_spec in module.output_port_specs:
-##            if port_spec.name == port_name:
-##                return port_spec
-##        return None
-#                        
-#    def getTimeStepData(self):
-#        self.generateOutput()
-#        
-#    def getTimeIndex( self, timeCounterValue ):
-#        time_range = self.timeRange if ( self.timeRange <> None ) else [ 0, self.nTimesteps-1 ]
-#        nts = ( self.timeRange[1] - self.timeRange[0] ) if ( self.timeRange <> None ) else self.nTimesteps
-#        return ( timeCounterValue %  nts ) + time_range[0]
-#       
-#    def processParameterChange( self, parameter_name, new_parameter_value ):
-#        if parameter_name == 'timestep':
-#            ts = self.getTimeIndex( int( getItem( new_parameter_value ) ) )
-#            if ts <> self.timeIndex:
-#                self.timeIndex = ts
-#                self.getTimeStepData()
-##                self.executeWorkflow()
-#        self.parmUpdating[ parameter_name ] = False 
-#                
-#    def getParameterDisplay( self, parmName, parmValue ):
-#        if parmName == 'timestep':
-#            timestep = self.getTimeIndex( int( parmValue[0] ) )
-#            return str( self.timeLabels[ timestep ] ), 10
-#        return None, 1
-#        
-#    def execute(self):
-#        """ compute() -> None
-#        Dispatch the vtkRenderer to the actual rendering widget
-#        """  
-#        self.cdmsDataset = self.getInputValue( "dataset" )    
-#        if self.cdmsDataset <> None:
-#            self.nTimesteps = self.cdmsDataset.time.length
-#            self.timeRange = self.cdmsDataset.timeRange
-#            self.timeLabels = self.cdmsDataset.time.asComponentTime()
-#            self.timeValues = self.cdmsDataset.time.asRelativeTime()
-#            self.timeUnits = self.cdmsDataset.time.units
-#            self.generateOutput()
-# 
-#    def generateOutput( self ):       
-#        portData = self.getInputValue( "portData" )  
-#        oRecMgr = OutputRecManager( portData[0] if portData else None )
-#        wmod = self.getWorkflowModule()    
-#        for orec in oRecMgr.getOutputRecs():
-#            imageDataCreated = self.getImageData( orec )               
-#            if imageDataCreated: 
-#                if   orec.ndim == 3: self.set3DOutput( name=orec.name,  output=self.imageData[orec.name], wmod = wmod )
-#                elif orec.ndim == 2: self.set2DOutput( name=orec.name,  output=self.imageData[orec.name], wmod = wmod  )
-#
-#    def getMetadata( self, metadata={}, port=None ):
-#        PersistentVisualizationModule.getMetadata( metadata )
-#        portData = self.getInputValue( "portData" )  
-#        oRecMgr = OutputRecManager( portData[0] if portData else None )
-#        orec = oRecMgr.getOutputRec( port )
-#        if orec: metadata[ 'layers' ] = orec.varList
-#        return metadata
-#          
-#    def getImageData( self, orec, **args ):
-#        varList = orec.varList
-#        if len( varList ) == 0: return False
-##        printTime('Start getImageData')
-#        portName = orec.name
-#        ndim = orec.ndim
-#        imageDataCreated = False
-#        scalar_dtype = args.get( "dtype", np.ushort if (ndim == 3) else np.float )
-#        self._max_scalar_value = getMaxScalarValue( scalar_dtype )
-#        self._range = [ 0.0, self._max_scalar_value ]  
-#        ds = self.cdmsDataset
-#        self.timeRange = ds.timeRange
-#        print " --- CDMS-GetImageData: Origin= %s, Spacing= %s, Extent= %s, Timestep= %d" % ( ds.gridOrigin, ds.gridSpacing, ds.gridExtent, self.timeIndex )
-#
-#        if not ( portName in self.imageData ):
-#            image_data = vtk.vtkImageData() 
-#            if   scalar_dtype == np.ushort: image_data.SetScalarTypeToUnsignedShort()
-#            elif scalar_dtype == np.ubyte:  image_data.SetScalarTypeToUnsignedChar()
-#            elif scalar_dtype == np.float:  image_data.SetScalarTypeToFloat()
-#            image_data.SetOrigin( ds.gridOrigin[0], ds.gridOrigin[1], ds.gridOrigin[2] )
-#            image_data.SetSpacing( ds.gridSpacing[0], ds.gridSpacing[1], ds.gridSpacing[2] )
-#            if ndim == 3:    image_data.SetExtent( ds.gridExtent[0], ds.gridExtent[1], ds.gridExtent[2], ds.gridExtent[3], ds.gridExtent[4], ds.gridExtent[5] )
-#            elif ndim == 2:  image_data.SetExtent( ds.gridExtent[0], ds.gridExtent[1], ds.gridExtent[2], ds.gridExtent[3], 0, 0 ) 
-#            self.imageData[portName] = image_data
-#            imageDataCreated = True
-#        image_data = self.imageData[portName]
-#        nVars = len( varList )
-#        npts = image_data.GetNumberOfPoints()
-#        pointData = image_data.GetPointData()
-#        for id in range( pointData.GetNumberOfArrays() ): 
-#            pointData.RemoveArray( pointData.GetArrayName(id) )
-#        self.fieldData.RemoveArray('metadata')
-#        scalars = None
-#        vars = []
-#        datatype = getDatatypeString( scalar_dtype )
-#        md = { 'datatype':datatype,  'bounds':ds.gridBounds, 'lat':ds.lat, 'lon':ds.lon, 'time':ds.time, 'attributes':ds.dataset.attributes }
-#        if ndim == 3: md[ 'lev' ] = ds.lev
-#        for varRec in varList:
-#            varName = varRec[0]
-#            vars.append( varName )
-#            newDataArray, var_md = self.getCachedData( self.timeIndex, varName )
-#            if newDataArray == None:
-#                if varName == '__zeros__':
-#                    newDataArray = np.zeros( npts, dtype=scalar_dtype ) 
-#                    var_md = {}
-#                    var_md[ 'range' ] = ( 0.0, 0.0 )
-#                    var_md[ 'scale' ] = ( 0.0, 1.0 )  
-#                else:
-#                    varData = ds.dataset[ varName ]
-#                    dataArray = varData[ self.timeIndex ]
-#                    dataArray = ma.transpose( dataArray )
-#                    range_min = dataArray.min()
-#                    range_max = dataArray.max()
-#                    newDataArray = dataArray
-#                    shift, scale = 0.0, 1.0
-#                               
-#                    if scalar_dtype <> np.float:
-#                        shift = -range_min
-#                        scale = ( self._max_scalar_value ) / ( range_max - range_min )            
-#                        rescaledDataArray = ( ( dataArray + shift ) * scale )
-#                        newDataArray = rescaledDataArray.astype(scalar_dtype) 
-#                    
-#                    newDataArray = newDataArray.data.ravel('F')  
-#                    var_md = copy.copy( varData.attributes )
-#                    var_md[ 'range' ] = ( range_min, range_max )
-#                    var_md[ 'scale' ] = ( shift, scale )  
-#                    
-#                self.setCachedData( self.timeIndex, varName, ( newDataArray, var_md ) )               
-#             
-#            vtkdata = getNewVtkDataArray( scalar_dtype )
-#            vtkdata.SetNumberOfTuples( newDataArray.size )
-#            vtkdata.SetNumberOfComponents( 1 )
-#            vtkdata.SetVoidArray( newDataArray, newDataArray.size, 1 )
-#            vtkdata.SetName( varName )
-#            vtkdata.Modified()
-#            pointData.AddArray( vtkdata )
-#            md[ varName ] = var_md
-#            if (scalars == None) and (varName <> '__zeros__'):
-#                scalars = varName
-##                pointData.SetActiveScalars( varName  ) 
-##                md[ 'valueRange'] = var_md[ 'range' ]                  
-#        md[ 'vars' ] = vars
-#        enc_mdata = encodeToString( md ) 
-#        self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                        
-#        image_data.Modified()
-##        na = image_data.GetPointData().GetNumberOfArrays()
-##        printTime('Finish getImageData')
-#        return imageDataCreated
-
-#class CDMSVariable(WorkflowModule):
-#    
-#    PersistentModuleClass = PM_CDMSVariable
-#    
-#    def __init__( self, **args ):
-#        WorkflowModule.__init__(self, **args)     
                       
 class CDMS_FileReader(WorkflowModule):
     
@@ -537,16 +349,19 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         if id: 
             self.currentDatasetId = str( id )
             cdmsFile = self.datasets.get( self.currentDatasetId, None ) 
-        dataset = cdms2.open( cdmsFile ) 
-        self.setDatasetProperties( dataset, cdmsFile )           
-        self.timeRange = None
-        self.nTS = 0
-        self.updateTimeSeries( dataset )
-        self.initTimeRange()
-        self.initRoi()
-        self.initZScale()
-        if self.pmod: self.pmod.clearNewConfiguration()
-        dataset.close()
+        try:
+            dataset = cdms2.open( cdmsFile ) 
+            self.setDatasetProperties( dataset, cdmsFile )           
+            self.timeRange = None
+            self.nTS = 0
+            self.updateTimeSeries( dataset )
+            self.initTimeRange()
+            self.initRoi()
+            self.initZScale()
+            if self.pmod: self.pmod.clearNewConfiguration()
+            dataset.close()
+        except:
+            print "Error initializing dataset: %s" % str(cdmsFile)
         return cdmsFile
          
     def selectFile(self):
@@ -563,8 +378,6 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
                     self.dataset_selection.setText( QString( self.currentDatasetId ) ) 
                 global DataSetVersion 
                 DataSetVersion = DataSetVersion + 1 
-                self.persistParameter( 'datasetId', [ self.currentDatasetId, DataSetVersion ] )
-                self.persistParameter( 'datasets', [ serializeStrMap(self.datasets), ] )
 
     def viewMetadata(self):
         self.metadataViewer.show()
@@ -577,10 +390,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             else:
                 self.dsCombo.setCurrentIndex(0)
                 self.registerCurrentDataset( id=self.dsCombo.currentText() )
-            self.persistParameter( 'datasets', [ serializeStrMap(self.datasets), ] )
             global DataSetVersion 
             DataSetVersion = DataSetVersion + 1 
-            self.persistParameter( 'datasetId', [ self.currentDatasetId, DataSetVersion ] )
      
     def updateTimeSeries( self, dataset ):
         self.startCombo.clear()
@@ -721,10 +532,17 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         
         self.roiLabel = QLabel( "ROI: %s" % str( self.roi )  )
         roiTab_layout.addWidget(self.roiLabel)
-                
+        
+        roiButton_layout = QHBoxLayout()
+        roiTab_layout.addLayout(roiButton_layout )
+                 
         self.selectRoiButton = QPushButton('Select ROI', self)
-        roiTab_layout.addWidget( self.selectRoiButton )
+        roiButton_layout.addWidget( self.selectRoiButton )
         self.connect( self.selectRoiButton, SIGNAL('clicked(bool)'), self.selectRoi )
+
+        self.resetRoiButton = QPushButton('Reset ROI', self)
+        roiButton_layout.addWidget( self.resetRoiButton )
+        self.connect( self.resetRoiButton, SIGNAL('clicked(bool)'), self.resetRoi )
         
         self.roiSelector = ROISelectionDialog( self.parent() )
         if self.roi: self.roiSelector.setROI( self.roi )
@@ -741,11 +559,11 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.selectZScaleLineEdit =  QLineEdit( self.parent() )
         self.selectZScaleLineEdit.setValidator( QDoubleValidator() )
         self.selectZScaleLineEdit.setText( "%.2f" % self.zscale)
+        zscaleTab_layout.addWidget( self.selectZScaleLineEdit )
 
     def setRoi(self):
         self.roi = self.roiSelector.getROI()
-        self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
-        self.persistParameter( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  )  
+        self.roiLabel.setText( "ROI: %s" % str( self.roi )  )  
 
         
 #        ROICorner0Label = QLabel("<b><u>ROI Corner0:</u></b>")
@@ -795,6 +613,11 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
     def selectRoi( self ): 
         if self.roi: self.roiSelector.setROI( self.roi )
         self.roiSelector.show()
+
+    def resetRoi( self ): 
+        self.roiSelector.setROI( self.fullRoi ) 
+        self.roiLabel.setText( "ROI: %s" % str( self.fullRoi )  ) 
+        for i in range( len( self.roi ) ): self.roi[i] = self.fullRoi[i]     
                                
     def updateStartTime( self, val ):
 #        print " updateStartTime: %s " % str( val )
@@ -813,34 +636,12 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.startCombo.setCurrentIndex( iStartIndex )
         if self.timeRange: 
             self.timeRange[0] = iStartIndex
-            self.persistParameter( 'timeRange' , [ self.timeRange[0], self.timeRange[1] ]  )   
 
     def updateEndIndex( self ):
         iEndIndex = int( str( self.endIndexEdit.text() ) )
         self.endCombo.setCurrentIndex( iEndIndex )
         if self.timeRange: 
             self.timeRange[1] = iEndIndex
-            self.persistParameter( 'timeRange' , [ self.timeRange[0], self.timeRange[1] ]  )   
-                          
-    def createButtonLayout(self):
-        """ createButtonLayout() -> None
-        Construct Ok & Cancel button
-        
-        """
-        self.buttonLayout = QHBoxLayout()
-        self.buttonLayout.setMargin(5)
-        self.okButton = QPushButton('&OK', self)
-        self.okButton.setAutoDefault(False)
-        self.okButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.okButton)
-        self.cancelButton = QPushButton('&Cancel', self)
-        self.cancelButton.setAutoDefault(False)
-        self.cancelButton.setShortcut('Esc')
-        self.cancelButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.cancelButton)
-        self.layout().addLayout(self.buttonLayout)
-        self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
-        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close)
 
     def sizeHint(self):
         return QSize(500,400)
@@ -1164,25 +965,6 @@ class MetadataViewerDialog( QDialog ):
 #        self.serializedPortData = self.outRecMgr.serialize()
 #        print " -- PortData: %s " % self.serializedPortData
 #                   
-#    def createButtonLayout(self):
-#        """ createButtonLayout() -> None
-#        Construct Ok & Cancel button
-#        
-#        """
-#        self.buttonLayout = QHBoxLayout()
-#        self.buttonLayout.setMargin(5)
-#        self.okButton = QPushButton('&OK', self)
-#        self.okButton.setAutoDefault(False)
-#        self.okButton.setFixedWidth(100)
-#        self.buttonLayout.addWidget(self.okButton)
-#        self.cancelButton = QPushButton('&Cancel', self)
-#        self.cancelButton.setAutoDefault(False)
-#        self.cancelButton.setShortcut('Esc')
-#        self.cancelButton.setFixedWidth(100)
-#        self.buttonLayout.addWidget(self.cancelButton)
-#        self.layout().addLayout(self.buttonLayout)
-#        self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
-#        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close)
 #
 #    def sizeHint(self):
 #        return QSize(500,500)
@@ -1204,41 +986,25 @@ class MetadataViewerDialog( QDialog ):
 
 
 class PM_CDMSDataReader( PersistentVisualizationModule ):
+    
+    dataCache = {}
 
     def __init__(self, mid):
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['portData'] )
-        self.timeIndex = 0
-        self.dataCache = {}
         self.imageData = {}
         self.currentTime = 0
         
     def getCachedData(self, iTimestep, varName ):
         if varName == '__zeros__': iTimestep = 0
-        varData = self.dataCache.setdefault(iTimestep, {} )
+        cache_key = '%s.%d' % ( self.datasetId, iTimestep )
+        varData = self.dataCache.setdefault( cache_key, {} )
         return varData.get( varName, ( None, None ) )
 
     def setCachedData(self, iTimestep, varName, varDataTuple ):
         if varName == '__zeros__': iTimestep = 0
-        varData = self.dataCache.setdefault(iTimestep, {} )
+        cache_key = '%s.%d' % ( self.datasetId, iTimestep )
+        varData = self.dataCache.setdefault( cache_key, {} )
         varData[ varName ] = varDataTuple
-                       
-    def getTimeStepData( self, **args ):
-        self.initializeInputs( **args )
-        self.generateOutput()
-        
-#    def getTimeIndex( self, iTimeCounter ):
-#        nts = ( self.timeRange[1] - self.timeRange[0] ) + 1 
-#        return ( iTimeCounter %  nts ) + self.timeRange[0]
-       
-    def processParameterChange( self, parameter_name, new_parameter_value ):
-        if parameter_name == 'timestep':
-#            ts = self.getTimeIndex( int( getItem( new_parameter_value ) ) )
-            ts = int( getItem( new_parameter_value ) ) 
-            if ts <> self.timeIndex:
-                self.timeIndex = ts
-                self.getTimeStepData()
-#                self.executeWorkflow()
-        self.parmUpdating[ parameter_name ] = False 
                 
     def getParameterDisplay( self, parmName, parmValue ):
         if parmName == 'timestep':
@@ -1312,7 +1078,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         self._range = [ 0.0, self._max_scalar_value ]  
         ds = self.cdmsDataset
         self.timeRange = ds.timeRange
-        print " ---@@@@@ CDMS-GetImageData: id=%s, Origin= %s, Spacing= %s, Extent= %s, Timestep= %d (%s)" % ( ds.id, ds.gridOrigin, ds.gridSpacing, ds.gridExtent, self.timeIndex, self.timeLabels[ self.timeIndex ]  )
+        print " ---@@@@@ CDMS-GetImageData: id=%s, Origin= %s, Spacing= %s, Extent= %s, Timestep= %d (%s)" % ( ds.id, ds.gridOrigin, ds.gridSpacing, ds.gridExtent, self.iTimestep, self.timeLabels[ self.iTimestep ]  )
         cachedImageDataName = "%s.%s" % ( ds.id, portName )
         
         if not ( cachedImageDataName in self.imageData ):
@@ -1320,10 +1086,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             if   scalar_dtype == np.ushort: image_data.SetScalarTypeToUnsignedShort()
             elif scalar_dtype == np.ubyte:  image_data.SetScalarTypeToUnsignedChar()
             elif scalar_dtype == np.float:  image_data.SetScalarTypeToFloat()
-            image_data.SetOrigin( ds.gridOrigin[0], ds.gridOrigin[1], ds.gridOrigin[2] )
+            image_data.SetOrigin( ds.outputOrigin[0], ds.outputOrigin[1], ds.outputOrigin[2] )
 #            image_data.SetOrigin( 0.0, 0.0, 0.0 )
-            if ndim == 3: extent = [ ds.gridExtent[0], ds.gridExtent[1], ds.gridExtent[2], ds.gridExtent[3], ds.gridExtent[4], ds.gridExtent[5] ]   
-            elif ndim == 2: extent = [ ds.gridExtent[0], ds.gridExtent[1], ds.gridExtent[2], ds.gridExtent[3], 0, 0 ]   
+            if ndim == 3: extent = [ ds.outputExtent[0], ds.outputExtent[1], ds.outputExtent[2], ds.outputExtent[3], ds.outputExtent[4], ds.outputExtent[5] ]   
+            elif ndim == 2: extent = [ ds.outputExtent[0], ds.outputExtent[1], ds.outputExtent[2], ds.outputExtent[3], 0, 0 ]   
             image_data.SetExtent( extent )
             image_data.SetWholeExtent( extent )
             image_data.SetSpacing(  ds.gridSpacing[0], ds.gridSpacing[1], ds.gridSpacing[2] )
@@ -1347,17 +1113,17 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         for varRec in varList:
             varName = varRec[0]
             varDataId = '%s.%s' % ( ds.id, varName )
-            newDataArray, var_md = self.getCachedData( self.timeIndex, varDataId )
+            newDataArray, var_md = self.getCachedData( self.iTimestep, varDataId )
             if newDataArray == None:
                 if varName == '__zeros__':
                     newDataArray = np.zeros( npts, dtype=scalar_dtype ) 
                     var_md = {}
                     var_md[ 'range' ] = ( 0.0, 0.0 )
                     var_md[ 'scale' ] = ( 0.0, 1.0 ) 
-                    self.setCachedData( self.timeIndex, varName, ( newDataArray, var_md ) )   
+                    self.setCachedData( self.iTimestep, varName, ( newDataArray, var_md ) )   
                 else:
                     ds_addr = id( ds )
-                    varData = ds.getVarDataTimeSlice( varName, self.timeIndex )
+                    varData = ds.getVarDataTimeSlice( varName, self.iTimestep )
                     if varData.id <> 'NULL':
                         range_min = varData.min()
                         range_max = varData.max()
@@ -1376,7 +1142,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         var_md = copy.copy( varData.attributes )
                         var_md[ 'range' ] = ( range_min, range_max )
                         var_md[ 'scale' ] = ( shift, scale )                     
-                        self.setCachedData( self.timeIndex, varDataId, ( newDataArray, var_md ) )  
+                        self.setCachedData( self.iTimestep, varDataId, ( newDataArray, var_md ) )  
                              
             if newDataArray <> None:
                 vars.append( varName ) 
@@ -1393,7 +1159,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     pointData.SetActiveScalars( varName  ) 
                     md[ 'valueRange'] = var_md[ 'range' ] 
                     md[ 'scalars'] = varName 
-                    print " --- CDMS-SetScalars: %s, Range= %s" % ( varName, str( var_md[ 'range' ] ) )  
+#                    print " --- CDMS-SetScalars: %s, Range= %s" % ( varName, str( var_md[ 'range' ] ) )  
         if len( vars )== 0: raise ModuleError( self, 'No Variable selected in dataset.' )             
         md[ 'vars' ] = vars
         enc_mdata = encodeToString( md ) 
@@ -1506,7 +1272,6 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
 
         self.createButtonLayout() 
         
-
         outputsTab = QWidget()        
         self.tabbedWidget.addTab( outputsTab, 'output' ) 
         outputsLayout = QVBoxLayout()                
@@ -1517,26 +1282,6 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         
         self.outputsTabbedWidget = QTabWidget()
         outputsLayout.addWidget( self.outputsTabbedWidget )
-                           
-    def createButtonLayout(self):
-        """ createButtonLayout() -> None
-        Construct Ok & Cancel button
-        
-        """
-        self.buttonLayout = QHBoxLayout()
-        self.buttonLayout.setMargin(5)
-        self.okButton = QPushButton('&OK', self)
-        self.okButton.setAutoDefault(False)
-        self.okButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.okButton)
-        self.cancelButton = QPushButton('&Cancel', self)
-        self.cancelButton.setAutoDefault(False)
-        self.cancelButton.setShortcut('Esc')
-        self.cancelButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.cancelButton)
-        self.layout().addLayout(self.buttonLayout)
-        self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
-        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close)
 
     def sizeHint(self):
         return QSize(500,250)
@@ -1665,6 +1410,6 @@ class CDMS_VectorReaderConfigurationWidget(CDMSReaderConfigurationWidget):
 
         
 if __name__ == '__main__':
-#    executeVistrail( 'CDMSPipeline' )
-    executeVistrail( 'TestPipeline2' )
+
+    executeVistrail( 'workflows/DemoWorkflow1' )
 

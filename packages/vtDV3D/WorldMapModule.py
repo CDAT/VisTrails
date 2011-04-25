@@ -83,10 +83,8 @@ class PM_WorldFrame(PersistentVisualizationModule):
         if dataPosition == None:    
             baseImage = self.RollMap( baseImage ) 
             new_dims = baseImage.GetDimensions()
-#            self.SetCameraPosition( dataPosition, map_cut_size )
         else:                       
             baseImage, new_dims = self.getBoundedMap( baseImage, dataPosition, map_cut_size ) 
-#            self.SetCameraPosition( [ 0.0, 0.0 ], [ 360.0, 180.0 ] )
         
         scale = [ map_cut_size[0]/new_dims[0], map_cut_size[1]/new_dims[1], 1 ]
 #        printArgs( " baseMap: ", extent=baseImage.GetExtent(), spacing=baseImage.GetSpacing(), origin=baseImage.GetOrigin() )        

@@ -279,7 +279,7 @@ class ConfigurableFunction( QObject ):
             return self.updateHandler( x, y, wsize )
         return None
     
-    def getTextDisplay(self):
+    def getTextDisplay(self, **args ):
         return None
     
     def wrapData( self, data ):
@@ -334,7 +334,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     def startLeveling( self, x, y ):
         self.windowLeveler.startWindowLevel( x, y )
 
-    def getTextDisplay(self):
+    def getTextDisplay(self, **args ):
         rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
         rmax = self.range[1] # if not self.isDataValue else self.module.getDataValue( self.range[1] )
         units = 'X'
@@ -389,8 +389,8 @@ class GuiConfigurableFunction( ConfigurableFunction ):
              self.gui.initWidgetFields( value )
         self.gui.show()
         
-    def getTextDisplay(self):
-        return self.gui.getTextDisplay()
+    def getTextDisplay(self, **args ):
+        return self.gui.getTextDisplay( **args )
        
     def setValue( self, value ):
         if self.setValueHandler <> None: 
@@ -432,8 +432,8 @@ class WidgetConfigurableFunction( ConfigurableFunction ):
         start_value = None if ( self.getValueHandler == None ) else self.getValueHandler() 
         self.widget.open( start_value )
         
-    def getTextDisplay(self):
-        return self.widget.getTextDisplay()
+    def getTextDisplay(self, **args ):
+        return self.widget.getTextDisplay(**args)
 
     def setValue( self, value ):
         if self.setValueHandler <> None: 
@@ -507,6 +507,7 @@ class IVModuleConfigurationDialog( QWidget ):
     IVModuleConfigurationDialog ...   
     """ 
     instances = {}
+    activeModuleList = []
          
     def __init__(self, name, **args ):
         QWidget.__init__(self, None)
@@ -547,6 +548,10 @@ class IVModuleConfigurationDialog( QWidget ):
             module_label = QLabel( module.getName()  )
             self.moduleTabLayout.addWidget( module_label, row, 0 )
             self.moduleTabLayout.addWidget( activateCheckBox, row, 1 )
+            if not module in self.modules:
+                if not ( self.activeModuleList and self.activeModuleList[-1] == module ):
+                    self.activeModuleList.append( module )
+                    self.connect( self, self.update_animation_signal, module.updateAnimation )
             self.modules[ module ] = activateCheckBox
             self.connect( activateCheckBox, SIGNAL( "stateChanged(int)" ), callbackWrapper( module.setActivation, self.name ) )  
             self.moduleTabLayout.update()
@@ -571,18 +576,18 @@ class IVModuleConfigurationDialog( QWidget ):
                 module.initiateParameterUpdate( self.name )
  
     def refreshPipeline(self):
-        wmods = getPersistentObjectMap()
+        wmods = getWorkflowObjectMap()
         for module in self.modules:   
             wmod = wmods[ module.moduleID ]
             if wmod == None:
                 executeWorkflow()
                 return
         
-    def getTextDisplay( self ):
+    def getTextDisplay( self, **args  ):
         value = self.getValue()
         return "%s: %s" % ( self.name, self.getTextValue( value ) )
        
-    def getTextValue( self, value ):
+    def getTextValue( self, value, **args ):
         text_value = None
         text_value_priority = 0
         for module in self.modules:
@@ -598,25 +603,6 @@ class IVModuleConfigurationDialog( QWidget ):
 
     def initWidgetFields( self, value ):
         pass
-          
-    def createButtonLayout(self):
-        """ createButtonLayout() -> None
-        Construct Ok & Cancel button       
-        """
-        self.buttonLayout = QHBoxLayout()
-        self.buttonLayout.setMargin(5)
-        self.okButton = QPushButton('&OK', self)
-        self.okButton.setAutoDefault(False)
-        self.okButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.okButton)
-        self.cancelButton = QPushButton('&Cancel', self)
-        self.cancelButton.setAutoDefault(False)
-        self.cancelButton.setShortcut('Esc')
-        self.cancelButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.cancelButton)
-        self.layout().addLayout(self.buttonLayout)
-        self.connect( self.okButton, SIGNAL('clicked(bool)'), self.okTriggered )
-        self.connect( self.cancelButton, SIGNAL('clicked(bool)'), self.closeTriggered )
 
     def createActiveModulePanel(self ):
         """ createEditor() -> None
@@ -653,7 +639,27 @@ class IVModuleConfigurationDialog( QWidget ):
 #        for item in self.modules.items():
 #            active = item[1]
 #            module = item[0]
-            
+
+    def createButtonLayout(self):
+        """ createButtonLayout() -> None
+        Construct Ok & Cancel button
+        
+        """
+        self.buttonLayout = QHBoxLayout()
+        self.buttonLayout.setMargin(5)
+        self.okButton = QPushButton('&OK', self)
+        self.okButton.setAutoDefault(False)
+        self.okButton.setFixedWidth(100)
+        self.buttonLayout.addWidget(self.okButton)
+        self.cancelButton = QPushButton('&Cancel', self)
+        self.cancelButton.setAutoDefault(False)
+        self.cancelButton.setShortcut('Esc')
+        self.cancelButton.setFixedWidth(100)
+        self.buttonLayout.addWidget(self.cancelButton)
+        self.layout().addLayout(self.buttonLayout)
+        self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
+        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close)
+                    
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None
         Update vistrail controller (if neccesssary) then close the widget        
@@ -905,7 +911,30 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 
     def createLayout( self ):
         pass
-    
+
+    def createButtonLayout(self):
+        """ createButtonLayout() -> None
+        Construct Ok & Cancel button
+        
+        """
+        self.buttonLayout = QHBoxLayout()
+        self.buttonLayout.setMargin(5)
+        self.okButton = QPushButton('&OK', self)
+        self.okButton.setAutoDefault(False)
+        self.okButton.setFixedWidth(100)
+        self.buttonLayout.addWidget(self.okButton)
+        self.cancelButton = QPushButton('&Cancel', self)
+        self.cancelButton.setAutoDefault(False)
+        self.cancelButton.setShortcut('Esc')
+        self.cancelButton.setFixedWidth(100)
+        self.buttonLayout.addWidget(self.cancelButton)
+        self.layout().addLayout(self.buttonLayout)
+        self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
+        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close)
+        
+    def okTriggered(self):
+        pass
+       
     @staticmethod
     def readVariableList( cdmsFile ):
         dataset = cdms2.open( cdmsFile ) 
@@ -948,7 +977,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         datasetId = None
         timeRange = None
         variableList = [ ]
-        while moduleId:
+        while moduleId <> None:
             moduleId, portName = getConnectedModuleId( controller, moduleId, 'dataset', True )
             if moduleId <> None:
                 module = controller.current_pipeline.modules[ moduleId ]
@@ -965,7 +994,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                         if timeRangeInput: timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
                         moduleId = None
         moduleId = mid
-        while moduleId:
+        while moduleId <> None:
             moduleId, portName = getConnectedModuleId( controller, moduleId, 'dataset', True )
             if moduleId <> None:
                 module = controller.current_pipeline.modules[ moduleId ]
@@ -985,46 +1014,10 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         return ( variableList, datasetId, cdmsFile, timeRange )
 
 
-                        
-#    def persistParameter( self, parameter_name, output ):
-#        import api
-#        param_values_str = [ str(x) for x in output ] if isList(output) else str( output )     
-##        module = self.controller.current_pipeline.modules[ self.module.id ]
-#        mid = self.module.id
-#        if self.pmod: pmod.tagCurrentVersion()
-#        api.change_parameter( mid, parameter_name, param_values_str )
-#        
-#        controller = api.get_current_controller()
-#        print " CW: Persist Parameter %s -> %s, current version = %d " % ( parameter_name, str(param_values_str), controller.current_version )
-##        self.controller.update_function( module, parameter_name, param_values_str, -1L, []  )
-##        self.controller.select_latest_version()  
-##        self.controller.current_pipeline_view.setupScene( self.controller.current_pipeline )
-#        if self.pmod: 
-#            self.pmod.setParameter( parameter_name, output )
-#            self.pmod.processParameterChange( parameter_name, output )
-
     def persistParameter( self, parameter_name, output, **args ):
-        self.pmod.persistParameter( parameter_name, output, True, **args )
+        self.pmod.persistParameter( parameter_name, output, **args )
         self.pmod.persistVersionMap() 
-        
-#        import api
-#        if self.pmod: 
-#            
-#        else:
-#            mid = self.module.id
-#            param_values_str = [ str(x) for x in output ] if isList(output) else str( output )     
-#            api.change_parameter( mid, parameter_name, param_values_str )
-#            tagCurrentVersion('all')
-#        
-#        controller = api.get_current_controller()
-#        print " CW: Persist Parameter %s -> %s, current version = %d " % ( parameter_name, str(output), controller.current_version )
-#        self.controller.update_function( module, parameter_name, param_values_str, -1L, []  )
-#        self.controller.select_latest_version()  
-#        self.controller.current_pipeline_view.setupScene( self.controller.current_pipeline )
-#        if self.pmod: 
-#            self.pmod.setParameter( parameter_name, output )
-#            self.pmod.processParameterChange( parameter_name, output )
-        
+                
     def queryLayerList( self, ndims=3 ):
         portName = 'volume' if ( ndims == 3 ) else 'slice'
         mid = self.module.id
@@ -1048,7 +1041,9 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     """
     AnimationConfigurationDialog ...   
-    """    
+    """ 
+    update_animation_signal = SIGNAL('update_animation')      
+   
     def __init__(self, name, **args):
         self.iTimeStep = 0
         self.maxSpeedIndex = 100
@@ -1057,6 +1052,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.running = False
         self.timeRange = None
         self.datasetId = None
+        self.timer = QTimer()
+        self.timer.connect( self.timer, SIGNAL('timeout()'), self.animate )
         IVModuleConfigurationDialog.__init__( self, name, **args )
                                   
     @staticmethod   
@@ -1071,6 +1068,13 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         if self.timeRange and ( ( iTS > self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
         self.iTimeStep = iTS
                 
+    def loadAnimation(self):
+        self.getTimeRange(  )
+        for iTS in range( self.timeRange[0], self.timeRange[1] ):
+            self.setTimestep( iTS ) 
+            time.sleep( 0.01 ) 
+            if not self.running: break
+                
     def step( self ):
         if not self.running:
             self.setTimestep( self.iTimeStep + 1 )
@@ -1082,25 +1086,80 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.setTimestep(0)
 
     def getTimeRange( self ): 
-        wmods = getPersistentObjectMap()
-        for module in self.modules:   
-            wmod = wmods[ module.moduleID ]
-            if wmod:
-                try:
-                    timeRangeInput =  wmod.forceGetInputFromPort( "timeRange", None )
-                    if timeRangeInput: 
-                        self.timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
-                        return
-                except: pass
-        
-    def setTimestep(self, iTimestep, refresh = True ):
+#        wmods = getWorkflowObjectMap()
+        for module in self.modules: 
+            timeRangeInput =  module.getInputValue( "timeRange", None )
+            if timeRangeInput: 
+                self.timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
+                return
+            
+                          
+#            wmod = wmods[ module.moduleID ]
+#            if wmod:
+#                try:
+#                    timeRangeInput =  wmod.forceGetInputFromPort( "timeRange", None )
+#                    if timeRangeInput: 
+#                        self.timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
+#                        return
+#                except: pass
+
+    def setTimestep1( self, iTimestep ):
+        self.setValue( iTimestep )
+        self.emit( self.update_animation_signal, self.iTimeStep, self.getTextDisplay() )
+
+    def setTimestep( self, iTimestep ):
+        self.setValue( iTimestep )
+        print " ** Update Animation, timestep = %d " % self.iTimeStep  
+        for module in self.activeModuleList:
+            dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
+            try:
+                module.updateAnimation( self.iTimeStep, self.getTextDisplay() )
+            except Exception, err:
+                dvLog( module, " ----> Error %s " % str( err ) )
+       
+    def setTimestep1(self, iTimestep, refresh = True ):
         if refresh: 
             self.refreshPipeline()
             self.getTimeRange()
         self.setValue( iTimestep )
         self.updateParameter()
+
+    def stop(self):
+        self.runButton.setText('Run')
+        self.running = False
+        self.timer.stop()       
+
+    def start(self):
+        self.getTimeRange()
+        self.runButton.setText('Stop')
+        self.running = True
+        self.timer.start()       
+        
+    def run( self ): 
+        if self.running: self.stop()           
+        else: self.start()
+        
+#            self.runButton.setText('Stop')
+#            executeWorkflow()
+#            self.getTimeRange()
+#            if inGuiThread:
+#                self.animate()
+#            else:
+#            self.running = True
+#            self.loadAnimation()
+#            self.getTimeRange()
+#            self.runButton.setDisabled(True)
+#            self.setValue( 0 )
+#            self.timer.start()
+#            self.runThread = threading.Thread( target=self.animate )
+#            self.runThread.start()
+             
+    def animate(self):
+        self.setTimestep( self.iTimeStep + 1 )   
+        delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.delayTimeScale 
+        time.sleep( delayTime ) 
                 
-    def run(self):
+    def run1(self):
         if self.running:
             self.runButton.setText('Run')
             self.running = False
@@ -1112,7 +1171,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             self.runThread.start()
      
         
-    def animate(self):
+    def animate1(self):
         refresh = True
         while self.running:
             self.initiateParameterUpdate()
@@ -1278,26 +1337,6 @@ class LayerConfigurationWidget(DV3DConfigurationWidget):
             if currentLayerIndex >= 0: self.layersCombo.setCurrentIndex( currentLayerIndex ) 
  
         layersLayout.addLayout( layer_selection_Layout )
-                          
-    def createButtonLayout(self):
-        """ createButtonLayout() -> None
-        Construct Ok & Cancel button
-        
-        """
-        self.buttonLayout = QHBoxLayout()
-        self.buttonLayout.setMargin(5)
-        self.okButton = QPushButton('&OK', self)
-        self.okButton.setAutoDefault(False)
-        self.okButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.okButton)
-        self.cancelButton = QPushButton('&Cancel', self)
-        self.cancelButton.setAutoDefault(False)
-        self.cancelButton.setShortcut('Esc')
-        self.cancelButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.cancelButton)
-        self.layout().addLayout(self.buttonLayout)
-        self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
-        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close)
 
     def sizeHint(self):
         return QSize(200,150)

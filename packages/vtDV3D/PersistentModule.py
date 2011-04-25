@@ -38,6 +38,10 @@ class AlgorithmOutputModule( Module ):
         Module.__init__(self) 
         self.algoOutput = args.get('output',None)  
         self.algoOutputPort = args.get('port',None)
+        self.fieldData = args.get('fieldData',None)
+        
+    def getFieldData(self):
+        return self.fieldData 
         
     def getOutput(self): 
         if self.algoOutput <> None: return self.algoOutput
@@ -80,7 +84,9 @@ class PersistentModule( QObject ):
         when the user left-clicks in the cell while it is in leveling mode.  Mouse drag operations (while leveling) generate
         leveling configurations.  When the (left) mouse button is release the leveling configuration is saved as provenance and the
         cell returns to normal (non-leveling) mode.   
-    '''          
+    ''' 
+    markedTime = 0.0
+         
     def __init__( self, mid, **args ):
         QObject.__init__(self)
         self.moduleID = mid
@@ -91,6 +97,7 @@ class PersistentModule( QObject ):
         self.datasetId = None
         self.fieldData = None
         self.rangeBounds = None
+        self.timeStepName = 'timestep'
         self.newDataset = False
         self.scalarRange = None
         self.seriesScalarRange = None
@@ -116,11 +123,16 @@ class PersistentModule( QObject ):
         self.iTimestep = 0
         if self.createColormap:
             self.addConfigurableGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
-        self.addConfigurableGuiFunction( 'timestep', AnimationConfigurationDialog, 'a', setValue=self.setTimestep, getValue=self.getTimestep )
+        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', setValue=self.setTimestep, getValue=self.getTimestep )
 #        self.addConfigurableGuiFunction( 'layer', LayerConfigurationDialog, 'l', setValue=self.setLayer, getValue=self.getLayer )
 
     def invalidateWorkflowModule( self, workflowModule ):
         if (self.wmod == workflowModule): self.wmod = None
+        
+    def markTime( self, note ):
+        new_time = time.time()
+#        print " ^^^^^ Time Mark: %s, elapsed = %.4f ^^^^^ " % ( note, new_time - self.markedTime )
+        self.markedTime = new_time
 
     def setWorkflowModule( self, workflowModule ):
         self.wmod = workflowModule
@@ -206,7 +218,8 @@ class PersistentModule( QObject ):
         self.persistLayerDependentParameters()
 
     def dvUpdate(self):
-        self.initializeInputs()     
+#        self.markTime( ' Update %s' % self.__class__.__name__ ) 
+        self.initializeInputs( anim=True )     
         self.execute()
  
     def getRangeBounds(self): 
@@ -216,7 +229,7 @@ class PersistentModule( QObject ):
         return self.scalarRange
 
     def getParameterDisplay( self, parmName, parmValue ):
-        if parmName == 'timestep':
+        if parmName == self.timeStepName:
             return str( self.iTimestep ), 1
         return None, 1
           
@@ -344,32 +357,35 @@ class PersistentModule( QObject ):
     
     def updateMetadata(self):
         scalars = None
+        metadata = None
         self.newDataset = False
         if self.input <> None:
             fd = self.input.GetFieldData() 
-#            print " %s:initMetadata---> # Arrays = %d" % ( self.__class__.__name__, fd.GetNumberOfArrays() )
             self.input.Update()
-            self.fieldData = self.input.GetFieldData() 
-#            print " %s:updateMetadata---> # Arrays = %d" % ( self.__class__.__name__, self.fieldData.GetNumberOfArrays() )
-            self.rangeBounds = None
-            metadata = self.getMetadata()
-            if metadata <> None: 
-                self.setParameter( 'metadata', metadata )
-                self.roi = metadata.get( 'bounds', None )
-                
-                dsetId = metadata.get( 'datasetId', None )
-                if self.datasetId <> dsetId:
-                    self.pipelineBuilt = False
-                    if self.datasetId <> None: self.newDataset = True
-                    self.datasetId = dsetId
-                               
-                dtype =  metadata.get( 'datatype', None )
-                scalars =  metadata.get( 'scalars', None )
-                self.rangeBounds = getRangeBounds( dtype )
-                if scalars:
-                    var_md = metadata.get( scalars , None )
-                    if var_md <> None:
-                        self.units = var_md.get( 'units' , '' )
+            self.fieldData = self.input.GetFieldData()             
+        elif self.inputModule:
+            self.fieldData = self.inputModule.getFieldData() 
+
+        metadata = self.getMetadata()
+        
+        if metadata <> None:
+            self.rangeBounds = None 
+            self.setParameter( 'metadata', metadata )
+            self.roi = metadata.get( 'bounds', None )
+            
+            dsetId = metadata.get( 'datasetId', None )
+            if self.datasetId <> dsetId:
+                self.pipelineBuilt = False
+                if self.datasetId <> None: self.newDataset = True
+                self.datasetId = dsetId
+                           
+            dtype =  metadata.get( 'datatype', None )
+            scalars =  metadata.get( 'scalars', None )
+            self.rangeBounds = getRangeBounds( dtype )
+            if scalars:
+                var_md = metadata.get( scalars , None )
+                if var_md <> None:
+                    self.units = var_md.get( 'units' , '' )
 #                        range = var_md.get( 'range', None )
 #                        if range: 
 #                            self.scalarRange = list( range )
@@ -417,6 +433,7 @@ class PersistentModule( QObject ):
         return image_data
 
     def initializeInputs( self, **args ):
+        isAnimation = args.get( 'anim', False)
         if self.allowMultipleInputs:
             try:
                 self.inputModuleList = self.getPrimaryInputList( **args )
@@ -425,13 +442,14 @@ class PersistentModule( QObject ):
                 raise ModuleError( self, 'Broken pipeline at input to module %s:\n (%s)' % ( self.__class__.__name__, str(err) ) )
         else:
             self.inputModule = self.getPrimaryInput( **args )
-            if self.inputModule == None: print " ---- No input to module %s ---- " % ( self.__class__.__name__ )
+#            if self.inputModule == None: print " ---- No input to module %s ---- " % ( self.__class__.__name__ )
 #        print " %s.initializeInputs: input Module= %s " % ( self.__class__.__name__, str( input_id ) )
         if  self.inputModule <> None: 
             self.input =  self.inputModule.getOutput() 
-#            print " --- %s:initializeInputs---> # Arrays = %d " % ( self.__class__.__name__,  ( self.input.GetFieldData().GetNumberOfArrays() if self.input else -1 ) )   
-            self.updateMetadata()            
-            self.initializeLayers()
+#            print " --- %s:initializeInputs---> # Arrays = %d " % ( self.__class__.__name__,  ( self.input.GetFieldData().GetNumberOfArrays() if self.input else -1 ) )
+            if not isAnimation:
+                self.updateMetadata()  
+                self.initializeLayers()
 #            self.setActiveScalars()
             
         elif ( self.fieldData == None ): 
@@ -486,7 +504,7 @@ class PersistentModule( QObject ):
 #        wmod = args.get( 'wmod', self.getWorkflowModule()  )  
         if self.wmod:
             portName = args.get( 'name', 'slice' )
-            outputModule = AlgorithmOutputModule( **args )
+            outputModule = AlgorithmOutputModule( fieldData=self.fieldData, **args )
             output =  outputModule.getOutput() 
             fd = output.GetFieldData() 
             fd.PassData( self.fieldData )                      
@@ -608,14 +626,18 @@ class PersistentModule( QObject ):
         import api
         controller = api.get_current_controller()
         return ( self.moduleID in controller.current_pipeline.modules )
+
+    def updateAnimation( self, timeIndex, textDisplay=None ):
+        self.setTimestep( timeIndex )
+        self.dvUpdate()
+#        self.parmUpdating[ self.timeStepName ] = False 
+        if textDisplay <> None:  self.updateTextDisplay( textDisplay )
                
     def updateConfigurationObserver( self, parameter_name, new_parameter_value, *args ):
-#        print " updateConfigurationObserver[%s], class = %s " % ( parameter_name, self.__class__.__name__ )
         try:
             self.setResult( parameter_name, new_parameter_value )
             configFunct = self.configurableFunctions[ parameter_name ]
             configFunct.setValue( new_parameter_value )
-            self.processParameterChange( parameter_name, new_parameter_value )
             textDisplay = configFunct.getTextDisplay()
             if textDisplay <> None:  
                 self.updateTextDisplay( textDisplay )
@@ -666,23 +688,7 @@ class PersistentModule( QObject ):
                     if value: self.persistParameter( configFunct.name, value ) 
            self.newLayerConfiguration = False
            self.persistVersionMap()       
-                
-    def processParameterChange( self, parameter_name, new_parameter_value ):
-        if parameter_name == 'timestep':
-#            printTime( 'ProcessParameterChange[ %s ]' % self.__class__.__name__ )
-            self.dvUpdate()
-            
-        self.parmUpdating[ parameter_name ] = False 
-#            self.updateFunction( parameter_name, new_parameter_value )
-#            if self.ndims == 3: self.render()
-#        if parameter_name == 'layer':
-#            if self.pipelineBuilt:
-#                print " &&&& Process Layer change: %s " % new_parameter_value                
-#                executeWorkflow()
-#                self.compute()               
-        
-#        print "%s.processParameterChange" % ( self.__class__.__name__ )                  
-                    
+                                    
     def parameterUpdating( self, parmName ):
         parm_update = self.parmUpdating [parmName] 
 #        print "%s- check parameter updating: %s " % ( self.__class__.__name__, str(parm_update) )
@@ -797,7 +803,7 @@ class PersistentModule( QObject ):
         versionList = self.taggedVersionMap.get( tag, None )
         return versionList[-1] if versionList else -1                     
 
-    def persistParameter( self, parameter_name, output, processChange = False, **args ):
+    def persistParameter( self, parameter_name, output, **args ):
         if output <> None: 
             import api
             ctrl = api.get_current_controller()
@@ -809,7 +815,6 @@ class PersistentModule( QObject ):
             taggedVersion = self.tagCurrentVersion( tag )
             new_parameter_id = args.get( 'parameter_id', tag )
             self.setParameter( parameter_name, output, new_parameter_id )
-            if processChange: self.processParameterChange( parameter_name, output )
             print " PM: Persist Parameter %s -> %s, tag = %s, taggedVersion=%d, new_id = %s, version => ( %d -> %d ), module = %s" % ( parameter_name, str(output), tag, taggedVersion, new_parameter_id, v0, v1, self.__class__.__name__ )
                           
     def finalizeParameter(self, parameter_name, *args ):
@@ -907,16 +912,10 @@ class PersistentVisualizationModule( PersistentModule ):
     def TestObserver( self, caller=None, event = None ):
         pass 
     
-#        print "%s.processParameterChange" % ( self.__class__.__name__ )                  
-
-#    def setLayer( self, layer ):
-#        PersistentModule.setLayer( self, layer )
-#        if self.pipelineBuilt: executeWorkflow()
-
     def set3DOutput( self, **args ):  
         portName = args.get( 'name', 'volume' )
 #        wmod = args.get( 'wmod', self.getWorkflowModule()  )  
-        outputModule = AlgorithmOutputModule3D( self.renderer, **args )
+        outputModule = AlgorithmOutputModule3D( self.renderer, fieldData=self.fieldData, **args )
         output =  outputModule.getOutput() 
         oid = id( outputModule )
         if output <> None:
@@ -954,11 +953,13 @@ class PersistentVisualizationModule( PersistentModule ):
             initConfig = True
             
         if not initConfig: self.applyConfiguration()   
-                           
+        
         self.updateModule() 
         
-        if initConfig:  self.initializeConfiguration()  
-        else:           self.applyConfiguration()
+        if initConfig: 
+            self.initializeConfiguration()  
+        else:   
+            self.applyConfiguration()
               
         
     def buildPipeline(self): 

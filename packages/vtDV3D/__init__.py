@@ -78,6 +78,7 @@ def initialize(*args, **keywords):
 #    from DemoDataModule import DemoData, DemoDataConfigurationWidget
     from DV3DCell import DV3DCell
     from InteractiveConfiguration import LayerConfigurationWidget
+    from DV3DCell import DV3DCellConfigurationWidget
     from LevelSurfaceModule import LevelSurface 
     from CurtainPlotModule import CurtainPlot 
     from ResampleModule import Resample 
@@ -85,7 +86,6 @@ def initialize(*args, **keywords):
     from GradientModule import  Gradient
     from WorkflowModule import WorkflowModule
     from SlicePlotModule import SlicePlot
-    from TestModule import AddTest
     from VectorCutPlaneModule import VectorCutPlane 
     from packages.pylab.init import MplFigureManager
     from packages.spreadsheet.basic_widgets import CellLocation
@@ -99,18 +99,13 @@ def initialize(*args, **keywords):
     reg.add_module( AlgorithmOutputModule3D, abstract=True) # hide_descriptor=True )   
     reg.add_module( WorkflowModule, abstract=True) # hide_descriptor=True )   
     reg.add_module( CDMSDataset, abstract=True) # hide_descriptor=True )   
- 
-    reg.add_module( AddTest ) 
-    reg.add_input_port( AddTest, "parm", Integer  )   
-    reg.add_input_port( AddTest, "arg",  Integer  )   
-    reg.add_input_port( AddTest, "layer",  Integer  )   
-    reg.add_output_port( AddTest, "out", Integer ) 
-    
-    reg.add_module( DV3DCell ) 
+     
+    reg.add_module( DV3DCell, configureWidgetType=DV3DCellConfigurationWidget, namespace='spreadsheet' ) 
     reg.add_input_port( DV3DCell, "volume", AlgorithmOutputModule3D  )   
     reg.add_input_port( DV3DCell, "Location", CellLocation)
     reg.add_input_port( DV3DCell, "world_cut", Integer, optional=True  )
     reg.add_input_port( DV3DCell, "map_border_size",  [ ( Float, 'border_in_degrees' ) ], optional=True  )
+    reg.add_input_port( DV3DCell, "enable_basemap",  [ ( Boolean, 'enable' ) ], optional=True  )    
     reg.add_input_port( DV3DCell, "world_map", [ ( File, 'map_file' ), ( Integer, 'map_cut' ) ], optional=True  ) 
     reg.add_input_port( DV3DCell, "opacity", [ ( Float, 'value' ) ], optional=True  ) 
 
@@ -124,7 +119,7 @@ def initialize(*args, **keywords):
 #    reg.add_output_port( WorldFrame, "volume", AlgorithmOutputModule3D ) 
 #    WorldFrame.registerConfigurableFunctions( reg )
 
-    reg.add_module( CDMS_FileReader, configureWidgetType=CDMSDatasetConfigurationWidget )
+    reg.add_module( CDMS_FileReader, configureWidgetType=CDMSDatasetConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_FileReader, "datasets",    [ ( String, 'serializedDatasetMap' ) ], True ) 
     reg.add_input_port( CDMS_FileReader, "datasetId",    [ ( String, 'currentDatasetId' ), ( Integer, 'version' ) ], True ) 
     reg.add_input_port( CDMS_FileReader, "timeRange",    [ ( Integer, 'startTimeIndex' ), ( Integer, 'endTimeIndex' ) ], True )    
@@ -133,49 +128,49 @@ def initialize(*args, **keywords):
     reg.add_output_port( CDMS_FileReader, "dataset", CDMSDataset ) 
     CDMS_FileReader.registerConfigurableFunctions( reg )
 
-    reg.add_module( CDMS_VolumeReader, configureWidgetType=CDMS_VolumeReaderConfigurationWidget )
+    reg.add_module( CDMS_VolumeReader, configureWidgetType=CDMS_VolumeReaderConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_VolumeReader, "dataset", CDMSDataset )    
     reg.add_input_port( CDMS_VolumeReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( CDMS_VolumeReader, "volume", AlgorithmOutputModule3D ) 
     CDMS_VolumeReader.registerConfigurableFunctions( reg )
 
-    reg.add_module( CDMS_SliceReader, configureWidgetType=CDMS_SliceReaderConfigurationWidget )
+    reg.add_module( CDMS_SliceReader, configureWidgetType=CDMS_SliceReaderConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_SliceReader, "dataset", CDMSDataset )        
     reg.add_input_port( CDMS_SliceReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( CDMS_SliceReader, "slice", AlgorithmOutputModule ) 
     CDMS_SliceReader.registerConfigurableFunctions( reg )
 
-    reg.add_module( CDMS_CDATUtilities, configureWidgetType=CDATUtilitiesModuleConfigurationWidget )
+    reg.add_module( CDMS_CDATUtilities, configureWidgetType=CDATUtilitiesModuleConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_CDATUtilities, "dataset", CDMSDataset )   
     reg.add_input_port( CDMS_CDATUtilities, "task",  [ ( String, 'taskData' ) ], True   ) # [ ( String, 'taskName' ), ( String, 'inputVars' ), ( String, 'outputVars' ) ], True   ) 
     reg.add_output_port( CDMS_CDATUtilities, "dataset", CDMSDataset ) 
 
-    reg.add_module( VolumeSlicer, configureWidgetType=LayerConfigurationWidget )
+    reg.add_module( VolumeSlicer, configureWidgetType=LayerConfigurationWidget, namespace='vtk' )
     reg.add_output_port( VolumeSlicer, "slice",  AlgorithmOutputModule  )
     reg.add_input_port( VolumeSlicer, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( VolumeSlicer, "volume", AlgorithmOutputModule3D ) 
     VolumeSlicer.registerConfigurableFunctions( reg )
 
-    reg.add_module( Gradient ) 
+    reg.add_module( Gradient, namespace='vtk|experimental'  ) 
     reg.add_input_port( Gradient, "computeVorticity", Integer  )   
     reg.add_input_port( Gradient, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( Gradient, "volume", AlgorithmOutputModule3D ) 
     
-    reg.add_module( VectorCutPlane )
+    reg.add_module( VectorCutPlane, namespace='vtk|experimental'  )
     reg.add_input_port( VectorCutPlane, "colors", AlgorithmOutputModule3D  )
     reg.add_output_port( VectorCutPlane, "slice", AlgorithmOutputModule ) 
     reg.add_input_port( VectorCutPlane, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( VectorCutPlane, "volume", AlgorithmOutputModule3D ) 
     VectorCutPlane.registerConfigurableFunctions(  reg )
 
-    reg.add_module( Resample )
+#    reg.add_module( Resample )
 #    reg.add_input_port( Resample, "position", [ ( Float, 'x' ), ( Float, 'y' ), ( Float, 'z' ) ], True   )    
 #    reg.add_output_port( Resample, "position",  [ ( Float, 'x' ), ( Float, 'y' ), ( Float, 'z' ) ], True  )
-    reg.add_input_port( Resample, "volume", AlgorithmOutputModule3D  )
-    reg.add_output_port( Resample, "volume", AlgorithmOutputModule3D ) 
-    Resample.registerConfigurableFunctions( reg )
+#    reg.add_input_port( Resample, "volume", AlgorithmOutputModule3D  )
+#    reg.add_output_port( Resample, "volume", AlgorithmOutputModule3D ) 
+#    Resample.registerConfigurableFunctions( reg )
 
-    reg.add_module( CurtainPlot )
+    reg.add_module( CurtainPlot, namespace='vtk|experimental'  )
     reg.add_input_port( CurtainPlot, "path", ( File, 'path_file' )  ) 
     reg.add_input_port( CurtainPlot, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( CurtainPlot, "volume", AlgorithmOutputModule3D ) 
@@ -187,20 +182,20 @@ def initialize(*args, **keywords):
 #    reg.add_output_port( DemoData, "volume", AlgorithmOutputModule3D ) 
 #    DemoData.registerConfigurableFunctions( reg )
        
-    reg.add_module( VolumeRenderer ) # , configureWidgetType=LayerConfigurationWidget  )
+    reg.add_module( VolumeRenderer, namespace='vtk'  ) # , configureWidgetType=LayerConfigurationWidget  )
     reg.add_input_port( VolumeRenderer, "volume", AlgorithmOutputModule3D  )
 #    reg.add_input_port( VolumeRenderer, "layer",   [ ( String, 'layer' ), ]   ) 
     reg.add_output_port( VolumeRenderer, "volume", AlgorithmOutputModule3D ) 
     VolumeRenderer.registerConfigurableFunctions( reg )
 
-    reg.add_module( LevelSurface, configureWidgetType=LayerConfigurationWidget  )
+    reg.add_module( LevelSurface, configureWidgetType=LayerConfigurationWidget, namespace='vtk'   )
     reg.add_input_port( LevelSurface, "texture", AlgorithmOutputModule3D  )
     reg.add_input_port( LevelSurface, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( LevelSurface, "volume", AlgorithmOutputModule3D ) 
     reg.add_input_port( LevelSurface, "layer",   [ ( String, 'activeLayerName' ) ]   ) 
     LevelSurface.registerConfigurableFunctions( reg )
 
-    reg.add_module( SlicePlot )
+    reg.add_module( SlicePlot, namespace='spreadsheet'  )
     reg.add_input_port( SlicePlot, "slice", AlgorithmOutputModule  )
     reg.add_output_port(SlicePlot, 'FigureManager', MplFigureManager)
     reg.add_output_port(SlicePlot, 'File', File)

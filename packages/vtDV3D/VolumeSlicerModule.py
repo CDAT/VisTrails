@@ -45,7 +45,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetY = None
         self.planeWidgetZ = None
         self.imageRescale = None
-        print " Volume Slicer init, id = %s " % str( id(self) )
+#        print " Volume Slicer init, id = %s " % str( id(self) )
 
     def getRangeBounds(self): 
         return self.rangeBounds 
@@ -62,7 +62,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         rop = math.fabs( range[0] )
         iop = int( rop )
         self.opacity = (rop-iop) if ( (iop%2) == 0 ) else 1.0 - (rop-iop)
-        printArgs( " Leveling: ", opacity=self.opacity ) 
+#        printArgs( " Leveling: ", opacity=self.opacity ) 
         self.updateOpacity() 
 
     def updateOpacity(self):
@@ -177,8 +177,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.SliceObserver( self.planeWidgetZ ) 
 
     def updateModule(self):
-        print " Volume Slicer: updateModule, cachable: %s " % str( self.is_cacheable() )
-        print " ******** Input extent: %s, origin: %s, spacing: %s " % ( self.input.GetExtent(), self.input.GetOrigin(), self.input.GetSpacing() )
+#        print " Volume Slicer: updateModule, cachable: %s " % str( self.is_cacheable() )
+#        print " ******** Input extent: %s, origin: %s, spacing: %s " % ( self.input.GetExtent(), self.input.GetOrigin(), self.input.GetSpacing() )
 
         self.planeWidgetX.SetInput( self.input ) 
         self.planeWidgetX.SetSliceIndex( self.slicePosition[0] )
@@ -239,7 +239,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        imageWriter.SetFileName ("~/sliceImage.jpg")
 #        imageWriter.SetInput( sliceOutput )
 #        imageWriter.Write()    
-        print " Slice Output: extent: %s, spacing: %s " % ( str( sliceOutput.GetExtent() ), str( sliceOutput.GetSpacing() ) )
+#        print " Slice Output: extent: %s, spacing: %s " % ( str( sliceOutput.GetExtent() ), str( sliceOutput.GetSpacing() ) )
         pass
 
     def getColormapSpec(self): 
@@ -276,7 +276,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.imageRange = self.getImageValues( ctf_data[0:2] ) 
         self.lut.SetTableRange( self.imageRange[0], self.imageRange[1] ) 
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
-        print " Volume Slicer: Scale Colormap: [ %.2f, %.2f ] " % ( self.imageRange[0], self.imageRange[1] )
+#        print " Volume Slicer: Scale Colormap: [ %.2f, %.2f ] " % ( self.imageRange[0], self.imageRange[1] )
         
     def finalizeLeveling( self ):
         isLeveling =  PersistentVisualizationModule.finalizeLeveling( self )

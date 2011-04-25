@@ -151,17 +151,6 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             position = self.volume.GetPosition () 
 #            printArgs( "Volume attrs", center=center,  matrix=matrix, bounds=bounds, mapper_bounds=mapper_bounds, position=position )   
 
-    def SetCameraPosition( self ):   
-        bounds = self.volume.GetBounds()
-        center = ( (bounds[0]+bounds[1])/2.0, (bounds[2]+bounds[3])/2.0, (bounds[4]+bounds[5])/2.0 ) 
-        size = ( (bounds[1]-bounds[0])/2.0, (bounds[3]-bounds[2])/2.0, (bounds[5]-bounds[4])/2.0 ) 
-        aCamera = self.renderer.GetActiveCamera()
-        aCamera.SetViewUp( 0, 0, 1 )
-        aCamera.SetPosition( 0.0, 0.0, size[2]/2.0 )
-        aCamera.SetFocalPoint( center[0], center[1], center[2] )
-        aCamera.ComputeViewPlaneNormal()
-        self.renderer.ResetCamera()
-
     def UpdateCamera( self ):
 #        self.volume.UseBoundsOff()     
         print " *** volume visible: %s " % ( self.volume.GetVisibility() )
@@ -169,7 +158,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         bounds = self.volume.GetBounds()
         p = aCamera.GetPosition()
         f = aCamera.GetFocalPoint()
-#        printArgs( "ResetCameraClippingRange", focal_point=f, cam_pos=p, vol_bounds=bounds )
+        printArgs( "ResetCameraClippingRange", focal_point=f, cam_pos=p, vol_bounds=bounds )
         self.renderer.ResetCameraClippingRange() 
 #        bounds = self.volume.GetBounds()
 #        center = ( (bounds[0]+bounds[1])/2.0, (bounds[2]+bounds[3])/2.0, (bounds[4]+bounds[5])/2.0 ) 
@@ -188,9 +177,9 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #        printArgs( "ResetCameraClippingRange", focal_point=f, cam_pos=p, focal_point_dist=d, vol_dist=vol_dist, vol_bounds=bounds )
 #        print " *** thickness-range>>> %s-%s ---> %s-%s " % ( str(t0), str(r0), str(t1), str(r1) ) 
         
-    def finalizeRendering(self):
-        self.SetCameraPosition() 
-        self.UpdateCamera()  
+#    def finalizeRendering(self):
+#        self.SetCameraPosition() 
+#        self.UpdateCamera()  
               
 #    def UpdateCamera():
 #      camera = self.renderer.GetActiveCamera()
@@ -215,10 +204,6 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #            self.scalarRange.append( 1 )
 #        sname = "NULL" if (scalars == None) else scalars.GetName()
 #        print "  --->> VolumeRender Update Module, timestep = %d, pointData%s, scalars: %s (%s) " % ( self.iTimestep, addr(pointData), sname, addr(scalars) )
-
-#    def initializeInputs( self ):
-#        PersistentModule.initializeInputs( self )
-#        self.input.AddObserver( 'ModifiedEvent', self.updateLayerEvent )  
 
 #    def updateLayerEvent(self, caller, event ):
 #        self.setActiveScalars(  )  

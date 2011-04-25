@@ -23,6 +23,11 @@ VTK_SHIFT_MODIFIER      = 1
 VTK_CONTROL_MODIFIER    = 2        
 
 currentTime = 0
+dvLogFile =  open( '/tmp/dv3d_log.txt', 'w' )
+
+def dvLog( obj, msg ):
+    dvLogFile.write( '\n%s: %s' % ( obj.__class__.__name__, msg ) )
+    dvLogFile.flush( )
 
 def bound( val, minval, maxval ): return max( min( val, maxval ), minval )
 
@@ -225,7 +230,7 @@ def NormalizeLon( lon ):
     while lon < 0: lon = lon + 360
     return lon % 360  
 
-def getPersistentObjectMap( controller = None  ):    
+def getWorkflowObjectMap( controller = None  ):    
     if controller == None: 
         import api
         controller = api.get_current_controller()

@@ -7,6 +7,7 @@ Created on Feb 14, 2011
 from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.vtk.vtkcell import QVTKWidget
 from PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
+from InteractiveConfiguration import *
 from WorkflowModule import WorkflowModule
 from vtUtilities import *
 import os
@@ -30,6 +31,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.cellWidget = None
         self.imageInfo = None
         self.enableBasemap = True
+        self.baseMapActor = None
+        self.renWin = None
 
 #    def get_output(self, port):
 #        module = Module.get_output(self, port)
@@ -44,15 +47,9 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 
 
     def updateModule(self):
-        self.buildPipeline()
-        if self.cellWidget:
-            renWin = self.cellWidget.GetRenderWindow()
-            renderers = renWin.GetRenderers()
-            r0 = renderers.GetFirstRenderer()
-#            r0 = addr( self.renderers[0] )  if self.renderers else '0'
-#            r1 = addr(  )
-#            print " updateModule: current renderer: %s, new renderer: %s " % ( r0, r1 )
-            renWin.Render()
+        self.buildRendering()
+        if self.baseMapActor: self.baseMapActor.SetVisibility( self.enableBasemap )
+        if self.renWin: self.renWin.Render()
         
     def activateWidgets( self, iren ):
         widget = self.baseMapActor
@@ -209,24 +206,31 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """ 
-        wmod = self.getWorkflowModule() 
+        self.buildRendering()
+        self.buildWidget()
+   
+    def buildRendering(self):
+#        wmod = self.getWorkflowModule() 
         controller, module = self.getRegisteredModule()
+        self.enableBasemap = self.getInputValue( "enable_basemap", True )
 
 #        print " DV3DCell compute, id = %s, cachable: %s " % ( str( id(self) ), str( self.is_cacheable() ) )
         self.renderers = []
+        self.renderer = None
         for inputModule in self.inputModuleList:
             if inputModule <> None:
-                renderer = inputModule.getRenderer() 
-                if  renderer <> None: 
-                    self.renderers.append( wrapVTKModule( 'vtkRenderer', renderer ) )
+                renderer1 = inputModule.getRenderer() 
+                if  renderer1 <> None: 
+                    if not self.renderer: self.renderer = renderer1
+                    self.renderers.append( wrapVTKModule( 'vtkRenderer', renderer1 ) )
 #                        renderer.SetNearClippingPlaneTolerance(0.0001)
 #                        print "NearClippingPlaneTolerance: %f" % renderer.GetNearClippingPlaneTolerance()
         
-        if self.enableBasemap and self.renderers:
+        if self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor ):
              
             world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None
-            opacity =  wmod.forceGetInputFromPort( "opacity",   0.4  )  if wmod else 0.4  
-            map_border_size =  wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
+            opacity =  self.getInputValue( "opacity",   0.4  ) #  wmod.forceGetInputFromPort( "opacity",   0.4  )  if wmod else 0.4  
+            map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
                 
             self.y0 = -90.0  
             dataPosition = None
@@ -237,7 +241,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 self.map_file = world_map[0].name
                 self.map_cut = world_map[1]
             
-            self.world_cut = wmod.forceGetInputFromPort( "world_cut", -1 )  if wmod else getFunctionParmStrValues( module, "world_cut", -1 )
+            self.world_cut = self.getInputValue( "world_cut", -1 ) # wmod.forceGetInputFromPort( "world_cut", -1 )  if wmod else getFunctionParmStrValues( module, "world_cut", -1 )
             roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
             map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
             data_origin = self.input.GetOrigin() if self.input else [ 0, 0, 0 ]
@@ -260,10 +264,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             if dataPosition == None:    
                 baseImage = self.RollMap( baseImage ) 
                 new_dims = baseImage.GetDimensions()
-    #            self.SetCameraPosition( dataPosition, map_cut_size )
             else:                       
                 baseImage, new_dims = self.getBoundedMap( baseImage, dataPosition, map_cut_size ) 
-    #            self.SetCameraPosition( [ 0.0, 0.0 ], [ 360.0, 180.0 ] )
             
             scale = [ map_cut_size[0]/new_dims[0], map_cut_size[1]/new_dims[1], 1 ]
     #        printArgs( " baseMap: ", extent=baseImage.GetExtent(), spacing=baseImage.GetSpacing(), origin=baseImage.GetOrigin() )        
@@ -277,9 +279,18 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
             self.baseMapActor.SetPosition( self.x0, self.y0, 0.1 )
             self.baseMapActor.SetInput( baseImage )
+            map_center = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]
             
-            self.renderers[0].AddActor( self.baseMapActor )
-                            
+            self.renderer.AddActor( self.baseMapActor )
+
+            aCamera = self.renderer.GetActiveCamera()
+            aCamera.SetViewUp( 0, 0, 1 )
+            aCamera.SetPosition( 0.0, 0.0, ( map_center[0] + map_center[1] ) / 4.0 )
+            aCamera.SetFocalPoint( map_center[0], map_center[1], 0.0 )
+            aCamera.ComputeViewPlaneNormal()
+            self.renderer.ResetCamera()                
+        
+    def buildWidget(self):                        
         if not self.cellWidget:
             if self.renderers:
                 renderViews = []
@@ -289,6 +300,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 picker = None
                 
                 self.cellWidget = self.displayAndWait(QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker))
+                self.renWin = self.cellWidget.GetRenderWindow()
                 
             else:
                 
@@ -296,6 +308,80 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 
 
 
+class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
+    """
+    CDMSDatasetConfigurationWidget ...
+    
+    """
+
+    def __init__(self, module, controller, parent=None):
+        """ DV3DCellConfigurationWidget(module: Module,
+                                       controller: VistrailController,
+                                       parent: QWidget)
+                                       -> DemoDataConfigurationWidget
+        Setup the dialog ...
+        
+        """
+        self.enableBasemap = True
+        self.mapBorderSize = 20.0
+        DV3DConfigurationWidget.__init__(self, module, controller, 'DV3D Cell Configuration', parent)
+                
+    def getParameters( self, module ):
+        basemapParams = getFunctionParmStrValues( module, "enable_basemap" )
+        if basemapParams: self.enableBasemap = bool( datasetMapParams[0] )
+        basemapParams = getFunctionParmStrValues( module, "map_border_size" )
+        if basemapParams:  self.mapBorderSize = float( datasetParams[0] )
+
+    def createLayout(self):
+        """ createEditor() -> None
+        Configure sections
+        """
+        self.setLayout( QVBoxLayout() )
+        self.layout().setMargin(0)
+        self.layout().setSpacing(0)
+
+        self.tabbedWidget = QTabWidget()
+        self.layout().addWidget( self.tabbedWidget ) 
+
+        self.createButtonLayout() 
+        
+        basemapTab = QWidget()        
+        self.tabbedWidget.addTab( basemapTab, 'basemap' )                 
+        layout = QVBoxLayout()
+        basemapTab.setLayout( layout ) 
+                
+        self.enableCheckBox = QCheckBox( "Enable Basemap:"  )
+        self.enableCheckBox.setChecked( self.enableBasemap )
+        layout.addWidget( self.enableCheckBox )
+
+        border_layout = QHBoxLayout()
+        enable_label = QLabel( "Border size:" )
+        border_layout.addWidget( enable_label )
+        self.borderSizeEdit =  QLineEdit ( self.parent() )
+        self.borderSizeEdit.setValidator( QDoubleValidator() )
+        self.borderSizeEdit.setText( "%.2f" % self.mapBorderSize )
+        enable_label.setBuddy( self.borderSizeEdit )
+#        self.borderSizeEdit.setFrameStyle( QFrame.Panel|QFrame.Raised )
+#        self.borderSizeEdit.setLineWidth(2)
+        border_layout.addWidget( self.borderSizeEdit  )        
+        layout.addLayout( border_layout )
+
+
+    def updateController(self, controller=None):
+        self.persistParameter( 'enable_basemap' , [ self.enableBasemap ]  )       
+        self.persistParameter( 'map_border_size' , [ self.mapBorderSize ]  )          
+           
+    def okTriggered(self, checked = False):
+        """ okTriggered(checked: bool) -> None
+        Update vistrail controller (if neccesssary) then close the widget
+        
+        """
+        self.enableBasemap = self.enableCheckBox.isChecked() 
+        self.mapBorderSize = float( self.borderSizeEdit.text() )
+        self.updateController(self.controller)
+        self.emit(SIGNAL('doneConfigure()'))
+        self.close()
+ 
 class DV3DCell(WorkflowModule):
     
     PersistentModuleClass = PM_DV3DCell
