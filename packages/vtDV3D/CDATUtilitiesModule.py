@@ -190,7 +190,6 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
                     if not inputVar: inputVar = varValue
         if not inputVar: inputVar = firstVar
         
-
         outputs_layout = QVBoxLayout()
         outputsTab.setLayout( outputs_layout ) 
         outputs_layout.setMargin(10)
@@ -211,6 +210,8 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
                 outputValue = "%s.%s.%s" % ( inputVar, taskName, output ) if inputVar else "%s.%s" % ( taskName, output )
                 self.outputMap[output] = outputValue
             outputEdit.setText( outputValue )
+            self.connect( outputEdit, SIGNAL("editingFinished()"), self.stateChanged ) 
+        self.stateChanged()
             
     def updateOutputs( self, arg ):
         if self.outputNames <> None:
@@ -227,7 +228,8 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
             for output in self.outputNames:
                 outputValue = "%s.%s" % ( nameListText, output )
                 outputEdit = self.outputNames[ output ]
-                outputEdit.setText( outputValue )                
+                outputEdit.setText( outputValue ) 
+        self.stateChanged()               
            
     def getSerializedTaskData(self, taskName ):  
         serializedInputs, serializedOutputs = self.getSerializedIOData( taskName ) 
@@ -282,6 +284,7 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         tasks_layout.addLayout(task_selection_layout)
         
         self.updateTask( self.taskCombo.currentText() )
+        self.stateChanged( False )
 
 #        portsTab = QWidget()        
 #        self.tabbedWidget.addTab( portsTab, 'parameters' )                 
@@ -341,9 +344,6 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
 #        self.scrollArea.setWidget(self.listContainer)
 #        self.scrollArea.setWidgetResizable(True)
 
-    def sizeHint(self):
-        return QtCore.QSize( 350, 250 )
-
     def okTriggered(self, checked = False):
 #        for port in self.inputPorts:
 #            entry = (PortEndPoint.Destination, port.name)
@@ -361,12 +361,10 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
 #            else:
 #                self.module.portVisible.discard(entry)
         task = str( self.taskCombo.currentText() )
-        self.persistParameter( 'task', [ self.getSerializedTaskData( task ) ] )
-        self.pmod.persistVersionMap()   
-        if self.pmod:  
-            self.pmod.addAnnotation( 'datasetId', self.datasetId  )
-            self.pmod.setLabel( task )
-        self.close()
+        self.persistParameterList( [ ('task', [ self.getSerializedTaskData( task ) ] ) ], datasetId=self.datasetId )
+        self.stateChanged( False ) 
+        self.pmod.setLabel( task )
+#        self.close()
 
 if __name__ == '__main__':
     executeVistrail( 'TestPipeline1', 'TestPipeline2' )

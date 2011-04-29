@@ -57,6 +57,9 @@ class PM_LevelSurface(PersistentVisualizationModule):
         return [ self.opacityRange[0], self.opacityRange[1], 0 ]
          
     def getLevelRange(self): 
+#        level_data_values = self.getDataValues( self.range )
+#        level_data_values.append( 0 )
+#        return level_data_values
         return [ self.range[0], self.range[1], 0 ]
 
     def setNumberOfLevels( self, nLevels  ):
@@ -67,7 +70,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         return self.numberOfLevels
     
     def setLevelRange( self, range ):
-        self.range = range
+        self.range = range # self.getImageValues( range )
         self.updateLevels()
     
     def updateLevels(self):

@@ -112,6 +112,7 @@ class ColorMapManager():
 
     def load_lut(self, value=None):
         if( value <> None ): self.cmap_name = str( value )
+        hue_range = None
 #        print " Load LUT: %s " % self.cmap_name  
        
         if self.cmap_name == 'file':
@@ -150,15 +151,18 @@ class ColorMapManager():
                 hue_range = 0.0, 0.0
                 saturation_range = 0.0, 0.0
                 value_range = 0.0, 1.0
-                
-        self.lut.SetHueRange( hue_range )
-        self.lut.SetSaturationRange( saturation_range )
-        self.lut.SetValueRange( value_range )
-        self.lut.SetAlphaRange( self.alpha_range )
-        self.lut.SetNumberOfTableValues( self.number_of_colors )
-        self.lut.SetRampToSQRT()
-        self.lut.Modified()
-        self.lut.ForceBuild()
+        
+        if hue_range:        
+            self.lut.SetHueRange( hue_range )
+            self.lut.SetSaturationRange( saturation_range )
+            self.lut.SetValueRange( value_range )
+            self.lut.SetAlphaRange( self.alpha_range )
+            self.lut.SetNumberOfTableValues( self.number_of_colors )
+            self.lut.SetRampToSQRT()
+            self.lut.Modified()
+            self.lut.ForceBuild()
+        else:
+            print>>sys.stderr, "Error-- Unrecognized colormap: %s" % self.cmap_name
                   
 if __name__ == '__main__':  
     from PyQt4.QtCore import *

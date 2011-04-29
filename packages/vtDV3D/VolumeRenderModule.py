@@ -144,11 +144,11 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             self.volume.Update() 
             self.set3DOutput()
 
-            center = self.volume.GetCenter() 
-            matrix = self.volume.GetMatrix()
-            bounds = self.volume.GetBounds() 
-            mapper_bounds = self.volumeMapper.GetBounds()   
-            position = self.volume.GetPosition () 
+#            center = self.volume.GetCenter() 
+#            matrix = self.volume.GetMatrix()
+#            bounds = self.volume.GetBounds() 
+#            mapper_bounds = self.volumeMapper.GetBounds()   
+#            position = self.volume.GetPosition () 
 #            printArgs( "Volume attrs", center=center,  matrix=matrix, bounds=bounds, mapper_bounds=mapper_bounds, position=position )   
 
     def UpdateCamera( self ):
@@ -233,7 +233,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             for i in range(nc):
                 interval_position = float(i)/nc
                 data_value = self.imageRange[0] + dr * interval_position
-                color = self.lut.GetTableValue( (nc-i-1) if self.invert else i )
+                color = self.lut.GetTableValue( i if self.invert else (nc-i-1) )
                 self.colorTransferFunction.AddRGBPoint( data_value, color[0], color[1], color[2] )
     #            if i % 50 == 0:  print "   --- ctf[%d:%.2f] --  %.2e: ( %.2f %.2f %.2f ) " % ( i, table_value, data_value, color[0], color[1], color[2] )
             

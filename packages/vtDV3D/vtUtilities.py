@@ -10,6 +10,7 @@ from core.modules.module_registry import get_module_registry
 from core.vistrail.vistrail import VersionAlreadyTagged
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from db.domain import DBModule, DBAnnotation
+from core.debug import DebugPrint
 import numpy.core.umath as umath
 from vtk.util.vtkConstants import *
 import numpy as np
@@ -24,6 +25,8 @@ VTK_CONTROL_MODIFIER    = 2
 
 currentTime = 0
 dvLogFile =  open( '/tmp/dv3d_log.txt', 'w' )
+dvDbgIO = DebugPrint()
+dvDbgIO.set_stream( sys.stderr )
 
 def dvLog( obj, msg ):
     dvLogFile.write( '\n%s: %s' % ( obj.__class__.__name__, msg ) )
@@ -44,6 +47,22 @@ def callbackWrapper( func, wrapped_arg ):
     def callMe( *args ):
         return func( wrapped_arg, *args )
     return callMe
+
+def change_parameters( module_id, parmRecList, controller=None ):
+    """change_parameters(module_id: long,
+                        parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
+                        controller: VistrailController,
+                        ) -> None
+    Note: param_list is a list of strings no matter what the parameter type!
+    """
+    if controller is None: controller = get_current_controller()
+    module = controller.current_pipeline.modules[module_id]
+#    controller.update_functions( module, parmRecList )
+    op_list = []
+    for parmRec in parmRecList:  op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+    action = core.db.action.create_action( op_list ) 
+    controller.add_new_action(action)
+    controller.perform_action(action)
     
 def isList( val ):
     valtype = type(val)

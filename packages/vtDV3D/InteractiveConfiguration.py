@@ -29,7 +29,7 @@ class QtWindowLeveler( QObject ):
         self.OriginalLevel            = 0.5
         self.CurrentWindow            = 1.0
         self.CurrentLevel             = 0.5
-        self.sensitivity              = float( args.get( 'sensitivity', 1.0 ) )
+        self.sensitivity              = args.get( 'sensitivity', (1.0, 10.0) )
         self.algorithm                = self.WindowRelative if args.get( 'windowing', True ) else self.BoundsRelative
         self.scaling = 1.0        
         self.invert = False
@@ -52,8 +52,8 @@ class QtWindowLeveler( QObject ):
               window = self.InitialWindow
               level = self.InitialLevel
                 
-              dx = self.sensitivity * ( X - self.StartWindowLevelPositionX ) / float( window_size[0] )
-              dy = self.sensitivity * ( self.StartWindowLevelPositionY - Y ) / float( window_size[1] )
+              dx = self.sensitivity[0] * ( X - self.StartWindowLevelPositionX ) / float( window_size[0] )
+              dy = self.sensitivity[1] * ( self.StartWindowLevelPositionY - Y ) / float( window_size[1] )
                
               if ( abs( window ) > 0.01 ):   dx = dx * window
               else:                          dx = (dx * -0.01) if ( window < 0 ) else (dx *  0.01)
@@ -81,8 +81,8 @@ class QtWindowLeveler( QObject ):
               self.CurrentWindow = newWindow
               self.CurrentLevel = newLevel
         elif self.algorithm == self.BoundsRelative:
-              dx =  self.sensitivity * ( X - self.StartWindowLevelPositionX ) 
-              dy =  self.sensitivity * ( Y - self.StartWindowLevelPositionY ) 
+              dx =  self.sensitivity[0] * ( X - self.StartWindowLevelPositionX ) 
+              dy =  self.sensitivity[1] * ( Y - self.StartWindowLevelPositionY ) 
               rmin = self.InitialRange[0] + ( dx / window_size[0] ) * self.InitialWindow
               rmax = self.InitialRange[1] + ( dy / window_size[1] ) * self.InitialWindow
               if rmin > rmax:   result =  [ rmax, rmin, 1 ]
@@ -508,6 +508,7 @@ class IVModuleConfigurationDialog( QWidget ):
     """ 
     instances = {}
     activeModuleList = []
+    update_animation_signal = SIGNAL('update_animation')      
          
     def __init__(self, name, **args ):
         QWidget.__init__(self, None)
@@ -886,10 +887,12 @@ class LayerConfigurationDialog( IVModuleConfigurationDialog ):
         self.layerCombo.setMaximumHeight( 30 )
         layout.addWidget( self.layerCombo, 0, 1 ) 
         self.connect( self.layerCombo, SIGNAL("currentIndexChanged(QString)"), self.updateParameter )  
-        
-
 
 class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
+    
+    newConfigurationWidget = None
+    currentConfigurationWidget = None
+    savingChanges = False
 
     def __init__(self, module, controller, title, parent=None):
         """ DV3DConfigurationWidget(module: Module,
@@ -905,6 +908,77 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         self.pmod = self.module_descriptor.module.forceGetPersistentModule( module.id )
         self.getParameters( module )
         self.createLayout()
+        if ( DV3DConfigurationWidget.newConfigurationWidget == None ): DV3DConfigurationWidget.setupSaveConfigurations() 
+        DV3DConfigurationWidget.newConfigurationWidget = self 
+        
+    def destroy( self, destroyWindow = True, destroySubWindows = True):
+        self.saveConfigurations()
+        StandardModuleConfigurationWidget.destroy( self, destroyWindow, destroySubWindows )
+
+    def sizeHint(self):
+        return QSize(400,200)
+         
+    @staticmethod   
+    def setupSaveConfigurations():
+        import api
+        ctrl = api.get_current_controller()
+        scene = ctrl.current_pipeline_view
+        scene.connect( scene, SIGNAL('moduleSelected'), DV3DConfigurationWidget.saveConfigurations )
+
+    @staticmethod
+    def saveConfigurations( newModuleId=None, selectedItemList=None ): 
+        rv = False
+        if not DV3DConfigurationWidget.savingChanges:
+            if DV3DConfigurationWidget.currentConfigurationWidget and DV3DConfigurationWidget.currentConfigurationWidget.state_changed:
+                rv = DV3DConfigurationWidget.currentConfigurationWidget.askToSaveChanges()
+            DV3DConfigurationWidget.currentConfigurationWidget = DV3DConfigurationWidget.newConfigurationWidget
+        return rv
+
+    @staticmethod
+    def saveNewConfigurations(): 
+        rv = False
+        if not DV3DConfigurationWidget.savingChanges:
+            if DV3DConfigurationWidget.newConfigurationWidget and DV3DConfigurationWidget.newConfigurationWidget.state_changed:
+                rv = DV3DConfigurationWidget.newConfigurationWidget.askToSaveChanges()
+            DV3DConfigurationWidget.currentConfigurationWidget = DV3DConfigurationWidget.newConfigurationWidget
+        return rv
+        
+#    def enterEvent(self, event):
+##        print " ----------------------- enterEvent --------------------------------------"
+#        self.mouseOver = True
+#        QWidget.enterEvent(self, event)
+#        
+#    def leaveEvent(self, event):
+##        print " ----------------------- leaveEvent --------------------------------------"
+#        self.mouseOver = False
+#        QWidget.leaveEvent(self, event)
+        
+#    def mousePressEvent (self, QMouseEvent):
+#        print " ----------------------- mousePressEvent --------------------------------------"
+#        print " MouseOver: %s "  % self.mouseOver
+#        QWidget.mousePressEvent(self, event)
+
+#    def focusInEvent(self, event):
+#        print " ----------------------- focusInEvent --------------------------------------"
+#        QWidget.focusInEvent(self, event)
+
+#    def focusOutEvent(self, event):
+##        print " ----------------------- focusOutEvent --------------------------------------"
+#        if self.mouseOver:
+#            event.ignore()
+#        else:
+#            self.askToSaveChanges()
+#            QWidget.focusOutEvent(self, event)
+
+    def saveTriggered(self, checked = False):
+        self.okTriggered()
+        self.state_changed = False
+        
+    def resetTriggered(self):
+        self.state_changed = False
+        
+    def stateChanged(self, changed = True ):
+        self.state_changed = changed
 
     def getParameters( self, module ):
         pass
@@ -1010,14 +1084,16 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                                 outputData = output.split(',')
                                 if len(outputData) > 1:
                                     variableList.append( ( outputData[1], int( outputData[2] ) ) )
-                    moduleId = None
         return ( variableList, datasetId, cdmsFile, timeRange )
 
 
-    def persistParameter( self, parameter_name, output, **args ):
-        self.pmod.persistParameter( parameter_name, output, **args )
-        self.pmod.persistVersionMap() 
-                
+#    def persistParameter( self, parameter_name, output, **args ):
+#        self.pmod.persistParameter( parameter_name, output, **args )
+#        self.pmod.persistVersionMap() 
+
+    def persistParameterList( self, parameter_list, **args ):
+        self.pmod.persistParameterList( parameter_list, **args )
+                        
     def queryLayerList( self, ndims=3 ):
         portName = 'volume' if ( ndims == 3 ) else 'slice'
         mid = self.module.id
@@ -1042,7 +1118,6 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     """
     AnimationConfigurationDialog ...   
     """ 
-    update_animation_signal = SIGNAL('update_animation')      
    
     def __init__(self, name, **args):
         self.iTimeStep = 0
@@ -1054,6 +1129,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.datasetId = None
         self.timer = QTimer()
         self.timer.connect( self.timer, SIGNAL('timeout()'), self.animate )
+        self.timer.setSingleShot( True )
         IVModuleConfigurationDialog.__init__( self, name, **args )
                                   
     @staticmethod   
@@ -1108,6 +1184,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.emit( self.update_animation_signal, self.iTimeStep, self.getTextDisplay() )
 
     def setTimestep( self, iTimestep ):
+        if DV3DConfigurationWidget.saveConfigurations(): self.getTimeRange()
         self.setValue( iTimestep )
         print " ** Update Animation, timestep = %d " % self.iTimeStep  
         for module in self.activeModuleList:
@@ -1126,8 +1203,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 
     def stop(self):
         self.runButton.setText('Run')
-        self.running = False
-        self.timer.stop()       
+        self.running = False    
 
     def start(self):
         self.getTimeRange()
@@ -1155,9 +1231,10 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 #            self.runThread.start()
              
     def animate(self):
-        self.setTimestep( self.iTimeStep + 1 )   
-        delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.delayTimeScale 
-        time.sleep( delayTime ) 
+        self.setTimestep( self.iTimeStep + 1 )  
+        if self.running: 
+            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.delayTimeScale 
+            self.timer.start( delayTime ) 
                 
     def run1(self):
         if self.running:
@@ -1338,15 +1415,13 @@ class LayerConfigurationWidget(DV3DConfigurationWidget):
  
         layersLayout.addLayout( layer_selection_Layout )
 
-    def sizeHint(self):
-        return QSize(200,150)
-
     def updateController(self, controller):
         new_layer_value = str( self.layersCombo.currentText() )
         if new_layer_value <> self.layer: 
 #            if self.pmod: self.pmod.changeVersion( self.layer, new_layer_value )
-            self.persistParameter( 'layer', [ new_layer_value, ])  
+            self.persistParameterList( [ ('layer', [ new_layer_value, ]) ] )  
             self.layer = new_layer_value
+        self.stateChanged(False)
           
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None

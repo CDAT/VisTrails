@@ -10,6 +10,7 @@ from PyQt4.QtGui import *
 from core.modules.vistrails_module import Module, ModuleError
 from core.modules.module_registry import get_module_registry, ModuleRegistryException   
 from ModuleStore import ModuleStoreDatabase 
+from InteractiveConfiguration import DV3DConfigurationWidget
 from vtUtilities import *
 
 ################################################################################
@@ -36,7 +37,8 @@ class WorkflowModule( Module ):
     def getPersistentModule( klass, mid ):            
         return ModuleStoreDatabase.forceGetModule(  mid, None ) 
 
-    def updatePersistentModule( self ):            
+    def updatePersistentModule( self ):
+        DV3DConfigurationWidget.saveNewConfigurations()            
         if not self.pmod: 
             self.pmod = self.__class__.forceGetPersistentModule( self.moduleInfo['moduleId'] )
         self.pmod.setWorkflowModule( self )

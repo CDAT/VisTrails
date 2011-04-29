@@ -193,6 +193,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.setActiveScalars()
 #        na2 = self.input.GetPointData().GetNumberOfArrays()
         self.SliceObserver( self.planeWidgetZ )
+        self.set3DOutput()
         
 #    def InputModifiedObserver( self, caller, event = None ):
 #        if not self.updatingPlacement:

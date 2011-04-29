@@ -244,6 +244,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             self.world_cut = self.getInputValue( "world_cut", -1 ) # wmod.forceGetInputFromPort( "world_cut", -1 )  if wmod else getFunctionParmStrValues( module, "world_cut", -1 )
             roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
             map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
+            if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
+            if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
             data_origin = self.input.GetOrigin() if self.input else [ 0, 0, 0 ]
           
             if self.world_cut == -1: 
@@ -260,14 +262,14 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             image_reader = vtk.vtkJPEGReader()      
             image_reader.SetFileName(  self.map_file )
             baseImage = image_reader.GetOutput() 
-            new_dims = None
+            new_dims, scale = None, None
             if dataPosition == None:    
                 baseImage = self.RollMap( baseImage ) 
                 new_dims = baseImage.GetDimensions()
+                scale = [ 360.0/new_dims[0], 180.0/new_dims[1], 1 ]
             else:                       
-                baseImage, new_dims = self.getBoundedMap( baseImage, dataPosition, map_cut_size ) 
-            
-            scale = [ map_cut_size[0]/new_dims[0], map_cut_size[1]/new_dims[1], 1 ]
+                baseImage, new_dims = self.getBoundedMap( baseImage, dataPosition, map_cut_size )             
+                scale = [ map_cut_size[0]/new_dims[0], map_cut_size[1]/new_dims[1], 1 ]
     #        printArgs( " baseMap: ", extent=baseImage.GetExtent(), spacing=baseImage.GetSpacing(), origin=baseImage.GetOrigin() )        
                       
             self.baseMapActor = vtk.vtkImageActor()
@@ -328,9 +330,9 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
                 
     def getParameters( self, module ):
         basemapParams = getFunctionParmStrValues( module, "enable_basemap" )
-        if basemapParams: self.enableBasemap = bool( datasetMapParams[0] )
+        if basemapParams: self.enableBasemap = bool( basemapParams[0] )
         basemapParams = getFunctionParmStrValues( module, "map_border_size" )
-        if basemapParams:  self.mapBorderSize = float( datasetParams[0] )
+        if basemapParams:  self.mapBorderSize = float( basemapParams[0] )
 
     def createLayout(self):
         """ createEditor() -> None
@@ -352,6 +354,7 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
                 
         self.enableCheckBox = QCheckBox( "Enable Basemap:"  )
         self.enableCheckBox.setChecked( self.enableBasemap )
+        self.connect( self.enableCheckBox, SIGNAL("stateChanged(int)"), self.basemapStateChanged ) 
         layout.addWidget( self.enableCheckBox )
 
         border_layout = QHBoxLayout()
@@ -360,16 +363,22 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         self.borderSizeEdit =  QLineEdit ( self.parent() )
         self.borderSizeEdit.setValidator( QDoubleValidator() )
         self.borderSizeEdit.setText( "%.2f" % self.mapBorderSize )
+        self.connect( self.borderSizeEdit, SIGNAL("editingFinished()"), self.stateChanged ) 
         enable_label.setBuddy( self.borderSizeEdit )
 #        self.borderSizeEdit.setFrameStyle( QFrame.Panel|QFrame.Raised )
 #        self.borderSizeEdit.setLineWidth(2)
         border_layout.addWidget( self.borderSizeEdit  )        
         layout.addLayout( border_layout )
-
+        
+    def basemapStateChanged( self, enabled ):
+        self.stateChanged()
 
     def updateController(self, controller=None):
-        self.persistParameter( 'enable_basemap' , [ self.enableBasemap ]  )       
-        self.persistParameter( 'map_border_size' , [ self.mapBorderSize ]  )          
+        parmRecList = []
+        parmRecList.append( ( 'enable_basemap' , [ self.enableBasemap ]  ), )      
+        parmRecList.append( ( 'map_border_size' , [ self.mapBorderSize ]  ), )  
+        self.persistParameterList( parmRecList )
+        self.stateChanged(False)         
            
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None
@@ -380,7 +389,7 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         self.mapBorderSize = float( self.borderSizeEdit.text() )
         self.updateController(self.controller)
         self.emit(SIGNAL('doneConfigure()'))
-        self.close()
+#        self.close()
  
 class DV3DCell(WorkflowModule):
     

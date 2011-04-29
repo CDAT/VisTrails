@@ -255,19 +255,23 @@ class PersistentModule( QObject ):
             if self.wmod:  inputList = self.wmod.forceGetInputListFromPort( inputName )
         if inputList == None:         
             inputList = self.getParameter( inputName, None )
-        return inputList  
+        return inputList
+    
+    def getDatasetId( self, **args ):  
+        dsid = args.get( 'datasetId', None )
+        if dsid:
+            self.datasetId = dsid 
+            self.addAnnotation( 'datasetId', self.datasetId  ) 
     
     def getInputValue( self, inputName, default_value = None, **args ):
         import api
+        self.getDatasetId( **args )
         ctrl, tag, pval = api.get_current_controller(), self.getParameterId(), None
-        tv0 = tagged_version_number = ctrl.current_version
+        tagged_version_number = ctrl.current_version
         if self.isLayerDependentParameter( inputName ):
             versions = self.getTaggedVersionList( tag )
-            if versions: 
-                tv0 = tagged_version_number = versions[-1] 
-                current_test_version_tag = self.versionTags.get( tagged_version_number + 1, None )
-                if (not current_test_version_tag) or (current_test_version_tag == tag): 
-                    tagged_version_number = tagged_version_number + 1   
+            if versions: tagged_version_number = versions[-1] 
+            else: return default_value
         functionID = getFunctionId( self.moduleID, inputName, ctrl )
         if functionID >= 0:
             try:
@@ -276,8 +280,9 @@ class PersistentModule( QObject ):
                 tagged_function = tagged_module.functions[functionID]
                 parameterList = tagged_function.parameters
                 pval = [ translateToPython( parmRec ) for parmRec in parameterList ]
+                print " %s.Get-Input-Value[%s:%s] (v. %s): %s " % ( self.getName(), tag, inputName, str(tagged_version_number), str(pval) )
             except Exception, err:
-                print str(err)
+                print "Error getting tagged version: %s" % str(err)
         elif self.wmod:
             pval = self.wmod.forceGetInputFromPort( inputName, default_value ) 
         if pval == None:         
@@ -374,10 +379,12 @@ class PersistentModule( QObject ):
             self.roi = metadata.get( 'bounds', None )
             
             dsetId = metadata.get( 'datasetId', None )
+            self.datasetId = self.getAnnotation( "datasetId" )
             if self.datasetId <> dsetId:
                 self.pipelineBuilt = False
-                if self.datasetId <> None: self.newDataset = True
+                self.newDataset = True
                 self.datasetId = dsetId
+                self.addAnnotation( "datasetId", self.datasetId )
                            
             dtype =  metadata.get( 'datatype', None )
             scalars =  metadata.get( 'scalars', None )
@@ -673,21 +680,22 @@ class PersistentModule( QObject ):
                 
 #            function = getFunction( configFunct.name, functionList )
     def persistParameters( self ):
+       parmRecList = []
        for configFunct in self.configurableFunctions.values():
             value = self.getCachedParameter( configFunct.name ) 
-            if value:
-                self.persistParameter( configFunct.name, value )
-                configFunct.init( self ) 
-       self.persistVersionMap()   
+            if value: parmRecList.append( ( configFunct.name, value ), )                
+       if parmRecList: self.persistParameterList( parmRecList ) 
+       for configFunct in self.configurableFunctions.values(): configFunct.init( self ) 
 
     def persistLayerDependentParameters( self ):
        if self.newLayerConfiguration:
+           parmRecList = []
            for configFunct in self.configurableFunctions.values():
                 if configFunct.isLayerDependent: 
                     value = self.getCachedParameter( configFunct.name ) 
-                    if value: self.persistParameter( configFunct.name, value ) 
-           self.newLayerConfiguration = False
-           self.persistVersionMap()       
+                    if value: parmRecList.append( ( configFunct.name, value ), )    
+           if parmRecList: self.persistParameterList( parmRecList )  
+           self.newLayerConfiguration = False    
                                     
     def parameterUpdating( self, parmName ):
         parm_update = self.parmUpdating [parmName] 
@@ -757,8 +765,23 @@ class PersistentModule( QObject ):
             pass 
         return controller
     
+#    def updateDatasetId( self ): 
+#        import api
+#        controller = api.get_current_controller()
+#        moduleId = self.moduleID
+#        datasetId = None
+#        while moduleId <> None:
+#            moduleId, portName = getConnectedModuleId( controller, moduleId, 'dataset', True )
+#            if moduleId <> None:
+#                module = controller.current_pipeline.modules[ moduleId ]
+#                datasetIdInput = getFunctionParmStrValues( module, "datasetId" )
+#                if datasetIdInput:
+#                    self.datasetId = getItem( datasetIdInput )
+#                    return
+    
     def getParameterId( self, parmName = None ):
         parmIdList = []
+        if not self.datasetId: self.datasetId = self.getAnnotation( 'datasetId' )
         if self.datasetId: parmIdList.append( self.datasetId )
         if self.activeLayer: parmIdList.append( self.activeLayer )
         if parmName: parmIdList.append( parmName )
@@ -803,26 +826,52 @@ class PersistentModule( QObject ):
         versionList = self.taggedVersionMap.get( tag, None )
         return versionList[-1] if versionList else -1                     
 
-    def persistParameter( self, parameter_name, output, **args ):
-        if output <> None: 
+#    def persistParameter( self, parameter_name, output, **args ):
+#        if output <> None: 
+#            import api
+#            DV3DConfigurationWidget.savingChanges = True
+#            ctrl = api.get_current_controller()
+#            param_values_str = [ str(x) for x in output ] if isList(output) else str( output )  
+#            v0 = ctrl.current_version
+#            api.change_parameter( self.moduleID, parameter_name, param_values_str )
+#            v1 = ctrl.current_version
+#            tag = self.getParameterId()             
+#            taggedVersion = self.tagCurrentVersion( tag )
+#            new_parameter_id = args.get( 'parameter_id', tag )
+#            self.setParameter( parameter_name, output, new_parameter_id )
+#            print " PM: Persist Parameter %s -> %s, tag = %s, taggedVersion=%d, new_id = %s, version => ( %d -> %d ), module = %s" % ( parameter_name, str(output), tag, taggedVersion, new_parameter_id, v0, v1, self.__class__.__name__ )
+#            DV3DConfigurationWidget.savingChanges = False
+
+    def persistParameterList( self, parmRecList, **args ):
+        if parmRecList: 
             import api
+            DV3DConfigurationWidget.savingChanges = True
             ctrl = api.get_current_controller()
-            param_values_str = [ str(x) for x in output ] if isList(output) else str( output )  
-            v0 = ctrl.current_version
-            api.change_parameter( self.moduleID, parameter_name, param_values_str )
-            v1 = ctrl.current_version
-            tag = self.getParameterId()             
+            strParmRecList = []
+            self.getDatasetId( **args )
+            for parmRec in parmRecList:
+                parameter_name = parmRec[0]
+                output = parmRec[1]
+                param_values_str = [ str(x) for x in output ] if isList(output) else str( output )  
+                strParmRecList.append( ( parameter_name, param_values_str ) )
+            change_parameters( self.moduleID, strParmRecList, ctrl )           
+            tag = self.getParameterId()
             taggedVersion = self.tagCurrentVersion( tag )
-            new_parameter_id = args.get( 'parameter_id', tag )
-            self.setParameter( parameter_name, output, new_parameter_id )
-            print " PM: Persist Parameter %s -> %s, tag = %s, taggedVersion=%d, new_id = %s, version => ( %d -> %d ), module = %s" % ( parameter_name, str(output), tag, taggedVersion, new_parameter_id, v0, v1, self.__class__.__name__ )
-                          
+            for parmRec in parmRecList:
+                parameter_name = parmRec[0]
+                output = parmRec[1]
+                self.setParameter( parameter_name, output, tag ) 
+            print " %s.Persist-Parameter-List[%s] (v. %s): %s " % ( self.getName(), tag, str(taggedVersion), str(parmRecList) )
+            self.persistVersionMap() 
+            updatePipelineConfiguration = args.get( 'update', False )                  
+            if updatePipelineConfiguration: ctrl.select_latest_version() 
+            DV3DConfigurationWidget.savingChanges = False
+                         
     def finalizeParameter(self, parameter_name, *args ):
         try:
             output = self.getParameter( parameter_name )
             assert (output <> None), "Attempt to finalize parameter that has not been cached." 
-            self.persistParameter( parameter_name, output )  
-            self.persistVersionMap()   
+            self.persistParameterList( [ (parameter_name, output) ] )             
         except Exception, err:
             print "Error changing parameter for %s module: %s", ( self.__class__.__name__, str(err) )
            
@@ -1067,33 +1116,36 @@ class PersistentVisualizationModule( PersistentModule ):
         spreadsheetWindow.repaint()
       
     def activateEvent( self, caller, event ):
-        self.renwin = self.renderer.GetRenderWindow( )
-        if self.renwin <> None:
-            iren = self.renwin.GetInteractor() 
-            if ( iren <> None ):
-                if ( iren <> self.iren ):
-                    if self.iren == None: 
-                        self.renwin.AddObserver("AbortCheckEvent", CheckAbort)
-                        self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
-                    self.iren = iren
-                    self.activateWidgets( self.iren )                                  
-                    self.iren.AddObserver( 'CharEvent', self.setInteractionState )                   
-                    self.iren.AddObserver( 'MouseMoveEvent', self.updateLevelingEvent )
-                    self.iren.AddObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
-#                    self.iren.AddObserver( 'AnyEvent', self.onAnyEvent )        
-                    self.iren.AddObserver( 'CharEvent', self.onKeyPress )
-                    self.iren.AddObserver( 'KeyReleaseEvent', self.onKeyRelease )
-                    self.iren.AddObserver( 'LeftButtonPressEvent', self.onLeftButtonPress )
-                    self.iren.AddObserver( 'ModifiedEvent', self.onModified )
-                    self.iren.AddObserver( 'RenderEvent', self.onRender )                   
-                    self.iren.AddObserver( 'LeftButtonReleaseEvent', self.onLeftButtonRelease )
-                    self.iren.AddObserver( 'RightButtonReleaseEvent', self.onRightButtonRelease )
-                    self.iren.AddObserver( 'LeftButtonPressEvent', self.startLevelingEvent )
-                    self.iren.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )
-                    for configurableFunction in self.configurableFunctions.values():
-                        configurableFunction.activateWidget( iren )
-                if ( self.iren.GetInteractorStyle() <> self.navigationInteractorStyle ):               
-                    self.navigationInteractorStyle = self.iren.GetInteractorStyle()  
+        if self.renderer == None:
+            print>>sys.stderr, "Error, no renderer available for activation."
+        else:
+            self.renwin = self.renderer.GetRenderWindow( )
+            if self.renwin <> None:
+                iren = self.renwin.GetInteractor() 
+                if ( iren <> None ):
+                    if ( iren <> self.iren ):
+                        if self.iren == None: 
+                            self.renwin.AddObserver("AbortCheckEvent", CheckAbort)
+                            self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
+                        self.iren = iren
+                        self.activateWidgets( self.iren )                                  
+                        self.iren.AddObserver( 'CharEvent', self.setInteractionState )                   
+                        self.iren.AddObserver( 'MouseMoveEvent', self.updateLevelingEvent )
+                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
+    #                    self.iren.AddObserver( 'AnyEvent', self.onAnyEvent )        
+                        self.iren.AddObserver( 'CharEvent', self.onKeyPress )
+                        self.iren.AddObserver( 'KeyReleaseEvent', self.onKeyRelease )
+                        self.iren.AddObserver( 'LeftButtonPressEvent', self.onLeftButtonPress )
+                        self.iren.AddObserver( 'ModifiedEvent', self.onModified )
+                        self.iren.AddObserver( 'RenderEvent', self.onRender )                   
+                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.onLeftButtonRelease )
+                        self.iren.AddObserver( 'RightButtonReleaseEvent', self.onRightButtonRelease )
+                        self.iren.AddObserver( 'LeftButtonPressEvent', self.startLevelingEvent )
+                        self.iren.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )
+                        for configurableFunction in self.configurableFunctions.values():
+                            configurableFunction.activateWidget( iren )
+                    if ( self.iren.GetInteractorStyle() <> self.navigationInteractorStyle ):               
+                        self.navigationInteractorStyle = self.iren.GetInteractorStyle()  
                     
     def setInteractionState(self, caller, event):
         key = caller.GetKeyCode() 

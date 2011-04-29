@@ -145,7 +145,7 @@ def initialize(*args, **keywords):
     reg.add_input_port( CDMS_CDATUtilities, "task",  [ ( String, 'taskData' ) ], True   ) # [ ( String, 'taskName' ), ( String, 'inputVars' ), ( String, 'outputVars' ) ], True   ) 
     reg.add_output_port( CDMS_CDATUtilities, "dataset", CDMSDataset ) 
 
-    reg.add_module( VolumeSlicer, configureWidgetType=LayerConfigurationWidget, namespace='vtk' )
+    reg.add_module( VolumeSlicer, namespace='vtk' )
     reg.add_output_port( VolumeSlicer, "slice",  AlgorithmOutputModule  )
     reg.add_input_port( VolumeSlicer, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( VolumeSlicer, "volume", AlgorithmOutputModule3D ) 
@@ -188,7 +188,7 @@ def initialize(*args, **keywords):
     reg.add_output_port( VolumeRenderer, "volume", AlgorithmOutputModule3D ) 
     VolumeRenderer.registerConfigurableFunctions( reg )
 
-    reg.add_module( LevelSurface, configureWidgetType=LayerConfigurationWidget, namespace='vtk'   )
+    reg.add_module( LevelSurface, namespace='vtk'   )
     reg.add_input_port( LevelSurface, "texture", AlgorithmOutputModule3D  )
     reg.add_input_port( LevelSurface, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( LevelSurface, "volume", AlgorithmOutputModule3D ) 

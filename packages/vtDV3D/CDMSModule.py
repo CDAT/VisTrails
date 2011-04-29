@@ -139,7 +139,7 @@ class CDMSDataset(Module):
         elif varName in self.transientVariables:
             rv = self.transientVariables[ varName ]
         else: 
-            print>>sys.stderr, "Error: can't find variable %s in dataset" % varName
+            print>>sys.stderr, "Error: can't find time slice variable %s in dataset" % varName
         return rv
 
     def getAxisValues( self, axis, roi ):
@@ -295,11 +295,13 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.zscale = 1.0
         self.multiFileSelection = False
         self.currentDatasetId = None
+        self.datasetChanged = False
         self.datasets = {}
         DV3DConfigurationWidget.__init__(self, module, controller, 'CDMS Dataset Configuration', parent)
         self.metadataViewer = MetadataViewerDialog( self )
         if self.currentDatasetId <> None: 
             self.registerCurrentDataset( id=self.currentDatasetId )
+        self.stateChanged( False )
 #        self.initTimeRange()
 #        self.initRoi()
         
@@ -378,7 +380,9 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
                     self.dataset_selection.setText( QString( self.currentDatasetId ) ) 
                 global DataSetVersion 
                 DataSetVersion = DataSetVersion + 1 
-
+                self.stateChanged()
+                self.datasetChanged = True
+        
     def viewMetadata(self):
         self.metadataViewer.show()
         
@@ -410,6 +414,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.endIndexEdit.setText( str( self.timeRange[1] ) )  
        
     def selectDataset(self): 
+        self.datasetChanged = True
         if self.multiFileSelection:
             self.registerCurrentDataset( id=str( self.dsCombo.currentText() ), newLayerConfig=True )
             self.updateController()
@@ -445,7 +450,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             if self.currentDatasetId:
                 iCurrentDsIndex = self.dsCombo.findText( self.currentDatasetId )
                 self.dsCombo.setCurrentIndex( iCurrentDsIndex )   
-            self.connect( self.dsCombo, SIGNAL("currentIndexChanged(QString)"), self.selectDataset ) 
+            self.connect( self.dsCombo, SIGNAL("currentIndexChanged(QString)"), self.selectDataset )
             
             layout.addLayout( ds_layout )
             ds_button_layout = QHBoxLayout()
@@ -487,7 +492,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             layout.addLayout( ds_button_layout )
             ds_button1_layout = QHBoxLayout()
 
-        timeTab = QWidget()  
+        timeTab = QWidget() 
+#        timeTab.setFocusPolicy( Qt.NoFocus ) 
         self.tabbedWidget.addTab( timeTab, 'time' )                 
         time_layout = QVBoxLayout()
         timeTab.setLayout( time_layout ) 
@@ -496,6 +502,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         start_label = QLabel( "Start Time:"  )
         start_layout.addWidget( start_label ) 
         self.startCombo =  QComboBox ( self.parent() )
+#        self.startCombo.setFocusPolicy( Qt.NoFocus )
         start_label.setBuddy( self.startCombo )
         self.startCombo.setMaximumHeight( 30 )
         start_layout.addWidget( self.startCombo  )
@@ -512,6 +519,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         end_label = QLabel( "End Time:"  )
         end_layout.addWidget( end_label ) 
         self.endCombo =  QComboBox ( self.parent() )
+#        self.endCombo.setFocusPolicy( Qt.NoFocus )
         end_label.setBuddy( self.endCombo )
         self.endCombo.setMaximumHeight( 30 )
         end_layout.addWidget( self.endCombo  )
@@ -559,6 +567,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.selectZScaleLineEdit =  QLineEdit( self.parent() )
         self.selectZScaleLineEdit.setValidator( QDoubleValidator() )
         self.selectZScaleLineEdit.setText( "%.2f" % self.zscale)
+        self.connect( self.selectZScaleLineEdit, SIGNAL('editingFinished()'), self.stateChanged )
+        
         zscaleTab_layout.addWidget( self.selectZScaleLineEdit )
 
     def setRoi(self):
@@ -613,60 +623,66 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
     def selectRoi( self ): 
         if self.roi: self.roiSelector.setROI( self.roi )
         self.roiSelector.show()
+        self.stateChanged()
 
     def resetRoi( self ): 
         self.roiSelector.setROI( self.fullRoi ) 
         self.roiLabel.setText( "ROI: %s" % str( self.fullRoi )  ) 
-        for i in range( len( self.roi ) ): self.roi[i] = self.fullRoi[i]     
+        for i in range( len( self.roi ) ): self.roi[i] = self.fullRoi[i] 
+        self.stateChanged()    
                                
     def updateStartTime( self, val ):
 #        print " updateStartTime: %s " % str( val )
         iStartIndex = self.startCombo.currentIndex()
         self.startIndexEdit.setText( str(iStartIndex) )
         if self.timeRange: self.timeRange[0] = iStartIndex
+        self.stateChanged()
     
     def updateEndTime( self, val ):
 #        print " updateEndTime: %s " % str( val )
         iEndIndex = self.endCombo.currentIndex()
         self.endIndexEdit.setText( str(iEndIndex) )
         if self.timeRange: self.timeRange[1] = iEndIndex
+        self.stateChanged()
         
     def updateStartIndex( self ):
         iStartIndex = int( str( self.startIndexEdit.text() ) )
         self.startCombo.setCurrentIndex( iStartIndex )
         if self.timeRange: 
             self.timeRange[0] = iStartIndex
+        self.stateChanged()
 
     def updateEndIndex( self ):
         iEndIndex = int( str( self.endIndexEdit.text() ) )
         self.endCombo.setCurrentIndex( iEndIndex )
         if self.timeRange: 
             self.timeRange[1] = iEndIndex
-
-    def sizeHint(self):
-        return QSize(500,400)
+        self.stateChanged()
 
     def updateController(self, controller=None):
         global DataSetVersion
-        DataSetVersion = DataSetVersion + 1
-        self.persistParameter( 'datasets', [ serializeStrMap(self.datasets), ] )
-        self.persistParameter( 'datasetId', [ self.currentDatasetId, DataSetVersion ] )
-        self.persistParameter( 'timeRange' , [ self.timeRange[0], self.timeRange[1] ]  )       
-        self.persistParameter( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  )          
-        self.persistParameter( 'zscale' , [ self.zscale ]  )  
-        if self.pmod: self.pmod.persistVersionMap()      
+        parmRecList = []
+        if self.datasetChanged:
+            DataSetVersion = DataSetVersion + 1
+            parmRecList.append( ( 'datasets', [ serializeStrMap(self.datasets), ] ), )
+            parmRecList.append( ( 'datasetId', [ self.currentDatasetId, DataSetVersion ] ), )
+            self.datasetChanged = False
+        parmRecList.append( ( 'timeRange' , [ self.timeRange[0], self.timeRange[1] ]  ), )       
+        parmRecList.append( ( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  ), )          
+        parmRecList.append( ( 'zscale' , [ self.zscale ]  ), )  
+        self.persistParameterList( parmRecList ) 
+        self.stateChanged(False)
            
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None
         Update vistrail controller (if neccesssary) then close the widget
         
         """
-        self.timeRange = [ int( str( self.startIndexEdit.text() ) ), int( str( self.endIndexEdit.text() ) ) ]
+        t0, t1 = self.startIndexEdit.text(), self.endIndexEdit.text()
+        self.timeRange = [ int( str( t0 ) ), int( str( t1 ) ) ]
         self.zscale = float( self.selectZScaleLineEdit.text() )
         self.updateController(self.controller)
         self.emit(SIGNAL('doneConfigure()'))
-        self.close()
-        if self.pmod: self.pmod.execute()
 
 ################################################################################
 
@@ -966,9 +982,6 @@ class MetadataViewerDialog( QDialog ):
 #        print " -- PortData: %s " % self.serializedPortData
 #                   
 #
-#    def sizeHint(self):
-#        return QSize(500,500)
-#
 #    def updateController(self, controller):
 #        global PortDataVersion
 #        PortDataVersion = PortDataVersion + 1
@@ -1044,8 +1057,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     def generateOutput( self ):       
         portData = self.getPortData()
         oRecMgr = OutputRecManager( portData[0] if portData else None  )
-        wmod = self.getWorkflowModule()    
-        for orec in oRecMgr.getOutputRecs( self.datasetId ):
+        wmod = self.getWorkflowModule() 
+        orecs = oRecMgr.getOutputRecs( self.datasetId )  
+        if not orecs: raise ModuleError( self, 'No Variable selected for dataset %s.' % self.datasetId )             
+        for orec in orecs:
             self.getImageData( orec ) 
             cachedImageDataName = "%s.%s" % ( self.datasetId, orec.name )              
             if   orec.ndim == 3: self.set3DOutput( name=orec.name,  output=self.imageData[cachedImageDataName], wmod = wmod )
@@ -1159,8 +1174,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     pointData.SetActiveScalars( varName  ) 
                     md[ 'valueRange'] = var_md[ 'range' ] 
                     md[ 'scalars'] = varName 
-#                    print " --- CDMS-SetScalars: %s, Range= %s" % ( varName, str( var_md[ 'range' ] ) )  
-        if len( vars )== 0: raise ModuleError( self, 'No Variable selected in dataset.' )             
+                    print " --- CDMS-SetScalars: %s, Range= %s" % ( varName, str( var_md[ 'range' ] ) )  
+        if len( vars )== 0: raise ModuleError( self, 'No dataset variables selected for output %s.' % orec.name)             
         md[ 'vars' ] = vars
         enc_mdata = encodeToString( md ) 
         self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                        
@@ -1248,15 +1263,16 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         self.datasetId = None
         DV3DConfigurationWidget.__init__(self, module, controller, 'CDMS Data Reader Configuration', parent)
         self.outRecMgr = OutputRecManager()  
-        self.initializeOutput()      
+        self.initializeOutput() 
+        self.stateChanged( False )     
      
     def getParameters( self, module ):
         global PortDataVersion
-        portData = self.pmod.getPortData( dbmod=self.module ) # getFunctionParmStrValues( module, "portData" )
+        ( self.variableList, self.datasetId, self.cdmsFile, self.timeRange ) =  DV3DConfigurationWidget.getVariableList( module.id ) 
+        portData = self.pmod.getPortData( dbmod=self.module, datasetId=self.datasetId ) # getFunctionParmStrValues( module, "portData" )
         if portData and portData[0]: 
              self.serializedPortData = portData[0]   
-             PortDataVersion = int( portData[1] ) 
-        ( self.variableList, self.datasetId, self.cdmsFile, self.timeRange ) =  DV3DConfigurationWidget.getVariableList( module.id )     
+             PortDataVersion = int( portData[1] )    
                                                   
     def createLayout(self):
         """ createEditor() -> None
@@ -1283,14 +1299,11 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         self.outputsTabbedWidget = QTabWidget()
         outputsLayout.addWidget( self.outputsTabbedWidget )
 
-    def sizeHint(self):
-        return QSize(500,250)
-
     def updateController(self, controller):
         global PortDataVersion
         PortDataVersion = PortDataVersion + 1
-        self.persistParameter( 'portData', [ self.serializedPortData, PortDataVersion ], parameter_id=self.datasetId )
-        self.pmod.persistVersionMap() 
+        self.persistParameterList( [ ('portData', [ self.serializedPortData, PortDataVersion ] ) ], datasetId=self.datasetId )
+        self.stateChanged(False)
            
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None
@@ -1300,7 +1313,7 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         self.serializePortData()
         self.updateController(self.controller)
         self.emit(SIGNAL('doneConfigure()'))
-        self.close()
+#        self.close()
                                        
     def initializeOutput( self ):
         print " initializeOutputs, serializedPortData: %s " % self.serializedPortData
@@ -1358,6 +1371,7 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         variables_label = QLabel( "Select Output Variable:"  )
         variables_Layout.addWidget( variables_label ) 
         varsCombo =  QComboBox ( self )
+        self.connect( varsCombo, SIGNAL("currentIndexChanged(QString)"), self.selectedVariableChanged ) 
         variables_label.setBuddy( varsCombo )
 #        varsCombo.setMaximumHeight( 30 )
         variables_Layout.addWidget( varsCombo )  
@@ -1368,6 +1382,9 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         self.outRecMgr.addOutputRec( self.datasetId, orec ) 
         
         return otab
+    
+    def selectedVariableChanged(self, vname ):
+        self.stateChanged()
     
     def updateVariableLists(self):
         if self.outRecMgr:  
@@ -1411,5 +1428,5 @@ class CDMS_VectorReaderConfigurationWidget(CDMSReaderConfigurationWidget):
         
 if __name__ == '__main__':
 
-    executeVistrail( 'workflows/DemoWorkflow1' )
+    executeVistrail( 'workflows/DemoWorkflow3' )
 
