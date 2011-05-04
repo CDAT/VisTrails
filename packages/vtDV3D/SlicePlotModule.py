@@ -146,7 +146,7 @@ class PM_SlicePlot( PersistentVisualizationModule ):
         if type(cmap_data) == type(""): cmap_data = cmap_data.split(',')
         cmap_name = cmap_data[0]
         reverse_cmap  = int( cmap_data[1] ) 
-        value_range = self.scalarRange if ( len( cmap_data ) < 4 ) else ( float( cmap_data[2] ), float( cmap_data[3] ) ) 
+        value_range = self.scalarRange if ( len( cmap_data ) < 4 ) else self.getDataValues( ( float( cmap_data[2] ), float( cmap_data[3] ) ) )
 #        print " ---- getColormap:  %s, valueRange: %s " % ( str( cmap_data ), str( value_range ) )
         if cmap_name in self.cmaps[reverse_cmap]:
             return self.cmaps[reverse_cmap][ cmap_name ], value_range

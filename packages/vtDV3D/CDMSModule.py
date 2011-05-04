@@ -1037,6 +1037,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         if self.cdmsDataset:
             dsetId = self.cdmsDataset.id
             self.newDataset = ( self.datasetId <> dsetId )
+            self.newLayerConfiguration = self.newDataset
             self.datasetId = dsetId
             self.cdmsFile = self.cdmsDataset.cdmsFile
             self.timeRange = self.cdmsDataset.timeRange
@@ -1428,5 +1429,5 @@ class CDMS_VectorReaderConfigurationWidget(CDMSReaderConfigurationWidget):
         
 if __name__ == '__main__':
 
-    executeVistrail( 'workflows/DemoWorkflow3' )
+    executeVistrail( 'workflows/DemoWorkflow4' )
 

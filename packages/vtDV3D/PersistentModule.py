@@ -126,6 +126,14 @@ class PersistentModule( QObject ):
         self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', setValue=self.setTimestep, getValue=self.getTimestep )
 #        self.addConfigurableGuiFunction( 'layer', LayerConfigurationDialog, 'l', setValue=self.setLayer, getValue=self.getLayer )
 
+    def getRangeBounds(self): 
+        return self.rangeBounds  
+        
+    def getDataRangeBounds(self): 
+        range = self.getDataValues( self.rangeBounds[0:2] ) 
+        range.append( self.rangeBounds[2] )
+        return range
+    
     def invalidateWorkflowModule( self, workflowModule ):
         if (self.wmod == workflowModule): self.wmod = None
         
@@ -267,25 +275,27 @@ class PersistentModule( QObject ):
         import api
         self.getDatasetId( **args )
         ctrl, tag, pval = api.get_current_controller(), self.getParameterId(), None
-        tagged_version_number = ctrl.current_version
-        if self.isLayerDependentParameter( inputName ):
-            versions = self.getTaggedVersionList( tag )
-            if versions: tagged_version_number = versions[-1] 
-            else: return default_value
-        functionID = getFunctionId( self.moduleID, inputName, ctrl )
-        if functionID >= 0:
-            try:
-                tagged_pipeLine =  ctrl.vistrail.getPipeline( tagged_version_number )
-                tagged_module = tagged_pipeLine.modules[ self.moduleID ]
-                tagged_function = tagged_module.functions[functionID]
-                parameterList = tagged_function.parameters
-                pval = [ translateToPython( parmRec ) for parmRec in parameterList ]
-                print " %s.Get-Input-Value[%s:%s] (v. %s): %s " % ( self.getName(), tag, inputName, str(tagged_version_number), str(pval) )
-            except Exception, err:
-                print "Error getting tagged version: %s" % str(err)
-        elif self.wmod:
+        isLayerDep = self.isLayerDependentParameter( inputName )
+        if self.wmod and not ( isLayerDep and self.newLayerConfiguration ):
             pval = self.wmod.forceGetInputFromPort( inputName, default_value ) 
-        if pval == None:         
+        else:
+            tagged_version_number = ctrl.current_version
+            if isLayerDep:
+                versions = self.getTaggedVersionList( tag )
+                if versions: tagged_version_number = versions[-1] 
+                else: return default_value
+            functionID = getFunctionId( self.moduleID, inputName, ctrl )
+            if functionID >= 0:
+                try:
+                    tagged_pipeLine =  ctrl.vistrail.getPipeline( tagged_version_number )
+                    tagged_module = tagged_pipeLine.modules[ self.moduleID ]
+                    tagged_function = tagged_module.functions[functionID]
+                    parameterList = tagged_function.parameters
+                    pval = [ translateToPython( parmRec ) for parmRec in parameterList ]
+                    print " %s.Get-Input-Value[%s:%s] (v. %s): %s " % ( self.getName(), tag, inputName, str(tagged_version_number), str(pval) )
+                except Exception, err:
+                    print "Error getting tagged version: %s" % str(err)
+        if not pval:         
             pval = self.getParameter( inputName, default_value )
 #        print ' ***** GetInputValue[%s] = %s: cv=%d, tv0=%d, tv1=%d ' % ( inputName, str(pval), ctrl.current_version, tv0, tagged_version_number )
         return pval
@@ -383,6 +393,7 @@ class PersistentModule( QObject ):
             if self.datasetId <> dsetId:
                 self.pipelineBuilt = False
                 self.newDataset = True
+                self.newLayerConfiguration = True
                 self.datasetId = dsetId
                 self.addAnnotation( "datasetId", self.datasetId )
                            
@@ -668,7 +679,9 @@ class PersistentModule( QObject ):
             if self.wmod:    
                 for configFunct in self.configurableFunctions.values():
                     value = self.wmod.forceGetInputFromPort( configFunct.name, None )
-                    if value: self.setParameter( configFunct.name, value )
+                    if value: 
+                        self.setParameter( configFunct.name, value )
+                        print "%s--> Refresh Parameter Value: %s = %s " % ( self.getName(), configFunct.name, str(value) )
             else: print " Missing wmod in %s.refreshParameters" % self.__class__.__name__
                     
 #            for configFunct in self.configurableFunctions.values():
@@ -1175,12 +1188,16 @@ class PersistentVisualizationModule( PersistentModule ):
                   self.colorBarActor.VisibilityOff()  
             else: self.colorBarActor.VisibilityOn() 
             self.render() 
-        elif (  key == 'z'  ): 
+        elif (  key == 'r'  ): 
             if self.InteractionState <> None: 
                 configFunct = self.configurableFunctions[ self.InteractionState ]
-                configFunct.reset( )
-        elif (  key == 'r'  ): 
-            ModuleStoreDatabase.refreshParameters()
+                param_value = configFunct.reset() 
+                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True )
+                if configFunct.type == 'leveling':
+                    self.finalizeConfigurationObserver( self.InteractionState )            
+                    if self.ndims == 3: self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+                configFunct.close()
+                self.endInteraction() 
         else:
             state =  self.getInteractionState( key )
 #            print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )

@@ -55,14 +55,17 @@ def change_parameters( module_id, parmRecList, controller=None ):
                         ) -> None
     Note: param_list is a list of strings no matter what the parameter type!
     """
-    if controller is None: controller = get_current_controller()
-    module = controller.current_pipeline.modules[module_id]
-#    controller.update_functions( module, parmRecList )
-    op_list = []
-    for parmRec in parmRecList:  op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
-    action = core.db.action.create_action( op_list ) 
-    controller.add_new_action(action)
-    controller.perform_action(action)
+    try:
+        if controller is None: controller = get_current_controller()
+        module = controller.current_pipeline.modules[module_id]
+    #    controller.update_functions( module, parmRecList )
+        op_list = []
+        for parmRec in parmRecList:  op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+        action = core.db.action.create_action( op_list ) 
+        controller.add_new_action(action)
+        controller.perform_action(action)
+    except Exception, err:
+        print "Error changing parameter in module %d: parm: %s, error: %s" % ( module_id, str(parmRecList), str(err) )
     
 def isList( val ):
     valtype = type(val)

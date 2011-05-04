@@ -33,9 +33,9 @@ class PM_LevelSurface(PersistentVisualizationModule):
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__(self,  mid, **args)
         self.opacityRange =  [ 0.8, 0.8 ]
-        self.numberOfLevels = 2
+        self.numberOfLevels = 1
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True )
-        self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', setLevel=self.setLevelRange, getLevel=self.getLevelRange, layerDependent=True )
+        self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True )
         self.addConfigurableLevelingFunction( 'opacity', 'O', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addConfigurableGuiFunction( 'nLevels', NLevelConfigurationWidget, 'n', setValue=self.setNumberOfLevels, getValue=self.getNumberOfLevels, layerDependent=True )
         pass
@@ -56,28 +56,33 @@ class PM_LevelSurface(PersistentVisualizationModule):
     def getOpacityRange( self ):
         return [ self.opacityRange[0], self.opacityRange[1], 0 ]
          
-    def getLevelRange(self): 
+#    def getLevelRange(self): 
 #        level_data_values = self.getDataValues( self.range )
+#        print "getLevelRange, data range = %s, image range = %s" % ( str( self.range ),  str( level_data_values ) )
 #        level_data_values.append( 0 )
 #        return level_data_values
-        return [ self.range[0], self.range[1], 0 ]
+##        return [ self.range[0], self.range[1], 0 ]
 
-    def setNumberOfLevels( self, nLevels  ):
-        self.numberOfLevels = nLevels
+    def setNumberOfLevels( self, nLevelsData  ):
+        self.numberOfLevels = int( getItem( nLevelsData ) )
+        if self.numberOfLevels < 1: self.numberOfLevels = 1
         self.updateLevels()
 
     def getNumberOfLevels( self ):
-        return self.numberOfLevels
+        return [ self.numberOfLevels, ]
     
     def setLevelRange( self, range ):
-        self.range = range # self.getImageValues( range )
+        print "setLevelRange, data range = %s" % str( range ) 
+        self.range = self.getImageValues( range )
         self.updateLevels()
     
     def updateLevels(self):
-        print "Update %d Level(s), range = [ %f, %f ], levels = %s" %  ( self.numberOfLevels, self.range[0], self.range[1], str(self.getLevelValues()) )  
-        self.levelSetFilter.GenerateValues( self.numberOfLevels, self.range[0], self.range[1] )
         self.levelSetFilter.SetNumberOfContours( self.numberOfLevels ) 
+        nL1 = self.numberOfLevels + 1
+        dL = ( self.range[1] - self.range[0] ) / nL1
+        for i in range( 1, nL1 ): self.levelSetFilter.SetValue ( i, self.range[0] + dL * i )    
         self.updateColorMapping()
+        print "Update %d Level(s), range = [ %f, %f ], levels = %s" %  ( self.numberOfLevels, self.range[0], self.range[1], str(self.getLevelValues()) )  
         
     def updateColorMapping(self):
         if self.colorByMappedScalars: 

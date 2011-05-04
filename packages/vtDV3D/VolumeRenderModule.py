@@ -45,14 +45,6 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'functionScale', 'T', setLevel=self.generateOTF, getLevel=self.getDataRangeBounds, layerDependent=True  )
         self.addConfigurableLevelingFunction( 'opacityScale',  'O', setLevel=self.adjustOpacity, layerDependent=True  )
     
-    def getRangeBounds(self): 
-        return self.rangeBounds  
-        
-    def getDataRangeBounds(self): 
-        range = self.getDataValues( self.rangeBounds[0:2] ) 
-        range.append( self.rangeBounds[2] )
-        return range
-    
 #    def onModified( self, caller, event ):
 #        self.applyFieldData( [self.volume] )            
 

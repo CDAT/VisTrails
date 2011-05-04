@@ -46,14 +46,6 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ = None
         self.imageRescale = None
 #        print " Volume Slicer init, id = %s " % str( id(self) )
-
-    def getRangeBounds(self): 
-        return self.rangeBounds 
-
-    def getDataRangeBounds(self): 
-        range = self.getDataValues( self.rangeBounds[0:2] ) 
-        range.append( self.rangeBounds[2] )
-        return range
     
     def getOpacity(self):
         return [ self.opacity, self.opacity ]

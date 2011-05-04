@@ -29,13 +29,13 @@ class QtWindowLeveler( QObject ):
         self.OriginalLevel            = 0.5
         self.CurrentWindow            = 1.0
         self.CurrentLevel             = 0.5
-        self.sensitivity              = args.get( 'sensitivity', (1.0, 10.0) )
+        self.sensitivity              = args.get( 'sensitivity', (1.5, 5.0) )
         self.algorithm                = self.WindowRelative if args.get( 'windowing', True ) else self.BoundsRelative
         self.scaling = 1.0        
         self.invert = False
 
     def setDataRange( self, data_range ):
-        self.scaling = 0.5 * ( data_range[0] + data_range[1] )
+        self.scaling = 0.5 * ( abs(data_range[0]) + abs(data_range[1]) )
         self.OriginalWindow = ( data_range[1] - data_range[0] ) / self.scaling
         self.OriginalLevel = 1.0
       
@@ -268,7 +268,7 @@ class ConfigurableFunction( QObject ):
         pass
     
     def reset(self):
-        pass
+        return None
         
     def start( self, state, x, y ):
         if ( self.startHandler != None ) and ( self.name == state ):
@@ -313,6 +313,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         if( self.updateHandler == None ): self.updateHandler = self.updateLeveling
         self.setLevelDataHandler = args.get( 'setLevel', None )
         self.getLevelDataHandler = args.get( 'getLevel', None )
+        self.getInitLevelDataHandler = args.get( 'getInitLevel', None )
         self.isDataValue = args.get( 'isDataValue', True )
         self.defaultRange = args.get( 'initRange', [ 0.0, 1.0, 1 ] )
 
@@ -322,10 +323,15 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         except:
             pass
 
+    def reset(self):
+        self.setLevelDataHandler( self.initial_range )
+        self.module.render() 
+        return self.initial_range
+
     def initLeveling( self, module, **args ):
         self.module = module
-        initial_range =  self.defaultRange if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
-        self.range = module.getInputValue( self.name, initial_range ) if not module.newDataset else initial_range
+        self.initial_range =  self.defaultRange if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
+        self.range = module.getInputValue( self.name, self.initial_range ) if not module.newDataset else self.initial_range
         self.setLevelDataHandler( self.range )
         self.windowLeveler.setDataRange( self.range )
         module.setParameter( self.name, self.range )
@@ -420,7 +426,7 @@ class WidgetConfigurableFunction( ConfigurableFunction ):
             module.setParameter( self.name, value )
                 
     def reset(self):
-        self.widget.reset()
+        return self.widget.reset()
         
     def close(self):
         self.widget.close()
@@ -754,7 +760,8 @@ class IVModuleWidgetWrapper( QObject ):
         
     def reset(self):
         if self.initial_value <> None:
-            self.setValue( self.initial_value ) 
+            self.setValue( self.initial_value )
+        return self.initial_value 
             
     def setValue( self, parameter_value ):
         config_value = parameter_value # self.parameterToConfigConversion( parameter_value )
