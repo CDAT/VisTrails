@@ -306,9 +306,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 
             else:
                 
-                print>>sys.stderr, "Error, no renderers supplied to DV3DCell"
-                
-
+                print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
+ 
 
 class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
     """

@@ -32,7 +32,7 @@ def dvLog( obj, msg ):
     dvLogFile.write( '\n%s: %s' % ( obj.__class__.__name__, msg ) )
     dvLogFile.flush( )
 
-def bound( val, minval, maxval ): return max( min( val, maxval ), minval )
+def bound( val, bounds ): return max( min( val, bounds[1] ), bounds[0] )
 
 def str2f( data ): return "[ %s ]" % ( ", ".join( [ '%.2f' % value for value in data ] ) )
 

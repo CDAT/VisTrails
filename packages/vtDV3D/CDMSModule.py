@@ -213,8 +213,8 @@ class CDMSDataset(Module):
                         else:                                             
                             dsModule.gridSpacing[ iCoord ] = zscale
                             dsModule.outputOrigin[ iCoord ] = dsModule.gridOrigin[ iCoord ] = 0.0
-                            dsModule.gridBounds[ iCoord2 ] = 0.0
-                            dsModule.gridBounds[ iCoord2+1 ] = float( size-1 )
+                            dsModule.gridBounds[ iCoord2 ] = values[0]  # 0.0
+                            dsModule.gridBounds[ iCoord2+1 ] = values[ size-1 ] # float( size-1 )
         return dsModule             
     
 class PM_CDMS_FileReader( PersistentVisualizationModule ):
@@ -238,7 +238,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 time_range = self.getInputValue( "timeRange"  )
                 self.timeRange =[ int(sval) for sval in time_range ]        
                 roi_data = self.getInputValue( "roi" )
-                self.roi =[ float(sroi) for sroi in roi_data ]        
+                self.roi =[ float(sroi) for sroi in roi_data ]     
                 self.datasetModule = CDMSDataset.getInstance( self.datasetId, self.cdmsFile, self.timeRange, self.roi, zscale )
                 self.setParameter( "timeRange" , time_range )
                 self.setParameter( "roi", roi_data )

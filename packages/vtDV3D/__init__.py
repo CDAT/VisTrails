@@ -85,7 +85,7 @@ def initialize(*args, **keywords):
     from CDATUtilitiesModule import CDMS_CDATUtilities, CDATUtilitiesModuleConfigurationWidget
     from GradientModule import  Gradient
     from WorkflowModule import WorkflowModule
-    from SlicePlotModule import SlicePlot
+    from SlicePlotModule import SlicePlotCell, SlicePlotConfigurationWidget
     from VectorCutPlaneModule import VectorCutPlane 
     from packages.pylab.init import MplFigureManager
     from packages.spreadsheet.basic_widgets import CellLocation
@@ -195,10 +195,11 @@ def initialize(*args, **keywords):
     reg.add_input_port( LevelSurface, "layer",   [ ( String, 'activeLayerName' ) ]   ) 
     LevelSurface.registerConfigurableFunctions( reg )
 
-    reg.add_module( SlicePlot, namespace='spreadsheet'  )
-    reg.add_input_port( SlicePlot, "slice", AlgorithmOutputModule  )
-    reg.add_output_port(SlicePlot, 'FigureManager', MplFigureManager)
-    reg.add_output_port(SlicePlot, 'File', File)
-    SlicePlot.registerConfigurableFunctions( reg )
+    reg.add_module( SlicePlotCell, namespace='spreadsheet', configureWidgetType=SlicePlotConfigurationWidget  )
+    reg.add_input_port(  SlicePlotCell, "Location", CellLocation)
+    reg.add_input_port(  SlicePlotCell, "slice", AlgorithmOutputModule  )
+    reg.add_input_port(  SlicePlotCell, "plotType", [ ( String, 'fillType' ), ( String, 'contourType' ), ( Integer, 'numContours' ), ( Integer, 'version' ) ], True   )
+    reg.add_output_port( SlicePlotCell, 'File', File)
+    SlicePlotCell.registerConfigurableFunctions( reg )
 
     

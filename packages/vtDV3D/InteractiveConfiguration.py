@@ -986,6 +986,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         
     def stateChanged(self, changed = True ):
         self.state_changed = changed
+        print " %s-> state changed: %s " % ( self.pmod.getName(), str(changed) )
 
     def getParameters( self, module ):
         pass

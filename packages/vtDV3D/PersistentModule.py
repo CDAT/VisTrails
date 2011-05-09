@@ -653,12 +653,13 @@ class PersistentModule( QObject ):
                
     def updateConfigurationObserver( self, parameter_name, new_parameter_value, *args ):
         try:
-            self.setResult( parameter_name, new_parameter_value )
-            configFunct = self.configurableFunctions[ parameter_name ]
-            configFunct.setValue( new_parameter_value )
-            textDisplay = configFunct.getTextDisplay()
-            if textDisplay <> None:  
-                self.updateTextDisplay( textDisplay )
+            if self.getActivation( parameter_name ):
+                self.setResult( parameter_name, new_parameter_value )
+                configFunct = self.configurableFunctions[ parameter_name ]
+                configFunct.setValue( new_parameter_value )
+                textDisplay = configFunct.getTextDisplay()
+                if textDisplay <> None:  
+                    self.updateTextDisplay( textDisplay )
         except KeyError:
             print>>sys.stderr, " Can't find configuration function for parameter update: %s " % str( parameter_name )
                 
@@ -965,6 +966,7 @@ class PersistentVisualizationModule( PersistentModule ):
         self.invertColormap = 1
         self.renderer = None
         self.iren = None 
+        self.lut = None
         self.gui = None
         self.pipelineBuilt = False
         self.activation = {}
@@ -1026,10 +1028,7 @@ class PersistentVisualizationModule( PersistentModule ):
         
     def buildPipeline(self): 
         pass 
-    
-    def getColormapSpec(self):
-        return '%s,%d' % ( self.colormapName, self.invertColormap )
-    
+        
     def buildColormap(self):
         if self.colormapManager <> None:
             self.colormapManager.reverse_lut = self.invertColormap
@@ -1056,9 +1055,10 @@ class PersistentVisualizationModule( PersistentModule ):
         reverse = 0 if ( self.colormapManager <> None ) and self.colormapManager.reverse_lut else 1
         return [ self.colormapName, reverse ]
 
-    def render( self ):   
-        rw = self.renderer.GetRenderWindow()
-        if rw <> None: rw.Render()
+    def render( self ):
+        if self.renderer:   
+            rw = self.renderer.GetRenderWindow()
+            if rw <> None: rw.Render()
        
     def setMaxScalarValue(self, iDType ):  
         if iDType   == vtk.VTK_UNSIGNED_CHAR:   self._max_scalar_value = 255
@@ -1074,6 +1074,17 @@ class PersistentVisualizationModule( PersistentModule ):
         self.createTextActor()
         if self.createColormap: 
             self.createColorBarActor()
+
+    def getColormapSpec(self): 
+        spec = []
+        spec.append( self.colormapName )
+        spec.append( str( self.invertColormap ) )
+        if self.lut:
+            value_range = self.lut.GetTableRange() 
+            spec.append( str( value_range[0] ) )
+            spec.append( str( value_range[1] ) ) 
+#        print " %s -- getColormapSpec: %s " % ( self.getName(), str( spec ) )
+        return ','.join( spec )
         
     def getProp( self, ptype ):
       props = self.renderer.GetViewProps()

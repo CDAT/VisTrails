@@ -40,6 +40,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'opacity', 'O',    setLevel=self.setOpacity,    getLevel=self.getOpacity, isDataValue=False, layerDependent=True )
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
         self.opacity = 1.0
+        self.iOrientation = 0
         self.updatingPlacement = False
         self.planeWidgetX = None
         self.planeWidgetY = None
@@ -159,7 +160,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.imageRescale = vtk.vtkImageReslice() 
         self.imageRescale.SetOutputDimensionality(2) 
         self.imageRescale.SetInterpolationModeToLinear() 
-        self.imageRescale.SetResliceAxesDirectionCosines( [1, 0, 0], [0, -1, 0], [0, 0, 1] )
+        self.imageRescale.SetResliceAxesDirectionCosines( [-1, 0, 0], [0, -1, 0], [0, 0, -1] )
 
         self.set2DOutput( port=self.imageRescale.GetOutputPort(), name='slice', wmod = wmod ) 
         self.set3DOutput(wmod = wmod) 
@@ -211,20 +212,26 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                       
     def SliceObserver( self, caller, event = None ):
         import api
-        iOrientation = caller.GetPlaneOrientation()
+        self.iOrientation = caller.GetPlaneOrientation()
         resliceOutput = caller.GetResliceOutput()
         resliceOutput.Update()
-        self.imageRescale.SetInput( resliceOutput )
-        output_slice_extent = self.getAdjustedSliceExtent( iOrientation )
+        self.imageRescale.RemoveAllInputs()
+#        print " Slice Orientation: %s " % self.iOrientation
+        if self.iOrientation == 0: self.imageRescale.SetResliceAxesDirectionCosines( [ 1, 0, 0], [0, -1, 0], [0, 0, -1] )
+        if self.iOrientation == 1: self.imageRescale.SetResliceAxesDirectionCosines( [ 0, 1, 0], [ -1, 0, 0], [0, 0,  1] )
+        if self.iOrientation == 2: self.imageRescale.SetResliceAxesDirectionCosines( [ 1, 0, 0], [0, -1, 0], [0, 0, -1] )
+        output_slice_extent = self.getAdjustedSliceExtent()
         self.imageRescale.SetOutputExtent( output_slice_extent )
-        output_slice_spacing = self.getAdjustedSliceSpacing( iOrientation, resliceOutput )
+        output_slice_spacing = self.getAdjustedSliceSpacing( resliceOutput )
         self.imageRescale.SetOutputSpacing( output_slice_spacing )
+        self.imageRescale.SetInput( resliceOutput )
         self.updateSliceOutput()
         self.endInteraction()
         
     def updateSliceOutput(self):
         sliceOutput = self.imageRescale.GetOutput()
         sliceOutput.Update()
+        self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
         self.set2DOutput( name='slice', output=sliceOutput )
         sliceOutput.InvokeEvent("RenderEvent")
         self.refreshCells()
@@ -234,21 +241,23 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        imageWriter.Write()    
 #        print " Slice Output: extent: %s, spacing: %s " % ( str( sliceOutput.GetExtent() ), str( sliceOutput.GetSpacing() ) )
         pass
-
-    def getColormapSpec(self): 
-        value_range = self.lut.GetTableRange() 
-#        print " -- getColormapSpec: ( %f %f ) " % ( value_range[0], value_range[1] )
-        return '%s,%d,%f,%f' % ( self.colormapName, self.invertColormap, value_range[0], value_range[1] )
        
-    def getAdjustedSliceExtent( self, iOrientation ):
-        return [ 0, self.sliceOutputShape[0]-1,  0, self.sliceOutputShape[1]-1, 0, 0 ]          
+    def getAdjustedSliceExtent( self ):
+        ext = None
+        if self.iOrientation == 1:      ext = [ 0, self.sliceOutputShape[1]-1,  0, self.sliceOutputShape[0]-1, 0, 0 ]  
+        else:                           ext = [ 0, self.sliceOutputShape[0]-1,  0, self.sliceOutputShape[1]-1, 0, 0 ]  
+#        print " Slice Extent = %s " % str( ext )
+        return ext       
 
-    def getAdjustedSliceSpacing( self, iOrientation, outputData ):
+    def getAdjustedSliceSpacing( self, outputData ):
         padded_extent = outputData.GetWholeExtent()
         padded_shape = [ padded_extent[1]-padded_extent[0]+1, padded_extent[3]-padded_extent[2]+1, 1 ]
         padded_spacing = outputData.GetSpacing()
         scale_factor = [ padded_shape[0]/float(self.sliceOutputShape[0]), padded_shape[1]/float(self.sliceOutputShape[1]) ]
-        return [ padded_spacing[0]*scale_factor[0], padded_spacing[1]*scale_factor[1], 1.0 ]
+        if self.iOrientation == 1:      spacing = [ padded_spacing[1]*scale_factor[1], padded_spacing[0]*scale_factor[0], 1.0 ]
+        else:                           spacing = [ padded_spacing[0]*scale_factor[0], padded_spacing[1]*scale_factor[1], 1.0 ]
+#        print " Slice Spacing = %s " % str( spacing )
+        return spacing
                 
     def activateWidgets( self, iren ):
         self.planeWidgetX.SetInteractor( iren )
@@ -268,14 +277,19 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def scaleColormap( self, ctf_data ):
         self.imageRange = self.getImageValues( ctf_data[0:2] ) 
         self.lut.SetTableRange( self.imageRange[0], self.imageRange[1] ) 
-        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
+        self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
 #        print " Volume Slicer: Scale Colormap: [ %.2f, %.2f ] " % ( self.imageRange[0], self.imageRange[1] )
         
     def finalizeLeveling( self ):
         isLeveling =  PersistentVisualizationModule.finalizeLeveling( self )
         if isLeveling:
-            self.addMetadata( { 'colormap' : self.getColormapSpec() } ) 
+            self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
             self.updateSliceOutput()
+
+    def initializeConfiguration(self):
+        PersistentModule.initializeConfiguration(self)
+        self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
+#        self.updateSliceOutput()
 
     def setColormap( self, data ):
         PersistentVisualizationModule.setColormap( self, data )
