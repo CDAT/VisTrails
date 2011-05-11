@@ -190,14 +190,14 @@ class OutputRecManager:
                         varNameLabel = port_table.cellWidget( iRow, 0 )
                         varName = str( varNameLabel.text() )
                         portData.append( "%c%s" % (  OutputRecManager.sep[2], varName ) )
-                elif oRec.varList <> None:
+                elif oRec.varList:
                    portData.append( "%s%c%d%c" % (  port_name, OutputRecManager.sep[2], nVarDims, OutputRecManager.sep[1]  ) )
                    for varRec in oRec.varList:
                         portData.append( "%c%s%c" % (  OutputRecManager.sep[2], varRec[0],  OutputRecManager.sep[3] ) )
-                elif oRec.varCombo <> None:
+                elif oRec.varComboList:
                    portData.append( "%s%c%d%c" % ( port_name, OutputRecManager.sep[2], nVarDims, OutputRecManager.sep[1]  ) )
-                   varName = oRec.getVariable()
-                   portData.append( "%c%s%c" % (  OutputRecManager.sep[2], varName,  OutputRecManager.sep[3] ) )               
+                   for varName in oRec.getSelectedVariableList():
+                       portData.append( "%c%s%c" % (  OutputRecManager.sep[2], varName,  OutputRecManager.sep[3] ) )               
         serializedData = ''.join( portData )
         print " -- PortData: %s " % serializedData
         return serializedData
@@ -208,10 +208,10 @@ class OutputRec:
     
     def __init__(self, name, **args ): 
         self.name = name
-        self.varCombo = args.get( "varCombo", None )
+        self.varComboList = args.get( "varComboList", [] )
         self.varTable = args.get( "varTable", None )
         self.varList = args.get( "varList", None )
-        self.varSelection = args.get( "varSelection", None )
+        self.varSelections = args.get( "varSelections", [] )
         self.type = args.get( "type", None )
         self.ndim = args.get( "ndim", 3 )
 
@@ -221,8 +221,8 @@ class OutputRec:
             vlist.append( str( getItem( vrec ) ) )
         return vlist
     
-    def getVariable(self):
-        return str( self.varCombo.currentText() )
+    def getSelectedVariableList(self):
+        return [ str( varCombo.currentText() ) for varCombo in self.varComboList ]
 
 ###############################################################################   
       

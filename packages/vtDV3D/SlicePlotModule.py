@@ -103,7 +103,8 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         elif fillType == "levels":
             if levels:  self.fill_plot = self.imageAxes.contourf( self.image_data, origin=origin, cmap=fill_cmap, extent=self.axisBounds, extend='both', norm=fill_norm, levels=levels )
             else:       self.fill_plot = self.imageAxes.contourf( self.image_data, origin=origin, cmap=fill_cmap, extent=self.axisBounds, extend='both', norm=fill_norm  )
-            
+#        self.vector_plot = self.imageAxes.quiver(U, V, **kw)
+   
         if contourType <> 'none':
             if levels:  self.contour_plot = self.imageAxes.contour( self.image_data, origin=origin, cmap=contour_cmap, extent=self.axisBounds, extend='both', norm=contour_norm, levels=levels, linewidths=2  )
             else:       self.contour_plot = self.imageAxes.contour( self.image_data, origin=origin, cmap=contour_cmap, extent=self.axisBounds, extend='both', norm=contour_norm, linewidths=2  )

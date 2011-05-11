@@ -27,11 +27,34 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
     """    
     def __init__( self, mid, **args ):
         PersistentVisualizationModule.__init__( self, mid, **args )
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getRangeBounds )
+        self.glyphScale = 15.0 
+        self.glyphDecimationFactor = 2.0 
+        self.primaryInputPort = 'vector'
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True )
+        self.addConfigurableLevelingFunction( 'glyphRange', 'T', setLevel=self.setGlyphRange, getLevel=self.getDataRangeBounds, layerDependent=True )
+        self.addConfigurableLevelingFunction( 'glyphScale', 'G', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True )
       
     def scaleColormap( self, ctf_data ):
+        print " PM_VectorCutPlane-> Scale Colormap: range = %s " % str( ctf_data )
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
+        self.glyphMapper.Modified()
+        self.glyph.Update()
+        self.glyphMapper.Update()
+        self.render()
+
+    def setGlyphRange( self, ctf_data ):
+        self.glyph.SetRange ( ctf_data[0], ctf_data[1] )
+        self.glyph.Update()
+        self.render()
+
+    def setGlyphScale( self, ctf_data ):
+        self.glyphDecimationFactor = ctf_data[0] 
+        self.glyphScale = ctf_data[1]  
+        self.ApplyGlyphDecimationFactor()
+        
+    def getGlyphScale(self):
+        return [ self.glyphDecimationFactor, self.glyphScale ]
                               
     def buildPipeline(self):
         """ execute() -> None
@@ -51,8 +74,6 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         sx, sy, sz = spacing       
         origin = self.input.GetOrigin()
         ox, oy, oz = origin
-        self.glyphScale = 15.0
-        self.glyphDecimationFactor = 2.0
         
         cellData = self.input.GetCellData()  
         pointData = self.input.GetPointData()     
@@ -129,7 +150,6 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         
         self.cutter.SetGenerateCutScalars(0)
         self.glyph = vtk.vtkGlyph3D() 
-        self.glyph.SetScaleModeToScaleByVector()
         if self.colorInputModule <> None:   self.glyph.SetColorModeToColorByScalar()            
         else:                          self.glyph.SetColorModeToColorByVector()          
 #        combined_pointData = self.cutterInput.GetPointData()     
@@ -140,7 +160,8 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         self.glyph.SetOrient( 1 ) 
         self.glyph.SetRange ( self.rangeBounds[0], self.rangeBounds[1] )
         self.glyph.ClampingOn()
-        self.glyph.SetInputConnection( self.cutter.GetOutputPort() )
+        sliceOutputPort = self.cutter.GetOutputPort()
+        self.glyph.SetInputConnection( sliceOutputPort )
         self.arrow = vtk.vtkArrowSource()
         self.glyph.SetSourceConnection( self.arrow.GetOutputPort() )
         self.glyphMapper = vtk.vtkPolyDataMapper()
@@ -152,6 +173,7 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         self.planeWidget.GetPlane( self.plane )
         self.UpdateCut()
         self.set3DOutput(wmod=wmod) 
+        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = wmod ) 
         
     def ApplyGlyphDecimationFactor(self):
         sampleRate = int( round( self.glyphDecimationFactor) )

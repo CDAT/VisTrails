@@ -140,6 +140,12 @@ def initialize(*args, **keywords):
     reg.add_output_port( CDMS_SliceReader, "slice", AlgorithmOutputModule ) 
     CDMS_SliceReader.registerConfigurableFunctions( reg )
 
+    reg.add_module( CDMS_VectorReader, configureWidgetType=CDMS_VectorReaderConfigurationWidget, namespace='cdms' )
+    reg.add_input_port( CDMS_VectorReader, "dataset", CDMSDataset )        
+    reg.add_input_port( CDMS_VectorReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
+    reg.add_output_port( CDMS_VectorReader, "vector", AlgorithmOutputModule3D ) 
+    CDMS_SliceReader.registerConfigurableFunctions( reg )
+
     reg.add_module( CDMS_CDATUtilities, configureWidgetType=CDATUtilitiesModuleConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_CDATUtilities, "dataset", CDMSDataset )   
     reg.add_input_port( CDMS_CDATUtilities, "task",  [ ( String, 'taskData' ) ], True   ) # [ ( String, 'taskName' ), ( String, 'inputVars' ), ( String, 'outputVars' ) ], True   ) 
@@ -156,10 +162,10 @@ def initialize(*args, **keywords):
     reg.add_input_port( Gradient, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( Gradient, "volume", AlgorithmOutputModule3D ) 
     
-    reg.add_module( VectorCutPlane, namespace='vtk|experimental'  )
+    reg.add_module( VectorCutPlane, namespace='vtk'  )
     reg.add_input_port( VectorCutPlane, "colors", AlgorithmOutputModule3D  )
     reg.add_output_port( VectorCutPlane, "slice", AlgorithmOutputModule ) 
-    reg.add_input_port( VectorCutPlane, "volume", AlgorithmOutputModule3D  )
+    reg.add_input_port( VectorCutPlane, "vector", AlgorithmOutputModule3D  )
     reg.add_output_port( VectorCutPlane, "volume", AlgorithmOutputModule3D ) 
     VectorCutPlane.registerConfigurableFunctions(  reg )
 

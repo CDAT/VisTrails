@@ -131,7 +131,8 @@ class PersistentModule( QObject ):
         
     def getDataRangeBounds(self): 
         range = self.getDataValues( self.rangeBounds[0:2] ) 
-        range.append( self.rangeBounds[2] )
+        if ( len( self.rangeBounds ) > 2 ): range.append( self.rangeBounds[2] ) 
+        else:                               range.append( 0 )
         return range
     
     def invalidateWorkflowModule( self, workflowModule ):

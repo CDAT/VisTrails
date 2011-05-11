@@ -1001,6 +1001,9 @@ class MetadataViewerDialog( QDialog ):
 class PM_CDMSDataReader( PersistentVisualizationModule ):
     
     dataCache = {}
+    VolumeOutput = 1
+    SliceOutput = 2
+    VectorOutput = 3
 
     def __init__(self, mid):
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['portData'] )
@@ -1089,7 +1092,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         portName = orec.name
         ndim = orec.ndim
         imageDataCreated = False
-        scalar_dtype = args.get( "dtype", np.ushort if (ndim == 3) else np.float )
+        default_dtype = np.ushort if (self.outputType == self.VolumeOutput ) else np.float
+        scalar_dtype = args.get( "dtype", default_dtype )
         self._max_scalar_value = getMaxScalarValue( scalar_dtype )
         self._range = [ 0.0, self._max_scalar_value ]  
         ds = self.cdmsDataset
@@ -1121,14 +1125,14 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             pointData.RemoveArray( pointData.GetArrayName(aname) )
         self.fieldData.RemoveArray('metadata')
         extent = image_data.GetExtent()    
-        scalars = None
+        scalars, nTup = None, 0
         vars = []
         datatype = getDatatypeString( scalar_dtype )
         md = { 'datatype':datatype, 'datasetId' : ds.id,  'bounds':ds.gridBounds, 'lat':ds.lat, 'lon':ds.lon, 'time':ds.time, 'attributes':ds.dataset.attributes }
         if ndim == 3: md[ 'lev' ] = ds.lev
         for varRec in varList:
             varName = varRec[0]
-            varDataId = '%s.%s' % ( ds.id, varName )
+            varDataId = '%s.%s.%d' % ( ds.id, varName, self.outputType )
             newDataArray, var_md = self.getCachedData( self.iTimestep, varDataId )
             if newDataArray == None:
                 if varName == '__zeros__':
@@ -1163,7 +1167,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             if newDataArray <> None:
                 vars.append( varName ) 
                 vtkdata = getNewVtkDataArray( scalar_dtype )
-                vtkdata.SetNumberOfTuples( newDataArray.size )
+                nTup = newDataArray.size
+                vtkdata.SetNumberOfTuples( nTup )
                 vtkdata.SetNumberOfComponents( 1 )
                 vtkdata.SetVoidArray( newDataArray, newDataArray.size, 1 )
                 vtkdata.SetName( varName )
@@ -1175,7 +1180,24 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     pointData.SetActiveScalars( varName  ) 
                     md[ 'valueRange'] = var_md[ 'range' ] 
                     md[ 'scalars'] = varName 
-                    print " --- CDMS-SetScalars: %s, Range= %s" % ( varName, str( var_md[ 'range' ] ) )  
+                    print " --- CDMS-SetScalars: %s, Range= %s" % ( varName, str( var_md[ 'range' ] ) ) 
+        if (self.outputType == self.VectorOutput ): 
+            vtkdata = getNewVtkDataArray( scalar_dtype )
+            vtkdata.SetNumberOfComponents( 3 )
+            vtkdata.SetNumberOfTuples( nTup )
+            iComp = 0
+            for varRec in varList:
+                varName = varRec[0]
+                fromArray =  pointData.GetArray( varName )
+                fromNTup = fromArray.GetNumberOfTuples()
+                tup0 = fromArray.GetValue(0)
+                toNTup = vtkdata.GetNumberOfTuples()
+                vtkdata.CopyComponent( iComp, fromArray, 0 )
+                iComp = iComp + 1
+            vtkdata.SetName( 'vectors' )
+            vtkdata.Modified()
+            pointData.SetVectors(vtkdata)
+            pointData.SetActiveVectors( 'vectors'  )         
         if len( vars )== 0: raise ModuleError( self, 'No dataset variables selected for output %s.' % orec.name)             
         md[ 'vars' ] = vars
         enc_mdata = encodeToString( md ) 
@@ -1203,8 +1225,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 class PM_CDMS_VolumeReader( PM_CDMSDataReader ):
 
     def __init__(self, mid):
+        self.outputType = self.VolumeOutput
         PM_CDMSDataReader.__init__( self, mid  )
-
         
 class CDMS_VolumeReader(WorkflowModule):
     
@@ -1213,10 +1235,10 @@ class CDMS_VolumeReader(WorkflowModule):
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args)     
 
-
 class PM_CDMS_SliceReader( PM_CDMSDataReader ):
 
     def __init__(self, mid):
+        self.outputType = self.SliceOutput
         PM_CDMSDataReader.__init__( self, mid  )
 
 class CDMS_SliceReader(WorkflowModule):
@@ -1230,6 +1252,7 @@ class CDMS_SliceReader(WorkflowModule):
 class PM_CDMS_VectorReader( PM_CDMSDataReader ):
 
     def __init__(self, mid):
+        self.outputType = self.VectorOutput
         PM_CDMSDataReader.__init__( self, mid  )
 
 
@@ -1321,10 +1344,11 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         if self.serializedPortData:
             oRecMgr = OutputRecManager( self.serializedPortData )
             for oRec in oRecMgr.getOutputRecs( self.datasetId ):
-                variableSelection = oRec.varList[0][0] if oRec.varList else None
-                self.addOutputTab( False, oRec.ndim, oRec.name, variableSelection )
-        if   self.outputType == self.VolumeOutput:   self.addOutputTab( False, 3, 'volume'  )
-        elif self.outputType == self.SliceOutput:    self.addOutputTab( False, 2, 'slice' )
+                variableSelections = oRec.varList if oRec.varList else []
+                self.addOutputTab( oRec.ndim, oRec.name, variableSelections )
+        if   self.outputType == self.VolumeOutput:    self.addOutputTab( 3, 'volume'  )
+        elif self.outputType == self.SliceOutput:     self.addOutputTab( 2, 'slice' )
+        elif self.outputType == self.VectorOutput:    self.addOutputTab( 3, 'vector' )
         self.updateVariableLists()
                 
     def getOutputTabIndex( self, name ):
@@ -1334,14 +1358,14 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
             if tabName == name: return iTab # self.outputsTabbedWidget.widget(iTab)
         return -1
                
-    def addOutputTab( self, bval, ndim, output_name = None, variableSelection=None ): 
+    def addOutputTab( self, ndim, output_name = None, variableSelections=[] ): 
         if output_name == None:
             qtname, ok = QInputDialog.getText( self, 'Get Output Name', 'Output name:' )
             if ok: output_name = str(qtname).strip().replace( ' ', '_' ).translate( None, OutputRecManager.sep )
         if output_name <> None:
             iExistingTabIndex = self.getOutputTabIndex( output_name )
             if iExistingTabIndex < 0:
-                outputTab = self.createOutputTab( ndim, output_name, variableSelection )  
+                outputTab = self.createOutputTab( ndim, output_name, variableSelections )  
                 if outputTab <> None:
                     self.outputsTabbedWidget.addTab( outputTab, output_name ) 
                     print "Added tab: %s " %  output_name 
@@ -1362,25 +1386,39 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
 #            for iout in range( current_nout, noutputs ):
 #                default_name = "data%d" % iout
                     
-    def createOutputTab( self, ndim, name, variableSelection = None ):  
+    def createOutputTab( self, ndim, name, variableSelections = [] ):  
         otab = QWidget()  
         otabLayout = QVBoxLayout()                
         otab.setLayout( otabLayout )
 
-        
-        variables_Layout = QHBoxLayout()      
-        variables_label = QLabel( "Select Output Variable:"  )
-        variables_Layout.addWidget( variables_label ) 
-        varsCombo =  QComboBox ( self )
-        self.connect( varsCombo, SIGNAL("currentIndexChanged(QString)"), self.selectedVariableChanged ) 
-        variables_label.setBuddy( varsCombo )
-#        varsCombo.setMaximumHeight( 30 )
-        variables_Layout.addWidget( varsCombo )  
-#        varsCombo.addItem( '__zeros__' )  
-        otabLayout.addLayout( variables_Layout )
-                
-        orec = OutputRec( name, ndim=ndim, varCombo=varsCombo, varSelection=variableSelection ) 
-        self.outRecMgr.addOutputRec( self.datasetId, orec ) 
+        if self.outputType == self.VectorOutput:
+            varsComboList = []
+            for vector_component in [ 'x', 'y', 'z' ]:
+                variables_Layout = QHBoxLayout()      
+                variables_label = QLabel( "Select %s component:" % vector_component )
+                variables_Layout.addWidget( variables_label ) 
+                varsCombo =  QComboBox ( self )
+                self.connect( varsCombo, SIGNAL("currentIndexChanged(QString)"), self.selectedVariableChanged ) 
+                variables_label.setBuddy( varsCombo )
+                varsCombo.setMaximumHeight( 30 )
+                variables_Layout.addWidget( varsCombo )  
+                otabLayout.addLayout( variables_Layout )
+                varsComboList.append( varsCombo )
+                  
+            orec = OutputRec( name, ndim=ndim, varComboList=varsComboList, varSelections=variableSelections ) 
+            self.outRecMgr.addOutputRec( self.datasetId, orec )            
+        else:
+            variables_Layout = QHBoxLayout()      
+            variables_label = QLabel( "Select Output Variable:"  )
+            variables_Layout.addWidget( variables_label ) 
+            varsCombo =  QComboBox ( self )
+            self.connect( varsCombo, SIGNAL("currentIndexChanged(QString)"), self.selectedVariableChanged ) 
+            variables_label.setBuddy( varsCombo )
+            variables_Layout.addWidget( varsCombo )  
+            otabLayout.addLayout( variables_Layout )
+                    
+            orec = OutputRec( name, ndim=ndim, varComboList=[varsCombo], varSelections=variableSelections ) 
+            self.outRecMgr.addOutputRec( self.datasetId, orec ) 
         
         return otab
     
@@ -1389,15 +1427,22 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
     
     def updateVariableLists(self):
         if self.outRecMgr:  
-            for oRec in self.outRecMgr.getOutputRecs( self.datasetId ): oRec.varCombo.clear()
+            for oRec in self.outRecMgr.getOutputRecs( self.datasetId ): 
+                for varCombo in oRec.varComboList: 
+                    varCombo.clear()
+                    if self.outputType == self.VectorOutput:  varCombo.addItem( '__zeros__' )  
             for ( var, var_ndim ) in self.variableList:               
                 for oRec in self.outRecMgr.getOutputRecs( self.datasetId ):
-                    if var_ndim == oRec.ndim:
-                        oRec.varCombo.addItem( str(var) ) 
+                    if var_ndim == oRec.ndim: 
+                        for varCombo in oRec.varComboList: varCombo.addItem( str(var) ) 
+                    
             for oRec in self.outRecMgr.getOutputRecs( self.datasetId ): 
-                if oRec.varSelection:
-                    itemIndex = oRec.varCombo.findText( oRec.varSelection, Qt.MatchFixedString )
-                    if itemIndex >= 0: oRec.varCombo.setCurrentIndex( itemIndex )
+                if oRec.varSelections:
+                    varIter = iter( oRec.varSelections )
+                    for varCombo in oRec.varComboList: 
+                        varSelectionRec = varIter.next()
+                        itemIndex = varCombo.findText( varSelectionRec[0], Qt.MatchFixedString )
+                        if itemIndex >= 0: varCombo.setCurrentIndex( itemIndex )
         
     def getCurentOutputRec(self):
         tabIndex = self.outputsTabbedWidget.currentIndex()
@@ -1429,5 +1474,5 @@ class CDMS_VectorReaderConfigurationWidget(CDMSReaderConfigurationWidget):
         
 if __name__ == '__main__':
 
-    executeVistrail( 'workflows/DemoWorkflow4' )
+    executeVistrail( 'workflows/DemoWorkflow5' )
 
