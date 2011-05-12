@@ -49,17 +49,19 @@ class PM_CDMS_CDATUtilities( PersistentModule ):
         taskInputData = self.getInputValue( "task"  ) 
         taskMap =  decodeFromString( getItem( taskInputData ) ) if taskInputData else None   
         taskData =  taskMap.get( cdmsDataset.id, None ) if taskMap else None
+        task = None
         if taskData:
             taskName = taskData[0]
             if taskName:
                 taskClass = TaskManager.getTask( taskName )
-                task = taskClass( cdmsDataset )
-                task_key = task.getInputMap( self )
-                if ( skipCompletedTasks and self.getTaskCompleted( task_key ) ):   print " Skipping completed task: %s " % task_key
-                else:  task.compute( self.iTimestep, **args )
-                self.setTaskCompleted( task_key )
-            else:
-                print>>sys.stderr, "Error, no task defined in CDATUtilities module"  
+                if taskClass:
+                    task = taskClass( cdmsDataset )
+                    task_key = task.getInputMap( self )
+                    if ( skipCompletedTasks and self.getTaskCompleted( task_key ) ):   print " Skipping completed task: %s " % task_key
+                    else:  task.compute( self.iTimestep, **args )
+                    self.setTaskCompleted( task_key )
+        if task == None:
+            print>>sys.stderr, "Error, no task defined in CDATUtilities module"  
         self.setResult( 'dataset', cdmsDataset )
         
     def dvCompute(self, **args ):
@@ -154,64 +156,67 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         self.outputTabIndex = self.tabbedWidget.addTab( outputsTab, 'outputs' ) 
 
         taskClass = TaskManager.getTask( taskName )
-        inputs_layout = QVBoxLayout()
-        inputsTab.setLayout( inputs_layout ) 
-        inputs_layout.setMargin(10)
-        inputs_layout.setSpacing(10)
-        self.varCombos = {}
-        inputVar = None
-        firstVar = None
-        for input in taskClass.inputs:
-            input_selection_layout = QHBoxLayout()
-            input_selection_label = QLabel( "%s:" % str(input) )
-            input_selection_layout.addWidget( input_selection_label ) 
-    
-            varCombo =  QComboBox ( self.parent() )
-            input_selection_label.setBuddy( varCombo )
-            varCombo.setMaximumHeight( 30 )
-            input_selection_layout.addWidget( varCombo  )
-            for ( var, ndims ) in self.variableList: 
-                if ndims == 2: 
-                    varCombo.addItem( getVariableSelectionLabel( var, ndims ) )
-                    if not firstVar: firstVar = var
-            for ( var, ndims ) in self.variableList: 
-                if ndims == 3: 
-                    varCombo.addItem( getVariableSelectionLabel( var, ndims ) )
-                    if not firstVar: firstVar = var
-            self.varCombos[input] = varCombo
-            self.connect( varCombo, SIGNAL("currentIndexChanged(QString)"), self.updateOutputs ) 
-            inputs_layout.addLayout(input_selection_layout)
-            if self.inputMap:
-                ( varValue, ndim ) = self.inputMap.get( input, ( None, None ) )
-                if varValue:
-                    varLabel = getVariableSelectionLabel( varValue, ndim )
-                    currentIndex = varCombo.findText( varLabel )
-                    varCombo.setCurrentIndex( currentIndex )
-                    if not inputVar: inputVar = varValue
-        if not inputVar: inputVar = firstVar
+        if taskClass:
+            inputs_layout = QVBoxLayout()
+            inputsTab.setLayout( inputs_layout ) 
+            inputs_layout.setMargin(10)
+            inputs_layout.setSpacing(10)
+            self.varCombos = {}
+            inputVar = None
+            firstVar = None
+            for input in taskClass.inputs:
+                input_selection_layout = QHBoxLayout()
+                input_selection_label = QLabel( "%s:" % str(input) )
+                input_selection_layout.addWidget( input_selection_label ) 
         
-        outputs_layout = QVBoxLayout()
-        outputsTab.setLayout( outputs_layout ) 
-        outputs_layout.setMargin(10)
-        outputs_layout.setSpacing(10)
-        self.outputNames = {}
-        for output in taskClass.outputs:
-            output_selection_layout = QHBoxLayout()
-            output_selection_label = QLabel( "%s:" % str(output) )
-            output_selection_layout.addWidget( output_selection_label ) 
-    
-            outputEdit =  QLineEdit ( self.parent() )
-            output_selection_label.setBuddy( outputEdit )
-            output_selection_layout.addWidget( outputEdit  )
-            self.outputNames[output] = outputEdit
-            outputs_layout.addLayout(output_selection_layout)
-            outputValue = self.outputMap.get( output, None )
-            if not outputValue:
-                outputValue = "%s.%s.%s" % ( inputVar, taskName, output ) if inputVar else "%s.%s" % ( taskName, output )
-                self.outputMap[output] = outputValue
-            outputEdit.setText( outputValue )
-            self.connect( outputEdit, SIGNAL("editingFinished()"), self.stateChanged ) 
-        self.stateChanged()
+                varCombo =  QComboBox ( self.parent() )
+                input_selection_label.setBuddy( varCombo )
+                varCombo.setMaximumHeight( 30 )
+                input_selection_layout.addWidget( varCombo  )
+                for ( var, ndims ) in self.variableList: 
+                    if ndims == 2: 
+                        varCombo.addItem( getVariableSelectionLabel( var, ndims ) )
+                        if not firstVar: firstVar = var
+                for ( var, ndims ) in self.variableList: 
+                    if ndims == 3: 
+                        varCombo.addItem( getVariableSelectionLabel( var, ndims ) )
+                        if not firstVar: firstVar = var
+                self.varCombos[input] = varCombo
+                self.connect( varCombo, SIGNAL("currentIndexChanged(QString)"), self.updateOutputs ) 
+                inputs_layout.addLayout(input_selection_layout)
+                if self.inputMap:
+                    ( varValue, ndim ) = self.inputMap.get( input, ( None, None ) )
+                    if varValue:
+                        varLabel = getVariableSelectionLabel( varValue, ndim )
+                        currentIndex = varCombo.findText( varLabel )
+                        varCombo.setCurrentIndex( currentIndex )
+                        if not inputVar: inputVar = varValue
+            if not inputVar: inputVar = firstVar
+            
+            outputs_layout = QVBoxLayout()
+            outputsTab.setLayout( outputs_layout ) 
+            outputs_layout.setMargin(10)
+            outputs_layout.setSpacing(10)
+            self.outputNames = {}
+            for output in taskClass.outputs:
+                output_selection_layout = QHBoxLayout()
+                output_selection_label = QLabel( "%s:" % str(output) )
+                output_selection_layout.addWidget( output_selection_label ) 
+        
+                outputEdit =  QLineEdit ( self.parent() )
+                output_selection_label.setBuddy( outputEdit )
+                output_selection_layout.addWidget( outputEdit  )
+                self.outputNames[output] = outputEdit
+                outputs_layout.addLayout(output_selection_layout)
+                outputValue = self.outputMap.get( output, None )
+                if not outputValue:
+                    outputValue = "%s.%s.%s" % ( inputVar, taskName, output ) if inputVar else "%s.%s" % ( taskName, output )
+                    self.outputMap[output] = outputValue
+                outputEdit.setText( outputValue )
+                self.connect( outputEdit, SIGNAL("editingFinished()"), self.stateChanged ) 
+            self.stateChanged()
+        else:
+            print>>sys.stderr, "Error, class undefined for task %s" % taskName
             
     def updateOutputs( self, arg ):
         if self.outputNames <> None:

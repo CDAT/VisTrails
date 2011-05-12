@@ -14,6 +14,7 @@ The vtDV3D Modules
 	
    	cdms_file
    	cdms_utilities
+    cdms_task_api
    	cdms_data_readers
    	volume_renderer
    	volume_slicer

@@ -1474,5 +1474,5 @@ class CDMS_VectorReaderConfigurationWidget(CDMSReaderConfigurationWidget):
         
 if __name__ == '__main__':
 
-    executeVistrail( 'workflows/DemoWorkflow5' )
+    executeVistrail( 'workflows/DemoWorkflow2' )
 
