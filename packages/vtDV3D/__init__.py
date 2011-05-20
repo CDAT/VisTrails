@@ -75,6 +75,7 @@ def initialize(*args, **keywords):
     from VolumeSlicerModule import VolumeSlicer
     from VolumeRenderModule import VolumeRenderer
     from WorldMapModule import WorldFrame
+    from HyperwallManager import HyperwallManager
 #    from DemoDataModule import DemoData, DemoDataConfigurationWidget
     from DV3DCell import DV3DCell
     from InteractiveConfiguration import LayerConfigurationWidget
@@ -102,7 +103,7 @@ def initialize(*args, **keywords):
      
     reg.add_module( DV3DCell, configureWidgetType=DV3DCellConfigurationWidget, namespace='spreadsheet' ) 
     reg.add_input_port( DV3DCell, "volume", AlgorithmOutputModule3D  )   
-    reg.add_input_port( DV3DCell, "Location", CellLocation)
+    reg.add_input_port( DV3DCell, "cell_location", [ ( String, 'cell_coordinates' ) ], True )
     reg.add_input_port( DV3DCell, "world_cut", Integer, optional=True  )
     reg.add_input_port( DV3DCell, "map_border_size",  [ ( Float, 'border_in_degrees' ) ], optional=True  )
     reg.add_input_port( DV3DCell, "enable_basemap",  [ ( Boolean, 'enable' ) ], optional=True  )    
@@ -207,5 +208,7 @@ def initialize(*args, **keywords):
     reg.add_input_port(  SlicePlotCell, "plotType", [ ( String, 'fillType' ), ( String, 'contourType' ), ( Integer, 'numContours' ), ( Integer, 'version' ) ], True   )
     reg.add_output_port( SlicePlotCell, 'File', File)
     SlicePlotCell.registerConfigurableFunctions( reg )
+    
+    HyperwallManager.initialize()
 
     

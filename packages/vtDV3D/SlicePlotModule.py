@@ -21,6 +21,7 @@ from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from matplotlib.pyplot import figure, show, axes, sci
 from matplotlib import cm, colors
 from matplotlib.font_manager import FontProperties
+from HyperwallManager import HyperwallManager
 from matplotlib.colors import LinearSegmentedColormap, ListedColormap, Normalize
 import pylab
 from numpy import amin, amax, ravel
@@ -56,6 +57,9 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
     def SliceObserver( self, caller, event ):
 #        print " SliceObserver: %s " % event
         self.drawImageData()
+
+    def updateHyperwall(self):
+        HyperwallManager.executeCurrentWorkflow( self.moduleID )
 
     def formatCoord( self, x, y ):
         numrows, numcols  = self.image_data.shape

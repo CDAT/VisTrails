@@ -10,6 +10,7 @@ from core.modules.module_registry import get_module_registry
 from core.vistrail.vistrail import VersionAlreadyTagged
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from db.domain import DBModule, DBAnnotation
+from core.db.action import create_action
 from core.debug import DebugPrint
 import numpy.core.umath as umath
 from vtk.util.vtkConstants import *
@@ -42,12 +43,32 @@ def printTime( label ):
     dt = t - currentTime 
     currentTime = t
     print " >--> DT: %6.3f:  %s " % ( dt, label )
+    
+def runTimedCommand( self, run_cmd, timeout  ):
+    p = subprocess.Popen( run_cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr )
+    
 
 def callbackWrapper( func, wrapped_arg ):
     def callMe( *args ):
         return func( wrapped_arg, *args )
     return callMe
 
+def delete_module( module,pipeline ):
+    """delete_module(module: Module, pipeline: Pipeline) -> None
+    deletes the module from the current pipeline in the proper way, taking
+    care to also delete all connections. This is done to make sure that the
+    modified pipelines we send to the clients are not broken"""
+    graph = pipeline.graph
+    connect_ids = [x[1] for x in graph.edges_to(module.id)]
+    connect_ids += [x[1] for x in graph.edges_from(module.id)]
+    action_list = []
+    for c_id in connect_ids:
+        action_list.append(('delete',pipeline.connections[c_id]))
+    action_list.append(('delete',pipeline.modules[module.id]))
+    
+    action = create_action(action_list)
+    pipeline.perform_action(action)
+        
 def change_parameters( module_id, parmRecList, controller=None ):
     """change_parameters(module_id: long,
                         parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
@@ -431,7 +452,7 @@ def executeWorkflow():
     controller = api.get_current_controller()        
     controller.execute_current_workflow()
    
-def executeVistrail( *args ):
+def executeVistrail( *args, **kwargs ):
     import core.requirements, os
     core.requirements.check_pyqt4()
     from core.db.locator import FileLocator
@@ -443,7 +464,8 @@ def executeVistrail( *args ):
     import os
      
     try:
-        v = gui.application.start_application()
+        optionsDict = kwargs.get( 'options', None )
+        v = gui.application.start_application( optionsDict )
         if v != 0:
             if gui.application.VistrailsApplication:
                 gui.application.VistrailsApplication.finishSession()

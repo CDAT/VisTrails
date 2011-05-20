@@ -4,7 +4,7 @@ Created on Dec 17, 2010
 @author: tpmaxwel
 '''
 
-import vtk, sys, time, threading, inspect
+import vtk, sys, time, threading, inspect, gui
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from core.modules.vistrails_module import Module, ModuleError
@@ -218,6 +218,7 @@ class PersistentModule( QObject ):
         return str( self.__class__.__name__ )
         
     def dvCompute( self, **args ):
+        self.updateHyperwall()
         self.initializeInputs( **args )     
         if self.input or self.inputModuleList or not self.requiresPrimaryInput:
             self.execute()
@@ -225,6 +226,9 @@ class PersistentModule( QObject ):
         elif self.requiresPrimaryInput:
             print>>sys.stderr, " Error, no input to module %s " % ( self.__class__.__name__ )
         self.persistLayerDependentParameters()
+        
+    def updateHyperwall(self):
+        pass
 
     def dvUpdate(self):
 #        self.markTime( ' Update %s' % self.__class__.__name__ ) 

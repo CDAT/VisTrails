@@ -326,6 +326,7 @@ class QVTKWidget(QCellWidget):
         Process window and interaction events
         
         """
+#        print "Window Event: %s"  % ( str(e) )
         if e.type()==QtCore.QEvent.ParentAboutToChange:
             if self.mRenWin:
                 if self.mRenWin.GetMapped():

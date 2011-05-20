@@ -4,11 +4,12 @@ Created on Feb 14, 2011
 @author: tpmaxwel
 '''
 
-from packages.spreadsheet.basic_widgets import SpreadsheetCell
+from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.vtk.vtkcell import QVTKWidget
 from PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
 from InteractiveConfiguration import *
 from WorkflowModule import WorkflowModule
+from HyperwallManager import HyperwallManager
 from vtUtilities import *
 import os
 
@@ -16,6 +17,21 @@ packagePath = os.path.dirname( __file__ )
 defaultMapDir = os.path.join( packagePath, 'data' )
 defaultMapFile = os.path.join( defaultMapDir,  'world_huge.jpg' )
 defaultMapCut = 0
+
+def get_coords_from_cell_address( row, col):
+    try:
+        col = ord(col)-ord('A')
+        row = int(row)-1
+        return ( col, row )
+    except:
+        raise ModuleError(self, 'ColumnRowAddress format error')
+
+def parse_cell_address( address ):
+    if len(address)>1:
+        if address[0] >= 'A' and address[0] <= 'Z':
+            return get_coords_from_cell_address( address[1:], address[0] )
+        else:
+            return get_coords_from_cell_address( address[:-1], address[-1] )
         
 class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     """
@@ -33,7 +49,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.enableBasemap = True
         self.baseMapActor = None
         self.renWin = None
-
+        
 #    def get_output(self, port):
 #        module = Module.get_output(self, port)
 #        output_id = id( module )    
@@ -45,6 +61,32 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 #            raise ModuleError(self, "output port '%s' not found" % port)
 #        return self.outputPorts[port]
 
+
+    def setCellLocation( self, moduleId ):
+        cellLocation = CellLocation()
+        cellLocation.rowSpan = 1
+        cellLocation.colSpan = 1
+        cell_coordinates = None
+            
+        address = self.getInputValue( "cell_location", None )
+        if address:
+            address = address.replace(' ', '').upper()
+            cell_coordinates = parse_cell_address( address )
+        else:
+            cell_coordinates = HyperwallManager.getCellCoordinatesForModule( moduleId )
+        cellLocation.col = cell_coordinates[0]
+        cellLocation.row = cell_coordinates[1]
+         
+        print " --- Set cell location: %s, address: %s "  % ( str( [ cellLocation.col, cellLocation.row ] ), str(address) )
+        self.overrideLocation( cellLocation )
+        return [ cellLocation.col, cellLocation.row, 1, 1 ]
+
+    def updateHyperwall(self):
+        import api
+        controller = api.get_current_controller() 
+        dimensions = self.setCellLocation( self.moduleID )        
+        HyperwallManager.addCell( self.moduleID, controller.name, str(controller.current_version), dimensions )
+        HyperwallManager.executeCurrentWorkflow( self.moduleID )
 
     def updateModule(self):
         self.buildRendering()
@@ -301,6 +343,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 iStyle = None
                 picker = None
                 
+                print " Build widget: location = %s " % str( [ self.location.col, self.location.row ] )  
                 self.cellWidget = self.displayAndWait(QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker))
                 self.renWin = self.cellWidget.GetRenderWindow()
                 
@@ -325,6 +368,7 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         """
         self.enableBasemap = True
         self.mapBorderSize = 20.0
+        self.cellAddress = 'A1'
         DV3DConfigurationWidget.__init__(self, module, controller, 'DV3D Cell Configuration', parent)
                 
     def getParameters( self, module ):
@@ -332,6 +376,8 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         if basemapParams: self.enableBasemap = bool( basemapParams[0] )
         basemapParams = getFunctionParmStrValues( module, "map_border_size" )
         if basemapParams:  self.mapBorderSize = float( basemapParams[0] )
+        celllocParams = getFunctionParmStrValues( module, "cell_location" )
+        if celllocParams:  self.cellAddress = str( celllocParams[0] )
 
     def createLayout(self):
         """ createEditor() -> None
@@ -347,7 +393,7 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         self.createButtonLayout() 
         
         basemapTab = QWidget()        
-        self.tabbedWidget.addTab( basemapTab, 'basemap' )                 
+        self.tabbedWidget.addTab( basemapTab, 'base map' )                 
         layout = QVBoxLayout()
         basemapTab.setLayout( layout ) 
                 
@@ -369,6 +415,31 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         border_layout.addWidget( self.borderSizeEdit  )        
         layout.addLayout( border_layout )
         
+        sheet_dims = HyperwallManager.getDimensions()
+
+        locationTab = QWidget()        
+        self.tabbedWidget.addTab( locationTab, 'cell location' )                 
+        location_layout = QVBoxLayout()
+        locationTab.setLayout( location_layout ) 
+
+        cell_coordinates = parse_cell_address( self.cellAddress )
+        cell_selection_layout = QHBoxLayout()
+        cell_selection_label = QLabel( "Cell Address:" )
+        cell_selection_layout.addWidget( cell_selection_label ) 
+
+        self.colCombo =  QComboBox ( self.parent() )
+        self.colCombo.setMaximumHeight( 30 )
+        cell_selection_layout.addWidget( self.colCombo  )        
+        for iCol in range( sheet_dims[0] ):  self.colCombo.addItem( chr( ord('A') + iCol ) )
+        self.colCombo.setCurrentIndex( cell_coordinates[0] )
+
+        self.rowCombo =  QComboBox ( self.parent() )
+        self.rowCombo.setMaximumHeight( 30 )
+        cell_selection_layout.addWidget( self.rowCombo  )        
+        for iRow in range( sheet_dims[1] ):  self.rowCombo.addItem( str(iRow+1) )
+        self.rowCombo.setCurrentIndex( cell_coordinates[1] )
+        location_layout.addLayout(cell_selection_layout)
+        
     def basemapStateChanged( self, enabled ):
         self.stateChanged()
 
@@ -376,6 +447,7 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         parmRecList = []
         parmRecList.append( ( 'enable_basemap' , [ self.enableBasemap ]  ), )      
         parmRecList.append( ( 'map_border_size' , [ self.mapBorderSize ]  ), )  
+        parmRecList.append( ( 'cell_location' , [ self.cellAddress ]  ), )  
         self.persistParameterList( parmRecList )
         self.stateChanged(False)         
            
@@ -386,6 +458,7 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         """
         self.enableBasemap = self.enableCheckBox.isChecked() 
         self.mapBorderSize = float( self.borderSizeEdit.text() )
+        self.cellAddress = "%s%s" % ( str( self.colCombo.currentText() ), str( self.rowCombo.currentText() ) )
         self.updateController(self.controller)
         self.emit(SIGNAL('doneConfigure()'))
 #        self.close()
