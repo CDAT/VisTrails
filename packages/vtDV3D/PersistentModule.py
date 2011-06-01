@@ -90,12 +90,16 @@ class PersistentModule( QObject ):
     def __init__( self, mid, **args ):
         QObject.__init__(self)
         self.moduleID = mid
+        self.pipeline = args.get( 'pipeline', None )
         self.units = ''
         self.taggedVersionMap = {}
         self.versionTags = {}
         self.initVersionMap()
         self.datasetId = None
         self.fieldData = None
+        role = get_hyperwall_role( )
+        self.isClient = ( role == 'client' )
+        self.isServer = ( role == 'server' )
         self.rangeBounds = None
         self.timeStepName = 'timestep'
         self.newDataset = False
@@ -149,14 +153,18 @@ class PersistentModule( QObject ):
     def initiateParameterUpdate( self, parmName ):
         self.parmUpdating[parmName] = True     
      
-    def addAnnotation( self, id, note ):  
-        controller, module = self.getRegisteredModule() 
-        controller.add_annotation( (id, str(note)), module.id ) 
+    def addAnnotation( self, id, note ): 
+        if self.isClient: return 
+        import api
+        controller = api.get_current_controller()
+        controller.add_annotation( (id, str(note)), self.moduleID ) 
     
     def setLabel( self, label ):      
-        controller, module = self.getRegisteredModule() 
-        controller.add_annotation( ('__desc__', str(label)), module.id ) 
-        controller.current_pipeline_view.recreate_module( controller.current_pipeline, module.id )
+        if self.isClient: return
+        import api
+        controller = api.get_current_controller()
+        controller.add_annotation( ('__desc__', str(label)), self.moduleID ) 
+        controller.current_pipeline_view.recreate_module( controller.current_pipeline, self.moduleID )
         pass
         
     def setNewConfiguration(self, **args ):
@@ -176,7 +184,7 @@ class PersistentModule( QObject ):
         
     def getParameter(self, parameter_name, default_value = None ):
         paramVal = self.getCachedParameter( parameter_name  )
-        if paramVal == None:
+        if (paramVal == None) and not self.isClient:
             paramVal = self.getTaggedParameterValue( parameter_name )
             if paramVal <> None: self.setParameter( parameter_name, paramVal )
         return paramVal if paramVal else default_value
@@ -195,16 +203,14 @@ class PersistentModule( QObject ):
             try:
                 tagged_version_number = self.getTaggedVersion( tag )
                 if tagged_version_number >= 0:
-                    functionID = getFunctionId( self.moduleID, parameter_name, ctrl )
-                    if functionID >= 0:
-                        tagged_pipeLine =  ctrl.vistrail.getPipeline( tagged_version_number )
-                        tagged_module = tagged_pipeLine.modules[ self.moduleID ]
-                        tagged_function = tagged_module.functions[functionID]
+                    tagged_pipeLine =  ctrl.vistrail.getPipeline( tagged_version_number )
+                    tagged_module = tagged_pipeLine.modules[ self.moduleID ]
+                    tagged_function = getFunctionFromList( parameter_name, tagged_module.functions )
+                    if tagged_function:
                         parameterList = tagged_function.parameters
                         pval = [ translateToPython( parmRec ) for parmRec in parameterList ]
-#                        print " --- getTaggedParameterValue[%s]: tag=%s, version=%d, value=%s " % ( parameter_name, tag, tagged_version_number, str(pval) )
             except Exception, err:
-                print>>sys.stderr, " Exception in getTaggedParameterValue: %s " % str( err )
+                print>>sys.stderr, " Exception in getTaggedParameterValue (%s): %s " % ( parameter_name, str( err ) )
         return pval
                 
         
@@ -264,7 +270,6 @@ class PersistentModule( QObject ):
         inputList = None
         portInputIsValid = not ( self.newLayerConfiguration and self.isLayerDependentParameter(inputName) )
         if portInputIsValid: 
-#            wmod = args.get( 'wmod', self.getWorkflowModule() )
             if self.wmod:  inputList = self.wmod.forceGetInputListFromPort( inputName )
         if inputList == None:         
             inputList = self.getParameter( inputName, None )
@@ -278,28 +283,30 @@ class PersistentModule( QObject ):
     
     def getInputValue( self, inputName, default_value = None, **args ):
         import api
+        if inputName == 'task':
+            pass
         self.getDatasetId( **args )
-        ctrl, tag, pval = api.get_current_controller(), self.getParameterId(), None
         isLayerDep = self.isLayerDependentParameter( inputName )
-        if self.wmod and not ( isLayerDep and self.newLayerConfiguration ):
+        pval = None
+        if self.wmod and ( self.isClient or not ( isLayerDep and self.newLayerConfiguration ) ):
             pval = self.wmod.forceGetInputFromPort( inputName, default_value ) 
         else:
+            ctrl, tag = api.get_current_controller(), self.getParameterId()
             tagged_version_number = ctrl.current_version
             if isLayerDep:
                 versions = self.getTaggedVersionList( tag )
                 if versions: tagged_version_number = versions[-1] 
                 else: return default_value
-            functionID = getFunctionId( self.moduleID, inputName, ctrl )
-            if functionID >= 0:
-                try:
-                    tagged_pipeLine =  ctrl.vistrail.getPipeline( tagged_version_number )
-                    tagged_module = tagged_pipeLine.modules[ self.moduleID ]
-                    tagged_function = tagged_module.functions[functionID]
+            try:
+                tagged_pipeLine =  ctrl.vistrail.getPipeline( tagged_version_number )
+                tagged_module = tagged_pipeLine.modules[ self.moduleID ]
+                tagged_function = getFunctionFromList( inputName, tagged_module.functions )
+                if tagged_function:
                     parameterList = tagged_function.parameters
                     pval = [ translateToPython( parmRec ) for parmRec in parameterList ]
                     print " %s.Get-Input-Value[%s:%s] (v. %s): %s " % ( self.getName(), tag, inputName, str(tagged_version_number), str(pval) )
-                except Exception, err:
-                    print "Error getting tagged version: %s" % str(err)
+            except Exception, err:
+                print "Error getting tagged version: %s" % str(err)
         if not pval:         
             pval = self.getParameter( inputName, default_value )
 #        print ' ***** GetInputValue[%s] = %s: cv=%d, tv0=%d, tv1=%d ' % ( inputName, str(pval), ctrl.current_version, tv0, tagged_version_number )
@@ -309,7 +316,6 @@ class PersistentModule( QObject ):
         inputVal = None
         portInputIsValid = not ( self.newLayerConfiguration and self.isLayerDependentParameter(inputName) )
         if portInputIsValid: 
-#            self.wmod = args.get( 'wmod', self.getWorkflowModule() )
             if self.wmod:  inputVal = self.wmod.forceGetInputFromPort( inputName, None )
             else:     inputVal = getFunctionParmStrValues( args.get( 'dbmod', None ), inputName  )
 #                print " %s ---> getInputValueFromPort( %s ) : %s " % ( self.getName(), inputName, str(inputVal) )
@@ -319,7 +325,6 @@ class PersistentModule( QObject ):
         return inputVal
     
     def setResult( self, outputName, value ): 
-#        wmod = self.getWorkflowModule()   
         if self.wmod <> None:       self.wmod.setResult( outputName, value )
         self.setParameter( outputName, value )
                     
@@ -524,7 +529,6 @@ class PersistentModule( QObject ):
         return imageScaledValue
 
     def set2DOutput( self, **args ):
-#        wmod = args.get( 'wmod', self.getWorkflowModule()  )  
         if self.wmod:
             portName = args.get( 'name', 'slice' )
             outputModule = AlgorithmOutputModule( fieldData=self.fieldData, **args )
@@ -535,7 +539,6 @@ class PersistentModule( QObject ):
         else: print " Missing wmod in %s.set2DOutput" % self.__class__.__name__
 
     def setOutputModule( self, outputModule, portName = 'volume', **args ): 
-#        self.wmod = args.get( 'wmod', self.getWorkflowModule()  ) 
         if self.wmod:  
             output =  outputModule.getOutput() 
             fd = output.GetFieldData()  
@@ -593,8 +596,8 @@ class PersistentModule( QObject ):
 #        self.fieldData.AddArray( getFloatDataArray( 'position', [  0.0, 0.0, 0.0 ] ) )
 #        self.fieldData.AddArray( getFloatDataArray( 'scale',    [  1.0, 1.0, 1.0 ] ) ) 
            
-    def addConfigurableFunction(self, name, function_args, **args):
-        self.configurableFunctions[name] = ConfigurableFunction( name, function_args, None, **args )
+    def addConfigurableFunction(self, name, function_args, key, **args):
+        self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, **args )
 
     def addConfigurableLevelingFunction(self, name, key, **args):
         self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, **args )
@@ -646,9 +649,8 @@ class PersistentModule( QObject ):
                     self.textActor.VisibilityOn()
     
     def isActive( self ):
-        import api
-        controller = api.get_current_controller()
-        return ( self.moduleID in controller.current_pipeline.modules )
+        pipeline = self.getCurentPipeline()
+        return ( self.moduleID in pipeline.modules )
 
     def updateAnimation( self, timeIndex, textDisplay=None ):
         self.setTimestep( timeIndex )
@@ -681,7 +683,6 @@ class PersistentModule( QObject ):
                if configFunct.isLayerDependent:
                    pass        
         else:
-#            wmod = self.getWorkflowModule( False )
             if self.wmod:    
                 for configFunct in self.configurableFunctions.values():
                     value = self.wmod.forceGetInputFromPort( configFunct.name, None )
@@ -732,7 +733,6 @@ class PersistentModule( QObject ):
             if configFunct.type == 'leveling':
                 configData = configFunct.update( self.InteractionState, x, y, wsize )
                 if configData <> None:
-#                    self.wmod = args.get( 'wmod', self.getWorkflowModule( False )  )  
                     print " Update %s Leveling, data = %s " % ( configFunct.name, str( configData ) )
                     if self.wmod: self.wmod.setResult( configFunct.name, configData )
                     self.setParameter( configFunct.name, configData ) 
@@ -746,7 +746,6 @@ class PersistentModule( QObject ):
     
 #    def finalizeConfigurations( self ):
 #        parameter_changes = []
-#        wmod = self.getWorkflowModule() 
 #        for parameter_name in self.configurableFunctions.keys():
 #            outputModule = wmod.get_output( parameter_name )
 #            output = outputModule.getOutput()
@@ -772,17 +771,17 @@ class PersistentModule( QObject ):
                 return True
         return False
     
-    def updateFunction(self, parameter_name, output ):
-        import api 
-        param_values_str = [ str(x) for x in output ] if isList(output) else str( output )     
-        controller = api.get_current_controller()
-        module = controller.current_pipeline.modules[ self.moduleID ]
-        try:
-            controller.update_function( module, parameter_name, param_values_str, -1L, []  )
-        except IndexError, err:
-            print "Error updating parameter %s on module %s: %s" % ( parameter_name, self.__class__.__name__, str(err) )
-            pass 
-        return controller
+#    def updateFunction(self, parameter_name, output ):
+#        import api 
+#        param_values_str = [ str(x) for x in output ] if isList(output) else str( output ) 
+#        controller = api.get_current_controller()
+#        module = controller.current_pipeline.modules[ self.moduleID ]
+#        try:
+#            controller.update_function( module, parameter_name, param_values_str, -1L, []  )
+#        except IndexError, err:
+#            print "Error updating parameter %s on module %s: %s" % ( parameter_name, self.__class__.__name__, str(err) )
+#            pass 
+#        return controller
     
 #    def updateDatasetId( self ): 
 #        import api
@@ -824,7 +823,7 @@ class PersistentModule( QObject ):
         self.addAnnotation( 'taggedVersionMap', serializedVersionMap )
         
     def getAnnotation( self, key, default_value = None ):
-        controller, module = self.getRegisteredModule()
+        module = self.getRegisteredModule()
         if module.has_annotation_with_key(key): return module.get_annotation_by_key(key).value
         return default_value
 
@@ -862,7 +861,7 @@ class PersistentModule( QObject ):
 #            DV3DConfigurationWidget.savingChanges = False
 
     def persistParameterList( self, parmRecList, **args ):
-        if parmRecList: 
+        if parmRecList and not self.isClient: 
             import api
             DV3DConfigurationWidget.savingChanges = True
             ctrl = api.get_current_controller()
@@ -907,33 +906,34 @@ class PersistentModule( QObject ):
         return self.activation.get( name, True )
 
     def getRegisteredModule(self):
-        import api
-        controller = api.get_current_controller() 
+        pipeline = self.getCurrentPipeline()
         mid = self.moduleID
-        module = controller.current_pipeline.modules[ mid ]
-        return controller, module
-    
-    def getWorkflowModule(self, forceGet=True ):
-        try:
-            return getWorkflowModule( self.moduleID, forceGet )
-        except Exception, err:
-            print "Exception in getWorkflowModule[%d]: %s" % ( self.moduleID, str(err) )
+        module = pipeline.modules[ mid ]
+        return module
         
     def updateModule(self):
         pass
     
+    def getCurrentPipeline(self):
+        if self.pipeline <> None:
+            return self.pipeline
+        else:
+            import api
+            controller = api.get_current_controller() 
+            pipeline = controller.current_pipeline
+            return pipeline
+    
     def getOutputModules( self, port ):
-        import api
-        controller = api.get_current_controller() 
+        pipeline = self.getCurrentPipeline()
         mid = self.moduleID
-        modules = controller.current_pipeline.get_outputPort_modules( mid, port )
+        modules = pipeline.get_outputPort_modules( mid, port )
         return modules
  
     def getRegisteredDescriptor( self ):       
         registry = get_module_registry()
-        controller, module = self.getRegisteredModule()
+        module = self.getRegisteredModule()
         descriptor = registry.get_descriptor_by_name( module.package, module.name, module.namespace )
-        return controller, module, descriptor        
+        return module, descriptor        
         
     def getModuleParameters( self ):
         return []
@@ -983,7 +983,6 @@ class PersistentVisualizationModule( PersistentModule ):
     
     def set3DOutput( self, **args ):  
         portName = args.get( 'name', 'volume' )
-#        wmod = args.get( 'wmod', self.getWorkflowModule()  )  
         outputModule = AlgorithmOutputModule3D( self.renderer, fieldData=self.fieldData, **args )
         output =  outputModule.getOutput() 
         oid = id( outputModule )
@@ -1180,7 +1179,11 @@ class PersistentVisualizationModule( PersistentModule ):
         key = caller.GetKeyCode() 
         keysym = caller.GetKeySym()
         ctrl = caller.GetControlKey()
-        self.processKeyEvent( key, caller, event )
+        shift = caller.GetShiftKey()
+        ikey = ord(key[0]) if key else 0
+        if shift: keysym = keysym.upper()
+#        print " ------------------------------------------ setInteractionState, keysym=%s, shift = %s ------------------------------------------ " % (str(keysym), str(shift) )
+        self.processKeyEvent( keysym, caller, event )
 #        if key == self.current_key:
 #            t = time.time()
 #            if( ( t - self.event_time ) < 0.01 ): return
@@ -1188,7 +1191,7 @@ class PersistentVisualizationModule( PersistentModule ):
 #        self.current_key = key
 
     def processKeyEvent( self, key, caller=None, event=None ):
-#        print "Interaction event, key = %s" % ( key )
+        print "process Key Event, key = %s" % ( key )
         if key == 'h': 
             if  PersistentVisualizationModule.moduleDocumentationDialog == None:
                 modDoc = ModuleDocumentationDialog()

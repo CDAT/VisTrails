@@ -41,7 +41,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
            
     def __init__(self, mid, **args):
         SpreadsheetCell.__init__(self)
-        PersistentVisualizationModule.__init__(self, mid, ndims = 2 )
+        PersistentVisualizationModule.__init__(self, mid, ndims = 2, **args)
         self.imageAxes = None
         self.cmaps = ( {}, {} )
         self.currentTime = 0
@@ -270,8 +270,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         """ compute() -> None        
         Either passing the figure manager to a SpreadsheetCell or save
         the image to file
-        """  
-        wmod = self.getWorkflowModule()     
+        """      
         self.input.AddObserver( "RenderEvent", self.SliceObserver )
         self.imageExport = vtkImageExportToArray()
         self.imageExport.SetInput( self.input )
@@ -295,10 +294,10 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
             noOutput = False
 #            print "FigManager(%s) canvas(%s) methods: %s" % ( self.mfm.figManager.__class__.__name__ , self.mfm.figManager.canvas.__class__.__name__ ,dir( self.mfm.figManager.canvas ) )
         wmod.setResult('File', InvalidOutput)
-        if 'File' in wmod.outputPorts:
-            f = wmod.interpreter.filePool.create_file(suffix='.png')
+        if 'File' in self.wmod.outputPorts:
+            f = self.wmod.interpreter.filePool.create_file(suffix='.png')
             pylab.savefig(f.name)
-            wmod.setResult('File', f)
+            self.wmod.setResult('File', f)
             noOutput = False
         if noOutput:
             pylab.show()
@@ -311,8 +310,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
     def updateModule(self):
 #        printTime( 'Start Animation Step' )
         self.updateImageData()
-        wmod = self.getWorkflowModule() 
-        if wmod: wmod.setResult('FigureManager', self.mfm) 
+        if self.wmod: self.wmod.setResult('FigureManager', self.mfm) 
         self.mfm.figManager.canvas.draw()
 #        printTime( 'Finish Animation Step' )
 

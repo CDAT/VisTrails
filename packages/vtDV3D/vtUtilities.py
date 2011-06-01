@@ -24,6 +24,7 @@ VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
 VTK_CONTROL_MODIFIER    = 2        
 
+hyperwall_role = None 
 currentTime = 0
 dvLogFile =  open( '/tmp/dv3d_log.txt', 'w' )
 dvDbgIO = DebugPrint()
@@ -53,6 +54,14 @@ def callbackWrapper( func, wrapped_arg ):
         return func( wrapped_arg, *args )
     return callMe
 
+def set_hyperwall_role( hw_role ):
+    global hyperwall_role
+    hyperwall_role = hw_role 
+
+def get_hyperwall_role( ):
+    global hyperwall_role
+    return hyperwall_role
+                                         
 def delete_module( module,pipeline ):
     """delete_module(module: Module, pipeline: Pipeline) -> None
     deletes the module from the current pipeline in the proper way, taking
@@ -97,12 +106,12 @@ def str2bool( value ):
     return value.strip().lower()[0] == 't'
 
 def serializeStrMap( strMap ): 
-    return ';'.join( [ ','.join(dsitems) for dsitems in strMap.items() ] )
+    return ';'.join( [ '+'.join(dsitems) for dsitems in strMap.items() ] )
               
 def deserializeStrMap( serialized_strMap ): 
     stringMap = {}
     for dsrec in serialized_strMap.split(';'):
-        dsitems = dsrec.split(',')
+        dsitems = dsrec.split('+')
         if len( dsitems ) == 2: stringMap[ dsitems[0] ] = dsitems[1]
     return stringMap
 
@@ -234,24 +243,6 @@ def getMetadata( module, **args ):
     if key <> None: return module.db_get_annotation_by_key( key )
     return None
 
-#    def getTaggedParameterValue(self, parameter_name ):
-#        import api
-#        tag = self.getParameterId()
-#        ctrl = api.get_current_controller()
-#        pval = None
-#        if tag <> None: 
-#            try:
-#                tagged_version_number = getTaggedVersionNumber( tag, ctrl )
-#                if tagged_version_number >= 0:
-#                    functionID = getFunctionId( self.moduleID, parameter_name, ctrl )
-#                    if functionID >= 0:
-#                        tagged_pipeLine =  ctrl.vistrail.getPipeline( tagged_version_number )
-#                        tagged_module = tagged_pipeLine.modules[ self.moduleID ]
-#                        tagged_function = tagged_module.functions[functionID]
-#                        parameterList = tagged_function.parameters
-#                        pval = [ translateToPython( parmRec ) for parmRec in parameterList ]
-
-
 def getWorkflowModule( mid, forceGet = True, controller = None  ):    
     if controller == None: 
         import api
@@ -287,16 +278,15 @@ def getFunctionList( mid, controller = None ):
     module = controller.current_pipeline.modules[ mid ]
     return module.functions if module.functions else []
 
-def getFunction( function_name, functionList ):
+def getFunctionFromList( function_name, functionList ):
     for function in functionList:
         if (function.name == function_name): #  and (function.vtType == 'function'):
             return function
     return None
 
-def getFunctionId( mid, function_name, controller = None ):
-    functionList = getFunctionList( mid, controller )
-    function = getFunction( function_name, functionList )
-    return function.id if function else -1
+def getFunction( mid, function_name, controller = None ):
+    functionList = getFunctionFromList( mid, controller )
+    return getFunction( function_name, functionList )
 
 def translateToPython( parmRec ):
     if parmRec.type == 'Float':    return float( parmRec.strValue ) if parmRec.strValue else 0.0
@@ -367,14 +357,14 @@ def getDesignatedConnection( controller,  mid, portName, isDestinationPort = Tru
                 return connection
     return None
 
-def queryUpstreamMetadata( controller, mid, outport=None, metadata={} ):
-    module = getWorkflowModule( mid, True, controller )
-    if module:
-        module.getMetadata( metadata, outport )
-        if module.primaryMetaDataPort:
-            cmid, cmport = getConnectedModuleId( controller,  mid, module.primaryMetaDataPort ) 
-            if cmid: queryUpstreamMetadata( controller, cmid, cmport, metadata )
-    return metadata
+#def queryUpstreamMetadata( controller, mid, outport=None, metadata={} ):
+#    module = getWorkflowModule( mid, True, controller )
+#    if module:
+#        module.getMetadata( metadata, outport )
+#        if module.primaryMetaDataPort:
+#            cmid, cmport = getConnectedModuleId( controller,  mid, module.primaryMetaDataPort ) 
+#            if cmid: queryUpstreamMetadata( controller, cmid, cmport, metadata )
+#    return metadata
 
 def getConnectedModuleId( controller,  mid, portName, isDestinationPort = True ):
     connection = getDesignatedConnection( controller,  mid, portName, isDestinationPort )
@@ -418,6 +408,13 @@ def getSigString( klass ):
     descriptor = registry.get_descriptor( klass )
     return "( %s )" % descriptor.sigstring
 
+def isLevelAxis( axis ):
+    if axis.isLevel(): return True
+    if ( axis.id == 'isobaric' ): 
+        axis.designateLevel(1)
+        return True
+    return False
+
 def getVarNDim( vardata ):
     dims = [ 0, 0, 0 ]
     for dval in vardata.domain:
@@ -426,7 +423,7 @@ def getVarNDim( vardata ):
             dims[0] = 1
         elif axis.isLatitude(): 
             dims[1] = 1
-        elif axis.isLevel(): 
+        elif isLevelAxis( axis ): 
             dims[2] = 1
     return dims[0] + dims[1] + dims[2]
            

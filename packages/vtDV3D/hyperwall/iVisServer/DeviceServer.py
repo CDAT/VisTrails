@@ -392,6 +392,7 @@ class Device:
                 for cell in DV3DCells: delete_module( cell, localPipeline )
                 
                 serializedPipeline = serialize(pipeline)
+#                print " Serialized pipeline: %s " % str( serializedPipeline )
                 result.append( ((dimensions[0]+column, dimensions[1]+row), serializedPipeline) )
         
         return result
@@ -500,27 +501,24 @@ class Device:
         return "cellUnlocked,"+self.name+","+tokens[0]
 
     def processInteractionMessage(self, tokens):
-        iPhoneDimensions = (320, 416)
-        displayWallDimensions = (6*2560, 4*1600)
-
-        localID = int(tokens[1])
-        eventType = tokens[2]
-        button = tokens[3]
-        pos = [int(tokens[4]), int(tokens[5])]
+        localID = 0 # int(tokens[1])
+        eventType = tokens[0]
+        event_data=','.join(  [ str(tokens[i]) for i in range( len(tokens) ) ]  )
         dimensions = self.dimensionsForKey[localID]
+        print " Device server -> processMouseInteractionMessage: %s " % str( ( eventType, event_data ) )
         for x in range(dimensions[0], dimensions[0]+dimensions[2]):
             for y in range(dimensions[1], dimensions[1]+dimensions[3]):
 #                columnValue = x % 2 + 1
 #                rowValue = y % 2 + 1
-                cDim = self.clientDimensions[(x,y)]
-                columnValue = (x-cDim[0])%cDim[2]+1
-                rowValue = (y-cDim[1])%cDim[3]+1
-                message = "server-displayClient-"
-                tokensString = "interaction,"
-                tokensString += str(rowValue)+","+str(columnValue)+","+eventType+","+button+","+str(pos[0])+","+str(pos[1])
-                message += str(len(tokensString))+":"+tokensString
-                if self.addresses.has_key((x,y)):
-                    self.addresses[(x,y)].write(message)
+                cDim = self.clientDimensions.get( (x,y), None )
+                if cDim:
+                    columnValue = (x-cDim[0])%cDim[2]+1
+                    rowValue = (y-cDim[1])%cDim[3]+1
+                    message = "server-displayClient-"
+                    tokensString = "interaction,"
+                    tokensString += str(rowValue)+","+str(columnValue)+","+event_data
+                    message += str(len(tokensString))+":"+tokensString
+                    if self.addresses.has_key((x,y)): self.addresses[(x,y)].write(message)
 
     def processSyncMessage(self, tokens):
         return ("", "", "")
@@ -660,8 +658,8 @@ class StereoDevice(Device):
         return self.idCounter-1
 
     def processInteractionMessage(self, tokens):
-        iPhoneDimensions = (320, 416)
-        displayWallDimensions = (6*2560, 4*1600)
+#        iPhoneDimensions = (320, 416)
+#        displayWallDimensions = (6*2560, 4*1600)
 
         localID = int(tokens[1])
         eventType = tokens[2]

@@ -30,8 +30,8 @@ class WorkflowModule( Module ):
         self.pmod.dvCompute( wmod=self )
     
     @classmethod    
-    def forceGetPersistentModule( klass, mid ):            
-        return ModuleStoreDatabase.forceGetModule(  mid, klass.PersistentModuleClass( mid ) ) 
+    def forceGetPersistentModule( klass, mid, **args ):            
+        return ModuleStoreDatabase.forceGetModule(  mid, klass.PersistentModuleClass( mid, **args ) ) 
 
     @classmethod    
     def getPersistentModule( klass, mid ):            
@@ -40,7 +40,7 @@ class WorkflowModule( Module ):
     def updatePersistentModule( self ):
         DV3DConfigurationWidget.saveNewConfigurations()            
         if not self.pmod: 
-            self.pmod = self.__class__.forceGetPersistentModule( self.moduleInfo['moduleId'] )
+            self.pmod = self.__class__.forceGetPersistentModule( self.moduleInfo['moduleId'], pipeline=self.moduleInfo['pipeline'] )
         self.pmod.setWorkflowModule( self )
       
     @classmethod

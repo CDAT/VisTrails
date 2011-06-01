@@ -134,10 +134,9 @@ class PM_DemoData( PersistentVisualizationModule ):
     def execute(self):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
-        """  
-        wmod = self.getWorkflowModule()    
-        self.dataset = wmod.forceGetInputFromPort( "dataset", demoDatasets[0] )    
-        self.maxNTS = int( wmod.forceGetInputFromPort( "maxNTimeSteps",  '10' ) )   
+        """   
+        self.dataset = self.wmod.forceGetInputFromPort( "dataset", demoDatasets[0] )    
+        self.maxNTS = int( self.wmod.forceGetInputFromPort( "maxNTimeSteps",  '10' ) )   
         self.initializeMetadata()
         self.generateDemoData()
         

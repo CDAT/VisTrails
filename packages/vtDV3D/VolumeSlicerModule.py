@@ -76,8 +76,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """           
-        # The 3 image plane widgets are used to probe the dataset. 
-        wmod = self.getWorkflowModule()      
+        # The 3 image plane widgets are used to probe the dataset.    
         print " Volume Slicer buildPipeline, id = %s " % str( id(self) )
         self.sliceOutput = vtk.vtkImageData()  
         xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
@@ -162,8 +161,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.imageRescale.SetInterpolationModeToLinear() 
         self.imageRescale.SetResliceAxesDirectionCosines( [-1, 0, 0], [0, -1, 0], [0, 0, -1] )
 
-        self.set2DOutput( port=self.imageRescale.GetOutputPort(), name='slice', wmod = wmod ) 
-        self.set3DOutput(wmod = wmod) 
+        self.set2DOutput( port=self.imageRescale.GetOutputPort(), name='slice' ) 
+        self.set3DOutput() 
          
 #    def updateModule1(self):
 #        self.transferInputLayer( self.sliceInput ) 

@@ -111,8 +111,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         
     def getCurtainGeometry( self, nLevels, vertRange, **args ):
         path = defaultPathFile
-        wmod = args.get( 'wmod', self.getWorkflowModule()  )  
-        pathInput = wmod.forceGetInputFromPort( "path", None ) 
+        pathInput = self.wmod.forceGetInputFromPort( "path", None ) 
         if pathInput <> None: path = pathInput.name       
         reader = PathFileReader()
         reader.read(path)  

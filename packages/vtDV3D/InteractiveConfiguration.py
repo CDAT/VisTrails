@@ -12,6 +12,7 @@ from core.modules.vistrails_module import Module, ModuleError
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, Boolean, Variant
 from ColorMapManager import ColorMapManager 
+from CDATTask import deserializeTaskData
 from collections import OrderedDict
 from vtUtilities import *
 import cdms2
@@ -122,7 +123,7 @@ class QtWindowLeveler( QObject ):
 
 class OutputRecManager: 
     
-    sep = ';,:|!'   
+    sep = ';+:|!'   
             
     def __init__( self, serializedData = None ): 
         self.outputRecs = {}
@@ -171,7 +172,7 @@ class OutputRecManager:
                             orec = OutputRec( name, ndim=ndim, varList=varList ) 
                             self.addOutputRec( dsid, orec ) 
                     except Exception, err:
-                        print "Error deserializing port[%s] data: %s " % ( name, str( err ) )
+                        print "Error deserializing port data: %s " % ( str( err ) )
                         
                             
     def serialize( self ):        
@@ -986,7 +987,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         
     def stateChanged(self, changed = True ):
         self.state_changed = changed
-        print " %s-> state changed: %s " % ( self.pmod.getName(), str(changed) )
+#        print " %s-> state changed: %s " % ( self.pmod.getName(), str(changed) )
 
     def getParameters( self, module ):
         pass
@@ -1018,14 +1019,14 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         pass
        
     @staticmethod
-    def readVariableList( cdmsFile ):
+    def readVariableList( dsId, cdmsFile ):
         dataset = cdms2.open( cdmsFile ) 
         vList = [ ] 
         if dataset:
             for var in dataset.variables:
                 vardata = dataset[var]
                 var_ndim = getVarNDim( vardata )
-                vList.append( ( var, var_ndim ) ) 
+                vList.append( ( '*'.join( [ dsId, var ] ), var_ndim ) ) 
             dataset.close()  
         return vList        
 
@@ -1051,14 +1052,12 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         return ( datasetId, timeRange )
 
     @staticmethod
-    def getVariableList( mid ): 
+    def getDatasetMetadata( mid ): 
         import api
         controller = api.get_current_controller()
+        datasetMap = {}
         moduleId = mid
-        cdmsFile = None
-        datasetId = None
-        timeRange = None
-        variableList = [ ]
+        variableList = []
         while moduleId <> None:
             moduleId, portName = getConnectedModuleId( controller, moduleId, 'dataset', True )
             if moduleId <> None:
@@ -1070,29 +1069,74 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                     if datasetsInput: 
                         datasets = deserializeStrMap( getItem( datasetsInput ) )
                         cdmsFile = datasets[ datasetId ]
-                        vlist = DV3DConfigurationWidget.readVariableList( cdmsFile )
+                        vlist = DV3DConfigurationWidget.readVariableList( datasetId, cdmsFile )
+                        variableList.extend( vlist )
+                        timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
+                        timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ] if timeRangeInput else None
+                        datasetMap[ datasetId ] = (  variableList, cdmsFile, timeRange )
+        for ( datasetId, dsetData ) in datasetMap.items():
+            variableList = dsetData[0]
+            moduleId = mid
+            while moduleId <> None:
+                moduleId, portName = getConnectedModuleId( controller, moduleId, 'dataset', True )
+                if moduleId <> None:
+                    module = controller.current_pipeline.modules[ moduleId ]
+                    taskInput = getFunctionParmStrValues( module, "task" )
+                    if taskInput:
+                        taskMapInput = deserializeTaskData( getItem( taskInput ) ) 
+                        if taskMapInput:
+                            taskMap = taskMapInput       
+                            taskRecord = taskMap.get( datasetId, None )
+                            if taskRecord:
+                                outputs = taskRecord[2].split(';')
+                                for output in outputs:
+                                    outputData = output.split('+')
+                                    if len(outputData) > 1:
+                                        variableList.append( ( outputData[1], int( outputData[2] ) ) )
+        return datasetMap
+
+    @staticmethod
+    def getVariableList( mid ): 
+        import api
+        controller = api.get_current_controller()
+        moduleId = mid
+        cdmsFile = None
+        datasetIds = []
+        timeRange = None
+        variableList = [ ]
+        while moduleId <> None:
+            moduleId, portName = getConnectedModuleId( controller, moduleId, 'dataset', True )
+            if moduleId <> None:
+                module = controller.current_pipeline.modules[ moduleId ]
+                datasetsInput = getFunctionParmStrValues( module, "datasets" )
+                if datasetsInput:
+                    datasets = deserializeStrMap( getItem( datasetsInput ) )
+                    for datasetId in datasets:
+                        cdmsFile = datasets[ datasetId ]
+                        vlist = DV3DConfigurationWidget.readVariableList( datasetId, cdmsFile )
                         variableList.extend( vlist )
                         timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
                         if timeRangeInput: timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
-                        moduleId = None
+                        datasetIds.append( datasetId )
         moduleId = mid
+        datasetId = '-'.join( datasetIds )
         while moduleId <> None:
             moduleId, portName = getConnectedModuleId( controller, moduleId, 'dataset', True )
             if moduleId <> None:
                 module = controller.current_pipeline.modules[ moduleId ]
                 taskInput = getFunctionParmStrValues( module, "task" )
                 if taskInput:
-                    taskMapInput = decodeFromString( getItem( taskInput ) ) 
+                    taskMapInput = deserializeTaskData( getItem( taskInput ) ) 
                     if taskMapInput:
                         taskMap = taskMapInput       
                         taskRecord = taskMap.get( datasetId, None )
                         if taskRecord:
                             outputs = taskRecord[2].split(';')
                             for output in outputs:
-                                outputData = output.split(',')
+                                outputData = output.split('+')
                                 if len(outputData) > 1:
                                     variableList.append( ( outputData[1], int( outputData[2] ) ) )
-        return ( variableList, datasetId, cdmsFile, timeRange )
+        return ( variableList, datasetId, timeRange )
 
 
 #    def persistParameter( self, parameter_name, output, **args ):

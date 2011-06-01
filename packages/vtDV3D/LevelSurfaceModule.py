@@ -110,7 +110,6 @@ class PM_LevelSurface(PersistentVisualizationModule):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """ 
-        wmod = self.getWorkflowModule()  
         textureModule = wmod.forceGetInputFromPort( "texture", None )
         if self.input == None:
             if textureModule <> None:
@@ -118,7 +117,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
             else:
                 print>>sys.stderr, "Error, must provide an input to the LevelSurface module!"
 
-        d = self.getRegisteredDescriptor()
+#        mod, d = self.getRegisteredDescriptor()
         testTexture = True
          
         xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
@@ -206,7 +205,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
            
         self.renderer.AddActor( levelSetActor )
         self.renderer.SetBackground( 0.1, 0.1, 0.2 )
-        self.set3DOutput(wmod=wmod)                                              
+        self.set3DOutput()                                              
                                                 
 
 class NLevelConfigurationWidget( IVModuleConfigurationDialog ):

@@ -72,6 +72,10 @@ class HyperwallManagerSingleton(QtCore.QObject):
                                          dv3d_configuration.hw_displayWidth,
                                          dv3d_configuration.hw_displayHeight )
     
+#    def registerPipeline(self):
+#        buildWin = VistrailsApplication.builderWindow
+#        buildWin.viewManager.open_vistrail(f) 
+        
     def connectSignals(self):
         if not self.connected:
             try:
@@ -93,16 +97,8 @@ class HyperwallManagerSingleton(QtCore.QObject):
            print "  *** ExecuteWorkflow--> cell: %s" % str( moduleId )
            self.server.executePipeline( self.deviceName, vistrailName, versionName, moduleId, dimensions )
         
-    def processInteractionEvent( self, event  ):
-        if self.isServer: 
-            etype = event.type()
-            if etype == QtCore.QEvent.MouseMove:
-                print ' >>----------HyperwallManager--> process Mouse Move Event:  %s '   % str( ( event.x(), event.y(), event.button() ) )
-            elif etype == QtCore.QEvent.MouseButtonPress:
-                print ' >>----------HyperwallManager--> process Mouse ButtonPress Event:  %s '   % str( ( event.x(), event.y(), event.button() ) )
-            elif etype == QtCore.QEvent.MouseButtonRelease:
-                print ' >>----------HyperwallManager--> process Mouse ButtonRelease Event:  %s '   % str( ( event.x(), event.y(), event.button() ) )
-        
+    def processInteractionEvent( self, event, screen_dims  ):
+        if self.isServer: self.server.processInteractionEvent( self.deviceName, event, screen_dims )        
     
 HyperwallManager = HyperwallManagerSingleton()
 

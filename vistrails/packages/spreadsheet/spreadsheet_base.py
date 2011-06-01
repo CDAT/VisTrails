@@ -56,7 +56,7 @@ class StandardSheetReference(object):
         Check to see if the tab is an acceptable type
         
         """
-        return issubclass(StandardWidgetSheetTab, tabWidget.__class__)
+        return issubclass( tabWidget.__class__, StandardWidgetSheetTab )
 
     def clearCandidate(self):
         """ clearCandidate() -> None        

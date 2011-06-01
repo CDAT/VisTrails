@@ -61,8 +61,7 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         Dispatch the vtkRenderer to the actual rendering widget
         """       
         self.sliceOutput = vtk.vtkImageData()
-        wmod = self.getWorkflowModule()  
-        self.colorInputModule = wmod.forceGetInputFromPort( "colors", None )
+        self.colorInputModule = self.wmod.forceGetInputFromPort( "colors", None )
         
         if self.input == None: 
             print>>sys.stderr, "Must supply 'volume' port input to VectorCutPlane"

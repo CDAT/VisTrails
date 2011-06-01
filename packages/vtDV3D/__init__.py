@@ -76,6 +76,7 @@ def initialize(*args, **keywords):
     from VolumeRenderModule import VolumeRenderer
     from WorldMapModule import WorldFrame
     from HyperwallManager import HyperwallManager
+    from vtUtilities import *
 #    from DemoDataModule import DemoData, DemoDataConfigurationWidget
     from DV3DCell import DV3DCell
     from InteractiveConfiguration import LayerConfigurationWidget
@@ -92,6 +93,7 @@ def initialize(*args, **keywords):
     from packages.spreadsheet.basic_widgets import CellLocation
     from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
     import api
+    set_hyperwall_role( configuration.hw_role )
         
     reg = core.modules.module_registry.get_module_registry() 
     vtkAlgorithmOutputType = typeMap('vtkAlgorithmOutput')
@@ -123,7 +125,7 @@ def initialize(*args, **keywords):
     reg.add_module( CDMS_FileReader, configureWidgetType=CDMSDatasetConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_FileReader, "datasets",    [ ( String, 'serializedDatasetMap' ) ], True ) 
     reg.add_input_port( CDMS_FileReader, "datasetId",    [ ( String, 'currentDatasetId' ), ( Integer, 'version' ) ], True ) 
-    reg.add_input_port( CDMS_FileReader, "timeRange",    [ ( Integer, 'startTimeIndex' ), ( Integer, 'endTimeIndex' ) ], True )    
+    reg.add_input_port( CDMS_FileReader, "timeRange",    [ ( Integer, 'startTimeIndex' ), ( Integer, 'endTimeIndex' ), ( Float, 'relativeStartTime' ), ( Float, 'relativeTimeStep' )], True )    
     reg.add_input_port( CDMS_FileReader, "roi",    [ ( Float, 'lon0' ), ( Float, 'lat0' ), ( Float, 'lon1' ), ( Float, 'lat1' ) ], True )    
     reg.add_input_port( CDMS_FileReader, "zscale", [ ( Float, 'value' ) ], optional=True  ) 
     reg.add_output_port( CDMS_FileReader, "dataset", CDMSDataset ) 

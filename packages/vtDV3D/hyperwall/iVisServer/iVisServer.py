@@ -63,7 +63,7 @@ class QiVisServer(QObject):
 
     def newConnection(self):
         while self.server.hasPendingConnections():
-            print "Received Connection"
+            print " ~~~~~~~~~~~~~~~~~~~~~~Received Connection~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
             socket = self.server.nextPendingConnection()
 
             print socket.peerAddress().toString()
@@ -139,7 +139,7 @@ class QiVisServer(QObject):
  #       return ("server", sender, replyTokens)
 
 
-    def processMessage(self, message, socket):
+    def processMessage(self, message, socket=None):
         (sender, tokens) = message
         tokens = tokens.split(",")
         if len(tokens) == 0: return
@@ -323,6 +323,40 @@ class QiVisServer(QObject):
         message = message[0] + "-" + message[1] + "-" + str(len(message[2])) + ":" + message[2]
         for receiver in receivers:
             receiver.write(message)
+
+    def processInteractionEvent( self, deviceName, event, screen_dims  ):
+        etype = event.type()
+        event_type = "none"
+        if   etype == QtCore.QEvent.MouseMove:          event_type = "mouseMove" 
+        elif etype == QtCore.QEvent.MouseButtonPress:   event_type = "singleClick" 
+        elif etype == QtCore.QEvent.MouseButtonRelease: event_type = "mouseRelease" 
+        elif etype == QtCore.QEvent.KeyPress:           event_type = "keyPress" 
+        elif etype == QtCore.QEvent.KeyRelease:         event_type = "keyRelease" 
+        
+        if (etype== QtCore.QEvent.KeyRelease) or (etype== QtCore.QEvent.KeyPress):   
+            key = event.key() 
+            mod = event.modifiers() 
+            if mod:
+               if   ( mod & QtCore.Qt.ShiftModifier    ): mod = "shift" 
+               elif ( mod & QtCore.Qt.ControlModifier  ): mod = "ctrl" 
+               elif ( mod & QtCore.Qt.AltModifier      ): mod = "alt" 
+               else:                               mod = "none"
+            tokens = [ event_type, key, mod ]
+            print ' >>----------iVisServer--> process Key Event:  %s '   % str( ( event_type, key, mod, event.text() ) )
+        else:               
+            x = event.x()
+            y = event.y()
+            xf = '%.4f' % float(x)/screen_dims[0]
+            yf = '%.4f' % float(y)/screen_dims[1]
+            b = event.button() 
+            button = "none"       
+            if b == QtCore.Qt.LeftButton: button = "left"
+            if b == QtCore.Qt.RightButton: button = "right"           
+            tokens = [ event_type, button, xf, yf ]
+            print ' >>----------iVisServer--> process Mouse Event:  %s '   % str( ( event_type, xf, yf, button, screen_dims ) )  
+                      
+        self.devices[deviceName].processInteractionMessage( tokens )
+
             
             
     

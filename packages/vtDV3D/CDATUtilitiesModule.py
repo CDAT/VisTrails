@@ -12,6 +12,7 @@ from core.vistrail.port_spec import PortSpec
 from vtUtilities import *
 from PersistentModule import * 
 from CDATTaskDefinitions import TaskManager
+from CDATTask import deserializeTaskData
 import numpy.ma as ma
 from vtk.util.misc import vtkGetDataRoot
 import cdms2 
@@ -21,8 +22,8 @@ from core.vistrail.port import PortEndPoint
 
 class PM_CDMS_CDATUtilities( PersistentModule ):
 
-    def __init__(self, mid):
-        PersistentModule.__init__( self, mid, createColormap=False )
+    def __init__(self, mid, **args):
+        PersistentModule.__init__( self, mid, createColormap=False, **args)
         self.completedTaskRecs = {}
         self.task = None
         self.updateLabel()
@@ -32,14 +33,15 @@ class PM_CDMS_CDATUtilities( PersistentModule ):
         tsCompletedTasks[ task_key  ] = True
 
     def getTaskCompleted( self, task_key ):
-#        wmod = self.getWorkflowModule()  
-#        if wmod == None: return False
         tsCompletedTasks = self.completedTaskRecs.get( self.iTimestep, {} )
         return tsCompletedTasks.get( task_key, False )
                 
     def updateLabel( self, recreate = False ):
-        controller, module = self.getRegisteredModule()
+        if self.isClient: return
+        module = self.getRegisteredModule()
         if module.has_annotation_with_key('__desc__'):
+            import api
+            controller = api.get_current_controller()
             label = module.get_annotation_by_key('__desc__').value.strip()
             controller.add_annotation( ('__desc__', str(label)), module.id ) 
             if recreate: controller.current_pipeline_view.recreate_module( controller.current_pipeline, module.id )
@@ -47,8 +49,8 @@ class PM_CDMS_CDATUtilities( PersistentModule ):
     def executeTask(self, skipCompletedTasks, **args):
         cdmsDataset = self.getInputValue( "dataset"  ) 
         taskInputData = self.getInputValue( "task"  ) 
-        taskMap =  decodeFromString( getItem( taskInputData ) ) if taskInputData else None   
-        taskData =  taskMap.get( cdmsDataset.id, None ) if taskMap else None
+        taskMap =  deserializeTaskData( getItem( taskInputData ) ) if taskInputData else None   
+        taskData =  taskMap.get( cdmsDataset.getDsetId(), None ) if taskMap else None
         task = None
         if taskData:
             taskName = taskData[0]
@@ -113,13 +115,13 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         self.setupTabs()
 
     def getParameters( self, module ):
-        ( self.variableList, self.datasetId, self.cdmsFile, self.timeRange ) = DV3DConfigurationWidget.getVariableList( module.id )
+        ( self.variableList, self.datasetId, self.timeRange ) = DV3DConfigurationWidget.getVariableList( module.id )
         taskData = getFunctionParmStrValues( module, "task" )
         if taskData: self.processTaskData( getItem( taskData ) )
 #        if taskData: self.serializedTaskData = taskData[0]          
 
     def processTaskData( self, taskData ):
-        taskMapInput = decodeFromString( taskData ) 
+        taskMapInput = deserializeTaskData( taskData ) 
         if taskMapInput:
             self.taskMap = taskMapInput         
             taskRecord = self.taskMap.get( self.datasetId, None )
@@ -128,13 +130,13 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
                 inputs = taskRecord[1].split(';')
                 self.inputMap = {}
                 for input in inputs:
-                    inputData = input.split(',')
+                    inputData = input.split('+')
                     if len(inputData) > 1:
                         self.inputMap[ inputData[0] ] = ( inputData[1], int(inputData[2]) )
                 outputs = taskRecord[2].split(';')
                 self.outputMap = {}
                 for output in outputs:
-                    outputData = output.split(',')
+                    outputData = output.split('+')
                     if len(outputData) > 1:
                         self.outputMap[ outputData[0] ] = outputData[1]
         
@@ -222,16 +224,18 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         if self.outputNames <> None:
 #            print " updateOutputs: arg = %s " % str( arg )
             nameList = []
+            dsid = None
             for varCombo in self.varCombos.values():
                 comboText = varCombo.currentText()
                 varData = str( comboText ).split('(')
-                varName = varData[0].strip()
-                nameList.append( varName )
+                varNameComp = varData[0].strip().split('*')
+                if dsid == None: dsid = varNameComp[0]
+                nameList.append( varNameComp[1] )
             taskName = str( self.taskCombo.currentText() )
             nameList.append( taskName )
-            nameListText = '.'.join( nameList )            
+            nameListText = '-'.join( nameList )            
             for output in self.outputNames:
-                outputValue = "%s.%s" % ( nameListText, output )
+                outputValue = "%s*%s.%s" % ( dsid, nameListText, output )
                 outputEdit = self.outputNames[ output ]
                 outputEdit.setText( outputValue ) 
         self.stateChanged()               
@@ -239,7 +243,7 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
     def getSerializedTaskData(self, taskName ):  
         serializedInputs, serializedOutputs = self.getSerializedIOData( taskName ) 
         self.taskMap[ self.datasetId ] = [ taskName, serializedInputs, serializedOutputs ]
-        return encodeToString( self.taskMap )
+        return '|'.join( [ "&".join( [ task_items[0], task_items[1][0], task_items[1][1], task_items[1][2] ] ) for task_items in self.taskMap.items() ] )
         
     def getSerializedIOData( self, taskName ):
         ioData = []
@@ -251,14 +255,14 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
                 varType = str(varData[1]).strip()
                 ndim = 3 if ( varType[0] == 'v' ) else 2
                 varDimMap[ input ] = ndim
-                ioData.append( '%s,%s,%d' % ( str(input), str(varData[0]).strip(), ndim ) )
+                ioData.append( '%s+%s+%d' % ( str(input), str(varData[0]).strip(), ndim ) )
         serializedInputs = ';'.join( ioData )
         ioData = []
         taskClass = TaskManager.getTask( taskName )
         for output in self.outputNames:
             var = self.outputNames[output].text() 
             ndim = taskClass.getOutputDimensionality( output, varDimMap )
-            if ndim: ioData.append( '%s,%s,%d' % ( str(output), str(var), ndim ) )
+            if ndim: ioData.append( '%s+%s+%d' % ( str(output), str(var), ndim ) )
         serializedOutputs = ';'.join( ioData )
         return serializedInputs, serializedOutputs 
                           

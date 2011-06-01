@@ -185,9 +185,6 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #          (spacing[0] + spacing[1] + spacing[2]) / 3.0;
 #        cam->SetClippingRange(
 #          range - avg_spacing * 3.0, range + avg_spacing * 3.0);       
-#        import api
-#        versions, tags = api.get_available_versions()
-#        print " --- Versions: %s " % str( versions )
 #        self.setActiveScalars()
 #        if self.scalarRange == None:
 #            pointData = self.input.GetPointData()

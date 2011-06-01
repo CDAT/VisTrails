@@ -445,7 +445,7 @@ class VistrailsApplicationSingleton(VistrailsApplicationInterface,
         # code for single instance of the application
         # based on the C++ solution availabe at
         # http://wiki.qtcentre.org/index.php?title=SingleApplication
-        if QtCore.QT_VERSION >= 0x40400:
+        if QtCore.QT_VERSION >= 0x60400:
             self.timeout = 10000
             self._unique_key = "vistrails-single-instance-check-%s"%getpass.getuser()
             self.shared_memory = QtCore.QSharedMemory(self._unique_key)
@@ -690,7 +690,7 @@ parameters from other instances")
 
     def finishSession(self):
         self.terminating = True
-        if QtCore.QT_VERSION >= 0x40400:
+        if QtCore.QT_VERSION >= 0x60400:
             self.shared_memory.detach()
             if self.local_server:
                 self.local_server.close()
@@ -725,7 +725,7 @@ parameters from other instances")
         return self._is_running
 
     def message_received(self):
-        if QtCore.QT_VERSION >= 0x40400:
+        if QtCore.QT_VERSION >= 0x60400:
             local_socket = self.local_server.nextPendingConnection()
             if not local_socket.waitForReadyRead(self.timeout):
                 debug.critical("Read error: %s" %
@@ -752,7 +752,7 @@ parameters from other instances")
             local_socket.disconnectFromServer()
     
     def send_message(self, message):
-        if QtCore.QT_VERSION >= 0x40400:
+        if QtCore.QT_VERSION >= 0x60400:
             if not self._is_running:
                 return False
             local_socket = QtNetwork.QLocalSocket(self)

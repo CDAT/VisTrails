@@ -34,7 +34,6 @@ class PM_Gradient(PersistentVisualizationModule):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """ 
-        wmod = self.getWorkflowModule()  
         print " Gradient.execute, input Arrays: "
         pointData = self.input.GetPointData()
         for iA in range( pointData.GetNumberOfArrays() ):
@@ -48,7 +47,7 @@ class PM_Gradient(PersistentVisualizationModule):
         self.inputModule.inputToAlgorithm( self.gradient )
         if computeVorticity: self.gradient.SetResultArrayName('vorticity')     
         
-        self.set3DOutput( output=self.gradient.GetOutput(), wmod=wmod )
+        self.set3DOutput( output=self.gradient.GetOutput() )
 
 from WorkflowModule import WorkflowModule
 

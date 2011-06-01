@@ -23,8 +23,6 @@ class ModuleStoreDatabase:
     
     @staticmethod
     def forceGetModule( mid, default_instance ):
-        import api
-#        print " ---------------------------->> Get Module, id=%d, ctrl=%d, class=%s, db=%d, exists=%s" % ( mid, id( api.get_current_controller() ), str(default_instance.__class__.__name__) if default_instance else 'none', id(ModuleStoreDatabase.moduleStoreDatabase), str(mid in ModuleStoreDatabase.moduleStoreDatabase) )
         db = ModuleStoreDatabase.getDatabase()        
         return db.setdefault( mid, default_instance )
     

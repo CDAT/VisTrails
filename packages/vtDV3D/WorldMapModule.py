@@ -45,8 +45,7 @@ class PM_WorldFrame(PersistentVisualizationModule):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """  
-        wmod = self.getWorkflowModule() 
-        controller, module = self.getRegisteredModule()
+        module = self.getRegisteredModule()
         world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None
         opacity =  wmod.forceGetInputFromPort( "opacity",   0.4  )  if wmod else 0.4  
         map_border_size =  wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
@@ -96,53 +95,6 @@ class PM_WorldFrame(PersistentVisualizationModule):
         self.baseMapActor.SetOpacity( opacity )
 #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
         print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
-        self.baseMapActor.SetPosition( self.x0, self.y0, 0.1 )
-        self.baseMapActor.SetInput( baseImage )
-        
-        self.renderer.AddActor( self.baseMapActor )
-        
-                              
-    def buildPipeline1(self):
-        """ execute() -> None
-        Dispatch the vtkRenderer to the actual rendering widget
-        """  
-        wmod = self.getWorkflowModule()        
-        world_map = wmod.forceGetInputFromPort( "world_map", None )  
-        opacity   = wmod.forceGetInputFromPort( "opacity",   0.4  ) 
-        self.y0 = -90.0 
-        if world_map == None:
-            self.map_file = defaultMapFile
-            self.map_cut = defaultMapCut
-        else:
-            self.map_file = world_map[0].name
-            self.map_cut = world_map[1]
-        
-        self.world_cut = wmod.forceGetInputFromPort( "world_cut", -1 )  
-      
-        if self.world_cut == -1: 
-            if  (self.roi <> None):               
-                self.ComputeCornerPosition()
-                self.world_cut = NormalizeLon( self.x0 )
-            else:
-                self.world_cut = self.map_cut
-        
-        self.imageInfo = vtk.vtkImageChangeInformation()        
-        image_reader = vtk.vtkJPEGReader()      
-        image_reader.SetFileName(  self.map_file )
-        baseImage = image_reader.GetOutput()                
-        baseImage = self.RollMap( baseImage ) 
-        dims = baseImage.GetDimensions()
-        scale = [ 360.0/dims[0], 180.0/dims[1], 1 ]
-        dbounds = [ 0.0 for i in range(6) ]
-#        printArgs( " baseMap: ", extent=baseImage.GetExtent(), spacing=baseImage.GetSpacing(), origin=baseImage.GetOrigin() )        
-                  
-        self.baseMapActor = vtk.vtkImageActor()
-        self.baseMapActor.GetDisplayBounds(dbounds)
-        self.baseMapActor.SetOrigin( 0., 0, 0 )
-        self.baseMapActor.SetScale( scale )
-        self.baseMapActor.SetOrientation( 0., 0, 0 )
-        self.baseMapActor.SetOpacity( opacity )
-#        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
         self.baseMapActor.SetPosition( self.x0, self.y0, 0.1 )
         self.baseMapActor.SetInput( baseImage )
         

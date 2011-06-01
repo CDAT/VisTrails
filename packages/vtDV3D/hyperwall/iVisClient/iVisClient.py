@@ -27,13 +27,13 @@ class QiVisClient(QtCore.QObject):
 
         self.buffer = ""
         self.pipelineQueue = []
+        current_pipeline = None
 
         self.deviceName = name
 
         self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         self.spreadsheetWindow.tabController.clearTabs()
-        self.currentTab = DisplayWallSheetTab(self.spreadsheetWindow.tabController,
-                                              width, height, displayWidth, displayHeight)
+        self.currentTab = DisplayWallSheetTab(self.spreadsheetWindow.tabController, width, height, displayWidth, displayHeight)
         self.spreadsheetWindow.tabController.addTabWidget(self.currentTab, self.deviceName)
 
         size = self.currentTab.getDimension()
@@ -66,7 +66,7 @@ class QiVisClient(QtCore.QObject):
         """connected() -> None
         this method is called when self.socket emits the connected() signal. It means that a succesful connection
         has been established to the server"""
-        print "Connected to server"
+        print "   ****** Connected to server!"
         sender = "displayClient"
         receiver = "server"
         tokens = "dimensions," + self.deviceName + "," + str(self.dimensions[0]) + "," + str(self.dimensions[1]) + "," + str(self.dimensions[2]) + "," + str(self.dimensions[3])
@@ -116,10 +116,10 @@ class QiVisClient(QtCore.QObject):
         to do this, we must send three events: the first one disables this client's method that
         would send events to the server. The second is the actual event we want processed and the third
         reenables event sending to the server. This must be done to avoid a deadlock"""
-        def decodeMouseEvent(event):
+        def decodeMouseEvent( event, screenDims ):
             """decodeMouseEvent(event: String) -> QtGui.QMouseEvent
             this method receives a string and returns the corresponding mouse event"""
-            pos = (int(event[2]), int(event[3]))
+            pos = ( int( float( event[2] ) * screenDims[0] ), int( float( event[3] ) * screenDims[1] ) )
             if event[1] == "left":
                 button = QtCore.Qt.LeftButton
             elif event[1] == "right":
@@ -135,14 +135,41 @@ class QiVisClient(QtCore.QObject):
 
             button = QtCore.Qt.MouseButton(button)
             keyboard = QtCore.Qt.NoModifier
+            print " Client process %s %s event: pos = %s " % ( button, event[0], str( pos ) )
 
             return QtGui.QMouseEvent(t, QtCore.QPoint(pos[0], pos[1]), button, button, keyboard)
+
+        def decodeKeyEvent(event):
+            """decodeKeyEvent(event: String) -> QtGui.QKeyEvent
+            this method receives a string and returns the corresponding Key event"""
+            type = None
+            if event[0] == "keyPress":
+                type = QtCore.QEvent.KeyPress
+            elif event[0] == "keyRelease":
+                type = QtCore.QEvent.KeyRelease
+                
+            key = int( event[1] )
+            
+            m = QtCore.Qt.NoModifier
+            if event[2] == "shift": 
+                m = QtCore.Qt.ShiftModifier
+            elif event[2] == "ctrl": 
+                m = QtCore.Qt.ControlModifier
+            elif event[2] == "alt": 
+                m = QtCore.Qt.AltModifier
+            print " Client process key event: %s " % str( event )
+
+            return QtGui.QKeyEvent( type, key, QtCore.Qt.KeyboardModifiers(m) )
 
         app = QtCore.QCoreApplication.instance()
 
         cell = (int(terms[0]), int(terms[1]))
         if terms[2] in ["singleClick", "mouseMove", "mouseRelease"]:
-            newEvent = decodeMouseEvent(terms[2:])
+            screenRect = self.currentTab.screenMap[ (cell[0]-1, cell[1]-1) ]
+            screenDims = ( screenRect.width(), screenRect.height() )
+            newEvent = decodeMouseEvent( terms[2:], screenDims )
+        elif terms[2] in ["keyPress", "keyRelease" ]:
+            newEvent = decodeKeyEvent(terms[2:])
 
         if self.currentTab:
              (rCount, cCount) = self.currentTab.getDimension()
@@ -157,21 +184,26 @@ class QiVisClient(QtCore.QObject):
         self.pipelineQueue.pop()
         self.executePipeline(pipeline)
         self.emit(QtCore.SIGNAL("executeNextPipeline()"))
+        
+    def getCurrentPipeline(self):
+        return self.current_pipeline
 
     def executePipeline(self,pipeline):
         from core.db.io import unserialize
         from core.vistrail.pipeline import Pipeline
         from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
         from core.utils import DummyView
+        import api
 
         pip = unserialize(str(pipeline), Pipeline)
         print "Executing Workflow"
+        self.current_pipeline = pip
         interpreter = getDefaultInterpreter()
-        kwargs = {"locator":None,
-                  "current_version":None,
-                  "view":DummyView(),
-                  "aliases":{} }
-        interpreter.execute(pip, **kwargs)
+        kwargs = { "locator":           None,
+                   "current_version":   None,
+                   "view":              DummyView(),
+                   "aliases":           {} }
+        interpreter.execute( pip, **kwargs )
         print "Finished Executing Pipeline"
 
     def processMessage(self, message, socket):
@@ -180,13 +212,14 @@ class QiVisClient(QtCore.QObject):
         if len(tokens) == 0: return
 
         if tokens[0] == "pipeline":
+#            print " $$$$$$$$$$$ pipeline message: %s " % str(tokens)
             ### we must execute a pipeline
 #            return ("", "", "")
             if len(tokens[2:]) != 0:
                 for t in tokens[2:]:
                     tokens[1] += t + ","
                 tokens[1] = tokens[1][:-1]
-
+            
             self.executePipeline(tokens[1])
         elif tokens[0] == "interaction":
             self.processEvent(tokens[1:])

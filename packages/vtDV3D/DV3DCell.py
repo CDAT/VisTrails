@@ -3,8 +3,10 @@ Created on Feb 14, 2011
 
 @author: tpmaxwel
 '''
-
+from PyQt4 import QtCore, QtGui
+from gui.qt import qt_super
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
+from packages.spreadsheet.spreadsheet_base import StandardSheetReference, StandardSingleCellSheetReference
 from packages.vtk.vtkcell import QVTKWidget
 from PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
 from InteractiveConfiguration import *
@@ -32,6 +34,23 @@ def parse_cell_address( address ):
             return get_coords_from_cell_address( address[1:], address[0] )
         else:
             return get_coords_from_cell_address( address[:-1], address[-1] )
+
+class QVTKServerWidget(QVTKWidget):
+    """
+    QVTKWidget with interaction observers
+    
+    """
+    def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
+        QVTKWidget.__init__(self, parent, f )
+
+    def event(self, e):  
+        dims = [ self.width(), self.height() ]   
+        if   e.type() == QtCore.QEvent.KeyPress:           HyperwallManager.processInteractionEvent(e,dims) 
+        elif e.type() == QtCore.QEvent.MouseButtonPress:   HyperwallManager.processInteractionEvent(e,dims) 
+        elif e.type() == QtCore.QEvent.MouseMove:          HyperwallManager.processInteractionEvent(e,dims) 
+        elif e.type() == QtCore.QEvent.MouseButtonRelease: HyperwallManager.processInteractionEvent(e,dims) 
+        elif e.type() == QtCore.QEvent.KeyRelease:         HyperwallManager.processInteractionEvent(e,dims)         
+        return qt_super(QVTKServerWidget, self).event(e)
         
 class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     """
@@ -42,6 +61,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def __init__( self, mid, **args ):
         SpreadsheetCell.__init__(self)
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, **args )
+        self.addConfigurableFunction( 'resetCamera', None, 'A', open=self.resetCamera )
         self.allowMultipleInputs = True
         self.renderers = []
         self.cellWidget = None
@@ -62,10 +82,40 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 #        return self.outputPorts[port]
 
 
+#    def processInteractionEvent(self, istyle, name):
+#        iren = self.renWin.GetInteractor()
+#        pos = iren.GetLastEventPosition ()
+#        key = iren.GetKeyCode ()
+#        rp = iren.GetRepeatCount()
+#        keysym = iren.GetKeySym()
+#        ctrl = iren.GetControlKey ()
+#        shift = iren.GetShiftKey ()
+##        iren.SetEventInformation( pos[0], pos[1], ctrl, shift, key, rp, keysym )
+#        if name == 'MouseMoveEvent':
+#            iren.MouseMoveEvent()
+#        if name ==  'LeftButtonReleaseEvent': 
+#            iren.LeftButtonReleaseEvent()      
+#        if name ==  'CharEvent':
+#            iren.CharEvent()
+#        if name ==  'KeyReleaseEvent':
+#            iren.KeyReleaseEvent()
+#        if name ==  'LeftButtonPressEvent':
+#            iren.LeftButtonPressEvent()
+#        if name ==  'RightButtonReleaseEvent':
+#            iren.RightButtonReleaseEvent()
+#        if name ==  'RightButtonPressEvent':
+#            iren.RightButtonPressEvent()           
+#
+#        print " processInteractionEvent: %s, pos = %s, key = %s " % ( name, str(pos), str(key) )
+
     def setCellLocation( self, moduleId ):
         cellLocation = CellLocation()
         cellLocation.rowSpan = 1
         cellLocation.colSpan = 1
+        if self.isClient:            
+            cellLocation.sheetReference = StandardSheetReference()
+            cellLocation.sheetReference.sheetName = HyperwallManager.deviceName
+
         cell_coordinates = None
             
         address = self.getInputValue( "cell_location", None )
@@ -74,6 +124,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             cell_coordinates = parse_cell_address( address )
         else:
             cell_coordinates = HyperwallManager.getCellCoordinatesForModule( moduleId )
+            if cell_coordinates == None: return None
         cellLocation.col = cell_coordinates[0]
         cellLocation.row = cell_coordinates[1]
          
@@ -82,11 +133,10 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         return [ cellLocation.col, cellLocation.row, 1, 1 ]
 
     def updateHyperwall(self):
-        import api
-        controller = api.get_current_controller() 
-        dimensions = self.setCellLocation( self.moduleID )        
-        HyperwallManager.addCell( self.moduleID, controller.name, str(controller.current_version), dimensions )
-        HyperwallManager.executeCurrentWorkflow( self.moduleID )
+        dimensions = self.setCellLocation( self.moduleID )  
+        if dimensions:      
+            HyperwallManager.addCell( self.moduleID, self.datasetId, str(0), dimensions )
+            HyperwallManager.executeCurrentWorkflow( self.moduleID )
 
     def updateModule(self):
         self.buildRendering()
@@ -252,8 +302,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.buildWidget()
    
     def buildRendering(self):
-#        wmod = self.getWorkflowModule() 
-        controller, module = self.getRegisteredModule()
+        module = self.getRegisteredModule()
         self.enableBasemap = self.getInputValue( "enable_basemap", True )
 
 #        print " DV3DCell compute, id = %s, cachable: %s " % ( str( id(self) ), str( self.is_cacheable() ) )
@@ -323,14 +372,16 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
             self.baseMapActor.SetPosition( self.x0, self.y0, 0.1 )
             self.baseMapActor.SetInput( baseImage )
-            map_center = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]
+            self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]
             
             self.renderer.AddActor( self.baseMapActor )
+            self.resetCamera()
 
+    def resetCamera(self):
             aCamera = self.renderer.GetActiveCamera()
             aCamera.SetViewUp( 0, 0, 1 )
-            aCamera.SetPosition( 0.0, 0.0, ( map_center[0] + map_center[1] ) / 4.0 )
-            aCamera.SetFocalPoint( map_center[0], map_center[1], 0.0 )
+            aCamera.SetPosition( 0.0, 0.0, ( self.mapCenter[0] + self.mapCenter[1] ) / 4.0 )
+            aCamera.SetFocalPoint( self.mapCenter[0], self.mapCenter[1], 0.0 )
             aCamera.ComputeViewPlaneNormal()
             self.renderer.ResetCamera()                
         
@@ -343,12 +394,26 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 iStyle = None
                 picker = None
                 
-                print " Build widget: location = %s " % str( [ self.location.col, self.location.row ] )  
-                self.cellWidget = self.displayAndWait(QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker))
+                if self.isServer:
+                    self.cellWidget = self.displayAndWait( QVTKServerWidget, (self.renderers, renderView, iHandlers, iStyle, picker) )
+                elif self.isClient:
+                    self.cellWidget = self.displayAndWait( QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker) )
+                else:
+                    self.cellWidget = self.displayAndWait( QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker) )
+                
                 self.renWin = self.cellWidget.GetRenderWindow()
-                
-            else:
-                
+#                if self.isServer:
+#                    iren = self.renWin.GetInteractor()
+#                    if iren:
+#                        style = iren.GetInteractorStyle()                                   
+#                        style.AddObserver( 'MouseMoveEvent', self.processInteractionEvent )
+#                        style.AddObserver( 'LeftButtonReleaseEvent', self.processInteractionEvent )       
+#                        style.AddObserver( 'CharEvent', self.processInteractionEvent )
+#                        style.AddObserver( 'KeyReleaseEvent', self.processInteractionEvent )
+#                        style.AddObserver( 'LeftButtonPressEvent', self.processInteractionEvent )
+#                        style.AddObserver( 'RightButtonReleaseEvent', self.processInteractionEvent )
+#                        style.AddObserver( 'RightButtonPressEvent', self.processInteractionEvent )            
+            else:               
                 print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
  
 
