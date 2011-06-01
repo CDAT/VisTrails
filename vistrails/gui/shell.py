@@ -108,6 +108,7 @@ class QShellDialog(QToolWindow, QToolWindowInterface):
         Hides the dialog instead of closing it, so the session continues open.
 
         """
+        self.shell.hide()
         self.hide()
 
     def newSession(self):
@@ -774,16 +775,16 @@ class QShell(QtGui.QTextEdit):
 #            self.setTextCursor(cursor)
         return
 
-#     def suspend(self):
-#         """suspend() -> None
-#         Called when hiding the parent window in order to recover the previous
-#         state.
+    def hide(self):
+        """suspend() -> None
+        Called when hiding the parent window in order to recover the previous
+        state.
 
-#         """
-#         #recovering the state
-#         sys.stdout   = self.prev_stdout
-#         sys.stderr   = self.prev_stderr
-#         sys.stdin    = self.prev_stdin
+        """
+        #recovering the state
+        sys.stdout   = sys.__stdout__
+        sys.stderr   = sys.__stderr__
+        sys.stdin    = sys.__stdin__
 
     def show(self):
         """show() -> None
@@ -791,11 +792,6 @@ class QShell(QtGui.QTextEdit):
         output.
         
         """
-#         # storing current state
-#         self.prev_stdout = sys.stdout
-#         self.prev_stdin = sys.stdin
-#         self.prev_stderr = sys.stderr
-
         # capture all interactive input/output
         sys.stdout   = self
         sys.stderr   = self
