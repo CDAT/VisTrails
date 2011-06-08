@@ -14,6 +14,8 @@ from ColorMapManager import ColorMapManager
 from ModuleStore import ModuleStoreDatabase
 from db.domain import DBModule, DBAnnotation
 from vtUtilities import *
+import cdms2, cdtime
+ReferenceTimeUnits = "days since 1900-1-1"
 
 moduleInstances = {}
 
@@ -124,10 +126,10 @@ class PersistentModule( QObject ):
         self.primaryMetaDataPort = self.primaryInputPort
         self.documentation = None
         self.parameterCache = {}
-        self.iTimestep = 0
+        self.timeValue = cdtime.reltime( 0.0, ReferenceTimeUnits ) 
         if self.createColormap:
             self.addConfigurableGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
-        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', setValue=self.setTimestep, getValue=self.getTimestep )
+        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', setValue=self.setTimeValue, getValue=self.getTimeValue )
 #        self.addConfigurableGuiFunction( 'layer', LayerConfigurationDialog, 'l', setValue=self.setLayer, getValue=self.getLayer )
 
     def getRangeBounds(self): 
@@ -227,7 +229,7 @@ class PersistentModule( QObject ):
         self.updateHyperwall()
         self.initializeInputs( **args )     
         if self.input or self.inputModuleList or not self.requiresPrimaryInput:
-            self.execute()
+            self.execute( **args )
             self.initializeConfiguration()
         elif self.requiresPrimaryInput:
             print>>sys.stderr, " Error, no input to module %s " % ( self.__class__.__name__ )
@@ -236,10 +238,11 @@ class PersistentModule( QObject ):
     def updateHyperwall(self):
         pass
 
-    def dvUpdate(self):
+    def dvUpdate(self, **args):
 #        self.markTime( ' Update %s' % self.__class__.__name__ ) 
-        self.initializeInputs( anim=True )     
-        self.execute()
+        args['anim'] = True
+        self.initializeInputs( **args )     
+        self.execute( **args )
  
     def getRangeBounds(self): 
         return self.rangeBounds
@@ -249,7 +252,7 @@ class PersistentModule( QObject ):
 
     def getParameterDisplay( self, parmName, parmValue ):
         if parmName == self.timeStepName:
-            return str( self.iTimestep ), 1
+            return str( self.timeValue.tocomp() ), 1
         return None, 1
           
     def getPrimaryInput( self, **args ):
@@ -406,7 +409,9 @@ class PersistentModule( QObject ):
                 self.newLayerConfiguration = True
                 self.datasetId = dsetId
                 self.addAnnotation( "datasetId", self.datasetId )
-                           
+            
+            tval = metadata.get( 'timeValue', 0.0 )
+            self.timeValue = cdtime.reltime( float( tval ), ReferenceTimeUnits )               
             dtype =  metadata.get( 'datatype', None )
             scalars =  metadata.get( 'scalars', None )
             self.rangeBounds = getRangeBounds( dtype )
@@ -475,14 +480,17 @@ class PersistentModule( QObject ):
         if  self.inputModule <> None: 
             self.input =  self.inputModule.getOutput() 
 #            print " --- %s:initializeInputs---> # Arrays = %d " % ( self.__class__.__name__,  ( self.input.GetFieldData().GetNumberOfArrays() if self.input else -1 ) )
-            if not isAnimation:
+            
+            if isAnimation:
+                self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ReferenceTimeUnits )
+            else:
                 self.updateMetadata()  
                 self.initializeLayers()
 #            self.setActiveScalars()
             
         elif ( self.fieldData == None ): 
             self.initializeMetadata()
-
+            
     def getDataValue( self, image_value):
         if not self.scalarRange: 
             raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
@@ -652,10 +660,8 @@ class PersistentModule( QObject ):
         pipeline = self.getCurentPipeline()
         return ( self.moduleID in pipeline.modules )
 
-    def updateAnimation( self, timeIndex, textDisplay=None ):
-        self.setTimestep( timeIndex )
-        self.dvUpdate()
-#        self.parmUpdating[ self.timeStepName ] = False 
+    def updateAnimation( self, relTimeValue, textDisplay=None ):
+        self.dvUpdate( timeValue=relTimeValue )
         if textDisplay <> None:  self.updateTextDisplay( textDisplay )
                
     def updateConfigurationObserver( self, parameter_name, new_parameter_value, *args ):
@@ -782,21 +788,7 @@ class PersistentModule( QObject ):
 #            print "Error updating parameter %s on module %s: %s" % ( parameter_name, self.__class__.__name__, str(err) )
 #            pass 
 #        return controller
-    
-#    def updateDatasetId( self ): 
-#        import api
-#        controller = api.get_current_controller()
-#        moduleId = self.moduleID
-#        datasetId = None
-#        while moduleId <> None:
-#            moduleId, portName = getConnectedModuleId( controller, moduleId, 'dataset', True )
-#            if moduleId <> None:
-#                module = controller.current_pipeline.modules[ moduleId ]
-#                datasetIdInput = getFunctionParmStrValues( module, "datasetId" )
-#                if datasetIdInput:
-#                    self.datasetId = getItem( datasetIdInput )
-#                    return
-    
+        
     def getParameterId( self, parmName = None ):
         parmIdList = []
         if not self.datasetId: self.datasetId = self.getAnnotation( 'datasetId' )
@@ -938,12 +930,12 @@ class PersistentModule( QObject ):
     def getModuleParameters( self ):
         return []
 
-    def setTimestep( self, data ):
-        self.iTimestep = getItem( data )
+    def setTimeValue( self, relTimeValue ):
+        self.timeValue = cdtime.reltime( relTimeValue, ReferenceTimeUnits )
         self.onNewTimestep()
             
-    def getTimestep( self ):
-        return self.iTimestep
+    def getTimeValue( self ):
+        return self.timeValue.value
 
     def onNewTimestep(self):
         pass                                              
@@ -1009,7 +1001,7 @@ class PersistentVisualizationModule( PersistentModule ):
     def isBuilt(self):
         return self.pipelineBuilt
 
-    def execute(self):
+    def execute(self, **args ):
         initConfig = False
         if not self.isBuilt():
             if self.ndims == 3: self.initializeRendering()

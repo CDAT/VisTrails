@@ -15,7 +15,7 @@ from CDATTaskDefinitions import TaskManager
 from CDATTask import deserializeTaskData
 import numpy.ma as ma
 from vtk.util.misc import vtkGetDataRoot
-import cdms2 
+import cdms2, cdtime 
 from PyQt4 import QtCore, QtGui
 from core.modules.module_registry import get_module_registry
 from core.vistrail.port import PortEndPoint
@@ -29,11 +29,11 @@ class PM_CDMS_CDATUtilities( PersistentModule ):
         self.updateLabel()
         
     def setTaskCompleted( self, task_key ):
-        tsCompletedTasks = self.completedTaskRecs.setdefault( self.iTimestep, {} )
+        tsCompletedTasks = self.completedTaskRecs.setdefault( self.timeValue.value, {} )
         tsCompletedTasks[ task_key  ] = True
 
     def getTaskCompleted( self, task_key ):
-        tsCompletedTasks = self.completedTaskRecs.get( self.iTimestep, {} )
+        tsCompletedTasks = self.completedTaskRecs.get( self.timeValue.value, {} )
         return tsCompletedTasks.get( task_key, False )
                 
     def updateLabel( self, recreate = False ):
@@ -46,8 +46,10 @@ class PM_CDMS_CDATUtilities( PersistentModule ):
             controller.add_annotation( ('__desc__', str(label)), module.id ) 
             if recreate: controller.current_pipeline_view.recreate_module( controller.current_pipeline, module.id )
             
-    def executeTask(self, skipCompletedTasks, **args):
+    def executeTask( self, skipCompletedTasks, **args ):
         cdmsDataset = self.getInputValue( "dataset"  ) 
+        tValue = args.get( 'timeValue', cdmsDataset.timeRange[2] )
+        self.timeValue = cdtime.reltime( float( tValue ), ReferenceTimeUnits )
         taskInputData = self.getInputValue( "task"  ) 
         taskMap =  deserializeTaskData( getItem( taskInputData ) ) if taskInputData else None   
         taskData =  taskMap.get( cdmsDataset.getDsetId(), None ) if taskMap else None
@@ -60,7 +62,7 @@ class PM_CDMS_CDATUtilities( PersistentModule ):
                     task = taskClass( cdmsDataset )
                     task_key = task.getInputMap( self )
                     if ( skipCompletedTasks and self.getTaskCompleted( task_key ) ):   print " Skipping completed task: %s " % task_key
-                    else:  task.compute( self.iTimestep, **args )
+                    else:  task.compute( self.timeValue )
                     self.setTaskCompleted( task_key )
         if task == None:
             print>>sys.stderr, "Error, no task defined in CDATUtilities module"  
@@ -101,7 +103,9 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         self.taskMap = {}
         self.inputMap = None
         self.outputMap = {}
+        self.gridMap = {}
         self.timeRange = None
+        self.grids = None
         self.datasetId = None
         self.inputTabIndex = -1
         self.outputTabIndex = -1
@@ -115,7 +119,7 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         self.setupTabs()
 
     def getParameters( self, module ):
-        ( self.variableList, self.datasetId, self.timeRange ) = DV3DConfigurationWidget.getVariableList( module.id )
+        ( self.variableList, self.datasetId, self.timeRange, self.grids ) = DV3DConfigurationWidget.getVariableList( module.id )
         taskData = getFunctionParmStrValues( module, "task" )
         if taskData: self.processTaskData( getItem( taskData ) )
 #        if taskData: self.serializedTaskData = taskData[0]          
@@ -138,7 +142,9 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
                 for output in outputs:
                     outputData = output.split('+')
                     if len(outputData) > 1:
-                        self.outputMap[ outputData[0] ] = outputData[1]
+                        varNameData =  outputData[1].split('*')
+                        self.outputMap[ outputData[0] ] = varNameData[-1]
+                        self.gridMap[ outputData[0] ] = outputData[3] if (len( outputData ) > 3) else None
         
     def buildTaskList( self ):
         taskList = TaskManager.getTaskList()
@@ -200,8 +206,10 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
             outputs_layout.setMargin(10)
             outputs_layout.setSpacing(10)
             self.outputNames = {}
+            self.gridCombos = {}
             for output in taskClass.outputs:
                 output_selection_layout = QHBoxLayout()
+                
                 output_selection_label = QLabel( "%s:" % str(output) )
                 output_selection_layout.addWidget( output_selection_label ) 
         
@@ -211,11 +219,33 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
                 self.outputNames[output] = outputEdit
                 outputs_layout.addLayout(output_selection_layout)
                 outputValue = self.outputMap.get( output, None )
-                if not outputValue:
-                    outputValue = "%s.%s.%s" % ( inputVar, taskName, output ) if inputVar else "%s.%s" % ( taskName, output )
-                    self.outputMap[output] = outputValue
-                outputEdit.setText( outputValue )
-                self.connect( outputEdit, SIGNAL("editingFinished()"), self.stateChanged ) 
+                if inputVar:
+                    if not outputValue:
+                        inputVarData = inputVar.split('*') 
+                        outputValue = "%s.%s.%s" % ( inputVarData[-1], taskName, output ) if inputVar else "%s.%s" % ( taskName, output )
+                        self.outputMap[output] = outputValue
+                    outputEdit.setText( outputValue )
+                self.connect( outputEdit, SIGNAL("editingFinished()"), self.stateChanged )
+                
+#                grid_selection_layout = QHBoxLayout()
+#                grid_selection_label = QLabel( "%s grid:" % str(output) )
+#                grid_selection_layout.addWidget( grid_selection_label ) 
+#
+#                gridCombo =  QComboBox ( self.parent() )
+#                self.gridCombos[ output ] = gridCombo
+#                grid_selection_label.setBuddy( gridCombo )
+#                gridCombo.setMaximumHeight( 30 )
+#                grid_selection_layout.addWidget( gridCombo  )
+#                if self.grids: 
+#                    for grid in self.grids:  gridCombo.addItem( grid )
+#                gridValue = self.gridMap.get( output, None )
+#                if gridValue:
+#                    iSelection = gridCombo.findText( gridValue )
+#                    gridCombo.setCurrentIndex( iSelection )
+#                else: self.gridMap[ output ] = str( gridCombo.currentText() )   
+#                self.connect( gridCombo, SIGNAL("currentIndexChanged(QString)"), self.stateChanged )               
+#                outputs_layout.addLayout(grid_selection_layout)
+ 
             self.stateChanged()
         else:
             print>>sys.stderr, "Error, class undefined for task %s" % taskName
@@ -224,18 +254,16 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         if self.outputNames <> None:
 #            print " updateOutputs: arg = %s " % str( arg )
             nameList = []
-            dsid = None
             for varCombo in self.varCombos.values():
                 comboText = varCombo.currentText()
                 varData = str( comboText ).split('(')
                 varNameComp = varData[0].strip().split('*')
-                if dsid == None: dsid = varNameComp[0]
                 nameList.append( varNameComp[1] )
             taskName = str( self.taskCombo.currentText() )
             nameList.append( taskName )
             nameListText = '-'.join( nameList )            
             for output in self.outputNames:
-                outputValue = "%s*%s.%s" % ( dsid, nameListText, output )
+                outputValue = "%s.%s" % ( nameListText, output )
                 outputEdit = self.outputNames[ output ]
                 outputEdit.setText( outputValue ) 
         self.stateChanged()               
@@ -261,8 +289,11 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         taskClass = TaskManager.getTask( taskName )
         for output in self.outputNames:
             var = self.outputNames[output].text() 
+            grid = str( self.gridCombos[ output ].currentText() )
             ndim = taskClass.getOutputDimensionality( output, varDimMap )
-            if ndim: ioData.append( '%s+%s+%d' % ( str(output), str(var), ndim ) )
+            gridData = grid.split('*')
+            varName = '*'.join( [ gridData[0], str(var) ] )
+            if ndim: ioData.append( '%s+%s+%d+%s' % ( str(output), varName, ndim, grid ) )
         serializedOutputs = ';'.join( ioData )
         return serializedInputs, serializedOutputs 
                           

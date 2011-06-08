@@ -19,7 +19,7 @@ from vtDV3DConfiguration import configuration
 import numpy.ma as ma
 from vtk.util.misc import vtkGetDataRoot
 packagePath = os.path.dirname( __file__ ) 
-import cdms2, cdtime 
+import cdms2, cdtime, cdutil 
 PortDataVersion = 0
 DataSetVersion = 0
 
@@ -49,33 +49,37 @@ def getComponentTimeValues( dataset ):
                 else:
                     rv = axis.asComponentTime()
         if rv and (len(rv) > 1):
-            rv0 = rv[0].torel("days since 1900")
-            rv1 = rv[1].torel("days since 1900")
+            rv0 = rv[0].torel(ReferenceTimeUnits)
+            rv1 = rv[1].torel(ReferenceTimeUnits)
             dt = rv1.value - rv0.value
     return rv, dt
 
 def getRelativeTimeValues( dataset ):
     rv = None
     dt = 0.0
+    time_units = None
     if dataset <> None:
         dims = dataset.axes.keys()
         for dim in dims:
             axis = dataset.getAxis( dim )
             if axis.isTime():
+                time_units = axis.units
                 if axis.calendar.lower() == 'gregorian': 
                     cdtime.DefaultCalendar = cdtime.GregorianCalendar 
                 if hasattr( axis, 'partition' ):
                     rv = []
-                    tvals = axis.asRelativeTime("days since 1900")
                     for part in axis.partition:
                         for iTime in range( part[0], part[1] ):
-                            rv.append( tvals[iTime] )
+                            rval = cdtime.reltime( axis[iTime], time_units )
+                            rv.append( rval.torel(ReferenceTimeUnits) )
                     break
                 else:
-                    rv = axis.asRelativeTime("days since 1900")
+                    for tval in axis:
+                        rval = cdtime.reltime( tval, time_units )
+                        rv.append( rval.torel(ReferenceTimeUnits) )
         if rv and (len(rv) > 1):
             dt = rv[1].value - rv[0].value
-    return rv, dt
+    return rv, dt, time_units
 
 class CDMSDatasetRecord(): 
     
@@ -115,31 +119,35 @@ class CDMSDatasetRecord():
         print "Reading variable %s, axis order = %s, shape = %s, roi = %s " % ( varName, order, str(varData.shape), str(args) )
         return varData( **args )
 
-    def getVarDataTimeSlice( self, varName, iTimeIndex ):
+    def getVarDataTimeSlice( self, varName, timeValue, gridMaker=None ):
         """
         This method extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).
         """
-        rv = None
-        varData = self.dataset[ varName ]
-        order = varData.getOrder()
-        args = {}
-        timevalues, dt = getComponentTimeValues( self.dataset )
+        rv = CDMSDataset.NullVariable
+        args1, args2 = {}, {}
         levbounds = self.getLevBounds()
-        try:
-            tval = timevalues[ iTimeIndex ]
-            args['time'] = tval
-            args['lon'] = slice( self.gridExtent[0], self.gridExtent[1]+1 )
-            args['lat'] = slice( self.gridExtent[2], self.gridExtent[3]+1 )
-            if levbounds: args['lev'] = levbounds
-            args['order'] = 'xyz'
-#            args['squeeze'] = 1
-#                print "Reading variable %s, time = %s(%d), shape = %s, args = %s " % ( varName, tval, iTimeIndex, str(varData.shape), str(args) )
-            start_t = time.time() 
-            rv = varData( **args )
-            end_t = time.time() 
-            print  "Reading variable %s, time = %s(%d), shape = %s, args = %s, slice duration = %.4f sec." % ( varName, tval, iTimeIndex, str(varData.shape), str(args), end_t-start_t  ) 
-        except Exception, err:
-            print>>sys.stderr, ' Exception getting var slice: %s ' % str( err )
+#        try:
+        args1['time'] = timeValue
+        if levbounds: args1['lev'] = levbounds
+        
+        args2['lon'] = slice( self.gridExtent[0], self.gridExtent[1]+1 )
+        args2['lat'] = slice( self.gridExtent[2], self.gridExtent[3]+1 )
+        args2['order'] = 'xyz'
+        start_t = time.time() 
+        varData = self.dataset[ varName ] 
+#        if (gridMaker == None) or ( gridMaker.grid == varData.getGrid() ):
+        args1.update(args2)            
+        rv = varData( **args1 )
+#        else:
+#            vc = cdutil.VariableConditioner( source=self.cdmsFile, var=varName, cdmsKeywords=args1, weightedGridMaker=gridMaker ) # 
+#            condVarData = vc.get( returnTuple=0 )
+#            rv = condVarData( **args2 )
+        end_t = time.time() 
+        rv._grid_ = None
+        grid = rv.getGrid()
+        print  "Reading variable %s, time = %s (%s), shape = %s, args = %s, grid = %s, slice duration = %.4f sec." % ( varName, str(timeValue), str(timeValue.tocomp()), str(varData.shape), str(args1), str(grid), end_t-start_t  ) 
+#        except Exception, err:
+#            print>>sys.stderr, ' Exception getting var slice: %s ' % str( err )
         return rv
 
     def init( self, timeRange, roi, zscale ):
@@ -210,7 +218,7 @@ class CDMSDatasetRecord():
             iCoord  = -1
         return iCoord
        
-class CDMSDataset(Module):
+class CDMSDataset(Module): 
     
     NullVariable = cdms2.createVariable( np.array([]), id='NULL' )
 
@@ -222,14 +230,24 @@ class CDMSDataset(Module):
         
     def getTimeValues( self, asComp = True ):
         if self.timeRange == None: return None
-        start_rel_time = cdtime.reltime( float( self.timeRange[2] ), "days since 1900" )
+        start_rel_time = cdtime.reltime( float( self.timeRange[2] ), ReferenceTimeUnits )
         time_values = []
         for iTime in range( self.timeRange[0], self.timeRange[1]+1 ):
             rval = start_rel_time.value + iTime * self.timeRange[3]
-            tval = cdtime.reltime( float( rval ), "days since 1900" )
+            tval = cdtime.reltime( float( rval ), ReferenceTimeUnits )
             if asComp:   time_values.append( tval.tocomp() )
             else:        time_values.append( tval )
         return time_values
+    
+    def getGrid( self, gridData ):
+        dsetRec = self.datasetRecs.get( gridData[0], None )
+        if dsetRec:
+            grids = dsetRec.dataset.grids
+            return grids.get( gridData[1], None  )
+        return None
+    
+    def getStartTime(self):
+        return cdtime.reltime( float( self.timeRange[2] ), ReferenceTimeUnits )
 
     def __del__( self ):
         for dsetRec in self.datasetRecs.values(): dsetRec.dataset.close()
@@ -261,18 +279,25 @@ class CDMSDataset(Module):
             print>>sys.stderr, "Error: can't find variable %s in dataset" % varName
             return self.NullVariable
 
-    def getVarDataTimeSlice( self, dsid, varName, iTimeIndex ):
+    def getVarDataTimeSlice( self, dsid, varName, timeValue, gridMaker=None ):
         """
         This method extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).
         """
+        rv = CDMSDataset.NullVariable
         if dsid:
             dsetRec = self.datasetRecs[ dsid ]
             if varName in dsetRec.dataset.variables:
-                return dsetRec.getVarDataTimeSlice( varName, iTimeIndex )   
-        if varName in self.transientVariables:
-            return self.transientVariables[ varName ] 
+                rv = dsetRec.getVarDataTimeSlice( varName, timeValue, gridMaker )   
+        if (rv.id == "NULL") and (varName in self.transientVariables):
+            rv = self.transientVariables[ varName ]
+        if rv.id <> "NULL":  
+            current_grid = rv.getGrid()
+            if ( gridMaker == None ) or SameGrid( current_grid, gridMaker.grid ): return rv
+            else:       
+                vc = cdutil.VariableConditioner( source=rv, weightedGridMaker=gridMaker )
+                return vc.get( returnTuple=0 )
         print>>sys.stderr, "Error: can't find time slice variable %s in dataset" % varName
-        return self.NullVariable
+        return rv
     
     def addDatasetRecord( self, dsetId, cdmsFile, timeRange=None, roi = None, zscale = 1.0 ):
         cdmsDSet = self.datasetRecs.get( dsetId, None )
@@ -305,7 +330,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['timeRange','roi'], **args)
         self.datasetModule = CDMSDataset()
             
-    def execute(self):
+    def execute(self, **args ):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """  
@@ -326,7 +351,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         self.setResult( 'dataset', self.datasetModule )
         print " ......  Start Workflow, dsid=%s ......  " % ( self.datasetModule.getDsetId() )
 
-    def dvUpdate(self):
+    def dvUpdate( self, **args ):
         pass     
         
     def getMetadata( self, metadata={}, port=None ):
@@ -360,9 +385,10 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         """
         self.cdmsDataRoot = getDataRoot()
         self.timeRange = None
-        self.fullRoi = [ -180.0, -90.0, 180.0, 90.0 ]
-        self.roi = self.fullRoi
         self.nTS = 0
+        self.lonRangeType = 0
+        self.fullRoi = [ [ 0.0, -90.0, 360.0, 90.0 ], [ -180.0, -90.0, 180.0, 90.0 ] ]
+        self.roi = self.fullRoi[ self.lonRangeType ]
         self.zscale = 1.0
         self.relativeStartTime = None
         self.relativeTimeStep = None
@@ -373,7 +399,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         DV3DConfigurationWidget.__init__(self, module, controller, 'CDMS Dataset Configuration', parent)
         self.metadataViewer = MetadataViewerDialog( self )
         if self.multiFileSelection:
-            self.updateTimeSeries()
+            self.updateSpaceTimeGrids()
             self.initTimeRange()
             self.initRoi()
             self.initZScale()
@@ -389,7 +415,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         tRange = [ int(timeRangeParams[0]), int(timeRangeParams[1]), float(timeRangeParams[2]), float(timeRangeParams[3])  ] if timeRangeParams else None
         if tRange:
             self.timeRange = tRange
-            self.relativeStartTime = cdtime.reltime( float(tRange[2]), "days since 1900")
+            self.relativeStartTime = cdtime.reltime( float(tRange[2]), ReferenceTimeUnits)
             self.relativeTimeStep = float(tRange[3])
             self.startCombo.setCurrentIndex( self.timeRange[0] ) 
             self.startIndexEdit.setText( str( self.timeRange[0] ) )  
@@ -399,7 +425,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
     def initRoi( self ):
         roiParams = self.pmod.getInputValue( "roi" ) #getFunctionParmStrValues( self.module, "roi"  )self.getParameterId()
         if roiParams:  self.roi = [ float(rois) for rois in roiParams ]
-        else: self.roi = self.fullRoi 
+        else: self.roi = self.fullRoi[ self.lonRangeType ] 
         self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
         
     def initZScale( self ):
@@ -437,7 +463,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.setDatasetProperties( dataset, cdmsFile )           
             self.timeRange = None
             self.nTS = 0
-            self.updateTimeSeries()
+            self.updateSpaceTimeGrids()
             self.initTimeRange()
             self.initRoi()
             self.initZScale()
@@ -458,7 +484,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
                     self.currentDatasetId = dataset.id 
                     self.datasets[ self.currentDatasetId ] = cdmsFile  
                     self.cdmsDataRoot = os.path.dirname( cdmsFile )
-                    self.updateTimeSeries()
+                    self.updateSpaceTimeGrids()
                     self.initTimeRange()        
                     self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
                     self.dsCombo.setCurrentIndex( 0 )
@@ -483,7 +509,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             else:
                 self.dsCombo.setCurrentIndex(0)
                 if self.multiFileSelection: 
-                    self.updateTimeSeries( )
+                    self.updateSpaceTimeGrids( )
                     self.initTimeRange()
                     self.pmod.datasetId = '*'.join( self.datasets.keys() )     
                 else:                       
@@ -491,24 +517,34 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             global DataSetVersion 
             DataSetVersion = DataSetVersion + 1 
      
-    def updateTimeSeries( self):
+    def updateSpaceTimeGrids( self):
         self.startCombo.clear()
         self.endCombo.clear()
         current_time_values = None
         current_dt = 100000.0
         current_dsetid = None
+        current_units = None
         dataset_list = []
+        self.grids = []
         time_values_list = []
         for datasetId in self.datasets:
             cdmsFile = self.datasets[ datasetId ]
             dataset = cdms2.open( cdmsFile ) 
+            for grid_id in dataset.grids:
+                self.grids.append( '*'.join( [ datasetId, grid_id ] ) )
+                grid = dataset.grids[ grid_id ]
+                lonAxis = grid.getLongitude()
+                if lonAxis:
+                    lonVals = lonAxis.getValue()
+                    if lonVals[0] < 0.0: self.lonRangeType = 1
             dataset_list.append( dataset )
         for dataset in dataset_list:
-            time_values, dt = getRelativeTimeValues ( dataset )
+            time_values, dt, time_units = getRelativeTimeValues ( dataset )
             time_values_list.append( (dataset.id, time_values) )
             if time_values and ( dt < current_dt ):
                 current_time_values = time_values
                 current_dt = dt
+                current_units = time_units
                 current_dsetid = dataset.id
         if current_time_values:
             iStart = 0
@@ -530,6 +566,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
                      
             self.nTS = len(current_time_values) if current_time_values else 0
             self.relativeTimeStep = current_dt
+            self.relativeTimeUnits = current_units
             self.relativeStartTime = current_time_values[ iStart ]
             for iT in range( iStart, iEnd+1 ):
                 time_value = current_time_values[ iT ].tocomp()
@@ -678,7 +715,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         roiButton_layout.addWidget( self.resetRoiButton )
         self.connect( self.resetRoiButton, SIGNAL('clicked(bool)'), self.resetRoi )
         
-        self.roiSelector = ROISelectionDialog( self.parent() )
+        self.roiSelector = ROISelectionDialog( self.lonRangeType, self.parent() )
         if self.roi: self.roiSelector.setROI( self.roi )
         self.connect(self.roiSelector, SIGNAL('doneConfigure()'), self.setRoi )
 
@@ -752,9 +789,10 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.stateChanged()
 
     def resetRoi( self ): 
-        self.roiSelector.setROI( self.fullRoi ) 
-        self.roiLabel.setText( "ROI: %s" % str( self.fullRoi )  ) 
-        for i in range( len( self.roi ) ): self.roi[i] = self.fullRoi[i] 
+        roi0 = self.fullRoi[ self.lonRangeType ]
+        self.roiSelector.setROI( roi0 )        
+        self.roiLabel.setText( "ROI: %s" % str( roi0 )  ) 
+        for i in range( len( self.roi ) ): self.roi[i] = roi0[i] 
         self.stateChanged()    
                                
     def updateStartTime( self, val ):
@@ -793,6 +831,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             parmRecList.append( ( 'datasets', [ serializeStrMap(self.datasets), ] ), )
             parmRecList.append( ( 'datasetId', [ self.currentDatasetId, DataSetVersion ] ), )
             self.datasetChanged = False
+        parmRecList.append( ( 'grids', [ ','.join( self.grids ), ] ), )
         parmRecList.append( ( 'timeRange' , [ self.timeRange[0], self.timeRange[1], float(self.relativeStartTime.value), self.relativeTimeStep ]  ), )       
         parmRecList.append( ( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  ), )          
         parmRecList.append( ( 'zscale' , [ self.zscale ]  ), )  
@@ -911,21 +950,6 @@ class MetadataViewerDialog( QDialog ):
 #        self.outRecMgr = OutputRecManager()
 #        DV3DConfigurationWidget.__init__(self, module, controller, 'CDMS Variable Configuration', parent)
 #        self.initializeOutputs()
-#        
-#    def getParameters( self, module ):
-#        import api
-#        global PortDataVersion
-#        controller = api.get_current_controller()
-#        readerModuleId, portName = getConnectedModuleId( controller, module.id, 'dataset', True )
-#        if readerModuleId <> None:
-#            reader_module = controller.current_pipeline.modules[ readerModuleId ]
-#            portData = getFunctionParmStrValues( reader_module, "cdmsFile" )
-#            if portData <> None and ( len( portData ) > 0 ): 
-#                self.dataset = cdms2.open( portData[0] ) 
-#        portData = getFunctionParmStrValues( module, "portData" )
-#        if portData: 
-#            self.serializedPortData = portData[0]
-#            PortDataVersion = int( portData[1] )
 #                               
 #    def createLayout(self):
 #        """ createEditor() -> None
@@ -1155,7 +1179,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             return str( self.timeLabels[ timestep ] ), 10
         return None, 1
         
-    def execute(self):
+    def execute(self, **args ):
         import api
         dset = self.getInputValue( "dataset"  ) 
         if dset: self.cdmsDataset = dset
@@ -1169,6 +1193,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.newLayerConfiguration = self.newDataset
             self.datasetId = dsetId
             self.timeRange = self.cdmsDataset.timeRange
+            timeValue = args.get( 'timeValue', self.timeRange[2] )
+            self.timeValue = cdtime.reltime( float( timeValue ), ReferenceTimeUnits )
             self.timeLabels = self.cdmsDataset.getTimeValues()
             self.nTimesteps = len( self.timeLabels )
             self.generateOutput()
@@ -1253,19 +1279,19 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         scalars, nTup = None, 0
         vars = []
         datatype = getDatatypeString( scalar_dtype )
-        md = { 'datatype':datatype, 'datasetId' : ds.id,  'bounds':ds.gridBounds, 'lat':ds.lat, 'lon':ds.lon, 'time':ds.time, 'attributes':ds.dataset.attributes }
+        md = { 'datatype':datatype, 'datasetId' : ds.id,  'bounds':ds.gridBounds, 'timeValue':self.timeValue.value, 'lat':ds.lat, 'lon':ds.lon, 'time':ds.time, 'attributes':ds.dataset.attributes }
         if ndim == 3: md[ 'lev' ] = ds.lev
         varDataId = '%s.%s.%d' % ( dsid, varName, self.outputType )
-        newDataArray, var_md = self.getCachedData( self.iTimestep, varDataId )
+        newDataArray, var_md = self.getCachedData( self.timeValue.value, varDataId )
         if newDataArray == None:
             if varName == '__zeros__':
                 newDataArray = np.zeros( npts, dtype=scalar_dtype ) 
                 var_md = {}
                 var_md[ 'range' ] = ( 0.0, 0.0 )
                 var_md[ 'scale' ] = ( 0.0, 1.0 ) 
-                self.setCachedData( self.iTimestep, varName, ( newDataArray, var_md ) )   
+                self.setCachedData( self.timeValue.value, varName, ( newDataArray, var_md ) )   
             else:
-                varData = self.cdmsDataset.getVarDataTimeSlice( dsid, varName, self.iTimestep )
+                varData = self.cdmsDataset.getVarDataTimeSlice( dsid, varName, self.timeValue.value )
                 if varData.id <> 'NULL':
                     range_min = varData.min()
                     range_max = varData.max()
@@ -1284,7 +1310,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     var_md = copy.copy( varData.attributes )
                     var_md[ 'range' ] = ( range_min, range_max )
                     var_md[ 'scale' ] = ( shift, scale )                     
-                    self.setCachedData( self.iTimestep, varDataId, ( newDataArray, var_md ) )  
+                    self.setCachedData( self.timeValue.value, varDataId, ( newDataArray, var_md ) )  
                          
         if newDataArray <> None:
             vars.append( varName ) 
@@ -1404,7 +1430,7 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
      
     def getParameters( self, module ):
         global PortDataVersion
-        ( self.variableList, self.datasetId, self.timeRange ) =  DV3DConfigurationWidget.getVariableList( module.id ) 
+        ( self.variableList, self.datasetId, self.timeRange, self.grids ) =  DV3DConfigurationWidget.getVariableList( module.id ) 
         portData = self.pmod.getPortData( dbmod=self.module, datasetId=self.datasetId ) # getFunctionParmStrValues( module, "portData" )
         if portData and portData[0]: 
              self.serializedPortData = portData[0]   

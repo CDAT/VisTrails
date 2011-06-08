@@ -131,7 +131,7 @@ class PM_DemoData( PersistentVisualizationModule ):
                 return self.dataWrapper.GetTimeString( ts ), 10
         return None, 1
         
-    def execute(self):
+    def execute(self, **args ):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """   

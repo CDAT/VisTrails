@@ -851,8 +851,8 @@ class LayerConfigurationDialog( IVModuleConfigurationDialog ):
         portName = 'volume' if ( ndims == 3 ) else 'slice'
         mid = self.module.id
         while mid <> None:
-            mid, mport = getConnectedModuleId( self.controller, mid, portName ) 
-            if mid:
+            connectedModuleIds = getConnectedModuleIds( self.controller, mid, portName ) 
+            for ( mid, mport ) in connectedModuleIds:
                 module = self.controller.current_pipeline.modules[ mid ]
                 dsetId = module.getAnnotation( "datasetId" )
                 if dsetId:
@@ -1021,7 +1021,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
     @staticmethod
     def readVariableList( dsId, cdmsFile ):
         dataset = cdms2.open( cdmsFile ) 
-        vList = [ ] 
+        vList = []
         if dataset:
             for var in dataset.variables:
                 vardata = dataset[var]
@@ -1038,8 +1038,8 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         datasetId = None
         timeRange = None
         while moduleId:
-            moduleId, portName = getConnectedModuleId( controller, moduleId, 'dataset', True )
-            if moduleId <> None:
+            connectedModuleIds = getConnectedModuleIds( controller, moduleId, 'dataset', True )
+            for ( moduleId, portName ) in connectedModuleIds:
                 module = controller.current_pipeline.modules[ moduleId ]
                 datasetIdInput = getFunctionParmStrValues( module, "datasetId" )
                 if datasetIdInput: 
@@ -1057,10 +1057,10 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         controller = api.get_current_controller()
         datasetMap = {}
         moduleId = mid
-        variableList = []
+        variableList = set()
         while moduleId <> None:
-            moduleId, portName = getConnectedModuleId( controller, moduleId, 'dataset', True )
-            if moduleId <> None:
+            connectedModuleIds = getConnectedModuleIds( controller, moduleId, 'dataset', True )
+            for ( moduleId, portName ) in connectedModuleIds:
                 module = controller.current_pipeline.modules[ moduleId ]
                 datasetIdInput = getFunctionParmStrValues( module, "datasetId" )
                 if datasetIdInput: 
@@ -1070,7 +1070,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                         datasets = deserializeStrMap( getItem( datasetsInput ) )
                         cdmsFile = datasets[ datasetId ]
                         vlist = DV3DConfigurationWidget.readVariableList( datasetId, cdmsFile )
-                        variableList.extend( vlist )
+                        variableList.update( vlist )
                         timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
                         timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ] if timeRangeInput else None
                         datasetMap[ datasetId ] = (  variableList, cdmsFile, timeRange )
@@ -1078,8 +1078,8 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
             variableList = dsetData[0]
             moduleId = mid
             while moduleId <> None:
-                moduleId, portName = getConnectedModuleId( controller, moduleId, 'dataset', True )
-                if moduleId <> None:
+                connectedModuleIds = getConnectedModuleIds( controller, moduleId, 'dataset', True )
+                for ( moduleId, portName ) in connectedModuleIds:
                     module = controller.current_pipeline.modules[ moduleId ]
                     taskInput = getFunctionParmStrValues( module, "task" )
                     if taskInput:
@@ -1092,7 +1092,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                                 for output in outputs:
                                     outputData = output.split('+')
                                     if len(outputData) > 1:
-                                        variableList.append( ( outputData[1], int( outputData[2] ) ) )
+                                        variableList.add( ( outputData[1], int( outputData[2] ) ) )
         return datasetMap
 
     @staticmethod
@@ -1101,29 +1101,35 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         controller = api.get_current_controller()
         moduleId = mid
         cdmsFile = None
-        datasetIds = []
+        datasetIds = set()
         timeRange = None
-        variableList = [ ]
-        while moduleId <> None:
-            moduleId, portName = getConnectedModuleId( controller, moduleId, 'dataset', True )
-            if moduleId <> None:
+        grids = None
+        variableList = set()
+        moduleIdList = [ moduleId ]
+        while moduleIdList:
+            connectedModuleIds = getConnectedModuleIds( controller, moduleIdList.pop(), 'dataset', True )
+            for ( moduleId, portName ) in connectedModuleIds:
                 module = controller.current_pipeline.modules[ moduleId ]
                 datasetsInput = getFunctionParmStrValues( module, "datasets" )
+                moduleIdList.append( moduleId )
                 if datasetsInput:
                     datasets = deserializeStrMap( getItem( datasetsInput ) )
                     for datasetId in datasets:
                         cdmsFile = datasets[ datasetId ]
                         vlist = DV3DConfigurationWidget.readVariableList( datasetId, cdmsFile )
-                        variableList.extend( vlist )
+                        variableList.update( vlist )
                         timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
                         if timeRangeInput: timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
-                        datasetIds.append( datasetId )
-        moduleId = mid
+                        gridInput = getFunctionParmStrValues( module, "grids" )
+                        if gridInput: grids = getItem( gridInput ).split(',') 
+                        datasetIds.add( datasetId )
+        moduleIdList.append( mid )
         datasetId = '-'.join( datasetIds )
-        while moduleId <> None:
-            moduleId, portName = getConnectedModuleId( controller, moduleId, 'dataset', True )
-            if moduleId <> None:
+        while moduleIdList:
+            connectedModuleIds = getConnectedModuleIds( controller, moduleIdList.pop(), 'dataset', True )
+            for ( moduleId, portName ) in connectedModuleIds:
                 module = controller.current_pipeline.modules[ moduleId ]
+                moduleIdList.append( moduleId )
                 taskInput = getFunctionParmStrValues( module, "task" )
                 if taskInput:
                     taskMapInput = deserializeTaskData( getItem( taskInput ) ) 
@@ -1135,8 +1141,8 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                             for output in outputs:
                                 outputData = output.split('+')
                                 if len(outputData) > 1:
-                                    variableList.append( ( outputData[1], int( outputData[2] ) ) )
-        return ( variableList, datasetId, timeRange )
+                                    variableList.add( ( outputData[1], int( outputData[2] ) ) )
+        return ( variableList, datasetId, timeRange, grids )
 
 
 #    def persistParameter( self, parameter_name, output, **args ):
@@ -1150,8 +1156,8 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         portName = 'volume' if ( ndims == 3 ) else 'slice'
         mid = self.module.id
         while mid <> None:
-            mid, mport = getConnectedModuleId( self.controller, mid, portName ) 
-            if mid:
+            connectedModuleIds = getConnectedModuleIds( self.controller, mid, portName ) 
+            for ( mid, mport ) in connectedModuleIds:
                 module = self.controller.current_pipeline.modules[ mid ]
                 dsetIdData = getFunctionParmStrValues( module, "datasetId" )
                 if dsetIdData:
@@ -1173,6 +1179,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
    
     def __init__(self, name, **args):
         self.iTimeStep = 0
+        self.relTimeStart = None
+        self.relTimeStep = 1.0
         self.maxSpeedIndex = 100
         ss = args.get( "speedScale", 1.0 )
         self.delayTimeScale = (2.0*ss)/self.maxSpeedIndex
@@ -1186,7 +1194,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                                   
     @staticmethod   
     def getSignature():
-        return [ ( Integer, 'timeStep'), ]
+        return [ ( Float, 'timeValue'), ]
         
     def getValue(self):
         return [ self.iTimeStep ]
@@ -1196,15 +1204,16 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         if self.timeRange and ( ( iTS > self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
         self.iTimeStep = iTS
                 
-    def loadAnimation(self):
-        self.getTimeRange(  )
-        for iTS in range( self.timeRange[0], self.timeRange[1] ):
-            self.setTimestep( iTS ) 
-            time.sleep( 0.01 ) 
-            if not self.running: break
+#    def loadAnimation(self):
+#        self.getTimeRange(  )
+#        for iTS in range( self.timeRange[0], self.timeRange[1] ):
+#            self.setTimestep( iTS ) 
+#            time.sleep( 0.01 ) 
+#            if not self.running: break
                 
     def step( self ):
         if not self.running:
+            self.updateTimeRange()
             self.setTimestep( self.iTimeStep + 1 )
 
     def reset( self ):
@@ -1219,6 +1228,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             timeRangeInput =  module.getInputValue( "timeRange", None )
             if timeRangeInput: 
                 self.timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
+                self.relTimeStart = float( timeRangeInput[2] )
+                self.relTimeStep = float( timeRangeInput[3] )
                 return
             
                           
@@ -1231,34 +1242,38 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 #                        return
 #                except: pass
 
-    def setTimestep1( self, iTimestep ):
-        self.setValue( iTimestep )
-        self.emit( self.update_animation_signal, self.iTimeStep, self.getTextDisplay() )
+#    def setTimestep1( self, iTimestep ):
+#        self.setValue( iTimestep )
+#        self.emit( self.update_animation_signal, self.iTimeStep, self.getTextDisplay() )
 
     def setTimestep( self, iTimestep ):
-        if DV3DConfigurationWidget.saveConfigurations(): self.getTimeRange()
         self.setValue( iTimestep )
-        print " ** Update Animation, timestep = %d " % self.iTimeStep  
         for module in self.activeModuleList:
             dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
-            try:
-                module.updateAnimation( self.iTimeStep, self.getTextDisplay() )
-            except Exception, err:
-                dvLog( module, " ----> Error %s " % str( err ) )
+#            try:
+            relTimeValue = self.relTimeStart + self.iTimeStep * self.relTimeStep
+            print " ** Update Animation, timestep = %d, timeValue = %.3f " % ( self.iTimeStep, relTimeValue )
+            module.updateAnimation( relTimeValue, self.getTextDisplay() )
+#            except Exception, err:
+#                dvLog( module, " ----> Error %s " % str( err ) )
        
-    def setTimestep1(self, iTimestep, refresh = True ):
-        if refresh: 
-            self.refreshPipeline()
-            self.getTimeRange()
-        self.setValue( iTimestep )
-        self.updateParameter()
+#    def setTimestep1(self, iTimestep, refresh = True ):
+#        if refresh: 
+#            self.refreshPipeline()
+#            self.getTimeRange()
+#        self.setValue( iTimestep )
+#        self.updateParameter()
 
     def stop(self):
         self.runButton.setText('Run')
-        self.running = False    
+        self.running = False 
+        
+    def updateTimeRange(self):   
+        newConfig = DV3DConfigurationWidget.saveConfigurations()
+        if newConfig or not self.relTimeStart: self.getTimeRange()
 
     def start(self):
-        self.getTimeRange()
+        self.updateTimeRange()
         self.runButton.setText('Stop')
         self.running = True
         self.timer.start()       
@@ -1288,29 +1303,29 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.delayTimeScale 
             self.timer.start( delayTime ) 
                 
-    def run1(self):
-        if self.running:
-            self.runButton.setText('Run')
-            self.running = False
-        else:
-            self.runButton.setText('Stop')
-            executeWorkflow()
-            self.running = True
-            self.runThread = threading.Thread( target=self.animate )
-            self.runThread.start()
-     
-        
-    def animate1(self):
-        refresh = True
-        while self.running:
-            self.initiateParameterUpdate()
-            self.setTimestep( self.iTimeStep + 1, refresh )
-            while self.parameterUpdating():
-                time.sleep(0.01)
-            delayTime =  ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.delayTimeScale    
-            time.sleep( delayTime ) 
-            refresh = False
-#            printTime( 'Finish Animation delay' )
+#    def run1(self):
+#        if self.running:
+#            self.runButton.setText('Run')
+#            self.running = False
+#        else:
+#            self.runButton.setText('Stop')
+#            executeWorkflow()
+#            self.running = True
+#            self.runThread = threading.Thread( target=self.animate )
+#            self.runThread.start()
+#     
+#        
+#    def animate1(self):
+#        refresh = True
+#        while self.running:
+#            self.initiateParameterUpdate()
+#            self.setTimestep( self.iTimeStep + 1, refresh )
+#            while self.parameterUpdating():
+#                time.sleep(0.01)
+#            delayTime =  ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.delayTimeScale    
+#            time.sleep( delayTime ) 
+#            refresh = False
+##            printTime( 'Finish Animation delay' )
                 
 #    def setDelay( self, dval  ):
 #        dval = 

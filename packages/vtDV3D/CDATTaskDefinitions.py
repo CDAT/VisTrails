@@ -76,8 +76,8 @@ class TaskManager(QtCore.QObject):
 class ZonalAveTask( CDATTask ):
     name = 'ZonalAve'
         
-    def execute( self, iTimeIndex ):
-        input = self.getInput( 0, iTimeIndex )
+    def execute( self, timeValue ):
+        input = self.getInput( 0, timeValue )
         lon_axis = input.getLongitude()
         lon_index = input.getAxisIndex( lon_axis.id ) 
         output = average( input, lon_index )
@@ -93,14 +93,30 @@ class DifferenceTask( CDATTask ):
     inputs = [ 'input0', 'input1' ]
     name = 'Difference'
                         
-    def execute( self, iTimeIndex ):
-        input0 = self.getInput( 0, iTimeIndex )
-        input1 = self.getInput( 1, iTimeIndex )
+    def execute( self, timeValue ):
+        input0 = self.getInput( 0, timeValue )
+        input1 = self.getInput( 1, timeValue )
         difference = subtract( input0, input1 )
         self.setOutput( 0, difference )
     
 TaskManager.addTask( DifferenceTask )
-        
+
+#########################################################################################################################
+
+from cdms2.MV2 import hypot
+
+class MagnitudeTask( CDATTask ):
+    inputs = [ 'input0', 'input1' ]
+    name = 'Magnitude'
+                        
+    def execute( self, timeValue ):
+        input0 = self.getInput( 0, timeValue )
+        input1 = self.getInput( 1, timeValue )
+        magnitude = hypot( input0, input1 )
+        self.setOutput( 0, magnitude )
+    
+TaskManager.addTask( MagnitudeTask )
+       
 #########################################################################################################################
 
 def load_usr_task_modules( **args ):

@@ -264,6 +264,9 @@ def NormalizeLon( lon ):
     while lon < 0: lon = lon + 360
     return lon % 360  
 
+def SameGrid( grid0, grid1 ):
+    return (grid0.getOrder() == grid1.getOrder()) and (grid0.getType() == grid1.getType()) and (grid0.shape == grid1.shape)
+
 def getWorkflowObjectMap( controller = None  ):    
     if controller == None: 
         import api
@@ -347,33 +350,26 @@ def getDownstreamModules( controller,  mid ):
         for output_port in output_port_specs:
             out_modules = pipeline.get_outputPort_modules( test_mod.id, output_port.name )
 
-def getDesignatedConnection( controller,  mid, portName, isDestinationPort = True ):
+def getDesignatedConnections( controller,  mid, portName, isDestinationPort = True ):
     portType = "destination" if isDestinationPort else "source" 
     connections = controller.current_pipeline.connections
-    connection = None
+    desig_connections = []
     for connection in connections.values():
         for port in connection.ports:
             if port.type==portType and port.name==portName and port.moduleId == mid:
-                return connection
-    return None
+                desig_connections.append( connection )
+    return desig_connections
 
-#def queryUpstreamMetadata( controller, mid, outport=None, metadata={} ):
-#    module = getWorkflowModule( mid, True, controller )
-#    if module:
-#        module.getMetadata( metadata, outport )
-#        if module.primaryMetaDataPort:
-#            cmid, cmport = getConnectedModuleId( controller,  mid, module.primaryMetaDataPort ) 
-#            if cmid: queryUpstreamMetadata( controller, cmid, cmport, metadata )
-#    return metadata
-
-def getConnectedModuleId( controller,  mid, portName, isDestinationPort = True ):
-    connection = getDesignatedConnection( controller,  mid, portName, isDestinationPort )
-    if connection <> None:
-        oppositePortType = "source" if isDestinationPort else "destination"
-        for port in connection.ports:
-            if port.type==oppositePortType:
-                return port.moduleId, port.name
-    return None, None
+def getConnectedModuleIds( controller,  mid, portName, isDestinationPort = True ):
+    connections = getDesignatedConnections( controller,  mid, portName, isDestinationPort )
+    connectedModuleIds = []
+    if connections:
+        for connection in connections:
+            oppositePortType = "source" if isDestinationPort else "destination"
+            for port in connection.ports:
+                if port.type==oppositePortType:
+                    connectedModuleIds.append( ( port.moduleId, port.name ) )
+    return connectedModuleIds
 
 def getFunctionParmStrValues( module, functionName, defValue = None ):
     if module and functionName:

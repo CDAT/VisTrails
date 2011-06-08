@@ -28,8 +28,8 @@ import numpy as np
 
 packagePath = os.path.dirname( __file__ )  
 defaultMapDir = os.path.join( packagePath, 'data' )
-defaultMapFile = os.path.join( defaultMapDir,  'WorldMap.jpg' )
-WorldMapGridExtent = ( 106, 72, 2902, 1470 )
+defaultMapFile = [ os.path.join( defaultMapDir,  'WorldMap.jpg' ), os.path.join( defaultMapDir,  'WorldMap.jpg' ) ]
+WorldMapGridExtent = [ ( 106, 72, 2902, 1470 ), ( 106, 72, 2902, 1470 ) ]
 
 def GetRandomColormap( seed=11325 ):
      random.seed( seed )
@@ -165,20 +165,21 @@ class MainForm(QDialog):
         
 class ROISelectionDialog(QDialog):
 
-    def __init__(self, parent=None):
+    def __init__(self, lonRangeType, parent=None):
         super(QDialog, self).__init__(parent)
-                
+         
+        self.lonRangeType = lonRangeType       
         self.scene = QGraphicsScene(self)
-        worldMapFile = QString( defaultMapFile )
+        worldMapFile = QString( defaultMapFile[ self.lonRangeType ] )
         pixmap = QPixmap(worldMapFile) 
         item = QGraphicsPixmapItem( pixmap, None, self.scene )
         item.setFlags(QGraphicsItem.ItemIsMovable)
         item.setAcceptedMouseButtons ( Qt.LeftButton )
         item.setPos( 0, 0 )
         
-        ROIcorner0 = QPointF(-180,-90)      
-        ROIcorner1 = QPointF(180,90)
-        worldMapExtent = WorldMapGridExtent      
+        ROIcorner0 = QPointF( 0, -90)   if self.lonRangeType == 0 else QPointF(-180,-90 )    
+        ROIcorner1 = QPointF(360, 90)   if self.lonRangeType == 0 else QPointF( 180, 90 )  
+        worldMapExtent = WorldMapGridExtent[ self.lonRangeType ]      
         self.view = GraphicsView( item, worldMapExtent, ROIcorner0, ROIcorner1, self )
         self.filename = QString()
         self.view.setScene(self.scene)

@@ -143,7 +143,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         polydata.SetStrips( stripArray )
 
                            
-    def execute(self):
+    def execute(self, **args ):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """ 
