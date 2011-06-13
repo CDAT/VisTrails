@@ -88,11 +88,6 @@ class CDMS_CDATUtilities(WorkflowModule):
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args)     
 
-def getVariableSelectionLabel( varName, ndims ):
-    if ndims == 2:  return '%s (slice)' % varName 
-    if ndims == 3:  return '%s (volume)' % varName 
-    return ''
-
 class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
 
     def __init__(self, module, controller, parent=None):
@@ -103,9 +98,8 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         self.taskMap = {}
         self.inputMap = None
         self.outputMap = {}
-        self.gridMap = {}
         self.timeRange = None
-        self.grids = None
+        self.refVar = None
         self.datasetId = None
         self.inputTabIndex = -1
         self.outputTabIndex = -1
@@ -119,7 +113,7 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         self.setupTabs()
 
     def getParameters( self, module ):
-        ( self.variableList, self.datasetId, self.timeRange, self.grids ) = DV3DConfigurationWidget.getVariableList( module.id )
+        ( self.variableList, self.datasetId, self.timeRange, self.refVar ) = DV3DConfigurationWidget.getVariableList( module.id )
         taskData = getFunctionParmStrValues( module, "task" )
         if taskData: self.processTaskData( getItem( taskData ) )
 #        if taskData: self.serializedTaskData = taskData[0]          
@@ -144,7 +138,6 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
                     if len(outputData) > 1:
                         varNameData =  outputData[1].split('*')
                         self.outputMap[ outputData[0] ] = varNameData[-1]
-                        self.gridMap[ outputData[0] ] = outputData[3] if (len( outputData ) > 3) else None
         
     def buildTaskList( self ):
         taskList = TaskManager.getTaskList()
@@ -206,7 +199,6 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
             outputs_layout.setMargin(10)
             outputs_layout.setSpacing(10)
             self.outputNames = {}
-            self.gridCombos = {}
             for output in taskClass.outputs:
                 output_selection_layout = QHBoxLayout()
                 
@@ -226,26 +218,7 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
                         self.outputMap[output] = outputValue
                     outputEdit.setText( outputValue )
                 self.connect( outputEdit, SIGNAL("editingFinished()"), self.stateChanged )
-                
-#                grid_selection_layout = QHBoxLayout()
-#                grid_selection_label = QLabel( "%s grid:" % str(output) )
-#                grid_selection_layout.addWidget( grid_selection_label ) 
-#
-#                gridCombo =  QComboBox ( self.parent() )
-#                self.gridCombos[ output ] = gridCombo
-#                grid_selection_label.setBuddy( gridCombo )
-#                gridCombo.setMaximumHeight( 30 )
-#                grid_selection_layout.addWidget( gridCombo  )
-#                if self.grids: 
-#                    for grid in self.grids:  gridCombo.addItem( grid )
-#                gridValue = self.gridMap.get( output, None )
-#                if gridValue:
-#                    iSelection = gridCombo.findText( gridValue )
-#                    gridCombo.setCurrentIndex( iSelection )
-#                else: self.gridMap[ output ] = str( gridCombo.currentText() )   
-#                self.connect( gridCombo, SIGNAL("currentIndexChanged(QString)"), self.stateChanged )               
-#                outputs_layout.addLayout(grid_selection_layout)
- 
+                 
             self.stateChanged()
         else:
             print>>sys.stderr, "Error, class undefined for task %s" % taskName
@@ -276,10 +249,12 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
     def getSerializedIOData( self, taskName ):
         ioData = []
         varDimMap = {}
+        firstVar = None
         for input in self.varCombos:
             var = self.varCombos[input].currentText() 
             varData = var.split('(')
             if len( varData ) > 1:
+                if not firstVar: firstVar = str(varData[0]).strip()
                 varType = str(varData[1]).strip()
                 ndim = 3 if ( varType[0] == 'v' ) else 2
                 varDimMap[ input ] = ndim
@@ -289,11 +264,10 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         taskClass = TaskManager.getTask( taskName )
         for output in self.outputNames:
             var = self.outputNames[output].text() 
-            grid = str( self.gridCombos[ output ].currentText() )
             ndim = taskClass.getOutputDimensionality( output, varDimMap )
-            gridData = grid.split('*')
-            varName = '*'.join( [ gridData[0], str(var) ] )
-            if ndim: ioData.append( '%s+%s+%d+%s' % ( str(output), varName, ndim, grid ) )
+            varData = firstVar.split('*')
+            varName = '*'.join( [ varData[0], str(var) ] )
+            if ndim: ioData.append( '%s+%s+%d' % ( str(output), varName, ndim ) )
         serializedOutputs = ';'.join( ioData )
         return serializedInputs, serializedOutputs 
                           

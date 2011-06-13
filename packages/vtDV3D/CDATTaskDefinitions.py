@@ -95,9 +95,13 @@ class DifferenceTask( CDATTask ):
                         
     def execute( self, timeValue ):
         input0 = self.getInput( 0, timeValue )
+        lev0 = input0.getLevel()
         input1 = self.getInput( 1, timeValue )
-        difference = subtract( input0, input1 )
+        lev1 = input1.getLevel()
+        difference = subtract( input1, input0 )
         self.setOutput( 0, difference )
+        lev2 = difference.getLevel()
+        pass
     
 TaskManager.addTask( DifferenceTask )
 
@@ -110,8 +114,8 @@ class MagnitudeTask( CDATTask ):
     name = 'Magnitude'
                         
     def execute( self, timeValue ):
-        input0 = self.getInput( 0, timeValue )
-        input1 = self.getInput( 1, timeValue )
+        input0 = self.getInput( 0, timeValue )        
+        input1 = self.getInput( 1, timeValue )        
         magnitude = hypot( input0, input1 )
         self.setOutput( 0, magnitude )
     

@@ -265,7 +265,8 @@ def NormalizeLon( lon ):
     return lon % 360  
 
 def SameGrid( grid0, grid1 ):
-    return (grid0.getOrder() == grid1.getOrder()) and (grid0.getType() == grid1.getType()) and (grid0.shape == grid1.shape)
+    return (grid0 == grid1)
+#    return (grid0.getOrder() == grid1.getOrder()) and (grid0.getType() == grid1.getType()) and (grid0.shape == grid1.shape)
 
 def getWorkflowObjectMap( controller = None  ):    
     if controller == None: 
@@ -410,6 +411,11 @@ def isLevelAxis( axis ):
         axis.designateLevel(1)
         return True
     return False
+
+def getVariableSelectionLabel( varName, ndims ):
+    if ndims == 2:  return '%s (slice)' % varName 
+    if ndims == 3:  return '%s (volume)' % varName 
+    return ''
 
 def getVarNDim( vardata ):
     dims = [ 0, 0, 0 ]

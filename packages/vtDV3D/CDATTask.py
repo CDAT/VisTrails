@@ -45,27 +45,38 @@ class CDATTask(QtCore.QObject):
         iOutputIndex = args.get( 'output', 0 )
         if varName:
             vNameComp =  varName.split('*')          
-            input = self.cdmsDataset.getVarDataTimeSlice( vNameComp[0], vNameComp[1], timeValue, self.grid )
+            input = self.cdmsDataset.getVarDataTimeSlice( vNameComp[0], vNameComp[1], timeValue )
             current_grid = input.getGrid()
             print " Get Input for task %s: %s[%.3f], grid=%s" % ( self.__class__.name, varName, timeValue.value, str(current_grid) )
-            if (nInputs > 1) and (self.grid == None): 
+#            if (nInputs > 1) and (self.grid == None): 
 #                gridData = self.getGridData( iOutputIndex  )
 #                gridRec = self.cdmsDataset.getGrid( gridData ) 
 #                if gridRec: 
-                self.grid = cdutil.WeightedGridMaker( source=current_grid )
+#                self.grid = cdutil.WeightedGridMaker( source=current_grid )
             try:
                 id0 = input.id
                 if input.id <> "NULL": return input
             except Exception, err: pass            
         raise ModuleError( self, "Data is missing from dataset %s for input %d to module %s at time %f" %  ( self.cdmsDataset.getDsetId(), iInputIndex, self.__class__.__name__, timeValue.value ) )               
 
+    def getInputs( self, timeValue, **args ):
+        nInputs = len( self.__class__.inputs )
+        varList = []
+        for iInputIndex in range( nInputs ):
+            varName = self.getInputName( iInputIndex )
+            iOutputIndex = args.get( 'output', 0 )
+            if varName: varList.append( varName.split('*')  )            
+        inputs = self.cdmsDataset.getVarDataTimeSlices( varList, timeValue )
+        return inputs
+ 
     def setOutput( self, iOutputIndex, output ):
         outputName = self.getOutputName( iOutputIndex )
         varNameComp = outputName.split('*')
-        self.cdmsDataset.addTransientVariable( varNameComp[1], output )
+        self.cdmsDataset.addTransientVariable( varNameComp[-1], output )
+        if output.rank() == 3: output.getAxis(2).designateLevel() 
         output._grid_ = None
         current_grid = output.getGrid()
-        print " Set Output[%d] for task %s: var=%s, grid=%s" % ( iOutputIndex, self.__class__.name, varNameComp[1], str(current_grid) )
+        print " Set Output[%d] for task %s: var=%s, grid=%s" % ( iOutputIndex, self.__class__.name, varNameComp[-1], str(current_grid) )
                     
     def getInputMap( self, module ):
         self.inputMap = {}

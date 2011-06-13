@@ -1103,7 +1103,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         cdmsFile = None
         datasetIds = set()
         timeRange = None
-        grids = None
+        selected_var = None
         variableList = set()
         moduleIdList = [ moduleId ]
         while moduleIdList:
@@ -1120,8 +1120,8 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                         variableList.update( vlist )
                         timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
                         if timeRangeInput: timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
-                        gridInput = getFunctionParmStrValues( module, "grids" )
-                        if gridInput: grids = getItem( gridInput ).split(',') 
+                        gridInput = getFunctionParmStrValues( module, "grid" )
+                        if gridInput: selected_var = getItem( gridInput ) 
                         datasetIds.add( datasetId )
         moduleIdList.append( mid )
         datasetId = '-'.join( datasetIds )
@@ -1142,7 +1142,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                                 outputData = output.split('+')
                                 if len(outputData) > 1:
                                     variableList.add( ( outputData[1], int( outputData[2] ) ) )
-        return ( variableList, datasetId, timeRange, grids )
+        return ( variableList, datasetId, timeRange, selected_var )
 
 
 #    def persistParameter( self, parameter_name, output, **args ):
