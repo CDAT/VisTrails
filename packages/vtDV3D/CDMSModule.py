@@ -628,6 +628,9 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
                 var_ndim = getVarNDim( vardata )
                 if (var_ndim) == 2 or (var_ndim == 3):
                     self.variableList[var_ndim-2].append( '%s*%s' % ( datasetId, var ) )
+            if not self.selectedGrid:
+                if len( self.variableList[1] ): self.selectedGrid = self.variableList[1][0]
+                elif len( self.variableList[0] ): self.selectedGrid = self.variableList[0][0]
             for grid_id in dataset.grids:
                 self.grids.append( '*'.join( [ datasetId, grid_id ] ) )
                 grid = dataset.grids[ grid_id ]

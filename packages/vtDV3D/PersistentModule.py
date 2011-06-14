@@ -358,6 +358,9 @@ class PersistentModule( QObject ):
             self.addAnnotation( 'activeLayer', self.activeLayer  ) 
             self.seriesScalarRange = None
             
+    def initializeScalarRange( self ): 
+        metadata = self.getMetadata()  
+        scalars =  metadata.get( 'scalars', None ) 
         var_md = metadata.get( scalars , None )
         if var_md <> None:
             range = var_md.get( 'range', None )
@@ -483,9 +486,12 @@ class PersistentModule( QObject ):
             
             if isAnimation:
                 self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ReferenceTimeUnits )
+                self.fieldData = self.inputModule.getFieldData() 
             else:
                 self.updateMetadata()  
                 self.initializeLayers()
+                
+            self.initializeScalarRange()
 #            self.setActiveScalars()
             
         elif ( self.fieldData == None ): 

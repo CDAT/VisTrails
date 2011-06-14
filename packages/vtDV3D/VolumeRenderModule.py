@@ -38,8 +38,11 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__(self, mid, **args)
         self.max_opacity = 1.0
+        self.vthresh = None
         self.filterOutliers = False
         self.imageRange = None
+        self.otf_data = None
+        self.ctf_data = None
         self.TransferFunction = PM_VolumeRenderer.AbsValueTransferFunction
         self.addConfigurableLevelingFunction( 'colorScale',    'C', setLevel=self.generateCTF, getLevel=self.getDataRangeBounds, layerDependent=True )
         self.addConfigurableLevelingFunction( 'functionScale', 'T', setLevel=self.generateOTF, getLevel=self.getDataRangeBounds, layerDependent=True  )
@@ -207,10 +210,13 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         keysym = caller.GetKeySym()
 #        print " -- Key Press: %c ( %d: %s ), event = %s " % ( key, ord(key), str(keysym), str( event ) )
                
-    def generateCTF( self, ctf_data ):
-        self.imageRange = self.getImageValues( ctf_data[0:2] ) 
-        self.invert = ctf_data[2]
-        self.rebuildColorTransferFunction()
+    def generateCTF( self, ctf_data= None ):
+        if ctf_data: self.ctf_data = ctf_data
+        else: ctf_data = self.ctf_data
+        if ctf_data:
+            self.imageRange = self.getImageValues( ctf_data[0:2] ) 
+            self.invert = ctf_data[2]
+            self.rebuildColorTransferFunction()
         
     def rebuildColorTransferFunction( self ):
         if self.imageRange <> None:
@@ -267,17 +273,20 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         maxop = abs( opacity_data[1] ) 
         self.max_opacity = maxop if maxop < 1.0 else 1.0
         range_min, range_max = self.rangeBounds[0], self.rangeBounds[1]
-        vthresh = opacity_data[0]*(self.seriesScalarRange[1]-self.seriesScalarRange[0])*0.02
-        self._range[3] = self.scaleToImage( vthresh )      
+        self.vthresh = opacity_data[0]*(self.seriesScalarRange[1]-self.seriesScalarRange[0])*0.02
+        self._range[3] = self.scaleToImage( self.vthresh )      
         self.updateOFT( self._range, self.filterOutliers )
 #        printArgs( "adjustOpacity", irange=self._range,  max_opacity=self.max_opacity, opacity_data=opacity_data, vthresh=vthresh, ithresh=self._range[3] )   
 
-    def generateOTF( self, otf_data ): 
-        self._range = self.getImageValues( ( otf_data[0], otf_data[1], 0.0 ) )
-        self._range.append(0.0) 
-        self.filterOutliers = otf_data[2]
-        self.updateOFT( self._range, self.filterOutliers )
- #       printArgs( "generateOTF", irange=self._range,  otf_data=otf_data )   
+    def generateOTF( self, otf_data=None ): 
+        if otf_data: self.otf_data = otf_data
+        else: otf_data = self.otf_data
+        if otf_data:
+            self._range = self.getImageValues( ( otf_data[0], otf_data[1], 0.0 ) )
+            self._range.append( self.scaleToImage( self.vthresh ) if self.vthresh else 0.0 ) 
+            self.filterOutliers = otf_data[2]
+            self.updateOFT( self._range, self.filterOutliers )
+#        printArgs( "generateOTF", irange=self._range,  otf_data=otf_data )   
            
 #    def generateOTF1( self, otf_data ): 
 #        self._range = self.getImageValues( otf_data[0:2] ) 
@@ -307,7 +316,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #        printArgs( "generateOTF", scaled_range=scaled_range,  otf_data=otf_data, vrange=(vmin, vmax), vrange_bounds=(range_min, range_max), init_range=(self._range[0], self._range[1]) )   
 
     def updateOFT( self, range, filterOutliers ):
-#        print " Update Volume OFT, range = %s, max opacity = %s " % ( str( range ), str( self.max_opacity ) )
+#        print " Update Volume OTF, range = %s, max opacity = %s " % ( str( range ), str( self.max_opacity ) )
         self.filterOutliers = filterOutliers
         self.opacityTransferFunction.RemoveAllPoints()  
         dthresh = range[3]
