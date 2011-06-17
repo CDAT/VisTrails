@@ -44,8 +44,8 @@ class TaskManager(QtCore.QObject):
             user_task_name = ':'.join( [ os.getlogin(), task_class.name ] )
             TaskManager.TaskMap[ user_task_name ] = task_class
             print " Add user task %s to task map %d " % ( user_task_name, id(TaskManager.TaskMap) )
-        except:
-            print>>sys.stderr, "Can't add entity to TaskMap: %s " % str( task_class )
+        except Exception, err:
+            print>>sys.stderr, "Can't add %s entity to TaskMap: %s " % ( str( task_class ), str(err) )
         
     @staticmethod
     def getTaskList():

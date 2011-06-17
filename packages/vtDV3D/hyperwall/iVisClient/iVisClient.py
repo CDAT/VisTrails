@@ -38,6 +38,7 @@ class QiVisClient(QtCore.QObject):
 
         size = self.currentTab.getDimension()
         self.dimensions = (x, y, size[1], size[0])
+        print " Startup VisClient, size=%s, dims=%s, inputDims=%s, loc=%s" % ( str(size), str(self.dimensions), str( (width, height) ), str( ( x, y ) ) )
 
         self.connectSignals()
 
@@ -56,7 +57,7 @@ class QiVisClient(QtCore.QObject):
         tries to connect to the server again"""
         if self.socket.state()!=QTcpSocket.ConnectedState:
             if self.socket.state()==QTcpSocket.UnconnectedState:
-                print " HWClient connecting to server at %s:%s" % ( self.server, str( self.serverPort ) )
+#                print " HWClient connecting to server at %s:%s" % ( self.server, str( self.serverPort ) )
                 self.socket.connectToHost(self.server, self.serverPort)
             self.timer.start()
         elif core.system.systemType in ['Windows', 'Microsoft']:
@@ -209,7 +210,11 @@ class QiVisClient(QtCore.QObject):
     def processMessage(self, message, socket):
         (sender, tokens) = message
         tokens = tokens.split(",")
+        print " processMessage: %s " % str( tokens )
         if len(tokens) == 0: return
+        
+        if tokens[0] == "exit":
+            sys.exit(0)
 
         if tokens[0] == "pipeline":
 #            print " $$$$$$$$$$$ pipeline message: %s " % str(tokens)

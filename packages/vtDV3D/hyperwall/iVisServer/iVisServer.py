@@ -14,11 +14,10 @@ from vtDV3D.vtUtilities import *
 import pickle, os, sys
 
 class QiVisServer(QObject):
-    def __init__(self, resource_path, port):
+    def __init__( self, name, dimensions, port, resource_path ):
         QObject.__init__(self)
         self.port = port
         self.server = QTcpServer(self)
-        self.devicePath = os.path.expanduser(  "~/.vistrails/.avis_devices" )
         self.connect(self.server, QtCore.SIGNAL("newConnection()"), self.newConnection)
         self.server.listen(Qt.QHostAddress(Qt.QHostAddress.Any), port)
         print " --- iVisServer ---  << Listening on port %d >> " % port
@@ -29,12 +28,15 @@ class QiVisServer(QObject):
 
         self.vistrailServer = VistrailServer( resource_path )
         self.summary = None
-        try:
-            self.readDevicesFromFile( self.devicePath )
-        except Exception, err:
-            print 'Exception reading avis file <%s>: %s ' % ( self.devicePath, str(err) )
-            return
+        self.addDevice( name, dimensions )
         self.userPool = UserPool()
+    
+    def __del__( self ): 
+        for device in self.devices.values(): device.shutdown()
+        
+    def addDevice(self, name, dimensions ):
+        device = Device(name, dimensions)
+        self.devices[device.name] = device
 
     def readDevicesFromFile(self, filename):
         import os.path
@@ -346,8 +348,8 @@ class QiVisServer(QObject):
         else:               
             x = event.x()
             y = event.y()
-            xf = '%.4f' % float(x)/screen_dims[0]
-            yf = '%.4f' % float(y)/screen_dims[1]
+            xf = '%.4f' % (float(x)/screen_dims[0])
+            yf = '%.4f' % (float(y)/screen_dims[1])
             b = event.button() 
             button = "none"       
             if b == QtCore.Qt.LeftButton: button = "left"
@@ -358,6 +360,5 @@ class QiVisServer(QObject):
         self.devices[deviceName].processInteractionMessage( tokens )
 
             
-            
-    
+          
 

@@ -1766,11 +1766,6 @@ class CDMS_VectorReaderConfigurationWidget(CDMSReaderConfigurationWidget):
 
         
 if __name__ == '__main__':
-#    config_path=os.path.expanduser('~/.vistrails/hwserver') 
-#    config_path=os.path.expanduser('~/.vistrails/hwclient') 
-    config_path=os.path.expanduser('~/.vistrails/') 
-    sys.argv.append('-S'+config_path)
-#    optionsDict = { 'dotVistrails':
-#    executeVistrail( 'workflows/DemoWorkflow7' )
-    executeVistrail(  'workflows/DemoWorkflow8' )
+    optionsDict = {  'hw_role'  : 'none' }
+    executeVistrail( 'workflows/DemoWorkflow8', options=optionsDict )
 

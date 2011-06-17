@@ -459,6 +459,7 @@ def executeVistrail( *args, **kwargs ):
 
     from PyQt4 import QtGui
     import gui.application
+    import HyperwallManager
     import sys
     import os
      
@@ -471,7 +472,7 @@ def executeVistrail( *args, **kwargs ):
             sys.exit(v)
         app = gui.application.VistrailsApplication()
         for vistrail_name in args:
-            vistrail_filename = os.path.join( os.path.dirname( __file__ ), vistrail_name + '.vt' )
+            vistrail_filename = os.path.join( app.resource_path, vistrail_name + '.vt' )
             f = FileLocator(vistrail_filename)
             app.builderWindow.viewManager.open_vistrail(f) 
         app.builderWindow.viewModeChanged(0)   

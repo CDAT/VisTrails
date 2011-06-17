@@ -520,6 +520,16 @@ class Device:
                     message += str(len(tokensString))+":"+tokensString
                     if self.addresses.has_key((x,y)): self.addresses[(x,y)].write(message)
 
+    def sendMesageToClient( self, msg ):
+        message = "server-displayClient-"
+        message += str(len(msg)) + ":" + msg
+        for x in range(dimensions[0], dimensions[0]+dimensions[2]):
+            for y in range(dimensions[1], dimensions[1]+dimensions[3]):
+                if self.addresses.has_key((x,y)): self.addresses[(x,y)].write(message)
+    
+    def shutdown(self):
+        self.sendMesageToClient( "exit" )
+
     def processSyncMessage(self, tokens):
         return ("", "", "")
 

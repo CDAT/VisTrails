@@ -1,0 +1,34 @@
+
+   <package name="vtDV3D"> 
+      <configuration>
+         <key name="hw_name">			<str value="Hyperwall"/>				</key>
+         <key name="hw_server">			<str value="localhost"/>				</key>
+         <key name="hw_resource_path">	<str value="~/.vistrails/workflows"/>	</key>
+         <key name="hw_displayHeight">	<int value="-1"/>						</key>
+         <key name="hw_width">			<int value="1"/>						</key>
+         <key name="hw_height">			<int value="1"/>						</key>
+         <key name="debug">				<bool value="False"/>					</key>
+         <key name="hw_server_port">	<int value="50000"/>					</key>
+         <key name="hw_nodes">			<str value="localhost"/>				</key>
+         <key name="vtk_data_root">		<str value="~/data"/>					</key>
+         <key name="hw_displayWidth">	<int value="-1"/>						</key>
+       </configuration>
+    </package>
+
+
+   <package name="vtDV3D"> 
+      <configuration>
+         <key name="hw_name">			<str value="Hyperwall"/>				</key>
+         <key name="hw_server">			<str value="vislin01"/>			  	    </key>
+         <key name="hw_resource_path">	<str value="~/.vistrails/workflows"/>	</key>
+         <key name="hw_displayHeight">	<int value="-1"/>						</key>
+         <key name="hw_width">			<int value="5"/>						</key>
+         <key name="hw_height">			<int value="3"/>						</key>
+         <key name="debug">				<bool value="False"/>					</key>
+         <key name="hw_server_port">	<int value="50000"/>					</key>
+         <key name="hw_nodes">			<str value="visrend01,visrend02,visrend03,visrend04,visrend05,visrend06,visrend07,visrend08,visrend09,visrend10,visrend11,visrend12,visrend13,visrend14,visrend15"/> </key>
+         <key name="vtk_data_root">		<str value="~/data"/>					</key>
+         <key name="hw_displayWidth">	<int value="-1"/>						</key>
+       </configuration>
+    </package>
+

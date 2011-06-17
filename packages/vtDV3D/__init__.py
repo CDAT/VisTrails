@@ -13,7 +13,6 @@ name = 'vtDV3D'
 version = '0.1.0'
 
 #Configuration object
-from vtDV3DConfiguration import configuration
 
 vtk_pkg_identifier = 'edu.utah.sci.vistrails.vtk'
 from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
@@ -69,6 +68,7 @@ def typeMap(name, package=None):
 
 from CDMSModule import *   
 from PersistentModule import *
+from vtUtilities import *
 
 def initialize(*args, **keywords):
     import core.modules.module_registry
@@ -76,7 +76,6 @@ def initialize(*args, **keywords):
     from VolumeRenderModule import VolumeRenderer
     from WorldMapModule import WorldFrame
     from HyperwallManager import HyperwallManager
-    from vtUtilities import *
 #    from DemoDataModule import DemoData, DemoDataConfigurationWidget
     from DV3DCell import DV3DCell
     from InteractiveConfiguration import LayerConfigurationWidget
@@ -93,7 +92,6 @@ def initialize(*args, **keywords):
     from packages.spreadsheet.basic_widgets import CellLocation
     from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
     import api
-    set_hyperwall_role( configuration.hw_role )
         
     reg = core.modules.module_registry.get_module_registry() 
     vtkAlgorithmOutputType = typeMap('vtkAlgorithmOutput')
