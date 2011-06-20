@@ -57,7 +57,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
         self.processList = []
 
         self.deviceName = dv3d_configuration.hw_name
-        role = hwConfig.hw_role
+        role = hwConfig.hw_role if hasattr( hwConfig, 'hw_role' ) else None
         self.isServer = ( role == 'server' )
         self.isClient = ( role == 'client' )
         set_hyperwall_role( role )

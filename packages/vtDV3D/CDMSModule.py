@@ -1767,5 +1767,8 @@ class CDMS_VectorReaderConfigurationWidget(CDMSReaderConfigurationWidget):
         
 if __name__ == '__main__':
     optionsDict = {  'hw_role'  : 'none' }
-    executeVistrail( 'workflows/DemoWorkflow8', options=optionsDict )
+    try:
+        executeVistrail( 'DemoWorkflow8', options=optionsDict )
+    except Exception, err:
+        print " executeVistrail exception: %s " % str( err )
 

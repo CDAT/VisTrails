@@ -3,7 +3,7 @@ Created on Dec 9, 2010
 
 @author: tpmaxwel
 '''
-import sys, vtk, StringIO, cPickle, time
+import sys, vtk, StringIO, cPickle, time, os
 import core.modules.module_registry
 from core.modules.vistrails_module import Module, ModuleError
 from core.modules.module_registry import get_module_registry
@@ -15,6 +15,7 @@ from core.debug import DebugPrint
 import numpy.core.umath as umath
 from vtk.util.vtkConstants import *
 import numpy as np
+packagePath = os.path.dirname( __file__ ) 
 
 VTK_CURSOR_ACTION       = 0
 VTK_SLICE_MOTION_ACTION = 1
@@ -459,9 +460,6 @@ def executeVistrail( *args, **kwargs ):
 
     from PyQt4 import QtGui
     import gui.application
-    import HyperwallManager
-    import sys
-    import os
      
     try:
         optionsDict = kwargs.get( 'options', None )
@@ -471,14 +469,17 @@ def executeVistrail( *args, **kwargs ):
                 gui.application.VistrailsApplication.finishSession()
             sys.exit(v)
         app = gui.application.VistrailsApplication()
+        resource_path = app.resource_path if hasattr( app, "resource_path" ) else None
         for vistrail_name in args:
-            vistrail_filename = os.path.join( app.resource_path, vistrail_name + '.vt' )
+            workflow_dir =  resource_path if resource_path else os.path.join( packagePath, "workflows" )
+            vistrail_filename = os.path.join( workflow_dir, vistrail_name + '.vt' )
             f = FileLocator(vistrail_filename)
             app.builderWindow.viewManager.open_vistrail(f) 
         app.builderWindow.viewModeChanged(0)   
     except SystemExit, e:
         if gui.application.VistrailsApplication:
             gui.application.VistrailsApplication.finishSession()
+        print "Uncaught exception on initialization: %s" % e
         sys.exit(e)
     except Exception, e:
         if gui.application.VistrailsApplication:
