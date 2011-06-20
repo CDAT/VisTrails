@@ -845,7 +845,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         zscaleTab_layout.addWidget(self.zscaleLabel)
         
         self.selectZScaleLineEdit =  QLineEdit( self.parent() )
-        self.selectZScaleLineEdit.setValidator( QDoubleValidator() )
+        self.selectZScaleLineEdit.setValidator( QDoubleValidator(self) )
         self.selectZScaleLineEdit.setText( "%.2f" % self.zscale)
         self.connect( self.selectZScaleLineEdit, SIGNAL('editingFinished()'), self.stateChanged )
         

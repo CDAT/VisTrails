@@ -69,15 +69,16 @@ class HyperwallManagerSingleton(QtCore.QObject):
             from hyperwall.iVisServer.iVisServer import QiVisServer
             app.resource_path = os.path.expanduser( dv3d_configuration.hw_resource_path )           
             self.server = QiVisServer( self.deviceName, hw_dims, hw_port, app.resource_path )
-            print "hwServer initialization, server: %x, mgr: %x" % ( id(self.server), id( self ) )
             self.connectSignals()
             
             nodeList = dv3d_configuration.hw_nodes.split(',')
+            print "hwServer initialization, server: %x, mgr: %x, dims=%s, nodes=%s" % ( id(self.server), id( self ), str(hw_dims), str(nodeList) )
             nodeIndex = 0
             for node in nodeList:
-                nodeName = node.strip()
-                self.spawnRemoteViewer( nodeName, nodeIndex )
-                nodeIndex = nodeIndex + 1
+                if node:
+                    nodeName = node.strip()
+                    self.spawnRemoteViewer( nodeName, nodeIndex )
+                    nodeIndex = nodeIndex + 1
                 
         if self.isClient:
             node_index = hwConfig.hw_node_index
@@ -93,7 +94,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
             localhost = os.uname()[1]
             debugStr = ('/usr/X11/bin/xterm -sb -sl 20000 -display :0.0 -e ') if debug else ''
             optionsStr = "-Y" if debug else ''  
-            cmd = "ssh %s %s '%s source ~/.vistrails/hw_env; export HW_NODE_INDEX=%d; python $VISTRAILS_DIR/packages/vtDV3D/hyperwall/main/client.py ' " % ( optionsStr, node, debugStr, nodeIndex )
+            cmd = "ssh %s %s '%s bash; source ~/.vistrails/hw_env; export HW_NODE_INDEX=%d; python $VISTRAILS_DIR/packages/vtDV3D/hyperwall/main/client.py ' " % ( optionsStr, node, debugStr, nodeIndex )
             p = subprocess.Popen( cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr ) 
             self.processList.append( p )  
         except Exception, err:

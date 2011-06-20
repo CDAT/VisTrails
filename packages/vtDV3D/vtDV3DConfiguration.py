@@ -16,5 +16,6 @@ configuration = ConfigurationObject( vtk_data_root='~/data',
                                      hw_role="none",
                                      hw_x=0, hw_y=0, hw_width=1, hw_height=1,
                                      hw_displayWidth=-1, hw_displayHeight=-1,
+                                     hw_nodes="",
                                      hw_server="localhost", 
                                      hw_server_port=50000 )

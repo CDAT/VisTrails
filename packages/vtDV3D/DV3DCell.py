@@ -471,7 +471,7 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         enable_label = QLabel( "Border size:" )
         border_layout.addWidget( enable_label )
         self.borderSizeEdit =  QLineEdit ( self.parent() )
-        self.borderSizeEdit.setValidator( QDoubleValidator() )
+        self.borderSizeEdit.setValidator( QDoubleValidator(self) )
         self.borderSizeEdit.setText( "%.2f" % self.mapBorderSize )
         self.connect( self.borderSizeEdit, SIGNAL("editingFinished()"), self.stateChanged ) 
         enable_label.setBuddy( self.borderSizeEdit )
