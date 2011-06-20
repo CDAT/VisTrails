@@ -75,9 +75,10 @@ class HyperwallManagerSingleton(QtCore.QObject):
             nodeList = dv3d_configuration.hw_nodes.split(',')
             nodeIndex = 0
             for node in nodeList:
-                nodeName = node.strip()
-                self.spawnRemoteViewer( nodeName, nodeIndex )
-                nodeIndex = nodeIndex + 1
+                if node:
+                    nodeName = node.strip()
+                    self.spawnRemoteViewer( nodeName, nodeIndex )
+                    nodeIndex = nodeIndex + 1
                 
         if self.isClient:
             node_index = hwConfig.hw_node_index
