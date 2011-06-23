@@ -1,0 +1,47 @@
+
+To configure and use the displaywall you will need basically 3 things. The Server, Client (running on the displaywall machines) and the iPhone/iPod client.
+
+There's 3 attached files:
+iVisClient.zip --> VisTrails package to be used in the display wall machines
+iVisServer.zip --> VisTrails package to be used in the server
+iVisIPhone.zip --> Interface to interact with the display wall.
+
+The architecture of the displaywall is basically this:
+- The iPhone is the client used to interact with the displaywall. The user have the iphone in hands and with it control everything in the display (e.g: choosing the visualization to be displayed as well how many monitors to be used; rotation/translation).
+- The Server receive all the interactions from the iPhone and send the right command to the displays.
+- The Client (displaywall machines) receive those commands and send to their monitors.
+
+
+To use the display wall we have to configure the server and the client (displaywall).
+
+
+>> Configuring the Server
+It is necessary to load the iVisServer package in to vistrails.
+In addition, server package read a file named .avis_devices that contain the settings of the displays. This file have to be added in the vistrails directory.
+An example of the .avis_devices file is the following:
+ex.:
+device
+   name Display Wall
+   dimensions 4 6
+end_device
+
+In the above case, the name of the display is 'Display Wall'. The dimension represent the amount of monitors being height,width (4x6).
+
+
+>> Configuring the Client
+In each client, its necessary to load the package and configure it. After loading the package the vistrails give you the option to change its parameters.
+The package have 8 parameters: address; height; name; resolution_x; resolution_y; width; x; y.
+address: Server address.
+name: Name of the display. (Have to be the same name used in the .avis_devices file.
+resolution_x, resolution_y: Resolution of all the monitors in that machine. If we have 4 monitors with the resolution of 1920x1200, the resolution_x and y will be 3840x2400.
+height, width: Amount of monitors in that machine. In our case, its always 2x2 since we have 4 monitors per machine forming a square.
+x, y: Position of the monitors in the display wall. The position start in 0,0 and the number to be specified in x,y have to be its first monitor. For an example, look below.
+
+    0  1  2  3  4  5
+0 [_][_][_][_][_][_]
+1 [_][_][_][_][_][_]
+2 [_][_][_][_][x][x]
+3 [_][_][_][_][x][x]
+
+In this case above the (x,y) will be (4,2) and the (height,width) is (2,2)
+
