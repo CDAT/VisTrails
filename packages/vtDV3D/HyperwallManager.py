@@ -9,6 +9,7 @@ from gui.application import VistrailsApplication
 from packages.spreadsheet.spreadsheet_config import configuration as spreadsheet_configuration
 from vtDV3DConfiguration import configuration as dv3d_configuration
 from vtUtilities import *
+HYPERWALL_SRC_PATH = os.path.join( os.path.dirname(__file__),  'hyperwall')
 
 class HyperwallManagerSingleton(QtCore.QObject):
 
@@ -90,17 +91,20 @@ class HyperwallManagerSingleton(QtCore.QObject):
                 
 
     def spawnRemoteViewer( self, node, nodeIndex, debug=False ):
+        localhost = os.uname()[1]
+        debugStr = ('/usr/X11/bin/xterm -sb -sl 20000 -display :0.0 -e ') if debug else ''
+        optionsStr = "-Y" if debug else ''  
+#            cmd = "ssh %s %s '%s /usr/local/bin/bash -c \"source ~/.vistrails/hw_env; export HW_NODE_INDEX=%d; export DISPLAY=:0.0; python %s/main/client.py\" ' " % ( optionsStr, node, debugStr, nodeIndex, HYPERWALL_SRC_PATH )
+#        cmd = "ssh %s %s '%s /usr/local/bin/bash -c \"export HW_NODE_INDEX=%d; export DISPLAY=:0.0; ~/dev/exe/hw_vistrails_client\" ' " % ( optionsStr, node, debugStr, nodeIndex )
+        cmd = [ "ssh", node, '/usr/local/bin/bash -c \"export HW_NODE_INDEX=%d; export DISPLAY=:0.0; ~/dev/exe/hw_vistrails_client\" ' % ( nodeIndex ) ]
+        print " --- Executing: ", ' '.join(cmd)
         try:
-            localhost = os.uname()[1]
-            debugStr = ('/usr/X11/bin/xterm -sb -sl 20000 -display :0.0 -e ') if debug else ''
-            optionsStr = "-Y" if debug else ''  
-            cmd = "ssh %s %s '%s bash; source ~/.vistrails/hw_env; export HW_NODE_INDEX=%d; export DISPLAY=:0.0; python $VISTRAILS_DIR/packages/vtDV3D/hyperwall/main/client.py ' " % ( optionsStr, node, debugStr, nodeIndex )
-            print " --- Executing: ", cmd
+#            os.system( cmd )
             p = subprocess.Popen( cmd, stdout=sys.stdout, stderr=sys.stderr ) 
-            self.processList.append( p )  
         except Exception, err:
             print>>sys.stderr, " Exception in spawnRemoteViewer: %s " % str( err )
-
+        self.processList.append( p )  
+ 
     
 #    def registerPipeline(self):
 #        buildWin = VistrailsApplication.builderWindow
