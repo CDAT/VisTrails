@@ -95,6 +95,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
             debugStr = ('/usr/X11/bin/xterm -sb -sl 20000 -display :0.0 -e ') if debug else ''
             optionsStr = "-Y" if debug else ''  
             cmd = "ssh %s %s '%s bash; source ~/.vistrails/hw_env; export HW_NODE_INDEX=%d; export DISPLAY=:0.0; python $VISTRAILS_DIR/packages/vtDV3D/hyperwall/main/client.py ' " % ( optionsStr, node, debugStr, nodeIndex )
+            print " --- Executing: ", cmd
             p = subprocess.Popen( cmd, stdout=sys.stdout, stderr=sys.stderr ) 
             self.processList.append( p )  
         except Exception, err:
