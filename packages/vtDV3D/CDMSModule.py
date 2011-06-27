@@ -489,6 +489,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.datasetChanged = False
         self.datasets = {}
         self.grids = []
+        self.gridCombo = None
         self.selectedGrid = None
         DV3DConfigurationWidget.__init__(self, module, controller, 'CDMS Dataset Configuration', parent)
         self.metadataViewer = MetadataViewerDialog( self )
@@ -582,9 +583,6 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
                     self.currentDatasetId = dataset.id 
                     self.datasets[ self.currentDatasetId ] = cdmsFile  
                     self.cdmsDataRoot = os.path.dirname( cdmsFile )
-                    self.updateGrids()
-                    self.updateTimeValues()
-                    self.initTimeRange()        
                     self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
                     self.dsCombo.setCurrentIndex( 0 )
                     self.pmod.datasetId = '*'.join( self.datasets.keys() )
@@ -628,9 +626,9 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
                 var_ndim = getVarNDim( vardata )
                 if (var_ndim) == 2 or (var_ndim == 3):
                     self.variableList[var_ndim-2].append( '%s*%s' % ( datasetId, var ) )
-            if not self.selectedGrid:
-                if len( self.variableList[1] ): self.selectedGrid = self.variableList[1][0]
-                elif len( self.variableList[0] ): self.selectedGrid = self.variableList[0][0]
+#            if not self.selectedGrid:
+#                if len( self.variableList[1] ): self.selectedGrid = self.variableList[1][0]
+#                elif len( self.variableList[0] ): self.selectedGrid = self.variableList[0][0]
             for grid_id in dataset.grids:
                 self.grids.append( '*'.join( [ datasetId, grid_id ] ) )
                 grid = dataset.grids[ grid_id ]
@@ -638,9 +636,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
                 if lonAxis:
                     lonVals = lonAxis.getValue()
                     if lonVals[0] < 0.0: self.lonRangeType = 1
-            dataset.close()  
-
-
+            dataset.close() 
+        self.updateRefVarSelection() 
      
     def updateTimeValues( self):
         self.startCombo.clear()
@@ -864,18 +861,29 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         grid_selection_label.setBuddy( self.gridCombo )
         self.gridCombo.setMaximumHeight( 30 )
         grid_selection_layout.addWidget( self.gridCombo  )
-
-        for var in self.variableList[0]: 
-            self.gridCombo.addItem( getVariableSelectionLabel( var, 2 ) )
-        for var in self.variableList[1]:
-            self.gridCombo.addItem( getVariableSelectionLabel( var, 3 ) )
+        self.updateRefVarSelection()
         self.connect( self.gridCombo, SIGNAL("currentIndexChanged(QString)"), self.gridChanged )               
         gridTab_layout.addLayout(grid_selection_layout)
-        if self.selectedGrid:
-            iSelection = self.gridCombo.findText( self.selectedGrid )
-            self.gridCombo.setCurrentIndex( iSelection )
-        else: self.selectedGrid = str( self.gridCombo.currentText() )   
-
+        
+    def updateRefVarSelection( self ):
+        if self.gridCombo == None: return 
+        updateSelectedGrid = True
+        item = None
+        for iItem in range( self.gridCombo.count() ):
+            self.gridCombo.removeItem ( iItem )
+        for var in self.variableList[0]: 
+            item = getVariableSelectionLabel( var, 2 )
+            if updateSelectedGrid and (item == self.selectedGrid): updateSelectedGrid = False
+            self.gridCombo.addItem( item )
+        for var in self.variableList[1]:
+            item = getVariableSelectionLabel( var, 3 )
+            if updateSelectedGrid and (item == self.selectedGrid): updateSelectedGrid = False
+            self.gridCombo.addItem( item )
+        if updateSelectedGrid: 
+            self.selectedGrid = item
+            if self.selectedGrid:
+                iSelection = self.gridCombo.findText( self.selectedGrid )
+                self.gridCombo.setCurrentIndex( iSelection )
 
     def gridChanged( self, value ):
         self.selectedGrid = str( self.gridCombo.currentText() )
@@ -1768,7 +1776,8 @@ class CDMS_VectorReaderConfigurationWidget(CDMSReaderConfigurationWidget):
 if __name__ == '__main__':
     optionsDict = {  'hw_role'  : 'none' }
     try:
-        executeVistrail( 'DemoWorkflow8', options=optionsDict )
+#        executeVistrail( 'DemoWorkflow8', options=optionsDict )
+        executeVistrail( options=optionsDict )
     except Exception, err:
         print " executeVistrail exception: %s " % str( err )
 
