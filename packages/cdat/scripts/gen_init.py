@@ -59,7 +59,8 @@ def write__init__(output_file):
     header.append("\n\n")
     header.append("def package_dependencies():\n")
     #header.append("    return ['edu.utah.sci.vistrails.numpyscipy']\n")
-    dependencies = ["'%s'"%d for d in PlotRegistry.getPlotsDependencies()]
+    #dependencies = ["'%s'"%d for d in PlotRegistry.getPlotsDependencies()]
+    dependencies = []
     if len(dependencies) == 0:
         header.append("    return ['edu.utah.sci.vistrails.spreadsheet']\n")
     else:

@@ -13877,9 +13877,9 @@ def initialize(*args, **keywords):
         shell = None
     translator = QTranslator(shell=shell)
     cdatWindow = qtbrowser.vcdatWindow.QCDATWindow()
-    plotRegistry = PlotRegistry(cdatWindow)
-    plotRegistry.loadPlots()    
-    plotRegistry.registerPlots()
+#    plotRegistry = PlotRegistry(cdatWindow)
+#    plotRegistry.loadPlots()    
+#    plotRegistry.registerPlots()
     cdatWindow.show()
     visApp = QtCore.QCoreApplication.instance()
     if visApp:
