@@ -1,24 +1,36 @@
-############################################################################
+###############################################################################
 ##
-## Copyright (C) 2006-2010 University of Utah. All rights reserved.
+## Copyright (C) 2006-2011, University of Utah. 
+## All rights reserved.
+## Contact: vistrails@sci.utah.edu
 ##
 ## This file is part of VisTrails.
 ##
-## This file may be used under the terms of the GNU General Public
-## License version 2.0 as published by the Free Software Foundation
-## and appearing in the file LICENSE.GPL included in the packaging of
-## this file.  Please review the following to ensure GNU General Public
-## Licensing requirements will be met:
-## http://www.opensource.org/licenses/gpl-license.php
+## "Redistribution and use in source and binary forms, with or without 
+## modification, are permitted provided that the following conditions are met:
 ##
-## If you are unsure which license is appropriate for your use (for
-## instance, you are interested in developing a commercial derivative
-## of VisTrails), please contact us at vistrails@sci.utah.edu.
+##  - Redistributions of source code must retain the above copyright notice, 
+##    this list of conditions and the following disclaimer.
+##  - Redistributions in binary form must reproduce the above copyright 
+##    notice, this list of conditions and the following disclaimer in the 
+##    documentation and/or other materials provided with the distribution.
+##  - Neither the name of the University of Utah nor the names of its 
+##    contributors may be used to endorse or promote products derived from 
+##    this software without specific prior written permission.
 ##
-## This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
-## WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+## AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
+## THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+## PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
+## CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
+## EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+## PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; 
+## OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+## WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+## OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
+## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
-############################################################################
+###############################################################################
 import os
 import shutil
 import sys
@@ -27,10 +39,10 @@ import subprocess
 import core.system
 
 try:
-    from ctypes import windll, Structure, c_ulong, byref, sizeof
+    from ctypes import windll, Structure, c_ulong, c_ulonglong, byref, sizeof
     importSuccess = True
     
-    class WIN32MEMORYSTATUS(Structure):
+    class WIN32MEMORYSTATUSEX(Structure):
         """ Structure that represents memory information returned by 
         Windows API
         
@@ -38,12 +50,13 @@ try:
         _fields_ = [
             ('dwLength', c_ulong),
             ('dwMemoryLoad', c_ulong),
-            ('dwTotalPhys', c_ulong),
-            ('dwAvailPhys', c_ulong),
-            ('dwTotalPageFile', c_ulong),
-            ('dwAvailPageFile', c_ulong),
-            ('dwTotalVirtual', c_ulong),
-            ('dwAvailVirtual', c_ulong)
+            ('dwTotalPhys', c_ulonglong),
+            ('dwAvailPhys', c_ulonglong),
+            ('dwTotalPageFile', c_ulonglong),
+            ('dwAvailPageFile', c_ulonglong),
+            ('dwTotalVirtual', c_ulonglong),
+            ('dwAvailVirtual', c_ulonglong),
+            ('dwAvailExtendedVirtual', c_ulonglong),
             ]
 
 except ImportError:
@@ -52,7 +65,7 @@ except ImportError:
 ##############################################################################
 def parse_meminfo():
     """ 
-    parse_meminfo() -> int
+    parse_meminfo() -> long
     Calls Windows 32 API GlobalMemoryStatus(Ex) to get memory information 
     It requires ctypes module
     
@@ -60,12 +73,12 @@ def parse_meminfo():
     try:
         kernel32 = windll.kernel32
 
-        result = WIN32MEMORYSTATUS()
-        result.dwLength = sizeof(WIN32MEMORYSTATUS)
-        kernel32.GlobalMemoryStatus(byref(result))
+        result = WIN32MEMORYSTATUSEX()
+        result.dwLength = sizeof(WIN32MEMORYSTATUSEX)
+        kernel32.GlobalMemoryStatusEx(byref(result))
     except:
         return -1
-    return int(result.dwTotalPhys / 1024) * 1L
+    return long(result.dwTotalPhys / 1024)
 
 def guess_total_memory():
     """ guess_total_memory() -> int 

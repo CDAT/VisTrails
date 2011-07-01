@@ -1,24 +1,36 @@
-###########################################################################
+###############################################################################
 ##
-## Copyright (C) 2006-2010 University of Utah. All rights reserved.
+## Copyright (C) 2006-2011, University of Utah. 
+## All rights reserved.
+## Contact: vistrails@sci.utah.edu
 ##
 ## This file is part of VisTrails.
 ##
-## This file may be used under the terms of the GNU General Public
-## License version 2.0 as published by the Free Software Foundation
-## and appearing in the file LICENSE.GPL included in the packaging of
-## this file.  Please review the following to ensure GNU General Public
-## Licensing requirements will be met:
-## http://www.opensource.org/licenses/gpl-license.php
+## "Redistribution and use in source and binary forms, with or without 
+## modification, are permitted provided that the following conditions are met:
 ##
-## If you are unsure which license is appropriate for your use (for
-## instance, you are interested in developing a commercial derivative
-## of VisTrails), please contact us at vistrails@sci.utah.edu.
+##  - Redistributions of source code must retain the above copyright notice, 
+##    this list of conditions and the following disclaimer.
+##  - Redistributions in binary form must reproduce the above copyright 
+##    notice, this list of conditions and the following disclaimer in the 
+##    documentation and/or other materials provided with the distribution.
+##  - Neither the name of the University of Utah nor the names of its 
+##    contributors may be used to endorse or promote products derived from 
+##    this software without specific prior written permission.
 ##
-## This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
-## WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+## AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
+## THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+## PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
+## CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
+## EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+## PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; 
+## OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+## WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+## OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
+## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
-############################################################################
+###############################################################################
 """ File for the builder window, the workspace of Vistrails
 
 QBuilderWindow
@@ -432,6 +444,10 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.moduleConfigViewAction.setCheckable(True)
         self.moduleConfigViewAction.setChecked(True)
         
+        self.vistrailVarsViewAction = QtGui.QAction('VisTrail Variables Panel', self)
+        self.vistrailVarsViewAction.setCheckable(True)
+        self.vistrailVarsViewAction.setChecked(True)
+        
         self.helpAction = QtGui.QAction(self.tr('About VisTrails...'), self)
 
         self.checkUpdateAction = QtGui.QAction(self.tr('Check for Updates'), self)
@@ -546,6 +562,7 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.viewMenu.addAction(self.methodsViewAction)
         self.viewMenu.addAction(self.setMethodsViewAction)
         self.viewMenu.addAction(self.moduleConfigViewAction)
+        self.viewMenu.addAction(self.vistrailVarsViewAction)
         self.viewMenu.addAction(self.propertiesViewAction)
         self.viewMenu.addAction(self.propertiesOverlayAction)
 
@@ -699,6 +716,10 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.connect(self.moduleConfigViewAction,
                      QtCore.SIGNAL('triggered(bool)'),
                      self.viewManager.setModuleConfigMode)
+        
+        self.connect(self.vistrailVarsViewAction,
+                     QtCore.SIGNAL('triggered(bool)'),
+                     self.viewManager.setVistrailVarsMode)
         
         self.connect(self.vistrailActionGroup,
                      QtCore.SIGNAL('triggered(QAction *)'),
@@ -1344,26 +1365,31 @@ class QBuilderWindow(QtGui.QMainWindow):
         """
         thumb_cache = ThumbnailCache.getInstance()
         c1 = self.viewManager.currentView().controller
-        t1 = c1.find_thumbnails(tags_only=thumb_cache.conf.tagsOnly) \
-            if thumb_cache.conf.autoSave else []
-        s1 = SaveBundle(c1.vistrail.vtType, c1.vistrail, c1.log, thumbnails=t1)
-        l1 = c1.locator._name if c1.locator is not None else ''
         c2 = mergeAction.view.controller
-        t2 = c2.find_thumbnails(tags_only=thumb_cache.conf.tagsOnly) \
-            if thumb_cache.conf.autoSave else []
-        s2 = SaveBundle(c2.vistrail.vtType, c2.vistrail, c2.log, thumbnails=t2)
-        l2 = c2.locator._name if c2.locator is not None else ''
+
         if c1.changed or c2.changed:
             text = ('Both Vistrails need to be saved before they can be merged.')
             QtGui.QMessageBox.information(None, 'Cannot perform merge',
                                       text, '&OK')
             return
+        
+        l1 = c1.locator._name if c1.locator is not None else ''
+        t1 = c1.find_thumbnails(tags_only=thumb_cache.conf.tagsOnly) \
+            if thumb_cache.conf.autoSave else []
+        s1 = SaveBundle(c1.vistrail.vtType, c1.vistrail.do_copy(), c1.log, thumbnails=t1)
+
+        l2 = c2.locator._name if c2.locator is not None else ''
+        t2 = c2.find_thumbnails(tags_only=thumb_cache.conf.tagsOnly) \
+            if thumb_cache.conf.autoSave else []
+        s2 = SaveBundle(c2.vistrail.vtType, c2.vistrail, c2.log, thumbnails=t2)
+
         db.services.vistrail.merge(s1, s2, "", merge_gui, l1, l2)
-        vistrail = c1.vistrail.do_copy()
-        vistrail.locator = c1.locator
-        self.viewManager.currentView().set_vistrail(vistrail, c1.locator,
-                                                   thumbnails=s1.thumbnails)
-        self.viewManager.currentView().setup_view()
+        vistrail = s1.vistrail
+        vistrail.locator = None
+        vistrail.set_defaults()
+        self.viewManager.set_vistrail_view(vistrail, None, thumbnail_files=s1.thumbnails)
+        self.viewManager.currentView().controller.changed = True
+        self.viewManager.currentView().stateChanged()
 
     def showShell(self, checked=True):
         """ showShell() -> None
@@ -1549,8 +1575,8 @@ class QBuilderWindow(QtGui.QMainWindow):
             self.flush_cache()
             currentView = self.viewManager.currentWidget()
             if currentView:
-                current_pipeline = currentView.controller.current_pipeline
-                current_pipeline.validate()
+                controller = currentView.controller
+                controller.validate(controller.current_pipeline)
             
         # Update the state of the icons if changing between db and file
         # support

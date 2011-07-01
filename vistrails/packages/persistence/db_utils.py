@@ -1,24 +1,36 @@
-############################################################################
+###############################################################################
 ##
-## Copyright (C) 2006-2010 University of Utah. All rights reserved.
+## Copyright (C) 2006-2011, University of Utah. 
+## All rights reserved.
+## Contact: vistrails@sci.utah.edu
 ##
 ## This file is part of VisTrails.
 ##
-## This file may be used under the terms of the GNU General Public
-## License version 2.0 as published by the Free Software Foundation
-## and appearing in the file LICENSE.GPL included in the packaging of
-## this file.  Please review the following to ensure GNU General Public
-## Licensing requirements will be met:
-## http://www.opensource.org/licenses/gpl-license.php
+## "Redistribution and use in source and binary forms, with or without 
+## modification, are permitted provided that the following conditions are met:
 ##
-## If you are unsure which license is appropriate for your use (for
-## instance, you are interested in developing a commercial derivative
-## of VisTrails), please contact us at vistrails@sci.utah.edu.
+##  - Redistributions of source code must retain the above copyright notice, 
+##    this list of conditions and the following disclaimer.
+##  - Redistributions in binary form must reproduce the above copyright 
+##    notice, this list of conditions and the following disclaimer in the 
+##    documentation and/or other materials provided with the distribution.
+##  - Neither the name of the University of Utah nor the names of its 
+##    contributors may be used to endorse or promote products derived from 
+##    this software without specific prior written permission.
 ##
-## This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
-## WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+## AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
+## THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+## PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
+## CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
+## EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+## PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; 
+## OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+## WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+## OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
+## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
-############################################################################
+###############################################################################
 
 import os
 import sqlite3
@@ -46,7 +58,19 @@ class DatabaseAccess(object):
             cur = self.conn.cursor()
             self.run_sql_file(cur, os.path.join(os.path.dirname(
                         os.path.abspath(__file__)), 'schema.sql'))
+        self.ensure_deleted_column_exist()
         self.model = None
+
+    def ensure_deleted_column_exist(self):
+        """ Add a "deleted" column if not already exist
+            This was added in version 0.2.2 without bumping the schema
+        """
+        cur = self.conn.cursor()
+        if 'deleted' not in [i[1] for i in cur.execute(
+                    "PRAGMA table_info(file);").fetchall()]:
+            cur.execute("ALTER TABLE file ADD COLUMN "
+                        "deleted bool NOT NULL DEFAULT False;")
+            self.conn.commit()
 
     def set_model(self, model):
         self.model = model
@@ -92,12 +116,13 @@ class DatabaseAccess(object):
                     "date_modified", "content_hash", "version", "signature"]
         col_str = ', '.join(cols)
         if where_dict is None or len(where_dict) <= 0:
-            cur.execute("SELECT " + ", ".join(cols) + " FROM file;")
+            cur.execute("SELECT " + ", ".join(cols) +
+                        " FROM file WHERE deleted != 'True';")
         else:
             where_cols, where_vals = zip(*where_dict.iteritems())
             where_str = '=? AND '.join(where_cols) + '=?'
-            cur.execute("SELECT " + ", ".join(cols) + " FROM file "
-                        "WHERE %s;" % where_str, where_vals)
+            cur.execute("SELECT " + ", ".join(cols) + " FROM file WHERE "
+                        "%s AND deleted != 'True';" % where_str, where_vals)
         return cur.fetchall()
 
     def search_by_signature(self, signature):
@@ -128,3 +153,18 @@ class DatabaseAccess(object):
                         "WHERE id=? AND version=?;", (id, version))
         res = cur.fetchone()
         return res is not None
+
+    def delete_from_database(self, where_dict=None):
+        cur = self.conn.cursor()
+        if where_dict is None or len(where_dict) <= 0:
+            cur.execute("UPDATE file SET deleted='True';")
+        else:
+            where_cols, where_vals = zip(*where_dict.iteritems())
+            where_str = '=? AND '.join(where_cols) + '=?'
+            cur.execute("UPDATE file SET deleted='True' WHERE %s;" %
+                           where_str, where_vals)
+        self.conn.commit()
+        if self.model:
+            self.model.remove_data(where_dict)
+        # return cur.fetchall()
+                     

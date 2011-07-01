@@ -1,24 +1,36 @@
-############################################################################
+###############################################################################
 ##
-## Copyright (C) 2006-2010 University of Utah. All rights reserved.
+## Copyright (C) 2006-2011, University of Utah. 
+## All rights reserved.
+## Contact: vistrails@sci.utah.edu
 ##
 ## This file is part of VisTrails.
 ##
-## This file may be used under the terms of the GNU General Public
-## License version 2.0 as published by the Free Software Foundation
-## and appearing in the file LICENSE.GPL included in the packaging of
-## this file.  Please review the following to ensure GNU General Public
-## Licensing requirements will be met:
-## http://www.opensource.org/licenses/gpl-license.php
+## "Redistribution and use in source and binary forms, with or without 
+## modification, are permitted provided that the following conditions are met:
 ##
-## If you are unsure which license is appropriate for your use (for
-## instance, you are interested in developing a commercial derivative
-## of VisTrails), please contact us at vistrails@sci.utah.edu.
+##  - Redistributions of source code must retain the above copyright notice, 
+##    this list of conditions and the following disclaimer.
+##  - Redistributions in binary form must reproduce the above copyright 
+##    notice, this list of conditions and the following disclaimer in the 
+##    documentation and/or other materials provided with the distribution.
+##  - Neither the name of the University of Utah nor the names of its 
+##    contributors may be used to endorse or promote products derived from 
+##    this software without specific prior written permission.
 ##
-## This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
-## WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+## AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
+## THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+## PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
+## CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
+## EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+## PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; 
+## OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+## WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+## OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
+## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
-############################################################################
+###############################################################################
 
 from PyQt4 import QtCore, QtGui
 from core import system, debug
@@ -60,7 +72,7 @@ class SourceConfigurationWidget(PortTableConfigurationWidget):
         PortTableConfigurationWidget.__init__(self, module, controller, parent)
         if editor_class is None:
             editor_class = SourceEditor
-        self.codeEditor = editor_class(self)
+        self.codeEditor = editor_class(parent)
         self.setWindowTitle('%s Configuration' % module.name)
         self.setLayout(QtGui.QVBoxLayout())
         self.layout().setMargin(0)
@@ -132,7 +144,10 @@ class SourceConfigurationWidget(PortTableConfigurationWidget):
             if self.sourceEncode:
                 code = urllib.unquote(code)
             self.codeEditor.setPlainText(code)
-        self.codeEditor.document().setModified(False)
+        if self.codeEditor.__class__.__name__ != '_PythonEditor':
+            self.codeEditor.document().setModified(False)
+        else:
+            self.codeEditor.setModified(False)
         self.codeEditor.setFocus()
         
     def setupEditor(self):
@@ -141,14 +156,23 @@ class SourceConfigurationWidget(PortTableConfigurationWidget):
         
         self.cursorLabel = QtGui.QLabel()
         self.layout().addWidget(self.cursorLabel)
-        self.connect(self.codeEditor, QtCore.SIGNAL('cursorPositionChanged()'),
-                     self.updateCursorLabel)
+        if self.codeEditor.__class__.__name__ != '_PythonEditor':
+            self.connect(self.codeEditor,
+                         QtCore.SIGNAL('cursorPositionChanged()'),
+                         self.updateCursorLabel)
+        else:
+            self.connect(self.codeEditor,
+                         QtCore.SIGNAL('cursorPositionChanged(int, int)'),
+                         self.updateCursorLabel)
         self.updateCursorLabel()
             
-    def updateCursorLabel(self):
-        cursor = self.codeEditor.textCursor()
-        self.cursorLabel.setText('Line: %d / Col: %d' % (cursor.blockNumber()+1,
-                                                            cursor.columnNumber()+1))
+    def updateCursorLabel(self, x=0, y=0):
+        if self.codeEditor.__class__.__name__ != '_PythonEditor':
+            cursor = self.codeEditor.textCursor()
+            x = cursor.blockNumber()
+            y = cursor.columnNumber()
+            
+        self.cursorLabel.setText('Line: %d / Col: %d' % (x+1, y+1))
 
     def performPortConnection(self, operation):
         operation(self.inputPortTable.horizontalHeader(),
@@ -185,8 +209,13 @@ class SourceConfigurationWidget(PortTableConfigurationWidget):
             added_ports.extend(output_added_ports)
 
         functions = []
-        if (self.codeEditor is not None and
-            self.codeEditor.document().isModified()):
+        modified = False
+        if self.codeEditor.__class__.__name__ != '_PythonEditor':
+            modified = self.codeEditor.document().isModified()
+        else:
+            modified = self.codeEditor.isModified()
+        
+        if (self.codeEditor is not None and modified):
             code = str(self.codeEditor.toPlainText())
             if self.sourceEncode:
                 code = urllib.quote(code)
