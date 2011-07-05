@@ -95,7 +95,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
         debugStr = ('/usr/X11/bin/xterm -sb -sl 20000 -display :0.0 -e ') if debug else ''
         optionsStr = "-Y" if debug else ''  
 #            cmd = "ssh %s %s '%s /usr/local/bin/bash -c \"source ~/.vistrails/hw_env; export HW_NODE_INDEX=%d; export DISPLAY=:0.0; python %s/main/client.py\" ' " % ( optionsStr, node, debugStr, nodeIndex, HYPERWALL_SRC_PATH )
-        cmd = [ "ssh", node, '/usr/local/bin/bash -c \"export HW_NODE_INDEX=%d; export DISPLAY=:0.0; ~/dev/exe/hw_vistrails_client\" ' % ( nodeIndex ) ]
+        cmd = [ "ssh", node, '/usr/local/bin/bash -c \"export HW_NODE_INDEX=%d; export DISPLAY=:0.0; ~/dev/exe/hw_vistrails_client -S ~/.vistrails-%d\" ' % ( nodeIndex, nodeIndex ) ]
         print " --- Executing: ", ' '.join(cmd)
         try:
             p = subprocess.Popen( cmd, stdout=sys.stdout, stderr=sys.stderr ) 
