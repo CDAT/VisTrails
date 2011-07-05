@@ -1,24 +1,36 @@
-############################################################################
+###############################################################################
 ##
-## Copyright (C) 2006-2010 University of Utah. All rights reserved.
+## Copyright (C) 2006-2011, University of Utah. 
+## All rights reserved.
+## Contact: vistrails@sci.utah.edu
 ##
 ## This file is part of VisTrails.
 ##
-## This file may be used under the terms of the GNU General Public
-## License version 2.0 as published by the Free Software Foundation
-## and appearing in the file LICENSE.GPL included in the packaging of
-## this file.  Please review the following to ensure GNU General Public
-## Licensing requirements will be met:
-## http://www.opensource.org/licenses/gpl-license.php
+## "Redistribution and use in source and binary forms, with or without 
+## modification, are permitted provided that the following conditions are met:
 ##
-## If you are unsure which license is appropriate for your use (for
-## instance, you are interested in developing a commercial derivative
-## of VisTrails), please contact us at vistrails@sci.utah.edu.
+##  - Redistributions of source code must retain the above copyright notice, 
+##    this list of conditions and the following disclaimer.
+##  - Redistributions in binary form must reproduce the above copyright 
+##    notice, this list of conditions and the following disclaimer in the 
+##    documentation and/or other materials provided with the distribution.
+##  - Neither the name of the University of Utah nor the names of its 
+##    contributors may be used to endorse or promote products derived from 
+##    this software without specific prior written permission.
 ##
-## This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
-## WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+## AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
+## THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+## PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
+## CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
+## EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+## PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; 
+## OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+## WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+## OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
+## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
-############################################################################
+###############################################################################
 """ This file contains the definition of the class Vistrail """
 
 import copy
@@ -131,6 +143,7 @@ class Vistrail(DBVistrail):
     THUMBNAIL_ANNOTATION = '__thumb__'
     PRUNE_ANNOTATION = '__prune__'
     UPGRADE_ANNOTATION = '__upgrade__'
+    VARIABLES_ANNOTATION = '__vistrail_vars__'
 
     ##########################################################################
     # Properties
@@ -185,6 +198,42 @@ class Vistrail(DBVistrail):
     def _set_database_info(self, value):
         return self.set_annotation("__database_info__", value)
     database_info = property(_get_database_info, _set_database_info)
+    
+    def _get_vistrail_vars(self):
+        annotation = self.get_annotation(Vistrail.VARIABLES_ANNOTATION)
+        if annotation is not None:
+            return dict(eval(annotation.value))
+        else:
+            return {}
+    
+    def _set_vistrail_vars(self, value):
+        if type(value) == type('') and value.strip() == '':
+            value = '{}'
+        return self.set_annotation(Vistrail.VARIABLES_ANNOTATION, str(value))
+    vistrail_vars = property(_get_vistrail_vars, _set_vistrail_vars)
+    
+    def has_vistrail_var(self, name):
+        return name in self.vistrail_vars
+    
+    def get_vistrail_var(self, name):
+        if name in self.vistrail_vars:
+            return self.vistrail_vars[name]
+        return None
+    
+    def set_vistrail_var(self, name, value):
+        vardict = self.vistrail_vars
+        if name in vardict:
+            if vardict[name] == value:
+                return False
+            if value is None:
+                del vardict[name]
+                self.vistrail_vars = vardict
+                return True
+        if value is None:
+            return False
+        vardict[name] = value
+        self.vistrail_vars = vardict
+        return True
 
     def getVersionName(self, version):
         """ getVersionName(version) -> str 

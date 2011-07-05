@@ -1,24 +1,36 @@
-############################################################################
+###############################################################################
 ##
-## Copyright (C) 2006-2010 University of Utah. All rights reserved.
+## Copyright (C) 2006-2011, University of Utah. 
+## All rights reserved.
+## Contact: vistrails@sci.utah.edu
 ##
 ## This file is part of VisTrails.
 ##
-## This file may be used under the terms of the GNU General Public
-## License version 2.0 as published by the Free Software Foundation
-## and appearing in the file LICENSE.GPL included in the packaging of
-## this file.  Please review the following to ensure GNU General Public
-## Licensing requirements will be met:
-## http://www.opensource.org/licenses/gpl-license.php
+## "Redistribution and use in source and binary forms, with or without 
+## modification, are permitted provided that the following conditions are met:
 ##
-## If you are unsure which license is appropriate for your use (for
-## instance, you are interested in developing a commercial derivative
-## of VisTrails), please contact us at vistrails@sci.utah.edu.
+##  - Redistributions of source code must retain the above copyright notice, 
+##    this list of conditions and the following disclaimer.
+##  - Redistributions in binary form must reproduce the above copyright 
+##    notice, this list of conditions and the following disclaimer in the 
+##    documentation and/or other materials provided with the distribution.
+##  - Neither the name of the University of Utah nor the names of its 
+##    contributors may be used to endorse or promote products derived from 
+##    this software without specific prior written permission.
 ##
-## This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
-## WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+## AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
+## THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+## PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
+## CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
+## EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+## PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; 
+## OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+## WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+## OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
+## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
-############################################################################
+###############################################################################
 """ The file describes the pipeline tab widget to manage a single
 pipeline
 
@@ -33,6 +45,7 @@ from gui.method_palette import QMethodPalette
 from gui.module_configuration import QModuleConfiguration
 from gui.module_methods import QModuleMethods
 from gui.pipeline_view import QPipelineView
+from gui.vistrail_variables import QVistrailVariables
 from weakref import proxy
 
 ################################################################################
@@ -69,6 +82,10 @@ class QPipelineTab(QDockContainer, QToolWindowInterface):
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, 
                            self.moduleConfig.toolWindow())
         
+        self.vistrailVars = QVistrailVariables(self)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea,
+                           self.vistrailVars.toolWindow())
+        
         self.connect(self.toolWindow(),
                      QtCore.SIGNAL('topLevelChanged(bool)'),
                      self.updateWindowTitle)
@@ -95,6 +112,7 @@ class QPipelineTab(QDockContainer, QToolWindowInterface):
         menu.addAction(self.methodPalette.toolWindow().toggleViewAction())
         menu.addAction(self.moduleMethods.toolWindow().toggleViewAction())
         menu.addAction(self.moduleConfig.toolWindow().toggleViewAction())
+        menu.addAction(self.vistrailVars.toolWindow().toggleViewAction())
 
     def removeViewActionsFromMenu(self, menu):
         """removeViewActionsFromMenu(menu: QMenu) -> None
@@ -104,6 +122,7 @@ class QPipelineTab(QDockContainer, QToolWindowInterface):
         menu.removeAction(self.methodPalette.toolWindow().toggleViewAction())
         menu.removeAction(self.moduleMethods.toolWindow().toggleViewAction())
         menu.removeAction(self.moduleConfig.toolWindow().toggleViewAction())
+        menu.removeAction(self.vistrailVars.toolWindow().toggleViewAction())
 
     def updatePipeline(self, pipeline):
         """ updatePipeline(pipeline: Pipeline) -> None        
@@ -177,6 +196,7 @@ class QPipelineTab(QDockContainer, QToolWindowInterface):
             self.methodPalette.controller = controller
             self.moduleMethods.controller = controller
             self.moduleConfig.controller = controller
+            self.vistrailVars.updateController(controller)
             controller.current_pipeline_view = self.pipelineView.scene()
 
     def versionChanged(self, newVersion):

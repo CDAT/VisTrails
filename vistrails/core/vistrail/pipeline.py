@@ -1,24 +1,36 @@
-############################################################################
+###############################################################################
 ##
-## Copyright (C) 2006-2010 University of Utah. All rights reserved.
+## Copyright (C) 2006-2011, University of Utah. 
+## All rights reserved.
+## Contact: vistrails@sci.utah.edu
 ##
 ## This file is part of VisTrails.
 ##
-## This file may be used under the terms of the GNU General Public
-## License version 2.0 as published by the Free Software Foundation
-## and appearing in the file LICENSE.GPL included in the packaging of
-## this file.  Please review the following to ensure GNU General Public
-## Licensing requirements will be met:
-## http://www.opensource.org/licenses/gpl-license.php
+## "Redistribution and use in source and binary forms, with or without 
+## modification, are permitted provided that the following conditions are met:
 ##
-## If you are unsure which license is appropriate for your use (for
-## instance, you are interested in developing a commercial derivative
-## of VisTrails), please contact us at vistrails@sci.utah.edu.
+##  - Redistributions of source code must retain the above copyright notice, 
+##    this list of conditions and the following disclaimer.
+##  - Redistributions in binary form must reproduce the above copyright 
+##    notice, this list of conditions and the following disclaimer in the 
+##    documentation and/or other materials provided with the distribution.
+##  - Neither the name of the University of Utah nor the names of its 
+##    contributors may be used to endorse or promote products derived from 
+##    this software without specific prior written permission.
 ##
-## This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
-## WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+## AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
+## THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+## PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
+## CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
+## EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+## PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; 
+## OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+## WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+## OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
+## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
-############################################################################
+###############################################################################
 ##TODO Tests
 """ This module defines the class Pipeline """
 
@@ -51,6 +63,34 @@ from xml.dom.minidom import getDOMImplementation, parseString
 import copy
 
 ##############################################################################
+
+class MissingVistrailVariable(Exception):
+    def __init__(self, var_uuid, identifier, name, namespace):
+        self._var_uuid = var_uuid
+        self._identifier = identifier
+        self._name = name
+        self._namespace = namespace
+
+    def __str__(self):
+        return "Missing Vistrail Variable '%s' of type %s from package %s" % (self._var_uuid,
+                self._module_name, self._identifier)
+        
+    def __eq__(self, other):
+        return type(self) == type(other) and \
+            self._var_uuid == other._var_uuid and \
+            self._identifier == other._identifier and \
+            self._name == other._name and \
+            self._namespace == other._namespace
+
+    def __hash__(self):
+        return (type(self), self._var_uuid, self._identifier,
+                self._name, self._namespace).__hash__()
+
+    def _get_module_name(self):
+        if self._namespace:
+            return "%s|%s" % (self._namespace, self._name)
+        return self._name
+    _module_name = property(_get_module_name)
 
 class Pipeline(DBWorkflow):
     """ A Pipeline is a set of modules and connections between them. """
@@ -777,7 +817,7 @@ class Pipeline(DBWorkflow):
     ##########################################################################
     # Registry-related
 
-    def validate(self, raise_exception=True):
+    def validate(self, raise_exception=True, vistrail_vars={}):
         # want to check entire pipeline and reconcile it with the
         # registry - if anything fails, generate invalid pipeline with
         # the errors
@@ -817,6 +857,10 @@ class Pipeline(DBWorkflow):
             exceptions.update(e.get_exception_set())
         try:
             self.ensure_functions()
+        except InvalidPipeline, e:
+            exceptions.update(e.get_exception_set())
+        try:
+            self.ensure_vistrail_variables(vistrail_vars)
         except InvalidPipeline, e:
             exceptions.update(e.get_exception_set())
         
@@ -963,6 +1007,21 @@ class Pipeline(DBWorkflow):
                         exceptions.add(e)
                     pos_map[p.pos] = p
                 function.is_valid = is_valid
+        if len(exceptions) > 0:
+            raise InvalidPipeline(exceptions, self)
+        
+    def ensure_vistrail_variables(self, vistrail_vars):
+        if len(vistrail_vars) <= 0:
+            return
+        var_uuids = [var_uuid for var_uuid, descriptor_info, var_strValue in vistrail_vars.itervalues()]
+        exceptions = set()
+        for module in self.modules.itervalues():
+            if module.has_annotation_with_key('__vistrail_var__'):
+                var_uuid = module.get_annotation_by_key('__vistrail_var__').value
+                if var_uuid not in var_uuids:
+                    e = MissingVistrailVariable(var_uuid, module.package, module.name, module.namespace)
+                    exceptions.add(e)
+    
         if len(exceptions) > 0:
             raise InvalidPipeline(exceptions, self)
 

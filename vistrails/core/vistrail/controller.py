@@ -1,24 +1,36 @@
-############################################################################
+###############################################################################
 ##
-## Copyright (C) 2006-2010 University of Utah. All rights reserved.
+## Copyright (C) 2006-2011, University of Utah. 
+## All rights reserved.
+## Contact: vistrails@sci.utah.edu
 ##
 ## This file is part of VisTrails.
 ##
-## This file may be used under the terms of the GNU General Public
-## License version 2.0 as published by the Free Software Foundation
-## and appearing in the file LICENSE.GPL included in the packaging of
-## this file.  Please review the following to ensure GNU General Public
-## Licensing requirements will be met:
-## http://www.opensource.org/licenses/gpl-license.php
+## "Redistribution and use in source and binary forms, with or without 
+## modification, are permitted provided that the following conditions are met:
 ##
-## If you are unsure which license is appropriate for your use (for
-## instance, you are interested in developing a commercial derivative
-## of VisTrails), please contact us at vistrails@sci.utah.edu.
+##  - Redistributions of source code must retain the above copyright notice, 
+##    this list of conditions and the following disclaimer.
+##  - Redistributions in binary form must reproduce the above copyright 
+##    notice, this list of conditions and the following disclaimer in the 
+##    documentation and/or other materials provided with the distribution.
+##  - Neither the name of the University of Utah nor the names of its 
+##    contributors may be used to endorse or promote products derived from 
+##    this software without specific prior written permission.
 ##
-## This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
-## WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+## AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
+## THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+## PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
+## CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
+## EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+## PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; 
+## OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+## WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+## OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
+## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
-############################################################################
+###############################################################################
 
 import copy
 import os
@@ -176,6 +188,38 @@ class VistrailController(object):
         Returns True if current pipeline has an alias named name """
         # FIXME Why isn't this call on the pipeline?
         return self.current_pipeline.has_alias(name)
+    
+    def check_vistrail_variable(self, name):
+        """check_vistrail_variable(var) -> Boolean
+        Returns True if vistrail has a variable named name """
+        if self.vistrail:
+            return self.vistrail.has_vistrail_var(name)
+        return False
+    
+    def set_vistrail_variable(self, name, value):
+        """set_vistrail_variable(var) -> Boolean
+        Returns True if vistrail variable was changed """
+        if self.vistrail:
+            changed = self.vistrail.set_vistrail_var(name, value)
+            self.set_changed(changed)
+            return changed
+        return False
+    
+    def get_vistrail_variables(self):
+        """get_vistrail_variables() -> dict
+        Returns the dictionary of vistrail variables """
+        if self.vistrail:
+            return self.vistrail.vistrail_vars
+        return {}
+    
+    def get_vistrail_variable_name_by_uuid(self, uuid):
+        """def get_vistrail_variable_name_by_uuid(uuid: str) -> dict
+        Returns the var name for vistrail variable with uuid """
+        vars = self.get_vistrail_variables()
+        for var_name, var_info in vars.iteritems():
+            var_uuid, descriptor_info, var_strValue = var_info
+            if var_uuid == uuid:
+                return var_name
     
     def invalidate_version_tree(self, *args, **kwargs):
         """ invalidate_version_tree(self, *args, **kwargs) -> None
@@ -1761,6 +1805,18 @@ class VistrailController(object):
         """callback for try_to_enable_package"""
         return True
        
+    def handleMissingSUDSWebServicePackage(self, identifier):
+        pm = get_package_manager()
+        suds_i = 'edu.utah.sci.vistrails.sudswebservices'
+        pkg = pm.identifier_is_available(suds_i)
+        if pkg:
+            pm.late_enable_package(pkg.codepath)
+        package = pm.get_package_by_identifier(suds_i)
+        if not package or \
+           not hasattr(package._init_module, 'load_from_signature'):
+            return False
+        return package._init_module.load_from_signature(identifier)
+
     def try_to_enable_package(self, identifier, dep_graph, confirmed=False):
         """try_to_enable_package(identifier: str,
                                  dep_graph: Graph,
@@ -1772,9 +1828,10 @@ class VistrailController(object):
         for later enables.
         """
 
-        # print 'TRYING TO ENABLE:', identifier
         pm = get_package_manager()
         pkg = pm.identifier_is_available(identifier)
+        if not pkg and identifier.startswith('SUDS#'):
+            self.handleMissingSUDSWebServicePackage(identifier)
         if not pm.has_package(identifier) and pkg:
             deps = pm.all_dependencies(identifier, dep_graph)[:-1]
             if identifier in self._asked_packages:
@@ -1841,7 +1898,6 @@ class VistrailController(object):
         if vistrail is None:
             vistrail = self.vistrail
         pm = get_package_manager()
-
         root_exceptions = e.get_exception_set()
         missing_packages = {}
         def process_missing_packages(exception_set):
@@ -2103,6 +2159,10 @@ class VistrailController(object):
                                   cur_pipeline, new_version)
         return (new_version, cur_pipeline)
 
+    def validate(self, pipeline, raise_exception=True):
+        vistrail_vars = self.get_vistrail_variables()
+        pipeline.validate(raise_exception, vistrail_vars)
+    
     def do_version_switch(self, new_version, report_all_errors=False, 
                           do_validate=True, from_root=False):
         """ do_version_switch(new_version: int,
@@ -2201,7 +2261,7 @@ class VistrailController(object):
                     # stash a copy for future use
                     if do_validate:
                         try:
-                            result.validate()
+                            self.validate(result)
                         except InvalidPipeline:
                             if not allow_fail:
                                 raise
@@ -2211,7 +2271,7 @@ class VistrailController(object):
                         self._pipelines[version] = copy.copy(result)
             if do_validate:
                 try:
-                    result.validate()
+                    self.validate(result)
                 except InvalidPipeline:
                     if not allow_fail:
                         raise
@@ -2259,7 +2319,7 @@ class VistrailController(object):
                     # check that we handled the invalid pipeline
                     # correctly
                     try:
-                        pipeline.validate()
+                        self.validate(pipeline)
                     # this means that there was a new exception after handling 
                     # the invalid pipeline and we should handle it again.    
                     except InvalidPipeline, e:
@@ -2269,7 +2329,7 @@ class VistrailController(object):
                                                               report_all_errors)
                         # check that we handled the invalid pipeline
                         # correctly
-                    pipeline.validate()
+                    self.validate(pipeline)
                     self.current_pipeline = pipeline
                     self.current_version = new_version
                 except InvalidPipeline, e:
