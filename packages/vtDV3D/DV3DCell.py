@@ -57,17 +57,25 @@ class QVTKServerWidget(QVTKWidget):
         sheet = self.findSheetTabWidget()
         if sheet: cells = sheet.getSelectedLocations()
         return cells
+
+    def getCamera(self):
+        rens = self.mRenWin.GetRenderers()
+        rens.InitTraversal()
+        for i in xrange(rens.GetNumberOfItems()):
+            ren = rens.GetNextItem()
+            dcam = ren.GetActiveCamera()
+            if dcam: return dcam
+        return None
         
     def processInteractionEvent( self, event, dims ):
         selected_cells = self.getSelectedCells()
-        iren = self.mRenWin.GetInteractor()
-        ren = self.getActiveRenderer(iren)
-        cam = ren.GetActiveCamera()
-        cpos = cam.GetPosition()
-        cfol = cam.GetFocalPoint()
-        cup = cam.GetViewUp()
-        camera_pos = (cpos,cfol,cup)
-#        print " @@@@@@@@@@@@@@@ processInteractionEvent: selected_cells = %s, camera = %s" % ( str(selected_cells), str( camera_pos ) )
+        cam = self.getCamera()
+        camera_pos = None
+        if cam:
+            cpos = cam.GetPosition()
+            cfol = cam.GetFocalPoint()
+            cup = cam.GetViewUp()
+            camera_pos = (cpos,cfol,cup)
         HyperwallManager.processInteractionEvent( event, dims, selected_cells, camera_pos ) 
 
         
