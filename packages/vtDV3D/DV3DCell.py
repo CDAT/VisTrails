@@ -45,12 +45,60 @@ class QVTKServerWidget(QVTKWidget):
 
     def event(self, e):  
         dims = [ self.width(), self.height() ]   
-        if   e.type() == QtCore.QEvent.KeyPress:           HyperwallManager.processInteractionEvent(e,dims) 
-        elif e.type() == QtCore.QEvent.MouseButtonPress:   HyperwallManager.processInteractionEvent(e,dims) 
-        elif e.type() == QtCore.QEvent.MouseMove:          HyperwallManager.processInteractionEvent(e,dims) 
-        elif e.type() == QtCore.QEvent.MouseButtonRelease: HyperwallManager.processInteractionEvent(e,dims) 
-        elif e.type() == QtCore.QEvent.KeyRelease:         HyperwallManager.processInteractionEvent(e,dims)         
+        if   e.type() == QtCore.QEvent.KeyPress:           self.processInteractionEvent(e,dims)  
+        elif e.type() == QtCore.QEvent.MouseButtonPress:   self.processInteractionEvent(e,dims) 
+        elif e.type() == QtCore.QEvent.MouseMove:          self.processInteractionEvent(e,dims) 
+        elif e.type() == QtCore.QEvent.MouseButtonRelease: self.processInteractionEvent(e,dims) 
+        elif e.type() == QtCore.QEvent.KeyRelease:         self.processInteractionEvent(e,dims)         
         return qt_super(QVTKServerWidget, self).event(e)
+
+    def getSelectedCells(self):
+        cells = []
+        sheet = self.findSheetTabWidget()
+        if sheet: cells = sheet.getSelectedLocations()
+        return cells
+        
+    def processInteractionEvent( self, event, dims ):
+        selected_cells = self.getSelectedCells()
+        iren = self.mRenWin.GetInteractor()
+        ren = self.getActiveRenderer(iren)
+        cam = ren.GetActiveCamera()
+        cpos = cam.GetPosition()
+        cfol = cam.GetFocalPoint()
+        cup = cam.GetViewUp()
+        camera_pos = (cpos,cfol,cup)
+#        print " @@@@@@@@@@@@@@@ processInteractionEvent: selected_cells = %s, camera = %s" % ( str(selected_cells), str( camera_pos ) )
+        HyperwallManager.processInteractionEvent( event, dims, selected_cells, camera_pos ) 
+
+        
+#    def interactionEvent(self, istyle, name):
+#        """ interactionEvent(istyle: vtkInteractorStyle, name: str) -> None
+#        Make sure interactions sync across selected renderers
+#        
+#        """
+#        if name=='MouseWheelForwardEvent':
+#            istyle.OnMouseWheelForward()
+#        if name=='MouseWheelBackwardEvent':
+#            istyle.OnMouseWheelBackward()
+#        ren = self.interacting
+#        if not ren:
+#            ren = self.getActiveRenderer(istyle.GetInteractor())
+#        if ren:
+#            cam = ren.GetActiveCamera()
+#            cpos = cam.GetPosition()
+#            cfol = cam.GetFocalPoint()
+#            cup = cam.GetViewUp()
+#            for cell in self.getSelectedCellWidgets():
+#                if cell!=self and hasattr(cell, 'getRendererList'): 
+#                    rens = cell.getRendererList()
+#                    for r in rens:
+#                        if r!=ren:
+#                            dcam = r.GetActiveCamera()
+#                            dcam.SetPosition(cpos)
+#                            dcam.SetFocalPoint(cfol)
+#                            dcam.SetViewUp(cup)
+#                            r.ResetCameraClippingRange()
+#                    cell.update()
         
 class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     """
@@ -62,6 +110,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         SpreadsheetCell.__init__(self)
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, **args )
         self.addConfigurableFunction( 'resetCamera', None, 'A', open=self.resetCamera )
+        if self.isClient:  self.location = ( 0, 0 )
         self.allowMultipleInputs = True
         self.renderers = []
         self.cellWidget = None
@@ -82,6 +131,18 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 #        return self.outputPorts[port]
 
 
+    def syncCamera( self, cpos, cfol, cup ):
+#        print " @@@ syncCamera, module: %s  @@@" % str( self.moduleID )
+        rens = self.renWin.GetRenderers()
+        rens.InitTraversal()
+        for i in xrange(rens.GetNumberOfItems()):
+            ren = rens.GetNextItem()
+            dcam = ren.GetActiveCamera()
+            if dcam:
+                dcam.SetPosition(cpos)
+                dcam.SetFocalPoint(cfol)
+                dcam.SetViewUp(cup)
+        
 #    def processInteractionEvent(self, istyle, name):
 #        iren = self.renWin.GetInteractor()
 #        pos = iren.GetLastEventPosition ()
@@ -128,7 +189,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         cellLocation.col = cell_coordinates[0]
         cellLocation.row = cell_coordinates[1]
          
-        print " --- Set cell location: %s, address: %s "  % ( str( [ cellLocation.col, cellLocation.row ] ), str(address) )
+        print " --- Set cell location[%s]: %s, address: %s "  % ( str(moduleId), str( [ cellLocation.col, cellLocation.row ] ), str(address) )
         self.overrideLocation( cellLocation )
         return [ cellLocation.col, cellLocation.row, 1, 1 ]
 
@@ -402,17 +463,6 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                     self.cellWidget = self.displayAndWait( QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker) )
                 
                 self.renWin = self.cellWidget.GetRenderWindow()
-#                if self.isServer:
-#                    iren = self.renWin.GetInteractor()
-#                    if iren:
-#                        style = iren.GetInteractorStyle()                                   
-#                        style.AddObserver( 'MouseMoveEvent', self.processInteractionEvent )
-#                        style.AddObserver( 'LeftButtonReleaseEvent', self.processInteractionEvent )       
-#                        style.AddObserver( 'CharEvent', self.processInteractionEvent )
-#                        style.AddObserver( 'KeyReleaseEvent', self.processInteractionEvent )
-#                        style.AddObserver( 'LeftButtonPressEvent', self.processInteractionEvent )
-#                        style.AddObserver( 'RightButtonReleaseEvent', self.processInteractionEvent )
-#                        style.AddObserver( 'RightButtonPressEvent', self.processInteractionEvent )            
             else:               
                 print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
  
@@ -534,3 +584,6 @@ class DV3DCell(WorkflowModule):
     
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args) 
+        
+    def syncCamera( self, cpos, cfol, cup ):
+        if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  

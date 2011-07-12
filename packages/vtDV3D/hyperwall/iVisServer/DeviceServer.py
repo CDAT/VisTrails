@@ -1,5 +1,9 @@
 from PyQt4 import Qt, QtCore
 from PyQt4.QtNetwork import QTcpSocket, QTcpServer, QHostAddress
+from core.vistrail.module_param import ModuleParam
+from core.vistrail.module_function import ModuleFunction
+from core.modules.module_registry import registry
+from core.db.action import create_action
 
 from core.db.io import serialize, unserialize
 from core.vistrail.pipeline import Pipeline
@@ -9,6 +13,9 @@ import copy
 from core import system
 import core
 ElementTree = core.system.get_elementtree_library()
+
+def get_cell_address_from_coords( row, col ):
+    return "%s%d" % ( chr( ord('A') + col ), row+1 )
 
 ################################################################################
 # Copied from medleys/web/server/application_server.py
@@ -349,6 +356,12 @@ class MedleySimpleGUI(XMLObject):
 
 ################################################################################
 
+def cellCoordsInList( row, col, cells ):
+    for cell in cells:
+        if ( cell[0] == row ) and ( cell[1] == col ):
+            return True
+    return False
+
 class Device:
     def __init__(self,name="unnamed_device",dimensions=(1,1)):
         self.name = name
@@ -381,22 +394,44 @@ class Device:
         preparePipelineForLocation(pipeline: Pipeline, module_id: Int, position: (Int, Int)) -> [((Int, Int), Pipeline)]
         Returns a list with tuples that contain the location of a pipeline, along with the pipeline itself
         """
-        
+        print " preparePipelineForLocation: module=%s, dims=%s " % ( str(module_id), str(dimensions) )
         result = []
         for row in range(dimensions[3]):
             for column in range(dimensions[2]):
                 localPipeline = copy.copy(pipeline)
                 currentModule = localPipeline.get_module_by_id(module_id)
 
-                DV3DCells = [module for module in localPipeline.module_list if ( module.name in self.cellModuleNames ) and ( module.id != module_id ) ]
-                for cell in DV3DCells: delete_module( cell, localPipeline )
-                
-                serializedPipeline = serialize(pipeline)
+                for module in localPipeline.module_list:
+                    if ( module.name in self.cellModuleNames ):
+                        if ( module.id <> module_id ):
+                            delete_module( module, localPipeline )
+                      
+                serializedPipeline = serialize(localPipeline)
 #                print " Serialized pipeline: %s " % str( serializedPipeline )
                 result.append( ((dimensions[0]+column, dimensions[1]+row), serializedPipeline) )
         
         return result
-                
+    
+#    def setCellLocation( self, module, pipeline, dimensions ):
+#        spec = registry.get_port_spec('gov.nasa.nccs.vtdv3d','spreadsheet.DV3DCell', None, 'cell_location','input')
+#        cellLocFunction = spec.create_module_function()
+#        cellLocFunction.real_id = pipeline.get_tmp_id( ModuleFunction.vtType )
+#        cellLocFunction.db_parameters[0].db_id = pipeline.get_tmp_id( ModuleParam.vtType )
+#        cellLocFunction.db_parameters_id_index[cellLocFunction.db_parameters[0].db_id] = cellLocFunction.db_parameters[0]
+#        action_list.append(('add', cellLocFunction, module.vtType, module.id))
+#
+#        cellLoc = get_cell_address_from_coords( dimensions[0], dimensions[1] )   
+#        print " Set Client Cell Location: %s, %s " % ( str(cellLoc), str(dimensions) )
+#        module_functions = module._get_functions()
+#        cellLocFunction = [x for x in module_functions if x.name == "cell_location"][0]                          
+#        (p_val, p_type, p_namespace, p_identifier, p_alias) = (str(cellLoc), cellLocFunction.params[0].type, cellLocFunction.params[0].namespace, cellLocFunction.params[0].identifier, None)
+#        old_param = cellLocFunction.params[0]
+#        param_id = pipeline.get_tmp_id(ModuleParam.vtType)
+#        new_param = ModuleParam(id=param_id, pos=0, name='<no description>', alias=p_alias, val=p_val, type=p_type, identifier=p_identifier, namespace=p_namespace, )
+#        action_list = [ ('change', old_param, new_param, cellLocFunction.vtType, cellLocFunction.real_id) ]          
+#        action = create_action(action_list)
+#        pipeline.perform_action(action)
+               
     def dispatchPipeline(self, pipeline, vistrailName, versionName, moduleId, dimensions):        
         pipelineList = self.preparePipelineForLocation( pipeline,  moduleId, dimensions )
         serializedPipelinesDict = {}
@@ -499,26 +534,24 @@ class Device:
         except NameError:
             print "Theres no cell locked or the cell you want to unlock isnt locked"
         return "cellUnlocked,"+self.name+","+tokens[0]
-
-    def processInteractionMessage(self, tokens):
-        localID = 0 # int(tokens[1])
+    
+    def processInteractionMessage( self, tokens, selected_cells ):
         eventType = tokens[0]
         event_data=','.join(  [ str(tokens[i]) for i in range( len(tokens) ) ]  )
-        dimensions = self.dimensionsForKey[localID]
-        print " Device server -> processMouseInteractionMessage: %s " % str( ( eventType, event_data ) )
-        for x in range(dimensions[0], dimensions[0]+dimensions[2]):
-            for y in range(dimensions[1], dimensions[1]+dimensions[3]):
-#                columnValue = x % 2 + 1
-#                rowValue = y % 2 + 1
-                cDim = self.clientDimensions.get( (x,y), None )
-                if cDim:
-                    columnValue = (x-cDim[0])%cDim[2]+1
-                    rowValue = (y-cDim[1])%cDim[3]+1
-                    message = "server-displayClient-"
-                    tokensString = "interaction,"
-                    tokensString += str(rowValue)+","+str(columnValue)+","+event_data
-                    message += str(len(tokensString))+":"+tokensString
-                    if self.addresses.has_key((x,y)): self.addresses[(x,y)].write(message)
+#        print "         --- processInteractionMessage --- "
+        for dimensions in self.dimensionsForKey.values():
+            x = dimensions[0]
+            y = dimensions[1]
+            isSelectedCell = cellCoordsInList( y, x, selected_cells )
+#            print " Device server -> sendMouseInteractionMessage[%s]: %s " % ( str(isSelectedCell), str( (x,y) ) )
+            if isSelectedCell:
+                columnValue = x + 1
+                rowValue = y + 1
+                message = "server-displayClient-"
+                tokensString = "interaction,"
+                tokensString += str(rowValue)+","+str(columnValue)+","+event_data
+                message += str(len(tokensString))+":"+tokensString
+                if self.addresses.has_key((x,y)): self.addresses[(x,y)].write(message)
 
     def sendMesageToClient( self, msg ):
         message = "server-displayClient-"

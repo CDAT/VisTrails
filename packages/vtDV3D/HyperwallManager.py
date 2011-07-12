@@ -59,6 +59,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
 
         self.deviceName = dv3d_configuration.hw_name
         role = hwConfig.hw_role if hasattr( hwConfig, 'hw_role' ) else None
+        debug = (hwConfig.debug[0].upper()=='T') if hasattr( hwConfig, 'debug' ) else False
         self.isServer = ( role == 'server' )
         self.isClient = ( role == 'client' )
         set_hyperwall_role( role )
@@ -72,22 +73,22 @@ class HyperwallManagerSingleton(QtCore.QObject):
             self.server = QiVisServer( self.deviceName, hw_dims, hw_port, app.resource_path )
             self.connectSignals()
             
-            nodeList = dv3d_configuration.hw_nodes.split(',')
-            print "hwServer initialization, server: %x, mgr: %x, dims=%s, nodes=%s" % ( id(self.server), id( self ), str(hw_dims), str(nodeList) )
-            nodeIndex = 0
-            for node in nodeList:
-                if node:
-                    nodeName = node.strip()
-                    self.spawnRemoteViewer( nodeName, nodeIndex )
-                    nodeIndex = nodeIndex + 1
+            if not debug:
+                nodeList = dv3d_configuration.hw_nodes.split(',')
+                print "hwServer initialization, server: %x, mgr: %x, dims=%s, nodes=%s" % ( id(self.server), id( self ), str(hw_dims), str(nodeList) )
+                nodeIndex = 0
+                for node in nodeList:
+                    if node:
+                        nodeName = node.strip()
+                        self.spawnRemoteViewer( nodeName, nodeIndex )
+                        nodeIndex = nodeIndex + 1
                 
         if self.isClient:
             node_index = hwConfig.hw_node_index
             hw_x = node_index / hw_dims[1]
             hw_y = node_index % hw_dims[1]
             from hyperwall.iVisClient.iVisClient import QiVisClient
-            self.client = QiVisClient(   self.deviceName, hw_x, hw_y, 1, 1, hw_server, hw_port,
-                                         dv3d_configuration.hw_displayWidth, dv3d_configuration.hw_displayHeight )
+            self.client = QiVisClient(   self.deviceName, hw_x, hw_y, 1, 1, hw_server, hw_port, dv3d_configuration.hw_displayWidth, dv3d_configuration.hw_displayHeight )
                 
 
     def spawnRemoteViewer( self, node, nodeIndex, debug=False ):
@@ -95,7 +96,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
         debugStr = ('/usr/X11/bin/xterm -sb -sl 20000 -display :0.0 -e ') if debug else ''
         optionsStr = "-Y" if debug else ''  
 #            cmd = "ssh %s %s '%s /usr/local/bin/bash -c \"source ~/.vistrails/hw_env; export HW_NODE_INDEX=%d; export DISPLAY=:0.0; python %s/main/client.py\" ' " % ( optionsStr, node, debugStr, nodeIndex, HYPERWALL_SRC_PATH )
-        cmd = [ "ssh", node, '/usr/local/bin/bash -c \"export HW_NODE_INDEX=%d; export DISPLAY=:0.0; ~/dev/exe/hw_vistrails_client ~/.vistrails-%d\" ' % ( nodeIndex, nodeIndex ) ]
+        cmd = [ "ssh", node, 'bash -c \"export HW_NODE_INDEX=%d; export DISPLAY=:0.0; ~/.vistrails/hw_vistrails_client ~/.vistrails-%d\" ' % ( nodeIndex, nodeIndex ) ]
         print " --- Executing: ", ' '.join(cmd)
         try:
             p = subprocess.Popen( cmd, stdout=sys.stdout, stderr=sys.stderr ) 
@@ -130,9 +131,9 @@ class HyperwallManagerSingleton(QtCore.QObject):
            print "  *** ExecuteWorkflow--> cell: %s" % str( moduleId )
            self.server.executePipeline( self.deviceName, vistrailName, versionName, moduleId, dimensions )
         
-    def processInteractionEvent( self, event, screen_dims  ):
-        print "HyperwallManager:processInteractionEvent"
-        if self.isServer: self.server.processInteractionEvent( self.deviceName, event, screen_dims )        
+    def processInteractionEvent( self, event, screen_dims, selected_cells, camera_pos  ):
+#        print "HyperwallManager:processInteractionEvent"
+        if self.isServer: self.server.processInteractionEvent( self.deviceName, event, screen_dims, selected_cells, camera_pos  )        
     
 HyperwallManager = HyperwallManagerSingleton()
 

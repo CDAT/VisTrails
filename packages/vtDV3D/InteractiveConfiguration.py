@@ -7,7 +7,6 @@ import sys, threading
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from core.modules.module_configure import StandardModuleConfigurationWidget
-from ModuleStore import ModuleStoreDatabase
 from core.modules.vistrails_module import Module, ModuleError
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, Boolean, Variant

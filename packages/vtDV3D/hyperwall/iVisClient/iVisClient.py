@@ -2,6 +2,8 @@ from PyQt4 import Qt, QtCore, QtGui
 from PyQt4.QtNetwork import QTcpSocket, QHostAddress, QHostInfo, QAbstractSocket
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from displaywall_tab import DisplayWallSheetTab
+import userpackages.vtDV3D.ModuleStore as ModuleStore
+from vtUtilities import *
 
 import PyQt4.QtNetwork
 import packages
@@ -33,7 +35,7 @@ class QiVisClient(QtCore.QObject):
 
         self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         self.spreadsheetWindow.tabController.clearTabs()
-        self.currentTab = DisplayWallSheetTab(self.spreadsheetWindow.tabController, width, height, displayWidth, displayHeight)
+        self.currentTab = DisplayWallSheetTab(self.spreadsheetWindow.tabController, x, y, width, height, displayWidth, displayHeight)
         self.spreadsheetWindow.tabController.addTabWidget(self.currentTab, self.deviceName)
 
         size = self.currentTab.getDimension()
@@ -55,9 +57,10 @@ class QiVisClient(QtCore.QObject):
         """retryConnection() -> None
         this method is called once everytime self.timer ticks. It
         tries to connect to the server again"""
+        print "retryConnection"
         if self.socket.state()!=QTcpSocket.ConnectedState:
             if self.socket.state()==QTcpSocket.UnconnectedState:
-#                print " HWClient connecting to server at %s:%s" % ( self.server, str( self.serverPort ) )
+                print " HWClient connecting to server at %s:%s" % ( self.server, str( self.serverPort ) )
                 self.socket.connectToHost(self.server, self.serverPort)
             self.timer.start()
         elif core.system.systemType in ['Windows', 'Microsoft']:
@@ -67,7 +70,7 @@ class QiVisClient(QtCore.QObject):
         """connected() -> None
         this method is called when self.socket emits the connected() signal. It means that a succesful connection
         has been established to the server"""
-        print "   ****** Connected to server!"
+        print "   ****** Connected to server!  CellCoords = ( %d, %d ) " % ( self.dimensions[0], self.dimensions[1] )
         sender = "displayClient"
         receiver = "server"
         tokens = "dimensions," + self.deviceName + "," + str(self.dimensions[0]) + "," + str(self.dimensions[1]) + "," + str(self.dimensions[2]) + "," + str(self.dimensions[3])
@@ -136,7 +139,7 @@ class QiVisClient(QtCore.QObject):
 
             button = QtCore.Qt.MouseButton(button)
             keyboard = QtCore.Qt.NoModifier
-            print " Client process %s %s event: pos = %s " % ( button, event[0], str( pos ) )
+#            print " Client process %s %s event: pos = %s " % ( button, event[0], str( pos ) )
 
             return QtGui.QMouseEvent(t, QtCore.QPoint(pos[0], pos[1]), button, button, keyboard)
 
@@ -158,13 +161,23 @@ class QiVisClient(QtCore.QObject):
                 m = QtCore.Qt.ControlModifier
             elif event[2] == "alt": 
                 m = QtCore.Qt.AltModifier
-            print " Client process key event: %s " % str( event )
+#            print " Client process key event: %s " % str( event )
 
             return QtGui.QKeyEvent( type, key, QtCore.Qt.KeyboardModifiers(m) )
 
         app = QtCore.QCoreApplication.instance()
 
         cell = (int(terms[0]), int(terms[1]))
+#        print " ------------- QiVisClient.processEvent: %s  ---------------------" % str( cell )
+        if terms[2] == "singleClick":
+            cellModules = self.getCellModules()
+            cpos = [ float(terms[i]) for i in range(6,9) ]
+            cfol = [ float(terms[i]) for i in range(9,12) ]
+            cup  = [ float(terms[i]) for i in range(12,15) ]
+#            print " >>> QiVisClient.cellModules: %s, modules: %s" % ( str( [ cellMod.id for cellMod in cellModules ] ), str( ModuleStore.getModuleIDs() ) )           
+            for cellMod in cellModules:
+                persistentCellModule = ModuleStore.getModule( cellMod.id ) 
+                if persistentCellModule: persistentCellModule.syncCamera( cpos, cfol, cup )            
         if terms[2] in ["singleClick", "mouseMove", "mouseRelease"]:
             screenRect = self.currentTab.screenMap[ (cell[0]-1, cell[1]-1) ]
             screenDims = ( screenRect.width(), screenRect.height() )
@@ -185,9 +198,23 @@ class QiVisClient(QtCore.QObject):
         self.pipelineQueue.pop()
         self.executePipeline(pipeline)
         self.emit(QtCore.SIGNAL("executeNextPipeline()"))
+
+    def getCellModules(self):
+        cellModules = []
+        for module in self.current_pipeline.module_list:
+            if ( module.name == "DV3DCell" ): cellModules.append( module )
+        return cellModules
         
     def getCurrentPipeline(self):
         return self.current_pipeline
+    
+    def setCellLocation(self):
+        cellModule = None
+        print " Executing Client Workflow, modules: "
+        for module in self.current_pipeline.module_list:
+            print str( module )
+#            if : cellModule = module
+
 
     def executePipeline(self,pipeline):
         from core.db.io import unserialize
@@ -197,7 +224,9 @@ class QiVisClient(QtCore.QObject):
         import api
 
         pip = unserialize(str(pipeline), Pipeline)
-        print "Executing Workflow"
+#        print " **** Client-%s ---Received Pipeline--- modules:" % str( self.dimensions )
+#        for module in pip.module_list:
+#            print "     ", str(module.id)
         self.current_pipeline = pip
         interpreter = getDefaultInterpreter()
         kwargs = { "locator":           None,
@@ -210,7 +239,7 @@ class QiVisClient(QtCore.QObject):
     def processMessage(self, message, socket):
         (sender, tokens) = message
         tokens = tokens.split(",")
-        print " processMessage: %s " % str( tokens )
+#        print " processMessage: %s " % str( tokens )
         if len(tokens) == 0: return
         
         if tokens[0] == "exit":

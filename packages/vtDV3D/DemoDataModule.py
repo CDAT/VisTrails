@@ -9,7 +9,6 @@ from PyQt4.QtGui import *
 import core.modules.module_registry
 from InteractiveConfiguration import DV3DConfigurationWidget
 from core.modules.vistrails_module import Module, ModuleError
-from ModuleStore import ModuleStoreDatabase
 from vtUtilities import *
 from PersistentModule import * 
 from NetCDFDataInterface import NetCDFDataWrapper

@@ -10,7 +10,6 @@ import core.modules.module_registry
 from InteractiveConfiguration import *
 from core.modules.vistrails_module import Module, ModuleError
 from WorkflowModule import WorkflowModule 
-from ModuleStore import ModuleStoreDatabase
 from core.vistrail.port_spec import PortSpec
 from vtUtilities import *
 from PersistentModule import * 
@@ -1774,7 +1773,8 @@ class CDMS_VectorReaderConfigurationWidget(CDMSReaderConfigurationWidget):
 
         
 if __name__ == '__main__':
-    optionsDict = {  'hw_role'  : 'none' }
+#    optionsDict = {  'hw_role'  : 'none' }
+    optionsDict = {  'hw_role': 'server', 'debug': 'False' } #, 'hw_nodes': 'localhost' }
     try:
         executeVistrail( 'DemoWorkflow8', options=optionsDict )
 #        executeVistrail( options=optionsDict )

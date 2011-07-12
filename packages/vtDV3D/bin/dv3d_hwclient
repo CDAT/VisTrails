@@ -3,4 +3,4 @@
 setenv VT_DIR /Developer/Projects/EclipseWorkspace/VisTrails/vistrails/
 setenv DV3D_DIR $VT_DIR/packages/vtDV3D/
 
-python $VT_DIR/vistrails/vistrails.py $DV3D_DIR/workflows/$1.vt -S/Users/tpmaxwel/.vistrails/hwclient
+python $VT_DIR/vistrails/vistrails.py -S/Users/tpmaxwel/.vistrails/hwclient

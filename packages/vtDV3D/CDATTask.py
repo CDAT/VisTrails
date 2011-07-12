@@ -29,6 +29,7 @@ class CDATTask(QtCore.QObject):
         self.outputMap = None
         self.gridMap = None
         self.module = None
+        self.name = 'task'
         self.grid = None
     
     @classmethod    

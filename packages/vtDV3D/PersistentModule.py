@@ -11,7 +11,6 @@ from core.modules.vistrails_module import Module, ModuleError
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from InteractiveConfiguration import *
 from ColorMapManager import ColorMapManager 
-from ModuleStore import ModuleStoreDatabase
 from db.domain import DBModule, DBAnnotation
 from vtUtilities import *
 import cdms2, cdtime

@@ -326,9 +326,10 @@ class QiVisServer(QObject):
         for receiver in receivers:
             receiver.write(message)
 
-    def processInteractionEvent( self, deviceName, event, screen_dims  ):
+    def processInteractionEvent( self, deviceName, event, screen_dims, selected_cells, camera_pos   ):
         etype = event.type()
         event_type = "none"
+        tokens = ""
         if   etype == QtCore.QEvent.MouseMove:          event_type = "mouseMove" 
         elif etype == QtCore.QEvent.MouseButtonPress:   event_type = "singleClick" 
         elif etype == QtCore.QEvent.MouseButtonRelease: event_type = "mouseRelease" 
@@ -344,7 +345,7 @@ class QiVisServer(QObject):
                elif ( mod & QtCore.Qt.AltModifier      ): mod = "alt" 
                else:                               mod = "none"
             tokens = [ event_type, key, mod ]
-            print ' >>----------iVisServer--> process Key Event:  %s '   % str( ( event_type, key, mod, event.text() ) )
+#            print ' >>----------iVisServer--> process Key Event:  %s '   % str( ( event_type, key, mod, event.text() ) )
         else:               
             x = event.x()
             y = event.y()
@@ -353,11 +354,17 @@ class QiVisServer(QObject):
             b = event.button() 
             button = "none"       
             if b == QtCore.Qt.LeftButton: button = "left"
-            if b == QtCore.Qt.RightButton: button = "right"           
-            tokens = [ event_type, button, xf, yf ]
-            print ' >>----------iVisServer--> process Mouse Event:  %s '   % str( ( event_type, xf, yf, button, screen_dims ) )  
+            if b == QtCore.Qt.RightButton: button = "right" 
+            if etype == QtCore.QEvent.MouseButtonPress:
+                cpos = camera_pos[0]  
+                cfol = camera_pos[1]  
+                cup = camera_pos[2]         
+                tokens = [ event_type, button, xf, yf, cpos[0], cpos[1], cpos[2], cfol[0], cfol[1], cfol[2], cup[0], cup[1], cup[2]  ]
+            else:
+                tokens = [ event_type, button, xf, yf ]
+#            print ' >>----------iVisServer--> process Mouse Event:  %s '   % str( ( event_type, xf, yf, button, screen_dims, tokens ) )  
                       
-        self.devices[deviceName].processInteractionMessage( tokens )
+        self.devices[deviceName].processInteractionMessage( tokens, selected_cells  )
 
             
           

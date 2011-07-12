@@ -7,7 +7,6 @@ import vtk, sys, os, copy, time
 from InteractiveConfiguration import *
 from core.modules.vistrails_module import Module, ModuleError
 from WorkflowModule import WorkflowModule 
-from ModuleStore import ModuleStoreDatabase
 from core.vistrail.port_spec import PortSpec
 from vtUtilities import *
 from PersistentModule import * 
