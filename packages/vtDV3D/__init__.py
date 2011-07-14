@@ -69,13 +69,13 @@ def typeMap(name, package=None):
 from CDMSModule import *   
 from PersistentModule import *
 from vtUtilities import *
+from HyperwallManager import HyperwallManager
 
 def initialize(*args, **keywords):
     import core.modules.module_registry
     from VolumeSlicerModule import VolumeSlicer
     from VolumeRenderModule import VolumeRenderer
     from WorldMapModule import WorldFrame
-    from HyperwallManager import HyperwallManager
 #    from DemoDataModule import DemoData, DemoDataConfigurationWidget
     from DV3DCell import DV3DCell
     from InteractiveConfiguration import LayerConfigurationWidget
@@ -212,4 +212,47 @@ def initialize(*args, **keywords):
     
     HyperwallManager.initialize()
 
-    
+def executeVistrail( *args, **kwargs ):
+    import core.requirements, os
+    core.requirements.check_pyqt4()
+    from core.db.locator import FileLocator
+#    if not isList( vistrail_names ): vistrail_names = [ vistrail_names, ]
+
+    from PyQt4 import QtGui
+    import gui.application
+     
+    try:
+        optionsDict = kwargs.get( 'options', None )
+        v = gui.application.start_application( optionsDict )
+        if v != 0:
+            if gui.application.VistrailsApplication:
+                gui.application.VistrailsApplication.finishSession()
+            sys.exit(v)
+        app = gui.application.VistrailsApplication()
+        resource_path = app.resource_path if hasattr( app, "resource_path" ) else None
+        for vistrail_name in args:
+            workflow_dir =  resource_path if resource_path else os.path.join( packagePath, "workflows" )
+            vistrail_filename = os.path.join( workflow_dir, vistrail_name + '.vt' )
+            f = FileLocator(vistrail_filename)
+            app.builderWindow.viewManager.open_vistrail(f) 
+        app.builderWindow.viewModeChanged(0)   
+    except SystemExit, e:
+        if gui.application.VistrailsApplication:
+            gui.application.VistrailsApplication.finishSession()
+        print "Uncaught exception on initialization: %s" % e
+        sys.exit(e)
+    except Exception, e:
+        if gui.application.VistrailsApplication:
+            gui.application.VistrailsApplication.finishSession()
+        print "Uncaught exception on initialization: %s" % e
+        import traceback
+        traceback.print_exc()
+        sys.exit(255)
+    if (app.temp_configuration.interactiveMode and
+        not app.temp_configuration.check('spreadsheetDumpCells')): 
+        v = app.exec_()
+     
+    HyperwallManager.shutdown()   
+    gui.application.stop_application()
+    sys.exit(v)
+   

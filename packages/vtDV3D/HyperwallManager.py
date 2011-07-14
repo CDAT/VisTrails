@@ -27,6 +27,13 @@ class HyperwallManagerSingleton(QtCore.QObject):
         self.isServer = False
         self.isClient = False
         
+#    def __del__(self):
+#        self.shutdown()
+        
+    def shutdown(self):
+        if self.isServer: 
+            self.server.shutdownClients()
+        
     def getDimensions(self):
         return ( self.columnCount, self.rowCount )
         
@@ -84,11 +91,12 @@ class HyperwallManagerSingleton(QtCore.QObject):
                         nodeIndex = nodeIndex + 1
                 
         if self.isClient:
+            fullScreen = (hwConfig.fullScreen[0].upper()=='T') if hasattr( hwConfig, 'fullScreen' ) else True
             node_index = hwConfig.hw_node_index
             hw_x = node_index / hw_dims[1]
             hw_y = node_index % hw_dims[1]
             from hyperwall.iVisClient.iVisClient import QiVisClient
-            self.client = QiVisClient(   self.deviceName, hw_x, hw_y, 1, 1, hw_server, hw_port, dv3d_configuration.hw_displayWidth, dv3d_configuration.hw_displayHeight )
+            self.client = QiVisClient(   self.deviceName, hw_x, hw_y, 1, 1, hw_server, hw_port, dv3d_configuration.hw_displayWidth, dv3d_configuration.hw_displayHeight, fullScreen )
                 
 
     def spawnRemoteViewer( self, node, nodeIndex, debug=False ):
@@ -131,12 +139,19 @@ class HyperwallManagerSingleton(QtCore.QObject):
            print "  *** ExecuteWorkflow--> cell: %s" % str( moduleId )
            self.server.executePipeline( self.deviceName, vistrailName, versionName, moduleId, dimensions )
         
-    def processInteractionEvent( self, event, screen_dims, selected_cells, camera_pos  ):
-#        print "HyperwallManager:processInteractionEvent"
+    def processInteractionEvent( self, event, screen_dims, camera_pos  ):
+        sheetTabWidget = getSheetTabWidget()
+        selected_cells = sheetTabWidget.getSelectedLocations()
         if self.isServer: self.server.processInteractionEvent( self.deviceName, event, screen_dims, selected_cells, camera_pos  )        
+
+    def processGuiCommand( self, command, activeCellsOnly=True  ):
+        sheetTabWidget = getSheetTabWidget()
+        selected_cells = sheetTabWidget.getSelectedLocations() if activeCellsOnly else None
+        if self.isServer: self.server.processGuiCommand( self.deviceName, command, selected_cells )        
     
 HyperwallManager = HyperwallManagerSingleton()
 
+    
 def onExecute( ):
     pass
 #    HyperwallManager.executeCurrentWorkflows()

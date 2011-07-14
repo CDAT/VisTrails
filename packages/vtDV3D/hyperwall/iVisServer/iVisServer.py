@@ -31,8 +31,12 @@ class QiVisServer(QObject):
         self.addDevice( name, dimensions )
         self.userPool = UserPool()
     
-    def __del__( self ): 
+#    def __del__( self ): 
+#        self.shutdownClients()
+        
+    def shutdownClients(self):
         for device in self.devices.values(): device.shutdown()
+        self.devices = {}
         
     def addDevice(self, name, dimensions ):
         device = Device(name, dimensions)
@@ -143,6 +147,7 @@ class QiVisServer(QObject):
 
     def processMessage(self, message, socket=None):
         (sender, tokens) = message
+        print " -- Server process message: %s " % tokens
         tokens = tokens.split(",")
         if len(tokens) == 0: return
 
@@ -326,6 +331,9 @@ class QiVisServer(QObject):
         for receiver in receivers:
             receiver.write(message)
 
+    def processGuiCommand( self, deviceName, command, selected_cells ):
+        self.devices[deviceName].processInteractionMessage( command, selected_cells, "command" )
+
     def processInteractionEvent( self, deviceName, event, screen_dims, selected_cells, camera_pos   ):
         etype = event.type()
         event_type = "none"
@@ -335,15 +343,15 @@ class QiVisServer(QObject):
         elif etype == QtCore.QEvent.MouseButtonRelease: event_type = "mouseRelease" 
         elif etype == QtCore.QEvent.KeyPress:           event_type = "keyPress" 
         elif etype == QtCore.QEvent.KeyRelease:         event_type = "keyRelease" 
+        mod = event.modifiers() 
+        if mod:
+           if   ( mod & QtCore.Qt.ShiftModifier    ): mod = "shift" 
+           elif ( mod & QtCore.Qt.ControlModifier  ): mod = "ctrl" 
+           elif ( mod & QtCore.Qt.AltModifier      ): mod = "alt" 
+           else:                                      mod = "none"
         
         if (etype== QtCore.QEvent.KeyRelease) or (etype== QtCore.QEvent.KeyPress):   
             key = event.key() 
-            mod = event.modifiers() 
-            if mod:
-               if   ( mod & QtCore.Qt.ShiftModifier    ): mod = "shift" 
-               elif ( mod & QtCore.Qt.ControlModifier  ): mod = "ctrl" 
-               elif ( mod & QtCore.Qt.AltModifier      ): mod = "alt" 
-               else:                               mod = "none"
             tokens = [ event_type, key, mod ]
 #            print ' >>----------iVisServer--> process Key Event:  %s '   % str( ( event_type, key, mod, event.text() ) )
         else:               
@@ -359,10 +367,10 @@ class QiVisServer(QObject):
                 cpos = camera_pos[0]  
                 cfol = camera_pos[1]  
                 cup = camera_pos[2]         
-                tokens = [ event_type, button, xf, yf, cpos[0], cpos[1], cpos[2], cfol[0], cfol[1], cfol[2], cup[0], cup[1], cup[2]  ]
+                tokens = [ event_type, button, xf, yf, mod, cpos[0], cpos[1], cpos[2], cfol[0], cfol[1], cfol[2], cup[0], cup[1], cup[2]  ]
             else:
-                tokens = [ event_type, button, xf, yf ]
-#            print ' >>----------iVisServer--> process Mouse Event:  %s '   % str( ( event_type, xf, yf, button, screen_dims, tokens ) )  
+                tokens = [ event_type, button, xf, yf, mod ]
+#            print ' >>----------iVisServer--> process Mouse Event:  %s '   % str( ( event_type, xf, yf, button, mod, screen_dims, tokens ) )  
                       
         self.devices[deviceName].processInteractionMessage( tokens, selected_cells  )
 

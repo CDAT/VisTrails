@@ -11,7 +11,7 @@ import gui
 import core
 
 class QiVisClient(QtCore.QObject):
-    def __init__(self, name, x, y, width, height, server, serverPort, displayWidth, displayHeight):
+    def __init__(self, name, x, y, width, height, server, serverPort, displayWidth, displayHeight, fullScreenEnabled ):
         """__init__() -> None
         initializes the client class"""
 
@@ -35,7 +35,7 @@ class QiVisClient(QtCore.QObject):
 
         self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         self.spreadsheetWindow.tabController.clearTabs()
-        self.currentTab = DisplayWallSheetTab(self.spreadsheetWindow.tabController, x, y, width, height, displayWidth, displayHeight)
+        self.currentTab = DisplayWallSheetTab(self.spreadsheetWindow.tabController, x, y, width, height, displayWidth, displayHeight, fullScreenEnabled )
         self.spreadsheetWindow.tabController.addTabWidget(self.currentTab, self.deviceName)
 
         size = self.currentTab.getDimension()
@@ -70,11 +70,11 @@ class QiVisClient(QtCore.QObject):
         """connected() -> None
         this method is called when self.socket emits the connected() signal. It means that a succesful connection
         has been established to the server"""
-        print "   ****** Connected to server!  CellCoords = ( %d, %d ) " % ( self.dimensions[0], self.dimensions[1] )
         sender = "displayClient"
         receiver = "server"
         tokens = "dimensions," + self.deviceName + "," + str(self.dimensions[0]) + "," + str(self.dimensions[1]) + "," + str(self.dimensions[2]) + "," + str(self.dimensions[3])
         reply = sender + "-" + receiver + "-" + str(len(tokens)) + ":" + tokens
+        print "   ****** Connected to server!  CellCoords = ( %d, %d ), reply: %s " % ( self.dimensions[0], self.dimensions[1], reply )
         self.socket.write(reply)
 
     def disconnected(self):
@@ -114,6 +114,27 @@ class QiVisClient(QtCore.QObject):
                 
             incoming = str(self.socket.readAll().data())
 
+
+    def processCommand(self, terms):
+        print " processCommand: %s " % str( terms )
+        if terms[0] == "reltimestep":
+            relTimeValue = float( terms[1] )  
+            displayText =  terms[2] 
+            for module in self.current_pipeline.module_list:
+                persistentCellModule = ModuleStore.getModule( module.id ) 
+                persistentCellModule.updateAnimation( relTimeValue, displayText  )
+        else:
+            for module in self.current_pipeline.module_list:
+                persistentCellModule = ModuleStore.getModule( module.id ) 
+                persistentCellModule.updateConfigurationObserver( terms[0], terms[1:] )
+#        if terms[0] == 'colormap':
+#             cmapData = terms[1]
+#             displayText =  terms[2]  
+#             for module in self.current_pipeline.module_list:
+#                persistentCellModule = ModuleStore.getModule( module.id ) 
+#                persistentCellModule.setColormap( cmapData  )
+#                persistentCellModule.updateTextDisplay( displayText )
+
     def processEvent(self, terms):
         """processEvent(message: String) -> None
         decodifies the event received by the server and posts it to QT's event handler. In order
@@ -138,10 +159,16 @@ class QiVisClient(QtCore.QObject):
                 t = QtCore.QEvent.MouseButtonRelease
 
             button = QtCore.Qt.MouseButton(button)
-            keyboard = QtCore.Qt.NoModifier
+            m = QtCore.Qt.NoModifier
+            if event[4] == "shift": 
+                m = QtCore.Qt.ShiftModifier
+            elif event[4] == "ctrl": 
+                m = QtCore.Qt.ControlModifier
+            elif event[4] == "alt": 
+                m = QtCore.Qt.AltModifier
 #            print " Client process %s %s event: pos = %s " % ( button, event[0], str( pos ) )
 
-            return QtGui.QMouseEvent(t, QtCore.QPoint(pos[0], pos[1]), button, button, keyboard)
+            return QtGui.QMouseEvent(t, QtCore.QPoint(pos[0], pos[1]), button, button, m)
 
         def decodeKeyEvent(event):
             """decodeKeyEvent(event: String) -> QtGui.QKeyEvent
@@ -171,9 +198,9 @@ class QiVisClient(QtCore.QObject):
 #        print " ------------- QiVisClient.processEvent: %s  ---------------------" % str( cell )
         if terms[2] == "singleClick":
             cellModules = self.getCellModules()
-            cpos = [ float(terms[i]) for i in range(6,9) ]
-            cfol = [ float(terms[i]) for i in range(9,12) ]
-            cup  = [ float(terms[i]) for i in range(12,15) ]
+            cpos = [ float(terms[i]) for i in range(7,10) ]
+            cfol = [ float(terms[i]) for i in range(10,13) ]
+            cup  = [ float(terms[i]) for i in range(13,16) ]
 #            print " >>> QiVisClient.cellModules: %s, modules: %s" % ( str( [ cellMod.id for cellMod in cellModules ] ), str( ModuleStore.getModuleIDs() ) )           
             for cellMod in cellModules:
                 persistentCellModule = ModuleStore.getModule( cellMod.id ) 
@@ -239,11 +266,13 @@ class QiVisClient(QtCore.QObject):
     def processMessage(self, message, socket):
         (sender, tokens) = message
         tokens = tokens.split(",")
-#        print " processMessage: %s " % str( tokens )
+        print " processMessage: %s " % str( tokens )
         if len(tokens) == 0: return
         
         if tokens[0] == "exit":
-            sys.exit(0)
+            gui.application.VistrailsApplication.quit()
+#            gui.application.stop_application()
+#            sys.exit(0)
 
         if tokens[0] == "pipeline":
 #            print " $$$$$$$$$$$ pipeline message: %s " % str(tokens)
@@ -257,6 +286,9 @@ class QiVisClient(QtCore.QObject):
             self.executePipeline(tokens[1])
         elif tokens[0] == "interaction":
             self.processEvent(tokens[1:])
+            
+        elif tokens[0] == "command":
+            self.processCommand(tokens[3:])
             
         elif tokens[0] == "refresh":
             if self.currentTab:

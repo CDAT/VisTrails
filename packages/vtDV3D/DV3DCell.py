@@ -68,7 +68,6 @@ class QVTKServerWidget(QVTKWidget):
         return None
         
     def processInteractionEvent( self, event, dims ):
-        selected_cells = self.getSelectedCells()
         cam = self.getCamera()
         camera_pos = None
         if cam:
@@ -76,8 +75,7 @@ class QVTKServerWidget(QVTKWidget):
             cfol = cam.GetFocalPoint()
             cup = cam.GetViewUp()
             camera_pos = (cpos,cfol,cup)
-        HyperwallManager.processInteractionEvent( event, dims, selected_cells, camera_pos ) 
-
+        HyperwallManager.processInteractionEvent( event, dims, camera_pos ) 
         
 #    def interactionEvent(self, istyle, name):
 #        """ interactionEvent(istyle: vtkInteractorStyle, name: str) -> None
@@ -138,7 +136,23 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 #            raise ModuleError(self, "output port '%s' not found" % port)
 #        return self.outputPorts[port]
 
-
+    def getSheetTabWidget( self ):   
+        return self.cellWidget.findSheetTabWidget() if self.cellWidget else None
+    
+    def adjustSheetDimensions(self, row, col ):
+        sheetTabWidget = getSheetTabWidget()
+        ( rc, cc ) = sheetTabWidget.getDimension()
+        rowChanged, colChanged = False, False
+        if row >= rc: 
+            rc = row + 1
+            rowChanged = True
+        if col >= cc: 
+            cc = col + 1
+            colChanged = True
+        if rowChanged or colChanged:    sheetTabWidget.setDimension( rc, cc )
+        if rowChanged:                  sheetTabWidget.rowSpinBoxChanged()            
+        if colChanged:                  sheetTabWidget.colSpinBoxChanged()
+    
     def syncCamera( self, cpos, cfol, cup ):
 #        print " @@@ syncCamera, module: %s  @@@" % str( self.moduleID )
         rens = self.renWin.GetRenderers()
@@ -199,6 +213,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
          
         print " --- Set cell location[%s]: %s, address: %s "  % ( str(moduleId), str( [ cellLocation.col, cellLocation.row ] ), str(address) )
         self.overrideLocation( cellLocation )
+        self.adjustSheetDimensions( cellLocation.row, cellLocation.col )
         return [ cellLocation.col, cellLocation.row, 1, 1 ]
 
     def updateHyperwall(self):
@@ -472,8 +487,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 
                 self.renWin = self.cellWidget.GetRenderWindow()
             else:               
-                print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
- 
+                print>>sys.stderr, "Error, no renderers supplied to DV3DCell"  
 
 class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
     """
@@ -553,13 +567,13 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         self.colCombo =  QComboBox ( self.parent() )
         self.colCombo.setMaximumHeight( 30 )
         cell_selection_layout.addWidget( self.colCombo  )        
-        for iCol in range( sheet_dims[0] ):  self.colCombo.addItem( chr( ord('A') + iCol ) )
+        for iCol in range( 5 ):  self.colCombo.addItem( chr( ord('A') + iCol ) )
         self.colCombo.setCurrentIndex( cell_coordinates[0] )
 
         self.rowCombo =  QComboBox ( self.parent() )
         self.rowCombo.setMaximumHeight( 30 )
         cell_selection_layout.addWidget( self.rowCombo  )        
-        for iRow in range( sheet_dims[1] ):  self.rowCombo.addItem( str(iRow+1) )
+        for iRow in range( 5 ):  self.rowCombo.addItem( str(iRow+1) )
         self.rowCombo.setCurrentIndex( cell_coordinates[1] )
         location_layout.addLayout(cell_selection_layout)
         

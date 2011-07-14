@@ -110,7 +110,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """ 
-        textureModule = wmod.forceGetInputFromPort( "texture", None )
+        textureModule = self.wmod.forceGetInputFromPort( "texture", None )
         if self.input == None:
             if textureModule <> None:
                 self.input = textureModule.getOutput() 

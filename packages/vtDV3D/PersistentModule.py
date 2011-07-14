@@ -12,6 +12,7 @@ from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from InteractiveConfiguration import *
 from ColorMapManager import ColorMapManager 
 from db.domain import DBModule, DBAnnotation
+from HyperwallManager import HyperwallManager
 from vtUtilities import *
 import cdms2, cdtime
 ReferenceTimeUnits = "days since 1900-1-1"
@@ -167,7 +168,10 @@ class PersistentModule( QObject ):
         controller.add_annotation( ('__desc__', str(label)), self.moduleID ) 
         controller.current_pipeline_view.recreate_module( controller.current_pipeline, self.moduleID )
         pass
-        
+
+    def updateTextDisplay( self, text = None ):
+        pass
+    
     def setNewConfiguration(self, **args ):
         self.newLayerConfiguration = args.get( 'newLayerConfig', False )
 
@@ -616,7 +620,8 @@ class PersistentModule( QObject ):
         self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, **args )
 
     def addConfigurableGuiFunction(self, name, guiClass, key, **args):
-        guiCF = GuiConfigurableFunction( name, guiClass, key, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
+        isActive = not HyperwallManager.isClient
+        guiCF = GuiConfigurableFunction( name, guiClass, key, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
 
     def addConfigurableWidgetFunction(self, name, signature, widgetWrapper, key, **args):
@@ -672,6 +677,7 @@ class PersistentModule( QObject ):
     def updateConfigurationObserver( self, parameter_name, new_parameter_value, *args ):
         try:
             if self.getActivation( parameter_name ):
+                print " updateConfiguration[%s]: %s" % ( parameter_name, str(new_parameter_value) )
                 self.setResult( parameter_name, new_parameter_value )
                 configFunct = self.configurableFunctions[ parameter_name ]
                 configFunct.setValue( new_parameter_value )
@@ -752,7 +758,7 @@ class PersistentModule( QObject ):
                                      
     def getInteractionState( self, key ):
         for configFunct in self.configurableFunctions.values():
-            if ( configFunct.key == key ): return configFunct.name
+            if configFunct.matches( key ): return configFunct.name
         return None    
     
 #    def finalizeConfigurations( self ):
@@ -910,7 +916,7 @@ class PersistentModule( QObject ):
         
     def updateModule(self):
         pass
-    
+   
     def getCurrentPipeline(self):
         if self.pipeline <> None:
             return self.pipeline
@@ -1042,7 +1048,7 @@ class PersistentVisualizationModule( PersistentModule ):
         
     def setColormap( self, data ):
         self.colormapName = str(data[0])
-        self.invertColormap = data[1]
+        self.invertColormap = int( data[1] )
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
 #        print ' ~~~~~~~ SET COLORMAP:  --%s--  ' % self.colormapName
         if self.buildColormap(): 

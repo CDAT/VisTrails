@@ -357,6 +357,7 @@ class MedleySimpleGUI(XMLObject):
 ################################################################################
 
 def cellCoordsInList( row, col, cells ):
+    if cells == None: return True
     for cell in cells:
         if ( cell[0] == row ) and ( cell[1] == col ):
             return True
@@ -535,7 +536,7 @@ class Device:
             print "Theres no cell locked or the cell you want to unlock isnt locked"
         return "cellUnlocked,"+self.name+","+tokens[0]
     
-    def processInteractionMessage( self, tokens, selected_cells ):
+    def processInteractionMessage( self, tokens, selected_cells, msgType="interaction" ):
         eventType = tokens[0]
         event_data=','.join(  [ str(tokens[i]) for i in range( len(tokens) ) ]  )
 #        print "         --- processInteractionMessage --- "
@@ -548,18 +549,21 @@ class Device:
                 columnValue = x + 1
                 rowValue = y + 1
                 message = "server-displayClient-"
-                tokensString = "interaction,"
-                tokensString += str(rowValue)+","+str(columnValue)+","+event_data
+                tokensString = msgType
+                tokensString += "," + str(rowValue)+","+str(columnValue)+","+event_data
                 message += str(len(tokensString))+":"+tokensString
                 if self.addresses.has_key((x,y)): self.addresses[(x,y)].write(message)
+
 
     def sendMesageToClient( self, msg ):
         message = "server-displayClient-"
         message += str(len(msg)) + ":" + msg
-        for x in range(dimensions[0], dimensions[0]+dimensions[2]):
-            for y in range(dimensions[1], dimensions[1]+dimensions[3]):
-                if self.addresses.has_key((x,y)): self.addresses[(x,y)].write(message)
-    
+        for dimensions in self.dimensionsForKey.values():
+            x = dimensions[0]
+            y = dimensions[1]
+            if self.addresses.has_key((x,y)): 
+                self.addresses[(x,y)].write(message)
+
     def shutdown(self):
         self.sendMesageToClient( "exit" )
 

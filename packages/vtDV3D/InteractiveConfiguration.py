@@ -11,6 +11,7 @@ from core.modules.vistrails_module import Module, ModuleError
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, Boolean, Variant
 from ColorMapManager import ColorMapManager 
+from HyperwallManager import HyperwallManager
 from CDATTask import deserializeTaskData
 from collections import OrderedDict
 from vtUtilities import *
@@ -237,12 +238,16 @@ class ConfigurableFunction( QObject ):
         self.key = key
         self.functionID = -1 
         self.isLayerDependent = args.get( 'layerDependent', False )
+        self.active = args.get( 'active', True )
 #        self.parameterInputEnabled = True                                      # Handlers executed at:
         self.initHandler = args.get( 'init', None )         #    end of compute()
         self.openHandler = args.get( 'open', None )         #    key press
         self.startHandler = args.get( 'start', None )       #    left click
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
 
+    def matches( self, key ):
+        return self.active and ( self.key == key )
+    
     def applyParameter( self, module, **args ):
         pass
 
@@ -679,6 +684,10 @@ class IVModuleConfigurationDialog( QWidget ):
 
     def finalizeParameter( self, *args ):
         self.emit( GuiConfigurableFunction.finalize_parameter_signal, self.name, self.getValue() )
+        command = [ self.name ]
+        value = self.getValue()
+        command.extend( value )
+        HyperwallManager.processGuiCommand( command  )
 
     def startParameter( self, *args ):
         self.emit( GuiConfigurableFunction.start_parameter_signal, self.name, self.getValue() )
@@ -791,7 +800,7 @@ class ColormapConfigurationDialog( IVModuleConfigurationDialog ):
 
     def setValue( self, value ):
         colormap_name = str( value[0] )
-        check_state = Qt.Checked if value[1] else Qt.Unchecked
+        check_state = Qt.Checked if int(float(value[1])) else Qt.Unchecked
         itemIndex = self.colormapCombo.findText( colormap_name, Qt.MatchFixedString )
         if itemIndex >= 0: self.colormapCombo.setCurrentIndex( itemIndex )
         else: print>>sys.stderr, " Can't find colormap: %s " % colormap_name
@@ -1247,12 +1256,15 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 
     def setTimestep( self, iTimestep ):
         self.setValue( iTimestep )
+        sheetTabs = set()
+        relTimeValue = self.relTimeStart + self.iTimeStep * self.relTimeStep
+        print " ** Update Animation, timestep = %d, timeValue = %.3f " % ( self.iTimeStep, relTimeValue )
+        displayText = self.getTextDisplay()
+        HyperwallManager.processGuiCommand( ['reltimestep', relTimeValue, displayText ], False  )
         for module in self.activeModuleList:
             dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
-#            try:
-            relTimeValue = self.relTimeStart + self.iTimeStep * self.relTimeStep
-            print " ** Update Animation, timestep = %d, timeValue = %.3f " % ( self.iTimeStep, relTimeValue )
-            module.updateAnimation( relTimeValue, self.getTextDisplay() )
+            module.updateAnimation( relTimeValue, displayText  )
+                   
 #            except Exception, err:
 #                dvLog( module, " ----> Error %s " % str( err ) )
        

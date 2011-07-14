@@ -44,7 +44,6 @@ from spreadsheet_base import (StandardSheetReference,
 from spreadsheet_controller import spreadsheetController
 from spreadsheet_event import DisplayCellEvent
 from PyQt4 import QtCore
-
 ################################################################################
 
 def widgetName():
