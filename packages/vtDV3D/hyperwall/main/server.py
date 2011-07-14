@@ -9,7 +9,7 @@ if __name__ == '__main__':
 #    optionsDict = {  'hw_role'  : 'none' }
     optionsDict = {  'hw_role': 'server', 'debug': 'False' } #, 'hw_nodes': 'localhost' }
     try:
-        executeVistrail( 'DemoWorkflow8', options=optionsDict )
+        executeVistrail( 'DemoWorkflow9', options=optionsDict )
 #        executeVistrail( options=optionsDict )
     except Exception, err:
         print " executeVistrail exception: %s " % str( err )
