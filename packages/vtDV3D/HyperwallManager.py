@@ -23,12 +23,20 @@ class HyperwallManagerSingleton(QtCore.QObject):
         self.server = None
         self.client = None
         self.deviceName = None
+        self.decimation = None
         self.resource_path = None
         self.isServer = False
         self.isClient = False
+        self.levelingState = None
         
 #    def __del__(self):
 #        self.shutdown()
+
+    def setLevelingState( self, state ):
+        self.levelingState = state
+
+    def getLevelingState():
+        return self.levelingState
         
     def shutdown(self):
         if self.isServer: 
@@ -96,6 +104,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
             hw_x = node_index / hw_dims[1]
             hw_y = node_index % hw_dims[1]
             from hyperwall.iVisClient.iVisClient import QiVisClient
+            print " QiVisClient startup, full screen = %s " % str( fullScreen )
             self.client = QiVisClient(   self.deviceName, hw_x, hw_y, 1, 1, hw_server, hw_port, dv3d_configuration.hw_displayWidth, dv3d_configuration.hw_displayHeight, fullScreen )
                 
 
@@ -139,9 +148,10 @@ class HyperwallManagerSingleton(QtCore.QObject):
            print "  *** ExecuteWorkflow--> cell: %s" % str( moduleId )
            self.server.executePipeline( self.deviceName, vistrailName, versionName, moduleId, dimensions )
         
-    def processInteractionEvent( self, event, screen_dims, camera_pos  ):
+    def processInteractionEvent( self, event, screen_pos, screen_dims, camera_pos  ):
         sheetTabWidget = getSheetTabWidget()
-        selected_cells = sheetTabWidget.getSelectedLocations()
+        selected_cells = [ screen_pos, ] if ( self.levelingState <> None ) else sheetTabWidget.getSelectedLocations()
+        print " processInteractionEvent, type = %s, leveling = %s, selected_cells = %s" % ( str(event.type()), str(self.levelingState <> None), str(selected_cells) )
         if self.isServer: self.server.processInteractionEvent( self.deviceName, event, screen_dims, selected_cells, camera_pos  )        
 
     def processGuiCommand( self, command, activeCellsOnly=True  ):

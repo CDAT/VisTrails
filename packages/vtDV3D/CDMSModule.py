@@ -10,6 +10,7 @@ import core.modules.module_registry
 from InteractiveConfiguration import *
 from core.modules.vistrails_module import Module, ModuleError
 from WorkflowModule import WorkflowModule 
+from HyperwallManager import HyperwallManager
 from core.vistrail.port_spec import PortSpec
 from vtUtilities import *
 from PersistentModule import * 
@@ -126,10 +127,10 @@ class CDMSDatasetRecord():
 #        print "Reading variable %s, axis order = %s, shape = %s, roi = %s " % ( varName, order, str(varData.shape), str(args) )
 #        return varData( **args )
 
-    def getVarDataTimeSlice( self, varName, timeValue, gridBounds, referenceVar=None, referenceLev=None ):
+    def getVarDataTimeSlice( self, varName, timeValue, gridBounds, decimation, referenceVar=None, referenceLev=None ):
         """
         This method extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).
-        """
+        """        
         cachedFileVariableRec = self.cachedFileVariables.get( varName )
         if cachedFileVariableRec:
             cachedTimeVal = cachedFileVariableRec[ 0 ]
@@ -137,29 +138,55 @@ class CDMSDatasetRecord():
                 return cachedFileVariableRec[ 1 ]
         
         rv = CDMSDataset.NullVariable
+        varData = self.dataset[ varName ] 
         args1 = {} 
-        condVars = True
+        gridMaker = None
+        decimationFactor = 0
+        if decimation: decimationFactor = decimation[0] if HyperwallManager.isClient else decimation[1]
 #        try:
         args1['time'] = timeValue
-        args1['lon'] = ( gridBounds[0], gridBounds[2] )
-        args1['lat'] = ( gridBounds[1], gridBounds[3] )
+        if not decimationFactor:
+            args1['lon'] = ( gridBounds[0], gridBounds[2] )
+            args1['lat'] = ( gridBounds[1], gridBounds[3] )
+        else:
+            varGrid = varData.getGrid() 
+            varLonInt = varGrid.getLongitude().mapIntervalExt( [ gridBounds[0], gridBounds[2] ] )
+            varLatInt = varGrid.getLatitude().mapIntervalExt( [ gridBounds[1], gridBounds[3] ] )
+            args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
+            args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
 #        args1['squeeze'] = 1
         start_t = time.time() 
+            
 #        if (gridMaker == None) or ( gridMaker.grid == varData.getGrid() ):
                    
-        if (referenceVar==None) or ( ( referenceVar[0] == self.cdmsFile ) and ( referenceVar[1] == varName ) ) or not condVars:
-            varData = self.dataset[ varName ] 
+        if ( (referenceVar==None) or ( ( referenceVar[0] == self.cdmsFile ) and ( referenceVar[1] == varName ) ) ) and not decimationFactor:
             levbounds = self.getLevBounds( referenceLev )
             if levbounds: args1['lev'] = levbounds
             args1['order'] = 'xyz'
             rv = varData( **args1 )
         else:
-            referenceData = referenceVar.split('*')
-            refDsid = referenceData[0]
-            refFile = referenceData[1]
-            refVar  = referenceData[2]
-
-            gridMaker = cdutil.WeightedGridMaker( source=refFile, var=refVar  )                    
+            refFile = self.cdmsFile
+            refVar = varName
+            refGrid = None
+            if referenceVar:
+                referenceData = referenceVar.split('*')
+                refDsid = referenceData[0]
+                refFile = referenceData[1]
+                refVar  = referenceData[2]
+            if decimationFactor:
+                if referenceVar:
+                    f=cdms2.open( refFile )
+                    refGrid=f[refVar].getGrid()
+                else: refGrid = varData.getGrid()
+                refLat=refGrid.getLatitude()
+                refLon=refGrid.getLongitude()
+                nRefLat, nRefLon = len(refLat) - 1, len(refLon) - 1 
+                refDelLat = ( refLat[-1] - refLat[0] ) / nRefLat
+                refDelLon = ( refLon[-1] - refLon[0] ) / nRefLon
+                gridMaker = cdutil.WeightedGridMaker( flat=gridBounds[1], flon=gridBounds[0], nlat=int(nRefLat/decimationFactor), nlon=int(nRefLon/decimationFactor), dellat=float(refDelLat*decimationFactor), dellon=float(refDelLon*decimationFactor) )                    
+            else:    
+                gridMaker = cdutil.WeightedGridMaker( source=refFile, var=refVar  ) 
+            
             vc = cdutil.VariableConditioner( source=self.cdmsFile, var=varName,  cdmsKeywords=args1, weightedGridMaker=gridMaker  ) 
             regridded_var_slice = vc.get( returnTuple=0 )
             if referenceLev: regridded_var_slice = regridded_var_slice.pressureRegrid( referenceLev )
@@ -170,7 +197,7 @@ class CDMSDatasetRecord():
             
             end_t = time.time() 
             self.cachedFileVariables[ varName ] = ( timeValue, rv )
-            print  "Reading variable %s, time = %s (%s), args = %s, slice duration = %.4f sec." % ( varName, str(timeValue), str(timeValue.tocomp()), str(args1), end_t-start_t  ) 
+            print  "Reading variable %s, shape = %s, base shape = %s, time = %s (%s), args = %s, slice duration = %.4f sec." % ( varName, str(rv.shape), str(varData.shape), str(timeValue), str(timeValue.tocomp()), str(args1), end_t-start_t  ) 
             printGrid( rv )
 #        except Exception, err:
 #            print>>sys.stderr, ' Exception getting var slice: %s ' % str( err )
@@ -278,11 +305,13 @@ class CDMSDataset(Module):
         self.referenceVariable = None
         self.timeRange = None
         self.gridBounds = None
+        self.decimation = None
 
-    def setBounds( self, timeRange, roi, zscale ): 
+    def setBounds( self, timeRange, roi, zscale, decimation ): 
         self.timeRange = timeRange
         self.gridBounds = roi
         self.zscale = zscale
+        self.decimation = decimation
         
     def getTimeValues( self, asComp = True ):
         if self.timeRange == None: return None
@@ -355,7 +384,7 @@ class CDMSDataset(Module):
         if dsid:
             dsetRec = self.datasetRecs[ dsid ]
             if varName in dsetRec.dataset.variables:
-                rv = dsetRec.getVarDataTimeSlice( varName, timeValue, self.gridBounds, self.referenceVariable, self.referenceLev )   
+                rv = dsetRec.getVarDataTimeSlice( varName, timeValue, self.gridBounds, self.decimation, self.referenceVariable, self.referenceLev )   
         if (rv.id == "NULL") and (varName in self.transientVariables):
             rv = self.transientVariables[ varName ]
         if rv.id <> "NULL": 
@@ -386,7 +415,7 @@ class CDMSDataset(Module):
             condTimeSlices.append( condTimeSlice1 )
         return condTimeSlices
     
-    def addDatasetRecord( self, dsetId, cdmsFile, zscale = 1.0 ):
+    def addDatasetRecord( self, dsetId, cdmsFile ):
         cdmsDSet = self.datasetRecs.get( dsetId, None )
         if (cdmsDSet <> None) and (cdmsDSet.cdmsFile == cdmsFile):
             return cdmsDSet
@@ -424,16 +453,17 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         dsMapData = self.getInputValue( "datasets" )
         time_range = self.getInputValue( "timeRange"  )
         ref_var = self.getInputValue( "grid"  )
+        decimation = self.getInputValue( "decimation" )
         self.timeRange =[ int(time_range[0]), int(time_range[1]), float(time_range[2]), float(time_range[3])  ]
         roi_data = self.getInputValue( "roi" )
         self.roi =[ float(sroi) for sroi in roi_data ]  
         zscale = getItem( self.getInputValue( "zscale",   1.0  )  )
-        self.datasetModule.setBounds( self.timeRange, self.roi, zscale )   
+        self.datasetModule.setBounds( self.timeRange, self.roi, zscale, decimation )   
         if dsMapData: 
             datasetMap = deserializeStrMap( getItem( dsMapData ) )
             for datasetId in datasetMap:
                 cdmsFile = datasetMap[ datasetId ]
-                self.datasetModule.addDatasetRecord( datasetId, cdmsFile, zscale )
+                self.datasetModule.addDatasetRecord( datasetId, cdmsFile )
         self.setParameter( "timeRange" , self.timeRange )
         self.setParameter( "roi", self.roi )
         self.datasetModule.timeRange = self.timeRange
@@ -496,6 +526,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.updateTimeValues()
             self.initTimeRange()
             self.initRoi()
+            self.initDecimation()
             self.initZScale()
             if self.pmod: self.pmod.clearNewConfiguration()
         elif (self.currentDatasetId <> None): 
@@ -521,6 +552,13 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         if roiParams:  self.roi = [ float(rois) for rois in roiParams ]
         else: self.roi = self.fullRoi[ self.lonRangeType ] 
         self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
+
+    def initDecimation( self ):
+        decimationParams = self.pmod.getInputValue( "decimation" ) #getFunctionParmStrValues( self.module, "roi"  )self.getParameterId()
+        if decimationParams:  self.decimation = [ int(dec) for dec in decimationParams ]
+        else: self.decimation = [ 0, 0 ] 
+        self.clientDecimationCombo.setCurrentIndex( self.decimation[0] ) 
+        self.serverDecimationCombo.setCurrentIndex( self.decimation[1] ) 
         
     def initZScale( self ):
         zsParams = self.pmod.getInputValue( "zscale" )
@@ -564,6 +602,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.updateTimeValues()
             self.initTimeRange()
             self.initRoi()
+            self.initDecimation()
             self.initZScale()
             if self.pmod: self.pmod.clearNewConfiguration()
             dataset.close()
@@ -861,9 +900,31 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.gridCombo.setMaximumHeight( 30 )
         grid_selection_layout.addWidget( self.gridCombo  )
         self.updateRefVarSelection()
-        self.connect( self.gridCombo, SIGNAL("currentIndexChanged(QString)"), self.gridChanged )               
+        self.connect( self.gridCombo, SIGNAL("currentIndexChanged(QString)"), self.gridChanged ) 
         gridTab_layout.addLayout(grid_selection_layout)
+         
+        client_decimation_layout = QHBoxLayout()        
+        client_decimation_label = QLabel( "Client Decimation:"  )
+        client_decimation_layout.addWidget( client_decimation_label ) 
+        self.clientDecimationCombo =  QComboBox ( self.parent() )
+        client_decimation_label.setBuddy( self.clientDecimationCombo )
+        self.clientDecimationCombo.setMaximumHeight( 30 )
+        client_decimation_layout.addWidget( self.clientDecimationCombo  )
+        gridTab_layout.addLayout(client_decimation_layout)
+
+        server_decimation_layout = QHBoxLayout()        
+        server_decimation_label = QLabel( "Server Decimation:"  )
+        server_decimation_layout.addWidget( server_decimation_label ) 
+        self.serverDecimationCombo =  QComboBox ( self.parent() )
+        server_decimation_label.setBuddy( self.serverDecimationCombo )
+        self.serverDecimationCombo.setMaximumHeight( 30 )
+        server_decimation_layout.addWidget( self.serverDecimationCombo  )
+        gridTab_layout.addLayout(server_decimation_layout)
         
+        for iD in range( 0, 11 ):
+            self.clientDecimationCombo.addItem ( str(iD) )
+            self.serverDecimationCombo.addItem ( str(iD) )
+                                      
     def updateRefVarSelection( self ):
         if self.gridCombo == None: return 
         updateSelectedGrid = True
@@ -880,9 +941,9 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.gridCombo.addItem( item )
         if updateSelectedGrid: 
             self.selectedGrid = item
-            if self.selectedGrid:
-                iSelection = self.gridCombo.findText( self.selectedGrid )
-                self.gridCombo.setCurrentIndex( iSelection )
+        if self.selectedGrid:
+            iSelection = self.gridCombo.findText( self.selectedGrid )
+            self.gridCombo.setCurrentIndex( iSelection )
 
     def gridChanged( self, value ):
         self.selectedGrid = str( self.gridCombo.currentText() )
@@ -988,6 +1049,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         parmRecList.append( ( 'timeRange' , [ self.timeRange[0], self.timeRange[1], float(self.relativeStartTime.value), self.relativeTimeStep ]  ), )       
         parmRecList.append( ( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  ), )          
         parmRecList.append( ( 'zscale' , [ self.zscale ]  ), )  
+        parmRecList.append( ( 'decimation' , self.decimation  ), )  
         self.persistParameterList( parmRecList ) 
         self.stateChanged(False)
            
@@ -999,6 +1061,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         t0, t1 = self.startIndexEdit.text(), self.endIndexEdit.text()
         self.timeRange = [ int( str( t0 ) ), int( str( t1 ) ) ]
         self.zscale = float( self.selectZScaleLineEdit.text() )
+        self.decimation = [  self.clientDecimationCombo.currentIndex(), self.serverDecimationCombo.currentIndex() ]
         self.updateController(self.controller)
         self.emit(SIGNAL('doneConfigure()'))
 
@@ -1771,11 +1834,9 @@ class CDMS_VectorReaderConfigurationWidget(CDMSReaderConfigurationWidget):
     def __init__(self, module, controller, parent=None):
         CDMSReaderConfigurationWidget.__init__(self, module, controller, self.VectorOutput, parent)
 
-        
 if __name__ == '__main__':
     from userpackages.vtDV3D import executeVistrail
-#    optionsDict = {  'hw_role'  : 'none' }
-    optionsDict = {  'hw_role': 'server', 'debug': 'False' } #, 'hw_nodes': 'localhost' }
+    optionsDict = {  'hw_role'  : 'none' }
     try:
         executeVistrail( 'DemoWorkflow9', options=optionsDict )
 #        executeVistrail( options=optionsDict )

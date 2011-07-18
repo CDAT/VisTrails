@@ -42,8 +42,12 @@ class QVTKServerWidget(QVTKWidget):
     """
     def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
         QVTKWidget.__init__(self, parent, f )
+        self.location = None
+        
+    def setLocation( self, location ):
+        self.location = location
 
-    def event(self, e):  
+    def event(self, e): 
         dims = [ self.width(), self.height() ]   
         if   e.type() == QtCore.QEvent.KeyPress:           self.processInteractionEvent(e,dims)  
         elif e.type() == QtCore.QEvent.MouseButtonPress:   self.processInteractionEvent(e,dims) 
@@ -75,7 +79,8 @@ class QVTKServerWidget(QVTKWidget):
             cfol = cam.GetFocalPoint()
             cup = cam.GetViewUp()
             camera_pos = (cpos,cfol,cup)
-        HyperwallManager.processInteractionEvent( event, dims, camera_pos ) 
+        screen_pos = ( self.location.row, self.location.col )
+        HyperwallManager.processInteractionEvent( event, screen_pos, dims, camera_pos ) 
         
 #    def interactionEvent(self, istyle, name):
 #        """ interactionEvent(istyle: vtkInteractorStyle, name: str) -> None
@@ -479,7 +484,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 picker = None
                 
                 if self.isServer:
-                    self.cellWidget = self.displayAndWait( QVTKServerWidget, (self.renderers, renderView, iHandlers, iStyle, picker) )
+                    self.cellWidget = self.displayAndWait( QVTKServerWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
+                    self.cellWidget.setLocation( self.location )
                 elif self.isClient:
                     self.cellWidget = self.displayAndWait( QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker) )
                 else:

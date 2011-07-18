@@ -195,7 +195,7 @@ class QiVisClient(QtCore.QObject):
         app = QtCore.QCoreApplication.instance()
 
         cell = (int(terms[0]), int(terms[1]))
-#        print " ------------- QiVisClient.processEvent: %s  ---------------------" % str( cell )
+        print " ------------- QiVisClient.processEvent: %s-%s in cell %s  ---------------------" % ( terms[2], terms[3], str( cell ) )
         if terms[2] == "singleClick":
             cellModules = self.getCellModules()
             cpos = [ float(terms[i]) for i in range(7,10) ]
@@ -266,10 +266,12 @@ class QiVisClient(QtCore.QObject):
     def processMessage(self, message, socket):
         (sender, tokens) = message
         tokens = tokens.split(",")
-        print " processMessage: %s " % str( tokens )
+#        print " processMessage: %s " % str( tokens )
         if len(tokens) == 0: return
         
         if tokens[0] == "exit":
+            print "Received shutdown message"
+            socket.close()
             gui.application.VistrailsApplication.quit()
 #            gui.application.stop_application()
 #            sys.exit(0)

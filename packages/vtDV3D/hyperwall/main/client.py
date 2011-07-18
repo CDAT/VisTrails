@@ -15,5 +15,6 @@ if __name__ == '__main__':
     optionsDict = {  
                    'hw_role'            : 'client',
                    'hw_node_index'      : hw_node_index,
+                   'fullScreen'         : 'False'
                    }
     executeVistrail( options=optionsDict )

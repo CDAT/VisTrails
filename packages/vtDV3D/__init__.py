@@ -126,6 +126,7 @@ def initialize(*args, **keywords):
     reg.add_input_port( CDMS_FileReader, "timeRange",    [ ( Integer, 'startTimeIndex' ), ( Integer, 'endTimeIndex' ), ( Float, 'relativeStartTime' ), ( Float, 'relativeTimeStep' )], True )    
     reg.add_input_port( CDMS_FileReader, "roi",    [ ( Float, 'lon0' ), ( Float, 'lat0' ), ( Float, 'lon1' ), ( Float, 'lat1' ) ], True )    
     reg.add_input_port( CDMS_FileReader, "grid", [ ( String, 'selectedGrid' ) ], optional=True  ) 
+    reg.add_input_port( CDMS_FileReader, "decimation", [ ( Integer, 'clientDecimation' ),  ( Integer, 'serverDecimation' ) ], optional=True  ) 
     reg.add_input_port( CDMS_FileReader, "zscale", [ ( Float, 'value' ) ], optional=True  ) 
     reg.add_output_port( CDMS_FileReader, "dataset", CDMSDataset ) 
     CDMS_FileReader.registerConfigurableFunctions( reg )

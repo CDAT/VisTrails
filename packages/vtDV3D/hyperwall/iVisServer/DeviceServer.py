@@ -558,14 +558,23 @@ class Device:
     def sendMesageToClient( self, msg ):
         message = "server-displayClient-"
         message += str(len(msg)) + ":" + msg
-        for dimensions in self.dimensionsForKey.values():
-            x = dimensions[0]
-            y = dimensions[1]
-            if self.addresses.has_key((x,y)): 
-                self.addresses[(x,y)].write(message)
+        for address in self.addresses.values():
+            address.write(message)
+                
+#        for dimensions in self.dimensionsForKey.values():
+#            x = dimensions[0]
+#            y = dimensions[1]
+#            if self.addresses.has_key((x,y)): 
+#                self.addresses[(x,y)].write(message)
 
     def shutdown(self):
-        self.sendMesageToClient( "exit" )
+        msg = "exit" 
+        message = "server-displayClient-"
+        message += str(len(msg)) + ":" + msg
+        for address in self.addresses.values():
+            address.write(message)
+            address.close()
+        self.addresses.clear()
 
     def processSyncMessage(self, tokens):
         return ("", "", "")

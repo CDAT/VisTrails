@@ -775,6 +775,7 @@ class PersistentModule( QObject ):
         if self.ndims == 3: self.textActor.VisibilityOff()
         isLeveling = self.isLeveling()
         if isLeveling: 
+            HyperwallManager.setLevelingState( None )
             self.finalizeConfigurationObserver( self.InteractionState )            
             if self.ndims == 3: self.iren.SetInteractorStyle( self.navigationInteractorStyle )
             self.configuring = False
@@ -1233,6 +1234,7 @@ class PersistentVisualizationModule( PersistentModule ):
                     self.InteractionState = state
                     configFunct = self.configurableFunctions[ self.InteractionState ]
                     configFunct.open( self.InteractionState )
+                    HyperwallManager.setLevelingState( state )
                     
     def endInteraction( self ):
         self.InteractionState = None 

@@ -35,8 +35,9 @@ class QiVisServer(QObject):
 #        self.shutdownClients()
         
     def shutdownClients(self):
-        for device in self.devices.values(): device.shutdown()
-        self.devices = {}
+        for device in self.devices.values(): 
+            device.shutdown()
+        self.devices.clear()
         
     def addDevice(self, name, dimensions ):
         device = Device(name, dimensions)
