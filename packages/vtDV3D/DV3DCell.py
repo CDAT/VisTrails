@@ -49,11 +49,11 @@ class QVTKServerWidget(QVTKWidget):
 
     def event(self, e): 
         dims = [ self.width(), self.height() ]   
-        if   e.type() == QtCore.QEvent.KeyPress:           self.processInteractionEvent(e,dims)  
-        elif e.type() == QtCore.QEvent.MouseButtonPress:   self.processInteractionEvent(e,dims) 
-        elif e.type() == QtCore.QEvent.MouseMove:          self.processInteractionEvent(e,dims) 
-        elif e.type() == QtCore.QEvent.MouseButtonRelease: self.processInteractionEvent(e,dims) 
-        elif e.type() == QtCore.QEvent.KeyRelease:         self.processInteractionEvent(e,dims)         
+        if   e.type() == QtCore.QEvent.KeyPress:           self.processInteractionEvent('keyPress',e,dims)  
+        elif e.type() == QtCore.QEvent.MouseButtonPress:   self.processInteractionEvent('buttonPress',e,dims) 
+        elif e.type() == QtCore.QEvent.MouseMove:          self.processInteractionEvent('mouseMove',e,dims) 
+        elif e.type() == QtCore.QEvent.MouseButtonRelease: self.processInteractionEvent('buttonRelease',e,dims) 
+        elif e.type() == QtCore.QEvent.KeyRelease:         self.processInteractionEvent('keyRelease',e,dims)         
         return qt_super(QVTKServerWidget, self).event(e)
 
     def getSelectedCells(self):
@@ -71,7 +71,7 @@ class QVTKServerWidget(QVTKWidget):
             if dcam: return dcam
         return None
         
-    def processInteractionEvent( self, event, dims ):
+    def processInteractionEvent( self, name, event, dims ):
         cam = self.getCamera()
         camera_pos = None
         if cam:
@@ -80,7 +80,7 @@ class QVTKServerWidget(QVTKWidget):
             cup = cam.GetViewUp()
             camera_pos = (cpos,cfol,cup)
         screen_pos = ( self.location.row, self.location.col )
-        HyperwallManager.processInteractionEvent( event, screen_pos, dims, camera_pos ) 
+        HyperwallManager.processInteractionEvent( name, event, screen_pos, dims, camera_pos ) 
         
 #    def interactionEvent(self, istyle, name):
 #        """ interactionEvent(istyle: vtkInteractorStyle, name: str) -> None

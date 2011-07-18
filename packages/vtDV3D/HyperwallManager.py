@@ -148,10 +148,10 @@ class HyperwallManagerSingleton(QtCore.QObject):
            print "  *** ExecuteWorkflow--> cell: %s" % str( moduleId )
            self.server.executePipeline( self.deviceName, vistrailName, versionName, moduleId, dimensions )
         
-    def processInteractionEvent( self, event, screen_pos, screen_dims, camera_pos  ):
+    def processInteractionEvent( self, name, event, screen_pos, screen_dims, camera_pos  ):
         sheetTabWidget = getSheetTabWidget()
-        selected_cells = [ screen_pos, ] if ( self.levelingState <> None ) else sheetTabWidget.getSelectedLocations()
-        print " processInteractionEvent, type = %s, leveling = %s, selected_cells = %s" % ( str(event.type()), str(self.levelingState <> None), str(selected_cells) )
+        selected_cells = [ screen_pos, ] if ( ( self.levelingState <> None ) or ( event.type() == QtCore.QEvent.KeyPress ) ) else sheetTabWidget.getSelectedLocations()
+        print " processInteractionEvent, type = %s, leveling = %s, selected_cells = %s" % ( name, str(self.levelingState <> None), str(selected_cells) )
         if self.isServer: self.server.processInteractionEvent( self.deviceName, event, screen_dims, selected_cells, camera_pos  )        
 
     def processGuiCommand( self, command, activeCellsOnly=True  ):
