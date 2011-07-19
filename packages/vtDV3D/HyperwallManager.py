@@ -24,10 +24,13 @@ class HyperwallManagerSingleton(QtCore.QObject):
         self.client = None
         self.deviceName = None
         self.decimation = None
+        self.screen_dims = None
         self.resource_path = None
         self.isServer = False
         self.isClient = False
         self.levelingState = None
+        self.opening_event = None
+        self.intial_camera_pos = None
         
 #    def __del__(self):
 #        self.shutdown()
@@ -149,15 +152,33 @@ class HyperwallManagerSingleton(QtCore.QObject):
            self.server.executePipeline( self.deviceName, vistrailName, versionName, moduleId, dimensions )
         
     def processInteractionEvent( self, name, event, screen_pos, screen_dims, camera_pos  ):
-        sheetTabWidget = getSheetTabWidget()
-        selected_cells = [ screen_pos, ] if ( ( self.levelingState <> None ) or ( event.type() == QtCore.QEvent.KeyPress ) ) else sheetTabWidget.getSelectedLocations()
-        print " processInteractionEvent, type = %s, leveling = %s, selected_cells = %s" % ( name, str(self.levelingState <> None), str(selected_cells) )
-        if self.isServer: self.server.processInteractionEvent( self.deviceName, event, screen_dims, selected_cells, camera_pos  )        
+        if self.isServer:
+            isKeyPress = ( event.type() == QtCore.QEvent.KeyPress )
+            isButtonRelease = ( event.type() == QtCore.QEvent.MouseButtonRelease ) 
+            isLevelingState = ( self.levelingState <> None ) and not isButtonRelease
+            sheetTabWidget = getSheetTabWidget()
+            selected_cells = [ screen_pos, ] if ( isLevelingState or isKeyPress ) else sheetTabWidget.getSelectedLocations()
+            print " processInteractionEvent, type = %s, leveling = %s, selected_cells = %s" % ( name, str(self.levelingState <> None), str(selected_cells) )
+            self.server.processInteractionEvent( self.deviceName, event, screen_dims, selected_cells, camera_pos  ) 
+#            if (event.type() == QtCore.QEvent.MouseButtonPress):
+#                self.screen_dims = screen_dims
+#                self.opening_event = event
+#                self.intial_camera_pos = camera_pos
+#            elif event.type() == QtCore.QEvent.MouseButtonRe:
+                       
 
     def processGuiCommand( self, command, activeCellsOnly=True  ):
         sheetTabWidget = getSheetTabWidget()
         selected_cells = sheetTabWidget.getSelectedLocations() if activeCellsOnly else None
         if self.isServer: self.server.processGuiCommand( self.deviceName, command, selected_cells )        
+
+#    def clearLevelingState(self):
+#        self.levelingState = None
+#        if self.isServer and self.opening_event:            
+#            selected_cells = sheetTabWidget.getSelectedLocations()
+#            closing_event = 
+#            self.server.processInteractionEvent( self.deviceName, closing_event, self.screen_dims, selected_cells, self.intial_camera_pos  )  
+#            self.opening_event = None      
     
 HyperwallManager = HyperwallManagerSingleton()
 

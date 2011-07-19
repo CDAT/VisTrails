@@ -196,6 +196,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        print " TestObserver: event = %s, " % ( event )
 
     def PickObserver( self, iAxis, caller, event = None ):
+        HyperwallManager.setLevelingState( 'VolumeSlicer.Slicing' )
         image_value = caller.GetCurrentImageValue() 
         spos = caller.GetSlicePosition()
         dataValue = self.getDataValue( image_value )
@@ -226,6 +227,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.imageRescale.SetInput( resliceOutput )
         self.updateSliceOutput()
         self.endInteraction()
+        HyperwallManager.setLevelingState( None )
         
     def updateSliceOutput(self):
         sliceOutput = self.imageRescale.GetOutput()
