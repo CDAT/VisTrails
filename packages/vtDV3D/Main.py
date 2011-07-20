@@ -8,7 +8,8 @@ from userpackages.vtDV3D import executeVistrail
 optionsDict = {  'hw_role'  : 'none' }
 
 try:
-    executeVistrail( sys.argv[1:], options=optionsDict )
+    if len( sys.argv ) > 1: executeVistrail( sys.argv[1], options=optionsDict )
+    else:                   executeVistrail( options=optionsDict )
 
 except Exception, err:
     print " executeVistrail exception: %s " % str( err )
