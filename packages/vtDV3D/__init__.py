@@ -13,7 +13,7 @@ name = 'vtDV3D'
 version = '0.1.0'
 
 #Configuration object
-
+import sys
 vtk_pkg_identifier = 'edu.utah.sci.vistrails.vtk'
 from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
 from core.bundles import py_import
