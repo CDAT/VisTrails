@@ -1,0 +1,10 @@
+# vtDV3D specific environment
+
+export DEV_ROOT=/ford1/local/EL5
+export CDAT_INSTALL=$DEV_ROOT/uvcdat/cdat_cmake/install
+export VISTRAILS_HOME=$DEV_ROOT/uvcdat/vistrails/clone
+export PATH=$CDAT_INSTALL/bin:$CDAT_INSTALL/Externals/bin:$DEV_ROOT/bin:$DEV_ROOT/uvcdat/bin:$PATH:$HOME/bin
+export LD_LIBRARY_PATH=$DEV_ROOT/uvcdat/lib:$CDAT_INSTALL/lib:$CDAT_INSTALL/Externals/lib:$DEV_ROOT/lib:/usr/lib/:/usr/local/lib/:/ford1/local/EL5/src/VTK-build/bin
+export PYTHONPATH=$DEV_ROOT/uvcdat/vistrails/clone/vistrails:$DEV_ROOT/uvcdat/vistrails/clone/packages/vtDV3D:$DEV_ROOT/uvcdat/vistrails/clone/packages:~/.vistrails
+
+

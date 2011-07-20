@@ -1,0 +1,28 @@
+#!/bin/bash
+
+MYDIR=`pwd`
+
+if [ ! -d ~/.vistrails ] 
+    then
+        echo "Setup .vistrails environment"
+	mkdir ~/.vistrails
+	mkdir ~/.vistrails/tasks
+	mkdir ~/.vistrails/userpackages
+	echo "pass" >& ~/.vistrails/userpackages/__init__.py
+	ln -s $MYDIR/../workflows ~/.vistrails/workflows
+	ln -s $MYDIR/.. ~/.vistrails/userpackages/vtDV3D
+	cp ./dv3d ~/.vistrails/	
+	if [ -a ./vt_env ]
+	    then
+	        cp ./vt_env ~/.vistrails/
+	fi
+fi
+
+if [ -a  ~/.vistrails/vt_env ]
+    then
+        source ~/.vistrails/vt_env
+    else
+        echo " !! Warning, vt_env file does not exist, using current environment !!"
+fi
+
+python $MYDIR/../Main.py $@
