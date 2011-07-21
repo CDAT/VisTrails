@@ -4,7 +4,7 @@ Created on Jun 15, 2011
 @author: tpmaxwel
 '''
 import sys, os
-from userpackages.vtDV3D import executeVistrail
+from userpackages.vtDV3D.Main import executeVistrail
 
 node_index_str = os.environ.get('HW_NODE_INDEX',None)
 if node_index_str == None:

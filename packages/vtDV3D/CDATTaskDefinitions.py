@@ -126,7 +126,7 @@ TaskManager.addTask( MagnitudeTask )
 def load_usr_task_modules( **args ):
     modules = []
     try:
-        code_dir = os.path.expanduser(  args.get( 'dir', '~/.vtdv3d/tasks' )   )
+        code_dir = os.path.expanduser(  args.get( 'dir', '~/.vistrails/tasks' )   )
         if os.path.isdir( code_dir ):
             code_dir_entries = os.listdir( code_dir )
             for entry in code_dir_entries:

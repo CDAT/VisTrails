@@ -8,6 +8,7 @@ if [ ! -d ~/.vistrails ]
 	mkdir ~/.vistrails
 	mkdir ~/.vistrails/tasks
 	mkdir ~/.vistrails/userpackages
+	mkdir ~/.vistrails/hwclient
 	echo "pass" >& ~/.vistrails/userpackages/__init__.py
 	ln -s $MYDIR/../workflows ~/.vistrails/workflows
 	ln -s $MYDIR/.. ~/.vistrails/userpackages/vtDV3D

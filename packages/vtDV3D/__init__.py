@@ -217,7 +217,6 @@ def executeVistrail( *args, **kwargs ):
     import core.requirements, os
     core.requirements.check_pyqt4()
     from core.db.locator import FileLocator
-#    if not isList( vistrail_names ): vistrail_names = [ vistrail_names, ]
 
     from PyQt4 import QtGui
     import gui.application
@@ -234,6 +233,7 @@ def executeVistrail( *args, **kwargs ):
         for vistrail_name in args:
             workflow_dir =  resource_path if resource_path else os.path.join( packagePath, "workflows" )
             vistrail_filename = os.path.join( workflow_dir, vistrail_name + '.vt' )
+            print " Reading vistrail: ", vistrail_filename
             f = FileLocator(vistrail_filename)
             app.builderWindow.viewManager.open_vistrail(f) 
         app.builderWindow.viewModeChanged(0)   
