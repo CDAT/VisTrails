@@ -144,7 +144,7 @@ def load_usr_task_modules( **args ):
                                 isCDATTaskType =  type(userCodeEntity) == type(CDATTask) 
                                 isCDATTaskSubclass = isCDATTaskType and issubclass( userCodeEntity, CDATTask )
 #                                print " Importing %s: %s " % ( str(userCodeEntity), str([isCDATTask,isCDATTaskType,isCDATTaskSubclass]) )
-                                if isCDATTaskSubclass and not isCDATTask:
+                                if isCDATTaskSubclass and hasattr( userCodeEntity, "name" ):
                                     TaskManager.addUserTask( userCodeEntity )
                         finally:
                             try: fin.close()

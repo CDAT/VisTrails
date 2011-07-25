@@ -573,6 +573,7 @@ class Device:
         message += str(len(msg)) + ":" + msg
         for address in self.addresses.values():
             address.write(message)
+            address.flush()
             address.close()
         self.addresses.clear()
 

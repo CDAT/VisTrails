@@ -154,6 +154,7 @@ class CDMSDatasetRecord():
             varLatInt = varGrid.getLatitude().mapIntervalExt( [ gridBounds[1], gridBounds[3] ] )
             args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
             args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
+            print " ---- Decimate(%d) grid %s: varLonInt=%s, varLatInt=%s, lonSlice=%s, latSlice=%s" % ( decimationFactor, str(gridBounds), str(varLonInt), str(varLatInt), str(args1['lon']), str(args1['lat']) )
 #        args1['squeeze'] = 1
         start_t = time.time() 
             

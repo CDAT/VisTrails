@@ -223,10 +223,9 @@ class NLevelConfigurationWidget( IVModuleConfigurationDialog ):
         return int( self.nLevelCombo.currentText() )
 
     def setValue( self, value ):
-        nLevelStr = str( value )
-        itemIndex = self.nLevelCombo.findText( nLevelStr, Qt.MatchFixedString )
-        if itemIndex >= 0: self.nLevelCombo.setCurrentIndex( itemIndex )
-        else: print>>sys.stderr, " Illegal number of levels: %s " % nLevelStr
+        nLevel = int( getItem( value ) )
+        if nLevel > 0: self.nLevelCombo.setCurrentIndex( nLevel-1 )
+        else: print>>sys.stderr, " Illegal number of levels: %s " % nLevel
         
     def createContent(self):
         nLevelTab = QWidget() 
