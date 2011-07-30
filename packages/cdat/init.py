@@ -13786,8 +13786,6 @@ def initialize(*args, **keywords):
 
     ##########################################################################
     # included from cdatwindow_init_inc.py
-    #display = sip.unwrapinstance(QtGui.QX11Info.display())
-    #vcs._vcs.setdisplay(display)
 
     reg.add_module(CDATCell,namespace='cdat')
     reg.add_input_port(CDATCell, 'slab1',
@@ -13877,9 +13875,9 @@ def initialize(*args, **keywords):
         shell = None
     translator = QTranslator(shell=shell)
     cdatWindow = qtbrowser.vcdatWindow.QCDATWindow()
-#    plotRegistry = PlotRegistry(cdatWindow)
-#    plotRegistry.loadPlots()    
-#    plotRegistry.registerPlots()
+    plotRegistry = PlotRegistry(cdatWindow)
+    plotRegistry.loadPlots()    
+    plotRegistry.registerPlots()
     cdatWindow.show()
     visApp = QtCore.QCoreApplication.instance()
     if visApp:
@@ -13898,4 +13896,6 @@ def initialize(*args, **keywords):
 
 def finalize():
     global plotRegistry
+    global cdatWindow
     del plotRegistry
+    cdatWindow.close()
