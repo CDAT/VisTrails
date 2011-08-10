@@ -24,6 +24,16 @@ PortDataVersion = 0
 DataSetVersion = 0
 cdms2.axis.level_aliases.append('isobaric')
 
+def deserializeFileMap( serialized_strMap ): 
+    stringMap = {}
+    for dsrec in serialized_strMap.split(';'):
+        dsitems = dsrec.split('+')
+        if len( dsitems ) == 2: stringMap[ dsitems[0] ] = dsitems[1]
+        elif len( dsitems ) == 1:
+            fileId = os.path.splitext( os.path.basename( dsitems[0] ) )[0]
+            stringMap[ fileId ] = dsitems[0]
+    return stringMap
+
 def getDataRoot():
     DATA_ROOT = vtkGetDataRoot() 
     if configuration.check( 'data_root' ): 
@@ -141,17 +151,20 @@ class CDMSDatasetRecord():
         varData = self.dataset[ varName ] 
         args1 = {} 
         gridMaker = None
-        decimationFactor = 0
-        if decimation: decimationFactor = decimation[0] if HyperwallManager.isClient else decimation[1]
+        decimationFactor = 1
+        if decimation: decimationFactor = decimation[0]+1 if HyperwallManager.isClient else decimation[1]+1
 #        try:
         args1['time'] = timeValue
-        if not decimationFactor:
+        if decimationFactor == 1:
             args1['lon'] = ( gridBounds[0], gridBounds[2] )
             args1['lat'] = ( gridBounds[1], gridBounds[3] )
         else:
             varGrid = varData.getGrid() 
             varLonInt = varGrid.getLongitude().mapIntervalExt( [ gridBounds[0], gridBounds[2] ] )
-            varLatInt = varGrid.getLatitude().mapIntervalExt( [ gridBounds[1], gridBounds[3] ] )
+            latAxis = varGrid.getLatitude()
+            latVals = latAxis.getValue()
+            latBounds =  [ gridBounds[3], gridBounds[1] ] if latVals[0] > latVals[1] else  [ gridBounds[1], gridBounds[3] ]            
+            varLatInt = latAxis.mapIntervalExt( latBounds )
             args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
             args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
             print " ---- Decimate(%d) grid %s: varLonInt=%s, varLatInt=%s, lonSlice=%s, latSlice=%s" % ( decimationFactor, str(gridBounds), str(varLonInt), str(varLatInt), str(args1['lon']), str(args1['lat']) )
@@ -160,7 +173,7 @@ class CDMSDatasetRecord():
             
 #        if (gridMaker == None) or ( gridMaker.grid == varData.getGrid() ):
                    
-        if ( (referenceVar==None) or ( ( referenceVar[0] == self.cdmsFile ) and ( referenceVar[1] == varName ) ) ) and not decimationFactor:
+        if ( (referenceVar==None) or ( ( referenceVar[0] == self.cdmsFile ) and ( referenceVar[1] == varName ) ) ) and ( decimationFactor == 1):
             levbounds = self.getLevBounds( referenceLev )
             if levbounds: args1['lev'] = levbounds
             args1['order'] = 'xyz'
@@ -174,19 +187,21 @@ class CDMSDatasetRecord():
                 refDsid = referenceData[0]
                 refFile = referenceData[1]
                 refVar  = referenceData[2]
-            if decimationFactor:
-                if referenceVar:
-                    f=cdms2.open( refFile )
-                    refGrid=f[refVar].getGrid()
-                else: refGrid = varData.getGrid()
-                refLat=refGrid.getLatitude()
-                refLon=refGrid.getLongitude()
-                nRefLat, nRefLon = len(refLat) - 1, len(refLon) - 1 
-                refDelLat = ( refLat[-1] - refLat[0] ) / nRefLat
-                refDelLon = ( refLon[-1] - refLon[0] ) / nRefLon
-                gridMaker = cdutil.WeightedGridMaker( flat=gridBounds[1], flon=gridBounds[0], nlat=int(nRefLat/decimationFactor), nlon=int(nRefLon/decimationFactor), dellat=float(refDelLat*decimationFactor), dellon=float(refDelLon*decimationFactor) )                    
-            else:    
-                gridMaker = cdutil.WeightedGridMaker( source=refFile, var=refVar  ) 
+                f=cdms2.open( refFile )
+                refGrid=f[refVar].getGrid()
+            else: refGrid = varData.getGrid()
+            refLat=refGrid.getLatitude()
+            refLon=refGrid.getLongitude()
+            nRefLat, nRefLon = len(refLat) - 1, len(refLon) - 1
+            LatMin, LatMax =  float(refLat[0]), float(refLat[-1]) 
+            LonMin, LonMax =  float(refLon[0]), float(refLon[-1]) 
+            if LatMin > LatMax:
+                tmpLatMin = LatMin
+                LatMin = LatMax
+                LatMax = tmpLatMin
+            refDelLat = ( LatMax - LatMin ) / nRefLat
+            refDelLon = ( LonMax - LonMin ) / nRefLon
+            gridMaker = cdutil.WeightedGridMaker( flat=LatMin, flon=LonMin, nlat=int(nRefLat/decimationFactor), nlon=int(nRefLon/decimationFactor), dellat=(refDelLat*decimationFactor), dellon=(refDelLon*decimationFactor) )                    
             
             vc = cdutil.VariableConditioner( source=self.cdmsFile, var=varName,  cdmsKeywords=args1, weightedGridMaker=gridMaker  ) 
             regridded_var_slice = vc.get( returnTuple=0 )
@@ -440,6 +455,7 @@ class CDMSDataset(Module):
     def getDsetId(self): 
         rv = '-'.join( self.datasetRecs.keys() )
         return rv
+
                     
 class PM_CDMS_FileReader( PersistentVisualizationModule ):
 
@@ -451,6 +467,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """  
+        self.fileSpecs, self.varSpecs, self.gridSpecs = None, None, None
         dsMapData = self.getInputValue( "datasets" )
         time_range = self.getInputValue( "timeRange"  )
         ref_var = self.getInputValue( "grid"  )
@@ -459,9 +476,18 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         roi_data = self.getInputValue( "roi" )
         self.roi =[ float(sroi) for sroi in roi_data ]  
         zscale = getItem( self.getInputValue( "zscale",   1.0  )  )
-        self.datasetModule.setBounds( self.timeRange, self.roi, zscale, decimation )   
+        self.datasetModule.setBounds( self.timeRange, self.roi, zscale, decimation ) 
+        
+        inputSpecs = self.getInputValue( "executionSpecs" )
+        if inputSpecs:
+            inputRecs = inputSpecs.split(';')
+            self.fileSpecs = inputRecs[0].split(',')
+            self.varSpecs = inputRecs[1].split(',')
+            self.gridSpecs = inputRecs[2].split(',')
+            dsMapData = ';'.join( self.fileSpecs )       
+  
         if dsMapData: 
-            datasetMap = deserializeStrMap( getItem( dsMapData ) )
+            datasetMap = deserializeFileMap( getItem( dsMapData ) )
             for datasetId in datasetMap:
                 cdmsFile = datasetMap[ datasetId ]
                 self.datasetModule.addDatasetRecord( datasetId, cdmsFile )
@@ -472,6 +498,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         self.setResult( 'dataset', self.datasetModule )
         print " ......  Start Workflow, dsid=%s ......  " % ( self.datasetModule.getDsetId() )
 
+
     def dvUpdate( self, **args ):
         pass     
         
@@ -480,6 +507,9 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         metadata[ 'vars2d' ] =  self.datasetModule.getVariableList( 2 )
         metadata[ 'vars3d' ] =  self.datasetModule.getVariableList( 3)
         metadata[ 'datasetId' ] = self.datasetId
+        if self.fileSpecs: metadata[ 'fileSpecs' ] = self.fileSpecs
+        if self.varSpecs: metadata[ 'varSpecs' ] = self.varSpecs
+        if self.gridSpecs: metadata[ 'gridSpecs' ] = self.gridSpecs
         return metadata
       
                       
@@ -489,7 +519,14 @@ class CDMS_FileReader(WorkflowModule):
     
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args)     
-                           
+        
+        
+class CInputSpecsConfigurationWidget(DV3DConfigurationWidget):   
+
+    def __init__(self, module, controller, parent=None):
+        DV3DConfigurationWidget.__init__(self, module, controller, 'Input Specs Configuration', parent)
+
+                          
 class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
     """
     CDMSDatasetConfigurationWidget ...
@@ -538,8 +575,9 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         
     def initTimeRange( self ):
         timeRangeParams =   self.pmod.getInputValue( "timeRange"  ) # getFunctionParmStrValues( self.module, "timeRange"  )
-        tRange = [ int(timeRangeParams[0]), int(timeRangeParams[1]), float(timeRangeParams[2]), float(timeRangeParams[3])  ] if timeRangeParams else None
+        tRange = [ int(timeRangeParams[0]), int(timeRangeParams[1]) ] if timeRangeParams else None
         if tRange:
+            for iParam in range( 2, len(timeRangeParams) ): tRange.append( float(timeRangeParams[iParam] ) ) 
             self.timeRange = tRange
             self.relativeStartTime = cdtime.reltime( float(tRange[2]), ReferenceTimeUnits)
             self.relativeTimeStep = float(tRange[3])
@@ -570,7 +608,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
     def getParameters( self, module ):
         global DataSetVersion
         datasetMapParams = getFunctionParmStrValues( module, "datasets" )
-        if datasetMapParams: self.datasets = deserializeStrMap( datasetMapParams[0] )
+        if datasetMapParams: self.datasets = deserializeFileMap( datasetMapParams[0] )
         datasetParams = getFunctionParmStrValues( module, "datasetId" )
         if datasetParams: 
             gridParams = getFunctionParmStrValues( module, "grid" )
@@ -613,7 +651,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
          
     def selectFile(self):
         dataset = None
-        file = QFileDialog.getOpenFileName( self, "Find Dataset", self.cdmsDataRoot, "CDMS Files (*.xml *.cdms)") 
+        file = QFileDialog.getOpenFileName( self, "Find Dataset", self.cdmsDataRoot, "CDMS Files (*.xml *.cdms *.nc *.nc4)") 
         if file <> None:
             cdmsFile = str( file ).strip() 
             if len( cdmsFile ) > 0:                             
@@ -1836,11 +1874,10 @@ class CDMS_VectorReaderConfigurationWidget(CDMSReaderConfigurationWidget):
         CDMSReaderConfigurationWidget.__init__(self, module, controller, self.VectorOutput, parent)
 
 if __name__ == '__main__':
-    from userpackages.vtDV3D import executeVistrail
+    from Main import executeVistrail
     optionsDict = {  'hw_role'  : 'none' }
     try:
-        executeVistrail( 'DemoWorkflow9', options=optionsDict )
-#        executeVistrail( options=optionsDict )
+        executeVistrail( options=optionsDict )
     except Exception, err:
         print " executeVistrail exception: %s " % str( err )
 

@@ -110,6 +110,9 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
             title = '%s Module Configuration'%module.name
         self.setWindowTitle(title)
         self.setupTabs()
+        
+    def __del__(self):
+        pass
 
     def getParameters( self, module ):
         ( self.variableList, self.datasetId, self.timeRange, self.refVar ) = DV3DConfigurationWidget.getVariableList( module.id )

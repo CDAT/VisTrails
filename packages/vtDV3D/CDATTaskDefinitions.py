@@ -41,7 +41,7 @@ class TaskManager(QtCore.QObject):
     @staticmethod
     def addUserTask( task_class ):
         try:
-            user_task_name = ':'.join( [ os.getlogin(), task_class.name ] )
+            user_task_name = '.'.join( [ os.getlogin(), task_class.name ] )
             TaskManager.TaskMap[ user_task_name ] = task_class
             print " Add user task %s to task map %d " % ( user_task_name, id(TaskManager.TaskMap) )
         except Exception, err:
@@ -99,9 +99,8 @@ class DifferenceTask( CDATTask ):
         input1 = self.getInput( 1, timeValue )
         lev1 = input1.getLevel()
         difference = subtract( input1, input0 )
+        difference.setAxisList( input0.getAxisList() )
         self.setOutput( 0, difference )
-        lev2 = difference.getLevel()
-        pass
     
 TaskManager.addTask( DifferenceTask )
 

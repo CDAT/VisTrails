@@ -121,6 +121,7 @@ def initialize(*args, **keywords):
 #    WorldFrame.registerConfigurableFunctions( reg )
 
     reg.add_module( CDMS_FileReader, configureWidgetType=CDMSDatasetConfigurationWidget, namespace='cdms' )
+    reg.add_input_port(  CDMS_FileReader, "executionSpecs",    [ ( String, 'executionSpecs' ) ], True ) 
     reg.add_input_port( CDMS_FileReader, "datasets",    [ ( String, 'serializedDatasetMap' ) ], True ) 
     reg.add_input_port( CDMS_FileReader, "datasetId",    [ ( String, 'currentDatasetId' ), ( Integer, 'version' ) ], True ) 
     reg.add_input_port( CDMS_FileReader, "timeRange",    [ ( Integer, 'startTimeIndex' ), ( Integer, 'endTimeIndex' ), ( Float, 'relativeStartTime' ), ( Float, 'relativeTimeStep' )], True )    

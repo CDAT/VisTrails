@@ -26,15 +26,14 @@ class vtDV3DApplicationSingleton( gui.application.VistrailsApplicationSingleton 
             if hasattr( self, "resource_path" ): self.vtPathList.append( self.resource_path )
             dotVistrails = self.temp_configuration.dotVistrails
             self.vtPathList.append( os.path.join( dotVistrails, "workflows" ) ) 
-            for vistrail_name in self.input:
+            for vistrail_filename in self.input:
                 for workflow_dir in self.vtPathList:
-                    if workflow_dir:
-                        vistrail_filename = os.path.join( workflow_dir, vistrail_name + '.vt' )
-                        if os.path.isfile( vistrail_filename ):
-                            print " Reading vistrail: ", vistrail_filename
-                            f = FileLocator(vistrail_filename)
-                            self.builderWindow.viewManager.open_vistrail(f) 
-                            break
+                    if workflow_dir: vistrail_filename = os.path.join( workflow_dir, vistrail_filename + '.vt' )
+                    if os.path.isfile( vistrail_filename ):
+                        print " Reading vistrail: ", vistrail_filename
+                        f = FileLocator(vistrail_filename)
+                        self.builderWindow.viewManager.open_vistrail(f) 
+                        break
             self.builderWindow.viewModeChanged(0)   
 
     def interactiveMode(self):  

@@ -288,6 +288,7 @@ required option 'workflow_tag'. Widget will not be loaded."%self.config_file)
                 
         #now we update pipeline with current parameter values
         pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
+        self.addMergedAliases( aliases, pipeline )
         newid = self.addParameterChangesFromAliasesAction(pipeline, 
                                         self.current_controller, 
                                         self.current_controller.vistrail, 
@@ -306,6 +307,17 @@ required option 'workflow_tag'. Widget will not be loaded."%self.config_file)
         controller.change_selected_version(self.current_parent_version)
         (results, _) = controller.execute_current_workflow()
         #print results[0]
+        
+    def addMergedAliases( self, aliases, pipeline ):
+        if 'dvInputSpecs' in pipeline.aliases:
+            fileAliases = ','.join( [ "%s:%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
+            varAliases = ','.join( [ "%s:%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
+            gridAliases = ','.join( [ "%s:%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
+            aliases[ 'inputSpecs' ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
+            print " inputSpecs: ", str( aliases[ 'inputSpecs' ] )
+        if 'dvCellSpecs' in pipeline.aliases:
+            aliases[ 'cellSpecs' ] = ','.join( [ "%s%s" % ( chr( ord('A') + int(aliases[self.cells[i].col_name]) ), aliases[self.cells[i].row_name] )  for i in range(self.cellnum) ] )
+            print " cellSpecs: ", str( aliases[ 'cellSpecs' ] )
         
     def previewChanges(self, aliases):
         print "previewChanges", aliases

@@ -1005,7 +1005,7 @@ class PersistentVisualizationModule( PersistentModule ):
             self.textActor.SetInput( self.textBuff )
             self.textActor.Modified()
             self.textActor.VisibilityOn()
-#            print "updateTextDisplay: %s" % ( text ) 
+            print "updateTextDisplay: %s" % ( text ) 
             
     def UpdateCamera(self):
         pass
