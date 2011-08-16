@@ -36,21 +36,21 @@ class TaskManager(QtCore.QObject):
     @staticmethod
     def addTask( task_class ):
         TaskManager.TaskMap[ task_class.name ] = task_class
-        print " Add task %s to task map %d " % ( task_class.name, id(TaskManager.TaskMap) )
+#        print " Add task %s to task map %d " % ( task_class.name, id(TaskManager.TaskMap) )
 
     @staticmethod
     def addUserTask( task_class ):
         try:
             user_task_name = '.'.join( [ os.getlogin(), task_class.name ] )
             TaskManager.TaskMap[ user_task_name ] = task_class
-            print " Add user task %s to task map %d " % ( user_task_name, id(TaskManager.TaskMap) )
+#            print " Add user task %s to task map %d " % ( user_task_name, id(TaskManager.TaskMap) )
         except Exception, err:
             print>>sys.stderr, "Can't add %s entity to TaskMap: %s " % ( str( task_class ), str(err) )
         
     @staticmethod
     def getTaskList():
         tasks = TaskManager.TaskMap.keys()
-        print " **** TaskMap{%d}--> getTaskList: %s  " % ( id(TaskManager.TaskMap), str( tasks ) )
+#        print " **** TaskMap{%d}--> getTaskList: %s  " % ( id(TaskManager.TaskMap), str( tasks ) )
         return tasks
 
     @staticmethod
@@ -133,7 +133,7 @@ def load_usr_task_modules( **args ):
                     code_path = os.path.join( code_dir, entry )
                     try:
                         try:
-                            print "Importing user task code from file %s " % code_path
+#                            print "Importing user task code from file %s " % code_path
                             fin = open( code_path, 'rb' )
                             mod = imp.load_source( md5.new(code_path).hexdigest(), code_path, fin )
                             modules.append( mod )

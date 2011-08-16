@@ -24,6 +24,20 @@ PortDataVersion = 0
 DataSetVersion = 0
 cdms2.axis.level_aliases.append('isobaric')
 
+def splitGridSpecs( gridSpecs ):
+    inParen = False
+    sliceStart = 0
+    slices = []
+    for i in range( len( gridSpecs ) ):
+        sVal = gridSpecs[i]
+        if sVal == '(': inParen = True
+        elif sVal == ')': inParen = False
+        elif sVal == ',' and not inParen: 
+            slices.append( gridSpecs[sliceStart:i] )
+            sliceStart = i+1
+    slices.append( gridSpecs[sliceStart:] )
+    return slices
+                   
 def deserializeFileMap( serialized_strMap ): 
     stringMap = {}
     for dsrec in serialized_strMap.split(';'):
@@ -71,7 +85,7 @@ def getComponentTimeValues( dataset ):
     return rv, dt
 
 def getRelativeTimeValues( dataset ):
-    rv = None
+    rv = []
     dt = 0.0
     time_units = None
     if dataset <> None:
@@ -80,10 +94,11 @@ def getRelativeTimeValues( dataset ):
             axis = dataset.getAxis( dim )
             if axis.isTime():
                 time_units = axis.units
-                if axis.calendar.lower() == 'gregorian': 
-                    cdtime.DefaultCalendar = cdtime.GregorianCalendar 
+                try:
+                    if axis.calendar.lower() == 'gregorian': 
+                        cdtime.DefaultCalendar = cdtime.GregorianCalendar 
+                except: pass
                 if hasattr( axis, 'partition' ):
-                    rv = []
                     for part in axis.partition:
                         for iTime in range( part[0], part[1] ):
                             rval = cdtime.reltime( axis[iTime], time_units )
@@ -93,7 +108,7 @@ def getRelativeTimeValues( dataset ):
                     for tval in axis:
                         rval = cdtime.reltime( tval, time_units )
                         rv.append( rval.torel(ReferenceTimeUnits) )
-        if rv and (len(rv) > 1):
+        if (len(rv) > 1):
             dt = rv[1].value - rv[0].value
     return rv, dt, time_units
 
@@ -213,8 +228,8 @@ class CDMSDatasetRecord():
             
             end_t = time.time() 
             self.cachedFileVariables[ varName ] = ( timeValue, rv )
-            print  "Reading variable %s, shape = %s, base shape = %s, time = %s (%s), args = %s, slice duration = %.4f sec." % ( varName, str(rv.shape), str(varData.shape), str(timeValue), str(timeValue.tocomp()), str(args1), end_t-start_t  ) 
-            printGrid( rv )
+#            print  "Reading variable %s, shape = %s, base shape = %s, time = %s (%s), args = %s, slice duration = %.4f sec." % ( varName, str(rv.shape), str(varData.shape), str(timeValue), str(timeValue.tocomp()), str(args1), end_t-start_t  ) 
+#            printGrid( rv )
 #        except Exception, err:
 #            print>>sys.stderr, ' Exception getting var slice: %s ' % str( err )
         return rv
@@ -317,11 +332,24 @@ class CDMSDataset(Module):
     def __init__( self ):
         Module.__init__(self)
         self.datasetRecs = {}
+        self.variableRecs = {}
         self.transientVariables = {}
         self.referenceVariable = None
         self.timeRange = None
         self.gridBounds = None
         self.decimation = None
+        
+    def setVariableRecord( self, id, varName ):
+        self.variableRecs[id] = varName
+
+    def getVariableRecord( self, id ):
+        return self.variableRecs[id] 
+
+    def getVarRecValues( self ):
+        return self.variableRecs.values() 
+
+    def getVarRecKeys( self ):
+        return self.variableRecs.keys() 
 
     def setBounds( self, timeRange, roi, zscale, decimation ): 
         self.timeRange = timeRange
@@ -456,45 +484,160 @@ class CDMSDataset(Module):
         rv = '-'.join( self.datasetRecs.keys() )
         return rv
 
+class CDMS_VCDATInterfaceSpecs(WorkflowModule):
+        
+    def __init__( self, configParms, **args ):
+        WorkflowModule.__init__(self, **args) 
+        self.inputs = {}
+        self.configParms = configParms
+        
+    def addInput(self, inputName, fileName, variableName, axes ):
+        self.inputs[ inputName ] = ( fileName, variableName, axes )
+        
+    def getNInputs(self):
+        return len(self.inputs)
+        
+    def getInput(self, **args ):
+        inputName = args.get( 'name', None )
+        if not inputName: 
+            inputIndex = args.get( 'index', 0 )
+            keys = self.inputs.keys()
+            if len(keys) > inputIndex:
+                keys.sort()
+                inputName = keys[inputIndex]        
+        return self.inputs.get( inputName )
+        
+
+class PM_CDMS_VCDATInterface( PersistentVisualizationModule ):
+    
+    def __init__(self, mid, **args):
+        PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['timeRange','roi'], **args)
+        self.filenum = 1
+        self.varnum = 1
+        self.cellnum = 1
+        
+    def execute(self, **args ):
+        """ compute() -> None
+        Dispatch the vtkRenderer to the actual rendering widget
+        """  
+        self.file = self.getInputValue( "FileName" )
+        self.variable = self.getInputValue( "VariableName" )
+        self.axes = self.getInputValue( "Axes" )
+        self.row = int( self.getInputValue( "Row", 0 ) ) 
+        self.column = int( self.getInputValue( "Column", 0  ) )
+        zscale = getItem( self.getInputValue( "zscale",   5.0  )  )
+        configParms = { 'zscale' : zscale }
+        interfaceSpecs = CDMS_VCDATInterfaceSpecs( configParms )
+        interfaceSpecs.addInput( 'Input1', self.file, self.variable, self.axes )
+        self.setResult( 'executionSpecs', [ interfaceSpecs ] )
+#        executionSpecs = ';'.join( [ self.file, self.variable, self.axes ] ) if self.file else None
+#        if executionSpecs: 
+#            print " >>>--->>> ExecutionSpecs: { %s } " % executionSpecs
+#            self.setResult( 'executionSpecs', [ self.file, self.variable, self.axes ] )
+        cellLocation = "A1" 
+        if ( (self.row >= 0) and (self.column >= 0) ):
+             cellLocation = "%s%d" % ( chr( ord('A') + self.column ), self.row + 1 )    
+        self.setResult( 'cellLocation', [ cellLocation ] )
+#        print " >>>--->>> CellLocation: { %s } " % cellLocation
+
+#        fileAliases = ','.join( [ "%s:%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
+#        varAliases = ','.join( [ "%s:%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
+#        gridAliases = ','.join( [ "%s:%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
+#        aliases[ 'inputSpecs' ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
+#        print " inputSpecs: ", str( aliases[ 'inputSpecs' ] )
+#        aliases[ 'cellSpecs' ] = ','.join( [ "%s%s" % ( chr( ord('A') + int(aliases[self.cells[i].col_name]) ), aliases[self.cells[i].row_name] )  for i in range(self.cellnum) ] )
+#        print " cellSpecs: ", str( aliases[ 'cellSpecs' ] )
+
                     
 class PM_CDMS_FileReader( PersistentVisualizationModule ):
 
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['timeRange','roi'], **args)
         self.datasetModule = CDMSDataset()
+        
+    def computeGridFromSpecs(self):
+        self.timeRange = [ 0, 0, None, None ]
+        self.roi = [ 0.0, -90.0, 360.0, 90.0 ]
+        for gridSpec in self.gridSpecs:
+            gridFields = gridSpec.split('=')
+            if len( gridFields ) == 2:
+                type = gridFields[0].strip()
+                values = gridFields[1].strip('() ').split(',')
+                if type == 'time':
+                    rval = cdtime.reltime( values[0] )
+                    self.timeRange[2] = rval.torel(ReferenceTimeUnits)
+                    rval = cdtime.reltime( values[1] )
+                    self.timeRange[3] = rval.torel(ReferenceTimeUnits)
+                elif type == 'latitude':
+                    self.roi[1] = float( values[0] )
+                    self.roi[3] = float( values[1] )
+                elif type == 'longitude':
+                    self.roi[0] = float( values[0] )
+                    self.roi[2] = float( values[1] )                   
+        if not self.timeRange[2]:
+            dataset_list = []
+            start_time, end_time, min_dt  = -float('inf'), float('inf'), float('inf')
+            for cdmsFile in self.fileSpecs:
+                dataset = cdms2.open( cdmsFile ) 
+                dataset_list.append( dataset )
+            for dataset in dataset_list:
+                time_values, dt, time_units = getRelativeTimeValues ( dataset )
+                if time_values[0].value > start_time: start_time  = time_values[0].value
+                if dt == 0.0: end_time = start_time
+                elif time_values[1].value < end_time:   end_time = time_values[1].value
+                if dt < min_dt: min_dt = dt               
+            for dataset in dataset_list: dataset.close()
+            if min_dt == 0: nTS = 1
+            else: nTS = int( ( start_time - end_time ) / min_dt )  
+            self.timeRange = [ 0, nTS-1, start_time, end_time ]
+
             
     def execute(self, **args ):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """  
-        self.fileSpecs, self.varSpecs, self.gridSpecs = None, None, None
-        dsMapData = self.getInputValue( "datasets" )
-        time_range = self.getInputValue( "timeRange"  )
-        ref_var = self.getInputValue( "grid"  )
+        self.fileSpecs, self.varSpecs, self.gridSpecs, self.datasetMap, self.ref_var = None, None, None, None, None         
         decimation = self.getInputValue( "decimation" )
-        self.timeRange =[ int(time_range[0]), int(time_range[1]), float(time_range[2]), float(time_range[3])  ]
-        roi_data = self.getInputValue( "roi" )
-        self.roi =[ float(sroi) for sroi in roi_data ]  
         zscale = getItem( self.getInputValue( "zscale",   1.0  )  )
-        self.datasetModule.setBounds( self.timeRange, self.roi, zscale, decimation ) 
         
-        inputSpecs = self.getInputValue( "executionSpecs" )
+        inputSpecs = getItem( self.getInputValue( "executionSpecs" ) )
+        self.fileSpecs, self.varSpecs, self.gridSpecs = [], [], []
         if inputSpecs:
-            inputRecs = inputSpecs.split(';')
-            self.fileSpecs = inputRecs[0].split(',')
-            self.varSpecs = inputRecs[1].split(',')
-            self.gridSpecs = inputRecs[2].split(',')
+            zscale = inputSpecs.configParms.get( 'zscale', None )
+            if zscale: self.setParameter( "zscale", zscale )
+            inputSpec = inputSpecs.getInput(  index=0 )
+            self.fileSpecs.append( inputSpec[0] )
+            self.varSpecs.append( inputSpec[1] )
+            self.gridSpecs = splitGridSpecs( inputSpec[2] ) 
             dsMapData = ';'.join( self.fileSpecs )       
+#            print " ** File Specs: ", str( self.fileSpecs )
+#            print " ** Var Specs: ", str( self.varSpecs )
+#            print " ** Grid Specs: ", str( self.gridSpecs )
+#            print " ** dsMapData: ", str( dsMapData )
+            self.computeGridFromSpecs()
+            self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
+            self.ref_var = "%s*%s" % ( self.datasetMap.keys()[0], self.varSpecs[0])
+            self.datasetModule.setVariableRecord( "VariableName", self.ref_var )
+        else:    
+            time_range = self.getInputValue( "timeRange"  )
+            self.timeRange =[ int(time_range[0]), int(time_range[1]), float(time_range[2]), float(time_range[3])  ]
+            roi_data = self.getInputValue( "roi" )
+            self.roi = [ float(sroi) for sroi in roi_data ] 
+            dsMapData = self.getInputValue( "datasets" ) 
+            self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
+            self.ref_var = self.getInputValue( "grid"  )
+
+        self.datasetModule.setBounds( self.timeRange, self.roi, zscale, decimation ) 
   
-        if dsMapData: 
-            datasetMap = deserializeFileMap( getItem( dsMapData ) )
-            for datasetId in datasetMap:
-                cdmsFile = datasetMap[ datasetId ]
+        if self.datasetMap:             
+            for datasetId in self.datasetMap:
+                cdmsFile = self.datasetMap[ datasetId ]
                 self.datasetModule.addDatasetRecord( datasetId, cdmsFile )
+#                print " - addDatasetRecord: ", str( datasetId ), str( cdmsFile )
         self.setParameter( "timeRange" , self.timeRange )
         self.setParameter( "roi", self.roi )
         self.datasetModule.timeRange = self.timeRange
-        self.datasetModule.setReferenceVariable( ref_var ) 
+        self.datasetModule.setReferenceVariable( self.ref_var ) 
         self.setResult( 'dataset', self.datasetModule )
         print " ......  Start Workflow, dsid=%s ......  " % ( self.datasetModule.getDsetId() )
 
@@ -511,6 +654,13 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         if self.varSpecs: metadata[ 'varSpecs' ] = self.varSpecs
         if self.gridSpecs: metadata[ 'gridSpecs' ] = self.gridSpecs
         return metadata
+
+class CDMS_VCDATInterface(WorkflowModule):
+    
+    PersistentModuleClass = PM_CDMS_VCDATInterface
+    
+    def __init__( self, **args ):
+        WorkflowModule.__init__(self, **args)     
       
                       
 class CDMS_FileReader(WorkflowModule):
@@ -521,11 +671,50 @@ class CDMS_FileReader(WorkflowModule):
         WorkflowModule.__init__(self, **args)     
         
         
-class CInputSpecsConfigurationWidget(DV3DConfigurationWidget):   
+class VCDATInterfaceWidget(DV3DConfigurationWidget):   
 
     def __init__(self, module, controller, parent=None):
-        DV3DConfigurationWidget.__init__(self, module, controller, 'Input Specs Configuration', parent)
+        DV3DConfigurationWidget.__init__(self, module, controller, 'VCDAT Interface Configuration', parent)
+        self.zscale = 4.0
+                
+    def initZScale( self ):
+         self.selectZScaleLineEdit.setText( "%.2f" % self.zscale )
+#        self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
+                                                                       
+    def createLayout(self):
+        """ createEditor() -> None
+        Configure sections
+        """        
 
+        zscaleTab = QWidget()  
+        self.tabbedWidget.addTab( zscaleTab, 'vertScale' ) 
+        zscaleTab_layout = QVBoxLayout()
+        zscaleTab.setLayout( zscaleTab_layout ) 
+        
+        self.zscaleLabel = QLabel( "Vertical Scale:"  )
+        zscaleTab_layout.addWidget(self.zscaleLabel)
+        
+        self.selectZScaleLineEdit =  QLineEdit( self.parent() )
+        self.selectZScaleLineEdit.setValidator( QDoubleValidator(self) )
+        self.selectZScaleLineEdit.setText( "%.2f" % self.zscale)
+        self.connect( self.selectZScaleLineEdit, SIGNAL('editingFinished()'), self.stateChanged )
+        
+        zscaleTab_layout.addWidget( self.selectZScaleLineEdit )
+
+    def updateController(self, controller=None):
+        parmRecList = []
+        parmRecList.append( ( 'zscale' , [ self.zscale ]  ), )  
+        self.persistParameterList( parmRecList ) 
+        self.stateChanged(False)
+           
+    def okTriggered(self, checked = False):
+        """ okTriggered(checked: bool) -> None
+        Update vistrail controller (if neccesssary) then close the widget
+        
+        """
+        self.zscale = float( self.selectZScaleLineEdit.text() )
+        self.updateController(self.controller)
+        self.emit(SIGNAL('doneConfigure()'))
                           
 class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
     """
@@ -779,16 +968,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
     def createLayout(self):
         """ createEditor() -> None
         Configure sections
-        """
-        self.setLayout( QVBoxLayout() )
-        self.layout().setMargin(0)
-        self.layout().setSpacing(0)
-
-        self.tabbedWidget = QTabWidget()
-        self.layout().addWidget( self.tabbedWidget ) 
-
-        self.createButtonLayout() 
-        
+        """        
         datasetTab = QWidget()        
         self.tabbedWidget.addTab( datasetTab, 'dataset' )                 
         layout = QVBoxLayout()
@@ -1449,6 +1629,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.datasetId = dsetId
             self.timeRange = self.cdmsDataset.timeRange
             timeValue = args.get( 'timeValue', self.timeRange[2] )
+#            print "Time Range: ", str(self.timeRange), str(timeValue)
             self.timeValue = cdtime.reltime( float( timeValue ), ReferenceTimeUnits )
             self.timeLabels = self.cdmsDataset.getTimeValues()
             self.nTimesteps = len( self.timeLabels )
@@ -1462,9 +1643,20 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     def getPortData( self, **args ):
         return self.getInputValue( "portData", **args )  
  
-    def generateOutput( self ):       
+    def generateOutput( self ): 
+        oRecMgr = None      
         portData = self.getPortData()
-        oRecMgr = OutputRecManager( portData[0] if portData else None  )
+        if portData:
+            print " VolumeReader->generateOutput, portData: ", portData
+            oRecMgr = OutputRecManager( portData[0]  )
+        else:
+            varRecs = self.cdmsDataset.getVarRecValues()
+            print " VolumeReader->generateOutput, varSpecs: ", str(varRecs)
+            oRecMgr = OutputRecManager() 
+#            varCombo = QComboBox()
+#            for var in varRecs: varCombo.addItem( str(var) ) 
+            orec = OutputRec( 'volume', ndim=3, varList=varRecs )  # varComboList=[ varCombo ], 
+            oRecMgr.addOutputRec( self.datasetId, orec ) 
         orecs = oRecMgr.getOutputRecs( self.datasetId )  
         if not orecs: raise ModuleError( self, 'No Variable selected for dataset %s.' % self.datasetId )             
         for orec in orecs:
@@ -1591,7 +1783,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 pointData.SetActiveScalars( varName  ) 
                 md[ 'valueRange'] = var_md[ 'range' ] 
                 md[ 'scalars'] = varName 
-                print " --- CDMS-SetScalars: %s, Range= %s" % ( varName, str( var_md[ 'range' ] ) ) 
+#                print " --- CDMS-SetScalars: %s, Range= %s" % ( varName, str( var_md[ 'range' ] ) ) 
         if (self.outputType == self.VectorOutput ): 
             vtkdata = getNewVtkDataArray( scalar_dtype )
             vtkdata.SetNumberOfComponents( 3 )
@@ -1617,7 +1809,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         return cachedImageDataName if imageDataCreated else None
             
     def getMetadata( self, metadata={}, port=None ):
-        PersistentVisualizationModule.getMetadata( metadata )
+        PersistentVisualizationModule.getMetadata( self, metadata )
         if self.cdmsDataset:
             metadata[ 'vars2d' ] = self.cdmsDataset.getVariableList( 2 )
             metadata[ 'vars3d' ] = self.cdmsDataset.getVariableList( 3 )
@@ -1704,16 +1896,7 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         """ createEditor() -> None
         Configure sections
         
-        """
-        self.setLayout( QVBoxLayout() )
-        self.layout().setMargin(0)
-        self.layout().setSpacing(0)
-
-        self.tabbedWidget = QTabWidget()
-        self.layout().addWidget( self.tabbedWidget ) 
-
-        self.createButtonLayout() 
-        
+        """        
         outputsTab = QWidget()        
         self.tabbedWidget.addTab( outputsTab, 'output' ) 
         outputsLayout = QVBoxLayout()                

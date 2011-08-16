@@ -7,6 +7,7 @@ import sys, threading
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from core.modules.module_configure import StandardModuleConfigurationWidget
+from core.vistrail.port import PortEndPoint
 from core.modules.vistrails_module import Module, ModuleError
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, Boolean, Variant
@@ -596,8 +597,8 @@ class IVModuleConfigurationDialog( QWidget ):
                 return
         
     def getTextDisplay( self, **args  ):
-        value = self.getValue()
-        return "%s: %s" % ( self.name, self.getTextValue( value ) )
+        value = self.getTextValue( self.getValue() )
+        return "%s: %s" % ( self.name, value ) if value else None
        
     def getTextValue( self, value, **args ):
         text_value = None
@@ -608,7 +609,7 @@ class IVModuleConfigurationDialog( QWidget ):
                 if tval and ( priority > text_value_priority ): 
                     text_value = tval
                     text_value_priority = priority
-        return str( text_value )
+        return str( text_value ) if text_value else None
  
     def activateWidget( self, iren ):
         pass
@@ -923,7 +924,9 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         self.moduleId = module.id
         self.pmod = self.module_descriptor.module.forceGetPersistentModule( module.id )
         self.getParameters( module )
+        self.createTabs()
         self.createLayout()
+        self.addPortConfigTab()
         if ( DV3DConfigurationWidget.newConfigurationWidget == None ): DV3DConfigurationWidget.setupSaveConfigurations() 
         DV3DConfigurationWidget.newConfigurationWidget = self 
         
@@ -933,6 +936,19 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 
     def sizeHint(self):
         return QSize(400,200)
+    
+    def createTabs( self ):
+        self.setLayout( QVBoxLayout() )
+        self.layout().setMargin(0)
+        self.layout().setSpacing(0)
+
+        self.tabbedWidget = QTabWidget()
+        self.layout().addWidget( self.tabbedWidget ) 
+        self.createButtonLayout() 
+    
+    def addPortConfigTab(self):
+        portConfigPanel = self.getPortConfigPanel()
+        self.tabbedWidget.addTab( portConfigPanel, 'ports' )           
          
     @staticmethod   
     def setupSaveConfigurations():
@@ -986,12 +1002,114 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 #            self.askToSaveChanges()
 #            QWidget.focusOutEvent(self, event)
 
+    def getPortConfigPanel( self ):
+        scrollArea = QScrollArea(self)
+        scrollArea.setFrameStyle(QFrame.NoFrame)
+        listContainer = QWidget(scrollArea)
+        listContainer.setLayout(QGridLayout(listContainer))
+        listContainer.setFocusPolicy(Qt.WheelFocus)
+        self.inputPorts = self.module.destinationPorts()
+        self.inputDict = {}
+        self.outputPorts = self.module.sourcePorts()
+        self.outputDict = {}
+        label = QLabel('Input Ports')
+        label.setAlignment(Qt.AlignHCenter)
+        label.font().setBold(True)
+        label.font().setPointSize(12)
+        listContainer.layout().addWidget(label, 0, 0)
+        label = QLabel('Output Ports')
+        label.setAlignment(Qt.AlignHCenter)
+        label.font().setBold(True)
+        label.font().setPointSize(12)
+        listContainer.layout().addWidget(label, 0, 1)
+
+        for i in xrange(len(self.inputPorts)):
+            port = self.inputPorts[i]
+            checkBox = self.checkBoxFromPort(port, True)
+            checkBox.setFocusPolicy(Qt.StrongFocus)
+            self.connect(checkBox, SIGNAL("stateChanged(int)"),
+                         self.updateState)
+            self.inputDict[port.name] = checkBox
+            listContainer.layout().addWidget(checkBox, i+1, 0)
+        
+        for i in xrange(len(self.outputPorts)):
+            port = self.outputPorts[i]
+            checkBox = self.checkBoxFromPort(port)
+            checkBox.setFocusPolicy(Qt.StrongFocus)
+            self.connect(checkBox, SIGNAL("stateChanged(int)"),
+                         self.updateState)
+            self.outputDict[port.name] = checkBox
+            listContainer.layout().addWidget(checkBox, i+1, 1)
+        
+        listContainer.adjustSize()
+        listContainer.setFixedHeight(listContainer.height())
+        scrollArea.setWidget(listContainer)
+        scrollArea.setWidgetResizable(True)
+        return scrollArea 
+         
+    def closeEvent(self, event):
+        self.askToSaveChanges()
+        event.accept()
+        
+    def updateState(self, state):
+        self.setFocus(Qt.MouseFocusReason)
+#        self.saveButton.setEnabled(True)
+#        self.resetButton.setEnabled(True)
+        if not self.state_changed:
+            self.state_changed = True
+            self.emit(SIGNAL("stateChanged"))
+
     def saveTriggered(self, checked = False):
         self.okTriggered()
+        for port in self.inputPorts:
+            entry = (PortEndPoint.Destination, port.name)
+            if (port.optional and
+                self.inputDict[port.name].checkState()==Qt.Checked):
+                self.module.portVisible.add(entry)
+            else:
+                self.module.portVisible.discard(entry)
+            
+        for port in self.outputPorts:
+            entry = (PortEndPoint.Source, port.name)
+            if (port.optional and
+                self.outputDict[port.name].checkState()==Qt.Checked):
+                self.module.portVisible.add(entry)
+            else:
+                self.module.portVisible.discard(entry)
+#        self.saveButton.setEnabled(False)
+#        self.resetButton.setEnabled(False)
         self.state_changed = False
+        self.emit(SIGNAL("stateChanged"))
+        self.emit(SIGNAL('doneConfigure'), self.module.id)
         
     def resetTriggered(self):
+        self.setFocus(Qt.MouseFocusReason)
+        self.setUpdatesEnabled(False)
+        for i in xrange(len(self.inputPorts)):
+            port = self.inputPorts[i]
+            entry = (PortEndPoint.Destination, port.name)
+            checkBox = self.inputDict[port.name]
+            if not port.optional or entry in self.module.portVisible:
+                checkBox.setCheckState(Qt.Checked)
+            else:
+                checkBox.setCheckState(Qt.Unchecked)
+            if not port.optional or port.sigstring=='()':
+                checkBox.setEnabled(False)
+        for i in xrange(len(self.outputPorts)):
+            port = self.outputPorts[i]
+            entry = (PortEndPoint.Source, port.name)
+            checkBox = self.outputDict[port.name]
+            if not port.optional or entry in self.module.portVisible:
+                checkBox.setCheckState(Qt.Checked)
+            else:
+                checkBox.setCheckState(Qt.Unchecked)
+            if not port.optional:
+                checkBox.setEnabled(False)
+        self.setUpdatesEnabled(True)
+#        self.saveButton.setEnabled(False)
+#        self.resetButton.setEnabled(False)
         self.state_changed = False
+        self.emit(SIGNAL("stateChanged"))
         
     def stateChanged(self, changed = True ):
         self.state_changed = changed
@@ -1020,7 +1138,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         self.cancelButton.setFixedWidth(100)
         self.buttonLayout.addWidget(self.cancelButton)
         self.layout().addLayout(self.buttonLayout)
-        self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
+        self.connect(self.okButton, SIGNAL('clicked(bool)'), self.saveTriggered)
         self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close)
         
     def okTriggered(self):
@@ -1178,6 +1296,21 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                         return orec.getVarList()
         return []        
 
+    def checkBoxFromPort(self, port, input_=False):
+        checkBox = QCheckBox(port.name)
+        if input_:
+            pep = PortEndPoint.Destination
+        else:
+            pep = PortEndPoint.Source
+        if not port.optional or (pep, port.name) in self.module.portVisible:
+            checkBox.setCheckState(Qt.Checked)
+        else:
+            checkBox.setCheckState(Qt.Unchecked)
+        if not port.optional or (input_ and port.sigstring=='()'):
+            checkBox.setEnabled(False)
+        return checkBox
+        
+            
 ################################################################################
         
 class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
@@ -1462,15 +1595,6 @@ class LayerConfigurationWidget(DV3DConfigurationWidget):
         Configure sections
         
         """
-        self.setLayout( QVBoxLayout() )
-        self.layout().setMargin(10)
-        self.layout().setSpacing(10)
-
-        self.tabbedWidget = QTabWidget()
-        self.layout().addWidget( self.tabbedWidget ) 
-
-        self.createButtonLayout() 
-
         layersTab = QWidget()        
         self.tabbedWidget.addTab( layersTab, 'Layers' ) 
         layersLayout = QVBoxLayout()                

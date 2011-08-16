@@ -26,7 +26,7 @@ def get_coords_from_cell_address( row, col):
         row = int(row)-1
         return ( col, row )
     except:
-        raise ModuleError(self, 'ColumnRowAddress format error')
+        raise Exception('ColumnRowAddress format error: %s ' % str( [ row, col ] ) )
 
 def parse_cell_address( address ):
     if len(address)>1:
@@ -206,7 +206,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 
         cell_coordinates = None
             
-        address = self.getInputValue( "cell_location", None )
+        address = getItem( self.getInputValue( "cell_location", None ) )
         if address:
             address = address.replace(' ', '').upper()
             cell_coordinates = parse_cell_address( address )
@@ -216,7 +216,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         cellLocation.col = cell_coordinates[0]
         cellLocation.row = cell_coordinates[1]
          
-        print " --- Set cell location[%s]: %s, address: %s "  % ( str(moduleId), str( [ cellLocation.col, cellLocation.row ] ), str(address) )
+#        print " --- Set cell location[%s]: %s, address: %s "  % ( str(moduleId), str( [ cellLocation.col, cellLocation.row ] ), str(address) )
         self.overrideLocation( cellLocation )
         self.adjustSheetDimensions( cellLocation.row, cellLocation.col )
         return [ cellLocation.col, cellLocation.row, 1, 1 ]
@@ -458,7 +458,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             self.baseMapActor.SetOrientation( 0.0, 0.0, 0.0 )
             self.baseMapActor.SetOpacity( opacity )
     #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
-            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
+#            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
             self.baseMapActor.SetPosition( self.x0, self.y0, 0.1 )
             self.baseMapActor.SetInput( baseImage )
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]
@@ -525,16 +525,7 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
     def createLayout(self):
         """ createEditor() -> None
         Configure sections
-        """
-        self.setLayout( QVBoxLayout() )
-        self.layout().setMargin(0)
-        self.layout().setSpacing(0)
-
-        self.tabbedWidget = QTabWidget()
-        self.layout().addWidget( self.tabbedWidget ) 
-
-        self.createButtonLayout() 
-        
+        """        
         basemapTab = QWidget()        
         self.tabbedWidget.addTab( basemapTab, 'base map' )                 
         layout = QVBoxLayout()

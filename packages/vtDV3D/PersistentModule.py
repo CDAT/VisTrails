@@ -159,7 +159,9 @@ class PersistentModule( QObject ):
         if self.isClient: return 
         import api
         controller = api.get_current_controller()
-        controller.add_annotation( (id, str(note)), self.moduleID ) 
+        try:
+            controller.add_annotation( (id, str(note)), self.moduleID ) 
+        except: pass
     
     def setLabel( self, label ):      
         if self.isClient: return
@@ -215,7 +217,7 @@ class PersistentModule( QObject ):
                         parameterList = tagged_function.parameters
                         pval = [ translateToPython( parmRec ) for parmRec in parameterList ]
             except Exception, err:
-                print>>sys.stderr, " Exception in getTaggedParameterValue (%s): %s " % ( parameter_name, str( err ) )
+                print>>sys.stderr, " vtDV3D Exception in getTaggedParameterValue (%s):\n { %s } " % ( parameter_name, str( err ) )
         return pval
                 
         
@@ -312,7 +314,7 @@ class PersistentModule( QObject ):
                     pval = [ translateToPython( parmRec ) for parmRec in parameterList ]
                     print " %s.Get-Input-Value[%s:%s] (v. %s): %s " % ( self.getName(), tag, inputName, str(tagged_version_number), str(pval) )
             except Exception, err:
-                print "Error getting tagged version: %s" % str(err)
+                print>>sys.stderr, "vtDV3D Error getting tagged version:\n { %s }" % str(err)
         if not pval:         
             pval = self.getParameter( inputName, default_value )
 #        print ' ***** GetInputValue[%s] = %s: cv=%d, tv0=%d, tv1=%d ' % ( inputName, str(pval), ctrl.current_version, tv0, tagged_version_number )
@@ -677,7 +679,7 @@ class PersistentModule( QObject ):
     def updateConfigurationObserver( self, parameter_name, new_parameter_value, *args ):
         try:
             if self.getActivation( parameter_name ):
-                print " updateConfiguration[%s]: %s" % ( parameter_name, str(new_parameter_value) )
+#                print " updateConfiguration[%s]: %s" % ( parameter_name, str(new_parameter_value) )
                 self.setResult( parameter_name, new_parameter_value )
                 configFunct = self.configurableFunctions[ parameter_name ]
                 configFunct.setValue( new_parameter_value )
@@ -883,7 +885,7 @@ class PersistentModule( QObject ):
                 parameter_name = parmRec[0]
                 output = parmRec[1]
                 self.setParameter( parameter_name, output, tag ) 
-            print " %s.Persist-Parameter-List[%s] (v. %s): %s " % ( self.getName(), tag, str(taggedVersion), str(parmRecList) )
+#            print " %s.Persist-Parameter-List[%s] (v. %s): %s " % ( self.getName(), tag, str(taggedVersion), str(parmRecList) )
             self.persistVersionMap() 
             updatePipelineConfiguration = args.get( 'update', False )                  
             if updatePipelineConfiguration: ctrl.select_latest_version() 
@@ -1000,12 +1002,13 @@ class PersistentVisualizationModule( PersistentModule ):
 #            print "set3DOutput for class %s" % ( self.__class__.__name__ ) 
 
     def updateTextDisplay( self, text = None ):
-        if text <> None: self.textBuff = text
-        if (self.ndims == 3) and self.textActor:
-            self.textActor.SetInput( self.textBuff )
-            self.textActor.Modified()
-            self.textActor.VisibilityOn()
-            print "updateTextDisplay: %s" % ( text ) 
+        if text <> None: 
+            self.textBuff = text
+            if (self.ndims == 3) and self.textActor:
+                self.textActor.SetInput( self.textBuff )
+                self.textActor.Modified()
+                self.textActor.VisibilityOn()
+#            print "updateTextDisplay: %s" % ( text ) 
             
     def UpdateCamera(self):
         pass

@@ -43,6 +43,8 @@ class vtDV3DApplicationSingleton( gui.application.VistrailsApplicationSingleton 
         self.builderWindow.modulePalette.updateFromModuleRegistry()
         self.builderWindow.modulePalette.connect_registry_signals()
         
+        self.process_interactive_input()
+        
         if not self.temp_configuration.showSpreadsheetOnly:
             if self.builderWindow.is_main_window:
                 self.setActiveWindow(self.builderWindow)

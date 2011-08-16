@@ -109,7 +109,6 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         else:
             title = '%s Module Configuration'%module.name
         self.setWindowTitle(title)
-        self.setupTabs()
         
     def __del__(self):
         pass
@@ -273,19 +272,11 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         serializedOutputs = ';'.join( ioData )
         return serializedInputs, serializedOutputs 
                           
-    def setupTabs(self):
-        self.setLayout(QtGui.QVBoxLayout())
-        self.layout().setMargin(0)
-        self.layout().setSpacing(0)
-        self.tabbedWidget = QTabWidget()
-        self.layout().addWidget( self.tabbedWidget ) 
-        
+    def createLayout(self):       
         tasksTab = QWidget()        
         self.tabbedWidget.addTab( tasksTab, 'tasks' )                 
         tasks_layout = QVBoxLayout()
         tasksTab.setLayout( tasks_layout ) 
-        
-        self.createButtonLayout()
         
         task_selection_layout = QHBoxLayout()
         task_selection_label = QLabel( "Tasks:"  )

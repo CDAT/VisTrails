@@ -367,16 +367,7 @@ class SlicePlotConfigurationWidget(DV3DConfigurationWidget):
         """ createEditor() -> None
         Configure sections
         
-        """
-        self.setLayout( QVBoxLayout() )
-        self.layout().setMargin(0)
-        self.layout().setSpacing(0)
-
-        self.tabbedWidget = QTabWidget()
-        self.layout().addWidget( self.tabbedWidget ) 
-
-        self.createButtonLayout() 
-        
+        """        
         plotTypeTab = QWidget()        
         self.tabbedWidget.addTab( plotTypeTab, 'plot' ) 
         plotTypeLayout = QVBoxLayout()                

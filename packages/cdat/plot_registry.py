@@ -140,8 +140,7 @@ class Plot(object):
                 if config.has_option('global', 'workflow_tag'):
                     self.workflow_tag = config.get('global', 'workflow_tag')
                 else:
-                    debug.warning("CDAT Package: file %s does not contain a \
-required option 'workflow_tag'. Widget will not be loaded."%self.config_file)
+                    debug.warning("CDAT Package: file %s does not contain a required option 'workflow_tag'. Widget will not be loaded."%self.config_file)
                     self.loaded = False
                     return
                 if config.has_option('global', 'filetypes'):
@@ -192,8 +191,9 @@ required option 'workflow_tag'. Widget will not be loaded."%self.config_file)
                         (self.plot_vistrail, abstractions , thumbnails) = load_vistrail(self.locator)
                         controller = VistrailController()
                         controller.set_vistrail(self.plot_vistrail, self.locator, 
-                                                abstractions, thumbnails)
-                        version = self.plot_vistrail.get_version_number(self.workflow_tag)
+                                                abstractions, thumbnails) 
+
+                        version = self.plot_vistrail.get_version_number(self.workflow_tag) if self.workflow_tag else controller.get_latest_version_in_graph()
                         controller.change_selected_version(version)
                         self.workflow = controller.current_pipeline
                         self.loadWidget()
@@ -288,7 +288,7 @@ required option 'workflow_tag'. Widget will not be loaded."%self.config_file)
                 
         #now we update pipeline with current parameter values
         pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
-        self.addMergedAliases( aliases, pipeline )
+#        self.addMergedAliases( aliases, pipeline )
         newid = self.addParameterChangesFromAliasesAction(pipeline, 
                                         self.current_controller, 
                                         self.current_controller.vistrail, 
@@ -308,23 +308,23 @@ required option 'workflow_tag'. Widget will not be loaded."%self.config_file)
         (results, _) = controller.execute_current_workflow()
         #print results[0]
         
-    def addMergedAliases( self, aliases, pipeline ):
-        if 'dvInputSpecs' in pipeline.aliases:
-            fileAliases = ','.join( [ "%s:%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
-            varAliases = ','.join( [ "%s:%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
-            gridAliases = ','.join( [ "%s:%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
-            aliases[ 'inputSpecs' ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
-            print " inputSpecs: ", str( aliases[ 'inputSpecs' ] )
-        if 'dvCellSpecs' in pipeline.aliases:
-            aliases[ 'cellSpecs' ] = ','.join( [ "%s%s" % ( chr( ord('A') + int(aliases[self.cells[i].col_name]) ), aliases[self.cells[i].row_name] )  for i in range(self.cellnum) ] )
-            print " cellSpecs: ", str( aliases[ 'cellSpecs' ] )
+#    def addMergedAliases( self, aliases, pipeline ):
+#        if 'dvInputSpecs' in pipeline.aliases:
+#            fileAliases = ','.join( [ "%s:%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
+#            varAliases = ','.join( [ "%s:%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
+#            gridAliases = ','.join( [ "%s:%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
+#            aliases[ 'dvInputSpecs' ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
+#            print " dvInputSpecs: ", str( aliases[ 'dvInputSpecs' ] )
+#        if 'dvCellSpecs' in pipeline.aliases:
+#            aliases[ 'dvCellSpecs' ] = ','.join( [ "%s%s" % ( chr( ord('A') + int(aliases[self.cells[i].col_name]) ), aliases[self.cells[i].row_name] )  for i in range(self.cellnum) ] )
+#            print " dvCellSpecs: ", str( aliases[ 'dvCellSpecs' ] )
         
     def previewChanges(self, aliases):
         print "previewChanges", aliases
         # we will just execute the pipeline with the given alias dictionary
         controller = VistrailController()
         controller.set_vistrail(self.plot_vistrail, self.locator)
-        version = self.plot_vistrail.get_version_number(self.workflow_tag)
+        version = self.plot_vistrail.get_version_number(self.workflow_tag) if self.workflow_tag else controller.get_latest_version_in_graph()
         controller.change_selected_version(version)
         (results, _) = controller.execute_current_workflow(aliases)
         #print results[0]
@@ -361,24 +361,29 @@ required option 'workflow_tag'. Widget will not be loaded."%self.config_file)
                                              parent_version, aliases):
         param_changes = []
         newid = parent_version
-        #print "addParameterChangesFromAliasesAction()"
+#        print "addParameterChangesFromAliasesAction()"
+#        print "Aliases: %s " % str( aliases )
+#        print "Pipeline Aliases: %s " % str( pipeline.aliases )
         for k,value in aliases.iteritems():
-            alias = pipeline.aliases[k] # alias = (type, oId, parentType, parentId, mId)
-            module = pipeline.modules[alias[4]]
-            function = module.function_idx[alias[3]]
-            old_param = function.parameter_idx[alias[1]]
-            #print alias, module, function, old_param
-            if old_param.strValue != value:
-                new_param = VistrailController.update_parameter(controller, 
-                                                                old_param, 
-                                                                value)
-                if new_param is not None:
-                    op = ('change', old_param, new_param, 
-                          function.vtType, function.real_id)
-                    param_changes.append(op)
-                else:
-                    debug.warning("CDAT Package: Change parameter %s in widget %s was not generated"%(k,
-                                                                                                      self.name))
+            alias = pipeline.aliases.get(k,None) # alias = (type, oId, parentType, parentId, mId)
+            if alias:
+                module = pipeline.modules[alias[4]]
+                function = module.function_idx[alias[3]]
+                old_param = function.parameter_idx[alias[1]]
+                #print alias, module, function, old_param
+                if old_param.strValue != value:
+                    new_param = VistrailController.update_parameter(controller, 
+                                                                    old_param, 
+                                                                    value)
+                    if new_param is not None:
+                        op = ('change', old_param, new_param, 
+                              function.vtType, function.real_id)
+                        param_changes.append(op)
+#                        print "Added parameter change for alias=%s, value=%s" % ( k, value  )
+                    else:
+                        debug.warning("CDAT Package: Change parameter %s in widget %s was not generated"%(k, self.name))
+            else:
+                debug.warning( "CDAT Package: Alias %s does not exist in pipeline" % (k) )
         if len(param_changes) > 0:
             action = core.db.action.create_action(param_changes)
             vistrail.add_action(action, parent_version, controller.current_session)

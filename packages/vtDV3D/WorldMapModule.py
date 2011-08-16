@@ -94,7 +94,7 @@ class PM_WorldFrame(PersistentVisualizationModule):
         self.baseMapActor.SetOrientation( 0.0, 0.0, 0.0 )
         self.baseMapActor.SetOpacity( opacity )
 #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
-        print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
+#Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
         self.baseMapActor.SetPosition( self.x0, self.y0, 0.1 )
         self.baseMapActor.SetInput( baseImage )
         

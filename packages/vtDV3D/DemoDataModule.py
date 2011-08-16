@@ -155,23 +155,13 @@ class DemoDataConfigurationWidget(DV3DConfigurationWidget):
         """
         DV3DConfigurationWidget.__init__(self, module, controller, 'Demo Data Configuration', parent)
  
-        
-    def createLayout( self ):
-        self.maxNTimeSteps = 10 # int( module.forceGetInputFromPort( "maxNTimeSteps", '10' ) )    
-        self.setLayout(QVBoxLayout())
-        self.layout().setMargin(0)
-        self.layout().setSpacing(0)
-        self.dataset = demoDatasets[0] # module.forceGetInputFromPort( "dataset", demoDatasets[0] )    
-        self.createTabs()
-        self.createButtonLayout()  
-                 
-    def createTabs(self):
+                         
+    def createLayout(self):
         """ createEditor() -> None
         Configure sections
         
         """
-        self.tabbedWidget = QTabWidget()
-        self.layout().addWidget( self.tabbedWidget ) 
+        self.dataset = demoDatasets[0] # module.forceGetInputFromPort( "dataset", demoDatasets[0] )    
         
         datasetTab = QWidget()        
         self.tabbedWidget.addTab( datasetTab, 'dataset' )                 

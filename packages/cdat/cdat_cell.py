@@ -105,6 +105,7 @@ class Variable(Module):
         if axesOperations is not None:
             var = self.applyAxesOperations(var, axesOperations)
 
+        print "   ##---------------------------------{ Executed Variable Module }---------------------------------## "
         self.setResult('variable', var)
 
     def applyAxesOperations(self, var, axesOperations):

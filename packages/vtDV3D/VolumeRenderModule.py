@@ -76,14 +76,14 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         pos = [ spacing[i]*extent[2*i] for i in range(3) ]
         if ( (origin[0] + pos[0]) < 0.0): pos[0] = pos[0] + 360.0
         bounds = [ ( origin[i/2] + spacing[i/2]*extent[i] ) for i in range(6) ]
-        print " @@@VolumeRenderer@@@   Data Type = %s, range = (%f,%f), max_scalar = %s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], self._max_scalar_value )
-        print "Extent: %s " % str( self.input.GetWholeExtent() )
-        print "Spacing: %s " % str( spacing )
-        print "Origin: %s " % str( origin )
-        print "Dimensions: %s " % str( self.input.GetDimensions() )
-        print "Bounds: %s " % str( bounds )
-        print "Input Bounds: %s " % str( self.input.GetBounds() )
-        print "VolumePosition: %s " % str( pos )
+#        print " @@@VolumeRenderer@@@   Data Type = %s, range = (%f,%f), max_scalar = %s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], self._max_scalar_value )
+#        print "Extent: %s " % str( self.input.GetWholeExtent() )
+#        print "Spacing: %s " % str( spacing )
+#        print "Origin: %s " % str( origin )
+#        print "Dimensions: %s " % str( self.input.GetDimensions() )
+#        print "Bounds: %s " % str( bounds )
+#        print "Input Bounds: %s " % str( self.input.GetBounds() )
+#        print "VolumePosition: %s " % str( pos )
 #        print "Number of Points: %d " % self.input.GetNumberOfPoints() 
 #        print "Range: %s " % str( self._range )
 #        print "Max scalar: %s " % str( self._max_scalar_value )

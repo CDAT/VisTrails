@@ -262,10 +262,13 @@ removing all dependent modules"""
                 res += convert_mapping_update[funcname]%(params)
                 self.add_dependency(funcname, var)
             except KeyError:
-                # funcname might be a variable used before, so we translate according to type
-                res = self.process_down_stream_modules(var)
-                res += convert_mapping_update[self.obj_map[funcname]]%(params)
-                self.add_dependency(funcname, var)
+                try:
+                    # funcname might be a variable used before, so we translate according to type
+                    res = self.process_down_stream_modules(var)
+                    res += convert_mapping_update[self.obj_map[funcname]]%(params)
+                    self.add_dependency(funcname, var)
+                except KeyError:
+                     core.debug.warning( "CDATParser: Can't find funcname %s" % funcname )
         
         return res.split("\n")
                 
