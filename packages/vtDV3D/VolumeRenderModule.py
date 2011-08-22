@@ -73,8 +73,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self._range = [ self.rangeBounds[0], self.rangeBounds[1], self.rangeBounds[0], 0 ]
         dataType = self.input.GetScalarTypeAsString()
         self.setMaxScalarValue( self.input.GetScalarType() )
-        pos = [ spacing[i]*extent[2*i] for i in range(3) ]
-        if ( (origin[0] + pos[0]) < 0.0): pos[0] = pos[0] + 360.0
+        self.pos = [ spacing[i]*extent[2*i] for i in range(3) ]
+        if ( (origin[0] + self.pos[0]) < 0.0): self.pos[0] = self.pos[0] + 360.0
         bounds = [ ( origin[i/2] + spacing[i/2]*extent[i] ) for i in range(6) ]
 #        print " @@@VolumeRenderer@@@   Data Type = %s, range = (%f,%f), max_scalar = %s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], self._max_scalar_value )
 #        print "Extent: %s " % str( self.input.GetWholeExtent() )
@@ -117,10 +117,20 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #        self.volume.AddObserver( 'AnyEvent', self.EventWatcher )
         self.input.AddObserver( 'AnyEvent', self.EventWatcher )
         
-        self.volume.SetPosition( pos )
+        self.volume.SetPosition( self.pos )
 
         self.renderer.AddVolume( self.volume )
         self.renderer.SetBackground(0.1, 0.1, 0.2) 
+
+
+    def rebuildVolume( self ):
+        self.volumeMapper = vtk.vtkVolumeTextureMapper2D()
+        self.volume = vtk.vtkVolume()
+        self.volume.SetScale( 1.0, 1.0, 1.0 )   
+        self.volume.SetMapper(self.volumeMapper)
+        self.volume.SetProperty(self.volumeProperty)        
+        self.volume.SetPosition( self.pos )
+        self.renderer.AddVolume( self.volume )
 
     def setActiveScalars( self ):
         pointData = self.input.GetPointData()
@@ -136,7 +146,6 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
     def updateModule( self ):
         if self.inputModule:
             self.inputModule.inputToAlgorithm( self.volumeMapper )
-            self.volume.Update() 
             self.set3DOutput()
 
 #            center = self.volume.GetCenter() 

@@ -19,7 +19,7 @@ from vtDV3DConfiguration import configuration
 import numpy.ma as ma
 from vtk.util.misc import vtkGetDataRoot
 packagePath = os.path.dirname( __file__ ) 
-import cdms2, cdtime, cdutil 
+import cdms2, cdtime, cdutil, MV2 
 PortDataVersion = 0
 DataSetVersion = 0
 cdms2.axis.level_aliases.append('isobaric')
@@ -123,6 +123,9 @@ class CDMSDatasetRecord():
     def getTimeValues( self, dsid ):
         return self.dataset['time'].getValue() 
     
+    def clearDataCache( self ):
+         self.cachedFileVariables = {} 
+    
     def getLevAxis(self ):
         for axis in self.dataset.axes.values():
             if isLevelAxis( axis ): return axis
@@ -164,6 +167,8 @@ class CDMSDatasetRecord():
         
         rv = CDMSDataset.NullVariable
         varData = self.dataset[ varName ] 
+        print "Reading Variable %s, attributes: %s" % ( varName, str(varData.attributes) )
+        
         args1 = {} 
         gridMaker = None
         decimationFactor = 1
@@ -216,15 +221,20 @@ class CDMSDatasetRecord():
                 LatMax = tmpLatMin
             refDelLat = ( LatMax - LatMin ) / nRefLat
             refDelLon = ( LonMax - LonMin ) / nRefLon
-            gridMaker = cdutil.WeightedGridMaker( flat=LatMin, flon=LonMin, nlat=int(nRefLat/decimationFactor), nlon=int(nRefLon/decimationFactor), dellat=(refDelLat*decimationFactor), dellon=(refDelLon*decimationFactor) )                    
+#            nodataMask = cdutil.WeightsMaker( source=self.cdmsFile, var=varName,  actions=[ MV2.not_equal ], values=[ nodata_value ] ) if nodata_value else None
+            gridMaker = cdutil.WeightedGridMaker( flat=LatMin, flon=LonMin, nlat=int(nRefLat/decimationFactor), nlon=int(nRefLon/decimationFactor), dellat=(refDelLat*decimationFactor), dellon=(refDelLon*decimationFactor) ) # weightsMaker=nodataMask  )                    
             
-            vc = cdutil.VariableConditioner( source=self.cdmsFile, var=varName,  cdmsKeywords=args1, weightedGridMaker=gridMaker  ) 
+            vc = cdutil.VariableConditioner( source=self.cdmsFile, var=varName,  cdmsKeywords=args1, weightedGridMaker=gridMaker ) 
             regridded_var_slice = vc.get( returnTuple=0 )
             if referenceLev: regridded_var_slice = regridded_var_slice.pressureRegrid( referenceLev )
             args2 = { 'order':'xyz', 'squeeze':1 }
             levbounds = self.getLevBounds( referenceLev )
             if levbounds: args2['lev'] = levbounds
             rv = regridded_var_slice( **args2 ) 
+            try: rv = MV2.masked_equal( rv, rv.fill_value ) 
+            except: pass
+#            max_values = [ regridded_var_slice.max(), rv.max()  ]
+#            print " Regrid variable %s: max values = %s " % ( varName, str(max_values) )
             
             end_t = time.time() 
             self.cachedFileVariables[ varName ] = ( timeValue, rv )
@@ -420,6 +430,9 @@ class CDMSDataset(Module):
 #            print>>sys.stderr, "Error: can't find variable %s in dataset" % varName
 #            return self.NullVariable
 
+    def clearDataCache( self ):
+        for dsetRec in self.datasetRecs.values(): dsetRec.clearDataCache()
+
     def getVarDataTimeSlice( self, dsid, varName, timeValue ):
         """
         This method extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).
@@ -555,6 +568,10 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['timeRange','roi'], **args)
         self.datasetModule = CDMSDataset()
         
+    def clearDataCache(self):
+        self.datasetModule.clearDataCache()
+        PM_CDMSDataReader.clearCache()
+        
     def computeGridFromSpecs(self):
         self.timeRange = [ 0, 0, None, None ]
         self.roi = [ 0.0, -90.0, 360.0, 90.0 ]
@@ -627,6 +644,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
             self.ref_var = self.getInputValue( "grid"  )
 
+        
         self.datasetModule.setBounds( self.timeRange, self.roi, zscale, decimation ) 
   
         if self.datasetMap:             
@@ -639,7 +657,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         self.datasetModule.timeRange = self.timeRange
         self.datasetModule.setReferenceVariable( self.ref_var ) 
         self.setResult( 'dataset', self.datasetModule )
-        print " ......  Start Workflow, dsid=%s ......  " % ( self.datasetModule.getDsetId() )
+        print " ......  Start Workflow, dsid=%s, zscale = %.2f ......  " % ( self.datasetModule.getDsetId(), zscale )
 
 
     def dvUpdate( self, **args ):
@@ -1270,13 +1288,10 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         parmRecList.append( ( 'zscale' , [ self.zscale ]  ), )  
         parmRecList.append( ( 'decimation' , self.decimation  ), )  
         self.persistParameterList( parmRecList ) 
+        self.pmod.clearDataCache()
         self.stateChanged(False)
            
     def okTriggered(self, checked = False):
-        """ okTriggered(checked: bool) -> None
-        Update vistrail controller (if neccesssary) then close the widget
-        
-        """
         t0, t1 = self.startIndexEdit.text(), self.endIndexEdit.text()
         self.timeRange = [ int( str( t0 ) ), int( str( t1 ) ) ]
         self.zscale = float( self.selectZScaleLineEdit.text() )
@@ -1586,14 +1601,22 @@ class MetadataViewerDialog( QDialog ):
 class PM_CDMSDataReader( PersistentVisualizationModule ):
     
     dataCache = {}
+    imageDataCache = {}
     VolumeOutput = 1
     SliceOutput = 2
     VectorOutput = 3
 
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['portData'], **args)
-        self.imageData = {}
         self.currentTime = 0
+        
+    def getImageDataCache(self):
+        return self.imageDataCache.setdefault( self.moduleID, {} )
+
+    @classmethod
+    def clearCache(cls):
+        cls.dataCache = {}
+        cls.imageDataCache = {}
         
     def getCachedData(self, iTimestep, varName ):
         if varName == '__zeros__': iTimestep = 0
@@ -1661,9 +1684,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         if not orecs: raise ModuleError( self, 'No Variable selected for dataset %s.' % self.datasetId )             
         for orec in orecs:
             cachedImageDataName = self.getImageData( orec ) 
-            if cachedImageDataName:             
-                if   orec.ndim == 3: self.set3DOutput( name=orec.name,  output=self.imageData[cachedImageDataName] )
-                elif orec.ndim == 2: self.set2DOutput( name=orec.name,  output=self.imageData[cachedImageDataName] )
+            if cachedImageDataName: 
+                imageDataCache = self.getImageDataCache()            
+                if   orec.ndim == 3: self.set3DOutput( name=orec.name,  output=imageDataCache[cachedImageDataName] )
+                elif orec.ndim == 2: self.set2DOutput( name=orec.name,  output=imageDataCache[cachedImageDataName] )
 
 #    def getMetadata( self, metadata={}, port=None ):
 #        PersistentVisualizationModule.getMetadata( metadata )
@@ -1713,6 +1737,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 varDataSpecs = ds.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale )
                 range_min = varData.min()
                 range_max = varData.max()
+                print " Read volume data for variable %s, scalar range = [ %f, %f ]" % ( varName, range_min, range_max )
                 newDataArray = varData
                 shift, scale = 0.0, 1.0
                            
@@ -1734,8 +1759,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 md['timeValue']= self.timeValue.value
                 md[ varName ] = var_md
                 self.setCachedData( self.timeValue.value, varDataId, varDataSpecs )  
-                
-        if not ( cachedImageDataName in self.imageData ):
+        
+        imageDataCache = self.getImageDataCache()              
+        if not ( cachedImageDataName in imageDataCache ):
             image_data = vtk.vtkImageData() 
             outputOrigin = varDataSpecs[ 'outputOrigin' ]
             outputExtent = varDataSpecs[ 'outputExtent' ]
@@ -1751,10 +1777,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             image_data.SetWholeExtent( extent )
             image_data.SetSpacing(  gridSpacing[0], gridSpacing[1], gridSpacing[2] )
 #            offset = ( -gridSpacing[0]*gridExtent[0], -gridSpacing[1]*gridExtent[2], -gridSpacing[2]*gridExtent[4] )
-            self.imageData[ cachedImageDataName ] = image_data
+            imageDataCache[ cachedImageDataName ] = image_data
             extent = image_data.GetExtent()
             imageDataCreated = True
-        image_data = self.imageData[ cachedImageDataName ]
+        image_data = imageDataCache[ cachedImageDataName ]
         nVars = len( varList )
         npts = image_data.GetNumberOfPoints()
         pointData = image_data.GetPointData()
@@ -1953,7 +1979,6 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
                 outputTab = self.createOutputTab( ndim, output_name, variableSelections )  
                 if outputTab <> None:
                     self.outputsTabbedWidget.addTab( outputTab, output_name ) 
-                    print "Added tab: %s " %  output_name 
                     return outputTab
         return None, None
         
@@ -2035,6 +2060,8 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         return self.outRecMgr.getOutputRec( self.datasetId, outputName ) 
         
     def serializePortData( self ):
+        oRec = self.getCurentOutputRec()
+        if oRec: oRec.updateSelections()
         self.serializedPortData = self.outRecMgr.serialize()
         print " -- PortData: %s " % self.serializedPortData
 
