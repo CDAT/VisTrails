@@ -54,24 +54,29 @@ from core.interpreter.default import get_default_interpreter
 import core.modules.module_registry
 import core.system
 from core.vistrail.port_spec import PortSpec
-from gui.common_widgets import QToolWindowInterface, QToolWindow
+from gui.vistrails_palette import QVistrailsPaletteInterface
 from core.utils import all
 
 ################################################################################
 
-class QShellDialog(QToolWindow, QToolWindowInterface):
+class QShellDialog(QtGui.QWidget, QVistrailsPaletteInterface):
     """This class incorporates the QShell into a dockable widget for use in the
     VisTrails environment"""
-    def __init__(self, parent):
-        QToolWindow.__init__(self, parent=parent)
+    def __init__(self, parent=None):
+        QtGui.QWidget.__init__(self, parent=parent)
         #locals() returns the original dictionary, not a copy as
         #the docs say
         self.firstLocals = copy.copy(locals())
         self.shell = QShell(self.firstLocals,None)
-        self.setWidget(self.shell)
+        layout = QtGui.QVBoxLayout()
+        layout.setMargin(0)
+        layout.setSpacing(0)
+        layout.addWidget(self.shell)
+        self.setLayout(layout)
+        # self.setWidget(self.shell)
         self.setWindowTitle(self.shell.windowTitle())
-        self.setTitleBarWidget(QtGui.QLabel(self.shell.windowTitle()))
-        self.monitorWindowTitle(self.shell)
+        # self.setTitleBarWidget(QtGui.QLabel(self.shell.windowTitle()))
+        # self.monitorWindowTitle(self.shell)
         self.vistrails_interpreter = get_default_interpreter()
     
     def createMenu(self):
@@ -120,7 +125,6 @@ class QShellDialog(QToolWindow, QToolWindowInterface):
         Hides the dialog instead of closing it, so the session continues open.
 
         """
-        self.shell.hide()
         self.hide()
 
     def newSession(self):
@@ -146,6 +150,13 @@ class QShellDialog(QToolWindow, QToolWindowInterface):
             return
 
         self.shell.saveSession(str(fileName))
+
+    def visibility_changed(self, visible):
+        QVistrailsPaletteInterface.visibility_changed(self, visible)
+        if visible:
+            self.shell.show()
+        else:
+            self.shell.hide()
 
 ##############################################################################
 # QShell
@@ -568,7 +579,7 @@ class QShell(QtGui.QTextEdit):
         cursor = self.textCursor()
         cursor.movePosition(QtGui.QTextCursor.End)
         self.setTextCursor(cursor)
-        self.set_active_pipeline()
+        # self.set_controller()
         should_scroll = self.scroll_bar_at_bottom()
         self.pointer = 0
         self.history.append(QtCore.QString(self.line))
@@ -604,40 +615,39 @@ class QShell(QtGui.QTextEdit):
         self.line.insert(self.point, text)
         self.point += text.length()
 
-    def add_pipeline(self, p):
-        """
-        add_pipeline(p) -> None
-        Set the active pipeline in the command shell.  This replaces the modules
-        variable with the list of current active modules of the selected pipeline.
-        """
-        if self.controller:
-            self.interpreter.active_pipeline = self.controller.current_pipeline
-        else:
-            self.interpreter.active_pipeline = p
-        cmd = 'active_pipeline = self.shell.interpreter.active_pipeline'
-        self.interpreter.runcode(cmd)
-        cmd = 'modules = self.vistrails_interpreter.find_persistent_entities(active_pipeline)[0]'
-        self.interpreter.runcode(cmd)
+    # def add_pipeline(self, p):
+    #     """
+    #     add_pipeline(p) -> None
+    #     Set the active pipeline in the command shell.  This replaces the modules
+    #     variable with the list of current active modules of the selected pipeline.
+    #     """
+    #     if self.controller:
+    #         self.interpreter.active_pipeline = self.controller.current_pipeline
+    #     else:
+    #         self.interpreter.active_pipeline = p
+    #     cmd = 'active_pipeline = self.shell.interpreter.active_pipeline'
+    #     self.interpreter.runcode(cmd)
+    #     cmd = 'modules = self.vistrails_interpreter.find_persistent_entities(active_pipeline)[0]'
+    #     self.interpreter.runcode(cmd)
 
-    def run_pipeline(self):
-        if self.controller:
-            if self.interpreter.active_pipeline:
-                self.controller.execute_current_workflow()
-                
-    def add_controller(self, c):
-        """add_controller(c) -> None
-        Add a working VistrailsController to the shell.
+    def set_controller(self, controller=None):
+        """set_controller(controller: VistrailController) -> None
+        Set the current VistrailController on the shell.
         """
-        self.controller = c
-        cmd = 'run_pipeline = self.shell.run_pipeline'
-        self.interpreter.runcode(cmd)
+        self.controller = controller
+        if controller:
+            cmd = 'active_pipeline = self.shell.interpreter.active_pipeline'
+            self.interpreter.runcode(cmd)
+            cmd = 'modules = self.vistrails_interpreter.' \
+                'find_persistent_entities(active_pipeline)[0]'
+            self.interpreter.runcode(cmd)
 
-    def set_active_pipeline(self):
-        """set_active_pipeline() -> None
-        Makes sure that the pipeline being displayed is present in the shell for
-        direct inspection and manipulation
-        """
-        self.add_pipeline(None)
+    # def set_pipeline(self):
+    #     """set_active_pipeline() -> None
+    #     Makes sure that the pipeline being displayed is present in the shell for
+    #     direct inspection and manipulation
+    #     """
+    #     self.add_pipeline(None)
         
     def keyPressEvent(self, e):
         """keyPressEvent(e) -> None

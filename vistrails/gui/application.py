@@ -454,6 +454,7 @@ class VistrailsApplicationSingleton(VistrailsApplicationInterface,
             raise core.requirements.MissingRequirement("Qt version >= 4.2")
         self._is_running = False
         self.terminating = False
+        self.setAttribute(QtCore.Qt.AA_DontShowIconsInMenus)
         # code for single instance of the application
         # based on the C++ solution availabe at
         # http://wiki.qtcentre.org/index.php?title=SingleApplication
@@ -522,9 +523,9 @@ parameters from other instances")
         """     
         if self.temp_configuration.check('showSplash'):
             self.splashScreen.finish(self.builderWindow)
-        self.builderWindow.create_first_vistrail()
-        self.builderWindow.modulePalette.updateFromModuleRegistry()
-        self.builderWindow.modulePalette.connect_registry_signals()
+        # self.builderWindow.modulePalette.updateFromModuleRegistry()
+        # self.builderWindow.modulePalette.connect_registry_signals()
+        self.builderWindow.link_registry()
         
         self.process_interactive_input()
 
@@ -541,6 +542,7 @@ parameters from other instances")
                 self.builderWindow.hide()
         else:
             self.builderWindow.hide()
+        self.builderWindow.create_first_vistrail()
 
     def noninteractiveMode(self):
         """ noninteractiveMode() -> None
@@ -692,9 +694,11 @@ parameters from other instances")
 
         # This is so that we don't import too many things before we
         # have to. Otherwise, requirements are checked too late.
-        from gui.builder_window import QBuilderWindow
+        # from gui.builder_window import QBuilderWindow
+        from gui.vistrails_window import QVistrailsWindow
 
-        self.builderWindow = QBuilderWindow()
+        # self.builderWindow = QBuilderWindow()
+        self.builderWindow = QVistrailsWindow()
         if not self.temp_configuration.showSpreadsheetOnly:
             # self.builderWindow.show()
             # self.setActiveWindow(self.builderWindow)
@@ -726,8 +730,9 @@ parameters from other instances")
                 mac_attribute = QtCore.Qt.WA_MacBrushedMetal
             if(event.type() == create_event and 
                issubclass(type(o),QtGui.QWidget) and
-               type(o) != QtGui.QSplashScreen):
-                o.setAttribute(mac_attribute)
+               type(o) != QtGui.QSplashScreen and 
+               not (o.windowFlags() & QtCore.Qt.Popup)):
+                    o.setAttribute(mac_attribute)
         if event.type() == QtCore.QEvent.FileOpen:
             self.input = [str(event.file())]
             self.process_interactive_input()

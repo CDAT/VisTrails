@@ -61,13 +61,16 @@ from gui.view_manager import QViewManager
 from gui.vistrail_toolbar import QVistrailViewToolBar, QVistrailInteractionToolBar
 from gui.vis_diff import QVisualDiff
 from gui.utils import build_custom_window, show_info
+from gui.collection.workspace import QWorkspaceWindow
+from gui.collection.explorer import QExplorerWindow
+from gui.collection.vis_log import QVisualLog
 import sys
 import db.services.vistrail
 from gui import merge_gui
 from db.services.io import SaveBundle
 from core.thumbnails import ThumbnailCache
 import gui.debug
-
+from gui.mashups.mashups_manager import MashupsManager
 
 ################################################################################
 
@@ -97,6 +100,10 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea,
                            self.modulePalette.toolWindow())
 
+#        self.queryPanel = QExplorerDialog(self)
+#        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea,
+#                           self.queryPanel.toolWindow())
+
         self.viewIndex = 0
         self.dbDefault = False
         
@@ -107,7 +114,7 @@ class QBuilderWindow(QtGui.QMainWindow):
                                         conf.recentVistrailList)
         else:
             self.recentVistrailLocators = RecentVistrailList()
-            
+        
         conf.subscribe('maxRecentVistrails', self.max_recent_vistrails_changed)
         self.createActions()
         self.createMenu()
@@ -124,6 +131,12 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.connect(self.shell,QtCore.SIGNAL("shellHidden()"),
                      self.shellAction.toggle)
         
+        self.workspace = QWorkspaceWindow(self)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea,
+                               self.workspace)
+        self.provenanceBrowser = QExplorerWindow(self)
+        self.workspace.hide()
+        self.shell = None
         self.debugger = None
         
         # If this is true, we're currently executing a pipeline, so
@@ -386,6 +399,14 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.editPreferencesAction.setEnabled(True)
         self.editPreferencesAction.setStatusTip('Edit system preferences')
 
+        self.workspaceAction = QtGui.QAction('Workspaces', self)
+        self.workspaceAction.setCheckable(True)
+        self.workspaceAction.setChecked(False)
+
+        self.provenanceBrowserAction = QtGui.QAction('Provenance Browser', self)
+        self.provenanceBrowserAction.setCheckable(True)
+        self.provenanceBrowserAction.setChecked(False)
+
         self.shellAction = QtGui.QAction(CurrentTheme.CONSOLE_MODE_ICON,
                                          'VisTrails Console', self)
         self.shellAction.setCheckable(True)
@@ -469,6 +490,15 @@ class QBuilderWindow(QtGui.QMainWindow):
             'Execute Parameter Exploration', self)
         self.executeExplorationAction.setEnabled(False)
 
+        #mashup actions
+        self.executeMashupAction = QtGui.QAction(CurrentTheme.EXECUTE_MASHUP_ICON,
+                                                 'Execute Mashup', self)
+        self.executeMashupAction.setEnabled(False)
+        
+        self.createMashupAction = QtGui.QAction(CurrentTheme.MASHUP_ICON,
+                                                'Mashup', self)
+        self.createMashupAction.setEnabled(False)
+        
         self.executeShortcuts = [
             QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.ControlModifier +
                                                QtCore.Qt.Key_Return), self),
@@ -536,6 +566,8 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.editMenu.addSeparator()
         self.editMenu.addAction(self.controlFlowAssistAction)
         self.editMenu.addSeparator()
+        self.editMenu.addAction(self.createMashupAction)
+        self.editMenu.addSeparator()
         self.editMenu.addAction(self.repositoryOptions)
         self.mergeMenu = self.editMenu.addMenu('Merge with')
         self.mergeMenu.menuAction().setEnabled(False)
@@ -545,8 +577,10 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.editMenu.addAction(self.editPreferencesAction)
 
         self.viewMenu = self.menuBar().addMenu('&View')
+        self.viewMenu.addAction(self.workspaceAction)
         self.viewMenu.addAction(self.shellAction)
         self.viewMenu.addAction(self.debugAction)
+        self.viewMenu.addAction(self.provenanceBrowserAction)
         self.viewMenu.addAction(self.messagesAction)
         self.viewMenu.addSeparator()
         self.viewMenu.addAction(self.expandBranchAction)
@@ -571,6 +605,7 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.runMenu.addAction(self.executeDiffAction)
         self.runMenu.addAction(self.executeQueryAction)
         self.runMenu.addAction(self.executeExplorationAction)
+        self.runMenu.addAction(self.executeMashupAction)
         self.runMenu.addSeparator()
         self.runMenu.addAction(self.flushCacheAction)
 
@@ -599,6 +634,8 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.undoAction)
         self.toolBar.addAction(self.redoAction)
+        self.toolBar.addSeparator()
+        self.toolBar.addAction(self.createMashupAction)
 
         self.viewToolBar = QVistrailViewToolBar(self)
         self.addToolBar(self.viewToolBar)
@@ -688,6 +725,8 @@ class QBuilderWindow(QtGui.QMainWindow):
              self.execute_current_exploration),
             (self.flushCacheAction, self.flush_cache),
             (self.quitVistrailsAction, self.quitVistrails),
+            (self.createMashupAction, self.createMashup),
+            (self.executeMashupAction, self.executeMashup)
             ]
 
         for (emitter, receiver) in trigger_actions:
@@ -728,6 +767,14 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.connect(self.mergeActionGroup,
                      QtCore.SIGNAL('triggered(QAction *)'),
                      self.vistrailMergeFromMenu)
+
+        self.connect(self.workspaceAction,
+                     QtCore.SIGNAL('triggered(bool)'),
+                     self.showWorkspace)
+
+        self.connect(self.provenanceBrowserAction,
+                     QtCore.SIGNAL('triggered(bool)'),
+                     self.showProvenanceBrowser)
 
         self.connect(self.shellAction,
                      QtCore.SIGNAL('triggered(bool)'),
@@ -944,6 +991,8 @@ class QBuilderWindow(QtGui.QMainWindow):
             self.executeDiffAction.setEnabled(currentView.execDiffEnabled)
             self.executeQueryAction.setEnabled(currentView.execQueryEnabled)
             self.executeExplorationAction.setEnabled(currentView.execExploreEnabled)
+            self.createMashupAction.setEnabled(currentView.createMashupEnabled)
+            self.executeMashupAction.setEnabled(currentView.execMashupEnabled)
         else:
             self.emit(QtCore.SIGNAL("executeEnabledChanged(bool)"),
                       False)
@@ -951,6 +1000,8 @@ class QBuilderWindow(QtGui.QMainWindow):
             self.executeDiffAction.setEnabled(False)
             self.executeQueryAction.setEnabled(False)
             self.executeExplorationAction.setEnabled(False)
+            self.createMashupAction.setEnabled(False)
+            self.executeMashupAction.setEnabled(False)
 
     def viewModeChanged(self, index):
         """ viewModeChanged(index: int) -> None
@@ -1057,7 +1108,7 @@ class QBuilderWindow(QtGui.QMainWindow):
             
     def open_vistrail_without_prompt(self, locator, version=None,
                                      execute_workflow=False, 
-                                     is_abstraction=False):
+                                     is_abstraction=False, workflow_exec=None):
         """open_vistrail_without_prompt(locator_class, version: int or str,
                                         execute_workflow: bool,
                                         is_abstraction: bool) -> None
@@ -1065,6 +1116,7 @@ class QBuilderWindow(QtGui.QMainWindow):
         If a version is given, the workflow is shown on the Pipeline View.
         If execute_workflow is True the workflow will be executed.
         If is_abstraction is True, the vistrail is flagged as abstraction
+        If workflow_exec is True, the logged execution will be displayed
         """
         if not locator.is_valid():
             ok = locator.update_from_gui(self)
@@ -1084,8 +1136,19 @@ class QBuilderWindow(QtGui.QMainWindow):
                 self.viewModeChanged(1)
             if execute_workflow:
                 self.execute_current_pipeline()
+            if workflow_exec:
+                self.open_workflow_exec(
+                    self.viewManager.currentWidget().vistrail, workflow_exec)
                 
+    def open_workflow_exec(self, vistrail, exec_id):
+        """ open_workflow_exec(vistrail, exec_id) -> None
+            Open specified workflow execution for the current pipeline
+        """
         
+        self.vislog = QVisualLog(vistrail, exec_id, self)
+        self.vislog.show()
+
+
     def open_vistrail_default(self):
         """ open_vistrail_default() -> None
         Opens a vistrail from the file/db
@@ -1390,6 +1453,22 @@ class QBuilderWindow(QtGui.QMainWindow):
         self.viewManager.set_vistrail_view(vistrail, None, thumbnail_files=s1.thumbnails)
         self.viewManager.currentView().controller.changed = True
         self.viewManager.currentView().stateChanged()
+
+    def showWorkspace(self, checked=True):
+        """ showWorkspace() -> None
+        Display the vistrail workspace """
+        if checked:
+            self.workspace.show()
+        else:
+            self.workspace.hide()
+
+    def showProvenanceBrowser(self, checked=True):
+        """ showWorkspace() -> None
+        Display the vistrail workspace """
+        if checked:
+            self.provenanceBrowser.show()
+        else:
+            self.provenanceBrowser.hide()
 
     def showShell(self, checked=True):
         """ showShell() -> None
@@ -1800,6 +1879,21 @@ class QBuilderWindow(QtGui.QMainWindow):
             self.emit(QtCore.SIGNAL("executeEnabledChanged(bool)"),
                       True)
 
+    def createMashup(self):
+        """createMashup() -> None
+        Create a mashup from current pipeline """
+        #get current controller and current version
+        controller = self.viewManager.currentView().controller
+        version = controller.current_version
+        if version > 0:
+            mshpManager = MashupsManager.getInstance()
+            mshpManager.createMashup(controller, version)
+    
+    def executeMashup(self):
+        """executeMashup() -> None
+        Execute current mashup  """
+        pass
+    
     def interactiveExportCurrentPipeline(self):
         """ interactiveExportPipeline()
         Hide the builder window and show the spreadsheet window with
