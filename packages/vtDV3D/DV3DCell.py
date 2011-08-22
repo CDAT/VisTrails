@@ -228,7 +228,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             HyperwallManager.executeCurrentWorkflow( self.moduleID )
 
     def updateModule(self):
-        self.buildRendering()
+        self.buildPipeline()
         if self.baseMapActor: self.baseMapActor.SetVisibility( self.enableBasemap )
         if self.renWin: self.renWin.Render()
         
@@ -475,25 +475,24 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             self.renderer.ResetCamera()                
         
     def buildWidget(self):                        
-        if not self.cellWidget:
-            if self.renderers:
-                renderViews = []
-                renderView = None
-                iHandlers = []
-                iStyle = None
-                picker = None
-                
-                if self.isServer:
-                    self.cellWidget = self.displayAndWait( QVTKServerWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
-                    self.cellWidget.setLocation( self.location )
-                elif self.isClient:
-                    self.cellWidget = self.displayAndWait( QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker) )
-                else:
-                    self.cellWidget = self.displayAndWait( QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker) )
-                
-                self.renWin = self.cellWidget.GetRenderWindow()
-            else:               
-                print>>sys.stderr, "Error, no renderers supplied to DV3DCell"  
+        if self.renderers:
+            renderViews = []
+            renderView = None
+            iHandlers = []
+            iStyle = None
+            picker = None
+            
+            if self.isServer:
+                self.cellWidget = self.displayAndWait( QVTKServerWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
+                self.cellWidget.setLocation( self.location )
+            elif self.isClient:
+                self.cellWidget = self.displayAndWait( QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker) )
+            else:
+                self.cellWidget = self.displayAndWait( QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker) )
+            
+            self.renWin = self.cellWidget.GetRenderWindow()
+        else:               
+            print>>sys.stderr, "Error, no renderers supplied to DV3DCell"  
 
 class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
     """

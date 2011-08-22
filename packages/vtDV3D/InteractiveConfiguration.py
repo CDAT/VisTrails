@@ -225,6 +225,12 @@ class OutputRec:
     
     def getSelectedVariableList(self):
         return [ str( varCombo.currentText() ) for varCombo in self.varComboList ]
+    
+    def updateSelections(self):
+        self.varSelections = []
+        for varCombo in self.varComboList:
+            varSelection = str( varCombo.currentText() ) 
+            self.varSelections.append( [ varSelection, "" ] )
 
 ###############################################################################   
       
@@ -934,6 +940,10 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         self.saveConfigurations()
         StandardModuleConfigurationWidget.destroy( self, destroyWindow, destroySubWindows )
 
+    def close (self):
+        pass
+        return StandardModuleConfigurationWidget.close(self)
+    
     def sizeHint(self):
         return QSize(400,200)
     
@@ -1003,9 +1013,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 #            QWidget.focusOutEvent(self, event)
 
     def getPortConfigPanel( self ):
-        scrollArea = QScrollArea(self)
-        scrollArea.setFrameStyle(QFrame.NoFrame)
-        listContainer = QWidget(scrollArea)
+        listContainer = QWidget( )
         listContainer.setLayout(QGridLayout(listContainer))
         listContainer.setFocusPolicy(Qt.WheelFocus)
         self.inputPorts = self.module.destinationPorts()
@@ -1043,9 +1051,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         
         listContainer.adjustSize()
         listContainer.setFixedHeight(listContainer.height())
-        scrollArea.setWidget(listContainer)
-        scrollArea.setWidgetResizable(True)
-        return scrollArea 
+        return listContainer 
          
     def closeEvent(self, event):
         self.askToSaveChanges()

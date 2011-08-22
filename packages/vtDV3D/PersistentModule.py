@@ -57,7 +57,11 @@ class AlgorithmOutputModule( Module ):
         if self.algoOutputPort <> None: 
             if iPort < 0:   algorithm.SetInputConnection( self.algoOutputPort )
             else:           algorithm.SetInputConnection( iPort, self.algoOutputPort )
-        else: algorithm.SetInput( self.getOutput() )
+        else: 
+            output = self.getOutput() 
+            print " inputToAlgorithm: oid = %x " % id( output ) 
+            algorithm.SetInput( output )
+            algorithm.Modified()
 
 class AlgorithmOutputModule3D( AlgorithmOutputModule ):
     
@@ -217,7 +221,8 @@ class PersistentModule( QObject ):
                         parameterList = tagged_function.parameters
                         pval = [ translateToPython( parmRec ) for parmRec in parameterList ]
             except Exception, err:
-                print>>sys.stderr, " vtDV3D Exception in getTaggedParameterValue (%s):\n { %s } " % ( parameter_name, str( err ) )
+                pass
+#                print>>sys.stderr, " vtDV3D Exception in getTaggedParameterValue (%s):\n { %s } " % ( parameter_name, str( err ) )
         return pval
                 
         
@@ -317,35 +322,14 @@ class PersistentModule( QObject ):
                 print>>sys.stderr, "vtDV3D Error getting tagged version:\n { %s }" % str(err)
         if not pval:         
             pval = self.getParameter( inputName, default_value )
-#        print ' ***** GetInputValue[%s] = %s: cv=%d, tv0=%d, tv1=%d ' % ( inputName, str(pval), ctrl.current_version, tv0, tagged_version_number )
+#            print ' ***** GetInputValue[%s] = %s ' % ( inputName, str(pval) )
         return pval
-      
-    def getInputValue1( self, inputName, default_value = None, **args ):
-        inputVal = None
-        portInputIsValid = not ( self.newLayerConfiguration and self.isLayerDependentParameter(inputName) )
-        if portInputIsValid: 
-            if self.wmod:  inputVal = self.wmod.forceGetInputFromPort( inputName, None )
-            else:     inputVal = getFunctionParmStrValues( args.get( 'dbmod', None ), inputName  )
-#                print " %s ---> getInputValueFromPort( %s ) : %s " % ( self.getName(), inputName, str(inputVal) )
-        if inputVal == None:         
-            inputVal = self.getParameter( inputName, default_value )
-#            print " %s ---> getInputValueFromCache( %s ) : %s " % ( self.getName(), inputName, str(inputVal) )
-        return inputVal
-    
+          
     def setResult( self, outputName, value ): 
         if self.wmod <> None:       self.wmod.setResult( outputName, value )
         self.setParameter( outputName, value )
                     
     def initializeLayers( self ):
-#        activeLayerInput = self.getInputValue( 'layer' )
-#        if activeLayerInput == None: activeLayerInput = self.getParameter( 'layer' ) 
-#        print " initializeLayers: activeLayerInput = %s " % str( activeLayerInput )
-#        if activeLayerInput:
-#            newActiveLayer = getItem(  activeLayerInput )
-#            if  newActiveLayer <> self.activeLayer:
-#                self.activeLayer = newActiveLayer
-##                self.setParameterInputsEnabled( False ) 
-
         metadata = self.getMetadata()
         scalars =  metadata.get( 'scalars', None )
         if self.activeLayer == None: 
@@ -830,7 +814,7 @@ class PersistentModule( QObject ):
         
     def getAnnotation( self, key, default_value = None ):
         module = self.getRegisteredModule()
-        if module.has_annotation_with_key(key): return module.get_annotation_by_key(key).value
+        if (module and module.has_annotation_with_key(key)): return module.get_annotation_by_key(key).value
         return default_value
 
     def initVersionMap( self ): 
@@ -887,9 +871,10 @@ class PersistentModule( QObject ):
                 self.setParameter( parameter_name, output, tag ) 
 #            print " %s.Persist-Parameter-List[%s] (v. %s): %s " % ( self.getName(), tag, str(taggedVersion), str(parmRecList) )
             self.persistVersionMap() 
-            updatePipelineConfiguration = args.get( 'update', False )                  
+            updatePipelineConfiguration = args.get( 'update', False ) # False )                  
             if updatePipelineConfiguration: ctrl.select_latest_version() 
             DV3DConfigurationWidget.savingChanges = False
+            self.wmod = None
                          
     def finalizeParameter(self, parameter_name, *args ):
         try:
@@ -914,7 +899,7 @@ class PersistentModule( QObject ):
     def getRegisteredModule(self):
         pipeline = self.getCurrentPipeline()
         mid = self.moduleID
-        module = pipeline.modules[ mid ]
+        module = pipeline.modules.get( mid, None )
         return module
         
     def updateModule(self):
@@ -1116,6 +1101,9 @@ class PersistentVisualizationModule( PersistentModule ):
         else:
             self.lut = self.colorBarActor.GetLookupTable()
         self.colormapManager = ColorMapManager( self.lut ) 
+
+    def creatTitleActor( self ):
+        pass
 
     def createTextActor( self ):
       self.textBuff = "NA                           "

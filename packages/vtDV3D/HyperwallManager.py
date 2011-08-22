@@ -67,7 +67,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
     def addCell( self, moduleId, vistrailName, versionName, dimensions ):
         self.cells[ moduleId ] = ( vistrailName, versionName, dimensions )
         self.cellIds[ self.getCellIndex( dimensions ) ] = moduleId
-        print " HyperwallManager--> addCell: %s " % str( ( moduleId, vistrailName, versionName, dimensions ) )
+#        print " HyperwallManager--> addCell: %s " % str( ( moduleId, vistrailName, versionName, dimensions ) )
         
     def initialize( self ):
         app = gui.application.VistrailsApplication
