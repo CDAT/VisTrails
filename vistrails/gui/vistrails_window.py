@@ -831,6 +831,7 @@ class QVistrailsWindow(QVistrailViewWindow):
         self._previous_view = None
         self._is_quitting = False
         self._first_view = True
+        self.use_uvcdat_window = False
         self.connect(QtGui.QApplication.clipboard(),
                      QtCore.SIGNAL('dataChanged()'),
                      self.clipboard_changed)
@@ -1268,11 +1269,12 @@ class QVistrailsWindow(QVistrailViewWindow):
     def change_view(self, view):
         print 'changing view', id(view), view
         if type(view) == QVistrailView or view is None:
-            if view and view not in self.windows:
-                if self.stack.currentWidget() != view:
-                    self.stack.setCurrentWidget(view)
-                    view.reset_tab_state()
-            self.view_changed(view)
+            if view:
+                if view not in self.windows:
+                    if self.stack.currentWidget() != view:
+                        self.stack.setCurrentWidget(view)
+                        view.reset_tab_state()
+                self.view_changed(view)
         else:
             debug.warning("change_view() got a wrong view type:'%s'"%view)            
 
@@ -1724,9 +1726,20 @@ class QVistrailsWindow(QVistrailViewWindow):
                   or isinstance(window, QtGui.QMenu)):
                 if self.current_view is not None:
                     return self.current_view
-                else:
+                elif self._previous_vt_view is not None:
                     return self._previous_vt_view
+                else:
+                    if self.stack.count() > 0:
+                        return self.stack.currentWidget()  
             else:
+                try:
+                    #uv-cdat window
+                    import qtbrowser
+                    if isinstance(window, qtbrowser.vcdatWindow.QCDATWindow):
+                        print 10
+                        return self.stack.currentWidget()
+                except:
+                    pass
                 #please do not remove this warning. It is necessary to know
                 #what type of window is causing the get_current_view to return
                 # a wrong value -- Emanuele.

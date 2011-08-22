@@ -532,8 +532,7 @@ parameters from other instances")
         if not self.temp_configuration.showSpreadsheetOnly:
             # in some systems (Linux and Tiger) we need to make both calls
             # so builderWindow is activated
-            self.builderWindow.showShell(True)
-            if self.builderWindow.is_main_window:
+            if not self.builderWindow.use_uvcdat_window:
                 self.setActiveWindow(self.builderWindow)
                 self.builderWindow.activateWindow()
                 self.builderWindow.show()

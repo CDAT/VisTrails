@@ -90,8 +90,8 @@ class QTranslator(QtCore.QObject):
             self.visApp.builderWindow.show()
     
     def closeVisTrails(self):
-        if not self.visApp.terminating:
-            if hasattr(self.visApp, 'builderWindow'):
+        if hasattr(self.visApp, 'builderWindow'):
+            if not self.visApp.builderWindow._is_quitting:
                 self.visApp.builderWindow.close()
             
         

@@ -66,7 +66,7 @@ class SpreadsheetWindow(QtGui.QMainWindow):
         """
         QtGui.QMainWindow.__init__(self, parent, f)
         self.createEventMap()
-        self.setWindowTitle('VisTrails - Spreadsheet - Untitled')
+        self.setWindowTitle('UV-CDAT - Spreadsheet - Untitled')
         self.stackedCentralWidget = QtGui.QStackedWidget(self)
         self.tabController = StandardWidgetTabController(
             self.stackedCentralWidget)

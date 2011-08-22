@@ -49,6 +49,7 @@ import core.modules.module_registry
 from core.modules.vistrails_module import (Module, NotCacheable,
                                            ModuleError, new_module)
 from core.bundles import py_import
+from gui.shell import QShellDialog
 import os, sys
 import qtbrowser
 qtbrowser.use_vistrails=True

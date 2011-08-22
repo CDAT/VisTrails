@@ -188,10 +188,11 @@ class Plot(object):
                         if not manager.has_package(dep):
                             self.unsatisfied_deps.append(dep)
                     if len(self.unsatisfied_deps) == 0:
-                        (self.plot_vistrail, abstractions , thumbnails) = load_vistrail(self.locator)
+                        (self.plot_vistrail, abstractions , thumbnails, mashups) = load_vistrail(self.locator)
                         controller = VistrailController()
                         controller.set_vistrail(self.plot_vistrail, self.locator, 
-                                                abstractions, thumbnails) 
+                                                abstractions, thumbnails,
+                                                mashups) 
 
                         version = self.plot_vistrail.get_version_number(self.workflow_tag) if self.workflow_tag else controller.get_latest_version_in_graph()
                         controller.change_selected_version(version)

@@ -49,6 +49,7 @@ import core.modules.module_registry
 from core.modules.vistrails_module import (Module, NotCacheable,
                                            ModuleError, new_module)
 from core.bundles import py_import
+from gui.shell import QShellDialog
 import os, sys
 import qtbrowser
 qtbrowser.use_vistrails=True
@@ -13869,8 +13870,8 @@ def initialize(*args, **keywords):
     qtbrowser.useVistrails=True
     try:
         builder_window = api.get_builder_window()
-        shell = builder_window.shell.shell
-        builder_window.is_main_window = False
+        shell = QShellDialog.instance().shell
+        builder_window.use_uvcdat_window = True
     except api.NoGUI:
         shell = None
     translator = QTranslator(shell=shell)
