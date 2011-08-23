@@ -168,6 +168,27 @@ class CDMSDatasetRecord():
         rv = CDMSDataset.NullVariable
         varData = self.dataset[ varName ] 
         print "Reading Variable %s, attributes: %s" % ( varName, str(varData.attributes) )
+
+        refFile = self.cdmsFile
+        refVar = varName
+        refGrid = None
+        if referenceVar:
+            referenceData = referenceVar.split('*')
+            refDsid = referenceData[0]
+            refFile = referenceData[1]
+            refVar  = referenceData[2]
+            f=cdms2.open( refFile )
+            refGrid=f[refVar].getGrid()
+        else: refGrid = varData.getGrid()
+        refLat=refGrid.getLatitude()
+        refLon=refGrid.getLongitude()
+        nRefLat, nRefLon = len(refLat) - 1, len(refLon) - 1
+        LatMin, LatMax =  float(refLat[0]), float(refLat[-1]) 
+        LonMin, LonMax =  float(refLon[0]), float(refLon[-1]) 
+        if LatMin > LatMax:
+            tmpLatMin = LatMin
+            LatMin = LatMax
+            LatMax = tmpLatMin
         
         args1 = {} 
         gridMaker = None
@@ -175,6 +196,10 @@ class CDMSDatasetRecord():
         if decimation: decimationFactor = decimation[0]+1 if HyperwallManager.isClient else decimation[1]+1
 #        try:
         args1['time'] = timeValue
+        if gridBounds[0] < LonMin and gridBounds[0]+360.0<LonMax: gridBounds[0] = gridBounds[0] + 360.0
+        if gridBounds[2] < LonMin and gridBounds[2]+360.0<LonMax: gridBounds[2] = gridBounds[2] + 360.0
+        if gridBounds[0] > LonMax and gridBounds[0]-360.0>LonMin: gridBounds[0] = gridBounds[0] - 360.0
+        if gridBounds[2] > LonMax and gridBounds[2]-360.0>LonMin: gridBounds[2] = gridBounds[2] - 360.0
         if decimationFactor == 1:
             args1['lon'] = ( gridBounds[0], gridBounds[2] )
             args1['lat'] = ( gridBounds[1], gridBounds[3] )
@@ -199,26 +224,6 @@ class CDMSDatasetRecord():
             args1['order'] = 'xyz'
             rv = varData( **args1 )
         else:
-            refFile = self.cdmsFile
-            refVar = varName
-            refGrid = None
-            if referenceVar:
-                referenceData = referenceVar.split('*')
-                refDsid = referenceData[0]
-                refFile = referenceData[1]
-                refVar  = referenceData[2]
-                f=cdms2.open( refFile )
-                refGrid=f[refVar].getGrid()
-            else: refGrid = varData.getGrid()
-            refLat=refGrid.getLatitude()
-            refLon=refGrid.getLongitude()
-            nRefLat, nRefLon = len(refLat) - 1, len(refLon) - 1
-            LatMin, LatMax =  float(refLat[0]), float(refLat[-1]) 
-            LonMin, LonMax =  float(refLon[0]), float(refLon[-1]) 
-            if LatMin > LatMax:
-                tmpLatMin = LatMin
-                LatMin = LatMax
-                LatMax = tmpLatMin
             refDelLat = ( LatMax - LatMin ) / nRefLat
             refDelLon = ( LonMax - LonMin ) / nRefLon
 #            nodataMask = cdutil.WeightsMaker( source=self.cdmsFile, var=varName,  actions=[ MV2.not_equal ], values=[ nodata_value ] ) if nodata_value else None
@@ -569,8 +574,10 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         self.datasetModule = CDMSDataset()
         
     def clearDataCache(self):
+        from DV3DCell import PM_DV3DCell
         self.datasetModule.clearDataCache()
         PM_CDMSDataReader.clearCache()
+        PM_DV3DCell.clearCache()    
         
     def computeGridFromSpecs(self):
         self.timeRange = [ 0, 0, None, None ]
@@ -1776,9 +1783,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             image_data.SetExtent( extent )
             image_data.SetWholeExtent( extent )
             image_data.SetSpacing(  gridSpacing[0], gridSpacing[1], gridSpacing[2] )
+#            print "Create Image Data, extent = %s, spacing = %s" % ( str(extent), str(gridSpacing) )
 #            offset = ( -gridSpacing[0]*gridExtent[0], -gridSpacing[1]*gridExtent[2], -gridSpacing[2]*gridExtent[4] )
             imageDataCache[ cachedImageDataName ] = image_data
-            extent = image_data.GetExtent()
             imageDataCreated = True
         image_data = imageDataCache[ cachedImageDataName ]
         nVars = len( varList )

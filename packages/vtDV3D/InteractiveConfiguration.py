@@ -236,6 +236,8 @@ class OutputRec:
       
 class ConfigurableFunction( QObject ):
     
+    configFunctions = []
+    
     def __init__( self, name, function_args, key, **args ):
         QObject.__init__(self)
         self.name = name
@@ -251,7 +253,16 @@ class ConfigurableFunction( QObject ):
         self.openHandler = args.get( 'open', None )         #    key press
         self.startHandler = args.get( 'start', None )       #    left click
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
-
+        ConfigurableFunction.configFunctions.append( self )
+    
+    @staticmethod      
+    def getConfigFunctions( type = None ):
+        if type == None: return ConfigurableFunction.configFunctions
+        rv = []
+        for configFunction in ConfigurableFunction.configFunctions:
+            if configFunction.type == type: rv.append( configFunction )
+        return rv
+            
     def matches( self, key ):
         return self.active and ( self.key == key )
     
