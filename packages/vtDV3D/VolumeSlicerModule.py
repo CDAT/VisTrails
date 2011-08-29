@@ -60,6 +60,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
     def updateOpacity(self):
         self.lut.SetAlpha( self.opacity ) 
+        print "  ---> Set Opacity = %f " % self.opacity
 #        self.UpdateWidgetPlacement()
         
 #    def UpdateWidgetPlacement(self):
@@ -154,8 +155,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ.SetUserControlledLookupTable(1)
         self.planeWidgetZ.SetLookupTable( self.lut )
         self.setMarginSize( 0.0 )  
-        self.renderer.SetBackground(0.1, 0.1, 0.2)  
-        self.lut.SetAlpha( self.opacity ) 
+        self.renderer.SetBackground( 0.1, 0.1, 0.2 )  
+        self.updateOpacity() 
         self.imageRescale = vtk.vtkImageReslice() 
         self.imageRescale.SetOutputDimensionality(2) 
         self.imageRescale.SetInterpolationModeToLinear() 
