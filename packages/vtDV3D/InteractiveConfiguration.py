@@ -1163,14 +1163,16 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
        
     @staticmethod
     def readVariableList( dsId, cdmsFile ):
-        dataset = cdms2.open( cdmsFile ) 
         vList = []
-        if dataset:
+        try:
+            dataset = cdms2.open( cdmsFile ) 
             for var in dataset.variables:
                 vardata = dataset[var]
                 var_ndim = getVarNDim( vardata )
                 vList.append( ( '*'.join( [ dsId, var ] ), var_ndim ) ) 
             dataset.close()  
+        except Exception, err:
+            print>>sys.stderr, "Error reading variable list from dataset %s: %s " % ( cdmsFile, str(err) )
         return vList        
 
     @staticmethod
