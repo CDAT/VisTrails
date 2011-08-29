@@ -177,9 +177,12 @@ class CDMSDatasetRecord():
             refDsid = referenceData[0]
             refFile = referenceData[1]
             refVar  = referenceData[2]
-            f=cdms2.open( refFile )
-            refGrid=f[refVar].getGrid()
-        else: refGrid = varData.getGrid()
+            try:
+                f=cdms2.open( refFile )
+                refGrid=f[refVar].getGrid()
+            except cdms2.error.CDMSError, err:
+                print>>sys.stderr, " --- Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
+        if not refGrid: refGrid = varData.getGrid()
         refLat=refGrid.getLatitude()
         refLon=refGrid.getLongitude()
         nRefLat, nRefLon = len(refLat) - 1, len(refLon) - 1
@@ -481,12 +484,12 @@ class CDMSDataset(Module):
         cdmsDSet = self.datasetRecs.get( dsetId, None )
         if (cdmsDSet <> None) and (cdmsDSet.cdmsFile == cdmsFile):
             return cdmsDSet
-        if cdmsFile:
+        try:
             dataset = cdms2.open( cdmsFile ) 
-            if dataset <> None:
-                cdmsDSet = CDMSDatasetRecord( dsetId, dataset, cdmsFile )
-                self.datasetRecs[ dsetId ] = cdmsDSet
-#                cdmsDSet.init(timeRange, roi, zscale)
+            cdmsDSet = CDMSDatasetRecord( dsetId, dataset, cdmsFile )
+            self.datasetRecs[ dsetId ] = cdmsDSet
+        except Exception, err:
+            print>>sys.stderr, " --- Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
         return cdmsDSet             
 
     def getVariableList( self, ndims ):
@@ -602,8 +605,11 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             dataset_list = []
             start_time, end_time, min_dt  = -float('inf'), float('inf'), float('inf')
             for cdmsFile in self.fileSpecs:
-                dataset = cdms2.open( cdmsFile ) 
-                dataset_list.append( dataset )
+                try:
+                    dataset = cdms2.open( cdmsFile ) 
+                    dataset_list.append( dataset )
+                except:
+                    print "Error opening dataset: %s" % str(cdmsFile)
             for dataset in dataset_list:
                 time_values, dt, time_units = getRelativeTimeValues ( dataset )
                 if time_values[0].value > start_time: start_time  = time_values[0].value
@@ -870,14 +876,17 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             cdmsFile = str( file ).strip() 
             if len( cdmsFile ) > 0:                             
                 if self.multiFileSelection:
-                    dataset = cdms2.open( cdmsFile )
-                    self.currentDatasetId = dataset.id 
-                    self.datasets[ self.currentDatasetId ] = cdmsFile  
-                    self.cdmsDataRoot = os.path.dirname( cdmsFile )
-                    self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
-                    self.dsCombo.setCurrentIndex( 0 )
-                    self.pmod.datasetId = '*'.join( self.datasets.keys() )
-                    dataset.close()
+                    try:
+                        dataset = cdms2.open( cdmsFile )
+                        self.currentDatasetId = dataset.id 
+                        self.datasets[ self.currentDatasetId ] = cdmsFile  
+                        self.cdmsDataRoot = os.path.dirname( cdmsFile )
+                        self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
+                        self.dsCombo.setCurrentIndex( 0 )
+                        self.pmod.datasetId = '*'.join( self.datasets.keys() )
+                        dataset.close()
+                    except:
+                        print "Error opening dataset: %s" % str(cdmsFile)
                 else:
                     self.registerCurrentDataset( file=cdmsFile, newLayerConfig=True ) 
                     self.dataset_selection.setText( QString( self.currentDatasetId ) ) 
@@ -930,7 +939,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
                         if lonVals[0] < 0.0: self.lonRangeType = 1
                 dataset.close() 
             except cdms2.error.CDMSError, err:
-                print>>sys.stderr, " Error opening dataset file: %s " % str( err )
+                print>>sys.stderr, " Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
                 
         self.updateRefVarSelection() 
      
@@ -945,8 +954,11 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         time_values_list = []
         for datasetId in self.datasets:
             cdmsFile = self.datasets[ datasetId ]
-            dataset = cdms2.open( cdmsFile ) 
-            dataset_list.append( dataset )
+            try:
+                dataset = cdms2.open( cdmsFile ) 
+                dataset_list.append( dataset )
+            except cdms2.error.CDMSError, err:
+                print>>sys.stderr, " Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
         for dataset in dataset_list:
             time_values, dt, time_units = getRelativeTimeValues ( dataset )
             time_values_list.append( (dataset.id, time_values) )
