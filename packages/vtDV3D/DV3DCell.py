@@ -110,13 +110,13 @@ class QVTKServerWidget(QVTKWidget):
 #                            dcam.SetViewUp(cup)
 #                            r.ResetCameraClippingRange()
 #                    cell.update()
-   
+
 class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     """
     VTKCell is a VisTrails Module that can display vtkRenderWindow inside a cell
     
     """
-    baseMapActor = None
+    baseMapDirty = True
 
     def __init__( self, mid, **args ):
         SpreadsheetCell.__init__(self)
@@ -127,13 +127,13 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.renderers = []
         self.cellWidget = None
         self.imageInfo = None
-        self.mapActorCopy = None
+        self.baseMapActor = None
         self.enableBasemap = True
         self.renWin = None
         
     @classmethod
     def clearCache(cls):
-        cls.baseMapActor = None
+        cls.baseMapDirty = True
         
 #    def get_output(self, port):
 #        module = Module.get_output(self, port)
@@ -234,11 +234,11 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 
     def updateModule(self):
         self.buildPipeline()
-        if PM_DV3DCell.baseMapActor: PM_DV3DCell.baseMapActor.SetVisibility( self.enableBasemap )
+        if self.baseMapActor: self.baseMapActor.SetVisibility( self.enableBasemap )
         if self.renWin: self.renWin.Render()
         
     def activateWidgets( self, iren ):
-        widget = PM_DV3DCell.baseMapActor
+        widget = self.baseMapActor
         bounds = [ 0.0 for i in range(6) ]
         widget.GetBounds(bounds)
 #        printArgs( " MAP: ", pos=widget.GetPosition(), bounds=bounds, origin=widget.GetOrigin() )
@@ -411,7 +411,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 #                        renderer.SetNearClippingPlaneTolerance(0.0001)
 #                        print "NearClippingPlaneTolerance: %f" % renderer.GetNearClippingPlaneTolerance()
         
-        if self.enableBasemap and self.renderers and ( self.newDataset or not PM_DV3DCell.baseMapActor ):             
+        if self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_DV3DCell.baseMapDirty):
+            if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
             world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None
             opacity =  self.getInputValue( "opacity",   0.4  ) #  wmod.forceGetInputFromPort( "opacity",   0.4  )  if wmod else 0.4  
             map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
@@ -456,23 +457,19 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 scale = [ map_cut_size[0]/new_dims[0], map_cut_size[1]/new_dims[1], 1 ]
     #        printArgs( " baseMap: ", extent=baseImage.GetExtent(), spacing=baseImage.GetSpacing(), origin=baseImage.GetOrigin() )        
                       
-            PM_DV3DCell.baseMapActor = vtk.vtkImageActor()
-            PM_DV3DCell.baseMapActor.SetOrigin( 0.0, 0.0, 0.0 )
-            PM_DV3DCell.baseMapActor.SetScale( scale )
-            PM_DV3DCell.baseMapActor.SetOrientation( 0.0, 0.0, 0.0 )
-            PM_DV3DCell.baseMapActor.SetOpacity( opacity )
-    #        PM_DV3DCell.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
+            self.baseMapActor = vtk.vtkImageActor()
+            self.baseMapActor.SetOrigin( 0.0, 0.0, 0.0 )
+            self.baseMapActor.SetScale( scale )
+            self.baseMapActor.SetOrientation( 0.0, 0.0, 0.0 )
+            self.baseMapActor.SetOpacity( opacity )
+    #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
 #            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
-            PM_DV3DCell.baseMapActor.SetPosition( self.x0, self.y0, 0.1 )
-            PM_DV3DCell.baseMapActor.SetInput( baseImage )
-            self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]
-            
-            self.renderer.AddActor( PM_DV3DCell.baseMapActor )
+            self.baseMapActor.SetPosition( self.x0, self.y0, 0.1 )
+            self.baseMapActor.SetInput( baseImage )
+            self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]            
             self.resetCamera()
-            
-        if self.mapActorCopy and (self.mapActorCopy <> PM_DV3DCell.baseMapActor):
-            self.renderer.RemoveActor( self.mapActorCopy )
-        self.mapActorCopy = PM_DV3DCell.baseMapActor
+#            PM_DV3DCell.baseMapDirty = False           
+            self.renderer.AddActor( self.baseMapActor )
         pass
 
 

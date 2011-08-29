@@ -911,23 +911,27 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.variableList = ( [], [] )
         for datasetId in self.datasets:
             cdmsFile = self.datasets[ datasetId ]
-            dataset = cdms2.open( cdmsFile ) 
-            for var in dataset.variables:
-                vardata = dataset[var]
-                var_ndim = getVarNDim( vardata )
-                if (var_ndim) == 2 or (var_ndim == 3):
-                    self.variableList[var_ndim-2].append( '%s*%s' % ( datasetId, var ) )
-#            if not self.selectedGrid:
-#                if len( self.variableList[1] ): self.selectedGrid = self.variableList[1][0]
-#                elif len( self.variableList[0] ): self.selectedGrid = self.variableList[0][0]
-            for grid_id in dataset.grids:
-                self.grids.append( '*'.join( [ datasetId, grid_id ] ) )
-                grid = dataset.grids[ grid_id ]
-                lonAxis = grid.getLongitude()
-                if lonAxis:
-                    lonVals = lonAxis.getValue()
-                    if lonVals[0] < 0.0: self.lonRangeType = 1
-            dataset.close() 
+            try:
+                dataset = cdms2.open( cdmsFile ) 
+                for var in dataset.variables:
+                    vardata = dataset[var]
+                    var_ndim = getVarNDim( vardata )
+                    if (var_ndim) == 2 or (var_ndim == 3):
+                        self.variableList[var_ndim-2].append( '%s*%s' % ( datasetId, var ) )
+    #            if not self.selectedGrid:
+    #                if len( self.variableList[1] ): self.selectedGrid = self.variableList[1][0]
+    #                elif len( self.variableList[0] ): self.selectedGrid = self.variableList[0][0]
+                for grid_id in dataset.grids:
+                    self.grids.append( '*'.join( [ datasetId, grid_id ] ) )
+                    grid = dataset.grids[ grid_id ]
+                    lonAxis = grid.getLongitude()
+                    if lonAxis:
+                        lonVals = lonAxis.getValue()
+                        if lonVals[0] < 0.0: self.lonRangeType = 1
+                dataset.close() 
+            except cdms2.error.CDMSError, err:
+                print>>sys.stderr, " Error opening dataset file: %s " % str( err )
+                
         self.updateRefVarSelection() 
      
     def updateTimeValues( self):
