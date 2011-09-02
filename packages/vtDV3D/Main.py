@@ -32,29 +32,28 @@ class vtDV3DApplicationSingleton( gui.application.VistrailsApplicationSingleton 
                     if os.path.isfile( vistrail_filename ):
                         print " Reading vistrail: ", vistrail_filename
                         f = FileLocator(vistrail_filename)
-                        self.builderWindow.viewManager.open_vistrail(f) 
+                        self.builderWindow.open_vistrail(f) 
                         break
-            self.builderWindow.viewModeChanged(0)   
 
-    def interactiveMode(self):  
-        if self.temp_configuration.check('showSplash'):
-            self.splashScreen.finish(self.builderWindow)
-        self.builderWindow.create_first_vistrail()
-        self.builderWindow.modulePalette.updateFromModuleRegistry()
-        self.builderWindow.modulePalette.connect_registry_signals()
-        
-        self.process_interactive_input()
-        
-        if not self.temp_configuration.showSpreadsheetOnly:
-            if self.builderWindow.is_main_window:
-                self.setActiveWindow(self.builderWindow)
-                self.builderWindow.activateWindow()
-                self.builderWindow.show()
-                self.builderWindow.raise_()
-            else:
-                self.builderWindow.hide()
-        else:
-            self.builderWindow.hide()
+#    def interactiveMode(self): 
+#        if self.temp_configuration.check('showSplash'):
+#            self.splashScreen.finish(self.builderWindow)
+#        self.builderWindow.create_first_vistrail()
+#        self.builderWindow.modulePalette.updateFromModuleRegistry()
+#        self.builderWindow.modulePalette.connect_registry_signals()
+#        
+#        self.process_interactive_input()
+#        
+#        if not self.temp_configuration.showSpreadsheetOnly:
+#            if self.builderWindow.is_main_window:
+#                self.setActiveWindow(self.builderWindow)
+#                self.builderWindow.activateWindow()
+#                self.builderWindow.show()
+#                self.builderWindow.raise_()
+#            else:
+#                self.builderWindow.hide()
+#        else:
+#            self.builderWindow.hide()
                         
     def init( self, optionsDict ):
         rv = gui.application.VistrailsApplicationSingleton.init( self, optionsDict )

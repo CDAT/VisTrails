@@ -289,8 +289,8 @@ if __name__ == '__main__':
             sys.exit(v)
         app = gui.application.VistrailsApplication()
         f = FileLocator(vistrail_filename)
-        app.builderWindow.viewManager.open_vistrail(f) 
-        app.builderWindow.viewModeChanged(0)   
+        app.builderWindow.open_vistrail(f) 
+#        app.builderWindow.viewModeChanged(0)   
     except SystemExit, e:
         if gui.application.VistrailsApplication:
             gui.application.VistrailsApplication.finishSession()

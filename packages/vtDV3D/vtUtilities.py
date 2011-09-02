@@ -27,7 +27,7 @@ VTK_CONTROL_MODIFIER    = 2
 
 hyperwall_role = None 
 currentTime = 0
-dvLogFile =  open( '/tmp/dv3d_log.txt', 'w' )
+dvLogFile =  open( os.path.expanduser( '~/.vistrails/dv3d_log.txt' ), 'w' )
 dvDbgIO = DebugPrint()
 dvDbgIO.set_stream( sys.stderr )
 

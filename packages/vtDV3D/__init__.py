@@ -248,8 +248,7 @@ def executeVistrail( *args, **kwargs ):
             vistrail_filename = os.path.join( workflow_dir, vistrail_name + '.vt' )
             print " Reading vistrail: ", vistrail_filename
             f = FileLocator(vistrail_filename)
-            app.builderWindow.viewManager.open_vistrail(f) 
-        app.builderWindow.viewModeChanged(0)   
+            app.builderWindow.open_vistrail(f) 
     except SystemExit, e:
         if gui.application.VistrailsApplication:
             gui.application.VistrailsApplication.finishSession()

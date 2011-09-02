@@ -127,7 +127,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
     
 #    def registerPipeline(self):
 #        buildWin = VistrailsApplication.builderWindow
-#        buildWin.viewManager.open_vistrail(f) 
+#        buildWin.open_vistrail(f) 
         
     def connectSignals(self):
         if not self.connected:
