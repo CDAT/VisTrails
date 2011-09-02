@@ -168,6 +168,30 @@ class CDMSDatasetRecord():
         rv = CDMSDataset.NullVariable
         varData = self.dataset[ varName ] 
         print "Reading Variable %s, attributes: %s" % ( varName, str(varData.attributes) )
+
+        refFile = self.cdmsFile
+        refVar = varName
+        refGrid = None
+        if referenceVar:
+            referenceData = referenceVar.split('*')
+            refDsid = referenceData[0]
+            refFile = referenceData[1]
+            refVar  = referenceData[2]
+            try:
+                f=cdms2.open( refFile )
+                refGrid=f[refVar].getGrid()
+            except cdms2.error.CDMSError, err:
+                print>>sys.stderr, " --- Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
+        if not refGrid: refGrid = varData.getGrid()
+        refLat=refGrid.getLatitude()
+        refLon=refGrid.getLongitude()
+        nRefLat, nRefLon = len(refLat) - 1, len(refLon) - 1
+        LatMin, LatMax =  float(refLat[0]), float(refLat[-1]) 
+        LonMin, LonMax =  float(refLon[0]), float(refLon[-1]) 
+        if LatMin > LatMax:
+            tmpLatMin = LatMin
+            LatMin = LatMax
+            LatMax = tmpLatMin
         
         args1 = {} 
         gridMaker = None
@@ -175,6 +199,10 @@ class CDMSDatasetRecord():
         if decimation: decimationFactor = decimation[0]+1 if HyperwallManager.isClient else decimation[1]+1
 #        try:
         args1['time'] = timeValue
+        if gridBounds[0] < LonMin and gridBounds[0]+360.0<LonMax: gridBounds[0] = gridBounds[0] + 360.0
+        if gridBounds[2] < LonMin and gridBounds[2]+360.0<LonMax: gridBounds[2] = gridBounds[2] + 360.0
+        if gridBounds[0] > LonMax and gridBounds[0]-360.0>LonMin: gridBounds[0] = gridBounds[0] - 360.0
+        if gridBounds[2] > LonMax and gridBounds[2]-360.0>LonMin: gridBounds[2] = gridBounds[2] - 360.0
         if decimationFactor == 1:
             args1['lon'] = ( gridBounds[0], gridBounds[2] )
             args1['lat'] = ( gridBounds[1], gridBounds[3] )
@@ -199,26 +227,6 @@ class CDMSDatasetRecord():
             args1['order'] = 'xyz'
             rv = varData( **args1 )
         else:
-            refFile = self.cdmsFile
-            refVar = varName
-            refGrid = None
-            if referenceVar:
-                referenceData = referenceVar.split('*')
-                refDsid = referenceData[0]
-                refFile = referenceData[1]
-                refVar  = referenceData[2]
-                f=cdms2.open( refFile )
-                refGrid=f[refVar].getGrid()
-            else: refGrid = varData.getGrid()
-            refLat=refGrid.getLatitude()
-            refLon=refGrid.getLongitude()
-            nRefLat, nRefLon = len(refLat) - 1, len(refLon) - 1
-            LatMin, LatMax =  float(refLat[0]), float(refLat[-1]) 
-            LonMin, LonMax =  float(refLon[0]), float(refLon[-1]) 
-            if LatMin > LatMax:
-                tmpLatMin = LatMin
-                LatMin = LatMax
-                LatMax = tmpLatMin
             refDelLat = ( LatMax - LatMin ) / nRefLat
             refDelLon = ( LonMax - LonMin ) / nRefLon
 #            nodataMask = cdutil.WeightsMaker( source=self.cdmsFile, var=varName,  actions=[ MV2.not_equal ], values=[ nodata_value ] ) if nodata_value else None
@@ -476,12 +484,12 @@ class CDMSDataset(Module):
         cdmsDSet = self.datasetRecs.get( dsetId, None )
         if (cdmsDSet <> None) and (cdmsDSet.cdmsFile == cdmsFile):
             return cdmsDSet
-        if cdmsFile:
+        try:
             dataset = cdms2.open( cdmsFile ) 
-            if dataset <> None:
-                cdmsDSet = CDMSDatasetRecord( dsetId, dataset, cdmsFile )
-                self.datasetRecs[ dsetId ] = cdmsDSet
-#                cdmsDSet.init(timeRange, roi, zscale)
+            cdmsDSet = CDMSDatasetRecord( dsetId, dataset, cdmsFile )
+            self.datasetRecs[ dsetId ] = cdmsDSet
+        except Exception, err:
+            print>>sys.stderr, " --- Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
         return cdmsDSet             
 
     def getVariableList( self, ndims ):
@@ -569,8 +577,10 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         self.datasetModule = CDMSDataset()
         
     def clearDataCache(self):
+        from DV3DCell import PM_DV3DCell
         self.datasetModule.clearDataCache()
         PM_CDMSDataReader.clearCache()
+        PM_DV3DCell.clearCache()    
         
     def computeGridFromSpecs(self):
         self.timeRange = [ 0, 0, None, None ]
@@ -595,8 +605,11 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             dataset_list = []
             start_time, end_time, min_dt  = -float('inf'), float('inf'), float('inf')
             for cdmsFile in self.fileSpecs:
-                dataset = cdms2.open( cdmsFile ) 
-                dataset_list.append( dataset )
+                try:
+                    dataset = cdms2.open( cdmsFile ) 
+                    dataset_list.append( dataset )
+                except:
+                    print "Error opening dataset: %s" % str(cdmsFile)
             for dataset in dataset_list:
                 time_values, dt, time_units = getRelativeTimeValues ( dataset )
                 if time_values[0].value > start_time: start_time  = time_values[0].value
@@ -863,14 +876,17 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             cdmsFile = str( file ).strip() 
             if len( cdmsFile ) > 0:                             
                 if self.multiFileSelection:
-                    dataset = cdms2.open( cdmsFile )
-                    self.currentDatasetId = dataset.id 
-                    self.datasets[ self.currentDatasetId ] = cdmsFile  
-                    self.cdmsDataRoot = os.path.dirname( cdmsFile )
-                    self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
-                    self.dsCombo.setCurrentIndex( 0 )
-                    self.pmod.datasetId = '*'.join( self.datasets.keys() )
-                    dataset.close()
+                    try:
+                        dataset = cdms2.open( cdmsFile )
+                        self.currentDatasetId = dataset.id 
+                        self.datasets[ self.currentDatasetId ] = cdmsFile  
+                        self.cdmsDataRoot = os.path.dirname( cdmsFile )
+                        self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
+                        self.dsCombo.setCurrentIndex( 0 )
+                        self.pmod.datasetId = '*'.join( self.datasets.keys() )
+                        dataset.close()
+                    except:
+                        print "Error opening dataset: %s" % str(cdmsFile)
                 else:
                     self.registerCurrentDataset( file=cdmsFile, newLayerConfig=True ) 
                     self.dataset_selection.setText( QString( self.currentDatasetId ) ) 
@@ -904,23 +920,27 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.variableList = ( [], [] )
         for datasetId in self.datasets:
             cdmsFile = self.datasets[ datasetId ]
-            dataset = cdms2.open( cdmsFile ) 
-            for var in dataset.variables:
-                vardata = dataset[var]
-                var_ndim = getVarNDim( vardata )
-                if (var_ndim) == 2 or (var_ndim == 3):
-                    self.variableList[var_ndim-2].append( '%s*%s' % ( datasetId, var ) )
-#            if not self.selectedGrid:
-#                if len( self.variableList[1] ): self.selectedGrid = self.variableList[1][0]
-#                elif len( self.variableList[0] ): self.selectedGrid = self.variableList[0][0]
-            for grid_id in dataset.grids:
-                self.grids.append( '*'.join( [ datasetId, grid_id ] ) )
-                grid = dataset.grids[ grid_id ]
-                lonAxis = grid.getLongitude()
-                if lonAxis:
-                    lonVals = lonAxis.getValue()
-                    if lonVals[0] < 0.0: self.lonRangeType = 1
-            dataset.close() 
+            try:
+                dataset = cdms2.open( cdmsFile ) 
+                for var in dataset.variables:
+                    vardata = dataset[var]
+                    var_ndim = getVarNDim( vardata )
+                    if (var_ndim) == 2 or (var_ndim == 3):
+                        self.variableList[var_ndim-2].append( '%s*%s' % ( datasetId, var ) )
+    #            if not self.selectedGrid:
+    #                if len( self.variableList[1] ): self.selectedGrid = self.variableList[1][0]
+    #                elif len( self.variableList[0] ): self.selectedGrid = self.variableList[0][0]
+                for grid_id in dataset.grids:
+                    self.grids.append( '*'.join( [ datasetId, grid_id ] ) )
+                    grid = dataset.grids[ grid_id ]
+                    lonAxis = grid.getLongitude()
+                    if lonAxis:
+                        lonVals = lonAxis.getValue()
+                        if lonVals[0] < 0.0: self.lonRangeType = 1
+                dataset.close() 
+            except cdms2.error.CDMSError, err:
+                print>>sys.stderr, " Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
+                
         self.updateRefVarSelection() 
      
     def updateTimeValues( self):
@@ -934,8 +954,11 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         time_values_list = []
         for datasetId in self.datasets:
             cdmsFile = self.datasets[ datasetId ]
-            dataset = cdms2.open( cdmsFile ) 
-            dataset_list.append( dataset )
+            try:
+                dataset = cdms2.open( cdmsFile ) 
+                dataset_list.append( dataset )
+            except cdms2.error.CDMSError, err:
+                print>>sys.stderr, " Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
         for dataset in dataset_list:
             time_values, dt, time_units = getRelativeTimeValues ( dataset )
             time_values_list.append( (dataset.id, time_values) )
@@ -1776,9 +1799,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             image_data.SetExtent( extent )
             image_data.SetWholeExtent( extent )
             image_data.SetSpacing(  gridSpacing[0], gridSpacing[1], gridSpacing[2] )
+#            print "Create Image Data, extent = %s, spacing = %s" % ( str(extent), str(gridSpacing) )
 #            offset = ( -gridSpacing[0]*gridExtent[0], -gridSpacing[1]*gridExtent[2], -gridSpacing[2]*gridExtent[4] )
             imageDataCache[ cachedImageDataName ] = image_data
-            extent = image_data.GetExtent()
             imageDataCreated = True
         image_data = imageDataCache[ cachedImageDataName ]
         nVars = len( varList )

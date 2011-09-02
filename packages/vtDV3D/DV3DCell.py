@@ -110,12 +110,13 @@ class QVTKServerWidget(QVTKWidget):
 #                            dcam.SetViewUp(cup)
 #                            r.ResetCameraClippingRange()
 #                    cell.update()
-        
+
 class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     """
     VTKCell is a VisTrails Module that can display vtkRenderWindow inside a cell
     
     """
+    baseMapDirty = True
 
     def __init__( self, mid, **args ):
         SpreadsheetCell.__init__(self)
@@ -126,9 +127,13 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.renderers = []
         self.cellWidget = None
         self.imageInfo = None
-        self.enableBasemap = True
         self.baseMapActor = None
+        self.enableBasemap = True
         self.renWin = None
+        
+    @classmethod
+    def clearCache(cls):
+        cls.baseMapDirty = True
         
 #    def get_output(self, port):
 #        module = Module.get_output(self, port)
@@ -406,8 +411,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 #                        renderer.SetNearClippingPlaneTolerance(0.0001)
 #                        print "NearClippingPlaneTolerance: %f" % renderer.GetNearClippingPlaneTolerance()
         
-        if self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor ):
-             
+        if self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_DV3DCell.baseMapDirty):
+            if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
             world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None
             opacity =  self.getInputValue( "opacity",   0.4  ) #  wmod.forceGetInputFromPort( "opacity",   0.4  )  if wmod else 0.4  
             map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
@@ -461,10 +466,12 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 #            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
             self.baseMapActor.SetPosition( self.x0, self.y0, 0.1 )
             self.baseMapActor.SetInput( baseImage )
-            self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]
-            
-            self.renderer.AddActor( self.baseMapActor )
+            self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]            
             self.resetCamera()
+#            PM_DV3DCell.baseMapDirty = False           
+            self.renderer.AddActor( self.baseMapActor )
+        pass
+
 
     def resetCamera(self):
             aCamera = self.renderer.GetActiveCamera()
