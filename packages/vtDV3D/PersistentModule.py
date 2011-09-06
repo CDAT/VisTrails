@@ -136,6 +136,12 @@ class PersistentModule( QObject ):
         self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', setValue=self.setTimeValue, getValue=self.getTimeValue )
 #        self.addConfigurableGuiFunction( 'layer', LayerConfigurationDialog, 'l', setValue=self.setLayer, getValue=self.getLayer )
 
+#    def getSelectionStatus( self ):
+#        if self.fieldData:
+#            dataArray = self.fieldData.GetArray( 'selected' )  
+#            if dataArray: return dataArray.GetValue(0)
+#        return 0
+
     def getRangeBounds(self): 
         return self.rangeBounds  
         
@@ -985,6 +991,22 @@ class PersistentVisualizationModule( PersistentModule ):
         else:
             self.wmod.setResult( portName, outputModule )
 #            print "set3DOutput for class %s" % ( self.__class__.__name__ ) 
+
+    def getDownstreamCellModules( self, selectedOnly=False ): 
+        import api, ModuleStore
+        controller = api.get_current_controller()
+        moduleIdList = [ self.moduleID ]
+        rmodList = []
+        while moduleIdList:
+            connectedModuleIds = getConnectedModuleIds( controller, moduleIdList.pop(), 'volume', False )
+            for ( moduleId, portName ) in connectedModuleIds:
+                module = ModuleStore.getModule( moduleId )
+                if module: 
+                    if module.__class__.__name__ == "PM_DV3DCell":
+                        if (not selectedOnly) or module.isSelected(): rmodList.append( module )
+                    else:
+                        moduleIdList.append( moduleID )
+        return rmodList
 
     def updateTextDisplay( self, text = None ):
         if text <> None: 

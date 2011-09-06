@@ -16,6 +16,7 @@ from ColorMapManager import ColorMapManager
 from WorkflowModule import WorkflowModule 
 from PersistentModule import * 
 from vtUtilities import *
+VolumeSlicerModules = {}
         
 class PM_VolumeSlicer(PersistentVisualizationModule):
     """
@@ -46,8 +47,12 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetY = None
         self.planeWidgetZ = None
         self.imageRescale = None
+        VolumeSlicerModules[mid] = self
 #        print " Volume Slicer init, id = %s " % str( id(self) )
-    
+
+    def __del__(self):
+        del VolumeSlicerModules[ self.moduleID ]
+        
     def getOpacity(self):
         return [ self.opacity, self.opacity ]
     
@@ -106,7 +111,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         prop1.SetColor(1, 0, 0)
         self.planeWidgetX.SetUserControlledLookupTable(1)
         self.planeWidgetX.SetLookupTable( self.lut )
-        self.planeWidgetX.AddObserver( 'EndInteractionEvent', self.SliceObserver )
+        self.planeWidgetX.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 0 ) )
         self.planeWidgetX.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
         self.planeWidgetX.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
         self.planeWidgetX.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )
@@ -122,7 +127,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
         self.planeWidgetY.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )
         self.planeWidgetY.SetPicker(picker)
-        self.planeWidgetY.AddObserver( 'EndInteractionEvent', self.SliceObserver )
+        self.planeWidgetY.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 1 ) )
         self.planeWidgetY.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
         self.planeWidgetY.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
         self.planeWidgetY.AddObserver( 'AnyEvent', self.TestObserver )
@@ -141,7 +146,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
         self.planeWidgetZ.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )
         self.planeWidgetZ.SetPicker(picker)
-        self.planeWidgetZ.AddObserver( 'EndInteractionEvent', self.SliceObserver )
+        self.planeWidgetZ.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 2 ) )
         self.planeWidgetZ.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
         self.planeWidgetZ.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
         self.planeWidgetZ.AddObserver( 'AnyEvent', self.TestObserver )
@@ -185,7 +190,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        na1 = self.input.GetPointData().GetNumberOfArrays()
 #        self.setActiveScalars()
 #        na2 = self.input.GetPointData().GetNumberOfArrays()
-        self.SliceObserver( self.planeWidgetZ )
+        self.SliceObserver( 2, self.planeWidgetZ )
         self.set3DOutput()
         
 #    def InputModifiedObserver( self, caller, event = None ):
@@ -205,18 +210,21 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        if (self.currentButton == self.LEFT_BUTTON):  textDisplay = " value: %s." % str( spos )
 #        if (self.currentButton == self.RIGHT_BUTTON): textDisplay = " value: %.5G %s." % ( dataValue, units )
         textDisplay = " pos: %.2f, value: %.3G %s." % ( spos, dataValue, self.units )
-        self.slicePosition[iAxis] = caller.GetSliceIndex() 
+        sliceIndex = caller.GetSliceIndex() 
+        self.slicePosition[iAxis] = sliceIndex
 #        print " Event %s: caller: %s, interaction: %d " % ( str(event), dir( caller ), caller.GetInteraction() )
 #        print "textDisplay: '%s' " % textDisplay
         if textDisplay: self.updateTextDisplay( textDisplay )
+        
 #        print " -- PickObserver: axis %d, dataValue = %f " % ( iAxis, dataValue )
                       
-    def SliceObserver( self, caller, event = None ):
+    def SliceObserver( self, iAxis, caller, event = None ):
         import api
         self.iOrientation = caller.GetPlaneOrientation()
         resliceOutput = caller.GetResliceOutput()
         resliceOutput.Update()
         self.imageRescale.RemoveAllInputs()
+        sliceIndex = caller.GetSliceIndex() 
 #        print " Slice Orientation: %s " % self.iOrientation
         if self.iOrientation == 0: self.imageRescale.SetResliceAxesDirectionCosines( [ 1, 0, 0], [0, -1, 0], [0, 0, -1] )
         if self.iOrientation == 1: self.imageRescale.SetResliceAxesDirectionCosines( [ 0, 1, 0], [ -1, 0, 0], [0, 0,  1] )
@@ -229,6 +237,12 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.updateSliceOutput()
         self.endInteraction()
         HyperwallManager.setLevelingState( None )
+                
+        for module in VolumeSlicerModules.values():
+            if len( module.getDownstreamCellModules( True ) ):
+                if   (iAxis == 0) and module.planeWidgetX: module.planeWidgetX.SetSliceIndex( sliceIndex )
+                elif (iAxis == 1) and module.planeWidgetY: module.planeWidgetY.SetSliceIndex( sliceIndex )
+                elif (iAxis == 2) and module.planeWidgetZ: module.planeWidgetZ.SetSliceIndex( sliceIndex )
         
     def updateSliceOutput(self):
         sliceOutput = self.imageRescale.GetOutput()

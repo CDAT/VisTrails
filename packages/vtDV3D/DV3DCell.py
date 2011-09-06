@@ -125,6 +125,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if self.isClient:  self.location = ( 0, 0 )
         self.allowMultipleInputs = True
         self.renderers = []
+        self.fieldData = []
         self.cellWidget = None
         self.imageInfo = None
         self.baseMapActor = None
@@ -149,6 +150,10 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def getSheetTabWidget( self ):   
         return self.cellWidget.findSheetTabWidget() if self.cellWidget else None
     
+#    def setSelectionStatus( self, selected ):
+#        for fd in self.fieldData:
+#            fd.AddArray( getIntDataArray(  'selected', [ selected, ] ) )      
+    
     def adjustSheetDimensions(self, row, col ):
         sheetTabWidget = getSheetTabWidget()
         ( rc, cc ) = sheetTabWidget.getDimension()
@@ -162,6 +167,20 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if rowChanged or colChanged:    sheetTabWidget.setDimension( rc, cc )
         if rowChanged:                  sheetTabWidget.rowSpinBoxChanged()            
         if colChanged:                  sheetTabWidget.colSpinBoxChanged()
+
+    def getSelectedCells(self):
+        cells = []
+        if self.cellWidget:
+            sheet = self.cellWidget.findSheetTabWidget()
+            if sheet: cells = sheet.getSelectedLocations()
+        return cells
+        
+    def isSelected(self):
+        cells = self.getSelectedCells()
+        cell_coords = ( self.location.row, self.location.col )
+        for cell in cells:
+            if cell == cell_coords: return True
+        return False
     
     def syncCamera( self, cpos, cfol, cup ):
 #        print " @@@ syncCamera, module: %s  @@@" % str( self.moduleID )
@@ -401,6 +420,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 
 #        print " DV3DCell compute, id = %s, cachable: %s " % ( str( id(self) ), str( self.is_cacheable() ) )
         self.renderers = []
+        self.fieldData = []
         self.renderer = None
         for inputModule in self.inputModuleList:
             if inputModule <> None:
@@ -408,9 +428,10 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 if  renderer1 <> None: 
                     if not self.renderer: self.renderer = renderer1
                     self.renderers.append( wrapVTKModule( 'vtkRenderer', renderer1 ) )
+                    self.fieldData.append( inputModule.fieldData )
 #                        renderer.SetNearClippingPlaneTolerance(0.0001)
 #                        print "NearClippingPlaneTolerance: %f" % renderer.GetNearClippingPlaneTolerance()
-        
+#        self.setSelectionStatus( self.isSelected() )
         if self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_DV3DCell.baseMapDirty):
             if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
             world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None

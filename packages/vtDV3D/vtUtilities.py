@@ -214,6 +214,13 @@ def getFloatDataArray( name, values = [] ):
         array.InsertNextValue( value )
     return array
 
+def getIntDataArray( name, values = [] ): 
+    array = vtk.vtkIntArray()
+    array.SetName( name )
+    for value in values:
+        array.InsertNextValue( value )
+    return array
+
 def newList( size, init_value ):
     return [ init_value for i in range(size) ]
        
@@ -365,9 +372,10 @@ def getDesignatedConnections( controller,  mid, portName, isDestinationPort = Tr
 def isCellModule( module ):
     return  module.name in [ "DV3DCell", "SlicePlotCell" ]
 
-def getSheetTabWidget( sheet_index = 0 ):
+def getSheetTabWidget( sheet_index = -1 ):
     from packages.spreadsheet.spreadsheet_controller import spreadsheetController
     spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
+    if sheet_index == -1: sheet_index = spreadsheetWindow.tabController.currentIndex () 
     return spreadsheetWindow.tabController.tabWidgets[ sheet_index ]
 
 def getConnectedModuleIds( controller,  mid, portName, isDestinationPort = True ):
