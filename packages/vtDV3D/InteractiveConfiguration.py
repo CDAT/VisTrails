@@ -233,10 +233,10 @@ class OutputRec:
             self.varSelections.append( [ varSelection, "" ] )
 
 ###############################################################################   
-      
+
+ConfigurableFunctions = {}    
+  
 class ConfigurableFunction( QObject ):
-    
-    configFunctions = []
     
     def __init__( self, name, function_args, key, **args ):
         QObject.__init__(self)
@@ -244,25 +244,30 @@ class ConfigurableFunction( QObject ):
         self.type = 'generic'
         self.args = function_args
         self.kwargs = args
+        self.units = args.get( 'units', '' ).strip().lower()
         self.key = key
         self.functionID = -1 
         self.isLayerDependent = args.get( 'layerDependent', False )
         self.active = args.get( 'active', True )
+        self.activeFunctionList = []
+        self.module = None
 #        self.parameterInputEnabled = True                                      # Handlers executed at:
         self.initHandler = args.get( 'init', None )         #    end of compute()
         self.openHandler = args.get( 'open', None )         #    key press
         self.startHandler = args.get( 'start', None )       #    left click
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
-        ConfigurableFunction.configFunctions.append( self )
-    
-    @staticmethod      
-    def getConfigFunctions( type = None ):
-        if type == None: return ConfigurableFunction.configFunctions
-        rv = []
-        for configFunction in ConfigurableFunction.configFunctions:
-            if configFunction.type == type: rv.append( configFunction )
-        return rv
-            
+        configFunctionList = ConfigurableFunctions.setdefault( self.name, [] )
+        configFunctionList.append( self )
+        
+    def updateActiveFunctionList( self ):
+        cfgFunctionList = ConfigurableFunctions.get( self.name, [] )
+        self.activeFunctionList = []
+        for cfgFunction in cfgFunctionList:
+            if (cfgFunction <> self) and cfgFunction.module:
+                isActive = len( cfgFunction.module.getDownstreamCellModules( True ) )
+                if isActive and (cfgFunction.units == self.units):
+                    self.activeFunctionList.append( cfgFunction )
+             
     def matches( self, key ):
         return self.active and ( self.key == key )
     
@@ -271,8 +276,9 @@ class ConfigurableFunction( QObject ):
 
     def init( self, module ):
         self.moduleID = module.moduleID
+        self.module = module
         if ( self.initHandler != None ):
-            self.initHandler( module, **self.kwargs ) 
+            self.initHandler( **self.kwargs ) 
             
 #    def setParameterInputEnabled( self, isEnabled ):
 #        self.parameterInputEnabled = isEnabled
@@ -345,23 +351,24 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             self.setLevelDataHandler( self.range )
         except:
             pass
-
+        
     def reset(self):
         self.setLevelDataHandler( self.initial_range )
         self.module.render() 
         return self.initial_range
 
-    def initLeveling( self, module, **args ):
-        self.module = module
+    def initLeveling( self, **args ):
         self.initial_range =  self.defaultRange if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
-        self.range = module.getInputValue( self.name, self.initial_range ) if not module.newDataset else self.initial_range
+        self.range = self.module.getInputValue( self.name, self.initial_range ) if not self.module.newDataset else self.initial_range
         self.setLevelDataHandler( self.range )
         self.windowLeveler.setDataRange( self.range )
-        module.setParameter( self.name, self.range )
+        self.module.setParameter( self.name, self.range )
+
 #        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
         
     def startLeveling( self, x, y ):
         self.windowLeveler.startWindowLevel( x, y )
+        self.updateActiveFunctionList()
 
     def getTextDisplay(self, **args ):
         rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
@@ -373,6 +380,9 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.range = self.windowLeveler.windowLevel( x, y, wsize )
         self.setLevelDataHandler( self.range )
         self.module.render()
+        for cfgFunction in self.activeFunctionList:
+            cfgFunction.setLevelDataHandler( self.range )
+            cfgFunction.module.render()
         return self.range # self.wrapData( range )
 
 ################################################################################
@@ -396,9 +406,9 @@ class GuiConfigurableFunction( ConfigurableFunction ):
         self.finalizeConfigurationObserver = args.get( 'finalize', None )
         self.gui = None
         
-    def initGui( self, module, **args ):
+    def initGui( self, **args ):
         if self.gui == None: 
-            self.gui = self.guiClass.getInstance( self.guiClass, self.name, module, **args  )
+            self.gui = self.guiClass.getInstance( self.guiClass, self.name, self.module, **args  )
             if self.startConfigurationObserver <> None:
                 self.gui.connect( self.gui, self.start_parameter_signal, self.startConfigurationObserver )
             if self.updateConfigurationObserver <> None:
@@ -406,11 +416,11 @@ class GuiConfigurableFunction( ConfigurableFunction ):
             if self.finalizeConfigurationObserver <> None:
                 self.gui.connect( self.gui, self.finalize_parameter_signal, self.finalizeConfigurationObserver )
         initial_value = None if ( self.getValueHandler == None ) else self.getValueHandler()          
-        value = module.getInputValue( self.name, initial_value )  # if self.parameterInputEnabled else initial_value
+        value = self.module.getInputValue( self.name, initial_value )  # if self.parameterInputEnabled else initial_value
         if value <> None: 
             self.gui.setValue( value )
             self.setValue( value )
-            module.setResult( self.name, value )
+            self.module.setResult( self.name, value )
 
     def openGui( self ):
         if self.getValueHandler <> None:
@@ -439,14 +449,14 @@ class WidgetConfigurableFunction( ConfigurableFunction ):
         self.setValueHandler = args.get( 'setValue', None )
         self.getValueHandler = args.get( 'getValue', None )
         
-    def initWidget( self, module, **args ):
-        if self.widget == None: self.widget = self.widgetWrapper( self.name, module, **args )
+    def initWidget( self, **args ):
+        if self.widget == None: self.widget = self.widgetWrapper( self.name, self.module, **args )
         initial_value = None if ( self.getValueHandler == None ) else self.getValueHandler() 
-        value = module.getInputValue( self.name, initial_value ) # if self.parameterInputEnabled else initial_range
+        value = self.module.getInputValue( self.name, initial_value ) # if self.parameterInputEnabled else initial_range
         if value <> None: 
             self.widget.setInitialValue( value )         
             self.setValue( value )
-            module.setParameter( self.name, value )
+            self.module.setParameter( self.name, value )
                 
     def reset(self):
         return self.widget.reset()

@@ -30,8 +30,8 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         self.glyphScale = 15.0 
         self.glyphDecimationFactor = 2.0 
         self.primaryInputPort = 'vector'
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True )
-        self.addConfigurableLevelingFunction( 'glyphRange', 'T', setLevel=self.setGlyphRange, getLevel=self.getDataRangeBounds, layerDependent=True )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
+        self.addConfigurableLevelingFunction( 'glyphRange', 'T', setLevel=self.setGlyphRange, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'glyphScale', 'G', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True )
       
     def scaleColormap( self, ctf_data ):

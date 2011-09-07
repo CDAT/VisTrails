@@ -606,18 +606,18 @@ class PersistentModule( QObject ):
 #        self.fieldData.AddArray( getFloatDataArray( 'scale',    [  1.0, 1.0, 1.0 ] ) ) 
            
     def addConfigurableFunction(self, name, function_args, key, **args):
-        self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, **args )
+        self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, pmod=self, **args )
 
     def addConfigurableLevelingFunction(self, name, key, **args):
-        self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, **args )
+        self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, pmod=self, **args )
 
     def addConfigurableGuiFunction(self, name, guiClass, key, **args):
         isActive = not HyperwallManager.isClient
-        guiCF = GuiConfigurableFunction( name, guiClass, key, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
+        guiCF = GuiConfigurableFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
 
     def addConfigurableWidgetFunction(self, name, signature, widgetWrapper, key, **args):
-        wCF = WidgetConfigurableFunction( name, signature, widgetWrapper, key, **args )
+        wCF = WidgetConfigurableFunction( name, signature, widgetWrapper, key, pmod=self, **args )
         self.configurableFunctions[name] = wCF
     
     def getConfigurationHelpText(self):

@@ -52,7 +52,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.iOrientation = 0
         self.mfm = None
         self.cellWidget = None 
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getScalarRange )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getScalarRange, units=self.units )
         
     def SliceObserver( self, caller, event ):
 #        print " SliceObserver: %s " % event

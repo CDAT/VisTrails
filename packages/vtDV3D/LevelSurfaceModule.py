@@ -34,8 +34,8 @@ class PM_LevelSurface(PersistentVisualizationModule):
         PersistentVisualizationModule.__init__(self,  mid, **args)
         self.opacityRange =  [ 0.8, 0.8 ]
         self.numberOfLevels = 1
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True )
-        self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, units=self.units )
+        self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'opacity', 'O', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addConfigurableGuiFunction( 'nLevels', NLevelConfigurationWidget, 'n', setValue=self.setNumberOfLevels, getValue=self.getNumberOfLevels, layerDependent=True )
         pass
