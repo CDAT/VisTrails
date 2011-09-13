@@ -149,6 +149,9 @@ The builder window can be accessed by a spreadsheet menu option.")
             default = None,
             help=("Save evolution graph in specified directory without running "
                   "any workflow (only valid in console mode)."))
+        add("--initprofile", action="store_true", default = None,
+            help="It will initialize ~/.vistrails directory and exit. This option \
+cannot be used in conjunction with other options.")
         command_line.CommandLineParser.parse_options()
 
     def printVersion(self):
@@ -175,6 +178,8 @@ The builder window can be accessed by a spreadsheet menu option.")
         
         """
         get = command_line.CommandLineParser().get_option
+        if get('initprofile') != None:
+            sys.exit(0)
         if get('nosplash')!=None:
             self.temp_configuration.showSplash = bool(get('nosplash'))
         if get('debugsignals')!=None:
