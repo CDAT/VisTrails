@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -1104,10 +1104,9 @@ class QVersionTreeView(QInteractiveGraphicsView, BaseView):
             }
         
     def set_action_defaults(self):
-        self.action_defaults = \
-            {'execute' : [('setEnabled', True, self.set_action_execute_default)],
-             }
-    
+        self.action_defaults['execute'] = \
+            [('setEnabled', True, self.set_action_execute_default)]
+
     def set_action_execute_default(self):
         if self.controller:
             if self.controller.current_pipeline:

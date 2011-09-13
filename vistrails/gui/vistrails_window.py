@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -246,7 +246,8 @@ class QBaseViewWindow(QtGui.QMainWindow):
                       {'statusTip': "Show the underlying pipeline for the " \
                            "selected group in the current pipeline view",
                        'enabled': False,
-                       'callback': _app.show_group}),
+                       'callback': _app.pass_through(self.get_current_view, 
+                                                     'show_group')}),
                      "---",
                      ("makeAbstraction", "Create Subworkflow",
                       {'statusTip': "Create a subworkflow from the selected " \
@@ -331,9 +332,9 @@ class QBaseViewWindow(QtGui.QMainWindow):
         self.qmenus = {}
 
         menu_bar = self.menuBar()
-        print 'menu_bar:', menu_bar
+        #print 'menu_bar:', menu_bar
         self.process_list(self._actions, menu_bar, self.qactions, self.qmenus)
-        print 'done processing list'
+        #print 'done processing list'
         
 class QVistrailViewWindow(QBaseViewWindow):
     def __init__(self, view=None, parent=None, f=QtCore.Qt.WindowFlags()):
@@ -799,9 +800,9 @@ class QVistrailViewWindow(QBaseViewWindow):
             #_global_menubar = menu_bar
         #else:
         menu_bar = self.menuBar()
-        print 'menu_bar:', menu_bar
+        #print 'menu_bar:', menu_bar
         self.process_list(self._actions, menu_bar, self.qactions, self.qmenus)
-        print 'done processing list'
+        #print 'done processing list'
         
         if is_main_window:
             for action_tuple, palette in self.all_palette_actions:
@@ -863,8 +864,10 @@ class QVistrailsWindow(QVistrailViewWindow):
         index = self.stack.addWidget(view)
         self.stack.setCurrentIndex(index)
         self.view_notifications[view] = {}
-        for notification_id, method in view.get_notifications().iteritems():
-            self.register_notification(notification_id, method, True, view)
+        for notification_id, method_list in \
+                view.get_notifications().iteritems():
+            for method in method_list:
+                self.register_notification(notification_id, method, True, view)
 
         QWorkspaceWindow.instance().add_vt_window(view)
 
@@ -882,10 +885,10 @@ class QVistrailsWindow(QVistrailViewWindow):
         QWorkspaceWindow.instance().remove_vt_window(view)
 
     def view_triggered(self, action):
-        print "VIEW_TRIGGERED", action
+        #print "VIEW_TRIGGERED", action
         if self.selected_mode == action:
             if action is not None:
-                print "SETTING CHECKED FALSE"
+                #print "SETTING CHECKED FALSE"
                 action.setChecked(False)
             self.selected_mode = None
         else:
@@ -944,6 +947,7 @@ class QVistrailsWindow(QVistrailViewWindow):
             [(self.UPPER_LEFT_DOCK_AREA,
               [((QWorkspaceWindow,True),
                 (('search_changed', 'updateSearchResults'),
+                 ('execution_updated', 'execution_updated'),
                  ('state_changed', 'state_changed')))]),
              (self.LOWER_LEFT_DOCK_AREA,
               [(QModulePalette, True),
@@ -958,7 +962,8 @@ class QVistrailsWindow(QVistrailViewWindow):
              (self.RIGHT_DOCK_AREA,
               [((QModuleInfo, True),
                 (('controller_changed', 'set_controller'),
-                 ('module_changed', 'update_module'))),
+                 ('module_changed', 'update_module'),
+                 ('entry_klass_changed', 'update_entry_klass'))),
                ((QVersionProp, True),
                 (('controller_changed', 'updateController'),
                  ('version_changed', 'updateVersion'))),
@@ -1010,12 +1015,12 @@ class QVistrailsWindow(QVistrailViewWindow):
                     if type(p_klass) == tuple:
                         notifications = visible
                         p_klass, visible = p_klass      
-                print "generating instance", p_klass
+                #print "generating instance", p_klass
                 palette = p_klass.instance()
-                print 'palette:', palette
+                #print 'palette:', palette
                 self.palettes.append(palette)
                 for n_tuple in notifications:
-                    print "n_tuple:", n_tuple
+                    #print "n_tuple:", n_tuple
                     if type(n_tuple) == tuple:
                         if len(n_tuple) > 1:
                             n_id, method_name = n_tuple
@@ -1112,8 +1117,8 @@ class QVistrailsWindow(QVistrailViewWindow):
             notifications = self.notifications
         if notification_id not in notifications:
             notifications[notification_id] = set()
-        else:
-            print "already added notification", notification_id
+        #else:
+        #    print "already added notification", notification_id
 
     def register_notification(self, notification_id, method, link_view=False,
                               view=None):
@@ -1157,7 +1162,7 @@ class QVistrailsWindow(QVistrailViewWindow):
     def notify(self, notification_id, *args):
         # do global notifications
         if notification_id in self.notifications:
-            print 'global notification ', notification_id
+            #print 'global notification ', notification_id
             for m in self.notifications[notification_id]:
                 try:
                     #print "  m: ", m
@@ -1169,7 +1174,7 @@ class QVistrailsWindow(QVistrailViewWindow):
         # do local notifications
         if self.current_view in self.view_notifications:
             notifications = self.view_notifications[self.current_view]
-            print 'local notification ', notification_id, self.current_view
+            #print 'local notification ', notification_id, self.current_view
                 
         if notification_id in notifications:
             for m in notifications[notification_id]:
@@ -1193,11 +1198,12 @@ class QVistrailsWindow(QVistrailViewWindow):
             window = obj.window()
             if isinstance(window, BaseView):
                 window = window.vistrail_view.window()
-            qaction = window.qactions[action]
-            method = get_method(qaction, check)
-            notification = (notification_id, method, True, view)
-            self.register_notification(*notification)
-            link_list.append(notification)
+            if action in window.qactions:
+                qaction = window.qactions[action]
+                method = get_method(qaction, check)
+                notification = (notification_id, method, True, view)
+                self.register_notification(*notification)
+                link_list.append(notification)
         self.action_links[id(obj)] = link_list
     
     def unset_action_links(self, obj):
@@ -1211,12 +1217,13 @@ class QVistrailsWindow(QVistrailViewWindow):
             window = window.vistrail_view.window()
         qactions = window.qactions
         for action, mlist in obj.action_defaults.iteritems():
-            qaction = qactions[action]
-            for (method, is_callback, value) in mlist:
-                if is_callback:
-                    getattr(qaction, method)(value())
-                else:
-                    getattr(qaction, method)(value)
+            if action in qactions:
+                qaction = qactions[action]
+                for (method, is_callback, value) in mlist:
+                    if is_callback:
+                        getattr(qaction, method)(value())
+                    else:
+                        getattr(qaction, method)(value)
             
     def set_name(self):
         widget = self.stack.currentWidget()
@@ -1256,7 +1263,7 @@ class QVistrailsWindow(QVistrailViewWindow):
         return QtCore.QSize(1280, 768)
 
     def create_first_vistrail(self):
-        print 'calling create_first_vistrail'
+        #print 'calling create_first_vistrail'
         if self.get_current_view():
             return
         if not self.dbDefault and untitled_locator().has_temporaries():
@@ -1267,7 +1274,7 @@ class QVistrailsWindow(QVistrailViewWindow):
         self._first_view = self.get_current_view()
 
     def change_view(self, view):
-        print 'changing view', id(view), view
+        #print 'changing view', id(view), view
         if type(view) == QVistrailView or view is None:
             if view:
                 if view not in self.windows:
@@ -1303,6 +1310,8 @@ class QVistrailsWindow(QVistrailViewWindow):
             self.current_view = new_view
             if new_view is not None:
                 self.notify('controller_changed', new_view.get_controller())
+                if new_view.current_tab:
+                    self.set_action_defaults(new_view.current_tab)
         
         if new_view is not None:
             window = None
@@ -1310,7 +1319,6 @@ class QVistrailsWindow(QVistrailViewWindow):
                 window = self.windows[new_view]
             if window is None:
                 if self.current_view.has_changes():
-                    print "current view has changes"
                     self.qactions['saveFile'].setEnabled(True)
                     # un-remember first view when it is changed
                     if self._first_view:
@@ -1384,7 +1392,7 @@ class QVistrailsWindow(QVistrailViewWindow):
         else:
             vt = self._first_view.controller.vistrail
         if vt.get_version_count() == 0:
-            print "closing first vistrail"
+            #print "closing first vistrail"
             self.close_vistrail(self._first_view)
             self._first_view = None
         else:
@@ -1442,6 +1450,7 @@ class QVistrailsWindow(QVistrailViewWindow):
             # sent to the controller.
             view = self.create_view(vistrail, locator, abstraction_files, 
                                     thumbnail_files, mashups)
+            view.is_abstraction = is_abstraction
             self.view_changed(view)
             self.reset_toolbar_for_view(view)
             self.qactions['history'].trigger()
@@ -1462,7 +1471,7 @@ class QVistrailsWindow(QVistrailViewWindow):
         #                    str(e.__class__.__name__), str(e))
         except Exception, e:
             # debug.critical('An error has occurred', str(e))
-            print "An error has occurred", str(e)
+            #print "An error has occurred", str(e)
             raise
         # update collection
         try:
@@ -1487,7 +1496,8 @@ class QVistrailsWindow(QVistrailViewWindow):
 #            else:
             entity = collection.updateVistrail(url, view.controller.vistrail)
             # add to relevant workspace categories
-            collection.add_to_workspace(entity)
+            if not is_abstraction:
+                collection.add_to_workspace(entity)
             collection.commit()
             # update workspace (view creation used the old entities)
             from gui.collection.workspace import QWorkspaceWindow
@@ -1521,7 +1531,8 @@ class QVistrailsWindow(QVistrailViewWindow):
 
     def open_vistrail_without_prompt(self, locator, version=None,
                                      execute_workflow=False, 
-                                     is_abstraction=False, workflow_exec=None):
+                                     is_abstraction=False, workflow_exec=None,
+                                     mashuptrail=None, mashupVersion=None):
         """open_vistrail_without_prompt(locator_class, version: int or str,
                                         execute_workflow: bool,
                                         is_abstraction: bool) -> None
@@ -1529,13 +1540,21 @@ class QVistrailsWindow(QVistrailViewWindow):
         If a version is given, the workflow is shown on the Pipeline View.
         If execute_workflow is True the workflow will be executed.
         If is_abstraction is True, the vistrail is flagged as abstraction
+        If mashuptrail is not None and mashupVersion is not None, the mashup 
+        will be executed.
+        
         """
         if not locator.is_valid():
             ok = locator.update_from_gui(self)
         else:
             ok = True
         if ok:
-            self.open_vistrail(locator, version, is_abstraction)
+            view = self.open_vistrail(locator, version, is_abstraction)
+            if mashuptrail is not None and mashupVersion is not None:
+                view.open_mashup_from_mashuptrail_id(mashuptrail, mashupVersion)
+            elif execute_workflow:
+                self.qactions['execute'].trigger()
+            
             # self.closeVistrailAction.setEnabled(True)
             # self.saveFileAsAction.setEnabled(True)
             # self.exportFileAction.setEnabled(True)
@@ -1546,8 +1565,6 @@ class QVistrailsWindow(QVistrailViewWindow):
             #     self.viewModeChanged(0)
             # else:
             #     self.viewModeChanged(1)
-            # if execute_workflow:
-            #     self.execute_current_pipeline()
             if workflow_exec:
                 self.qactions['provenance'].trigger()
                 self.current_view.log_view.set_exec_by_id(workflow_exec) or \
@@ -1669,11 +1686,11 @@ class QVistrailsWindow(QVistrailViewWindow):
         self.change_view(view)
         return True
 
-    def close_all_vistrails(self):
+    def close_all_vistrails(self, quiet=False):
         self.current_view = None
-        while self.stack.count() > 0 and not \
-              (self.stack.count() == 1 and self._first_view):
-            if not self.close_vistrail():
+        for i in xrange(self.stack.count()):
+            view = self.stack.widget(i)
+            if not self.close_vistrail(view, quiet=quiet):
                 return False
         while len(self.windows) > 0:
             window = self.windows.values()[0]
@@ -1730,28 +1747,34 @@ class QVistrailsWindow(QVistrailViewWindow):
                     return self._previous_vt_view
                 else:
                     if self.stack.count() > 0:
-                        return self.stack.currentWidget()  
+                        return self.stack.currentWidget()
+                    else:
+                        if len(self.windows) > 0:
+                            return self.windows.iterkeys().next()
+                        return self.stack.currentWidget()
             else:
                 try:
                     #uv-cdat window
                     import qtbrowser
                     if isinstance(window, qtbrowser.vcdatWindow.QCDATWindow):
-                        print 10
                         return self.stack.currentWidget()
                 except:
                     pass
-                #please do not remove this warning. It is necessary to know
-                #what type of window is causing the get_current_view to return
-                # a wrong value -- Emanuele.
-                debug.warning(
-                        "[invalid view] get_current_view() -> %s"%window)
-                return self.stack.currentWidget()
+            #please do not remove this warning. It is necessary to know
+            #what type of window is causing the get_current_view to return
+            # a wrong value -- Emanuele.
+            debug.warning("[invalid view] get_current_view() -> %s"%window)
+            return self.stack.currentWidget()
+
         
     def get_current_controller(self):
         return self.get_current_view().get_controller()
 
     def get_current_tab(self):
-        return self.get_current_view().get_current_tab()
+        view = self.get_current_view()
+        if not view:
+            return None
+        return view.get_current_tab()
 
     def get_current_scene(self):
         return self.get_current_tab().scene()
@@ -2202,33 +2225,33 @@ class QVistrailsWindow(QVistrailViewWindow):
         self.qactions[action_name].setChecked(False)
         self.qactions[action_name].setChecked(True)
 
-    def show_group(self):
-        class DummyController(object):
-            def __init__(self, pip):
-                self.current_pipeline = pip
-                self.search = None
-        #FIXME: this should be delegated to QVistrailView
-        current_scene = self.get_current_scene()
-        selected_module_ids = current_scene.get_selected_module_ids()
-        if len(selected_module_ids) > 0:
-            for m_id in selected_module_ids:
-                module = current_scene.current_pipeline.modules[m_id]
-                if module.is_group() or module.is_abstraction():
-                    pipelineView = QPipelineView()
-                    controller = DummyController(module.pipeline)
-                    pipelineView.controller = controller
-                    pipelineMainWindow = QBaseViewWindow(pipelineView)
-                    #pipelineMainWindow.setCentralWidget(pipelineView)
-                    pipelineView.scene().controller = \
-                        controller
-                    controller.current_pipeline_view = \
-                        pipelineView.scene()
-                    module.pipeline.ensure_connection_specs()
-                    pipelineView.scene().setupScene(module.pipeline)
-                    pipelineView.scene().current_pipeline = module.pipeline
-                    pipelineView.scene().fitToView(pipelineView, True)
-                    pipelineView.show()
-                    pipelineMainWindow.show()
+#    def show_group(self):
+#        class DummyController(object):
+#            def __init__(self, pip):
+#                self.current_pipeline = pip
+#                self.search = None
+#        #FIXME: this should be delegated to QVistrailView
+#        current_scene = self.get_current_scene()
+#        selected_module_ids = current_scene.get_selected_module_ids()
+#        if len(selected_module_ids) > 0:
+#            for m_id in selected_module_ids:
+#                module = current_scene.current_pipeline.modules[m_id]
+#                if module.is_group() or module.is_abstraction():
+#                    pipelineView = QPipelineView()
+#                    controller = DummyController(module.pipeline)
+#                    pipelineView.controller = controller
+#                   pipelineMainWindow = QBaseViewWindow(pipelineView)
+#                    #pipelineMainWindow.setCentralWidget(pipelineView)
+#                    pipelineView.scene().controller = \
+#                        controller
+#                    controller.current_pipeline_view = \
+#                        pipelineView.scene()
+#                    module.pipeline.ensure_connection_specs()
+#                    pipelineView.scene().setupScene(module.pipeline)
+#                    pipelineView.scene().current_pipeline = module.pipeline
+#                    pipelineView.scene().fitToView(pipelineView, True)
+#                    pipelineView.show()
+#                    pipelineMainWindow.show()
 
     def openAbstraction(self, filename):
         locator = XMLFileLocator(filename)
@@ -2344,27 +2367,26 @@ class QVistrailsWindow(QVistrailViewWindow):
                 view = self.get_current_view()
 #                print "view: ", view
                 if view and (view == current or view.isAncestorOf(current)):
-                    if (owner != self._focus_owner and 
-                        view != self._previous_vt_view):
+                    if owner != self._focus_owner:
                         self._previous_vt_view = view
-                        self._previous_view = view.get_current_tab()
                         self._focus_owner = owner
                         self.change_view(view)
-                        view.view_changed()
-                        view.reset_tab_view_to_current()
                         self.update_window_menu()
+                        self._previous_view = view.get_current_tab()
+                        view.reset_tab_view_to_current()
+                        view.view_changed()    
+                        
             elif isinstance(owner, QBaseViewWindow):
-                view = owner.view.get_vistrail_view()
-#                print "view: ", view
-                if (view and owner != self._focus_owner and 
-                        view != self._previous_vt_view):
+                view = owner.get_current_view()
+                #print "view: ", view
+                if view and owner != self._focus_owner:
                     self._previous_vt_view = view
-                    self._previous_view = view.get_current_tab()
                     self._focus_owner = owner
                     self.change_view(view)
-                    view.view_changed()
-                    view.set_to_current(current)
                     self.update_window_menu()
+                    self._previous_view = view.get_current_tab()
+                    view.set_to_current(current)
+                    view.view_changed()
         else:
             self._focus_owner = None
 _app = None

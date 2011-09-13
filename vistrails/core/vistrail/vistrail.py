@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -1329,8 +1329,8 @@ class TestVistrail(unittest.TestCase):
                 p2 = v.getPipeline(end_v)
                 a = v.general_action_chain(start_v, end_v)
                 p.perform_action(a)
-                if not check_pipelines(p, p2):
-                    print start_v, end_v
+                #if not check_pipelines(p, p2):
+                #    print start_v, end_v
 
                 assert p == p2
 

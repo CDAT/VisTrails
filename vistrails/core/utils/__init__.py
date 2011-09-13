@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -283,7 +283,7 @@ def save_all_profiles():
     td = core.system.temporary_directory()
     for (name, method) in get_profiled_methods():
         fout = td + name + '.pyp'
-        print fout
+        #print fout
         method.profiler_object.dump_stats(fout)
 
 ##############################################################################
