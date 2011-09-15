@@ -252,6 +252,129 @@ class CDMSDatasetRecord():
 #            print>>sys.stderr, ' Exception getting var slice: %s ' % str( err )
         return rv
 
+    def getVarDataCube( self, varName, decimation, **args ):
+        """
+        This method extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).
+        """ 
+        lonBounds = args.get( 'lon', None )
+        latBounds = args.get( 'lat', None )
+        levBounds = args.get( 'lev', None )
+        timeBounds = args.get( 'time', None )
+        referenceVar = args.get( 'refVar', None )
+        referenceLev = args.get( 'refLev', None )
+        nSliceDims = 0
+        for bounds in (lonBounds, latBounds, levBounds, timeBounds):
+            if ( bounds <> None ) and ( len(bounds) == 1 ):  
+               nSliceDims = nSliceDims + 1
+        if nSliceDims <> 1:
+            print "Error, Wrong number of data dimensions:  %d slice dims " %  nSliceDims
+            return None
+        cachedFileVariableRec = self.cachedFileVariables.get( varName )
+        if cachedFileVariableRec:
+            cachedTimeVal = cachedFileVariableRec[ 0 ]
+            if cachedTimeVal.value == timeValue.value:
+                return cachedFileVariableRec[ 1 ]
+        
+        rv = CDMSDataset.NullVariable
+        varData = self.dataset[ varName ] 
+        print "Reading Variable %s, attributes: %s" % ( varName, str(varData.attributes) )
+
+        refFile = self.cdmsFile
+        refVar = varName
+        refGrid = None
+        if referenceVar:
+            referenceData = referenceVar.split('*')
+            refDsid = referenceData[0]
+            refFile = referenceData[1]
+            refVar  = referenceData[2]
+            try:
+                f=cdms2.open( refFile )
+                refGrid=f[refVar].getGrid()
+            except cdms2.error.CDMSError, err:
+                print>>sys.stderr, " --- Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
+        if not refGrid: refGrid = varData.getGrid()
+        refLat=refGrid.getLatitude()
+        refLon=refGrid.getLongitude()
+        nRefLat, nRefLon = len(refLat) - 1, len(refLon) - 1
+        LatMin, LatMax =  float(refLat[0]), float(refLat[-1]) 
+        LonMin, LonMax =  float(refLon[0]), float(refLon[-1]) 
+        if LatMin > LatMax:
+            tmpLatMin = LatMin
+            LatMin = LatMax
+            LatMax = tmpLatMin
+        
+        args1 = {} 
+        gridMaker = None
+        timeValue = None
+        decimationFactor = 1
+        if decimation: decimationFactor = decimation[0]+1 if HyperwallManager.isClient else decimation[1]+1
+#        try:
+        if timeBounds <> None:
+            timeValue = timeBounds[0] if ( len( timeBounds ) == 1 ) else timeBounds
+            args1['time'] = timeValue
+        
+        if lonBounds <> None:
+            if lonBounds[0] < LonMin and lonBounds[0]+360.0 < LonMax: lonBounds[0] = lonBounds[0] + 360.0
+            if lonBounds[0] > LonMax and lonBounds[0]-360.0 > LonMin: lonBounds[0] = lonBounds[0] - 360.0
+            if len( lonBounds ) > 1:
+                if lonBounds[1] < LonMin and lonBounds[1]+360.0<LonMax: lonBounds[1] = lonBounds[1] + 360.0
+                if lonBounds[1] > LonMax and lonBounds[1]-360.0>LonMin: lonBounds[1] = lonBounds[1] - 360.0                       
+            if (decimationFactor == 1) or len( lonBounds == 1 ):
+                args1['lon'] = lonBounds[0] if ( len( lonBounds ) == 1 ) else lonBounds
+            else:
+                varGrid = varData.getGrid() 
+                varLonInt = varGrid.getLongitude().mapIntervalExt( [ lonBounds[0], lonBounds[1] ] )
+                args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
+               
+        if latBounds <> None:
+            if decimationFactor == 1:
+                args1['lat'] = latBounds[0] if ( len( latBounds ) == 1 ) else latBounds
+            else:
+                latAxis = varGrid.getLatitude()
+                latVals = latAxis.getValue()
+                latBounds =  [ latBounds[1], latBounds[0] ] if latVals[0] > latVals[1] else  [ latBounds[0], latBounds[1] ]            
+                varLatInt = latAxis.mapIntervalExt( latBounds )
+                args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
+                
+        start_t = time.time() 
+        
+        if ( (referenceVar==None) or ( ( referenceVar[0] == self.cdmsFile ) and ( referenceVar[1] == varName ) ) ) and ( decimationFactor == 1):
+            if levBounds <> None:
+                args1['lev'] =  levbounds[0] if ( len( levbounds ) == 1 ) else levbounds                        
+            else:
+                levbounds = self.getLevBounds( referenceLev )
+                if levbounds: args1['lev'] = levbounds
+            args1['order'] = 'xyz'
+            rv = varData( **args1 )
+        else:
+            refDelLat = ( LatMax - LatMin ) / nRefLat
+            refDelLon = ( LonMax - LonMin ) / nRefLon
+#            nodataMask = cdutil.WeightsMaker( source=self.cdmsFile, var=varName,  actions=[ MV2.not_equal ], values=[ nodata_value ] ) if nodata_value else None
+            gridMaker = cdutil.WeightedGridMaker( flat=LatMin, flon=LonMin, nlat=int(nRefLat/decimationFactor), nlon=int(nRefLon/decimationFactor), dellat=(refDelLat*decimationFactor), dellon=(refDelLon*decimationFactor) ) # weightsMaker=nodataMask  )                    
+            
+            vc = cdutil.VariableConditioner( source=self.cdmsFile, var=varName,  cdmsKeywords=args1, weightedGridMaker=gridMaker ) 
+            regridded_var_slice = vc.get( returnTuple=0 )
+            if referenceLev: regridded_var_slice = regridded_var_slice.pressureRegrid( referenceLev )
+            args2 = { 'order':'xyz', 'squeeze':1 }
+            if levBounds <> None:
+                args2['lev'] = levbounds[0] if ( len( levbounds ) == 1 ) else levbounds                            
+            else:
+                levbounds = self.getLevBounds( referenceLev )
+                if levbounds: args2['lev'] = levbounds
+            rv = regridded_var_slice( **args2 ) 
+            try: rv = MV2.masked_equal( rv, rv.fill_value ) 
+            except: pass
+#            max_values = [ regridded_var_slice.max(), rv.max()  ]
+#            print " Regrid variable %s: max values = %s " % ( varName, str(max_values) )
+            
+            end_t = time.time() 
+            self.cachedFileVariables[ varName ] = ( timeValue, rv )
+#            print  "Reading variable %s, shape = %s, base shape = %s, time = %s (%s), args = %s, slice duration = %.4f sec." % ( varName, str(rv.shape), str(varData.shape), str(timeValue), str(timeValue.tocomp()), str(args1), end_t-start_t  ) 
+#            printGrid( rv )
+#        except Exception, err:
+#            print>>sys.stderr, ' Exception getting var slice: %s ' % str( err )
+        return rv
+
 #    def init( self, timeRange, roi, zscale ):
 #        self.timeRange = timeRange
 #        self.roi = roi
@@ -404,6 +527,10 @@ class CDMSDataset(Module):
                 self.referenceVariable = "*".join( [ dsid, dsetRec.cdmsFile, varName ] )
                 self.referenceLev = variable.getLevel()
                 pass
+            
+    def getReferenceDsetId(self):
+        if self.referenceVariable == None: return self.datasetRecs.keys()[0]
+        return self.referenceVariable.split("*")[0]
                                                              
     def getStartTime(self):
         return cdtime.reltime( float( self.timeRange[2] ), ReferenceTimeUnits )
@@ -461,6 +588,28 @@ class CDMSDataset(Module):
 #                return vc.get( returnTuple=0 )
         print>>sys.stderr, "Error: can't find time slice variable %s in dataset" % varName
         return rv
+
+    def getVarDataCube( self, dsid, varName, timeValue ):
+        """
+        This method extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).
+        """
+        rv = CDMSDataset.NullVariable
+        if dsid:
+            dsetRec = self.datasetRecs[ dsid ]
+            if varName in dsetRec.dataset.variables:
+                rv = dsetRec.getVarDataCube( varName, self.decimation, time=[timeValue], lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[2]], refVar=self.referenceVariable, refLev=self.referenceLev )   
+        if (rv.id == "NULL") and (varName in self.transientVariables):
+            rv = self.transientVariables[ varName ]
+        if rv.id <> "NULL": 
+            return rv 
+#            current_grid = rv.getGrid()
+#            if ( gridMaker == None ) or SameGrid( current_grid, gridMaker.grid ): return rv
+#            else:       
+#                vc = cdutil.VariableConditioner( source=rv, weightedGridMaker=gridMaker )
+#                return vc.get( returnTuple=0 )
+        print>>sys.stderr, "Error: can't find time slice variable %s in dataset" % varName
+        return rv
+
 
     def getVarDataTimeSlices( self, varList, timeValue ):
         """
@@ -1732,8 +1881,12 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         if len( varList ) == 0: return False
         cachedImageDataName = getItem( varList[-1] )
         varNameComponents = cachedImageDataName.split('*')
-        dsid = varNameComponents[0]
-        varName = varNameComponents[1]
+        if len( varNameComponents ) == 1:
+            dsid = self.cdmsDataset.getReferenceDsetId()
+            varName = varNameComponents[0]
+        else:
+            dsid = varNameComponents[0]
+            varName = varNameComponents[1]
         ds = self.cdmsDataset[ dsid ]
         self.timeRange = self.cdmsDataset.timeRange
         portName = orec.name
@@ -1748,40 +1901,40 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         varDataId = '%s.%s.%d' % ( dsid, varName, self.outputType )
         varDataSpecs = self.getCachedData( self.timeValue.value, varDataId )
         if varDataSpecs == None:
-#            if varName == '__zeros__':
-#                newDataArray = np.zeros( npts, dtype=scalar_dtype ) 
-#                var_md = {}
-#                var_md[ 'range' ] = ( 0.0, 0.0 )
-#                var_md[ 'scale' ] = ( 0.0, 1.0 ) 
-#                self.setCachedData( self.timeValue.value, varName, ( newDataArray, var_md ) )   
-#            else:
-            varData = self.cdmsDataset.getVarDataTimeSlice( dsid, varName, self.timeValue )
-            if varData.id <> 'NULL':
-                varDataSpecs = ds.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale )
-                range_min = varData.min()
-                range_max = varData.max()
-                print " Read volume data for variable %s, scalar range = [ %f, %f ]" % ( varName, range_min, range_max )
-                newDataArray = varData
-                shift, scale = 0.0, 1.0
-                           
-                if scalar_dtype <> np.float:
-                    shift = -range_min
-                    scale = ( self._max_scalar_value ) / ( range_max - range_min )            
-                    rescaledDataArray = ( ( newDataArray + shift ) * scale )
-                    newDataArray = rescaledDataArray.astype(scalar_dtype) 
-                
-                newDataArray = newDataArray.data.ravel('F') 
-#                        ushrt_range_min = newDataArray.min()
-#                        ushrt_range_max = newDataArray.max()
-                var_md = copy.copy( varData.attributes )
-                var_md[ 'range' ] = ( range_min, range_max )
-                var_md[ 'scale' ] = ( shift, scale ) 
-                varDataSpecs['newDataArray'] = newDataArray
-                md =  varDataSpecs['md']                 
-                md['datatype'] = datatype
-                md['timeValue']= self.timeValue.value
-                md[ varName ] = var_md
-                self.setCachedData( self.timeValue.value, varDataId, varDataSpecs )  
+            if varName == '__zeros__':
+                newDataArray = np.zeros( npts, dtype=scalar_dtype ) 
+                var_md = {}
+                var_md[ 'range' ] = ( 0.0, 0.0 )
+                var_md[ 'scale' ] = ( 0.0, 1.0 ) 
+                self.setCachedData( self.timeValue.value, varName, ( newDataArray, var_md ) )   
+            else:
+                varData = self.cdmsDataset.getVarDataCube( dsid, varName, self.timeValue )
+                if varData.id <> 'NULL':
+                    varDataSpecs = ds.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale )
+                    range_min = varData.min()
+                    range_max = varData.max()
+                    print " Read volume data for variable %s, scalar range = [ %f, %f ]" % ( varName, range_min, range_max )
+                    newDataArray = varData
+                    shift, scale = 0.0, 1.0
+                               
+                    if scalar_dtype <> np.float:
+                        shift = -range_min
+                        scale = ( self._max_scalar_value ) / ( range_max - range_min )            
+                        rescaledDataArray = ( ( newDataArray + shift ) * scale )
+                        newDataArray = rescaledDataArray.astype(scalar_dtype) 
+                    
+                    newDataArray = newDataArray.data.ravel('F') 
+    #                        ushrt_range_min = newDataArray.min()
+    #                        ushrt_range_max = newDataArray.max()
+                    var_md = copy.copy( varData.attributes )
+                    var_md[ 'range' ] = ( range_min, range_max )
+                    var_md[ 'scale' ] = ( shift, scale ) 
+                    varDataSpecs['newDataArray'] = newDataArray
+                    md =  varDataSpecs['md']                 
+                    md['datatype'] = datatype
+                    md['timeValue']= self.timeValue.value
+                    md[ varName ] = var_md
+                    self.setCachedData( self.timeValue.value, varDataId, varDataSpecs )  
         
         imageDataCache = self.getImageDataCache()              
         if not ( cachedImageDataName in imageDataCache ):
