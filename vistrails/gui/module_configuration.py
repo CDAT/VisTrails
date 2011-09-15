@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -37,7 +37,7 @@ the user selects a module's "Edit Configuration"
 """
 from PyQt4 import QtCore, QtGui
 from core.modules.module_registry import get_module_registry
-from core.modules.module_configure import DefaultModuleConfigurationWidget
+from gui.modules.module_configure import DefaultModuleConfigurationWidget
 from gui.vistrails_palette import QVistrailsPaletteInterface
 
 ################################################################################
@@ -132,11 +132,11 @@ class QModuleConfiguration(QtGui.QScrollArea, QVistrailsPaletteInterface):
                          self.configureDone)
             self.connect(widget, QtCore.SIGNAL("stateChanged"),
                          self.stateChanged)
-        # else:
-        #     self.setWindowTitle("Module Configuration")
         self.confWidget.setUpdatesEnabled(True)
         self.confWidget.setVisible(True)
         self.hasChanges = False
+        # we need to reset the title in case there were changes
+        self.setWindowTitle("Module Configuration")
     
     def configureDone(self):
         from gui.vistrails_window import _app

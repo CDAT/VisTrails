@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -50,7 +50,8 @@ from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import pyqtSignal, pyqtSlot
 from core.mashup.alias import Alias
 from core.modules.module_registry import get_module_registry
-from core.modules.constant_configuration import StandardConstantWidget
+from gui.modules import get_widget_class
+from gui.modules.constant_configuration import StandardConstantWidget
 from gui.theme import CurrentTheme
 from gui.utils import show_warning
 ################################################################################
@@ -279,38 +280,41 @@ Please type a unique name. """ % new_alias)
     @pyqtSlot(int)
     def toggle_dw_combobox(self, index):
         if index == 0:
-            self.dw_minval_label.setVisible(False)
-            self.dw_minval_edit.setVisible(False)
-            self.dw_maxval_label.setVisible(False)
-            self.dw_maxval_edit.setVisible(False)
-            self.dw_stepsize_label.setVisible(False)
-            self.dw_stepsize_edit.setVisible(False)
+            self.show_dw_contents(False)
         elif index in [1,2]:
-            self.dw_minval_label.setVisible(True)
-            self.dw_minval_edit.setVisible(True)
-            self.dw_maxval_label.setVisible(True)
-            self.dw_maxval_edit.setVisible(True)
-            self.dw_stepsize_label.setVisible(True)
-            self.dw_stepsize_edit.setVisible(True)
+            self.show_dw_contents(True)
         if self.alias:
             self.alias.component.widget = str(self.dw_combobox.currentText())
             self.aliasChanged.emit(self.alias)
             
+    def show_dw_contents(self, on=True):
+        self.dw_minval_label.setVisible(on)
+        self.dw_minval_edit.setVisible(on)
+        self.dw_maxval_label.setVisible(on)
+        self.dw_maxval_edit.setVisible(on)
+        self.dw_stepsize_label.setVisible(on)
+        self.dw_stepsize_edit.setVisible(on)
+        
     def updateContents(self, alias=None, controller=None):
         self.alias = copy.copy(alias)
         self.controller = controller
         self.unplugSignals()
         if alias is not None and controller is not None:
             self.name_edit.setText(self.alias.name)
-            print "widget:", self.alias.component.widget
+            #print "widget:", self.alias.component.widget
             self.dw_combobox.setCurrentIndex(self.dw_combobox.findText(QtCore.QString(self.alias.component.widget)))
             self.order_spinbox.setRange(0,self.table.topLevelItemCount()-1)
             self.order_spinbox.setValue(self.alias.component.pos)
-        
+                
             self.dw_minval_edit.setText(self.alias.component.minVal)
             self.dw_maxval_edit.setText(self.alias.component.maxVal)
             self.dw_stepsize_edit.setText(self.alias.component.stepSize)
-            
+                
+            if self.dw_combobox.currentIndex() == 0:
+                self.show_dw_contents(False)
+            else:
+                self.show_dw_contents(True)
+                
             if self.dv_widget:
                 self.dv_layout.removeWidget(self.dv_widget)
                 self.disconnect(self.dv_widget,
@@ -368,10 +372,7 @@ Please type a unique name. """ % new_alias)
             idn = p.identifier
         reg = get_module_registry()
         p_module = reg.get_module_by_name(idn, p.type, p.namespace)
-        if p_module is not None:
-            widget_type = p_module.get_widget_class()
-        else:
-            widget_type = StandardConstantWidget
+        widget_type = get_widget_class(p_module)
         p.strValue = alias.component.val
         return widget_type(p, parent)
     
@@ -456,7 +457,7 @@ class QValuesListEditor(QtGui.QWidget):
         For example, this will break horribly if the user manually edits
         a list of strings with commas in them."""
 
-        print "values_were_edited"
+        #print "values_were_edited"
         new_text = self.listValues.text()
         t = str(new_text)
         if len(t) < 2:
@@ -482,7 +483,7 @@ class QValuesListEditor(QtGui.QWidget):
         dialog = QListEditDialog(self._alias, self.controller, None)
         if dialog.exec_() == QtGui.QDialog.Accepted:
             values = dialog.getList()
-            print values
+            #print values
             self._alias.component.valueList = copy.copy(values)
             self._str_values = [str(v) for v in values]
             values2 = values
@@ -668,7 +669,7 @@ class QListEditItemDelegate(QtGui.QItemDelegate):
         self.editor = QAliasDetailsWidget.createAliasWidget(self.alias_item, 
                                                             self.controller, 
                                                             parent)
-        print "editor created"
+        #print "editor created"
         return self.editor
 
     def updateEditorGeometry(self, editor, option, index):
@@ -691,7 +692,7 @@ class QListEditItemDelegate(QtGui.QItemDelegate):
         self.editor = None
 
     def finishEditing(self):
-        print "finishEditing"
+        #print "finishEditing"
         if self.editor:
             self.emit(QtCore.SIGNAL('commitData(QWidget*)'), self.editor)
 

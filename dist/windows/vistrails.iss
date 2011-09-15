@@ -132,8 +132,8 @@ Source: Input\VisTrails.pdf; DestDir: {app}\doc; Components: usersguide
 ;Source: D:\Qt\4.6.3\plugins\iconengines\*; DestDir: {app}\vistrails\Python26\plugins\iconengines
 ;Source: D:\Qt\4.6.3\plugins\imageformats\*; DestDir: {app}\vistrails\Python26\plugins\imageformats
 ;Source: Input\qt.conf; DestDir: {app}\vistrails\Python26
-Source: C:\WINDOWS\system32\Python27.dll; DestDir: {app}\vistrails
-Source: C:\WINDOWS\system32\Python27.dll; DestDir: {app}\vistrails\Python27
+Source: Input\x86\python27.dll; DestDir: {app}\vistrails
+Source: Input\x86\python27.dll; DestDir: {app}\vistrails\Python27
 Source: I:\emanuele\src\vtk\vtk-5.6.1\build\bin\Release\*.dll; DestDir: {app}\vistrails
 Source: I:\emanuele\src\vtk\vtk-5.6.1\build\bin\Release\*.pyd; DestDir: {app}\vistrails
 ;Source: E:\src\VTKbuild\bin\release\*.pyd; DestDir: {app}\vistrails

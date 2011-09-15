@@ -40,7 +40,8 @@ import api
 import core.db.action
 from core.db.io import load_vistrail
 from core.db.locator import FileLocator
-from core.modules.constant_configuration import StandardConstantWidget
+from gui.modules import get_widget_class
+from gui.modules.constant_configuration import StandardConstantWidget
 from core.modules.module_registry import get_module_registry
 from core.vistrail.controller import VistrailController
 from core.packagemanager import get_package_manager
@@ -224,7 +225,7 @@ class Plot(object):
                 reg = get_module_registry()
                 p_module = reg.get_module_by_name(idn, p.type, p.namespace)
                 if p_module is not None:
-                    widget_type = p_module.get_widget_class()
+                    widget_type = get_widget_class(p_module)
                 else:
                     widget_type = StandardConstantWidget
                 p_widget = widget_type(p, None)

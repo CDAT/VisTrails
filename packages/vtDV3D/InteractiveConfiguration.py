@@ -6,7 +6,7 @@ Created on Dec 15, 2010
 import sys, threading
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-from core.modules.module_configure import StandardModuleConfigurationWidget
+from gui.modules.module_configure import StandardModuleConfigurationWidget
 from core.vistrail.port import PortEndPoint
 from core.modules.vistrails_module import Module, ModuleError
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter

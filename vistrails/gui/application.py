@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -149,6 +149,9 @@ The builder window can be accessed by a spreadsheet menu option.")
             default = None,
             help=("Save evolution graph in specified directory without running "
                   "any workflow (only valid in console mode)."))
+        add("--initprofile", action="store_true", default = None,
+            help="It will initialize ~/.vistrails directory and exit. This option \
+cannot be used in conjunction with other options.")
         command_line.CommandLineParser.parse_options()
 
     def printVersion(self):
@@ -175,6 +178,8 @@ The builder window can be accessed by a spreadsheet menu option.")
         
         """
         get = command_line.CommandLineParser().get_option
+        if get('initprofile') != None:
+            sys.exit(0)
         if get('nosplash')!=None:
             self.temp_configuration.showSplash = bool(get('nosplash'))
         if get('debugsignals')!=None:
@@ -405,9 +410,18 @@ after self.init()"""
                         if locator._vtag != '':
                             version = locator._vtag
                     execute = self.temp_configuration.executeWorkflows
+                    mashuptrail = None
+                    mashupversion = None
+                    if hasattr(locator, '_mshptrail'):
+                        mashuptrail = locator._mshptrail
+                    if hasattr(locator, '_mshpversion'):
+                        mashupversion = locator._mshpversion
+                    if not self.temp_configuration.showSpreadsheetOnly:
+                        self.showBuilderWindow()
                     self.builderWindow.open_vistrail_without_prompt(locator,
-                                                                    version,
-                                                                    execute)
+                                                    version, execute,
+                                                    mashuptrail=mashuptrail, 
+                                                    mashupVersion=mashupversion)
                 if self.temp_configuration.reviewMode:
                     self.builderWindow.interactiveExportCurrentPipeline()
                 
@@ -516,6 +530,14 @@ parameters from other instances")
             return r
         return True
 
+    def showBuilderWindow(self):
+        # in some systems (Linux and Tiger) we need to make both calls
+        # so builderWindow is activated
+        self.setActiveWindow(self.builderWindow)
+        self.builderWindow.activateWindow()
+        self.builderWindow.show()
+        self.builderWindow.raise_()
+    
     def interactiveMode(self):
         """ interactiveMode() -> None
         Instantiate the GUI for interactive mode
@@ -528,19 +550,11 @@ parameters from other instances")
         self.builderWindow.link_registry()
         
         self.process_interactive_input()
-
         if not self.temp_configuration.showSpreadsheetOnly:
-            # in some systems (Linux and Tiger) we need to make both calls
-            # so builderWindow is activated
             if not self.builderWindow.use_uvcdat_window:
-                self.setActiveWindow(self.builderWindow)
-                self.builderWindow.activateWindow()
-                self.builderWindow.show()
-                self.builderWindow.raise_()
+                self.showBuilderWindow()
             else:
                 self.builderWindow.hide()
-        else:
-            self.builderWindow.hide()
         self.builderWindow.create_first_vistrail()
 
     def noninteractiveMode(self):
@@ -800,7 +814,7 @@ parameters from other instances")
             #it's safe to eval as a list
             args = eval(msg)
             if type(args) == type([]):
-                print "args from another instance %s"%args
+                #print "args from another instance %s"%args
                 command_line.CommandLineParser.init_options(args)
                 self.readOptions()
                 interactive = self.temp_configuration.check('interactiveMode')

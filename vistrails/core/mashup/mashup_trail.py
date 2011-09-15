@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -51,7 +51,8 @@ class Action(XMLObject):
         self.parent_id = parent_id
         self.user = user
         self.mashup = mashup
-        self._date = date
+        self._date = None
+        self.date = date
         
     def _getDate(self):
         if self._date is not None:
@@ -163,7 +164,8 @@ class ActionAnnotation(XMLObject):
         self.key = key
         self.value = value
         self.user = user
-        self._date = date
+        self._date = None
+        self.date = date
         
     def _getDate(self):
         if self._date is not None:

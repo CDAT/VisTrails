@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -746,7 +746,7 @@ def addPorts(module, delayed):
                                 typeMap('TransferFunction'))
     elif klass==vtk.vtkDataSet:
         registry.add_input_port(module, 'SetPointData', typeMap('vtkPointData'))
-        registry.add_input_port(module, 'SetCallData', typeMap('vtkCellData'))
+        registry.add_input_port(module, 'SetCellData', typeMap('vtkCellData'))
     elif klass==vtk.vtkCell:
         registry.add_input_port(module, 'SetPointIds', typeMap('vtkIdList'))
 

@@ -9,8 +9,8 @@ from core.modules.vistrails_module import new_module, Module, ModuleError
 from core.modules.module_registry import (registry, add_module,
                                           has_input_port,
                                           add_input_port, add_output_port)
-from core.modules.source_configure import SourceConfigurationWidget
-from core.modules.python_source_configure import PythonEditor, PythonSourceConfigurationWidget
+from gui.modules.source_configure import SourceConfigurationWidget
+from gui.modules.python_source_configure import PythonEditor, PythonSourceConfigurationWidget
 from core.modules.basic_modules import PythonSource
 from configuration import configuration
 import urllib

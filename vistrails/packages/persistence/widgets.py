@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -38,9 +38,9 @@ import sqlite3
 import uuid
 
 from core.modules.basic_modules import Path
-from core.modules.constant_configuration import ConstantWidgetMixin
-from core.modules.module_configure import StandardModuleConfigurationWidget
 from gui.common_widgets import QSearchBox, QSearchEditBox
+from gui.modules.constant_configuration import ConstantWidgetMixin
+from gui.modules.module_configure import StandardModuleConfigurationWidget
 from db_utils import DatabaseAccessSingleton
 
 

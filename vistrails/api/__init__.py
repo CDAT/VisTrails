@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -308,6 +308,9 @@ def close_vistrail(view, quiet=True):
     """
     get_builder_window().close_vistrail(view, quiet=quiet)
 
+def close_all_vistrails(quiet=True):
+    get_builder_window().close_all_vistrails(quiet)
+    
 def new_vistrail():
     # Returns VistrailView - remember to be consistent about it..
     _app.builderWindow.new_vistrail(False)
@@ -322,6 +325,45 @@ def get_vistrail_from_file(filename):
         v = v.vistrail
     return v
 
+def load_workflow_as_function(vt_filename, workflow):
+    """load_workflow_as_function(vt_filename: str, 
+                                 workflow: str or int) -> function 
+    vt_filename is the path to a vistrail and workflow can be a workflow 
+    version or a workflow tag
+    
+    """
+    from core.vistrail.controller import VistrailController
+    from core.db.locator import FileLocator
+    from core.db.io import load_vistrail
+
+    def getfunction(controller, doc, **kwargs):
+        def makefunction(*args, **kwargs):
+            return controller.execute_current_workflow(custom_aliases=kwargs,
+                    reason='API load_workflow_as_function call') 
+        makefunction.__doc__ = doc
+        return makefunction    
+    locator = FileLocator(vt_filename) 
+    (v, abstractions , thumbnails, mashups)  = load_vistrail(locator)
+    controller = VistrailController()
+    controller.set_vistrail(v, locator, abstractions, thumbnails, mashups)
+    if type(workflow) == type("str"):
+        version = v.get_version_number(workflow)
+    elif type(workflow) in [ type(1), long]:
+        version = workflow
+    controller.change_selected_version(version)
+    notes = v.get_notes(version)
+    pipeline = controller.current_pipeline
+    docstring = "parameters of the function: \n  ("
+    kw_aliases = {}
+    for (a, info) in pipeline.aliases.iteritems():
+        parameter = pipeline.db_get_object(info[0],info[1])
+        kw_aliases[a] = parameter.strValue
+        docstring += "%s=%s,\n   "%(a,parameter.strValue)
+    docstring = docstring[:-5] + ")\n"
+    if notes != None:
+        docstring += str(notes)
+    return getfunction(controller, docstring, **kw_aliases)
+        
 ##############################################################################
 # Testing
 

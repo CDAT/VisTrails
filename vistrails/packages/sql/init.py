@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -44,7 +44,7 @@ import urllib
 
 from core import debug
 from core.modules.vistrails_module import Module, ModuleError, NotCacheable
-from core.modules.source_configure import SourceConfigurationWidget
+from gui.modules.source_configure import SourceConfigurationWidget
 from core.upgradeworkflow import UpgradeWorkflowHandler
 from core.utils import PortAlreadyExists
 from gui.theme import CurrentTheme

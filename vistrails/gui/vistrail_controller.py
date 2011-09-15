@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -47,7 +47,7 @@ from core.packagemanager import PackageManager
 from core.query.version import TrueSearch
 from core.query.visual import VisualQuery
 import core.system
-from core.system import vistrails_default_file_type
+
 from core.vistrail.annotation import Annotation
 from core.vistrail.controller import VistrailController as BaseController, \
     vt_action
@@ -102,8 +102,6 @@ class VistrailController(QtCore.QObject, BaseController):
         """
         QtCore.QObject.__init__(self)
         BaseController.__init__(self, vistrail)
-        self.name = ''
-        self.file_name = None
         self.set_file_name(name)
         # FIXME: self.current_pipeline_view currently stores the SCENE, not the VIEW
         self.current_pipeline_view = None
@@ -395,9 +393,11 @@ class VistrailController(QtCore.QObject, BaseController):
 
     @vt_action
     def update_function(self, module, function_name, param_values, old_id=-1L,
-                        aliases=[]):
+                        aliases=[], query_methods=[], should_replace=True):
         op_list = self.update_function_ops(module, function_name, param_values,
-                                           old_id, aliases=aliases)
+                                           old_id, aliases=aliases,
+                                           query_methods=query_methods,
+                                           should_replace=should_replace)
         action = core.db.action.create_action(op_list)
         return action
 
@@ -1579,13 +1579,9 @@ class VistrailController(QtCore.QObject, BaseController):
         Change the controller file name
         
         """
-        if file_name == None:
-            file_name = ''
-        if self.file_name!=file_name:
-            self.file_name = file_name
-            self.name = os.path.split(file_name)[1]
-            if self.name=='':
-                self.name = 'untitled%s'%vistrails_default_file_type()
+        old_name = self.file_name
+        BaseController.set_file_name(self, file_name)
+        if old_name!=file_name:
             self.emit(QtCore.SIGNAL('stateChanged'))
 
     def write_vistrail(self, locator, version=None):

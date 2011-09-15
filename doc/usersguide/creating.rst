@@ -174,6 +174,34 @@ module information is displayed.  The ``Inputs``, ``Outputs``, and ``Annotations
 
    The results of the changes are displayed on execution.
 
+Using Global Variables
+======================
+
+VisTrails supports the use of global variables, which allows the user to create a variable which can be used anywhere within the vistrail.  So, if you create a variable of type ``String``, you can assign that variable to any port of type ``String``.  This is done by opening the ``Vistrail Variables`` view, creating a variable, and then dragging it to the desired port.
+
+.. topic:: Try it now!
+
+   Open vtk_http.vt and go to the ``Pipeline`` view of the ``Fran Cut Smoothed`` version.  Select ``Views`` :math:`\rightarrow` ``Vistrail Variables``.  Select the ``String`` module from ``Basic Modules``, drag it over to the ``Vistrail Variables`` tab, and drop it (see Figure :ref:`Create a Variable <fig-global-create>`).  Name it 'Filename1' and assign it the following value: 'http://www.sci.utah.edu/~cscheid/stuff/vtkdata-5.0.2.zip'.  Click on ``String``, which is just below ``Filename1`` in the ``Vistrail Variables`` tab.  Drag it over and drop it in the port of the ``HTTPFile`` (as shown in Figure :ref:`Assign a Variable <fig-global-assign>`). The variable should be assigned and the port should be filled in with yellow.
+
+.. _fig-global-create:
+
+.. figure:: /figures/creating/globalcreate.png
+
+   Create a Variable - Drag the ``String`` module and drop it in the ``Vistrail Variables`` tab to create a global variable.
+
+.. _fig-global-assign:
+
+.. figure:: /figures/creating/globalassign.png
+
+   Assign a Variable - Drag the type from just below the Global Variables name on the ``Vistrail Variables`` tab.  Drop it on a port to set the variable.
+
+To delete a global variable, simply click on the 'X' button that appears to the right of its name.  This will remove the variable, but if any ports are assigned to it, they need to be disconnected.  You can do this by right-clicking on the port and selecting ``Disconnect Vistrail Variables`` (see Figure :ref:`Disconnect a Variable <fig-disconnect>`).
+
+.. _fig-disconnect:
+
+.. figure:: /figures/creating/disconnect.png
+
+   Disconnect a Variable - To disconnect a global variable, right click on the assigned port and select ``Disconnect Vistrail Variables``.
 
 Configuring Module Labels
 =========================
@@ -231,6 +259,9 @@ These modules mostly consist of basic data types in Python and some
 manipulators for them.  In addition, file manipulation modules are
 provided to read files from disk and write files to disk.  
 
+PythonSource
+^^^^^^^^^^^^
+
 .. index:: PythonSource
 
 Because not every Python operation can be represented as a module, the
@@ -241,6 +272,10 @@ module is selected in the canvas, a configuration window is opened.
 This window allows you to specify custom input and output ports
 as well as directly enter Python source to be executed in the
 workflow.
+
+.. topic:: Note
+
+   Sometimes is it useful to view the source code that is contained in the ``PythonSource`` module when working with other modules.  Since the PythonSource configuration window will disappear when you select a new module, a ``Show read-only window`` button can be used to open a read-only window of the ``PythonSource's`` configuration, which will remain open until it is closed.
 
 .. topic:: Try it now!
 
@@ -263,5 +298,14 @@ workflow.
    :align: center
 
    The configuration window for ``PythonSource`` allows multiple input and output ports to be specified along with the Python code that is to be executed.
+
+**Accessing vtkObjects in PythonSource** When using a ``PythonSource`` module, users will often rely on their knowledge of VTK to interact with VTK modules.  It is important to realize that a VTK module is really a wrapping of a vtkObject.  The real vtkObject is called vtkInstance, meaning the vtkObject of a module called 'dataset' is called 'dataset.vtkInstance' (see figure :ref:`Accessing vtkObjects<fig-pythonsource-vtkinstance>`).
+
+.. _fig-pythonsource-vtkinstance:
+
+.. figure:: figures/creating/python_source_instance.png
+   :align: center
+
+   Accessing vtkObjects.  The vtkObject of a VTK module, 'dataset', is accessed with 'dataset.vtkInstance'. 
 
 .. index:: builder

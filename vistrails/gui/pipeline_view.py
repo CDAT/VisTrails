@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -52,7 +52,7 @@ from core.db.action import create_action
 from core.system import systemType
 from core.utils import profile
 from core.vistrail.annotation import Annotation
-from core.modules.module_configure import DefaultModuleConfigurationWidget
+from gui.modules.module_configure import DefaultModuleConfigurationWidget
 from core.modules.module_registry import get_module_registry, \
     ModuleRegistryException
 
@@ -1101,7 +1101,8 @@ class QGraphicsModuleItem(QGraphicsItemInterface, QtGui.QGraphicsItem):
         
         """
         if self.progress>0.0:
-            progressRect = self.paddedRect.adjusted(0, 0, (self.progress-1.0)*self.paddedRect.width(), 0)
+            width = (self.progress-1.0)*self.paddedRect.width()
+            progressRect = self.paddedRect.adjusted(0, 0, width, 0)
             
         if self._needs_state_updated:
             self.setPainterState()
@@ -1130,7 +1131,7 @@ class QGraphicsModuleItem(QGraphicsItemInterface, QtGui.QGraphicsItem):
         painter.setFont(self.labelFont)
         painter.drawText(self.labelRect, QtCore.Qt.AlignCenter, self.label)
         if self.module.is_abstraction() and not self.module.is_latest_version():
-                painter.drawText(self.abstRect, QtCore.Qt.AlignCenter, '!')
+            painter.drawText(self.abstRect, QtCore.Qt.AlignCenter, '!')
         if self.descRect:
             painter.setFont(self.descFont)
             painter.drawText(self.descRect, QtCore.Qt.AlignCenter,
@@ -1524,7 +1525,7 @@ class QGraphicsModuleItem(QGraphicsItemInterface, QtGui.QGraphicsItem):
             # Capture only selected modules + or - self for selection signal
             selectedItems = [m for m in self.scene().selectedItems()
                              if isinstance(m, QGraphicsModuleItem)]
-            print "selectedItems", selectedItems
+            #print "selectedItems", selectedItems
             selectedId = -1
             if len(selectedItems)==1:
                 selectedId = selectedItems[0].id
@@ -2577,13 +2578,13 @@ class QPipelineView(QInteractiveGraphicsView, BaseView):
     
     def has_selected_modules(self, module, only_one=False):
         module_ids_len = len(self.scene().get_selected_module_ids())
-        print '  module_ids_len:', module_ids_len
+        #print '  module_ids_len:', module_ids_len
         if only_one and module_ids_len != 1:
             return False
         return module_ids_len > 0
 
     def has_selected_module(self, module):
-        print 'calling has_selected_module'
+        #print 'calling has_selected_module'
         return self.has_selected_modules(module, True)
 
     def has_selected_groups(self, module, only_one=False):
@@ -2674,7 +2675,6 @@ class QPipelineView(QInteractiveGraphicsView, BaseView):
         self.scene().setupScene(self.controller.current_pipeline)
 
     def run_control_flow_assist(self):
-        print 'got here'
         currentScene = self.scene()
         if currentScene.controller:
             selected_items = currentScene.get_selected_item_ids(True)

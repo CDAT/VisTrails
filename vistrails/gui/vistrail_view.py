@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -60,6 +60,9 @@ from gui.vis_diff import QDiffView
 from gui.paramexplore.param_view import QParameterView
 from gui.vistrail_controller import VistrailController
 from gui.mashups.mashup_view import QMashupView
+from gui.ports_pane import ParameterEntry
+from gui.query_view import QueryEntry
+
 ################################################################################
 
 class QVistrailView(QtGui.QWidget):
@@ -171,6 +174,11 @@ class QVistrailView(QtGui.QWidget):
     def get_notifications(self):
         return self.notifications
 
+    def set_notification(self, notification_id, method):
+        if notification_id not in self.notifications:
+            self.notifications[notification_id] = []
+        self.notifications[notification_id].append(method)
+
     def set_controller(self, controller):
         self.controller = controller
         self.controller.vistrail_view = self
@@ -222,7 +230,7 @@ class QVistrailView(QtGui.QWidget):
             window = self.window()
         else:
             window = _app
-        print "PIPELINE"
+        #print "PIPELINE"
         self.stack.setCurrentIndex(
             self.tab_to_stack_idx[self.tabs.currentIndex()])
         self.tabs.setTabText(self.tabs.currentIndex(),
@@ -231,7 +239,7 @@ class QVistrailView(QtGui.QWidget):
         self.tab_to_view[self.tabs.currentIndex()] = self.get_current_tab()
 
     def pipeline_unselected(self):
-        print "PIPELINE UN"
+        #print "PIPELINE UN"
         self.stack.setCurrentIndex(
             self.tab_to_stack_idx[self.tabs.currentIndex()])
         self.tabs.setTabText(self.tabs.currentIndex(),
@@ -243,14 +251,14 @@ class QVistrailView(QtGui.QWidget):
             window = self.window()
         else:
             window = _app
-        print "VERSION"
+        #print "VERSION"
         self.stack.setCurrentIndex(self.stack.indexOf(self.version_view))
         self.tabs.setTabText(self.tabs.currentIndex(), "History")
         self.tab_state[self.tabs.currentIndex()] = window.qactions['history']
         self.tab_to_view[self.tabs.currentIndex()] = self.get_current_tab()
 
     def history_unselected(self):
-        print "VERSION UN"
+        #print "VERSION UN"
         self.stack.setCurrentIndex(
             self.tab_to_stack_idx[self.tabs.currentIndex()])
         self.tabs.setTabText(self.tabs.currentIndex(), 
@@ -262,14 +270,14 @@ class QVistrailView(QtGui.QWidget):
             window = self.window()
         else:
             window = _app
-        print "QUERY"
+        #print "QUERY"
         self.stack.setCurrentIndex(self.stack.indexOf(self.query_view))
         self.tabs.setTabText(self.tabs.currentIndex(), "Search")
         self.tab_state[self.tabs.currentIndex()] = window.qactions['search']
         self.tab_to_view[self.tabs.currentIndex()] = self.get_current_tab()
 
     def query_unselected(self):
-        print "QUERY UN"
+        #print "QUERY UN"
         self.stack.setCurrentIndex(
             self.tab_to_stack_idx[self.tabs.currentIndex()])
         self.tabs.setTabText(self.tabs.currentIndex(), 
@@ -281,14 +289,14 @@ class QVistrailView(QtGui.QWidget):
             window = self.window()
         else:
             window = _app
-        print "EXPLORE"
+        #print "EXPLORE"
         self.stack.setCurrentIndex(self.stack.indexOf(self.pe_view))
         self.tabs.setTabText(self.tabs.currentIndex(), "Explore")
         self.tab_state[self.tabs.currentIndex()] = window.qactions['explore']
         self.tab_to_view[self.tabs.currentIndex()] = self.get_current_tab()
 
     def explore_unselected(self):
-        print "EXPLORE UN"
+        #print "EXPLORE UN"
         self.stack.setCurrentIndex(
             self.tab_to_stack_idx[self.tabs.currentIndex()])
         self.tabs.setTabText(self.tabs.currentIndex(), 
@@ -300,14 +308,14 @@ class QVistrailView(QtGui.QWidget):
             window = self.window()
         else:
             window = _app
-        print "PROVENANCE"
+        #print "PROVENANCE"
         self.stack.setCurrentIndex(self.stack.indexOf(self.log_view))
         self.tabs.setTabText(self.tabs.currentIndex(), "Provenance")
         self.tab_state[self.tabs.currentIndex()] = window.qactions['provenance']
         self.tab_to_view[self.tabs.currentIndex()] = self.get_current_tab()
 
     def provenance_unselected(self):
-        print "PROVENANCE UN"
+        #print "PROVENANCE UN"
         self.stack.setCurrentIndex(
             self.tab_to_stack_idx[self.tabs.currentIndex()])
         self.tabs.setTabText(self.tabs.currentIndex(), 
@@ -319,8 +327,8 @@ class QVistrailView(QtGui.QWidget):
             window = self.window()
         else:
             window = _app
-        print "MASHUP"
-        print self.stack.count(), self.stack.indexOf(self.mashup_view)
+        #print "MASHUP"
+        #print self.stack.count(), self.stack.indexOf(self.mashup_view)
         try:
             self.stack.setCurrentIndex(self.stack.indexOf(self.mashup_view))
             self.tabs.setTabText(self.tabs.currentIndex(), "Mashup")
@@ -330,7 +338,7 @@ class QVistrailView(QtGui.QWidget):
         except Exception, e:
             print "EXCEPTION: ", str(e)
     def mashup_unselected(self):
-        print "MASHUP UN"
+        #print "MASHUP UN"
         self.stack.setCurrentIndex(
             self.tab_to_stack_idx[self.tabs.currentIndex()])
         self.tabs.setTabText(self.tabs.currentIndex(), 
@@ -338,20 +346,20 @@ class QVistrailView(QtGui.QWidget):
         
     def pipeline_change(self, checked):
         if checked:
-            print "PIPELINE SELECTED"
+            #print "PIPELINE SELECTED"
             self.pipeline_selected()
         else:
-            print "PIPELINE UNSELECTED"
+            #print "PIPELINE UNSELECTED"
             self.pipeline_unselected()
         self.view_changed()
 
     def history_change(self, checked):
         from vistrails_window import _app
         if checked:
-            print "HISTORY SELECTED"
+            #print "HISTORY SELECTED"
             self.history_selected()
         else:
-            print "HISTORY UNSELECTED"
+            #print "HISTORY UNSELECTED"
             self.history_unselected()
         self.view_changed()
 
@@ -382,7 +390,23 @@ class QVistrailView(QtGui.QWidget):
         else:
             self.mashup_unselected()
         self.view_changed()
-        
+    
+    def show_group(self):
+        pipelineView = self.controller.current_pipeline_view
+        items = pipelineView.get_selected_item_ids(True)
+        if items is not None:
+            for m_id in items[0]:
+                module = pipelineView.current_pipeline.modules[m_id]
+                if module.is_group() or module.is_abstraction():
+                    newPipelineView = self.add_pipeline_view()
+                    newPipelineView.controller.current_pipeline_view = \
+                        newPipelineView.scene()
+                    module.pipeline.ensure_connection_specs()
+                    newPipelineView.scene().setupScene(module.pipeline)
+                    newPipelineView.scene().current_pipeline = module.pipeline
+                    newPipelineView.scene().fitToView(newPipelineView, True)
+                    newPipelineView.setReadOnlyMode(True)
+            
     def create_view(self, klass, add_tab=True):
         view = klass(self)
         view.set_vistrail_view(self)
@@ -440,8 +464,8 @@ class QVistrailView(QtGui.QWidget):
         if self.controller.current_pipeline_view.parent() == view:
             self.controller.current_pipeline_view = None
             self.activateWindow()
-            self.view_changed()
             self.reset_tab_view_to_current()
+            self.view_changed()
         del self.detached_views[view]
         
     def updateTabsTooTip(self):
@@ -485,7 +509,7 @@ class QVistrailView(QtGui.QWidget):
         if index == self.tabs.currentIndex():
             close_current = True
         stack_idx = self.tab_to_stack_idx[index]
-        print "\n\n >>>>> remove_view_by_index ", index, stack_idx, self.tabs.currentIndex()
+        #print "\n\n >>>>> remove_view_by_index ", index, stack_idx, self.tabs.currentIndex()
         self.tabs.removeTab(index)
         del self.tab_to_view[index]
         if stack_idx >= 0:
@@ -530,6 +554,15 @@ class QVistrailView(QtGui.QWidget):
                 widget = widget.get_current_view()
             return widget
         
+    def get_current_outer_tab(self):
+        window = QtGui.QApplication.activeWindow()
+        if window in self.detached_views.values():
+            return window.view   
+        else:
+            #if none of the detached views is active we will assume that the
+            #window containing this vistrail has focus
+            return self.stack.currentWidget()
+        
     def get_tab(self, stack_idx):
         widget = self.stack.widget(stack_idx)
         if type(widget) == QQueryView:
@@ -540,9 +573,9 @@ class QVistrailView(QtGui.QWidget):
         from gui.vistrails_window import _app
         _app.closeNotPinPalettes()
         #view = self.stack.currentWidget()
-        view = self.get_current_tab()
-        print "changing tab from: ",self.current_tab, " to ", view
-        print self.tab_to_stack_idx
+        view = self.get_current_outer_tab()
+        #print "changing tab from: ",self.current_tab, " to ", view
+        #print self.tab_to_stack_idx
         if view != self.current_tab:
             #print "!!unset_action_links of ", self.current_tab
             _app.unset_action_links(self.current_tab)
@@ -558,9 +591,16 @@ class QVistrailView(QtGui.QWidget):
             _app.set_action_links(self.current_tab.action_links, self.current_tab,
                                   self)
 
-        else:
-            print "tabs the same. do nothing"
+        #else:
+           # print "tabs the same. do nothing"
         self.showCurrentViewPalettes()
+        if isinstance(view, QQueryView):
+            _app.notify("controller_changed", view.p_controller)
+            _app.notify("entry_klass_changed", QueryEntry)
+        else:
+            _app.notify("entry_klass_changed", ParameterEntry)
+            _app.notify("controller_changed", self.controller)
+
         if self.window().isActiveWindow():
             if self.isTabDetachable(self.tabs.currentIndex()):
                 self.tabs.setTabToolTip(self.tabs.currentIndex(),
@@ -578,15 +618,15 @@ class QVistrailView(QtGui.QWidget):
                 current_loc = window.dockWidgetArea(palette_instance.toolWindow())
             else:
                 current_loc = QtCore.Qt.NoDockWidgetArea
-            print ">> P:", palette_instance.__class__.__name__, current_loc, \
-                    dock_loc
+            #print ">> P:", palette_instance.__class__.__name__, current_loc, \
+            #        dock_loc
             
             if current_loc == dock_loc:
                 # palette_instance.get_action().trigger()
                 palette_instance.set_visible(True)
                     
     def tab_changed(self, index):
-        print 'raw tab_changed', index
+        #print 'raw tab_changed', index
         if index < 0 or self.controller is None:
             return
 
@@ -597,7 +637,7 @@ class QVistrailView(QtGui.QWidget):
             window = self.window()
         else:
             window = _app
-        print window
+        #print window
         for action in window.view_action_group.actions():
             action.setChecked(False)
         self.selected_mode = None
@@ -622,27 +662,31 @@ class QVistrailView(QtGui.QWidget):
         from gui.vistrails_window import _app, QVistrailViewWindow
         if isinstance(view, QDiffView):
             view.set_to_current()
-            print "view changed!", self.controller, \
-                self.controller.current_version
+            #print "view changed!", self.controller, \
+            #    self.controller.current_version
             _app.notify("controller_changed", self.controller)
             self.reset_version_view()
         elif isinstance(view, QLogView):
             view.set_to_current()
-            print "view changed!", self.controller, \
-                self.controller.current_version
+            #print "view changed!", self.controller, \
+            #    self.controller.current_version
             _app.notify("controller_changed", self.controller)
             self.reset_version_view()
         elif isinstance(view, QPipelineView):
-            print "PIPELINE_VIEW NEW SCENE:", id(view.scene())
+            #print "PIPELINE_VIEW NEW SCENE:", id(view.scene())
 
             # need to set the controller's version, pipeline, view
             # to this view...
             # self.controller.current_version = view.current_version
             # self.controller.current_pipeline = view.current_pipeline
             view.set_to_current()
-            print "view changed!", self.controller, \
-                self.controller.current_version
-            _app.notify("controller_changed", self.controller)
+            #print "view changed!", self.controller, \
+            #    self.controller.current_version
+            real_view = self.stack.currentWidget()
+            if isinstance(real_view, QQueryView):
+                _app.notify("controller_changed", real_view.p_controller)
+            else:
+                _app.notify("controller_changed", self.controller)
             self.reset_version_view()
             
     def create_pipeline_view(self):
@@ -651,7 +695,7 @@ class QVistrailView(QtGui.QWidget):
                      self.gen_module_selected(view))
         view.set_controller(self.controller)
         view.set_to_current()
-        self.notifications['module_done_configure'] = view.done_configure
+        self.set_notification('module_done_configure', view.done_configure)
         #self.switch_to_tab(view.tab_idx)
         return view
     
@@ -672,7 +716,17 @@ class QVistrailView(QtGui.QWidget):
 
     def create_query_view(self):
         view = self.create_view(QQueryView, False)
-        self.notifications['query_changed'] = view.query_changed
+        self.connect(view.pipeline_view.scene(), 
+                     QtCore.SIGNAL('moduleSelected'),
+                     self.gen_module_selected(view.pipeline_view))
+        # self.connect(view.version_result_view.scene(),
+        #              QtCore.SIGNAL('versionSelected(int,bool,bool,bool,bool)'),
+        #              self.version_selected)
+        # self.connect(view.version_result_view.scene(),
+        #              QtCore.SIGNAL('diffRequested(int,int)'),
+        #              self.diff_requested)
+        self.set_notification('query_changed', view.query_changed)
+        self.set_notification('version_changed', view.version_changed)
         return view
 
     def create_diff_view(self):
@@ -683,23 +737,24 @@ class QVistrailView(QtGui.QWidget):
 
     def create_pe_view(self):
         view = self.create_view(QParamExploreView, False)
-        self.notifications['controller_changed'] = view.set_controller
-        self.notifications['pipeline_changed'] = view.updatePipeline
+        self.set_notification('controller_changed', view.set_controller)
+        self.set_notification('pipeline_changed', view.updatePipeline)
         return view
 
     def create_log_view(self):
         from gui.vistrails_window import _app
         view = self.create_view(QLogView, False)
-        self.notifications['execution_changed'] = view.execution_changed
+        self.set_notification('execution_changed', view.execution_changed)
         return view
     
     def create_mashup_view(self):
-        print "******* create mashup view"
+        #print "******* create mashup view"
         from gui.vistrails_window import _app
         view = self.create_view(QMashupView, False)
         view.set_controller(self.controller)
-        self.notifications['alias_changed'] = view.aliasChanged
-        self.notifications['version_changed'] = view.versionChanged
+        self.set_notification('controller_changed', view.controllerChanged)
+        self.set_notification('alias_changed', view.aliasChanged)
+        self.set_notification('version_changed', view.versionChanged)
         return view
     
     def gen_module_selected(self, view):
@@ -721,7 +776,7 @@ class QVistrailView(QtGui.QWidget):
             window = self.window()
         else:
             window = _app
-        print 'got version selected:', version_id
+        #print 'got version selected:', version_id
         if _app._focus_owner in self.detached_views.values():
             view = _app._focus_owner.view
         elif _app._previous_view in self.detached_views:
@@ -775,7 +830,7 @@ class QVistrailView(QtGui.QWidget):
         if locator is not None:
             locator_class = type(locator)
 
-        print "CALLED SAVE VISTRAIL", locator_class
+        #print "CALLED SAVE VISTRAIL", locator_class
 
         self.flush_changes()
         gui_get = locator_class.save_from_gui
@@ -796,7 +851,7 @@ class QVistrailView(QtGui.QWidget):
         try:
             self.controller.write_vistrail(locator)
         except Exception, e:
-            debug.critical('An error has occurred', str(e))
+            debug.critical('Failed to save vistrail: %s' % str(e))
             raise
             return False
         # update collection
@@ -822,16 +877,16 @@ class QVistrailView(QtGui.QWidget):
 
         from gui.vistrails_window import _app
         # update recent files menu items
-        _app.set_current_locator(locator)
+        if not self.is_abstraction:
+            _app.set_current_locator(locator)
         _app.view_changed(self)
         # reload workspace entry
         from gui.collection.workspace import QWorkspaceWindow
-        QWorkspaceWindow.instance().remove_vt_window(self)
         QWorkspaceWindow.instance().add_vt_window(self)
         return locator
 
     def save_vistrail_as(self, locator_class):
-        print "CALLED SAVE AS VISTRAIL", locator_class
+        #print "CALLED SAVE AS VISTRAIL", locator_class
         self.save_vistrail(locator_class, force_choose_locator=True)
 
     # FIXME normalize workflow/log/registry!!!
@@ -932,6 +987,13 @@ class QVistrailView(QtGui.QWidget):
         if hasattr(view, 'publish_to_paper'):
             view.publish_to_paper()
 
+    def open_mashup_from_mashuptrail_id(self, mashuptrail_id, mashupVersion):
+        for mashuptrail in self.controller._mashups:
+            if str(mashuptrail.id) == mashuptrail_id:
+                mashup = mashuptrail.getMashup(mashupVersion)
+                self.open_mashup(mashup)
+                break
+            
     def open_mashup(self, mashup):
         """open_mashup(mashup: Mashup) -> None
         It will switch to version view, select the corresponding node 

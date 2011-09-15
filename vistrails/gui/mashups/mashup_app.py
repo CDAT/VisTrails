@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -122,9 +122,11 @@ class QMashupAppMainWindow(QtGui.QMainWindow):
                                    QtGui.QSizePolicy.Preferred)
         buttonLayout = QtGui.QGridLayout()
         buttonWidget.setLayout(buttonLayout)
-        buttonLayout.setMargin(0)
+        buttonLayout.setMargin(5)
         self.cb_auto_update = QtGui.QCheckBox("Turn on auto-update", self.centralWidget())
         self.cb_auto_update.setChecked(False)
+        self.cb_keep_camera = QtGui.QCheckBox("Keep camera position", self.centralWidget())
+        self.cb_keep_camera.setChecked(True)
         self.connect(self.cb_auto_update,
                      QtCore.SIGNAL("stateChanged(int)"),
                      self.auto_update_changed)
@@ -140,9 +142,10 @@ class QMashupAppMainWindow(QtGui.QMainWindow):
                          QtCore.SIGNAL('clicked(bool)'),
                          self.close)
         buttonLayout.setColumnStretch(0, 1)
-        buttonLayout.addWidget(self.cb_auto_update, 0, 1, 1, 2, QtCore.Qt.AlignLeft)    
-        buttonLayout.addWidget(self.updateButton, 1, 1, QtCore.Qt.AlignRight)
-        buttonLayout.addWidget(self.quitButton, 1, 2, QtCore.Qt.AlignRight)
+        buttonLayout.addWidget(self.cb_auto_update, 0, 1, QtCore.Qt.AlignLeft)    
+        buttonLayout.addWidget(self.cb_keep_camera, 0, 2, 1, 2, QtCore.Qt.AlignLeft) 
+        buttonLayout.addWidget(self.updateButton, 1, 2, QtCore.Qt.AlignRight)
+        buttonLayout.addWidget(self.quitButton, 1, 3, QtCore.Qt.AlignRight)
         self.connect(self.updateButton,
                      QtCore.SIGNAL('clicked(bool)'),
                      self.updateCells)
@@ -150,11 +153,17 @@ class QMashupAppMainWindow(QtGui.QMainWindow):
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, buttonDock)
         self.controlDocks["__buttons__"] = buttonDock
         
-        self.saveAllAct = QtGui.QAction("S&ave Combined", self, shortcut=QtGui.QKeySequence.SelectAll,
-                statusTip="Save combined images to disk", triggered=self.saveAllEvent)
-        self.saveAct = QtGui.QAction("&Save Each", self, shortcut=QtGui.QKeySequence.Save,
-                statusTip="Save separate images to disk", triggered=self.saveEventAction)
-        
+        self.saveAllAct = QtGui.QAction("S&ave Combined", self, 
+                                        shortcut=QtGui.QKeySequence.SelectAll,
+                                        statusTip="Save combined images to disk", 
+                                        triggered=self.saveAllEvent)
+        self.saveAct = QtGui.QAction("&Save Each", self, 
+                                     shortcut=QtGui.QKeySequence.Save,
+                                     statusTip="Save separate images to disk", 
+                                     triggered=self.saveEventAction)
+        self.showBuilderAct = QtGui.QAction("VisTrails Main Window", self,
+                                            statusTip="Show VisTrails Main Window",
+                                            triggered=self.showBuilderWindow)
         self.createMenus()
         self.lastExportPath = ''
                     
@@ -165,6 +174,9 @@ class QMashupAppMainWindow(QtGui.QMainWindow):
         
         self.viewMenu = self.menuBar().addMenu("&View")
         self.viewMenu.addAction(self.editingModeAct)
+        
+        self.windowMenu = self.menuBar().addMenu("&Window")
+        self.windowMenu.addAction(self.showBuilderAct)
         
     def runAndGetCellEvents(self, useDefaultValues=False):
         spreadsheetController.setEchoMode(True)        
@@ -189,7 +201,8 @@ Pipeline results: %s' % (len(cellEvents), self.numberOfCells), errors)
         #self.SaveCamera()
         for i in xrange(self.numberOfCells):
             camera = []
-            if hasattr(self.cellWidgets[i],"getRendererList"):
+            if (hasattr(self.cellWidgets[i],"getRendererList") and 
+                self.cb_keep_camera.isChecked()):
                 for ren in self.cellWidgets[i].getRendererList():
                     camera.append(ren.GetActiveCamera())
                 self.cellWidgets[i].updateContents(cellEvents[i].inputPorts, camera)
@@ -358,6 +371,10 @@ Pipeline results: %s' % (len(cellEvents), self.numberOfCells), errors)
             print errors
             return (False, errors)
         return (True, [])
+    
+    def showBuilderWindow(self):
+        from gui.vistrails_window import _app
+        _app.show()
             
 class QCustomDockWidget(QtGui.QDockWidget):
     def __init__(self, title, parent=None):

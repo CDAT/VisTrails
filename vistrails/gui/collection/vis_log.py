@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -136,7 +136,7 @@ class QExecutionListWidget(QtGui.QTreeWidget):
         QtGui.QTreeWidget.__init__(self, parent)
         self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.setColumnCount(3)
-        self.setHeaderLabels(['Type', 'Start', 'End'])
+        self.setHeaderLabels(['Pipeline', 'Start', 'End'])
         self.sortByColumn(1, QtCore.Qt.AscendingOrder)
         self.setSortingEnabled(True)
 
@@ -149,7 +149,9 @@ class QExecutionListWidget(QtGui.QTreeWidget):
         # mark as recent
         workflow_exec.db_name = workflow_exec.db_name + '*' \
                              if workflow_exec.db_name \
-          else 'Version #%s*' % workflow_exec.parent_version
+          else '%s*' % self.controller.get_pipeline_name(
+                        int(workflow_exec.parent_version))[10:]
+        
         self.addTopLevelItem(QExecutionItem(workflow_exec))
        
     
@@ -250,7 +252,10 @@ class QLogDetails(QtGui.QWidget, QVistrailsPaletteInterface):
                 self.executionList.add_workflow_exec(e)
                        
     def set_execution(self):
-        item = self.executionList.selectedItems()[0]
+        item = self.executionList.selectedItems()
+        if not item:
+            return
+        item = item[0]
         if self.isDoubling:
             self.isDoubling = False
             return
@@ -270,20 +275,17 @@ class QLogDetails(QtGui.QWidget, QVistrailsPaletteInterface):
         self.isUpdating = False
 
     def set_controller(self, controller):
-        print '@@@@ QLogDetails calling set_controller'
+        #print '@@@@ QLogDetails calling set_controller'
         self.controller = controller
+        self.executionList.controller = self.controller
         if not hasattr(self.controller, 'loaded_workflow_execs'):
             self.controller.loaded_workflow_execs = {}
             for e in self.controller.read_log().workflow_execs:
-                # set workflow tag names
-                wf_id = e.parent_version
-                tagMap = controller.vistrail.get_tagMap()
-                if wf_id in tagMap:
-                    e.db_name = tagMap[wf_id]
+                # set workflow names
+                e.db_name = controller.get_pipeline_name(
+                                        e.parent_version)[10:]
                 self.controller.loaded_workflow_execs[e] = e
         self.log = self.controller.loaded_workflow_execs
-        if self.log is not None:
-            print "  @@ len(workflow_execs):", len(self.log)
         self.executionList.set_log(self.log)
 
     def execution_changed(self, wf_execution, execution):
@@ -353,6 +355,7 @@ class QLogDetails(QtGui.QWidget, QVistrailsPaletteInterface):
 class QLogView(QPipelineView):
     def __init__(self, parent=None):
         QPipelineView.__init__(self, parent)
+        self.setReadOnlyMode(True)
         self.set_title("Provenance")
         self.log = None
         self.execution = None
@@ -371,11 +374,11 @@ class QLogView(QPipelineView):
         self.action_links = { }
         
     def set_action_defaults(self):
-        self.action_defaults = \
+        self.action_defaults.update(
             {'execute' : [('setEnabled', False, False)],
              'publishWeb': [('setEnabled', False, False)],
              'publishPaper': [('setEnabled', False, False)],
-            }
+            })
 
     def notify_app(self, wf_execution, execution):
         # make sure it is only called once
@@ -389,21 +392,19 @@ class QLogView(QPipelineView):
 
     def set_controller(self, controller):
         QPipelineView.set_controller(self, controller)
-        print "@@@ set_controller called", id(self.controller), len(self.controller.vistrail.actions)
+        #print "@@@ set_controller called", id(self.controller), len(self.controller.vistrail.actions)
         if not hasattr(self.controller, 'loaded_workflow_execs'):
             self.controller.loaded_workflow_execs = {}
             for e in self.controller.read_log().workflow_execs:
-                # set workflow tag names
-                wf_id = e.parent_version
-                tagMap = controller.vistrail.get_tagMap()
-                if wf_id in tagMap:
-                    e.db_name = tagMap[wf_id]
+                # set workflow names
+                e.db_name = controller.get_pipeline_name(
+                                        e.parent_version)[10:]
                 self.controller.loaded_workflow_execs[e] = e
         self.log = self.controller.loaded_workflow_execs
 
     def set_to_current(self):
         # change to normal controller hacks
-        print "AAAAA doing set_to_current"
+        #print "AAAAA doing set_to_current"
         if self.controller.current_pipeline_view is not None:
             self.disconnect(self.controller,
                             QtCore.SIGNAL('versionWasChanged'),
@@ -460,6 +461,13 @@ class QLogView(QPipelineView):
         """ Recursively finds pipeline through layers of groupExecs """
         if type(execution) == WorkflowExec:
             version = execution.parent_version
+            # change the current version to this as well
+            from gui.vistrails_window import _app
+            _app.get_current_view().version_selected(version, True)
+            self.controller.recompute_terse_graph()
+            _app.get_current_view().version_view.select_current_version()
+            _app.get_current_view().version_view.scene().setupScene(self.controller)
+
             return self.controller.vistrail.getPipeline(version)
         if type(execution) == GroupExec:
             parent = execution.item.wf_execution
@@ -494,8 +502,8 @@ class QLogView(QPipelineView):
         # self.showExecution()
 
     def update_pipeline(self):
-        print "ACTIONS!"
-        print "#### controller", id(self.controller)
+        #print "ACTIONS!"
+        #print "#### controller", id(self.controller)
         scene = self.scene()
         scene.clearItems()
         self.pipeline.validate(False)

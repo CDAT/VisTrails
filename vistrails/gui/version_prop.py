@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
-## Contact: vistrails@sci.utah.edu
+## Contact: contact@vistrails.org
 ##
 ## This file is part of VisTrails.
 ##
@@ -783,7 +783,6 @@ class QVersionMashups(QtGui.QWidget):
     def mashupSelected(self):
         action = self.sender()
         version, ok = action.data().toInt()
-        print "mashupSelected ", version
         self.openMashup(version)
 
     def openMashup(self, version):
