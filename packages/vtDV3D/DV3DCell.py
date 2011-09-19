@@ -131,6 +131,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.baseMapActor = None
         self.enableBasemap = True
         self.renWin = None
+        self.builtCellWidget = False
         
     @classmethod
     def clearCache(cls):
@@ -412,8 +413,13 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         Dispatch the vtkRenderer to the actual rendering widget
         """ 
         self.buildRendering()
-        self.buildWidget()
+        if not self.builtCellWidget:
+            self.buildWidget()
    
+    def execute(self, **args ):
+        self.builtCellWidget = False
+        PersistentVisualizationModule.execute(self, **args)
+        
     def buildRendering(self):
         module = self.getRegisteredModule()
         self.enableBasemap = self.getInputValue( "enable_basemap", True )
@@ -517,8 +523,10 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 self.cellWidget = self.displayAndWait( QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker) )
             else:
                 self.cellWidget = self.displayAndWait( QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker) )
-            
-            self.renWin = self.cellWidget.GetRenderWindow()
+            #in mashup mode, self.displayAndWait will return None
+            if self.cellWidget:
+                self.renWin = self.cellWidget.GetRenderWindow()
+            self.builtCellWidget = True
         else:               
             print>>sys.stderr, "Error, no renderers supplied to DV3DCell"  
 
