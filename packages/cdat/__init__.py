@@ -52,7 +52,8 @@ name = "CDAT"
 def package_dependencies():
     return ['edu.utah.sci.vistrails.spreadsheet',
             'edu.utah.sci.vistrails.vtk',
-            'edu.utah.sci.eranders.ParaView']
+            'edu.utah.sci.eranders.ParaView',
+            'gov.nasa.nccs.vtdv3d']
 
 def package_requirements():
     import core.requirements
