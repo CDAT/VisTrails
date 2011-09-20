@@ -41,14 +41,15 @@ class CDATTask(QtCore.QObject):
         self.execute( timeValue )
 
     def getInput( self, iInputIndex, timeValue, **args ):
+        from InteractiveConfiguration import CDMSDataType
         nInputs = len( self.__class__.inputs )
         varName = self.getInputName( iInputIndex )
         iOutputIndex = args.get( 'output', 0 )
         if varName:
             vNameComp =  varName.split('*')          
-            input = self.cdmsDataset.getVarDataCube( vNameComp[0], vNameComp[1], timeValue )
+            input = self.cdmsDataset.getVarDataCube( vNameComp[0], vNameComp[1], timeValue  )
             current_grid = input.getGrid()
-            print " Get Input for task %s: %s[%.3f], grid=%s" % ( self.__class__.name, varName, timeValue.value, str(current_grid) )
+#            print " Get Input for task %s: %s[%.3f], grid=%s" % ( self.__class__.name, varName, timeValue.value, str(current_grid) )
 #            if (nInputs > 1) and (self.grid == None): 
 #                gridData = self.getGridData( iOutputIndex  )
 #                gridRec = self.cdmsDataset.getGrid( gridData ) 
@@ -58,7 +59,7 @@ class CDATTask(QtCore.QObject):
                 id0 = input.id
                 if input.id <> "NULL": return input
             except Exception, err: pass            
-        raise ModuleError( self, "Data is missing from dataset %s for input %d to module %s at time %f" %  ( self.cdmsDataset.getDsetId(), iInputIndex, self.__class__.__name__, timeValue.value ) )               
+        raise ModuleError( self, "Data is missing from dataset %s for input %d to module %s" %  ( self.cdmsDataset.getDsetId(), iInputIndex, self.__class__.__name__ ) )               
 
     def getInputs( self, timeValue, **args ):
         nInputs = len( self.__class__.inputs )

@@ -262,13 +262,13 @@ class CDMSDatasetRecord():
         timeBounds = args.get( 'time', None )
         referenceVar = args.get( 'refVar', None )
         referenceLev = args.get( 'refLev', None )
-        nSliceDims = 0
-        for bounds in (lonBounds, latBounds, levBounds, timeBounds):
-            if ( bounds <> None ) and ( len(bounds) == 1 ):  
-               nSliceDims = nSliceDims + 1
-        if nSliceDims <> 1:
-            print "Error, Wrong number of data dimensions:  %d slice dims " %  nSliceDims
-            return None
+#        nSliceDims = 0
+#        for bounds in (lonBounds, latBounds, levBounds, timeBounds):
+#            if ( bounds <> None ) and ( len(bounds) == 1 ):  
+#               nSliceDims = nSliceDims + 1
+#        if nSliceDims <> 1:
+#            print "Error, Wrong number of data dimensions:  %d slice dims " %  nSliceDims
+#            return None
         cachedFileVariableRec = self.cachedFileVariables.get( varName )
         if cachedFileVariableRec:
             cachedTimeVal = cachedFileVariableRec[ 0 ]
@@ -307,6 +307,7 @@ class CDMSDatasetRecord():
         gridMaker = None
         timeValue = None
         decimationFactor = 1
+        order = 'xyt' if ( timeBounds == None) else 'xyz'
         if decimation: decimationFactor = decimation[0]+1 if HyperwallManager.isClient else decimation[1]+1
 #        try:
         if timeBounds <> None:
@@ -319,12 +320,12 @@ class CDMSDatasetRecord():
             if len( lonBounds ) > 1:
                 if lonBounds[1] < LonMin and lonBounds[1]+360.0<LonMax: lonBounds[1] = lonBounds[1] + 360.0
                 if lonBounds[1] > LonMax and lonBounds[1]-360.0>LonMin: lonBounds[1] = lonBounds[1] - 360.0                       
-            if (decimationFactor == 1) or len( lonBounds == 1 ):
+            if (decimationFactor == 1) or len( lonBounds ) == 1:
                 args1['lon'] = lonBounds[0] if ( len( lonBounds ) == 1 ) else lonBounds
             else:
                 varGrid = varData.getGrid() 
                 varLonInt = varGrid.getLongitude().mapIntervalExt( [ lonBounds[0], lonBounds[1] ] )
-                args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
+                args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
                
         if latBounds <> None:
             if decimationFactor == 1:
@@ -344,7 +345,7 @@ class CDMSDatasetRecord():
             else:
                 levbounds = self.getLevBounds( referenceLev )
                 if levbounds: args1['lev'] = levbounds
-            args1['order'] = 'xyz'
+            args1['order'] = order
             rv = varData( **args1 )
         else:
             refDelLat = ( LatMax - LatMin ) / nRefLat
@@ -355,12 +356,12 @@ class CDMSDatasetRecord():
             vc = cdutil.VariableConditioner( source=self.cdmsFile, var=varName,  cdmsKeywords=args1, weightedGridMaker=gridMaker ) 
             regridded_var_slice = vc.get( returnTuple=0 )
             if referenceLev: regridded_var_slice = regridded_var_slice.pressureRegrid( referenceLev )
-            args2 = { 'order':'xyz', 'squeeze':1 }
+            args2 = { 'order' : order, 'squeeze' : 1 }
             if levBounds <> None:
-                args2['lev'] = levbounds[0] if ( len( levbounds ) == 1 ) else levbounds                            
+                args2['lev'] = levBounds[0] if ( len( levBounds ) == 1 ) else levBounds                            
             else:
-                levbounds = self.getLevBounds( referenceLev )
-                if levbounds: args2['lev'] = levbounds
+                levBounds = self.getLevBounds( referenceLev )
+                if levBounds: args2['lev'] = levBounds
             rv = regridded_var_slice( **args2 ) 
             try: rv = MV2.masked_equal( rv, rv.fill_value ) 
             except: pass
@@ -380,7 +381,7 @@ class CDMSDatasetRecord():
 #        self.roi = roi
 #        self.zscale = zscale
 
-    def getGridSpecs( self, var, roi, zscale ):   
+    def getGridSpecs( self, var, roi, zscale, outputType ):   
         dims = self.dataset.axes.keys()
         gridOrigin = newList( 3, 0.0 )
         outputOrigin = newList( 3, 0.0 )
@@ -396,9 +397,8 @@ class CDMSDatasetRecord():
         axis_list = var.getAxisList()
         for axis in axis_list:
             size = len( axis )
-            iCoord = self.getCoordType( axis )
+            iCoord = self.getCoordType( axis, outputType )
             roiBounds, values = self.getAxisValues( axis, roi )
-            if iCoord == -1: timeValues = values
             if iCoord >= 0:
                 iCoord2 = 2*iCoord
                 gridShape[ iCoord ] = size
@@ -445,12 +445,19 @@ class CDMSDatasetRecord():
             if   axis.isLongitude():  bounds = [ roi[0], roi[2] ]
             elif axis.isLatitude():   bounds = [ roi[1], roi[3] ] 
         if bounds:
-            value_bounds = ( min(values[0],values[-1]), max(values[0],values[-1]))
+            value_bounds = [ min(values[0],values[-1]), max(values[0],values[-1]) ]
+            mid_value = ( value_bounds[0] + value_bounds[1] ) / 2.0
+            mid_bounds = ( bounds[0] + bounds[1] ) / 2.0
+            offset = (360.0 if mid_bounds > mid_value else -360.0)
+            trans_val = mid_value + offset
+            if (trans_val > bounds[0]) and (trans_val < bounds[1]):
+                value_bounds[0] = value_bounds[0] + offset
+                value_bounds[1] = value_bounds[1] + offset           
             bounds[0] = max( [ bounds[0], value_bounds[0] ] )
             bounds[1] = min( [ bounds[1], value_bounds[1] ] )
         return bounds, values
 
-    def getCoordType( self, axis ):
+    def getCoordType( self, axis, outputType ):
         iCoord = -2
         if axis.isLongitude(): 
             self.lon = axis
@@ -460,10 +467,10 @@ class CDMSDatasetRecord():
             iCoord  = 1
         if isLevelAxis( axis ): 
             self.lev = axis
-            iCoord  = 2
-        if axis.isTime(): 
+            iCoord  = 2 if ( outputType == CDMSDataType.Volume ) else -1
+        if axis.isTime():
             self.time = axis
-            iCoord  = -1
+            iCoord  = 2 if ( outputType == CDMSDataType.Hoffmuller ) else -1
         return iCoord
        
 class CDMSDataset(Module): 
@@ -589,7 +596,7 @@ class CDMSDataset(Module):
         print>>sys.stderr, "Error: can't find time slice variable %s in dataset" % varName
         return rv
 
-    def getVarDataCube( self, dsid, varName, timeValue ):
+    def getVarDataCube( self, dsid, varName, timeValues, levelValues = None ):
         """
         This method extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).
         """
@@ -597,7 +604,7 @@ class CDMSDataset(Module):
         if dsid:
             dsetRec = self.datasetRecs[ dsid ]
             if varName in dsetRec.dataset.variables:
-                rv = dsetRec.getVarDataCube( varName, self.decimation, time=[timeValue], lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[2]], refVar=self.referenceVariable, refLev=self.referenceLev )   
+                rv = dsetRec.getVarDataCube( varName, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]], refVar=self.referenceVariable, refLev=self.referenceLev )   
         if (rv.id == "NULL") and (varName in self.transientVariables):
             rv = self.transientVariables[ varName ]
         if rv.id <> "NULL": 
@@ -1774,9 +1781,6 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     
     dataCache = {}
     imageDataCache = {}
-    VolumeOutput = 1
-    SliceOutput = 2
-    VectorOutput = 3
 
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['portData'], **args)
@@ -1858,7 +1862,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             cachedImageDataName = self.getImageData( orec ) 
             if cachedImageDataName: 
                 imageDataCache = self.getImageDataCache()            
-                if   orec.ndim == 3: self.set3DOutput( name=orec.name,  output=imageDataCache[cachedImageDataName] )
+                if   orec.ndim >= 3: self.set3DOutput( name=orec.name,  output=imageDataCache[cachedImageDataName] )
                 elif orec.ndim == 2: self.set2DOutput( name=orec.name,  output=imageDataCache[cachedImageDataName] )
 
 #    def getMetadata( self, metadata={}, port=None ):
@@ -1890,9 +1894,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         ds = self.cdmsDataset[ dsid ]
         self.timeRange = self.cdmsDataset.timeRange
         portName = orec.name
-        ndim = orec.ndim
+        selectedLevel = orec.getSelectedLevel()
+        ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
         imageDataCreated = False
-        default_dtype = np.ushort if (self.outputType == self.VolumeOutput ) else np.float
+        default_dtype = np.ushort if ( (self.outputType == CDMSDataType.Volume ) or (self.outputType == CDMSDataType.Hoffmuller ) )  else np.float 
         scalar_dtype = args.get( "dtype", default_dtype )
         self._max_scalar_value = getMaxScalarValue( scalar_dtype )
         self._range = [ 0.0, self._max_scalar_value ]  
@@ -1907,10 +1912,11 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 var_md[ 'range' ] = ( 0.0, 0.0 )
                 var_md[ 'scale' ] = ( 0.0, 1.0 ) 
                 self.setCachedData( self.timeValue.value, varName, ( newDataArray, var_md ) )   
-            else:
-                varData = self.cdmsDataset.getVarDataCube( dsid, varName, self.timeValue )
+            else: 
+                tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue ] 
+                varData = self.cdmsDataset.getVarDataCube( dsid, varName, tval, selectedLevel )
                 if varData.id <> 'NULL':
-                    varDataSpecs = ds.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale )
+                    varDataSpecs = ds.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale, self.outputType )
                     range_min = varData.min()
                     range_max = varData.max()
                     print " Read volume data for variable %s, scalar range = [ %f, %f ]" % ( varName, range_min, range_max )
@@ -1986,7 +1992,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 md[ 'valueRange'] = var_md[ 'range' ] 
                 md[ 'scalars'] = varName 
 #                print " --- CDMS-SetScalars: %s, Range= %s" % ( varName, str( var_md[ 'range' ] ) ) 
-        if (self.outputType == self.VectorOutput ): 
+        if (self.outputType == CDMSDataType.Vector ): 
             vtkdata = getNewVtkDataArray( scalar_dtype )
             vtkdata.SetNumberOfComponents( 3 )
             vtkdata.SetNumberOfTuples( nTup )
@@ -2020,9 +2026,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 class PM_CDMS_VolumeReader( PM_CDMSDataReader ):
 
     def __init__(self, mid, **args):
-        self.outputType = self.VolumeOutput
+        self.outputType = CDMSDataType.Volume
         PM_CDMSDataReader.__init__( self, mid, **args)
-        
+
 class CDMS_VolumeReader(WorkflowModule):
     
     PersistentModuleClass = PM_CDMS_VolumeReader
@@ -2030,10 +2036,23 @@ class CDMS_VolumeReader(WorkflowModule):
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args)     
 
+class PM_CDMS_HoffmullerReader( PM_CDMSDataReader ):
+
+    def __init__(self, mid, **args):
+        self.outputType = CDMSDataType.Hoffmuller
+        PM_CDMSDataReader.__init__( self, mid, **args)
+        
+class CDMS_HoffmullerReader(WorkflowModule):
+    
+    PersistentModuleClass = PM_CDMS_HoffmullerReader
+    
+    def __init__( self, **args ):
+        WorkflowModule.__init__(self, **args)     
+
 class PM_CDMS_SliceReader( PM_CDMSDataReader ):
 
     def __init__(self, mid, **args):
-        self.outputType = self.SliceOutput
+        self.outputType = CDMSDataType.Slice
         PM_CDMSDataReader.__init__( self, mid, **args)
 
 class CDMS_SliceReader(WorkflowModule):
@@ -2047,7 +2066,7 @@ class CDMS_SliceReader(WorkflowModule):
 class PM_CDMS_VectorReader( PM_CDMSDataReader ):
 
     def __init__(self, mid, **args):
-        self.outputType = self.VectorOutput
+        self.outputType = CDMSDataType.Vector
         PM_CDMSDataReader.__init__( self, mid, **args)
 
 
@@ -2064,10 +2083,7 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
     CDMSReaderConfigurationWidget ...
     
     """
-    VolumeOutput = 1
-    SliceOutput = 2
-    VectorOutput = 3
-
+    
     def __init__(self, module, controller, outputType, parent=None):
         """ CDMSReaderConfigurationWidget(module: Module,
                                        controller: VistrailController,
@@ -2079,6 +2095,7 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         self.outputType = outputType
         self.outRecMgr = None
         self.refVar = None
+        self.levelsAxis = None
         self.serializedPortData = ''
         self.datasetId = None
         DV3DConfigurationWidget.__init__(self, module, controller, 'CDMS Data Reader Configuration', parent)
@@ -2088,7 +2105,7 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
      
     def getParameters( self, module ):
         global PortDataVersion
-        ( self.variableList, self.datasetId, self.timeRange, self.refVar ) =  DV3DConfigurationWidget.getVariableList( module.id ) 
+        ( self.variableList, self.datasetId, self.timeRange, self.refVar, self.levelsAxis ) =  DV3DConfigurationWidget.getVariableList( module.id ) 
         portData = self.pmod.getPortData( dbmod=self.module, datasetId=self.datasetId ) # getFunctionParmStrValues( module, "portData" )
         if portData and portData[0]: 
              self.serializedPortData = portData[0]   
@@ -2106,14 +2123,15 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         
         noutLayout = QHBoxLayout()                 
         outputsLayout.addLayout( noutLayout )
-        
+                           
         self.outputsTabbedWidget = QTabWidget()
         outputsLayout.addWidget( self.outputsTabbedWidget )
-
+        
     def updateController(self, controller):
         global PortDataVersion
         PortDataVersion = PortDataVersion + 1
-        self.persistParameterList( [ ('portData', [ self.serializedPortData, PortDataVersion ] ) ], datasetId=self.datasetId )
+        parameterList = [ ('portData', [ self.serializedPortData, PortDataVersion ] ) ]
+        self.persistParameterList( parameterList, datasetId=self.datasetId )
         self.stateChanged(False)
            
     def okTriggered(self, checked = False):
@@ -2132,10 +2150,15 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
             oRecMgr = OutputRecManager( self.serializedPortData )
             for oRec in oRecMgr.getOutputRecs( self.datasetId ):
                 variableSelections = oRec.varList if oRec.varList else []
-                self.addOutputTab( oRec.ndim, oRec.name, variableSelections )
-        if   self.outputType == self.VolumeOutput:    self.addOutputTab( 3, 'volume'  )
-        elif self.outputType == self.SliceOutput:     self.addOutputTab( 2, 'slice' )
-        elif self.outputType == self.VectorOutput:    self.addOutputTab( 3, 'vector' )
+                self.addOutputTab( oRec.ndim, oRec.name, variableSelections, oRec.level )
+        if   self.outputType == CDMSDataType.Volume:    
+            self.addOutputTab( 3, 'volume'  )
+        if   self.outputType == CDMSDataType.Hoffmuller:
+            self.addOutputTab( 4, 'volume'  )
+        elif self.outputType == CDMSDataType.Slice:     
+            self.addOutputTab( 2, 'slice' )
+        elif self.outputType == CDMSDataType.Vector:    
+            self.addOutputTab( 3, 'vector' )
         self.updateVariableLists()
                 
     def getOutputTabIndex( self, name ):
@@ -2145,14 +2168,14 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
             if tabName == name: return iTab # self.outputsTabbedWidget.widget(iTab)
         return -1
                
-    def addOutputTab( self, ndim, output_name = None, variableSelections=[] ): 
+    def addOutputTab( self, ndim, output_name = None, variableSelections=[], level=None ): 
         if output_name == None:
             qtname, ok = QInputDialog.getText( self, 'Get Output Name', 'Output name:' )
             if ok: output_name = str(qtname).strip().replace( ' ', '_' ).translate( None, OutputRecManager.sep )
         if output_name <> None:
             iExistingTabIndex = self.getOutputTabIndex( output_name )
             if iExistingTabIndex < 0:
-                outputTab = self.createOutputTab( ndim, output_name, variableSelections )  
+                outputTab = self.createOutputTab( ndim, output_name, variableSelections, level )  
                 if outputTab <> None:
                     self.outputsTabbedWidget.addTab( outputTab, output_name ) 
                     return outputTab
@@ -2172,12 +2195,12 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
 #            for iout in range( current_nout, noutputs ):
 #                default_name = "data%d" % iout
                     
-    def createOutputTab( self, ndim, name, variableSelections = [] ):  
+    def createOutputTab( self, ndim, name, variableSelections = [], level=None ):  
         otab = QWidget()  
         otabLayout = QVBoxLayout()                
         otab.setLayout( otabLayout )
 
-        if self.outputType == self.VectorOutput:
+        if self.outputType == CDMSDataType.Vector:
             varsComboList = []
             for vector_component in [ 'x', 'y', 'z' ]:
                 variables_Layout = QHBoxLayout()      
@@ -2193,6 +2216,28 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
                   
             orec = OutputRec( name, ndim=ndim, varComboList=varsComboList, varSelections=variableSelections ) 
             self.outRecMgr.addOutputRec( self.datasetId, orec )            
+        elif self.outputType == CDMSDataType.Hoffmuller:
+            levels_Layout = QHBoxLayout() 
+            
+            levels_label = QLabel( "Select Level:"  )
+            levels_Layout.addWidget( levels_label ) 
+            levelsCombo =  QComboBox ( self )
+            self.connect( levelsCombo, SIGNAL("currentIndexChanged(QString)"), self.selectedLevelChanged ) 
+            levels_label.setBuddy( levelsCombo )
+            levels_Layout.addWidget( levelsCombo )  
+            otabLayout.addLayout( levels_Layout )
+             
+            variables_Layout = QHBoxLayout()     
+            variables_label = QLabel( "Select Output Variable:"  )
+            variables_Layout.addWidget( variables_label ) 
+            varsCombo =  QComboBox ( self )
+            self.connect( varsCombo, SIGNAL("currentIndexChanged(QString)"), self.selectedVariableChanged ) 
+            variables_label.setBuddy( varsCombo )
+            variables_Layout.addWidget( varsCombo )  
+            otabLayout.addLayout( variables_Layout )
+                    
+            orec = OutputRec( name, ndim=ndim, varComboList=[varsCombo], levelsCombo=levelsCombo, varSelections=variableSelections, level=level ) 
+            self.outRecMgr.addOutputRec( self.datasetId, orec ) 
         else:
             variables_Layout = QHBoxLayout()      
             variables_label = QLabel( "Select Output Variable:"  )
@@ -2210,16 +2255,24 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
     
     def selectedVariableChanged(self, vname ):
         self.stateChanged()
+        
+    def selectedLevelChanged(self, vname ):
+        self.stateChanged()
     
     def updateVariableLists(self):
         if self.outRecMgr:  
             for oRec in self.outRecMgr.getOutputRecs( self.datasetId ): 
                 for varCombo in oRec.varComboList: 
                     varCombo.clear()
-                    if self.outputType == self.VectorOutput:  varCombo.addItem( '__zeros__' )  
+                    if ( self.outputType == CDMSDataType.Vector ):  varCombo.addItem( '__zeros__' ) 
+                    if ( oRec.levelsCombo <> None) and ( self.levelsAxis <> None ): 
+                        oRec.levelsCombo.clear()
+                        levels = self.levelsAxis.getValue()
+                        for level in levels: 
+                            oRec.levelsCombo.addItem( QString( str(level) ) )                     
             for ( var, var_ndim ) in self.variableList:               
                 for oRec in self.outRecMgr.getOutputRecs( self.datasetId ):
-                    if var_ndim == oRec.ndim: 
+                    if (var_ndim == oRec.ndim) or ( (oRec.ndim == 4) and (var_ndim > 1) ) : 
                         for varCombo in oRec.varComboList: varCombo.addItem( str(var) ) 
                     
             for oRec in self.outRecMgr.getOutputRecs( self.datasetId ): 
@@ -2229,6 +2282,9 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
                         varSelectionRec = varIter.next()
                         itemIndex = varCombo.findText( varSelectionRec[0], Qt.MatchFixedString )
                         if itemIndex >= 0: varCombo.setCurrentIndex( itemIndex )
+                if oRec.level:
+                    itemIndex = oRec.levelsCombo.findText(  oRec.level, Qt.MatchFixedString )
+                    oRec.levelsCombo.setCurrentIndex( itemIndex )
         
     def getCurentOutputRec(self):
         tabIndex = self.outputsTabbedWidget.currentIndex()
@@ -2242,22 +2298,32 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         print " -- PortData: %s " % self.serializedPortData
 
 
+class CDMS_HoffmullerReaderConfigurationWidget(CDMSReaderConfigurationWidget):
+
+    def __init__(self, module, controller, parent=None):
+        CDMSReaderConfigurationWidget.__init__(self, module, controller, CDMSDataType.Hoffmuller, parent)
+
+    def getParameters( self, module ):
+        CDMSReaderConfigurationWidget.getParameters( self, module ) 
+
 class CDMS_VolumeReaderConfigurationWidget(CDMSReaderConfigurationWidget):
 
     def __init__(self, module, controller, parent=None):
-        CDMSReaderConfigurationWidget.__init__(self, module, controller, self.VolumeOutput, parent)
+        CDMSReaderConfigurationWidget.__init__(self, module, controller, CDMSDataType.Volume, parent)
 
+    def getParameters( self, module ):
+        CDMSReaderConfigurationWidget.getParameters( self, module ) 
 
 class CDMS_SliceReaderConfigurationWidget(CDMSReaderConfigurationWidget):
 
     def __init__(self, module, controller, parent=None):
-        CDMSReaderConfigurationWidget.__init__(self, module, controller, self.SliceOutput, parent)
+        CDMSReaderConfigurationWidget.__init__(self, module, controller, CDMSDataType.Slice, parent)
 
 
 class CDMS_VectorReaderConfigurationWidget(CDMSReaderConfigurationWidget):
 
     def __init__(self, module, controller, parent=None):
-        CDMSReaderConfigurationWidget.__init__(self, module, controller, self.VectorOutput, parent)
+        CDMSReaderConfigurationWidget.__init__(self, module, controller, CDMSDataType.Vector, parent)
 
 if __name__ == '__main__':
     from Main import executeVistrail

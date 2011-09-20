@@ -18,6 +18,12 @@ from collections import OrderedDict
 from vtUtilities import *
 import cdms2
 
+class CDMSDataType:
+    Volume = 1
+    Slice = 2
+    Vector = 3
+    Hoffmuller = 4
+
 class QtWindowLeveler( QObject ):
     
     update_range_signal = SIGNAL('update_range')
@@ -152,26 +158,27 @@ class OutputRecManager:
         return orecMap.values() if orecMap else []
         
     def deserialize( self, serializedData ): 
-        self.outputRecs = {}      
+        self.outputRecs = {}  
         outputRecData = serializedData.split( OutputRecManager.sep[0] )
         for outputRecItem in outputRecData:
             if outputRecItem:
                 outputFields = outputRecItem.split( OutputRecManager.sep[1] )
                 if outputFields:
-                    try:
+                    try: 
+                        varList = []
                         dsid = outputFields[0]
                         port_data = outputFields[1]
                         port_data_fields = port_data.split( OutputRecManager.sep[2] )
                         name = port_data_fields[0]
                         ndim = int( port_data_fields[1] )
                         variables = outputFields[2].split( OutputRecManager.sep[2] ) 
+                        selectedLevel = outputFields[3] if ( len( outputFields ) > 3 ) else None
                         if variables: 
-                            varList = []
                             for varEntry in variables:
                                 varRec = varEntry.split( OutputRecManager.sep[3] ) 
-                                if len( varRec[0] ) > 0: varList.append( varRec )
-                            orec = OutputRec( name, ndim=ndim, varList=varList ) 
-                            self.addOutputRec( dsid, orec ) 
+                                if len( varRec[0] ) > 0: varList.append( varRec )                            
+                        orec = OutputRec( name, ndim=ndim, varList=varList, level=selectedLevel ) 
+                        self.addOutputRec( dsid, orec ) 
                     except Exception, err:
                         print "Error deserializing port data: %s " % ( str( err ) )
                         
@@ -200,6 +207,8 @@ class OutputRecManager:
                    portData.append( "%s%c%d%c" % ( port_name, OutputRecManager.sep[2], nVarDims, OutputRecManager.sep[1]  ) )
                    for varName in oRec.getSelectedVariableList():
                        portData.append( "%c%s%c" % (  OutputRecManager.sep[2], varName,  OutputRecManager.sep[3] ) )               
+                if ( oRec.levelsCombo <> None ):
+                   portData.append( "%c%s" % ( OutputRecManager.sep[1], str( oRec.levelsCombo.currentText() )  ) )
         serializedData = ''.join( portData )
         print " -- PortData: %s " % serializedData
         return serializedData
@@ -211,6 +220,8 @@ class OutputRec:
     def __init__(self, name, **args ): 
         self.name = name
         self.varComboList = args.get( "varComboList", [] )
+        self.levelsCombo = args.get( "levelsCombo", None )
+        self.level = args.get( "level", None )
         self.varTable = args.get( "varTable", None )
         self.varList = args.get( "varList", None )
         self.varSelections = args.get( "varSelections", [] )
@@ -225,6 +236,9 @@ class OutputRec:
     
     def getSelectedVariableList(self):
         return [ str( varCombo.currentText() ) for varCombo in self.varComboList ]
+
+    def getSelectedLevel(self):
+        return str( self.levelsCombo.currentText() ) if self.levelsCombo else None
     
     def updateSelections(self):
         self.varSelections = []
@@ -1259,6 +1273,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         datasetIds = set()
         timeRange = None
         selected_var = None
+        levelsAxis = None
         variableList = set()
         moduleIdList = [ moduleId ]
         while moduleIdList:
@@ -1276,7 +1291,15 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                         timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
                         if timeRangeInput: timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
                         gridInput = getFunctionParmStrValues( module, "grid" )
-                        if gridInput: selected_var = getItem( gridInput ) 
+                        if gridInput: 
+                            selected_var = getItem( gridInput ) 
+                            if selected_var:
+                                referenceData = selected_var.split('*')
+                                refDsid = referenceData[0]
+                                refVar  = referenceData[1].split(' ')[0]
+                                cdmsFile = datasets[ refDsid ]
+                                dataset = cdms2.open( cdmsFile ) 
+                                levelsAxis=dataset[refVar].getLevel()
                         datasetIds.add( datasetId )
         moduleIdList.append( mid )
         datasetId = '-'.join( datasetIds )
@@ -1297,7 +1320,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                                 outputData = output.split('+')
                                 if len(outputData) > 1:
                                     variableList.add( ( outputData[1], int( outputData[2] ) ) )
-        return ( variableList, datasetId, timeRange, selected_var )
+        return ( variableList, datasetId, timeRange, selected_var, levelsAxis )
 
 
 #    def persistParameter( self, parameter_name, output, **args ):

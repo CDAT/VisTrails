@@ -23,7 +23,6 @@ from matplotlib import cm, colors
 from matplotlib.font_manager import FontProperties
 from HyperwallManager import HyperwallManager
 from matplotlib.colors import LinearSegmentedColormap, ListedColormap, Normalize
-import pylab
 from numpy import amin, amax, ravel
 from vtk.util.numpy_support import *
 import time

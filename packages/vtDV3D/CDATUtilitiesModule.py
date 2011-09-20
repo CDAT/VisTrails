@@ -61,7 +61,7 @@ class PM_CDMS_CDATUtilities( PersistentModule ):
                     task = taskClass( cdmsDataset )
                     task_key = task.getInputMap( self )
                     if ( skipCompletedTasks and self.getTaskCompleted( task_key ) ):   print " Skipping completed task: %s " % task_key
-                    else:  task.compute( self.timeValue )
+                    else:  task.compute( [ self.timeValue, ] )
                     self.setTaskCompleted( task_key )
         if task == None:
             print>>sys.stderr, "Error, no task defined in CDATUtilities module"  
@@ -99,6 +99,7 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         self.outputMap = {}
         self.timeRange = None
         self.refVar = None
+        self.levelsAxis = None
         self.datasetId = None
         self.inputTabIndex = -1
         self.outputTabIndex = -1
@@ -114,7 +115,7 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         pass
 
     def getParameters( self, module ):
-        ( self.variableList, self.datasetId, self.timeRange, self.refVar ) = DV3DConfigurationWidget.getVariableList( module.id )
+        ( self.variableList, self.datasetId, self.timeRange, self.refVar, self.levelsAxis ) = DV3DConfigurationWidget.getVariableList( module.id )
         taskData = getFunctionParmStrValues( module, "task" )
         if taskData: self.processTaskData( getItem( taskData ) )
 #        if taskData: self.serializedTaskData = taskData[0]          

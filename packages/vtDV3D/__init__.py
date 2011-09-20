@@ -10,19 +10,23 @@ Created on Dec 7, 2010
 """
 identifier = 'gov.nasa.nccs.vtdv3d'
 name = 'vtDV3D'
-version = '0.1.5'
+version = '0.1.6'
 
 #Configuration object
 import sys
 vtk_pkg_identifier = 'edu.utah.sci.vistrails.vtk'
 from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
 from core.bundles import py_import
+hasMatplotlib = True
 try:
     mpl_dict = {'linux-ubuntu': 'python-matplotlib', 'linux-fedora': 'python-matplotlib'}
     matplotlib = py_import('matplotlib', mpl_dict)
     pylab = py_import('pylab', mpl_dict)
+    from SlicePlotModule import SlicePlotCell, SlicePlotConfigurationWidget
 except Exception, e:
     print>>sys.stderr, "Matplotlib import Exception: %s" % e
+    print "Matplotlib dependent features will be disabled."
+    hasMatplotlib = False
 
 def package_dependencies():
     return [ vtk_pkg_identifier, 'edu.utah.sci.vistrails.matplotlib' ]
@@ -86,9 +90,8 @@ def initialize(*args, **keywords):
     from CDATUtilitiesModule import CDMS_CDATUtilities, CDATUtilitiesModuleConfigurationWidget
     from GradientModule import  Gradient
     from WorkflowModule import WorkflowModule
-    from SlicePlotModule import SlicePlotCell, SlicePlotConfigurationWidget
+#        from packages.pylab.init import MplFigureManager
     from VectorCutPlaneModule import VectorCutPlane 
-    from packages.pylab.init import MplFigureManager
     from packages.spreadsheet.basic_widgets import CellLocation
     from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
     import api
@@ -144,8 +147,14 @@ def initialize(*args, **keywords):
     reg.add_output_port( CDMS_FileReader, "dataset", CDMSDataset ) 
     CDMS_FileReader.registerConfigurableFunctions( reg )
 
+    reg.add_module( CDMS_HoffmullerReader, configureWidgetType=CDMS_HoffmullerReaderConfigurationWidget, namespace='cdms' )
+    reg.add_input_port( CDMS_HoffmullerReader, "dataset", CDMSDataset )      
+    reg.add_input_port( CDMS_HoffmullerReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
+    reg.add_output_port( CDMS_HoffmullerReader, "volume", AlgorithmOutputModule3D ) 
+    CDMS_HoffmullerReader.registerConfigurableFunctions( reg )
+
     reg.add_module( CDMS_VolumeReader, configureWidgetType=CDMS_VolumeReaderConfigurationWidget, namespace='cdms' )
-    reg.add_input_port( CDMS_VolumeReader, "dataset", CDMSDataset )    
+    reg.add_input_port( CDMS_VolumeReader, "dataset", CDMSDataset )      
     reg.add_input_port( CDMS_VolumeReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( CDMS_VolumeReader, "volume", AlgorithmOutputModule3D ) 
     CDMS_VolumeReader.registerConfigurableFunctions( reg )
@@ -217,12 +226,13 @@ def initialize(*args, **keywords):
     reg.add_input_port( LevelSurface, "layer",   [ ( String, 'activeLayerName' ) ]   ) 
     LevelSurface.registerConfigurableFunctions( reg )
 
-    reg.add_module( SlicePlotCell, namespace='spreadsheet', configureWidgetType=SlicePlotConfigurationWidget  )
-    reg.add_input_port(  SlicePlotCell, "Location", CellLocation)
-    reg.add_input_port(  SlicePlotCell, "slice", AlgorithmOutputModule  )
-    reg.add_input_port(  SlicePlotCell, "plotType", [ ( String, 'fillType' ), ( String, 'contourType' ), ( Integer, 'numContours' ), ( Integer, 'version' ) ], True   )
-    reg.add_output_port( SlicePlotCell, 'File', File)
-    SlicePlotCell.registerConfigurableFunctions( reg )
+    if hasMatplotlib:
+        reg.add_module( SlicePlotCell, namespace='spreadsheet', configureWidgetType=SlicePlotConfigurationWidget  )
+        reg.add_input_port(  SlicePlotCell, "Location", CellLocation)
+        reg.add_input_port(  SlicePlotCell, "slice", AlgorithmOutputModule  )
+        reg.add_input_port(  SlicePlotCell, "plotType", [ ( String, 'fillType' ), ( String, 'contourType' ), ( Integer, 'numContours' ), ( Integer, 'version' ) ], True   )
+        reg.add_output_port( SlicePlotCell, 'File', File)
+        SlicePlotCell.registerConfigurableFunctions( reg )
     
     HyperwallManager.initialize()
 
