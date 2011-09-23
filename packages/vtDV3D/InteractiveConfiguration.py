@@ -97,7 +97,7 @@ class QtWindowLeveler( QObject ):
               else:             result =  [ rmin, rmax, 0 ]
               self.CurrentWindow = result[1] - result[0]
               self.CurrentLevel =  0.5 * ( result[0] + result[1] )
-        print " --- Set Range: ( %f, %f ),   Initial Range = ( %f, %f ), P = ( %d, %d ) dP = ( %f, %f ) " % ( result[0], result[1], self.InitialRange[0], self.InitialRange[1], X, Y, dx, dy )      
+#        print " --- Set Range: ( %f, %f ),   Initial Range = ( %f, %f ), P = ( %d, %d ) dP = ( %f, %f ) " % ( result[0], result[1], self.InitialRange[0], self.InitialRange[1], X, Y, dx, dy )      
         return result
       
     def startWindowLevel( self, X, Y ):   

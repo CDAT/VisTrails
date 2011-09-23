@@ -323,7 +323,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         result.Update()
         return result
 
-    def getBoundedMap( self, baseImage, dataLocation, map_cut_size ):
+    def getBoundedMap( self, baseImage, dataLocation, map_cut_size, map_border_size ):
         baseImage.Update()
         baseExtent = baseImage.GetExtent()
         baseSpacing = baseImage.GetSpacing()
@@ -333,7 +333,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         y1 = baseExtent[3]
         imageLen = [ x1 - x0 + 1, y1 - y0 + 1 ]
         selectionDim = [ map_cut_size[0]/2, map_cut_size[1]/2 ]
-        dataXLoc = NormalizeLon( dataLocation[0] ) 
+        dataXLoc = dataLocation[0]
         imageInfo = vtk.vtkImageChangeInformation()
         dataYbounds = [ dataLocation[1]-selectionDim[1], dataLocation[1]+selectionDim[1] ]
         vertExtent = [ y0, y1 ]
@@ -347,16 +347,17 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             yOffset = 90.0 - dataYbounds[1]
             extOffset = int( round( ( yOffset / 180.0 ) * imageLen[1] ) )
             vertExtent[1] = y1 - extOffset
-                   
-        if (( dataXLoc > selectionDim[0] ) and ( dataXLoc < ( 360 - selectionDim[0]) )):
-
-            cut0 = dataXLoc - selectionDim[0] 
+            
+        overlapsBorder = (dataLocation[0]-selectionDim[0] < 0.0) and ((dataLocation[0]+selectionDim[0]) > 0.0) 
+        if not overlapsBorder:
+            
+            cut0 = NormalizeLon( dataXLoc - selectionDim[0] )
             sliceSize =  imageLen[0] * ( cut0 / 360.0 )
             sliceCoord = int( round( x0 + sliceSize) )        
             extent = list( baseExtent )         
             extent[0] = x0 + sliceCoord - 1
         
-            cut1 = dataXLoc + selectionDim[0] 
+            cut1 = NormalizeLon( dataXLoc + selectionDim[0] )
             sliceSize =  imageLen[0] * ( cut1 / 360.0 )
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[1] = x0 + sliceCoord
@@ -379,7 +380,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             clip0.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             size0 = extent[1] - extent[0] + 1
         
-            cut1 = NormalizeLon( dataLocation[0] - selectionDim[0] )
+            cut1 = NormalizeLon( dataLocation[0] - selectionDim[0] ) 
             sliceSize =  imageLen[0] * ( cut1 / 360.0 )
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[0:2] = [ x0 + sliceCoord, x1 ]
@@ -480,7 +481,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 new_dims = baseImage.GetDimensions()
                 scale = [ 360.0/new_dims[0], 180.0/new_dims[1], 1 ]
             else:                       
-                baseImage, new_dims = self.getBoundedMap( baseImage, dataPosition, map_cut_size )             
+                baseImage, new_dims = self.getBoundedMap( baseImage, dataPosition, map_cut_size, map_border_size )             
                 scale = [ map_cut_size[0]/new_dims[0], map_cut_size[1]/new_dims[1], 1 ]
     #        printArgs( " baseMap: ", extent=baseImage.GetExtent(), spacing=baseImage.GetSpacing(), origin=baseImage.GetOrigin() )        
                       
@@ -491,7 +492,9 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             self.baseMapActor.SetOpacity( opacity )
     #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
 #            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
-            self.baseMapActor.SetPosition( self.x0, self.y0, 0.1 )
+            mapCorner = [ self.x0, self.y0 ]
+            if ( ( self.roi[0]-map_border_size ) < 0.0 ): mapCorner[0] = mapCorner[0] - 360.0
+            self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
             self.baseMapActor.SetInput( baseImage )
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]            
             self.resetCamera()

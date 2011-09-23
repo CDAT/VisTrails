@@ -27,20 +27,20 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
     """    
     def __init__( self, mid, **args ):
         PersistentVisualizationModule.__init__( self, mid, **args )
-        self.glyphScale = 15.0 
-        self.glyphDecimationFactor = 2.0 
+        self.glyphScale = 5.0 
+        self.glyphDecimationFactor = 10.0 
         self.primaryInputPort = 'vector'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'glyphRange', 'T', setLevel=self.setGlyphRange, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'glyphScale', 'G', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True )
       
     def scaleColormap( self, ctf_data ):
-        print " PM_VectorCutPlane-> Scale Colormap: range = %s " % str( ctf_data )
+#        print " PM_VectorCutPlane-> Scale Colormap: range = %s " % str( ctf_data )
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
-        self.glyphMapper.Modified()
-        self.glyph.Update()
-        self.glyphMapper.Update()
+        self.glyph.SetLookupTable( self.lut )
+#        self.glyph.Modified()
+#        self.glyph.Update()
         self.render()
 
     def setGlyphRange( self, ctf_data ):
@@ -98,6 +98,9 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         self.dataBounds = self.getUnscaledWorldExtent( self.initialExtent, self.initialSpacing, self.initialOrigin ) 
         dataExtents = ( (self.dataBounds[1]-self.dataBounds[0])/2.0, (self.dataBounds[3]-self.dataBounds[2])/2.0, (self.dataBounds[5]-self.dataBounds[4])/2.0 )
         centroid = ( (self.dataBounds[0]+self.dataBounds[1])/2.0, (self.dataBounds[2]+self.dataBounds[3])/2.0, (self.dataBounds[4]+self.dataBounds[5])/2.0  )
+        self.pos = [ self.initialSpacing[i]*self.initialExtent[2*i] for i in range(3) ]
+        if ( (self.initialOrigin[0] + self.pos[0]) < 0.0): self.pos[0] = self.pos[0] + 360.0
+
 #        self.plane.SetOrigin( centroid[0], centroid[1], centroid[2]   )
 #        self.plane.SetNormal( 0.0, 0.0, 1.0 )
 
@@ -141,38 +144,58 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         self.planeWidget.SetOrigin( centroid[0], centroid[1], centroid[2]  )
         self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
         self.planeWidget.AddObserver( 'InteractionEvent', self.SliceObserver )
-        print "Data bounds %s, origin = %s, spacing = %s, extent = %s, widget origin = %s " % ( str( self.dataBounds ), str( self.initialOrigin ), str( self.initialSpacing ), str( self.initialExtent ), str( self.planeWidget.GetOrigin( ) ) )
+#        print "Data bounds %s, origin = %s, spacing = %s, extent = %s, widget origin = %s " % ( str( self.dataBounds ), str( self.initialOrigin ), str( self.initialSpacing ), str( self.initialExtent ), str( self.planeWidget.GetOrigin( ) ) )
         self.cutter = vtk.vtkCutter()
         self.cutter.SetInput( self.cutterInput )
-#        if self.inputPort <> None: self.cutter.SetInputConnection( self.inputPort  )
-#        else: self.cutter.SetInput( self.input  )
         
         self.cutter.SetGenerateCutScalars(0)
-        self.glyph = vtk.vtkGlyph3D() 
-        if self.colorInputModule <> None:   self.glyph.SetColorModeToColorByScalar()            
-        else:                          self.glyph.SetColorModeToColorByVector()          
-#        combined_pointData = self.cutterInput.GetPointData()     
-#        combined_vectorsArray = combined_pointData.GetVectors()
-#        combined_scalarsArray = combined_pointData.GetScalars()
+        self.glyph = vtk.vtkGlyph3DMapper() 
+#        if self.colorInputModule <> None:   self.glyph.SetColorModeToColorByScalar()            
+#        else:                               self.glyph.SetColorModeToColorByVector()          
 
-        self.glyph.SetVectorModeToUseVector()
+        self.glyph.SetScaleModeToScaleByMagnitude()
+        self.glyph.SetColorModeToMapScalars()     
+        self.glyph.SetUseLookupTableScalarRange(1)
         self.glyph.SetOrient( 1 ) 
-        self.glyph.SetRange ( self.rangeBounds[0], self.rangeBounds[1] )
         self.glyph.ClampingOn()
         sliceOutputPort = self.cutter.GetOutputPort()
         self.glyph.SetInputConnection( sliceOutputPort )
         self.arrow = vtk.vtkArrowSource()
         self.glyph.SetSourceConnection( self.arrow.GetOutputPort() )
-        self.glyphMapper = vtk.vtkPolyDataMapper()
-        self.glyphMapper.SetInputConnection( self.glyph.GetOutputPort() ) 
-        self.glyphMapper.SetLookupTable( self.lut )
+        self.glyph.SetLookupTable( self.lut )
         self.glyphActor = vtk.vtkActor() 
-        self.glyphActor.SetMapper( self.glyphMapper )
+        self.glyphActor.SetMapper( self.glyph )
         self.renderer.AddActor( self.glyphActor )
         self.planeWidget.GetPlane( self.plane )
         self.UpdateCut()
-        self.set3DOutput(wmod=wmod) 
-        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = wmod ) 
+        self.set3DOutput(wmod=self.wmod) 
+        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
+
+
+
+#        self.cutter.SetGenerateCutScalars(0)
+#        self.glyph = vtk.vtkGlyph3D() 
+#        if self.colorInputModule <> None:   self.glyph.SetColorModeToColorByScalar()            
+#        else:                               self.glyph.SetColorModeToColorByVector()          
+#
+#        self.glyph.SetVectorModeToUseVector()
+#        self.glyph.SetOrient( 1 ) 
+#        self.glyph.ClampingOn()
+#        sliceOutputPort = self.cutter.GetOutputPort()
+#        self.glyph.SetInputConnection( sliceOutputPort )
+#        self.arrow = vtk.vtkArrowSource()
+#        self.glyph.SetSourceConnection( self.arrow.GetOutputPort() )
+#        self.glyphMapper = vtk.vtkPolyDataMapper()
+#        self.glyphMapper.SetInputConnection( self.glyph.GetOutputPort() ) 
+#        self.glyphMapper.SetLookupTable( self.lut )
+#        self.glyphActor = vtk.vtkActor() 
+#        self.glyphActor.SetMapper( self.glyphMapper )
+#        self.renderer.AddActor( self.glyphActor )
+#        self.planeWidget.GetPlane( self.plane )
+#        self.UpdateCut()
+#        self.set3DOutput(wmod=self.wmod) 
+#        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
+
         
     def ApplyGlyphDecimationFactor(self):
         sampleRate = int( round( self.glyphDecimationFactor) )
@@ -208,7 +231,7 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
 #        print " Slice Output: extent: %s, spacing: %s " % ( str(output_slice_extent), str(output_slice_spacing) )
         
     def UpdateCut(self): 
-        print " Cut Plane: origin = %s, normal = %s" % ( str( self.plane.GetOrigin() ), str( self.plane.GetNormal() ) ) 
+#        print " Cut Plane: origin = %s, normal = %s" % ( str( self.plane.GetOrigin() ), str( self.plane.GetNormal() ) ) 
         self.cutter.SetCutFunction ( self.plane  )
         self.cutterInput.Update()
         if self.colorInputModule <> None:
@@ -227,9 +250,21 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
                 pointData = cutterOutput.GetPointData()
                 ptScalarsArray = pointData.GetVectors()
                 self.glyph.SetScaleFactor( self.glyphScale )
+#                self.dumpData( 'Cut Vector Values',  ptScalarsArray )
                 self.glyph.Update()
-                print " UpdateCut: npoints= %d, vectors: ncomp=%d, ntup=%d " % ( np, ptScalarsArray.GetNumberOfComponents(), ptScalarsArray.GetNumberOfTuples() )
+#                print " UpdateCut: npoints= %d, vectors: ncomp=%d, ntup=%d " % ( np, ptScalarsArray.GetNumberOfComponents(), ptScalarsArray.GetNumberOfTuples() )
                 self.render()
+
+    def dumpData( self, label, dataArray ):
+        nt = dataArray.GetNumberOfTuples()
+        valArray = []
+        for iT in range( 0, nt ):
+            val = dataArray.GetTuple3(  iT  )
+            valArray.append( "(%.3g,%.3g,%.3g)" % ( val[0], val[1], val[2] )  )
+        print " _________________________ %s _________________________ " % label
+        print ' '.join( valArray )      
+#        for iRow in range(0,iSize[1]):
+#            print str( newDataArray[ iOff[0] : iOff[0]+iSize[0], iOff[1]+iRow, 0 ] )
 
     def activateWidgets( self, iren ):
         self.planeWidget.SetInteractor( iren )

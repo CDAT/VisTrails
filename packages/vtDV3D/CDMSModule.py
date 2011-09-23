@@ -262,6 +262,7 @@ class CDMSDatasetRecord():
         timeBounds = args.get( 'time', None )
         referenceVar = args.get( 'refVar', None )
         referenceLev = args.get( 'refLev', None )
+
 #        nSliceDims = 0
 #        for bounds in (lonBounds, latBounds, levBounds, timeBounds):
 #            if ( bounds <> None ) and ( len(bounds) == 1 ):  
@@ -277,6 +278,7 @@ class CDMSDatasetRecord():
         
         rv = CDMSDataset.NullVariable
         varData = self.dataset[ varName ] 
+        currentLevel = varData.getLevel()
         print "Reading Variable %s, attributes: %s" % ( varName, str(varData.attributes) )
 
         refFile = self.cdmsFile
@@ -355,15 +357,17 @@ class CDMSDatasetRecord():
             
             vc = cdutil.VariableConditioner( source=self.cdmsFile, var=varName,  cdmsKeywords=args1, weightedGridMaker=gridMaker ) 
             regridded_var_slice = vc.get( returnTuple=0 )
-            if referenceLev: regridded_var_slice = regridded_var_slice.pressureRegrid( referenceLev )
+#            if (referenceLev <> None) and ( referenceLev.shape[0] <> currentLevel.shape[0] ): 
+#                regridded_var_slice = regridded_var_slice.pressureRegrid( referenceLev ) 
+            
             args2 = { 'order' : order, 'squeeze' : 1 }
             if levBounds <> None:
                 args2['lev'] = levBounds[0] if ( len( levBounds ) == 1 ) else levBounds                            
             else:
-                levBounds = self.getLevBounds( referenceLev )
+                levBounds = self.getLevBounds( currentLevel )
                 if levBounds: args2['lev'] = levBounds
             rv = regridded_var_slice( **args2 ) 
-            try: rv = MV2.masked_equal( rv, rv.fill_value ) 
+            try: rv = MV2.masked_equal( rv, rv.fill_value )
             except: pass
 #            max_values = [ regridded_var_slice.max(), rv.max()  ]
 #            print " Regrid variable %s: max values = %s " % ( varName, str(max_values) )
@@ -405,7 +409,7 @@ class CDMSDatasetRecord():
                 gridSize = gridSize * size
                 outputExtent[ iCoord2+1 ] = gridExtent[ iCoord2+1 ] = size-1                    
                 if iCoord < 2:
-                    lonOffset = 360.0 if ( ( iCoord == 0 ) and ( roiBounds[0] < 0.0 ) ) else 0.0
+                    lonOffset = 0.0 #360.0 if ( ( iCoord == 0 ) and ( roiBounds[0] < -180.0 ) ) else 0.0
                     outputOrigin[ iCoord ] = gridOrigin[ iCoord ] = values[0] + lonOffset
                     spacing = (values[size-1] - values[0])/(size-1)
                     if roiBounds:
@@ -467,7 +471,7 @@ class CDMSDatasetRecord():
             iCoord  = 1
         if isLevelAxis( axis ): 
             self.lev = axis
-            iCoord  = 2 if ( outputType == CDMSDataType.Volume ) else -1
+            iCoord  = 2 if ( outputType <> CDMSDataType.Hoffmuller ) else -1
         if axis.isTime():
             self.time = axis
             iCoord  = 2 if ( outputType == CDMSDataType.Hoffmuller ) else -1
@@ -1882,66 +1886,79 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         The CDAT metadata is serialized, wrapped as a vtkStringArray, and then attached as field data to the vtkImageData object.  
         """
         varList = orec.varList
+        npts = -1
+        dataDebug = False
         if len( varList ) == 0: return False
-        cachedImageDataName = getItem( varList[-1] )
-        varNameComponents = cachedImageDataName.split('*')
-        if len( varNameComponents ) == 1:
-            dsid = self.cdmsDataset.getReferenceDsetId()
-            varName = varNameComponents[0]
-        else:
-            dsid = varNameComponents[0]
-            varName = varNameComponents[1]
-        ds = self.cdmsDataset[ dsid ]
-        self.timeRange = self.cdmsDataset.timeRange
-        portName = orec.name
-        selectedLevel = orec.getSelectedLevel()
-        ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
-        imageDataCreated = False
-        default_dtype = np.ushort if ( (self.outputType == CDMSDataType.Volume ) or (self.outputType == CDMSDataType.Hoffmuller ) )  else np.float 
-        scalar_dtype = args.get( "dtype", default_dtype )
-        self._max_scalar_value = getMaxScalarValue( scalar_dtype )
-        self._range = [ 0.0, self._max_scalar_value ]  
-        datatype = getDatatypeString( scalar_dtype )
-
-        varDataId = '%s.%s.%d' % ( dsid, varName, self.outputType )
-        varDataSpecs = self.getCachedData( self.timeValue.value, varDataId )
-        if varDataSpecs == None:
-            if varName == '__zeros__':
-                newDataArray = np.zeros( npts, dtype=scalar_dtype ) 
-                var_md = {}
-                var_md[ 'range' ] = ( 0.0, 0.0 )
-                var_md[ 'scale' ] = ( 0.0, 1.0 ) 
-                self.setCachedData( self.timeValue.value, varName, ( newDataArray, var_md ) )   
-            else: 
-                tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue ] 
-                varData = self.cdmsDataset.getVarDataCube( dsid, varName, tval, selectedLevel )
-                if varData.id <> 'NULL':
-                    varDataSpecs = ds.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale, self.outputType )
-                    range_min = varData.min()
-                    range_max = varData.max()
-                    print " Read volume data for variable %s, scalar range = [ %f, %f ]" % ( varName, range_min, range_max )
-                    newDataArray = varData
-                    shift, scale = 0.0, 1.0
-                               
-                    if scalar_dtype <> np.float:
-                        shift = -range_min
-                        scale = ( self._max_scalar_value ) / ( range_max - range_min )            
-                        rescaledDataArray = ( ( newDataArray + shift ) * scale )
-                        newDataArray = rescaledDataArray.astype(scalar_dtype) 
-                    
-                    newDataArray = newDataArray.data.ravel('F') 
-    #                        ushrt_range_min = newDataArray.min()
-    #                        ushrt_range_max = newDataArray.max()
-                    var_md = copy.copy( varData.attributes )
-                    var_md[ 'range' ] = ( range_min, range_max )
-                    var_md[ 'scale' ] = ( shift, scale ) 
-                    varDataSpecs['newDataArray'] = newDataArray
-                    md =  varDataSpecs['md']                 
-                    md['datatype'] = datatype
-                    md['timeValue']= self.timeValue.value
-                    md[ varName ] = var_md
-                    self.setCachedData( self.timeValue.value, varDataId, varDataSpecs )  
+        varDataIds = []
+        exampleVarDataSpecs = None
+        for varRec in varList:
+            imageDataName = getItem( varRec )
+            varNameComponents = imageDataName.split('*')
+            if len( varNameComponents ) == 1:
+                dsid = self.cdmsDataset.getReferenceDsetId()
+                varName = varNameComponents[0]
+            else:
+                dsid = varNameComponents[0]
+                varName = varNameComponents[1]
+            ds = self.cdmsDataset[ dsid ]
+            self.timeRange = self.cdmsDataset.timeRange
+            portName = orec.name
+            selectedLevel = orec.getSelectedLevel()
+            ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
+            imageDataCreated = False
+            default_dtype = np.ushort if ( (self.outputType == CDMSDataType.Volume ) or (self.outputType == CDMSDataType.Hoffmuller ) )  else np.float 
+            scalar_dtype = args.get( "dtype", default_dtype )
+            self._max_scalar_value = getMaxScalarValue( scalar_dtype )
+            self._range = [ 0.0, self._max_scalar_value ]  
+            datatype = getDatatypeString( scalar_dtype )
+            range_min, range_max, scale, shift  = 0.0, 0.0, 1.0, 0.0   
+            varDataId = '%s.%s.%d' % ( dsid, varName, self.outputType )
+            varDataIds.append( varDataId )
+            varDataSpecs = self.getCachedData( self.timeValue.value, varDataId )
+            flatArray = None
+            if varDataSpecs == None:
+                if varName == '__zeros__':
+                    assert( npts > 0 )
+                    newDataArray = np.zeros( npts, dtype=scalar_dtype ) 
+                    self.setCachedData( self.timeValue.value, varName, ( newDataArray, var_md ) ) 
+                    varDataSpecs = {} 
+                    varDataSpecs.update( exampleVarDataSpecs ) 
+                else: 
+                    tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue ] 
+                    varData = self.cdmsDataset.getVarDataCube( dsid, varName, tval, selectedLevel )
+                    if varData.id <> 'NULL':
+                        varDataSpecs = ds.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale, self.outputType )
+                        if (exampleVarDataSpecs == None) and (varDataSpecs <> None): exampleVarDataSpecs = varDataSpecs
+                        range_min = varData.min()
+                        range_max = varData.max()
+                        print " Read volume data for variable %s, scalar range = [ %f, %f ]" % ( varName, range_min, range_max )
+                        newDataArray = varData
+                                                          
+                        if scalar_dtype == np.float:
+                             newDataArray = newDataArray.filled( 1.0e-15 * range_min )
+                        else:
+                            shift = -range_min
+                            scale = ( self._max_scalar_value ) / ( range_max - range_min )            
+                            rescaledDataArray = ( ( newDataArray + shift ) * scale )
+                            newDataArray = rescaledDataArray.astype(scalar_dtype) 
+                            newDataArray = newDataArray.filled( 0 )
+                        
+                        if dataDebug: self.dumpData( varName, newDataArray )
+                        flatArray = newDataArray.ravel('F') 
+                        if npts == -1:  npts = flatArray.size
+                        else:           assert( npts == flatArray.size )
+                            
+                var_md = copy.copy( varData.attributes )
+                var_md[ 'range' ] = ( range_min, range_max )
+                var_md[ 'scale' ] = ( shift, scale ) 
+                varDataSpecs['newDataArray'] = flatArray
+                md =  varDataSpecs['md']                 
+                md['datatype'] = datatype
+                md['timeValue']= self.timeValue.value
+                md[ varName ] = var_md
+                self.setCachedData( self.timeValue.value, varDataId, varDataSpecs )  
         
+        cachedImageDataName = '-'.join( varDataIds )
         imageDataCache = self.getImageDataCache()              
         if not ( cachedImageDataName in imageDataCache ):
             image_data = vtk.vtkImageData() 
@@ -1962,43 +1979,44 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 #            offset = ( -gridSpacing[0]*gridExtent[0], -gridSpacing[1]*gridExtent[2], -gridSpacing[2]*gridExtent[4] )
             imageDataCache[ cachedImageDataName ] = image_data
             imageDataCreated = True
+                
         image_data = imageDataCache[ cachedImageDataName ]
         nVars = len( varList )
-        npts = image_data.GetNumberOfPoints()
+#        npts = image_data.GetNumberOfPoints()
         pointData = image_data.GetPointData()
         for aname in range( pointData.GetNumberOfArrays() ): 
             pointData.RemoveArray( pointData.GetArrayName(aname) )
         self.fieldData.RemoveArray('metadata')
         extent = image_data.GetExtent()    
         scalars, nTup = None, 0
-        vars = []
-        
-        newDataArray = varDataSpecs.get( 'newDataArray', None )
-        md =  varDataSpecs[ 'md' ] 
-        var_md = md[ varName ]            
-        if newDataArray <> None:
-            vars.append( varName ) 
-            vtkdata = getNewVtkDataArray( scalar_dtype )
-            nTup = newDataArray.size
-            vtkdata.SetNumberOfTuples( nTup )
-            vtkdata.SetNumberOfComponents( 1 )
-            vtkdata.SetVoidArray( newDataArray, newDataArray.size, 1 )
-            vtkdata.SetName( varName )
-            vtkdata.Modified()
-            pointData.AddArray( vtkdata )
-            if (scalars == None) and (varName <> '__zeros__'):
-                scalars = varName
-                pointData.SetActiveScalars( varName  ) 
-                md[ 'valueRange'] = var_md[ 'range' ] 
-                md[ 'scalars'] = varName 
-#                print " --- CDMS-SetScalars: %s, Range= %s" % ( varName, str( var_md[ 'range' ] ) ) 
+        vars = []       
+        for varDataId in varDataIds: 
+            varDataSpecs = self.getCachedData( self.timeValue.value, varDataId )   
+            newDataArray = varDataSpecs.get( 'newDataArray', None )
+            md = varDataSpecs[ 'md' ] 
+            varName = varDataId.split('.')[1]
+            var_md = md[ varName ]            
+            if newDataArray <> None:
+                vars.append( varName ) 
+                vtkdata = getNewVtkDataArray( scalar_dtype )
+                nTup = newDataArray.size
+                vtkdata.SetNumberOfTuples( nTup )
+                vtkdata.SetNumberOfComponents( 1 )
+                vtkdata.SetVoidArray( newDataArray, newDataArray.size, 1 )
+                vtkdata.SetName( varName )
+                vtkdata.Modified()
+                pointData.AddArray( vtkdata )
+                if (scalars == None) and (varName <> '__zeros__'):
+                    scalars = varName
+                    pointData.SetActiveScalars( varName  ) 
+                    md[ 'valueRange'] = var_md[ 'range' ] 
+                    md[ 'scalars'] = varName 
         if (self.outputType == CDMSDataType.Vector ): 
             vtkdata = getNewVtkDataArray( scalar_dtype )
             vtkdata.SetNumberOfComponents( 3 )
             vtkdata.SetNumberOfTuples( nTup )
             iComp = 0
-            for varRec in varList:
-                varName = varRec[0]
+            for varName in vars:
                 fromArray =  pointData.GetArray( varName )
                 fromNTup = fromArray.GetNumberOfTuples()
                 tup0 = fromArray.GetValue(0)
@@ -2015,7 +2033,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                        
         image_data.Modified()
         return cachedImageDataName if imageDataCreated else None
-            
+                
     def getMetadata( self, metadata={}, port=None ):
         PersistentVisualizationModule.getMetadata( self, metadata )
         if self.cdmsDataset:
@@ -2264,7 +2282,8 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
             for oRec in self.outRecMgr.getOutputRecs( self.datasetId ): 
                 for varCombo in oRec.varComboList: 
                     varCombo.clear()
-                    if ( self.outputType == CDMSDataType.Vector ):  varCombo.addItem( '__zeros__' ) 
+                    if ( self.outputType == CDMSDataType.Vector ):  
+                        varCombo.addItem( '__zeros__' ) 
                     if ( oRec.levelsCombo <> None) and ( self.levelsAxis <> None ): 
                         oRec.levelsCombo.clear()
                         levels = self.levelsAxis.getValue()

@@ -10,7 +10,7 @@ Created on Dec 7, 2010
 """
 identifier = 'gov.nasa.nccs.vtdv3d'
 name = 'vtDV3D'
-version = '0.1.6'
+version = '0.1.7'
 
 #Configuration object
 import sys

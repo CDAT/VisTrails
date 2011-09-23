@@ -742,7 +742,7 @@ class PersistentModule( QObject ):
             if configFunct.type == 'leveling':
                 configData = configFunct.update( self.InteractionState, x, y, wsize )
                 if configData <> None:
-                    print " Update %s Leveling, data = %s " % ( configFunct.name, str( configData ) )
+#                    print " Update %s Leveling, data = %s " % ( configFunct.name, str( configData ) )
                     if self.wmod: self.wmod.setResult( configFunct.name, configData )
                     self.setParameter( configFunct.name, configData ) 
                     textDisplay = configFunct.getTextDisplay()
