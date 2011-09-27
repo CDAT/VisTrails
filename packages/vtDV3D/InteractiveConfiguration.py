@@ -30,6 +30,7 @@ class QtWindowLeveler( QObject ):
     
     WindowRelative = 0
     BoundsRelative = 1
+    Absolute = 2
    
     def __init__( self, **args ):
         QObject.__init__( self )
@@ -38,7 +39,7 @@ class QtWindowLeveler( QObject ):
         self.CurrentWindow            = 1.0
         self.CurrentLevel             = 0.5
         self.sensitivity              = args.get( 'sensitivity', (1.5, 5.0) )
-        self.algorithm                = self.WindowRelative if args.get( 'windowing', True ) else self.BoundsRelative
+        self.algorithm                = self.WindowRelative if args.get( 'windowing', True ) else self.Absolute
         self.scaling = 1.0        
         self.invert = False
 
@@ -97,6 +98,14 @@ class QtWindowLeveler( QObject ):
               else:             result =  [ rmin, rmax, 0 ]
               self.CurrentWindow = result[1] - result[0]
               self.CurrentLevel =  0.5 * ( result[0] + result[1] )
+        elif self.algorithm == self.Absolute:
+              dx =  1.0 + self.sensitivity[0] * ( ( X - self.StartWindowLevelPositionX )  / self.StartWindowLevelPositionX ) 
+              dy =  1.0 + self.sensitivity[1] * ( ( Y - self.StartWindowLevelPositionY ) / self.StartWindowLevelPositionY ) 
+              self.CurrentWindow = dx*self.InitialWindow
+              self.CurrentLevel =  dy*self.InitialLevel
+              print str( [dx,dy,self.CurrentWindow,self.CurrentLevel] )
+              result = [ self.CurrentWindow, self.CurrentLevel, 0 ]
+              self.emit( self.update_range_signal, result )
 #        print " --- Set Range: ( %f, %f ),   Initial Range = ( %f, %f ), P = ( %d, %d ) dP = ( %f, %f ) " % ( result[0], result[1], self.InitialRange[0], self.InitialRange[1], X, Y, dx, dy )      
         return result
       
@@ -350,7 +359,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     def __init__( self, name, key, **args ):
         ConfigurableFunction.__init__( self, name, [ ( Float, 'min'), ( Float, 'max'), ( Integer, 'ctrl') ], key, **args  )
         self.type = 'leveling'
-        self.windowLeveler = QtWindowLeveler()
+        self.windowLeveler = QtWindowLeveler( **args )
         if( self.initHandler == None ): self.initHandler = self.initLeveling
         if( self.startHandler == None ): self.startHandler = self.startLeveling
         if( self.updateHandler == None ): self.updateHandler = self.updateLeveling
