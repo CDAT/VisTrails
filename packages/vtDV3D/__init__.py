@@ -92,6 +92,7 @@ def initialize(*args, **keywords):
     from WorkflowModule import WorkflowModule
 #        from packages.pylab.init import MplFigureManager
     from VectorCutPlaneModule import VectorCutPlane 
+    from VectorVolumeModule import VectorVolume 
     from packages.spreadsheet.basic_widgets import CellLocation
     from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
     import api
@@ -194,6 +195,11 @@ def initialize(*args, **keywords):
     reg.add_output_port( VectorCutPlane, "volume", AlgorithmOutputModule3D ) 
     VectorCutPlane.registerConfigurableFunctions(  reg )
 
+    reg.add_module( VectorVolume, namespace='vtk'  )
+    reg.add_input_port( VectorVolume, "colors", AlgorithmOutputModule3D  )
+    reg.add_input_port( VectorVolume, "vector", AlgorithmOutputModule3D  )
+    reg.add_output_port( VectorVolume, "volume", AlgorithmOutputModule3D ) 
+    VectorVolume.registerConfigurableFunctions(  reg )
 #    reg.add_module( Resample )
 #    reg.add_input_port( Resample, "position", [ ( Float, 'x' ), ( Float, 'y' ), ( Float, 'z' ) ], True   )    
 #    reg.add_output_port( Resample, "position",  [ ( Float, 'x' ), ( Float, 'y' ), ( Float, 'z' ) ], True  )

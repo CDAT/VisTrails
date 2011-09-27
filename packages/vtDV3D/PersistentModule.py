@@ -355,8 +355,7 @@ class PersistentModule( QObject ):
             
     def initializeScalarRange( self ): 
         metadata = self.getMetadata()  
-        scalars =  metadata.get( 'scalars', None ) 
-        var_md = metadata.get( scalars , None )
+        var_md = metadata.get( 'attributes' , None )
         if var_md <> None:
             range = var_md.get( 'range', None )
             if range: 

@@ -1912,7 +1912,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self._range = [ 0.0, self._max_scalar_value ]  
             datatype = getDatatypeString( scalar_dtype )
             range_min, range_max, scale, shift  = 0.0, 0.0, 1.0, 0.0   
-            varDataId = '%s.%s.%d' % ( dsid, varName, self.outputType )
+            varDataId = '%s;%s;%d' % ( dsid, varName, self.outputType )
             varDataIds.append( varDataId )
             varDataSpecs = self.getCachedData( self.timeValue.value, varDataId )
             flatArray = None
@@ -1955,7 +1955,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 md =  varDataSpecs['md']                 
                 md['datatype'] = datatype
                 md['timeValue']= self.timeValue.value
-                md[ varName ] = var_md
+                md[ 'attributes' ] = var_md
                 self.setCachedData( self.timeValue.value, varDataId, varDataSpecs )  
         
         cachedImageDataName = '-'.join( varDataIds )
@@ -1994,8 +1994,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             varDataSpecs = self.getCachedData( self.timeValue.value, varDataId )   
             newDataArray = varDataSpecs.get( 'newDataArray', None )
             md = varDataSpecs[ 'md' ] 
-            varName = varDataId.split('.')[1]
-            var_md = md[ varName ]            
+            varName = varDataId.split(';')[1]
+            var_md = md[ 'attributes' ]            
             if newDataArray <> None:
                 vars.append( varName ) 
                 vtkdata = getNewVtkDataArray( scalar_dtype )
@@ -2022,8 +2022,11 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 tup0 = fromArray.GetValue(0)
                 toNTup = vtkdata.GetNumberOfTuples()
                 vtkdata.CopyComponent( iComp, fromArray, 0 )
+                if iComp == 0: 
+                    md[ 'scalars'] = varName 
                 iComp = iComp + 1
             vtkdata.SetName( 'vectors' )
+            md[ 'vectors'] = ','.join( vars ) 
             vtkdata.Modified()
             pointData.SetVectors(vtkdata)
             pointData.SetActiveVectors( 'vectors'  )         
