@@ -449,6 +449,8 @@ class CDMSDatasetRecord():
             if   axis.isLongitude():  bounds = [ roi[0], roi[2] ]
             elif axis.isLatitude():   bounds = [ roi[1], roi[3] ] 
         if bounds:
+            if axis.isLongitude() and (values[0] > values[-1]):
+               values[-1] = values[-1] + 360.0 
             value_bounds = [ min(values[0],values[-1]), max(values[0],values[-1]) ]
             mid_value = ( value_bounds[0] + value_bounds[1] ) / 2.0
             mid_bounds = ( bounds[0] + bounds[1] ) / 2.0
@@ -703,13 +705,23 @@ class PM_CDMS_VCDATInterface( PersistentVisualizationModule ):
         """  
         self.file = self.getInputValue( "FileName" )
         self.variable = self.getInputValue( "VariableName" )
+        self.variable1 = self.getInputValue( "VariableName1" )
+        self.variable2 = self.getInputValue( "VariableName2" )
+        self.variable3 = self.getInputValue( "VariableName3" )
         self.axes = self.getInputValue( "Axes" )
         self.row = int( self.getInputValue( "Row", 0 ) ) 
         self.column = int( self.getInputValue( "Column", 0  ) )
+        self.row1 = int( self.getInputValue( "Row1", 0 ) ) 
+        self.column1 = int( self.getInputValue( "Column1", 0  ) )
+        self.row2 = int( self.getInputValue( "Row2", 0 ) ) 
+        self.column2 = int( self.getInputValue( "Column2", 0  ) )
         zscale = getItem( self.getInputValue( "zscale",   5.0  )  )
         configParms = { 'zscale' : zscale }
         interfaceSpecs = CDMS_VCDATInterfaceSpecs( configParms )
-        interfaceSpecs.addInput( 'Input1', self.file, self.variable, self.axes )
+        if self.variable  <> None: interfaceSpecs.addInput( 'Input', self.file, self.variable, self.axes )
+        if self.variable1 <> None: interfaceSpecs.addInput( 'Input1', self.file, self.variable1, self.axes )
+        if self.variable2 <> None: interfaceSpecs.addInput( 'Input2', self.file, self.variable2, self.axes )         
+        if self.variable3 <> None: interfaceSpecs.addInput( 'Input3', self.file, self.variable3, self.axes )         
         self.setResult( 'executionSpecs', [ interfaceSpecs ] )
 #        executionSpecs = ';'.join( [ self.file, self.variable, self.axes ] ) if self.file else None
 #        if executionSpecs: 
@@ -719,6 +731,17 @@ class PM_CDMS_VCDATInterface( PersistentVisualizationModule ):
         if ( (self.row >= 0) and (self.column >= 0) ):
              cellLocation = "%s%d" % ( chr( ord('A') + self.column ), self.row + 1 )    
         self.setResult( 'cellLocation', [ cellLocation ] )
+        
+        cellLocation = "B1" 
+        if ( (self.row1 >= 0) and (self.column1 >= 0) ):
+             cellLocation = "%s%d" % ( chr( ord('A') + self.column1 ), self.row1 + 1 )    
+        self.setResult( 'cellLocation1', [ cellLocation ] )
+
+        cellLocation = "C1" 
+        if ( (self.row2 >= 0) and (self.column2 >= 0) ):
+             cellLocation = "%s%d" % ( chr( ord('A') + self.column2 ), self.row2 + 1 )    
+        self.setResult( 'cellLocation2', [ cellLocation ] )
+
 #        print " >>>--->>> CellLocation: { %s } " % cellLocation
 
 #        fileAliases = ','.join( [ "%s:%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
@@ -925,7 +948,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.timeRange = None
         self.nTS = 0
         self.variableList = ( [], [] )
-        self.lonRangeType = 0
+        self.lonRangeType = 1
         self.fullRoi = [ [ 0.0, -90.0, 360.0, 90.0 ], [ -180.0, -90.0, 180.0, 90.0 ] ]
         self.roi = self.fullRoi[ self.lonRangeType ]
         self.zscale = 1.0
@@ -1287,7 +1310,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         roiButton_layout.addWidget( self.resetRoiButton )
         self.connect( self.resetRoiButton, SIGNAL('clicked(bool)'), self.resetRoi )
         
-        self.roiSelector = ROISelectionDialog( self.lonRangeType, self.parent() )
+        self.roiSelector = ROISelectionDialog( self.parent() )
         if self.roi: self.roiSelector.setROI( self.roi )
         self.connect(self.roiSelector, SIGNAL('doneConfigure()'), self.setRoi )
 
@@ -1466,7 +1489,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             parmRecList.append( ( 'datasetId', [ self.currentDatasetId, DataSetVersion ] ), )
             self.datasetChanged = False
         parmRecList.append( ( 'grid', [ self.selectedGrid, ] ), )
-        parmRecList.append( ( 'timeRange' , [ self.timeRange[0], self.timeRange[1], float(self.relativeStartTime.value), self.relativeTimeStep ]  ), )       
+        try: parmRecList.append( ( 'timeRange' , [ self.timeRange[0], self.timeRange[1], float(self.relativeStartTime.value), self.relativeTimeStep ]  ), )  
+        except: pass     
         parmRecList.append( ( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  ), )          
         parmRecList.append( ( 'zscale' , [ self.zscale ]  ), )  
         parmRecList.append( ( 'decimation' , self.decimation  ), )  
@@ -1476,9 +1500,12 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
            
     def okTriggered(self, checked = False):
         t0, t1 = self.startIndexEdit.text(), self.endIndexEdit.text()
-        self.timeRange = [ int( str( t0 ) ), int( str( t1 ) ) ]
-        self.zscale = float( self.selectZScaleLineEdit.text() )
-        self.decimation = [  self.clientDecimationCombo.currentIndex(), self.serverDecimationCombo.currentIndex() ]
+        try: self.timeRange = [ int( str( t0 ) ), int( str( t1 ) ) ]
+        except: self.timeRange = [ 0, 0 ]
+        try: self.zscale = float( self.selectZScaleLineEdit.text() )
+        except: self.zscale = 1.0
+        try: self.decimation = [  self.clientDecimationCombo.currentIndex(), self.serverDecimationCombo.currentIndex() ]
+        except: self.decimation = [ 0, 0 ]
         self.updateController(self.controller)
         self.emit(SIGNAL('doneConfigure()'))
 
@@ -1892,6 +1919,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         varDataIds = []
         exampleVarDataSpecs = None
         for varRec in varList:
+            range_min, range_max, scale, shift  = 0.0, 0.0, 1.0, 0.0   
             imageDataName = getItem( varRec )
             varNameComponents = imageDataName.split('*')
             if len( varNameComponents ) == 1:
@@ -1911,7 +1939,6 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self._max_scalar_value = getMaxScalarValue( scalar_dtype )
             self._range = [ 0.0, self._max_scalar_value ]  
             datatype = getDatatypeString( scalar_dtype )
-            range_min, range_max, scale, shift  = 0.0, 0.0, 1.0, 0.0   
             varDataId = '%s;%s;%d' % ( dsid, varName, self.outputType )
             varDataIds.append( varDataId )
             varDataSpecs = self.getCachedData( self.timeValue.value, varDataId )
@@ -1921,8 +1948,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     assert( npts > 0 )
                     newDataArray = np.zeros( npts, dtype=scalar_dtype ) 
                     self.setCachedData( self.timeValue.value, varName, ( newDataArray, var_md ) ) 
-                    varDataSpecs = {} 
-                    varDataSpecs.update( exampleVarDataSpecs ) 
+                    varDataSpecs = copy.deepcopy( exampleVarDataSpecs )
+                    varDataSpecs['newDataArray'] = newDataArray.ravel('F')  
                 else: 
                     tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue ] 
                     varData = self.cdmsDataset.getVarDataCube( dsid, varName, tval, selectedLevel )
@@ -1948,14 +1975,16 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         if npts == -1:  npts = flatArray.size
                         else:           assert( npts == flatArray.size )
                             
-                var_md = copy.copy( varData.attributes )
-                var_md[ 'range' ] = ( range_min, range_max )
-                var_md[ 'scale' ] = ( shift, scale ) 
-                varDataSpecs['newDataArray'] = flatArray
-                md =  varDataSpecs['md']                 
-                md['datatype'] = datatype
-                md['timeValue']= self.timeValue.value
-                md[ 'attributes' ] = var_md
+                        var_md = copy.copy( varData.attributes )
+                        var_md[ 'range' ] = ( range_min, range_max )
+                        var_md[ 'scale' ] = ( shift, scale )   
+                        varDataSpecs['newDataArray'] = flatArray                     
+                        md =  varDataSpecs['md']                 
+                        md['datatype'] = datatype
+                        md['timeValue']= self.timeValue.value
+                        md[ 'attributes' ] = var_md
+                        
+                
                 self.setCachedData( self.timeValue.value, varDataId, varDataSpecs )  
         
         cachedImageDataName = '-'.join( varDataIds )
@@ -2030,10 +2059,16 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             vtkdata.Modified()
             pointData.SetVectors(vtkdata)
             pointData.SetActiveVectors( 'vectors'  )         
-        if len( vars )== 0: raise ModuleError( self, 'No dataset variables selected for output %s.' % orec.name)             
-        md[ 'vars' ] = vars
-        enc_mdata = encodeToString( md ) 
-        self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                        
+        if len( vars )== 0: raise ModuleError( self, 'No dataset variables selected for output %s.' % orec.name) 
+        for varDataId in varDataIds:
+            varName = varDataId.split(';')[1] 
+            if varName <> '__zeros__':
+                varDataSpecs = self.getCachedData( self.timeValue.value, varDataId )   
+                md = varDataSpecs[ 'md' ]            
+                md[ 'vars' ] = vars
+                enc_mdata = encodeToString( md ) 
+                self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) ) 
+                break                       
         image_data.Modified()
         return cachedImageDataName if imageDataCreated else None
                 

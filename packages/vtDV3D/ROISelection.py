@@ -95,18 +95,18 @@ class GraphicsView(QGraphicsView):
         imagePtScaled = None
         ptS = None
         point = self.mapFromGlobal(QCursor.pos())
-        if self.geometry().contains(point):
-            ptS = self.mapToScene(point) - self.imageGraphicsItem.pos()
-            mapPt = ptS - self.imageOriginOffset
-            imagePtScaled = QPointF( (mapPt.x() * self.imageLatLonScale[0]) + self.Extent[0], self.Extent[3] - (mapPt.y() * self.imageLatLonScale[1] ) ) 
-            if imagePtScaled.x() < self.Extent[0]:
-                imagePtScaled.setX( self.Extent[0] )      
-            if imagePtScaled.x() > self.Extent[2]:
-                imagePtScaled.setX( self.Extent[2] )      
-            if imagePtScaled.y() < self.Extent[1]:
-                imagePtScaled.setY( self.Extent[1] )      
-            if imagePtScaled.y() > self.Extent[3]:
-                imagePtScaled.setY( self.Extent[3] )      
+#        if self.geometry().contains(point):
+        ptS = self.mapToScene(point) - self.imageGraphicsItem.pos()
+        mapPt = ptS - self.imageOriginOffset
+        imagePtScaled = QPointF( (mapPt.x() * self.imageLatLonScale[0]) + self.Extent[0], self.Extent[3] - (mapPt.y() * self.imageLatLonScale[1] ) ) 
+        if imagePtScaled.x() < self.Extent[0]:
+            imagePtScaled.setX( self.Extent[0] )      
+        if imagePtScaled.x() > self.Extent[2]:
+            imagePtScaled.setX( self.Extent[2] )      
+        if imagePtScaled.y() < self.Extent[1]:
+            imagePtScaled.setY( self.Extent[1] )      
+        if imagePtScaled.y() > self.Extent[3]:
+            imagePtScaled.setY( self.Extent[3] )      
         return ( imagePtScaled, ptS )
     
     def GetScenePointFromGeoPoint(self, geoPt ):
@@ -165,11 +165,11 @@ class MainForm(QDialog):
         
 class ROISelectionDialog(QDialog):
 
-    def __init__(self, lonRangeType, parent=None):
+    def __init__(self, parent=None, **args ):
         super(QDialog, self).__init__(parent)
-         
-        self.lonRangeType = lonRangeType       
+             
         self.scene = QGraphicsScene(self)
+        self.lonRangeType = args.get( 'lonRangeType', 1 )
         worldMapFile = QString( defaultMapFile[ self.lonRangeType ] )
         pixmap = QPixmap(worldMapFile) 
         item = QGraphicsPixmapItem( pixmap, None, self.scene )

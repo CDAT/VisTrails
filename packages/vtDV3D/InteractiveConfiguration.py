@@ -45,7 +45,7 @@ class QtWindowLeveler( QObject ):
 
     def setDataRange( self, data_range ):
         self.scaling = 0.5 * ( abs(data_range[0]) + abs(data_range[1]) )
-        self.OriginalWindow = ( data_range[1] - data_range[0] ) / self.scaling
+        self.OriginalWindow = ( data_range[1] - data_range[0] ) / self.scaling if ( self.scaling > 0.0 ) else 1.0
         self.OriginalLevel = 1.0
       
         if( abs( self.OriginalWindow ) < 0.001 ): self.OriginalWindow = -0.001 if ( self.OriginalWindow < 0.0 ) else  0.001
@@ -1096,6 +1096,29 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         listContainer.adjustSize()
         listContainer.setFixedHeight(listContainer.height())
         return listContainer 
+
+#
+#        for i in xrange(len(self.inputPorts)):
+#            port = self.inputPorts[i]
+#            checkBox = self.checkBoxFromPort(port, True)
+#            checkBox.setFocusPolicy(Qt.StrongFocus)
+#            self.connect(checkBox, SIGNAL("stateChanged(int)"),
+#                         self.updateState)
+#            self.inputDict[port.name] = checkBox
+#            listContainer.layout().addWidget(checkBox, i+1, 0)
+#        
+#        for i in xrange(len(self.outputPorts)):
+#            port = self.outputPorts[i]
+#            checkBox = self.checkBoxFromPort(port)
+#            checkBox.setFocusPolicy(Qt.StrongFocus)
+#            self.connect(checkBox, SIGNAL("stateChanged(int)"),
+#                         self.updateState)
+#            self.outputDict[port.name] = checkBox
+#            listContainer.layout().addWidget(checkBox, i+1, 1)
+#        
+#        listContainer.adjustSize()
+#        listContainer.setFixedHeight(listContainer.height())
+#        return listContainer 
          
     def closeEvent(self, event):
         self.askToSaveChanges()
@@ -1112,26 +1135,47 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
     def saveTriggered(self, checked = False):
         self.okTriggered()
         for port in self.inputPorts:
-            entry = (PortEndPoint.Destination, port.name)
             if (port.optional and
                 self.inputDict[port.name].checkState()==Qt.Checked):
-                self.module.portVisible.add(entry)
+                self.module.visible_input_ports.add(port.name)
             else:
-                self.module.portVisible.discard(entry)
+                self.module.visible_input_ports.discard(port.name)
             
         for port in self.outputPorts:
-            entry = (PortEndPoint.Source, port.name)
             if (port.optional and
                 self.outputDict[port.name].checkState()==Qt.Checked):
-                self.module.portVisible.add(entry)
+                self.module.visible_output_ports.add(port.name)
             else:
-                self.module.portVisible.discard(entry)
+                self.module.visible_output_ports.discard(port.name)
 #        self.saveButton.setEnabled(False)
 #        self.resetButton.setEnabled(False)
         self.state_changed = False
         self.emit(SIGNAL("stateChanged"))
         self.emit(SIGNAL('doneConfigure'), self.module.id)
         
+#    def saveTriggered(self, checked = False):
+#        self.okTriggered()
+#        for port in self.inputPorts:
+#            entry = (PortEndPoint.Destination, port.name)
+#            if (port.optional and
+#                self.inputDict[port.name].checkState()==Qt.Checked):
+#                self.module.portVisible.add(entry)
+#            else:
+#                self.module.portVisible.discard(entry)
+#            
+#        for port in self.outputPorts:
+#            entry = (PortEndPoint.Source, port.name)
+#            if (port.optional and
+#                self.outputDict[port.name].checkState()==Qt.Checked):
+#                self.module.portVisible.add(entry)
+#            else:
+#                self.module.portVisible.discard(entry)
+##        self.saveButton.setEnabled(False)
+##        self.resetButton.setEnabled(False)
+#        self.state_changed = False
+#        self.emit(SIGNAL("stateChanged"))
+#        self.emit(SIGNAL('doneConfigure'), self.module.id)
+
     def resetTriggered(self):
         self.setFocus(Qt.MouseFocusReason)
         self.setUpdatesEnabled(False)
@@ -1160,6 +1204,35 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 #        self.resetButton.setEnabled(False)
         self.state_changed = False
         self.emit(SIGNAL("stateChanged"))
+                
+#    def resetTriggered(self):
+#        self.setFocus(Qt.MouseFocusReason)
+#        self.setUpdatesEnabled(False)
+#        for i in xrange(len(self.inputPorts)):
+#            port = self.inputPorts[i]
+#            entry = (PortEndPoint.Destination, port.name)
+#            checkBox = self.inputDict[port.name]
+#            if not port.optional or entry in self.module.portVisible:
+#                checkBox.setCheckState(Qt.Checked)
+#            else:
+#                checkBox.setCheckState(Qt.Unchecked)
+#            if not port.optional or port.sigstring=='()':
+#                checkBox.setEnabled(False)
+#        for i in xrange(len(self.outputPorts)):
+#            port = self.outputPorts[i]
+#            entry = (PortEndPoint.Source, port.name)
+#            checkBox = self.outputDict[port.name]
+#            if not port.optional or entry in self.module.portVisible:
+#                checkBox.setCheckState(Qt.Checked)
+#            else:
+#                checkBox.setCheckState(Qt.Unchecked)
+#            if not port.optional:
+#                checkBox.setEnabled(False)
+#        self.setUpdatesEnabled(True)
+##        self.saveButton.setEnabled(False)
+##        self.resetButton.setEnabled(False)
+#        self.state_changed = False
+#        self.emit(SIGNAL("stateChanged"))
         
     def stateChanged(self, changed = True ):
         self.state_changed = changed
@@ -1356,22 +1429,21 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                         orec = oRecMgr.getOutputRec( dsetId, portName )
                         return orec.getVarList()
         return []        
-
+        
     def checkBoxFromPort(self, port, input_=False):
         checkBox = QCheckBox(port.name)
         if input_:
-            pep = PortEndPoint.Destination
+            port_visible = port.name in self.module.visible_input_ports
         else:
-            pep = PortEndPoint.Source
-        if not port.optional or (pep, port.name) in self.module.portVisible:
+            port_visible = port.name in self.module.visible_output_ports
+        if not port.optional or port_visible:
             checkBox.setCheckState(Qt.Checked)
         else:
             checkBox.setCheckState(Qt.Unchecked)
         if not port.optional or (input_ and port.sigstring=='()'):
             checkBox.setEnabled(False)
         return checkBox
-        
-            
+               
 ################################################################################
         
 class AnimationConfigurationDialog( IVModuleConfigurationDialog ):

@@ -349,27 +349,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             vertExtent[1] = y1 - extOffset
             
         overlapsBorder = (dataLocation[0]-selectionDim[0] < 0.0) and ((dataLocation[0]+selectionDim[0]) > 0.0) 
-        if not overlapsBorder:
-            
-            cut0 = NormalizeLon( dataXLoc - selectionDim[0] )
-            sliceSize =  imageLen[0] * ( cut0 / 360.0 )
-            sliceCoord = int( round( x0 + sliceSize) )        
-            extent = list( baseExtent )         
-            extent[0] = x0 + sliceCoord - 1
-        
-            cut1 = NormalizeLon( dataXLoc + selectionDim[0] )
-            sliceSize =  imageLen[0] * ( cut1 / 360.0 )
-            sliceCoord = int( round( x0 + sliceSize) )       
-            extent[1] = x0 + sliceCoord
-            clip = vtk.vtkImageClip()
-            clip.SetInput( baseImage )
-            clip.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
-            self.x0 = cut0
-            bounded_dims = ( extent[1] - extent[0] + 1, vertExtent[1] - vertExtent[0] + 1 )
-
-            imageInfo.SetInputConnection( clip.GetOutputPort() ) 
-            
-        else:
+        if overlapsBorder:
             cut0 = NormalizeLon( dataXLoc + selectionDim[0] )
             sliceSize =  imageLen[0] * ( cut0 / 360.0 )
             sliceCoord = int( round( x0 + sliceSize) )        
@@ -397,6 +377,27 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             bounded_dims = ( size0 + size1, vertExtent[1] - vertExtent[0] + 1 )
             
             imageInfo.SetInputConnection( append.GetOutputPort() ) 
+
+        else:
+            
+            cut0 = NormalizeLon( dataXLoc - selectionDim[0] )
+            sliceSize =  imageLen[0] * ( cut0 / 360.0 )
+            sliceCoord = int( round( x0 + sliceSize) )        
+            extent = list( baseExtent )         
+            extent[0] = x0 + sliceCoord - 1
+        
+            cut1 = NormalizeLon( dataXLoc + selectionDim[0] )
+            sliceSize =  imageLen[0] * ( cut1 / 360.0 )
+            sliceCoord = int( round( x0 + sliceSize) )       
+            extent[1] = x0 + sliceCoord
+            clip = vtk.vtkImageClip()
+            clip.SetInput( baseImage )
+            clip.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
+            self.x0 = cut0
+            bounded_dims = ( extent[1] - extent[0] + 1, vertExtent[1] - vertExtent[0] + 1 )
+
+            imageInfo.SetInputConnection( clip.GetOutputPort() ) 
+            
             
         imageInfo.SetOutputOrigin( 0.0, 0.0, 0.0 )
         imageInfo.SetOutputExtentStart( 0, 0, 0 )
