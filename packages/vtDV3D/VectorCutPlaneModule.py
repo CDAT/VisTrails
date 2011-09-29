@@ -19,7 +19,7 @@ from InteractiveConfiguration import QtWindowLeveler
 from PersistentModule import * 
 from vtUtilities import *
         
-class PM_VectorCutPlane(PersistentVisualizationModule):
+class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
     """Takes an arbitrary slice of the input data using an implicit cut
     plane and places glyphs according to the vector field data.  The
     glyphs may be colored using either the vector magnitude or the scalar
@@ -154,6 +154,8 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
 #        if self.colorInputModule <> None:   self.glyph.SetColorModeToColorByScalar()            
 #        else:                               self.glyph.SetColorModeToColorByVector()          
 
+#        self.glyph.SetIndexModeToVector()
+        
         self.glyph.SetScaleModeToScaleByMagnitude()
         self.glyph.SetColorModeToMapScalars()     
         self.glyph.SetUseLookupTableScalarRange(1)
@@ -163,6 +165,8 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         sliceOutputPort = self.cutter.GetOutputPort()
         self.glyph.SetInputConnection( sliceOutputPort )
         self.arrow = vtk.vtkArrowSource()
+        self.arrow.SetTipResolution(3)
+        self.arrow.SetShaftResolution(3)
         self.glyph.SetSourceConnection( self.arrow.GetOutputPort() )
         self.glyph.SetLookupTable( self.lut )
         self.glyphActor = vtk.vtkActor() 
@@ -172,8 +176,6 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         self.ApplyGlyphDecimationFactor()
         self.set3DOutput(wmod=self.wmod) 
         self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
-
-
 
 #        self.cutter.SetGenerateCutScalars(0)
 #        self.glyph = vtk.vtkGlyph3D() 
@@ -278,6 +280,303 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
     def getUnscaledWorldExtent( self, extent, spacing, origin ):
         return [ ( ( extent[ i ] * spacing[ i/2 ] ) + origin[i/2]  ) for i in range(6) ]
 
+
+class PM_VectorCutPlane(PersistentVisualizationModule):
+    """Takes an arbitrary slice of the input data using an implicit cut
+    plane and places glyphs according to the vector field data.  The
+    glyphs may be colored using either the vector magnitude or the scalar
+    attributes.
+    """    
+    def __init__( self, mid, **args ):
+        PersistentVisualizationModule.__init__( self, mid, **args )
+        self.glyphScale = 1.0 
+        self.glyphRange = 1.0
+        self.glyphDecimationFactor = [ 1.0, 10.0 ] 
+        self.glyph = None
+        self.primaryInputPort = 'vector'
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
+        self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, windowing=False )
+        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False )
+      
+    def scaleColormap( self, ctf_data ):
+        self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
+        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
+        self.glyphMapper.SetLookupTable( self.lut )
+#        self.glyph.Modified()
+#        self.glyph.Update()
+        self.render()
+
+    def setGlyphScale( self, ctf_data ):
+        self.glyphScale = abs( ctf_data[1] )
+        self.glyphRange = abs( ctf_data[0] )
+        self.updateScaling( True )
+        
+    def updateScaling( self, render = False ):
+        if self.glyph <> None: 
+            self.glyph.SetScaleFactor( self.glyphScale ) 
+            self.glyph.SetRange( 0.0, self.glyphRange )
+            if render:     
+                self.glyph.Update()
+                self.render()
+
+    def getGlyphScale( self ):
+        return [ self.glyphRange, self.glyphScale ]
+
+    def setGlyphDensity( self, ctf_data ):
+        self.glyphDecimationFactor = ctf_data
+        self.ApplyGlyphDecimationFactor()
+        
+    def getGlyphDensity(self):
+        return self.glyphDecimationFactor
+                              
+    def buildPipeline(self):
+        """ execute() -> None
+        Dispatch the vtkRenderer to the actual rendering widget
+        """       
+        self.sliceOutput = vtk.vtkImageData()
+        self.colorInputModule = self.wmod.forceGetInputFromPort( "colors", None )
+        
+        if self.input == None: 
+            print>>sys.stderr, "Must supply 'volume' port input to VectorCutPlane"
+            return
+              
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
+        self.sliceCenter = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
+        spacing = self.input.GetSpacing()
+        sx, sy, sz = spacing       
+        origin = self.input.GetOrigin()
+        ox, oy, oz = origin
+        
+        cellData = self.input.GetCellData()  
+        pointData = self.input.GetPointData()     
+        vectorsArray = pointData.GetVectors()
+        
+        if vectorsArray == None: 
+            print>>sys.stderr, "Must supply point vector data for 'volume' port input to VectorCutPlane"
+            return
+
+        self.rangeBounds = list( vectorsArray.GetRange(-1) )
+        self.nComponents = vectorsArray.GetNumberOfComponents()
+        for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
+        for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
+        
+        picker = vtk.vtkCellPicker()
+        picker.SetTolerance(0.005) 
+        
+        self.plane = vtk.vtkPlane()      
+
+        self.initialOrigin = self.input.GetOrigin()
+        self.initialExtent = self.input.GetExtent()
+        self.initialSpacing = self.input.GetSpacing()
+        self.dataBounds = self.getUnscaledWorldExtent( self.initialExtent, self.initialSpacing, self.initialOrigin ) 
+        dataExtents = ( (self.dataBounds[1]-self.dataBounds[0])/2.0, (self.dataBounds[3]-self.dataBounds[2])/2.0, (self.dataBounds[5]-self.dataBounds[4])/2.0 )
+        centroid = ( (self.dataBounds[0]+self.dataBounds[1])/2.0, (self.dataBounds[2]+self.dataBounds[3])/2.0, (self.dataBounds[4]+self.dataBounds[5])/2.0  )
+        self.pos = [ self.initialSpacing[i]*self.initialExtent[2*i] for i in range(3) ]
+        if ( (self.initialOrigin[0] + self.pos[0]) < 0.0): self.pos[0] = self.pos[0] + 360.0
+
+#        self.plane.SetOrigin( centroid[0], centroid[1], centroid[2]   )
+#        self.plane.SetNormal( 0.0, 0.0, 1.0 )
+
+        self.resample = vtk.vtkExtractVOI()
+        self.resample.SetInput( self.input ) 
+        self.resample.SetVOI( self.initialExtent )
+        
+        if self.colorInputModule <> None:
+            colorInput = self.colorInputModule.getOutput()
+            self.color_resample = vtk.vtkExtractVOI()
+            self.color_resample.SetInput( colorInput ) 
+            self.color_resample.SetVOI( self.initialExtent )
+            self.color_resample.SetSampleRate( sampleRate, sampleRate, 1 )
+#            self.probeFilter = vtk.vtkProbeFilter()
+#            self.probeFilter.SetSourceConnection( self.resample.GetOutputPort() )           
+#            colorInput = self.colorInputModule.getOutput()
+#            self.probeFilter.SetInput( colorInput )
+            resampledColorInput = self.color_resample.GetOutput()
+            shiftScale = vtk.vtkImageShiftScale()
+            shiftScale.SetOutputScalarTypeToFloat ()           
+            shiftScale.SetInput( resampledColorInput ) 
+            valueRange = self.scalarRange
+            shiftScale.SetShift( valueRange[0] )
+            shiftScale.SetScale ( (valueRange[1] - valueRange[0]) / 65535 )
+            colorFloatInput = shiftScale.GetOutput() 
+            colorFloatInput.Update()
+            colorInput_pointData = colorFloatInput.GetPointData()     
+            self.colorScalars = colorInput_pointData.GetScalars()
+            self.colorScalars.SetName('color')
+            self.lut.SetTableRange( valueRange ) 
+         
+        self.glyphRange = max( abs(self.scalarRange[0]), abs(self.scalarRange[1]) )
+        self.cutterInput = self.resample.GetOutput() 
+        self.planeWidget = vtk.vtkImplicitPlaneWidget()
+        self.planeWidget.SetInput( self.cutterInput  )
+#        self.planeWidget.SetInput( self.input  )
+        self.planeWidget.DrawPlaneOff()
+        self.planeWidget.ScaleEnabledOff()
+        self.planeWidget.PlaceWidget( self.dataBounds[0]-dataExtents[0], self.dataBounds[1]+dataExtents[0], self.dataBounds[2]-dataExtents[1], self.dataBounds[3]+dataExtents[1], self.dataBounds[4]-dataExtents[2], self.dataBounds[5]+dataExtents[2] )
+        self.planeWidget.SetOrigin( centroid[0], centroid[1], centroid[2]  )
+        self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
+        self.planeWidget.AddObserver( 'InteractionEvent', self.SliceObserver )
+#        print "Data bounds %s, origin = %s, spacing = %s, extent = %s, widget origin = %s " % ( str( self.dataBounds ), str( self.initialOrigin ), str( self.initialSpacing ), str( self.initialExtent ), str( self.planeWidget.GetOrigin( ) ) )
+        self.cutter = vtk.vtkCutter()
+        self.cutter.SetInput( self.cutterInput )
+        
+        self.cutter.SetGenerateCutScalars(0)
+#        self.glyph = vtk.vtkGlyph3DMapper() 
+        self.glyph = vtk.vtkGlyph3D() 
+#        if self.colorInputModule <> None:   self.glyph.SetColorModeToColorByScalar()            
+#        else:                               self.glyph.SetColorModeToColorByVector()          
+
+        self.glyph.SetIndexModeToVector()
+#                self.glyph.SourceIndexingOn ()      
+               
+        self.glyph.SetScaleModeToDataScalingOff ()
+        self.glyph.SetOrient( 1 ) 
+        self.glyph.ClampingOff()
+        sliceOutputPort = self.cutter.GetOutputPort()
+        self.glyph.SetInputConnection( sliceOutputPort )
+        self.createArrowSources()
+        self.updateScaling()
+        
+        self.glyphActor = vtk.vtkActor()         
+        self.glyphMapper = vtk.vtkPolyDataMapper()
+        self.glyphMapper.SetInputConnection( self.glyph.GetOutputPort() )
+        self.glyphMapper.SetLookupTable( self.lut )
+        self.glyphMapper.SetColorModeToMapScalars()     
+        self.glyphMapper.SetUseLookupTableScalarRange(1)
+        self.glyphActor.SetMapper( self.glyphMapper )
+        
+        self.renderer.AddActor( self.glyphActor )
+        self.planeWidget.GetPlane( self.plane )
+        self.ApplyGlyphDecimationFactor()
+        self.set3DOutput(wmod=self.wmod) 
+        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
+
+
+    def createArrowSources( self, scaleRange=[ 1.0, 10.0 ], n_sources=10 ):
+        trans = vtk.vtkTransform()
+        arrowSource = vtk.vtkArrowSource()
+        arrowSource.SetTipResolution(3)
+        arrowSource.SetShaftResolution(3)
+        arrowSource.Update()
+        arrow = arrowSource.GetOutput()
+        sourcePts = arrow.GetPoints()    
+        dScale = ( scaleRange[1] - scaleRange[0] ) / ( n_sources - 1 )
+        for iScale in range( n_sources ):
+            scale = scaleRange[0] + iScale * dScale
+            trans.Identity()
+            trans.Scale( scale, 1.0, 1.0 )  
+            newPts = vtk.vtkPoints() 
+            trans.TransformPoints( sourcePts, newPts )
+            scaledArrow = vtk.vtkPolyData()
+            scaledArrow.CopyStructure(arrow)
+            scaledArrow.SetPoints( newPts )
+            self.glyph.SetSource( iScale, scaledArrow )
+
+#        self.cutter.SetGenerateCutScalars(0)
+#        self.glyph = vtk.vtkGlyph3D() 
+#        if self.colorInputModule <> None:   self.glyph.SetColorModeToColorByScalar()            
+#        else:                               self.glyph.SetColorModeToColorByVector()          
+#
+#        self.glyph.SetVectorModeToUseVector()
+#        self.glyph.SetOrient( 1 ) 
+#        self.glyph.ClampingOn()
+#        sliceOutputPort = self.cutter.GetOutputPort()
+#        self.glyph.SetInputConnection( sliceOutputPort )
+#        self.arrow = vtk.vtkArrowSource()
+#        self.glyph.SetSourceConnection( self.arrow.GetOutputPort() )
+#        self.glyphMapper = vtk.vtkPolyDataMapper()
+#        self.glyphMapper.SetInputConnection( self.glyph.GetOutputPort() ) 
+#        self.glyphMapper.SetLookupTable( self.lut )
+#        self.glyphActor = vtk.vtkActor() 
+#        self.glyphActor.SetMapper( self.glyphMapper )
+#        self.renderer.AddActor( self.glyphActor )
+#        self.planeWidget.GetPlane( self.plane )
+#        self.UpdateCut()
+#        self.set3DOutput(wmod=self.wmod) 
+#        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
+
+
+    def ApplyGlyphDecimationFactor(self):
+        sampleRate = [ int( round( abs( self.glyphDecimationFactor[0] ) )  ), int( round( abs( self.glyphDecimationFactor[1] ) ) )  ]
+        print "Sample rate: %s " % str( sampleRate )
+        self.resample.SetSampleRate( sampleRate[0], sampleRate[0], 1 )
+        
+#        spacing = [ self.initialSpacing[i]*self.glyphDecimationFactor for i in range(3) ]
+#        extent = [ int( (self.dataBounds[i] - self.initialOrigin[i/2]) / spacing[i/2] ) for i in range( 6 )  ]
+#        self.resample.SetOutputExtent( extent )
+#        self.resample.SetOutputSpacing( spacing )
+#        resampleOutput = self.resample.GetOutput()
+#        resampleOutput.Update()
+#        ptData = resampleOutput.GetPointData()
+#        ptScalars = ptData.GetScalars()
+#        np = resampleOutput.GetNumberOfPoints()
+#        print " decimated ImageData: npoints= %d, vectors: ncomp=%d, ntup=%d " % ( np, ptScalars.GetNumberOfComponents(), ptScalars.GetNumberOfTuples() )
+        
+#        ncells = resampleOutput.GetNumberOfCells()
+        self.UpdateCut()
+    
+    def SliceObserver(self, caller, event = None ): 
+        caller.GetPlane( self.plane )
+        self.UpdateCut()
+        
+#        import api
+#        iOrientation = caller.GetPlaneOrientation()
+#        outputData = caller.GetResliceOutput()
+#        outputData.Update()
+#        self.imageRescale.SetInput( outputData )
+#        output_slice_extent = self.getAdjustedSliceExtent( iOrientation )
+#        self.imageRescale.SetOutputExtent( output_slice_extent )
+#        output_slice_spacing = self.getAdjustedSliceSpacing( iOrientation, outputData )
+#        self.imageRescale.SetOutputSpacing( output_slice_spacing )
+#        self.updateSliceOutput()
+#        print " Slice Output: extent: %s, spacing: %s " % ( str(output_slice_extent), str(output_slice_spacing) )
+        
+    def UpdateCut(self): 
+        self.cutter.SetCutFunction ( self.plane  )
+        self.glyph.Update()
+        self.render()
+        
+        
+#        self.cutterInput.Update()
+#        if self.colorInputModule <> None:
+#            pointData = self.cutterInput.GetPointData()
+#            pointData.AddArray( self.colorScalars ) 
+#            pointData.SetActiveScalars( 'color' )
+#        cutterOutput = self.cutter.GetOutput()
+#        cutterOutput.Update()
+#        points = cutterOutput.GetPoints()
+#        if points <> None:
+#            np = points.GetNumberOfPoints()
+#            if np > 0:
+##                resampleOutput = self.resample.GetOutput()
+##                ptData = resampleOutput.GetPointData()
+##                print " UpdateCut, Points: %s " % '  '.join( [ str( points.GetPoint(id) ) for id in range(5) ]  )
+#                pointData = cutterOutput.GetPointData()
+#                ptScalarsArray = pointData.GetVectors()
+##                self.glyph.SetScaleFactor( self.glyphScale[1] )
+##                self.dumpData( 'Cut Vector Values',  ptScalarsArray )
+#                self.glyph.Update()
+##                print " UpdateCut: npoints= %d, vectors: ncomp=%d, ntup=%d " % ( np, ptScalarsArray.GetNumberOfComponents(), ptScalarsArray.GetNumberOfTuples() )
+#                self.render()
+
+    def dumpData( self, label, dataArray ):
+        nt = dataArray.GetNumberOfTuples()
+        valArray = []
+        for iT in range( 0, nt ):
+            val = dataArray.GetTuple3(  iT  )
+            valArray.append( "(%.3g,%.3g,%.3g)" % ( val[0], val[1], val[2] )  )
+        print " _________________________ %s _________________________ " % label
+        print ' '.join( valArray )      
+#        for iRow in range(0,iSize[1]):
+#            print str( newDataArray[ iOff[0] : iOff[0]+iSize[0], iOff[1]+iRow, 0 ] )
+
+    def activateWidgets( self, iren ):
+        self.planeWidget.SetInteractor( iren )
+        self.planeWidget.SetEnabled( 1 )
+        print "Initial Camera Position = %s\n --- Widget Origin = %s " % ( str( self.renderer.GetActiveCamera().GetPosition() ), str( self.planeWidget.GetOrigin() ) )
+ 
+    def getUnscaledWorldExtent( self, extent, spacing, origin ):
+        return [ ( ( extent[ i ] * spacing[ i/2 ] ) + origin[i/2]  ) for i in range(6) ]
 
 
 from WorkflowModule import WorkflowModule
