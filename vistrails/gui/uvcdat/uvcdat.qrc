@@ -1,0 +1,18 @@
+<RCC>
+  <qresource prefix="icons">
+    <file>resources/icons/delete.png</file>
+    <file>resources/icons/edit_add.png</file>
+    <file>resources/icons/edit.png</file>
+    <file>resources/icons/info.png</file>
+    <file>resources/icons/map-icon.png</file>
+    <file>resources/icons/pipeline.png</file>
+    <file>resources/icons/source.png</file>
+    <file>resources/icons/folder_blue_open.png</file>
+    <file>resources/icons/folder_blue.png</file>
+    <file>resources/icons/new.png</file>
+    <file>resources/icons/open.png</file>
+  </qresource>
+  <qresource prefix="images">
+    <file>resources/images/clt_isofill.png</file>
+  </qresource>
+</RCC>
