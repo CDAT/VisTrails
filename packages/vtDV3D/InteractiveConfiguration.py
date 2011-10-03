@@ -44,13 +44,16 @@ class QtWindowLeveler( QObject ):
         self.invert = False
 
     def setDataRange( self, data_range ):
-        self.scaling = 0.5 * ( abs(data_range[0]) + abs(data_range[1]) )
-        self.OriginalWindow = ( data_range[1] - data_range[0] ) / self.scaling if ( self.scaling > 0.0 ) else 1.0
-        self.OriginalLevel = 1.0
-      
-        if( abs( self.OriginalWindow ) < 0.001 ): self.OriginalWindow = -0.001 if ( self.OriginalWindow < 0.0 ) else  0.001
-        if( abs( self.OriginalLevel  ) < 0.001 ): self.OriginalLevel  = -0.001 if ( self.OriginalLevel  < 0.0 ) else  0.001
-        self.setWindowLevel( self.OriginalWindow, self.OriginalLevel )
+        if (self.algorithm == self.Absolute):
+            self.setWindowLevel( data_range[0], data_range[1] )
+        else:
+            self.scaling = 0.5 * ( abs(data_range[0]) + abs(data_range[1]) )
+            self.OriginalWindow = ( data_range[1] - data_range[0] ) / self.scaling if ( self.scaling > 0.0 ) else 1.0
+            self.OriginalLevel = 1.0
+          
+            if( abs( self.OriginalWindow ) < 0.001 ): self.OriginalWindow = -0.001 if ( self.OriginalWindow < 0.0 ) else  0.001
+            if( abs( self.OriginalLevel  ) < 0.001 ): self.OriginalLevel  = -0.001 if ( self.OriginalLevel  < 0.0 ) else  0.001
+            self.setWindowLevel( self.OriginalWindow, self.OriginalLevel )
     
     def addUpdateRangeObserver( self, observer ):   
         self.connect( self, self.update_range_signal, observer )
@@ -124,7 +127,9 @@ class QtWindowLeveler( QObject ):
         
         if (( (window < 0) and (self.CurrentWindow > 0 )) or ( (window > 0) and (self.CurrentWindow < 0) )):
               self.invert = not self.invert
-              
+        
+        if window < 0.01:
+            pass      
         self.CurrentWindow = window
         self.CurrentLevel = level
         
