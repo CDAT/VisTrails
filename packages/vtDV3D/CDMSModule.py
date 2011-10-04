@@ -37,6 +37,15 @@ def splitGridSpecs( gridSpecs ):
             sliceStart = i+1
     slices.append( gridSpecs[sliceStart:] )
     return slices
+
+def getCompTime( timeString ):
+    timeStringFields = timeString.strip("'").split(' ')
+    date = timeStringFields[0].split('-')
+    if len( timeStringFields ) == 1:
+        return cdtime.comptime( int(date[0]), int(date[1]), float(date[2]) )
+    else:
+        time = timeStringFields[1].split(':')
+        return cdtime.comptime( int(date[0]), int(date[1]), int(date[2]), int(time[0]), int(time[1]), float(time[2]) )
                    
 def deserializeFileMap( serialized_strMap ): 
     stringMap = {}
@@ -787,10 +796,12 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 type = gridFields[0].strip()
                 values = gridFields[1].strip('() ').split(',')
                 if type == 'time':
-                    rval = cdtime.reltime( values[0] )
-                    self.timeRange[2] = rval.torel(ReferenceTimeUnits)
-                    rval = cdtime.reltime( values[1] )
-                    self.timeRange[3] = rval.torel(ReferenceTimeUnits)
+                    print " init time values: ", str( values )
+                    cval = getCompTime( values[0] )
+                    self.timeRange[2] = cval.torel(ReferenceTimeUnits).value
+                    cval = getCompTime( values[1] )
+                    self.timeRange[3] = cval.torel(ReferenceTimeUnits).value
+                    print " processed time values: ", str( self.timeRange ), ", units= ", ReferenceTimeUnits
                 elif type == 'latitude':
                     self.roi[1] = float( values[0] )
                     self.roi[3] = float( values[1] )
@@ -813,6 +824,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 elif time_values[1].value < end_time:   end_time = time_values[1].value
                 if dt < min_dt: min_dt = dt               
             for dataset in dataset_list: dataset.close()
+            print "ComputeGridFromSpecs: ", str( [ start_time, end_time, min_dt ] )
             if min_dt == 0: nTS = 1
             else: nTS = int( ( start_time - end_time ) / min_dt )  
             self.timeRange = [ 0, nTS-1, start_time, end_time ]
@@ -1872,8 +1884,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.datasetId = dsetId
             self.timeRange = self.cdmsDataset.timeRange
             timeValue = args.get( 'timeValue', self.timeRange[2] )
-#            print "Time Range: ", str(self.timeRange), str(timeValue)
-            self.timeValue = cdtime.reltime( float( timeValue ), ReferenceTimeUnits )
+            print "Time Range: ", str(self.timeRange), timeValue
+            self.timeValue = cdtime.reltime( float(timeValue), ReferenceTimeUnits )
             self.timeLabels = self.cdmsDataset.getTimeValues()
             self.nTimesteps = len( self.timeLabels )
             self.generateOutput()
