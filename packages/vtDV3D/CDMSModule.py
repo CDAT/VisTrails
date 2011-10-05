@@ -745,6 +745,20 @@ class PM_CDMS_VCDATInterface( PersistentVisualizationModule ):
         if self.variable2 <> None: interfaceSpecs.addInput( 'Input2', self.file, self.variable2, self.axes )         
         if self.variable3 <> None: interfaceSpecs.addInput( 'Input3', self.file, self.variable3, self.axes )         
         self.setResult( 'executionSpecs', [ interfaceSpecs ] )
+        print "  ------------------- VCDATInterface Inputs: -------------------  "
+        print " * FileName: ", self.file
+        print " * VariableName: ", self.variable
+        print " * VariableName1: ", self.variable1
+        print " * VariableName2: ", self.variable2
+        print " * VariableName3: ", self.variable3
+        print " * Axes: ", self.axes
+        print " * Row: ", self.row
+        print " * Column: ", self.column
+        print " * Row1: ", self.row1
+        print " * Column1: ", self.column1
+        print " * Row2: ", self.row2
+        print " * Column2: ", self.column2
+        print "  -------------------                         -------------------  "
 #        executionSpecs = ';'.join( [ self.file, self.variable, self.axes ] ) if self.file else None
 #        if executionSpecs: 
 #            print " >>>--->>> ExecutionSpecs: { %s } " % executionSpecs
@@ -802,10 +816,10 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                     cval = getCompTime( values[1] )
                     self.timeRange[3] = cval.torel(ReferenceTimeUnits).value
                     print " processed time values: ", str( self.timeRange ), ", units= ", ReferenceTimeUnits
-                elif type == 'latitude':
+                elif type.startswith('lat' ):
                     self.roi[1] = float( values[0] )
                     self.roi[3] = float( values[1] )
-                elif type == 'longitude':
+                elif type.startswith('lon' ):
                     self.roi[0] = float( values[0] )
                     self.roi[2] = float( values[1] )                   
         if not self.timeRange[2]:
@@ -843,16 +857,20 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         if inputSpecs:
             zscale = inputSpecs.configParms.get( 'zscale', None )
             if zscale: self.setParameter( "zscale", zscale )
-            inputSpec = inputSpecs.getInput(  index=0 )
-            self.fileSpecs.append( inputSpec[0] )
-            self.varSpecs.append( inputSpec[1] )
-            self.gridSpecs = splitGridSpecs( inputSpec[2] ) 
-            dsMapData = ';'.join( self.fileSpecs )       
-#            print " ** File Specs: ", str( self.fileSpecs )
-#            print " ** Var Specs: ", str( self.varSpecs )
-#            print " ** Grid Specs: ", str( self.gridSpecs )
-#            print " ** dsMapData: ", str( dsMapData )
+            for iInput in range( inputSpecs.getNInputs() ):
+                inputSpec = inputSpecs.getInput(  index=iInput )
+                self.fileSpecs.append( inputSpec[0] )
+                self.varSpecs.append( inputSpec[1] )
+                if( not len(self.gridSpecs) and len(inputSpec[2]) ): self.gridSpecs = splitGridSpecs( inputSpec[2] ) 
+            dsMapData = ';'.join( self.fileSpecs )   
             self.computeGridFromSpecs()
+            print " _____________________ File Reader _____________________ "    
+            print " ** File Specs: ", str( self.fileSpecs )
+            print " ** Var Specs: ", str( self.varSpecs )
+            print " ** Grid Specs: ", str( self.gridSpecs )
+            print " ** dsMapData: ", str( dsMapData )
+            print " ** ROI: ", str( self.roi )
+            print " ________________________________________________________ "   
             self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
             self.ref_var = "%s*%s" % ( self.datasetMap.keys()[0], self.varSpecs[0])
             self.datasetModule.setVariableRecord( "VariableName", self.ref_var )
@@ -2102,6 +2120,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         if self.cdmsDataset:
             metadata[ 'vars2d' ] = self.cdmsDataset.getVariableList( 2 )
             metadata[ 'vars3d' ] = self.cdmsDataset.getVariableList( 3 )
+        if self.fileSpecs: metadata[ 'fileSpecs' ] = self.fileSpecs
+        if self.varSpecs:  metadata[ 'varSpecs' ]  = self.varSpecs
+        if self.gridSpecs: metadata[ 'gridSpecs' ] = self.gridSpecs
         return metadata
 
 class PM_CDMS_VolumeReader( PM_CDMSDataReader ):

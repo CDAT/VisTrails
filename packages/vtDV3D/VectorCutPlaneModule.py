@@ -590,7 +590,7 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         self.streamerScale = 5.0 
         self.streamerStepLenth = 0.05
         self.currentLevel = 0
-        self.streamerSeedGridSpacing = [ 3.0, 3.0 ] 
+        self.streamerSeedGridSpacing = [ 6.0, 6.0 ] 
         self.minStreamerSeedGridSpacing = [ 1.0, 1.0 ] 
         self.streamer = None
         self.primaryInputPort = 'vector'
@@ -708,6 +708,8 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         self.planeWidget.SetOrigin( centroid[0], centroid[1], centroid[2]  )
         self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
         self.planeWidget.AddObserver( 'InteractionEvent', self.SliceObserver )
+        normalProperty = self.planeWidget.GetNormalProperty ()
+        normalProperty.SetOpacity(0.0)
 #        print "Data bounds %s, origin = %s, spacing = %s, extent = %s, widget origin = %s " % ( str( self.dataBounds ), str( self.initialOrigin ), str( self.initialSpacing ), str( self.initialExtent ), str( self.planeWidget.GetOrigin( ) ) )
         
         self.streamer = vtk.vtkStreamLine()
