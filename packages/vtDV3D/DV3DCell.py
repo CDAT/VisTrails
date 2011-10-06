@@ -429,7 +429,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.renderers = []
         self.fieldData = []
         self.renderer = None
-        for inputModule in self.inputModuleList:
+        moduleList = self.inputModuleList if self.inputModuleList else [ self.inputModule ]
+        for inputModule in moduleList:
             if inputModule <> None:
                 renderer1 = inputModule.getRenderer() 
                 if  renderer1 <> None: 

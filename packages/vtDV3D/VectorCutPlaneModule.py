@@ -281,7 +281,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         return [ ( ( extent[ i ] * spacing[ i/2 ] ) + origin[i/2]  ) for i in range(6) ]
 
 
-class PM_VectorArrayCutPlane(PersistentVisualizationModule):
+class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
     """Takes an arbitrary slice of the input data using an implicit cut
     plane and places glyphs according to the vector field data.  The
     glyphs may be colored using either the vector magnitude or the scalar
@@ -579,7 +579,7 @@ class PM_VectorArrayCutPlane(PersistentVisualizationModule):
         return [ ( ( extent[ i ] * spacing[ i/2 ] ) + origin[i/2]  ) for i in range(6) ]
 
 
-class PM_VectorCutPlane(PersistentVisualizationModule):
+class PM_StreamlineCutPlane(PersistentVisualizationModule):
     """Takes an arbitrary slice of the input data using an implicit cut
     plane and places glyphs according to the vector field data.  The
     glyphs may be colored using either the vector magnitude or the scalar
@@ -734,7 +734,7 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         self.planeWidget.GetPlane( self.plane )
         self.UpdateStreamerSeedGrid()
         self.updateScaling()
-        self.set3DOutput(wmod=self.wmod) 
+        self.set3DOutput( wmod=self.wmod, output=self.input ) 
         
     def getCurentLevel(self):
         planeOrigin = self.plane.GetOrigin()
@@ -749,7 +749,7 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
     def UpdateStreamerSeedGrid( self ):
         sampleRate = self.streamerSeedGridSpacing
         currentLevel = self.getCurentLevel()
-        print " ---- ApplystreamerSeedGridSpacing:  Sample rate: %s, current Level: %d " % ( str( sampleRate ), currentLevel )
+        print " ---- ApplyStreamerSeedGridSpacing:  Sample rate: %s, current Level: %d " % ( str( sampleRate ), currentLevel )
         sample_source = vtk.vtkImageData()        
         gridSpacing = self.input.GetSpacing()
         gridOrigin = self.input.GetOrigin()
@@ -789,9 +789,16 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
 
 from WorkflowModule import WorkflowModule
 
-class VectorCutPlane(WorkflowModule):
+class GlyphArrayCutPlane(WorkflowModule):
     
-    PersistentModuleClass = PM_VectorCutPlane
+    PersistentModuleClass = PM_GlyphArrayCutPlane
+    
+    def __init__( self, **args ):
+        WorkflowModule.__init__(self, **args) 
+        
+class StreamlineCutPlane(WorkflowModule):
+    
+    PersistentModuleClass = PM_StreamlineCutPlane
     
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args) 
