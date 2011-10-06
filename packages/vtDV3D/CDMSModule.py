@@ -37,6 +37,15 @@ def splitGridSpecs( gridSpecs ):
             sliceStart = i+1
     slices.append( gridSpecs[sliceStart:] )
     return slices
+
+def getCompTime( timeString ):
+    timeStringFields = timeString.strip("'").split(' ')
+    date = timeStringFields[0].split('-')
+    if len( timeStringFields ) == 1:
+        return cdtime.comptime( int(date[0]), int(date[1]), float(date[2]) )
+    else:
+        time = timeStringFields[1].split(':')
+        return cdtime.comptime( int(date[0]), int(date[1]), int(date[2]), int(time[0]), int(time[1]), float(time[2]) )
                    
 def deserializeFileMap( serialized_strMap ): 
     stringMap = {}
@@ -317,11 +326,11 @@ class CDMSDatasetRecord():
             args1['time'] = timeValue
         
         if lonBounds <> None:
-            if lonBounds[0] < LonMin and lonBounds[0]+360.0 < LonMax: lonBounds[0] = lonBounds[0] + 360.0
-            if lonBounds[0] > LonMax and lonBounds[0]-360.0 > LonMin: lonBounds[0] = lonBounds[0] - 360.0
-            if len( lonBounds ) > 1:
-                if lonBounds[1] < LonMin and lonBounds[1]+360.0<LonMax: lonBounds[1] = lonBounds[1] + 360.0
-                if lonBounds[1] > LonMax and lonBounds[1]-360.0>LonMin: lonBounds[1] = lonBounds[1] - 360.0                       
+#            if lonBounds[0] < LonMin and lonBounds[0]+360.0 < LonMax: lonBounds[0] = lonBounds[0] + 360.0
+#            if lonBounds[0] > LonMax and lonBounds[0]-360.0 > LonMin: lonBounds[0] = lonBounds[0] - 360.0
+#            if len( lonBounds ) > 1:
+#                if lonBounds[1] < LonMin and lonBounds[1]+360.0<LonMax: lonBounds[1] = lonBounds[1] + 360.0
+#                if lonBounds[1] > LonMax and lonBounds[1]-360.0>LonMin: lonBounds[1] = lonBounds[1] - 360.0                       
             if (decimationFactor == 1) or len( lonBounds ) == 1:
                 args1['lon'] = lonBounds[0] if ( len( lonBounds ) == 1 ) else lonBounds
             else:
@@ -374,7 +383,7 @@ class CDMSDatasetRecord():
             
             end_t = time.time() 
             self.cachedFileVariables[ varName ] = ( timeValue, rv )
-#            print  "Reading variable %s, shape = %s, base shape = %s, time = %s (%s), args = %s, slice duration = %.4f sec." % ( varName, str(rv.shape), str(varData.shape), str(timeValue), str(timeValue.tocomp()), str(args1), end_t-start_t  ) 
+            print  "Reading variable %s, shape = %s, base shape = %s, args = %s" % ( varName, str(rv.shape), str(varData.shape), str(args1) ) 
 #            printGrid( rv )
 #        except Exception, err:
 #            print>>sys.stderr, ' Exception getting var slice: %s ' % str( err )
@@ -675,6 +684,7 @@ class CDMS_VCDATInterfaceSpecs(WorkflowModule):
         self.configParms = configParms
         
     def addInput(self, inputName, fileName, variableName, axes ):
+        print " --- AddInput: ", inputName, fileName, variableName
         self.inputs[ inputName ] = ( fileName, variableName, axes )
         
     def getNInputs(self):
@@ -699,6 +709,18 @@ class PM_CDMS_VCDATInterface( PersistentVisualizationModule ):
         self.varnum = 1
         self.cellnum = 1
         
+    def getIntInputValue(self, portName, default_value ):
+        rv = default_value 
+        try: rv = int( getItem( self.getInputValue( portName, default_value ) )  ) 
+        except: pass
+        return rv
+
+    def getFloatInputValue(self, portName, default_value ):
+        rv = default_value 
+        try: rv = float( getItem( self.getInputValue( portName, default_value ) ) ) 
+        except: pass
+        return rv
+        
     def execute(self, **args ):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
@@ -709,13 +731,13 @@ class PM_CDMS_VCDATInterface( PersistentVisualizationModule ):
         self.variable2 = self.getInputValue( "VariableName2" )
         self.variable3 = self.getInputValue( "VariableName3" )
         self.axes = self.getInputValue( "Axes" )
-        self.row = int( self.getInputValue( "Row", 0 ) ) 
-        self.column = int( self.getInputValue( "Column", 0  ) )
-        self.row1 = int( self.getInputValue( "Row1", 0 ) ) 
-        self.column1 = int( self.getInputValue( "Column1", 0  ) )
-        self.row2 = int( self.getInputValue( "Row2", 0 ) ) 
-        self.column2 = int( self.getInputValue( "Column2", 0  ) )
-        zscale = getItem( self.getInputValue( "zscale",   5.0  )  )
+        self.row = self.getIntInputValue( "Row", 0 )  
+        self.column = self.getIntInputValue( "Column", 0  ) 
+        self.row1 = self.getIntInputValue( "Row1", 0 )  
+        self.column1 = self.getIntInputValue( "Column1", 0  ) 
+        self.row2 = self.getIntInputValue( "Row2", 0 )  
+        self.column2 = self.getIntInputValue( "Column2", 0  ) 
+        zscale = self.getFloatInputValue( "zscale",   5.0  )  
         configParms = { 'zscale' : zscale }
         interfaceSpecs = CDMS_VCDATInterfaceSpecs( configParms )
         if self.variable  <> None: interfaceSpecs.addInput( 'Input', self.file, self.variable, self.axes )
@@ -723,6 +745,20 @@ class PM_CDMS_VCDATInterface( PersistentVisualizationModule ):
         if self.variable2 <> None: interfaceSpecs.addInput( 'Input2', self.file, self.variable2, self.axes )         
         if self.variable3 <> None: interfaceSpecs.addInput( 'Input3', self.file, self.variable3, self.axes )         
         self.setResult( 'executionSpecs', [ interfaceSpecs ] )
+        print "  ------------------- VCDATInterface Inputs: -------------------  "
+        print " * FileName: ", self.file
+        print " * VariableName: ", self.variable
+        print " * VariableName1: ", self.variable1
+        print " * VariableName2: ", self.variable2
+        print " * VariableName3: ", self.variable3
+        print " * Axes: ", self.axes
+        print " * Row: ", self.row
+        print " * Column: ", self.column
+        print " * Row1: ", self.row1
+        print " * Column1: ", self.column1
+        print " * Row2: ", self.row2
+        print " * Column2: ", self.column2
+        print "  -------------------                         -------------------  "
 #        executionSpecs = ';'.join( [ self.file, self.variable, self.axes ] ) if self.file else None
 #        if executionSpecs: 
 #            print " >>>--->>> ExecutionSpecs: { %s } " % executionSpecs
@@ -774,14 +810,16 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 type = gridFields[0].strip()
                 values = gridFields[1].strip('() ').split(',')
                 if type == 'time':
-                    rval = cdtime.reltime( values[0] )
-                    self.timeRange[2] = rval.torel(ReferenceTimeUnits)
-                    rval = cdtime.reltime( values[1] )
-                    self.timeRange[3] = rval.torel(ReferenceTimeUnits)
-                elif type == 'latitude':
+                    print " init time values: ", str( values )
+                    cval = getCompTime( values[0] )
+                    self.timeRange[2] = cval.torel(ReferenceTimeUnits).value
+                    cval = getCompTime( values[1] )
+                    self.timeRange[3] = cval.torel(ReferenceTimeUnits).value
+                    print " processed time values: ", str( self.timeRange ), ", units= ", ReferenceTimeUnits
+                elif type.startswith('lat' ):
                     self.roi[1] = float( values[0] )
                     self.roi[3] = float( values[1] )
-                elif type == 'longitude':
+                elif type.startswith('lon' ):
                     self.roi[0] = float( values[0] )
                     self.roi[2] = float( values[1] )                   
         if not self.timeRange[2]:
@@ -800,6 +838,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 elif time_values[1].value < end_time:   end_time = time_values[1].value
                 if dt < min_dt: min_dt = dt               
             for dataset in dataset_list: dataset.close()
+            print "ComputeGridFromSpecs: ", str( [ start_time, end_time, min_dt ] )
             if min_dt == 0: nTS = 1
             else: nTS = int( ( start_time - end_time ) / min_dt )  
             self.timeRange = [ 0, nTS-1, start_time, end_time ]
@@ -818,16 +857,20 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         if inputSpecs:
             zscale = inputSpecs.configParms.get( 'zscale', None )
             if zscale: self.setParameter( "zscale", zscale )
-            inputSpec = inputSpecs.getInput(  index=0 )
-            self.fileSpecs.append( inputSpec[0] )
-            self.varSpecs.append( inputSpec[1] )
-            self.gridSpecs = splitGridSpecs( inputSpec[2] ) 
-            dsMapData = ';'.join( self.fileSpecs )       
-#            print " ** File Specs: ", str( self.fileSpecs )
-#            print " ** Var Specs: ", str( self.varSpecs )
-#            print " ** Grid Specs: ", str( self.gridSpecs )
-#            print " ** dsMapData: ", str( dsMapData )
+            for iInput in range( inputSpecs.getNInputs() ):
+                inputSpec = inputSpecs.getInput(  index=iInput )
+                self.fileSpecs.append( inputSpec[0] )
+                self.varSpecs.append( inputSpec[1] )
+                if( not len(self.gridSpecs) and len(inputSpec[2]) ): self.gridSpecs = splitGridSpecs( inputSpec[2] ) 
+            dsMapData = ';'.join( self.fileSpecs )   
             self.computeGridFromSpecs()
+            print " _____________________ File Reader _____________________ "    
+            print " ** File Specs: ", str( self.fileSpecs )
+            print " ** Var Specs: ", str( self.varSpecs )
+            print " ** Grid Specs: ", str( self.gridSpecs )
+            print " ** dsMapData: ", str( dsMapData )
+            print " ** ROI: ", str( self.roi )
+            print " ________________________________________________________ "   
             self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
             self.ref_var = "%s*%s" % ( self.datasetMap.keys()[0], self.varSpecs[0])
             self.datasetModule.setVariableRecord( "VariableName", self.ref_var )
@@ -1121,7 +1164,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
                         lonVals = lonAxis.getValue()
                         if lonVals[0] < 0.0: self.lonRangeType = 1
                 dataset.close() 
-            except cdms2.error.CDMSError, err:
+            except Exception, err:
                 print>>sys.stderr, " Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
                 
         self.updateRefVarSelection() 
@@ -1140,7 +1183,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             try:
                 dataset = cdms2.open( cdmsFile ) 
                 dataset_list.append( dataset )
-            except cdms2.error.CDMSError, err:
+            except Exception, err:
                 print>>sys.stderr, " Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
         for dataset in dataset_list:
             time_values, dt, time_units = getRelativeTimeValues ( dataset )
@@ -1859,8 +1902,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.datasetId = dsetId
             self.timeRange = self.cdmsDataset.timeRange
             timeValue = args.get( 'timeValue', self.timeRange[2] )
-#            print "Time Range: ", str(self.timeRange), str(timeValue)
-            self.timeValue = cdtime.reltime( float( timeValue ), ReferenceTimeUnits )
+            print "Time Range: ", str(self.timeRange), timeValue
+            self.timeValue = cdtime.reltime( float(timeValue), ReferenceTimeUnits )
             self.timeLabels = self.cdmsDataset.getTimeValues()
             self.nTimesteps = len( self.timeLabels )
             self.generateOutput()
@@ -2004,7 +2047,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             image_data.SetExtent( extent )
             image_data.SetWholeExtent( extent )
             image_data.SetSpacing(  gridSpacing[0], gridSpacing[1], gridSpacing[2] )
-#            print "Create Image Data, extent = %s, spacing = %s" % ( str(extent), str(gridSpacing) )
+            print "Create Image Data, extent = %s, spacing = %s" % ( str(extent), str(gridSpacing) )
 #            offset = ( -gridSpacing[0]*gridExtent[0], -gridSpacing[1]*gridExtent[2], -gridSpacing[2]*gridExtent[4] )
             imageDataCache[ cachedImageDataName ] = image_data
             imageDataCreated = True
@@ -2077,6 +2120,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         if self.cdmsDataset:
             metadata[ 'vars2d' ] = self.cdmsDataset.getVariableList( 2 )
             metadata[ 'vars3d' ] = self.cdmsDataset.getVariableList( 3 )
+        if self.fileSpecs: metadata[ 'fileSpecs' ] = self.fileSpecs
+        if self.varSpecs:  metadata[ 'varSpecs' ]  = self.varSpecs
+        if self.gridSpecs: metadata[ 'gridSpecs' ] = self.gridSpecs
         return metadata
 
 class PM_CDMS_VolumeReader( PM_CDMSDataReader ):
@@ -2383,10 +2429,15 @@ class CDMS_VectorReaderConfigurationWidget(CDMSReaderConfigurationWidget):
         CDMSReaderConfigurationWidget.__init__(self, module, controller, CDMSDataType.Vector, parent)
 
 if __name__ == '__main__':
-    from Main import executeVistrail
-    optionsDict = {  'hw_role'  : 'none' }
-    try:
-        executeVistrail( options=optionsDict )
-    except Exception, err:
-        print " executeVistrail exception: %s " % str( err )
+    dataFilePath = '/Developer/Data/AConaty/comp-ECMWF/ac-comp1-geos5.xml'
+    dataset = cdms2.open( dataFilePath )
+    var = dataset[ 'tmpu' ]
+    pass
+    
+#    from Main import executeVistrail
+#    optionsDict = {  'hw_role'  : 'none' }
+#    try:
+#        executeVistrail( options=optionsDict )
+#    except Exception, err:
+#        print " executeVistrail exception: %s " % str( err )
 
