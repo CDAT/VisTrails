@@ -1,6 +1,6 @@
 from PyQt4 import QtCore, QtGui
 
-from uvcdat.gui.ui_docktemplate import Ui_DockTemplate
+from gui.uvcdat.ui_docktemplate import Ui_DockTemplate
 
 class DockTemplate(QtGui.QDockWidget):
     def __init__(self, parent=None):

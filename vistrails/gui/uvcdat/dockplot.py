@@ -1,7 +1,7 @@
 from PyQt4 import QtCore, QtGui
 import platform
 from qtbrowser.vcdatCommons import plotTypes, gmInfos
-from uvcdat.gui.ui_dockplot import Ui_DockPlot
+from gui.uvcdat.ui_dockplot import Ui_DockPlot
 
 class DockPlot(QtGui.QDockWidget):
     def __init__(self, parent=None):

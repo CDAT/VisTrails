@@ -1,6 +1,6 @@
 from PyQt4 import QtCore, QtGui
 
-from uvcdat.gui.ui_variable import Ui_VariableProperties
+from gui.uvcdat.ui_variable import Ui_VariableProperties
 from qtbrowser.esgf import QEsgfBrowser
 from qtbrowser.commandLineWidget import QCommandLine
 class VariableProperties(QtGui.QWidget):

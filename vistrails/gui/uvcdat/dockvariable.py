@@ -1,7 +1,7 @@
 from PyQt4 import QtCore, QtGui
 
-from uvcdat.gui.ui_dockvariable import Ui_DockVariable
-from uvcdat.gui.variable import VariableProperties
+from gui.uvcdat.ui_dockvariable import Ui_DockVariable
+from gui.uvcdat.variable import VariableProperties
 
 class DockVariable(QtGui.QDockWidget):
     def __init__(self, parent=None):
