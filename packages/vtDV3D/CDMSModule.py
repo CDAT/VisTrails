@@ -855,8 +855,6 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         inputSpecs = getItem( self.getInputValue( "executionSpecs" ) )
         self.fileSpecs, self.varSpecs, self.gridSpecs = [], [], []
         if inputSpecs:
-            zscale = inputSpecs.configParms.get( 'zscale', None )
-            if zscale: self.setParameter( "zscale", zscale )
             for iInput in range( inputSpecs.getNInputs() ):
                 inputSpec = inputSpecs.getInput(  index=iInput )
                 self.fileSpecs.append( inputSpec[0] )
@@ -870,6 +868,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             print " ** Grid Specs: ", str( self.gridSpecs )
             print " ** dsMapData: ", str( dsMapData )
             print " ** ROI: ", str( self.roi )
+            print " ** zscale: ", str( zscale )
             print " ________________________________________________________ "   
             self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
             self.ref_var = "%s*%s" % ( self.datasetMap.keys()[0], self.varSpecs[0])

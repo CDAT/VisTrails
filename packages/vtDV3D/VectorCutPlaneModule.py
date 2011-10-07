@@ -291,7 +291,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         PersistentVisualizationModule.__init__( self, mid, **args )
         self.glyphScale = 1.0 
         self.glyphRange = 1.0
-        self.glyphDecimationFactor = [ 1.0, 10.0 ] 
+        self.glyphDecimationFactor = [ 10.0, 10.0 ] 
         self.glyph = None
         self.primaryInputPort = 'vector'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
