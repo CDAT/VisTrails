@@ -379,8 +379,9 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             imageInfo.SetInputConnection( append.GetOutputPort() ) 
 
         else:
-            
-            cut0 = NormalizeLon( dataXLoc - selectionDim[0] )
+                        
+            self.x0 = dataXLoc - selectionDim[0]
+            cut0 = NormalizeLon( self.x0 )
             sliceSize =  imageLen[0] * ( cut0 / 360.0 )
             sliceCoord = int( round( x0 + sliceSize) )        
             extent = list( baseExtent )         
@@ -393,12 +394,10 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             clip = vtk.vtkImageClip()
             clip.SetInput( baseImage )
             clip.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
-            self.x0 = cut0
             bounded_dims = ( extent[1] - extent[0] + 1, vertExtent[1] - vertExtent[0] + 1 )
 
             imageInfo.SetInputConnection( clip.GetOutputPort() ) 
-            
-            
+                       
         imageInfo.SetOutputOrigin( 0.0, 0.0, 0.0 )
         imageInfo.SetOutputExtentStart( 0, 0, 0 )
         imageInfo.SetOutputSpacing( baseSpacing[0], baseSpacing[1], baseSpacing[2] )
@@ -430,7 +429,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.renderers = []
         self.fieldData = []
         self.renderer = None
-        for inputModule in self.inputModuleList:
+        moduleList = self.inputModuleList if self.inputModuleList else [ self.inputModule ]
+        for inputModule in moduleList:
             if inputModule <> None:
                 renderer1 = inputModule.getRenderer() 
                 if  renderer1 <> None: 
@@ -494,7 +494,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
 #            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
             mapCorner = [ self.x0, self.y0 ]
-            if ( ( self.roi[0]-map_border_size ) < 0.0 ): mapCorner[0] = mapCorner[0] - 360.0
+#            if ( ( self.roi[0]-map_border_size ) < 0.0 ): mapCorner[0] = mapCorner[0] - 360.0
             self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
             self.baseMapActor.SetInput( baseImage )
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]            

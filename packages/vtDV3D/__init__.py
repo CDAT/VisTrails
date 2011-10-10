@@ -91,7 +91,7 @@ def initialize(*args, **keywords):
     from GradientModule import  Gradient
     from WorkflowModule import WorkflowModule
 #        from packages.pylab.init import MplFigureManager
-    from VectorCutPlaneModule import VectorCutPlane 
+    from VectorCutPlaneModule import GlyphArrayCutPlane, StreamlineCutPlane 
     from VectorVolumeModule import VectorVolume 
     from packages.spreadsheet.basic_widgets import CellLocation
     from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
@@ -197,12 +197,18 @@ def initialize(*args, **keywords):
     reg.add_input_port( Gradient, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( Gradient, "volume", AlgorithmOutputModule3D ) 
     
-    reg.add_module( VectorCutPlane, namespace='vtk'  )
-    reg.add_input_port( VectorCutPlane, "colors", AlgorithmOutputModule3D  )
-    reg.add_output_port( VectorCutPlane, "slice", AlgorithmOutputModule ) 
-    reg.add_input_port( VectorCutPlane, "vector", AlgorithmOutputModule3D  )
-    reg.add_output_port( VectorCutPlane, "volume", AlgorithmOutputModule3D ) 
-    VectorCutPlane.registerConfigurableFunctions(  reg )
+    reg.add_module( GlyphArrayCutPlane, namespace='vtk'  )
+    reg.add_input_port( GlyphArrayCutPlane, "colors", AlgorithmOutputModule3D  )
+    reg.add_output_port( GlyphArrayCutPlane, "slice", AlgorithmOutputModule ) 
+    reg.add_input_port( GlyphArrayCutPlane, "vector", AlgorithmOutputModule3D  )
+    reg.add_output_port( GlyphArrayCutPlane, "volume", AlgorithmOutputModule3D ) 
+    GlyphArrayCutPlane.registerConfigurableFunctions(  reg )
+
+    reg.add_module( StreamlineCutPlane, namespace='vtk'  )
+    reg.add_input_port( StreamlineCutPlane, "colors", AlgorithmOutputModule3D  )
+    reg.add_input_port( StreamlineCutPlane, "vector", AlgorithmOutputModule3D  )
+    reg.add_output_port( StreamlineCutPlane, "volume", AlgorithmOutputModule3D ) 
+    StreamlineCutPlane.registerConfigurableFunctions(  reg )
 
     reg.add_module( VectorVolume, namespace='vtk'  )
     reg.add_input_port( VectorVolume, "colors", AlgorithmOutputModule3D  )

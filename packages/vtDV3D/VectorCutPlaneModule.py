@@ -27,9 +27,9 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
     """    
     def __init__( self, mid, **args ):
         PersistentVisualizationModule.__init__( self, mid, **args )
-        self.glyphScale = [ 0.0, 5.0 ] 
+        self.glyphScale = [ 0.0, 2.0 ] 
         self.glyphRange = None
-        self.glyphDecimationFactor = [ 1.0, 10.0 ] 
+        self.glyphDecimationFactor = [ 1.0, 5.0 ] 
         self.primaryInputPort = 'vector'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, units=self.units )
@@ -281,7 +281,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         return [ ( ( extent[ i ] * spacing[ i/2 ] ) + origin[i/2]  ) for i in range(6) ]
 
 
-class PM_VectorCutPlane(PersistentVisualizationModule):
+class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
     """Takes an arbitrary slice of the input data using an implicit cut
     plane and places glyphs according to the vector field data.  The
     glyphs may be colored using either the vector magnitude or the scalar
@@ -291,7 +291,7 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         PersistentVisualizationModule.__init__( self, mid, **args )
         self.glyphScale = 1.0 
         self.glyphRange = 1.0
-        self.glyphDecimationFactor = [ 1.0, 10.0 ] 
+        self.glyphDecimationFactor = [ 10.0, 10.0 ] 
         self.glyph = None
         self.primaryInputPort = 'vector'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
@@ -579,11 +579,226 @@ class PM_VectorCutPlane(PersistentVisualizationModule):
         return [ ( ( extent[ i ] * spacing[ i/2 ] ) + origin[i/2]  ) for i in range(6) ]
 
 
+class PM_StreamlineCutPlane(PersistentVisualizationModule):
+    """Takes an arbitrary slice of the input data using an implicit cut
+    plane and places glyphs according to the vector field data.  The
+    glyphs may be colored using either the vector magnitude or the scalar
+    attributes.
+    """    
+    def __init__( self, mid, **args ):
+        PersistentVisualizationModule.__init__( self, mid, **args )
+        self.streamerScale = 5.0 
+        self.streamerStepLenth = 0.05
+        self.currentLevel = 0
+        self.streamerSeedGridSpacing = [ 6.0, 6.0 ] 
+        self.minStreamerSeedGridSpacing = [ 1.0, 1.0 ] 
+        self.streamer = None
+        self.primaryInputPort = 'vector'
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
+        self.addConfigurableLevelingFunction( 'streamerScale', 'T', setLevel=self.setStreamerScale, getLevel=self.getStreamerScale, layerDependent=True, windowing=False )
+        self.addConfigurableLevelingFunction( 'streamerDensity', 'G', setLevel=self.setStreamerDensity, getLevel=self.getStreamerDensity, layerDependent=True, windowing=False )
+      
+    def scaleColormap( self, ctf_data ):
+        self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
+        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
+        self.streamMapper.SetLookupTable( self.lut )
+        self.render()
+
+    def setStreamerScale( self, ctf_data ):
+        self.streamerScale = abs( ctf_data[1] )
+        self.streamerStepLenth = abs( ctf_data[0] )
+        self.updateScaling()
+        
+    def updateScaling( self ):
+        if self.streamer <> None: 
+            print "UpdateScaling: ", str( ( self.streamerStepLenth, self.streamerScale ) )
+            self.streamer.SetStepLength( self.streamerStepLenth )
+            self.streamer.SetMaximumPropagationTime( self.streamerScale ) 
+
+    def getStreamerScale( self ):
+        return [ self.streamerStepLenth, self.streamerScale ]
+
+    def setStreamerDensity( self, ctf_data ):
+        for i in range(2):
+            srVal = abs( ctf_data[i] ) 
+            self.streamerSeedGridSpacing[i] = ( self.minStreamerSeedGridSpacing[i] if srVal < self.minStreamerSeedGridSpacing[i] else srVal )           
+        self.UpdateCut()
+        
+    def getStreamerDensity(self):
+        return self.streamerSeedGridSpacing
+                              
+    def buildPipeline(self):
+        """ execute() -> None
+        Dispatch the vtkRenderer to the actual rendering widget
+        """       
+        self.sliceOutput = vtk.vtkImageData()
+        self.colorInputModule = self.wmod.forceGetInputFromPort( "colors", None )
+        
+        if self.input == None: 
+            print>>sys.stderr, "Must supply 'volume' port input to VectorCutPlane"
+            return
+              
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
+        self.sliceCenter = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
+        spacing = self.input.GetSpacing()
+        sx, sy, sz = spacing       
+        origin = self.input.GetOrigin()
+        ox, oy, oz = origin
+        
+        cellData = self.input.GetCellData()  
+        pointData = self.input.GetPointData()     
+        vectorsArray = pointData.GetVectors()
+        
+        if vectorsArray == None: 
+            print>>sys.stderr, "Must supply point vector data for 'volume' port input to VectorCutPlane"
+            return
+
+        self.rangeBounds = list( vectorsArray.GetRange(-1) )
+        self.nComponents = vectorsArray.GetNumberOfComponents()
+        for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
+        for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
+        
+        picker = vtk.vtkCellPicker()
+        picker.SetTolerance(0.005) 
+        
+        self.plane = vtk.vtkPlane()      
+
+        self.initialOrigin = self.input.GetOrigin()
+        self.initialExtent = self.input.GetExtent()
+        self.initialSpacing = self.input.GetSpacing()
+        self.dataBounds = self.getUnscaledWorldExtent( self.initialExtent, self.initialSpacing, self.initialOrigin ) 
+        dataExtents = ( (self.dataBounds[1]-self.dataBounds[0])/2.0, (self.dataBounds[3]-self.dataBounds[2])/2.0, (self.dataBounds[5]-self.dataBounds[4])/2.0 )
+        centroid = ( (self.dataBounds[0]+self.dataBounds[1])/2.0, (self.dataBounds[2]+self.dataBounds[3])/2.0, (self.dataBounds[4]+self.dataBounds[5])/2.0  )
+        self.pos = [ self.initialSpacing[i]*self.initialExtent[2*i] for i in range(3) ]
+        if ( (self.initialOrigin[0] + self.pos[0]) < 0.0): self.pos[0] = self.pos[0] + 360.0
+
+#        self.plane.SetOrigin( centroid[0], centroid[1], centroid[2]   )
+#        self.plane.SetNormal( 0.0, 0.0, 1.0 )
+        
+        if self.colorInputModule <> None:
+            colorInput = self.colorInputModule.getOutput()
+            self.color_resample = vtk.vtkExtractVOI()
+            self.color_resample.SetInput( colorInput ) 
+            self.color_resample.SetVOI( self.initialExtent )
+            self.color_resample.SetSampleRate( sampleRate, sampleRate, 1 )
+#            self.probeFilter = vtk.vtkProbeFilter()
+#            self.probeFilter.SetSourceConnection( self.resample.GetOutputPort() )           
+#            colorInput = self.colorInputModule.getOutput()
+#            self.probeFilter.SetInput( colorInput )
+            resampledColorInput = self.color_resample.GetOutput()
+            shiftScale = vtk.vtkImageShiftScale()
+            shiftScale.SetOutputScalarTypeToFloat ()           
+            shiftScale.SetInput( resampledColorInput ) 
+            valueRange = self.scalarRange
+            shiftScale.SetShift( valueRange[0] )
+            shiftScale.SetScale ( (valueRange[1] - valueRange[0]) / 65535 )
+            colorFloatInput = shiftScale.GetOutput() 
+            colorFloatInput.Update()
+            colorInput_pointData = colorFloatInput.GetPointData()     
+            self.colorScalars = colorInput_pointData.GetScalars()
+            self.colorScalars.SetName('color')
+            self.lut.SetTableRange( valueRange ) 
+         
+        self.planeWidget = vtk.vtkImplicitPlaneWidget()
+        self.planeWidget.SetInput( self.input  )
+        self.planeWidget.DrawPlaneOff()
+        self.planeWidget.ScaleEnabledOff()
+        self.planeWidgetBounds = ( self.dataBounds[0]-dataExtents[0], self.dataBounds[1]+dataExtents[0], self.dataBounds[2]-dataExtents[1], self.dataBounds[3]+dataExtents[1], self.dataBounds[4]-dataExtents[2], self.dataBounds[5]+dataExtents[2] ) 
+        self.planeWidget.PlaceWidget( self.planeWidgetBounds )
+        self.planeWidget.SetOrigin( centroid[0], centroid[1], centroid[2]  )
+        self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
+        self.planeWidget.AddObserver( 'InteractionEvent', self.SliceObserver )
+        normalProperty = self.planeWidget.GetNormalProperty ()
+        normalProperty.SetOpacity(0.0)
+#        print "Data bounds %s, origin = %s, spacing = %s, extent = %s, widget origin = %s " % ( str( self.dataBounds ), str( self.initialOrigin ), str( self.initialSpacing ), str( self.initialExtent ), str( self.planeWidget.GetOrigin( ) ) )
+        
+        self.streamer = vtk.vtkStreamLine()
+#        self.streamer.SetInputConnection( sliceOutputPort )
+        self.streamer.SetInput( self.input )
+        self.streamer.SetIntegrationDirectionToForward ()
+        self.streamer.SetEpsilon(1.0e-10)   # Increase this value if integrations go unstable (app hangs)  
+        self.streamer.SpeedScalarsOff()
+        self.streamer.SetIntegrationStepLength( 0.1 )
+        self.streamer.OrientationScalarsOff()
+        self.streamer.VorticityOff()
+        
+        self.streamActor = vtk.vtkActor()         
+        self.streamMapper = vtk.vtkPolyDataMapper()
+        self.streamMapper.SetInputConnection( self.streamer.GetOutputPort() )
+        self.streamMapper.SetLookupTable( self.lut )
+        self.streamMapper.SetColorModeToMapScalars()     
+        self.streamMapper.SetUseLookupTableScalarRange(1)
+        self.streamActor.SetMapper( self.streamMapper )
+        
+        self.renderer.AddActor( self.streamActor )
+        self.planeWidget.GetPlane( self.plane )
+        self.UpdateStreamerSeedGrid()
+        self.updateScaling()
+        self.set3DOutput( wmod=self.wmod, output=self.input ) 
+        
+    def getCurentLevel(self):
+        planeOrigin = self.plane.GetOrigin()
+        gridExtent = self.input.GetExtent()
+        height = planeOrigin[2]
+        dataBoundsMin = min(self.dataBounds[5],self.dataBounds[4])
+        level = ((height-dataBoundsMin)/(self.dataBounds[5]-self.dataBounds[4]))*(gridExtent[5]-gridExtent[4])
+        if level > gridExtent[5]: level = gridExtent[5]
+        if level < gridExtent[4]: level = gridExtent[4]
+        return level
+
+    def UpdateStreamerSeedGrid( self ):
+        sampleRate = self.streamerSeedGridSpacing
+        currentLevel = self.getCurentLevel()
+        print " ---- ApplyStreamerSeedGridSpacing:  Sample rate: %s, current Level: %d " % ( str( sampleRate ), currentLevel )
+        sample_source = vtk.vtkImageData()        
+        gridSpacing = self.input.GetSpacing()
+        gridOrigin = self.input.GetOrigin()
+        gridExtent = self.input.GetExtent()
+        sourceSpacing = ( gridSpacing[0]*sampleRate[0], gridSpacing[1]*sampleRate[1], gridSpacing[2] )
+        sourceExtent = ( int(gridExtent[0]/sampleRate[0])+1, int(gridExtent[1]/sampleRate[0])-1, int(gridExtent[2]/sampleRate[1])+1, int(gridExtent[3]/sampleRate[1])-1, currentLevel, currentLevel )
+        sample_source.SetOrigin( gridOrigin[0], gridOrigin[1], gridOrigin[2] )
+        sample_source.SetSpacing( sourceSpacing )
+        sample_source.SetExtent( sourceExtent )
+        self.streamer.SetSource( sample_source )
+    
+    def SliceObserver(self, caller, event = None ): 
+        caller.GetPlane( self.plane )
+        self.UpdateCut()
+        
+    def UpdateCut(self):
+        self.UpdateStreamerSeedGrid(  )
+        
+    def dumpData( self, label, dataArray ):
+        nt = dataArray.GetNumberOfTuples()
+        valArray = []
+        for iT in range( 0, nt ):
+            val = dataArray.GetTuple3(  iT  )
+            valArray.append( "(%.3g,%.3g,%.3g)" % ( val[0], val[1], val[2] )  )
+        print " _________________________ %s _________________________ " % label
+        print ' '.join( valArray )      
+#        for iRow in range(0,iSize[1]):
+#            print str( newDataArray[ iOff[0] : iOff[0]+iSize[0], iOff[1]+iRow, 0 ] )
+
+    def activateWidgets( self, iren ):
+        self.planeWidget.SetInteractor( iren )
+        self.planeWidget.SetEnabled( 1 )
+        print "Initial Camera Position = %s\n --- Widget Origin = %s " % ( str( self.renderer.GetActiveCamera().GetPosition() ), str( self.planeWidget.GetOrigin() ) )
+ 
+    def getUnscaledWorldExtent( self, extent, spacing, origin ):
+        return [ ( ( extent[ i ] * spacing[ i/2 ] ) + origin[i/2]  ) for i in range(6) ]
+
 from WorkflowModule import WorkflowModule
 
-class VectorCutPlane(WorkflowModule):
+class GlyphArrayCutPlane(WorkflowModule):
     
-    PersistentModuleClass = PM_VectorCutPlane
+    PersistentModuleClass = PM_GlyphArrayCutPlane
+    
+    def __init__( self, **args ):
+        WorkflowModule.__init__(self, **args) 
+        
+class StreamlineCutPlane(WorkflowModule):
+    
+    PersistentModuleClass = PM_StreamlineCutPlane
     
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args) 
@@ -673,7 +888,7 @@ if __name__ == '__main__':
 #from enthought.mayavi.core.module import Module
 #from enthought.mayavi.components.implicit_plane import ImplicitPlane
 #from enthought.mayavi.components.cutter import Cutter
-#from enthought.mayavi.components.glyph import Glyph
+#from enthought.mayavi.components.streamer import streamer
 #from enthought.mayavi.components.actor import Actor
 #
 #
@@ -692,8 +907,8 @@ if __name__ == '__main__':
 #    # The cutter.  Takes a cut of the data on the implicit plane.
 #    cutter = Instance(Cutter, allow_none=False, record=True)
 #
-#    # The Glyph component.
-#    glyph = Instance(Glyph, allow_none=False, record=True)
+#    # The streamer component.
+#    streamer = Instance(Glyph, allow_none=False, record=True)
 #
 #    # The Glyph component.
 #    actor = Instance(Actor, allow_none=False, record=True)
