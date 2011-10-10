@@ -323,7 +323,7 @@ class PersistentModule( QObject ):
                 if tagged_function:
                     parameterList = tagged_function.parameters
                     pval = [ translateToPython( parmRec ) for parmRec in parameterList ]
-                    print " %s.Get-Input-Value[%s:%s] (v. %s): %s " % ( self.getName(), tag, inputName, str(tagged_version_number), str(pval) )
+#                    print " %s.Get-Input-Value[%s:%s] (v. %s): %s " % ( self.getName(), tag, inputName, str(tagged_version_number), str(pval) )
             except Exception, err:
                 print>>sys.stderr, "vtDV3D Error getting tagged version:\n { %s }" % str(err)
         if not pval:         
