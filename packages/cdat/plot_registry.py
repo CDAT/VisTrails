@@ -105,6 +105,7 @@ class Plot(object):
     def __init__(self, name, config_file, vt_file):
         self.name = name
         self.config_file = config_file
+        self.serializedParameterChangeAlias = None
         self.vt_file = vt_file
         self.locator = FileLocator(os.path.abspath(self.vt_file))
         self.cellnum = 1
@@ -290,7 +291,7 @@ class Plot(object):
                 
         #now we update pipeline with current parameter values
         pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
-#        self.addMergedAliases( aliases, pipeline )
+        self.addMergedAliases( aliases, pipeline )
         newid = self.addParameterChangesFromAliasesAction(pipeline, 
                                         self.current_controller, 
                                         self.current_controller.vistrail, 
@@ -310,16 +311,16 @@ class Plot(object):
         (results, _) = controller.execute_current_workflow()
         #print results[0]
         
-#    def addMergedAliases( self, aliases, pipeline ):
-#        if 'dvInputSpecs' in pipeline.aliases:
-#            fileAliases = ','.join( [ "%s:%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
-#            varAliases = ','.join( [ "%s:%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
-#            gridAliases = ','.join( [ "%s:%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
-#            aliases[ 'dvInputSpecs' ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
-#            print " dvInputSpecs: ", str( aliases[ 'dvInputSpecs' ] )
-#        if 'dvCellSpecs' in pipeline.aliases:
-#            aliases[ 'dvCellSpecs' ] = ','.join( [ "%s%s" % ( chr( ord('A') + int(aliases[self.cells[i].col_name]) ), aliases[self.cells[i].row_name] )  for i in range(self.cellnum) ] )
-#            print " dvCellSpecs: ", str( aliases[ 'dvCellSpecs' ] )
+    def addMergedAliases( self, aliases, pipeline ):
+        if 'vcdatInputSpecs' in pipeline.aliases:
+            fileAliases = ','.join( [ "%s:%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
+            varAliases = ','.join( [ "%s:%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
+            gridAliases = ','.join( [ "%s:%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
+            aliases[ 'vcdatInputSpecs' ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
+            print " vcdatInputSpecs: ", str( aliases[ 'vcdatInputSpecs' ] )
+        if 'vcdatCellSpecs' in pipeline.aliases:
+            aliases[ 'vcdatCellSpecs' ] = ','.join( [ "%s%s" % ( chr( ord('A') + int(aliases[self.cells[i].col_name]) ), aliases[self.cells[i].row_name] )  for i in range(self.cellnum) ] )
+            print " vcdatCellSpecs: ", str( aliases[ 'vcdatCellSpecs' ] )
         
     def previewChanges(self, aliases):
         print "previewChanges", aliases
@@ -359,14 +360,17 @@ class Plot(object):
         #print "will return ", action.id
         return action.id
         
-    def addParameterChangesFromAliasesAction(self, pipeline, controller, vistrail,
-                                             parent_version, aliases):
+    def addParameterChangesFromAliasesAction(self, pipeline, controller, vistrail, parent_version, aliases):
         param_changes = []
         newid = parent_version
 #        print "addParameterChangesFromAliasesAction()"
 #        print "Aliases: %s " % str( aliases )
 #        print "Pipeline Aliases: %s " % str( pipeline.aliases )
-        for k,value in aliases.iteritems():
+        aliasList = aliases.iteritems()
+        if self.serializedParameterChangeAlias:
+            serializedParameterChanges = serializeParameterList( aliasList )
+            aliasList = [ (self.serializedParameterChangeAlias, serializedParameterChanges ), ]
+        for k,value in aliasList:
             alias = pipeline.aliases.get(k,None) # alias = (type, oId, parentType, parentId, mId)
             if alias:
                 module = pipeline.modules[alias[4]]

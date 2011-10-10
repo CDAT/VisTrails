@@ -130,6 +130,8 @@ def initialize(*args, **keywords):
     reg.add_module( CDMS_VCDATInterface, namespace='cdms' )
     reg.add_input_port(  CDMS_VCDATInterface, "FileName",    [ ( String, 'FileName' ) ], True ) 
     reg.add_input_port( CDMS_VCDATInterface, "VariableName",    [ ( String, 'Value' ) ], True ) 
+    reg.add_input_port( CDMS_VCDATInterface, "vcdatInputSpecs",    [ ( String, 'Value' ) ], True ) 
+    reg.add_input_port( CDMS_VCDATInterface, "vcdatCellSpecs",    [ ( String, 'Value' ) ], True ) 
     reg.add_input_port( CDMS_VCDATInterface, "VariableName1",    [ ( String, 'Value' ) ], True ) 
     reg.add_input_port( CDMS_VCDATInterface, "VariableName2",    [ ( String, 'Value' ) ], True ) 
     reg.add_input_port( CDMS_VCDATInterface, "VariableName3",    [ ( String, 'Value' ) ], True ) 
