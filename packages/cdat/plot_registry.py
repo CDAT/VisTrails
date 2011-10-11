@@ -105,7 +105,7 @@ class Plot(object):
     def __init__(self, name, config_file, vt_file):
         self.name = name
         self.config_file = config_file
-        self.serializedParameterChangeAlias = None
+        self.serializedConfigAlias = None
         self.vt_file = vt_file
         self.locator = FileLocator(os.path.abspath(self.vt_file))
         self.cellnum = 1
@@ -141,10 +141,10 @@ class Plot(object):
                     self.varnum = config.getint('global', 'varnum')
                 if config.has_option('global', 'workflow_tag'):
                     self.workflow_tag = config.get('global', 'workflow_tag')
-                else:
-                    debug.warning("CDAT Package: file %s does not contain a required option 'workflow_tag'. Widget will not be loaded."%self.config_file)
-                    self.loaded = False
-                    return
+#                else:
+#                    debug.warning("CDAT Package: file %s does not contain a required option 'workflow_tag'. Widget will not be loaded."%self.config_file)
+#                    self.loaded = False
+#                    return
                 if config.has_option('global', 'filetypes'):
                     types = config.get('global', 'filetypes')
                     tlist = [t.strip() for t in types.split(";")]
@@ -158,28 +158,45 @@ class Plot(object):
                     deps = config.get('global', 'dependencies')
                     self.dependencies = [d.strip() for d in deps.split(",")]
             
-                for y in range(self.filenum):
-                    option_name = 'filename_alias' + str(y+1)
-                    if config.has_option('global', option_name):
-                        self.files.append(config.get('global', option_name))
+                if config.has_option('global', 'serialized_config_alias'):
+                    self.serializedConfigAlias = config.get('global', 'serialized_config_alias')
+
+                    for y in range(self.filenum):
+                        self.files.append( 'Filename' + str(y+1) )
+                            
+                    for v in range(self.varnum):
+                        self.vars.append( 'VariableName' + str(v+1) )
+                        self.axes.append( 'Axes' + str(v+1) )
+
+                    for x in range(self.cellnum):
+                        section_name = 'cell' + str(x+1)
+                        if config.has_section(section_name):
+                            cellType = config.get(section_name, 'celltype')
+                            self.cells.append( Cell( cellType, 'Row' + str(x+1), 'Column' + str(x+1) ) )                                                                    
+                else:
+                    
+                    for y in range(self.filenum):
+                        option_name = 'filename_alias' + str(y+1)
+                        if config.has_option('global', option_name):
+                            self.files.append(config.get('global', option_name))
+                            
+                    for v in range(self.varnum):
+                        option_name = 'varname_alias' + str(v+1)
+                        if config.has_option('global', option_name):
+                            self.vars.append(config.get('global', option_name))
+                        axes_name = 'axes_alias' + str(v+1)
+                        if config.has_option('global', axes_name):
+                            self.axes.append(config.get('global', axes_name))
                         
-                for v in range(self.varnum):
-                    option_name = 'varname_alias' + str(v+1)
-                    if config.has_option('global', option_name):
-                        self.vars.append(config.get('global', option_name))
-                    axes_name = 'axes_alias' + str(v+1)
-                    if config.has_option('global', axes_name):
-                        self.axes.append(config.get('global', axes_name))
-                        
-                for x in range(self.cellnum):
-                    section_name = 'cell' + str(x+1)
-                    if (config.has_section(section_name) and
-                        config.has_option(section_name, 'celltype') and
-                        config.has_option(section_name, 'row_alias') and
-                        config.has_option(section_name, 'col_alias')):
-                        self.cells.append(Cell(config.get(section_name, 'celltype'),
-                                               config.get(section_name, 'row_alias'),
-                                               config.get(section_name, 'col_alias')))
+                    for x in range(self.cellnum):
+                        section_name = 'cell' + str(x+1)
+                        if (config.has_section(section_name) and
+                            config.has_option(section_name, 'celltype') and
+                            config.has_option(section_name, 'row_alias') and
+                            config.has_option(section_name, 'col_alias')):
+                            self.cells.append(Cell(config.get(section_name, 'celltype'),
+                                                   config.get(section_name, 'row_alias'),
+                                                   config.get(section_name, 'col_alias')))
                 
                 if loadwidget:
                     #load workflow in vistrail
@@ -197,6 +214,7 @@ class Plot(object):
                                                 mashups) 
 
                         version = self.plot_vistrail.get_version_number(self.workflow_tag) if self.workflow_tag else controller.get_latest_version_in_graph()
+                        print " Loaded %s version: %s" % (  self.name, str( version ) )
                         controller.change_selected_version(version)
                         self.workflow = controller.current_pipeline
                         self.loadWidget()
@@ -271,7 +289,7 @@ class Plot(object):
                     waliases = set(self.workflow.aliases.keys())
                     if len(waliases - paliases) != 0:
                         self.current_parent_version = 0
-        #print "controller ", self.current_controller
+        # print "writePipelineToCurrentVistrail: controller ", self.current_controller
         #print "version ", self.current_parent_version 
         if self.current_parent_version == 0L:
             #create actions and paste them in current vistrail
@@ -300,7 +318,7 @@ class Plot(object):
             
                 
     def applyChanges(self, aliases):
-        #print "applyChanges"
+#        print "applyChanges"
         self.writePipelineToCurrentVistrail(aliases)
         pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
         #print "Controller changed ", self.current_controller.changed
@@ -312,15 +330,16 @@ class Plot(object):
         #print results[0]
         
     def addMergedAliases( self, aliases, pipeline ):
-        if 'vcdatInputSpecs' in pipeline.aliases:
-            fileAliases = ','.join( [ "%s:%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
-            varAliases = ','.join( [ "%s:%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
-            gridAliases = ','.join( [ "%s:%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
-            aliases[ 'vcdatInputSpecs' ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
-            print " vcdatInputSpecs: ", str( aliases[ 'vcdatInputSpecs' ] )
-        if 'vcdatCellSpecs' in pipeline.aliases:
-            aliases[ 'vcdatCellSpecs' ] = ','.join( [ "%s%s" % ( chr( ord('A') + int(aliases[self.cells[i].col_name]) ), aliases[self.cells[i].row_name] )  for i in range(self.cellnum) ] )
-            print " vcdatCellSpecs: ", str( aliases[ 'vcdatCellSpecs' ] )
+        if self.serializedConfigAlias:
+            if self.serializedConfigAlias in pipeline.aliases:
+                fileAliases = '|'.join( [ "%s!%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
+                varAliases = '|'.join( [ "%s!%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
+                gridAliases = '|'.join( [ "%s!%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
+                aliases[ self.serializedConfigAlias ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
+                print " vcdatInputSpecs: ", str( aliases[ self.serializedConfigAlias ] )
+#            if 'vcdatCellSpecs' in pipeline.aliases:
+#                aliases[ 'vcdatCellSpecs' ] = ','.join( [ "%s%s" % ( chr( ord('A') + int(aliases[self.cells[i].col_name]) ), aliases[self.cells[i].row_name] )  for i in range(self.cellnum) ] )
+#                print " vcdatCellSpecs: ", str( aliases[ 'vcdatCellSpecs' ] )
         
     def previewChanges(self, aliases):
         print "previewChanges", aliases
@@ -345,8 +364,7 @@ class Plot(object):
                              vistrail: Vistrail, parent_version: long) -> long
         
         """
-        #print "addPipelineAction(%s,%s,%s,%s)"%(pipeline, controller, vistrail,
-        #                                        parent_version)
+        print "addPipelineAction(%s,%s,%s,%s)"%(pipeline, controller, vistrail, parent_version)
         id_remap = {}
         action = core.db.action.create_paste_action(pipeline,
                                                     vistrail.idScope, 
@@ -363,13 +381,10 @@ class Plot(object):
     def addParameterChangesFromAliasesAction(self, pipeline, controller, vistrail, parent_version, aliases):
         param_changes = []
         newid = parent_version
-#        print "addParameterChangesFromAliasesAction()"
-#        print "Aliases: %s " % str( aliases )
-#        print "Pipeline Aliases: %s " % str( pipeline.aliases )
+        print "addParameterChangesFromAliasesAction()"
+        print "Aliases: %s " % str( aliases )
+        print "Pipeline Aliases: %s " % str( pipeline.aliases )
         aliasList = aliases.iteritems()
-        if self.serializedParameterChangeAlias:
-            serializedParameterChanges = serializeParameterList( aliasList )
-            aliasList = [ (self.serializedParameterChangeAlias, serializedParameterChanges ), ]
         for k,value in aliasList:
             alias = pipeline.aliases.get(k,None) # alias = (type, oId, parentType, parentId, mId)
             if alias:

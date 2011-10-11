@@ -10,7 +10,7 @@ Created on Dec 7, 2010
 """
 identifier = 'gov.nasa.nccs.vtdv3d'
 name = 'vtDV3D'
-version = '0.1.7'
+version = '0.1.8'
 
 #Configuration object
 import sys
@@ -124,31 +124,31 @@ def initialize(*args, **keywords):
 #    reg.add_output_port( WorldFrame, "volume", AlgorithmOutputModule3D ) 
 #    WorldFrame.registerConfigurableFunctions( reg )
 
-    reg.add_module( CDMS_VCDATInterfaceSpecs, configureWidgetType=VCDATInterfaceWidget, namespace='cdms', hide_descriptor=True )
-    reg.add_input_port( CDMS_VCDATInterfaceSpecs, "zscale", [ ( Float, 'value' ) ], optional=True  ) 
+#    reg.add_module( CDMS_VCDATInterfaceSpecs, configureWidgetType=VCDATInterfaceWidget, namespace='cdms', hide_descriptor=True )
+#    reg.add_input_port( CDMS_VCDATInterfaceSpecs, "zscale", [ ( Float, 'value' ) ], optional=True  ) 
 
-    reg.add_module( CDMS_VCDATInterface, namespace='cdms' )
-    reg.add_input_port(  CDMS_VCDATInterface, "FileName",    [ ( String, 'FileName' ) ], True ) 
-    reg.add_input_port( CDMS_VCDATInterface, "VariableName",    [ ( String, 'Value' ) ], True ) 
-    reg.add_input_port( CDMS_VCDATInterface, "vcdatInputSpecs",    [ ( String, 'Value' ) ], True ) 
-    reg.add_input_port( CDMS_VCDATInterface, "vcdatCellSpecs",    [ ( String, 'Value' ) ], True ) 
-    reg.add_input_port( CDMS_VCDATInterface, "VariableName1",    [ ( String, 'Value' ) ], True ) 
-    reg.add_input_port( CDMS_VCDATInterface, "VariableName2",    [ ( String, 'Value' ) ], True ) 
-    reg.add_input_port( CDMS_VCDATInterface, "VariableName3",    [ ( String, 'Value' ) ], True ) 
-    reg.add_input_port( CDMS_VCDATInterface, "Axes",    [ ( String, 'Axes' ) ], True ) 
-    reg.add_input_port( CDMS_VCDATInterface, "Row",    [ ( String, 'Value' ) ], True ) 
-    reg.add_input_port( CDMS_VCDATInterface, "Column",    [ ( String, 'Value' ) ], True ) 
-    reg.add_input_port( CDMS_VCDATInterface, "Row1",    [ ( String, 'Value' ) ], True ) 
-    reg.add_input_port( CDMS_VCDATInterface, "Column1",    [ ( String, 'Value' ) ], True ) 
-    reg.add_input_port( CDMS_VCDATInterface, "Row2",    [ ( String, 'Value' ) ], True ) 
-    reg.add_input_port( CDMS_VCDATInterface, "Column2",    [ ( String, 'Value' ) ], True ) 
-    reg.add_output_port( CDMS_VCDATInterface, "executionSpecs", [ CDMS_VCDATInterfaceSpecs ] ) 
-    reg.add_output_port( CDMS_VCDATInterface, "cellLocation", [ ( String, 'cellLocation' ) ] ) 
-    reg.add_output_port( CDMS_VCDATInterface, "cellLocation1", [ ( String, 'cellLocation' ) ] ) 
-    reg.add_output_port( CDMS_VCDATInterface, "cellLocation2", [ ( String, 'cellLocation' ) ] ) 
+#    reg.add_module( CDMS_VCDATInterface, namespace='cdms' )
+#    reg.add_input_port( CDMS_VCDATInterface, "vcdatInputSpecs",    [ ( String, 'Value' ) ], True ) 
+#    reg.add_input_port( CDMS_VCDATInterface, "vcdatCellSpecs",    [ ( String, 'Value' ) ], True ) 
+#    reg.add_input_port(  CDMS_VCDATInterface, "FileName",    [ ( String, 'FileName' ) ], True ) 
+#    reg.add_input_port( CDMS_VCDATInterface, "VariableName",    [ ( String, 'Value' ) ], True ) 
+#    reg.add_input_port( CDMS_VCDATInterface, "VariableName1",    [ ( String, 'Value' ) ], True ) 
+#    reg.add_input_port( CDMS_VCDATInterface, "VariableName2",    [ ( String, 'Value' ) ], True ) 
+#    reg.add_input_port( CDMS_VCDATInterface, "VariableName3",    [ ( String, 'Value' ) ], True ) 
+#    reg.add_input_port( CDMS_VCDATInterface, "Axes",    [ ( String, 'Axes' ) ], True ) 
+#    reg.add_input_port( CDMS_VCDATInterface, "Row",    [ ( String, 'Value' ) ], True ) 
+#    reg.add_input_port( CDMS_VCDATInterface, "Column",    [ ( String, 'Value' ) ], True ) 
+#    reg.add_input_port( CDMS_VCDATInterface, "Row1",    [ ( String, 'Value' ) ], True ) 
+#    reg.add_input_port( CDMS_VCDATInterface, "Column1",    [ ( String, 'Value' ) ], True ) 
+#    reg.add_input_port( CDMS_VCDATInterface, "Row2",    [ ( String, 'Value' ) ], True ) 
+#    reg.add_input_port( CDMS_VCDATInterface, "Column2",    [ ( String, 'Value' ) ], True ) 
+#    reg.add_output_port( CDMS_VCDATInterface, "executionSpecs", [ CDMS_VCDATInterfaceSpecs ] ) 
+#    reg.add_output_port( CDMS_VCDATInterface, "cellLocation", [ ( String, 'cellLocation' ) ] ) 
+#    reg.add_output_port( CDMS_VCDATInterface, "cellLocation1", [ ( String, 'cellLocation' ) ] ) 
+#    reg.add_output_port( CDMS_VCDATInterface, "cellLocation2", [ ( String, 'cellLocation' ) ] ) 
 
     reg.add_module( CDMS_FileReader, configureWidgetType=CDMSDatasetConfigurationWidget, namespace='cdms' )
-    reg.add_input_port(  CDMS_FileReader, "executionSpecs",    [ CDMS_VCDATInterfaceSpecs ], True ) 
+    reg.add_input_port(  CDMS_FileReader, "executionSpecs",    [ ( String, 'serializedConfiguration' ),  ], True ) 
     reg.add_input_port( CDMS_FileReader, "datasets",    [ ( String, 'serializedDatasetMap' ) ], True ) 
     reg.add_input_port( CDMS_FileReader, "datasetId",    [ ( String, 'currentDatasetId' ), ( Integer, 'version' ) ], True ) 
     reg.add_input_port( CDMS_FileReader, "timeRange",    [ ( Integer, 'startTimeIndex' ), ( Integer, 'endTimeIndex' ), ( Float, 'relativeStartTime' ), ( Float, 'relativeTimeStep' )], True )    
