@@ -982,6 +982,7 @@ class PersistentVisualizationModule( PersistentModule ):
         outputModule = AlgorithmOutputModule3D( self.renderer, fieldData=self.fieldData, **args )
         output =  outputModule.getOutput() 
         oid = id( outputModule )
+        print "Setting 3D output for port %s" % ( portName ) 
         if output <> None:
             fd = output.GetFieldData() 
             fd.PassData( self.fieldData ) 
@@ -989,7 +990,7 @@ class PersistentVisualizationModule( PersistentModule ):
             print>>sys.stderr, "Missing wmod in set3DOutput for class %s" % ( self.__class__.__name__ )
         else:
             self.wmod.setResult( portName, outputModule )
-#            print "set3DOutput for class %s" % ( self.__class__.__name__ ) 
+            print "set3DOutput for class %s" % ( self.__class__.__name__ ) 
 
     def getDownstreamCellModules( self, selectedOnly=False ): 
         import api, ModuleStore

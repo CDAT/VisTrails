@@ -30,7 +30,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         self.glyphScale = [ 0.0, 2.0 ] 
         self.glyphRange = None
         self.glyphDecimationFactor = [ 1.0, 5.0 ] 
-        self.primaryInputPort = 'vector'
+        self.primaryInputPort = 'volume'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False )
@@ -293,7 +293,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.glyphRange = 1.0
         self.glyphDecimationFactor = [ 10.0, 10.0 ] 
         self.glyph = None
-        self.primaryInputPort = 'vector'
+        self.primaryInputPort = 'volume'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, windowing=False )
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False )
@@ -593,7 +593,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.streamerSeedGridSpacing = [ 6.0, 6.0 ] 
         self.minStreamerSeedGridSpacing = [ 1.0, 1.0 ] 
         self.streamer = None
-        self.primaryInputPort = 'vector'
+        self.primaryInputPort = 'volume'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'streamerScale', 'T', setLevel=self.setStreamerScale, getLevel=self.getStreamerScale, layerDependent=True, windowing=False )
         self.addConfigurableLevelingFunction( 'streamerDensity', 'G', setLevel=self.setStreamerDensity, getLevel=self.getStreamerDensity, layerDependent=True, windowing=False )

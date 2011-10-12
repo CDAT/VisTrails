@@ -925,8 +925,12 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             print " ** zscale: ", str( zscale )
             print " ________________________________________________________ "   
             self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
-            self.ref_var = "%s*%s" % ( self.datasetMap.keys()[0], self.varSpecs[0])
-            self.datasetModule.setVariableRecord( "VariableName", self.ref_var )
+            dsKeys = self.datasetMap.keys()
+            for iVar in range( len(self.varSpecs) ):
+                iDset = 0 if ( len( dsKeys ) == 1 ) else iVar
+                varSpec = "%s*%s" % ( dsKeys[ iDset ], self.varSpecs[iVar] )
+                if iVar == 0: self.ref_var = varSpec
+                self.datasetModule.setVariableRecord( "VariableName%d" % iVar, varSpec )
         else:    
             time_range = self.getInputValue( "timeRange"  )
             self.timeRange =[ int(time_range[0]), int(time_range[1]), float(time_range[2]), float(time_range[3])  ]
