@@ -904,7 +904,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         zscale = getItem( self.getInputValue( "zscale",   1.0  )  )
         
         serializedInputSpecs = getItem( self.getInputValue( "executionSpecs" ) )
-        inputSpecs = SerializedInterfaceSpecs( serializedInputSpecs ) 
+        inputSpecs = SerializedInterfaceSpecs( serializedInputSpecs ) if serializedInputSpecs else None
         self.fileSpecs, self.varSpecs, self.gridSpecs = [], [], []
         if inputSpecs:
             print " _____________________ File Reader _____________________ "    
@@ -2317,7 +2317,7 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         elif self.outputType == CDMSDataType.Slice:     
             self.addOutputTab( 2, 'slice' )
         elif self.outputType == CDMSDataType.Vector:    
-            self.addOutputTab( 3, 'vector' )
+            self.addOutputTab( 3, 'volume' )
         self.updateVariableLists()
                 
     def getOutputTabIndex( self, name ):

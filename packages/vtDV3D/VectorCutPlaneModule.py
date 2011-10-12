@@ -293,6 +293,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.glyphRange = 1.0
         self.glyphDecimationFactor = [ 10.0, 10.0 ] 
         self.glyph = None
+        self.useGlyphMapper = True     
         self.primaryInputPort = 'volume'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, windowing=False )
@@ -302,8 +303,6 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
         self.glyphMapper.SetLookupTable( self.lut )
-#        self.glyph.Modified()
-#        self.glyph.Update()
         self.render()
 
     def setGlyphScale( self, ctf_data ):
@@ -315,9 +314,13 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         if self.glyph <> None: 
             self.glyph.SetScaleFactor( self.glyphScale ) 
             self.glyph.SetRange( 0.0, self.glyphRange )
-            if render:     
-                self.glyph.Update()
-                self.render()
+        else:
+            self.glyphMapper.SetScaleFactor( self.glyphScale ) 
+            self.glyphMapper.SetRange( 0.0, self.glyphRange )
+        if render:     
+            if self.glyph <> None:  self.glyph.Update()
+            else:                   self.glyphMapper.Update()
+            self.render()
 
     def getGlyphScale( self ):
         return [ self.glyphRange, self.glyphScale ]
@@ -332,7 +335,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
     def buildPipeline(self):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
-        """       
+        """  
         self.sliceOutput = vtk.vtkImageData()
         self.colorInputModule = self.wmod.forceGetInputFromPort( "colors", None )
         
@@ -418,31 +421,46 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.planeWidget.AddObserver( 'InteractionEvent', self.SliceObserver )
 #        print "Data bounds %s, origin = %s, spacing = %s, extent = %s, widget origin = %s " % ( str( self.dataBounds ), str( self.initialOrigin ), str( self.initialSpacing ), str( self.initialExtent ), str( self.planeWidget.GetOrigin( ) ) )
         self.cutter = vtk.vtkCutter()
-        self.cutter.SetInput( self.cutterInput )
-        
+        self.cutter.SetInput( self.cutterInput )        
         self.cutter.SetGenerateCutScalars(0)
-#        self.glyph = vtk.vtkGlyph3DMapper() 
-        self.glyph = vtk.vtkGlyph3D() 
-#        if self.colorInputModule <> None:   self.glyph.SetColorModeToColorByScalar()            
-#        else:                               self.glyph.SetColorModeToColorByVector()          
-
-        self.glyph.SetIndexModeToVector()
-#                self.glyph.SourceIndexingOn ()      
-               
-        self.glyph.SetScaleModeToDataScalingOff ()
-        self.glyph.SetOrient( 1 ) 
-        self.glyph.ClampingOff()
         sliceOutputPort = self.cutter.GetOutputPort()
-        self.glyph.SetInputConnection( sliceOutputPort )
-        self.createArrowSources()
+        self.lut.SetVectorModeToMagnitude()
+        self.lut.SetVectorSize(2)
+        self.lut.SetVectorComponent(0)
+        
+        if self.useGlyphMapper:
+            self.glyphMapper = vtk.vtkGlyph3DMapper() 
+#            self.glyphMapper.SetScaleModeToScaleByMagnitude()
+
+            self.glyphMapper.SetScaleModeToNoDataScaling()   
+            self.glyphMapper.SetUseLookupTableScalarRange(1)
+            self.glyphMapper.SetOrient( 1 ) 
+            self.glyphMapper.ClampingOff()
+            self.glyphMapper.SourceIndexingOn()
+            self.glyphMapper.SetInputConnection( sliceOutputPort )
+            self.glyphMapper.SetLookupTable( self.lut )
+            self.glyphMapper.ScalarVisibilityOn()            
+            self.glyphMapper.SetScalarModeToUsePointFieldData()
+            self.glyphMapper.SelectColorArray( vectorsArray.GetName() )
+
+        else:
+            self.glyph = vtk.vtkGlyph3D() 
+            self.glyph.SetIndexModeToVector()               
+            self.glyph.SetScaleModeToDataScalingOff ()
+            self.glyph.SetOrient( 1 ) 
+            self.glyph.ClampingOff()
+            self.glyph.SetInputConnection( sliceOutputPort )
+
+            self.glyphMapper = vtk.vtkPolyDataMapper()
+            self.glyphMapper.SetInputConnection( self.glyph.GetOutputPort() )
+            self.glyphMapper.SetLookupTable( self.lut )
+            self.glyphMapper.SetColorModeToMapScalars()     
+            self.glyphMapper.SetUseLookupTableScalarRange(1)    
+                    
+        self.createArrowSources()            
         self.updateScaling()
         
         self.glyphActor = vtk.vtkActor()         
-        self.glyphMapper = vtk.vtkPolyDataMapper()
-        self.glyphMapper.SetInputConnection( self.glyph.GetOutputPort() )
-        self.glyphMapper.SetLookupTable( self.lut )
-        self.glyphMapper.SetColorModeToMapScalars()     
-        self.glyphMapper.SetUseLookupTableScalarRange(1)
         self.glyphActor.SetMapper( self.glyphMapper )
         
         self.renderer.AddActor( self.glyphActor )
@@ -470,7 +488,8 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
             scaledArrow = vtk.vtkPolyData()
             scaledArrow.CopyStructure(arrow)
             scaledArrow.SetPoints( newPts )
-            self.glyph.SetSource( iScale, scaledArrow )
+            if self.useGlyphMapper: self.glyphMapper.SetSource( iScale, scaledArrow )
+            else:                   self.glyph.SetSource( iScale, scaledArrow )
 
 #        self.cutter.SetGenerateCutScalars(0)
 #        self.glyph = vtk.vtkGlyph3D() 
@@ -533,7 +552,8 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         
     def UpdateCut(self): 
         self.cutter.SetCutFunction ( self.plane  )
-        self.glyph.Update()
+        if self.glyph: self.glyph.Update()
+        else: self.glyphMapper.Update()
         self.render()
         
         
