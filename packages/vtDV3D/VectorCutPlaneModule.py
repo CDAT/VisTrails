@@ -37,6 +37,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
       
     def scaleColormap( self, ctf_data ):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
+        self.colormapManager.setDisplayRange( ctf_data )
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
         self.glyph.SetLookupTable( self.lut )
 #        self.glyph.Modified()
@@ -301,6 +302,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
       
     def scaleColormap( self, ctf_data ):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
+        self.colormapManager.setDisplayRange( ctf_data )
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
         self.glyphMapper.SetLookupTable( self.lut )
         self.render()
@@ -620,6 +622,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
       
     def scaleColormap( self, ctf_data ):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
+        self.colormapManager.setDisplayRange( ctf_data )
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
         self.streamMapper.SetLookupTable( self.lut )
         self.render()

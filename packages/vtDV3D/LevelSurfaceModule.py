@@ -33,6 +33,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__(self,  mid, **args)
         self.opacityRange =  [ 0.8, 0.8 ]
+        self.imageRange = None
         self.numberOfLevels = 1
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
@@ -47,10 +48,12 @@ class PM_LevelSurface(PersistentVisualizationModule):
 #        self.levelSetProperty.SetOpacity( opacity_range[1] )
         
     def setColorScale( self, range ):
-        self.levelSetMapper.SetScalarRange( range[0], range[1] )
+        self.imageRange = self.getImageValues( range[0:2] ) 
+        self.levelSetMapper.SetScalarRange( self.imageRange[0], self.imageRange[1] )
+        self.colormapManager.setDisplayRange( range )
 
     def getColorScale( self ):
-        sr = self.levelSetMapper.GetScalarRange()
+        sr = self.getDataRangeBounds()
         return [ sr[0], sr[1], 0 ]
 
     def getOpacityRange( self ):

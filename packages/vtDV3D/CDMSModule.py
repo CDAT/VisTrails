@@ -933,7 +933,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 self.datasetModule.setVariableRecord( "VariableName%d" % iVar, varSpec )
         else:    
             time_range = self.getInputValue( "timeRange"  )
-            self.timeRange =[ int(time_range[0]), int(time_range[1]), float(time_range[2]), float(time_range[3])  ]
+            self.timeRange =[ int(time_range[0]), int(time_range[1]), float(time_range[2]), float(time_range[3])  ] if time_range else None
             roi_data = self.getInputValue( "roi" )
             self.roi = [ float(sroi) for sroi in roi_data ] 
             dsMapData = self.getInputValue( "datasets" ) 

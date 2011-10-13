@@ -221,6 +221,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         else: ctf_data = self.ctf_data
         if ctf_data:
             self.imageRange = self.getImageValues( ctf_data[0:2] ) 
+            self.lut.SetTableRange( self.imageRange[0], self.imageRange[1] )
+            self.colormapManager.setDisplayRange( ctf_data )
             self.invert = ctf_data[2]
             self.rebuildColorTransferFunction()
         

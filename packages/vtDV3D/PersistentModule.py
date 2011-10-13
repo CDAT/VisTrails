@@ -1015,7 +1015,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.textActor.SetInput( self.textBuff )
                 self.textActor.Modified()
                 self.textActor.VisibilityOn()
-#            print "updateTextDisplay: %s" % ( text ) 
+#                print "updateTextDisplay: %s" % ( text ) 
             
     def UpdateCamera(self):
         pass
@@ -1051,6 +1051,7 @@ class PersistentVisualizationModule( PersistentModule ):
         if self.colormapManager <> None:
             self.colormapManager.reverse_lut = self.invertColormap
             self.colormapManager.load_lut( self.colormapName )
+            if self.createColormap: self.createColorBarActor()
 #            print " >>> LoadColormap:  %s " % self.colormapName
             return True
         else:
@@ -1116,13 +1117,22 @@ class PersistentVisualizationModule( PersistentModule ):
         self.colorBarActor = self.getProp( 'vtkScalarBarActor' )
         if self.colorBarActor == None:
             self.lut = vtk.vtkLookupTable()
+            self.colormapManager = ColorMapManager( self.lut ) 
             self.colorBarActor = vtk.vtkScalarBarActor()
-            self.colorBarActor.SetLookupTable( self.lut )
+            self.colorBarActor.SetMaximumWidthInPixels( 50 )
+            self.colorBarActor.SetNumberOfLabels(9)
+            labelFormat = vtk.vtkTextProperty()
+            labelFormat.SetFontSize( 160 )
+            labelFormat.SetColor( 1.0, 1.0, 0.0 ) 
+            self.colorBarActor.SetPosition( 0.9, 0.2 )    
+            self.colorBarActor.SetLabelTextProperty( labelFormat )
+            self.colorBarActor.SetLookupTable( self.colormapManager.getDisplayLookupTable() )
             self.colorBarActor.SetVisibility(0)
             self.renderer.AddActor( self.colorBarActor )
         else:
-            self.lut = self.colorBarActor.GetLookupTable()
-        self.colormapManager = ColorMapManager( self.lut ) 
+            self.colorBarActor.SetLookupTable( self.colormapManager.getDisplayLookupTable() )
+            self.colorBarActor.Modified()
+        
 
     def creatTitleActor( self ):
         pass
@@ -1220,7 +1230,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 PersistentVisualizationModule.moduleDocumentationDialog.addCloseObserver( self.clearDocumenation )
                 PersistentVisualizationModule.moduleDocumentationDialog.show()
         elif ( self.createColormap and ( key == 'l' ) ): 
-            if  self.colorBarActor.GetVisibility():  
+            if  self.colorBarActor.GetVisibility(): 
                   self.colorBarActor.VisibilityOff()  
             else: self.colorBarActor.VisibilityOn() 
             self.render() 

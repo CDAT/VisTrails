@@ -293,6 +293,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def scaleColormap( self, ctf_data ):
         self.imageRange = self.getImageValues( ctf_data[0:2] ) 
         self.lut.SetTableRange( self.imageRange[0], self.imageRange[1] ) 
+        self.colormapManager.setDisplayRange( ctf_data )
         self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
 #        print " Volume Slicer: Scale Colormap: [ %.2f, %.2f ] " % ( self.imageRange[0], self.imageRange[1] )
         
@@ -323,7 +324,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         alt = ( keysym.lower().find('alt') == 0 )
         ctrl = caller.GetControlKey() 
         shift = caller.GetShiftKey() 
-        print " -- Key Press: %c ( %d: %s ), ctrl: %s, shift: %s, alt: %s, event = %s " % ( key, ord(key), str(keysym), bool(ctrl), bool(shift), bool(alt), str( event ) )
+#        print " -- Key Press: %c ( %d: %s ), ctrl: %s, shift: %s, alt: %s, event = %s " % ( key, ord(key), str(keysym), bool(ctrl), bool(shift), bool(alt), str( event ) )
         if ( key == 'm' ):  self.setMarginSize( 0.05 ) 
         elif ( key == 'x' ): 
             self.planeWidgetX.SetPlaneOrientationToXAxes() 

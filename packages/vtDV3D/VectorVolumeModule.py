@@ -37,6 +37,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
       
     def scaleColormap( self, ctf_data ):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
+        self.colormapManager.setDisplayRange( ctf_data )
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
         self.glyph.SetLookupTable( self.lut )
 #        self.glyph.Modified()
