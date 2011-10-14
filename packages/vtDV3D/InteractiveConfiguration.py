@@ -401,8 +401,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     def getTextDisplay(self, **args ):
         rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
         rmax = self.range[1] # if not self.isDataValue else self.module.getDataValue( self.range[1] )
-        units = 'X'
-        return " Range: %.4G, %.4G %s." % ( rmin, rmax, units )
+        units = self.module.units if self.module else None
+        if units: textDisplay = " Range: %.4G, %.4G %s . " % ( rmin, rmax, units )
+        else: textDisplay = " Range: %.4G, %.4G . " % ( rmin, rmax )
+        return textDisplay 
             
     def updateLeveling( self, x, y, wsize ):
         self.range = self.windowLeveler.windowLevel( x, y, wsize )

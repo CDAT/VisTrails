@@ -441,7 +441,7 @@ class CDMSDatasetRecord():
             gridBounds[ 2 ] = gridBounds[ 3 ]
             gridBounds[ 3 ] = tmp
         gridSpecs = {}
-        md = { 'datasetId' : self.id,  'bounds':gridBounds, 'lat':self.lat, 'lon':self.lon, 'attributes':self.dataset.attributes }
+        md = { 'datasetId' : self.id,  'bounds':gridBounds, 'lat':self.lat, 'lon':self.lon, 'lev':self.lev, 'attributes':self.dataset.attributes }
         gridSpecs['gridOrigin'] = gridOrigin
         gridSpecs['outputOrigin'] = outputOrigin
         gridSpecs['gridBounds'] = gridBounds
@@ -1907,6 +1907,11 @@ class MetadataViewerDialog( QDialog ):
 #        self.emit(SIGNAL('doneConfigure()'))
 #        self.close()
 
+def getTitle( name, attributes, showUnits=False ):
+       long_name = attributes.get( 'long_name', attributes.get( 'standard_name', name ) )
+       if not showUnits: return long_name 
+       units = attributes.get( 'units', 'unitless' )
+       return  "%s (%s)" % ( long_name, units )
 
 class PM_CDMSDataReader( PersistentVisualizationModule ):
     
@@ -2165,7 +2170,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             if varName <> '__zeros__':
                 varDataSpecs = self.getCachedData( self.timeValue.value, varDataId )   
                 md = varDataSpecs[ 'md' ]            
-                md[ 'vars' ] = vars
+                md[ 'vars' ] = vars               
+                md[ 'title' ] = getTitle( md[ 'scalars' ], var_md )
                 enc_mdata = encodeToString( md ) 
                 self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) ) 
                 break                       

@@ -113,6 +113,7 @@ def initialize(*args, **keywords):
     reg.add_input_port( DV3DCell, "enable_basemap",  [ ( Boolean, 'enable' ) ], optional=True  )    
     reg.add_input_port( DV3DCell, "world_map", [ ( File, 'map_file' ), ( Integer, 'map_cut' ) ], optional=True  ) 
     reg.add_input_port( DV3DCell, "opacity", [ ( Float, 'value' ) ], optional=True  ) 
+    reg.add_input_port( DV3DCell, "title", [ ( String, 'value' ) ], optional=True  ) 
 
 #    reg.add_module( WorldFrame )
 #    reg.add_input_port( WorldFrame, "world_cut", Integer, optional=True  )

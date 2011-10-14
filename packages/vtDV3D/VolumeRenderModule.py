@@ -236,7 +236,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             for i in range(nc):
                 interval_position = float(i)/nc
                 data_value = self.imageRange[0] + dr * interval_position
-                color = self.lut.GetTableValue( i if self.invert else (nc-i-1) )
+                color = self.lut.GetTableValue( (nc-i-1) if self.invert else i )
                 self.colorTransferFunction.AddRGBPoint( data_value, color[0], color[1], color[2] )
     #            if i % 50 == 0:  print "   --- ctf[%d:%.2f] --  %.2e: ( %.2f %.2f %.2f ) " % ( i, table_value, data_value, color[0], color[1], color[2] )
             
