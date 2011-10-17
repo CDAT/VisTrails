@@ -89,16 +89,16 @@
     except api.NoGUI:
         shell = None
     translator = QTranslator(shell=shell)
-    cdatWindow = qtbrowser.vcdatWindow.QCDATWindow()
-    plotRegistry = PlotRegistry(cdatWindow)
-    plotRegistry.loadPlots()    
-    plotRegistry.registerPlots()
+    cdatWindow = UVCDATMainWindow()
+    #plotRegistry = PlotRegistry(cdatWindow)
+    #plotRegistry.loadPlots()    
+    #plotRegistry.registerPlots()
     cdatWindow.show()
     visApp = QtCore.QCoreApplication.instance()
     if visApp:
         visApp.setActiveWindow(cdatWindow)
-    translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
-                           translator.commandsReceived)
+    #translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
+    #                       translator.commandsReceived)
     translator.connect(cdatWindow, QtCore.SIGNAL("showVisTrails"),
                        translator.showVisTrails)
     translator.connect(cdatWindow, QtCore.SIGNAL("closeVisTrails"),

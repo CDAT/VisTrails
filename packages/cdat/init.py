@@ -50,9 +50,11 @@ from core.modules.vistrails_module import (Module, NotCacheable,
                                            ModuleError, new_module)
 from core.bundles import py_import
 from gui.shell import QShellDialog
+from gui.uvcdat.mainwindow import UVCDATMainWindow
+
 import os, sys
-import qtbrowser
-qtbrowser.use_vistrails=True
+#import qtbrowser
+#qtbrowser.use_vistrails=True
 #cdat specific packages
 vcs = py_import('vcs',{})
 cdms2 = py_import('cdms2', {})
@@ -13875,16 +13877,16 @@ def initialize(*args, **keywords):
     except api.NoGUI:
         shell = None
     translator = QTranslator(shell=shell)
-    cdatWindow = qtbrowser.vcdatWindow.QCDATWindow()
-    plotRegistry = PlotRegistry(cdatWindow)
-    plotRegistry.loadPlots()    
-    plotRegistry.registerPlots()
+    cdatWindow = UVCDATMainWindow()
+    #plotRegistry = PlotRegistry(cdatWindow)
+    #plotRegistry.loadPlots()    
+    #plotRegistry.registerPlots()
     cdatWindow.show()
     visApp = QtCore.QCoreApplication.instance()
     if visApp:
         visApp.setActiveWindow(cdatWindow)
-    translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
-                           translator.commandsReceived)
+    #translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
+    #                       translator.commandsReceived)
     translator.connect(cdatWindow, QtCore.SIGNAL("showVisTrails"),
                        translator.showVisTrails)
     translator.connect(cdatWindow, QtCore.SIGNAL("closeVisTrails"),
@@ -13898,5 +13900,4 @@ def initialize(*args, **keywords):
 def finalize():
     global plotRegistry
     global cdatWindow
-    del plotRegistry
     cdatWindow.close()

@@ -305,7 +305,8 @@ if __name__ == '__main__':
     extra_init_lines.append("\ndef finalize():\n")
     extra_init_lines.append("    global plotRegistry\n")
     extra_init_lines.append("    global cdatWindow\n")
-    extra_init_lines.append("    del plotRegistry\n")
+    
+    #extra_init_lines.append("    del plotRegistry\n")
     extra_init_lines.append("    cdatWindow.close()\n")
     
     extra_class_lines.extend(class_lines)

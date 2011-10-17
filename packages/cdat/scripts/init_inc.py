@@ -50,9 +50,11 @@ from core.modules.vistrails_module import (Module, NotCacheable,
                                            ModuleError, new_module)
 from core.bundles import py_import
 from gui.shell import QShellDialog
+from gui.uvcdat.mainwindow import UVCDATMainWindow
+
 import os, sys
-import qtbrowser
-qtbrowser.use_vistrails=True
+#import qtbrowser
+#qtbrowser.use_vistrails=True
 #cdat specific packages
 vcs = py_import('vcs',{})
 cdms2 = py_import('cdms2', {})

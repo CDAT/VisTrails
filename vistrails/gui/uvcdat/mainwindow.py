@@ -1,14 +1,15 @@
 from PyQt4 import QtCore, QtGui
 
-from uvcdat.gui.ui_mainwindow import Ui_MainWindow
-from uvcdat.gui.workspace import Workspace
-from uvcdat.gui.docktemplate import DockTemplate
-from uvcdat.gui.dockplot import DockPlot
-from uvcdat.gui.dockvariable import DockVariable
-from uvcdat.gui.variable import VariableProperties
-from uvcdat.gui.plot import PlotProperties
+from gui.uvcdat.ui_mainwindow import Ui_MainWindow
+from gui.uvcdat.workspace import Workspace
+from gui.uvcdat.docktemplate import DockTemplate
+from gui.uvcdat.dockplot import DockPlot
+from gui.uvcdat.dockvariable import DockVariable
+from gui.uvcdat.variable import VariableProperties
+from gui.uvcdat.plot import PlotProperties
 
-import uvcdat.gui.uvcdat_rc
+from packages.spreadsheet.spreadsheet_controller import spreadsheetController
+import gui.uvcdat.uvcdat_rc
 #from gui.theme import initializeCurrentTheme
 #from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 #from packages.spreadsheet.spreadsheet_registry import spreadsheetRegistry
@@ -21,11 +22,10 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.setDocumentMode(True)
-        #initializeCurrentTheme()
+        self.embedSpreadsheet()
         self.createDockWindows()
         self.createViewActions()
         self.connectSignals()
-        
         
     def createDockWindows(self):
         self.workspace = Workspace()
@@ -47,8 +47,6 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.ui.menuView.addAction(self.dockVariable.toggleViewAction())
         
     def connectSignals(self):
-        self.ui.tbVarInfo.clicked.connect(self.showVariableProperties)
-        self.ui.tbPlotInfo.clicked.connect(self.showPlotProperties)
         self.ui.actionExit.triggered.connect(self.quit)
         
     def quit(self):
@@ -64,3 +62,16 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         plotProp = PlotProperties.instance()
         plotProp.show()
         
+    def embedSpreadsheet(self):
+        self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+        self.setCentralWidget(self.spreadsheetWindow)
+        self.spreadsheetWindow.tabController.currentWidget().setDimension(2,2)
+        self.spreadsheetWindow.tabController.currentWidget().rowSpinBoxChanged()
+        self.spreadsheetWindow.tabController.currentWidget().colSpinBoxChanged()
+        self.spreadsheetWindow.tabController.setDocumentMode(True)
+        self.spreadsheetWindow.tabController.setTabPosition(QtGui.QTabWidget.North)
+        self.spreadsheetWindow.setVisible(True)
+        
+    def cleanup(self):
+        self.setCentralWidget(QtGui.QWidget())
+        self.spreadsheetWindow.setParent(None)
