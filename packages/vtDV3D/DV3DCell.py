@@ -42,7 +42,7 @@ class QVTKServerWidget(QVTKWidget):
     """
     def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
         QVTKWidget.__init__(self, parent, f )
-        self.location = None
+        self.location = 'A1'
         
     def setLocation( self, location ):
         self.location = location
@@ -271,7 +271,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             self.x0 = 0
             return 0
         self.x0 = int( round( self.roi[0] / 10.0 ) ) * 10
-#        print "Set Corner pos: %s, extent: %s " % ( str(self.x0), str(self.roi) )
+#        print "Set Corner pos: %s, roi: %s " % ( str(self.x0), str(self.roi) )
         
     def GetScaling( self, image_dims ):
         return 360.0/image_dims[0], 180.0/image_dims[1],  1
@@ -360,7 +360,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             clip0.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             size0 = extent[1] - extent[0] + 1
         
-            cut1 = NormalizeLon( dataLocation[0] - selectionDim[0] ) 
+            self.x0 = dataLocation[0] - selectionDim[0]
+            cut1 = NormalizeLon( self.x0 ) 
             sliceSize =  imageLen[0] * ( cut1 / 360.0 )
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[0:2] = [ x0 + sliceCoord, x1 ]
@@ -368,7 +369,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             clip1.SetInput( baseImage )
             clip1.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             size1 = extent[1] - extent[0] + 1
-            self.x0 = cut1
+#            print "Set Corner pos: %s, cuts: %s " % ( str(self.x0), str( (cut0, cut1) ) )
         
             append = vtk.vtkImageAppend()
             append.SetAppendAxis( 0 )
@@ -395,6 +396,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             clip.SetInput( baseImage )
             clip.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             bounded_dims = ( extent[1] - extent[0] + 1, vertExtent[1] - vertExtent[0] + 1 )
+#            print "Set Corner pos: %s, dataXLoc: %s " % ( str(self.x0), str( (dataXLoc, selectionDim[0]) ) )
 
             imageInfo.SetInputConnection( clip.GetOutputPort() ) 
                        
@@ -421,6 +423,12 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.builtCellWidget = False
         PersistentVisualizationModule.execute(self, **args)
         
+    def addTitle(self):    
+        title = getItem( self.getInputValue( "title", None ) )
+        if title: self.titleBuffer = title
+        if self.titleBuffer and self.renderer:
+            self.getTitleActor().VisibilityOn() 
+                      
     def buildRendering(self):
         module = self.getRegisteredModule()
         self.enableBasemap = self.getInputValue( "enable_basemap", True )
@@ -440,6 +448,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 #                        renderer.SetNearClippingPlaneTolerance(0.0001)
 #                        print "NearClippingPlaneTolerance: %f" % renderer.GetNearClippingPlaneTolerance()
 #        self.setSelectionStatus( self.isSelected() )
+        self.addTitle()
         if self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_DV3DCell.baseMapDirty):
             if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
             world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None
@@ -495,6 +504,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 #            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
             mapCorner = [ self.x0, self.y0 ]
 #            if ( ( self.roi[0]-map_border_size ) < 0.0 ): mapCorner[0] = mapCorner[0] - 360.0
+            print " DV3DCell, mapCorner = %s, dataPosition = %s " % ( str(mapCorner), str(dataPosition) )
             self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
             self.baseMapActor.SetInput( baseImage )
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]            
@@ -551,9 +561,12 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         self.enableBasemap = True
         self.mapBorderSize = 20.0
         self.cellAddress = 'A1'
+        self.title = ""
         DV3DConfigurationWidget.__init__(self, module, controller, 'DV3D Cell Configuration', parent)
                 
     def getParameters( self, module ):
+        titleParms = getFunctionParmStrValues( module, "title" )
+        if titleParms: self.title = str( titleParms[0] )
         basemapParams = getFunctionParmStrValues( module, "enable_basemap" )
         if basemapParams: self.enableBasemap = bool( basemapParams[0] )
         basemapParams = getFunctionParmStrValues( module, "map_border_size" )
@@ -587,6 +600,18 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
 #        self.borderSizeEdit.setLineWidth(2)
         border_layout.addWidget( self.borderSizeEdit  )        
         layout.addLayout( border_layout )
+
+        title_layout = QHBoxLayout()
+        title_label = QLabel( "Title:" )
+        title_layout.addWidget( title_label )
+        self.titleEdit =  QLineEdit ( self.parent() )
+        if self.title: self.titleEdit.setText( self.title )
+        self.connect( self.titleEdit, SIGNAL("editingFinished()"), self.stateChanged ) 
+        title_label.setBuddy( self.titleEdit )
+#        self.titleEdit.setFrameStyle( QFrame.Panel|QFrame.Raised )
+#        self.titleEdit.setLineWidth(2)
+        title_layout.addWidget( self.titleEdit  )        
+        layout.addLayout( title_layout )
         
         sheet_dims = HyperwallManager.getDimensions()
 
@@ -621,6 +646,7 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         parmRecList.append( ( 'enable_basemap' , [ self.enableBasemap ]  ), )      
         parmRecList.append( ( 'map_border_size' , [ self.mapBorderSize ]  ), )  
         parmRecList.append( ( 'cell_location' , [ self.cellAddress ]  ), )  
+        parmRecList.append( ( 'title' , [ self.title ]  ), )  
         self.persistParameterList( parmRecList )
         self.stateChanged(False)         
            
@@ -632,6 +658,7 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         self.enableBasemap = self.enableCheckBox.isChecked() 
         self.mapBorderSize = float( self.borderSizeEdit.text() )
         self.cellAddress = "%s%s" % ( str( self.colCombo.currentText() ), str( self.rowCombo.currentText() ) )
+        self.title = str( self.titleEdit.text() ) 
         self.updateController(self.controller)
         self.emit(SIGNAL('doneConfigure()'))
 #        self.close()

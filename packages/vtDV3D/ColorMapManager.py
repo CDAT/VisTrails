@@ -15,8 +15,9 @@ colormap_file.close()
 
 class ColorMapManager():
     
-    def __init__(self, lut, **args ): 
+    def __init__(self, lut, display_lut = None, **args ): 
         self.lut = lut   
+        self.display_lut = vtk.vtkLookupTable() 
         self.reverse_lut = False
         self.number_of_colors =  args.get('ncolors',256)
         self.alpha_range = [ 1.0, 1.0 ]
@@ -29,6 +30,13 @@ class ColorMapManager():
     @staticmethod
     def getColormaps():
         return colormaps
+    
+    def getDisplayLookupTable(self):
+        return self.display_lut
+  
+    def setDisplayRange( self, dataRange ):
+        self.display_lut.SetTableRange( dataRange[0], dataRange[1] )
+        self.display_lut.Modified()
     
     def set_lut(self, vtk_lut, lut_lst):
         """Setup the vtkLookupTable (`vtk_lut`) using the passed list of
@@ -131,8 +139,6 @@ class ColorMapManager():
             if not n_color >= n_total:
                 lut = lut[::round(n_total/float(n_color))]
             self.load_lut_from_list(lut.tolist())
-            #self.lut.force_build()
-            return
         elif self.cmap_name == 'blue-red':
             if reverse:
                 hue_range = 0.0, 0.6667
@@ -151,6 +157,8 @@ class ColorMapManager():
                 hue_range = 0.0, 0.0
                 saturation_range = 0.0, 0.0
                 value_range = 0.0, 1.0
+        else:
+            print>>sys.stderr, "Error-- Unrecognized colormap: %s" % self.cmap_name
         
         if hue_range:        
             self.lut.SetHueRange( hue_range )
@@ -158,11 +166,13 @@ class ColorMapManager():
             self.lut.SetValueRange( value_range )
             self.lut.SetAlphaRange( self.alpha_range )
             self.lut.SetNumberOfTableValues( self.number_of_colors )
-            self.lut.SetRampToSQRT()
+            self.lut.SetRampToSQRT()            
             self.lut.Modified()
             self.lut.ForceBuild()
-        else:
-            print>>sys.stderr, "Error-- Unrecognized colormap: %s" % self.cmap_name
+            
+        self.display_lut.SetTable( self.lut.GetTable() )
+        self.display_lut.SetValueRange( self.lut.GetValueRange() )
+        self.display_lut.Modified()
                   
 if __name__ == '__main__':  
     from PyQt4.QtCore import *

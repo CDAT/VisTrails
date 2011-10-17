@@ -382,7 +382,7 @@ class PersistentModule( QObject ):
     
     def updateMetadata(self):
         scalars = None
-        metadata = None
+        self.metadata = None
         self.newDataset = False
         if self.input <> None:
             fd = self.input.GetFieldData() 
@@ -391,14 +391,14 @@ class PersistentModule( QObject ):
         elif self.inputModule:
             self.fieldData = self.inputModule.getFieldData() 
 
-        metadata = self.getMetadata()
+        self.metadata = self.getMetadata()
         
-        if metadata <> None:
+        if self.metadata <> None:
             self.rangeBounds = None 
-            self.setParameter( 'metadata', metadata )
-            self.roi = metadata.get( 'bounds', None )
+            self.setParameter( 'metadata', self.metadata )
+            self.roi = self.metadata.get( 'bounds', None )
             
-            dsetId = metadata.get( 'datasetId', None )
+            dsetId = self.metadata.get( 'datasetId', None )
             self.datasetId = self.getAnnotation( "datasetId" )
             if self.datasetId <> dsetId:
                 self.pipelineBuilt = False
@@ -407,15 +407,15 @@ class PersistentModule( QObject ):
                 self.datasetId = dsetId
                 self.addAnnotation( "datasetId", self.datasetId )
             
-            tval = metadata.get( 'timeValue', 0.0 )
+            tval = self.metadata.get( 'timeValue', 0.0 )
             self.timeValue = cdtime.reltime( float( tval ), ReferenceTimeUnits )               
-            dtype =  metadata.get( 'datatype', None )
-            scalars =  metadata.get( 'scalars', None )
+            dtype =  self.metadata.get( 'datatype', None )
+            scalars =  self.metadata.get( 'scalars', None )
             self.rangeBounds = getRangeBounds( dtype )
-            if scalars:
-                var_md = metadata.get( scalars , None )
-                if var_md <> None:
-                    self.units = var_md.get( 'units' , '' )
+            self.titleBuffer = self.metadata.get( 'title', None )
+            attributes = self.metadata.get( 'attributes' , None )
+            if attributes:
+                self.units = attributes.get( 'units' , '' )
 #                        range = var_md.get( 'range', None )
 #                        if range: 
 #                            self.scalarRange = list( range )
@@ -498,7 +498,29 @@ class PersistentModule( QObject ):
         sval = ( image_value - self.rangeBounds[0] ) / ( self.rangeBounds[1] - self.rangeBounds[0] )
         dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
         return dataValue
+    
+    def getWorldCoords( self, image_coords ):
+        world_coords = None
+        try:
+            lat = self.metadata[ 'lat' ]
+            lon = self.metadata[ 'lon' ]
+            lev = self.metadata[ 'lev' ]
+            world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], lev[ image_coords[2] ] ]            
+        except:
+            gridSpacing = self.input.GetSpacing()
+            gridOrigin = self.input.GetOrigin()
+            world_coords = [ (gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
+        return world_coords
 
+    def getWorldCoord( self, image_coord, iAxis ):
+        try:
+            axes = [ 'lon', 'lat', 'lev' ]
+            return self.metadata[ axes[iAxis] ][ image_coord ]
+        except:
+            gridSpacing = self.input.GetSpacing()
+            gridOrigin = self.input.GetOrigin()
+            return (gridOrigin[iAxis] + image_coord*gridSpacing[iAxis]) 
+                
     def getDataValues( self, image_value_list ):
         if not self.scalarRange: 
             raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
@@ -641,7 +663,7 @@ class PersistentModule( QObject ):
 #            configFunct.setParameterInputEnabled( isEnabled )
 # TBD: integrate
     def startConfigurationObserver( self, parameter_name, *args ):
-        self.textActor.VisibilityOn() 
+        self.getLabelActor().VisibilityOn() 
     
     def startLevelingEvent( self, caller, event ):    
         x, y = caller.GetEventPosition()
@@ -655,7 +677,7 @@ class PersistentModule( QObject ):
                 configFunct.start( self.InteractionState, x, y )
                 if self.ndims == 3: 
                     self.iren.SetInteractorStyle( self.configurationInteractorStyle )
-                    self.textActor.VisibilityOn()
+                    self.getLabelActor().VisibilityOn()
     
     def isActive( self ):
         pipeline = self.getCurentPipeline()
@@ -763,7 +785,7 @@ class PersistentModule( QObject ):
         return self.finalizeLeveling()  
                                     
     def finalizeLeveling( self ):
-        if self.ndims == 3: self.textActor.VisibilityOff()
+        if self.ndims == 3: self.getLabelActor().VisibilityOff()
         isLeveling = self.isLeveling()
         if isLeveling: 
             HyperwallManager.setLevelingState( None )
@@ -969,10 +991,10 @@ class PersistentVisualizationModule( PersistentModule ):
         self.iren = None 
         self.lut = None
         self.gui = None
+        self.titleBuffer = None
         self.pipelineBuilt = False
         self.activation = {}
         self.navigationInteractorStyle = None
-        self.textActor = None
                                 
     def TestObserver( self, caller=None, event = None ):
         pass 
@@ -982,6 +1004,7 @@ class PersistentVisualizationModule( PersistentModule ):
         outputModule = AlgorithmOutputModule3D( self.renderer, fieldData=self.fieldData, **args )
         output =  outputModule.getOutput() 
         oid = id( outputModule )
+        print "Setting 3D output for port %s" % ( portName ) 
         if output <> None:
             fd = output.GetFieldData() 
             fd.PassData( self.fieldData ) 
@@ -989,7 +1012,7 @@ class PersistentVisualizationModule( PersistentModule ):
             print>>sys.stderr, "Missing wmod in set3DOutput for class %s" % ( self.__class__.__name__ )
         else:
             self.wmod.setResult( portName, outputModule )
-#            print "set3DOutput for class %s" % ( self.__class__.__name__ ) 
+            print "set3DOutput for class %s" % ( self.__class__.__name__ ) 
 
     def getDownstreamCellModules( self, selectedOnly=False ): 
         import api, ModuleStore
@@ -1009,12 +1032,10 @@ class PersistentVisualizationModule( PersistentModule ):
 
     def updateTextDisplay( self, text = None ):
         if text <> None: 
-            self.textBuff = text
-            if (self.ndims == 3) and self.textActor:
-                self.textActor.SetInput( self.textBuff )
-                self.textActor.Modified()
-                self.textActor.VisibilityOn()
-#            print "updateTextDisplay: %s" % ( text ) 
+            self.labelBuff = text
+            if (self.ndims == 3):                
+                self.getLabelActor().VisibilityOn()
+#                print "updateTextDisplay: %s" % ( text ) 
             
     def UpdateCamera(self):
         pass
@@ -1050,6 +1071,7 @@ class PersistentVisualizationModule( PersistentModule ):
         if self.colormapManager <> None:
             self.colormapManager.reverse_lut = self.invertColormap
             self.colormapManager.load_lut( self.colormapName )
+            if self.createColormap: self.createColorBarActor()
 #            print " >>> LoadColormap:  %s " % self.colormapName
             return True
         else:
@@ -1088,7 +1110,7 @@ class PersistentVisualizationModule( PersistentModule ):
         renderer_import = inputModule.getRenderer() if  inputModule <> None else None 
         self.renderer = vtk.vtkRenderer() if renderer_import == None else renderer_import
         self.renderer.AddObserver( 'ModifiedEvent', self.activateEvent )
-        self.createTextActor()
+        self.labelBuff = "NA                           "
         if self.createColormap: 
             self.createColorBarActor()
 
@@ -1103,54 +1125,81 @@ class PersistentVisualizationModule( PersistentModule ):
 #        print " %s -- getColormapSpec: %s " % ( self.getName(), str( spec ) )
         return ','.join( spec )
         
-    def getProp( self, ptype ):
+    def getProp( self, ptype, id = None ):
       props = self.renderer.GetViewProps()
       nitems = props.GetNumberOfItems()
       for iP in range(nitems):
           prop = props.GetItemAsObject(iP)
-          if prop.IsA( ptype ): return prop
+          if prop.IsA( ptype ):
+              if not id or (prop.id == id):
+                  return prop
       return None
   
     def createColorBarActor( self ):
         self.colorBarActor = self.getProp( 'vtkScalarBarActor' )
         if self.colorBarActor == None:
             self.lut = vtk.vtkLookupTable()
+            self.colormapManager = ColorMapManager( self.lut ) 
             self.colorBarActor = vtk.vtkScalarBarActor()
-            self.colorBarActor.SetLookupTable( self.lut )
+            self.colorBarActor.SetMaximumWidthInPixels( 50 )
+            self.colorBarActor.SetNumberOfLabels(9)
+            labelFormat = vtk.vtkTextProperty()
+            labelFormat.SetFontSize( 160 )
+            labelFormat.SetColor( 1.0, 1.0, 0.0 ) 
+            titleFormat = vtk.vtkTextProperty()
+            titleFormat.SetFontSize( 160 )
+            titleFormat.SetColor( 1.0, 1.0, 0.0 ) 
+#            titleFormat.SetVerticalJustificationToTop ()
+#            titleFormat.BoldOn()
+            self.colorBarActor.SetPosition( 0.9, 0.2 )    
+            self.colorBarActor.SetLabelTextProperty( labelFormat )
+            self.colorBarActor.SetTitleTextProperty( titleFormat )
+            if self.units: self.colorBarActor.SetTitle( self.units )
+            self.colorBarActor.SetLookupTable( self.colormapManager.getDisplayLookupTable() )
             self.colorBarActor.SetVisibility(0)
             self.renderer.AddActor( self.colorBarActor )
         else:
-            self.lut = self.colorBarActor.GetLookupTable()
-        self.colormapManager = ColorMapManager( self.lut ) 
+            self.colorBarActor.SetLookupTable( self.colormapManager.getDisplayLookupTable() )
+            self.colorBarActor.Modified()
+        
 
     def creatTitleActor( self ):
         pass
-
-    def createTextActor( self ):
-      self.textBuff = "NA                           "
-      self.textActor = self.getProp( 'vtkTextActor' )
-      if self.textActor == None:
-          self.textActor = vtk.vtkTextActor()  
-          self.textActor.SetInput( self.textBuff )
-          self.textActor.SetTextScaleModeToNone()
-        
-          textprop = self.textActor.GetTextProperty()
+    
+    def createTextActor( self, id, pos, **args ):
+          textActor = vtk.vtkTextActor()  
+          textActor.SetTextScaleModeToNone()        
+          textprop = textActor.GetTextProperty()
           textprop.SetColor(1,1,1)
           textprop.SetFontFamilyToArial()
-          textprop.SetFontSize(18)
-          textprop.BoldOff()
+          textprop.SetFontSize( args.get( 'size', 16 ) )
+          if args.get( 'bold', False ): textprop.BoldOn()
+          else: textprop.BoldOff()
           textprop.ItalicOff()
           textprop.ShadowOff()
           textprop.SetJustificationToLeft()
-          textprop.SetVerticalJustificationToBottom()
-        
-          coord = self.textActor.GetPositionCoordinate()
+          textprop.SetVerticalJustificationToBottom()        
+          coord = textActor.GetPositionCoordinate()
           coord.SetCoordinateSystemToNormalizedViewport()
-          coord.SetValue( .4, .01 )
-        
-          self.textActor.VisibilityOff()
-          self.renderer.AddViewProp( self.textActor )
+          coord.SetValue( pos[0], pos[1] )        
+          textActor.VisibilityOff()
+          textActor.id = id
+          return textActor
+          
+    def getLabelActor(self):
+        return self.getTextActor( 'label', self.labelBuff, (.01, .95)   )
 
+    def getTitleActor(self):
+        return self.getTextActor( 'title', self.titleBuffer,  (.01, .01 ), size = 21, bold = True   )
+
+    def getTextActor( self, id, text, pos, **args ):
+      textActor = self.getProp( 'vtkTextActor', id  )
+      if textActor == None:
+          textActor = self.createTextActor( id, pos, **args  )
+          self.renderer.AddViewProp( textActor )
+      textActor.SetInput( text )
+      textActor.Modified()
+      return textActor
 
     def finalizeRendering(self):
         pass
@@ -1219,7 +1268,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 PersistentVisualizationModule.moduleDocumentationDialog.addCloseObserver( self.clearDocumenation )
                 PersistentVisualizationModule.moduleDocumentationDialog.show()
         elif ( self.createColormap and ( key == 'l' ) ): 
-            if  self.colorBarActor.GetVisibility():  
+            if  self.colorBarActor.GetVisibility(): 
                   self.colorBarActor.VisibilityOff()  
             else: self.colorBarActor.VisibilityOn() 
             self.render() 
@@ -1252,7 +1301,7 @@ class PersistentVisualizationModule( PersistentModule ):
         self.InteractionState = None 
         self.configuring = False 
         if self.ndims == 3:
-            self.textActor.VisibilityOff()              
+            self.getLabelActor().VisibilityOff()              
 #            self.render()
         
     def onLeftButtonRelease( self, caller, event ):

@@ -39,12 +39,14 @@ def splitGridSpecs( gridSpecs ):
     return slices
 
 def getCompTime( timeString ):
+    print " >> GetCompTime: ", timeString
     timeStringFields = timeString.strip("'").split(' ')
     date = timeStringFields[0].split('-')
     if len( timeStringFields ) == 1:
         return cdtime.comptime( int(date[0]), int(date[1]), float(date[2]) )
     else:
         time = timeStringFields[1].split(':')
+        for iT in range(3): time.append(0)
         return cdtime.comptime( int(date[0]), int(date[1]), int(date[2]), int(time[0]), int(time[1]), float(time[2]) )
                    
 def deserializeFileMap( serialized_strMap ): 
@@ -439,7 +441,7 @@ class CDMSDatasetRecord():
             gridBounds[ 2 ] = gridBounds[ 3 ]
             gridBounds[ 3 ] = tmp
         gridSpecs = {}
-        md = { 'datasetId' : self.id,  'bounds':gridBounds, 'lat':self.lat, 'lon':self.lon, 'attributes':self.dataset.attributes }
+        md = { 'datasetId' : self.id,  'bounds':gridBounds, 'lat':self.lat, 'lon':self.lon, 'lev':self.lev, 'attributes':self.dataset.attributes }
         gridSpecs['gridOrigin'] = gridOrigin
         gridSpecs['outputOrigin'] = outputOrigin
         gridSpecs['gridBounds'] = gridBounds
@@ -699,94 +701,142 @@ class CDMS_VCDATInterfaceSpecs(WorkflowModule):
                 keys.sort()
                 inputName = keys[inputIndex]        
         return self.inputs.get( inputName )
+
+class SerializedInterfaceSpecs:
+        
+    def __init__( self, serializedConfiguration = None ):
+        self.inputs = {}
+        self.configParms = None
+        if serializedConfiguration:
+            self.parseInputSpecs( serializedConfiguration )
+            
+    def parseInputSpecs( self, serializedConfiguration ):
+        inputSpecElements = serializedConfiguration.split(';')
+        fileInputSpecs = inputSpecElements[0].split('|')
+        varInputSpecs = inputSpecElements[1].split('|')
+        gridInputSpecs = inputSpecElements[2].split('|')
+        if len( fileInputSpecs ) == 1:
+            fileName = fileInputSpecs[0].split('!')[1]
+            for iVar in range( len(varInputSpecs) ):
+                varName = varInputSpecs[iVar].split('!')[1]
+                axes = gridInputSpecs[iVar].split('!')[1]
+                self.addInput( ("Input%d" % iVar), fileName, varName, axes )
+        elif len( fileInputSpecs ) == len( varInputSpecs ):
+            for iVar in range( len(varInputSpecs) ):
+                fileName = fileInputSpecs[iVar].split('!')[1]
+                varName = varInputSpecs[iVar].split('!')[1]
+                axes = gridInputSpecs[iVar].split('!')[1]
+                self.addInput( ("Input%d" % iVar), fileName, varName, axes )
+        else:
+            print>>sys.stderr, " ERROR: Number of Files and number of Variables do not match."
+                
+        
+    def addInput(self, inputName, fileName, variableName, axes ):
+        print " --- AddInput: ", inputName, fileName, variableName, axes
+        self.inputs[ inputName ] = ( fileName, variableName, axes )
+        
+    def getNInputs(self):
+        return len(self.inputs)
+        
+    def getInput(self, **args ):
+        inputName = args.get( 'name', None )
+        if not inputName: 
+            inputIndex = args.get( 'index', 0 )
+            keys = self.inputs.keys()
+            if len(keys) > inputIndex:
+                keys.sort()
+                inputName = keys[inputIndex]        
+        return self.inputs.get( inputName )
         
 
-class PM_CDMS_VCDATInterface( PersistentVisualizationModule ):
-    
-    def __init__(self, mid, **args):
-        PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['timeRange','roi'], **args)
-        self.filenum = 1
-        self.varnum = 1
-        self.cellnum = 1
-        
-    def getIntInputValue(self, portName, default_value ):
-        rv = default_value 
-        try: rv = int( getItem( self.getInputValue( portName, default_value ) )  ) 
-        except: pass
-        return rv
-
-    def getFloatInputValue(self, portName, default_value ):
-        rv = default_value 
-        try: rv = float( getItem( self.getInputValue( portName, default_value ) ) ) 
-        except: pass
-        return rv
-        
-    def execute(self, **args ):
-        """ compute() -> None
-        Dispatch the vtkRenderer to the actual rendering widget
-        """  
-        self.file = self.getInputValue( "FileName" )
-        self.variable = self.getInputValue( "VariableName" )
-        self.variable1 = self.getInputValue( "VariableName1" )
-        self.variable2 = self.getInputValue( "VariableName2" )
-        self.variable3 = self.getInputValue( "VariableName3" )
-        self.axes = self.getInputValue( "Axes" )
-        self.row = self.getIntInputValue( "Row", 0 )  
-        self.column = self.getIntInputValue( "Column", 0  ) 
-        self.row1 = self.getIntInputValue( "Row1", 0 )  
-        self.column1 = self.getIntInputValue( "Column1", 0  ) 
-        self.row2 = self.getIntInputValue( "Row2", 0 )  
-        self.column2 = self.getIntInputValue( "Column2", 0  ) 
-        zscale = self.getFloatInputValue( "zscale",   5.0  )  
-        configParms = { 'zscale' : zscale }
-        interfaceSpecs = CDMS_VCDATInterfaceSpecs( configParms )
-        if self.variable  <> None: interfaceSpecs.addInput( 'Input', self.file, self.variable, self.axes )
-        if self.variable1 <> None: interfaceSpecs.addInput( 'Input1', self.file, self.variable1, self.axes )
-        if self.variable2 <> None: interfaceSpecs.addInput( 'Input2', self.file, self.variable2, self.axes )         
-        if self.variable3 <> None: interfaceSpecs.addInput( 'Input3', self.file, self.variable3, self.axes )         
-        self.setResult( 'executionSpecs', [ interfaceSpecs ] )
-        print "  ------------------- VCDATInterface Inputs: -------------------  "
-        print " * FileName: ", self.file
-        print " * VariableName: ", self.variable
-        print " * VariableName1: ", self.variable1
-        print " * VariableName2: ", self.variable2
-        print " * VariableName3: ", self.variable3
-        print " * Axes: ", self.axes
-        print " * Row: ", self.row
-        print " * Column: ", self.column
-        print " * Row1: ", self.row1
-        print " * Column1: ", self.column1
-        print " * Row2: ", self.row2
-        print " * Column2: ", self.column2
-        print "  -------------------                         -------------------  "
-#        executionSpecs = ';'.join( [ self.file, self.variable, self.axes ] ) if self.file else None
-#        if executionSpecs: 
-#            print " >>>--->>> ExecutionSpecs: { %s } " % executionSpecs
-#            self.setResult( 'executionSpecs', [ self.file, self.variable, self.axes ] )
-        cellLocation = "A1" 
-        if ( (self.row >= 0) and (self.column >= 0) ):
-             cellLocation = "%s%d" % ( chr( ord('A') + self.column ), self.row + 1 )    
-        self.setResult( 'cellLocation', [ cellLocation ] )
-        
-        cellLocation = "B1" 
-        if ( (self.row1 >= 0) and (self.column1 >= 0) ):
-             cellLocation = "%s%d" % ( chr( ord('A') + self.column1 ), self.row1 + 1 )    
-        self.setResult( 'cellLocation1', [ cellLocation ] )
-
-        cellLocation = "C1" 
-        if ( (self.row2 >= 0) and (self.column2 >= 0) ):
-             cellLocation = "%s%d" % ( chr( ord('A') + self.column2 ), self.row2 + 1 )    
-        self.setResult( 'cellLocation2', [ cellLocation ] )
-
-#        print " >>>--->>> CellLocation: { %s } " % cellLocation
-
-#        fileAliases = ','.join( [ "%s:%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
-#        varAliases = ','.join( [ "%s:%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
-#        gridAliases = ','.join( [ "%s:%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
-#        aliases[ 'inputSpecs' ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
-#        print " inputSpecs: ", str( aliases[ 'inputSpecs' ] )
-#        aliases[ 'cellSpecs' ] = ','.join( [ "%s%s" % ( chr( ord('A') + int(aliases[self.cells[i].col_name]) ), aliases[self.cells[i].row_name] )  for i in range(self.cellnum) ] )
-#        print " cellSpecs: ", str( aliases[ 'cellSpecs' ] )
+#class PM_CDMS_VCDATInterface( PersistentVisualizationModule ):
+#    
+#    def __init__(self, mid, **args):
+#        PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['timeRange','roi'], **args)
+#        self.filenum = 1
+#        self.varnum = 1
+#        self.cellnum = 1
+#        
+#    def getIntInputValue(self, portName, default_value ):
+#        rv = default_value 
+#        try: rv = int( getItem( self.getInputValue( portName, default_value ) )  ) 
+#        except: pass
+#        return rv
+#
+#    def getFloatInputValue(self, portName, default_value ):
+#        rv = default_value 
+#        try: rv = float( getItem( self.getInputValue( portName, default_value ) ) ) 
+#        except: pass
+#        return rv
+#        
+#    def execute(self, **args ):
+#        """ compute() -> None
+#        Dispatch the vtkRenderer to the actual rendering widget
+#        """  
+#        self.file = self.getInputValue( "FileName" )
+#        self.variable = self.getInputValue( "VariableName" )
+#        self.variable1 = self.getInputValue( "VariableName1" )
+#        self.variable2 = self.getInputValue( "VariableName2" )
+#        self.variable3 = self.getInputValue( "VariableName3" )
+#        self.vcdatInputSpecs = self.getInputValue( "vcdatInputSpecs" )       
+#        self.axes = self.getInputValue( "Axes" )
+#        self.row = self.getIntInputValue( "Row", 0 )  
+#        self.column = self.getIntInputValue( "Column", 0  ) 
+#        self.row1 = self.getIntInputValue( "Row1", 0 )  
+#        self.column1 = self.getIntInputValue( "Column1", 0  ) 
+#        self.row2 = self.getIntInputValue( "Row2", 0 )  
+#        self.column2 = self.getIntInputValue( "Column2", 0  ) 
+#        zscale = self.getFloatInputValue( "zscale",   5.0  )  
+#        configParms = { 'zscale' : zscale }
+#        interfaceSpecs = CDMS_VCDATInterfaceSpecs( configParms )
+#        if self.variable  <> None: interfaceSpecs.addInput( 'Input', self.file, self.variable, self.axes )
+#        if self.variable1 <> None: interfaceSpecs.addInput( 'Input1', self.file, self.variable1, self.axes )
+#        if self.variable2 <> None: interfaceSpecs.addInput( 'Input2', self.file, self.variable2, self.axes )         
+#        if self.variable3 <> None: interfaceSpecs.addInput( 'Input3', self.file, self.variable3, self.axes )         
+#        self.setResult( 'executionSpecs', [ interfaceSpecs ] )
+#        print "  ------------------- VCDATInterface Inputs: -------------------  "
+#        print " * FileName: ", self.file
+#        print " * VariableName: ", self.variable
+#        print " * VariableName1: ", self.variable1
+#        print " * VariableName2: ", self.variable2
+#        print " * VariableName3: ", self.variable3
+#        print " * Axes: ", self.axes
+#        print " * Row: ", self.row
+#        print " * Column: ", self.column
+#        print " * Row1: ", self.row1
+#        print " * Column1: ", self.column1
+#        print " * Row2: ", self.row2
+#        print " * Column2: ", self.column2
+#        print " * VcdatInputSpecs: ", self.vcdatInputSpecs
+#        print "  -------------------                         -------------------  "
+##        executionSpecs = ';'.join( [ self.file, self.variable, self.axes ] ) if self.file else None
+##        if executionSpecs: 
+##            print " >>>--->>> ExecutionSpecs: { %s } " % executionSpecs
+##            self.setResult( 'executionSpecs', [ self.file, self.variable, self.axes ] )
+#        cellLocation = "A1" 
+#        if ( (self.row >= 0) and (self.column >= 0) ):
+#             cellLocation = "%s%d" % ( chr( ord('A') + self.column ), self.row + 1 )    
+#        self.setResult( 'cellLocation', [ cellLocation ] )
+#        
+#        cellLocation = "B1" 
+#        if ( (self.row1 >= 0) and (self.column1 >= 0) ):
+#             cellLocation = "%s%d" % ( chr( ord('A') + self.column1 ), self.row1 + 1 )    
+#        self.setResult( 'cellLocation1', [ cellLocation ] )
+#
+#        cellLocation = "C1" 
+#        if ( (self.row2 >= 0) and (self.column2 >= 0) ):
+#             cellLocation = "%s%d" % ( chr( ord('A') + self.column2 ), self.row2 + 1 )    
+#        self.setResult( 'cellLocation2', [ cellLocation ] )
+#
+##        print " >>>--->>> CellLocation: { %s } " % cellLocation
+#
+##        fileAliases = ','.join( [ "%s:%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
+##        varAliases = ','.join( [ "%s:%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
+##        gridAliases = ','.join( [ "%s:%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
+##        aliases[ 'inputSpecs' ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
+##        print " inputSpecs: ", str( aliases[ 'inputSpecs' ] )
+##        aliases[ 'cellSpecs' ] = ','.join( [ "%s%s" % ( chr( ord('A') + int(aliases[self.cells[i].col_name]) ), aliases[self.cells[i].row_name] )  for i in range(self.cellnum) ] )
+##        print " cellSpecs: ", str( aliases[ 'cellSpecs' ] )
 
                     
 class PM_CDMS_FileReader( PersistentVisualizationModule ):
@@ -805,6 +855,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         self.timeRange = [ 0, 0, None, None ]
         self.roi = [ 0.0, -90.0, 360.0, 90.0 ]
         for gridSpec in self.gridSpecs:
+            print " -- GridSpec: ", gridSpec
             gridFields = gridSpec.split('=')
             if len( gridFields ) == 2:
                 type = gridFields[0].strip()
@@ -852,30 +903,37 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         decimation = self.getInputValue( "decimation" )
         zscale = getItem( self.getInputValue( "zscale",   1.0  )  )
         
-        inputSpecs = getItem( self.getInputValue( "executionSpecs" ) )
+        serializedInputSpecs = getItem( self.getInputValue( "executionSpecs" ) )
+        inputSpecs = SerializedInterfaceSpecs( serializedInputSpecs ) if serializedInputSpecs else None
         self.fileSpecs, self.varSpecs, self.gridSpecs = [], [], []
         if inputSpecs:
+            print " _____________________ File Reader _____________________ "    
             for iInput in range( inputSpecs.getNInputs() ):
                 inputSpec = inputSpecs.getInput(  index=iInput )
+                print " ** InputSpec: ", str( inputSpec )  
                 self.fileSpecs.append( inputSpec[0] )
                 self.varSpecs.append( inputSpec[1] )
-                if( not len(self.gridSpecs) and len(inputSpec[2]) ): self.gridSpecs = splitGridSpecs( inputSpec[2] ) 
+                if( not len(self.gridSpecs) and len(inputSpec[2]) ): 
+                    self.gridSpecs = splitGridSpecs( inputSpec[2] )                   
+                    print " ** Grid Specs: ", str( self.gridSpecs )  
             dsMapData = ';'.join( self.fileSpecs )   
             self.computeGridFromSpecs()
-            print " _____________________ File Reader _____________________ "    
             print " ** File Specs: ", str( self.fileSpecs )
-            print " ** Var Specs: ", str( self.varSpecs )
-            print " ** Grid Specs: ", str( self.gridSpecs )
+            print " ** Var Specs: ", str( self.varSpecs )            
             print " ** dsMapData: ", str( dsMapData )
             print " ** ROI: ", str( self.roi )
             print " ** zscale: ", str( zscale )
             print " ________________________________________________________ "   
             self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
-            self.ref_var = "%s*%s" % ( self.datasetMap.keys()[0], self.varSpecs[0])
-            self.datasetModule.setVariableRecord( "VariableName", self.ref_var )
+            dsKeys = self.datasetMap.keys()
+            for iVar in range( len(self.varSpecs) ):
+                iDset = 0 if ( len( dsKeys ) == 1 ) else iVar
+                varSpec = "%s*%s" % ( dsKeys[ iDset ], self.varSpecs[iVar] )
+                if iVar == 0: self.ref_var = varSpec
+                self.datasetModule.setVariableRecord( "VariableName%d" % iVar, varSpec )
         else:    
             time_range = self.getInputValue( "timeRange"  )
-            self.timeRange =[ int(time_range[0]), int(time_range[1]), float(time_range[2]), float(time_range[3])  ]
+            self.timeRange =[ int(time_range[0]), int(time_range[1]), float(time_range[2]), float(time_range[3])  ] if time_range else None
             roi_data = self.getInputValue( "roi" )
             self.roi = [ float(sroi) for sroi in roi_data ] 
             dsMapData = self.getInputValue( "datasets" ) 
@@ -911,12 +969,12 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         if self.gridSpecs: metadata[ 'gridSpecs' ] = self.gridSpecs
         return metadata
 
-class CDMS_VCDATInterface(WorkflowModule):
-    
-    PersistentModuleClass = PM_CDMS_VCDATInterface
-    
-    def __init__( self, **args ):
-        WorkflowModule.__init__(self, **args)     
+#class CDMS_VCDATInterface(WorkflowModule):
+#    
+#    PersistentModuleClass = PM_CDMS_VCDATInterface
+#    
+#    def __init__( self, **args ):
+#        WorkflowModule.__init__(self, **args)     
       
                       
 class CDMS_FileReader(WorkflowModule):
@@ -1849,6 +1907,11 @@ class MetadataViewerDialog( QDialog ):
 #        self.emit(SIGNAL('doneConfigure()'))
 #        self.close()
 
+def getTitle( name, attributes, showUnits=False ):
+       long_name = attributes.get( 'long_name', attributes.get( 'standard_name', name ) )
+       if not showUnits: return long_name 
+       units = attributes.get( 'units', 'unitless' )
+       return  "%s (%s)" % ( long_name, units )
 
 class PM_CDMSDataReader( PersistentVisualizationModule ):
     
@@ -2107,7 +2170,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             if varName <> '__zeros__':
                 varDataSpecs = self.getCachedData( self.timeValue.value, varDataId )   
                 md = varDataSpecs[ 'md' ]            
-                md[ 'vars' ] = vars
+                md[ 'vars' ] = vars               
+                md[ 'title' ] = getTitle( md[ 'scalars' ], var_md )
                 enc_mdata = encodeToString( md ) 
                 self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) ) 
                 break                       
@@ -2259,7 +2323,7 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         elif self.outputType == CDMSDataType.Slice:     
             self.addOutputTab( 2, 'slice' )
         elif self.outputType == CDMSDataType.Vector:    
-            self.addOutputTab( 3, 'vector' )
+            self.addOutputTab( 3, 'volume' )
         self.updateVariableLists()
                 
     def getOutputTabIndex( self, name ):
