@@ -193,7 +193,7 @@ def menu_items():
     def show_config_window():
         pvConfigWindow.show()
         pvConfigWindow.activateWindow()
-        pvConfigWindowWindow.raise_()
+        pvConfigWindow.raise_()
     lst = []
     lst.append(("Show Server Configuration", show_config_window))
     return tuple(lst)
