@@ -146,6 +146,11 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.renderer.AddActor( self.glyphActor )
         self.set3DOutput(wmod=self.wmod) 
 
+    def updateModule(self, **args ):
+        self.resample.SetInput( self.input ) 
+        self.glyph.Modified()
+        self.glyph.Update()
+        self.set3DOutput(wmod=self.wmod)
         
     def ApplyGlyphDecimationFactor(self):
         sampleRate = [ int( round( abs( self.glyphDecimationFactor[0] ) )  ), int( round( abs( self.glyphDecimationFactor[1] ) ) )  ]

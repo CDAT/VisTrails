@@ -127,6 +127,7 @@ class CDMSDatasetRecord():
     
     def __init__( self, id, dataset=None, dataFile = None ):
         self.id = id
+        self.lev = None
         self.dataset = dataset
         self.cdmsFile = dataFile
         self.cachedFileVariables = {} 
@@ -274,6 +275,10 @@ class CDMSDatasetRecord():
         referenceVar = args.get( 'refVar', None )
         referenceLev = args.get( 'refLev', None )
 
+        timeValue = None
+        if timeBounds <> None:
+            timeValue = timeBounds[0] if ( len( timeBounds ) == 1 ) else timeBounds
+
 #        nSliceDims = 0
 #        for bounds in (lonBounds, latBounds, levBounds, timeBounds):
 #            if ( bounds <> None ) and ( len(bounds) == 1 ):  
@@ -318,14 +323,11 @@ class CDMSDatasetRecord():
         
         args1 = {} 
         gridMaker = None
-        timeValue = None
         decimationFactor = 1
         order = 'xyt' if ( timeBounds == None) else 'xyz'
         if decimation: decimationFactor = decimation[0]+1 if HyperwallManager.isClient else decimation[1]+1
 #        try:
-        if timeBounds <> None:
-            timeValue = timeBounds[0] if ( len( timeBounds ) == 1 ) else timeBounds
-            args1['time'] = timeValue
+        if timeValue: args1['time'] = timeValue
         
         if lonBounds <> None:
 #            if lonBounds[0] < LonMin and lonBounds[0]+360.0 < LonMax: lonBounds[0] = lonBounds[0] + 360.0
@@ -408,7 +410,7 @@ class CDMSDatasetRecord():
         gridSize = 1
         domain = var.getDomain()
         grid = var.getGrid()
-        lev = var.getLevel()
+        if not self.lev: self.lev = var.getLevel()
         axis_list = var.getAxisList()
         for axis in axis_list:
             size = len( axis )
@@ -1907,11 +1909,11 @@ class MetadataViewerDialog( QDialog ):
 #        self.emit(SIGNAL('doneConfigure()'))
 #        self.close()
 
-def getTitle( name, attributes, showUnits=False ):
+def getTitle( dsid, name, attributes, showUnits=False ):
        long_name = attributes.get( 'long_name', attributes.get( 'standard_name', name ) )
-       if not showUnits: return long_name 
+       if not showUnits: return "%s:%s" % ( dsid, long_name )
        units = attributes.get( 'units', 'unitless' )
-       return  "%s (%s)" % ( long_name, units )
+       return  "%s:%s (%s)" % ( dsid, long_name, units )
 
 class PM_CDMSDataReader( PersistentVisualizationModule ):
     
@@ -1930,17 +1932,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         cls.dataCache = {}
         cls.imageDataCache = {}
         
-    def getCachedData(self, iTimestep, varName ):
-        if varName == '__zeros__': iTimestep = 0
-        cache_key = '%s.%d' % ( self.datasetId, iTimestep )
-        varData = self.dataCache.setdefault( cache_key, {} )
-        return varData.get( varName, None ) 
+    def getCachedData( self, varDataId ):
+        varData = self.dataCache.setdefault( varDataId, {} )
+        return varData.get( 'varData', None )
 
-    def setCachedData(self, iTimestep, varName, varDataMap ):
-        if varName == '__zeros__': iTimestep = 0
-        cache_key = '%s.%d' % ( self.datasetId, iTimestep )
-        varData = self.dataCache.setdefault( cache_key, {} )
-        varData[ varName ] = varDataMap
+    def setCachedData(self, varDataId, varDataMap ):
+        varData = self.dataCache.setdefault( varDataId, {} )
+        varData[ 'varData' ] = varDataMap
                 
     def getParameterDisplay( self, parmName, parmValue ):
         if parmName == 'timestep':
@@ -2000,6 +1998,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 imageDataCache = self.getImageDataCache()            
                 if   orec.ndim >= 3: self.set3DOutput( name=orec.name,  output=imageDataCache[cachedImageDataName] )
                 elif orec.ndim == 2: self.set2DOutput( name=orec.name,  output=imageDataCache[cachedImageDataName] )
+        self.currentTime = self.getTimestep()
 
 #    def getMetadata( self, metadata={}, port=None ):
 #        PersistentVisualizationModule.getMetadata( metadata )
@@ -2008,7 +2007,11 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 #        orec = oRecMgr.getOutputRec( self.datasetId, port )
 #        if orec: metadata[ 'layers' ] = orec.varList
 #        return metadata
-          
+     
+    def getTimestep( self ):
+        dt = self.timeRange[3]
+        return 0 if dt <= 0.0 else int( round( ( self.timeValue.value - self.timeRange[2] ) / dt ) )
+    
     def getImageData( self, orec, **args ):
         """
         This method converts cdat data into vtkImageData objects. The ds object is a CDMSDataset instance which wraps a CDAT CDMS Dataset object. 
@@ -2038,21 +2041,21 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             portName = orec.name
             selectedLevel = orec.getSelectedLevel()
             ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
-            imageDataCreated = False
             default_dtype = np.ushort if ( (self.outputType == CDMSDataType.Volume ) or (self.outputType == CDMSDataType.Hoffmuller ) )  else np.float 
             scalar_dtype = args.get( "dtype", default_dtype )
             self._max_scalar_value = getMaxScalarValue( scalar_dtype )
             self._range = [ 0.0, self._max_scalar_value ]  
             datatype = getDatatypeString( scalar_dtype )
-            varDataId = '%s;%s;%d' % ( dsid, varName, self.outputType )
+            iTimestep = 0 if varName == '__zeros__' else self.getTimestep()
+            varDataId = '%s;%s;%d;%d' % ( dsid, varName, self.outputType, iTimestep )
             varDataIds.append( varDataId )
-            varDataSpecs = self.getCachedData( self.timeValue.value, varDataId )
+            varDataSpecs = self.getCachedData( varDataId )
             flatArray = None
             if varDataSpecs == None:
                 if varName == '__zeros__':
                     assert( npts > 0 )
                     newDataArray = np.zeros( npts, dtype=scalar_dtype ) 
-                    self.setCachedData( self.timeValue.value, varName, ( newDataArray, var_md ) ) 
+                    self.setCachedData( varName, ( newDataArray, var_md ) ) 
                     varDataSpecs = copy.deepcopy( exampleVarDataSpecs )
                     varDataSpecs['newDataArray'] = newDataArray.ravel('F')  
                 else: 
@@ -2090,7 +2093,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         md[ 'attributes' ] = var_md
                         
                 
-                self.setCachedData( self.timeValue.value, varDataId, varDataSpecs )  
+                self.setCachedData( varDataId, varDataSpecs )  
         
         cachedImageDataName = '-'.join( varDataIds )
         imageDataCache = self.getImageDataCache()              
@@ -2112,7 +2115,6 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             print "Create Image Data, extent = %s, spacing = %s" % ( str(extent), str(gridSpacing) )
 #            offset = ( -gridSpacing[0]*gridExtent[0], -gridSpacing[1]*gridExtent[2], -gridSpacing[2]*gridExtent[4] )
             imageDataCache[ cachedImageDataName ] = image_data
-            imageDataCreated = True
                 
         image_data = imageDataCache[ cachedImageDataName ]
         nVars = len( varList )
@@ -2125,7 +2127,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         scalars, nTup = None, 0
         vars = []       
         for varDataId in varDataIds: 
-            varDataSpecs = self.getCachedData( self.timeValue.value, varDataId )   
+            varDataSpecs = self.getCachedData( varDataId )   
             newDataArray = varDataSpecs.get( 'newDataArray', None )
             md = varDataSpecs[ 'md' ] 
             varName = varDataId.split(';')[1]
@@ -2166,17 +2168,19 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             pointData.SetActiveVectors( 'vectors'  )         
         if len( vars )== 0: raise ModuleError( self, 'No dataset variables selected for output %s.' % orec.name) 
         for varDataId in varDataIds:
-            varName = varDataId.split(';')[1] 
+            varDataFields = varDataId.split(';')
+            dsid = varDataFields[0] 
+            varName = varDataFields[1] 
             if varName <> '__zeros__':
-                varDataSpecs = self.getCachedData( self.timeValue.value, varDataId )   
+                varDataSpecs = self.getCachedData( varDataId )   
                 md = varDataSpecs[ 'md' ]            
                 md[ 'vars' ] = vars               
-                md[ 'title' ] = getTitle( md[ 'scalars' ], var_md )
+                md[ 'title' ] = getTitle( dsid, varName, var_md )
                 enc_mdata = encodeToString( md ) 
                 self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) ) 
                 break                       
         image_data.Modified()
-        return cachedImageDataName if imageDataCreated else None
+        return cachedImageDataName
                 
     def getMetadata( self, metadata={}, port=None ):
         PersistentVisualizationModule.getMetadata( self, metadata )

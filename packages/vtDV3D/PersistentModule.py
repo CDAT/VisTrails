@@ -112,6 +112,7 @@ class PersistentModule( QObject ):
         self.scalarRange = None
         self.seriesScalarRange = None
         self.wmod = None
+        self.inputModule = None
         self.allowMultipleInputs = False
         self.newLayerConfiguration = False
         self.inputModuleList = None
@@ -413,6 +414,8 @@ class PersistentModule( QObject ):
             scalars =  self.metadata.get( 'scalars', None )
             self.rangeBounds = getRangeBounds( dtype )
             self.titleBuffer = self.metadata.get( 'title', None )
+#            self.persistParameterList( [ ( 'title' , [ self.titleBuffer ]  ), ] )
+
             attributes = self.metadata.get( 'attributes' , None )
             if attributes:
                 self.units = attributes.get( 'units' , '' )
@@ -471,7 +474,8 @@ class PersistentModule( QObject ):
             except Exception, err:
                 raise ModuleError( self, 'Broken pipeline at input to module %s:\n (%s)' % ( self.__class__.__name__, str(err) ) )
         else:
-            self.inputModule = self.getPrimaryInput( **args )
+            inMod = self.getPrimaryInput( **args )
+            if inMod: self.inputModule = inMod
 #            if self.inputModule == None: print " ---- No input to module %s ---- " % ( self.__class__.__name__ )
 #        print " %s.initializeInputs: input Module= %s " % ( self.__class__.__name__, str( input_id ) )
         if  self.inputModule <> None: 
@@ -684,7 +688,7 @@ class PersistentModule( QObject ):
         return ( self.moduleID in pipeline.modules )
 
     def updateAnimation( self, relTimeValue, textDisplay=None ):
-        self.dvUpdate( timeValue=relTimeValue )
+        self.dvUpdate( timeValue=relTimeValue, animate=True )
         if textDisplay <> None:  self.updateTextDisplay( textDisplay )
                
     def updateConfigurationObserver( self, parameter_name, new_parameter_value, *args ):
@@ -929,7 +933,7 @@ class PersistentModule( QObject ):
         module = pipeline.modules.get( mid, None )
         return module
         
-    def updateModule(self):
+    def updateModule(self, **args ):
         pass
    
     def getCurrentPipeline(self):
@@ -995,6 +999,9 @@ class PersistentVisualizationModule( PersistentModule ):
         self.pipelineBuilt = False
         self.activation = {}
         self.navigationInteractorStyle = None
+        
+    def getTitle(self):
+        return self.titleBuffer
                                 
     def TestObserver( self, caller=None, event = None ):
         pass 
@@ -1031,7 +1038,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return rmodList
 
     def updateTextDisplay( self, text = None ):
-        if text <> None: 
+        if (text <> None) and (self.renderer <> None): 
             self.labelBuff = text
             if (self.ndims == 3):                
                 self.getLabelActor().VisibilityOn()
@@ -1056,7 +1063,7 @@ class PersistentVisualizationModule( PersistentModule ):
             
         if not initConfig: self.applyConfiguration()   
         
-        self.updateModule() 
+        self.updateModule( **args ) 
         
         if initConfig: 
             self.initializeConfiguration()  
@@ -1126,13 +1133,16 @@ class PersistentVisualizationModule( PersistentModule ):
         return ','.join( spec )
         
     def getProp( self, ptype, id = None ):
-      props = self.renderer.GetViewProps()
-      nitems = props.GetNumberOfItems()
-      for iP in range(nitems):
-          prop = props.GetItemAsObject(iP)
-          if prop.IsA( ptype ):
-              if not id or (prop.id == id):
-                  return prop
+      try:
+          props = self.renderer.GetViewProps()
+          nitems = props.GetNumberOfItems()
+          for iP in range(nitems):
+              prop = props.GetItemAsObject(iP)
+              if prop.IsA( ptype ):
+                  if not id or (prop.id == id):
+                      return prop
+      except: 
+          pass
       return None
   
     def createColorBarActor( self ):

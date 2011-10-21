@@ -129,3 +129,18 @@ class CDATTask(QtCore.QObject):
             outputName = "%s*%s.%s.%s" % ( dsid, inputBaseName, self.name, outputLabel )
         return outputName
 
+    def getTitle( self, iOutputIndex  ):
+        outputLabel = self.__class__.outputs[ iOutputIndex ]
+        outputName = self.outputMap.get( outputLabel, None )
+        if not outputName:
+            dsid = None 
+            inputBaseNames = []
+            for iInputIndex in len( self.__class__.inputs.keys() ):
+                inputName = self.getInputName( iInputIndex )
+                inputNameComp = inputName.split('*')
+                if dsid == None: dsid = inputNameComp[0]
+                inputBaseNames.append( inputNameComp[1] )
+            inputBaseName = '-'.join( inputBaseNames )
+            outputName = "%s*%s.%s.%s" % ( dsid, inputBaseName, self.name, outputLabel )
+        return outputName
+

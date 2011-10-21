@@ -252,8 +252,9 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             HyperwallManager.addCell( self.moduleID, self.datasetId, str(0), dimensions )
             HyperwallManager.executeCurrentWorkflow( self.moduleID )
 
-    def updateModule(self):
-        self.buildPipeline()
+    def updateModule( self, **args ):
+        animate = args.get( 'animate', False )
+        if not animate: self.buildPipeline()
         if self.baseMapActor: self.baseMapActor.SetVisibility( self.enableBasemap )
         if self.renWin: self.renWin.Render()
         
@@ -420,7 +421,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             self.buildWidget()
    
     def execute(self, **args ):
-        self.builtCellWidget = False
+        if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
         PersistentVisualizationModule.execute(self, **args)
         
     def addTitle(self):    
@@ -567,6 +568,7 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
     def getParameters( self, module ):
         titleParms = getFunctionParmStrValues( module, "title" )
         if titleParms: self.title = str( titleParms[0] )
+        if not self.title: self.title = self.pmod.getTitle()
         basemapParams = getFunctionParmStrValues( module, "enable_basemap" )
         if basemapParams: self.enableBasemap = bool( basemapParams[0] )
         basemapParams = getFunctionParmStrValues( module, "map_border_size" )

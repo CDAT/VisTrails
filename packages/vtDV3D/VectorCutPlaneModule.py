@@ -471,6 +471,15 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.set3DOutput(wmod=self.wmod) 
         self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
 
+    def updateModule(self, **args ):
+        self.resample.SetInput( self.input ) 
+        self.cutterInput = self.resample.GetOutput() 
+        self.planeWidget.SetInput( self.cutterInput  )
+        self.cutter.SetInput( self.cutterInput ) 
+        self.cutter.Update()
+        self.glyphMapper.Modified()
+        self.glyphMapper.Update()
+        self.set3DOutput()
 
     def createArrowSources( self, scaleRange=[ 1.0, 10.0 ], n_sources=10 ):
         trans = vtk.vtkTransform()
@@ -758,7 +767,14 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.UpdateStreamerSeedGrid()
         self.updateScaling()
         self.set3DOutput( wmod=self.wmod, output=self.input ) 
-        
+ 
+    def updateModule(self, **args ):
+        self.planeWidget.SetInput( self.input  )        
+        self.streamer.SetInput( self.input )
+        self.streamer.Modified()
+        self.streamer.Update()
+        self.set3DOutput()
+       
     def getCurentLevel(self):
         planeOrigin = self.plane.GetOrigin()
         gridExtent = self.input.GetExtent()

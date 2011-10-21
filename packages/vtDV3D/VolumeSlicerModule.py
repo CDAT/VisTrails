@@ -181,7 +181,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.transferInputLayer( self.sliceInput ) 
 #        self.SliceObserver( self.planeWidgetZ ) 
 
-    def updateModule(self):
+    def updateModule(self, **args ):
 #        print " Volume Slicer: updateModule, cachable: %s " % str( self.is_cacheable() )
 #        print " ******** Input extent: %s, origin: %s, spacing: %s " % ( self.input.GetExtent(), self.input.GetOrigin(), self.input.GetSpacing() )
 

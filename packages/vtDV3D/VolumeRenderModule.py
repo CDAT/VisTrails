@@ -140,7 +140,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #            print "  --->> VolumeRender Set Active Scalars: %s " % self.activeLayer
 #            self.volumeMapper.SelectScalarArray(  self.activeLayer  )  
                                       
-    def updateModule( self ):
+    def updateModule( self, **args  ):
         if self.inputModule:
             self.inputModule.inputToAlgorithm( self.volumeMapper )
             self.set3DOutput()

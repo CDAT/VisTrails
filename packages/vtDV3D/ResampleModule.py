@@ -153,7 +153,7 @@ class PM_Resample(PersistentVisualizationModule):
         self.setExtent( self.initialExtent )          
         self.set3DOutput( port=self.imageInfo.GetOutputPort() )
         
-    def updateModule( self ):
+    def updateModule( self, **args  ):
         pass
         
 #        self.clip.AddObserver( 'StartEvent', self.onResampleEvent )     
