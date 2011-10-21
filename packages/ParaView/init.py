@@ -180,6 +180,20 @@ def initialize(*args, **keywords):
     global pvConfigWindow
     pvConfigWindow = QPVConfigWindow(proc_num=configuration.num_proc,
                                      port=configuration.port)
-    pvConfigWindow.show()
+    #pvConfigWindow.show()
     if configuration.start_server == True:
         pvConfigWindow.togglePVServer()
+        
+def menu_items():
+    """menu_items() -> tuple of (str,function)
+    It returns a list of pairs containing text for the menu and a
+    callback function that will be executed when that menu item is selected.
+    
+    """
+    def show_config_window():
+        pvConfigWindow.show()
+        pvConfigWindow.activateWindow()
+        pvConfigWindow.raise_()
+    lst = []
+    lst.append(("Show Server Configuration", show_config_window))
+    return tuple(lst)
