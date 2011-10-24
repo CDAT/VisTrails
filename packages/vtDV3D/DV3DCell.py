@@ -546,7 +546,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         else:               
             print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
             
-    def updateStereo( self, enableStereo ):
+    def updateStereo( self, enableStereo ):  
         if enableStereo <> self.stereoEnabled:  
             self.toggleStereo()   
             self.stereoEnabled = not self.stereoEnabled 

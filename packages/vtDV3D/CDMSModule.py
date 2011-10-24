@@ -2247,7 +2247,7 @@ class CDMS_VectorReader(WorkflowModule):
         WorkflowModule.__init__(self, **args) 
 
                            
-class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
+class CDMSReaderConfigurationWidget(DV3DConfigurationWidget): 
     """
     CDMSReaderConfigurationWidget ...
     
