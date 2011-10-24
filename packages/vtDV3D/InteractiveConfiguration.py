@@ -850,19 +850,22 @@ class ColormapConfigurationDialog( IVModuleConfigurationDialog ):
         
     @staticmethod   
     def getSignature():
-        return [ (String, 'name'), ( Integer, 'invert'), ]
+        return [ (String, 'name'), ( Integer, 'invert'), ( Integer, 'stereo') ]
         
     def getValue(self):
         checkState = 1 if ( self.invertCheckBox.checkState() == Qt.Checked ) else 0
-        return [ str( self.colormapCombo.currentText() ), checkState ]
+        stereoState = 1 if ( self.stereoCheckBox.checkState() == Qt.Checked ) else 0
+        return [ str( self.colormapCombo.currentText() ), checkState, stereoState ]
 
     def setValue( self, value ):
         colormap_name = str( value[0] )
         check_state = Qt.Checked if int(float(value[1])) else Qt.Unchecked
+        stereo_state = Qt.Checked if int(float(value[2])) else Qt.Unchecked
         itemIndex = self.colormapCombo.findText( colormap_name, Qt.MatchFixedString )
         if itemIndex >= 0: self.colormapCombo.setCurrentIndex( itemIndex )
         else: print>>sys.stderr, " Can't find colormap: %s " % colormap_name
         self.invertCheckBox.setCheckState( check_state )
+        self.stereoCheckBox.setCheckState( stereo_state )
         
     def createContent(self ):
         """ createEditor() -> None
@@ -886,8 +889,12 @@ class ColormapConfigurationDialog( IVModuleConfigurationDialog ):
         self.connect( self.colormapCombo, SIGNAL("currentIndexChanged(QString)"), self.updateParameter )  
         
         self.invertCheckBox = QCheckBox('Invert')
-        layout.addWidget( self.invertCheckBox, 1, 0, 1, 2 )
+        layout.addWidget( self.invertCheckBox, 1, 0 )
         self.connect( self.invertCheckBox, SIGNAL("stateChanged(int)"), self.updateParameter )  
+
+        self.stereoCheckBox = QCheckBox('Stereo')
+        layout.addWidget( self.stereoCheckBox, 1, 1 )
+        self.connect( self.stereoCheckBox, SIGNAL("stateChanged(int)"), self.updateParameter )  
 
 ################################################################################
         
@@ -991,9 +998,9 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         self.saveConfigurations()
         StandardModuleConfigurationWidget.destroy( self, destroyWindow, destroySubWindows )
 
-    def close (self):
-        pass
-        return StandardModuleConfigurationWidget.close(self)
+#    def close (self):
+#        pass
+#        return StandardModuleConfigurationWidget.close(self)
     
     def sizeHint(self):
         return QSize(400,200)
@@ -1159,6 +1166,8 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         self.state_changed = False
         self.emit(SIGNAL("stateChanged"))
         self.emit(SIGNAL('doneConfigure'), self.module.id)
+        self.close()
+
         
 #    def saveTriggered(self, checked = False):
 #        self.okTriggered()

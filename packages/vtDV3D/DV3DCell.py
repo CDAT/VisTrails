@@ -177,10 +177,11 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         return cells
         
     def isSelected(self):
-        cells = self.getSelectedCells()
-        cell_coords = ( self.location.row, self.location.col )
-        for cell in cells:
-            if cell == cell_coords: return True
+        if self.location:
+            cells = self.getSelectedCells()
+            cell_coords = ( self.location.row, self.location.col )
+            for cell in cells:
+                if cell == cell_coords: return True
         return False
     
     def syncCamera( self, cpos, cfol, cup ):
@@ -543,7 +544,18 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 self.renWin = self.cellWidget.GetRenderWindow()
             self.builtCellWidget = True
         else:               
-            print>>sys.stderr, "Error, no renderers supplied to DV3DCell"  
+            print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
+            
+    def updateStereo( self, enableStereo ):
+        if enableStereo <> self.stereoEnabled:  
+            self.toggleStereo()   
+            self.stereoEnabled = not self.stereoEnabled 
+ 
+    def toggleStereo(self):
+        iren = self.renWin.GetInteractor()
+        keycode = QString('3').unicode().toLatin1()
+        iren.SetKeyEventInformation( 0, 0, keycode, 0, "3" )     
+        iren.InvokeEvent( vtk.vtkCommand.KeyPressEvent )
 
 class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
     """

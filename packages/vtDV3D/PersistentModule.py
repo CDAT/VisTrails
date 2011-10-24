@@ -999,6 +999,7 @@ class PersistentVisualizationModule( PersistentModule ):
         self.pipelineBuilt = False
         self.activation = {}
         self.navigationInteractorStyle = None
+        self.stereoEnabled = 0
         
     def getTitle(self):
         return self.titleBuffer
@@ -1088,18 +1089,36 @@ class PersistentVisualizationModule( PersistentModule ):
     def setColormap( self, data ):
         self.colormapName = str(data[0])
         self.invertColormap = int( data[1] )
+        enableStereo = int( data[2] )
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
 #        print ' ~~~~~~~ SET COLORMAP:  --%s--  ' % self.colormapName
+        self.updateStereo( enableStereo )
         if self.buildColormap(): 
             self.rebuildColorTransferFunction()
             self.render() 
+
+    def updateStereo( self, enableStereo ):
+        if self.iren:
+            renwin = self.iren.GetRenderWindow ()
+            if enableStereo:
+                renwin.StereoCapableWindowOn()
+                renwin.StereoRenderOn()
+                self.stereoEnabled = 1
+            else:
+                renwin.StereoCapableWindowOff()
+                renwin.StereoRenderOff()
+                self.stereoEnabled = 0
+
+#            keycode = int('3')
+#            self.iren.SetKeyEventInformation( 0, 0, keycode, 0, "3" )     
+#            self.iren.InvokeEvent( vtk.vtkCommand.KeyPressEvent )
             
     def rebuildColorTransferFunction( self ):
         pass 
             
     def getColormap(self):
         reverse = 0 if ( self.colormapManager <> None ) and self.colormapManager.reverse_lut else 1
-        return [ self.colormapName, reverse ]
+        return [ self.colormapName, reverse, self.stereoEnabled ]
 
     def render( self ):
         if self.renderer:   
