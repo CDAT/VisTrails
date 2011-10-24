@@ -542,7 +542,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             #in mashup mode, self.displayAndWait will return None
             if self.cellWidget:
                 self.renWin = self.cellWidget.GetRenderWindow()
-                self.renWin.StereoCapableWindowOn()
+#                self.renWin.StereoCapableWindowOn()
             self.builtCellWidget = True
         else:               
             print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 

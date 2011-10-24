@@ -278,6 +278,7 @@ class QVTKWidget(QCellWidget):
         if not self.mRenWin:
             win = vtk.vtkRenderWindow()
             win.DoubleBufferOn()
+            win.StereoCapableWindowOn()
             self.SetRenderWindow(win)
             del win
 
