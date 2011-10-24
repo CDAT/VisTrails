@@ -1097,7 +1097,7 @@ class PersistentVisualizationModule( PersistentModule ):
             self.rebuildColorTransferFunction()
             self.render() 
 
-    def updateStereo( self, enableStereo ):
+    def updateStereo( self, enableStereo ):   
         if self.iren:
             renwin = self.iren.GetRenderWindow ()
             if enableStereo:
