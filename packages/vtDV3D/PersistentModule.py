@@ -1101,11 +1101,9 @@ class PersistentVisualizationModule( PersistentModule ):
         if self.iren:
             renwin = self.iren.GetRenderWindow ()
             if enableStereo:
-                renwin.StereoCapableWindowOn()
                 renwin.StereoRenderOn()
                 self.stereoEnabled = 1
             else:
-                renwin.StereoCapableWindowOff()
                 renwin.StereoRenderOff()
                 self.stereoEnabled = 0
 
