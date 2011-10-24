@@ -840,7 +840,7 @@ class IVModuleWidgetWrapper( QObject ):
 
 ################################################################################
         
-class ColormapConfigurationDialog( IVModuleConfigurationDialog ): 
+class ColormapConfigurationDialog( IVModuleConfigurationDialog ):   
     """
     ColormapConfigurationDialog ...   
     """ 
