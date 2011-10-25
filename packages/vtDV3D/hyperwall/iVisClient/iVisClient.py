@@ -7,8 +7,8 @@ from vtUtilities import *
 
 import PyQt4.QtNetwork
 import packages
-import gui
-import core
+import gui, core
+import os
 
 class QiVisClient(QtCore.QObject):
     def __init__(self, name, x, y, width, height, server, serverPort, displayWidth, displayHeight, fullScreenEnabled ):
@@ -24,7 +24,7 @@ class QiVisClient(QtCore.QObject):
         self.timer.start()
         self.socket = QTcpSocket()
 
-        self.server = server
+        self.server = os.environ.get( 'DV3D_HW_SERVER_NAME', server )
         self.serverPort = serverPort
 
         self.buffer = ""
