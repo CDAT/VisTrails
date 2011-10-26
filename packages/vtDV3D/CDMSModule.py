@@ -325,8 +325,10 @@ class CDMSDatasetRecord():
         decimationFactor = 1
         order = 'xyt' if ( timeBounds == None) else 'xyz'
         if decimation: decimationFactor = decimation[0]+1 if HyperwallManager.isClient else decimation[1]+1
-#        try:
-        if timeValue: args1['time'] = timeValue
+        try:
+            nts = self.dataset['time'].shape[0]
+            if timeValue and (nts>1): args1['time'] = timeValue
+        except: pass
         
         if lonBounds <> None:
 #            if lonBounds[0] < LonMin and lonBounds[0]+360.0 < LonMax: lonBounds[0] = lonBounds[0] + 360.0

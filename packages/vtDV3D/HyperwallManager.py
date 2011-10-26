@@ -93,6 +93,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
             
             if not debug:
                 nodeList = dv3d_configuration.hw_nodes.split(',')
+                nodeList = [ 'visrend01', 'visrend02', 'visrend03' ]
                 print "hwServer initialization, server: %x, mgr: %x, dims=%s, nodes=%s" % ( id(self.server), id( self ), str(hw_dims), str(nodeList) )
                 nodeIndex = 0
                 for node in nodeList:
