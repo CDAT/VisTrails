@@ -669,8 +669,9 @@ class Package(DBPackage):
         (dom, element) = self.find_own_dom_element()
 
         configuration = enter_named_element(element, 'configuration')
-        if configuration:
-            self.configuration.set_from_dom_node(configuration)
+        if configuration and self.configuration:
+            if self.configuration: self.configuration.set_from_dom_node(configuration)
+            else: print>>sys.stderr, "Error, missing configuration in package"
         dom.unlink()
 
     def set_persistent_configuration(self):
@@ -699,7 +700,8 @@ class Package(DBPackage):
             packages.appendChild(oldpackage)
             configuration = enter_named_element(oldpackage, 'configuration')
             if configuration:
-                self.configuration.set_from_dom_node(configuration)
+                if self.configuration: self.configuration.set_from_dom_node(configuration)
+                else: print>>sys.stderr, "Error, missing configuration in package"
             from PyQt4 import QtCore
             QtCore.QCoreApplication.instance().vistrailsStartup.write_startup_dom(dom)
         dom.unlink()

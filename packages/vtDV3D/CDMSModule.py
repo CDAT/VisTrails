@@ -15,7 +15,6 @@ from core.vistrail.port_spec import PortSpec
 from vtUtilities import *
 from PersistentModule import * 
 from ROISelection import ROISelectionDialog
-from vtDV3DConfiguration import configuration
 import numpy.ma as ma
 from vtk.util.misc import vtkGetDataRoot
 packagePath = os.path.dirname( __file__ ) 
@@ -60,10 +59,8 @@ def deserializeFileMap( serialized_strMap ):
     return stringMap
 
 def getDataRoot():
-    DATA_ROOT = vtkGetDataRoot() 
-    if configuration.check( 'data_root' ): 
-        DATA_ROOT = configuration.vtk_data_root
-    return DATA_ROOT
+    DATA_ROOT = os.environ.get( 'DV3D_DATA_ROOT', '~' )
+    return os.path.expanduser( DATA_ROOT )
 
 def printGrid( var ):
     var._grid_ = None  # Work around CDAT bug
@@ -125,6 +122,8 @@ def getRelativeTimeValues( dataset ):
 
 class CDMSDatasetRecord(): 
     
+    cdmsDataRoot = getDataRoot()
+   
     def __init__( self, id, dataset=None, dataFile = None ):
         self.id = id
         self.lev = None
@@ -947,7 +946,8 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
   
         if self.datasetMap:             
             for datasetId in self.datasetMap:
-                cdmsFile = self.datasetMap[ datasetId ]
+                relFilePath = self.datasetMap[ datasetId ]
+                cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
                 self.datasetModule.addDatasetRecord( datasetId, cdmsFile )
 #                print " - addDatasetRecord: ", str( datasetId ), str( cdmsFile )
         self.setParameter( "timeRange" , self.timeRange )
@@ -1046,7 +1046,6 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         Setup the dialog ...
         
         """
-        self.cdmsDataRoot = getDataRoot()
         self.timeRange = None
         self.nTS = 0
         self.variableList = ( [], [] )
@@ -1126,18 +1125,20 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
     def setDatasetProperties(self, dataset, cdmsFile ):
         self.currentDatasetId = dataset.id  
         self.pmod.datasetId = dataset.id 
-        self.datasets[ self.currentDatasetId ] = cdmsFile  
-        self.cdmsDataRoot = os.path.dirname( cdmsFile )
+        relFilePath = os.path.relpath( cdmsFile, CDMSDatasetRecord.cdmsDataRoot )
+        self.datasets[ self.currentDatasetId ] = relFilePath  
+#        self.cdmsDataRoot = os.path.dirname( cdmsFile )
         self.metadataViewer.setDatasetProperties( dataset, cdmsFile ) 
         
     def registerCurrentDataset( self, **args ):
         id = args.get( 'id', None ) 
-        cdmsFile = args.get( 'file', None )
+        relFilePath = args.get( 'file', None )
         if self.pmod: self.pmod.setNewConfiguration( **args )
         if id: 
             self.currentDatasetId = str( id )
-            cdmsFile = self.datasets.get( self.currentDatasetId, None ) 
+            relFilePath = self.datasets.get( self.currentDatasetId, None ) 
         try:
+            cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
             dataset = cdms2.open( cdmsFile ) 
             self.setDatasetProperties( dataset, cdmsFile )
             self.updateGrids()           
@@ -1156,16 +1157,17 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
          
     def selectFile(self):
         dataset = None
-        file = QFileDialog.getOpenFileName( self, "Find Dataset", self.cdmsDataRoot, "CDMS Files (*.xml *.cdms *.nc *.nc4)") 
+        file = QFileDialog.getOpenFileName( self, "Find Dataset", CDMSDatasetRecord.cdmsDataRoot, "CDMS Files (*.xml *.cdms *.nc *.nc4)") 
         if file <> None:
             cdmsFile = str( file ).strip() 
             if len( cdmsFile ) > 0:                             
                 if self.multiFileSelection:
                     try:
                         dataset = cdms2.open( cdmsFile )
+                        relFilePath = os.path.relpath( cdmsFile, CDMSDatasetRecord.cdmsDataRoot )
                         self.currentDatasetId = dataset.id 
-                        self.datasets[ self.currentDatasetId ] = cdmsFile  
-                        self.cdmsDataRoot = os.path.dirname( cdmsFile )
+                        self.datasets[ self.currentDatasetId ] = relFilePath  
+#                        self.cdmsDataRoot = os.path.dirname( cdmsFile )
                         self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
                         self.dsCombo.setCurrentIndex( 0 )
                         self.pmod.datasetId = '*'.join( self.datasets.keys() )
@@ -1204,27 +1206,29 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.grids = []
         self.variableList = ( [], [] )
         for datasetId in self.datasets:
-            cdmsFile = self.datasets[ datasetId ]
-            try:
-                dataset = cdms2.open( cdmsFile ) 
-                for var in dataset.variables:
-                    vardata = dataset[var]
-                    var_ndim = getVarNDim( vardata )
-                    if (var_ndim) == 2 or (var_ndim == 3):
-                        self.variableList[var_ndim-2].append( '%s*%s' % ( datasetId, var ) )
-    #            if not self.selectedGrid:
-    #                if len( self.variableList[1] ): self.selectedGrid = self.variableList[1][0]
-    #                elif len( self.variableList[0] ): self.selectedGrid = self.variableList[0][0]
-                for grid_id in dataset.grids:
-                    self.grids.append( '*'.join( [ datasetId, grid_id ] ) )
-                    grid = dataset.grids[ grid_id ]
-                    lonAxis = grid.getLongitude()
-                    if lonAxis:
-                        lonVals = lonAxis.getValue()
-                        if lonVals[0] < 0.0: self.lonRangeType = 1
-                dataset.close() 
-            except Exception, err:
-                print>>sys.stderr, " Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
+            if datasetId:
+                relFilePath = self.datasets[ datasetId ]
+                cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                try:
+                    dataset = cdms2.open( cdmsFile ) 
+                    for var in dataset.variables:
+                        vardata = dataset[var]
+                        var_ndim = getVarNDim( vardata )
+                        if (var_ndim) == 2 or (var_ndim == 3):
+                            self.variableList[var_ndim-2].append( '%s*%s' % ( datasetId, var ) )
+        #            if not self.selectedGrid:
+        #                if len( self.variableList[1] ): self.selectedGrid = self.variableList[1][0]
+        #                elif len( self.variableList[0] ): self.selectedGrid = self.variableList[0][0]
+                    for grid_id in dataset.grids:
+                        self.grids.append( '*'.join( [ datasetId, grid_id ] ) )
+                        grid = dataset.grids[ grid_id ]
+                        lonAxis = grid.getLongitude()
+                        if lonAxis:
+                            lonVals = lonAxis.getValue()
+                            if lonVals[0] < 0.0: self.lonRangeType = 1
+                    dataset.close() 
+                except Exception, err:
+                    print>>sys.stderr, " Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
                 
         self.updateRefVarSelection() 
      
@@ -1238,12 +1242,14 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         dataset_list = []
         time_values_list = []
         for datasetId in self.datasets:
-            cdmsFile = self.datasets[ datasetId ]
-            try:
-                dataset = cdms2.open( cdmsFile ) 
-                dataset_list.append( dataset )
-            except Exception, err:
-                print>>sys.stderr, " Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
+            if datasetId:
+                relFilePath = self.datasets[ datasetId ]
+                cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                try:
+                    dataset = cdms2.open( cdmsFile ) 
+                    dataset_list.append( dataset )
+                except Exception, err:
+                    print>>sys.stderr, " Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
         for dataset in dataset_list:
             time_values, dt, time_units = getRelativeTimeValues ( dataset )
             time_values_list.append( (dataset.id, time_values) )

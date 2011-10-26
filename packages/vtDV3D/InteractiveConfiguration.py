@@ -18,6 +18,7 @@ from collections import OrderedDict
 from vtUtilities import *
 import cdms2
 
+
 class CDMSDataType:
     Volume = 1
     Slice = 2
@@ -1335,7 +1336,8 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                     datasetsInput = getFunctionParmStrValues( module, "datasets" )
                     if datasetsInput: 
                         datasets = deserializeStrMap( getItem( datasetsInput ) )
-                        cdmsFile = datasets[ datasetId ]
+                        relFilePath = datasets[ datasetId ]
+                        cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
                         vlist = DV3DConfigurationWidget.readVariableList( datasetId, cdmsFile )
                         variableList.update( vlist )
                         timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
@@ -1365,6 +1367,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
     @staticmethod
     def getVariableList( mid ): 
         import api
+        from CDMSModule import CDMSDatasetRecord
         controller = api.get_current_controller()
         moduleId = mid
         cdmsFile = None
@@ -1383,7 +1386,8 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                 if datasetsInput:
                     datasets = deserializeStrMap( getItem( datasetsInput ) )
                     for datasetId in datasets:
-                        cdmsFile = datasets[ datasetId ]
+                        relFilePath = datasets[ datasetId ]
+                        cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
                         vlist = DV3DConfigurationWidget.readVariableList( datasetId, cdmsFile )
                         variableList.update( vlist )
                         timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
@@ -1394,8 +1398,9 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                             if selected_var:
                                 referenceData = selected_var.split('*')
                                 refDsid = referenceData[0]
-                                refVar  = referenceData[1].split(' ')[0]
-                                cdmsFile = datasets[ refDsid ]
+                                refVar  = referenceData[1].split(' ')[0]                                
+                                relFilePath = datasets[ refDsid ]
+                                cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
                                 dataset = cdms2.open( cdmsFile ) 
                                 levelsAxis=dataset[refVar].getLevel()
                         datasetIds.add( datasetId )

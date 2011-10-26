@@ -19,10 +19,8 @@ packagePath = os.path.dirname( __file__ )
 
 demoDatasets =  [ 'head', 'iron', 'dust', 'wind', 'e5ncep', 'putman' ]
 
-def getVTKDataRoot():
-    VTK_DATA_ROOT = vtkGetDataRoot() 
-    if vtDV3D.configuration.check( 'vtk_data_root' ): 
-        VTK_DATA_ROOT = vtDV3D.configuration.vtk_data_root
+def getVTKDataRoot(): 
+    VTK_DATA_ROOT = os.environ( 'VTK_DATA_ROOT', vtkGetDataRoot() )
     return VTK_DATA_ROOT
          
 class PM_DemoData( PersistentVisualizationModule ):
