@@ -4,7 +4,7 @@ Created on May 16, 2011
 @author: tpmaxwel
 '''
 from PyQt4 import QtCore, QtGui
-import sys, copy, os, argparse, gui, subprocess
+import sys, copy, os, argparse, gui, subprocess, socket
 from gui.application import VistrailsApplication
 from packages.spreadsheet.spreadsheet_config import configuration as spreadsheet_configuration
 from vtDV3DConfiguration import configuration as dv3d_configuration
@@ -116,7 +116,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
         debugStr = ('/usr/X11/bin/xterm -sb -sl 20000 -display :0.0 -e ') if debug else ''
         optionsStr = "-Y" if debug else ''  
 #            cmd = "ssh %s %s '%s /usr/local/bin/bash -c \"source ~/.vistrails/hw_env; export HW_NODE_INDEX=%d; export DISPLAY=:0.0; python %s/main/client.py\" ' " % ( optionsStr, node, debugStr, nodeIndex, HYPERWALL_SRC_PATH )
-        cmd = [ "ssh", node, 'bash -c \"export HW_NODE_INDEX=%d; export DISPLAY=:0.0; ~/.vistrails/hw_vistrails_client ~/.vistrails-%d\" ' % ( nodeIndex, nodeIndex ) ]
+        cmd = [ "ssh", node, 'bash -c \"export HW_NODE_INDEX=%d; export DISPLAY=:0.0; ~/.vistrails/hw_vistrails_client ~/.vistrails-%d %s\" ' % ( nodeIndex, nodeIndex, socket.gethostname() ) ]
         print " --- Executing: ", ' '.join(cmd)
         try:
             p = subprocess.Popen( cmd, stdout=sys.stdout, stderr=sys.stderr ) 
