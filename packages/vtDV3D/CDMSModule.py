@@ -186,13 +186,14 @@ class CDMSDatasetRecord():
         if referenceVar:
             referenceData = referenceVar.split('*')
             refDsid = referenceData[0]
-            refFile = referenceData[1]
+            refFileRelPath = referenceData[1]
             refVar  = referenceData[2]
             try:
+                refFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, refFileRelPath )
                 f=cdms2.open( refFile )
                 refGrid=f[refVar].getGrid()
             except cdms2.error.CDMSError, err:
-                print>>sys.stderr, " --- Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
+                print>>sys.stderr, " --- Error[1] opening dataset file %s: %s " % ( refFile, str( err ) )
         if not refGrid: refGrid = varData.getGrid()
         refLat=refGrid.getLatitude()
         refLon=refGrid.getLongitude()
@@ -302,13 +303,14 @@ class CDMSDatasetRecord():
         if referenceVar:
             referenceData = referenceVar.split('*')
             refDsid = referenceData[0]
-            refFile = referenceData[1]
+            relFilePath = referenceData[1]
             refVar  = referenceData[2]
             try:
+                cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
                 f=cdms2.open( refFile )
                 refGrid=f[refVar].getGrid()
             except cdms2.error.CDMSError, err:
-                print>>sys.stderr, " --- Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
+                print>>sys.stderr, " --- Error[2] opening dataset file %s: %s " % ( cdmsFile, str( err ) )
         if not refGrid: refGrid = varData.getGrid()
         refLat=refGrid.getLatitude()
         refLon=refGrid.getLongitude()
@@ -656,16 +658,17 @@ class CDMSDataset(Module):
             condTimeSlices.append( condTimeSlice1 )
         return condTimeSlices
     
-    def addDatasetRecord( self, dsetId, cdmsFile ):
+    def addDatasetRecord( self, dsetId, relFilePath ):
         cdmsDSet = self.datasetRecs.get( dsetId, None )
-        if (cdmsDSet <> None) and (cdmsDSet.cdmsFile == cdmsFile):
+        if (cdmsDSet <> None) and (cdmsDSet.cdmsFile == relFilePath):
             return cdmsDSet
         try:
+            cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
             dataset = cdms2.open( cdmsFile ) 
             cdmsDSet = CDMSDatasetRecord( dsetId, dataset, cdmsFile )
             self.datasetRecs[ dsetId ] = cdmsDSet
         except Exception, err:
-            print>>sys.stderr, " --- Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
+            print>>sys.stderr, " --- Error[3] opening dataset file %s: %s " % ( cdmsFile, str( err ) )
         return cdmsDSet             
 
     def getVariableList( self, ndims ):
