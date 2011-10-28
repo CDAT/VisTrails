@@ -117,6 +117,6 @@ def executeVistrail( *args, **kwargs ):
     sys.exit(v)
 
 if __name__ == '__main__':
-    optionsDict = {  'hw_role'  : 'none'  }         
+    optionsDict = {  'hw_role'  : 'global'  }         
     executeVistrail( options=optionsDict )
  

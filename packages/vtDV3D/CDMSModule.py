@@ -59,8 +59,10 @@ def deserializeFileMap( serialized_strMap ):
     return stringMap
 
 def getDataRoot():
-    DATA_ROOT = os.environ.get( 'DV3D_DATA_ROOT', '~' )
-    return os.path.expanduser( DATA_ROOT )
+    defaults = { 'data_root': '~',  }
+    datasetConfig, appConfig = getConfiguration( defaults )
+    hw_role = appConfig.hw_role if hasattr( appConfig, 'hw_role' ) else 'global'
+    return os.path.expanduser( datasetConfig.get( hw_role, 'data_root' ) )
 
 def printGrid( var ):
     var._grid_ = None  # Work around CDAT bug
@@ -663,10 +665,12 @@ class CDMSDataset(Module):
         if (cdmsDSet <> None) and (cdmsDSet.cdmsFile == relFilePath):
             return cdmsDSet
         try:
-            cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
-            dataset = cdms2.open( cdmsFile ) 
-            cdmsDSet = CDMSDatasetRecord( dsetId, dataset, cdmsFile )
-            self.datasetRecs[ dsetId ] = cdmsDSet
+            relFilePath = relFilePath.strip()
+            if relFilePath:
+                cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                dataset = cdms2.open( cdmsFile ) 
+                cdmsDSet = CDMSDatasetRecord( dsetId, dataset, cdmsFile )
+                self.datasetRecs[ dsetId ] = cdmsDSet
         except Exception, err:
             print>>sys.stderr, " --- Error[3] opening dataset file %s: %s " % ( cdmsFile, str( err ) )
         return cdmsDSet             
@@ -739,7 +743,8 @@ class SerializedInterfaceSpecs:
         
     def addInput(self, inputName, fileName, variableName, axes ):
         print " --- AddInput: ", inputName, fileName, variableName, axes
-        self.inputs[ inputName ] = ( fileName, variableName, axes )
+        relFilePath = os.path.relpath( fileName, CDMSDatasetRecord.cdmsDataRoot )
+        self.inputs[ inputName ] = ( relFilePath, variableName, axes )
         
     def getNInputs(self):
         return len(self.inputs)
@@ -882,8 +887,9 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         if not self.timeRange[2]:
             dataset_list = []
             start_time, end_time, min_dt  = -float('inf'), float('inf'), float('inf')
-            for cdmsFile in self.fileSpecs:
+            for relFilePath in self.fileSpecs:
                 try:
+                    cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
                     dataset = cdms2.open( cdmsFile ) 
                     dataset_list.append( dataset )
                 except:
@@ -952,8 +958,8 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         if self.datasetMap:             
             for datasetId in self.datasetMap:
                 relFilePath = self.datasetMap[ datasetId ]
-                cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
-                self.datasetModule.addDatasetRecord( datasetId, cdmsFile )
+                if relFilePath.strip():
+                    self.datasetModule.addDatasetRecord( datasetId, relFilePath )
 #                print " - addDatasetRecord: ", str( datasetId ), str( cdmsFile )
         self.setParameter( "timeRange" , self.timeRange )
         self.setParameter( "roi", self.roi )
@@ -1988,20 +1994,21 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         return self.getInputValue( "portData", **args )  
  
     def generateOutput( self ): 
-        oRecMgr = None      
-        portData = self.getPortData()
-        if portData:
-            print " VolumeReader->generateOutput, portData: ", portData
-            oRecMgr = OutputRecManager( portData[0]  )
-        else:
-            varRecs = self.cdmsDataset.getVarRecValues()
+        oRecMgr = None 
+        varRecs = self.cdmsDataset.getVarRecValues()
+        if len( varRecs ):
             print " VolumeReader->generateOutput, varSpecs: ", str(varRecs)
             oRecMgr = OutputRecManager() 
 #            varCombo = QComboBox()
 #            for var in varRecs: varCombo.addItem( str(var) ) 
             orec = OutputRec( 'volume', ndim=3, varList=varRecs )  # varComboList=[ varCombo ], 
             oRecMgr.addOutputRec( self.datasetId, orec ) 
-        orecs = oRecMgr.getOutputRecs( self.datasetId )  
+        else:
+            portData = self.getPortData()
+            if portData:
+                print " VolumeReader->generateOutput, portData: ", portData
+                oRecMgr = OutputRecManager( portData[0]  )
+        orecs = oRecMgr.getOutputRecs( self.datasetId ) if oRecMgr else None
         if not orecs: raise ModuleError( self, 'No Variable selected for dataset %s.' % self.datasetId )             
         for orec in orecs:
             cachedImageDataName = self.getImageData( orec ) 

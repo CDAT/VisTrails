@@ -1141,8 +1141,8 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         
     def updateState(self, state):
         self.setFocus(Qt.MouseFocusReason)
-#        self.saveButton.setEnabled(True)
-#        self.resetButton.setEnabled(True)
+        self.saveButton.setEnabled(True)
+        self.resetButton.setEnabled(True)
         if not self.state_changed:
             self.state_changed = True
             self.emit(SIGNAL("stateChanged"))
@@ -1221,6 +1221,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 #        self.resetButton.setEnabled(False)
         self.state_changed = False
         self.emit(SIGNAL("stateChanged"))
+        self.close()
                 
 #    def resetTriggered(self):
 #        self.setFocus(Qt.MouseFocusReason)
@@ -1263,23 +1264,25 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 
     def createButtonLayout(self):
         """ createButtonLayout() -> None
-        Construct Ok & Cancel button
+        Construct Save & Reset button
         
         """
         self.buttonLayout = QHBoxLayout()
         self.buttonLayout.setMargin(5)
-        self.okButton = QPushButton('&OK', self)
-        self.okButton.setAutoDefault(False)
-        self.okButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.okButton)
-        self.cancelButton = QPushButton('&Cancel', self)
-        self.cancelButton.setAutoDefault(False)
-        self.cancelButton.setShortcut('Esc')
-        self.cancelButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.cancelButton)
+        self.saveButton = QPushButton('&Save', self)
+        self.saveButton.setFixedWidth(100)
+        self.saveButton.setEnabled(True)
+        self.buttonLayout.addWidget(self.saveButton)
+        self.resetButton = QPushButton('&Close', self)
+        self.resetButton.setFixedWidth(100)
+        self.resetButton.setEnabled(True)
+        self.buttonLayout.addWidget(self.resetButton)
+        
         self.layout().addLayout(self.buttonLayout)
-        self.connect(self.okButton, SIGNAL('clicked(bool)'), self.saveTriggered)
-        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close)
+        self.connect(self.saveButton,SIGNAL('clicked(bool)'),  self.saveTriggered)
+        self.connect(self.resetButton,SIGNAL('clicked(bool)'),  self.close )
+        self.setMouseTracking(True)
+        self.setFocusPolicy( Qt.WheelFocus )
         
     def okTriggered(self):
         pass
@@ -1288,12 +1291,13 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
     def readVariableList( dsId, cdmsFile ):
         vList = []
         try:
-            dataset = cdms2.open( cdmsFile ) 
-            for var in dataset.variables:
-                vardata = dataset[var]
-                var_ndim = getVarNDim( vardata )
-                vList.append( ( '*'.join( [ dsId, var ] ), var_ndim ) ) 
-            dataset.close()  
+            if cdmsFile.strip():
+                dataset = cdms2.open( cdmsFile ) 
+                for var in dataset.variables:
+                    vardata = dataset[var]
+                    var_ndim = getVarNDim( vardata )
+                    vList.append( ( '*'.join( [ dsId, var ] ), var_ndim ) ) 
+                dataset.close()  
         except Exception, err:
             print>>sys.stderr, "Error reading variable list from dataset %s: %s " % ( cdmsFile, str(err) )
         return vList        
