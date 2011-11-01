@@ -309,7 +309,7 @@ class CDMSDatasetRecord():
             refVar  = referenceData[2]
             try:
                 cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
-                f=cdms2.open( refFile )
+                f=cdms2.open( cdmsFile )
                 refGrid=f[refVar].getGrid()
             except cdms2.error.CDMSError, err:
                 print>>sys.stderr, " --- Error[2] opening dataset file %s: %s " % ( cdmsFile, str( err ) )

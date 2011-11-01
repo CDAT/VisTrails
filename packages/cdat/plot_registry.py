@@ -268,6 +268,8 @@ class Plot(object):
         result.extend(self.files)
         result.extend(self.vars)
         result.extend(self.axes)
+        if self.serializedConfigAlias: 
+            result.extend( self.serializedConfigAlias )
         for c in self.cells:
             result.append(c.row_name)
             result.append(c.col_name)

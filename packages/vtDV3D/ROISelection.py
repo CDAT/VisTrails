@@ -150,18 +150,6 @@ class GraphicsView(QGraphicsView):
             self.emit( SIGNAL("PointSelected"), self.scenePt1, self.roiCorner1 )
         QGraphicsView.mouseReleaseEvent(self, event)
         
-class MainForm(QDialog):
- 
-    def __init__(self, parent=None):
-        super(MainForm, self).__init__(parent)
-
-        layout = QVBoxLayout()
-        self.roiSelector = ROISelectionWidget( parent )
-        layout.addWidget(self.roiSelector)
-        self.setLayout(layout)
-
-        self.setWindowTitle("Array Editor")
-        
         
 class ROISelectionDialog(QDialog):
 
@@ -737,11 +725,57 @@ class BoundaryMap:
         elapsed = time.time() - start
         print "Boundary Load time: %f " % elapsed
 
+class MainForm(QDialog):
+ 
+    def __init__(self, parent=None):
+        super(MainForm, self).__init__(parent)
+        self.lonRangeType = 1
+        self.fullRoi = [ [ 0.0, -90.0, 360.0, 90.0 ], [ -180.0, -90.0, 180.0, 90.0 ] ]
+        self.roi = self.fullRoi[ self.lonRangeType ]
+
+        layout = QVBoxLayout()
+        
+        self.roiLabel = QLabel( "ROI: %s" % str( self.roi )  )
+        layout.addWidget(self.roiLabel)
+        
+        roiButton_layout = QHBoxLayout()
+        layout.addLayout(roiButton_layout )
+                 
+        self.selectRoiButton = QPushButton('Select ROI', self)
+        roiButton_layout.addWidget( self.selectRoiButton )
+        self.connect( self.selectRoiButton, SIGNAL('clicked(bool)'), self.selectRoi )
+
+        self.resetRoiButton = QPushButton('Reset ROI', self)
+        roiButton_layout.addWidget( self.resetRoiButton )
+        self.connect( self.resetRoiButton, SIGNAL('clicked(bool)'), self.resetRoi )
+        
+        self.roiSelector = ROISelectionDialog( self.parent() )
+        if self.roi: self.roiSelector.setROI( self.roi )
+        self.connect(self.roiSelector, SIGNAL('doneConfigure()'), self.setRoi )
+        
+        self.setLayout(layout)
+        self.setWindowTitle("ROI Selector")
+
+    def selectRoi( self ): 
+        if self.roi: self.roiSelector.setROI( self.roi )
+        self.roiSelector.show()
+
+    def resetRoi( self ): 
+        roi0 = self.fullRoi[ self.lonRangeType ]
+        self.roiSelector.setROI( roi0 )        
+        self.roiLabel.setText( "ROI: %s" % str( roi0 )  ) 
+        for i in range( len( self.roi ) ): self.roi[i] = roi0[i] 
+
+    def setRoi(self):
+        self.roi = self.roiSelector.getROI()
+        self.roiLabel.setText( "ROI: %s" % str( self.roi )  )  
+        
 if __name__ == '__main__':                                                
     app = QApplication(sys.argv)
     form = MainForm()
+
     rect = QApplication.desktop().availableGeometry()
-    form.resize(int(rect.width() * 0.5), int(rect.height() * 0.7))
+    form.resize( 300, 150 )
     form.show()
     app.exec_()
 
