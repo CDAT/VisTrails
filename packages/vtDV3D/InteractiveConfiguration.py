@@ -25,6 +25,27 @@ class CDMSDataType:
     Vector = 3
     Hoffmuller = 4
 
+class WindowRefinementGenerator( QObject ):
+
+    def __init__( self, **args ):
+        self.initialPosition = None
+        self.initialRefinement = None
+        self.range = args.get( 'range', [ 0.0, 1.0 ] )
+        
+    def initRefinement( self, pos, initRefinement ):  
+        self.initialPosition = pos
+        self.initialRefinement = initRefinement
+        
+    def updateRefinement( self, pos, wsize ):
+        newRefinement = [ 0, 0 ]
+        scale = self.range[1] - self.range[0]
+        for iR in [ 0, 1 ]:
+            dr = ( pos[iR] - self.initialPosition[iR] ) * scale / wsize[iR]
+            newRefinement[iR] = self.initialRefinement[iR] + dr
+            if newRefinement[iR] < self.range[0]: newRefinement[iR] = self.range[0]
+            if newRefinement[iR] > self.range[1]: newRefinement[iR] = self.range[1]
+        return newRefinement
+
 class QtWindowLeveler( QObject ):
     
     update_range_signal = SIGNAL('update_range')
@@ -280,6 +301,7 @@ class ConfigurableFunction( QObject ):
         self.active = args.get( 'active', True )
         self.activeFunctionList = []
         self.module = None
+        self.altMode = False
 #        self.parameterInputEnabled = True                                      # Handlers executed at:
         self.initHandler = args.get( 'init', None )         #    end of compute()
         self.openHandler = args.get( 'open', None )         #    key press
@@ -315,9 +337,11 @@ class ConfigurableFunction( QObject ):
     def getHelpText( self ):
         return "<tr>   <td>%s</td>  <td>%s</td> <td>%s</td> </tr>\n" % ( self.key, self.name, self.type )
 
-    def open( self, state ):
-        if ( self.openHandler != None ) and ( self.name == state ):
-            self.openHandler( )
+    def open( self, state, alt = False ):
+        if( self.name == state ): 
+            self.altMode = alt
+            if ( self.openHandler != None ): 
+                self.openHandler()
             
     def close(self):
         pass
@@ -360,12 +384,16 @@ class ConfigurableFunction( QObject ):
             
 ################################################################################
 
+
+################################################################################
+
 class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     
     def __init__( self, name, key, **args ):
-        ConfigurableFunction.__init__( self, name, [ ( Float, 'min'), ( Float, 'max'), ( Integer, 'ctrl') ], key, **args  )
+        ConfigurableFunction.__init__( self, name, [ ( Float, 'min'), ( Float, 'max'),  ( Integer, 'ctrl'), ( Float, 'refine0'), ( Float, 'refine1') ], key, **args  )
         self.type = 'leveling'
         self.windowLeveler = QtWindowLeveler( **args )
+        self.windowRefiner = WindowRefinementGenerator( range=[ 0.001, 0.999 ] )
         if( self.initHandler == None ): self.initHandler = self.initLeveling
         if( self.startHandler == None ): self.startHandler = self.startLeveling
         if( self.updateHandler == None ): self.updateHandler = self.updateLeveling
@@ -373,7 +401,8 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.getLevelDataHandler = args.get( 'getLevel', None )
         self.getInitLevelDataHandler = args.get( 'getInitLevel', None )
         self.isDataValue = args.get( 'isDataValue', True )
-        self.defaultRange = args.get( 'initRange', [ 0.0, 1.0, 1 ] )
+        self.defaultRange = args.get( 'initRange', [ 0.0, 1.0, 1, 0.0, 1.0 ] )
+        self.widget = args.get( 'gui', None )
 
     def applyParameter( self, module, **args ):
         try:
@@ -388,16 +417,20 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
 
     def initLeveling( self, **args ):
         self.initial_range =  self.defaultRange if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
-        self.range = self.module.getInputValue( self.name, self.initial_range ) if not self.module.newDataset else self.initial_range
-        self.setLevelDataHandler( self.range )
+        self.range = list( self.module.getInputValue( self.name, self.initial_range ) if not self.module.newDataset else self.initial_range )
+        if len( self.range ) == 3: 
+            for iR in [ 3, 4 ]: self.range.append( self.defaultRange[iR] )
         self.windowLeveler.setDataRange( self.range )
+        self.setLevelDataHandler( self.range )
         self.module.setParameter( self.name, self.range )
 
 #        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
         
     def startLeveling( self, x, y ):
-        self.windowLeveler.startWindowLevel( x, y )
+        if self.altMode:    self.windowRefiner.initRefinement( [ x, y ], self.range[3:5] )   
+        else:               self.windowLeveler.startWindowLevel( x, y )
         self.updateActiveFunctionList()
+        self.emit(SIGNAL('startLeveling()'))
 
     def getTextDisplay(self, **args ):
         rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
@@ -408,12 +441,18 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         return textDisplay 
             
     def updateLeveling( self, x, y, wsize ):
-        self.range = self.windowLeveler.windowLevel( x, y, wsize )
+        if self.altMode:
+            refinement_range = self.windowRefiner.updateRefinement( [ x, y ], wsize )
+            for iR in [ 0, 1 ]: self.range[3+iR] = refinement_range[iR]
+        else:  
+            leveling_range = self.windowLeveler.windowLevel( x, y, wsize )
+            for iR in [ 0, 1 ]: self.range[iR] = leveling_range[iR]
         self.setLevelDataHandler( self.range )
         self.module.render()
         for cfgFunction in self.activeFunctionList:
             cfgFunction.setLevelDataHandler( self.range )
             cfgFunction.module.render()
+#        print " updateLeveling: altMode = %s, range = %s, refine = %s " % ( str( self.altMode ) , str( self.range[0:2] ), str( self.range[3:5] )  )
         return self.range # self.wrapData( range )
 
 ################################################################################

@@ -123,6 +123,7 @@ class PersistentModule( QObject ):
         self.configurableFunctions = {}
         self.configuring = False
         self.InteractionState = None
+        self.LastInteractionState = None
         self.requiresPrimaryInput = args.get( 'requiresPrimaryInput', True )
         self.createColormap = args.get( 'createColormap', True )
         self.parmUpdating = {}
@@ -998,6 +999,7 @@ class PersistentVisualizationModule( PersistentModule ):
         self.titleBuffer = None
         self.pipelineBuilt = False
         self.activation = {}
+        self.isAltMode = False
         self.navigationInteractorStyle = None
         self.stereoEnabled = 0
         
@@ -1252,7 +1254,9 @@ class PersistentVisualizationModule( PersistentModule ):
                         self.iren.AddObserver( 'CharEvent', self.setInteractionState )                   
                         self.iren.AddObserver( 'MouseMoveEvent', self.updateLevelingEvent )
                         self.iren.AddObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
-    #                    self.iren.AddObserver( 'AnyEvent', self.onAnyEvent )        
+    #                    self.iren.AddObserver( 'AnyEvent', self.onAnyEvent )  
+#                        self.iren.AddObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
+#                        self.iren.AddObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
                         self.iren.AddObserver( 'CharEvent', self.onKeyPress )
                         self.iren.AddObserver( 'KeyReleaseEvent', self.onKeyRelease )
                         self.iren.AddObserver( 'LeftButtonPressEvent', self.onLeftButtonPress )
@@ -1270,17 +1274,24 @@ class PersistentVisualizationModule( PersistentModule ):
     def setInteractionState(self, caller, event):
         key = caller.GetKeyCode() 
         keysym = caller.GetKeySym()
-        ctrl = caller.GetControlKey()
         shift = caller.GetShiftKey()
-        ikey = ord(key[0]) if key else 0
-        if shift: keysym = keysym.upper()
-#        print " ------------------------------------------ setInteractionState, keysym=%s, shift = %s ------------------------------------------ " % (str(keysym), str(shift) )
-        self.processKeyEvent( keysym, caller, event )
+        alt = not key and keysym.startswith("Alt")
+        if alt:
+            self.isAltMode = True
+        else: 
+#            ikey = ord(key[0]) if key else 0
+            if shift: keysym = keysym.upper()
+            print " ------------------------------------------ setInteractionState, key=%s, keysym=%s, shift = %s, isAltMode = %s    ------------------------------------------ " % (str(key), str(keysym), str(shift), str(self.isAltMode) )
+            self.processKeyEvent( keysym, caller, event )
 #        if key == self.current_key:
 #            t = time.time()
 #            if( ( t - self.event_time ) < 0.01 ): return
 #        self.event_time = time.time()
 #        self.current_key = key
+
+    def refineLevelingEvent( self, caller, event ):
+        print " refineLevelingEvent: { %s } " % ( str( event ) )      
+
 
     def processKeyEvent( self, key, caller=None, event=None ):
         print "process Key Event, key = %s" % ( key )
@@ -1300,15 +1311,16 @@ class PersistentVisualizationModule( PersistentModule ):
             else: self.colorBarActor.VisibilityOn() 
             self.render() 
         elif (  key == 'r'  ): 
-            if self.InteractionState <> None: 
-                configFunct = self.configurableFunctions[ self.InteractionState ]
+            if self.LastInteractionState <> None: 
+                configFunct = self.configurableFunctions[ self.LastInteractionState ]
                 param_value = configFunct.reset() 
                 if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True )
                 if configFunct.type == 'leveling':
                     self.finalizeConfigurationObserver( self.InteractionState )            
                     if self.ndims == 3: self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-                configFunct.close()
-                self.endInteraction() 
+                if self.InteractionState <> None: 
+                    configFunct.close()
+                    self.endInteraction() 
         else:
             state =  self.getInteractionState( key )
 #            print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
@@ -1317,12 +1329,14 @@ class PersistentVisualizationModule( PersistentModule ):
                     configFunct = self.configurableFunctions[ self.InteractionState ]
                     configFunct.close()
                 if self.InteractionState == state:
-                    self.endInteraction()             
+                    self.endInteraction()            
                 else:
                     self.InteractionState = state
                     configFunct = self.configurableFunctions[ self.InteractionState ]
-                    configFunct.open( self.InteractionState )
-                    HyperwallManager.setLevelingState( state )
+                    configFunct.open( self.InteractionState, self.isAltMode )
+                    HyperwallManager.setLevelingState( state, self.isAltMode )
+                    self.isAltMode = False 
+                    self.LastInteractionState = self.InteractionState
                     
     def endInteraction( self ):
         self.InteractionState = None 

@@ -19,6 +19,7 @@ packagePath = os.path.dirname( __file__ )
 defaultMapDir = os.path.join( packagePath, 'data' )
 defaultMapFile = os.path.join( defaultMapDir,  'world_huge.jpg' )
 defaultMapCut = 0
+SLIDER_MAX_VALUE = 100
 
 def get_coords_from_cell_address( row, col):
     try:
@@ -576,6 +577,7 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         self.mapBorderSize = 20.0
         self.cellAddress = 'A1'
         self.title = ""
+        self.mapOpacity = 0.5
         DV3DConfigurationWidget.__init__(self, module, controller, 'DV3D Cell Configuration', parent)
                 
     def getParameters( self, module ):
@@ -588,6 +590,8 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         if basemapParams:  self.mapBorderSize = float( basemapParams[0] )
         celllocParams = getFunctionParmStrValues( module, "cell_location" )
         if celllocParams:  self.cellAddress = str( celllocParams[0] )
+        opacityParams = getFunctionParmStrValues( module, "opacity" )
+        if opacityParams:  self.mapOpacity = float( opacityParams[0] )
 
     def createLayout(self):
         """ createEditor() -> None
@@ -628,6 +632,16 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         title_layout.addWidget( self.titleEdit  )        
         layout.addLayout( title_layout )
         
+        opacity_layout = QHBoxLayout()
+        opacity_label = QLabel( "Map Opacity:" )
+        opacity_layout.addWidget( opacity_label )
+        self.opacitySlider = QSlider( Qt.Horizontal )
+        self.opacitySlider.setRange( 0, SLIDER_MAX_VALUE )
+        self.opacitySlider.setSliderPosition( int( self.mapOpacity * SLIDER_MAX_VALUE ) )
+        self.connect(self.opacitySlider, SIGNAL('sliderMoved()'), self.stateChanged )
+        opacity_layout.addWidget( self.opacitySlider )
+        layout.addLayout( opacity_layout )
+        
         sheet_dims = HyperwallManager.getDimensions()
 
         locationTab = QWidget()        
@@ -662,8 +676,10 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         parmRecList.append( ( 'map_border_size' , [ self.mapBorderSize ]  ), )  
         parmRecList.append( ( 'cell_location' , [ self.cellAddress ]  ), )  
         parmRecList.append( ( 'title' , [ self.title ]  ), )  
+        parmRecList.append( ( 'opacity' , [ float( self.opacitySlider.value() ) / SLIDER_MAX_VALUE ]  ), )  
         self.persistParameterList( parmRecList )
         self.stateChanged(False)         
+
            
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None

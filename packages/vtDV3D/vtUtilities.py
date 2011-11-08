@@ -40,6 +40,17 @@ def bound( val, bounds ): return max( min( val, bounds[1] ), bounds[0] )
 
 def str2f( data ): return "[ %s ]" % ( ", ".join( [ '%.2f' % value for value in data ] ) )
 
+def flt2str( fval ): 
+    if ( fval == 0.0 ): return "0.0"
+    if ( fval >= 1000000 ) or ( fval < 0.001 ): return ( "%.2e" % fval )
+    if ( fval >= 1000 ): return ( "%.0f" % fval )
+    if ( fval >= 100 ): return ( "%.1f" % fval )
+    if ( fval >= 1 ): return ( "%.2f" % fval )
+    if ( fval < 0.01 ): return ( "%.4f" % fval )
+    return ( "%.3f" % fval )
+
+def pt2str( pt ): return "( %.2f, %.2f )" % ( pt.x(), pt.y() ) 
+
 def printTime( label ):
     global currentTime
     t = time.time()

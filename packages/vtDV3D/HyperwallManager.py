@@ -28,14 +28,16 @@ class HyperwallManagerSingleton(QtCore.QObject):
         self.isServer = False
         self.isClient = False
         self.levelingState = None
+        self.altMode = False
         self.opening_event = None
         self.intial_camera_pos = None
         
 #    def __del__(self):
 #        self.shutdown()
 
-    def setLevelingState( self, state ):
+    def setLevelingState( self, state, altMode=False ):
         self.levelingState = state
+        self.altMode = altMode
 
     def getLevelingState():
         return self.levelingState

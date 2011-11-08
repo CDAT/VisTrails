@@ -15,11 +15,51 @@ from core.modules.basic_modules import Integer, Float, String, File, Variant, Co
 from ColorMapManager import ColorMapManager 
 from InteractiveConfiguration import QtWindowLeveler 
 from vtUtilities import *
+from SimplePlot import GraphWidget
 from PersistentModule import *
+
+LegacyAbsValueTransferFunction = 0
+LinearTransferFunction = 1 
+PosValueTransferFunction = 2  
+NegValueTransferFunction = 3  
+AbsValueTransferFunction = 4
+AllValueTransferFunction = 5  
 
 def distance( p0, p1 ):
     dp = [ (p0[i]-p1[i]) for i in range(3) ]
     return math.sqrt( dp[0]*dp[0] + dp[1]*dp[1] + dp[2]*dp[2] )
+
+class TransferFunction( QObject ):
+    
+    def __init__(self, type, **args ):
+        self.type = type
+        self.data = args.get( 'data', None )
+        
+    def  getNumberOfNodes(self):
+        if self.type == AbsValueTransferFunction: return 12
+        else: return 6
+        
+class TransferFunctionConfigurationDialog( QDialog ): 
+     
+    def __init__(self, parent=None, **args):
+        QDialog.__init__( self, parent )
+        self.setWindowTitle("Transfer Function Configuration")
+        self.graph = GraphWidget( size=(400,300), nticks=(5,5) )
+        self.functions = {} 
+        self.setLayout(QVBoxLayout())
+        self.closeButton = QPushButton('Ok', self)
+        self.layout().addWidget( self.graph )         
+        self.layout().addWidget(self.closeButton)
+        self.connect(self.closeButton, SIGNAL('clicked(bool)'), self.close)
+        self.closeButton.setShortcut('Enter')
+        
+    def addTransferFunction( self, name, type ):
+        tf = TransferFunction( type ) 
+        self.functions[ name ]  = tf
+        self.graph.buildGraph( tf.getNumberOfNodes() ) 
+    
+    def updateGraph( self, xbounds, ybounds, data ):
+        self.graph.createGraph( xbounds, ybounds, data )
         
 class PM_VolumeRenderer(PersistentVisualizationModule):
     """
@@ -32,20 +72,21 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         <tr> <td> l </td> <td> Toggle show colorbar. </td>
         </table>
     """       
-    AbsValueTransferFunction = 0
-    LinearTransferFunction = 1   
     
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__(self, mid, **args)
         self.max_opacity = 1.0
         self.vthresh = None
         self.filterOutliers = False
+        self.refinement = [ 0.0, 0.5 ]
         self.imageRange = None
         self.otf_data = None
         self.ctf_data = None
-        self.TransferFunction = PM_VolumeRenderer.AbsValueTransferFunction
+        self.TransferFunction = PosValueTransferFunction
+        self.transferFunctionConfig = TransferFunctionConfigurationDialog()
+        self.transferFunctionConfig.addTransferFunction( 'default', self.TransferFunction )
         self.addConfigurableLevelingFunction( 'colorScale',    'C', setLevel=self.generateCTF, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'functionScale', 'T', setLevel=self.generateOTF, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units  )
+        self.addConfigurableLevelingFunction( 'functionScale', 'T', setLevel=self.generateOTF, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units, initRange=[ 0.0, 1.0, 1, self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
         self.addConfigurableLevelingFunction( 'opacityScale',  'O', setLevel=self.adjustOpacity, layerDependent=True  )
     
 #    def onModified( self, caller, event ):
@@ -281,9 +322,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         maxop = abs( opacity_data[1] ) 
         self.max_opacity = maxop if maxop < 1.0 else 1.0
         range_min, range_max = self.rangeBounds[0], self.rangeBounds[1]
-        self.vthresh = opacity_data[0]*(self.seriesScalarRange[1]-self.seriesScalarRange[0])*0.02
-        self._range[3] = self.scaleToImage( self.vthresh )      
-        self.updateOFT( self._range, self.filterOutliers )
+#        self.vthresh = opacity_data[0]*(self.seriesScalarRange[1]-self.seriesScalarRange[0])*0.02
+        self.updateOFT()
 #        printArgs( "adjustOpacity", irange=self._range,  max_opacity=self.max_opacity, opacity_data=opacity_data, vthresh=vthresh, ithresh=self._range[3] )   
 
     def generateOTF( self, otf_data=None ): 
@@ -291,9 +331,9 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         else: otf_data = self.otf_data
         if otf_data:
             self._range = self.getImageValues( ( otf_data[0], otf_data[1], 0.0 ) )
-            self._range.append( self.scaleToImage( self.vthresh ) if self.vthresh else 0.0 ) 
-            self.filterOutliers = otf_data[2]
-            self.updateOFT( self._range, self.filterOutliers )
+#            self._range.append( self.scaleToImage( self.vthresh ) if self.vthresh else 0.0 )         
+            if len( otf_data ) > 3: self.refinement = [ otf_data[3], otf_data[4] ]
+            self.updateOFT()
 #        printArgs( "generateOTF", irange=self._range,  otf_data=otf_data )   
            
 #    def generateOTF1( self, otf_data ): 
@@ -323,87 +363,137 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #        self.updateOFT( scaled_range, filterOutliers )
 #        printArgs( "generateOTF", scaled_range=scaled_range,  otf_data=otf_data, vrange=(vmin, vmax), vrange_bounds=(range_min, range_max), init_range=(self._range[0], self._range[1]) )   
 
-    def updateOFT( self, range, filterOutliers ):
-#        print " Update Volume OTF, range = %s, max opacity = %s " % ( str( range ), str( self.max_opacity ) )
-        self.filterOutliers = filterOutliers
+    def getTransferFunctionPoints( self, range, isPositive ):
+        zero_point = range[2] 
+        scalar_bounds = [ 0, self._max_scalar_value ]
+        points = []  
+#        print "Generate OTF: range = ( %f %f ), zero_point = %f, refinement = ( %f %f ), max_opacity = %s" % ( range[0], range[1], zero_point, self.refinement[0], self.refinement[1], self.max_opacity )             
+        if isPositive:
+            pos_range = [ range[0], range[1] ]
+            if (range[0] < zero_point ) and ( range[1] > zero_point ): pos_range[ 0 ] = zero_point
+            elif ( range[0] < zero_point ) and ( range[1] < zero_point ): pos_range = [ zero_point + (zero_point-range[1]), zero_point + (zero_point-range[0]) ]
+            pos_range = [ bound(pos_range[0],scalar_bounds), bound(pos_range[1],scalar_bounds) ]
+            mid_point = ( pos_range[0] + pos_range[1] ) / 2.0   
+            half_width =   ( pos_range[1] - pos_range[0] ) / 2.0 
+            points.append( ( zero_point, 0.) )
+            points.append( ( pos_range[0] - self.refinement[0] * ( pos_range[0] - zero_point ), self.max_opacity * self.refinement[0] ) )
+            points.append( ( mid_point - self.refinement[1]*half_width, self.max_opacity * self.refinement[1] ) )            
+            points.append( ( mid_point, self.max_opacity ) )
+            points.append( ( mid_point + self.refinement[1]*half_width, self.max_opacity * self.refinement[1] ) )            
+            points.append( ( pos_range[1], 0. )  )
+        else:
+            neg_range = [ range[0], range[1] ]
+            if (range[0] < zero_point ) and ( range[1] > zero_point ): neg_range[ 0 ] = zero_point
+            elif ( range[0] < zero_point ) and ( range[1] < zero_point ): neg_range = [ zero_point + (zero_point-range[1]), zero_point + (zero_point-range[0]) ]
+            neg_range = [ bound(neg_range[0],scalar_bounds), bound(neg_range[1],scalar_bounds) ]
+            mid_point = ( neg_range[0] + neg_range[1] ) / 2.0   
+            half_width = ( neg_range[1] - neg_range[0] ) / 2.0 
+            points.append( ( neg_range[0], 0. )  )
+            points.append( ( mid_point - self.refinement[1]*half_width, self.max_opacity * self.refinement[1] ) )            
+            points.append( ( mid_point, self.max_opacity ) )
+            points.append( ( mid_point + self.refinement[1]*half_width, self.max_opacity * self.refinement[1] ) )            
+            points.append( ( neg_range[1] + self.refinement[0] * ( zero_point - neg_range[1] ), self.max_opacity * self.refinement[0] ) )
+            points.append( ( zero_point, 0.) )
+        return points
+          
+    def updateOFT( self ):
+        self.transferFunctionConfig.show()
+#        print " Update Volume OTF, self._range = %s, max opacity = %s " % ( str( self._range ), str( self.max_opacity ) )
         self.opacityTransferFunction.RemoveAllPoints()  
-        dthresh = range[3]
-#        print "Generate OTF: range = ( %f %f ), thresh = %f, max_opacity = %s" % ( range[0], range[1], dthresh, self.max_opacity )
-        if self.TransferFunction == PM_VolumeRenderer.AbsValueTransferFunction:
-            zero_point = range[2] 
-            if ( zero_point < range[0] ):
-                if range[0] > 0: self.opacityTransferFunction.AddPoint( 0, 0.)
-                self.opacityTransferFunction.AddPoint( range[0], 0.)
-                self.opacityTransferFunction.AddPoint( range[1], self.max_opacity )
-                if range[1] < self._max_scalar_value: 
+#        dthresh = self._range[3]
+        if (self.TransferFunction == PosValueTransferFunction) or (self.TransferFunction == NegValueTransferFunction):
+            points = self.getTransferFunctionPoints( self._range, True )
+            graphData = []
+            for point in points:  
+                self.opacityTransferFunction.AddPoint( point[0], point[1]  )  
+                graphData.append( ( self.getDataValue( point[0] ) , point[1], False )  )
+            if self.otf_data: self.transferFunctionConfig.updateGraph( self.scalarRange, [ 0.0, 1.0 ], graphData )
+        elif self.TransferFunction == AbsValueTransferFunction:
+            graphData = []
+            points = self.getTransferFunctionPoints( self._range, False )
+            for point in points:  
+                self.opacityTransferFunction.AddPoint( point[0], point[1]  ) 
+                graphData.append( ( self.getDataValue( point[0] ) , point[1], False )  ) 
+            points = self.getTransferFunctionPoints( self._range, True ) 
+            for point in points:  
+                self.opacityTransferFunction.AddPoint( point[0], point[1]  ) 
+                graphData.append( ( self.getDataValue( point[0] ) , point[1], False )  )  
+            if self.otf_data: self.transferFunctionConfig.updateGraph( self.scalarRange, [ 0.0, 1.0 ], graphData )
+#            print "OTF: [ %s ] " % str( points )    
+        elif self.TransferFunction == LegacyAbsValueTransferFunction:
+            if ( zero_point < self._range[0] ):
+                if self._range[0] > 0: self.opacityTransferFunction.AddPoint( 0, 0.)
+                self.opacityTransferFunction.AddPoint( self._range[0], 0.)
+                self.opacityTransferFunction.AddPoint( self._range[1], self.max_opacity )
+                if self._range[1] < self._max_scalar_value: 
                     if self.filterOutliers:
-                        self.opacityTransferFunction.AddPoint( range[1]+0.5, 0.0)               
+                        self.opacityTransferFunction.AddPoint( self._range[1]+0.5, 0.0)               
                         self.opacityTransferFunction.AddPoint( self._max_scalar_value, 0.0)               
                     else:
                         self.opacityTransferFunction.AddPoint( self._max_scalar_value, self.max_opacity)               
-            elif( zero_point > range[1] ):
-                if range[0] > 0: 
+            elif( zero_point > self._range[1] ):
+                if self._range[0] > 0: 
                     if self.filterOutliers:
                         self.opacityTransferFunction.AddPoint( 0, 0.0)               
-                        self.opacityTransferFunction.AddPoint( range[0]-0.5, 0.0)               
+                        self.opacityTransferFunction.AddPoint( self._range[0]-0.5, 0.0)               
                     else:
                         self.opacityTransferFunction.AddPoint( 0, self.max_opacity)
-                self.opacityTransferFunction.AddPoint( range[0], self.max_opacity )
-                self.opacityTransferFunction.AddPoint( range[1], 0. )
-                if range[1] < self._max_scalar_value: self.opacityTransferFunction.AddPoint( self._max_scalar_value, 0.)                              
+                self.opacityTransferFunction.AddPoint( self._range[0], self.max_opacity )
+                self.opacityTransferFunction.AddPoint( self._range[1], 0. )
+                if self._range[1] < self._max_scalar_value: self.opacityTransferFunction.AddPoint( self._max_scalar_value, 0.)                              
             else:
-                d0 = abs(range[0]-zero_point)
-                d1 = abs(range[1]-zero_point)
-                t0 = max( zero_point-dthresh, range[0] )
-                t1 = min( zero_point+dthresh, range[1] )
+                d0 = abs(self._range[0]-zero_point)
+                d1 = abs(self._range[1]-zero_point)
+                t0 = max( zero_point, self._range[0] )
+                t1 = min( zero_point, self._range[1] )
                 if ( d0 < d1 ):
                     min_opacity = self.max_opacity * ( d0 / d1 )
-                    if range[0] > 0: 
+                    if self._range[0] > 0: 
                         if self.filterOutliers:
                             self.opacityTransferFunction.AddPoint( 0, 0.0)               
-                            self.opacityTransferFunction.AddPoint( range[0]-0.5, 0.0)               
+                            self.opacityTransferFunction.AddPoint( self._range[0]-0.5, 0.0)               
                         else:
                             self.opacityTransferFunction.AddPoint( 0, min_opacity ) 
-                    self.opacityTransferFunction.AddPoint( range[0], min_opacity )
+                    self.opacityTransferFunction.AddPoint( self._range[0], min_opacity )
                     self.opacityTransferFunction.AddPoint( t0, 0.) 
                     self.opacityTransferFunction.AddPoint( t1, 0.) 
-                    self.opacityTransferFunction.AddPoint( range[1], self.max_opacity )
-                    if range[1] < self._max_scalar_value: 
+                    self.opacityTransferFunction.AddPoint( self._range[1], self.max_opacity )
+                    if self._range[1] < self._max_scalar_value: 
                         if self.filterOutliers:
-                            self.opacityTransferFunction.AddPoint( range[1]+0.5, 0.0)               
+                            self.opacityTransferFunction.AddPoint( self._range[1]+0.5, 0.0)               
                             self.opacityTransferFunction.AddPoint( self._max_scalar_value, 0.0)               
                         else:
                             self.opacityTransferFunction.AddPoint( self._max_scalar_value, self.max_opacity)               
                 else:
                     min_opacity = self.max_opacity * ( d1 / d0 )
-                    if range[0] > 0: 
+                    if self._range[0] > 0: 
                         if self.filterOutliers:
                             self.opacityTransferFunction.AddPoint( 0, 0.0)               
-                            self.opacityTransferFunction.AddPoint( range[0]-0.5, 0.0)               
+                            self.opacityTransferFunction.AddPoint( self._range[0]-0.5, 0.0)               
                         else:
                             self.opacityTransferFunction.AddPoint( 0, self.max_opacity ) 
-                    self.opacityTransferFunction.AddPoint( range[0], self.max_opacity )                    
+                    self.opacityTransferFunction.AddPoint( self._range[0], self.max_opacity )                    
                     self.opacityTransferFunction.AddPoint( t0, 0.) 
                     self.opacityTransferFunction.AddPoint( t1, 0.) 
-                    self.opacityTransferFunction.AddPoint( range[1], min_opacity )
-                    if range[1] < self._max_scalar_value:
+                    self.opacityTransferFunction.AddPoint( self._range[1], min_opacity )
+                    if self._range[1] < self._max_scalar_value:
                         if self.filterOutliers:
-                            self.opacityTransferFunction.AddPoint( range[1]+0.5, 0.0)               
+                            self.opacityTransferFunction.AddPoint( self._range[1]+0.5, 0.0)               
                             self.opacityTransferFunction.AddPoint( self._max_scalar_value, 0.0)               
                         else:
                             self.opacityTransferFunction.AddPoint( self._max_scalar_value, min_opacity)  
-        elif self.TransferFunction == PM_VolumeRenderer.LinearTransferFunction:
-            if range[0] > 0: 
+        elif self.TransferFunction == LinearTransferFunction:
+            if self._range[0] > 0: 
                 if self.filterOutliers:
                     self.opacityTransferFunction.AddPoint( 0, 0.0)               
-                    self.opacityTransferFunction.AddPoint( range[0]-0.5, 0.0)               
+                    self.opacityTransferFunction.AddPoint( self._range[0]-0.5, 0.0)               
                 else:
                     self.opacityTransferFunction.AddPoint( 0, 0.)
-            self.opacityTransferFunction.AddPoint( range[0], 0.)
-            self.opacityTransferFunction.AddPoint( range[1], self.max_opacity )
-            if range[1] < self._max_scalar_value: 
+            self.opacityTransferFunction.AddPoint( self._range[0], 0.)
+            self.opacityTransferFunction.AddPoint( self._range[1], self.max_opacity )
+            if self._range[1] < self._max_scalar_value: 
                 if self.filterOutliers:
-                    self.opacityTransferFunction.AddPoint( range[1]+0.5, 0.0)               
+                    self.opacityTransferFunction.AddPoint( self._range[1]+0.5, 0.0)               
                     self.opacityTransferFunction.AddPoint( self._max_scalar_value, 0.0)               
                 else:
                     self.opacityTransferFunction.AddPoint( self._max_scalar_value, self.max_opacity ) 
@@ -418,8 +508,13 @@ class VolumeRenderer(WorkflowModule):
     
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args) 
-        
-                   
+                      
 if __name__ == '__main__':
-    executeVistrail( 'DemoPipeline' )
+ 
+    app = QApplication(sys.argv)
+    dialog = TransferFunctionConfigurationDialog( )
+    dialog.addTransferFunction( 'default', PosValueTransferFunction ) 
+    dialog.show()
+    sys.exit(app.exec_())
+   
  
