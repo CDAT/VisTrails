@@ -1613,6 +1613,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         parmRecList.append( ( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  ), )          
         parmRecList.append( ( 'zscale' , [ self.zscale ]  ), )  
         parmRecList.append( ( 'decimation' , self.decimation  ), )  
+        parmRecList.append( ( 'executionSpecs' , ''  ), )         
         self.persistParameterList( parmRecList ) 
         self.pmod.clearDataCache()
         self.stateChanged(False)

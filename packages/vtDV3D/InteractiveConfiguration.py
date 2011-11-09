@@ -446,7 +446,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             for iR in [ 0, 1 ]: self.range[3+iR] = refinement_range[iR]
         else:  
             leveling_range = self.windowLeveler.windowLevel( x, y, wsize )
-            for iR in [ 0, 1 ]: self.range[iR] = leveling_range[iR]
+            for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.initial_range )
         self.setLevelDataHandler( self.range )
         self.module.render()
         for cfgFunction in self.activeFunctionList:
@@ -1430,23 +1430,24 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                     datasets = deserializeStrMap( getItem( datasetsInput ) )
                     for datasetId in datasets:
                         relFilePath = datasets[ datasetId ]
-                        cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
-                        vlist = DV3DConfigurationWidget.readVariableList( datasetId, cdmsFile )
-                        variableList.update( vlist )
-                        timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
-                        if timeRangeInput: timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
-                        gridInput = getFunctionParmStrValues( module, "grid" )
-                        if gridInput: 
-                            selected_var = getItem( gridInput ) 
-                            if selected_var:
-                                referenceData = selected_var.split('*')
-                                refDsid = referenceData[0]
-                                refVar  = referenceData[1].split(' ')[0]                                
-                                relFilePath = datasets[ refDsid ]
-                                cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
-                                dataset = cdms2.open( cdmsFile ) 
-                                levelsAxis=dataset[refVar].getLevel()
-                        datasetIds.add( datasetId )
+                        if relFilePath:
+                            cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                            vlist = DV3DConfigurationWidget.readVariableList( datasetId, cdmsFile )
+                            variableList.update( vlist )
+                            timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
+                            if timeRangeInput: timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
+                            gridInput = getFunctionParmStrValues( module, "grid" )
+                            if gridInput: 
+                                selected_var = getItem( gridInput ) 
+                                if selected_var:
+                                    referenceData = selected_var.split('*')
+                                    refDsid = referenceData[0]
+                                    refVar  = referenceData[1].split(' ')[0]                                
+                                    relFilePath = datasets[ refDsid ]
+                                    cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                                    dataset = cdms2.open( cdmsFile ) 
+                                    levelsAxis=dataset[refVar].getLevel()
+                            datasetIds.add( datasetId )
         moduleIdList.append( mid )
         datasetId = '-'.join( datasetIds )
         while moduleIdList:

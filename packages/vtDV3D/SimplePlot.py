@@ -316,10 +316,10 @@ class GraphWidget(QtGui.QGraphicsView):
                 self.data.append( point )
             else: last_point = point
         self.bounds = ( xbounds, ybounds )
-        if len( self.nodes ) <> len( data ):
-            self.buildGraph( len( data ) )
-        for iP in range( len( data ) ):
-            ptdata = data[iP]
+        if len( self.nodes ) <> len( self.data ):
+            self.buildGraph( len( self.data ) )
+        for iP in range( len( self.data ) ):
+            ptdata = self.data[iP]
             if len( ptdata ) == 3:
                 x, y = self.getScenePoint( ptdata, xbounds, ybounds )
                 self.nodes[iP].setPos ( x, y )

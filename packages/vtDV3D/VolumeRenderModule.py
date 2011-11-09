@@ -23,7 +23,11 @@ LinearTransferFunction = 1
 PosValueTransferFunction = 2  
 NegValueTransferFunction = 3  
 AbsValueTransferFunction = 4
-AllValueTransferFunction = 5  
+FullValueTransferFunction = 5 
+
+PositiveValues = 0
+NegativeValues = 1
+AllValues = 2
 
 def distance( p0, p1 ):
     dp = [ (p0[i]-p1[i]) for i in range(3) ]
@@ -37,7 +41,7 @@ class TransferFunction( QObject ):
         
     def  getNumberOfNodes(self):
         if self.type == AbsValueTransferFunction: return 12
-        else: return 6
+        else: return 9
         
 class TransferFunctionConfigurationDialog( QDialog ): 
      
@@ -82,7 +86,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.imageRange = None
         self.otf_data = None
         self.ctf_data = None
-        self.TransferFunction = PosValueTransferFunction
+        self.TransferFunction = FullValueTransferFunction
         self.transferFunctionConfig = TransferFunctionConfigurationDialog()
         self.transferFunctionConfig.addTransferFunction( 'default', self.TransferFunction )
         self.addConfigurableLevelingFunction( 'colorScale',    'C', setLevel=self.generateCTF, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
@@ -363,12 +367,12 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #        self.updateOFT( scaled_range, filterOutliers )
 #        printArgs( "generateOTF", scaled_range=scaled_range,  otf_data=otf_data, vrange=(vmin, vmax), vrange_bounds=(range_min, range_max), init_range=(self._range[0], self._range[1]) )   
 
-    def getTransferFunctionPoints( self, range, isPositive ):
+    def getTransferFunctionPoints( self, range, pointType ):
         zero_point = range[2] 
         scalar_bounds = [ 0, self._max_scalar_value ]
         points = []  
 #        print "Generate OTF: range = ( %f %f ), zero_point = %f, refinement = ( %f %f ), max_opacity = %s" % ( range[0], range[1], zero_point, self.refinement[0], self.refinement[1], self.max_opacity )             
-        if isPositive:
+        if pointType == PositiveValues:
             pos_range = [ range[0], range[1] ]
             if (range[0] < zero_point ) and ( range[1] > zero_point ): pos_range[ 0 ] = zero_point
             elif ( range[0] < zero_point ) and ( range[1] < zero_point ): pos_range = [ zero_point + (zero_point-range[1]), zero_point + (zero_point-range[0]) ]
@@ -381,7 +385,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             points.append( ( mid_point, self.max_opacity ) )
             points.append( ( mid_point + self.refinement[1]*half_width, self.max_opacity * self.refinement[1] ) )            
             points.append( ( pos_range[1], 0. )  )
-        else:
+        elif pointType == NegativeValues:
             neg_range = [ range[0], range[1] ]
             if (range[0] < zero_point ) and ( range[1] > zero_point ): neg_range[ 0 ] = zero_point
             elif ( range[0] < zero_point ) and ( range[1] < zero_point ): neg_range = [ zero_point + (zero_point-range[1]), zero_point + (zero_point-range[0]) ]
@@ -394,6 +398,27 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             points.append( ( mid_point + self.refinement[1]*half_width, self.max_opacity * self.refinement[1] ) )            
             points.append( ( neg_range[1] + self.refinement[0] * ( zero_point - neg_range[1] ), self.max_opacity * self.refinement[0] ) )
             points.append( ( zero_point, 0.) )
+        elif pointType == AllValues:
+            full_range = [ range[0], range[1] ]
+            mid_point = ( full_range[0] + full_range[1] ) / 2.0   
+            half_width = ( full_range[1] - full_range[0] ) / 2.0 
+            points.append( ( scalar_bounds[0], 0. )  )
+            if (full_range[0] > zero_point): 
+                points.append( ( zero_point, 0. )  )
+                points.append( ( full_range[0] - self.refinement[0] * ( full_range[0] - zero_point ), self.max_opacity * self.refinement[0] ) )
+            else: 
+                points.append( ( full_range[0], 0.0 ) )
+                points.append( ( full_range[0], 0.0 ) )
+            points.append( ( mid_point - self.refinement[1]*half_width, self.max_opacity * self.refinement[1] ) )            
+            points.append( ( mid_point, self.max_opacity ) )
+            points.append( ( mid_point + self.refinement[1]*half_width, self.max_opacity * self.refinement[1] ) )            
+            if (zero_point > full_range[1] ):  
+                points.append( ( full_range[1] + self.refinement[0] * ( zero_point - full_range[1] ), self.max_opacity * self.refinement[0] ) )
+                points.append( ( zero_point, 0. )  )
+            else: 
+                points.append( ( full_range[1], 0.0 ) )
+                points.append( ( full_range[1], 0.0 ) )
+            points.append( ( scalar_bounds[1], 0.) )
         return points
           
     def updateOFT( self ):
@@ -402,7 +427,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.opacityTransferFunction.RemoveAllPoints()  
 #        dthresh = self._range[3]
         if (self.TransferFunction == PosValueTransferFunction) or (self.TransferFunction == NegValueTransferFunction):
-            points = self.getTransferFunctionPoints( self._range, True )
+            pointType = PositiveValues if (self.TransferFunction == PosValueTransferFunction) else NegativeValues
+            points = self.getTransferFunctionPoints( self._range, pointType )
             graphData = []
             for point in points:  
                 self.opacityTransferFunction.AddPoint( point[0], point[1]  )  
@@ -410,16 +436,23 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             if self.otf_data: self.transferFunctionConfig.updateGraph( self.scalarRange, [ 0.0, 1.0 ], graphData )
         elif self.TransferFunction == AbsValueTransferFunction:
             graphData = []
-            points = self.getTransferFunctionPoints( self._range, False )
+            points = self.getTransferFunctionPoints( self._range, NegativeValues )
             for point in points:  
                 self.opacityTransferFunction.AddPoint( point[0], point[1]  ) 
                 graphData.append( ( self.getDataValue( point[0] ) , point[1], False )  ) 
-            points = self.getTransferFunctionPoints( self._range, True ) 
+            points = self.getTransferFunctionPoints( self._range, PositiveValues ) 
             for point in points:  
                 self.opacityTransferFunction.AddPoint( point[0], point[1]  ) 
                 graphData.append( ( self.getDataValue( point[0] ) , point[1], False )  )  
             if self.otf_data: self.transferFunctionConfig.updateGraph( self.scalarRange, [ 0.0, 1.0 ], graphData )
-#            print "OTF: [ %s ] " % str( points )    
+#            print "OTF: [ %s ] " % str( points )   
+        elif self.TransferFunction == FullValueTransferFunction:
+            points = self.getTransferFunctionPoints( self._range, AllValues )
+            graphData = []
+            for point in points:  
+                self.opacityTransferFunction.AddPoint( point[0], point[1]  )  
+                graphData.append( ( self.getDataValue( point[0] ) , point[1], False )  )
+            if self.otf_data: self.transferFunctionConfig.updateGraph( self.scalarRange, [ 0.0, 1.0 ], graphData )             
         elif self.TransferFunction == LegacyAbsValueTransferFunction:
             if ( zero_point < self._range[0] ):
                 if self._range[0] > 0: self.opacityTransferFunction.AddPoint( 0, 0.)
