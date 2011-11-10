@@ -32,8 +32,8 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         self.glyphDecimationFactor = [ 1.0, 5.0 ] 
         self.primaryInputPort = 'volume'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False )
+        self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, units=self.units, bound=False  )
+        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False  )
       
     def scaleColormap( self, ctf_data ):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
@@ -297,8 +297,8 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.useGlyphMapper = True     
         self.primaryInputPort = 'volume'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, windowing=False )
-        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False )
+        self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, windowing=False, bound=False  )
+        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False  )
       
     def scaleColormap( self, ctf_data ):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
@@ -618,16 +618,16 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
     """    
     def __init__( self, mid, **args ):
         PersistentVisualizationModule.__init__( self, mid, **args )
-        self.streamerScale = 5.0 
+        self.streamerScale = 2.0 
         self.streamerStepLenth = 0.05
         self.currentLevel = 0
-        self.streamerSeedGridSpacing = [ 6.0, 6.0 ] 
-        self.minStreamerSeedGridSpacing = [ 1.0, 1.0 ] 
+        self.streamerSeedGridSpacing = [ 10.0, 10.0 ] 
+        self.minStreamerSeedGridSpacing = [ 2.0, 2.0 ] 
         self.streamer = None
         self.primaryInputPort = 'volume'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'streamerScale', 'T', setLevel=self.setStreamerScale, getLevel=self.getStreamerScale, layerDependent=True, windowing=False )
-        self.addConfigurableLevelingFunction( 'streamerDensity', 'G', setLevel=self.setStreamerDensity, getLevel=self.getStreamerDensity, layerDependent=True, windowing=False )
+        self.addConfigurableLevelingFunction( 'streamerScale', 'T', setLevel=self.setStreamerScale, getLevel=self.getStreamerScale, layerDependent=True, windowing=False, bound=False )
+        self.addConfigurableLevelingFunction( 'streamerDensity', 'G', setLevel=self.setStreamerDensity, getLevel=self.getStreamerDensity, layerDependent=True, windowing=False, bound=False )
       
     def scaleColormap( self, ctf_data ):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
