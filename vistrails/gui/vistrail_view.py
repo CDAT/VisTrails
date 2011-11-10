@@ -82,6 +82,7 @@ class QVistrailView(QtGui.QWidget):
         layout = QtGui.QVBoxLayout(self)
         layout.setMargin(0)
         layout.setSpacing(0)
+        self.is_executing = False
         self.notifications = {}
         self.tabs = QMouseTabBar(self)
         self.tabs.setDocumentMode(True)
@@ -253,6 +254,10 @@ class QVistrailView(QtGui.QWidget):
         if get_vistrails_configuration().detachHistoryView:
             _app.history_view.raise_()
             return
+        if hasattr(self.window(), 'qactions'):
+            window = self.window()
+        else:
+            window = _app
         #print "VERSION"
         self.stack.setCurrentIndex(self.stack.indexOf(self.version_view))
         self.tabs.setTabText(self.tabs.currentIndex(), "History")
@@ -816,7 +821,7 @@ class QVistrailView(QtGui.QWidget):
             else:
                 view.set_title(view.get_long_title())
                 view.window().setWindowTitle(view.get_long_title())
-        _app.notify("version_changed", version_id)
+        _app.notify("version_changed", self.controller.current_version)
         _app.notify("pipeline_changed", self.controller.current_pipeline)
 
     def query_version_selected(self, search=None, version_id=None):
@@ -1001,11 +1006,18 @@ class QVistrailView(QtGui.QWidget):
         prop.versionNotes.commit_changes()
 
     def execute(self):
+        # makes sure we are not already executing
+        if self.is_executing:
+            return
+        self.is_executing = True
+
         view = self.get_current_tab()
         if hasattr(view, 'execute'):
             view.setFocus(QtCore.Qt.MouseFocusReason)
-            view.execute()      
-            
+            view.execute()
+
+        self.is_executing = False
+
     def publish_to_web(self):
         view = self.get_current_tab()
         if hasattr(view, 'publish_to_web'):
