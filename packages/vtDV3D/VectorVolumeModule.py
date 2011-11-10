@@ -29,11 +29,11 @@ class PM_VectorVolume(PersistentVisualizationModule):
         PersistentVisualizationModule.__init__( self, mid, **args )
         self.glyphScale = [ 0.0, 0.5 ] 
         self.glyphRange = None
-        self.glyphDecimationFactor = [ 15.0, 2.0 ] 
+        self.glyphDecimationFactor = [ 20.0, 2.0 ] 
         self.primaryInputPort = 'volume'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False )
+        self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, units=self.units, bound=False )
+        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False )
       
     def scaleColormap( self, ctf_data ):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
@@ -146,10 +146,15 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.renderer.AddActor( self.glyphActor )
         self.set3DOutput(wmod=self.wmod) 
 
+    def updateModule(self, **args ):
+        self.resample.SetInput( self.input ) 
+        self.glyph.Modified()
+        self.glyph.Update()
+        self.set3DOutput(wmod=self.wmod)
         
     def ApplyGlyphDecimationFactor(self):
         sampleRate = [ int( round( abs( self.glyphDecimationFactor[0] ) )  ), int( round( abs( self.glyphDecimationFactor[1] ) ) )  ]
-        print "Sample rate: %s " % str( sampleRate )
+#        print "Sample rate: %s " % str( sampleRate )
         self.resample.SetSampleRate( sampleRate[0], sampleRate[0], sampleRate[1] )
     
     def dumpData( self, label, dataArray ):

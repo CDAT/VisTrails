@@ -116,7 +116,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetX.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )
 #        if bounds[0] < 0.0: self.planeWidgetX.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
 #        self.planeWidgetX.SetOrigin( self.input.GetOrigin() )
-        self.planeWidgetX.AddObserver( 'AnyEvent', self.TestObserver )
+#        self.planeWidgetX.AddObserver( 'AnyEvent', self.TestObserver )
                 
         self.planeWidgetY = vtk.vtkImagePlaneWidget()
         self.planeWidgetY.DisplayTextOff()
@@ -129,7 +129,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetY.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 1 ) )
         self.planeWidgetY.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
         self.planeWidgetY.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
-        self.planeWidgetY.AddObserver( 'AnyEvent', self.TestObserver )
+#        self.planeWidgetY.AddObserver( 'AnyEvent', self.TestObserver )
         prop2 = self.planeWidgetY.GetPlaneProperty()
         prop2.SetColor(1, 1, 0)
 #        if bounds[0] < 0.0: self.planeWidgetY.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
@@ -147,7 +147,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 2 ) )
         self.planeWidgetZ.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
         self.planeWidgetZ.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
-        self.planeWidgetZ.AddObserver( 'AnyEvent', self.TestObserver )
+#        self.planeWidgetZ.AddObserver( 'AnyEvent', self.TestObserver )
         self.planeWidgetZ.AddObserver( 'LeftButtonPressEvent', self.onSlicerLeftButtonPress )
         self.planeWidgetZ.AddObserver( 'RightButtonPressEvent', self.onSlicerRightButtonPress )
                 
@@ -181,7 +181,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.transferInputLayer( self.sliceInput ) 
 #        self.SliceObserver( self.planeWidgetZ ) 
 
-    def updateModule(self):
+    def updateModule(self, **args ):
 #        print " Volume Slicer: updateModule, cachable: %s " % str( self.is_cacheable() )
 #        print " ******** Input extent: %s, origin: %s, spacing: %s " % ( self.input.GetExtent(), self.input.GetOrigin(), self.input.GetSpacing() )
 

@@ -519,8 +519,9 @@ Returns true if given package identifier is present."""
                                        e.back_edge[1])
 
         for name in sorted_packages:
+            print>>sys.stderr, "Init package: ", name
             pkg = self.get_package(name)
-            if not pkg.initialized():
+            if not pkg.initialized(): #  and (name <> 'edu.utah.sci.vistrails.cdat'):
                 #check_requirements is now called in pkg.initialize()
                 #pkg.check_requirements()
                 try:

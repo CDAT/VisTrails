@@ -267,8 +267,8 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         for output in self.outputNames:
             var = self.outputNames[output].text() 
             ndim = taskClass.getOutputDimensionality( output, varDimMap )
-            varData = firstVar.split('*')
-            varName = '*'.join( [ varData[0], str(var) ] )
+            varData = firstVar.split('*') if firstVar else None
+            varName = '*'.join( [ varData[0], str(var) ] ) if varData else str(var)
             if ndim: ioData.append( '%s+%s+%d' % ( str(output), varName, ndim ) )
         serializedOutputs = ';'.join( ioData )
         return serializedInputs, serializedOutputs 

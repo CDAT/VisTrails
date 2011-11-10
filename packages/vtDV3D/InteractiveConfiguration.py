@@ -18,11 +18,33 @@ from collections import OrderedDict
 from vtUtilities import *
 import cdms2
 
+
 class CDMSDataType:
     Volume = 1
     Slice = 2
     Vector = 3
     Hoffmuller = 4
+
+class WindowRefinementGenerator( QObject ):
+
+    def __init__( self, **args ):
+        self.initialPosition = None
+        self.initialRefinement = None
+        self.range = args.get( 'range', [ 0.0, 1.0 ] )
+        
+    def initRefinement( self, pos, initRefinement ):  
+        self.initialPosition = pos
+        self.initialRefinement = initRefinement
+        
+    def updateRefinement( self, pos, wsize ):
+        newRefinement = [ 0, 0 ]
+        scale = self.range[1] - self.range[0]
+        for iR in [ 0, 1 ]:
+            dr = ( pos[iR] - self.initialPosition[iR] ) * scale / wsize[iR]
+            newRefinement[iR] = self.initialRefinement[iR] + dr
+            if newRefinement[iR] < self.range[0]: newRefinement[iR] = self.range[0]
+            if newRefinement[iR] > self.range[1]: newRefinement[iR] = self.range[1]
+        return newRefinement
 
 class QtWindowLeveler( QObject ):
     
@@ -279,6 +301,7 @@ class ConfigurableFunction( QObject ):
         self.active = args.get( 'active', True )
         self.activeFunctionList = []
         self.module = None
+        self.altMode = False
 #        self.parameterInputEnabled = True                                      # Handlers executed at:
         self.initHandler = args.get( 'init', None )         #    end of compute()
         self.openHandler = args.get( 'open', None )         #    key press
@@ -314,9 +337,11 @@ class ConfigurableFunction( QObject ):
     def getHelpText( self ):
         return "<tr>   <td>%s</td>  <td>%s</td> <td>%s</td> </tr>\n" % ( self.key, self.name, self.type )
 
-    def open( self, state ):
-        if ( self.openHandler != None ) and ( self.name == state ):
-            self.openHandler( )
+    def open( self, state, alt = False ):
+        if( self.name == state ): 
+            self.altMode = alt
+            if ( self.openHandler != None ): 
+                self.openHandler()
             
     def close(self):
         pass
@@ -359,12 +384,16 @@ class ConfigurableFunction( QObject ):
             
 ################################################################################
 
+
+################################################################################
+
 class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     
     def __init__( self, name, key, **args ):
-        ConfigurableFunction.__init__( self, name, [ ( Float, 'min'), ( Float, 'max'), ( Integer, 'ctrl') ], key, **args  )
+        ConfigurableFunction.__init__( self, name, [ ( Float, 'min'), ( Float, 'max'),  ( Integer, 'ctrl'), ( Float, 'refine0'), ( Float, 'refine1') ], key, **args  )
         self.type = 'leveling'
         self.windowLeveler = QtWindowLeveler( **args )
+        self.windowRefiner = WindowRefinementGenerator( range=[ 0.001, 0.999 ] )
         if( self.initHandler == None ): self.initHandler = self.initLeveling
         if( self.startHandler == None ): self.startHandler = self.startLeveling
         if( self.updateHandler == None ): self.updateHandler = self.updateLeveling
@@ -372,7 +401,9 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.getLevelDataHandler = args.get( 'getLevel', None )
         self.getInitLevelDataHandler = args.get( 'getInitLevel', None )
         self.isDataValue = args.get( 'isDataValue', True )
-        self.defaultRange = args.get( 'initRange', [ 0.0, 1.0, 1 ] )
+        self.defaultRange = args.get( 'initRange', [ 0.0, 1.0, 1, 0.0, 1.0 ] )
+        self.boundByRange = args.get( 'bound', True )
+        self.widget = args.get( 'gui', None )
 
     def applyParameter( self, module, **args ):
         try:
@@ -386,17 +417,23 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         return self.initial_range
 
     def initLeveling( self, **args ):
+        if self.key == 'T':
+            pass
         self.initial_range =  self.defaultRange if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
-        self.range = self.module.getInputValue( self.name, self.initial_range ) if not self.module.newDataset else self.initial_range
-        self.setLevelDataHandler( self.range )
+        self.range = list( self.module.getInputValue( self.name, self.initial_range ) if not self.module.newDataset else self.initial_range )
+        if len( self.range ) == 3: 
+            for iR in [ 3, 4 ]: self.range.append( self.defaultRange[iR] )
         self.windowLeveler.setDataRange( self.range )
+        self.setLevelDataHandler( self.range )
         self.module.setParameter( self.name, self.range )
 
 #        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
         
     def startLeveling( self, x, y ):
-        self.windowLeveler.startWindowLevel( x, y )
+        if self.altMode:    self.windowRefiner.initRefinement( [ x, y ], self.range[3:5] )   
+        else:               self.windowLeveler.startWindowLevel( x, y )
         self.updateActiveFunctionList()
+        self.emit(SIGNAL('startLeveling()'))
 
     def getTextDisplay(self, **args ):
         rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
@@ -407,12 +444,18 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         return textDisplay 
             
     def updateLeveling( self, x, y, wsize ):
-        self.range = self.windowLeveler.windowLevel( x, y, wsize )
+        if self.altMode:
+            refinement_range = self.windowRefiner.updateRefinement( [ x, y ], wsize )
+            for iR in [ 0, 1 ]: self.range[3+iR] = refinement_range[iR]
+        else:  
+            leveling_range = self.windowLeveler.windowLevel( x, y, wsize )
+            for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.initial_range ) if self.boundByRange else leveling_range[iR]
         self.setLevelDataHandler( self.range )
         self.module.render()
         for cfgFunction in self.activeFunctionList:
             cfgFunction.setLevelDataHandler( self.range )
             cfgFunction.module.render()
+#        print " updateLeveling: altMode = %s, range = %s, refine = %s " % ( str( self.altMode ) , str( self.range[0:2] ), str( self.range[3:5] )  )
         return self.range # self.wrapData( range )
 
 ################################################################################
@@ -840,7 +883,7 @@ class IVModuleWidgetWrapper( QObject ):
 
 ################################################################################
         
-class ColormapConfigurationDialog( IVModuleConfigurationDialog ):
+class ColormapConfigurationDialog( IVModuleConfigurationDialog ):   
     """
     ColormapConfigurationDialog ...   
     """ 
@@ -850,19 +893,22 @@ class ColormapConfigurationDialog( IVModuleConfigurationDialog ):
         
     @staticmethod   
     def getSignature():
-        return [ (String, 'name'), ( Integer, 'invert'), ]
+        return [ (String, 'name'), ( Integer, 'invert'), ( Integer, 'stereo') ]
         
     def getValue(self):
         checkState = 1 if ( self.invertCheckBox.checkState() == Qt.Checked ) else 0
-        return [ str( self.colormapCombo.currentText() ), checkState ]
+        stereoState = 1 if ( self.stereoCheckBox.checkState() == Qt.Checked ) else 0
+        return [ str( self.colormapCombo.currentText() ), checkState, stereoState ]
 
     def setValue( self, value ):
         colormap_name = str( value[0] )
         check_state = Qt.Checked if int(float(value[1])) else Qt.Unchecked
+        stereo_state = Qt.Checked if int(float(value[2])) else Qt.Unchecked
         itemIndex = self.colormapCombo.findText( colormap_name, Qt.MatchFixedString )
         if itemIndex >= 0: self.colormapCombo.setCurrentIndex( itemIndex )
         else: print>>sys.stderr, " Can't find colormap: %s " % colormap_name
         self.invertCheckBox.setCheckState( check_state )
+        self.stereoCheckBox.setCheckState( stereo_state )
         
     def createContent(self ):
         """ createEditor() -> None
@@ -886,8 +932,12 @@ class ColormapConfigurationDialog( IVModuleConfigurationDialog ):
         self.connect( self.colormapCombo, SIGNAL("currentIndexChanged(QString)"), self.updateParameter )  
         
         self.invertCheckBox = QCheckBox('Invert')
-        layout.addWidget( self.invertCheckBox, 1, 0, 1, 2 )
+        layout.addWidget( self.invertCheckBox, 1, 0 )
         self.connect( self.invertCheckBox, SIGNAL("stateChanged(int)"), self.updateParameter )  
+
+        self.stereoCheckBox = QCheckBox('Stereo')
+        layout.addWidget( self.stereoCheckBox, 1, 1 )
+        self.connect( self.stereoCheckBox, SIGNAL("stateChanged(int)"), self.updateParameter )  
 
 ################################################################################
         
@@ -991,9 +1041,9 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         self.saveConfigurations()
         StandardModuleConfigurationWidget.destroy( self, destroyWindow, destroySubWindows )
 
-    def close (self):
-        pass
-        return StandardModuleConfigurationWidget.close(self)
+#    def close (self):
+#        pass
+#        return StandardModuleConfigurationWidget.close(self)
     
     def sizeHint(self):
         return QSize(400,200)
@@ -1133,8 +1183,8 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         
     def updateState(self, state):
         self.setFocus(Qt.MouseFocusReason)
-#        self.saveButton.setEnabled(True)
-#        self.resetButton.setEnabled(True)
+        self.saveButton.setEnabled(True)
+        self.resetButton.setEnabled(True)
         if not self.state_changed:
             self.state_changed = True
             self.emit(SIGNAL("stateChanged"))
@@ -1159,6 +1209,8 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         self.state_changed = False
         self.emit(SIGNAL("stateChanged"))
         self.emit(SIGNAL('doneConfigure'), self.module.id)
+        self.close()
+
         
 #    def saveTriggered(self, checked = False):
 #        self.okTriggered()
@@ -1211,6 +1263,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 #        self.resetButton.setEnabled(False)
         self.state_changed = False
         self.emit(SIGNAL("stateChanged"))
+        self.close()
                 
 #    def resetTriggered(self):
 #        self.setFocus(Qt.MouseFocusReason)
@@ -1253,23 +1306,25 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 
     def createButtonLayout(self):
         """ createButtonLayout() -> None
-        Construct Ok & Cancel button
+        Construct Save & Reset button
         
         """
         self.buttonLayout = QHBoxLayout()
         self.buttonLayout.setMargin(5)
-        self.okButton = QPushButton('&OK', self)
-        self.okButton.setAutoDefault(False)
-        self.okButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.okButton)
-        self.cancelButton = QPushButton('&Cancel', self)
-        self.cancelButton.setAutoDefault(False)
-        self.cancelButton.setShortcut('Esc')
-        self.cancelButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.cancelButton)
+        self.saveButton = QPushButton('&Save', self)
+        self.saveButton.setFixedWidth(100)
+        self.saveButton.setEnabled(True)
+        self.buttonLayout.addWidget(self.saveButton)
+        self.resetButton = QPushButton('&Close', self)
+        self.resetButton.setFixedWidth(100)
+        self.resetButton.setEnabled(True)
+        self.buttonLayout.addWidget(self.resetButton)
+        
         self.layout().addLayout(self.buttonLayout)
-        self.connect(self.okButton, SIGNAL('clicked(bool)'), self.saveTriggered)
-        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close)
+        self.connect(self.saveButton,SIGNAL('clicked(bool)'),  self.saveTriggered)
+        self.connect(self.resetButton,SIGNAL('clicked(bool)'),  self.close )
+        self.setMouseTracking(True)
+        self.setFocusPolicy( Qt.WheelFocus )
         
     def okTriggered(self):
         pass
@@ -1278,12 +1333,13 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
     def readVariableList( dsId, cdmsFile ):
         vList = []
         try:
-            dataset = cdms2.open( cdmsFile ) 
-            for var in dataset.variables:
-                vardata = dataset[var]
-                var_ndim = getVarNDim( vardata )
-                vList.append( ( '*'.join( [ dsId, var ] ), var_ndim ) ) 
-            dataset.close()  
+            if cdmsFile.strip():
+                dataset = cdms2.open( cdmsFile ) 
+                for var in dataset.variables:
+                    vardata = dataset[var]
+                    var_ndim = getVarNDim( vardata )
+                    vList.append( ( '*'.join( [ dsId, var ] ), var_ndim ) ) 
+                dataset.close()  
         except Exception, err:
             print>>sys.stderr, "Error reading variable list from dataset %s: %s " % ( cdmsFile, str(err) )
         return vList        
@@ -1326,7 +1382,8 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                     datasetsInput = getFunctionParmStrValues( module, "datasets" )
                     if datasetsInput: 
                         datasets = deserializeStrMap( getItem( datasetsInput ) )
-                        cdmsFile = datasets[ datasetId ]
+                        relFilePath = datasets[ datasetId ]
+                        cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
                         vlist = DV3DConfigurationWidget.readVariableList( datasetId, cdmsFile )
                         variableList.update( vlist )
                         timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
@@ -1356,6 +1413,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
     @staticmethod
     def getVariableList( mid ): 
         import api
+        from CDMSModule import CDMSDatasetRecord
         controller = api.get_current_controller()
         moduleId = mid
         cdmsFile = None
@@ -1374,22 +1432,25 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                 if datasetsInput:
                     datasets = deserializeStrMap( getItem( datasetsInput ) )
                     for datasetId in datasets:
-                        cdmsFile = datasets[ datasetId ]
-                        vlist = DV3DConfigurationWidget.readVariableList( datasetId, cdmsFile )
-                        variableList.update( vlist )
-                        timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
-                        if timeRangeInput: timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
-                        gridInput = getFunctionParmStrValues( module, "grid" )
-                        if gridInput: 
-                            selected_var = getItem( gridInput ) 
-                            if selected_var:
-                                referenceData = selected_var.split('*')
-                                refDsid = referenceData[0]
-                                refVar  = referenceData[1].split(' ')[0]
-                                cdmsFile = datasets[ refDsid ]
-                                dataset = cdms2.open( cdmsFile ) 
-                                levelsAxis=dataset[refVar].getLevel()
-                        datasetIds.add( datasetId )
+                        relFilePath = datasets[ datasetId ]
+                        if relFilePath:
+                            cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                            vlist = DV3DConfigurationWidget.readVariableList( datasetId, cdmsFile )
+                            variableList.update( vlist )
+                            timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
+                            if timeRangeInput: timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
+                            gridInput = getFunctionParmStrValues( module, "grid" )
+                            if gridInput: 
+                                selected_var = getItem( gridInput ) 
+                                if selected_var:
+                                    referenceData = selected_var.split('*')
+                                    refDsid = referenceData[0]
+                                    refVar  = referenceData[1].split(' ')[0]                                
+                                    relFilePath = datasets[ refDsid ]
+                                    cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                                    dataset = cdms2.open( cdmsFile ) 
+                                    levelsAxis=dataset[refVar].getLevel()
+                            datasetIds.add( datasetId )
         moduleIdList.append( mid )
         datasetId = '-'.join( datasetIds )
         while moduleIdList:

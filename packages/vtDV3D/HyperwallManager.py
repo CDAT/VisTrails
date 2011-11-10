@@ -4,10 +4,9 @@ Created on May 16, 2011
 @author: tpmaxwel
 '''
 from PyQt4 import QtCore, QtGui
-import sys, copy, os, argparse, gui, subprocess
+import sys, copy, os, argparse, gui, subprocess, socket
 from gui.application import VistrailsApplication
 from packages.spreadsheet.spreadsheet_config import configuration as spreadsheet_configuration
-from vtDV3DConfiguration import configuration as dv3d_configuration
 from vtUtilities import *
 HYPERWALL_SRC_PATH = os.path.join( os.path.dirname(__file__),  'hyperwall')
 
@@ -29,14 +28,16 @@ class HyperwallManagerSingleton(QtCore.QObject):
         self.isServer = False
         self.isClient = False
         self.levelingState = None
+        self.altMode = False
         self.opening_event = None
         self.intial_camera_pos = None
         
 #    def __del__(self):
 #        self.shutdown()
 
-    def setLevelingState( self, state ):
+    def setLevelingState( self, state, altMode=False ):
         self.levelingState = state
+        self.altMode = altMode
 
     def getLevelingState():
         return self.levelingState
@@ -69,7 +70,8 @@ class HyperwallManagerSingleton(QtCore.QObject):
         self.cellIds[ self.getCellIndex( dimensions ) ] = moduleId
 #        print " HyperwallManager--> addCell: %s " % str( ( moduleId, vistrailName, versionName, dimensions ) )
         
-    def initialize( self ):
+    def initialize_from_config( self ):
+        from vtDV3DConfiguration import configuration as dv3d_configuration
         app = gui.application.VistrailsApplication
         app.resource_path = None
         hwConfig = app.temp_configuration
@@ -93,6 +95,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
             
             if not debug:
                 nodeList = dv3d_configuration.hw_nodes.split(',')
+#                nodeList = [ 'visrend01', 'visrend02', 'visrend03' ]
                 print "hwServer initialization, server: %x, mgr: %x, dims=%s, nodes=%s" % ( id(self.server), id( self ), str(hw_dims), str(nodeList) )
                 nodeIndex = 0
                 for node in nodeList:
@@ -109,6 +112,51 @@ class HyperwallManagerSingleton(QtCore.QObject):
             from hyperwall.iVisClient.iVisClient import QiVisClient
             print " QiVisClient startup, full screen = %s " % str( fullScreen )
             self.client = QiVisClient(   self.deviceName, hw_x, hw_y, 1, 1, hw_server, hw_port, dv3d_configuration.hw_displayWidth, dv3d_configuration.hw_displayHeight, fullScreen )
+
+    def initialize( self ):
+        defaults = { 'hw_debug': False, 'hw_resource_path':'', 'hw_device_name': "Hyperwall",  'hw_x':0, 'hw_y':0, 'hw_width':1, 'hw_height':1,
+                                     'hw_displayWidth':-1, 'hw_displayHeight':-1, 'hw_nodes':"", 'hw_server':"localhost",  'hw_server_port':50000 }
+        datasetConfig, appConfig = getConfiguration( defaults )
+        hw_role = appConfig.hw_role if hasattr( appConfig, 'hw_role' ) else 'global'
+        self.processList = []        
+                
+        self.deviceName = datasetConfig.get( hw_role, 'hw_device_name' )        
+        debug = datasetConfig.get( hw_role, 'hw_debug' )    
+        self.isServer = ( hw_role == 'hw_server' )
+        self.isClient = ( hw_role == 'hw_client' )
+        set_hyperwall_role( hw_role )
+        hw_port = datasetConfig.get( hw_role, 'hw_server_port' )
+        hw_server = datasetConfig.get( hw_role, 'hw_server' )
+        hw_dims = [ datasetConfig.getint( hw_role, 'hw_width' ), datasetConfig.getint( hw_role, 'hw_height' ) ]
+
+        if self.isServer:
+            from hyperwall.iVisServer.iVisServer import QiVisServer
+            app.resource_path = os.path.expanduser( datasetConfig.get( hw_role, 'hw_resource_path' ) )           
+            self.server = QiVisServer( self.deviceName, hw_dims, hw_port, app.resource_path )
+            self.connectSignals()
+            
+            if not debug:
+                hw_nodes = datasetConfig.get( hw_role, 'hw_nodes' )
+                nodeList = hw_nodes.split(',')
+#                nodeList = [ 'visrend01', 'visrend02', 'visrend03' ]
+                print "hwServer initialization, server: %x, mgr: %x, dims=%s, nodes=%s" % ( id(self.server), id( self ), str(hw_dims), str(nodeList) )
+                nodeIndex = 0
+                for node in nodeList:
+                    if node:
+                        nodeName = node.strip()
+                        self.spawnRemoteViewer( nodeName, nodeIndex )
+                        nodeIndex = nodeIndex + 1
+                
+        if self.isClient:
+            fullScreen = (appConfig.fullScreen[0].upper()=='T') if hasattr( appConfig, 'fullScreen' ) else True
+            node_index = appConfig.hw_node_index
+            hw_x = node_index / hw_dims[1]
+            hw_y = node_index % hw_dims[1]
+            from hyperwall.iVisClient.iVisClient import QiVisClient
+            print " QiVisClient startup, full screen = %s " % str( fullScreen )
+            hw_displayWidth = datasetConfig.get( hw_role, 'hw_displayWidth' )
+            hw_displayHeight = datasetConfig.get( hw_role, 'hw_displayHeight' )
+            self.client = QiVisClient(   self.deviceName, hw_x, hw_y, 1, 1, hw_server, hw_port, hw_displayWidth, hw_displayHeight, fullScreen )
                 
 
     def spawnRemoteViewer( self, node, nodeIndex, debug=False ):
@@ -116,7 +164,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
         debugStr = ('/usr/X11/bin/xterm -sb -sl 20000 -display :0.0 -e ') if debug else ''
         optionsStr = "-Y" if debug else ''  
 #            cmd = "ssh %s %s '%s /usr/local/bin/bash -c \"source ~/.vistrails/hw_env; export HW_NODE_INDEX=%d; export DISPLAY=:0.0; python %s/main/client.py\" ' " % ( optionsStr, node, debugStr, nodeIndex, HYPERWALL_SRC_PATH )
-        cmd = [ "ssh", node, 'bash -c \"export HW_NODE_INDEX=%d; export DISPLAY=:0.0; ~/.vistrails/hw_vistrails_client ~/.vistrails-%d\" ' % ( nodeIndex, nodeIndex ) ]
+        cmd = [ "ssh", node, 'bash -c \"export HW_NODE_INDEX=%d; export DISPLAY=:0.0; ~/.vistrails/hw_vistrails_client ~/.vistrails-%d %s\" ' % ( nodeIndex, nodeIndex, socket.gethostname() ) ]
         print " --- Executing: ", ' '.join(cmd)
         try:
             p = subprocess.Popen( cmd, stdout=sys.stdout, stderr=sys.stderr ) 

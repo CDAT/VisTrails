@@ -3,7 +3,7 @@ Created on Dec 9, 2010
 
 @author: tpmaxwel
 '''
-import sys, vtk, StringIO, cPickle, time, os
+import sys, vtk, StringIO, cPickle, time, os, gui, ConfigParser, shutil
 import core.modules.module_registry
 from core.modules.vistrails_module import Module, ModuleError
 from core.modules.module_registry import get_module_registry
@@ -16,6 +16,7 @@ import numpy.core.umath as umath
 from vtk.util.vtkConstants import *
 import numpy as np
 packagePath = os.path.dirname( __file__ ) 
+resourcePath = os.path.join( packagePath,  'resources')
 
 VTK_CURSOR_ACTION       = 0
 VTK_SLICE_MOTION_ACTION = 1
@@ -39,6 +40,18 @@ def bound( val, bounds ): return max( min( val, bounds[1] ), bounds[0] )
 
 def str2f( data ): return "[ %s ]" % ( ", ".join( [ '%.2f' % value for value in data ] ) )
 
+def flt2str( fval ): 
+    aval = abs( fval )
+    if ( fval == 0.0 ): return "0.0"
+    if ( aval >= 1000000 ) or ( aval < 0.001 ): return ( "%.2e" % fval )
+    if ( aval >= 1000 ): return ( "%.0f" % fval )
+    if ( aval >= 100 ): return ( "%.1f" % fval )
+    if ( aval >= 1 ): return ( "%.2f" % fval )
+    if ( aval < 0.01 ): return ( "%.4f" % fval )
+    return ( "%.3f" % fval )
+
+def pt2str( pt ): return "( %.2f, %.2f )" % ( pt.x(), pt.y() ) 
+
 def printTime( label ):
     global currentTime
     t = time.time()
@@ -54,6 +67,19 @@ def callbackWrapper( func, wrapped_arg ):
     def callMe( *args ):
         return func( wrapped_arg, *args )
     return callMe
+
+def getConfiguration( defaults ):
+    app = gui.application.VistrailsApplication
+#    app.resource_path = None
+    appConfig = app.temp_configuration
+    datasetConfigFile = os.path.expanduser( os.path.join( appConfig.dotVistrails, 'dv3d.cfg' )  )
+    if not os.path.isfile( datasetConfigFile ):
+        defaultConfigFile = os.path.join( resourcePath, 'dv3d.cfg' ) 
+        assert os.path.isfile( defaultConfigFile ), "Error, default dv3d Config File does not exist at %s!" % defaultConfigFile
+        shutil.copy( defaultConfigFile, appConfig.dotVistrails )            
+    datasetConfig = ConfigParser.ConfigParser( defaults )
+    datasetConfig.read( datasetConfigFile )  
+    return datasetConfig, appConfig
 
 def set_hyperwall_role( hw_role ):
     global hyperwall_role

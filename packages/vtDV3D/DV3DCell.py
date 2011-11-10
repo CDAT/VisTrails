@@ -19,6 +19,7 @@ packagePath = os.path.dirname( __file__ )
 defaultMapDir = os.path.join( packagePath, 'data' )
 defaultMapFile = os.path.join( defaultMapDir,  'world_huge.jpg' )
 defaultMapCut = 0
+SLIDER_MAX_VALUE = 100
 
 def get_coords_from_cell_address( row, col):
     try:
@@ -177,10 +178,11 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         return cells
         
     def isSelected(self):
-        cells = self.getSelectedCells()
-        cell_coords = ( self.location.row, self.location.col )
-        for cell in cells:
-            if cell == cell_coords: return True
+        if self.location:
+            cells = self.getSelectedCells()
+            cell_coords = ( self.location.row, self.location.col )
+            for cell in cells:
+                if cell == cell_coords: return True
         return False
     
     def syncCamera( self, cpos, cfol, cup ):
@@ -252,8 +254,9 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             HyperwallManager.addCell( self.moduleID, self.datasetId, str(0), dimensions )
             HyperwallManager.executeCurrentWorkflow( self.moduleID )
 
-    def updateModule(self):
-        self.buildPipeline()
+    def updateModule( self, **args ):
+        animate = args.get( 'animate', False )
+        if not animate: self.buildPipeline()
         if self.baseMapActor: self.baseMapActor.SetVisibility( self.enableBasemap )
         if self.renWin: self.renWin.Render()
         
@@ -420,7 +423,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             self.buildWidget()
    
     def execute(self, **args ):
-        self.builtCellWidget = False
+        if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
         PersistentVisualizationModule.execute(self, **args)
         
     def addTitle(self):    
@@ -540,9 +543,21 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             #in mashup mode, self.displayAndWait will return None
             if self.cellWidget:
                 self.renWin = self.cellWidget.GetRenderWindow()
+#                self.renWin.StereoCapableWindowOn()
             self.builtCellWidget = True
         else:               
-            print>>sys.stderr, "Error, no renderers supplied to DV3DCell"  
+            print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
+            
+    def updateStereo( self, enableStereo ):  
+        if enableStereo <> self.stereoEnabled:  
+            self.toggleStereo()   
+            self.stereoEnabled = not self.stereoEnabled 
+ 
+    def toggleStereo(self):
+        iren = self.renWin.GetInteractor()
+        keycode = QString('3').unicode().toLatin1()
+        iren.SetKeyEventInformation( 0, 0, keycode, 0, "3" )     
+        iren.InvokeEvent( vtk.vtkCommand.KeyPressEvent )
 
 class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
     """
@@ -562,17 +577,21 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         self.mapBorderSize = 20.0
         self.cellAddress = 'A1'
         self.title = ""
+        self.mapOpacity = 0.5
         DV3DConfigurationWidget.__init__(self, module, controller, 'DV3D Cell Configuration', parent)
                 
     def getParameters( self, module ):
         titleParms = getFunctionParmStrValues( module, "title" )
         if titleParms: self.title = str( titleParms[0] )
+        if not self.title: self.title = self.pmod.getTitle()
         basemapParams = getFunctionParmStrValues( module, "enable_basemap" )
         if basemapParams: self.enableBasemap = bool( basemapParams[0] )
         basemapParams = getFunctionParmStrValues( module, "map_border_size" )
         if basemapParams:  self.mapBorderSize = float( basemapParams[0] )
         celllocParams = getFunctionParmStrValues( module, "cell_location" )
         if celllocParams:  self.cellAddress = str( celllocParams[0] )
+        opacityParams = getFunctionParmStrValues( module, "opacity" )
+        if opacityParams:  self.mapOpacity = float( opacityParams[0] )
 
     def createLayout(self):
         """ createEditor() -> None
@@ -613,6 +632,16 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         title_layout.addWidget( self.titleEdit  )        
         layout.addLayout( title_layout )
         
+        opacity_layout = QHBoxLayout()
+        opacity_label = QLabel( "Map Opacity:" )
+        opacity_layout.addWidget( opacity_label )
+        self.opacitySlider = QSlider( Qt.Horizontal )
+        self.opacitySlider.setRange( 0, SLIDER_MAX_VALUE )
+        self.opacitySlider.setSliderPosition( int( self.mapOpacity * SLIDER_MAX_VALUE ) )
+        self.connect(self.opacitySlider, SIGNAL('sliderMoved()'), self.stateChanged )
+        opacity_layout.addWidget( self.opacitySlider )
+        layout.addLayout( opacity_layout )
+        
         sheet_dims = HyperwallManager.getDimensions()
 
         locationTab = QWidget()        
@@ -647,8 +676,10 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         parmRecList.append( ( 'map_border_size' , [ self.mapBorderSize ]  ), )  
         parmRecList.append( ( 'cell_location' , [ self.cellAddress ]  ), )  
         parmRecList.append( ( 'title' , [ self.title ]  ), )  
+        parmRecList.append( ( 'opacity' , [ float( self.opacitySlider.value() ) / SLIDER_MAX_VALUE ]  ), )  
         self.persistParameterList( parmRecList )
         self.stateChanged(False)         
+
            
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None

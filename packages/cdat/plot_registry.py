@@ -207,18 +207,22 @@ class Plot(object):
                         if not manager.has_package(dep):
                             self.unsatisfied_deps.append(dep)
                     if len(self.unsatisfied_deps) == 0:
-                        (self.plot_vistrail, abstractions , thumbnails, mashups) = load_vistrail(self.locator)
-                        controller = VistrailController()
-                        controller.set_vistrail(self.plot_vistrail, self.locator, 
-                                                abstractions, thumbnails,
-                                                mashups) 
-
-                        version = self.plot_vistrail.get_version_number(self.workflow_tag) if self.workflow_tag else controller.get_latest_version_in_graph()
-                        print " Loaded %s version: %s" % (  self.name, str( version ) )
-                        controller.change_selected_version(version)
-                        self.workflow = controller.current_pipeline
-                        self.loadWidget()
-                        self.loaded = True
+                        try:
+                            (self.plot_vistrail, abstractions , thumbnails, mashups) = load_vistrail(self.locator)
+                            controller = VistrailController()
+                            controller.set_vistrail(self.plot_vistrail, self.locator, 
+                                                    abstractions, thumbnails,
+                                                    mashups) 
+    
+                            version = self.plot_vistrail.get_version_number(self.workflow_tag) if self.workflow_tag else controller.get_latest_version_in_graph()
+                            print " Loaded %s version: %s" % (  self.name, str( version ) )
+                            controller.change_selected_version(version)
+                            self.workflow = controller.current_pipeline
+                            self.loadWidget()
+                            self.loaded = True
+                        except Exception, err:
+                            debug.warning( "Error loading widget %s: %s" % ( self.name, err ) )
+                            self.loaded = False
                     else:
                         debug.warning("CDAT Package: %s widget could not be loaded \
     because it depends on packages that are not loaded:"%self.name)
@@ -264,6 +268,8 @@ class Plot(object):
         result.extend(self.files)
         result.extend(self.vars)
         result.extend(self.axes)
+        if self.serializedConfigAlias: 
+            result.extend( self.serializedConfigAlias )
         for c in self.cells:
             result.append(c.row_name)
             result.append(c.col_name)

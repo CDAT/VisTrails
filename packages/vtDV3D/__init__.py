@@ -97,7 +97,7 @@ def initialize(*args, **keywords):
     from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
     import api
         
-    reg = core.modules.module_registry.get_module_registry() 
+    reg = core.modules.module_registry.get_module_registry()   
     vtkAlgorithmOutputType = typeMap('vtkAlgorithmOutput')
     vtkImageDataType = typeMap('vtkImageData')
     reg.add_module( AlgorithmOutputModule, abstract=True) # hide_descriptor=True )       

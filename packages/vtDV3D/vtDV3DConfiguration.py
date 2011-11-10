@@ -9,7 +9,7 @@ Created on Apr 15, 2011
 
 """
 from core.configuration import ConfigurationObject
-configuration = ConfigurationObject( vtk_data_root='~/data', 
+configuration = ConfigurationObject( data_root='~', 
                                      debug = False, 
                                      hw_resource_path='',
                                      hw_name="Hyperwall", 

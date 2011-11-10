@@ -306,7 +306,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         if not self.cellWidget:
             self.cellWidget = self.displayAndWait( MplFigureCellWidget, (self.mfm.figManager, ) )
 
-    def updateModule(self):
+    def updateModule(self, **args ):
 #        printTime( 'Start Animation Step' )
         self.updateImageData()
         if self.wmod: self.wmod.setResult('FigureManager', self.mfm) 

@@ -204,7 +204,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
 
     def ApplyGlyphDecimationFactor(self):
         sampleRate = [ int( round( abs( self.glyphDecimationFactor[0] ) )  ), int( round( abs( self.glyphDecimationFactor[1] ) ) )  ]
-        print "Sample rate: %s " % str( sampleRate )
+#        print "Sample rate: %s " % str( sampleRate )
         self.resample.SetSampleRate( sampleRate[0], sampleRate[0], 1 )
         
 #        spacing = [ self.initialSpacing[i]*self.glyphDecimationFactor for i in range(3) ]
@@ -471,6 +471,15 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.set3DOutput(wmod=self.wmod) 
         self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
 
+    def updateModule(self, **args ):
+        self.resample.SetInput( self.input ) 
+        self.cutterInput = self.resample.GetOutput() 
+        self.planeWidget.SetInput( self.cutterInput  )
+        self.cutter.SetInput( self.cutterInput ) 
+        self.cutter.Update()
+        self.glyphMapper.Modified()
+        self.glyphMapper.Update()
+        self.set3DOutput()
 
     def createArrowSources( self, scaleRange=[ 1.0, 10.0 ], n_sources=10 ):
         trans = vtk.vtkTransform()
@@ -519,7 +528,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
 
     def ApplyGlyphDecimationFactor(self):
         sampleRate = [ int( round( abs( self.glyphDecimationFactor[0] ) )  ), int( round( abs( self.glyphDecimationFactor[1] ) ) )  ]
-        print "Sample rate: %s " % str( sampleRate )
+#        print "Sample rate: %s " % str( sampleRate )
         self.resample.SetSampleRate( sampleRate[0], sampleRate[0], 1 )
         
 #        spacing = [ self.initialSpacing[i]*self.glyphDecimationFactor for i in range(3) ]
@@ -758,7 +767,14 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.UpdateStreamerSeedGrid()
         self.updateScaling()
         self.set3DOutput( wmod=self.wmod, output=self.input ) 
-        
+ 
+    def updateModule(self, **args ):
+        self.planeWidget.SetInput( self.input  )        
+        self.streamer.SetInput( self.input )
+        self.streamer.Modified()
+        self.streamer.Update()
+        self.set3DOutput()
+       
     def getCurentLevel(self):
         planeOrigin = self.plane.GetOrigin()
         gridExtent = self.input.GetExtent()
@@ -772,7 +788,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
     def UpdateStreamerSeedGrid( self ):
         sampleRate = self.streamerSeedGridSpacing
         currentLevel = self.getCurentLevel()
-        print " ---- ApplyStreamerSeedGridSpacing:  Sample rate: %s, current Level: %d " % ( str( sampleRate ), currentLevel )
+#        print " ---- ApplyStreamerSeedGridSpacing:  Sample rate: %s, current Level: %d " % ( str( sampleRate ), currentLevel )
         sample_source = vtk.vtkImageData()        
         gridSpacing = self.input.GetSpacing()
         gridOrigin = self.input.GetOrigin()
