@@ -403,7 +403,8 @@ after self.init()"""
                                         connection_id=None)
                 if locator:
                     if hasattr(locator, '_vnode'):
-                        version = locator._vnode
+                        if locator._vnode is not None:
+                            version = locator._vnode
                     if hasattr(locator,'_vtag'):
                         # if a tag is set, it should be used instead of the
                         # version number
