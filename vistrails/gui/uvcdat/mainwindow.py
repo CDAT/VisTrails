@@ -37,7 +37,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         #init user options
         self.initCustomize(customPath,styles)
         self.root = self
-        #self.tool_bar = mainToolbarWidget.QMainToolBarContainer(self)
+        self.tool_bar = mainToolbarWidget.QMainToolBarContainer(self)
         self.canvas=[]
         for i in range(4):
             self.canvas.append(vcs.init())
