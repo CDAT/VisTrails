@@ -1619,9 +1619,11 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.stateChanged(False)
            
     def okTriggered(self, checked = False):
-        t0, t1 = self.startIndexEdit.text(), self.endIndexEdit.text()
-        try: self.timeRange = [ int( str( t0 ) ), int( str( t1 ) ) ]
-        except: self.timeRange = [ 0, 0 ]
+        
+        try: 
+            t0, t1 = self.startIndexEdit.text(), self.endIndexEdit.text()
+            self.timeRange = [ int( str( t0 ) ), int( str( t1 ) ) ]
+        except:  self.timeRange = [ 0, 0 ]
         try: self.zscale = float( self.selectZScaleLineEdit.text() )
         except: self.zscale = 1.0
         try: self.decimation = [  self.clientDecimationCombo.currentIndex(), self.serverDecimationCombo.currentIndex() ]

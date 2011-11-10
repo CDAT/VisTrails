@@ -402,6 +402,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.getInitLevelDataHandler = args.get( 'getInitLevel', None )
         self.isDataValue = args.get( 'isDataValue', True )
         self.defaultRange = args.get( 'initRange', [ 0.0, 1.0, 1, 0.0, 1.0 ] )
+        self.boundByRange = args.get( 'bound', True )
         self.widget = args.get( 'gui', None )
 
     def applyParameter( self, module, **args ):
@@ -416,6 +417,8 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         return self.initial_range
 
     def initLeveling( self, **args ):
+        if self.key == 'T':
+            pass
         self.initial_range =  self.defaultRange if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
         self.range = list( self.module.getInputValue( self.name, self.initial_range ) if not self.module.newDataset else self.initial_range )
         if len( self.range ) == 3: 
@@ -446,7 +449,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             for iR in [ 0, 1 ]: self.range[3+iR] = refinement_range[iR]
         else:  
             leveling_range = self.windowLeveler.windowLevel( x, y, wsize )
-            for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.initial_range )
+            for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.initial_range ) if self.boundByRange else leveling_range[iR]
         self.setLevelDataHandler( self.range )
         self.module.render()
         for cfgFunction in self.activeFunctionList:

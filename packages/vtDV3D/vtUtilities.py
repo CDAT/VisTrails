@@ -76,7 +76,7 @@ def getConfiguration( defaults ):
     if not os.path.isfile( datasetConfigFile ):
         defaultConfigFile = os.path.join( resourcePath, 'dv3d.cfg' ) 
         assert os.path.isfile( defaultConfigFile ), "Error, default dv3d Config File does not exist at %s!" % defaultConfigFile
-        shutil.copy( defaultConfigFile, hwConfig.dotVistrails )            
+        shutil.copy( defaultConfigFile, appConfig.dotVistrails )            
     datasetConfig = ConfigParser.ConfigParser( defaults )
     datasetConfig.read( datasetConfigFile )  
     return datasetConfig, appConfig
