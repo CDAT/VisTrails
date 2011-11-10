@@ -105,66 +105,6 @@
         <string>1</string>
        </property>
       </column>
-      <item>
-       <property name="text">
-        <string>Project 1</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normalon>:/icons/resources/icons/folder_blue_open.png</normalon>
-        </iconset>
-       </property>
-       <item>
-        <property name="text">
-         <string>Cloudness Plot</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Plot 2</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Analysis 3</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Animation</string>
-        </property>
-       </item>
-      </item>
-      <item>
-       <property name="text">
-        <string>Project 2</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normalon>:/icons/resources/icons/folder_blue.png</normalon>
-        </iconset>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Project 3</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normalon>:/icons/resources/icons/folder_blue.png</normalon>
-        </iconset>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Project 4</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normalon>:/icons/resources/icons/folder_blue.png</normalon>
-        </iconset>
-       </property>
-      </item>
      </widget>
     </item>
    </layout>

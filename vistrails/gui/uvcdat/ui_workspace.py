@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'workspace.ui'
 #
-# Created: Fri Aug 26 10:36:18 2011
-#      by: PyQt4 UI code generator 4.8.4
+# Created: Thu Nov 10 16:27:55 2011
+#      by: PyQt4 UI code generator snapshot-4.8.6-2867ad3ae2e0
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -19,6 +19,7 @@ class Ui_Workspace(object):
         Workspace.setObjectName(_fromUtf8("Workspace"))
         Workspace.resize(404, 623)
         Workspace.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea|QtCore.Qt.RightDockWidgetArea)
+        Workspace.setWindowTitle(QtGui.QApplication.translate("Workspace", "Projects", None, QtGui.QApplication.UnicodeUTF8))
         self.dockWidgetContents = QtGui.QWidget()
         self.dockWidgetContents.setObjectName(_fromUtf8("dockWidgetContents"))
         self.verticalLayout = QtGui.QVBoxLayout(self.dockWidgetContents)
@@ -56,22 +57,7 @@ class Ui_Workspace(object):
         self.treeProjects.setRootIsDecorated(True)
         self.treeProjects.setExpandsOnDoubleClick(False)
         self.treeProjects.setObjectName(_fromUtf8("treeProjects"))
-        item_0 = QtGui.QTreeWidgetItem(self.treeProjects)
-        icon2 = QtGui.QIcon()
-        icon2.addPixmap(QtGui.QPixmap(_fromUtf8(":/icons/resources/icons/folder_blue_open.png")), QtGui.QIcon.Normal, QtGui.QIcon.On)
-        item_0.setIcon(0, icon2)
-        item_1 = QtGui.QTreeWidgetItem(item_0)
-        item_1 = QtGui.QTreeWidgetItem(item_0)
-        item_1 = QtGui.QTreeWidgetItem(item_0)
-        item_1 = QtGui.QTreeWidgetItem(item_0)
-        item_0 = QtGui.QTreeWidgetItem(self.treeProjects)
-        icon3 = QtGui.QIcon()
-        icon3.addPixmap(QtGui.QPixmap(_fromUtf8(":/icons/resources/icons/folder_blue.png")), QtGui.QIcon.Normal, QtGui.QIcon.On)
-        item_0.setIcon(0, icon3)
-        item_0 = QtGui.QTreeWidgetItem(self.treeProjects)
-        item_0.setIcon(0, icon3)
-        item_0 = QtGui.QTreeWidgetItem(self.treeProjects)
-        item_0.setIcon(0, icon3)
+        self.treeProjects.headerItem().setText(0, QtGui.QApplication.translate("Workspace", "1", None, QtGui.QApplication.UnicodeUTF8))
         self.treeProjects.header().setVisible(False)
         self.verticalLayout.addWidget(self.treeProjects)
         Workspace.setWidget(self.dockWidgetContents)
@@ -80,19 +66,7 @@ class Ui_Workspace(object):
         QtCore.QMetaObject.connectSlotsByName(Workspace)
 
     def retranslateUi(self, Workspace):
-        Workspace.setWindowTitle(QtGui.QApplication.translate("Workspace", "Projects", None, QtGui.QApplication.UnicodeUTF8))
-        self.treeProjects.headerItem().setText(0, QtGui.QApplication.translate("Workspace", "1", None, QtGui.QApplication.UnicodeUTF8))
-        __sortingEnabled = self.treeProjects.isSortingEnabled()
-        self.treeProjects.setSortingEnabled(False)
-        self.treeProjects.topLevelItem(0).setText(0, QtGui.QApplication.translate("Workspace", "Project 1", None, QtGui.QApplication.UnicodeUTF8))
-        self.treeProjects.topLevelItem(0).child(0).setText(0, QtGui.QApplication.translate("Workspace", "Cloudness Plot", None, QtGui.QApplication.UnicodeUTF8))
-        self.treeProjects.topLevelItem(0).child(1).setText(0, QtGui.QApplication.translate("Workspace", "Plot 2", None, QtGui.QApplication.UnicodeUTF8))
-        self.treeProjects.topLevelItem(0).child(2).setText(0, QtGui.QApplication.translate("Workspace", "Analysis 3", None, QtGui.QApplication.UnicodeUTF8))
-        self.treeProjects.topLevelItem(0).child(3).setText(0, QtGui.QApplication.translate("Workspace", "Animation", None, QtGui.QApplication.UnicodeUTF8))
-        self.treeProjects.topLevelItem(1).setText(0, QtGui.QApplication.translate("Workspace", "Project 2", None, QtGui.QApplication.UnicodeUTF8))
-        self.treeProjects.topLevelItem(2).setText(0, QtGui.QApplication.translate("Workspace", "Project 3", None, QtGui.QApplication.UnicodeUTF8))
-        self.treeProjects.topLevelItem(3).setText(0, QtGui.QApplication.translate("Workspace", "Project 4", None, QtGui.QApplication.UnicodeUTF8))
-        self.treeProjects.setSortingEnabled(__sortingEnabled)
+        pass
 
 import uvcdat_rc
 

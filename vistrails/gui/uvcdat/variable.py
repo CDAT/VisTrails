@@ -5,28 +5,42 @@ import cdms2
 
 from qtbrowser.esgf import QEsgfBrowser
 from qtbrowser.commandLineWidget import QCommandLine
-from qtbrowser import axesWidgets
+import axesWidgets
 from qtbrowser import vcdatCommons
 from qtbrowser import customizeVCDAT
+import editVariableWidget
 
 class VariableProperties(QtGui.QDialog):
     FILTER = "CDAT data (*.cdms *.ctl *.dic *.hdf *.nc *.xml)"
 
     FILETYPE = {'CDAT': ['cdms', 'ctl', 'dic', 'hdf', 'nc', 'xml']}
         
-    def __init__(self, parent=None):
+    def __init__(self, parent=None,mode="add"):
         super(VariableProperties, self).__init__(parent)
+        self.ask = QtGui.QInputDialog()
+        self.ask.setWindowModality(QtCore.Qt.WindowModal)
+        self.ask.setLabelText("This variable already exist!\nPlease change its name bellow or press ok to replace it\n")
+        self.mode=mode
         v=QtGui.QVBoxLayout()
-        l=QtGui.QLabel("Load From")
+        if mode=="add":
+            l=QtGui.QLabel("Load From")
+        else:
+            l=QtGui.QLabel("Edit Variable")
         v.addWidget(l)
+        P=parent.root.size()
+        self.resize(QtCore.QSize(P.width()*.8,P.height()*.9))
+        self.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
         self.originTabWidget=QtGui.QTabWidget(self)
         sp = QtGui.QSplitter(QtCore.Qt.Vertical)
-        sp.addWidget(self.originTabWidget)
+        sc=QtGui.QScrollArea()
+        sc.setWidget(self.originTabWidget)
+        sc.setWidgetResizable(True)
+        sp.addWidget(sc)
         self.dims=QtGui.QFrame()
         sp.addWidget(self.dims)
         v.addWidget(sp)
         h=QtGui.QHBoxLayout()
-        s=QtGui.QSpacerItem(40,20,QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Maximum)
+        s=QtGui.QSpacerItem(40,20,QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Preferred)
         h.addItem(s)
         self.btnDefine=QtGui.QPushButton("Define")
         h.addWidget(self.btnDefine)
@@ -39,12 +53,15 @@ class VariableProperties(QtGui.QDialog):
         self.setLayout(v)
         self.parent=parent
         self.root = parent.root
-        self.createFileTab()
-        self.createESGFTab()
-        self.createCalculatorTab()
+        if mode=="add":
+            self.createFileTab()
+            self.createESGFTab()
+        self.createInfoTab()
+        if mode=="edit":
+            self.createEditTab()
         self.createDimensions()
         self.connectSignals()
-        
+        sp.setStretchFactor(0,2)
     ## @classmethod
     ## def instance(klass):
     ##     if not hasattr(klass, '_instance'):
@@ -53,22 +70,39 @@ class VariableProperties(QtGui.QDialog):
 
     def connectSignals(self):
         self.btnCancel.clicked.connect(self.close)
-        self.tbOpenFile.clicked.connect(self.openSelectFileDialog)
-        self.connect(self.fileEdit, QtCore.SIGNAL('returnPressed()'),
-                     self.updateFile)
-        self.connect(self.historyList, QtCore.SIGNAL('itemClicked(QListWidgetItem *)'),
-                     self.selectFromList)
-        self.connect(self.bookmarksList, QtCore.SIGNAL('itemClicked(QListWidgetItem *)'),
-                     self.selectFromList)
-        ## FIXME: signal when dropping to bookmarks so it sticks for next time
-        self.connect(self.varCombo, QtCore.SIGNAL('currentIndexChanged(const QString&)'),
-                     self.variableSelected)
+        self.connect(self.ask,QtCore.SIGNAL('accepted()'),self.checkTargetVarName)
+        if self.mode=="add":
+            self.tbOpenFile.clicked.connect(self.openSelectFileDialog)
+            self.connect(self.fileEdit, QtCore.SIGNAL('returnPressed()'),
+                         self.updateFile)
+            self.connect(self.historyList, QtCore.SIGNAL('itemClicked(QListWidgetItem *)'),
+                         self.selectFromList)
+            self.connect(self.bookmarksList, QtCore.SIGNAL('itemClicked(QListWidgetItem *)'),
+                         self.selectFromList)
+            self.connect(self.varCombo, QtCore.SIGNAL('currentIndexChanged(const QString&)'),
+                         self.variableSelected)
+            self.connect(self.bookmarksList,QtCore.SIGNAL("droppedInto"),self.droppedBookmark)
+        self.connect(self.root.dockVariable.widget(),QtCore.SIGNAL("setupDefinedVariableAxes"),self.varAddedToDefined)
 
         ## Define button
         self.btnDefine.clicked.connect(self.defineVarClicked)
         self.connect(self,QtCore.SIGNAL('definedVariableEvent'),self.root.dockVariable.widget().addVariable)
-        self.connect(self.bookmarksList,QtCore.SIGNAL("droppedInto"),self.droppedBookmark)
 
+    def checkTargetVarName(self):
+        result = None
+        while result is None:
+            result = self.ask.result()
+            value = self.ask.textValue()
+        if result == 1: # make sure we pressed Ok and not Cancel
+            if str(value)!=self.checkAgainst:
+                self.getUpdatedVarCheck(str(value))
+            else:
+                self.getUpdatedVar(str(value))
+
+
+    def varAddedToDefined(self,var):
+        axisList = axesWidgets.QAxisList(None,var,self)
+        self.updateVarInfo(axisList)
 
     def droppedBookmark(self,event):
         text = str(event.mimeData().text())
@@ -114,14 +148,21 @@ class VariableProperties(QtGui.QDialog):
         ## Bottom Part
         h=QtGui.QHBoxLayout()
         l=QtGui.QLabel("History:")
+        l.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Preferred)
         self.historyList=vcdatCommons.QDragListWidget(type="history")
-        self.historyList.setSizePolicy(QtGui.QSizePolicy.Preferred,QtGui.QSizePolicy.Preferred)
+        #self.historyList.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Minimum)
         self.historyList.setAlternatingRowColors(True)
+        for i in self.parent.historyList:
+            self.historyList.addItem(i)
         h.addWidget(l)
         h.addWidget(self.historyList)
+        v.addLayout(h)
+        
+        h=QtGui.QHBoxLayout()
         l=QtGui.QLabel("Bookmarks:")
+        l.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Preferred)
         self.bookmarksList=vcdatCommons.QDragListWidget(type="bookmarks",dropTypes=["history"])
-        self.bookmarksList.setSizePolicy(QtGui.QSizePolicy.Preferred,QtGui.QSizePolicy.Preferred)
+        #self.bookmarksList.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Minimum)
         self.bookmarksList.setAlternatingRowColors(True)
         self.bookmarksList.setSortingEnabled(True)
         for f in customizeVCDAT.fileBookmarks:
@@ -142,10 +183,24 @@ class VariableProperties(QtGui.QDialog):
         ## layout.addWidget(self.esgfBrowser)
         self.originTabWidget.addTab(QEsgfBrowser(self),"ESGF")
     
-    def createCalculatorTab(self):
-        self.calculator = QCommandLine(self)
-        self.originTabWidget.addTab(self.calculator,"Existing")
+    def createInfoTab(self):
+        info = QtGui.QFrame()
+        v=QtGui.QVBoxLayout()
+        l=QtGui.QLabel("Variable Information")
+        v.addWidget(l)
+        sc=QtGui.QScrollArea()
+        sc.setWidgetResizable(True)
+        self.varInfoWidget = QtGui.QTextEdit()
+        self.varInfoWidget.setReadOnly(True)
+        sc.setWidget(self.varInfoWidget)
+        v.addWidget(sc)
+        info.setLayout(v)
+        self.originTabWidget.addTab(info,"Info")
 
+    def createEditTab(self):
+        self.varEditArea=QtGui.QScrollArea()
+        self.varEditArea.setWidgetResizable(True)
+        self.originTabWidget.addTab(self.varEditArea,"Edit")
 
     def createDimensions(self):
         self.dimsLayout=QtGui.QVBoxLayout()
@@ -267,8 +322,7 @@ class VariableProperties(QtGui.QDialog):
             self.dims.update()
             N=self.dimsLayout.count()
         self.dimsLayout.addWidget(axisList)
-        ## FIXME
-        #self.updateVarInfo(axisList)
+        self.updateVarInfo(axisList)
         
     def updateVarInfo(self, axisList):
         """ Update the text box with the variable's information """
@@ -279,8 +333,13 @@ class VariableProperties(QtGui.QDialog):
         varInfo = ''
         for line in var.listall():
             varInfo += line + '\n'
-##        print "TEXT:",varInfo
-##        self.varInfoWidget.setText(varInfo)
+        self.varInfoWidget.setText(varInfo)
+
+    def setupEditTab(self,var):
+        self.varEditArea.takeWidget()
+        self.varEditArea.setWidget(editVariableWidget.editVariableWidget(var,parent=self.parent,root=self.root))
+
+        
     def defineVarClicked(self,*args):
         self.getUpdatedVarCheck()
 
@@ -297,14 +356,18 @@ class VariableProperties(QtGui.QDialog):
         else:
             tid = axisList.var
 
-        ## ## Ok at that point we need to figure out if 
-        ## if self.tabWidget.tabExists(tid) and targetId is None:
-        ##     self.ask.setTextValue(tid)
-        ##     self.ask.show()
-        ##     self.ask.exec_()
-        ## else:
-        ##     self.getUpdatedVar(tid)
-        self.getUpdatedVar(tid)
+        exists = False
+        for it in self.root.dockVariable.widget().getItems(project=False):
+            if tid == str(it.text()).split()[1]:
+                exists = True
+        ## Ok at that point we need to figure out if 
+        if exists:
+            self.checkAgainst = tid
+            self.ask.setTextValue(tid)
+            self.ask.show()
+            self.ask.exec_()
+        else:
+            self.getUpdatedVar(tid)
 
     def getUpdatedVar(self,targetId):
         axisList = self.dimsLayout.itemAt(1).widget()
@@ -341,6 +404,7 @@ class VariableProperties(QtGui.QDialog):
             self.root.record("%s = %s(squeeze=1)" % (targetId,targetId))
 
         self.emit(QtCore.SIGNAL('definedVariableEvent'),updatedVar)
+        self.updateVarInfo(axisList)
         return updatedVar
     
     def generateKwArgs(self, axisList=None):
