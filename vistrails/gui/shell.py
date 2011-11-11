@@ -152,9 +152,13 @@ class QShellDialog(QtGui.QWidget, QVistrailsPaletteInterface):
         self.shell.saveSession(str(fileName))
 
     def visibility_changed(self, visible):
+        from gui.vistrails_window import _app
         QVistrailsPaletteInterface.visibility_changed(self, visible)
         if visible:
+            controller = _app.get_current_controller()
+            self.shell.set_controller(controller)
             self.shell.show()
+            
         else:
             self.shell.hide()
 
@@ -636,6 +640,9 @@ class QShell(QtGui.QTextEdit):
         """
         self.controller = controller
         if controller:
+            self.interpreter.active_pipeline = self.controller.current_pipeline
+            cmd = 'run_pipeline = self.shell.run_pipeline'
+            self.interpreter.runcode(cmd)
             cmd = 'active_pipeline = self.shell.interpreter.active_pipeline'
             self.interpreter.runcode(cmd)
             cmd = 'modules = self.vistrails_interpreter.' \
@@ -649,6 +656,11 @@ class QShell(QtGui.QTextEdit):
     #     """
     #     self.add_pipeline(None)
         
+    def run_pipeline(self):
+        if self.controller:
+            if self.interpreter.active_pipeline:
+                self.controller.execute_current_workflow()
+
     def keyPressEvent(self, e):
         """keyPressEvent(e) -> None
         Handle user input a key at a time.

@@ -208,6 +208,11 @@ class CDATParser(object):
             if res is None:
                 #check if is a __getitem__ function
                 res = search("%s.__getitem__"% (self.obj_map[funcname]))
+            if res is None:
+                #check if it is a Transient Variable.
+                if self.obj_map[funcname] == 'cdms2.tvariable.TransientVariable':
+                    res = 'cdms2.tvariable.TransientVariable'
+        #print "funcname: ", funcname, self.obj_map, res
         return res
                 
     def process_down_stream_modules(self, var):
@@ -243,7 +248,8 @@ removing all dependent modules"""
         #created and will just change their parameters
         convert_mapping_update = {'cdms2.open': "%(var)s.uri = %(args)s\n",
                                   'cdms2.dataset.CdmsFile': "%(var)s.id=%(args)s\n",
-                                  'cdms2.tvariable.TransientVariable':"%(var)s.axes=\"%(args)s\"\n"}
+                                  'cdms2.tvariable.TransientVariable':"old_var = %(var)s\n\
+%(var)s = cdat.cdat.Variable()\n%(var)s.inputVariable = old_var.variable\n%(var)s.axes=\"%(args)s\"\n"}
         params = {'funcname':funcname, 'var':var, 'args':args}
         res = ""
         allowed_objects = ['cdms2.dataset.CdmsFile']
