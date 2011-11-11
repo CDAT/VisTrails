@@ -35,14 +35,10 @@ def distance( p0, p1 ):
 
 class TransferFunction( QObject ):
     
-    def __init__(self, **args ):
-        self.type = args.get( 'type', FullValueTransferFunction )
+    def __init__(self, tf_type, **args ):
+        self.type = tf_type
         self.data = args.get( 'data', None )
-        
-    def  getNumberOfNodes(self):
-        if self.type == AbsValueTransferFunction: return 12
-        else: return 9
-        
+                
     def setType(self, tf_type ):
         self.type = tf_type
         
@@ -54,8 +50,9 @@ class TransferFunctionConfigurationDialog( QDialog ):
         self.graph = GraphWidget( size=(400,300), nticks=(5,5) )
         self.functions = {} 
         self.setLayout(QVBoxLayout())
-        self.currentTransferFunction = None
+        self.defaultTransferFunctionType = args.get( 'default_type', FullValueTransferFunction )
         self.tf_map = { "Signed Value" : FullValueTransferFunction, "Absolute Value" : AbsValueTransferFunction }
+        self.currentTransferFunction = None
         
         tf_type_layout = QHBoxLayout()
         tf_type_label = QLabel( "Transfer Function Type:"  )
@@ -65,8 +62,13 @@ class TransferFunctionConfigurationDialog( QDialog ):
         tf_type_label.setBuddy( tf_type_combo )
         tf_type_combo.setMaximumHeight( 30 )
         tf_type_layout.addWidget( tf_type_combo )
-        for tf_name in self.tf_map.keys(): 
-            tf_type_combo.addItem( tf_name )     
+        current_index, index = 0, 0
+        for tf_name in self.tf_map.keys():
+            if self.tf_map[tf_name] == self.defaultTransferFunctionType:
+                current_index = index 
+            tf_type_combo.addItem( tf_name )
+            index = index + 1  
+        tf_type_combo.setCurrentIndex( current_index )   
         self.connect( tf_type_combo, SIGNAL("currentIndexChanged(QString)"), self.updateTransferFunctionType )  
         self.layout().addLayout( tf_type_layout )
                 
@@ -77,15 +79,19 @@ class TransferFunctionConfigurationDialog( QDialog ):
         self.closeButton.setShortcut('Enter')
         
     def addTransferFunction( self, name, **args ):
-        self.currentTransferFunction = TransferFunction( **args ) 
+        self.currentTransferFunction = TransferFunction( self.defaultTransferFunctionType, **args ) 
         self.functions[ name ]  = self.currentTransferFunction
-        self.graph.buildGraph( self.currentTransferFunction.getNumberOfNodes() ) 
+        self.graph.buildGraph() 
     
     def updateGraph( self, xbounds, ybounds, data ):
         self.graph.createGraph( xbounds, ybounds, data )
                 
     def updateTransferFunctionType( self, value ):
         if self.currentTransferFunction: self.currentTransferFunction.setType( self.tf_map[ str(value) ] )
+
+    def getTransferFunctionType( self ):
+        if self.currentTransferFunction: return self.currentTransferFunction.type
+        return self.defaultTransferFunctionType
         
 class PM_VolumeRenderer(PersistentVisualizationModule):
     """
@@ -446,8 +452,9 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.transferFunctionConfig.show()
 #        print " Update Volume OTF, self._range = %s, max opacity = %s " % ( str( self._range ), str( self.max_opacity ) )
         self.opacityTransferFunction.RemoveAllPoints()  
+        transferFunctionType = self.transferFunctionConfig.getTransferFunctionType()
 #        dthresh = self._range[3]
-        if (self.TransferFunction == PosValueTransferFunction) or (self.TransferFunction == NegValueTransferFunction):
+        if (transferFunctionType == PosValueTransferFunction) or (transferFunctionType == NegValueTransferFunction):
             pointType = PositiveValues if (self.TransferFunction == PosValueTransferFunction) else NegativeValues
             points = self.getTransferFunctionPoints( self._range, pointType )
             graphData = []
@@ -455,7 +462,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
                 self.opacityTransferFunction.AddPoint( point[0], point[1]  )  
                 graphData.append( ( self.getDataValue( point[0] ) , point[1], False )  )
             if self.otf_data: self.transferFunctionConfig.updateGraph( self.scalarRange, [ 0.0, 1.0 ], graphData )
-        elif self.TransferFunction == AbsValueTransferFunction:
+        elif transferFunctionType == AbsValueTransferFunction:
             graphData = []
             points = self.getTransferFunctionPoints( self._range, NegativeValues )
             for point in points:  
@@ -467,14 +474,14 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
                 graphData.append( ( self.getDataValue( point[0] ) , point[1], False )  )  
             if self.otf_data: self.transferFunctionConfig.updateGraph( self.scalarRange, [ 0.0, 1.0 ], graphData )
 #            print "OTF: [ %s ] " % str( points )   
-        elif self.TransferFunction == FullValueTransferFunction:
+        elif transferFunctionType == FullValueTransferFunction:
             points = self.getTransferFunctionPoints( self._range, AllValues )
             graphData = []
             for point in points:  
                 self.opacityTransferFunction.AddPoint( point[0], point[1]  )  
                 graphData.append( ( self.getDataValue( point[0] ) , point[1], False )  )
             if self.otf_data: self.transferFunctionConfig.updateGraph( self.scalarRange, [ 0.0, 1.0 ], graphData )             
-        elif self.TransferFunction == LegacyAbsValueTransferFunction:
+        elif transferFunctionType == LegacyAbsValueTransferFunction:
             if ( zero_point < self._range[0] ):
                 if self._range[0] > 0: self.opacityTransferFunction.AddPoint( 0, 0.)
                 self.opacityTransferFunction.AddPoint( self._range[0], 0.)
@@ -536,7 +543,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
                             self.opacityTransferFunction.AddPoint( self._max_scalar_value, 0.0)               
                         else:
                             self.opacityTransferFunction.AddPoint( self._max_scalar_value, min_opacity)  
-        elif self.TransferFunction == LinearTransferFunction:
+        elif transferFunctionType == LinearTransferFunction:
             if self._range[0] > 0: 
                 if self.filterOutliers:
                     self.opacityTransferFunction.AddPoint( 0, 0.0)               
