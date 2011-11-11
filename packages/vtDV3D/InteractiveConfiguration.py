@@ -1405,7 +1405,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                             if taskRecord:
                                 outputs = taskRecord[2].split(';')
                                 for output in outputs:
-                                    outputData = output.split('+')
+                                    outputData = output.split('#')
                                     if len(outputData) > 1:
                                         variableList.add( ( outputData[1], int( outputData[2] ) ) )
         return datasetMap
@@ -1467,7 +1467,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                         if taskRecord:
                             outputs = taskRecord[2].split(';')
                             for output in outputs:
-                                outputData = output.split('+')
+                                outputData = output.split('#')
                                 if len(outputData) > 1:
                                     variableList.add( ( outputData[1], int( outputData[2] ) ) )
         return ( variableList, datasetId, timeRange, selected_var, levelsAxis )

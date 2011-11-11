@@ -35,13 +35,16 @@ def distance( p0, p1 ):
 
 class TransferFunction( QObject ):
     
-    def __init__(self, type, **args ):
-        self.type = type
+    def __init__(self, **args ):
+        self.type = args.get( 'type', FullValueTransferFunction )
         self.data = args.get( 'data', None )
         
     def  getNumberOfNodes(self):
         if self.type == AbsValueTransferFunction: return 12
         else: return 9
+        
+    def setType(self, tf_type ):
+        self.type = tf_type
         
 class TransferFunctionConfigurationDialog( QDialog ): 
      
@@ -51,19 +54,38 @@ class TransferFunctionConfigurationDialog( QDialog ):
         self.graph = GraphWidget( size=(400,300), nticks=(5,5) )
         self.functions = {} 
         self.setLayout(QVBoxLayout())
+        self.currentTransferFunction = None
+        self.tf_map = { "Signed Value" : FullValueTransferFunction, "Absolute Value" : AbsValueTransferFunction }
+        
+        tf_type_layout = QHBoxLayout()
+        tf_type_label = QLabel( "Transfer Function Type:"  )
+        tf_type_layout.addWidget( tf_type_label ) 
+
+        tf_type_combo =  QComboBox ( self )
+        tf_type_label.setBuddy( tf_type_combo )
+        tf_type_combo.setMaximumHeight( 30 )
+        tf_type_layout.addWidget( tf_type_combo )
+        for tf_name in self.tf_map.keys(): 
+            tf_type_combo.addItem( tf_name )     
+        self.connect( tf_type_combo, SIGNAL("currentIndexChanged(QString)"), self.updateTransferFunctionType )  
+        self.layout().addLayout( tf_type_layout )
+                
         self.closeButton = QPushButton('Ok', self)
         self.layout().addWidget( self.graph )         
         self.layout().addWidget(self.closeButton)
         self.connect(self.closeButton, SIGNAL('clicked(bool)'), self.close)
         self.closeButton.setShortcut('Enter')
         
-    def addTransferFunction( self, name, type ):
-        tf = TransferFunction( type ) 
-        self.functions[ name ]  = tf
-        self.graph.buildGraph( tf.getNumberOfNodes() ) 
+    def addTransferFunction( self, name, **args ):
+        self.currentTransferFunction = TransferFunction( **args ) 
+        self.functions[ name ]  = self.currentTransferFunction
+        self.graph.buildGraph( self.currentTransferFunction.getNumberOfNodes() ) 
     
     def updateGraph( self, xbounds, ybounds, data ):
         self.graph.createGraph( xbounds, ybounds, data )
+                
+    def updateTransferFunctionType( self, value ):
+        if self.currentTransferFunction: self.currentTransferFunction.setType( self.tf_map[ str(value) ] )
         
 class PM_VolumeRenderer(PersistentVisualizationModule):
     """
@@ -86,9 +108,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.imageRange = None
         self.otf_data = None
         self.ctf_data = None
-        self.TransferFunction = FullValueTransferFunction
         self.transferFunctionConfig = TransferFunctionConfigurationDialog()
-        self.transferFunctionConfig.addTransferFunction( 'default', self.TransferFunction )
+        self.transferFunctionConfig.addTransferFunction( 'default' )
         self.addConfigurableLevelingFunction( 'colorScale',    'C', setLevel=self.generateCTF, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'functionScale', 'T', setLevel=self.generateOTF, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units, initRange=[ 0.0, 1.0, 1, self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
         self.addConfigurableLevelingFunction( 'opacityScale',  'O', setLevel=self.adjustOpacity, layerDependent=True  )
@@ -546,7 +567,7 @@ if __name__ == '__main__':
  
     app = QApplication(sys.argv)
     dialog = TransferFunctionConfigurationDialog( )
-    dialog.addTransferFunction( 'default', PosValueTransferFunction ) 
+    dialog.addTransferFunction( 'default' ) 
     dialog.show()
     sys.exit(app.exec_())
    
