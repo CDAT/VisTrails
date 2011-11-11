@@ -53,7 +53,8 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.mainMenu = mainMenuWidget.QMenuWidget(self)
         self.embedSpreadsheet()
         self.createDockWindows()
-        self.createViewActions()
+        self.createActions()
+        self.updateMenuActions()
         self.connectSignals()
 
     def initCustomize(self,customPath,styles):
@@ -125,12 +126,23 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockVariable)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockCalculator)
 
-    def createViewActions(self):
+    def createActions(self):
+        #VisTrails Window
+        self.showBuilderWindowAct = QtGui.QAction("VisTrails Builder", self,
+                                 triggered=self.showBuilderWindowActTriggered)
+    def updateMenuActions(self):
+        #menu View Actions
         self.ui.menuView.addAction(self.workspace.toggleViewAction())
         self.ui.menuView.addAction(self.dockTemplate.toggleViewAction())
         self.ui.menuView.addAction(self.dockPlot.toggleViewAction())
         self.ui.menuView.addAction(self.dockVariable.toggleViewAction())
         self.ui.menuView.addAction(self.dockCalculator.toggleViewAction())
+        
+        #Window Menu
+        self.ui.menuWindow.addAction(self.showBuilderWindowAct)
+        
+    def showBuilderWindowActTriggered(self):
+        self.emit(QtCore.SIGNAL("showVisTrails"))
         
     def connectSignals(self):
         self.ui.actionExit.triggered.connect(self.quit)
