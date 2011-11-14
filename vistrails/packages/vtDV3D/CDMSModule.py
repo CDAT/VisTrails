@@ -23,6 +23,9 @@ PortDataVersion = 0
 DataSetVersion = 0
 cdms2.axis.level_aliases.append('isobaric')
 
+def normalize_lon( lon ):
+    return lon if lon <= 180.0 else (lon - 360.0)
+
 def splitGridSpecs( gridSpecs ):
     inParen = False
     sliceStart = 0
@@ -51,7 +54,7 @@ def getCompTime( timeString ):
 def deserializeFileMap( serialized_strMap ): 
     stringMap = {}
     for dsrec in serialized_strMap.split(';'):
-        dsitems = dsrec.split('+')
+        dsitems = dsrec.split('#')
         if len( dsitems ) == 2: stringMap[ dsitems[0] ] = dsitems[1]
         elif len( dsitems ) == 1:
             fileId = os.path.splitext( os.path.basename( dsitems[0] ) )[0]
@@ -431,6 +434,7 @@ class CDMSDatasetRecord():
                     outputOrigin[ iCoord ] = gridOrigin[ iCoord ] = values[0] + lonOffset
                     spacing = (values[size-1] - values[0])/(size-1)
                     if roiBounds:
+                        if ( roiBounds[1] < 0.0 ) and  ( roiBounds[0] >= 0.0 ): roiBounds[1] = roiBounds[1] + 360.0
                         gridExtent[ iCoord2 ] = int( round( ( roiBounds[0] - values[0] )  / spacing ) )                
                         gridExtent[ iCoord2+1 ] = int( round( ( roiBounds[1] - values[0] )  / spacing ) )
                         outputExtent[ iCoord2+1 ] = gridExtent[ iCoord2+1 ] - gridExtent[ iCoord2 ]
@@ -882,8 +886,8 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                     self.roi[1] = float( values[0] )
                     self.roi[3] = float( values[1] )
                 elif type.startswith('lon' ):
-                    self.roi[0] = float( values[0] )
-                    self.roi[2] = float( values[1] )                   
+                    self.roi[0] = normalize_lon( float( values[0] ) )
+                    self.roi[2] = normalize_lon( float( values[1] ) )                  
         if not self.timeRange[2]:
             dataset_list = []
             start_time, end_time, min_dt  = -float('inf'), float('inf'), float('inf')

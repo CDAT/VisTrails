@@ -133,12 +133,12 @@ def str2bool( value ):
     return value.strip().lower()[0] == 't'
 
 def serializeStrMap( strMap ): 
-    return ';'.join( [ '+'.join(dsitems) for dsitems in strMap.items() ] )
+    return ';'.join( [ '#'.join(dsitems) for dsitems in strMap.items() ] )
               
 def deserializeStrMap( serialized_strMap ): 
     stringMap = {}
     for dsrec in serialized_strMap.split(';'):
-        dsitems = dsrec.split('+')
+        dsitems = dsrec.split('#')
         if len( dsitems ) == 2: stringMap[ dsitems[0] ] = dsitems[1]
     return stringMap
 
