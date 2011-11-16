@@ -834,7 +834,7 @@ class QVistrailsWindow(QVistrailViewWindow):
         self._previous_view = None
         self._is_quitting = False
         self._first_view = True
-        self.use_uvcdat_window = False
+        #self.use_uvcdat_window = False
         self.connect(QtGui.QApplication.clipboard(),
                      QtCore.SIGNAL('dataChanged()'),
                      self.clipboard_changed)

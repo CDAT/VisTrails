@@ -37,7 +37,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         #init user options
         self.initCustomize(customPath,styles)
         self.root = self
-        self.tool_bar = mainToolbarWidget.QMainToolBarContainer(self)
+        #self.tool_bar = mainToolbarWidget.QMainToolBarContainer(self)
         self.canvas=[]
         for i in range(4):
             self.canvas.append(vcs.init())
@@ -112,10 +112,10 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.dockPlot = DockPlot(self)
         self.dockVariable = DockVariable(self)
         self.workspace = Workspace(self)
-        self.workspace.addProject()
-        self.workspace.addProject()
-        self.workspace.addProject()
-        self.workspace.addProject()
+        self.workspace.addProject("Relative Humidity")
+        self.workspace.addProject("Total Cloudiness")
+        self.workspace.addProject("Temperature Anomaly")
+        #self.workspace.addProject()
         self.dockCalculator = DockCalculator(self)
         
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.workspace)

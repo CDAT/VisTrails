@@ -50,7 +50,7 @@ from core.modules.vistrails_module import (Module, NotCacheable,
                                            ModuleError, new_module)
 from core.bundles import py_import
 from gui.shell import QShellDialog
-from gui.uvcdat.mainwindow import UVCDATMainWindow
+#from gui.uvcdat.mainwindow import UVCDATMainWindow
 
 import os, sys
 #import qtbrowser
@@ -65,6 +65,7 @@ from cdat_cell import QCDATWidget, CDATCell, Variable, GraphicsMethod, Gfb
 from quickplot import quickplot
 from translator import QTranslator
 from plot_registry import PlotRegistry
+
 
 vt_type_dict = {}
 def get_late_type(type):
@@ -13873,31 +13874,27 @@ def initialize(*args, **keywords):
     try:
         builder_window = api.get_builder_window()
         shell = QShellDialog.instance().shell
-        builder_window.use_uvcdat_window = True
+        #builder_window.use_uvcdat_window = True
     except api.NoGUI:
         shell = None
     translator = QTranslator(shell=shell)
-    cdatWindow = UVCDATMainWindow()
+    
+    #cdatWindow = UVCDATMainWindow()
     #plotRegistry = PlotRegistry(cdatWindow)
     #plotRegistry.loadPlots()    
     #plotRegistry.registerPlots()
-    cdatWindow.show()
-    visApp = QtCore.QCoreApplication.instance()
-    if visApp:
-        visApp.setActiveWindow(cdatWindow)
+    #cdatWindow.show()
+    #visApp = QtCore.QCoreApplication.instance()
+    #if visApp:
+    #    visApp.setActiveWindow(cdatWindow)
     #translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
     #                       translator.commandsReceived)
-    translator.connect(cdatWindow, QtCore.SIGNAL("showVisTrails"),
-                       translator.showVisTrails)
-    translator.connect(cdatWindow, QtCore.SIGNAL("closeVisTrails"),
-                       translator.closeVisTrails)
+    #translator.connect(cdatWindow, QtCore.SIGNAL("showVisTrails"),
+    #                   translator.showVisTrails)
+    #translator.connect(cdatWindow, QtCore.SIGNAL("closeVisTrails"),
+    #                   translator.closeVisTrails)
 
     # end of cdatwindow_init_inc.py
     ##########################################################################
 
     
-
-def finalize():
-    global plotRegistry
-    global cdatWindow
-    cdatWindow.close()

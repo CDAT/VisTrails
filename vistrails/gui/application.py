@@ -552,10 +552,8 @@ parameters from other instances")
         
         self.process_interactive_input()
         if not self.temp_configuration.showSpreadsheetOnly:
-            if not self.builderWindow.use_uvcdat_window:
-                self.showBuilderWindow()
-            else:
-                self.builderWindow.hide()
+            self.builderWindow.hide()
+            self.uvcdatWindow.show()
         self.builderWindow.create_first_vistrail()
 
     def noninteractiveMode(self):
@@ -710,9 +708,13 @@ parameters from other instances")
         # have to. Otherwise, requirements are checked too late.
         # from gui.builder_window import QBuilderWindow
         from gui.vistrails_window import QVistrailsWindow
-
+        from gui.uvcdat.mainwindow import UVCDATMainWindow
         # self.builderWindow = QBuilderWindow()
         self.builderWindow = QVistrailsWindow()
+        
+        #probably uvcdatWindow will replace builderWindow. For now we create
+        #both of them and hide the builderWindow.
+        self.uvcdatWindow = UVCDATMainWindow()
         if not self.temp_configuration.showSpreadsheetOnly:
             # self.builderWindow.show()
             # self.setActiveWindow(self.builderWindow)
