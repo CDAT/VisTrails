@@ -152,16 +152,16 @@ class QShellDialog(QtGui.QWidget, QVistrailsPaletteInterface):
         self.shell.saveSession(str(fileName))
 
     def visibility_changed(self, visible):
-        from gui.vistrails_window import _app
         QVistrailsPaletteInterface.visibility_changed(self, visible)
         if visible:
-            controller = _app.get_current_controller()
-            self.shell.set_controller(controller)
             self.shell.show()
             
         else:
             self.shell.hide()
 
+    def set_controller(self, controller):
+        self.shell.set_controller(controller)
+        
 ##############################################################################
 # QShell
         
@@ -639,7 +639,7 @@ class QShell(QtGui.QTextEdit):
         Set the current VistrailController on the shell.
         """
         self.controller = controller
-        if controller:
+        if controller and self.controller.current_pipeline:
             self.interpreter.active_pipeline = self.controller.current_pipeline
             cmd = 'run_pipeline = self.shell.run_pipeline'
             self.interpreter.runcode(cmd)
