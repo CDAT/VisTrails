@@ -884,6 +884,9 @@ class QVistrailsWindow(QVistrailViewWindow):
                 self.register_notification(notification_id, method, True, view)
 
         QWorkspaceWindow.instance().add_vt_window(view)
+        from api import _app
+        if _app.uvcdatWindow:
+            _app.uvcdatWindow.workspace.add_project(view)
 
         return view
 
@@ -897,6 +900,9 @@ class QVistrailsWindow(QVistrailViewWindow):
             window = self.windows[view]
             window.close()
         QWorkspaceWindow.instance().remove_vt_window(view)
+        from api import _app
+        if _app.uvcdatWindow:
+            _app.uvcdatWindow.workspace.remove_project(view)
 
     def view_triggered(self, action):
         #print "VIEW_TRIGGERED", action
@@ -1356,6 +1362,9 @@ class QVistrailsWindow(QVistrailViewWindow):
 
         from gui.collection.workspace import QWorkspaceWindow
         QWorkspaceWindow.instance().change_vt_window(new_view)
+        from api import _app
+        if _app.uvcdatWindow:
+            _app.uvcdatWindow.workspace.change_project(new_view)
         self.update_merge_menu()
         self.update_window_menu()
         self.update_recent_vistrail_menu()
@@ -1532,6 +1541,10 @@ class QVistrailsWindow(QVistrailViewWindow):
             from gui.collection.workspace import QWorkspaceWindow
             QWorkspaceWindow.instance().remove_vt_window(view)
             QWorkspaceWindow.instance().add_vt_window(view)
+            from api import _app
+            if _app.uvcdatWindow:
+                _app.uvcdatWindow.workspace.remove_project(view)
+                _app.uvcdatWindow.workspace.add_project(view)
             return view
         except Exception, e:
             import traceback

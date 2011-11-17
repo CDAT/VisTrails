@@ -20,7 +20,6 @@ import gui.uvcdat.uvcdat_rc
 #from packages.spreadsheet.spreadsheet_registry import spreadsheetRegistry
 #from packages.spreadsheet.spreadsheet_window import SpreadsheetWindow
 #from packages.spreadsheet.spreadsheet_tabcontroller import StandardWidgetTabController 
-
 from qtbrowser import customizeVCDAT
 from qtbrowser import commandsRecorderWidget
 from qtbrowser import preferencesWidget
@@ -112,9 +111,9 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.dockPlot = DockPlot(self)
         self.dockVariable = DockVariable(self)
         self.workspace = Workspace(self)
-        self.workspace.addProject("Relative Humidity")
-        self.workspace.addProject("Total Cloudiness")
-        self.workspace.addProject("Temperature Anomaly")
+        #self.workspace.addProject("Relative Humidity")
+        #self.workspace.addProject("Total Cloudiness")
+        #self.workspace.addProject("Temperature Anomaly")
         #self.workspace.addProject()
         self.dockCalculator = DockCalculator(self)
         
