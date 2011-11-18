@@ -85,7 +85,7 @@ class Workspace(QtGui.QDockWidget):
         self.btnCloseProject.setIconSize(QtCore.QSize(22, 22))
         self.horizontalLayout.addWidget(self.btnCloseProject)
 
-        spacerItem = QtGui.QSpacerItem(207, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        spacerItem = QtGui.QSpacerItem(100, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem)
         self.verticalLayout.addWidget(self.toolsProject)
         self.treeProjects = QtGui.QTreeWidget(self.dockWidgetContents)
