@@ -1,7 +1,7 @@
 from PyQt4 import QtCore, QtGui
-from qtbrowser.plotViewWidget import QPlotOptionsWidget
-from qtbrowser.vcsPlotControllerWidget import QVCSPlotController
-from qtbrowser.vcsPageLayoutWidget import QPageLayoutWidget
+from plotViewWidget import QPlotOptionsWidget
+from vcsPlotControllerWidget import QVCSPlotController
+from vcsPageLayoutWidget import QPageLayoutWidget
 import vcs
 
 class PlotProperties(QtGui.QWidget):

@@ -20,11 +20,12 @@ import gui.uvcdat.uvcdat_rc
 #from packages.spreadsheet.spreadsheet_registry import spreadsheetRegistry
 #from packages.spreadsheet.spreadsheet_window import SpreadsheetWindow
 #from packages.spreadsheet.spreadsheet_tabcontroller import StandardWidgetTabController 
-from qtbrowser import customizeVCDAT
-from qtbrowser import commandsRecorderWidget
-from qtbrowser import preferencesWidget
-from qtbrowser import mainMenuWidget
-from qtbrowser import mainToolbarWidget
+
+import customizeUVCDAT
+import commandsRecorderWidget
+import preferencesWidget
+import mainMenuWidget
+import mainToolbarWidget
 
 class UVCDATMainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None,customPath=None,styles=None):
@@ -50,33 +51,33 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         # Init Menu Widget
         ###########################################################
         self.mainMenu = mainMenuWidget.QMenuWidget(self)
-        self.embedSpreadsheet()
         self.createDockWindows()
         self.createActions()
         self.updateMenuActions()
         self.connectSignals()
-
+        self.embedSpreadsheet()
+        
     def initCustomize(self,customPath,styles):
         if customPath is None:
-            customPath=os.path.join(os.environ["HOME"],"PCMDI_GRAPHICS","customizeVCDAT.py")
+            customPath=os.path.join(os.environ["HOME"],"PCMDI_GRAPHICS","customizeUVCDAT.py")
             
         if os.path.exists(customPath):
-            execfile(customPath,customizeVCDAT.__dict__,customizeVCDAT.__dict__)
+            execfile(customPath,customizeUVCDAT.__dict__,customizeUVCDAT.__dict__)
 
         if styles is None:
-            styles=customizeVCDAT.appStyles
+            styles=customizeUVCDAT.appStyles
             
-        icon = QtGui.QIcon(customizeVCDAT.appIcon)
+        icon = QtGui.QIcon(customizeUVCDAT.appIcon)
         self.setWindowIcon(icon)
 
         ## cdms2 setup section
-        cdms2.axis.time_aliases+=customizeVCDAT.timeAliases
-        cdms2.axis.level_aliases+=customizeVCDAT.levelAliases
-        cdms2.axis.latitude_aliases+=customizeVCDAT.latitudeAliases
-        cdms2.axis.longitude_aliases+=customizeVCDAT.longitudeAliases
-        cdms2.setNetcdfShuffleFlag(customizeVCDAT.ncShuffle)
-        cdms2.setNetcdfDeflateFlag(customizeVCDAT.ncDeflate)
-        cdms2.setNetcdfDeflateLevelFlag(customizeVCDAT.ncDeflateLevel)
+        cdms2.axis.time_aliases+=customizeUVCDAT.timeAliases
+        cdms2.axis.level_aliases+=customizeUVCDAT.levelAliases
+        cdms2.axis.latitude_aliases+=customizeUVCDAT.latitudeAliases
+        cdms2.axis.longitude_aliases+=customizeUVCDAT.longitudeAliases
+        cdms2.setNetcdfShuffleFlag(customizeUVCDAT.ncShuffle)
+        cdms2.setNetcdfDeflateFlag(customizeUVCDAT.ncDeflate)
+        cdms2.setNetcdfDeflateLevelFlag(customizeUVCDAT.ncDeflateLevel)
         
         ## StylesSheet
         st=""

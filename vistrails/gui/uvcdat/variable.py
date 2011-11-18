@@ -3,11 +3,12 @@ from PyQt4 import QtCore, QtGui
 import os
 import cdms2
 
-from qtbrowser.esgf import QEsgfBrowser
-from qtbrowser.commandLineWidget import QCommandLine
+from esgf import QEsgfBrowser
+from commandLineWidget import QCommandLine
 import axesWidgets
-from qtbrowser import vcdatCommons
-from qtbrowser import customizeVCDAT
+from roiSelector import *
+import uvcdatCommons
+import customizeUVCDAT
 import editVariableWidget
 
 class VariableProperties(QtGui.QDialog):
@@ -17,6 +18,7 @@ class VariableProperties(QtGui.QDialog):
         
     def __init__(self, parent=None,mode="add"):
         super(VariableProperties, self).__init__(parent)
+        self.roi = [ -180.0, -90.0, 180.0, 90.0 ]
         self.ask = QtGui.QInputDialog()
         self.ask.setWindowModality(QtCore.Qt.WindowModal)
         self.ask.setLabelText("This variable already exist!\nPlease change its name bellow or press ok to replace it\n")
@@ -118,7 +120,7 @@ class VariableProperties(QtGui.QDialog):
             
         if duplicate is False:
             self.bookmarksList.addItem(txt)
-            customizeVCDAT.fileBookmarks.append(txt)
+            customizeUVCDAT.fileBookmarks.append(txt)
             
     def createFileTab(self):
         #Top Part
@@ -149,7 +151,7 @@ class VariableProperties(QtGui.QDialog):
         h=QtGui.QHBoxLayout()
         l=QtGui.QLabel("History:")
         l.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Preferred)
-        self.historyList=vcdatCommons.QDragListWidget(type="history")
+        self.historyList=uvcdatCommons.QDragListWidget(type="history")
         #self.historyList.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Minimum)
         self.historyList.setAlternatingRowColors(True)
         for i in self.parent.historyList:
@@ -161,11 +163,11 @@ class VariableProperties(QtGui.QDialog):
         h=QtGui.QHBoxLayout()
         l=QtGui.QLabel("Bookmarks:")
         l.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Preferred)
-        self.bookmarksList=vcdatCommons.QDragListWidget(type="bookmarks",dropTypes=["history"])
+        self.bookmarksList=uvcdatCommons.QDragListWidget(type="bookmarks",dropTypes=["history"])
         #self.bookmarksList.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Minimum)
         self.bookmarksList.setAlternatingRowColors(True)
         self.bookmarksList.setSortingEnabled(True)
-        for f in customizeVCDAT.fileBookmarks:
+        for f in customizeUVCDAT.fileBookmarks:
             self.addBookmark(f)
             
         h.addWidget(l)
@@ -204,9 +206,31 @@ class VariableProperties(QtGui.QDialog):
 
     def createDimensions(self):
         self.dimsLayout=QtGui.QVBoxLayout()
+        labelLayout = QtGui.QHBoxLayout()
         l=QtGui.QLabel("Dimensions")
-        self.dimsLayout.addWidget(l)
-        self.dims.setLayout(self.dimsLayout)
+        labelLayout.addWidget(l)
+        
+        selectRoiButton = QtGui.QPushButton('Select ROI', self)
+        labelLayout.addWidget( selectRoiButton )        
+        self.connect( selectRoiButton, QtCore.SIGNAL('clicked(bool)'), self.selectRoi )        
+        self.roiSelector = ROISelectionDialog( self.parent )
+        self.connect(self.roiSelector, QtCore.SIGNAL('doneConfigure()'), self.setRoi )
+        if self.roi: self.roiSelector.setROI( self.roi )
+        
+        self.dimsLayout.addLayout( labelLayout )
+        self.dims.setLayout( self.dimsLayout )
+
+    def selectRoi( self ): 
+        if self.roi: self.roiSelector.setROI( self.roi )
+        self.roiSelector.show()
+
+    def setRoi(self):
+        self.roi = self.roiSelector.getROI()
+        self.updateAxes()
+        
+    def updateAxes(self):
+        print "Selected roi: %s " % str( self.roi )
+        # Add code here to update Lat Lon sliders.
         
     def openSelectFileDialog(self):
         file = QtGui.QFileDialog.getOpenFileName(self, 'Open CDAT data file...',

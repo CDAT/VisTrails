@@ -1,7 +1,7 @@
 from PyQt4 import QtCore, QtGui
 
 from gui.uvcdat.ui_workspace import Ui_Workspace
-from qtbrowser import customizeVCDAT
+import customizeUVCDAT
 
 class QProjectItem(QtGui.QTreeWidgetItem):
     def __init__(self, view=None, name='', parent=None):

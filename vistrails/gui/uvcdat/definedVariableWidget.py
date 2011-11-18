@@ -1,8 +1,8 @@
 from PyQt4 import QtGui, QtCore
 import os
 import cdms2
-from qtbrowser import vcdatCommons
-from qtbrowser import customizeVCDAT
+import uvcdatCommons
+import customizeUVCDAT
 import editVariableWidget
 import axesWidgets
 import  __main__
@@ -14,7 +14,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
 
     def __init__(self, parent=None):
         QtGui.QWidget.__init__(self, parent)
-        self.setMinimumWidth(5*(customizeVCDAT.iconsize*1.5))
+        self.setMinimumWidth(5*(customizeUVCDAT.iconsize*1.5))
         self.quickplotItem = None
         self.historyList=[]
         self.root=parent.root
@@ -43,7 +43,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         ## vbox.addWidget(self.command_line)
 
         # Create List for defined variables and add it to the layout
-        self.varList = vcdatCommons.QDragListWidget(type="definedVariables")
+        self.varList = uvcdatCommons.QDragListWidget(type="definedVariables")
         self.varList.setToolTip("You can Drag and Drop Variables into most 'white' boxes")
         self.varList.setAlternatingRowColors(True)
         self.varList.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
@@ -370,11 +370,11 @@ class QDefinedVariableWidget(QtGui.QWidget):
         varProp.show()
                 
     def createToolbar(self):
-        ICONPATH = customizeVCDAT.ICONPATH
+        ICONPATH = customizeUVCDAT.ICONPATH
 
         # Create options bar
         self.toolBar = QtGui.QToolBar()
-        self.toolBar.setIconSize(QtCore.QSize(customizeVCDAT.iconsize,customizeVCDAT.iconsize))
+        self.toolBar.setIconSize(QtCore.QSize(customizeUVCDAT.iconsize,customizeUVCDAT.iconsize))
         actionInfo = [
             ('symbol_add.ico', "add",'Add variable(s).',self.newVariable),
             ('symbol_delete.ico', "del",'Delete selected defined variable(s).',self.trashVariable),
