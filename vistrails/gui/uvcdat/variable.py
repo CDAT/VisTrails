@@ -11,6 +11,11 @@ import uvcdatCommons
 import customizeUVCDAT
 import editVariableWidget
 
+# Paraview related imports
+from paraviewconnection import ParaViewConnectionDialog
+from pvprocessfile import PVProcessFile
+from pvtabwidget import PVTabWidget
+
 class VariableProperties(QtGui.QDialog):
     FILTER = "CDAT data (*.cdms *.ctl *.dic *.hdf *.nc *.xml)"
 
@@ -58,12 +63,16 @@ class VariableProperties(QtGui.QDialog):
         if mode=="add":
             self.createFileTab()
             self.createESGFTab()
+	    self.createPVTab()
         self.createInfoTab()
         if mode=="edit":
             self.createEditTab()
         self.createDimensions()
         self.connectSignals()
         sp.setStretchFactor(0,2)
+	self._paraviewConnectionDialog = ParaViewConnectionDialog(self)
+        self._pvProcessFile = PVProcessFile()
+	
     ## @classmethod
     ## def instance(klass):
     ##     if not hasattr(klass, '_instance'):
@@ -89,6 +98,9 @@ class VariableProperties(QtGui.QDialog):
         ## Define button
         self.btnDefine.clicked.connect(self.defineVarClicked)
         self.connect(self,QtCore.SIGNAL('definedVariableEvent'),self.root.dockVariable.widget().addVariable)
+	
+	# Paraview
+	self.pvTabWidget.serverConnectButton.clicked.connect(self.onClickConnectServer)
 
     def checkTargetVarName(self):
         result = None
@@ -445,3 +457,62 @@ class VariableProperties(QtGui.QDialog):
         #kwargs['squeeze'] = 0
         kwargs['order'] = axisList.getAxesOrderString()
         return kwargs
+    
+    def openRemoteFile(self):
+        fileName = QtGui.QFileDialog.getOpenFileName(self, 
+                                                     "%s - Select File" % QtGui.QApplication.applicationName(),
+                                                     QtCore.QDir.homePath(), "Files (%s)" % " ".join("*.*"))
+        return fileName
+
+    def populateVariables(self, variables):
+	# @NOTE: Commented out for now until we figure out
+	# where do we add variables.
+        #self.listWidget.addItems(variables)
+	return
+
+    def processFile(self, fileName):
+        print fileName
+        self._pvProcessFile.setFileName(fileName)
+        print self._pvProcessFile.getPointVariables()
+        print self._pvProcessFile.getCellVariables()
+
+        # First clear all previous entries
+	# @NOTE (Aashish) Commented out for now
+        #self.listWidget.clear()
+
+        # Now populate (in the case of POP, we will have have only Variables)
+        self.populateVariables(self._pvProcessFile.getPointVariables())
+        self.populateVariables(self._pvProcessFile.getCellVariables())
+
+        # Set focus on default tab
+        self.originTabWidget.setCurrentIndex(0)
+
+    def updateConnectionStatus(self, isConnected):
+        if isConnected:
+            self.pvTabWidget.serverConnectButton.setText("Connected")
+        else:
+            self.pvTabWidget.serverConnectButton.setText("Connect")
+
+    def selectRemoteFile(self):
+        fileName = self.openRemoteFile()
+        self.processFile(fileName)
+
+    def onClickConnectServer(self):
+        isConnected = self._paraviewConnectionDialog.isConnected()
+        self.updateConnectionStatus(isConnected);
+        if isConnected:
+            self.selectRemoteFile()
+        else:
+            accepted = self._paraviewConnectionDialog.exec_()
+	    if accepted == QtGui.QDialog.Rejected:
+		return
+            self._paraviewConnectionDialog.connect()
+            isConnected = self._paraviewConnectionDialog.isConnected()	    
+            if isConnected:		
+                self.selectRemoteFile()
+
+            self.updateConnectionStatus(isConnected);	    
+	    
+    def createPVTab(self):        
+	self.pvTabWidget = PVTabWidget(self)	
+        self.originTabWidget.addTab(self.pvTabWidget,"ParaView")
