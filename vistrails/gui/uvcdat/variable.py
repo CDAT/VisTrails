@@ -465,9 +465,10 @@ class VariableProperties(QtGui.QDialog):
         return fileName
 
     def populateVariables(self, variables):
-	# @NOTE: Commented out for now until we figure out
-	# where do we add variables.
-        #self.listWidget.addItems(variables)
+	# @NOTE (Aashish): Commented out for now until
+	# we know the right thing to do
+	#for variable in variables:
+	    #self.varCombo.addItem(variable)
 	return
 
     def processFile(self, fileName):
