@@ -63,16 +63,16 @@ class VariableProperties(QtGui.QDialog):
         if mode=="add":
             self.createFileTab()
             self.createESGFTab()
-	    self.createPVTab()
+            self.createPVTab()
         self.createInfoTab()
         if mode=="edit":
             self.createEditTab()
         self.createDimensions()
         self.connectSignals()
         sp.setStretchFactor(0,2)
-	self._paraviewConnectionDialog = ParaViewConnectionDialog(self)
+        self._paraviewConnectionDialog = ParaViewConnectionDialog(self)
         self._pvProcessFile = PVProcessFile()
-	
+        
     ## @classmethod
     ## def instance(klass):
     ##     if not hasattr(klass, '_instance'):
@@ -93,14 +93,15 @@ class VariableProperties(QtGui.QDialog):
             self.connect(self.varCombo, QtCore.SIGNAL('currentIndexChanged(const QString&)'),
                          self.variableSelected)
             self.connect(self.bookmarksList,QtCore.SIGNAL("droppedInto"),self.droppedBookmark)
+            
+            # Paraview
+            self.pvTabWidget.serverConnectButton.clicked.connect(self.onClickConnectServer)
+        
         self.connect(self.root.dockVariable.widget(),QtCore.SIGNAL("setupDefinedVariableAxes"),self.varAddedToDefined)
 
         ## Define button
         self.btnDefine.clicked.connect(self.defineVarClicked)
         self.connect(self,QtCore.SIGNAL('definedVariableEvent'),self.root.dockVariable.widget().addVariable)
-	
-	# Paraview
-	self.pvTabWidget.serverConnectButton.clicked.connect(self.onClickConnectServer)
 
     def checkTargetVarName(self):
         result = None
@@ -256,6 +257,7 @@ class VariableProperties(QtGui.QDialog):
         self.updateFile()
 
     def updateFile(self):
+        self.cdmsFile = None
         fnm = self.fileEdit.text()
         fi = QtCore.QFileInfo(fnm)
         ft = str(fi.suffix())
@@ -270,7 +272,7 @@ class VariableProperties(QtGui.QDialog):
         # CDAT will know how to deal with them.
         if fi.exists() or fn[:7]=="http://":
             if fi.exists():
-            	self.root.dockVariable.lastDirectory=str(fi.dir().path())
+                self.root.dockVariable.lastDirectory=str(fi.dir().path())
             self.emit(QtCore.SIGNAL('fileChanged'), str(fnm))
             other_list = []
             for name, types in VariableProperties.FILETYPE.iteritems():
@@ -377,8 +379,23 @@ class VariableProperties(QtGui.QDialog):
 
         
     def defineVarClicked(self,*args):
-        self.getUpdatedVarCheck()
-
+        if self.originTabWidget.currentIndex() in [0, 1]:
+            self.getUpdatedVarCheck()
+        elif self.originTabWidget.currentIndex() == 2:
+            #paraview
+            self.getVarFromPVTab()
+            
+    def getVarFromPVTab(self):
+        filename = self._pvProcessFile._fileName
+        varName = str(self.pvTabWidget.cbVar.currentText())
+        kwargs ={}
+        
+        #FIXME: need to check if the variable already exists
+        self.root.dockVariable.widget().addVariable(varName,type="ParaView")
+        from api import _app
+        controller = _app.uvcdatWindow.get_current_project_controller()
+        controller.add_defined_variable(filename, varName, kwargs)
+        
     def getUpdatedVarCheck(self,targetId=None):
         """ Return a new tvariable object with the updated information from
         evaluating the var with the current user selected args / options
@@ -438,8 +455,18 @@ class VariableProperties(QtGui.QDialog):
         if self.root.preferences.squeeze.isChecked():
             updatedVar=updatedVar(squeeze=1)
             self.root.record("%s = %s(squeeze=1)" % (targetId,targetId))
+            kwargs['squeeze']=1
 
         self.emit(QtCore.SIGNAL('definedVariableEvent'),updatedVar)
+        
+        # Send information to controller so the Variable can be reconstructed
+        # later. The best way is by emitting a signal to be processed by the
+        # main window. When this panel becomes a global panel, then we will do
+        # that. For now I will talk to the main window directly.
+        
+        from api import _app
+        controller = _app.uvcdatWindow.get_current_project_controller()
+        controller.add_defined_variable(self.cdmsFile.id,targetId,kwargs)
         self.updateVarInfo(axisList)
         return updatedVar
     
@@ -465,11 +492,9 @@ class VariableProperties(QtGui.QDialog):
         return fileName
 
     def populateVariables(self, variables):
-	# @NOTE (Aashish): Commented out for now until
-	# we know the right thing to do
-	#for variable in variables:
-	    #self.varCombo.addItem(variable)
-	return
+        # @NOTE (Aashish): Commented out for now until
+        # we know the right thing to do
+        self.pvTabWidget.populateVars(variables)
 
     def processFile(self, fileName):
         print fileName
@@ -478,7 +503,7 @@ class VariableProperties(QtGui.QDialog):
         print self._pvProcessFile.getCellVariables()
 
         # First clear all previous entries
-	# @NOTE (Aashish) Commented out for now
+        # @NOTE (Aashish) Commented out for now
         #self.listWidget.clear()
 
         # Now populate (in the case of POP, we will have have only Variables)
@@ -505,15 +530,15 @@ class VariableProperties(QtGui.QDialog):
             self.selectRemoteFile()
         else:
             accepted = self._paraviewConnectionDialog.exec_()
-	    if accepted == QtGui.QDialog.Rejected:
-		return
+            if accepted == QtGui.QDialog.Rejected:
+                return
             self._paraviewConnectionDialog.connect()
-            isConnected = self._paraviewConnectionDialog.isConnected()	    
-            if isConnected:		
+            isConnected = self._paraviewConnectionDialog.isConnected()      
+            if isConnected:             
                 self.selectRemoteFile()
 
-            self.updateConnectionStatus(isConnected);	    
-	    
+            self.updateConnectionStatus(isConnected);       
+            
     def createPVTab(self):        
-	self.pvTabWidget = PVTabWidget(self)	
+        self.pvTabWidget = PVTabWidget(self)    
         self.originTabWidget.addTab(self.pvTabWidget,"ParaView")

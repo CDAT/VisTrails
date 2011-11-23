@@ -418,7 +418,7 @@ after self.init()"""
                     if hasattr(locator, '_mshpversion'):
                         mashupversion = locator._mshpversion
                     if not self.temp_configuration.showSpreadsheetOnly:
-                        self.showBuilderWindow()
+                        self.showWindow(self.builderWindow)
                     self.builderWindow.open_vistrail_without_prompt(locator,
                                                     version, execute,
                                                     mashuptrail=mashuptrail, 
@@ -531,13 +531,13 @@ parameters from other instances")
             return r
         return True
 
-    def showBuilderWindow(self):
+    def showWindow(self, window):
         # in some systems (Linux and Tiger) we need to make both calls
         # so builderWindow is activated
-        self.setActiveWindow(self.builderWindow)
-        self.builderWindow.activateWindow()
-        self.builderWindow.show()
-        self.builderWindow.raise_()
+        self.setActiveWindow(window)
+        window.activateWindow()
+        window.show()
+        window.raise_()
     
     def interactiveMode(self):
         """ interactiveMode() -> None
@@ -553,7 +553,7 @@ parameters from other instances")
         self.process_interactive_input()
         if not self.temp_configuration.showSpreadsheetOnly:
             self.builderWindow.hide()
-            self.uvcdatWindow.show()
+            self.showWindow(self.uvcdatWindow)
         self.builderWindow.create_first_vistrail()
 
     def noninteractiveMode(self):

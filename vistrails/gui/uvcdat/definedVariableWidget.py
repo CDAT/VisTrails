@@ -157,15 +157,18 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 it.varName = v.id
                 self.root.stick_defvar_into_main_dict(v)
             
-    def addVariable(self, var):
+    def addVariable(self, var, type='CDMS'):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
         """
-        self.root.stick_defvar_into_main_dict(var)
-        item = QDefinedVariableItem(var,self.root)
-        for i in range(self.varList.count()-1,-1,-1):
-            if self.varList.item(i).getVarName() == var.id:
-                self.varList.takeItem(i)
+        if type == 'CDMS':
+            self.root.stick_defvar_into_main_dict(var)
+            item = QDefinedVariableItem(var,self.root)
+            for i in range(self.varList.count()-1,-1,-1):
+                if self.varList.item(i).getVarName() == var.id:
+                    self.varList.takeItem(i)
+        else:
+            item = QtGui.QTreeWidgetItem(QtCore.QStringList(var))
         self.varList.addItem(item)
         # Recording define variable teaching command
 #        self.recordDefineVariableTeachingCommand(varName, var.id, file, axesArgString)

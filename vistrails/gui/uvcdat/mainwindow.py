@@ -119,8 +119,9 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.dockCalculator = DockCalculator(self)
         
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.workspace)
-        self.tabifyDockWidget(self.workspace, self.dockTemplate)
-        self.tabifyDockWidget(self.workspace, self.dockPlot)
+        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.dockTemplate)
+        #self.tabifyDockWidget(self.workspace, self.dockTemplate)
+        self.tabifyDockWidget(self.dockTemplate, self.dockPlot)
         self.workspace.raise_()
 
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockVariable)
@@ -142,7 +143,8 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.ui.menuWindow.addAction(self.showBuilderWindowAct)
         
     def showBuilderWindowActTriggered(self):
-        self.emit(QtCore.SIGNAL("showVisTrails"))
+        from gui.vistrails_window import _app
+        _app.show()
         
     def connectSignals(self):
         self.ui.actionExit.triggered.connect(self.quit)
@@ -169,7 +171,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
     def embedSpreadsheet(self):
         self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
         self.setCentralWidget(self.spreadsheetWindow)
-        self.spreadsheetWindow.tabController.currentWidget().setDimension(2,2)
+        self.spreadsheetWindow.tabController.currentWidget().setDimension(2,1)
         self.spreadsheetWindow.tabController.currentWidget().rowSpinBoxChanged()
         self.spreadsheetWindow.tabController.currentWidget().colSpinBoxChanged()
         self.spreadsheetWindow.tabController.setDocumentMode(True)
@@ -224,3 +226,6 @@ class UVCDATMainWindow(QtGui.QMainWindow):
             elif isinstance(v,dict):
                 self.processList(dict.values(),added)
         return
+
+    def get_current_project_controller(self):
+        return self.workspace.get_current_project_controller()

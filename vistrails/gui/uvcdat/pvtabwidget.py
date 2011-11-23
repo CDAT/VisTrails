@@ -12,3 +12,7 @@ class PVTabWidget(QtGui.QTabWidget, Ui_PVTabWidget):
     #def connectSignals(self):
     #    self.buttonBox.accepted.connect(self.onAccepted)
     #    self.buttonBox.rejected.connect(self.close)  
+    def populateVars(self, variables):
+        self.cbVar.clear()
+        for variable in variables:
+            self.cbVar.addItem(variable)
