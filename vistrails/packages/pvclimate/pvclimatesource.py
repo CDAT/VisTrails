@@ -30,12 +30,12 @@ on its inputs."""
         # stored on the port, the method will return None.
         fileName = self.getInputFromPort("fileName")
         variableName = self.getInputFromPort("variableName")
-        variableType = self.getInputFromPort("variableType")
+        #variableType = self.getInputFromPort("variableType")
         reader = pvsp.XMLRectilinearGridReader(FileName=fileName)
         pvvarInstance = pvvariable.PVVariable()
         pvvarInstance.set_reader(reader)
         pvvarInstance.set_variable_name(variableName);
-        pvvarInstance.set_variable_type(variableType);
+        pvvarInstance.set_variable_type("POINTS");
         self.setResult("variable", pvvarInstance)
         #self.setResult("outputVariable", inputVariable)
         #self.setResult("fileName", fileName)
@@ -71,12 +71,9 @@ def initialize():
                      (core.modules.basic_modules.String, 'File name'))
     reg.add_input_port(PVClimateSource, "variableName",
                      (core.modules.basic_modules.String, 'Input variable name'))
-    reg.add_input_port(PVClimateSource, "variableType",
-                     (core.modules.basic_modules.String, 'Input variable type'))
-    #reg.add_output_port(PVClimateSource, "variable",
-    #                 (pvvariable.PVVariable, 'Output variable'))                       
-    # @NOTE (Aashish): We are doing this completed way sinece I am not clear if there is a 
-    # sany way. Doing the way above was resulting in key error.
+    # @NOTE: Commented out for now
+    #reg.add_input_port(PVClimateSource, "variableType",
+    #                 (core.modules.basic_modules.String, 'Input variable type'))    
     reg.add_output_port(PVClimateSource, "variable", pvvariable.PVVariableConstant)
     
     # @NOTE (Aashish): Had this for testing
