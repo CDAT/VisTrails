@@ -336,18 +336,18 @@ class QPlotView(QtGui.QWidget):
                     nplotted+=1
                     template = str(h.itemAt(2).widget().widget.text())
                     ## Ok now figures out the Canvas
-                    if qtbrowser.useVistrails:
-                        col = str(h.itemAt(h.count()-1).widget().widget.currentText())
-                        row = str(h.itemAt(h.count()-2).widget().widget.currentText())
-                        sheet = str(h.itemAt(h.count()-3).widget().widget.currentText())
-                    else:
-                        icanvas = h.itemAt(h.count()-1).widget().widget.currentIndex()
-                        if not icanvas in cleared:
-                            cleared.append(icanvas)
-                            self.root.record("## Clearing vcs canvas %i" % icanvas)
-                            self.root.record("vcs_canvas[%i].clear()" % icanvas)
-                            self.root.canvas[icanvas].clear()
-                        
+                    #if qtbrowser.useVistrails:
+                    col = str(h.itemAt(h.count()-1).widget().widget.currentText())
+                    row = str(h.itemAt(h.count()-2).widget().widget.currentText())
+                    sheet = str(h.itemAt(h.count()-3).widget().widget.currentText())
+#                    else:
+#                        icanvas = h.itemAt(h.count()-1).widget().widget.currentIndex()
+#                        if not icanvas in cleared:
+#                            cleared.append(icanvas)
+#                            self.root.record("## Clearing vcs canvas %i" % icanvas)
+#                            self.root.record("vcs_canvas[%i].clear()" % icanvas)
+#                            self.root.canvas[icanvas].clear()
+#                        
                     if template == "":
                         ##Ok let's grab it from list
                         template = self.getTemplateName()
@@ -407,22 +407,22 @@ class QPlotView(QtGui.QWidget):
                     for k in plot_kargs.keys():
                         plot_args+=", %s=%s" % (k,repr(plot_kargs[k]))
                     
-                    if qtbrowser.useVistrails:
-                        if sheet == "Auto" :
-                            sheet = self.plotOptions.getSheet()
-                        if row == "Auto" :
-                            row = self.plotOptions.getRow()
-                        if col == "Auto":
-                            col = self.plotOptions.getCol()
-                        self.root.record('## Plotting into the spreadsheet')
-                        self.root.record('plot(%s,sheet=%s,row=%s,col=%s)'% (plot_args,
-                                                                sheet,
-                                                                row,
-                                                                col))
-                    else:
-                        self.root.record("## Plotting onto canvas %i" % icanvas)
-                        self.root.record("vcs_canvas[%i].plot(%s)" % (icanvas,plot_args))
-                        self.root.canvas[icanvas].plot(*vars,**plot_kargs)
+                    #if qtbrowser.useVistrails:
+                    if sheet == "Auto" :
+                        sheet = self.plotOptions.getSheet()
+                    if row == "Auto" :
+                        row = self.plotOptions.getRow()
+                    if col == "Auto":
+                        col = self.plotOptions.getCol()
+                    self.root.record('## Plotting into the spreadsheet')
+                    self.root.record('plot(%s,sheet=%s,row=%s,col=%s)'% (plot_args,
+                                                            sheet,
+                                                            row,
+                                                            col))
+#                    else:
+#                        self.root.record("## Plotting onto canvas %i" % icanvas)
+#                        self.root.record("vcs_canvas[%i].plot(%s)" % (icanvas,plot_args))
+#                        self.root.canvas[icanvas].plot(*vars,**plot_kargs)
             if self.root.tabView.currentIndex()==0:
                 self.root.definedVar.widget.unselectItems(self.root.definedVar.widget.varList.selectedItems())
         elif self.isRegisteredPlot(plotType):

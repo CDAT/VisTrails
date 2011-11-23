@@ -40,6 +40,7 @@
 ################################################################################
 from PyQt4 import QtCore, QtGui
 from spreadsheet_helpers import CellHelpers, CellResizer
+from spreadsheet_prompt import QPromptCellWidget
 
 ################################################################################
 
@@ -524,4 +525,9 @@ class StandardWidgetSheet(QtGui.QTableWidget):
         if cellWidget:
             index = self.model().index(*self.getRealLocation(row, col))
             self.delegate.updateEditorGeometry(cellWidget, None, index)
-        
+            
+    def displayPrompt(self):
+        for r in range(self.rowCount()):
+            for c in range(self.columnCount()):
+                cellWidget = QPromptCellWidget()
+                self.setCellByWidget(r, c, cellWidget)

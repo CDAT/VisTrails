@@ -22,13 +22,20 @@ class DockPlot(QtGui.QDockWidget):
     def initTree(self):
         self.uvcdat_items={}
         for k in sorted(plotTypes.keys()):
-            self.uvcdat_items[k]=QtGui.QTreeWidgetItem(None, QtCore.QStringList(k),0)
+            kitem = QtGui.QTreeWidgetItem(None, QtCore.QStringList(k),0)
+            kitem.setFlags(kitem.flags() &~QtCore.Qt.ItemIsDragEnabled)
+            self.uvcdat_items[k] = kitem
             self.plotTree.addTopLevelItem(self.uvcdat_items[k])
             for plot in plotTypes[k]:
                 item = QtGui.QTreeWidgetItem(self.uvcdat_items[k], QtCore.QStringList(plot),1)
+                item.setFlags(item.flags() & ~QtCore.Qt.ItemIsDragEnabled)
                 ## Special section here for VCS GMs they have one more layer
                 for m in self.plotTree.getMethods(item):
-                        item2 = QtGui.QTreeWidgetItem(item, QtCore.QStringList(m),2)
+                    item2 = PlotTreeWidgetItem(plot, m, QtCore.QStringList(m), item)
+        
+    def addPlotType(self, panel_type, plot_type, parent=None):
+        #FIXME: write code to add a plot type after the tree was initialized
+        pass
         #self.plotTree.expandAll()
 
 class PlotTreeWidget(QtGui.QTreeWidget):
@@ -39,6 +46,9 @@ class PlotTreeWidget(QtGui.QTreeWidget):
         self.setRootIsDecorated(False)
         self.delegate = PlotTreeWidgetItemDelegate(self, self)
         self.setItemDelegate(self.delegate)
+        self.setDragEnabled(True)
+        self.flags = QtCore.Qt.ItemIsDragEnabled
+        self.setAcceptDrops(False)
         self.connect(self,
                      QtCore.SIGNAL('itemPressed(QTreeWidgetItem *,int)'),
                      self.onItemPressed)
@@ -47,6 +57,21 @@ class PlotTreeWidget(QtGui.QTreeWidget):
                      QtCore.SIGNAL('itemDoubleClicked(QTreeWidgetItem *,int)'),
                      self.popupEditor)
 
+        
+    def mimeData(self, itemList):
+        """ mimeData(itemList) -> None        
+        Setup the mime data to contain itemList because Qt 4.2.2
+        implementation doesn't instantiate QTreeWidgetMimeData
+        anywhere as it's supposed to. It must have been a bug...
+        
+        """
+        data = QtGui.QTreeWidget.mimeData(self, itemList)
+        a = QtCore.QByteArray()
+        a.append(self.currentItem().text(0))
+        data.setData("plotType", a)
+        data.items = itemList
+        return data
+            
     def onItemPressed(self, item, column):
         """ onItemPressed(item: QTreeWidgetItem, column: int) -> None
         Expand/Collapse top-level item when the mouse is pressed
@@ -133,6 +158,12 @@ class PlotTreeWidget(QtGui.QTreeWidget):
         editorDock.setFloating(True)
         editorDock.show()
         
+class PlotTreeWidgetItem(QtGui.QTreeWidgetItem):
+    def __init__(self, plot_type, gm, labels, parent=None):
+        QtGui.QTreeWidgetItem.__init__(self, parent, labels)
+        self.plot_type = plot_type
+        self.gm = gm
+                
 class PlotTreeWidgetItemDelegate(QtGui.QItemDelegate):
     def __init__(self, view, parent):
         """ QModuleTreeWidgetItemDelegate(view: QTreeView,

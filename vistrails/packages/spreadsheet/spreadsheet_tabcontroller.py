@@ -343,6 +343,7 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         for i in reversed(range(len(self.tabWidgets))):
             t = self.tabWidgets[i]
             del self.tabWidgets[i]
+            self.disconnectTabWigetSignals(t)
             self.removeSheetReference(t)
             t.deleteAllCells()
             t.deleteLater()
@@ -363,7 +364,7 @@ class StandardWidgetTabController(QtGui.QTabWidget):
 
     def findSheet(self, sheetReference):
         """ findSheet(sheetReference: subclass(SheetReference)) -> Sheet widget
-        Find/Create a sheet that meets a certen sheet reference
+        Find/Create a sheet that meets a certain sheet reference
         
         """
         if not sheetReference:
@@ -451,6 +452,7 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         if not tabWidget in self.tabWidgets:
             self.tabWidgets.append(tabWidget)
             tabWidget.setWindowTitle(sheetLabel)
+            self.connectTabWigetSignals(tabWidget)
         return self.insertTab(index, tabWidget, sheetLabel)
 
     def tabWidgetUnderMouse(self):
@@ -816,3 +818,33 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         self.editingMode = editing
         for w in self.tabWidgets:
             w.setEditingMode(editing)
+            
+    # UV-CDAT Events
+    def connectTabWigetSignals(self, widget):
+        self.connect(widget, QtCore.SIGNAL("dropped_variable"),
+                     self.variableDropped)
+        self.connect(widget, QtCore.SIGNAL("dropped_plot"),
+                     self.plotDropped)
+        
+    def disconnectTabWigetSignals(self, widget):
+        self.disconnect(widget, QtCore.SIGNAL("dropped_variable"),
+                     self.variableDropped)
+        self.disconnect(widget, QtCore.SIGNAL("dropped_plot"),
+                     self.plotDropped)
+
+    def variableDropped(self, info):
+        """variableDropped(info: tuple)-> None
+        It will forward the signal 
+        
+        """
+        self.emit(QtCore.SIGNAL("dropped_variable"), info)
+        
+    def plotDropped(self, info):
+        """plotDropped(info: tuple)-> None
+        It will forward the signal 
+        
+        """
+        self.emit(QtCore.SIGNAL("dropped_plot"), info)
+        
+        
+        

@@ -60,10 +60,15 @@ class SpreadsheetController(object):
         Looking for the spreadsheet window
         
         """
+        from gui.uvcdat.mainwindow import UVCDATMainWindow
         wList = QtGui.QApplication.topLevelWidgets()
         for w in wList:
             if type(w)==SpreadsheetWindow:
                 return w
+            elif type(w)==UVCDATMainWindow:
+                if hasattr(w,'spreadsheetWindow'):
+                    return w.spreadsheetWindow
+        
         global spreadsheetWindow
         spreadsheetWindow = SpreadsheetWindow()
         if show:

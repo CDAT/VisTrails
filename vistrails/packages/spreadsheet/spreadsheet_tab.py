@@ -48,6 +48,7 @@ from spreadsheet_sheet import StandardWidgetSheet
 from spreadsheet_cell import QCellPresenter, QCellContainer, QCellToolBar
 from spreadsheet_execute import assignPipelineCellLocations, \
      executePipelineWithProgress
+from spreadsheet_prompt import QPromptCellWidget
 from spreadsheet_config import configuration
 from core.inspector import PipelineInspector
 import spreadsheet_rc
@@ -94,8 +95,8 @@ class StandardWidgetToolBar(QtGui.QToolBar):
         QtGui.QToolBar.__init__(self, parent)
         self.sheetTab = parent
         self.addAction(self.sheetTab.tabWidget.newSheetAction())
-        self.addAction(self.sheetTab.tabWidget.openAction())
-        self.addAction(self.sheetTab.tabWidget.saveAction())
+        #self.addAction(self.sheetTab.tabWidget.openAction())
+        #self.addAction(self.sheetTab.tabWidget.saveAction())
         self.addWidget(self.rowCountSpinBox())
         self.addWidget(self.colCountSpinBox())
         self.addAction(self.sheetTab.tabWidget.exportSheetToImageAction())
@@ -566,6 +567,22 @@ class StandardWidgetSheetTabInterface(object):
         """
         return (1, 1)
 
+    def droppedVariable(self, varName, row, col):
+        """droppedVariable(varName, sheetName: str, row, col: int)-> None
+        It will update variable prompt with varName 
+        
+        """
+        cellWidget = self.getCell(row, col)
+        if type(cellWidget)==QPromptCellWidget:
+            cellWidget.setVarPromptText("Variable: %s"%varName) 
+            cellWidget.update()
+        
+    def droppedPlot(self, plot_type, row, col):
+        cellWidget = self.getCell(row, col)
+        if type(cellWidget)==QPromptCellWidget:
+            cellWidget.setPlotPromptText("Plot type: %s"%plot_type) 
+            cellWidget.update()
+        
 class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
     """
     StandardWidgetSheetTab is a container of StandardWidgetSheet with
@@ -589,6 +606,7 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         self.type = 'StandardWidgetSheetTab'
         self.tabWidget = tabWidget
         self.sheet = StandardWidgetSheet(row, col, self)
+        self.sheet.displayPrompt()
         self.sheet.setFitToWindow(True)
         self.toolBar = StandardWidgetToolBar(self)
         self.vLayout = QtGui.QVBoxLayout()
@@ -704,7 +722,9 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         
         """
         mimeData = event.mimeData()
-        if hasattr(mimeData, 'versionId'):
+        if (hasattr(mimeData, 'versionId') or 
+            mimeData.hasFormat("definedVariables") or
+            mimeData.hasFormat("plotType")):
             event.accept()
         else:
             event.ignore()
@@ -715,15 +735,19 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         
         """
         mimeData = event.mimeData()
-        if (hasattr(mimeData, 'versionId') and
-            hasattr(mimeData, 'controller')):
+        if ((hasattr(mimeData, 'versionId') and
+            hasattr(mimeData, 'controller')) or
+            mimeData.hasFormat("definedVariables") or
+            mimeData.hasFormat("plotType")):
+            event.setDropAction(QtCore.Qt.CopyAction)
             event.accept()
         else:
             event.ignore()
 
     def dropEvent(self, event):
-        """ Execute the pipeline at the particular location """
-        mimeData = event.mimeData()        
+        """ Execute the pipeline at the particular location or sends events to
+        project controller so it can set the workflows """
+        mimeData = event.mimeData()       
         if (hasattr(mimeData, 'versionId') and
             hasattr(mimeData, 'controller')):
             event.accept()
@@ -744,6 +768,32 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
                                         vistrailLocator=controller.locator,
                                         currentVersion=versionId,
                                         reason='Drop Version')
+        elif mimeData.hasFormat("definedVariables"):
+            varName = str(mimeData.text()).split()[1]
+            event.setDropAction(QtCore.Qt.CopyAction)
+            event.accept()
+            localPos = self.sheet.viewport().mapFromGlobal(QtGui.QCursor.pos())
+            row = self.sheet.rowAt(localPos.y())
+            col = self.sheet.columnAt(localPos.x())
+            sheetName = str(self.tabWidget.tabText(self.tabWidget.indexOf(self)))
+            print varName, row, col
+            self.emit(QtCore.SIGNAL("dropped_variable"), (varName, sheetName, 
+                                                          row, col))
+            self.droppedVariable(varName, row, col)
+            
+        elif mimeData.hasFormat("plotType"):
+            if hasattr(mimeData, 'items') and len(mimeData.items) == 1:
+                event.setDropAction(QtCore.Qt.CopyAction)
+                event.accept()
+                item = mimeData.items[0]
+                plot_type = "%s:%s"%(item.plot_type, item.gm)
+                localPos = self.sheet.viewport().mapFromGlobal(QtGui.QCursor.pos())
+                row = self.sheet.rowAt(localPos.y())
+                col = self.sheet.columnAt(localPos.x())
+                sheetName = str(self.tabWidget.tabText(self.tabWidget.indexOf(self)))
+                self.emit(QtCore.SIGNAL("dropped_plot"), (item.plot_type, item.gm, 
+                                                          sheetName, row, col))
+                self.droppedPlot(plot_type, row, col)
         else:
             event.ignore()
 

@@ -1,19 +1,22 @@
 from PyQt4 import QtCore, QtGui
 
 from gui.uvcdat.ui_workspace import Ui_Workspace
+from gui.uvcdat.project_controller import ProjectController
 import customizeUVCDAT
 
 class QProjectItem(QtGui.QTreeWidgetItem):
     def __init__(self, view=None, name='', parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
         self.view = view
+        self.controller = ProjectController(view.controller, name)
         #i = QtGui.QIcon(customizeVCDAT.appIcon)
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/folder_blue.png"))
         self.setIcon(0,icon)
         if view.controller.locator:
-           name = view.locator.short_name 
+            name = view.locator.short_name 
         self.setText(0,name)
+        self.controller = ProjectController(view.controller, name)
 
 class Workspace(QtGui.QDockWidget):
     def __init__(self, parent=None):
@@ -21,6 +24,7 @@ class Workspace(QtGui.QDockWidget):
         self.root=parent.root
         self.viewToItem = {}
         self.numProjects = 1
+        self.current_controller = None
         self.setupUi(self)
 
         self.connectSignals()
@@ -111,6 +115,7 @@ class Workspace(QtGui.QDockWidget):
             self.viewToItem[view] = item
             self.treeProjects.addTopLevelItem(item)
             self.numProjects += 1
+            
         self.treeProjects.setCurrentItem(self.viewToItem[view])
 
     def remove_project(self, view):
@@ -149,10 +154,16 @@ class Workspace(QtGui.QDockWidget):
     def selectedNewProject(self, current, previous):
         if not current:
             self.selectedProject=None
+            self.current_controller = None
             return
         else:
             p = str(current.text(0))
             self.selectedProject=p
+            if self.current_controller:
+                #disconnect signals
+                self.current_controller.disconnect_spreadsheet() 
+            self.current_controller = current.controller
+            self.current_controller.connect_spreadsheet()
             from gui.vistrails_window import _app
             _app.change_view(current.view)
         defVars = self.root.dockVariable.widget()
@@ -163,3 +174,7 @@ class Workspace(QtGui.QDockWidget):
             else:
                 v.setHidden(False)
         defVars.refreshVariablesStrings()
+        
+    def get_current_project_controller(self):
+        return self.current_controller
+            
