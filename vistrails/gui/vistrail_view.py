@@ -917,6 +917,10 @@ class QVistrailView(QtGui.QWidget):
         # reload workspace entry
         from gui.collection.workspace import QWorkspaceWindow
         QWorkspaceWindow.instance().add_vt_window(self)
+        from api import _app
+        if _app.uvcdatWindow:
+            _app.uvcdatWindow.workspace.add_project(self)
+
         return locator
 
     def save_vistrail_as(self, locator_class):

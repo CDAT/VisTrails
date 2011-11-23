@@ -1381,6 +1381,9 @@ class QVistrailsWindow(QVistrailViewWindow):
     def state_changed(self, view):
         """ state for the view changed so we need to update buttons"""
         self.view_changed(view)
+        from api import _app
+        if _app.uvcdatWindow:
+            _app.uvcdatWindow.workspace.state_changed(view)
 
     def new_vistrail(self, recover_files=False):
         # if self.single_document_mode and self.currentView():
