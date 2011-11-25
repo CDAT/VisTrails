@@ -95,7 +95,9 @@ class VariableProperties(QtGui.QDialog):
             self.connect(self.bookmarksList,QtCore.SIGNAL("droppedInto"),self.droppedBookmark)
             
             # Paraview
-            self.pvTabWidget.serverConnectButton.clicked.connect(self.onClickConnectServer)
+            # @NOTE: Disabled this feature for now
+            #self.pvTabWidget.serverConnectButton.clicked.connect(self.onClickConnectServer)
+            self.pvTabWidget.pvPickLocalFileButton.clicked.connect(self.selectRemoteFile)
         
         self.connect(self.root.dockVariable.widget(),QtCore.SIGNAL("setupDefinedVariableAxes"),self.varAddedToDefined)
 
@@ -497,10 +499,10 @@ class VariableProperties(QtGui.QDialog):
         self.pvTabWidget.populateVars(variables)
 
     def processFile(self, fileName):
-        print fileName
+        #print fileName
         self._pvProcessFile.setFileName(fileName)
-        print self._pvProcessFile.getPointVariables()
-        print self._pvProcessFile.getCellVariables()
+        #print self._pvProcessFile.getPointVariables()
+        #print self._pvProcessFile.getCellVariables()
 
         # First clear all previous entries
         # @NOTE (Aashish) Commented out for now
@@ -508,10 +510,7 @@ class VariableProperties(QtGui.QDialog):
 
         # Now populate (in the case of POP, we will have have only Variables)
         self.populateVariables(self._pvProcessFile.getPointVariables())
-        self.populateVariables(self._pvProcessFile.getCellVariables())
-
-        # Set focus on default tab
-        self.originTabWidget.setCurrentIndex(0)
+        #self.populateVariables(self._pvProcessFile.getCellVariables())        
 
     def updateConnectionStatus(self, isConnected):
         if isConnected:
@@ -522,6 +521,7 @@ class VariableProperties(QtGui.QDialog):
     def selectRemoteFile(self):
         fileName = self.openRemoteFile()
         self.processFile(fileName)
+        self.pvTabWidget.pvSelectedFileLineEdit.setText(fileName)
 
     def onClickConnectServer(self):
         isConnected = self._paraviewConnectionDialog.isConnected()

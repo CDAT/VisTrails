@@ -2,49 +2,66 @@
 
 # Form implementation generated from reading ui file 'pvtabwidget.ui'
 #
-# Created: Wed Nov 23 15:32:37 2011
-#      by: PyQt4 UI code generator 4.8.3
+# Created: Fri Nov 25 10:29:11 2011
+#      by: PyQt4 UI code generator 4.7.4
 #
 # WARNING! All changes made in this file will be lost!
 
 from PyQt4 import QtCore, QtGui
 
-try:
-    _fromUtf8 = QtCore.QString.fromUtf8
-except AttributeError:
-    _fromUtf8 = lambda s: s
-
 class Ui_PVTabWidget(object):
     def setupUi(self, PVTabWidget):
-        PVTabWidget.setObjectName(_fromUtf8("PVTabWidget"))
-        PVTabWidget.resize(257, 198)
-        self.widget = QtGui.QWidget(PVTabWidget)
-        self.widget.setGeometry(QtCore.QRect(29, 8, 191, 65))
-        self.widget.setObjectName(_fromUtf8("widget"))
-        self.verticalLayout = QtGui.QVBoxLayout(self.widget)
-        self.verticalLayout.setMargin(0)
-        self.verticalLayout.setObjectName(_fromUtf8("verticalLayout"))
-        self.serverConnectButton = QtGui.QPushButton(self.widget)
-        self.serverConnectButton.setObjectName(_fromUtf8("serverConnectButton"))
-        self.verticalLayout.addWidget(self.serverConnectButton)
-        self.horizontalLayout = QtGui.QHBoxLayout()
-        self.horizontalLayout.setObjectName(_fromUtf8("horizontalLayout"))
-        self.lVar = QtGui.QLabel(self.widget)
-        self.lVar.setObjectName(_fromUtf8("lVar"))
-        self.horizontalLayout.addWidget(self.lVar)
-        self.cbVar = QtGui.QComboBox(self.widget)
-        self.cbVar.setObjectName(_fromUtf8("cbVar"))
-        self.horizontalLayout.addWidget(self.cbVar)
-        self.verticalLayout.addLayout(self.horizontalLayout)
+        PVTabWidget.setObjectName("PVTabWidget")
+        PVTabWidget.resize(510, 127)
+        self.gridLayout = QtGui.QGridLayout(PVTabWidget)
+        self.gridLayout.setObjectName("gridLayout")
+        self.label = QtGui.QLabel(PVTabWidget)
+        self.label.setObjectName("label")
+        self.gridLayout.addWidget(self.label, 0, 0, 1, 1)
+        self.pvSelectedFileLineEdit = QtGui.QLineEdit(PVTabWidget)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.pvSelectedFileLineEdit.sizePolicy().hasHeightForWidth())
+        self.pvSelectedFileLineEdit.setSizePolicy(sizePolicy)
+        self.pvSelectedFileLineEdit.setMinimumSize(QtCore.QSize(400, 20))
+        self.pvSelectedFileLineEdit.setObjectName("pvSelectedFileLineEdit")
+        self.gridLayout.addWidget(self.pvSelectedFileLineEdit, 0, 1, 1, 1)
+        self.pvPickLocalFileButton = QtGui.QToolButton(PVTabWidget)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(":/icons/16x16/browse"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.pvPickLocalFileButton.setIcon(icon)
+        self.pvPickLocalFileButton.setObjectName("pvPickLocalFileButton")
+        self.gridLayout.addWidget(self.pvPickLocalFileButton, 0, 2, 1, 1)
+        self.horizontalLayout_2 = QtGui.QHBoxLayout()
+        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
+        self.lVar = QtGui.QLabel(PVTabWidget)
+        self.lVar.setObjectName("lVar")
+        self.horizontalLayout_2.addWidget(self.lVar)
+        self.cbVar = QtGui.QComboBox(PVTabWidget)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.cbVar.sizePolicy().hasHeightForWidth())
+        self.cbVar.setSizePolicy(sizePolicy)
+        self.cbVar.setMinimumSize(QtCore.QSize(100, 20))
+        self.cbVar.setObjectName("cbVar")
+        self.horizontalLayout_2.addWidget(self.cbVar)
+        self.gridLayout.addLayout(self.horizontalLayout_2, 1, 0, 1, 2)
+        spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        self.gridLayout.addItem(spacerItem, 2, 3, 1, 1)
 
         self.retranslateUi(PVTabWidget)
         QtCore.QMetaObject.connectSlotsByName(PVTabWidget)
 
     def retranslateUi(self, PVTabWidget):
         PVTabWidget.setWindowTitle(QtGui.QApplication.translate("PVTabWidget", "Form", None, QtGui.QApplication.UnicodeUTF8))
-        self.serverConnectButton.setText(QtGui.QApplication.translate("PVTabWidget", "Connect", None, QtGui.QApplication.UnicodeUTF8))
+        self.label.setText(QtGui.QApplication.translate("PVTabWidget", "File:", None, QtGui.QApplication.UnicodeUTF8))
+        self.pvPickLocalFileButton.setText(QtGui.QApplication.translate("PVTabWidget", "...", None, QtGui.QApplication.UnicodeUTF8))
         self.lVar.setText(QtGui.QApplication.translate("PVTabWidget", "Variables:", None, QtGui.QApplication.UnicodeUTF8))
 
+import pv_rc
+import pv_rc
 
 if __name__ == "__main__":
     import sys
