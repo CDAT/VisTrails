@@ -17,12 +17,8 @@ defaultGmsColor = QtGui.QColor(179,140,138)
 plotTypes = {"VCS":['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill',
                      'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY',
                      'Xyvsy', 'Yxvsx'],
-             "DV3D" : ['DV3D Volume Isosurfacing',
-                       'DV3D Volume Rendering',
-                       'DV3D Volume Slicer'],
-             "ParaView" : ["Simple Plot",],
-             "Volume Rendering" : ["Volume rendering",],
              }
+
 gmInfos= {'Boxfill' :{'nSlabs':1},
           'Isofill' :{'nSlabs':1},
           'Isoline' :{'nSlabs':1},

@@ -229,3 +229,6 @@ class UVCDATMainWindow(QtGui.QMainWindow):
 
     def get_current_project_controller(self):
         return self.workspace.get_current_project_controller()
+    
+    def link_registry(self):
+        self.dockPlot.link_registry()

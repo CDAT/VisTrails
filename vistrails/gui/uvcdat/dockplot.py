@@ -1,15 +1,22 @@
 from PyQt4 import QtCore, QtGui
 import platform
 from uvcdatCommons import plotTypes
+from core.uvcdat.plot_registry import get_plot_registry
 import graphicsMethodsWidgets
 
 class DockPlot(QtGui.QDockWidget):
+    PANEL_ITEM = 0
+    VCS_CONTAINER_ITEM = 1
+    VCS_ITEM = 2
+    CUSTOM_CONTAINER_ITEM = 3
+    CUSTOM_ITEM = 4 
     def __init__(self, parent=None):
         super(DockPlot, self).__init__(parent)
         ## self.ui = Ui_DockPlot()
         ## self.ui.setupUi(self)
         self.root=parent.root
         self.setWindowTitle("Plots and Analyses")
+        self.plot_bars = {}
         self.plotTree = PlotTreeWidget(self)
         self.setWidget(self.plotTree)
         ## layout = QtGui.QVBoxLayout()
@@ -17,27 +24,68 @@ class DockPlot(QtGui.QDockWidget):
         ## layout.setSpacing(0)
         ## layout.addWidget(self.plotTree)
         ## self.ui.mainWidget.setLayout(layout)
-        self.initTree()
-            
-    def initTree(self):
-        self.uvcdat_items={}
+        self.initVCSTree()
+        
+    def initVCSTree(self):
         for k in sorted(plotTypes.keys()):
-            kitem = QtGui.QTreeWidgetItem(None, QtCore.QStringList(k),0)
-            kitem.setFlags(kitem.flags() &~QtCore.Qt.ItemIsDragEnabled)
-            self.uvcdat_items[k] = kitem
-            self.plotTree.addTopLevelItem(self.uvcdat_items[k])
+            kitem = self.addPlotBar(k)
             for plot in plotTypes[k]:
-                item = QtGui.QTreeWidgetItem(self.uvcdat_items[k], QtCore.QStringList(plot),1)
+                item = QtGui.QTreeWidgetItem(kitem, 
+                                             QtCore.QStringList(plot),
+                                             self.VCS_CONTAINER_ITEM)
                 item.setFlags(item.flags() & ~QtCore.Qt.ItemIsDragEnabled)
                 ## Special section here for VCS GMs they have one more layer
                 for m in self.plotTree.getMethods(item):
-                    item2 = PlotTreeWidgetItem(plot, m, QtCore.QStringList(m), item)
+                    item2 = PlotTreeWidgetItem(plot, m, QtCore.QStringList(m),
+                                               self.VCS_ITEM, None, item)
         
-    def addPlotType(self, panel_type, plot_type, parent=None):
-        #FIXME: write code to add a plot type after the tree was initialized
-        pass
-        #self.plotTree.expandAll()
-
+    def addPlotBar(self, plot_package_name):
+        if plot_package_name not in self.plot_bars:
+            item = QtGui.QTreeWidgetItem(None, QtCore.QStringList(plot_package_name),
+                                          self.PANEL_ITEM)
+            item.setFlags(item.flags() &~QtCore.Qt.ItemIsDragEnabled)
+            self.plot_bars[plot_package_name] = item
+            self.plotTree.addTopLevelItem(item)
+            return item
+        else:
+            return self.plot_bars[plot_package_name]
+          
+    def addCustomPlotType(self, panel_type, plot_type, plot=None, parent_item=None):
+        if parent_item is None:
+            parent_item = self.plot_bars[panel_type] 
+        item = PlotTreeWidgetItem(plot_type, None, QtCore.QStringList(plot_type),
+                                  self.CUSTOM_ITEM, plot, parent_item)
+        return item
+        
+    def newPlotType(self, plot):
+        self.addCustomPlotType(plot.package, plot.name, plot)
+        
+    def link_registry(self):
+        self.update_from_plot_registry()
+        self.connect_registry_signals()
+        
+    def update_from_plot_registry(self):
+        """ update_from_plot_registry() -> None
+        Setup this tree widget to show modules currently inside plot registry
+                
+        """
+        self.plotTree.setSortingEnabled(False)
+        registry = get_plot_registry()
+        for plot_package in registry.plots:
+            self.addPlotBar(plot_package)
+            for plot in registry.plots[plot_package].itervalues():
+                self.addCustomPlotType(plot_package, plot.name, plot)
+        
+        self.plotTree.sortByColumn(0, QtCore.Qt.AscendingOrder)
+        self.plotTree.setSortingEnabled(True)
+        
+    def connect_registry_signals(self):
+        registry = get_plot_registry()
+        self.connect(registry.signals, registry.signals.new_plot_package_signal,
+                     self.addPlotBar)
+        self.connect(registry.signals, registry.signals.new_plot_type_signal,
+                     self.newPlotType)
+        
 class PlotTreeWidget(QtGui.QTreeWidget):
     def __init__(self, parent=None):
         super(PlotTreeWidget, self).__init__(parent)
@@ -89,7 +137,7 @@ class PlotTreeWidget(QtGui.QTreeWidget):
             return ["default",]
         
     def popupEditor(self,item,column):
-        if item.type()!=2:
+        if item.type()!= DockPlot.VCS_ITEM:
             return
         name = item.text(0)
         plotType = item.parent().text(0)
@@ -159,8 +207,9 @@ class PlotTreeWidget(QtGui.QTreeWidget):
         editorDock.show()
         
 class PlotTreeWidgetItem(QtGui.QTreeWidgetItem):
-    def __init__(self, plot_type, gm, labels, parent=None):
-        QtGui.QTreeWidgetItem.__init__(self, parent, labels)
+    def __init__(self, plot_type, gm, labels, type, plot_obj=None, parent=None):
+        QtGui.QTreeWidgetItem.__init__(self, parent, labels, type)
+        self.plot = plot_obj
         self.plot_type = plot_type
         self.gm = gm
                 

@@ -34,6 +34,7 @@
 import os, os.path
 from PyQt4 import QtCore
 from core.uvcdat.variable import VariableWrapper
+from core.uvcdat.plot_registry import get_plot_registry
 from core.utils import InstanceObject
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from core.db.locator import FileLocator
@@ -54,8 +55,7 @@ class ProjectController(QtCore.QObject):
         self.name = name
         self.defined_variables = {}
         self.sheet_map = {}
-        self.current_parent_version = 0L
-        #self.load_workflow_templates()
+        self.plot_registry = get_plot_registry()
         
     def add_defined_variable(self, filename, name, kwargs):
         var = VariableWrapper(filename, name, kwargs)

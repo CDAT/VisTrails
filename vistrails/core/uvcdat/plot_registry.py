@@ -34,7 +34,7 @@
 import ConfigParser
 import os, os.path
 
-
+from PyQt4 import QtCore
 # vistrails imports
 import api
 import core.db.action
@@ -44,6 +44,7 @@ from gui.modules import get_widget_class
 from gui.modules.constant_configuration import StandardConstantWidget
 from core.modules.module_registry import get_module_registry
 from core.vistrail.controller import VistrailController
+from core.uvcdat.utils import UVCDATInternalError
 from core.packagemanager import get_package_manager
 from core import debug
 
@@ -51,33 +52,28 @@ from core import debug
 PLOT_FILES_PATH = os.path.join(os.path.dirname(__file__),
                              'plots')
 
-class PlotRegistry(object):
-    def __init__(self, cdatwindow):
-        self.cdatwindow = cdatwindow
+#do not use registry directly. Use get_plot_registry() to get the registry
+global registry
+registry = None
+
+class PlotRegistry():
+    def __init__(self):
+        self.signals = PlotRegistrySignals()
         self.plots = {}
         self.registered = []
-        
-    def loadPlots(self):
-        parser = ConfigParser.ConfigParser()
-        if parser.read(os.path.join(PLOT_FILES_PATH, 'registry.cfg')):
-            for p in parser.sections():
-                config_file = os.path.join(PLOT_FILES_PATH, 
-                                           parser.get(p,'config_file'))
-                vt_file = os.path.join(PLOT_FILES_PATH, 
-                                       parser.get(p, 'vt_file'))
-                self.plots[p] = Plot(p, config_file, vt_file)
-                try:
-                    self.plots[p].load()
-                except Exception, e:
-                    print "Error when loading plot %s"%p, str(e)
-                    import traceback
-                    traceback.print_exc()
     
-    def registerPlots(self):
-        for name, plot in self.plots.iteritems():
-            if plot.loaded == True:
-                self.cdatwindow.registerPlotType(name, plot)
-                self.registered.append(name)
+    def add_plot(self, name, plot_package, config_file, vt_file):
+        if not plot_package in self.plots:
+            self.plots[plot_package] = {}
+            self.signals.emit_new_plot_package(plot_package)
+        self.plots[plot_package][name] = Plot(name, plot_package,
+                                              config_file, vt_file)
+        self.signals.emit_new_plot_type(self.plots[plot_package][name])
+        
+    def load_plot_package(self, plot_package):
+        if plot_package in self.plots:
+            for plot in self.plots[plot_package].itervalues():
+                plot.load()        
     
     @staticmethod    
     def getPlotsDependencies():
@@ -100,10 +96,19 @@ class PlotRegistry(object):
         while len(plots) > 0:
             del self.plots[plots[-1]]
             plots.pop()
+            
+    def set_global(self):
+        global registry
+
+        if registry is not None:
+            raise UVCDATInternalError("Global plot registry already set.")
+
+        registry                 = self
         
 class Plot(object):
-    def __init__(self, name, config_file, vt_file):
+    def __init__(self, name, package, config_file, vt_file):
         self.name = name
+        self.package = package
         self.config_file = config_file
         self.serializedConfigAlias = None
         self.vt_file = vt_file
@@ -119,7 +124,7 @@ class Plot(object):
         self.cells = []
         self.vars = []
         self.axes = []
-        self.widget = None
+        self._widget = None
         self.alias_widgets = {}
         self.alias_values = {}
         self.dependencies = []
@@ -129,7 +134,8 @@ class Plot(object):
         self.current_parent_version = 0L
         self.current_controller = None
             
-    def load(self, loadwidget=True):
+            
+    def load(self, loadworkflow=True):
         config = ConfigParser.ConfigParser()
         if config.read(self.config_file):
             if config.has_section('global'):
@@ -198,7 +204,7 @@ class Plot(object):
                                                    config.get(section_name, 'row_alias'),
                                                    config.get(section_name, 'col_alias')))
                 
-                if loadwidget:
+                if loadworkflow:
                     #load workflow in vistrail
                     #only if dependencies are enabled
                     manager = get_package_manager()
@@ -218,21 +224,28 @@ class Plot(object):
                             print " Loaded %s version: %s" % (  self.name, str( version ) )
                             controller.change_selected_version(version)
                             self.workflow = controller.current_pipeline
-                            self.loadWidget()
                             self.loaded = True
                         except Exception, err:
-                            debug.warning( "Error loading widget %s: %s" % ( self.name, err ) )
+                            debug.warning( "Error loading workflow %s: %s" % ( self.name, err ) )
                             self.loaded = False
                     else:
-                        debug.warning("CDAT Package: %s widget could not be loaded \
+                        debug.warning("UV-CDAT: %s widget could not be loaded \
     because it depends on packages that are not loaded:"%self.name)
                         debug.warning("  %s"%", ".join(self.unsatisfied_deps))
                         self.loaded = False
             else:
-                debug.warning("CDAT Package: file %s does not contain a 'global'\
+                debug.warning("UV-CDAT: file %s does not contain a 'global'\
  section. Widget will not be loaded."%self.config_file)
                 self.loaded = False
             
+    def getWidget(self, refresh=False):
+        if self._widget == None or refresh:
+            self.loadWidget()
+        return self._widget
+    def setWidget(self, widget):
+        self._widget = widget
+    widget = property(getWidget, setWidget)
+    
     def loadWidget(self):
         from PyQt4 import QtGui
         aliases = self.workflow.aliases
@@ -262,7 +275,7 @@ class Plot(object):
                 self.alias_widgets[name] = p_widget
                 
         widget.setLayout(layout)
-        self.widget = widget
+        self._widget = widget
     
     def computeHiddenAliases(self):
         result = []
@@ -425,4 +438,30 @@ class Cell(object):
     def __init__(self, type=None, row_name=None, col_name=None):
         self.type = type
         self.row_name = row_name
-        self.col_name = col_name 
+        self.col_name = col_name
+        
+class PlotRegistrySignals(QtCore.QObject):
+    # new_module_signal is emitted with descriptor of new module
+    new_plot_type_signal = QtCore.SIGNAL("new_plot_type")
+    new_plot_package_signal = QtCore.SIGNAL("new_plot_package")
+    
+    def __init__(self):
+        QtCore.QObject.__init__(self)
+        
+    def emit_new_plot_type(self, plot):
+        self.emit(self.new_plot_type_signal, plot)
+
+    def emit_new_plot_package(self, plot_package_name):
+        self.emit(self.new_plot_package_signal, plot_package_name)
+        
+def get_plot_registry():
+    global registry
+    if not registry:
+        raise UVCDATInternalError("Plot Registry not constructed yet.")
+    return registry
+
+def plot_registry_loaded():
+    global registry
+    return registry is not None
+
+##############################################################################

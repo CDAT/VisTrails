@@ -512,6 +512,10 @@ parameters from other instances")
             self.processEvents()
             
         self.vistrailsStartup.init()
+        
+        #uv-cdat plots initialization
+        self.initialize_uvcdat_plots()
+        
         # ugly workaround for configuration initialization order issue
         # If we go through the configuration too late,
         # The window does not get maximized. If we do it too early,
@@ -549,6 +553,7 @@ parameters from other instances")
         # self.builderWindow.modulePalette.updateFromModuleRegistry()
         # self.builderWindow.modulePalette.connect_registry_signals()
         self.builderWindow.link_registry()
+        self.uvcdatWindow.link_registry()
         
         self.process_interactive_input()
         if not self.temp_configuration.showSpreadsheetOnly:
@@ -834,6 +839,12 @@ parameters from other instances")
                 debug.critical("Invalid string: %s" % msg)
         else:
             debug.critical("Invalid input: %s" % msg)
+            
+    def initialize_uvcdat_plots(self):
+        import core.uvcdat.plotmanager
+        self._plot_manager = core.uvcdat.plotmanager.PlotManager()
+        self._plot_manager.init_registry()
+        self._plot_manager.load_plots()
         
 # The initialization must be explicitly signalled. Otherwise, any
 # modules importing vis_application will try to initialize the entire
