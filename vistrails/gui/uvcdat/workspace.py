@@ -4,6 +4,38 @@ from gui.uvcdat.ui_workspace import Ui_Workspace
 from gui.uvcdat.project_controller import ProjectController
 import customizeUVCDAT
 
+def toAnnotation(sheet, x, y, w=None, h=None):
+    """ toAnnotation(sheet: str, x: int/str, y: int/str, w: int, h: int): str
+        escapes sheet string and puts all in a comma-separated string
+    """
+    sheet = ''.join(map(lambda x: {'\\':'\\\\', ',':'\,'}.get(x, x), sheet))
+    if w is None or h is None:
+        return ','.join(map(str, [sheet, x, y]))   
+    return ','.join(map(str, [sheet, x, y, w, h]))
+
+def fromAnnotation(s):
+    """ fromAnnotation(s: str): list
+        un-escapes annotation value string and reads all values into list
+    """
+    res = []
+    s = list(s)
+    i=0
+    while i<len(s)-1:
+        f = s[i:i+2]
+        if f == ['\\','\\']:
+            s[i:i+2] = ['\\']
+            i += 1
+        elif f == ['\\',',']:
+            s[i:i+2] = [',']
+            i += 1
+        elif f[1] == ',':
+            res.append(''.join(s[:i+1]))
+            s = s[i+2:]
+            i = -1
+        i += 1
+    res.append(''.join(s))
+    return res
+
 class QProjectItem(QtGui.QTreeWidgetItem):
     def __init__(self, view=None, name='', parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
@@ -20,17 +52,39 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         font = self.font(0)
         font.setBold(True)
         self.setFont(0, font)
-        self.latestItem = QVisualizationItem()
-        self.addChild(self.latestItem)
+        self.namedPipelines = QtGui.QTreeWidgetItem(['Named Pipelines'])
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/folder_blue.png"), state=QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/folder_blue_open.png"), state=QtGui.QIcon.On)
+        self.namedPipelines.setIcon(0,icon)
+        self.addChild(self.namedPipelines)
         self.tag_to_item = {}
+        self.sheet_to_item = {}
+        self.sheet_to_tab = {}
 
-class QVisualizationItem(QtGui.QTreeWidgetItem):
-    def __init__(self, name='(latest)', parent=None):
+class QSpreadsheetItem(QtGui.QTreeWidgetItem):
+    def __init__(self, name='sheet 1', sheetSaved=False, parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
         icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/map-icon.png"))
+        self.setIcon(0, icon)
+        self.sheetName = name
+        self.sheetSaved = sheetSaved
+        self.setText(0, name + ('' if sheetSaved else '*') )
+
+class QWorkflowItem(QtGui.QTreeWidgetItem):
+    def __init__(self, name='untitled', position=None, parent=None):
+        QtGui.QTreeWidgetItem.__init__(self)
+        # workflowName is the tag name or "untitled"
+        self.workflowName = name
+        # workflowPos is a spreadsheet location like "A2"
+        self.workflowPos = position
+        icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/pipeline.png"))
-        self.setIcon(0,icon)
-        self.setText(0,name)
+        self.setIcon(0, icon)
+        if position is not None:
+            name = name + '@' + position
+        self.setText(0, name)
 
 class Workspace(QtGui.QDockWidget):
     def __init__(self, parent=None):
@@ -137,6 +191,7 @@ class Workspace(QtGui.QDockWidget):
             name = view.controller.locator.short_name
             self.viewToItem[id(view)].setText(0, name)
         self.treeProjects.setCurrentItem(self.viewToItem[id(view)])
+        # TODO add sheets from vistrail actionAnnotations
 
     def remove_project(self, view):
         # vistrails calls this when a project is removed
@@ -202,48 +257,82 @@ class Workspace(QtGui.QDockWidget):
         deleted_item = None
         for tag, wf in item.tag_to_item.items():
             if tag not in tags:
-                item.takeChild(item.indexOfChild(item.tag_to_item[tag]))
+                item.namedPipelines.takeChild(item.indexOfChild(item.tag_to_item[tag]))
                 del item.tag_to_item[tag]
                 break
         # check if a tag has been added
         for tag in tags:
             if tag not in item.tag_to_item:
-                wfitem = QVisualizationItem(tag)
-                item.addChild(wfitem)
+                wfitem = QWorkflowItem(tag)
+                item.namedPipelines.addChild(wfitem)
                 item.tag_to_item[tag] = wfitem
 
     def item_selected(self, widget_item, column):
-        """ opens the selected item if possible """
+        """ opens the selected item if possible
+            item can be either project, saved workflow, spreadsheet,
+            spreadsheet cell, or the Saved Workflows item
+        """
         from gui.vistrails_window import _app
+        sheet = None
+        workflow = None
         if not widget_item:
-            self.currentProject=None
+            self.currentProject = None
             self.current_controller = None
             return
         elif type(widget_item)==QProjectItem:
-            if widget_item != self.currentProject:            
-                _app.change_view(widget_item.view)
-                return
-        elif type(widget_item)!=QVisualizationItem:
-            # unknown widget type
-            return
-        # select specific version
-        project = widget_item.parent()
+            project = widget_item
+        elif type(widget_item)==QSpreadsheetItem:
+            sheet = widget_item
+            project = sheet.parent()
+        elif type(widget_item)==QWorkflowItem:
+            project = widget_item.parent().parent()
+        else: # is a Saved Workflows item
+            project = widget_item.parent()
         view = project.view
         locator = project.view.controller.locator
-        if widget_item == project.latestItem:
-            version = view.controller.vistrail.get_latest_version()
-        else:
-            version = str(widget_item.text(0))
-            if type(version) == str:
-                try:
-                    version = \
-                        view.controller.vistrail.get_version_number(version)
-                except:
-                    version = None
         if project != self.currentProject:            
             _app.change_view(view)
-        if version:
-            view.version_selected(version, True, double_click=True)
+        # do we ever need to change the vistrail version?
+#            version = str(widget_item.text(0))
+#            if type(version) == str:
+#                try:
+#                    version = \
+#                        view.controller.vistrail.get_version_number(version)
+#                except:
+#                    version = None
+        #if version:
+        #    view.version_selected(version, True, double_click=True)
+        
+        if sheet:
+            pass
+            # TODO change to this sheet
+
+    def save_sheet_tab(self, title, widget):
+        # TODO: save using annotations when sheet is saved
+        pass
+        
+    def add_sheet_tab(self, title, widget):
+        if title not in self.currentProject.sheet_to_tab:
+            self.currentProject.sheet_to_tab[title] = widget
+            item = QSpreadsheetItem(title)
+            self.currentProject.addChild(item)
+            self.currentProject.sheet_to_item[title] = item
     
+    def remove_sheet_tab(self, widget):
+        title = None
+        for t, tab in self.currentProject.sheet_to_tab.items():
+            if tab == widget:
+                title = t
+                break
+        if title and title in self.currentProject.sheet_to_tab:
+            item = self.currentProject.sheet_to_item[title]
+            if item.sheetSaved:
+                # TODO remove annotations from vistrail
+                pass
+            index = self.currentProject.indexOfChild(item)
+            self.currentProject.takeChild(index)
+            del self.currentProject.sheet_to_tab[title]
+            del self.currentProject.sheet_to_item[title]
+
     def get_current_project_controller(self):
         return self.current_controller

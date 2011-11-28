@@ -54,8 +54,8 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.createDockWindows()
         self.createActions()
         self.updateMenuActions()
-        self.connectSignals()
         self.embedSpreadsheet()
+        self.connectSignals()
         
     def initCustomize(self,customPath,styles):
         if customPath is None:
@@ -101,7 +101,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         ## self.resize(1100,800)
         #self.setMinimumWidth(1100)
         self.main_window_placement()
-        
+     
     def main_window_placement(self):
         screen = QtGui.QDesktopWidget().screenGeometry()
         size = self.geometry()
@@ -148,6 +148,12 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         
     def connectSignals(self):
         self.ui.actionExit.triggered.connect(self.quit)
+        self.connect(self.spreadsheetWindow.tabController,
+                     QtCore.SIGNAL("add_tab"),
+                     self.workspace.add_sheet_tab)
+        self.connect(self.spreadsheetWindow.tabController,
+                     QtCore.SIGNAL("remove_tab"),
+                     self.workspace.remove_sheet_tab)
         
     def quit(self):
         #FIXME

@@ -324,6 +324,7 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         """
         if self.count()>0:
             widget = self.currentWidget()
+            self.emit(QtCore.SIGNAL("remove_tab"), widget)
             self.tabWidgets.remove(widget)
             self.removeTab(self.currentIndex())
             self.removeSheetReference(widget)
@@ -439,6 +440,7 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         Add a new tab widget to the controller
         
         """
+        self.emit(QtCore.SIGNAL("add_tab"), sheetLabel, tabWidget)
         return self.insertTabWidget(-1, tabWidget, sheetLabel)
 
     def insertTabWidget(self, index, tabWidget, sheetLabel):
