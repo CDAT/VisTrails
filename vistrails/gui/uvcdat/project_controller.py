@@ -74,7 +74,7 @@ class ProjectController(QtCore.QObject):
         
     def connect_spreadsheet(self):
         ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
-        tabController = ssheetWindow.tabController
+        tabController = ssheetWindow.get_current_tab_controller()
         self.connect(tabController, QtCore.SIGNAL("dropped_variable"),
                      self.variable_was_dropped)
         self.connect(tabController, QtCore.SIGNAL("dropped_plot"),
@@ -82,7 +82,7 @@ class ProjectController(QtCore.QObject):
         
     def disconnect_spreadsheet(self):
         ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
-        tabController = ssheetWindow.tabController
+        tabController = ssheetWindow.get_current_tab_controller()
         self.disconnect(tabController, QtCore.SIGNAL("dropped_variable"),
                      self.variable_was_dropped)
         self.disconnect(tabController, QtCore.SIGNAL("dropped_plot"),

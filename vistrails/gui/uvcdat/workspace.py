@@ -2,6 +2,8 @@ from PyQt4 import QtCore, QtGui
 
 from gui.uvcdat.ui_workspace import Ui_Workspace
 from gui.uvcdat.project_controller import ProjectController
+from packages.spreadsheet.spreadsheet_controller import spreadsheetController
+
 import customizeUVCDAT
 
 def toAnnotation(sheet, x, y, w=None, h=None):
@@ -94,6 +96,7 @@ class Workspace(QtGui.QDockWidget):
         self.numProjects = 1
         self.current_controller = None
         self.setupUi(self)
+        self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
         self.connectSignals()
         self.currentProject = None
 
@@ -175,13 +178,20 @@ class Workspace(QtGui.QDockWidget):
         self.btnSaveProjectAs.clicked.connect(self.saveProjectAs)
         self.btnCloseProject.clicked.connect(self.closeProject)
         self.treeProjects.itemClicked.connect(self.item_selected)
+        self.connect(self, QtCore.SIGNAL("project_changed"),
+                     self.spreadsheetWindow.changeTabController)
+        self.connect(self, QtCore.SIGNAL("project_added"),
+                     self.spreadsheetWindow.addTabController)
+        self.connect(self, QtCore.SIGNAL("project_removed"),
+                     self.spreadsheetWindow.removeTabController)
 
     def add_project(self, view):
         # vistrails calls this when a project is created
         if id(view) not in self.viewToItem:
             if self.currentProject:
                 self.setBold(self.currentProject, False)
-            item = QProjectItem(view, "Project %i" % self.numProjects)
+            p_name = "Project %i" % self.numProjects
+            item = QProjectItem(view, p_name)
             self.currentProject = item
             self.viewToItem[id(view)] = item
             self.treeProjects.addTopLevelItem(item)
@@ -191,6 +201,7 @@ class Workspace(QtGui.QDockWidget):
             name = view.controller.locator.short_name
             self.viewToItem[id(view)].setText(0, name)
         self.treeProjects.setCurrentItem(self.viewToItem[id(view)])
+        self.emit(QtCore.SIGNAL("project_added"), item.controller.name)
         # TODO add sheets from vistrail actionAnnotations
 
     def remove_project(self, view):
@@ -198,8 +209,9 @@ class Workspace(QtGui.QDockWidget):
         if id(view) in self.viewToItem:
             index = self.treeProjects.indexOfTopLevelItem(self.viewToItem[id(view)])
             self.treeProjects.takeTopLevelItem(index)
+            self.emit(QtCore.SIGNAL("project_removed"), self.viewToItem[id(view)].controller.name)
             del self.viewToItem[id(view)]
-
+            
     def setBold(self, item, value):
             font = item.font(0)
             font.setBold(value)
@@ -217,6 +229,7 @@ class Workspace(QtGui.QDockWidget):
             self.setBold(self.currentProject, True)
             self.current_controller = self.currentProject.controller
             self.current_controller.connect_spreadsheet()
+            self.emit(QtCore.SIGNAL("project_changed"),self.current_controller.name)
             
         # TODO need to update variables here
         defVars = self.root.dockVariable.widget()

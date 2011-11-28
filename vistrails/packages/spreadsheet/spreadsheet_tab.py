@@ -599,10 +599,14 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         """
         QtGui.QWidget.__init__(self, None)
         StandardWidgetSheetTabInterface.__init__(self)
+        #By default we will ignore the configuration parameters and use 
+        #2 rows and 1 col.
         if not row:
-            row = configuration.rowCount
+            #row = configuration.rowCount
+            row = 2
         if not col:
-            col = configuration.columnCount
+            #col = configuration.columnCount
+            col = 1
         self.type = 'StandardWidgetSheetTab'
         self.tabWidget = tabWidget
         self.sheet = StandardWidgetSheet(row, col, self)

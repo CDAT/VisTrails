@@ -15,11 +15,6 @@ from gui.uvcdat.dockcalculator import DockCalculator
 
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 import gui.uvcdat.uvcdat_rc
-#from gui.theme import initializeCurrentTheme
-#from packages.spreadsheet.spreadsheet_controller import spreadsheetController
-#from packages.spreadsheet.spreadsheet_registry import spreadsheetRegistry
-#from packages.spreadsheet.spreadsheet_window import SpreadsheetWindow
-#from packages.spreadsheet.spreadsheet_tabcontroller import StandardWidgetTabController 
 
 import customizeUVCDAT
 import commandsRecorderWidget
@@ -148,10 +143,10 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         
     def connectSignals(self):
         self.ui.actionExit.triggered.connect(self.quit)
-        self.connect(self.spreadsheetWindow.tabController,
+        self.connect(self.spreadsheetWindow.tabControllerStack,
                      QtCore.SIGNAL("add_tab"),
                      self.workspace.add_sheet_tab)
-        self.connect(self.spreadsheetWindow.tabController,
+        self.connect(self.spreadsheetWindow.tabControllerStack,
                      QtCore.SIGNAL("remove_tab"),
                      self.workspace.remove_sheet_tab)
         
@@ -177,11 +172,6 @@ class UVCDATMainWindow(QtGui.QMainWindow):
     def embedSpreadsheet(self):
         self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
         self.setCentralWidget(self.spreadsheetWindow)
-        self.spreadsheetWindow.tabController.currentWidget().setDimension(2,1)
-        self.spreadsheetWindow.tabController.currentWidget().rowSpinBoxChanged()
-        self.spreadsheetWindow.tabController.currentWidget().colSpinBoxChanged()
-        self.spreadsheetWindow.tabController.setDocumentMode(True)
-        self.spreadsheetWindow.tabController.setTabPosition(QtGui.QTabWidget.North)
         self.spreadsheetWindow.setVisible(True)
         
     def cleanup(self):

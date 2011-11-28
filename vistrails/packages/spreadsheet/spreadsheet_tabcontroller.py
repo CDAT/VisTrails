@@ -71,10 +71,11 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         self.operatingWidget = self
         self.setTabBar(StandardWidgetTabBar(self))
         self.setTabShape(QtGui.QTabWidget.Triangular)
-        self.setTabPosition(QtGui.QTabWidget.South)
+        self.setTabPosition(QtGui.QTabWidget.North)
+        self.setDocumentMode(True)
+        self.setTabsClosable(True)
         self.tabWidgets = []
         self.floatingTabWidgets = []
-        self.addTabWidget(StandardWidgetSheetTab(self), 'Sheet 1')
         self.connect(self.tabBar(),
                      QtCore.SIGNAL('tabMoveRequest(int,int)'),
                      self.moveTab)
@@ -91,12 +92,14 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         self.spreadsheetFileName = None
         self.loadingMode = False
         self.editingMode = False
-        self.closeButton = QtGui.QToolButton(self)
-        self.closeButton.setIcon(CurrentTheme.VIEW_MANAGER_CLOSE_ICON)
-        self.closeButton.setAutoRaise(True)
-        self.setCornerWidget(self.closeButton)
-        self.connect(self.closeButton, QtCore.SIGNAL('clicked()'),
-                     self.deleteSheetAction().trigger)
+        self.connect(self, QtCore.SIGNAL("tabCloseRequested(int)"),
+                     self.delete_sheet_by_index)
+#        self.closeButton = QtGui.QToolButton(self)
+#        self.closeButton.setIcon(CurrentTheme.VIEW_MANAGER_CLOSE_ICON)
+#        self.closeButton.setAutoRaise(True)
+#        self.setCornerWidget(self.closeButton)
+#        self.connect(self.closeButton, QtCore.SIGNAL('clicked()'),
+#                     self.deleteSheetAction().trigger)
         
     def isLoadingMode(self):
         """ isLoadingMode() -> boolean
@@ -105,6 +108,9 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         """
         return self.loadingMode
 
+    def create_first_sheet(self):
+        self.addTabWidget(StandardWidgetSheetTab(self), 'Sheet 1')
+        
     def getMonitoredLocations(self, spec):
         """ getMonitoredLocations(spec: tuple) -> location
         Return the monitored location associated with spec
@@ -317,6 +323,17 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                 if sheet==locations[lid][0]:
                     del locations[lid]                        
 
+    def delete_sheet_by_index(self, index):
+        widget = self.widget(index)
+        self.emit(QtCore.SIGNAL("remove_tab"), widget)
+        self.tabWidgets.remove(widget)
+        self.removeTab(self.currentIndex())
+        self.removeSheetReference(widget)
+        widget.deleteAllCells()
+        widget.deleteLater()
+        QtCore.QCoreApplication.processEvents()
+        gc.collect()
+        
     def deleteSheetActionTriggered(self, checked=False):
         """ deleteSheetActionTriggered(checked: boolean) -> None
         Actual code to delete the current sheet
@@ -440,7 +457,6 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         Add a new tab widget to the controller
         
         """
-        self.emit(QtCore.SIGNAL("add_tab"), sheetLabel, tabWidget)
         return self.insertTabWidget(-1, tabWidget, sheetLabel)
 
     def insertTabWidget(self, index, tabWidget, sheetLabel):
@@ -455,6 +471,7 @@ class StandardWidgetTabController(QtGui.QTabWidget):
             self.tabWidgets.append(tabWidget)
             tabWidget.setWindowTitle(sheetLabel)
             self.connectTabWigetSignals(tabWidget)
+        self.emit(QtCore.SIGNAL("add_tab"), sheetLabel, tabWidget)    
         return self.insertTab(index, tabWidget, sheetLabel)
 
     def tabWidgetUnderMouse(self):
