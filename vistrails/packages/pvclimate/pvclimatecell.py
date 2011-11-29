@@ -95,31 +95,44 @@ class QParaViewWidget(QVTKWidget):
             sliceFilter.SliceType.Origin = origin
             sliceFilter.SliceOffsetValues = [float(sliceOffset)]
 
+            #sliceFilter = pvsp.Transform(sliceFilter)
+            #sliceFilter.Transform.Scale = [1,1,0.01]
+
             # \TODO:
             # 1. Fix saturation
             # 2. Add scalar bar
-            rep = pvsp.GetDisplayProperties(sliceFilter)
-            rep.LookupTable = pvsp.MakeBlueToRedLT(0,30)
+            rep = pvsp.Show(view=self.view)
+            rep.LookupTable =  pvsp.GetLookupTableForArray( variableName, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[0.0, 0.23, 0.299, 0.754, 30.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1 )
             rep.ColorArrayName = 'TEMP'
 
             # Apply scale (squish in Z)
             rep.Scale  = [1,1,0.01]
 
-            self.view.Representations = []
-            self.view.Representations.append(rep)
+            #self.view.Representations = []
+            #self.view.Representations.append(rep)
 
             # Create a contour representation
             contour = pvsp.Contour(reader)
             contour.ContourBy = [variableType, variableName]
             contour.Isosurfaces = [8]
             contour.ComputeScalars = 1
-            contour.ComputeNormals = 1
-            contourRep = pvsp.GetDisplayProperties(contour)
-            contourRep.LookupTable = pvsp.MakeBlueToRedLT(0,30)
-            contourRep.ColorArrayName = variableName
-            contourRep.Scale  = [1,1,0.01]
+            contour.ComputeNormals = 0
 
-            self.view.Representations.append(contourRep)
+            #contour = pvsp.Transform(contour)
+            #contour.Transform.Scale = [1,1,0.01]
+
+            contourRep = pvsp.Show(view=self.view)
+            contourRep.LookupTable =  pvsp.GetLookupTableForArray( variableName, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[0.0, 0.23, 0.299, 0.754, 30.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1 )
+            contourRep.Scale  = [1,1,0.01]
+            contourRep.Representation = 'Surface'
+            contourRep.ColorArrayName = variableName
+
+            #self.view.Representations.append(contourRep)
+            #pvsp.servermanager.ProxyManager().SaveXMLState('/tmp/bar.xml')
+
+            # Set view specific properties
+            self.view.CenterAxesVisibility = 0
+            self.view.Background = [0.5, 0.5, 0.5]
 
         self.view.ResetCamera()
         self.view.StillRender()
