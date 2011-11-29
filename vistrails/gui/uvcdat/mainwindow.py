@@ -107,6 +107,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.dockPlot = DockPlot(self)
         self.dockVariable = DockVariable(self)
         self.workspace = Workspace(self)
+        self.varProp = VariableProperties(self)
         #self.workspace.addProject("Relative Humidity")
         #self.workspace.addProject("Total Cloudiness")
         #self.workspace.addProject("Temperature Anomaly")
@@ -118,8 +119,11 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         #self.tabifyDockWidget(self.workspace, self.dockTemplate)
         self.tabifyDockWidget(self.dockTemplate, self.dockPlot)
         self.workspace.raise_()
+        self.varProp.hide()
+        
 
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockVariable)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.varProp)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockCalculator)
 
     def createActions(self):

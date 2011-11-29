@@ -369,8 +369,8 @@ class QDefinedVariableWidget(QtGui.QWidget):
             self.deleteVariable(v.id)
         
     def newVariable(self):
-        varProp = VariableProperties(self)
-        varProp.show()
+        self.root.varProp.setFloating(True)
+        self.root.varProp.show()
                 
     def createToolbar(self):
         ICONPATH = customizeUVCDAT.ICONPATH
