@@ -82,8 +82,6 @@ class QParaViewWidget(QVTKWidget):
             origin.append((bounds[3] + bounds[2]) / 2.0)
             origin.append((bounds[5] + bounds[4]) / 2.0)
             
-            print origin
-            
             # Create a slice representation
             sliceFilter = pvsp.Slice(reader)
             sliceFilter.SliceType.Normal = [0,0,1]
@@ -454,9 +452,7 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         parmRecList = []
         parmRecList.append( ( 'slice_offset' , [ self.sliceOffset ]  ), )
         self.persistParameterList( parmRecList )
-        self.stateChanged(False)         
-
-        self.stateChanged(False)         
+        self.stateChanged(False)
            
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None
