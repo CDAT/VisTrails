@@ -31,7 +31,7 @@ on its inputs."""
         fileName = self.getInputFromPort("fileName")
         variableName = self.getInputFromPort("variableName")
         #variableType = self.getInputFromPort("variableType")
-        reader = pvsp.XMLRectilinearGridReader(FileName=fileName)
+        reader = pvsp.NetCDFPOPreader(FileName=fileName)
         pvvarInstance = pvvariable.PVVariable()
         pvvarInstance.set_reader(reader)
         pvvarInstance.set_variable_name(variableName);

@@ -47,13 +47,55 @@ class QParaViewWidget(QVTKWidget):
             variableName = var.get_variable_name()
             variableType = var.get_variable_type()
             #print reader
-            contour = pvsp.Contour(reader)
-            contour.ContourBy = [variableType, variableName]
-            contour.Isosurfaces = [0]
-            rep = pvsp.GetDisplayProperties(contour)
+            #contour = pvsp.Contour(reader)
+            #contour.ContourBy = [variableType, variableName]
+            #contour.Isosurfaces = [0]
+            #rep = pvsp.GetDisplayProperties(contour)
             # Now make a representation and add it to the view
+            reader.Stride = [5,5,5]
+            
+            # Update pipeline
+            reader.UpdatePipeline()
+            
+            # Get bounds
+            bounds = reader.GetDataInformation().GetBounds()
+            origin = []
+            origin.append((bounds[1] + bounds[0]) / 2.0)
+            origin.append((bounds[3] + bounds[2]) / 2.0)
+            origin.append((bounds[5] + bounds[4]) / 2.0)
+            
+            print origin
+            
+            # Create a slice representation
+            sliceFilter = pvsp.Slice(reader)
+            sliceFilter.SliceType.Normal = [0,0,1]
+            sliceFilter.SliceType.Origin = origin
+            
+            # \TODO: 
+            # 1. Fix saturation
+            # 2. Add scalar bar
+            rep = pvsp.GetDisplayProperties(sliceFilter)
+            rep.LookupTable = pvsp.MakeBlueToRedLT(0,30)
+            rep.ColorArrayName = 'TEMP'
+            
+            # Apply scale (squish in Z)
+            rep.Scale  = [1,1,0.01]
+            
             self.view.Representations = []
             self.view.Representations.append(rep)
+            
+            # Create a contour representation            
+            contour = pvsp.Contour(reader)
+            contour.ContourBy = [variableType, variableName]
+            contour.Isosurfaces = [8]
+            contour.ComputeScalars = 1
+            contour.ComputeNormals = 1
+            contourRep = pvsp.GetDisplayProperties(contour)
+            contourRep.LookupTable = pvsp.MakeBlueToRedLT(0,30)
+            contourRep.ColorArrayName = variableName            
+            contourRep.Scale  = [1,1,0.01]
+            
+            self.view.Representations.append(contourRep)
 
         self.view.ResetCamera()
         self.view.StillRender()
