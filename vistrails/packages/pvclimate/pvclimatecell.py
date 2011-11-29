@@ -18,6 +18,7 @@ from gui.modules.module_configure import StandardModuleConfigurationWidget
 
 # Needed for port related stuff
 from core.vistrail.port import PortEndPoint
+import core.modules.basic_modules as basic_modules
 
 class PVClimateCell(SpreadsheetCell):
     def __init__(self):
@@ -29,8 +30,14 @@ class PVClimateCell(SpreadsheetCell):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """
+        # Fetch input variable
         proxies = self.forceGetInputListFromPort('variable')
-        self.cellWidget = self.displayAndWait(QParaViewWidget, (proxies,))
+
+        # Fetch slice offset from input port
+        self.sliceOffset = self.getInputFromPort("sliceOffset")
+        print self.sliceOffset
+
+        self.cellWidget = self.displayAndWait(QParaViewWidget, (proxies, self.sliceOffset))
 
     def persistParameterList( self, parameter_list, **args ):
         print "Getting Something"
@@ -59,7 +66,7 @@ class QParaViewWidget(QVTKWidget):
             iren.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
 
         # Fetch variables from the input port
-        (pvvariables, ) = inputPorts
+        (pvvariables, sliceOffset) = inputPorts
         for var in pvvariables:
             reader = var.get_reader()
             variableName = var.get_variable_name()
@@ -86,6 +93,7 @@ class QParaViewWidget(QVTKWidget):
             sliceFilter = pvsp.Slice(reader)
             sliceFilter.SliceType.Normal = [0,0,1]
             sliceFilter.SliceType.Origin = origin
+            sliceFilter.SliceOffsetValues = [float(sliceOffset)]
 
             # \TODO:
             # 1. Fix saturation
@@ -151,6 +159,7 @@ def registerSelf():
     registry.add_module(PVClimateCell, configureWidgetType=PVClimateCellConfigurationWidget)
     registry.add_input_port(PVClimateCell, "Location", CellLocation)
     registry.add_input_port(PVClimateCell, "variable", pvvariable.PVVariableConstant)
+    registry.add_input_port(PVClimateCell, "sliceOffset", basic_modules.String)
     registry.add_output_port(PVClimateCell, "self", PVClimateCell)
 
 
@@ -411,8 +420,8 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         functions = []
         # For now assume parameters changed everytime
         if 1:
-            functions.append(("sliceOffset", [1.0]))
-            self.controller.update_functions(self.module.id, functions)
+            functions.append(("sliceOffset", [self.sliceOffset]))
+            self.controller.update_functions(self.module, functions)
 
     def createLayout(self):
         """ createEditor() -> None
@@ -448,7 +457,7 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         Update vistrail controller (if neccesssary) then close the widget
 
         """
-        self.sliceOffset = float( self.sliceOffsetValue.text() )
+        self.sliceOffset = str(self.sliceOffsetValue.text().toLocal8Bit().data())
         print self.module
         self.updateVistrail()
         self.updateController(self.controller)
