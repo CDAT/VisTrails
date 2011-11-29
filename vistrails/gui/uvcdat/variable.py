@@ -16,6 +16,9 @@ from paraviewconnection import ParaViewConnectionDialog
 from pvprocessfile import PVProcessFile
 from pvtabwidget import PVTabWidget
 
+from packages.uvcdat_cdms.init import CDMSVariable
+from packages.uvcdat_pv.init import PVVariable
+
 class VariableProperties(QtGui.QDialog):
     FILTER = "CDAT data (*.cdms *.ctl *.dic *.hdf *.nc *.xml)"
 
@@ -396,7 +399,9 @@ class VariableProperties(QtGui.QDialog):
         self.root.dockVariable.widget().addVariable(varName,type="ParaView")
         from api import _app
         controller = _app.uvcdatWindow.get_current_project_controller()
-        controller.add_defined_variable(filename, varName, kwargs)
+        pvVar = PVVariable(filename=filename, name=varName)
+        controller.add_defined_variable(pvVar)
+        # controller.add_defined_variable(filename, varName, kwargs)
         
     def getUpdatedVarCheck(self,targetId=None):
         """ Return a new tvariable object with the updated information from
@@ -468,7 +473,15 @@ class VariableProperties(QtGui.QDialog):
         
         from api import _app
         controller = _app.uvcdatWindow.get_current_project_controller()
-        controller.add_defined_variable(self.cdmsFile.id,targetId,kwargs)
+        def get_kwargs_str(kwargs_dict):
+            kwargs_str = ""
+            for k, v in kwargs_dict.iteritems():
+                kwargs_str += "%s=%s," % (k, repr(v))
+            return kwargs_str
+        cdmsVar = CDMSVariable(filename=self.cdmsFile.id, name=targetId,
+                               axes=get_kwargs_str(kwargs))
+        controller.add_defined_variable(cdmsVar)
+        # controller.add_defined_variable(self.cdmsFile.id,targetId,kwargs)
         self.updateVarInfo(axisList)
         return updatedVar
     
