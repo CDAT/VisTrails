@@ -54,6 +54,7 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         font = self.font(0)
         font.setBold(True)
         self.setFont(0, font)
+        self.currentSheet = None
         self.namedPipelines = QtGui.QTreeWidgetItem(['Named Pipelines'])
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/folder_blue.png"), state=QtGui.QIcon.Off)
@@ -65,27 +66,30 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         self.sheet_to_tab = {}
 
 class QSpreadsheetItem(QtGui.QTreeWidgetItem):
-    def __init__(self, name='sheet 1', sheetSaved=False, parent=None):
+    def __init__(self, name='sheet 1', parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/map-icon.png"))
         self.setIcon(0, icon)
         self.sheetName = name
-        self.sheetSaved = sheetSaved
-        self.setText(0, name + ('' if sheetSaved else '*') )
+        self.setText(0, name)
 
 class QWorkflowItem(QtGui.QTreeWidgetItem):
-    def __init__(self, name='untitled', position=None, parent=None):
+    def __init__(self, name='untitled', position=None, span=None, parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
         # workflowName is the tag name or "untitled"
         self.workflowName = name
         # workflowPos is a spreadsheet location like "A2"
         self.workflowPos = position
+        # workflowSpan is a spreadsheet span like "1,2" default is "1,1"
+        self.workflowSpan = span
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/pipeline.png"))
         self.setIcon(0, icon)
         if position is not None:
             name = name + '@' + position
+        if span is not None:
+            name = name + ' spanning ' + span
         self.setText(0, name)
 
 class Workspace(QtGui.QDockWidget):
@@ -316,20 +320,18 @@ class Workspace(QtGui.QDockWidget):
         #if version:
         #    view.version_selected(version, True, double_click=True)
         
-        if sheet:
-            pass
-            # TODO change to this sheet
-
-    def save_sheet_tab(self, title, widget):
-        # TODO: save using annotations when sheet is saved
-        pass
-        
+        if sheet and sheet != project.currentSheet:
+            project.currentSheet = sheet
+            tab = project.sheet_to_tab[sheet.sheetName]
+            self.spreadsheetWindow.get_current_tab_controller().setCurrentWidget(tab)
+            
     def add_sheet_tab(self, title, widget):
         if title not in self.currentProject.sheet_to_tab:
             self.currentProject.sheet_to_tab[title] = widget
             item = QSpreadsheetItem(title)
             self.currentProject.addChild(item)
             self.currentProject.sheet_to_item[title] = item
+            # TODO: save using annotations when sheet is saved
     
     def remove_sheet_tab(self, widget):
         title = None
@@ -339,13 +341,36 @@ class Workspace(QtGui.QDockWidget):
                 break
         if title and title in self.currentProject.sheet_to_tab:
             item = self.currentProject.sheet_to_item[title]
-            if item.sheetSaved:
-                # TODO remove annotations from vistrail
-                pass
+            # TODO remove annotations from vistrail
             index = self.currentProject.indexOfChild(item)
             self.currentProject.takeChild(index)
             del self.currentProject.sheet_to_tab[title]
             del self.currentProject.sheet_to_item[title]
+
+    def change_tab_text(self, oldtitle, newtitle):
+        if oldtitle in self.currentProject.sheet_to_item:
+            item = self.currentProject.sheet_to_item[oldtitle]
+            item.setText(0, newtitle)
+            self.currentProject.sheet_to_item[title] = item
+            # TODO: update actionannotations
+
+    def dropEvent(self, event):
+        """ Execute the pipeline at the particular location or sends events to
+        project controller so it can set the workflows """
+        mimeData = event.mimeData()       
+        if (hasattr(mimeData, 'versionId') and
+            hasattr(mimeData, 'controller')):
+            event.accept()
+            versionId = mimeData.versionId
+            controller = mimeData.controller
+            pipeline = controller.vistrail.getPipeline(versionId)
+
+            inspector = PipelineInspector()
+            inspector.inspect_spreadsheet_cells(pipeline)
+            inspector.inspect_ambiguous_modules(pipeline)
+            if len(inspector.spreadsheet_cells)==1:
+                print "one cell only"
+            print "cells", inspector.spreadsheet_cells
 
     def get_current_project_controller(self):
         return self.current_controller

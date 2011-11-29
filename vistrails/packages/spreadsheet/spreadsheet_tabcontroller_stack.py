@@ -61,7 +61,7 @@ class TabControllerStack(QtGui.QStackedWidget):
         
     def new_tab_action_triggered(self):
         tabController = self.currentWidget()
-        tabController.self.newSheetActionTriggered()
+        tabController.newSheetActionTriggered()
         
     def add_view(self, name):
         tabcontroller = StandardWidgetTabController()

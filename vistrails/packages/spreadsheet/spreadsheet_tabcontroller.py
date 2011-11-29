@@ -295,8 +295,15 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         Actual code to create a new sheet
         
         """
+        N = 1
+        name = 'Sheet 1'
+        names = [str(self.operatingWidget.widget(i).windowTitle())
+                       for i in xrange(self.count())]
+        while name in names:
+                  N += 1
+                  name = 'Sheet %d' % N
         self.setCurrentIndex(self.addTabWidget(StandardWidgetSheetTab(self),
-                                               'Sheet %d' % (self.count()+1)))
+                                               name))
         self.currentWidget().sheet.stretchCells()
         
     def tabInserted(self, index):
@@ -327,7 +334,7 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         widget = self.widget(index)
         self.emit(QtCore.SIGNAL("remove_tab"), widget)
         self.tabWidgets.remove(widget)
-        self.removeTab(self.currentIndex())
+        self.removeTab(index)
         self.removeSheetReference(widget)
         widget.deleteAllCells()
         widget.deleteLater()
@@ -402,6 +409,9 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         
         """
         self.operatingWidget.widget(tabIdx).setWindowTitle(newTabText)
+        self.emit(QtCore.SIGNAL("change_tab_text"),
+                  self.operatingWidget.widget(tabIdx).windowTitle(),
+                  newTabText)
 
     def moveTab(self, tabIdx, destination):
         """ moveTab(tabIdx: int, destination: int) -> None
