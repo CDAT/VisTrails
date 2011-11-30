@@ -80,6 +80,13 @@ class ProjectController(QtCore.QObject):
         else:
             return None  
         
+    def is_variable_in_use(self, name):
+        for sheetname in self.sheet_map:
+            for cell in self.sheet_map[sheetname].itervalues():
+                if cell.variable == name:
+                    return True
+        return False
+    
     def connect_spreadsheet(self):
         ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
         tabController = ssheetWindow.get_current_tab_controller()
