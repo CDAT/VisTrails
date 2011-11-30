@@ -480,7 +480,8 @@ class VariableProperties(QtGui.QDockWidget):
         def get_kwargs_str(kwargs_dict):
             kwargs_str = ""
             for k, v in kwargs_dict.iteritems():
-                kwargs_str += "%s=%s," % (k, repr(v))
+                if k != 'order':
+                    kwargs_str += "%s=%s," % (k, repr(v))
             return kwargs_str
         cdmsVar = CDMSVariable(filename=self.cdmsFile.id, name=targetId,
                                axes=get_kwargs_str(kwargs))
