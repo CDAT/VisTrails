@@ -14,6 +14,10 @@ class PVProcessFile:
         if not self._reader:
             print self._fileName
             self._reader = NetCDFPOPreader(FileName=str(self._fileName))
+
+            # Read part data only (to save read time)
+            # Using hardcoded value for now
+            self._reader.Stride = [5,5,5]
         return self._reader;
     
     def getPointVariables(self):
