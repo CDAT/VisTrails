@@ -136,13 +136,15 @@ class ProjectController(QtCore.QObject):
                 self.sheet_map[sheetName][(row,col)] = InstanceObject(variable=None,
                                                                       plot_type=plot_type,
                                                                       gm=gm,
-                                                                      template=None)
+                                                                      template=None,
+                                                                      current_parent_version=0L)
         else:
             self.sheet_map[sheetName] = {}
             self.sheet_map[sheetName][(row,col)] = InstanceObject(variable=None,
                                                                       plot_type=plot_type,
                                                                       gm=gm,
-                                                                      template=None)
+                                                                      template=None,
+                                                                      current_parent_version=0L)
     
     def reset_workflow(self, cell):
         pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
