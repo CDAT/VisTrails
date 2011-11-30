@@ -349,7 +349,7 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
             if not port.optional:
                 checkBox.setEnabled(False)
         self.setUpdatesEnabled(True)
-        self.saveButton.setEnabled(False)
+        self.saveButton.setEnabled(True)
         self.resetButton.setEnabled(False)
         self.state_changed = False
         self.emit(SIGNAL("stateChanged"))
