@@ -382,6 +382,50 @@ class QCellToolBarRemoveCell(QtGui.QAction):
         (sheet, row, col, cellWidget) = info
         self.setVisible(cellWidget!=None)
         
+class QCellToolBarConfigurePlot(QtGui.QAction):
+    """
+    QCellToolBarConfigurePlot is the action to configure the plot of the
+    current cell
+
+    """
+    def __init__(self, icon, parent=None):
+        """ QCellToolBarRemoveCell(icon: QIcon, parent: QWidget)
+                                   -> QCellToolBarRemoveCell
+        Setup the image, status tip, etc. of the action
+        
+        """
+        QtGui.QAction.__init__(self,
+                               icon,
+                               "&Configure the current plot",
+                               parent)
+        self.setStatusTip("Configure the current plot")
+
+    def triggeredSlot(self, checked=False):
+        """ toggledSlot(checked: boolean) -> None
+        Execute the action when the button is clicked
+        
+        """
+        
+        cellWidget = self.toolBar.getSnappedWidget()
+        self.toolBar.sheet.parent().requestPlotConfigure(self.toolBar.row, self.toolBar.col)
+
+    def updateStatus(self, info):
+        """ updateStatus(info: tuple) -> None
+        Updates the status of the button based on the input info
+        
+        """
+        (sheet, row, col, cellWidget) = info
+        selectedCells = sorted(sheet.getSelectedLocations())
+
+        # Will not show up if there is no cell selected          
+            
+        # If there is a single cell selected, only show up if it has
+        # been merged before so that user can un-merge cells
+        if len(selectedCells)==1:
+            self.setVisible(True)
+        else:
+            self.setVisible(False)
+        
 class QCellToolBarMergeCells(QtGui.QAction):
     """
     QCellToolBarMergeCells is the action to merge selected cells to a

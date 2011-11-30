@@ -642,6 +642,9 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             self.sheet.stretchCells()
             self.setEditingMode(self.tabWidget.editingMode)
 
+    def getSheetName(self):
+        return str(self.tabWidget.tabText(self.tabWidget.indexOf(self)))
+    
     ### Belows are API Wrappers to connect to self.sheet
 
     def getDimension(self):
@@ -835,6 +838,9 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         """
         return (self.sheet.rowSpan(row, col), self.sheet.columnSpan(row, col))
 
+    def requestPlotConfigure(self, row, col):
+        self.emit(QtCore.SIGNAL("request_plot_configure"), self.getSheetName(), 
+                    row, col)
     
 class StandardWidgetTabBarEditor(QtGui.QLineEdit):    
     """

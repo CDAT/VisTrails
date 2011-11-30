@@ -19,6 +19,7 @@ class VCSGMs():
             if a.find(".")>-1:
                 sp=a.split(".")
                 self.originalValues[a] = getattr(getattr(self.gm,sp[0]),sp[1])
+                
             else:
                 self.originalValues[a] = getattr(self.gm,a)
             
@@ -82,31 +83,33 @@ class VCSGMs():
             rec=""
         return rec
 
-    def initCommonValues(self):
-        self.datawc_x1.setText(str(self.gm.datawc_x1))
-        self.datawc_x2.setText(str(self.gm.datawc_x2))
-        self.datawc_y1.setText(str(self.gm.datawc_y1))
-        self.datawc_y2.setText(str(self.gm.datawc_y2))
-        self.xticlabels1.setText(str(self.gm.xticlabels1))
-        self.yticlabels1.setText(str(self.gm.yticlabels1))
-        self.xticlabels2.setText(str(self.gm.xticlabels2))
-        self.yticlabels2.setText(str(self.gm.yticlabels2))
-        self.xmtics1.setText(str(self.gm.xmtics1))
-        self.ymtics1.setText(str(self.gm.ymtics1))
-        self.xmtics2.setText(str(self.gm.xmtics2))
-        self.ymtics2.setText(str(self.gm.ymtics2))
+    def initCommonValues(self, gm=None):
+        if gm is None:
+            gm = self.gm
+        self.datawc_x1.setText(str(gm.datawc_x1))
+        self.datawc_x2.setText(str(gm.datawc_x2))
+        self.datawc_y1.setText(str(gm.datawc_y1))
+        self.datawc_y2.setText(str(gm.datawc_y2))
+        self.xticlabels1.setText(str(gm.xticlabels1))
+        self.yticlabels1.setText(str(gm.yticlabels1))
+        self.xticlabels2.setText(str(gm.xticlabels2))
+        self.yticlabels2.setText(str(gm.yticlabels2))
+        self.xmtics1.setText(str(gm.xmtics1))
+        self.ymtics1.setText(str(gm.ymtics1))
+        self.xmtics2.setText(str(gm.xmtics2))
+        self.ymtics2.setText(str(gm.ymtics2))
         for i in range(self.projection.count()):
-            if str(self.projection.itemText(i))==self.gm.projection:
+            if str(self.projection.itemText(i))==gm.projection:
                 self.projection.setCurrentIndex(i)
                 break
         if "xaxisconvert" in self.gmAttributes:
             for b in self.xaxisconvert.buttonGroup.buttons():
-                if str(b.text()) == self.gm.xaxisconvert:
+                if str(b.text()) == gm.xaxisconvert:
                     b.setChecked(True)
                     break
         if "yaxisconvert" in self.gmAttributes:
             for b in self.yaxisconvert.buttonGroup.buttons():
-                if str(b.text()) == self.gm.yaxisconvert:
+                if str(b.text()) == gm.yaxisconvert:
                     b.setChecked(True)
                     break
 
@@ -163,50 +166,53 @@ class VCSGMs():
         sc.setWidget(frame)
         self.parent.addTab(sc,"'%s' World Coordinates and Axes" % self.gm.name)
 
-    def applyCommonChanges(self):
-        self.gm.projection = str(self.projection.currentText())
+    def applyCommonChanges(self, gm=None):
+        if gm is None:
+            gm = self.gm
+            
+        gm.projection = str(self.projection.currentText())
         try:
-            self.gm.xticlabels1 = eval(str(self.xticlabels1.text()))
+            gm.xticlabels1 = eval(str(self.xticlabels1.text()))
         except:
-            self.gm.xticlabels1 = str(self.xticlabels1.text())
+            gm.xticlabels1 = str(self.xticlabels1.text())
         try:
-            self.gm.xticlabels2 = eval(str(self.xticlabels2.text()))
+            gm.xticlabels2 = eval(str(self.xticlabels2.text()))
         except:
-            self.gm.xticlabels2 = str(self.xticlabels2.text())
+            gm.xticlabels2 = str(self.xticlabels2.text())
         try:
-            self.gm.yticlabels1 = eval(str(self.yticlabels1.text()))
+            gm.yticlabels1 = eval(str(self.yticlabels1.text()))
         except:
-            self.gm.yticlabels1 = str(self.yticlabels1.text())
+            gm.yticlabels1 = str(self.yticlabels1.text())
         try:
-            self.gm.yticlabels2 = eval(str(self.yticlabels2.text()))
+            gm.yticlabels2 = eval(str(self.yticlabels2.text()))
         except:
-            self.gm.yticlabels2 = str(self.yticlabels2.text())
+            gm.yticlabels2 = str(self.yticlabels2.text())
         try:
-            self.gm.xmtics1 = eval(str(self.xmtics1.text()))
+            gm.xmtics1 = eval(str(self.xmtics1.text()))
         except:
-            self.gm.xmtics1 = str(self.xmtics1.text())
+            gm.xmtics1 = str(self.xmtics1.text())
         try:
-            self.gm.xmtics2 = eval(str(self.xmtics2.text()))
+            gm.xmtics2 = eval(str(self.xmtics2.text()))
         except:
-            self.gm.xmtics2 = str(self.xmtics2.text())
+            gm.xmtics2 = str(self.xmtics2.text())
         try:
-            self.gm.ymtics1 = eval(str(self.ymtics1.text()))
+            gm.ymtics1 = eval(str(self.ymtics1.text()))
         except:
-            self.gm.ymtics1 = str(self.ymtics1.text())
+            gm.ymtics1 = str(self.ymtics1.text())
         try:
-            self.gm.ymtics2 = eval(str(self.ymtics2.text()))
+            gm.ymtics2 = eval(str(self.ymtics2.text()))
         except:
-            self.gm.ymtics2 = str(self.ymtics2.text())
-        self.gm.datawc_x1 = eval(str(self.datawc_x1.text()))
-        self.gm.datawc_x2 = eval(str(self.datawc_x2.text()))
-        self.gm.datawc_y1 = eval(str(self.datawc_y1.text()))
-        self.gm.datawc_y2 = eval(str(self.datawc_y2.text()))
-        ## self.gm.datawc_time_units = 
-        ## self.gm.datawc_time_calendar =
+            gm.ymtics2 = str(self.ymtics2.text())
+        gm.datawc_x1 = eval(str(self.datawc_x1.text()))
+        gm.datawc_x2 = eval(str(self.datawc_x2.text()))
+        gm.datawc_y1 = eval(str(self.datawc_y1.text()))
+        gm.datawc_y2 = eval(str(self.datawc_y2.text()))
+        ## gm.datawc_time_units = 
+        ## gm.datawc_time_calendar =
         if "xaxisconvert" in self.gmAttributes:
-            self.gm.xaxisconvert = str(self.xaxisconvert.buttonGroup.button(self.xaxisconvert.buttonGroup.checkedId()).text())
+            gm.xaxisconvert = str(self.xaxisconvert.buttonGroup.button(self.xaxisconvert.buttonGroup.checkedId()).text())
         if "yaxisconvert" in self.gmAttributes:
-            self.gm.yaxisconvert = str(self.yaxisconvert.buttonGroup.button(self.yaxisconvert.buttonGroup.checkedId()).text())
+            gm.yaxisconvert = str(self.yaxisconvert.buttonGroup.button(self.yaxisconvert.buttonGroup.checkedId()).text())
 
 class VCSGMs1D:
 
@@ -318,18 +324,23 @@ class VCSGMRanges:
         self.connect(clearButton, QtCore.SIGNAL('pressed()'), self.clearCustomSettings)
         self.connect(genRangesButton, QtCore.SIGNAL('pressed()'), self.generateRanges)
 
-    def applyRangeSettings(self):
-        if hasattr(self.gm,"fillareastyle"):
-            self.gm.fillareastyle = str(self.patternTypeButtonGroup.buttonGroup.button(self.patternTypeButtonGroup.buttonGroup.checkedId()).text())
-            self.gm.fillareacolors = eval(str(self.colorsLineEdit.text()))
-            self.gm.fillareaindices = eval(str(self.patternsLineEdit.text()))
+    def applyRangeSettings(self, gm=None):
+        if gm is None:
+            gm = self.gm
+        if hasattr(gm,"fillareastyle"):
+            gm.fillareastyle = str(self.patternTypeButtonGroup.buttonGroup.button(self.patternTypeButtonGroup.buttonGroup.checkedId()).text())
+            gm.fillareacolors = eval(str(self.colorsLineEdit.text()))
+            gm.fillareaindices = eval(str(self.patternsLineEdit.text()))
         else:
-            self.gm.linecolors=eval(str(self.colorsLineEdit.text()))
-            self.gm.line= eval(str(self.patternsLineEdit.text()))
-            self.gm.linewidths = eval(str(self.lineWidthsEdit.text()))
+            gm.linecolors=eval(str(self.colorsLineEdit.text()))
+            gm.line= eval(str(self.patternsLineEdit.text()))
+            gm.linewidths = eval(str(self.lineWidthsEdit.text()))
         self.levels = eval(str(self.rangeLineEdit.text()))
 
-    def initRangeValues(self):
+    def initRangeValues(self, gm=None):
+        if gm is None:
+            gm = self.gm
+            
         self.minValLineEdit.setText('')
         self.maxValLineEdit.setText('')
         self.expLineEdit.setText('')
@@ -338,15 +349,15 @@ class VCSGMRanges:
         self.setEnabledLogLineEdits(False)
         self.includeZeroButtonGroup.setChecked('Off')
         self.spacingButtonGroup.setChecked('Linear')
-        self.rangeLineEdit.setText(str(self.gm.levels))
-        if hasattr(self.gm,"fillareastyle"):
-            self.colorsLineEdit.setText(str(self.gm.fillareacolors))
-            self.patternsLineEdit.setText(str(self.gm.fillareaindices))
-            self.patternTypeButtonGroup.setChecked(self.gm.fillareastyle)
+        self.rangeLineEdit.setText(str(gm.levels))
+        if hasattr(gm,"fillareastyle"):
+            self.colorsLineEdit.setText(str(gm.fillareacolors))
+            self.patternsLineEdit.setText(str(gm.fillareaindices))
+            self.patternTypeButtonGroup.setChecked(gm.fillareastyle)
         else:
-            self.colorsLineEdit.setText(str(self.gm.linecolors))
-            self.patternsLineEdit.setText(str(self.gm.line))
-            self.lineWidthsEdit.setText(str(self.gm.linewidths))
+            self.colorsLineEdit.setText(str(gm.linecolors))
+            self.patternsLineEdit.setText(str(gm.line))
+            self.lineWidthsEdit.setText(str(gm.linewidths))
 
     def generateRanges(self):
         try:
@@ -1453,9 +1464,15 @@ class QIsofillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         frame = QtGui.QFrame()
         frame.setLayout(vbox)
         self.parent=parent
-        self.root=parent.root
+        if hasattr(parent,"root") and parent.root is not None:
+            self.root=parent.root
+            self.gm = self.root.canvas[0].getisofill(gm)
+        else:
+            from api import _app
+            self.root =_app.uvcdatWindow
+            self.gm = self.root.canvas[0].getisofill(gm)
         self.gmAttributes = [ 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'levels','ext_1', 'ext_2', 'fillareacolors', 'fillareaindices', 'fillareastyle', 'legend', 'missing', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2']
-        self.gm = self.root.canvas[0].getisofill(gm)
+        
         self.saveOriginalValues()
         self.setupCommonSection()
 
@@ -1487,27 +1504,29 @@ class QIsofillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.connect(self.spacingButtonGroup.getButton('Log'),
                      QtCore.SIGNAL('pressed()'),
                      lambda : self.setEnabledLogLineEdits(True))
-    def initValues(self):
-
+    def initValues(self, gm=None):
+        if gm is None:
+            gm = self.gm
+            
         # Init common area
-        self.initCommonValues()
-        
+        self.initCommonValues(gm)
+            
         # Init Line Edit Text
-        self.missingLineEdit.setText(str(self.gm.missing))
-        self.legendLineEdit.setText(repr(self.gm.legend))
+        self.missingLineEdit.setText(str(gm.missing))
+        self.legendLineEdit.setText(repr(gm.legend))
 
         
-        if self.gm.ext_1 == "n":
+        if gm.ext_1 == "n":
             self.ext1ButtonGroup.setChecked('No')
         else:
             self.ext1ButtonGroup.setChecked('Yes')
-        if self.gm.ext_2 == "n":
+        if gm.ext_2 == "n":
             self.ext2ButtonGroup.setChecked('No')
         else:
             self.ext2ButtonGroup.setChecked('Yes')
 
         #Init range section
-        self.initRangeValues()
+        self.initRangeValues(gm)
         
 
     def setToolTips(self):
@@ -1515,13 +1534,16 @@ class QIsofillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.ext1ButtonGroup.setToolTip("Turn on 1st arrow on legend")
         self.ext2ButtonGroup.setToolTip("Turn on 2nd arrow on legend")
         self.legendLineEdit.setToolTip("Specify the desired legend labels.\nFor example:\n None -- Allow VCS to generate legend labels\n(), or [ ], or { } -- No legend  labels\n [0, 10, 20] or { 0:'0', 10:'10', 20:'20' }\n[ 0, 10 ] or { 0:'text', 10:'more text'}")
-    def applyChanges(self):
-        self.applyCommonChanges()
-        self.gm.legend = eval(str(self.legendLineEdit.text()))
-        self.gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
-        self.gm.ext2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
-        self.gm.missing = eval(str(self.missingLineEdit.text()))
-        self.gm.levels = eval(str(self.rangeLineEdit.text()))
+    def applyChanges(self, gm=None):
+        if gm is None:
+            gm = self.gm
+        self.applyCommonChanges(gm)
+        
+        gm.legend = eval(str(self.legendLineEdit.text()))
+        gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
+        gm.ext2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
+        gm.missing = eval(str(self.missingLineEdit.text()))
+        gm.levels = eval(str(self.rangeLineEdit.text()))
         self.applyRangeSettings()
 
 class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
@@ -1531,9 +1553,16 @@ class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         frame = QtGui.QFrame()
         frame.setLayout(vbox)
         self.parent=parent
-        self.root=parent.root
+        if hasattr(parent,"root") and parent.root is not None:
+            self.root=parent.root
+            self.gm = self.root.canvas[0].getisoline(gm)
+        else:
+            from api import _app
+            self.root =_app.uvcdatWindow
+            self.gm = self.root.canvas[0].getisoline(gm)
+            
         self.gmAttributes = [ 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2', 'level', 'line','linecolors','linewidths','text','textcolors','clockwise','scale','angle','spacing']
-        self.gm = self.root.canvas[0].getisoline(gm)
+        
         self.saveOriginalValues()
         self.setupCommonSection()
 
@@ -1569,27 +1598,30 @@ class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.connect(self.spacingButtonGroup.getButton('Log'),
                      QtCore.SIGNAL('pressed()'),
                      lambda : self.setEnabledLogLineEdits(True))
-    def initValues(self):
-
+    
+    def initValues(self, gm=None):
+        if gm is None:
+            gm = self.gm
+            
         # Init common area
-        self.initCommonValues()
+        self.initCommonValues(gm)
         
         #Init range section
-        self.initRangeValues()
+        self.initRangeValues(gm)
 
         #Init text labels section
-        if self.gm.label=="n":
+        if gm.label=="n":
             self.textLabelsOnOff.setChecked("No")
         else:
             self.textLabelsOnOff.setChecked("Yes")
-        self.textFonts.setText(repr(self.gm.text))
-        self.textColors.setText(repr(self.gm.textcolors))
+        self.textFonts.setText(repr(gm.text))
+        self.textColors.setText(repr(gm.textcolors))
 
         #init Streamlines section
-        self.streamDirection.setText(repr(self.gm.clockwise))
-        self.streamScale.setText(repr(self.gm.scale))
-        self.streamAngle.setText(repr(self.gm.angle))
-        self.streamSpacing.setText(repr(self.gm.spacing))
+        self.streamDirection.setText(repr(gm.clockwise))
+        self.streamScale.setText(repr(gm.scale))
+        self.streamAngle.setText(repr(gm.angle))
+        self.streamSpacing.setText(repr(gm.spacing))
         
 
     def setToolTips(self):
@@ -1600,19 +1632,21 @@ class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.streamAngle.setToolTip("directional arrows head angle")
         self.streamSpacing.setToolTip("scales spacing between directional arrows")
 
-    def applyChanges(self):
-        self.applyCommonChanges()
-        self.applyRangeSettings()
+    def applyChanges(self, gm=None):
+        if gm is None:
+            gm = self.gm
+        self.applyCommonChanges(gm)
+        self.applyRangeSettings(gm)
         # Applies changes to text
-        self.gm.label = str(self.textLabelsOnOff.buttonGroup.button(self.textLabelsOnOff.buttonGroup.checkedId()).text()).lower()[0]
-        self.gm.text = eval(str(self.textFonts.text()))
-        self.gm.textcolors = eval(str(self.textColors.text()))
+        gm.label = str(self.textLabelsOnOff.buttonGroup.button(self.textLabelsOnOff.buttonGroup.checkedId()).text()).lower()[0]
+        gm.text = eval(str(self.textFonts.text()))
+        gm.textcolors = eval(str(self.textColors.text()))
         #Applies changes to streamlines
-        self.gm.clockwise = eval(str(self.streamDirection.text()))
-        self.gm.scale = eval(str(self.streamScale.text()))
-        self.gm.angle = eval(str(self.streamAngle.text()))
-        self.gm.spacing = eval(str(self.streamSpacing.text()))
-        self.gm.level = eval(str(self.rangeLineEdit.text()))
+        gm.clockwise = eval(str(self.streamDirection.text()))
+        gm.scale = eval(str(self.streamScale.text()))
+        gm.angle = eval(str(self.streamAngle.text()))
+        gm.spacing = eval(str(self.streamSpacing.text()))
+        gm.level = eval(str(self.rangeLineEdit.text()))
 
         
 class QContourEditor():
@@ -1858,9 +1892,15 @@ class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         widgetWrapper = QtGui.QFrame()
         widgetWrapper.setLayout(vbox)
         self.parent=parent
-        self.root=parent.root
+        if hasattr(parent,"root") and parent.root is not None:
+            self.root=parent.root
+            self.gm = self.root.canvas[0].getboxfill(gm)
+        else:
+            from api import _app
+            self.root =_app.uvcdatWindow
+            self.gm = self.root.canvas[0].getboxfill(gm)
         self.gmAttributes = ['boxfill_type', 'color_1', 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'levels','ext_1', 'ext_2', 'fillareacolors', 'fillareaindices', 'fillareastyle', 'legend', 'level_1', 'level_2', 'missing', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2']
-        self.gm = self.root.canvas[0].getboxfill(gm)
+        
         self.saveOriginalValues()
         
         # 'define boxfill attributes + boxfill type radio buttons'
@@ -1927,19 +1967,22 @@ class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
                      self.clickedBoxType)
 
 
-    def applyChanges(self):
-        self.applyCommonChanges()
-        self.gm.boxfill_type = str(self.boxfillTypeButtonGroup.buttonGroup.button(self.boxfillTypeButtonGroup.buttonGroup.checkedId()).text())
-        self.gm.level_1 = eval(str(self.level1LineEdit.text()))
-        self.gm.level_2 = eval(str(self.level2LineEdit.text()))
-        self.gm.color_1 = eval(str(self.color1LineEdit.text()))
-        self.gm.color_2 = eval(str(self.color2LineEdit.text()))
-        self.gm.legend = eval(str(self.legendLineEdit.text()))
-        self.gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
-        self.gm.ext2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
-        self.gm.missing = eval(str(self.missingLineEdit.text()))
-        self.gm.levels = eval(str(self.rangeLineEdit.text()))
-        self.applyRangeSettings()
+    def applyChanges(self, gm=None):
+        if gm is None:
+            gm = self.gm
+        if gm:
+            self.applyCommonChanges(gm)
+            gm.boxfill_type = str(self.boxfillTypeButtonGroup.buttonGroup.button(self.boxfillTypeButtonGroup.buttonGroup.checkedId()).text())
+            gm.level_1 = eval(str(self.level1LineEdit.text()))
+            gm.level_2 = eval(str(self.level2LineEdit.text()))
+            gm.color_1 = eval(str(self.color1LineEdit.text()))
+            gm.color_2 = eval(str(self.color2LineEdit.text()))
+            gm.legend = eval(str(self.legendLineEdit.text()))
+            gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
+            gm.ext_2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
+            gm.missing = eval(str(self.missingLineEdit.text()))
+            gm.levels = eval(str(self.rangeLineEdit.text()))
+            self.applyRangeSettings(gm)
         ## Need command to plot here?
         ## self.root.tabView.widget(1).plot()
         
@@ -1954,34 +1997,36 @@ class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
             self.linLogSettings.setEnabled(True)
             self.customSettings.setEnabled(False)
         
-    def initValues(self):
-
+    def initValues(self, gm=None):
+        if gm is None:
+            gm = self.gm
+            
         # Init common area
-        self.initCommonValues()
+        self.initCommonValues(gm)
         
         # Init Line Edit Text
-        self.missingLineEdit.setText(str(self.gm.missing))
+        self.missingLineEdit.setText(str(gm.missing))
         self.legendLineEdit.setText('None')
-        self.level1LineEdit.setText(str(self.gm.level_1))
-        self.level2LineEdit.setText(str(self.gm.level_2))
-        self.color1LineEdit.setText(str(self.gm.color_1))
-        self.color2LineEdit.setText(str(self.gm.color_2))
+        self.level1LineEdit.setText(str(gm.level_1))
+        self.level2LineEdit.setText(str(gm.level_2))
+        self.color1LineEdit.setText(str(gm.color_1))
+        self.color2LineEdit.setText(str(gm.color_2))
 
         # Init selected radio buttons
-        self.boxfillTypeButtonGroup.setChecked(self.gm.boxfill_type)
+        self.boxfillTypeButtonGroup.setChecked(gm.boxfill_type)
         self.clickedBoxType()
         
-        if self.gm.ext_1 == "n":
+        if gm.ext_1 == "n":
             self.ext1ButtonGroup.setChecked('No')
         else:
             self.ext1ButtonGroup.setChecked('Yes')
-        if self.gm.ext_2 == "n":
+        if gm.ext_2 == "n":
             self.ext2ButtonGroup.setChecked('No')
         else:
             self.ext2ButtonGroup.setChecked('Yes')
 
         #Init range section
-        self.initRangeValues()
+        self.initRangeValues(gm)
         
 
     def setToolTips(self):

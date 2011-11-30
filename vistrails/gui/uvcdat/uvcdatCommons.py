@@ -206,7 +206,7 @@ class QFramedWidget(QtGui.QGroupBox):
         self.setFlat(flat)
         if titleText is not None:
             ## title = QtGui.QLabel(titleText)
-            self.setFont(QtGui.QFont("Times", 14, QtGui.QFont.Bold))
+            self.setFont(QtGui.QFont("Arial", 12, QtGui.QFont.Bold))
             self.setTitle(titleText)
         self.newRow()
 

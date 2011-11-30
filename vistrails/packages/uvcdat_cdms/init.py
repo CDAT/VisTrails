@@ -11,18 +11,34 @@ import re
 import MV2
 
 from info import identifier
+from widgets import GraphicsMethodConfigurationWidget
+from core.modules.module_registry import get_module_registry
 
 from core.modules.vistrails_module import Module, ModuleError, NotCacheable
 from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
 from packages.uvcdat.init import Variable, Plot
-from packages.uvcdat.init import expand_port_specs as _expand_port_specs
+
+canvas = None
 
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
         pkg_identifier = identifier
-    return _expand_port_specs(port_specs, pkg_identifier)
+    reg = get_module_registry()
+    out_specs = []
+    for port_spec in port_specs:
+        if len(port_spec) == 2:
+            out_specs.append((port_spec[0],
+                              reg.expand_port_spec_string(port_spec[1],
+                                                          pkg_identifier)))
+        elif len(port_spec) == 3:
+            out_specs.append((port_spec[0],
+                              reg.expand_port_spec_string(port_spec[1],
+                                                          pkg_identifier),
+                              port_spec[2])) 
+    return out_specs
+
 
 class CDMSVariable(Variable):
     _input_ports = expand_port_specs([("axes", "basic:String"),
@@ -96,39 +112,86 @@ class CDMSVariable(Variable):
 
 class CDMSPlot(Plot):
     _input_ports = expand_port_specs([("variable", "CDMSVariable"),
-                                      ("graphicsMethod", "CDMSGraphicsMethod"),
+                                      ("variable2", "CDMSVariable", True),
                                       ("graphicsMethodName", "basic:String"),
-                                      ("template", "basic:String")])
+                                      ("template", "basic:String"),
+                                      ('datawc_x1', 'basic:String', True),
+                                      ('datawc_x2', 'basic:String', True),
+                                      ('datawc_y1', 'basic:String', True),
+                                      ('datawc_y2', 'basic:String', True),
+                                      ('xticlabels1', 'basic:String', True),
+                                      ('xticlabels2', 'basic:String', True),
+                                      ('yticlabels1', 'basic:String', True),
+                                      ('yticlabels2', 'basic:String', True),
+                                      ('xmtics1', 'basic:String', True),
+                                      ('xmtics2', 'basic:String', True),
+                                      ('ymtics1', 'basic:String', True),
+                                      ('ymtics2', 'basic:String', True),
+                                      ('projection', 'basic:String', True)])
     _output_ports = expand_port_specs([("self", "CDMSPlot")])
 
+    gm_attributes = ['datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2',
+                    'xticlabels1', 'xticlabels2', 'yticlabels1', 'yticlabels2', 
+                    'xmtics1', 'xmtics2', 'ymtics1', 'ymtics2', 'projection']
+    
     def __init__(self):
         Plot.__init__(self)
         self.template = "starter"
         self.plot_type = None
-        self.graphics_method = None
         self.graphics_method_name = "default"
         self.kwargs = {}
-
+        self.default_values = {}
+        
     def compute(self):
         Plot.compute(self)
-        self.graphics_method = self.forceGetInputFromPort("graphicsMethod")
-        if not self.graphics_method:
-            self.graphics_method_name = \
+        self.graphics_method_name = \
                 self.forceGetInputFromPort("graphicsMethodName", "default")
-        self.forceGetInputFromPort("template", "starter")
+        self.set_default_values()
+        self.template = self.forceGetInputFromPort("template", "starter")
+        
+        if not self.hasInputFromPort('variable'):
+            raise ModuleError(self, "'variable' is mandatory.")
+        self.var = self.getInputFromPort('variable')
+        
+        self.var2 = None
+        if self.hasInputFromPort('variable2'):
+            self.var2 = self.getInputFromPort('variable2')
+            
+        for attr in self.gm_attributes:
+            if self.hasInputFromPort(attr):
+                setattr(self,attr,self.getInputFromPort(attr))
 
     def to_module(self, controller):
         module = Plot.to_module(self, controller, identifier)
         functions = []
+        
+        #only when graphics_method_name is different from default the user can
+        #change the values of the properties
         if self.graphics_method_name != "default":
             functions.append(("graphicsMethodName", [self.graphicsMethodName]))
+            for attr in self.gm_attributes:
+                if getattr(self,attr) != self.default_values[attr]:
+                    functions.append((attr, [getattr(self,attr)]))
         if self.template != "starter":
             functions.append(("template", [self.template]))
+            
         functions = controller.create_functions(module, functions)
         for f in functions:
             module.add_function(f)
         return module        
 
+    def set_default_values(self, gmName=None):
+        self.default_values = {}
+        if gmName is None:
+            gmName = self.graphics_method_name
+        if self.plot_type is not None:
+            canvas = get_canvas()
+            method_name = "get"+str(self.plot_type).lower()
+            gm = getattr(canvas,method_name)(gmName)
+            for attr in self.gm_attributes:
+                setattr(self,attr,str(getattr(gm,attr)))
+                self.default_values[attr] = str(getattr(gm,attr))
+        
 class CDMSGraphicsMethod(Module):
     # FIXME fill this in
     pass
@@ -217,10 +280,25 @@ Please delete unused CDAT Cells in the spreadsheet.")
         # Plot
         for plot in inputPorts:
             # print "PLOT TYPE:", plot.plot_type
-            args = [plot.var, plot.template, plot.plot_type, 
-                    plot.graphics_method_name]
-            kwargs = plot.kwargs
-            self.canvas.plot(*args, **kwargs)
+            args = [plot.var.var]
+            if hasattr(plot, "var2") and plot.var2 is not None:
+                args.append(plot.var2.var)
+            args.append(plot.template)
+            cgm = self.get_graphics_method(plot.plot_type, plot.graphics_method_name)
+            if plot.graphics_method_name != 'default':
+                for k in plot.gm_attributes:
+                    if hasattr(plot,k):
+                        if k in ['level_1', 'level_2', 'color_1',
+                                 'color_2', 'legend', 'levels',
+                                 'missing']:
+                            setattr(cgm,k,eval(getattr(plot,k)))
+                        else:
+                            try:
+                                setattr(cgm,k,eval(getattr(plot,k)))
+                            except:
+                                setattr(cgm,k,str(getattr(plot,k)))
+            kwargs = plot.kwargs             
+            self.canvas.plot(cgm,*args,**kwargs)
 
         # if len(inputPorts) > 3:
         #     gm = inputPorts[1]
@@ -235,6 +313,10 @@ Please delete unused CDAT Cells in the spreadsheet.")
 
         spreadsheetWindow.setUpdatesEnabled(True)
 
+    def get_graphics_method(self, plotType, gmName):
+        method_name = "get"+str(plotType).lower()
+        return getattr(self.canvas,method_name)(gmName)
+    
     def deleteLater(self):
         """ deleteLater() -> None        
         Make sure to free render window resource when
@@ -256,16 +338,112 @@ Please delete unused CDAT Cells in the spreadsheet.")
 
 _modules = [CDMSVariable, CDMSPlot, CDMSGraphicsMethod, CDMSCell]
 
+def get_input_ports(plot_type):
+    if plot_type == "Boxfill":
+        return expand_port_specs([('boxfill_type', 'basic:String', True),
+                                  ('color_1', 'basic:String', True),
+                                  ('color_2', 'basic:String', True),
+                                  ('datawc_calendar', 'basic:String', True),
+                                  ('datawc_timeunits', 'basic:String', True),
+                                  ('levels', 'basic:String', True),
+                                  ('ext_1', 'basic:String', True),
+                                  ('ext_2', 'basic:String', True),
+                                  ('fillareacolors', 'basic:String', True),
+                                  ('fillareaindices', 'basic:String', True),
+                                  ('fillareastyle', 'basic:String', True),
+                                  ('legend', 'basic:String', True),
+                                  ('level_1', 'basic:String', True),
+                                  ('level_2', 'basic:String', True),
+                                  ('missing', 'basic:String', True),
+                                  ('xaxisconvert', 'basic:String', True),
+                                  ('yaxisconvert', 'basic:String', True)
+                                  ])
+    elif plot_type == "Isofill":
+        return expand_port_specs([('datawc_calendar', 'basic:String', True),
+                                  ('datawc_timeunits', 'basic:String', True),
+                                  ('levels', 'basic:String', True),
+                                  ('ext_1', 'basic:String', True),
+                                  ('ext_2', 'basic:String', True),
+                                  ('fillareacolors', 'basic:String', True),
+                                  ('fillareaindices', 'basic:String', True),
+                                  ('fillareastyle', 'basic:String', True),
+                                  ('legend', 'basic:String', True),
+                                  ('missing', 'basic:String', True),
+                                  ('xaxisconvert', 'basic:String', True),
+                                  ('yaxisconvert', 'basic:String', True),
+                                  ]) 
+    elif plot_type == "Isoline":
+        return expand_port_specs([('datawc_calendar', 'basic:String', True),
+                                  ('datawc_timeunits', 'basic:String', True),
+                                  ('levels', 'basic:String', True),
+                                  ('ext_1', 'basic:String', True),
+                                  ('ext_2', 'basic:String', True),
+                                  ('fillareacolors', 'basic:String', True),
+                                  ('fillareaindices', 'basic:String', True),
+                                  ('fillareastyle', 'basic:String', True),
+                                  ('legend', 'basic:String', True),
+                                  ('level', 'basic:String', True),
+                                  ('line', 'basic:String', True),
+                                  ('linecolors', 'basic:String', True),
+                                  ('xaxisconvert', 'basic:String', True),
+                                  ('yaxisconvert', 'basic:String', True),
+                                  ('linewidths', 'basic:String', True),
+                                  ('text', 'basic:String', True),
+                                  ('textcolors', 'basic:String', True),
+                                  ('clockwise', 'basic:String', True),
+                                  ('scale', 'basic:String', True),
+                                  ('angle', 'basic:String', True),
+                                  ('spacing', 'basic:String', True)
+                                  ]) 
+    
+    else:
+        return []
+def get_gm_attributes(plot_type):
+    if plot_type == "Boxfill":
+        return  ['boxfill_type', 'color_1', 'color_2' ,'datawc_calendar', 
+                    'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 
+                    'datawc_y2', 'levels','ext_1', 'ext_2', 'fillareacolors', 
+                    'fillareaindices', 'fillareastyle', 'legend', 'level_1', 
+                    'level_2', 'missing', 'projection', 'xaxisconvert', 'xmtics1', 
+                    'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 
+                    'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2']
+        
+    elif plot_type == "Isofill":
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
+                'datawc_y1', 'datawc_y2', 'levels','ext_1', 'ext_2', 
+                'fillareacolors', 'fillareaindices', 'fillareastyle', 'legend', 
+                'missing', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
+                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'ymtics2', 'yticlabels1', 'yticlabels2']
+        
+    elif plot_type == "Isoline":
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
+                'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 
+                'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'ymtics2', 'yticlabels1', 'yticlabels2', 'level', 'line',
+                'linecolors','linewidths','text','textcolors','clockwise','scale',
+                'angle','spacing']
+    elif plot_type == "Meshfill":
+        return []
+    
+def get_canvas():
+    global canvas
+    if canvas is None:
+        canvas = vcs.init()
+    return canvas
+    
 for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
-                      'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
-                      'Xyvsy', 'Yxvsx']:
+                  'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
+                  'Xyvsy', 'Yxvsx']:
     def get_init_method(pt):
         def __init__(self):
             CDMSPlot.__init__(self)
             self.plot_type = pt
         return __init__
     klass = type('CDMS' + plot_type, (CDMSPlot,), 
-                 {'__init__': get_init_method(plot_type)})
+                 {'__init__': get_init_method(plot_type),
+                  '_input_ports': get_input_ports(plot_type),
+                  'gm_attributes': get_gm_attributes(plot_type)})
     # print 'adding CDMS module', klass.__name__
-    _modules.append(klass)
+    _modules.append((klass,{'configureWidgetType':GraphicsMethodConfigurationWidget}))
     

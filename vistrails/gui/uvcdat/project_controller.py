@@ -59,8 +59,8 @@ class ProjectController(QtCore.QObject):
 
         self.sheet_map = {}
         self.plot_registry = get_plot_registry()
-        self.current_parent_version = 0L
-        self.load_workflow_templates()
+        #self.current_parent_version = 0L
+        #self.load_workflow_templates()
         
     def add_defined_variable(self, var):
         self.defined_variables[var.name] = var
@@ -87,6 +87,8 @@ class ProjectController(QtCore.QObject):
                      self.variable_was_dropped)
         self.connect(tabController, QtCore.SIGNAL("dropped_plot"),
                      self.plot_was_dropped)
+        self.connect(tabController, QtCore.SIGNAL("request_plot_configure"),
+                     self.request_plot_configure)
         
     def disconnect_spreadsheet(self):
         ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
@@ -95,6 +97,8 @@ class ProjectController(QtCore.QObject):
                      self.variable_was_dropped)
         self.disconnect(tabController, QtCore.SIGNAL("dropped_plot"),
                      self.plot_was_dropped)
+        self.disconnect(tabController, QtCore.SIGNAL("request_plot_configure"),
+                     self.request_plot_configure)
         
     def variable_was_dropped(self, info):
         """variable_was_dropped(info: (varName, sheetName, row, col) """
@@ -107,19 +111,24 @@ class ProjectController(QtCore.QObject):
                 self.sheet_map[sheetName][(row,col)] = InstanceObject(variable=varName,
                                                                       plot_type=None,
                                                                       gm=None,
-                                                                      template=None)
+                                                                      template=None,
+                                                                      current_parent_version=0L)
         else:
             self.sheet_map[sheetName] = {}
             self.sheet_map[sheetName][(row,col)] = InstanceObject(variable=varName,
                                                                       plot_type=None,
                                                                       gm=None,
-                                                                      template=None)
+                                                                      template=None,
+                                                                      current_parent_version=0L)
             
     def plot_was_dropped(self, info):
         """plot_was_dropped(info: (plot_type, gm, sheetName, row, col) """
         (plot_type, gm, sheetName, row, col) = info
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
+                cell = self.sheet_map[sheetName][(row,col)]
+                if cell.plot_type is not None and cell.variable is not None:
+                    self.reset_workflow(cell) 
                 self.sheet_map[sheetName][(row,col)].plot_type = plot_type
                 self.sheet_map[sheetName][(row,col)].gm = gm
                 self.update_plot(sheetName,row,col)
@@ -135,6 +144,20 @@ class ProjectController(QtCore.QObject):
                                                                       gm=gm,
                                                                       template=None)
     
+    def reset_workflow(self, cell):
+        pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
+        self.vt_controller.change_selected_version(cell.current_parent_version)
+        ids = []
+        for module in pipeline.module_list:
+            ids.append(module.id)
+        action = self.vt_controller.delete_module_list(ids)
+        cell.current_parent_version = action.id
+        
+    def request_plot_configure(self, sheetName, row, col):
+        cell = self.sheet_map[sheetName][(row,col)]
+        if cell.plot_type is not None and cell.gm is not None:
+            widget = self.get_plot_configuration(sheetName)
+
     def update_variable(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
         if cell.plot_type is not None and cell.gm is not None:
@@ -164,14 +187,16 @@ class ProjectController(QtCore.QObject):
             
             var_module = var.to_module(self.vt_controller)
             # plot_module = plot.to_module(self.vt_controller)
-            self.update_workflow(var_module, cell.plot_type, cell.gm, row, col)
+            self.update_workflow(var_module, cell, row, col)
             
-    def update_workflow(self, var_module, plot_type, plot_gm, row, column):
+    def update_workflow(self, var_module, cell, row, column):
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
+        plot_type = cell.plot_type
+        plot_gm = cell.gm
         if self.vt_controller is None:
             self.vt_controller = api.get_current_controller()
-            self.current_parent_version = 0L
+            cell.current_parent_version = 0L
         reg = get_module_registry()
 
         plot_module = self.vt_controller.create_module_from_descriptor(
@@ -209,17 +234,20 @@ class ProjectController(QtCore.QObject):
                                                ('add', loc_module),
                                                ('add', loc_conn)])
         if action is not None:
+            self.vt_controller.change_selected_version(cell.current_parent_version)
             self.vt_controller.add_new_action(action)
             self.vt_controller.perform_action(action)
-            self.current_parent_version = action.id
-
-        pipeline = self.vt_controller.vistrail.getPipeline(self.current_parent_version)
+            cell.current_parent_version = action.id
+            self.vt_controller.change_selected_version(cell.current_parent_version)
+            (results, _) = self.vt_controller.execute_current_workflow()
+        
+        #pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
         #print "Controller changed ", self.vt_controller.changed
-        controller = VistrailController()
-        controller.set_vistrail(self.vt_controller.vistrail,
-                                self.vt_controller.locator)
-        controller.change_selected_version(self.current_parent_version)
-        (results, _) = controller.execute_current_workflow()
+        #controller = VistrailController()
+        #controller.set_vistrail(self.vt_controller.vistrail,
+        #                        self.vt_controller.locator)
+        #controller.change_selected_version(cell.current_parent_version)
+        #(results, _) = controller.execute_current_workflow()
 
     def load_workflow_templates(self):
         vt_file = "/vistrails/uvcdat/src/vistrails/vistrails/packages/uvcdat_cdms/CDMS_Plot.vt"

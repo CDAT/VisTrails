@@ -205,7 +205,8 @@ class Workspace(QtGui.QDockWidget):
             name = view.controller.locator.short_name
             self.viewToItem[id(view)].setText(0, name)
         self.treeProjects.setCurrentItem(self.viewToItem[id(view)])
-        self.emit(QtCore.SIGNAL("project_added"), item.controller.name)
+        if item:
+            self.emit(QtCore.SIGNAL("project_added"), item.controller.name)
         # TODO add sheets from vistrail actionAnnotations
 
     def remove_project(self, view):

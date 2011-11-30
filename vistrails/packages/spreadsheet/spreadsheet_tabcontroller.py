@@ -854,6 +854,8 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                      self.variableDropped)
         self.connect(widget, QtCore.SIGNAL("dropped_plot"),
                      self.plotDropped)
+        self.connect(widget, QtCore.SIGNAL("request_plot_configure"),
+                     self.requestPlotConfigure)
         
     def disconnectTabWigetSignals(self, widget):
         self.disconnect(widget, QtCore.SIGNAL("dropped_variable"),
@@ -875,5 +877,6 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         """
         self.emit(QtCore.SIGNAL("dropped_plot"), info)
         
-        
+    def requestPlotConfigure(self, sheetName, row, col):
+        self.emit(QtCore.SIGNAL("request_plot_configure"), sheetName, row, col )    
         

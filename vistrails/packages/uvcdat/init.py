@@ -1,6 +1,6 @@
 from info import identifier
 from core.modules.basic_modules import new_constant, string_compare, String
-from core.modules.vistrails_module import Module
+from core.modules.vistrails_module import Module, ModuleError
 from core.modules.module_registry import get_module_registry
 
 def expand_port_specs(port_specs, pkg_identifier=None):
@@ -109,3 +109,5 @@ class Extract(Module):
     _output_ports = expand_port_specs([("variable", "Variable")])
 
 _modules = [URL, VariableSource, Variable, Plot, Extract]
+
+
