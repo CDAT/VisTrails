@@ -16,20 +16,41 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from gui.modules.module_configure import StandardModuleConfigurationWidget
 
+# Needed for port related stuff
+from core.vistrail.port import PortEndPoint
+import core.modules.basic_modules as basic_modules
+
 class PVClimateCell(SpreadsheetCell):
     def __init__(self):
         SpreadsheetCell.__init__(self)
         self.cellWidget = None
+        self.sliceOffset = 0.0
 
     def compute(self):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """
+        # Fetch input variable
         proxies = self.forceGetInputListFromPort('variable')
-        self.cellWidget = self.displayAndWait(QParaViewWidget, (proxies,))
-        
+
+        # Fetch slice offset from input port
+        if self.hasInputFromPort("sliceOffset"):
+            self.sliceOffset = self.getInputFromPort("sliceOffset")
+        else:
+            pass
+
+        print self.sliceOffset
+
+        self.cellWidget = self.displayAndWait(QParaViewWidget, (proxies, self.sliceOffset))
+
     def persistParameterList( self, parameter_list, **args ):
         print "Getting Something"
+
+    def setSliceOffset(self, value):
+        self.sliceOffset == value
+
+    def getSliceOffset(self):
+        self.sliceOffset
 
 class QParaViewWidget(QVTKWidget):
 
@@ -47,9 +68,9 @@ class QParaViewWidget(QVTKWidget):
             print type(iren)
             iren.SetNonInteractiveRenderDelay(0)
             iren.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
-        
+
         # Fetch variables from the input port
-        (pvvariables, ) = inputPorts
+        (pvvariables, sliceOffset) = inputPorts
         for var in pvvariables:
             reader = var.get_reader()
             variableName = var.get_variable_name()
@@ -61,49 +82,61 @@ class QParaViewWidget(QVTKWidget):
             #rep = pvsp.GetDisplayProperties(contour)
             # Now make a representation and add it to the view
             reader.Stride = [5,5,5]
-            
+
             # Update pipeline
             reader.UpdatePipeline()
-            
+
             # Get bounds
             bounds = reader.GetDataInformation().GetBounds()
             origin = []
             origin.append((bounds[1] + bounds[0]) / 2.0)
             origin.append((bounds[3] + bounds[2]) / 2.0)
             origin.append((bounds[5] + bounds[4]) / 2.0)
-            
-            print origin
-            
+
             # Create a slice representation
             sliceFilter = pvsp.Slice(reader)
             sliceFilter.SliceType.Normal = [0,0,1]
             sliceFilter.SliceType.Origin = origin
-            
-            # \TODO: 
+            sliceFilter.SliceOffsetValues = [float(sliceOffset)]
+
+            #sliceFilter = pvsp.Transform(sliceFilter)
+            #sliceFilter.Transform.Scale = [1,1,0.01]
+
+            # \TODO:
             # 1. Fix saturation
             # 2. Add scalar bar
-            rep = pvsp.GetDisplayProperties(sliceFilter)
-            rep.LookupTable = pvsp.MakeBlueToRedLT(0,30)
+            rep = pvsp.Show(view=self.view)
+            rep.LookupTable =  pvsp.GetLookupTableForArray( variableName, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[0.0, 0.23, 0.299, 0.754, 30.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1 )
             rep.ColorArrayName = 'TEMP'
-            
+
             # Apply scale (squish in Z)
             rep.Scale  = [1,1,0.01]
-            
-            self.view.Representations = []
-            self.view.Representations.append(rep)
-            
-            # Create a contour representation            
+
+            #self.view.Representations = []
+            #self.view.Representations.append(rep)
+
+            # Create a contour representation
             contour = pvsp.Contour(reader)
             contour.ContourBy = [variableType, variableName]
             contour.Isosurfaces = [8]
             contour.ComputeScalars = 1
-            contour.ComputeNormals = 1
-            contourRep = pvsp.GetDisplayProperties(contour)
-            contourRep.LookupTable = pvsp.MakeBlueToRedLT(0,30)
-            contourRep.ColorArrayName = variableName            
+            contour.ComputeNormals = 0
+
+            #contour = pvsp.Transform(contour)
+            #contour.Transform.Scale = [1,1,0.01]
+
+            contourRep = pvsp.Show(view=self.view)
+            contourRep.LookupTable =  pvsp.GetLookupTableForArray( variableName, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[0.0, 0.23, 0.299, 0.754, 30.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1 )
             contourRep.Scale  = [1,1,0.01]
-            
-            self.view.Representations.append(contourRep)
+            contourRep.Representation = 'Surface'
+            contourRep.ColorArrayName = variableName
+
+            #self.view.Representations.append(contourRep)
+            #pvsp.servermanager.ProxyManager().SaveXMLState('/tmp/bar.xml')
+
+            # Set view specific properties
+            self.view.CenterAxesVisibility = 0
+            self.view.Background = [0.5, 0.5, 0.5]
 
         self.view.ResetCamera()
         self.view.StillRender()
@@ -143,11 +176,12 @@ def registerSelf():
     registry.add_module(PVClimateCell, configureWidgetType=PVClimateCellConfigurationWidget)
     registry.add_input_port(PVClimateCell, "Location", CellLocation)
     registry.add_input_port(PVClimateCell, "variable", pvvariable.PVVariableConstant)
+    registry.add_input_port(PVClimateCell, "sliceOffset", basic_modules.String)
     registry.add_output_port(PVClimateCell, "self", PVClimateCell)
-    
+
 
 class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
-    
+
     newConfigurationWidget = None
     currentConfigurationWidget = None
     savingChanges = False
@@ -158,39 +192,39 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
                                        parent: QWidget)
                                        -> LayerConfigurationWidget
         Setup the dialog ...
-        
+
         """
         StandardModuleConfigurationWidget.__init__(self, module, controller, parent)
         self.setWindowTitle( title )
-        self.moduleId = module.id                
+        self.moduleId = module.id
         self.getParameters( module )
         self.createTabs()
         self.createLayout()
         self.addPortConfigTab()
-        if ( PVClimateConfigurationWidget.newConfigurationWidget == None ): PVClimateConfigurationWidget.setupSaveConfigurations() 
-        PVClimateConfigurationWidget.newConfigurationWidget = self 
-        
+        if ( PVClimateConfigurationWidget.newConfigurationWidget == None ): PVClimateConfigurationWidget.setupSaveConfigurations()
+        PVClimateConfigurationWidget.newConfigurationWidget = self
+
     def destroy( self, destroyWindow = True, destroySubWindows = True):
         self.saveConfigurations()
         StandardModuleConfigurationWidget.destroy( self, destroyWindow, destroySubWindows )
-    
+
     def sizeHint(self):
         return QSize(400,200)
-    
+
     def createTabs( self ):
         self.setLayout( QVBoxLayout() )
         self.layout().setMargin(0)
         self.layout().setSpacing(0)
 
         self.tabbedWidget = QTabWidget()
-        self.layout().addWidget( self.tabbedWidget ) 
-        self.createButtonLayout() 
-    
+        self.layout().addWidget( self.tabbedWidget )
+        self.createButtonLayout()
+
     def addPortConfigTab(self):
         portConfigPanel = self.getPortConfigPanel()
-        self.tabbedWidget.addTab( portConfigPanel, 'ports' )           
-         
-    @staticmethod   
+        self.tabbedWidget.addTab( portConfigPanel, 'ports' )
+
+    @staticmethod
     def setupSaveConfigurations():
         import api
         ctrl = api.get_current_controller()
@@ -198,7 +232,7 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
         scene.connect( scene, SIGNAL('moduleSelected'), PVClimateConfigurationWidget.saveConfigurations )
 
     @staticmethod
-    def saveConfigurations( newModuleId=None, selectedItemList=None ): 
+    def saveConfigurations( newModuleId=None, selectedItemList=None ):
         rv = False
         if not PVClimateConfigurationWidget.savingChanges:
             if PVClimateConfigurationWidget.currentConfigurationWidget and PVClimateConfigurationWidget.currentConfigurationWidget.state_changed:
@@ -207,7 +241,7 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
         return rv
 
     @staticmethod
-    def saveNewConfigurations(): 
+    def saveNewConfigurations():
         rv = False
         if not PVClimateConfigurationWidget.savingChanges:
             if PVClimateConfigurationWidget.newConfigurationWidget and PVClimateConfigurationWidget.newConfigurationWidget.state_changed:
@@ -242,7 +276,7 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
                          self.updateState)
             self.inputDict[port.name] = checkBox
             listContainer.layout().addWidget(checkBox, i+1, 0)
-        
+
         for i in xrange(len(self.outputPorts)):
             port = self.outputPorts[i]
             checkBox = self.checkBoxFromPort(port)
@@ -251,15 +285,15 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
                          self.updateState)
             self.outputDict[port.name] = checkBox
             listContainer.layout().addWidget(checkBox, i+1, 1)
-        
+
         listContainer.adjustSize()
         listContainer.setFixedHeight(listContainer.height())
-        return listContainer 
+        return listContainer
 
     def closeEvent(self, event):
         self.askToSaveChanges()
         event.accept()
-        
+
     def updateState(self, state):
         self.setFocus(Qt.MouseFocusReason)
         self.saveButton.setEnabled(True)
@@ -276,21 +310,22 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
                 self.module.visible_input_ports.add(port.name)
             else:
                 self.module.visible_input_ports.discard(port.name)
-            
+
         for port in self.outputPorts:
             if (port.optional and
                 self.outputDict[port.name].checkState()==Qt.Checked):
                 self.module.visible_output_ports.add(port.name)
             else:
                 self.module.visible_output_ports.discard(port.name)
-#        self.saveButton.setEnabled(False)
-#        self.resetButton.setEnabled(False)
+        self.saveButton.setEnabled(False)
+        #self.resetButton.setEnabled(False)
         self.state_changed = False
         self.emit(SIGNAL("stateChanged"))
-        self.emit(SIGNAL('doneConfigure'), self.module.id)
-        self.close()
+        #self.emit(SIGNAL('doneConfigure'), self.module.id)
+        #self.close()
 
     def resetTriggered(self):
+        self.startOver();
         self.setFocus(Qt.MouseFocusReason)
         self.setUpdatesEnabled(False)
         for i in xrange(len(self.inputPorts)):
@@ -314,14 +349,16 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
             if not port.optional:
                 checkBox.setEnabled(False)
         self.setUpdatesEnabled(True)
-#        self.saveButton.setEnabled(False)
-#        self.resetButton.setEnabled(False)
+        self.saveButton.setEnabled(True)
+        self.resetButton.setEnabled(False)
         self.state_changed = False
         self.emit(SIGNAL("stateChanged"))
-        self.close()
-        
+        #self.close()
+
     def stateChanged(self, changed = True ):
         self.state_changed = changed
+        self.saveButton.setEnabled(True)
+        self.resetButton.setEnabled(True)
 #        print " %s-> state changed: %s " % ( self.pmod.getName(), str(changed) )
 
     def getParameters( self, module ):
@@ -333,7 +370,7 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
     def createButtonLayout(self):
         """ createButtonLayout() -> None
         Construct Save & Reset button
-        
+
         """
         self.buttonLayout = QHBoxLayout()
         self.buttonLayout.setMargin(5)
@@ -341,20 +378,20 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
         self.saveButton.setFixedWidth(100)
         self.saveButton.setEnabled(True)
         self.buttonLayout.addWidget(self.saveButton)
-        self.resetButton = QPushButton('&Close', self)
+        self.resetButton = QPushButton('&Reset', self)
         self.resetButton.setFixedWidth(100)
         self.resetButton.setEnabled(True)
         self.buttonLayout.addWidget(self.resetButton)
-        
+
         self.layout().addLayout(self.buttonLayout)
         self.connect(self.saveButton,SIGNAL('clicked(bool)'),  self.saveTriggered)
-        self.connect(self.resetButton,SIGNAL('clicked(bool)'),  self.close )
+        self.connect(self.resetButton,SIGNAL('clicked(bool)'),  self.resetTriggered)
         self.setMouseTracking(True)
         self.setFocusPolicy( Qt.WheelFocus )
-        
+
     def okTriggered(self):
         pass
-        
+
     def checkBoxFromPort(self, port, input_=False):
         checkBox = QCheckBox(port.name)
         if input_:
@@ -368,17 +405,16 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
         if not port.optional or (input_ and port.sigstring=='()'):
             checkBox.setEnabled(False)
         return checkBox
-    
+
     def persistParameterList( self, parameter_list, **args ):
         print self.module
-        help(self.module)
-        #self.module_descriptor.module.persistParameterList(parameter_list, **args)        
+        #self.module_descriptor.module.persistParameterList(parameter_list, **args)
         #pass
 
 class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
     """
     PVClimateCellConfigurationWidget ...
-    
+
     """
 
     def __init__(self, module, controller, parent=None):
@@ -387,128 +423,62 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
                                        parent: QWidget)
                                        -> DemoDataConfigurationWidget
         Setup the dialog ...
-        
-        """        
-        self.mapBorderSize = 20.0
+
+        """
         self.cellAddress = 'A1'
         self.sliceOffset = 0
         PVClimateConfigurationWidget.__init__(self, module, controller, 'PVClimate Cell Configuration', parent)
-                
+
     def getParameters( self, module ):
-        #titleParms = getFunctionParmStrValues( module, "title" )
-        #if titleParms: self.title = str( titleParms[0] )
-        #if not self.title: self.title = self.pmod.getTitle()
-        #basemapParams = getFunctionParmStrValues( module, "enable_basemap" )
-        #if basemapParams: self.enableBasemap = bool( basemapParams[0] )
-        #basemapParams = getFunctionParmStrValues( module, "map_border_size" )
-        #if basemapParams:  self.mapBorderSize = float( basemapParams[0] )
-        #celllocParams = getFunctionParmStrValues( module, "cell_location" )
-        #if celllocParams:  self.cellAddress = str( celllocParams[0] )
-        #opacityParams = getFunctionParmStrValues( module, "opacity" )
-        #if opacityParams:  self.mapOpacity = float( opacityParams[0] )
         pass
+
+    def updateVistrail(self):
+        print 'updateVistrail'
+        functions = []
+        # For now assume parameters changed everytime
+        if 1:
+            functions.append(("sliceOffset", [self.sliceOffset]))
+            self.controller.update_functions(self.module, functions)
 
     def createLayout(self):
         """ createEditor() -> None
         Configure sections
-        """     
+        """
         print "Creating layout"
         sliceWidget = QWidget()
         self.tabbedWidget.addTab( sliceWidget, 'Slice' )
         layout = QVBoxLayout()
-        sliceWidget.setLayout( layout ) 
-        
+        sliceWidget.setLayout( layout )
+
         sliceOffsetLayout = QHBoxLayout()
         self.sliceOffsetLabel = QLabel( "Slice Offset:" )
         self.sliceOffsetValue =  QLineEdit ( self.parent() )
         sliceOffsetLayout.addWidget( self.sliceOffsetLabel )
         sliceOffsetLayout.addWidget( self.sliceOffsetValue )
         layout.addLayout(sliceOffsetLayout)
-        self.connect( self.sliceOffsetValue, SIGNAL("editingFinished()"), self.stateChanged ) 
-        
-        #if self.title: self.titleEdit.setText( self.title )
-        #self.connect( self.titleEdit, SIGNAL("editingFinished()"), self.stateChanged ) 
-                
-        #self.enableCheckBox = QCheckBox( "Enable Basemap:"  )
-        #self.enableCheckBox.setChecked( self.enableBasemap )
-        #self.connect( self.enableCheckBox, SIGNAL("stateChanged(int)"), self.basemapStateChanged ) 
-        #layout.addWidget( self.enableCheckBox )
+        self.connect( self.sliceOffsetValue, SIGNAL("editingFinished()"), self.stateChanged )
+        self.setDefaults()
 
-        #border_layout = QHBoxLayout()
-        #enable_label = QLabel( "Border size:" )
-        #border_layout.addWidget( enable_label )
-        #self.borderSizeEdit =  QLineEdit ( self.parent() )
-        #self.borderSizeEdit.setValidator( QDoubleValidator(self) )
-        #self.borderSizeEdit.setText( "%.2f" % self.mapBorderSize )
-        #self.connect( self.borderSizeEdit, SIGNAL("editingFinished()"), self.stateChanged ) 
-        #enable_label.setBuddy( self.borderSizeEdit )
-        #border_layout.addWidget( self.borderSizeEdit  )        
-        #layout.addLayout( border_layout )
 
-        #title_layout = QHBoxLayout()
-        #title_label = QLabel( "Title:" )
-        #title_layout.addWidget( title_label )
-        #self.titleEdit =  QLineEdit ( self.parent() )
-        #if self.title: self.titleEdit.setText( self.title )
-        #self.connect( self.titleEdit, SIGNAL("editingFinished()"), self.stateChanged ) 
-        #title_label.setBuddy( self.titleEdit )
-        #title_layout.addWidget( self.titleEdit  )        
-        #layout.addLayout( title_layout )
-        
-        #opacity_layout = QHBoxLayout()
-        #opacity_label = QLabel( "Map Opacity:" )
-        #opacity_layout.addWidget( opacity_label )
-        #self.opacitySlider = QSlider( Qt.Horizontal )
-        #self.opacitySlider.setRange( 0, SLIDER_MAX_VALUE )
-        #self.opacitySlider.setSliderPosition( int( self.mapOpacity * SLIDER_MAX_VALUE ) )
-        #self.connect(self.opacitySlider, SIGNAL('sliderMoved()'), self.stateChanged )
-        #opacity_layout.addWidget( self.opacitySlider )
-        #layout.addLayout( opacity_layout )
-        
-        #sheet_dims = HyperwallManager.getDimensions()
-
-        #locationTab = QWidget()        
-        #self.tabbedWidget.addTab( locationTab, 'cell location' )                 
-        #location_layout = QVBoxLayout()
-        #locationTab.setLayout( location_layout ) 
-
-        #cell_coordinates = parse_cell_address( self.cellAddress )
-        #cell_selection_layout = QHBoxLayout()
-        #cell_selection_label = QLabel( "Cell Address:" )
-        #cell_selection_layout.addWidget( cell_selection_label ) 
-
-        #self.colCombo =  QComboBox ( self.parent() )
-        #self.colCombo.setMaximumHeight( 30 )
-        #cell_selection_layout.addWidget( self.colCombo  )        
-        #for iCol in range( 5 ):  self.colCombo.addItem( chr( ord('A') + iCol ) )
-        #self.colCombo.setCurrentIndex( cell_coordinates[0] )
-
-        #self.rowCombo =  QComboBox ( self.parent() )
-        #self.rowCombo.setMaximumHeight( 30 )
-        #cell_selection_layout.addWidget( self.rowCombo  )        
-        #for iRow in range( 5 ):  self.rowCombo.addItem( str(iRow+1) )
-        #self.rowCombo.setCurrentIndex( cell_coordinates[1] )
-        #location_layout.addLayout(cell_selection_layout)
+    def setDefaults(self):
+        self.sliceOffsetValue.setText('0')
 
     def updateController(self, controller=None):
         parmRecList = []
         parmRecList.append( ( 'slice_offset' , [ self.sliceOffset ]  ), )
         self.persistParameterList( parmRecList )
-        self.stateChanged(False)         
+        self.stateChanged(False)
 
-        self.stateChanged(False)         
-           
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None
         Update vistrail controller (if neccesssary) then close the widget
-        
+
         """
-        #self.enableBasemap = self.enableCheckBox.isChecked() 
-        #self.mapBorderSize = float( self.borderSizeEdit.text() )
-        #self.cellAddress = "%s%s" % ( str( self.colCombo.currentText() ), str( self.rowCombo.currentText() ) )
-        #self.title = str( self.titleEdit.text() ) 
-        print "OK triggered"
-        self.sliceOffset = float( self.sliceOffsetValue.text() )
-        print "New slice offset is ", self.sliceOffset
+        self.sliceOffset = str(self.sliceOffsetValue.text().toLocal8Bit().data())
+        print self.module
+        self.updateVistrail()
         self.updateController(self.controller)
         self.emit(SIGNAL('doneConfigure()'))
+
+    def startOver(self):
+        self.setDefaults();

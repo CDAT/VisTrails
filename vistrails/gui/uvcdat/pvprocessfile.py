@@ -13,7 +13,11 @@ class PVProcessFile:
         # Assuming we are going to have one reader type for now.
         if not self._reader:
             print self._fileName
-            self._reader = ExodusIIReader(FileName=str(self._fileName))
+            self._reader = NetCDFPOPreader(FileName=str(self._fileName))
+
+            # Read part data only (to save read time)
+            # Using hardcoded value for now
+            self._reader.Stride = [5,5,5]
         return self._reader;
     
     def getPointVariables(self):
@@ -26,4 +30,12 @@ class PVProcessFile:
 
     def getVariables(self):
         self.getOrCreateReader()
-        return self._reader.Variables.Available
+        
+        # @NOTE: For now get only point data arrays
+        variables = []
+        numberOfPointDataArrays = self._reader.PointData.GetNumberOfArrays() 
+        for i in range(0, numberOfPointDataArrays):
+            array = str(self._reader.PointData.GetArray(i))            
+            # GetArray returns array information in this format -> Array: Name
+            variables.append(array.split(':')[1])
+        return variables

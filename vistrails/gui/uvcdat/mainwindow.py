@@ -34,8 +34,8 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.root = self
         #self.tool_bar = mainToolbarWidget.QMainToolBarContainer(self)
         self.canvas=[]
-        for i in range(4):
-            self.canvas.append(vcs.init())
+        
+        self.canvas.append(vcs.init())
         # Create the command recorder widget
         self.recorder = commandsRecorderWidget.QCommandsRecorderWidget(self)
         #Adds a shortcut to the record function
