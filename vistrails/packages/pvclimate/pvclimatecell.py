@@ -34,7 +34,11 @@ class PVClimateCell(SpreadsheetCell):
         proxies = self.forceGetInputListFromPort('variable')
 
         # Fetch slice offset from input port
-        self.sliceOffset = self.getInputFromPort("sliceOffset")
+        if self.hasInputFromPort("sliceOffset"):
+            self.sliceOffset = self.getInputFromPort("sliceOffset")
+        else:
+            pass
+
         print self.sliceOffset
 
         self.cellWidget = self.displayAndWait(QParaViewWidget, (proxies, self.sliceOffset))
@@ -345,7 +349,7 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
             if not port.optional:
                 checkBox.setEnabled(False)
         self.setUpdatesEnabled(True)
-        self.saveButton.setEnabled(False)
+        self.saveButton.setEnabled(True)
         self.resetButton.setEnabled(False)
         self.state_changed = False
         self.emit(SIGNAL("stateChanged"))
