@@ -18,6 +18,7 @@ from gui.modules.module_configure import StandardModuleConfigurationWidget
 
 # Needed for port related stuff
 from core.vistrail.port import PortEndPoint
+import core.modules.basic_modules as basic_modules
 
 class PVClimateCell(SpreadsheetCell):
     def __init__(self):
@@ -29,8 +30,18 @@ class PVClimateCell(SpreadsheetCell):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """
+        # Fetch input variable
         proxies = self.forceGetInputListFromPort('variable')
-        self.cellWidget = self.displayAndWait(QParaViewWidget, (proxies,))
+
+        # Fetch slice offset from input port
+        if self.hasInputFromPort("sliceOffset"):
+            self.sliceOffset = self.getInputFromPort("sliceOffset")
+        else:
+            pass
+
+        print self.sliceOffset
+
+        self.cellWidget = self.displayAndWait(QParaViewWidget, (proxies, self.sliceOffset))
 
     def persistParameterList( self, parameter_list, **args ):
         print "Getting Something"
@@ -59,7 +70,7 @@ class QParaViewWidget(QVTKWidget):
             iren.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
 
         # Fetch variables from the input port
-        (pvvariables, ) = inputPorts
+        (pvvariables, sliceOffset) = inputPorts
         for var in pvvariables:
             reader = var.get_reader()
             variableName = var.get_variable_name()
@@ -86,32 +97,46 @@ class QParaViewWidget(QVTKWidget):
             sliceFilter = pvsp.Slice(reader)
             sliceFilter.SliceType.Normal = [0,0,1]
             sliceFilter.SliceType.Origin = origin
+            sliceFilter.SliceOffsetValues = [float(sliceOffset)]
+
+            #sliceFilter = pvsp.Transform(sliceFilter)
+            #sliceFilter.Transform.Scale = [1,1,0.01]
 
             # \TODO:
             # 1. Fix saturation
             # 2. Add scalar bar
-            rep = pvsp.GetDisplayProperties(sliceFilter)
-            rep.LookupTable = pvsp.MakeBlueToRedLT(0,30)
+            rep = pvsp.Show(view=self.view)
+            rep.LookupTable =  pvsp.GetLookupTableForArray( variableName, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[0.0, 0.23, 0.299, 0.754, 30.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1 )
             rep.ColorArrayName = 'TEMP'
 
             # Apply scale (squish in Z)
             rep.Scale  = [1,1,0.01]
 
-            self.view.Representations = []
-            self.view.Representations.append(rep)
+            #self.view.Representations = []
+            #self.view.Representations.append(rep)
 
             # Create a contour representation
             contour = pvsp.Contour(reader)
             contour.ContourBy = [variableType, variableName]
             contour.Isosurfaces = [8]
             contour.ComputeScalars = 1
-            contour.ComputeNormals = 1
-            contourRep = pvsp.GetDisplayProperties(contour)
-            contourRep.LookupTable = pvsp.MakeBlueToRedLT(0,30)
-            contourRep.ColorArrayName = variableName
-            contourRep.Scale  = [1,1,0.01]
+            contour.ComputeNormals = 0
 
-            self.view.Representations.append(contourRep)
+            #contour = pvsp.Transform(contour)
+            #contour.Transform.Scale = [1,1,0.01]
+
+            contourRep = pvsp.Show(view=self.view)
+            contourRep.LookupTable =  pvsp.GetLookupTableForArray( variableName, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[0.0, 0.23, 0.299, 0.754, 30.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1 )
+            contourRep.Scale  = [1,1,0.01]
+            contourRep.Representation = 'Surface'
+            contourRep.ColorArrayName = variableName
+
+            #self.view.Representations.append(contourRep)
+            #pvsp.servermanager.ProxyManager().SaveXMLState('/tmp/bar.xml')
+
+            # Set view specific properties
+            self.view.CenterAxesVisibility = 0
+            self.view.Background = [0.5, 0.5, 0.5]
 
         self.view.ResetCamera()
         self.view.StillRender()
@@ -151,6 +176,7 @@ def registerSelf():
     registry.add_module(PVClimateCell, configureWidgetType=PVClimateCellConfigurationWidget)
     registry.add_input_port(PVClimateCell, "Location", CellLocation)
     registry.add_input_port(PVClimateCell, "variable", pvvariable.PVVariableConstant)
+    registry.add_input_port(PVClimateCell, "sliceOffset", basic_modules.String)
     registry.add_output_port(PVClimateCell, "self", PVClimateCell)
 
 
@@ -323,7 +349,7 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
             if not port.optional:
                 checkBox.setEnabled(False)
         self.setUpdatesEnabled(True)
-        self.saveButton.setEnabled(False)
+        self.saveButton.setEnabled(True)
         self.resetButton.setEnabled(False)
         self.state_changed = False
         self.emit(SIGNAL("stateChanged"))
@@ -411,8 +437,8 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         functions = []
         # For now assume parameters changed everytime
         if 1:
-            functions.append(("sliceOffset", [1.0]))
-            self.controller.update_functions(self.module.id, functions)
+            functions.append(("sliceOffset", [self.sliceOffset]))
+            self.controller.update_functions(self.module, functions)
 
     def createLayout(self):
         """ createEditor() -> None
@@ -448,7 +474,7 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         Update vistrail controller (if neccesssary) then close the widget
 
         """
-        self.sliceOffset = float( self.sliceOffsetValue.text() )
+        self.sliceOffset = str(self.sliceOffsetValue.text().toLocal8Bit().data())
         print self.module
         self.updateVistrail()
         self.updateController(self.controller)

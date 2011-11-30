@@ -522,8 +522,9 @@ class VariableProperties(QtGui.QDialog):
         #self.listWidget.clear()
 
         # Now populate (in the case of POP, we will have have only Variables)
-        self.populateVariables(self._pvProcessFile.getPointVariables())
-        #self.populateVariables(self._pvProcessFile.getCellVariables())        
+        #self.populateVariables(self._pvProcessFile.getPointVariables())
+        #self.populateVariables(self._pvProcessFile.getCellVariables()) 
+        self.populateVariables(self._pvProcessFile.getVariables())
 
     def updateConnectionStatus(self, isConnected):
         if isConnected:
