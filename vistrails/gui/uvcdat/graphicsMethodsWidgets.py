@@ -614,7 +614,11 @@ class QVectorEditor(VCSGMs1D,VCSGMs,QtGui.QScrollArea):
         frame = QtGui.QFrame()
         frame.setLayout(vbox)
         self.parent=parent
-        self.root=parent.root
+        if hasattr(parent,"root") and parent.root is not None:
+            self.root=parent.root
+        else:
+            from api import _app
+            self.root =_app.uvcdatWindow
         self.gmAttributes = [ 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2','line','linecolor','linewidth','scale','alignment','reference','type']
         self.gm = self.root.canvas[0].getvector(gm)
         self.saveOriginalValues()
@@ -672,7 +676,11 @@ class QTaylorDiagramEditor(VCSGMs,QtGui.QScrollArea):
         frame = QtGui.QFrame()
         frame.setLayout(vbox)
         self.parent=parent
-        self.root=parent.root
+        if hasattr(parent,"root") and parent.root is not None:
+            self.root=parent.root
+        else:
+            from api import _app
+            self.root =_app.uvcdatWindow
         self.gmAttributes = [ 'xmtics1', 'xticlabels1', 'ymtics1', 'yticlabels1','cmtics1', 'cticlabels1', 'detail',
                               'max','quadrans','skillValues','skillColor','skillDrawLabels','skillCoefficient',
                               'referencevalue','arrowlength','arrowangle','arrowbase',
@@ -812,7 +820,11 @@ class QTaylorMarkers(QtGui.QScrollArea):
         self.grid = QtGui.QGridLayout()
         self.markerList = []
         self.parent=parent
-        self.root=parent.root
+        if hasattr(parent,"root") and parent.root is not None:
+            self.root=parent.root
+        else:
+            from api import _app
+            self.root =_app.uvcdatWindow
         
         vbox = QtGui.QVBoxLayout()
         
@@ -1041,7 +1053,11 @@ class QMarkerEditorEntry(QtGui.QWidget):
         QtGui.QWidget.__init__(self, parent)
         self.widgets = {}
         self.parent=parent
-        self.root=self.parent.root
+        if hasattr(parent,"root") and parent.root is not None:
+            self.root=parent.root
+        else:
+            from api import _app
+            self.root =_app.uvcdatWindow
         symbolList = ["dot", "plus", "star", "circle", "cross", "diamond", "triangle_up", "triangle_down", "triangle_left", "triangle_right", "square", "diamond_fill", "triangle_up_fill", "triangle_down_fill", "triangle_left_fill", "triangle_right_fill", "square_fill"]
         lineList = ['None', 'tail', 'head', 'line']
         typeList = ['solid', 'dash', 'dot', 'dash-dot', 'long-dash']
@@ -1159,7 +1175,11 @@ class QScatterEditor(VCSGMs1D,VCSGMs,QtGui.QScrollArea):
         frame = QtGui.QFrame()
         frame.setLayout(vbox)
         self.parent=parent
-        self.root=parent.root
+        if hasattr(parent,"root") and parent.root is not None:
+            self.root=parent.root
+        else:
+            from api import _app
+            self.root =_app.uvcdatWindow
         self.gmAttributes = [ 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2','marker','markercolor','markersize']
         self.gm = self.root.canvas[0].getscatter(gm)
         self.saveOriginalValues()
@@ -1189,7 +1209,11 @@ class Q1DPlotEditor(VCSGMs1D,VCSGMs,QtGui.QScrollArea):
         frame = QtGui.QFrame()
         frame.setLayout(vbox)
         self.parent=parent
-        self.root=parent.root
+        if hasattr(parent,"root") and parent.root is not None:
+            self.root=parent.root
+        else:
+            from api import _app
+            self.root =_app.uvcdatWindow
         self.gmAttributes = [ 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2','line','linecolor','linewidth','marker','markercolor','markersize']
         if type == "xyvsy":
             self.gm = self.root.canvas[0].getxyvsy(gm)
@@ -1229,7 +1253,11 @@ class QOutlineEditor(VCSGMs,QtGui.QScrollArea):
         frame = QtGui.QFrame()
         frame.setLayout(vbox)
         self.parent=parent
-        self.root=parent.root
+        if hasattr(parent,"root") and parent.root is not None:
+            self.root=parent.root
+        else:
+            from api import _app
+            self.root =_app.uvcdatWindow
         self.gmAttributes = [ 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2','linecolor', 'linewidth', 'line', 'outline']
         self.gm = self.root.canvas[0].getoutline(gm)
         self.saveOriginalValues()
@@ -1299,7 +1327,11 @@ class QOutfillEditor(VCSGMs,QtGui.QScrollArea):
         frame = QtGui.QFrame()
         frame.setLayout(vbox)
         self.parent=parent
-        self.root=parent.root
+        if hasattr(parent,"root") and parent.root is not None:
+            self.root=parent.root
+        else:
+            from api import _app
+            self.root =_app.uvcdatWindow
         self.gmAttributes = [ 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2','fillareacolor', 'fillareaindex', 'fillareastyle', 'outfill']
         self.gm = self.root.canvas[0].getoutfill(gm)
         self.saveOriginalValues()
@@ -1366,7 +1398,11 @@ class QMeshfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         frame = QtGui.QFrame()
         frame.setLayout(vbox)
         self.parent=parent
-        self.root=parent.root
+        if hasattr(parent,"root") and parent.root is not None:
+            self.root=parent.root
+        else:
+            from api import _app
+            self.root =_app.uvcdatWindow
         self.gmAttributes = [ 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2','levels','ext_1', 'ext_2', 'fillareacolors', 'fillareaindices', 'fillareastyle', 'legend', 'missing', 'mesh','wrap']
         self.gm = self.root.canvas[0].getmeshfill(gm)
         self.saveOriginalValues()
@@ -1466,11 +1502,10 @@ class QIsofillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.parent=parent
         if hasattr(parent,"root") and parent.root is not None:
             self.root=parent.root
-            self.gm = self.root.canvas[0].getisofill(gm)
         else:
             from api import _app
             self.root =_app.uvcdatWindow
-            self.gm = self.root.canvas[0].getisofill(gm)
+        self.gm = self.root.canvas[0].getisofill(gm)
         self.gmAttributes = [ 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'levels','ext_1', 'ext_2', 'fillareacolors', 'fillareaindices', 'fillareastyle', 'legend', 'missing', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2']
         
         self.saveOriginalValues()
@@ -1555,11 +1590,10 @@ class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.parent=parent
         if hasattr(parent,"root") and parent.root is not None:
             self.root=parent.root
-            self.gm = self.root.canvas[0].getisoline(gm)
         else:
             from api import _app
             self.root =_app.uvcdatWindow
-            self.gm = self.root.canvas[0].getisoline(gm)
+        self.gm = self.root.canvas[0].getisoline(gm)
             
         self.gmAttributes = [ 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2', 'level', 'line','linecolors','linewidths','text','textcolors','clockwise','scale','angle','spacing']
         
@@ -1894,11 +1928,10 @@ class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.parent=parent
         if hasattr(parent,"root") and parent.root is not None:
             self.root=parent.root
-            self.gm = self.root.canvas[0].getboxfill(gm)
         else:
             from api import _app
             self.root =_app.uvcdatWindow
-            self.gm = self.root.canvas[0].getboxfill(gm)
+        self.gm = self.root.canvas[0].getboxfill(gm)
         self.gmAttributes = ['boxfill_type', 'color_1', 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'levels','ext_1', 'ext_2', 'fillareacolors', 'fillareaindices', 'fillareastyle', 'legend', 'level_1', 'level_2', 'missing', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2']
         
         self.saveOriginalValues()
