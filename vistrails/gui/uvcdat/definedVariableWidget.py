@@ -58,14 +58,31 @@ class QDefinedVariableWidget(QtGui.QWidget):
 
     def variableDoubleClicked(self,item):
         txt = str(item.text())
-        varProp = VariableProperties(self,mode="edit")
+        #varProp = self.root.varProp
+        self.root.varProp.parent=self
+        for i in range(self.root.varProp.originTabWidget.count()):
+            self.root.varProp.originTabWidget.removeTab(0)
+        self.root.varProp.createEditTab()
+        #print "OK axislist created with: ",txt.split()[1],__main__.__dict__[txt.split()[1]]
         axisList = axesWidgets.QAxisList(None,__main__.__dict__[txt.split()[1]],self)
-        axisList.setupVariableAxes()
-        varProp.dimsLayout.addWidget(axisList)
-        varProp.updateVarInfo(axisList)
-        varProp.setupEditTab(axisList.getVar())
-        varProp.originTabWidget.setCurrentIndex(1)
-        varProp.show()
+        #axisList.setupVariableAxes()
+        N=self.root.varProp.dimsLayout.count()
+        while N>1:
+            it = self.root.varProp.dimsLayout.takeAt(N-1)
+            it.widget().deleteLater()
+            it.widget().destroy()
+            self.root.varProp.dimsLayout.removeItem(it)
+            del(it)
+            self.root.varProp.dims.update()
+            self.root.varProp.update()
+            self.update()
+            N=self.root.varProp.dimsLayout.count()
+        #varProp.dimsLayout.addWidget(axisList)
+        #varProp.updateVarInfo(axisList)
+        #self.root.varProp.setupEditTab(axisList.getVar())
+        #self.root.varProp.originTabWidget.setCurrentIndex(1)
+        self.root.varProp.setFloating(True)
+        self.root.varProp.show()
 
     def defineQuickplot(self, file, var):
         """ When a user plots a variable that isn't explicitly defined a signal
@@ -369,7 +386,8 @@ class QDefinedVariableWidget(QtGui.QWidget):
             self.deleteVariable(v.id)
         
     def newVariable(self):
-        varProp = VariableProperties(self)
+        varProp = self.root.varProp
+        varProp.setFloating(True)
         varProp.show()
                 
     def createToolbar(self):

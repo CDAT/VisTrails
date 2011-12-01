@@ -15,17 +15,19 @@ import editVariableWidget
 from paraviewconnection import ParaViewConnectionDialog
 from pvprocessfile import PVProcessFile
 from pvtabwidget import PVTabWidget
-
 from packages.uvcdat_cdms.init import CDMSVariable
 from packages.uvcdat_pv.init import PVVariable
 
-class VariableProperties(QtGui.QDialog):
+class VariableProperties(QtGui.QDockWidget):
+
     FILTER = "CDAT data (*.cdms *.ctl *.dic *.hdf *.nc *.xml)"
 
     FILETYPE = {'CDAT': ['cdms', 'ctl', 'dic', 'hdf', 'nc', 'xml']}
         
     def __init__(self, parent=None,mode="add"):
         super(VariableProperties, self).__init__(parent)
+        self.setWindowTitle("Load Variable")
+        self.setMinimumHeight(400)
         self.roi = [ -180.0, -90.0, 180.0, 90.0 ]
         self.ask = QtGui.QInputDialog()
         self.ask.setWindowModality(QtCore.Qt.WindowModal)
@@ -60,7 +62,9 @@ class VariableProperties(QtGui.QDialog):
         h.addWidget(self.btnCancel)
         v.addLayout(h)
         self.layout=v
-        self.setLayout(v)
+        f=QtGui.QFrame()
+        f.setLayout(v)
+        self.setWidget(f)
         self.parent=parent
         self.root = parent.root
         if mode=="add":
@@ -172,8 +176,8 @@ class VariableProperties(QtGui.QDialog):
         self.historyList=uvcdatCommons.QDragListWidget(type="history")
         #self.historyList.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Minimum)
         self.historyList.setAlternatingRowColors(True)
-        for i in self.parent.historyList:
-            self.historyList.addItem(i)
+        #for i in self.parent.historyList:
+        #    self.historyList.addItem(i)
         h.addWidget(l)
         h.addWidget(self.historyList)
         v.addLayout(h)

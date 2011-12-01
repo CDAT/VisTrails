@@ -115,6 +115,8 @@ class CDMSPlot(Plot):
                                       ("variable2", "CDMSVariable", True),
                                       ("graphicsMethodName", "basic:String"),
                                       ("template", "basic:String"),
+                                      ('datawc_calendar', 'basic:String', True),
+                                      ('datawc_timeunits', 'basic:String', True),
                                       ('datawc_x1', 'basic:String', True),
                                       ('datawc_x2', 'basic:String', True),
                                       ('datawc_y1', 'basic:String', True),
@@ -130,9 +132,10 @@ class CDMSPlot(Plot):
                                       ('projection', 'basic:String', True)])
     _output_ports = expand_port_specs([("self", "CDMSPlot")])
 
-    gm_attributes = ['datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2',
-                    'xticlabels1', 'xticlabels2', 'yticlabels1', 'yticlabels2', 
-                    'xmtics1', 'xmtics2', 'ymtics1', 'ymtics2', 'projection']
+    gm_attributes = [ 'datawc_calendar', 'datawc_timeunits',
+                      'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2',
+                      'xticlabels1', 'xticlabels2', 'yticlabels1', 'yticlabels2', 
+                      'xmtics1', 'xmtics2', 'ymtics1', 'ymtics2', 'projection']
     
     def __init__(self):
         Plot.__init__(self)
@@ -343,8 +346,6 @@ def get_input_ports(plot_type):
         return expand_port_specs([('boxfill_type', 'basic:String', True),
                                   ('color_1', 'basic:String', True),
                                   ('color_2', 'basic:String', True),
-                                  ('datawc_calendar', 'basic:String', True),
-                                  ('datawc_timeunits', 'basic:String', True),
                                   ('levels', 'basic:String', True),
                                   ('ext_1', 'basic:String', True),
                                   ('ext_2', 'basic:String', True),
@@ -356,12 +357,10 @@ def get_input_ports(plot_type):
                                   ('level_2', 'basic:String', True),
                                   ('missing', 'basic:String', True),
                                   ('xaxisconvert', 'basic:String', True),
-                                  ('yaxisconvert', 'basic:String', True)
+                                  ('yaxisconvert', 'basic:String', True),
                                   ])
     elif plot_type == "Isofill":
-        return expand_port_specs([('datawc_calendar', 'basic:String', True),
-                                  ('datawc_timeunits', 'basic:String', True),
-                                  ('levels', 'basic:String', True),
+        return expand_port_specs([('levels', 'basic:String', True),
                                   ('ext_1', 'basic:String', True),
                                   ('ext_2', 'basic:String', True),
                                   ('fillareacolors', 'basic:String', True),
@@ -373,9 +372,7 @@ def get_input_ports(plot_type):
                                   ('yaxisconvert', 'basic:String', True),
                                   ]) 
     elif plot_type == "Isoline":
-        return expand_port_specs([('datawc_calendar', 'basic:String', True),
-                                  ('datawc_timeunits', 'basic:String', True),
-                                  ('levels', 'basic:String', True),
+        return expand_port_specs([('levels', 'basic:String', True),
                                   ('ext_1', 'basic:String', True),
                                   ('ext_2', 'basic:String', True),
                                   ('fillareacolors', 'basic:String', True),
@@ -395,7 +392,85 @@ def get_input_ports(plot_type):
                                   ('angle', 'basic:String', True),
                                   ('spacing', 'basic:String', True)
                                   ]) 
-    
+    elif plot_type == "Meshfill":
+        return expand_port_specs([('levels', 'basic:String', True),
+                                  ('ext_1', 'basic:String', True),
+                                  ('ext_2', 'basic:String', True),
+                                  ('fillareacolors', 'basic:String', True),
+                                  ('fillareaindices', 'basic:String', True),
+                                  ('fillareastyle', 'basic:String', True),
+                                  ('legend', 'basic:String', True),
+                                  ('xaxisconvert', 'basic:String', True),
+                                  ('yaxisconvert', 'basic:String', True),
+                                  ('missing', 'basic:String', True),
+                                  ('mesh', 'basic:String', True),
+                                  ('wrap', 'basic:String', True)
+                                  ]) 
+    elif plot_type == "Outfill":
+        return expand_port_specs([('outfill', 'basic:String', True),
+                                  ('fillareacolor', 'basic:String', True),
+                                  ('fillareaindex', 'basic:String', True),
+                                  ('fillareastyle', 'basic:String', True),
+                                  ('xaxisconvert', 'basic:String', True),
+                                  ('yaxisconvert', 'basic:String', True),
+                                  ]) 
+    elif plot_type == "Outline":
+        return expand_port_specs([('outline', 'basic:String', True),
+                                  ('linecolor', 'basic:String', True),
+                                  ('line', 'basic:String', True),
+                                  ('linewidth', 'basic:String', True),
+                                  ('xaxisconvert', 'basic:String', True),
+                                  ('yaxisconvert', 'basic:String', True),
+                                  ]) 
+    elif plot_type == "Scatter":
+        return expand_port_specs([('markercolor', 'basic:String', True),
+                                  ('marker', 'basic:String', True),
+                                  ('markersize', 'basic:String', True),
+                                  ('xaxisconvert', 'basic:String', True),
+                                  ('yaxisconvert', 'basic:String', True),
+                                  ]) 
+    elif plot_type == "Vector":
+        return expand_port_specs([('scale', 'basic:String', True),
+                                  ('alignment', 'basic:String', True),
+                                  ('type', 'basic:String', True),
+                                  ('reference', 'basic:String', True),
+                                  ('linecolor', 'basic:String', True),
+                                  ('line', 'basic:String', True),
+                                  ('linewidth', 'basic:String', True),
+                                  ('xaxisconvert', 'basic:String', True),
+                                  ('yaxisconvert', 'basic:String', True),
+                                  ]) 
+    elif plot_type == "XvsY":
+        return expand_port_specs([('linecolor', 'basic:String', True),
+                                  ('line', 'basic:String', True),
+                                  ('linewidth', 'basic:String', True),
+                                  ('markercolor', 'basic:String', True),
+                                  ('marker', 'basic:String', True),
+                                  ('markersize', 'basic:String', True),
+                                  ('xaxisconvert', 'basic:String', True),
+                                  ('yaxisconvert', 'basic:String', True),
+                                  ]) 
+    elif plot_type == "Xyvsy":
+        return expand_port_specs([('linecolor', 'basic:String', True),
+                                  ('line', 'basic:String', True),
+                                  ('linewidth', 'basic:String', True),
+                                  ('markercolor', 'basic:String', True),
+                                  ('marker', 'basic:String', True),
+                                  ('markersize', 'basic:String', True),
+                                  ('yaxisconvert', 'basic:String', True),
+                                  ]) 
+    elif plot_type == "Yxvsx":
+        return expand_port_specs([('linecolor', 'basic:String', True),
+                                  ('line', 'basic:String', True),
+                                  ('linewidth', 'basic:String', True),
+                                  ('markercolor', 'basic:String', True),
+                                  ('marker', 'basic:String', True),
+                                  ('markersize', 'basic:String', True),
+                                  ('xaxisconvert', 'basic:String', True),
+                                  ]) 
+    elif plot_type=="Taylordiagram":
+        ### TODO!!!!
+        return []
     else:
         return []
 def get_gm_attributes(plot_type):
@@ -424,7 +499,69 @@ def get_gm_attributes(plot_type):
                 'linecolors','linewidths','text','textcolors','clockwise','scale',
                 'angle','spacing']
     elif plot_type == "Meshfill":
-        return []
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
+                'datawc_y1', 'datawc_y2', 'levels','ext_1', 'ext_2', 
+                'fillareacolors', 'fillareaindices', 'fillareastyle', 'legend', 
+                'missing', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
+                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'ymtics2', 'yticlabels1', 'yticlabels2', 'mesh', 'wrap']
+    elif plot_type == "Outfill":
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
+                'datawc_y1', 'datawc_y2', 'outfill',
+                'fillareacolor', 'fillareaindex', 'fillareastyle',
+                'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
+                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'ymtics2', 'yticlabels1', 'yticlabels2']
+    elif plot_type == "Outline":
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
+                'datawc_y1', 'datawc_y2', 'outline',
+                'linecolor', 'line', 'linewidth',
+                'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
+                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'ymtics2', 'yticlabels1', 'yticlabels2']
+    elif plot_type == "Scatter":
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
+                'datawc_y1', 'datawc_y2', 
+                'markercolor', 'marker', 'markersize',
+                'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
+                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'ymtics2', 'yticlabels1', 'yticlabels2']
+    elif plot_type == "Vector":
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
+                'datawc_y1', 'datawc_y2',
+                'linecolor', 'line', 'linewidth','scale','alignment','type','reference',
+                'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
+                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'ymtics2', 'yticlabels1', 'yticlabels2']
+    elif plot_type == "XvsY":
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
+                'datawc_y1', 'datawc_y2',
+                'linecolor', 'line', 'linewidth','markercolor', 'marker', 'markersize',
+                'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
+                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'ymtics2', 'yticlabels1', 'yticlabels2']
+    elif plot_type == "Xyvsy":
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
+                'datawc_y1', 'datawc_y2',
+                'linecolor', 'line', 'linewidth','markercolor', 'marker', 'markersize',
+                'projection', 'xmtics1', 'xmtics2',
+                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'ymtics2', 'yticlabels1', 'yticlabels2']
+    elif plot_type == "Yxvsx":
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
+                'datawc_y1', 'datawc_y2',
+                'linecolor', 'line', 'linewidth','markercolor', 'marker', 'markersize',
+                'projection', 'xmtics1', 'xmtics2',
+                'xticlabels1', 'xticlabels2', 'xaxisconvert', 'ymtics1', 
+                'ymtics2', 'yticlabels1', 'yticlabels2']
+    elif plot_type == "Taylordiagram":
+        return ['detail','max','quadrans',
+                'skillValues','skillColors','skillDrawLabels','skillCoefficient',
+                'referencevalue','arrowlength','arrowangle','arrowbase',
+                'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2',
+                'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2',
+                'cmtics1', 'cticlabels1', 'Marker',
+                ]
     
 def get_canvas():
     global canvas
