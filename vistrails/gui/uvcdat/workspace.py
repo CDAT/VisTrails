@@ -65,6 +65,20 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         self.sheet_to_item = {}
         self.sheet_to_tab = {}
 
+    def update_cell(self, sheetName, row, col, version):
+        if sheetName not in self.sheet_to_item:
+            return
+        sheetItem = self.sheet_to_item[sheetName]
+        if (row, col) not in sheetItem.pos_to_item:
+            item = QWorkflowItem("root + %s" % version, (row, col))
+            sheetItem.addChild(item)
+            sheetItem.pos_to_item[(row, col)] = item
+        else:
+            item = sheetItem.pos_to_item[(row, col)]
+            item.workflowName = sheetName
+            item.workflowPos = position
+            item.update_title()
+
 class QSpreadsheetItem(QtGui.QTreeWidgetItem):
     def __init__(self, name='sheet 1', parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
@@ -73,24 +87,31 @@ class QSpreadsheetItem(QtGui.QTreeWidgetItem):
         self.setIcon(0, icon)
         self.sheetName = name
         self.setText(0, name)
+        self.pos_to_item = {}
+        self.setExpanded(True)
 
 class QWorkflowItem(QtGui.QTreeWidgetItem):
     def __init__(self, name='untitled', position=None, span=None, parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
         # workflowName is the tag name or "untitled"
         self.workflowName = name
-        # workflowPos is a spreadsheet location like "A2"
+        # workflowPos is a spreadsheet location like ("A", "2")
         self.workflowPos = position
-        # workflowSpan is a spreadsheet span like "1,2" default is "1,1"
+        # workflowSpan is a spreadsheet span like ("1", "2") default is ("1", "1")
         self.workflowSpan = span
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/pipeline.png"))
         self.setIcon(0, icon)
-        if position is not None:
-            name = name + '@' + position
-        if span is not None:
-            name = name + ' spanning ' + span
+        self.update_title()
+
+    def update_title(self):
+        name = self.workflowName
+        if self.workflowPos is not None:
+            name = name + ' @ %s,%s' % (self.workflowPos[0], self.workflowPos[1])
+        if self.workflowSpan is not None:
+            name = name + ' spanning %s,%s' % (self.workflowSpan[0], self.workflowSpan[1])
         self.setText(0, name)
+            
 
 class Workspace(QtGui.QDockWidget):
     def __init__(self, parent=None):
@@ -199,8 +220,12 @@ class Workspace(QtGui.QDockWidget):
             self.currentProject = item
             self.viewToItem[id(view)] = item
             self.treeProjects.addTopLevelItem(item)
+            item.setExpanded(True)
+            item.namedPipelines.setExpanded(True)
             self.numProjects += 1
             self.state_changed(view)
+            self.connect(item.controller, QtCore.SIGNAL("update_cell"),
+                     item.update_cell)
         if view.controller.locator:
             name = view.controller.locator.short_name
             self.viewToItem[id(view)].setText(0, name)
@@ -331,6 +356,7 @@ class Workspace(QtGui.QDockWidget):
             self.currentProject.sheet_to_tab[title] = widget
             item = QSpreadsheetItem(title)
             self.currentProject.addChild(item)
+            item.setExpanded(True)
             self.currentProject.sheet_to_item[title] = item
             # TODO: save using annotations when sheet is saved
     
@@ -351,8 +377,13 @@ class Workspace(QtGui.QDockWidget):
     def change_tab_text(self, oldtitle, newtitle):
         if oldtitle in self.currentProject.sheet_to_item:
             item = self.currentProject.sheet_to_item[oldtitle]
+            tab = self.currentProject.sheet_to_tab[oldtitle]
+            del self.currentProject.sheet_to_item[oldtitle]
+            del self.currentProject.sheet_to_tab[oldtitle]
+            item.sheetName = newtitle
             item.setText(0, newtitle)
-            self.currentProject.sheet_to_item[title] = item
+            self.currentProject.sheet_to_item[newtitle] = item
+            self.currentProject.sheet_to_tab[newtitle] = tab
             # TODO: update actionannotations
 
     def dropEvent(self, event):

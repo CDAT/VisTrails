@@ -167,7 +167,7 @@ class ProjectController(QtCore.QObject):
         cell = self.sheet_map[sheetName][(row,col)]
         if cell.variable != None:
             self.update_cell(sheetName, row, col)
-            
+
     def update_cell(self, sheetName, row, col):        
         cell = self.sheet_map[sheetName][(row,col)]
         var = self.defined_variables[cell.variable]
@@ -184,10 +184,12 @@ class ProjectController(QtCore.QObject):
             #            'gm': cell.gm,
             #            'template': 'starter'}
             # self.applyChanges(aliases)
-            
+
             var_module = var.to_module(self.vt_controller)
             # plot_module = plot.to_module(self.vt_controller)
             self.update_workflow(var_module, cell, row, col)
+            self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
+                      cell.current_parent_version)
             
     def update_workflow(self, var_module, cell, row, column):
         # FIXME want to make sure that nothing changes if var_module
@@ -250,7 +252,7 @@ class ProjectController(QtCore.QObject):
         #(results, _) = controller.execute_current_workflow()
 
     def load_workflow_templates(self):
-        vt_file = "/vistrails/uvcdat/src/vistrails/vistrails/packages/uvcdat_cdms/CDMS_Plot.vt"
+        vt_file = "/home/tommy/Downloads/CDMS_Plot.vt"
         locator = FileLocator(os.path.abspath(vt_file))
         (plot_vistrail, abstractions , thumbnails, mashups) = load_vistrail(locator)
         controller = VistrailController()

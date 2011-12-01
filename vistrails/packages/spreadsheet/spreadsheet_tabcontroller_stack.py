@@ -101,12 +101,16 @@ class TabControllerStack(QtGui.QStackedWidget):
                      self.emit_add_tab)
         self.connect(widget, QtCore.SIGNAL("remove_tab"),
                      self.emit_remove_tab)
+        self.connect(widget, QtCore.SIGNAL("change_tab_text"),
+                     self.emit_change_tab_text)
         
     def disconnectTabControllerSignals(self, widget):
         self.disconnect(widget, QtCore.SIGNAL("add_tab"),
                      self.emit_add_tab)
         self.disconnect(widget, QtCore.SIGNAL("remove_tab"),
                      self.emit_remove_tab)
+        self.disconnect(widget, QtCore.SIGNAL("change_tab_text"),
+                     self.emit_change_tab_text)
 
     def emit_add_tab(self, sheetLabel, tabWidget):
         """emit_add_tab(sheetLabel: str, tabWidget: QWidget)-> None
@@ -121,5 +125,13 @@ class TabControllerStack(QtGui.QStackedWidget):
         
         """
         self.emit(QtCore.SIGNAL("remove_tab"), widget)
+    
+    def emit_change_tab_text(self, old, new):
+        """emit_remove_tab(widget: QWidget)-> None
+        It will forward the signal 
+        
+        """
+        print "emit_change_tab", old, new
+        self.emit(QtCore.SIGNAL("change_tab_text"), old, new)
         
     

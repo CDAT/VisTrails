@@ -149,6 +149,9 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.connect(self.spreadsheetWindow.tabControllerStack,
                      QtCore.SIGNAL("remove_tab"),
                      self.workspace.remove_sheet_tab)
+        self.connect(self.spreadsheetWindow.tabControllerStack,
+                     QtCore.SIGNAL("change_tab_text"),
+                     self.workspace.change_tab_text)
         
     def quit(self):
         #FIXME

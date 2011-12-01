@@ -408,10 +408,10 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         has changed
         
         """
-        self.operatingWidget.widget(tabIdx).setWindowTitle(newTabText)
+        oldTabText = self.operatingWidget.widget(tabIdx).windowTitle()
         self.emit(QtCore.SIGNAL("change_tab_text"),
-                  self.operatingWidget.widget(tabIdx).windowTitle(),
-                  newTabText)
+                  str(oldTabText), str(newTabText))
+        self.operatingWidget.widget(tabIdx).setWindowTitle(newTabText)
 
     def moveTab(self, tabIdx, destination):
         """ moveTab(tabIdx: int, destination: int) -> None

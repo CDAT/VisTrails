@@ -933,11 +933,20 @@ class StandardWidgetTabBar(QtGui.QTabBar):
         
         """
         if self.editingIndex>=0 and self.editor:
-            self.setTabText(self.editingIndex, self.editor.text())
-            self.emit(QtCore.SIGNAL('tabTextChanged(int,QString)'),
-                      self.editingIndex,self.editor.text())
-            self.editor.deleteLater()
+            idx = self.editingIndex
             self.editingIndex = -1
+            newTabText = self.editor.text()
+            for i in xrange(self.count()):
+                if newTabText == self.tabText(i) and i != idx:
+                    QtGui.QMessageBox.warning(self, "Rename failed",
+                        'A tab named "%s" already exists' % newTabText)
+                    self.editor.deleteLater()
+                    self.editor = None
+                    return
+            self.setTabText(idx, self.editor.text())
+            self.emit(QtCore.SIGNAL('tabTextChanged(int,QString)'),
+                      idx, newTabText)
+            self.editor.deleteLater()
             self.editor = None
 
     def indexAtPos(self, p):
