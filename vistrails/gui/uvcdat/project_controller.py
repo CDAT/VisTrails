@@ -43,6 +43,7 @@ from core.modules.module_registry import get_module_registry
 from core.utils import InstanceObject
 from core.uvcdat.variable import VariableWrapper
 from core.uvcdat.plot_registry import get_plot_registry
+from core.uvcdat.plotmanager import get_plot_manager
 from core.vistrail.controller import VistrailController
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 
@@ -59,6 +60,7 @@ class ProjectController(QtCore.QObject):
 
         self.sheet_map = {}
         self.plot_registry = get_plot_registry()
+        self.plot_manager = get_plot_manager()
         #self.current_parent_version = 0L
         #self.load_workflow_templates()
         
@@ -83,7 +85,7 @@ class ProjectController(QtCore.QObject):
     def is_variable_in_use(self, name):
         for sheetname in self.sheet_map:
             for cell in self.sheet_map[sheetname].itervalues():
-                if cell.variable == name:
+                if name in cell.variables:
                     return True
         return False
     
@@ -112,46 +114,50 @@ class ProjectController(QtCore.QObject):
         (varName, sheetName, row, col) = info
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
-                self.sheet_map[sheetName][(row,col)].variable = varName
+                cell = self.sheet_map[sheetName][(row,col)]
+                if cell.plot:
+                    if len(cell.variables) < cell.plot.varnum:
+                        cell.variables.append(varName)
+                    else:
+                        cell.variables.pop()
+                        cell.variables.append(varName)
+                else:
+                    #replace the variable
+                    cell.variables = [varName]
                 self.update_variable(sheetName,row,col)
             else:
-                self.sheet_map[sheetName][(row,col)] = InstanceObject(variable=varName,
-                                                                      plot_type=None,
-                                                                      gm=None,
+                self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[varName],
+                                                                      plot=None,
                                                                       template=None,
                                                                       current_parent_version=0L)
         else:
             self.sheet_map[sheetName] = {}
-            self.sheet_map[sheetName][(row,col)] = InstanceObject(variable=varName,
-                                                                      plot_type=None,
-                                                                      gm=None,
+            self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[varName],
+                                                                      plot=None,
                                                                       template=None,
                                                                       current_parent_version=0L)
             
     def plot_was_dropped(self, info):
-        """plot_was_dropped(info: (plot_type, gm, sheetName, row, col) """
-        (plot_type, gm, sheetName, row, col) = info
+        """plot_was_dropped(info: (plot, sheetName, row, col) """
+        (plot, sheetName, row, col) = info
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
-                if cell.plot_type is not None and cell.variable is not None:
+                if cell.plot is not None and len(cell.variables) > 0:
                     self.reset_workflow(cell) 
-                self.sheet_map[sheetName][(row,col)].plot_type = plot_type
-                self.sheet_map[sheetName][(row,col)].gm = gm
+                self.sheet_map[sheetName][(row,col)].plot = plot
                 self.update_plot(sheetName,row,col)
             else:
-                self.sheet_map[sheetName][(row,col)] = InstanceObject(variable=None,
-                                                                      plot_type=plot_type,
-                                                                      gm=gm,
+                self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[],
+                                                                      plot=plot,
                                                                       template=None,
                                                                       current_parent_version=0L)
         else:
             self.sheet_map[sheetName] = {}
-            self.sheet_map[sheetName][(row,col)] = InstanceObject(variable=None,
-                                                                      plot_type=plot_type,
-                                                                      gm=gm,
-                                                                      template=None,
-                                                                      current_parent_version=0L)
+            self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[],
+                                                                  plot=plot,
+                                                                  template=None,
+                                                                  current_parent_version=0L)
     
     def reset_workflow(self, cell):
         pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
@@ -164,26 +170,34 @@ class ProjectController(QtCore.QObject):
         
     def request_plot_configure(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
-        if cell.plot_type is not None and cell.gm is not None:
-            widget = self.get_plot_configuration(sheetName)
-
+        if cell.plot is not None:
+            self.widget = self.get_plot_configuration(sheetName,row,col)
+            self.widget.show()
+            
+    def get_plot_configuration(self, sheetName, row, col):
+        cell = self.sheet_map[sheetName][(row,col)]
+        helper = self.plot_manager.get_plot_helper(cell.plot.package)
+        return helper.show_configuration_widget(self.vt_controller, 
+                                                cell.current_parent_version)
+        
     def update_variable(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
-        if cell.plot_type is not None and cell.gm is not None:
+        if cell.plot is not None:
             self.update_cell(sheetName, row, col)
     
     def update_plot(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
-        if cell.variable != None:
+        if len(cell.variables) == cell.plot.varnum:
             self.update_cell(sheetName, row, col)
             
     def update_cell(self, sheetName, row, col):        
         cell = self.sheet_map[sheetName][(row,col)]
-        var = self.defined_variables[cell.variable]
-        # print cell.plot_type, cell.gm
-        if (cell.variable is not None and 
-            cell.plot_type is not None and
-            cell.gm is not None):
+        vars = []
+        for i in range(cell.plot.varnum):
+            vars.append(self.defined_variables[cell.variables[i]])
+        
+        if (cell.plot is not None and
+            len(cell.variables) == cell.plot.varnum):
             # aliases = {'filename': var.filename,
             #            'varName': var.name,
             #            'axes': var.get_kwargs_str(),
@@ -193,21 +207,23 @@ class ProjectController(QtCore.QObject):
             #            'gm': cell.gm,
             #            'template': 'starter'}
             # self.applyChanges(aliases)
-            
-            var_module = var.to_module(self.vt_controller)
+            var_modules = []
+            for var in vars:
+                var_module = var.to_module(self.vt_controller)
+                var_modules.append(var_module)
             # plot_module = plot.to_module(self.vt_controller)
-            self.update_workflow(var_module, cell, row, col)
+            self.update_workflow(var_modules, cell, row, col)
             
-    def update_workflow(self, var_module, cell, row, column):
+    def update_workflow(self, var_modules, cell, row, column):
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
-        plot_type = cell.plot_type
-        plot_gm = cell.gm
+        plot_type = cell.plot.parent
+        plot_gm = cell.plot.name
         if self.vt_controller is None:
             self.vt_controller = api.get_current_controller()
             cell.current_parent_version = 0L
         reg = get_module_registry()
-
+        ops = []
         plot_module = self.vt_controller.create_module_from_descriptor(
             reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
                                        'CDMS' + plot_type))
@@ -216,10 +232,18 @@ class ProjectController(QtCore.QObject):
                                                           [plot_gm])])
         for f in functions:
             plot_module.add_function(f)
-             
-        conn = self.vt_controller.create_connection(var_module, 'self',
+        
+        ops.append(('add', var_modules[0]))
+        ops.append(('add', plot_module))     
+        conn = self.vt_controller.create_connection(var_modules[0], 'self',
                                                     plot_module, 'variable')
-
+        ops.append(('add', conn))
+        if len(var_modules) > 1:
+            conn2 = self.vt_controller.create_connection(var_modules[1], 'self',
+                                                    plot_module, 'variable2')
+            ops.append(('add', var_modules[1]))
+            ops.append(('add', conn2))
+             
         cell_module = self.vt_controller.create_module_from_descriptor(
             reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 'CDMSCell'))
         cell_conn = self.vt_controller.create_connection(plot_module, 'self',
@@ -234,14 +258,11 @@ class ProjectController(QtCore.QObject):
             loc_module.add_function(f)
         loc_conn = self.vt_controller.create_connection(loc_module, 'self',
                                                         cell_module, 'Location')
-
-        action = core.db.action.create_action([('add', var_module),
-                                               ('add', plot_module),
-                                               ('add', conn),
-                                               ('add', cell_module),
-                                               ('add', cell_conn),
-                                               ('add', loc_module),
-                                               ('add', loc_conn)])
+        ops.extend([('add', cell_module),
+                    ('add', cell_conn),
+                    ('add', loc_module),
+                    ('add', loc_conn)])
+        action = core.db.action.create_action(ops)
         if action is not None:
             self.vt_controller.change_selected_version(cell.current_parent_version)
             self.vt_controller.add_new_action(action)

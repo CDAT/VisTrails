@@ -798,7 +798,7 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
                 row = self.sheet.rowAt(localPos.y())
                 col = self.sheet.columnAt(localPos.x())
                 sheetName = str(self.tabWidget.tabText(self.tabWidget.indexOf(self)))
-                self.emit(QtCore.SIGNAL("dropped_plot"), (item.plot_type, item.gm, 
+                self.emit(QtCore.SIGNAL("dropped_plot"), (item.plot, 
                                                           sheetName, row, col))
                 self.droppedPlot(plot_type, row, col)
         else:

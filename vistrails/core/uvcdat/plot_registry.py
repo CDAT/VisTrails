@@ -62,19 +62,30 @@ class PlotRegistry():
         self.plots = {}
         self.registered = []
     
-    def add_plot(self, name, plot_package, config_file, vt_file):
+    def add_plot(self, name, plot_package, config_file, vt_file, parent=None):
+        plot = None
         if not plot_package in self.plots:
             self.plots[plot_package] = {}
-            self.signals.emit_new_plot_package(plot_package)
-        self.plots[plot_package][name] = Plot(name, plot_package,
-                                              config_file, vt_file)
-        self.signals.emit_new_plot_type(self.plots[plot_package][name])
+        if parent is not None:
+            if parent not in self.plots[plot_package]:
+                self.plots[plot_package][parent] = {}
+            plot = Plot(name, plot_package,config_file, vt_file,parent)
+            self.plots[plot_package][parent][name] = plot
+            self.signals.emit_new_plot_type(self.plots[plot_package][parent][name])
+        else:
+            plot = Plot(name, plot_package, config_file, vt_file)
+            self.plots[plot_package][name] = plot
+        return plot 
+            
         
     def load_plot_package(self, plot_package):
         if plot_package in self.plots:
+            self.signals.emit_new_plot_package(plot_package)
             for plot in self.plots[plot_package].itervalues():
-                plot.load()        
-    
+                plot.load()     
+                if plot.loaded:
+                    self.signals.emit_new_plot_type(self.plots[plot_package][plot.name])   
+                
     @staticmethod    
     def getPlotsDependencies():
         parser = ConfigParser.ConfigParser()
@@ -106,13 +117,16 @@ class PlotRegistry():
         registry                 = self
         
 class Plot(object):
-    def __init__(self, name, package, config_file, vt_file):
+    def __init__(self, name, package, config_file=None, vt_file=None, parent=None):
         self.name = name
         self.package = package
+        self.parent = parent
         self.config_file = config_file
         self.serializedConfigAlias = None
         self.vt_file = vt_file
-        self.locator = FileLocator(os.path.abspath(self.vt_file))
+        self.locator = None
+        if self.vt_file:
+            self.locator = FileLocator(os.path.abspath(self.vt_file))
         self.cellnum = 1
         self.filenum = 1
         self.varnum = 0
@@ -133,7 +147,6 @@ class Plot(object):
         self.plot_vistrail = None
         self.current_parent_version = 0L
         self.current_controller = None
-            
             
     def load(self, loadworkflow=True):
         config = ConfigParser.ConfigParser()
