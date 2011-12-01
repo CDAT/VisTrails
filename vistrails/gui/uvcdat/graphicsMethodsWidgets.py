@@ -236,45 +236,57 @@ class VCSGMs1D:
         self.markerSize.setToolTip("Set the marker sizes. The marker size attribute\nvalues must be integers or floats ranging  from\n1 to 300. " )
         self.initMarkerValues()
 
-    def initLineValues(self):
-        self.lineType.setCurrentIndex(0)
-        for i in range(self.lineType.count()):
-            if str(self.lineType.itemText(i))==self.gm.line:
-                self.lineType.setCurrentIndex(i)
-                break
-        if self.gm.linecolor is None:
-            self.lineColor.setValue(241)
-        else:
-            self.lineColor.setValue(self.gm.linecolor)
-        if self.gm.linewidth is None:
-            self.lineWidth.setValue(1)
-        else:
-            self.lineWidth.setValue(self.gm.linewidth)
+    def initLineValues(self,gm=None):
+        if gm is None:
+            gm = self.gm
+        if gm:
+            self.lineType.setCurrentIndex(0)
+            for i in range(self.lineType.count()):
+                if str(self.lineType.itemText(i))==self.gm.line:
+                    self.lineType.setCurrentIndex(i)
+                    break
+            if gm.linecolor is None:
+                self.lineColor.setValue(241)
+            else:
+                self.lineColor.setValue(gm.linecolor)
+            if gm.linewidth is None:
+                self.lineWidth.setValue(1)
+            else:
+                self.lineWidth.setValue(gm.linewidth)
         
-    def initMarkerValues(self):
-        self.markerType.setCurrentIndex(0)
-        for i in range(self.markerType.count()):
-            if str(self.markerType.itemText(i))==self.gm.marker:
-                self.markerType.setCurrentIndex(i)
-                break
-        if self.gm.markercolor is None:
-            self.markerColor.setValue(241)
-        else:
-            self.markerColor.setValue(self.gm.markercolor)
-        if self.gm.markersize is None:
-            self.markerSize.setValue(1)
-        else:
-            self.markerSize.setValue(self.gm.markersize)
+    def initMarkerValues(self, gm=None):
+        if gm is None:
+            gm = self.gm
+        if gm:
+            self.markerType.setCurrentIndex(0)
+            for i in range(self.markerType.count()):
+                if str(self.markerType.itemText(i))==gm.marker:
+                    self.markerType.setCurrentIndex(i)
+                    break
+            if gm.markercolor is None:
+                self.markerColor.setValue(241)
+            else:
+                self.markerColor.setValue(gm.markercolor)
+            if gm.markersize is None:
+                self.markerSize.setValue(1)
+            else:
+                self.markerSize.setValue(gm.markersize)
 
-    def applyMarkerChanges(self):
-        self.gm.marker=str(self.markerType.currentText())
-        self.gm.markersize=int(self.markerSize.text())
-        self.gm.markercolor=int(self.markerColor.text())
+    def applyMarkerChanges(self, gm=None):
+        if gm is None:
+            gm = self.gm
+        if gm:
+            gm.marker=str(self.markerType.currentText())
+            gm.markersize=int(self.markerSize.text())
+            gm.markercolor=int(self.markerColor.text())
         
-    def applyLineChanges(self):
-        self.gm.line=str(self.lineType.currentText())
-        self.gm.linewidth=int(self.lineWidth.text())
-        self.gm.linecolor=int(self.lineColor.text())
+    def applyLineChanges(self, gm=None):
+        if gm is None:
+            gm = self.gm
+        if gm:
+            gm.line=str(self.lineType.currentText())
+            gm.linewidth=int(self.lineWidth.text())
+            gm.linecolor=int(self.lineColor.text())
 
 class VCSGMRanges:
     def rangeSettings(self,target):
@@ -646,27 +658,33 @@ class QVectorEditor(VCSGMs1D,VCSGMs,QtGui.QScrollArea):
 
         self.setWidget(frame)
 
-    def initValues(self):
-        self.initCommonValues()
-        self.initLineValues()
-        self.scale.setValue(self.gm.scale)
-        for i in range(self.headType.count()):
-            if str(self.headType.itemText(i))==self.gm.type:
-                self.headType.setCurrentIndex(i)
-                break
-        for i in range(self.alignment.count()):
-            if str(self.alignment.itemText(i))==self.gm.alignment:
-                self.alignment.setCurrentIndex(i)
-                break
-        self.reference.setValue(self.gm.reference)
+    def initValues(self, gm=None):
+        if gm is None:
+            gm=self.gm
+        if gm:
+            self.initCommonValues(gm)
+            self.initLineValues(gm)
+            self.scale.setValue(gm.scale)
+            for i in range(self.headType.count()):
+                if str(self.headType.itemText(i))==gm.type:
+                    self.headType.setCurrentIndex(i)
+                    break
+            for i in range(self.alignment.count()):
+                if str(self.alignment.itemText(i))==gm.alignment:
+                    self.alignment.setCurrentIndex(i)
+                    break
+            self.reference.setValue(gm.reference)
 
-    def applyChanges(self):
-        self.applyCommonChanges()
-        self.applyLineChanges()
-        self.gm.alignment = str(self.alignment.currentText())
-        self.gm.type = str(self.headType.currentText())
-        self.gm.reference = float(self.reference.value())
-        self.gm.scale = float(self.scale.value())
+    def applyChanges(self, gm=None):
+        if gm is None:
+            gm = self.gm
+        if gm:
+            self.applyCommonChanges(gm)
+            self.applyLineChanges(gm)
+            gm.alignment = str(self.alignment.currentText())
+            gm.type = str(self.headType.currentText())
+            gm.reference = float(self.reference.value())
+            gm.scale = float(self.scale.value())
 
 class QTaylorDiagramEditor(VCSGMs,QtGui.QScrollArea):
     def __init__(self, parent=None, gm=None):
@@ -743,72 +761,78 @@ class QTaylorDiagramEditor(VCSGMs,QtGui.QScrollArea):
         self.markersTab = QTaylorMarkers(self)
         self.parent.addTab(self.markersTab, "'%s' Markers" % self.gm.name)
 
-        self.initValues()
+        self.initValues(self.gm)
         self.setWidget(frame)
 
-    def initValues(self):
-        # General Aspect
-        self.detailSlider.setValue(self.gm.detail)
-        self.maxValue.setText(repr(self.gm.max))
-        self.quadran.setChecked(str(self.gm.quadrans))
-        self.refValue.setText(repr(self.gm.referencevalue))
+    def initValues(self,gm=None):
+        if gm is None:
+            gm = self.gm
+        if gm:
+            # General Aspect
+            self.detailSlider.setValue(gm.detail)
+            self.maxValue.setText(repr(gm.max))
+            self.quadran.setChecked(str(gm.quadrans))
+            self.refValue.setText(repr(gm.referencevalue))
 
-        # Skills
-        if self.gm.skillDrawLabels=="y":
-            self.drawLabels.setChecked(True)
-        else:
-            self.drawLabels.setChecked(False)
-        self.skillValues.setText(repr(self.gm.skillValues))
-        if isinstance(self.gm.skillColor,str):
-            self.skillLineColor.setValue(self.root.canvas[0].match_color(self.gm.skillColor))
-        else:
-            self.skillLineColor.setValue(self.gm.skillColor)
-        self.skillCoefficients.setText(repr(self.gm.skillCoefficient))
-        
-        # Arrows
-        self.lengthSlider.setValue(self.gm.arrowlength*100)
-        self.angleSlider.setValue(self.gm.arrowangle)
-        self.baseSlider.setValue(self.gm.arrowbase*100)
+            # Skills
+            if self.gm.skillDrawLabels=="y":
+                self.drawLabels.setChecked(True)
+            else:
+                self.drawLabels.setChecked(False)
+            self.skillValues.setText(repr(gm.skillValues))
+            if isinstance(gm.skillColor,str):
+                self.skillLineColor.setValue(self.root.canvas[0].match_color(gm.skillColor))
+            else:
+                self.skillLineColor.setValue(gm.skillColor)
+            self.skillCoefficients.setText(repr(gm.skillCoefficient))
 
-        self.xlabels.setText(repr(self.gm.xticlabels1))
-        self.xticks.setText(repr(self.gm.xmtics1))
-        self.ylabels.setText(repr(self.gm.yticlabels1))
-        self.yticks.setText(repr(self.gm.ymtics1))
-        self.corLabels.setText(repr(self.gm.cticlabels1))
-        self.corTicks.setText(repr(self.gm.cmtics1))
+            # Arrows
+            self.lengthSlider.setValue(gm.arrowlength*100)
+            self.angleSlider.setValue(gm.arrowangle)
+            self.baseSlider.setValue(gm.arrowbase*100)
 
-        self.markersTab.initValues()
+            self.xlabels.setText(repr(gm.xticlabels1))
+            self.xticks.setText(repr(gm.xmtics1))
+            self.ylabels.setText(repr(gm.yticlabels1))
+            self.yticks.setText(repr(gm.ymtics1))
+            self.corLabels.setText(repr(gm.cticlabels1))
+            self.corTicks.setText(repr(gm.cmtics1))
 
-    def applyChanges(self):
-        # General Aspect
-        self.gm.detail = self.detailSlider.value()
-        self.gm.max = eval(str(self.maxValue.text()))
-        self.gm.quadrans = int(self.quadran.buttonGroup.button(self.quadran.buttonGroup.checkedId()).text())
-        self.gm.referencevalue = eval(str(self.refValue.text()))
+            self.markersTab.initValues(gm)
 
-        # Skills
-        if self.drawLabels.isChecked():
-            self.gm.skillDrawLabels = "y"
-        else:
-            self.gm.skillDrawLabels = "n"
-        self.gm.skillValues = eval(str(self.skillValues.text()))
+    def applyChanges(self,gm):
+        if gm is None:
+            gm = self.gm
+        if gm:
+            # General Aspect
+            gm.detail = self.detailSlider.value()
+            gm.max = eval(str(self.maxValue.text()))
+            gm.quadrans = int(self.quadran.buttonGroup.button(self.quadran.buttonGroup.checkedId()).text())
+            gm.referencevalue = eval(str(self.refValue.text()))
 
-        self.gm.skillcolor = int(self.skillLineColor.text())
-        self.gm.skillCoefficient = eval(str(self.skillCoefficients.text()))
-        
-        # Arrows
-        self.gm.arrowlength = self.lengthSlider.value()/100.
-        self.gm.arrowangle = self.angleSlider.value()
-        self.gm.arrowbase = self.baseSlider.value()/100.
+            # Skills
+            if self.drawLabels.isChecked():
+                gm.skillDrawLabels = "y"
+            else:
+                gm.skillDrawLabels = "n"
+            gm.skillValues = eval(str(self.skillValues.text()))
 
-        self.gm.xticlabels1 = eval(str(self.xlabels.text()))
-        self.gm.xmtics1 = eval(str(self.xticks.text()))
-        self.gm.yticlabels1 = eval(str(self.ylabels.text()))
-        self.gm.ymtics1 = eval(str(self.yticks.text()))
-        self.gm.cticlabels1 = eval(str(self.corLabels.text()))
-        self.gm.cmtics1 = eval(str(self.corTicks.text()))
+            gm.skillcolor = int(self.skillLineColor.text())
+            gm.skillCoefficient = eval(str(self.skillCoefficients.text()))
 
-        self.markersTab.applyChanges()
+            # Arrows
+            gm.arrowlength = self.lengthSlider.value()/100.
+            gm.arrowangle = self.angleSlider.value()
+            gm.arrowbase = self.baseSlider.value()/100.
+
+            gm.xticlabels1 = eval(str(self.xlabels.text()))
+            gm.xmtics1 = eval(str(self.xticks.text()))
+            gm.yticlabels1 = eval(str(self.ylabels.text()))
+            gm.ymtics1 = eval(str(self.yticks.text()))
+            gm.cticlabels1 = eval(str(self.corLabels.text()))
+            gm.cmtics1 = eval(str(self.corTicks.text()))
+
+            markersTab.applyChanges(gm)
         
 
 class QTaylorMarkers(QtGui.QScrollArea):
@@ -878,103 +902,109 @@ class QTaylorMarkers(QtGui.QScrollArea):
                 break
         return
     
-    def initValues(self):
-        for m in self.markerList:
-            m.widgets['selectedBox'].setChecked(True)
-        self.removeSelectedMarkers()
-        # Ok now determines the number of elets to add
-        M = self.parent.gm.Marker
-        nmax = 0
-        for a in ['status','line','id','id_size','id_color','id_font','symbol','color','size','xoffset','yoffset','line_color','line_size','line_type']:
-            nmax=max(nmax,len(getattr(M,a)))
-        for i in range(nmax):
-            self.addMarker()
-            #Ok now we need to initialize the values of these markers
-            m = self.markerList[-1]
-            w = m.getWidgets()
-            s = self.getGMMarkerAttributeValue(M,"status",i)
-            if s ==1:
-                w['activeBox'].setChecked(True)
-            else:
-                w['activeBox'].setChecked(False)
-            s = self.getGMMarkerAttributeValue(M,"symbol",i)
-            self.setAComboxItem(w['symbolCombo'],s)
-            c = self.getGMMarkerAttributeValue(M,"color",i)
-            w['colorCombo1'].setText(str(c))
-            s = self.getGMMarkerAttributeValue(M,"size",i)
-            w['size'].setText(str(s))
-            s = self.getGMMarkerAttributeValue(M,"id",i)
-            w['id'].setText(str(s))
-            s = self.getGMMarkerAttributeValue(M,"id_size",i)
-            w['idSize'].setText(str(s))
-            s = self.getGMMarkerAttributeValue(M,"id_color",i)
-            w['idColorCombo'].setText(str(s))
-            s = self.root.canvas[0].getfont(self.getGMMarkerAttributeValue(M,"id_font",i))
-            self.setAComboxItem(w['idFontCombo'],s)
-            s = self.getGMMarkerAttributeValue(M,"xoffset",i)
-            w['x'].setText(str(s))
-            s = self.getGMMarkerAttributeValue(M,"yoffset",i)
-            w['y'].setText(str(s))
-            s = str(self.getGMMarkerAttributeValue(M,"line",i))
-            self.setAComboxItem(w['lineCombo'],s)
-            s = str(self.getGMMarkerAttributeValue(M,"line_type",i))
-            self.setAComboxItem(w['typeCombo'],s)
-            s = self.getGMMarkerAttributeValue(M,"line_size",i)
-            w['size2'].setText(str(s))
-            s = self.getGMMarkerAttributeValue(M,"line_color",i)
-            w['colorCombo2'].setText(str(s))
+    def initValues(self,gm):
+        if gm is None:
+            gm = self.parent.gm
+        if gm:
+            for m in self.markerList:
+                m.widgets['selectedBox'].setChecked(True)
+            self.removeSelectedMarkers()
+            # Ok now determines the number of elets to add
+            M = gm.Marker
+            nmax = 0
+            for a in ['status','line','id','id_size','id_color','id_font','symbol','color','size','xoffset','yoffset','line_color','line_size','line_type']:
+                nmax=max(nmax,len(getattr(M,a)))
+            for i in range(nmax):
+                self.addMarker()
+                #Ok now we need to initialize the values of these markers
+                m = self.markerList[-1]
+                w = m.getWidgets()
+                s = self.getGMMarkerAttributeValue(M,"status",i)
+                if s ==1:
+                    w['activeBox'].setChecked(True)
+                else:
+                    w['activeBox'].setChecked(False)
+                s = self.getGMMarkerAttributeValue(M,"symbol",i)
+                self.setAComboxItem(w['symbolCombo'],s)
+                c = self.getGMMarkerAttributeValue(M,"color",i)
+                w['colorCombo1'].setText(str(c))
+                s = self.getGMMarkerAttributeValue(M,"size",i)
+                w['size'].setText(str(s))
+                s = self.getGMMarkerAttributeValue(M,"id",i)
+                w['id'].setText(str(s))
+                s = self.getGMMarkerAttributeValue(M,"id_size",i)
+                w['idSize'].setText(str(s))
+                s = self.getGMMarkerAttributeValue(M,"id_color",i)
+                w['idColorCombo'].setText(str(s))
+                s = self.root.canvas[0].getfont(self.getGMMarkerAttributeValue(M,"id_font",i))
+                self.setAComboxItem(w['idFontCombo'],s)
+                s = self.getGMMarkerAttributeValue(M,"xoffset",i)
+                w['x'].setText(str(s))
+                s = self.getGMMarkerAttributeValue(M,"yoffset",i)
+                w['y'].setText(str(s))
+                s = str(self.getGMMarkerAttributeValue(M,"line",i))
+                self.setAComboxItem(w['lineCombo'],s)
+                s = str(self.getGMMarkerAttributeValue(M,"line_type",i))
+                self.setAComboxItem(w['typeCombo'],s)
+                s = self.getGMMarkerAttributeValue(M,"line_size",i)
+                w['size2'].setText(str(s))
+                s = self.getGMMarkerAttributeValue(M,"line_color",i)
+                w['colorCombo2'].setText(str(s))
         return
     
-    def applyChanges(self):
-        M = self.parent.gm.Marker
-        status =[]
-        symbol = []
-        color=[]
-        size=[]
-        id=[]
-        idsize=[]
-        idcolor=[]
-        idfont=[]
-        xoffset=[]
-        yoffset=[]
-        line=[]
-        linetype=[]
-        linesize=[]
-        linecolor=[]
-        for i in range(len(self.markerList)):
-            m = self.markerList[i]
-            w = m.getWidgets()
-            if w['activeBox'].isChecked():
-                status.append(1)
-            else:
-                status.append(0)
-            symbol.append(str(w['symbolCombo'].currentText()))
-            color.append(int(w['colorCombo1'].text()))
-            size.append(int(w['size'].text()))
-            id.append(str(str(w['id'].text())))
-            idsize.append(int(w['idSize'].text()))
-            idcolor.append(int(w['idColorCombo'].text()))
-            idfont.append(self.root.canvas[0].getfont(str(w['idFontCombo'].currentText())))
-            xoffset.append(float(w['x'].text()))
-            yoffset.append(float(w['y'].text()))
-            line.append(str(w['lineCombo'].currentText()))
-            linetype.append(str(w['typeCombo'].currentText()))
-            linesize.append(float(w['size2'].text()))
-            linecolor.append(int(w['colorCombo2'].text()))
+    def applyChanges(self,gm=None):
+        if gm is None:
+            gm = self.parent.gm
+        if gm:
+            M = gm.Marker
+            status =[]
+            symbol = []
+            color=[]
+            size=[]
+            id=[]
+            idsize=[]
+            idcolor=[]
+            idfont=[]
+            xoffset=[]
+            yoffset=[]
+            line=[]
+            linetype=[]
+            linesize=[]
+            linecolor=[]
+            for i in range(len(self.markerList)):
+                m = self.markerList[i]
+                w = m.getWidgets()
+                if w['activeBox'].isChecked():
+                    status.append(1)
+                else:
+                    status.append(0)
+                symbol.append(str(w['symbolCombo'].currentText()))
+                color.append(int(w['colorCombo1'].text()))
+                size.append(int(w['size'].text()))
+                id.append(str(str(w['id'].text())))
+                idsize.append(int(w['idSize'].text()))
+                idcolor.append(int(w['idColorCombo'].text()))
+                idfont.append(self.root.canvas[0].getfont(str(w['idFontCombo'].currentText())))
+                xoffset.append(float(w['x'].text()))
+                yoffset.append(float(w['y'].text()))
+                line.append(str(w['lineCombo'].currentText()))
+                linetype.append(str(w['typeCombo'].currentText()))
+                linesize.append(float(w['size2'].text()))
+                linecolor.append(int(w['colorCombo2'].text()))
 
-        M.status = status
-        M.symbol=symbol
-        M.size=size
-        M.id=id
-        M.id_size=idsize
-        M.id_color=idcolor
-        M.id_font=idfont
-        M.xoffset=xoffset
-        M.yoffset=yoffset
-        M.line=line
-        M.line_type=linetype
-        M.line_size=linesize
-        M.line_color=linecolor
+            M.status = status
+            M.symbol=symbol
+            M.size=size
+            M.id=id
+            M.id_size=idsize
+            M.id_color=idcolor
+            M.id_font=idfont
+            M.xoffset=xoffset
+            M.yoffset=yoffset
+            M.line=line
+            M.line_type=linetype
+            M.line_size=linesize
+            M.line_color=linecolor
 
         
     def getGMMarkerAttributeValue(self,M,a,i):
@@ -1188,17 +1218,17 @@ class QScatterEditor(VCSGMs1D,VCSGMs,QtGui.QScrollArea):
         markers = uvcdatCommons.QFramedWidget("Markers Settings")
         self.setupMarkers(markers)
         vbox.addWidget(markers)
-        self.initValues()
+        self.initValues(self.gm)
         self.setWidget(frame)
 
 
-    def initValues(self):
-        self.initCommonValues()
-        self.initMarkerValues()
+    def initValues(self,gm=None):
+        self.initCommonValues(gm)
+        self.initMarkerValues(gm)
 
-    def applyChanges(self):
-        self.applyCommonChanges()
-        self.applyMarkerChanges()
+    def applyChanges(self,gm=None):
+        self.applyCommonChanges(gm)
+        self.applyMarkerChanges(gm)
         
 class Q1DPlotEditor(VCSGMs1D,VCSGMs,QtGui.QScrollArea):
     def __init__(self, parent=None, gm=None,type="xyvsy"):
@@ -1232,19 +1262,19 @@ class Q1DPlotEditor(VCSGMs1D,VCSGMs,QtGui.QScrollArea):
         markers = uvcdatCommons.QFramedWidget("Markers Settings")
         self.setupMarkers(markers)
         vbox.addWidget(markers)
-        self.initValues()
+        self.initValues(self.gm)
         self.setWidget(frame)
 
 
-    def initValues(self):
-        self.initCommonValues()
-        self.initMarkerValues()
-        self.initLineValues()
+    def initValues(self,gm=None):
+        self.initCommonValues(gm)
+        self.initMarkerValues(gm)
+        self.initLineValues(gm)
 
-    def applyChanges(self):
-        self.applyCommonChanges()
-        self.applyMarkerChanges()
-        self.applyLineChanges()
+    def applyChanges(self,gm=None):
+        self.applyCommonChanges(gm)
+        self.applyMarkerChanges(gm)
+        self.applyLineChanges(gm)
         
 class QOutlineEditor(VCSGMs,QtGui.QScrollArea):
     def __init__(self, parent=None, gm=None):
@@ -1278,36 +1308,42 @@ class QOutlineEditor(VCSGMs,QtGui.QScrollArea):
         vbox.addWidget(genSettings)
 
         #vbox.setAlignment(frame, QtCore.Qt.AlignTop)
-        self.initValues()
+        self.initValues(self.gm)
         self.setWidget(frame)
         
-    def initValues(self):
-        # Init common area
-        self.initCommonValues()
-        self.indexValues.setText('1')
-        if self.gm.linewidth is None:
-            self.lineWidth.setValue(1)
-        else:
-            self.lineWidth.setValue(selg.gm.linewidth)
-        if self.gm.linecolor is None:
-            self.lineColorIndex.setValue(241)
-        else:
-            self.lineColorIndex.setValue(self.gm.linecolor)
-        for i in range(self.lineType.count()):
-            if str(self.lineType.itemText(i))==self.gm.line:
-                self.lineType.setCurrentIndex(i)
-                break
-        self.indexValues.setText(repr(self.gm.outline))
+    def initValues(self,gm=None):
+        if gm is None:
+            gm = self.gm
+        if gm:
+            # Init common area
+            self.initCommonValues(gm)
+            self.indexValues.setText('1')
+            if gm.linewidth is None:
+                self.lineWidth.setValue(1)
+            else:
+                self.lineWidth.setValue(gm.linewidth)
+            if gm.linecolor is None:
+                self.lineColorIndex.setValue(241)
+            else:
+                self.lineColorIndex.setValue(gm.linecolor)
+            for i in range(self.lineType.count()):
+                if str(self.lineType.itemText(i))==gm.line:
+                    self.lineType.setCurrentIndex(i)
+                    break
+            self.indexValues.setText(repr(gm.outline))
         
-    def applyChanges(self):
-        self.applyCommonChanges()
-        try:
-            self.gm.outline=eval(str(self.indexValues.text()))
-        except:
-            self.gm.outline=str(self.indexValues.text())
-        self.gm.linecolor=int(self.lineColorIndex.text())
-        self.gm.linewidth=int(self.lineWidth.text())
-        self.gm.line=str(self.lineType.currentText())
+    def applyChanges(self,gm=None):
+        if gm is None:
+            gm = self.gm
+        if gm:
+            self.applyCommonChanges(gm)
+            try:
+                gm.outline=eval(str(self.indexValues.text()))
+            except:
+                gm.outline=str(self.indexValues.text())
+            gm.linecolor=int(self.lineColorIndex.text())
+            gm.linewidth=int(self.lineWidth.text())
+            gm.line=str(self.lineType.currentText())
         
     def setToolTips(self):
         # Set tool tips
@@ -1350,36 +1386,42 @@ class QOutfillEditor(VCSGMs,QtGui.QScrollArea):
         vbox.addWidget(genSettings)
         ## vbox.setAlignment(frame, QtCore.Qt.AlignTop)
 
-        self.initValues()
+        self.initValues(self.gm)
 
         self.setWidget(frame)
 
-    def initValues(self):
-        # Init common area
-        self.initCommonValues()
-        if self.gm.fillareaindex is None:
-            self.fillAreaIndex.setValue(1)
-        else:
-            self.fillAreaIndex.setValue(selg.gm.fillareaindex)
-        if self.gm.fillareacolor is None:
-            self.fillColorIndex.setValue(241)
-        else:
-            self.fillColorIndex.setValue(self.gm.fillareacolor)
-        for i in range(self.fillArea.count()):
-            if str(self.fillArea.itemText(i))==self.gm.fillareastyle:
-                self.fillArea.setCurrentIndex(i)
-                break
-        self.indexValues.setText(repr(self.gm.outfill))
+    def initValues(self,gm=None):
+        if gm is None:
+            gm = self.gm
+        if gm:
+            # Init common area
+            self.initCommonValues(gm)
+            if gm.fillareaindex is None:
+                self.fillAreaIndex.setValue(1)
+            else:
+                self.fillAreaIndex.setValue(gm.fillareaindex)
+            if gm.fillareacolor is None:
+                self.fillColorIndex.setValue(241)
+            else:
+                self.fillColorIndex.setValue(gm.fillareacolor)
+            for i in range(self.fillArea.count()):
+                if str(self.fillArea.itemText(i))==gm.fillareastyle:
+                    self.fillArea.setCurrentIndex(i)
+                    break
+            self.indexValues.setText(repr(gm.outfill))
 
-    def applyChanges(self):
-        self.applyCommonChanges()
-        try:
-            self.gm.outfill=eval(str(self.indexValues.text()))
-        except:
-            self.gm.outfill=str(self.indexValues.text())
-        self.gm.fillareacolor=int(self.fillColorIndex.text())
-        self.gm.fillareaindex = int(self.fillAreaIndex.text())
-        self.gm.fillareastyle=str(self.fillArea.currentText())
+    def applyChanges(self,gm=None):
+        if gm is None:
+            gm = self.gm
+        if gm:
+            self.applyCommonChanges(gm)
+            try:
+                gm.outfill=eval(str(self.indexValues.text()))
+            except:
+                gm.outfill=str(self.indexValues.text())
+            gm.fillareacolor=int(self.fillColorIndex.text())
+            gm.fillareaindex = int(self.fillAreaIndex.text())
+            gm.fillareastyle=str(self.fillArea.currentText())
         
     def setToolTips(self):
         # Set ToolTips
@@ -1435,7 +1477,7 @@ class QMeshfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.setWidget(frame)
         
         # Init values / tool tips
-        self.initValues()
+        self.initValues(self.gm)
         self.setToolTips()
         # Connect Signals
         self.connect(self.spacingButtonGroup.getButton('Linear'),
@@ -1445,44 +1487,50 @@ class QMeshfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
                      QtCore.SIGNAL('pressed()'),
                      lambda : self.setEnabledLogLineEdits(True))
 
-    def initValues(self):
-        # Init common area
-        self.initCommonValues()
-        # Init Line Edit Text
-        self.missingLineEdit.setText(str(self.gm.missing))
-        self.legendLineEdit.setText(repr(self.gm.legend))
-
-        
-        if self.gm.ext_1 == "n":
-            self.ext1ButtonGroup.setChecked('No')
-        else:
-            self.ext1ButtonGroup.setChecked('Yes')
-        if self.gm.ext_2 == "n":
-            self.ext2ButtonGroup.setChecked('No')
-        else:
-            self.ext2ButtonGroup.setChecked('Yes')
-
-        #Init Range section
-        if self.gm.mesh == 0:
-            self.showMesh.setChecked('No')
-        else:
-            self.showMesh.setChecked('Yes')
-        self.xWrap.setText(repr(self.gm.wrap[1]))
-        self.yWrap.setText(repr(self.gm.wrap[0]))
-        #Init range section
-        self.initRangeValues()
+    def initValues(self,gm=None):
+        if gm is None:
+            gm = self.gm
+        if gm:
+            # Init common area
+            self.initCommonValues(gm)
+            # Init Line Edit Text
+            self.missingLineEdit.setText(str(gm.missing))
+            self.legendLineEdit.setText(repr(gm.legend))
 
 
-    def applyChanges(self):
-        self.applyCommonChanges()
-        self.gm.legend = eval(str(self.legendLineEdit.text()))
-        self.gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
-        self.gm.ext2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
-        self.gm.missing = eval(str(self.missingLineEdit.text()))
-        self.gm.wrap = [eval(str(self.yWrap.text())),eval(str(self.xWrap.text()))]
-        self.gm.mesh = str(self.showMesh.buttonGroup.button(self.showMesh.buttonGroup.checkedId()).text()).lower()[0]
-        self.gm.levels = eval(str(self.rangeLineEdit.text()))
-        self.applyRangeSettings()
+            if gm.ext_1 == "n":
+                self.ext1ButtonGroup.setChecked('No')
+            else:
+                self.ext1ButtonGroup.setChecked('Yes')
+            if gm.ext_2 == "n":
+                self.ext2ButtonGroup.setChecked('No')
+            else:
+                self.ext2ButtonGroup.setChecked('Yes')
+
+            #Init Range section
+            if gm.mesh == 0:
+                self.showMesh.setChecked('No')
+            else:
+                self.showMesh.setChecked('Yes')
+            self.xWrap.setText(repr(gm.wrap[1]))
+            self.yWrap.setText(repr(gm.wrap[0]))
+            #Init range section
+            self.initRangeValues(gm)
+
+
+    def applyChanges(self,gm=None):
+        if gm is None:
+            gm = self.gm
+        if gm:
+            self.applyCommonChanges(gm)
+            gm.legend = eval(str(self.legendLineEdit.text()))
+            gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
+            gm.ext2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
+            gm.missing = eval(str(self.missingLineEdit.text()))
+            gm.wrap = [eval(str(self.yWrap.text())),eval(str(self.xWrap.text()))]
+            gm.mesh = str(self.showMesh.buttonGroup.button(self.showMesh.buttonGroup.checkedId()).text()).lower()[0]
+            gm.levels = eval(str(self.rangeLineEdit.text()))
+            self.applyRangeSettings(gm)
 
     def setToolTips(self):
         # General Setting Tips
@@ -1530,7 +1578,7 @@ class QIsofillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         vbox.addWidget(self.isoSettings)
         self.setWidget(frame)
         
-        self.initValues()
+        self.initValues(self.gm)
         self.setToolTips()
         # Connect Signals
         self.connect(self.spacingButtonGroup.getButton('Linear'),
@@ -1740,7 +1788,7 @@ class QContourEditor():
                      QtCore.SIGNAL('pressed()'),
                      lambda : self.setEnabledLogLineEdits(True))
 
-    def initValues(self):
+    def initValues(self,gm=None):
         self.includeZeroButtonGroup.setChecked('Off')
         self.spacingButtonGroup.setChecked('Linear')
         self.setEnabledLogLineEdits(False)
@@ -1824,7 +1872,6 @@ class QContourEditor():
         self.numNegDecLabel.setEnabled(enable)
 
         if enable == True:
-	    print "Crap"
             self.smallestExp.setToolTip("Smallest exponent for negative values")
             self.numNegDec.setToolTip("Number of negative decades.")
 	    self.minValLineEdit.label.setText("Smallest Exponent for Positive Values:")
@@ -1834,7 +1881,6 @@ class QContourEditor():
 	    self.nIntervals.label.setText("Levels per Decade:")
  	    self.nIntervals.setToolTip ("Levels per Decade") 
 	    self.update()
-	    print "CRIP"
 	else:
             self.smallestExp.setToolTip("Disabled. Not in use for linear spacing.")
             self.numNegDec.setToolTip("Disabled. Not in use for linear spacing.")            
@@ -2071,8 +2117,6 @@ class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.level2LineEdit.setToolTip("The maximum data value. If level 2 is set to '1e+20',\nthen VCS will select the level.")
         self.color1LineEdit.setToolTip("The minimum color range index value. The colormap\nranges from 0 to 255, but only color indices 0\nthrough 239 can be changed.")
         self.color2LineEdit.setToolTip("The maximum color range index value. The colormap\nranges from 0 to 255, but only color indices 0\nthrough 239 can be changed.")
-        
-
 
             
     def getValue(self, lineEdit, convertType, default=None):
