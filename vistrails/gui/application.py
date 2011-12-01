@@ -511,6 +511,14 @@ parameters from other instances")
             self.createWindows()
             self.processEvents()
             
+        self.vistrailsStartup.set_needed_packages(['uvcdat',
+                                                   'uvcdat_cdms',
+                                                   'uvcdat_pv',
+                                                   'ParaView',
+                                                   'pvclimate',
+                                                   'vtk',
+                                                   'vtDV3D',
+                                                   ])
         self.vistrailsStartup.init()
         
         #uv-cdat plots initialization
