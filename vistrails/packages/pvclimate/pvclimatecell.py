@@ -47,10 +47,10 @@ class PVClimateCell(SpreadsheetCell):
         print "Getting Something"
 
     def setSliceOffset(self, value):
-        self.sliceOffset == value
+        self.sliceOffset = value
 
     def getSliceOffset(self):
-        self.sliceOffset
+        return self.sliceOffset
 
 class QParaViewWidget(QVTKWidget):
 
@@ -461,7 +461,9 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
 
 
     def setDefaults(self):
-        self.sliceOffsetValue.setText('0')
+        moduleInstance = self.module.module_descriptor.module()
+        self.sliceOffset = moduleInstance.getSliceOffset();
+        self.sliceOffsetValue.setText(str(self.sliceOffset))
 
     def updateController(self, controller=None):
         parmRecList = []
