@@ -24,7 +24,7 @@ class DockPlot(QtGui.QDockWidget):
         ## layout.setSpacing(0)
         ## layout.addWidget(self.plotTree)
         ## self.ui.mainWidget.setLayout(layout)
-        self.initVCSTree()
+        #self.initVCSTree()
         
     def initVCSTree(self):
         for k in sorted(plotTypes.keys()):
@@ -72,9 +72,21 @@ class DockPlot(QtGui.QDockWidget):
         self.plotTree.setSortingEnabled(False)
         registry = get_plot_registry()
         for plot_package in registry.plots:
-            self.addPlotBar(plot_package)
-            for plot in registry.plots[plot_package].itervalues():
-                self.addCustomPlotType(plot_package, plot.name, plot)
+            baritem = self.addPlotBar(plot_package)
+            if plot_package == "VCS":
+                for plottype in registry.plots[plot_package]:
+                    item = QtGui.QTreeWidgetItem(baritem, 
+                                                 QtCore.QStringList(plottype),
+                                                 self.VCS_CONTAINER_ITEM)
+                    item.setFlags(item.flags() & ~QtCore.Qt.ItemIsDragEnabled)
+                    ## Special section here for VCS GMs they have one more layer
+                    for plot in registry.plots[plot_package][plottype].itervalues():
+                        item2 = PlotTreeWidgetItem(plottype, plot.name, 
+                                                   QtCore.QStringList(plot.name),
+                                                   self.VCS_ITEM, plot, item)
+            else:
+                for plot in registry.plots[plot_package].itervalues():
+                    self.addCustomPlotType(plot_package, plot.name, plot)
         
         self.plotTree.sortByColumn(0, QtCore.Qt.AscendingOrder)
         self.plotTree.setSortingEnabled(True)

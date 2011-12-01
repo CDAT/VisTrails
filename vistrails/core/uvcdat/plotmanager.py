@@ -57,6 +57,7 @@ class PlotManager(QtCore.QObject):
         QtCore.QObject.__init__(self)
         _plot_manager = self
         self._plot_list = {}
+        self._plot_helpers = {}
         self._plot_versions = {}
         self._registry = None
         self._userplots = None
@@ -70,6 +71,7 @@ class PlotManager(QtCore.QObject):
         self.load_plots() 
             
     def load_plots(self):
+        self.load_vcs_plots()
         if not self._registry:
             raise UVCDATInternalError("Plot Registry must have been initialized")
         
@@ -98,3 +100,38 @@ class PlotManager(QtCore.QObject):
                     print "Error when loading %s plot"%p, str(e)
                     import traceback
                     traceback.print_exc()
+                    
+    def load_vcs_plots(self):
+        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
+        from gui.uvcdat.uvcdatCommons import plotTypes, gmInfos
+        gmInfos["Boxfill"]["nSlabs"]
+        from packages.uvcdat_cdms.init import get_canvas
+        if not self._registry:
+            raise UVCDATInternalError("Plot Registry must have been initialized")
+        
+        for p in sorted(plotTypes.keys()): 
+            #kitem = self.addPlotBar(k)
+            if p not in self._plot_list:
+                self._plot_list[p] = {}
+                self._plot_helpers[p] = CDMSPipelineHelper
+            for pl in plotTypes[p]:
+                ## Special section here for VCS GMs they have one more layer
+                self._plot_list[p][pl] = {}
+                for m in get_canvas().listelements(str(pl).lower()):
+                    self._plot_list[p][pl][m] = self._registry.add_plot(m,p,
+                                                                        None, 
+                                                                        None,
+                                                                        pl)
+                    #FIXME: get the var num from somewhere
+                    self._plot_list[p][pl][m].varnum = int(gmInfos[pl]["nSlabs"])
+            #vcs packages do not need to be loaded
+            
+    def get_plot_helper(self, plot_package):
+        if plot_package in self._plot_helpers:
+            return self._plot_helpers[plot_package]
+            
+def get_plot_manager():
+    global _plot_manager
+    if not _plot_manager:
+        raise UVCDATInternalError("plot manager not constructed yet.")
+    return _plot_manager

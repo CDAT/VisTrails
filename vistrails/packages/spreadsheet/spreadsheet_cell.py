@@ -256,6 +256,7 @@ class QCellToolBar(QtGui.QToolBar):
         self.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Preferred)
         pixmap = self.style().standardPixmap(QtGui.QStyle.SP_DialogCloseButton)
         self.appendAction(QCellToolBarRemoveCell(QtGui.QIcon(pixmap), self))
+        self.appendAction(QCellToolBarConfigurePlot(self))
         self.appendAction(QCellToolBarMergeCells(QtGui.QIcon(':celltoolbar/mergecells.png'), self))
         self.createToolBar()
 
@@ -388,12 +389,14 @@ class QCellToolBarConfigurePlot(QtGui.QAction):
     current cell
 
     """
-    def __init__(self, icon, parent=None):
+    def __init__(self, parent=None):
         """ QCellToolBarRemoveCell(icon: QIcon, parent: QWidget)
                                    -> QCellToolBarRemoveCell
         Setup the image, status tip, etc. of the action
         
         """
+        from gui.theme import CurrentTheme
+        icon = CurrentTheme.QUERY_EDIT_ICON
         QtGui.QAction.__init__(self,
                                icon,
                                "&Configure the current plot",
@@ -407,7 +410,7 @@ class QCellToolBarConfigurePlot(QtGui.QAction):
         """
         
         cellWidget = self.toolBar.getSnappedWidget()
-        self.toolBar.sheet.parent().requestPlotConfigure(self.toolBar.row, self.toolBar.col)
+        self.toolBar.sheet.requestPlotConfigure(self.toolBar.row, self.toolBar.col)
 
     def updateStatus(self, info):
         """ updateStatus(info: tuple) -> None

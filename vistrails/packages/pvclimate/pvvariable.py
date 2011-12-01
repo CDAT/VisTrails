@@ -6,7 +6,7 @@ import pickle
 
 # Qt is required for widget
 from PyQt4 import QtCore, QtGui
-from core.modules.constant_configuration import ConstantWidgetMixin
+from gui.modules.constant_configuration import ConstantWidgetMixin
 from core.modules.basic_modules import new_constant, init_constant, Module
 
 # Not sure why we need these
