@@ -69,14 +69,15 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         if sheetName not in self.sheet_to_item:
             return
         sheetItem = self.sheet_to_item[sheetName]
+        name = self.view.controller.get_pipeline_name(version)[10:]
         if (row, col) not in sheetItem.pos_to_item:
-            item = QWorkflowItem("root + %s" % version, (row, col))
+            item = QWorkflowItem(name, (row, col))
             sheetItem.addChild(item)
             sheetItem.pos_to_item[(row, col)] = item
         else:
             item = sheetItem.pos_to_item[(row, col)]
-            item.workflowName = sheetName
-            item.workflowPos = position
+            item.workflowName = name
+            item.workflowPos = (row, col)
             item.update_title()
 
 class QSpreadsheetItem(QtGui.QTreeWidgetItem):
@@ -107,7 +108,8 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
     def update_title(self):
         name = self.workflowName
         if self.workflowPos is not None:
-            name = name + ' @ %s,%s' % (self.workflowPos[0], self.workflowPos[1])
+            name = name + ' @ %s%s' % (chr(ord('A') + self.workflowPos[1]),
+                                        self.workflowPos[0]+1)
         if self.workflowSpan is not None:
             name = name + ' spanning %s,%s' % (self.workflowSpan[0], self.workflowSpan[1])
         self.setText(0, name)
