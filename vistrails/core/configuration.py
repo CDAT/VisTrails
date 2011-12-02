@@ -36,7 +36,7 @@
 
 from core import debug
 from core import system
-from core.utils import InstanceObject, Ref
+from core.utils import InstanceObject, Ref, VistrailsInternalError
 from core.utils.uxml import (named_elements,
                              elements_filter, eval_xml_value,
                              quote_xml_value)
@@ -221,6 +221,7 @@ def default():
         'upgradeModuleFailPrompt': True,
         'useCache': True,
         'userPackageDirectory': (None, str),
+        'uvcdat': default_uvcdat(),
         'verbosenessLevel': (None, int),
 #        'workflowGraph': (None, str),
 #        'workflowInfo': (None, str),
@@ -282,17 +283,26 @@ def default_thumbs():
                 }
     return ConfigurationObject(**thumbs_dir)
 
+def default_uvcdat():
+    """default_uvcdat() -> ConfigurationObject
+    Returns the default configuration for UVCDAT system
+    """
+    uvcdat_conf = {
+                   'autoExecute': True,
+                   }
+    return ConfigurationObject(**uvcdat_conf)
+
 def add_specific_config(base_dir):
-     """add_specific_config() -> dict
+    """add_specific_config() -> dict
     Returns a dict with other specific configuration
     to the current platform added to base_dir
     
     """
-     newdir = dict(base_dir)
-     if system.systemType == 'Darwin':
-         newdir['useMacBrushedMetalStyle'] = True
+    newdir = dict(base_dir)
+    if system.systemType == 'Darwin':
+        newdir['useMacBrushedMetalStyle'] = True
          
-     return newdir
+    return newdir
 
 def get_vistrails_persistent_configuration():
     """get_vistrails_persistent_configuration() -> ConfigurationObject or None

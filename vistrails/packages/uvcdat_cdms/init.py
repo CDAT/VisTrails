@@ -13,8 +13,8 @@ import MV2
 from info import identifier
 from widgets import GraphicsMethodConfigurationWidget
 from core.modules.module_registry import get_module_registry
-
 from core.modules.vistrails_module import Module, ModuleError, NotCacheable
+from core.utils import InstanceObject
 from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
@@ -137,10 +137,11 @@ class CDMSPlot(Plot):
                       'xticlabels1', 'xticlabels2', 'yticlabels1', 'yticlabels2', 
                       'xmtics1', 'xmtics2', 'ymtics1', 'ymtics2', 'projection']
     
+    plot_type = None
+
     def __init__(self):
         Plot.__init__(self)
         self.template = "starter"
-        self.plot_type = None
         self.graphics_method_name = "default"
         self.kwargs = {}
         self.default_values = {}
@@ -149,7 +150,7 @@ class CDMSPlot(Plot):
         Plot.compute(self)
         self.graphics_method_name = \
                 self.forceGetInputFromPort("graphicsMethodName", "default")
-        self.set_default_values()
+        #self.set_default_values()
         self.template = self.forceGetInputFromPort("template", "starter")
         
         if not self.hasInputFromPort('variable'):
@@ -194,6 +195,19 @@ class CDMSPlot(Plot):
             for attr in self.gm_attributes:
                 setattr(self,attr,str(getattr(gm,attr)))
                 self.default_values[attr] = str(getattr(gm,attr))
+    
+    @staticmethod
+    def get_canvas_graphics_method( plotType, gmName):
+        method_name = "get"+str(plotType).lower()
+        return getattr(get_canvas(),method_name)(gmName)
+    
+    @classmethod    
+    def get_initial_values(klass, gmName):
+        cgm = CDMSPlot.get_canvas_graphics_method(klass.plot_type, gmName)
+        attribs = {}
+        for attr in klass.gm_attributes:
+            attribs[attr] = str(getattr(cgm,attr))
+        return InstanceObject(**attribs)
         
 class CDMSGraphicsMethod(Module):
     # FIXME fill this in
@@ -572,13 +586,14 @@ def get_canvas():
 for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
                   'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
                   'Xyvsy', 'Yxvsx']:
-    def get_init_method(pt):
+    def get_init_method():
         def __init__(self):
             CDMSPlot.__init__(self)
-            self.plot_type = pt
+            #self.plot_type = pt
         return __init__
     klass = type('CDMS' + plot_type, (CDMSPlot,), 
-                 {'__init__': get_init_method(plot_type),
+                 {'__init__': get_init_method(),
+                  'plot_type': plot_type,
                   '_input_ports': get_input_ports(plot_type),
                   'gm_attributes': get_gm_attributes(plot_type)})
     # print 'adding CDMS module', klass.__name__

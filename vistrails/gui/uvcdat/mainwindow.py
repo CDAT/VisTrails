@@ -137,13 +137,14 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.ui.menuView.addAction(self.dockPlot.toggleViewAction())
         self.ui.menuView.addAction(self.dockVariable.toggleViewAction())
         self.ui.menuView.addAction(self.dockCalculator.toggleViewAction())
-        
+        self.ui.menuView.addAction(PlotProperties.instance().toolWindow().toggleViewAction())
         #Window Menu
         self.ui.menuWindow.addAction(self.showBuilderWindowAct)
         
     def showBuilderWindowActTriggered(self):
         from gui.vistrails_window import _app
         _app.show()
+        _app.raise_()
         
     def connectSignals(self):
         self.ui.actionExit.triggered.connect(self.quit)

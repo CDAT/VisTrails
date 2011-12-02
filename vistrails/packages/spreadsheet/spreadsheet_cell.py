@@ -256,6 +256,7 @@ class QCellToolBar(QtGui.QToolBar):
         self.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Preferred)
         pixmap = self.style().standardPixmap(QtGui.QStyle.SP_DialogCloseButton)
         self.appendAction(QCellToolBarRemoveCell(QtGui.QIcon(pixmap), self))
+        self.appendAction(QCellToolBarExecutePlot(self))
         self.appendAction(QCellToolBarConfigurePlot(self))
         self.appendAction(QCellToolBarMergeCells(QtGui.QIcon(':celltoolbar/mergecells.png'), self))
         self.createToolBar()
@@ -399,7 +400,7 @@ class QCellToolBarConfigurePlot(QtGui.QAction):
         icon = CurrentTheme.QUERY_EDIT_ICON
         QtGui.QAction.__init__(self,
                                icon,
-                               "&Configure the current plot",
+                               "Configure the current plot",
                                parent)
         self.setStatusTip("Configure the current plot")
 
@@ -417,18 +418,85 @@ class QCellToolBarConfigurePlot(QtGui.QAction):
         Updates the status of the button based on the input info
         
         """
+        from api import _app
         (sheet, row, col, cellWidget) = info
         selectedCells = sorted(sheet.getSelectedLocations())
 
+        # Will not show up if there is no cell selected  
+        proj_controller = _app.uvcdatWindow.get_current_project_controller()
+        sheetName = sheet.getSheetName()        
+        if (len(selectedCells)==1 and 
+            proj_controller.is_cell_ready(sheetName,row,col)):
+                self.setVisible(True)
+        else:
+            self.setVisible(False)
+        
+class QCellToolBarExecutePlot(QtGui.QAction):
+    """
+    QCellToolBarConfigurePlot is the action to configure the plot of the
+    current cell
+
+    """
+    def __init__(self, parent=None):
+        """ QCellToolBarRemoveCell(icon: QIcon, parent: QWidget)
+                                   -> QCellToolBarRemoveCell
+        Setup the image, status tip, etc. of the action
+        
+        """
+        from gui.theme import CurrentTheme
+        from core.configuration import get_vistrails_configuration
+        icon = CurrentTheme.EXECUTE_PIPELINE_ICON
+        QtGui.QAction.__init__(self,
+                               icon,
+                               "Execute the current plot",
+                               parent)
+        self.setStatusTip("Execute the current plot")
+        uvcdat_conf = get_vistrails_configuration().uvcdat
+        uvcdat_conf.subscribe('autoExecute', self.setAutoExecuteConfig)
+        
+    def setAutoExecuteConfig(self, field, value):
+        assert field == 'autoExecute'
+        self.setVisible(not value)
+
+    def triggeredSlot(self, checked=False):
+        """ toggledSlot(checked: boolean) -> None
+        Execute the action when the button is clicked
+        
+        """
+        
+        cellWidget = self.toolBar.getSnappedWidget()
+        self.toolBar.sheet.requestPlotExecution(self.toolBar.row, self.toolBar.col)
+
+    def updateStatus(self, info):
+        """ updateStatus(info: tuple) -> None
+        Updates the status of the button based on the input info
+        
+        """
+        from core.configuration import get_vistrails_configuration
+        (sheet, row, col, cellWidget) = info
+        from api import _app
+        (sheet, row, col, cellWidget) = info
+        proj_controller = _app.uvcdatWindow.get_current_project_controller()
+        sheetName = sheet.getSheetName()        
+    
+        selectedCells = sorted(sheet.getSelectedLocations())    
         # Will not show up if there is no cell selected          
             
         # If there is a single cell selected, only show up if it has
         # been merged before so that user can un-merge cells
-        if len(selectedCells)==1:
-            self.setVisible(True)
-        else:
-            self.setVisible(False)
+        visible = False
+        if (len(selectedCells)==1 and 
+            not get_vistrails_configuration().uvcdat.autoExecute):
+            if proj_controller.is_cell_ready(sheetName,row,col):
+                visible = True
         
+        self.setVisible(visible)
+            
+    def __del__(self):
+        from core.configuration import get_vistrails_configuration
+        uvcdat_conf = get_vistrails_configuration().uvcdat
+        uvcdat_conf.unsubscribe('autoExecute', self.setAutoExecuteConfig)
+            
 class QCellToolBarMergeCells(QtGui.QAction):
     """
     QCellToolBarMergeCells is the action to merge selected cells to a

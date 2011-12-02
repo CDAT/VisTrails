@@ -100,6 +100,7 @@ class StandardWidgetToolBar(QtGui.QToolBar):
         self.addWidget(self.rowCountSpinBox())
         self.addWidget(self.colCountSpinBox())
         self.addAction(self.sheetTab.tabWidget.exportSheetToImageAction())
+        self.addAction(self.sheetTab.tabWidget.uvcdatAutoExecuteAction())
         self.addSeparator()
         self.layout().setSpacing(2)
         self.currentToolBarAction = None
@@ -282,6 +283,18 @@ class StandardWidgetSheetTabInterface(object):
         index = (colCount * r + c + cs) % (rowCount*colCount)
         return (index/colCount, index%colCount)
 
+    def getEmptyCells(self):
+        """getEmptyCells() -> list of tuples
+        Will return all cells that are actually empty"""
+        res = []
+        (rowCount, colCount) = self.getDimension()
+        for r in xrange(rowCount):
+            for c in xrange(colCount):
+                w = self.getCell(r, c)
+                if w==None or (type(w)==QCellPresenter and w.cellWidget==None):
+                    res.append((r,c))
+        return res
+        
     def setCellByType(self, row, col, cellType, inputPorts):
         """ setCellByType(row: int,
                           col: int,
@@ -356,6 +369,9 @@ class StandardWidgetSheetTabInterface(object):
         """
         self.setCellByType(row, col, None, None)
         self.setCellPipelineInfo(row, col, None)
+        cellWidget = QPromptCellWidget()
+        self.setCellByWidget(row, col, cellWidget)
+        self.emit(QtCore.SIGNAL("cell_deleted"), self.getSheetName(), row, col)
         
     def deleteAllCells(self):
         """ deleteAllCells() -> None
@@ -574,15 +590,21 @@ class StandardWidgetSheetTabInterface(object):
         """
         cellWidget = self.getCell(row, col)
         if type(cellWidget)==QPromptCellWidget:
-            cellWidget.setVarPromptText("Variable: %s"%varName) 
+            cellWidget.addVariable(varName)
             cellWidget.update()
         
-    def droppedPlot(self, plot_type, row, col):
+    def droppedPlot(self, plot, row, col):
         cellWidget = self.getCell(row, col)
         if type(cellWidget)==QPromptCellWidget:
-            cellWidget.setPlotPromptText("Plot type: %s"%plot_type) 
+            cellWidget.setPlot(plot) 
             cellWidget.update()
-        
+   
+    def displayPrompt(self):
+        cells = self.getEmptyCells()
+        for (r,c) in cells:
+            cellWidget = QPromptCellWidget()
+            self.setCellByWidget(r, c, cellWidget)
+     
 class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
     """
     StandardWidgetSheetTab is a container of StandardWidgetSheet with
@@ -610,8 +632,8 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         self.type = 'StandardWidgetSheetTab'
         self.tabWidget = tabWidget
         self.sheet = StandardWidgetSheet(row, col, self)
-        self.sheet.displayPrompt()
         self.sheet.setFitToWindow(True)
+        self.displayPrompt()
         self.toolBar = StandardWidgetToolBar(self)
         self.vLayout = QtGui.QVBoxLayout()
         self.vLayout.setSpacing(0)
@@ -630,6 +652,7 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         if self.toolBar.rowSpinBox.value()!=self.sheet.rowCount():
             self.sheet.setRowCount(self.toolBar.rowSpinBox.value())
             self.sheet.stretchCells()
+            self.displayPrompt()
             self.setEditingMode(self.tabWidget.editingMode)
         
     def colSpinBoxChanged(self):
@@ -640,6 +663,7 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         if self.toolBar.colSpinBox.value()!=self.sheet.columnCount():
             self.sheet.setColumnCount(self.toolBar.colSpinBox.value())
             self.sheet.stretchCells()
+            self.displayPrompt()
             self.setEditingMode(self.tabWidget.editingMode)
 
     def getSheetName(self):
@@ -793,14 +817,13 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
                 event.setDropAction(QtCore.Qt.CopyAction)
                 event.accept()
                 item = mimeData.items[0]
-                plot_type = "%s:%s"%(item.plot_type, item.gm)
                 localPos = self.sheet.viewport().mapFromGlobal(QtGui.QCursor.pos())
                 row = self.sheet.rowAt(localPos.y())
                 col = self.sheet.columnAt(localPos.x())
                 sheetName = str(self.tabWidget.tabText(self.tabWidget.indexOf(self)))
                 self.emit(QtCore.SIGNAL("dropped_plot"), (item.plot, 
                                                           sheetName, row, col))
-                self.droppedPlot(plot_type, row, col)
+                self.droppedPlot(item.plot, row, col)
         else:
             event.ignore()
 
@@ -842,6 +865,10 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         self.emit(QtCore.SIGNAL("request_plot_configure"), self.getSheetName(), 
                     row, col)
     
+    def requestPlotExecution(self, row, col):
+        self.emit(QtCore.SIGNAL("request_plot_execution"), self.getSheetName(), 
+                    row, col)
+        
 class StandardWidgetTabBarEditor(QtGui.QLineEdit):    
     """
     StandardWidgetTabBarEditor overrides QLineEdit to enable canceling

@@ -2,7 +2,7 @@ from PyQt4 import QtCore, QtGui
 from core.utils import InstanceObject
 from gui.uvcdat.graphicsMethodsWidgets import QBoxfillEditor, QIsofillEditor,\
    QIsolineEditor
-
+from gui.common_widgets import QDockPushButton
 class GraphicsMethodConfigurationWidget(QtGui.QWidget):
     def __init__(self, module, controller, parent=None):
         QtGui.QWidget.__init__(self, parent)
@@ -33,11 +33,11 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             
         self.buttonLayout = QtGui.QHBoxLayout()
         self.buttonLayout.setMargin(5)
-        self.saveButton = QtGui.QPushButton('&Save', self)
+        self.saveButton = QDockPushButton('&Save', self)
         self.saveButton.setFixedWidth(100)
         self.saveButton.setEnabled(True)
         self.buttonLayout.addWidget(self.saveButton)
-        self.resetButton = QtGui.QPushButton('&Reset', self)
+        self.resetButton = QDockPushButton('&Reset', self)
         self.resetButton.setFixedWidth(100)
         self.resetButton.setEnabled(True)
         self.buttonLayout.addWidget(self.resetButton)
@@ -95,17 +95,19 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             if str(getattr(gm,attr)) != self.attributes[attr]:
                 functions.append((attr,[str(getattr(gm,attr))]))
                 
-        self.controller.update_functions(self.module, 
-                                         functions)
-        return True
+        action = self.controller.update_functions(self.module, 
+                                                  functions)
+        return (action, True)
     
     def saveTriggered(self, checked = False):
         """ saveTriggered(checked: bool) -> None
         Update vistrail controller and module when the user click Ok
         
         """
-        if self.updateVistrail():
+        (action, res) = self.updateVistrail()
+        if res:
             self.emit(QtCore.SIGNAL('doneConfigure'), self.module.id)
+            self.emit(QtCore.SIGNAL('plotDoneConfigure'), action)
             
     def resetTriggered(self):
         self.setupEditors()
