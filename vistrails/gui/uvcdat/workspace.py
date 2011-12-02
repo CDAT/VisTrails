@@ -245,7 +245,7 @@ class Workspace(QtGui.QDockWidget):
         Workspace.setWidget(self.dockWidgetContents)
 
     def connectSignals(self):
-#        self.treeProjects.currentItemChanged.connect(self.selectedNewProject)
+        #self.treeProjects.currentItemChanged.connect(self.selectedNewProject)
         self.btnNewProject.clicked.connect(self.addProject)
         self.btnOpenProject.clicked.connect(self.openProject)
         self.btnSaveProject.clicked.connect(self.saveProject)
@@ -313,16 +313,16 @@ class Workspace(QtGui.QDockWidget):
             self.current_controller = self.currentProject.controller
             self.current_controller.connect_spreadsheet()
             self.emit(QtCore.SIGNAL("project_changed"),self.current_controller.name)
-            
-        # TODO need to update variables here
+        p = self.treeProjects.currentItem()
         defVars = self.root.dockVariable.widget()
         for i in range(defVars.varList.count()):
             v = defVars.varList.item(i)
-            if not id(self.currentProject) in v.projects:
+            if not str(p.text(0)) in v.projects:
                 v.setHidden(True)
             else:
                 v.setHidden(False)
         defVars.refreshVariablesStrings()
+            
 
     def addProject(self, clicked):
         from gui.vistrails_window import _app
@@ -498,3 +498,5 @@ class Workspace(QtGui.QDockWidget):
 
     def get_current_project_controller(self):
         return self.current_controller
+
+
