@@ -754,6 +754,8 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         """
         mimeData = event.mimeData()
         if (hasattr(mimeData, 'versionId') or 
+            (hasattr(mimeData, 'version') and
+            hasattr(mimeData, 'controller')) or
             mimeData.hasFormat("definedVariables") or
             mimeData.hasFormat("plotType")):
             event.accept()
@@ -767,6 +769,8 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         """
         mimeData = event.mimeData()
         if ((hasattr(mimeData, 'versionId') and
+            hasattr(mimeData, 'controller')) or
+            (hasattr(mimeData, 'version') and
             hasattr(mimeData, 'controller')) or
             mimeData.hasFormat("definedVariables") or
             mimeData.hasFormat("plotType")):
@@ -824,6 +828,16 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
                 self.emit(QtCore.SIGNAL("dropped_plot"), (item.plot, 
                                                           sheetName, row, col))
                 self.droppedPlot(item.plot, row, col)
+        elif (hasattr(mimeData, 'version') and
+            hasattr(mimeData, 'controller')):
+            event.accept()
+            version = mimeData.version
+            controller = mimeData.controller
+            localPos = self.sheet.viewport().mapFromGlobal(QtGui.QCursor.pos())
+            row = self.sheet.rowAt(localPos.y())
+            col = self.sheet.columnAt(localPos.x())
+            sheetName = str(self.tabWidget.tabText(self.tabWidget.indexOf(self)))
+            # TODO update the selected cell with the workflow specified by version        
         else:
             event.ignore()
 

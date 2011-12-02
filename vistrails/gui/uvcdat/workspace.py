@@ -107,6 +107,8 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/pipeline.png"))
         self.setIcon(0, icon)
+        self.setFlags(self.flags() | QtCore.Qt.ItemIsDragEnabled)
+
 
     def update_title(self):
         project = self.parent()
@@ -141,7 +143,22 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
                                  self.workflowPos[0] + self.workflowSpan[0])
         self.setText(0, name)
                         
-                
+class QDragTreeWidget(QtGui.QTreeWidget):
+    
+    def __init__(self,parent=None):
+        QtGui.QTreeWidget.__init__(self,parent=parent)
+        
+    def mimeData(self, items):
+        if not len(items) == 1 or type(items[0]) != QWorkflowItem:
+            return
+        item = items[0]
+        project = item.parent()
+        while type(project) != QProjectItem:
+            project = project.parent()
+        m = QtCore.QMimeData()
+        m.version = item.workflowVersion
+        m.controller = project.view.controller
+        return m
         
 class Workspace(QtGui.QDockWidget):
     def __init__(self, parent=None):
@@ -218,10 +235,12 @@ class Workspace(QtGui.QDockWidget):
         spacerItem = QtGui.QSpacerItem(100, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem)
         self.verticalLayout.addWidget(self.toolsProject)
-        self.treeProjects = QtGui.QTreeWidget(self.dockWidgetContents)
+        self.treeProjects = QDragTreeWidget(self.dockWidgetContents)
         self.treeProjects.setRootIsDecorated(True)
         self.treeProjects.setExpandsOnDoubleClick(False)
         self.treeProjects.header().setVisible(False)
+        self.treeProjects.setDragEnabled(True)
+
         self.verticalLayout.addWidget(self.treeProjects)
         Workspace.setWidget(self.dockWidgetContents)
 
