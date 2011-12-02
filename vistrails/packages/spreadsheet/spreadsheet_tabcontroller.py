@@ -248,6 +248,40 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                          self.openSpreadsheetAs)
         return self.openActionVar
 
+    def uvcdatAutoExecuteAction(self):
+        """ uvcdatAutoExecuteAction(self) -> QAction
+        Execute workflows automatically after changes
+        
+        """
+        from core.configuration import get_vistrails_configuration
+        if not hasattr(self, 'uvcdatAutoExecuteVar'):
+            self.uvcdatAutoExecuteVar = QtGui.QAction('Auto execute', self)
+            self.uvcdatAutoExecuteVar.setStatusTip(
+                'Execute visualization automatically after changes')
+            self.uvcdatAutoExecuteVar.setCheckable(True)
+            conf = get_vistrails_configuration()
+            if conf.has('uvcdat'):
+                checked = conf.uvcdat.check('autoExecute')
+            self.uvcdatAutoExecuteVar.setChecked(checked)
+            
+            self.connect(self.uvcdatAutoExecuteVar,
+                         QtCore.SIGNAL('triggered(bool)'),
+                         self.uvcdatAutoExecuteActionTriggered)
+                
+        return self.uvcdatAutoExecuteVar
+    
+    def uvcdatAutoExecuteActionTriggered(self, checked):
+        """uvcdatAutoExecuteActionTriggered(checked: boolean) -> None 
+        When the check state changes the configuration needs to be updated.
+        
+        """
+        from core.configuration import get_vistrails_persistent_configuration,\
+            get_vistrails_configuration
+        from api import _app
+        get_vistrails_persistent_configuration().uvcdat.autoExecute = checked
+        get_vistrails_configuration().uvcdat.autoExecute = checked
+        _app.save_configuration()
+        
     def exportSheetToImageAction(self):
         """ exportSheetToImageAction() -> QAction
         Export the current sheet to an image
@@ -856,12 +890,22 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                      self.plotDropped)
         self.connect(widget, QtCore.SIGNAL("request_plot_configure"),
                      self.requestPlotConfigure)
+        self.connect(widget, QtCore.SIGNAL("request_plot_execution"),
+                     self.requestPlotExecution)
+        self.connect(widget, QtCore.SIGNAL("cell_deleted"),
+                     self.cellDeleted)
         
     def disconnectTabWigetSignals(self, widget):
         self.disconnect(widget, QtCore.SIGNAL("dropped_variable"),
                      self.variableDropped)
         self.disconnect(widget, QtCore.SIGNAL("dropped_plot"),
                      self.plotDropped)
+        self.disconnect(widget, QtCore.SIGNAL("request_plot_configure"),
+                     self.requestPlotConfigure)
+        self.disconnect(widget, QtCore.SIGNAL("request_plot_execution"),
+                     self.requestPlotExecution)
+        self.disconnect(widget, QtCore.SIGNAL("cell_deleted"),
+                     self.cellDeleted)
 
     def variableDropped(self, info):
         """variableDropped(info: tuple)-> None
@@ -878,5 +922,11 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         self.emit(QtCore.SIGNAL("dropped_plot"), info)
         
     def requestPlotConfigure(self, sheetName, row, col):
-        self.emit(QtCore.SIGNAL("request_plot_configure"), sheetName, row, col )    
+        self.emit(QtCore.SIGNAL("request_plot_configure"), sheetName, row, col ) 
+        
+    def requestPlotExecution(self, sheetName, row, col):
+        self.emit(QtCore.SIGNAL("request_plot_execution"), sheetName, row, col )    
+        
+    def cellDeleted(self, sheetName, row, col):
+        self.emit(QtCore.SIGNAL("cell_deleted"), sheetName, row, col )
         

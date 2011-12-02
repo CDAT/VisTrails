@@ -1807,11 +1807,10 @@ class QVistrailsWindow(QVistrailViewWindow):
                         return self.stack.currentWidget()
             else:
                 try:
-                    #uv-cdat window
-                    import qtbrowser
                     import gui.uvcdat.mainwindow
-                    if (isinstance(window, qtbrowser.vcdatWindow.QCDATWindow) or
-                        isinstance(window, gui.uvcdat.mainwindow.UVCDATMainWindow)):
+                    import gui.common_widgets
+                    if (isinstance(window, gui.uvcdat.mainwindow.UVCDATMainWindow) or
+                        isinstance(window, gui.common_widgets.QToolWindow)):
                         return self.stack.currentWidget()
                 except:
                     pass

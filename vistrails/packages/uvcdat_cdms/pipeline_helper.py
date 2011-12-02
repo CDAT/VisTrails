@@ -1,8 +1,11 @@
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
+from core.modules.module_registry import get_module_registry
+import core.db.action
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import pyqtSlot, pyqtSignal
 from init import CDMSPlot
 from widgets import GraphicsMethodConfigurationWidget
+import api
 
 class CDMSPipelineHelper(PlotPipelineHelper):
     @staticmethod
@@ -12,8 +15,59 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         return CDMSPlotWidget(controller,version,plots)
     
     @staticmethod
-    def build_plot_pipeline(controller, version, var_module, plot_type, plot_gm):
-        pass
+    def build_plot_pipeline_action(controller, version, var_modules, plot_obj, row, col):
+        # FIXME want to make sure that nothing changes if var_module
+        # or plot_module do not change
+        plot_type = plot_obj.parent
+        plot_gm = plot_obj.name
+        if controller is None:
+            controller = api.get_current_controller()
+            version = 0L
+        reg = get_module_registry()
+        ops = []
+        plot_descriptor = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
+                                       'CDMS' + plot_type)
+        desc = plot_descriptor.module
+        plot_module = controller.create_module_from_descriptor(plot_descriptor)
+        plot_functions =  [('graphicsMethodName', [plot_gm])]
+        initial_values = desc.get_initial_values(plot_gm)
+        for attr in desc.gm_attributes:
+            plot_functions.append((attr,[getattr(initial_values,attr)]))
+            
+        functions = controller.create_functions(plot_module,plot_functions)
+        for f in functions:
+            plot_module.add_function(f)
+        
+        ops.append(('add', var_modules[0]))
+        ops.append(('add', plot_module))     
+        conn = controller.create_connection(var_modules[0], 'self',
+                                            plot_module, 'variable')
+        ops.append(('add', conn))
+        if len(var_modules) > 1:
+            conn2 = controller.create_connection(var_modules[1], 'self',
+                                                    plot_module, 'variable2')
+            ops.append(('add', var_modules[1]))
+            ops.append(('add', conn2))
+             
+        cell_module = controller.create_module_from_descriptor(
+            reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 'CDMSCell'))
+        cell_conn = controller.create_connection(plot_module, 'self',
+                                                         cell_module, 'plot')
+        loc_module = controller.create_module_from_descriptor(
+            reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet', 
+                                       'CellLocation'))
+        functions = controller.create_functions(loc_module,
+            [('Row', [str(row+1)]), ('Column', [str(col+1)])])
+        for f in functions:
+            loc_module.add_function(f)
+        loc_conn = controller.create_connection(loc_module, 'self',
+                                                        cell_module, 'Location')
+        ops.extend([('add', cell_module),
+                    ('add', cell_conn),
+                    ('add', loc_module),
+                    ('add', loc_conn)])
+        action = core.db.action.create_action(ops)
+        return action
     
     @staticmethod    
     def get_graphics_method_name_from_module(module):
@@ -52,27 +106,48 @@ class CDMSPlotWidget(QtGui.QWidget):
             self.config_widget = GraphicsMethodConfigurationWidget(plot_list[0],
                                                                    self.controller,
                                                                    self)
+            self.connect_signals()
         else:
             self.config_widget = QtGui.QWidget()
         self.v_layout.addWidget(self.config_widget)
         self.plot_table.itemSelectionChanged.connect(self.update_config_widget)
         self.setLayout(self.v_layout)
         
+    def connect_signals(self):
+        if type(self.config_widget) == GraphicsMethodConfigurationWidget:
+            self.connect(self.config_widget, QtCore.SIGNAL("plotDoneConfigure"),
+                         self.configure_done)
+            self.connect(self.config_widget, QtCore.SIGNAL("stateChanged"),
+                         self.state_changed)
+    def disconnect_signals(self):
+        if type(self.config_widget) == GraphicsMethodConfigurationWidget:
+            self.disconnect(self.config_widget, QtCore.SIGNAL("plotDoneConfigure"),
+                         self.configure_done)
+            self.disconnect(self.config_widget, QtCore.SIGNAL("stateChanged"),
+                         self.state_changed)
     @pyqtSlot()
     def update_config_widget(self):
         if self.conf_widget:
             self.conf_widget.setVisible(False)
             self.v_layout.removeWidget(self.conf_widget)
+            self.disconnect_signals()
             self.conf_widget.deleteLater()
         if len(self.plot_table.selectedItems()) == 1:
             item = self.plot_table.selectedItems()[0]
             self.config_widget = GraphicsMethodConfigurationWidget(item.module,
                                                                    self.controller,
                                                                    self)
+            self.connect_signals()
         else:
             self.conf_widget = QtGui.QWidget()
         self.v_layout.addWidget(self.conf_widget)
     
+    def configure_done(self, action):
+        self.emit(QtCore.SIGNAL('plotDoneConfigure'), action)
+        
+    def state_changed(self):
+        self.emit(QtCore.SIGNAL("stateChanged"))
+        
 class PlotTableWidget(QtGui.QTreeWidget):
     def __init__(self,plot_list, parent=None):    
         QtGui.QTreeWidget.__init__(self, parent)

@@ -526,8 +526,3 @@ class StandardWidgetSheet(QtGui.QTableWidget):
             index = self.model().index(*self.getRealLocation(row, col))
             self.delegate.updateEditorGeometry(cellWidget, None, index)
             
-    def displayPrompt(self):
-        for r in range(self.rowCount()):
-            for c in range(self.columnCount()):
-                cellWidget = QPromptCellWidget()
-                self.setCellByWidget(r, c, cellWidget)

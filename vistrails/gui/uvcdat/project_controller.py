@@ -45,6 +45,7 @@ from core.uvcdat.variable import VariableWrapper
 from core.uvcdat.plot_registry import get_plot_registry
 from core.uvcdat.plotmanager import get_plot_manager
 from core.vistrail.controller import VistrailController
+from core.configuration import get_vistrails_configuration
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 
 class ProjectController(QtCore.QObject):
@@ -89,6 +90,22 @@ class ProjectController(QtCore.QObject):
                     return True
         return False
     
+    def is_cell_ready(self, sheetName, row, col):
+        if sheetName in self.sheet_map:
+            if (row,col) in self.sheet_map[sheetName]:
+                cell = self.sheet_map[sheetName][(row,col)]
+                if cell.plot is not None and len(cell.variables) == cell.plot.varnum:
+                    return True
+        return False
+    
+    def cell_has_plot(self, sheetName, row, col):
+        if sheetName in self.sheet_map:
+            if (row,col) in self.sheet_map[sheetName]:
+                cell = self.sheet_map[sheetName][(row,col)]
+                if cell.plot is not None:
+                    return True
+        return False
+    
     def connect_spreadsheet(self):
         ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
         tabController = ssheetWindow.get_current_tab_controller()
@@ -98,6 +115,10 @@ class ProjectController(QtCore.QObject):
                      self.plot_was_dropped)
         self.connect(tabController, QtCore.SIGNAL("request_plot_configure"),
                      self.request_plot_configure)
+        self.connect(tabController, QtCore.SIGNAL("request_plot_execution"),
+                     self.request_plot_execution)
+        self.connect(tabController, QtCore.SIGNAL("cell_deleted"),
+                     self.clear_cell)
         
     def disconnect_spreadsheet(self):
         ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
@@ -108,6 +129,10 @@ class ProjectController(QtCore.QObject):
                      self.plot_was_dropped)
         self.disconnect(tabController, QtCore.SIGNAL("request_plot_configure"),
                      self.request_plot_configure)
+        self.disconnect(tabController, QtCore.SIGNAL("request_plot_execution"),
+                     self.request_plot_execution)
+        self.disconnect(tabController, QtCore.SIGNAL("cell_deleted"),
+                     self.clear_cell)
         
     def variable_was_dropped(self, info):
         """variable_was_dropped(info: (varName, sheetName, row, col) """
@@ -137,6 +162,17 @@ class ProjectController(QtCore.QObject):
                                                                       template=None,
                                                                       current_parent_version=0L)
             
+    def clear_cell(self, sheetName, row, col):
+        if sheetName in self.sheet_map:
+            if (row,col) in self.sheet_map[sheetName]:
+                oldparentversion = self.sheet_map[sheetName][(row,col)]
+                self.sheet_map[sheetName][(row,col)] = \
+                       InstanceObject(variables=[],
+                                      plot=None,
+                                      template=None,
+                                      current_parent_version=oldparentversion)
+                self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col)
+
     def plot_was_dropped(self, info):
         """plot_was_dropped(info: (plot, sheetName, row, col) """
         (plot, sheetName, row, col) = info
@@ -168,11 +204,24 @@ class ProjectController(QtCore.QObject):
         action = self.vt_controller.delete_module_list(ids)
         cell.current_parent_version = action.id
         
-    def request_plot_configure(self, sheetName, row, col):
+    def request_plot_execution(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
         if cell.plot is not None:
-            self.widget = self.get_plot_configuration(sheetName,row,col)
-            self.widget.show()
+            self.execute_plot(cell.current_parent_version)
+            
+    def execute_plot(self, version):
+        self.vt_controller.change_selected_version(version)
+        (results, _) = self.vt_controller.execute_current_workflow()
+            
+    def request_plot_configure(self, sheetName, row, col):
+        from gui.uvcdat.plot import PlotProperties
+        cell = self.sheet_map[sheetName][(row,col)]
+        if cell.plot is not None:
+            widget = self.get_plot_configuration(sheetName,row,col)
+            plot_prop = PlotProperties.instance()
+            plot_prop.set_controller(self)
+            plot_prop.updateProperties(widget, sheetName,row,col)
+            plot_prop.set_visible(True)
             
     def get_plot_configuration(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
@@ -182,7 +231,7 @@ class ProjectController(QtCore.QObject):
         
     def update_variable(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
-        if cell.plot is not None:
+        if cell.plot is not None and len(cell.variables) == cell.plot.varnum:
             self.update_cell(sheetName, row, col)
     
     def update_plot(self, sheetName, row, col):
@@ -217,61 +266,22 @@ class ProjectController(QtCore.QObject):
                       cell.current_parent_version)
             
     def update_workflow(self, var_modules, cell, row, column):
-        # FIXME want to make sure that nothing changes if var_module
-        # or plot_module do not change
-        plot_type = cell.plot.parent
-        plot_gm = cell.plot.name
-        if self.vt_controller is None:
-            self.vt_controller = api.get_current_controller()
-            cell.current_parent_version = 0L
-        reg = get_module_registry()
-        ops = []
-        plot_module = self.vt_controller.create_module_from_descriptor(
-            reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
-                                       'CDMS' + plot_type))
-        functions = self.vt_controller.create_functions(plot_module,
-                                                        [('graphicsMethodName',
-                                                          [plot_gm])])
-        for f in functions:
-            plot_module.add_function(f)
-        
-        ops.append(('add', var_modules[0]))
-        ops.append(('add', plot_module))     
-        conn = self.vt_controller.create_connection(var_modules[0], 'self',
-                                                    plot_module, 'variable')
-        ops.append(('add', conn))
-        if len(var_modules) > 1:
-            conn2 = self.vt_controller.create_connection(var_modules[1], 'self',
-                                                    plot_module, 'variable2')
-            ops.append(('add', var_modules[1]))
-            ops.append(('add', conn2))
-             
-        cell_module = self.vt_controller.create_module_from_descriptor(
-            reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 'CDMSCell'))
-        cell_conn = self.vt_controller.create_connection(plot_module, 'self',
-                                                         cell_module, 'plot')
-        loc_module = self.vt_controller.create_module_from_descriptor(
-            reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet', 
-                                       'CellLocation'))
+        helper = self.plot_manager.get_plot_helper(cell.plot.package)
+        action = helper.build_plot_pipeline_action(self.vt_controller, 
+                                                   cell.current_parent_version, 
+                                                   var_modules, cell.plot,
+                                                   row, column)
         print '### setting row/column:', row, column
-        functions = self.vt_controller.create_functions(loc_module,
-            [('Row', [str(row+1)]), ('Column', [str(column+1)])])
-        for f in functions:
-            loc_module.add_function(f)
-        loc_conn = self.vt_controller.create_connection(loc_module, 'self',
-                                                        cell_module, 'Location')
-        ops.extend([('add', cell_module),
-                    ('add', cell_conn),
-                    ('add', loc_module),
-                    ('add', loc_conn)])
-        action = core.db.action.create_action(ops)
+        
         if action is not None:
             self.vt_controller.change_selected_version(cell.current_parent_version)
             self.vt_controller.add_new_action(action)
             self.vt_controller.perform_action(action)
             cell.current_parent_version = action.id
-            self.vt_controller.change_selected_version(cell.current_parent_version)
-            (results, _) = self.vt_controller.execute_current_workflow()
+            
+            if get_vistrails_configuration().uvcdat.autoExecute:
+                self.execute_plot(cell.current_parent_version)
+                
         
         #pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
         #print "Controller changed ", self.vt_controller.changed
@@ -281,8 +291,21 @@ class ProjectController(QtCore.QObject):
         #controller.change_selected_version(cell.current_parent_version)
         #(results, _) = controller.execute_current_workflow()
 
+    
+    def plot_properties_were_changed(self, sheetName, row, col, action):
+        if not action:
+            return
+        if sheetName in self.sheet_map:
+            if (row,col) in self.sheet_map[sheetName]:
+                cell = self.sheet_map[sheetName][(row,col)]
+                cell.current_parent_version = action.id
+                if get_vistrails_configuration().uvcdat.autoExecute:
+                    self.execute_plot(cell.current_parent_version)
+                self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
+                      cell.current_parent_version)
+                
     def load_workflow_templates(self):
-        vt_file = "/home/tommy/Downloads/CDMS_Plot.vt"
+        vt_file = "/Users/tommy/Downloads/CDMS_Plot.vt"
         locator = FileLocator(os.path.abspath(vt_file))
         (plot_vistrail, abstractions , thumbnails, mashups) = load_vistrail(locator)
         controller = VistrailController()
