@@ -65,7 +65,7 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         self.sheet_to_item = {}
         self.sheet_to_tab = {}
 
-    def update_cell(self, sheetName, row, col, version):
+    def update_cell(self, sheetName, row, col, version=0):
         if sheetName not in self.sheet_to_item:
             return
         sheetItem = self.sheet_to_item[sheetName]
@@ -76,10 +76,14 @@ class QProjectItem(QtGui.QTreeWidgetItem):
             item.update_title()
         else:
             item = sheetItem.pos_to_item[(row, col)]
-            item.workflowVersion = version
-            item.workflowPos = (row, col)
-            item.update_title()
-
+            if version:
+                item.workflowVersion = version
+                item.workflowPos = (row, col)
+                item.update_title()
+            else:
+                sheetItem.takeChild(sheetItem.indexOfChild(item))
+                del sheetItem.pos_to_item[(row, col)]
+            
 class QSpreadsheetItem(QtGui.QTreeWidgetItem):
     def __init__(self, name='sheet 1', parent=None):
         QtGui.QTreeWidgetItem.__init__(self)

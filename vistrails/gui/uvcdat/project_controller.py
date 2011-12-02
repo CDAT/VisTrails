@@ -171,7 +171,8 @@ class ProjectController(QtCore.QObject):
                                       plot=None,
                                       template=None,
                                       current_parent_version=oldparentversion)
-        
+                self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col)
+
     def plot_was_dropped(self, info):
         """plot_was_dropped(info: (plot, sheetName, row, col) """
         (plot, sheetName, row, col) = info
@@ -304,7 +305,7 @@ class ProjectController(QtCore.QObject):
                       cell.current_parent_version)
                 
     def load_workflow_templates(self):
-        vt_file = "/home/tommy/Downloads/CDMS_Plot.vt"
+        vt_file = "/Users/tommy/Downloads/CDMS_Plot.vt"
         locator = FileLocator(os.path.abspath(vt_file))
         (plot_vistrail, abstractions , thumbnails, mashups) = load_vistrail(locator)
         controller = VistrailController()
