@@ -37,9 +37,10 @@ class editVariableWidget(QtGui.QWidget):
                 if i!=0 :
                     v.addLayout(h)
                 h=QtGui.QHBoxLayout()
-            txt=self.root.workspace.treeProjects.topLevelItem(i).text(0)
+            proj = self.root.workspace.treeProjects.topLevelItem(i)
+            txt=proj.text(0)
             c=QtGui.QCheckBox(txt)
-            if self.it is not None and str(txt) in self.it.projects:
+            if self.it is not None and id(proj) in self.it.projects:
                 c.setCheckState(QtCore.Qt.Checked)
             #c.stateChanged.connect(self.checkedProject)
             h.addWidget(c)

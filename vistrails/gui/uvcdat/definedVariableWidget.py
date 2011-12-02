@@ -64,6 +64,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
     def setupDimsForEditMode(self,axisList):
         varProp = self.root.varProp
         varProp.parent=self
+        varProp.label.setText("Edit Variable")
         for i in range(varProp.originTabWidget.count()):
             if not str(varProp.originTabWidget.tabText(i)) in  ["Edit","Info"]:
                 varProp.originTabWidget.setTabEnabled(i,False)
@@ -366,6 +367,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
     def newVariable(self):
         #self.root.varProp.parent=self
         varProp = self.root.varProp
+        varProp.label.setText("Load From")
         for i in range(varProp.originTabWidget.count()):
             if not str(varProp.originTabWidget.tabText(i)) in  ["Edit",]:
                 varProp.originTabWidget.setTabEnabled(i,True)
