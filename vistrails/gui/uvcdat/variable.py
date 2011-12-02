@@ -33,12 +33,13 @@ class VariableProperties(QtGui.QDockWidget):
         self.ask.setWindowModality(QtCore.Qt.WindowModal)
         self.ask.setLabelText("This variable already exist!\nPlease change its name bellow or press ok to replace it\n")
         self.mode=mode
+        self.axisListHolder = None
         v=QtGui.QVBoxLayout()
         if mode=="add":
-            l=QtGui.QLabel("Load From")
+            self.label=QtGui.QLabel("Load From")
         else:
-            l=QtGui.QLabel("Edit Variable")
-        v.addWidget(l)
+            self.label=QtGui.QLabel("Edit Variable")
+        v.addWidget(self.label)
         P=parent.root.size()
         self.resize(QtCore.QSize(P.width()*.8,P.height()*.9))
         self.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
@@ -67,13 +68,15 @@ class VariableProperties(QtGui.QDockWidget):
         self.setWidget(f)
         self.parent=parent
         self.root = parent.root
-        if mode=="add":
-            self.createFileTab()
-            self.createESGFTab()
-            self.createPVTab()
+        self.createFileTab()
+        self.createESGFTab()
+        self.createPVTab()
+        self.createEditTab()
         self.createInfoTab()
-        if mode=="edit":
-            self.createEditTab()
+        for i in range(self.originTabWidget.count()):
+            if self.originTabWidget.tabText(i) == "Edit":
+                self.originTabWidget.setTabEnabled(i,False)
+
         self.createDimensions()
         self.connectSignals()
         sp.setStretchFactor(0,2)
@@ -125,7 +128,9 @@ class VariableProperties(QtGui.QDockWidget):
 
 
     def varAddedToDefined(self,var):
+        print "Generated axsilist crap"
         axisList = axesWidgets.QAxisList(None,var,self)
+        self.axisListCrap = axisList
         self.updateVarInfo(axisList)
 
     def droppedBookmark(self,event):
@@ -361,13 +366,22 @@ class VariableProperties(QtGui.QDockWidget):
         # Create and setup the axislist
         axisList = axesWidgets.QAxisList(self.cdmsFile, varName, self)
         axisList.setupVariableAxes()
+        self.fillDimensionsWidget(axisList)
+
+    def fillDimensionsWidget(self,axisList):
+        if not self.axisListHolder is None:
+            self.axisListHolder.destroy()
         N=self.dimsLayout.count()
         while N>1:
             it = self.dimsLayout.takeAt(N-1)
+            it.widget().deleteLater()
             it.widget().destroy()
+            self.dimsLayout.removeItem(it)
             del(it)
             self.dims.update()
+            self.update()
             N=self.dimsLayout.count()
+        self.axisListHolder = axisList
         self.dimsLayout.addWidget(axisList)
         self.updateVarInfo(axisList)
         

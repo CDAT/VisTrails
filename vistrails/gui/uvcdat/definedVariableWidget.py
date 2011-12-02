@@ -58,31 +58,24 @@ class QDefinedVariableWidget(QtGui.QWidget):
 
     def variableDoubleClicked(self,item):
         txt = str(item.text())
-        #varProp = self.root.varProp
-        self.root.varProp.parent=self
-        for i in range(self.root.varProp.originTabWidget.count()):
-            self.root.varProp.originTabWidget.removeTab(0)
-        self.root.varProp.createEditTab()
-        #print "OK axislist created with: ",txt.split()[1],__main__.__dict__[txt.split()[1]]
         axisList = axesWidgets.QAxisList(None,__main__.__dict__[txt.split()[1]],self)
-        #axisList.setupVariableAxes()
-        N=self.root.varProp.dimsLayout.count()
-        while N>1:
-            it = self.root.varProp.dimsLayout.takeAt(N-1)
-            it.widget().deleteLater()
-            it.widget().destroy()
-            self.root.varProp.dimsLayout.removeItem(it)
-            del(it)
-            self.root.varProp.dims.update()
-            self.root.varProp.update()
-            self.update()
-            N=self.root.varProp.dimsLayout.count()
-        #varProp.dimsLayout.addWidget(axisList)
-        #varProp.updateVarInfo(axisList)
-        #self.root.varProp.setupEditTab(axisList.getVar())
-        #self.root.varProp.originTabWidget.setCurrentIndex(1)
-        self.root.varProp.setFloating(True)
-        self.root.varProp.show()
+        self.setupDimsForEditMode(axisList)
+        
+    def setupDimsForEditMode(self,axisList):
+        varProp = self.root.varProp
+        varProp.parent=self
+        for i in range(varProp.originTabWidget.count()):
+            if not str(varProp.originTabWidget.tabText(i)) in  ["Edit","Info"]:
+                varProp.originTabWidget.setTabEnabled(i,False)
+            else:
+                varProp.originTabWidget.setTabEnabled(i,True)
+            if str(varProp.originTabWidget.tabText(i))=="Edit":
+                varProp.originTabWidget.setCurrentIndex(i)
+        axisList.setupVariableAxes()
+        varProp.setupEditTab(axisList.getVar())
+        varProp.fillDimensionsWidget(axisList)
+        varProp.setFloating(True)
+        varProp.show()
 
     def defineQuickplot(self, file, var):
         """ When a user plots a variable that isn't explicitly defined a signal
@@ -295,27 +288,12 @@ class QDefinedVariableWidget(QtGui.QWidget):
             self.emit(QtCore.SIGNAL('recordTeachingCommand'), command)
 
     def editVariables(self):
-        self.eds=[]
         sel = self.getSelectedDefinedVariables()
         if len(sel)==0:
             return
-        for s in sel:
-            d=VariableProperties(self,mode="edit")
-            #d=QtGui.QDialog(self)
-            axisList = axesWidgets.QAxisList(None,s,self)
-            axisList.setupVariableAxes()
-            l=QtGui.QVBoxLayout()
-            #d.setLayout(l)
-            d.dimsLayout.addWidget(axisList)
-            d.updateVarInfo(axisList)
-            d.setupEditTab(axisList.getVar())
-            d.originTabWidget.setCurrentIndex(1)
-            #e = editVariableWidget.editVariableWidget(s,parent=d,root=self.root)
-            #print s,d,self
-            #l.addWidget(e)
-            d.show()
-            
-            self.eds.append(d)
+        s=sel[-1] # Only do the last one
+        axisList = axesWidgets.QAxisList(None,s,self)
+        self.setupDimsForEditMode(axisList)
         
 
     def saveVariables(self):
@@ -386,7 +364,15 @@ class QDefinedVariableWidget(QtGui.QWidget):
             self.deleteVariable(v.id)
         
     def newVariable(self):
+        #self.root.varProp.parent=self
         varProp = self.root.varProp
+        for i in range(varProp.originTabWidget.count()):
+            if not str(varProp.originTabWidget.tabText(i)) in  ["Edit",]:
+                varProp.originTabWidget.setTabEnabled(i,True)
+            else:
+                varProp.originTabWidget.setTabEnabled(i,False)
+            if varProp.originTabWidget.tabText(i)=="File":
+                varProp.originTabWidget.setCurrentIndex(i)
         varProp.setFloating(True)
         varProp.show()
                 
