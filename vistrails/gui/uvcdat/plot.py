@@ -48,7 +48,7 @@ class PlotProperties(QtGui.QScrollArea, QToolWindowInterface):
         self.confWidget.setVisible(True)
         self.hasChanges = False
         # we need to reset the title in case there were changes
-        self.setWindowTitle("Module Configuration")
+        self.setWindowTitle("Visualization Properties")
     
     def configureDone(self, action):
         self.controller.plot_properties_were_changed(self.sheetName,

@@ -178,8 +178,8 @@ class QDefinedVariableWidget(QtGui.QWidget):
             for i in range(self.varList.count()-1,-1,-1):
                 if self.varList.item(i).getVarName() == var.id:
                     self.varList.takeItem(i)
-        else:
-            item = QtGui.QTreeWidgetItem(QtCore.QStringList(var))
+        elif type == 'PARAVIEW':
+            item = QDefinedVariableItem(var,self.root,QDefinedVariableItem.PARAVIEW)
         self.varList.addItem(item)
         # Recording define variable teaching command
 #        self.recordDefineVariableTeachingCommand(varName, var.id, file, axesArgString)
@@ -458,12 +458,19 @@ class QDefinedVariableWidget(QtGui.QWidget):
         ## self.toolBar.addWidget(self.opButton)
 
 class QDefinedVariableItem(QtGui.QListWidgetItem):
-    """ Item to be stored by QDefinedVariable's list widget """
-    
-    def __init__(self, variable, root, parent=None,project=None):
-        QtGui.QListWidgetItem.__init__(self, parent)
-        self.varName = variable.id # This is also the tabname
-        self.variable = variable
+    """ Item to be stored by QDefinedVariable's list widget 
+    type ==1 is for cdms variables
+    type==2 is for paraview variables """
+    CDMS = 1
+    PARAVIEW = 2
+    def __init__(self, variable, root, type=1, parent=None,project=None):
+        QtGui.QListWidgetItem.__init__(self, parent, type)
+        if type == self.CDMS:
+            self.varName = variable.id # This is also the tabname
+            self.variable = variable
+        elif type == self.PARAVIEW:
+            self.varName = variable
+            self.variable = variable
         self.root=root
         if project is None:
             current = str(self.root.workspace.currentProject.text(0))
@@ -498,8 +505,10 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
         else:
             self.selectNum = num
             numString = str(num).zfill(2)
-
-        varString = "%s %s %s" % (numString, self.varName, str(self.variable.shape))
+        if self.type() == self.CDMS:
+            varString = "%s %s %s" % (numString, self.varName, str(self.variable.shape))
+        elif self.type() == self.PARAVIEW:
+            varString = "%s %s" % (numString, self.varName)
         self.setData(0, QtCore.QVariant(QtCore.QString(varString)))
 
     def setFile(self, cdmsFile):

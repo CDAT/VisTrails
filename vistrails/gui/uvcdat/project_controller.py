@@ -62,8 +62,6 @@ class ProjectController(QtCore.QObject):
         self.sheet_map = {}
         self.plot_registry = get_plot_registry()
         self.plot_manager = get_plot_manager()
-        #self.current_parent_version = 0L
-        #self.load_workflow_templates()
         
     def add_defined_variable(self, var):
         self.defined_variables[var.name] = var
@@ -227,7 +225,8 @@ class ProjectController(QtCore.QObject):
         cell = self.sheet_map[sheetName][(row,col)]
         helper = self.plot_manager.get_plot_helper(cell.plot.package)
         return helper.show_configuration_widget(self.vt_controller, 
-                                                cell.current_parent_version)
+                                                cell.current_parent_version,
+                                                cell.plot)
         
     def update_variable(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
@@ -247,15 +246,6 @@ class ProjectController(QtCore.QObject):
         
         if (cell.plot is not None and
             len(cell.variables) == cell.plot.varnum):
-            # aliases = {'filename': var.filename,
-            #            'varName': var.name,
-            #            'axes': var.get_kwargs_str(),
-            #            'row': str(row),
-            #            'col': str(col),
-            #            'plot_type': cell.plot_type,
-            #            'gm': cell.gm,
-            #            'template': 'starter'}
-            # self.applyChanges(aliases)
             var_modules = []
             for var in vars:
                 var_module = var.to_module(self.vt_controller)
@@ -272,11 +262,11 @@ class ProjectController(QtCore.QObject):
                                                    var_modules, cell.plot,
                                                    row, column)
         print '### setting row/column:', row, column
+        #notice that at this point the action was already performed by the helper
+        # we need only to update the current parent version of the cell and 
+        # execute the workflow if necessary.
         
         if action is not None:
-            self.vt_controller.change_selected_version(cell.current_parent_version)
-            self.vt_controller.add_new_action(action)
-            self.vt_controller.perform_action(action)
             cell.current_parent_version = action.id
             
             if get_vistrails_configuration().uvcdat.autoExecute:
@@ -303,20 +293,6 @@ class ProjectController(QtCore.QObject):
                     self.execute_plot(cell.current_parent_version)
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
                       cell.current_parent_version)
-                
-    def load_workflow_templates(self):
-        vt_file = "/Users/tommy/Downloads/CDMS_Plot.vt"
-        locator = FileLocator(os.path.abspath(vt_file))
-        (plot_vistrail, abstractions , thumbnails, mashups) = load_vistrail(locator)
-        controller = VistrailController()
-        controller.set_vistrail(plot_vistrail, locator, 
-                                abstractions, thumbnails, mashups) 
-    
-        version = plot_vistrail.get_version_number('vcs')
-        #print " Loaded CDMS_Plot version: %s" % ( str( version ) )
-        controller.change_selected_version(version)
-        self.workflow_template = controller.current_pipeline
-             
         
     def writePipelineToCurrentVistrail(self, aliases):
         """writePipelineToVistrail(aliases: dict) -> None 

@@ -37,6 +37,7 @@ import ConfigParser
 from PyQt4 import QtCore
 from core.uvcdat.plot_registry import PlotRegistry
 from core.uvcdat.utils import UVCDATInternalError
+from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 
 #assuming vistrail files and config files for plots are in ./plots
 PLOT_FILES_PATH = os.path.join(os.path.dirname(__file__),
@@ -70,6 +71,20 @@ class PlotManager(QtCore.QObject):
     def initialize_plots(self):
         self.load_plots() 
             
+    def parse_helper_type_str(self, text):
+        last_dot = text.rfind(".")
+        if last_dot > -1:
+            path = text[0:last_dot]
+            klass_name = text[last_dot+1:]
+            module = __import__(path, globals(), locals(), [klass_name])
+            klass = getattr(module, klass_name)
+        else:
+            try:
+                klass = globals()[klass_name]
+            except:
+                klass =None
+        return klass
+    
     def load_plots(self):
         self.load_vcs_plots()
         if not self._registry:
@@ -82,6 +97,12 @@ class PlotManager(QtCore.QObject):
                                                    pkg_parser.get(p,'codepath'))
                 plot_package_config_file = os.path.join(plot_package_folder, 
                                            pkg_parser.get(p,'config_file'))
+                
+                helper = PlotPipelineHelper
+                if pkg_parser.has_option(p, 'helper') :
+                    helper = self.parse_helper_type_str(pkg_parser.get(p, 'helper'))
+                self._plot_helpers[p] = helper
+                    
                 pl_parser = ConfigParser.ConfigParser()
                 if pl_parser.read(plot_package_config_file):
                     for pl in pl_parser.sections():
@@ -104,7 +125,6 @@ class PlotManager(QtCore.QObject):
     def load_vcs_plots(self):
         from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
         from gui.uvcdat.uvcdatCommons import plotTypes, gmInfos
-        gmInfos["Boxfill"]["nSlabs"]
         from packages.uvcdat_cdms.init import get_canvas
         if not self._registry:
             raise UVCDATInternalError("Plot Registry must have been initialized")
