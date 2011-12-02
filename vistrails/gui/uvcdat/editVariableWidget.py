@@ -40,7 +40,7 @@ class editVariableWidget(QtGui.QWidget):
             proj = self.root.workspace.treeProjects.topLevelItem(i)
             txt=proj.text(0)
             c=QtGui.QCheckBox(txt)
-            if self.it is not None and id(proj) in self.it.projects:
+            if self.it is not None and txt in self.it.projects:
                 c.setCheckState(QtCore.Qt.Checked)
             #c.stateChanged.connect(self.checkedProject)
             h.addWidget(c)
@@ -82,7 +82,8 @@ class editVariableWidget(QtGui.QWidget):
         if b.checkState()==QtCore.Qt.Unchecked: # unchecked because when it gets here state hasn't changed yet
             if not txt in self.it.projects:
                 self.it.projects.append(txt)
-                if txt == str(self.root.workspace.treeProjects.currentItem().text(0)):
+                proj = self.root.workspace.treeProjects.currentItem()
+                if txt == str(proj.text(0)):
                     self.it.setHidden(False)
         else:
             if txt in self.it.projects:
@@ -91,7 +92,8 @@ class editVariableWidget(QtGui.QWidget):
                     bsum+=int(a.checkState())
                 if bsum!=QtCore.Qt.Checked: # ok ifwe have morethan one (one would the one we want to remove)
                     self.it.projects.remove(txt)
-                    if txt == str(self.root.workspace.treeProjects.currentItem().text(0)):
+                    proj = self.root.workspace.treeProjects.currentItem()
+                    if txt == str(proj.text(0)):
                         self.it.setHidden(True)
 
     def selAxis(self,*args):

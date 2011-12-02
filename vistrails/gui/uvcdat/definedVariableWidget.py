@@ -115,7 +115,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         selectedItems = self.varList.selectedItems()
         if project:
             varList = []
-            current = id(self.root.workspace.currentProject)
+            current = str(self.root.workspace.currentProject.text(0))
             for item in selectedItems:
                 if current in item.projects:
                     varList.append(item)
@@ -126,7 +126,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
     def getItems(self,project=True):
         """ Get a list of all of the defined tabnames / variables """
         varList = []
-        current = id(self.root.workspace.currentProject)
+        current = str(self.root.workspace.currentProject.text(0))
         for i in range(self.varList.count()):
             item=self.varList.item(i)
             if project:
@@ -140,7 +140,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         """ Get a list of all of the defined tabnames / variables """
         selectedItems = self.varList.selectedItems()
         varList = []
-        current = id(self.root.workspace.currentProject)
+        current = str(self.root.workspace.currentProject.text(0))
         for item in selectedItems:
             if project:
                 if current in item.projects:
@@ -466,7 +466,7 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
         self.variable = variable
         self.root=root
         if project is None:
-            current = id(self.root.workspace.currentProject)
+            current = str(self.root.workspace.currentProject.text(0))
             self.projects = [current,]
             
         self.updateVariableString(None)
