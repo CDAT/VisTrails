@@ -55,7 +55,7 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         font.setBold(True)
         self.setFont(0, font)
         self.currentSheet = None
-        self.namedPipelines = QtGui.QTreeWidgetItem(['Named Pipelines'])
+        self.namedPipelines = QtGui.QTreeWidgetItem(['Named Visualizations'])
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/folder_blue.png"), state=QtGui.QIcon.Off)
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/folder_blue_open.png"), state=QtGui.QIcon.On)
@@ -69,14 +69,14 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         if sheetName not in self.sheet_to_item:
             return
         sheetItem = self.sheet_to_item[sheetName]
-        name = self.view.controller.get_pipeline_name(version)[10:]
         if (row, col) not in sheetItem.pos_to_item:
-            item = QWorkflowItem(name, (row, col))
+            item = QWorkflowItem(version, (row, col))
             sheetItem.addChild(item)
             sheetItem.pos_to_item[(row, col)] = item
+            item.update_title()
         else:
             item = sheetItem.pos_to_item[(row, col)]
-            item.workflowName = name
+            item.workflowVersion = version
             item.workflowPos = (row, col)
             item.update_title()
 
@@ -92,10 +92,10 @@ class QSpreadsheetItem(QtGui.QTreeWidgetItem):
         self.setExpanded(True)
 
 class QWorkflowItem(QtGui.QTreeWidgetItem):
-    def __init__(self, name='untitled', position=None, span=None, parent=None):
+    def __init__(self, version, position=None, span=None, parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
-        # workflowName is the tag name or "untitled"
-        self.workflowName = name
+        # workflowVersion is the vistrail version id
+        self.workflowVersion = version
         # workflowPos is a spreadsheet location like ("A", "2")
         self.workflowPos = position
         # workflowSpan is a spreadsheet span like ("1", "2") default is ("1", "1")
@@ -103,18 +103,42 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/pipeline.png"))
         self.setIcon(0, icon)
-        self.update_title()
 
     def update_title(self):
-        name = self.workflowName
+        project = self.parent()
+        while type(project) != QProjectItem:
+            project = project.parent()
+
+        tag_map = project.view.controller.vistrail.get_tagMap()
+        action_map = project.view.controller.vistrail.actionMap
+        count = 0
+        version = self.workflowVersion
+        while True:
+            if version in tag_map or version <= 0:
+                if version in tag_map:
+                    name = tag_map[version]
+                else:
+                    name = "untitled"
+                count_str = ""
+                if count > 0:
+                    count_str = "*"
+                    name = name + count_str
+                break
+            version = action_map[version].parent
+            count += 1
+        
+#        name = project.view.controller.get_pipeline_name(self.workflowVersion)[10:]
         if self.workflowPos is not None:
             name = name + ' @ %s%s' % (chr(ord('A') + self.workflowPos[1]),
                                         self.workflowPos[0]+1)
         if self.workflowSpan is not None:
-            name = name + ' spanning %s,%s' % (self.workflowSpan[0], self.workflowSpan[1])
+            name = name + ' to %s%s' % (chr(ord('A') + self.workflowPos[1] +
+                                                   self.workflowSpan[1]-1),
+                                 self.workflowPos[0] + self.workflowSpan[0])
         self.setText(0, name)
-            
-
+                        
+                
+        
 class Workspace(QtGui.QDockWidget):
     def __init__(self, parent=None):
         super(Workspace, self).__init__(parent)
@@ -211,6 +235,10 @@ class Workspace(QtGui.QDockWidget):
                      self.spreadsheetWindow.addTabController)
         self.connect(self, QtCore.SIGNAL("project_removed"),
                      self.spreadsheetWindow.removeTabController)
+        self.connect(self.treeProjects,
+                     QtCore.SIGNAL('itemDoubleClicked(QTreeWidgetItem *, int)'),
+                     self.item_double_clicked)
+
 
     def add_project(self, view):
         # vistrails calls this when a project is created
@@ -306,10 +334,12 @@ class Workspace(QtGui.QDockWidget):
                 del item.tag_to_item[tag]
                 break
         # check if a tag has been added
-        for tag in tags:
+        tags = view.controller.vistrail.get_tagMap().iteritems()
+        for i, tag in tags:
             if tag not in item.tag_to_item:
-                wfitem = QWorkflowItem(tag)
+                wfitem = QWorkflowItem(i)
                 item.namedPipelines.addChild(wfitem)
+                wfitem.update_title()
                 item.tag_to_item[tag] = wfitem
 
     def item_selected(self, widget_item, column):
@@ -388,7 +418,44 @@ class Workspace(QtGui.QDockWidget):
             self.currentProject.sheet_to_tab[newtitle] = tab
             # TODO: update actionannotations
 
+    def contextMenuEvent(self, event):
+        """ Not used """
+        item = self.treeProjects.itemAt(event.pos())
+        if item and type(item) == QWorkflowItem:
+            # tag this visualization with a name
+            menu = QtGui.QMenu(self)
+            act = QtGui.QAction("Give name", self,
+                                triggered=item.tag_version)
+            act.setStatusTip("Tag this visualization with a name")
+            menu.addAction(act)
+            menu.exec_(event.globalPos())
+
+    def item_double_clicked(self, widget, col):
+        if widget and type(widget) == QWorkflowItem:
+            # tag this visualization with a name
+            tag, ok = QtGui.QInputDialog.getText(self, 'Visualization "%s"' %
+                                             str(widget.text(0)), "Rename to")
+            if ok and str(tag).strip():
+                tag = str(tag).strip()
+                project = widget.parent()
+                while type(project) != QProjectItem:
+                    project = project.parent()
+                vistrail = project.view.controller.vistrail
+                if vistrail.hasTag(widget.workflowVersion):
+                    vistrail.changeTag(tag, widget.workflowVersion)
+                else:
+                    vistrail.addTag(tag, widget.workflowVersion)
+                # loop through all existing item and update
+                self.state_changed(project.view)
+                for sheet in project.sheet_to_item.itervalues():
+                    for i in xrange(sheet.childCount()):
+                        child = sheet.child(i)
+                        if child.workflowVersion == widget.workflowVersion:
+                            child.update_title()
+
+
     def dropEvent(self, event):
+        """ Not used """
         """ Execute the pipeline at the particular location or sends events to
         project controller so it can set the workflows """
         mimeData = event.mimeData()       
