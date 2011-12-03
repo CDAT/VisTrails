@@ -69,6 +69,8 @@ class QParaViewWidget(QVTKWidget):
             iren.SetNonInteractiveRenderDelay(0)
             iren.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
 
+        del self.view.Representations[:]
+
         # Fetch variables from the input port
         (pvvariables, sliceOffset) = inputPorts
         for var in pvvariables:
