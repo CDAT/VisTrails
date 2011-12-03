@@ -128,9 +128,8 @@ class VariableProperties(QtGui.QDockWidget):
 
 
     def varAddedToDefined(self,var):
-        print "Generated axsilist crap"
         axisList = axesWidgets.QAxisList(None,var,self)
-        self.axisListCrap = axisList
+        self.axisListHolder = axisList
         self.updateVarInfo(axisList)
 
     def droppedBookmark(self,event):
@@ -253,12 +252,28 @@ class VariableProperties(QtGui.QDockWidget):
 
     def setRoi(self):
         self.roi = self.roiSelector.getROI()
-        self.updateAxes()
-        
-    def updateAxes(self):
+        self.updateAxesFromRoi()
+
+    def updateAxesFromRoi(self):
         print "Selected roi: %s " % str( self.roi )
         # Add code here to update Lat Lon sliders.
-        
+        n = self.axisListHolder.gridLayout.rowCount()
+        print "ok in roi self is: ",n
+        for i in range(len(self.axisListHolder.axisWidgets)):
+            axis = self.axisListHolder.axisWidgets[i]
+            if axis.axis.isLatitude() or axis.virtual==1:
+                # Ok this is a lat we need to adjust the sliders now.
+                lat1 = self.roi[1]
+                lat2 = self.roi[3]
+                axis.sliderCombo.updateTopSlider(axis.sliderCombo.findAxisIndex(lat1))
+                axis.sliderCombo.updateBottomSlider(axis.sliderCombo.findAxisIndex(lat2))
+            if axis.axis.isLongitude() or axis.virtual==1:
+                # Ok this is a lat we need to adjust the sliders now.
+                lon1 = self.roi[0]
+                lon2 = self.roi[2]
+                axis.sliderCombo.updateTopSlider(axis.sliderCombo.findAxisIndex(lon1))
+                axis.sliderCombo.updateBottomSlider(axis.sliderCombo.findAxisIndex(lon2))
+
     def openSelectFileDialog(self):
         file = QtGui.QFileDialog.getOpenFileName(self, 'Open CDAT data file...',
                                                  self.root.dockVariable.lastDirectory,
@@ -366,6 +381,7 @@ class VariableProperties(QtGui.QDockWidget):
         # Create and setup the axislist
         axisList = axesWidgets.QAxisList(self.cdmsFile, varName, self)
         axisList.setupVariableAxes()
+        self.axisListHolder = axisList
         self.fillDimensionsWidget(axisList)
 
     def fillDimensionsWidget(self,axisList):

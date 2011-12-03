@@ -111,6 +111,7 @@ class QSliderCombo(QtGui.QWidget):
         self.isTime = axis.isTime()
         self.indexMode = False
         self.startIndex = 0
+        self.isModuloed = False
 
         # Init Layout
         hbox = QtGui.QHBoxLayout()
@@ -148,8 +149,15 @@ class QSliderCombo(QtGui.QWidget):
         # Initialize the sliders' and comboBox's values
         self.initAxisValues(axis)
         self.setSlidersMinMax()
-        self.topSlider.setValue(self.minIndex)
-        self.bottomSlider.setValue(self.maxIndex)
+        if self.isModuloed:
+            self.updateTopSlider(self.findAxisIndex(axis[0]))
+        else:
+            self.topSlider.setValue(self.minIndex)
+            
+        if self.isModuloed:
+            self.updateBottomSlider(self.findAxisIndex(axis[-1]))
+        else:
+            self.bottomSlider.setValue(self.maxIndex)
         self.axisCombo.initValues(self.axisValues)
 
         # Connect Signals
@@ -163,7 +171,18 @@ class QSliderCombo(QtGui.QWidget):
         self.connect(self.axisCombo,
                      QtCore.SIGNAL('axisComboMaxValueChanged (int)'),
                      self.updateBottomSlider)
+        if self.isModuloed:
+            self.updateMin(self.findAxisIndex(axis[0]))
+            self.updateMax(self.findAxisIndex(axis[-1]))
 
+    def findAxisIndex(self,val):
+        self.axisValues = numpy.array(self.axisValues)
+        i=self.axisValues.searchsorted(val)
+        if i>0 and i!=len(self.axisValues):
+            if (val-self.axisValues[i-1])<(self.axisValues[i]-val): # closer from lower bound
+                i-=1
+        return i
+    
     def initAxisValues(self, axis):
         """ Initialize list containing the axis values and set the top slider /
         combobox value to be the min value and the bottom slider / combobox
@@ -208,6 +227,20 @@ class QSliderCombo(QtGui.QWidget):
             raise TypeError("Error: axis is not defined")
 
         self.axisIndices = range(len(self.axisValues))
+        ## Ok here we check for circular axes
+        if axis.isCircular():
+            try:
+                modulo = axis.modulo
+            except:
+                if axis.isLongitude():
+                    modulo=360.
+                else:
+                    modulo = None
+            if modulo is not None:
+                self.isModuloed = True
+                n=len(axis)
+                self.axisValues=numpy.concatenate((self.axisValues[n/2:]-modulo,self.axisValues,self.axisValues[:n/2]+modulo))
+                self.axisIndices=numpy.concatenate((self.axisIndices[n/2:],self.axisIndices,self.axisIndices[:n/2]))
         self.updateMin(0)
         self.updateMax(len(self.axisValues) - 1)
         nticks = len(self.axisValues)
