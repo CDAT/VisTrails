@@ -426,11 +426,11 @@ class VariableProperties(QtGui.QDockWidget):
             
     def getVarFromPVTab(self):
         filename = self._pvProcessFile._fileName
-        varName = str(self.pvTabWidget.cbVar.currentText())
+        varName = str(self.pvTabWidget.cbVar.currentText()).strip()
         kwargs ={}
         
         #FIXME: need to check if the variable already exists
-        self.root.dockVariable.widget().addVariable(varName,type="ParaView")
+        self.root.dockVariable.widget().addVariable(varName,type="PARAVIEW")
         from api import _app
         controller = _app.uvcdatWindow.get_current_project_controller()
         pvVar = PVVariable(filename=filename, name=varName)

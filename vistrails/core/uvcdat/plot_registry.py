@@ -38,7 +38,7 @@ from PyQt4 import QtCore
 # vistrails imports
 import api
 import core.db.action
-from core.db.io import load_vistrail
+from core.db.io import load_vistrail, get_workflow_diff
 from core.db.locator import FileLocator
 from gui.modules import get_widget_class
 from gui.modules.constant_configuration import StandardConstantWidget
@@ -132,6 +132,7 @@ class Plot(object):
         self.varnum = 0
         self.workflow_tag = None
         self.workflow = None
+        self.workflow_version = -1
         self.filetypes = {}
         self.qt_filter = None
         self.files = []
@@ -233,9 +234,9 @@ class Plot(object):
                                                     abstractions, thumbnails,
                                                     mashups) 
     
-                            version = self.plot_vistrail.get_version_number(self.workflow_tag) if self.workflow_tag else controller.get_latest_version_in_graph()
-                            print " Loaded %s version: %s" % (  self.name, str( version ) )
-                            controller.change_selected_version(version)
+                            self.workflow_version = self.plot_vistrail.get_version_number(self.workflow_tag) if self.workflow_tag else controller.get_latest_version_in_graph()
+                            print " Loaded %s version: %s" % (  self.name, str( self.workflow_version ) )
+                            controller.change_selected_version(self.workflow_version)
                             self.workflow = controller.current_pipeline
                             self.loaded = True
                         except Exception, err:
@@ -302,14 +303,37 @@ class Plot(object):
             result.append(c.col_name)
         return result
     
+    def checkIfWorkflowsAreCompatible(self):
+        vistrail_a = self.current_controller.vistrail
+        vistrail_b = self.plot_vistrail
+        version_a = self.current_parent_version
+        version_b = self.workflow_version
+        diff_versions = ((vistrail_a, version_a), (vistrail_b, version_b))
+        diff = get_workflow_diff(*diff_versions)
+        (p1, p2, v1Andv2, heuristicMatch, v1Only, v2Only, paramChanged) = diff
+        if len(v1Only) == 0 and len(v2Only)==0:
+            return True
+        return False
+    
+    def resetWorkflow(self):
+        pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
+        self.current_controller.change_selected_version(self.current_parent_version)
+        ids = []
+        for module in pipeline.module_list:
+            ids.append(module.id)
+        action = self.current_controller.delete_module_list(ids)
+        self.current_parent_version = action.id
+        return action
+        
     def writePipelineToCurrentVistrail(self, aliases):
-        """writePipelineToVistrail(aliases: dict) -> None 
+        """writePipelineToVistrail(aliases: dict) -> list of actions
         It will compute necessary actions and add to the current vistrail, 
         starting at self.parent_version. In the case self.parent_version
         does not contain a valid workflow, we will start from the root with
         a new pipeline.
         
         """
+        actions = []
         #print self.current_controller
         if self.current_controller is None:
             self.current_controller = api.get_current_controller()
@@ -317,49 +341,56 @@ class Plot(object):
         else:
             if self.current_parent_version > 0L:
                 pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
-                if len(pipeline.aliases) >= len(self.workflow.aliases):
+                if (len(pipeline.aliases) >= len(self.workflow.aliases) and
+                    self.checkIfWorkflowsAreCompatible()):
                     paliases = set(pipeline.aliases.keys())
                     waliases = set(self.workflow.aliases.keys())
                     if len(waliases - paliases) != 0:
-                        self.current_parent_version = 0
+                        actions.append(self.resetWorkflow())
         # print "writePipelineToCurrentVistrail: controller ", self.current_controller
         #print "version ", self.current_parent_version 
-        if self.current_parent_version == 0L:
+        pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
+        if len(pipeline.module_list) == 0:
             #create actions and paste them in current vistrail
             vistrail = self.current_controller.vistrail
             if vistrail:
-                newid = self.addPipelineAction(self.workflow,
+                action = self.addPipelineAction(self.workflow,
                                                self.current_controller,
                                                vistrail, 
                                                self.current_parent_version)
-                newtag = self.name
-                count = 1
-                while vistrail.hasTag(newtag):
-                    newtag = "%s %s"%(self.name, count)
-                    count += 1 
-                vistrail.addTag(newtag, newid)
+                actions.append(action)
+                newid = action.id
+                #no tagging for now
+#                newtag = self.name
+#                count = 1
+#                while vistrail.hasTag(newtag):
+#                    newtag = "%s %s"%(self.name, count)
+#                    count += 1 
+#                vistrail.addTag(newtag, newid)
                 self.current_parent_version = newid
                 
         #now we update pipeline with current parameter values
         pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
         self.addMergedAliases( aliases, pipeline )
-        newid = self.addParameterChangesFromAliasesAction(pipeline, 
+        action = self.addParameterChangesFromAliasesAction(pipeline, 
                                         self.current_controller, 
                                         self.current_controller.vistrail, 
                                         self.current_parent_version, aliases)
-        self.current_parent_version = newid
-            
+        actions.append(action)
+        if action:
+            self.current_parent_version = action.id
+        return actions
                 
     def applyChanges(self, aliases):
 #        print "applyChanges"
-        self.writePipelineToCurrentVistrail(aliases)
-        pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
+        return self.writePipelineToCurrentVistrail(aliases)
+        #pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
         #print "Controller changed ", self.current_controller.changed
-        controller = VistrailController()
-        controller.set_vistrail(self.current_controller.vistrail,
-                                self.current_controller.locator)
-        controller.change_selected_version(self.current_parent_version)
-        (results, _) = controller.execute_current_workflow()
+        #controller = VistrailController()
+        #controller.set_vistrail(self.current_controller.vistrail,
+        #                        self.current_controller.locator)
+        #controller.change_selected_version(self.current_parent_version)
+        #(results, _) = controller.execute_current_workflow()
         #print results[0]
         
     def addMergedAliases( self, aliases, pipeline ):
@@ -409,7 +440,7 @@ class Plot(object):
         controller.recompute_terse_graph()
         controller.invalidate_version_tree()
         #print "will return ", action.id
-        return action.id
+        return action
         
     def addParameterChangesFromAliasesAction(self, pipeline, controller, vistrail, parent_version, aliases):
         param_changes = []
@@ -438,14 +469,13 @@ class Plot(object):
                         debug.warning("CDAT Package: Change parameter %s in widget %s was not generated"%(k, self.name))
             else:
                 debug.warning( "CDAT Package: Alias %s does not exist in pipeline" % (k) )
+        action = None
         if len(param_changes) > 0:
             action = core.db.action.create_action(param_changes)
-            vistrail.add_action(action, parent_version, controller.current_session)
-            controller.set_changed(True)
-            controller.recompute_terse_graph()
-            controller.invalidate_version_tree()
-            newid = action.id
-        return newid
+            controller.change_selected_version(parent_version)
+            controller.add_new_action(action)
+            controller.perform_action(action)
+        return action
     
 class Cell(object):
     def __init__(self, type=None, row_name=None, col_name=None):

@@ -9,7 +9,7 @@ import api
 
 class CDMSPipelineHelper(PlotPipelineHelper):
     @staticmethod
-    def show_configuration_widget(controller, version):
+    def show_configuration_widget(controller, version, plot_obj=None):
         pipeline = controller.vistrail.getPipeline(version)
         plots = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSPlot)
         return CDMSPlotWidget(controller,version,plots)
@@ -67,6 +67,9 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                     ('add', loc_module),
                     ('add', loc_conn)])
         action = core.db.action.create_action(ops)
+        controller.change_selected_version(version)
+        controller.add_new_action(action)
+        controller.perform_action(action)
         return action
     
     @staticmethod    
