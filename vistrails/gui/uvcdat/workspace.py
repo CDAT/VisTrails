@@ -3,6 +3,7 @@ from PyQt4 import QtCore, QtGui
 from gui.uvcdat.ui_workspace import Ui_Workspace
 from gui.uvcdat.project_controller import ProjectController
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
+from core.vistrail.action_annotation import ActionAnnotation
 
 import customizeUVCDAT
 
@@ -10,7 +11,7 @@ def toAnnotation(sheet, x, y, w=None, h=None):
     """ toAnnotation(sheet: str, x: int/str, y: int/str, w: int, h: int): str
         escapes sheet string and puts all in a comma-separated string
     """
-    sheet = ''.join(map(lambda x: {'\\':'\\\\', ',':'\,'}.get(x, x), sheet))
+    sheet = ''.join(map(lambda i: {'\\':'\\\\', ',':'\,'}.get(i, i), sheet))
     if w is None or h is None:
         return ','.join(map(str, [sheet, x, y]))   
     return ','.join(map(str, [sheet, x, y, w, h]))
@@ -38,14 +39,31 @@ def fromAnnotation(s):
     res.append(''.join(s))
     return res
 
+def add_annotation(vistrail, version, sheet, row, col, w=None, h=None):
+    if w or h:
+        cell = toAnnotation(sheet, row, col, w, h)
+    else:
+        cell = toAnnotation(sheet, row, col)
+    new_id = vistrail.idScope.getNewId(ActionAnnotation.vtType)
+    annotation = ActionAnnotation(id=new_id,
+                                    action_id=version,
+                                    key='uvcdatCell',
+                                    value=cell,
+                                    date=vistrail.getDate(),
+                                    user=vistrail.getUser())
+    vistrail.db_add_actionAnnotation(annotation)
+    vistrail.changed = True
+
 class QProjectItem(QtGui.QTreeWidgetItem):
     def __init__(self, view=None, name='', parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
         self.view = view
         #i = QtGui.QIcon(customizeVCDAT.appIcon)
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/folder_blue.png"), state=QtGui.QIcon.Off)
-        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/folder_blue_open.png"), state=QtGui.QIcon.On)
+        closedPixmap, openPixmap = [QtGui.QPixmap(":/icons/resources/icons/" +
+            f + ".png") for f in ['folder_blue', 'folder_blue_open']]
+        icon.addPixmap(closedPixmap, state=QtGui.QIcon.Off)
+        icon.addPixmap(openPixmap, state=QtGui.QIcon.On)
         self.setIcon(0,icon)
         if view.controller.locator:
             name = view.locator.short_name 
@@ -56,33 +74,43 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         self.setFont(0, font)
         self.currentSheet = None
         self.namedPipelines = QtGui.QTreeWidgetItem(['Named Visualizations'])
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/folder_blue.png"), state=QtGui.QIcon.Off)
-        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/folder_blue_open.png"), state=QtGui.QIcon.On)
         self.namedPipelines.setIcon(0,icon)
         self.addChild(self.namedPipelines)
         self.tag_to_item = {}
         self.sheet_to_item = {}
         self.sheet_to_tab = {}
 
-    def update_cell(self, sheetName, row, col, version=0):
+    def update_cell(self, sheetName, row, col, w=None, h=None, version=0):
         if sheetName not in self.sheet_to_item:
             return
         sheetItem = self.sheet_to_item[sheetName]
+        vistrail = self.view.controller.vistrail
         if (row, col) not in sheetItem.pos_to_item:
             item = QWorkflowItem(version, (row, col))
             sheetItem.addChild(item)
             sheetItem.pos_to_item[(row, col)] = item
             item.update_title()
+            # add actionAnnotation
+            add_annotation(vistrail, version, sheetName, row, col, w, h)
         else:
+            # always remove old even if updating
+            for annotation in vistrail.action_annotations:
+                if annotation.db_key == 'uvcdatCell':
+                    cell = fromAnnotation(annotation.db_value)
+                    if cell[0] == sheetName and \
+                        cell[1] == row and cell[2] == col:
+                        vistrail.db_delete_actionAnnotation(annotation)
             item = sheetItem.pos_to_item[(row, col)]
             if version:
+                # update actionAnnotation (add new)
+                add_annotation(vistrail, version, sheetName, row, col, w, h)
                 item.workflowVersion = version
                 item.workflowPos = (row, col)
                 item.update_title()
             else:
                 sheetItem.takeChild(sheetItem.indexOfChild(item))
                 del sheetItem.pos_to_item[(row, col)]
+                # TODO delete actionAnnotation 
             
 class QSpreadsheetItem(QtGui.QTreeWidgetItem):
     def __init__(self, name='sheet 1', parent=None):
@@ -168,13 +196,15 @@ class Workspace(QtGui.QDockWidget):
         self.numProjects = 1
         self.current_controller = None
         self.setupUi(self)
-        self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+        self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow(
+                                                                show=False)
         self.connectSignals()
         self.currentProject = None
 
     def setupUi(self, Workspace):
         Workspace.resize(404, 623)
-        Workspace.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea|QtCore.Qt.RightDockWidgetArea)
+        Workspace.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea|
+                                  QtCore.Qt.RightDockWidgetArea)
         Workspace.setWindowTitle("Projects")
         self.dockWidgetContents = QtGui.QWidget()
         self.verticalLayout = QtGui.QVBoxLayout(self.dockWidgetContents)
@@ -232,7 +262,8 @@ class Workspace(QtGui.QDockWidget):
         self.btnCloseProject.setIconSize(QtCore.QSize(22, 22))
         self.horizontalLayout.addWidget(self.btnCloseProject)
 
-        spacerItem = QtGui.QSpacerItem(100, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        spacerItem = QtGui.QSpacerItem(100, 20, QtGui.QSizePolicy.Expanding,
+                                       QtGui.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem)
         self.verticalLayout.addWidget(self.toolsProject)
         self.treeProjects = QDragTreeWidget(self.dockWidgetContents)
@@ -259,12 +290,12 @@ class Workspace(QtGui.QDockWidget):
         self.connect(self, QtCore.SIGNAL("project_removed"),
                      self.spreadsheetWindow.removeTabController)
         self.connect(self.treeProjects,
-                     QtCore.SIGNAL('itemDoubleClicked(QTreeWidgetItem *, int)'),
+                QtCore.SIGNAL('itemDoubleClicked(QTreeWidgetItem *, int)'),
                      self.item_double_clicked)
 
-
     def add_project(self, view):
-        # vistrails calls this when a project is created
+        # vistrails calls this when a project is opened/created/saved
+        print view, id(view), self.viewToItem
         if id(view) not in self.viewToItem:
             if self.currentProject:
                 self.setBold(self.currentProject, False)
@@ -276,6 +307,15 @@ class Workspace(QtGui.QDockWidget):
             item.setExpanded(True)
             item.namedPipelines.setExpanded(True)
             self.numProjects += 1
+            # TODO add sheets from vistrail actionAnnotations
+            for annotation in view.controller.vistrail.action_annotations:
+                if annotation.db_key == 'uvcdatCell':
+                    cell = fromAnnotation(annotation.db_value)
+                    print "Found uvcdatCell:", cell, annotation, view
+
+            # TODO read and add Variables
+
+            self.emit(QtCore.SIGNAL("project_added"), item.controller.name)
             self.state_changed(view)
             self.connect(item.controller, QtCore.SIGNAL("update_cell"),
                      item.update_cell)
@@ -283,16 +323,15 @@ class Workspace(QtGui.QDockWidget):
             name = view.controller.locator.short_name
             self.viewToItem[id(view)].setText(0, name)
         self.treeProjects.setCurrentItem(self.viewToItem[id(view)])
-        if item:
-            self.emit(QtCore.SIGNAL("project_added"), item.controller.name)
-        # TODO add sheets from vistrail actionAnnotations
 
     def remove_project(self, view):
         # vistrails calls this when a project is removed
         if id(view) in self.viewToItem:
-            index = self.treeProjects.indexOfTopLevelItem(self.viewToItem[id(view)])
+            index = self.treeProjects.indexOfTopLevelItem(
+                                        self.viewToItem[id(view)])
             self.treeProjects.takeTopLevelItem(index)
-            self.emit(QtCore.SIGNAL("project_removed"), self.viewToItem[id(view)].controller.name)
+            self.emit(QtCore.SIGNAL("project_removed"),
+                      self.viewToItem[id(view)].controller.name)
             del self.viewToItem[id(view)]
             
     def setBold(self, item, value):
@@ -312,7 +351,8 @@ class Workspace(QtGui.QDockWidget):
             self.setBold(self.currentProject, True)
             self.current_controller = self.currentProject.controller
             self.current_controller.connect_spreadsheet()
-            self.emit(QtCore.SIGNAL("project_changed"),self.current_controller.name)
+            self.emit(QtCore.SIGNAL("project_changed"),
+                      self.current_controller.name)
         p = self.treeProjects.currentItem()
         defVars = self.root.dockVariable.widget()
         for i in range(defVars.varList.count()):
@@ -350,10 +390,10 @@ class Workspace(QtGui.QDockWidget):
         # check if a tag has been deleted
         tags = view.controller.vistrail.get_tagMap().values()
 
-        deleted_item = None
-        for tag, wf in item.tag_to_item.items():
+        for tag in item.tag_to_item:
             if tag not in tags:
-                item.namedPipelines.takeChild(item.indexOfChild(item.tag_to_item[tag]))
+                item.namedPipelines.takeChild(item.indexOfChild(
+                                                item.tag_to_item[tag]))
                 del item.tag_to_item[tag]
                 break
         # check if a tag has been added
@@ -372,7 +412,6 @@ class Workspace(QtGui.QDockWidget):
         """
         from gui.vistrails_window import _app
         sheet = None
-        workflow = None
         if not widget_item:
             self.currentProject = None
             self.current_controller = None
@@ -404,7 +443,8 @@ class Workspace(QtGui.QDockWidget):
         if sheet and sheet != project.currentSheet:
             project.currentSheet = sheet
             tab = project.sheet_to_tab[sheet.sheetName]
-            self.spreadsheetWindow.get_current_tab_controller().setCurrentWidget(tab)
+            self.spreadsheetWindow.get_current_tab_controller(
+                                                    ).setCurrentWidget(tab)
             
     def add_sheet_tab(self, title, widget):
         if title not in self.currentProject.sheet_to_tab:
@@ -413,8 +453,7 @@ class Workspace(QtGui.QDockWidget):
             self.currentProject.addChild(item)
             item.setExpanded(True)
             self.currentProject.sheet_to_item[title] = item
-            # TODO: save using annotations when sheet is saved
-    
+
     def remove_sheet_tab(self, widget):
         title = None
         for t, tab in self.currentProject.sheet_to_tab.items():
@@ -423,7 +462,13 @@ class Workspace(QtGui.QDockWidget):
                 break
         if title and title in self.currentProject.sheet_to_tab:
             item = self.currentProject.sheet_to_item[title]
-            # TODO remove annotations from vistrail
+            # Remove all actionannotations associated with this sheet
+            vistrail = self.currentProject.view.controller.vistrail
+            for annotation in vistrail.action_annotations:
+                if annotation.db_key == 'uvcdatCell':
+                    cell = fromAnnotation(annotation.db_value)
+                    if cell[0] == title:
+                        vistrail.db_delete_actionAnnotation(annotation)
             index = self.currentProject.indexOfChild(item)
             self.currentProject.takeChild(index)
             del self.currentProject.sheet_to_tab[title]
@@ -439,7 +484,14 @@ class Workspace(QtGui.QDockWidget):
             item.setText(0, newtitle)
             self.currentProject.sheet_to_item[newtitle] = item
             self.currentProject.sheet_to_tab[newtitle] = tab
-            # TODO: update actionannotations
+            # Update actionannotations
+            vistrail = self.currentProject.view.controller.vistrail
+            for annotation in vistrail.action_annotations:
+                if annotation.db_key == 'uvcdatCell':
+                    cell = fromAnnotation(annotation.db_value)
+                    if cell[0] == oldtitle: # remove and update
+                        vistrail.db_delete_actionAnnotation(annotation)
+                        add_annotation(vistrail, annotation.db_action_id, newtitle, *cell[1:])
 
     def contextMenuEvent(self, event):
         """ Not used """
