@@ -386,7 +386,8 @@ def get_input_ports(plot_type):
                                   ('yaxisconvert', 'basic:String', True),
                                   ]) 
     elif plot_type == "Isoline":
-        return expand_port_specs([('levels', 'basic:String', True),
+        return expand_port_specs([('label', 'basic:String', True),
+                                  ('levels', 'basic:String', True),
                                   ('ext_1', 'basic:String', True),
                                   ('ext_2', 'basic:String', True),
                                   ('fillareacolors', 'basic:String', True),
@@ -509,9 +510,9 @@ def get_gm_attributes(plot_type):
         return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
                 'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 
                 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
-                'ymtics2', 'yticlabels1', 'yticlabels2', 'level', 'line',
-                'linecolors','linewidths','text','textcolors','clockwise','scale',
-                'angle','spacing']
+                'ymtics2', 'yticlabels1', 'yticlabels2', 'label', 'level', 'levels', 
+                'line', 'linecolors','linewidths','text','textcolors','clockwise',
+                'scale', 'angle','spacing']
     elif plot_type == "Meshfill":
         return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
                 'datawc_y1', 'datawc_y2', 'levels','ext_1', 'ext_2', 
