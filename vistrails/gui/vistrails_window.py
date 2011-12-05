@@ -1544,10 +1544,10 @@ class QVistrailsWindow(QVistrailViewWindow):
             from gui.collection.workspace import QWorkspaceWindow
             QWorkspaceWindow.instance().remove_vt_window(view)
             QWorkspaceWindow.instance().add_vt_window(view)
-            from api import _app
-            if _app.uvcdatWindow:
-                _app.uvcdatWindow.workspace.remove_project(view)
-                _app.uvcdatWindow.workspace.add_project(view)
+            #from api import _app
+            #if _app.uvcdatWindow:
+            #    _app.uvcdatWindow.workspace.remove_project(view)
+            #    _app.uvcdatWindow.workspace.add_project(view)
             return view
         except Exception, e:
             import traceback
