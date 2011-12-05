@@ -6,6 +6,7 @@ class AliasesPlotWidget(QtGui.QWidget):
         self.controller = controller
         self.version = version
         self.plot = plot_obj
+        self.state_changed = False
         self.plot_widget = None
         self.buttonLayout = QtGui.QHBoxLayout()
         self.buttonLayout.setMargin(5)
