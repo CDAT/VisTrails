@@ -226,7 +226,7 @@ class ProjectController(QtCore.QObject):
         cell.plot = self.plot_manager.get_plot_by_name(plot_modules[0].name[3:], 
                                                        gmName)
         self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, None,
-                  cell.current_parent_version)
+                  'CDMS', cell.current_parent_version)
         self.execute_plot(cell.current_parent_version)
         
     def clear_cell(self, sheetName, row, col):
@@ -322,7 +322,7 @@ class ProjectController(QtCore.QObject):
             # plot_module = plot.to_module(self.vt_controller)
             self.update_workflow(var_modules, cell, row, col)
             self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, 
-                      None, cell.current_parent_version)
+                      None, 'CDMS', cell.current_parent_version)
             
     def update_workflow(self, var_modules, cell, row, column):
         helper = self.plot_manager.get_plot_helper(cell.plot.package)
@@ -361,7 +361,7 @@ class ProjectController(QtCore.QObject):
                 if get_vistrails_configuration().uvcdat.autoExecute:
                     self.execute_plot(cell.current_parent_version)
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
-                      None, None, cell.current_parent_version)
+                      None, None, "CDMS", cell.current_parent_version)
         
     def writePipelineToCurrentVistrail(self, aliases):
         """writePipelineToVistrail(aliases: dict) -> None 

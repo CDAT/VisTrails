@@ -80,11 +80,14 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         self.sheet_to_item = {}
         self.sheet_to_tab = {}
 
-    def update_cell(self, sheetName, row, col, w=None, h=None, version=0):
+    def update_cell(self, sheetName, row, col, w=None, h=None, plot_type=None, version=0):
         if sheetName not in self.sheet_to_item:
             return
         sheetItem = self.sheet_to_item[sheetName]
         vistrail = self.view.controller.vistrail
+        if plot_type and version:
+            vistrail.set_action_annotation(version, 'uvcdatType', plot_type)
+        
         if (row, col) not in sheetItem.pos_to_item:
             item = QWorkflowItem(version, (row, col))
             sheetItem.addChild(item)
