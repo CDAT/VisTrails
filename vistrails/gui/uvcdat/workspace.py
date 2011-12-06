@@ -4,7 +4,7 @@ from gui.uvcdat.ui_workspace import Ui_Workspace
 from gui.uvcdat.project_controller import ProjectController
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from core.vistrail.action_annotation import ActionAnnotation
-
+from packages.spreadsheet.spreadsheet_tab import StandardWidgetSheetTab
 import customizeUVCDAT
 
 def toAnnotation(sheet, x, y, w=None, h=None):
@@ -310,15 +310,30 @@ class Workspace(QtGui.QDockWidget):
             item.setExpanded(True)
             item.namedPipelines.setExpanded(True)
             self.numProjects += 1
-            # TODO add sheets from vistrail actionAnnotations
+            self.emit(QtCore.SIGNAL("project_added"), item.controller.name)
+            # add sheets from vistrail actionAnnotations
+            tc = self.spreadsheetWindow.get_current_tab_controller()
             for annotation in view.controller.vistrail.action_annotations:
                 if annotation.db_key == 'uvcdatCell':
                     cell = fromAnnotation(annotation.db_value)
-                    print "Found uvcdatCell:", cell, annotation, view
+                    if cell[0] not in item.tag_to_item:
+                        tc.setCurrentIndex(tc.addTabWidget(
+                            StandardWidgetSheetTab(tc), cell[0]))
+                        tc.currentWidget().sheet.stretchCells()                    
+                    else:
+                        tab = item.sheet_to_tab[cell[0]]
+                        self.spreadsheetWindow.get_current_tab_controller(
+                                                    ).setCurrentWidget(tab)
+                    # Add cell
+                    pipeline = view.controller.vistrail.getPipeline(annotation.db_action_id)
+                    item.controller.vis_was_dropped((pipeline,
+                                                     cell[0], int(cell[1]), int(cell[2])))
+                    
+            if not len(item.sheet_to_item):
+                tc.create_first_sheet()
 
             # TODO read and add Variables
 
-            self.emit(QtCore.SIGNAL("project_added"), item.controller.name)
             self.state_changed(view)
             self.connect(item.controller, QtCore.SIGNAL("update_cell"),
                      item.update_cell)
