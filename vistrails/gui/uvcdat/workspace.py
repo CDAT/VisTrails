@@ -456,6 +456,7 @@ class Workspace(QtGui.QDockWidget):
             self.currentProject.addChild(item)
             item.setExpanded(True)
             self.currentProject.sheet_to_item[title] = item
+            self.currentProject.controller.sheet_map[title] = {}
 
     def remove_sheet_tab(self, widget):
         title = None
@@ -476,6 +477,7 @@ class Workspace(QtGui.QDockWidget):
             self.currentProject.takeChild(index)
             del self.currentProject.sheet_to_tab[title]
             del self.currentProject.sheet_to_item[title]
+            del self.currentProject.controller.sheet_map[title]
 
     def change_tab_text(self, oldtitle, newtitle):
         if oldtitle in self.currentProject.sheet_to_item:
@@ -487,6 +489,10 @@ class Workspace(QtGui.QDockWidget):
             item.setText(0, newtitle)
             self.currentProject.sheet_to_item[newtitle] = item
             self.currentProject.sheet_to_tab[newtitle] = tab
+            # update controller sheetmap
+            sheetmap = self.currentProject.controller.sheet_map[oldtitle]
+            del self.currentProject.controller.sheet_map[oldtitle]
+            self.currentProject.controller.sheet_map[newtitle] = sheetmap
             # Update actionannotations
             vistrail = self.currentProject.view.controller.vistrail
             for annotation in vistrail.action_annotations:
@@ -494,7 +500,8 @@ class Workspace(QtGui.QDockWidget):
                     cell = fromAnnotation(annotation.db_value)
                     if cell[0] == oldtitle: # remove and update
                         vistrail.db_delete_actionAnnotation(annotation)
-                        add_annotation(vistrail, annotation.db_action_id, newtitle, *cell[1:])
+                        add_annotation(vistrail, annotation.db_action_id,
+                                       newtitle, *cell[1:])
 
     def contextMenuEvent(self, event):
         """ Not used """
