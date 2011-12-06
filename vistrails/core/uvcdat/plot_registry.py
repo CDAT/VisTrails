@@ -303,17 +303,22 @@ class Plot(object):
             result.append(c.col_name)
         return result
     
-    def checkIfWorkflowsAreCompatible(self):
-        vistrail_a = self.current_controller.vistrail
-        vistrail_b = self.plot_vistrail
-        version_a = self.current_parent_version
-        version_b = self.workflow_version
+    @staticmethod
+    def are_workflows_equal(vistrail_a, vistrail_b, version_a, version_b):
         diff_versions = ((vistrail_a, version_a), (vistrail_b, version_b))
         diff = get_workflow_diff(*diff_versions)
         (p1, p2, v1Andv2, heuristicMatch, v1Only, v2Only, paramChanged) = diff
         if len(v1Only) == 0 and len(v2Only)==0:
             return True
         return False
+    
+    def checkIfWorkflowsAreCompatible(self):
+        vistrail_a = self.current_controller.vistrail
+        vistrail_b = self.plot_vistrail
+        version_a = self.current_parent_version
+        version_b = self.workflow_version
+        return self.are_workflows_equal(vistrail_a, vistrail_b,
+                                        version_a, version_b)
     
     def resetWorkflow(self):
         pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)

@@ -89,7 +89,7 @@ class QProjectItem(QtGui.QTreeWidgetItem):
             vistrail.set_action_annotation(version, 'uvcdatType', plot_type)
         
         if (row, col) not in sheetItem.pos_to_item:
-            item = QWorkflowItem(version, (row, col))
+            item = QWorkflowItem(version, (row, col), plot_type=plot_type)
             sheetItem.addChild(item)
             sheetItem.pos_to_item[(row, col)] = item
             item.update_title()
@@ -109,6 +109,7 @@ class QProjectItem(QtGui.QTreeWidgetItem):
                 add_annotation(vistrail, version, sheetName, row, col, w, h)
                 item.workflowVersion = version
                 item.workflowPos = (row, col)
+                item.plotType = plot_type
                 item.update_title()
             else:
                 sheetItem.takeChild(sheetItem.indexOfChild(item))
@@ -127,7 +128,7 @@ class QSpreadsheetItem(QtGui.QTreeWidgetItem):
         self.setExpanded(True)
 
 class QWorkflowItem(QtGui.QTreeWidgetItem):
-    def __init__(self, version, position=None, span=None, parent=None):
+    def __init__(self, version, position=None, span=None, plot_type=None, parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
         # workflowVersion is the vistrail version id
         self.workflowVersion = version
@@ -135,6 +136,8 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
         self.workflowPos = position
         # workflowSpan is a spreadsheet span like ("1", "2") default is ("1", "1")
         self.workflowSpan = span
+        # plotType is the package type of a plot, like VCS, PVClimate, DV3D
+        self.plotType = plot_type
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/pipeline.png"))
         self.setIcon(0, icon)
@@ -189,6 +192,7 @@ class QDragTreeWidget(QtGui.QTreeWidget):
         m = QtCore.QMimeData()
         m.version = item.workflowVersion
         m.controller = project.view.controller
+        m.plot_type = item.plotType
         return m
         
 class Workspace(QtGui.QDockWidget):

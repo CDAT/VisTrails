@@ -809,6 +809,7 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             event.accept()
             versionId = mimeData.version
             controller = mimeData.controller
+            plot_type = mimeData.plot_type
             pipeline = controller.vistrail.getPipeline(versionId)
             
             localPos = self.sheet.viewport().mapFromGlobal(QtGui.QCursor.pos())
@@ -818,7 +819,7 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             sheetName = self.getSheetName()
             if (row!=-1 and col!=-1):
                 self.emit(QtCore.SIGNAL("dropped_visualization"), 
-                          (pipeline, sheetName, row, col))
+                          (pipeline, sheetName, row, col, plot_type))
             
         elif mimeData.hasFormat("definedVariables"):
             varName = str(mimeData.text()).split()[1]
