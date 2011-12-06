@@ -293,7 +293,7 @@ class ProjectController(QtCore.QObject):
     def get_plot_configuration(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
         helper = self.plot_manager.get_plot_helper(cell.plot.package)
-        return helper.show_configuration_widget(self.vt_controller, 
+        return helper.show_configuration_widget(self, 
                                                 cell.current_parent_version,
                                                 cell.plot)
         

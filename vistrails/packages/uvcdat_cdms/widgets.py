@@ -10,7 +10,10 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         self.module = module
         self.module_descriptor = self.module.module_descriptor.module
         self.controller = controller
+        self.show_buttons = show_buttons
         self.layout = QtGui.QVBoxLayout()
+        self.layout.setSpacing(3)
+        self.layout.setMargin(0)
         self.fun_map = {}
         self.populate_fun_map()
         self.gmName = self.getValueFromFunction("graphicsMethodName")
@@ -32,23 +35,25 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             self.gmEditor.setEnabled(False)
             self.wrldCoordEditor.setEnabled(False)
             
-        self.buttonLayout = QtGui.QHBoxLayout()
-        self.buttonLayout.setMargin(5)
-        self.saveButton = QDockPushButton('&Save', self)
-        self.saveButton.setFixedWidth(100)
-        self.saveButton.setEnabled(True)
-        self.buttonLayout.addWidget(self.saveButton)
-        self.resetButton = QDockPushButton('&Reset', self)
-        self.resetButton.setFixedWidth(100)
-        self.resetButton.setEnabled(True)
-        self.buttonLayout.addWidget(self.resetButton)
         if show_buttons:
+            self.buttonLayout = QtGui.QHBoxLayout()
+            self.buttonLayout.setMargin(5)
+            self.saveButton = QDockPushButton('&Save', self)
+            self.saveButton.setFixedWidth(100)
+            self.saveButton.setEnabled(True)
+            self.buttonLayout.addWidget(self.saveButton)
+            self.resetButton = QDockPushButton('&Reset', self)
+            self.resetButton.setFixedWidth(100)
+            self.resetButton.setEnabled(True)
+            self.buttonLayout.addWidget(self.resetButton)
             self.layout.addLayout(self.buttonLayout)
-        self.connect(self.saveButton, QtCore.SIGNAL('clicked(bool)'), 
-                     self.saveTriggered)
-        self.connect(self.resetButton, QtCore.SIGNAL('clicked(bool)'), 
-                     self.resetTriggered)
+            
+            self.connect(self.saveButton, QtCore.SIGNAL('clicked(bool)'), 
+                         self.saveTriggered)
+            self.connect(self.resetButton, QtCore.SIGNAL('clicked(bool)'), 
+                         self.resetTriggered)
         self.setLayout(self.layout)
+        self.tabWidget.setCurrentIndex(0)
       
     def createEditor(self, parent, gmName):
         plot_type = self.module.module_descriptor.module().plot_type

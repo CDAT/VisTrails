@@ -150,6 +150,18 @@ class PlotManager(QtCore.QObject):
         if plot_package in self._plot_helpers:
             return self._plot_helpers[plot_package]
             
+    def get_plot_by_name(self, plot_type, plot_name=None):
+        for pkg in self._plot_list:
+            for pl in self._plot_list[pkg]:
+                if plot_name is not None and type(self._plot_list[pkg][pl]) == type({}):
+                    if pl == plot_type:
+                        for m in self._plot_list[pkg][pl]:
+                            if m == plot_name:
+                                return self._plot_list[pkg][pl][m]
+                elif plot_name is None and type(self._plot_list[pkg][pl]) != type({}):
+                    if plot_type == pl:
+                        return self._plot_list[pkg][pl]
+        return None
 def get_plot_manager():
     global _plot_manager
     if not _plot_manager:
