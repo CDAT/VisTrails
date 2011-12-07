@@ -320,6 +320,8 @@ class Workspace(QtGui.QDockWidget):
             for annotation in view.controller.vistrail.action_annotations:
                 if annotation.db_key == 'uvcdatCell':
                     cell = fromAnnotation(annotation.db_value)
+                    plot_type = view.controller.vistrail.get_action_annotation(annotation.db_action_id, 
+                                                                               "uvcdatType")
                     if cell[0] not in item.tag_to_item:
                         tc.setCurrentIndex(tc.addTabWidget(
                             StandardWidgetSheetTab(tc), cell[0]))
@@ -331,7 +333,8 @@ class Workspace(QtGui.QDockWidget):
                     # Add cell
                     pipeline = view.controller.vistrail.getPipeline(annotation.db_action_id)
                     item.controller.vis_was_dropped((pipeline,
-                                                     cell[0], int(cell[1]), int(cell[2])))
+                                                     cell[0], int(cell[1]), 
+                                                     int(cell[2]), plot_type.value))
                     
             if not len(item.sheet_to_item):
                 tc.create_first_sheet()
@@ -375,11 +378,11 @@ class Workspace(QtGui.QDockWidget):
             self.current_controller.connect_spreadsheet()
             self.emit(QtCore.SIGNAL("project_changed"),
                       self.current_controller.name)
-        p = self.treeProjects.currentItem()
+        
         defVars = self.root.dockVariable.widget()
         for i in range(defVars.varList.count()):
             v = defVars.varList.item(i)
-            if not str(p.text(0)) in v.projects:
+            if not str(self.currentProject.text(0)) in v.projects:
                 v.setHidden(True)
             else:
                 v.setHidden(False)
@@ -423,6 +426,9 @@ class Workspace(QtGui.QDockWidget):
         for i, tag in tags:
             if tag not in item.tag_to_item:
                 wfitem = QWorkflowItem(i)
+                ann = view.controller.vistrail.get_action_annotation(i, 
+                                                                     "uvcdatType")
+                wfitem.plotType = ann.value
                 item.namedPipelines.addChild(wfitem)
                 wfitem.update_title()
                 item.tag_to_item[tag] = wfitem

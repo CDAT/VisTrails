@@ -44,6 +44,7 @@ class Variable(Module):
         self.source = source
         self.name = name
         self.load = load
+        self.file = self.filename
 
     def to_module(self, controller, pkg_identifier=None):
         reg = get_module_registry()
@@ -65,12 +66,24 @@ class Variable(Module):
         for f in functions:
             module.add_function(f)
         return module
-
+    
+    @staticmethod
+    def from_module(module):
+        from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
+        var = Variable()
+        var.filename = PlotPipelineHelper.get_value_from_function(module, 'file')
+        var.file = var.filename
+        var.url = PlotPipelineHelper.get_value_from_function(module, 'url')
+        var.name = PlotPipelineHelper.get_value_from_function(module, 'name')
+        var.load = PlotPipelineHelper.get_value_from_function(module, 'load')
+        return var
+     
     def get_port_values(self):
         if not self.hasInputFromPort("file") and not self.hasInputFromPort("url") and not self.hasInputFromPort("source"):
             raise ModuleError('Must set one of "file", "url", "source".')
         if self.hasInputFromPort("file"):
             self.file = self.getInputFromPort("file").name
+            self.filename = self.file
         if self.hasInputFromPort("url"):
             self.url = self.getInputFromPort("url")
         if self.hasInputFromPort("source"):

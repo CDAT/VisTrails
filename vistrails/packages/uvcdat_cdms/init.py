@@ -65,11 +65,8 @@ class CDMSVariable(Variable):
         for f in functions:
             module.add_function(f)
         return module        
-
-    def compute(self):
-        self.axes = self.forceGetInputFromPort("axes")
-        self.axesOperations = self.forceGetInputFromPort("axesOperations")
-        self.get_port_values()
+    
+    def to_python(self):
         if self.source:
             cdmsfile = self.source.var
         elif self.url:
@@ -85,8 +82,22 @@ class CDMSVariable(Variable):
                                       str(e))
         if self.axesOperations is not None:
             var = self.applyAxesOperations(var, self.axesOperations)
-
-        self.var = var
+        return var
+    
+    @staticmethod
+    def from_module(module):
+        from pipeline_helper import CDMSPipelineHelper
+        var = Variable.from_module(module)
+        var.axes = CDMSPipelineHelper.get_fun_value_from_module(module, 'axes')
+        var.axesOperations = CDMSPipelineHelper.get_fun_value_from_module(module, 'axesOperations')
+        var.__class__ = CDMSVariable
+        return var
+        
+    def compute(self):
+        self.axes = self.forceGetInputFromPort("axes")
+        self.axesOperations = self.forceGetInputFromPort("axesOperations")
+        self.get_port_values()
+        self.var = self.to_python()
         self.setResult("self", self)
 
     def applyAxesOperations(self, var, axesOperations):

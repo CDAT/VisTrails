@@ -93,6 +93,7 @@ class PlotPipelineHelper(object):
                                                                    controller.current_version)
         plot_obj.current_parent_version = cell.current_parent_version
         plot_obj.current_controller = controller
+        cell.plot = plot_obj
         
         aliases = {}
         for a in pipeline.aliases:
@@ -104,16 +105,20 @@ class PlotPipelineHelper(object):
             aliases[plot_obj.cells[j].col_name] = str(col+1)
         
         actions = plot_obj.applyChanges(aliases)
-        action = actions.pop()
-    
-        #FIXME: update cell.variables information
-         
-        #get the most recent action that is not None
-        while action == None:
-            action = actions.pop()
         
-        cell.current_parent_version = action.id
-        return action
+        #this will update the variables
+        for i in range(plot_obj.varnum):
+            cell.variables.append(aliases[plot_obj.vars[i]])
+            
+        #get the most recent action that is not None
+        if len(actions) > 0:
+            action = actions.pop()
+            while action == None and len(actions) > 0:
+                action = actions.pop()
+            if action is not None:
+                cell.current_parent_version = action.id
+                return action
+        return None
     
     @staticmethod
     def show_configuration_widget(controller, version, plot_obj=None):

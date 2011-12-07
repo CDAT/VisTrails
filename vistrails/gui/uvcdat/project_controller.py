@@ -44,6 +44,7 @@ from core.utils import InstanceObject
 from core.uvcdat.variable import VariableWrapper
 from core.uvcdat.plot_registry import get_plot_registry
 from core.uvcdat.plotmanager import get_plot_manager
+from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from core.vistrail.controller import VistrailController
 from core.configuration import get_vistrails_configuration
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
@@ -66,10 +67,27 @@ class ProjectController(QtCore.QObject):
     def add_defined_variable(self, var):
         self.defined_variables[var.name] = var
 
+    def emit_defined_variable(self, var):
+        from packages.uvcdat_cdms.init import CDMSVariable
+        from packages.uvcdat_pv.init import PVVariable
+        from api import _app
+        if isinstance(var, CDMSVariable):
+            _app.uvcdatWindow.dockVariable.widget().addVariable(var.to_python())
+        elif isinstance(var, PVVariable):
+            _app.uvcdatWindow.dockVariable.widget().addVariable(var.name, type='PARAVIEW')
+            
     # def add_defined_variable(self, filename, name, kwargs):
     #     var = VariableWrapper(filename, name, kwargs)
     #     self.defined_variables[name] = var
 
+    def load_variables_from_modules(self, var_modules):
+        for varm in var_modules:
+            varname = PlotPipelineHelper.get_value_from_function(varm, 'name')
+            if varname not in self.defined_variables:
+                var = varm.module_descriptor.module.from_module(varm)
+                self.defined_variables[varname] = var
+                self.emit_defined_variable(var)
+                
     def has_defined_variable(self, name):
         if name in self.defined_variables:
             return True
@@ -189,6 +207,44 @@ class ProjectController(QtCore.QObject):
                                                         plot_type,
                                                         cell)
         
+        #check if a new var was added:
+        not_found = False
+        for var in cell.variables:
+            if var not in self.defined_variables:
+                not_found = True
+        if not_found:
+            from packages.uvcdat.init import Variable
+            from packages.uvcdat_pv.init import PVVariable
+            from packages.uvcdat_cdms.init import CDMSVariable
+            pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
+            var_modules = PlotPipelineHelper.find_modules_by_type(pipeline, Variable)
+            if len(var_modules) > 0:
+                self.load_variables_from_modules(var_modules)
+            else:
+                #when the workflows are updated to include the variable modules.
+                #they will be included in the case above. For now we need to 
+                #construct the variables based on the alias values (Emanuele)
+                if cell.plot.package == "PVClimate":
+                    for i in range(len(cell.variables)):
+                        filename = pipeline.get_alias_str_value(cell.plot.files[i])
+                        varname = pipeline.get_alias_str_value(cell.plot.vars[i])
+                        if varname not in self.defined_variables:
+                            var = PVVariable(filename=filename, name=varname)
+                            self.defined_variables[varname] = var
+                            self.emit_defined_variable(var)
+                if cell.plot.package == "DV3D":
+                    for i in range(len(cell.variables)):
+                        filename = pipeline.get_alias_str_value(cell.plot.files[i])
+                        varname = pipeline.get_alias_str_value(cell.plot.vars[i])
+                        axes = None
+                        if len(cell.plot.axes) > i:
+                            axes = pipeline.get_alias_str_value(cell.plot.axes[i])
+                        if varname not in self.defined_variables:
+                            var =  CDMSVariable(filename=filename, 
+                                                name=varname, axes=axes)
+                            self.defined_variables[varname] = var
+                            self.emit_defined_variable(var)
+                    
         self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, None,
                   plot_type, cell.current_parent_version)
         self.execute_plot(cell.current_parent_version)
@@ -196,12 +252,11 @@ class ProjectController(QtCore.QObject):
     def clear_cell(self, sheetName, row, col):
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
-                oldparentversion = self.sheet_map[sheetName][(row,col)]
-                self.sheet_map[sheetName][(row,col)] = \
-                       InstanceObject(variables=[],
-                                      plot=None,
-                                      template=None,
-                                      current_parent_version=oldparentversion)
+                cell = self.sheet_map[sheetName][(row,col)]
+                self.reset_workflow(cell)
+                cell.variables = []
+                cell.plot = None
+                cell.template = None
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col)
 
     def plot_was_dropped(self, info):
