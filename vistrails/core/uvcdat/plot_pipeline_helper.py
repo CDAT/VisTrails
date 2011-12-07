@@ -121,6 +121,21 @@ class PlotPipelineHelper(object):
         return None
     
     @staticmethod
+    def build_python_script_from_pipeline(controller, version, plot=None):
+        from api import load_workflow_as_function
+        text = "from api import load_workflow_as_function\n"
+        if plot:
+            text += "proj_file = '%s'\n"%controller.get_locator().name
+            text += "vis_id = %s\n"%version
+            text += "vis = load_workflow_as_function(proj_file, vis_id)\n"
+            vis = load_workflow_as_function(controller.get_locator().name, version)
+            doc = vis.__doc__
+            lines = doc.split("\n")
+            for line in lines:
+                text += "# %s\n"%line                 
+            return text
+    
+    @staticmethod
     def show_configuration_widget(controller, version, plot_obj=None):
         from gui.uvcdat.plot_configuration import AliasesPlotWidget
         return AliasesPlotWidget(controller,version,plot_obj)

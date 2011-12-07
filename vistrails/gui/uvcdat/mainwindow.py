@@ -113,23 +113,27 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         #self.workspace.addProject("Temperature Anomaly")
         #self.workspace.addProject()
         self.dockCalculator = DockCalculator(self)
-        
+        self.plotProp = PlotProperties.instance(self)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.workspace)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.dockTemplate)
         #self.tabifyDockWidget(self.workspace, self.dockTemplate)
         self.tabifyDockWidget(self.dockTemplate, self.dockPlot)
         self.workspace.raise_()
         self.varProp.hide()
-        
+        self.plotProp.hide()
 
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockVariable)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.varProp)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockCalculator)
+        self.tabifyDockWidget(self.dockCalculator, self.plotProp)
+
 
     def createActions(self):
         #VisTrails Window
-        self.showBuilderWindowAct = QtGui.QAction("VisTrails Builder", self,
+        self.showBuilderWindowAct = QtGui.QAction("Builder", self,
                                  triggered=self.showBuilderWindowActTriggered)
+        self.showVistrailsConsoleAct = QtGui.QAction("Console", self,
+                                triggered=self.showVistrailsConsoleActTriggered)
     def updateMenuActions(self):
         #menu View Actions
         self.ui.menuView.addAction(self.workspace.toggleViewAction())
@@ -137,14 +141,19 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.ui.menuView.addAction(self.dockPlot.toggleViewAction())
         self.ui.menuView.addAction(self.dockVariable.toggleViewAction())
         self.ui.menuView.addAction(self.dockCalculator.toggleViewAction())
-        self.ui.menuView.addAction(PlotProperties.instance().toolWindow().toggleViewAction())
-        #Window Menu
-        self.ui.menuWindow.addAction(self.showBuilderWindowAct)
-        
+        self.ui.menuView.addAction(self.plotProp.toggleViewAction())
+        #VisTrails Menu
+        self.ui.menuVistrails.addAction(self.showBuilderWindowAct)
+        self.ui.menuVistrails.addAction(self.showVistrailsConsoleAct)
+    
     def showBuilderWindowActTriggered(self):
         from gui.vistrails_window import _app
         _app.show()
         _app.raise_()
+        
+    def showVistrailsConsoleActTriggered(self):
+        from gui.shell import QShellDialog
+        QShellDialog.instance().set_visible(True)
         
     def connectSignals(self):
         self.ui.actionExit.triggered.connect(self.quit)

@@ -135,6 +135,8 @@ class ProjectController(QtCore.QObject):
                      self.request_plot_configure)
         self.connect(tabController, QtCore.SIGNAL("request_plot_execution"),
                      self.request_plot_execution)
+        self.connect(tabController, QtCore.SIGNAL("request_plot_source"),
+                     self.request_plot_source)
         self.connect(tabController, QtCore.SIGNAL("cell_deleted"),
                      self.clear_cell)
         
@@ -151,6 +153,8 @@ class ProjectController(QtCore.QObject):
                      self.request_plot_configure)
         self.disconnect(tabController, QtCore.SIGNAL("request_plot_execution"),
                      self.request_plot_execution)
+        self.disconnect(tabController, QtCore.SIGNAL("request_plot_source"),
+                     self.request_plot_source)
         self.disconnect(tabController, QtCore.SIGNAL("cell_deleted"),
                      self.clear_cell)
         
@@ -308,6 +312,23 @@ class ProjectController(QtCore.QObject):
             plot_prop.set_controller(self)
             plot_prop.updateProperties(widget, sheetName,row,col)
             plot_prop.set_visible(True)
+            
+    def get_python_script(self, sheetName, row, col):
+        script = None
+        cell = self.sheet_map[sheetName][(row,col)]
+        if cell.plot is not None:
+            helper = self.plot_manager.get_plot_helper(cell.plot.package)
+            script = helper.build_python_script_from_pipeline(self.vt_controller, 
+                                                              cell.current_parent_version, 
+                                                              cell.plot)
+        return script
+        
+    def request_plot_source(self, sheetName, row, col):
+        from gui.uvcdat.plot_source import PlotSource
+        source = self.get_python_script(sheetName, row, col)
+        plot_source = PlotSource.instance()
+        plot_source.showSource(source, sheetName, row, col)
+        plot_source.show()
             
     def get_plot_configuration(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]

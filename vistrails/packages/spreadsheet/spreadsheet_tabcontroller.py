@@ -894,6 +894,8 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                      self.requestPlotConfigure)
         self.connect(widget, QtCore.SIGNAL("request_plot_execution"),
                      self.requestPlotExecution)
+        self.connect(widget, QtCore.SIGNAL("request_plot_source"),
+                     self.requestPlotSource)
         self.connect(widget, QtCore.SIGNAL("cell_deleted"),
                      self.cellDeleted)
         
@@ -908,6 +910,8 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                      self.requestPlotConfigure)
         self.disconnect(widget, QtCore.SIGNAL("request_plot_execution"),
                      self.requestPlotExecution)
+        self.disconnect(widget, QtCore.SIGNAL("request_plot_source"),
+                     self.requestPlotSource)
         self.disconnect(widget, QtCore.SIGNAL("cell_deleted"),
                      self.cellDeleted)
 
@@ -937,6 +941,9 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         
     def requestPlotExecution(self, sheetName, row, col):
         self.emit(QtCore.SIGNAL("request_plot_execution"), sheetName, row, col )    
+    
+    def requestPlotSource(self, sheetName, row, col):
+        self.emit(QtCore.SIGNAL("request_plot_source"), sheetName, row, col )    
         
     def cellDeleted(self, sheetName, row, col):
         self.emit(QtCore.SIGNAL("cell_deleted"), sheetName, row, col )

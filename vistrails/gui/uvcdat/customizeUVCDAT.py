@@ -18,7 +18,7 @@ esgfTreeIconSize = 22
 saveMovie = os.path.join(ICONPATH,"save_movie.ico")
 loadMovie = os.path.join(ICONPATH,"load_movie.ico")
 
-iconsize=35
+iconsize=24
 defaultTextColor = uvcdatCommons.blackColor
 templatesColor = uvcdatCommons.defaultTemplatesColor
 gmsColor = uvcdatCommons.defaultGmsColor

@@ -94,6 +94,7 @@ class StandardWidgetToolBar(QtGui.QToolBar):
         """
         QtGui.QToolBar.__init__(self, parent)
         self.sheetTab = parent
+        self.setIconSize(QtCore.QSize(24,24))
         self.addAction(self.sheetTab.tabWidget.newSheetAction())
         #self.addAction(self.sheetTab.tabWidget.openAction())
         #self.addAction(self.sheetTab.tabWidget.saveAction())
@@ -899,6 +900,10 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
     
     def requestPlotExecution(self, row, col):
         self.emit(QtCore.SIGNAL("request_plot_execution"), self.getSheetName(), 
+                    row, col)
+        
+    def requestPlotSource(self, row, col):
+        self.emit(QtCore.SIGNAL("request_plot_source"), self.getSheetName(), 
                     row, col)
         
 class StandardWidgetTabBarEditor(QtGui.QLineEdit):    

@@ -9,7 +9,7 @@ import core.db.action
 import core.db.io
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import pyqtSlot, pyqtSignal
-from init import CDMSPlot, CDMSVariable
+from init import CDMSPlot, CDMSVariable, CDMSCell
 from widgets import GraphicsMethodConfigurationWidget
 from gui.theme import CurrentTheme
 from gui.common_widgets import QDockPushButton
@@ -250,6 +250,51 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         controller.perform_action(action)
         return action
         
+    @staticmethod
+    def build_python_script_from_pipeline(controller, version, plot=None):
+        pipeline = controller.vistrail.getPipeline(version)
+        var_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSVariable)
+        cell = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSCell)
+        plots = CDMSPipelineHelper.find_plot_modules(pipeline)
+        text = "from PyQt4 import QtCore, QtGui\n"
+        text += "import cdms2, cdutil, genutil\n"
+        text += "import vcs\n\n"
+        text += "if __name__ == '__main__':\n"
+        text += "    import sys\n"
+        text += "    app = QtGui.QApplication(sys.argv)\n"
+        ident = '    '
+        for varm in var_modules:
+            var = CDMSVariable.from_module(varm)
+            text += var.to_python_script(ident=ident)
+    
+        text += ident + "canvas = vcs.init()\n"
+        for mplot in plots:
+            plot = mplot.module_descriptor.module.from_module(mplot)
+            text += ident + "gm%s = canvas.get%s('%s')\n"%(plot.plot_type, 
+                                                 plot.plot_type.lower(), 
+                                                 plot.graphics_method_name)
+            text += ident + "args = []\n"
+            for varm in CDMSPipelineHelper.find_variables_connected_to_plot_module(controller, pipeline, mplot.id):
+                var = CDMSVariable.from_module(varm)
+                text += ident + "args.append(%s)\n"%var.name
+            if plot.graphics_method_name != 'default':
+                for k in plot.gm_attributes:
+                    if hasattr(plot,k):
+                        if k in ['level_1', 'level_2', 'color_1',
+                                 'color_2', 'legend', 'levels',
+                                 'missing', 'datawc_calendar', 'datawc_x1', 
+                                 'datawc_x2', 'datawc_y1', 'datawc_y2',
+                                 'fillareacolors', 'fillareaindices']:
+                            text += ident + "gm%s.%s = %s\n"%(plot.plot_type,
+                                                      k,  getattr(plot,k))
+                        else:
+                            text += ident + "gm%s.%s = '%s'\n"%(plot.plot_type,
+                                                            k, getattr(plot,k))
+            text += ident + "kwargs = %s\n"%plot.kwargs
+            text += ident + "canvas.plot(gm%s,*args, **kwargs)\n"%(plot.plot_type) 
+        text += '    sys.exit(app.exec_())'           
+        return text
+    
     @staticmethod    
     def get_graphics_method_name_from_module(module):
         result = CDMSPipelineHelper.get_fun_value_from_module(module, 

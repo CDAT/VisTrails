@@ -84,6 +84,35 @@ class CDMSVariable(Variable):
             var = self.applyAxesOperations(var, self.axesOperations)
         return var
     
+    def to_python_script(self, include_imports=False, ident=""):
+        text = ''
+        if include_imports:
+            text += ident + "import cdms2, cdutil, genutil\n"
+        if self.source:
+            cdmsfile = self.source.var
+        elif self.url:
+            text += ident + "cdmsfile = cdms2.open('%s')\n"%self.url
+        elif self.file:
+            text += ident + "cdmsfile = cdms2.open('%s')\n"%self.file
+            
+        text += ident + "%s = cdmsfile('%s')\n"%(self.name, self.name)
+        if self.axes is not None:
+            text += ident + "%s = %s(%s)\n"% (self.name, self.name, self.axes)
+        if self.axesOperations is not None:
+            text += ident + "axesOperations = eval(%s)\n"%self.axesOperations
+            text += ident + "for axis in list(axesOperations):\n"
+            text += ident + "    if axesOperations[axis] == 'sum':\n"
+            text += ident + "        %s = cdutil.averager(var, axis='(%%s)'%%axis, weight='equal', action='sum')\n"% self.name
+            text += ident + "    elif axesOperations[axis] == 'avg':\n"
+            text += ident + "        %s = cdutil.averager(var, axis='(%%s)'%%axis, weight='equal')\n"% self.name
+            text += ident + "    elif axesOperations[axis] == 'wgt':\n"
+            text += ident + "        %s = cdutil.averager(var, axis='(%%s)'%%axis)\n"% self.name
+            text += ident + "    elif axesOperations[axis] == 'gtm':\n"
+            text += ident + "        %s = genutil.statistics.geometricmean(var, axis='(%%s)'%%axis)\n"% self.name
+            text += ident + "    elif axesOperations[axis] == 'std':\n"
+            text += ident + "        %s = genutil.statistics.std(var, axis='(%%s)'%%axis)\n"% self.name
+        return text
+    
     @staticmethod
     def from_module(module):
         from pipeline_helper import CDMSPipelineHelper
@@ -194,6 +223,16 @@ class CDMSPlot(Plot):
         for f in functions:
             module.add_function(f)
         return module        
+    
+    @classmethod
+    def from_module(klass, module):
+        from pipeline_helper import CDMSPipelineHelper
+        plot = klass()
+        plot.graphics_method_name = CDMSPipelineHelper.get_graphics_method_name_from_module(module)
+        for attr in plot.gm_attributes:
+            setattr(plot,attr, CDMSPipelineHelper.get_value_from_function(module, attr))
+        plot.template = CDMSPipelineHelper.get_template_name_from_module(module)
+        return plot
 
     def set_default_values(self, gmName=None):
         self.default_values = {}
@@ -318,7 +357,15 @@ Please delete unused CDAT Cells in the spreadsheet.")
                     if hasattr(plot,k):
                         if k in ['level_1', 'level_2', 'color_1',
                                  'color_2', 'legend', 'levels',
-                                 'missing']:
+                                 'missing', 'datawc_calendar', 'datawc_x1', 
+                                 'datawc_x2', 'datawc_y1', 'datawc_y2',
+                                 'fillareacolors', 'fillareaindices']:
+                            #FIXME: need to find out why these settings get overwritten 
+                            if k == 'levels' and getattr(plot,k) == '()':
+                                setattr(plot,k,"([1.0000000200408773e+20, 1.0000000200408773e+20],)")
+                            if k == 'missing':
+                                setattr(plot,k,str(int(float(getattr(plot,k)))))
+                            print getattr(plot,k)
                             setattr(cgm,k,eval(getattr(plot,k)))
                         else:
                             try:
