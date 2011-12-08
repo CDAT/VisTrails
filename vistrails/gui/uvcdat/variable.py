@@ -210,7 +210,7 @@ class VariableProperties(QtGui.QDockWidget):
         ## self.esgfBrowser = QEsgfBrowser(self)
         ## layout.addWidget(self.esgfBrowser)
         esgf = QEsgfBrowser(self)
-        esgf.addGateway(gateway=customizeUVCDAT.defaultEsgfNode)
+        ##esgf.addGateway(gateway=customizeUVCDAT.defaultEsgfNode)
         self.originTabWidget.addTab(esgf,"ESGF")
 
     
