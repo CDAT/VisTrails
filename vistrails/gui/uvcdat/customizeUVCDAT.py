@@ -29,11 +29,11 @@ defaultTemplateName = "starter"
 defaultGraphicsMethodName = "starter"
 colorSelectedStyle = "border:2px solid black"
 colorNotSelectedStyle = "border:2px solid white"
-defaultEsgfNode = "test-datanode.jpl.nasa.gov"
+#defaultEsgfNode = "esg-datanode.jpl.nasa.gov"
 defaultEsgfNode = "pcmdi9.llnl.gov"
-defaultEsgfGateway = "%s/esg-search/ws/rest/search" % defaultEsgfNode
-defaultEsgfMapping="%(datasetid).%(variable)"
-#defaultEsgfMapping=None
+defaultEsgfGateway = "%s/esg-search/search" % defaultEsgfNode
+#defaultEsgfMapping="%(datasetid).%(variable)"
+defaultEsgfMapping=None
 ## General Styles
 appStyles = {}
 confirmB4Exit=True

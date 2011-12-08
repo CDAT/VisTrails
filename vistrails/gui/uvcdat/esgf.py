@@ -312,6 +312,7 @@ class QEsgfBrowser(QtGui.QDialog):
         url,ok = QtGui.QInputDialog.getText(self,"Adding A Gateway","URL",text=customizeUVCDAT.defaultEsgfNode)
         if ok is False:
             return
+        print "Adding:",url
         self.addGateway(gateway=url,mapping=self.mapping)#,datasetids="%(project).%(product).%(valid_institute).%(model).%(experiment).%(time_frequency)s.%(realm).%(cmor_table).%(ensemble)")
 
     def editMapping(self):
@@ -457,7 +458,7 @@ class QEsgfBrowser(QtGui.QDialog):
         return
             
             
-    def addGateway(self,gateway = customizeUVCDAT.defaultEsgfNode,port=80,limit=10000,timeout=15,offset=0,mapping=None,datasetids=None,fileids=None,restPath=None):
+    def addGateway(self,gateway = customizeUVCDAT.defaultEsgfNode,port=80,limit=1000,timeout=15,offset=0,mapping=None,datasetids=None,fileids=None,restPath=None):
         if mapping is None:
             mapping=self.mapping
         try:
