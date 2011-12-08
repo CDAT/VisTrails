@@ -73,7 +73,6 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         font = self.font(0)
         font.setBold(True)
         self.setFont(0, font)
-        self.currentSheet = None
         self.namedPipelines = QtGui.QTreeWidgetItem(['Named Visualizations'])
         self.namedPipelines.setIcon(0,icon)
         self.namedPipelines.setFlags(self.flags()&~QtCore.Qt.ItemIsSelectable)
@@ -182,11 +181,11 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
                                  self.workflowPos[0] + self.workflowSpan[0])
         self.setText(0, name)
                         
-class QDragTreeWidget(QtGui.QTreeWidget):
-    
-    def __init__(self,parent=None):
+class QProjectsWidget(QtGui.QTreeWidget):
+    def __init__(self,parent=None, workspace=None):
         QtGui.QTreeWidget.__init__(self,parent=parent)
-        
+        self.workspace = workspace
+
     def mimeData(self, items):
         if not len(items) == 1 or type(items[0]) != QWorkflowItem:
             return
@@ -199,7 +198,21 @@ class QDragTreeWidget(QtGui.QTreeWidget):
         m.controller = project.view.controller
         m.plot_type = item.plotType
         return m
-        
+    
+    def keyPressEvent(self, event):
+        if event.key() in [QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
+            items = self.selectedItems()
+            if len(items) == 1:
+                item = items[0]
+                if type(item) == QWorkflowItem and \
+                   type(item.parent()) != QSpreadsheetItem:
+                    # remove tag
+                    view = item.parent().parent().view
+                    view.controller.vistrail.set_tag(item.workflowVersion, '')
+                    self.workspace.state_changed(view)
+        else:
+            QtGui.QTreeWidget.keyPressEvent(self, event)
+
 class Workspace(QtGui.QDockWidget):
     def __init__(self, parent=None):
         super(Workspace, self).__init__(parent)
@@ -256,7 +269,7 @@ class Workspace(QtGui.QDockWidget):
         self.toolsProject.addAction(self.btnCloseProject)
 
         self.verticalLayout.addWidget(self.toolsProject)
-        self.treeProjects = QDragTreeWidget(self.dockWidgetContents)
+        self.treeProjects = QProjectsWidget(self.dockWidgetContents, self)
         self.treeProjects.setRootIsDecorated(True)
         self.treeProjects.setExpandsOnDoubleClick(False)
         self.treeProjects.header().setVisible(False)
@@ -406,6 +419,7 @@ class Workspace(QtGui.QDockWidget):
         # check if a tag has been deleted
         tags = view.controller.vistrail.get_tagMap().values()
 
+        item.namedPipelines.setHidden(not tags)
         for tag in item.tag_to_item:
             if tag not in tags:
                 item.namedPipelines.takeChild(item.indexOfChild(
@@ -435,15 +449,18 @@ class Workspace(QtGui.QDockWidget):
             self.current_controller = None
             return
         elif type(widget_item)==QProjectItem:
+            widget_item.setSelected(False)
             project = widget_item
         elif type(widget_item)==QSpreadsheetItem:
+            widget_item.setSelected(False)        
             sheet = widget_item
             project = sheet.parent()
         elif type(widget_item)==QWorkflowItem:
             project = widget_item.parent().parent()
         else: # is a Saved Workflows item
+            widget_item.setSelected(False)        
             project = widget_item.parent()
-        widget_item.setSelected(False)        
+
         view = project.view
         locator = project.view.controller.locator
         if project != self.currentProject:            
@@ -459,8 +476,7 @@ class Workspace(QtGui.QDockWidget):
         #if version:
         #    view.version_selected(version, True, double_click=True)
         
-        if sheet and sheet != project.currentSheet:
-            project.currentSheet = sheet
+        if sheet:
             tab = project.sheet_to_tab[sheet.sheetName]
             self.spreadsheetWindow.get_current_tab_controller(
                                                     ).setCurrentWidget(tab)
@@ -534,25 +550,26 @@ class Workspace(QtGui.QDockWidget):
     def item_double_clicked(self, widget, col):
         if widget and type(widget) == QWorkflowItem:
             # tag this visualization with a name
-            tag, ok = QtGui.QInputDialog.getText(self, 'Visualization "%s"' %
-                                             str(widget.text(0)), "Rename to")
-            if ok and str(tag).strip():
-                tag = str(tag).strip()
-                project = widget.parent()
-                while type(project) != QProjectItem:
-                    project = project.parent()
-                vistrail = project.view.controller.vistrail
-                if vistrail.hasTag(widget.workflowVersion):
-                    vistrail.changeTag(tag, widget.workflowVersion)
-                else:
-                    vistrail.addTag(tag, widget.workflowVersion)
-                # loop through all existing item and update
-                self.state_changed(project.view)
-                for sheet in project.sheet_to_item.itervalues():
-                    for i in xrange(sheet.childCount()):
-                        child = sheet.child(i)
-                        if child.workflowVersion == widget.workflowVersion:
-                            child.update_title()
+            tag, ok = QtGui.QInputDialog.getText(self, str(widget.text(0)),
+                                                 "New name")
+            if not ok or not str(tag).strip():
+                return
+            tag = str(tag).strip()
+            project = widget.parent()
+            while type(project) != QProjectItem:
+                project = project.parent()
+            vistrail = project.view.controller.vistrail
+            if vistrail.hasTag(widget.workflowVersion):
+                vistrail.changeTag(tag, widget.workflowVersion)
+            else:
+                vistrail.addTag(tag, widget.workflowVersion)
+            # loop through all existing item and update
+            self.state_changed(project.view)
+            for sheet in project.sheet_to_item.itervalues():
+                for i in xrange(sheet.childCount()):
+                    child = sheet.child(i)
+                    if child.workflowVersion == widget.workflowVersion:
+                        child.update_title()
 
 
     def dropEvent(self, event):
