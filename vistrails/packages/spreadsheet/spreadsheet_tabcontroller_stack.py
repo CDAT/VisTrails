@@ -70,6 +70,7 @@ class TabControllerStack(QtGui.QStackedWidget):
         self.emit(QtCore.SIGNAL('needChangeTitle'),
                   'VisTrails - Spreadsheet - %s' % name)
         self.connectTabControllerSignals(tabcontroller)
+        self.setCurrentWidget(tabcontroller)
         #tabcontroller.create_first_sheet()
         
     def change_selected_view(self, name):
