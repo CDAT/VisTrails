@@ -44,6 +44,7 @@ from core.utils import InstanceObject
 from core.uvcdat.variable import VariableWrapper
 from core.uvcdat.plot_registry import get_plot_registry
 from core.uvcdat.plotmanager import get_plot_manager
+from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from core.vistrail.controller import VistrailController
 from core.configuration import get_vistrails_configuration
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
@@ -66,10 +67,27 @@ class ProjectController(QtCore.QObject):
     def add_defined_variable(self, var):
         self.defined_variables[var.name] = var
 
+    def emit_defined_variable(self, var):
+        from packages.uvcdat_cdms.init import CDMSVariable
+        from packages.uvcdat_pv.init import PVVariable
+        from api import _app
+        if isinstance(var, CDMSVariable):
+            _app.uvcdatWindow.dockVariable.widget().addVariable(var.to_python())
+        elif isinstance(var, PVVariable):
+            _app.uvcdatWindow.dockVariable.widget().addVariable(var.name, type='PARAVIEW')
+            
     # def add_defined_variable(self, filename, name, kwargs):
     #     var = VariableWrapper(filename, name, kwargs)
     #     self.defined_variables[name] = var
 
+    def load_variables_from_modules(self, var_modules):
+        for varm in var_modules:
+            varname = PlotPipelineHelper.get_value_from_function(varm, 'name')
+            if varname not in self.defined_variables:
+                var = varm.module_descriptor.module.from_module(varm)
+                self.defined_variables[varname] = var
+                self.emit_defined_variable(var)
+                
     def has_defined_variable(self, name):
         if name in self.defined_variables:
             return True
@@ -117,6 +135,8 @@ class ProjectController(QtCore.QObject):
                      self.request_plot_configure)
         self.connect(tabController, QtCore.SIGNAL("request_plot_execution"),
                      self.request_plot_execution)
+        self.connect(tabController, QtCore.SIGNAL("request_plot_source"),
+                     self.request_plot_source)
         self.connect(tabController, QtCore.SIGNAL("cell_deleted"),
                      self.clear_cell)
         
@@ -133,6 +153,8 @@ class ProjectController(QtCore.QObject):
                      self.request_plot_configure)
         self.disconnect(tabController, QtCore.SIGNAL("request_plot_execution"),
                      self.request_plot_execution)
+        self.disconnect(tabController, QtCore.SIGNAL("request_plot_source"),
+                     self.request_plot_source)
         self.disconnect(tabController, QtCore.SIGNAL("cell_deleted"),
                      self.clear_cell)
         
@@ -166,8 +188,8 @@ class ProjectController(QtCore.QObject):
             
     def vis_was_dropped(self, info):
         """vis_was_dropped(info: (pipeline, sheetName, row, col) """
-        (pipeline, sheetName, row, col) = info
-        pip_str = core.db.io.serialize(pipeline)
+        (pipeline, sheetName, row, col, plot_type) = info
+        
         if sheetName in self.sheet_map:
             if (row,col) not in self.sheet_map[sheetName]:
                 self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[],
@@ -183,61 +205,62 @@ class ProjectController(QtCore.QObject):
         if cell.plot is not None and len(cell.variables) > 0:
             self.reset_workflow(cell)
             
-        self.vt_controller.change_selected_version(cell.current_parent_version)
-        modules = self.vt_controller.paste_modules_and_connections(pip_str, 
-                                                                   (0.0,0.0))
-        cell.current_parent_version = self.vt_controller.current_version
-        pipeline = self.vt_controller.current_pipeline
-        from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
-        from packages.uvcdat.init import Variable, Plot
-        from packages.spreadsheet.basic_widgets import CellLocation, SpreadsheetCell
-        reg = get_module_registry()
-        cell_locations = PlotPipelineHelper.find_modules_by_type(pipeline, CellLocation)
-        cell_modules = PlotPipelineHelper.find_modules_by_type(pipeline, SpreadsheetCell) 
+        helper = self.plot_manager.get_plot_helper(plot_type)
+        action = helper.copy_pipeline_to_other_location(pipeline, self.vt_controller,
+                                                        sheetName, row, col, 
+                                                        plot_type,
+                                                        cell)
         
-        action = self.vt_controller.delete_module_list([cell_locations[0].id])
-        cell.current_parent_version = action.id
-        
-        loc_module = self.vt_controller.create_module_from_descriptor(
-            reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet', 
-                                       'CellLocation'))
-        functions = self.vt_controller.create_functions(loc_module,
-            [('Row', [str(row+1)]), ('Column', [str(col+1)])])
-        for f in functions:
-            loc_module.add_function(f)
-        loc_conn = self.vt_controller.create_connection(loc_module, 'self',
-                                                        cell_modules[0], 'Location')
-        ops = [('add', loc_module),
-               ('add', loc_conn)] 
-        action = core.db.action.create_action(ops)
-        self.vt_controller.change_selected_version(cell.current_parent_version)
-        self.vt_controller.add_new_action(action)
-        self.vt_controller.perform_action(action)
-        cell.current_parent_version = action.id
-        
-        #FIXME: This works only for CDMS Plots for now
-        pipeline = self.vt_controller.vistrail.getPipeline(action.id)
-        var_modules = PlotPipelineHelper.find_modules_by_type(pipeline, Variable)
-        plot_modules = PlotPipelineHelper.find_modules_by_type(pipeline, Plot)
-        cell.variables = var_modules
-        
-        gmName = PlotPipelineHelper.get_value_from_function(plot_modules[0],
-                                                            'graphicsMethodName')
-        cell.plot = self.plot_manager.get_plot_by_name(plot_modules[0].name[3:], 
-                                                       gmName)
+        #check if a new var was added:
+        not_found = False
+        for var in cell.variables:
+            if var not in self.defined_variables:
+                not_found = True
+        if not_found:
+            from packages.uvcdat.init import Variable
+            from packages.uvcdat_pv.init import PVVariable
+            from packages.uvcdat_cdms.init import CDMSVariable
+            pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
+            var_modules = PlotPipelineHelper.find_modules_by_type(pipeline, Variable)
+            if len(var_modules) > 0:
+                self.load_variables_from_modules(var_modules)
+            else:
+                #when the workflows are updated to include the variable modules.
+                #they will be included in the case above. For now we need to 
+                #construct the variables based on the alias values (Emanuele)
+                if cell.plot.package == "PVClimate":
+                    for i in range(len(cell.variables)):
+                        filename = pipeline.get_alias_str_value(cell.plot.files[i])
+                        varname = pipeline.get_alias_str_value(cell.plot.vars[i])
+                        if varname not in self.defined_variables:
+                            var = PVVariable(filename=filename, name=varname)
+                            self.defined_variables[varname] = var
+                            self.emit_defined_variable(var)
+                if cell.plot.package == "DV3D":
+                    for i in range(len(cell.variables)):
+                        filename = pipeline.get_alias_str_value(cell.plot.files[i])
+                        varname = pipeline.get_alias_str_value(cell.plot.vars[i])
+                        axes = None
+                        if len(cell.plot.axes) > i:
+                            axes = pipeline.get_alias_str_value(cell.plot.axes[i])
+                        if varname not in self.defined_variables:
+                            var =  CDMSVariable(filename=filename, 
+                                                name=varname, axes=axes)
+                            self.defined_variables[varname] = var
+                            self.emit_defined_variable(var)
+                    
         self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, None,
-                  'CDMS', cell.current_parent_version)
+                  plot_type, cell.current_parent_version)
         self.execute_plot(cell.current_parent_version)
         
     def clear_cell(self, sheetName, row, col):
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
-                oldparentversion = self.sheet_map[sheetName][(row,col)]
-                self.sheet_map[sheetName][(row,col)] = \
-                       InstanceObject(variables=[],
-                                      plot=None,
-                                      template=None,
-                                      current_parent_version=oldparentversion)
+                cell = self.sheet_map[sheetName][(row,col)]
+                self.reset_workflow(cell)
+                cell.variables = []
+                cell.plot = None
+                cell.template = None
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col)
 
     def plot_was_dropped(self, info):
@@ -290,6 +313,23 @@ class ProjectController(QtCore.QObject):
             plot_prop.updateProperties(widget, sheetName,row,col)
             plot_prop.set_visible(True)
             
+    def get_python_script(self, sheetName, row, col):
+        script = None
+        cell = self.sheet_map[sheetName][(row,col)]
+        if cell.plot is not None:
+            helper = self.plot_manager.get_plot_helper(cell.plot.package)
+            script = helper.build_python_script_from_pipeline(self.vt_controller, 
+                                                              cell.current_parent_version, 
+                                                              cell.plot)
+        return script
+        
+    def request_plot_source(self, sheetName, row, col):
+        from gui.uvcdat.plot_source import PlotSource
+        source = self.get_python_script(sheetName, row, col)
+        plot_source = PlotSource.instance()
+        plot_source.showSource(source, sheetName, row, col)
+        plot_source.show()
+            
     def get_plot_configuration(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
         helper = self.plot_manager.get_plot_helper(cell.plot.package)
@@ -322,7 +362,7 @@ class ProjectController(QtCore.QObject):
             # plot_module = plot.to_module(self.vt_controller)
             self.update_workflow(var_modules, cell, row, col)
             self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, 
-                      None, 'CDMS', cell.current_parent_version)
+                      None, cell.plot.package, cell.current_parent_version)
             
     def update_workflow(self, var_modules, cell, row, column):
         helper = self.plot_manager.get_plot_helper(cell.plot.package)
@@ -361,7 +401,7 @@ class ProjectController(QtCore.QObject):
                 if get_vistrails_configuration().uvcdat.autoExecute:
                     self.execute_plot(cell.current_parent_version)
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
-                      None, None, "CDMS", cell.current_parent_version)
+                      None, None, cell.plot.package, cell.current_parent_version)
         
     def writePipelineToCurrentVistrail(self, aliases):
         """writePipelineToVistrail(aliases: dict) -> None 

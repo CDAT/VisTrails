@@ -1,15 +1,16 @@
 from PyQt4 import QtCore, QtGui
 from gui.module_configuration import QConfigurationWidget
-from gui.common_widgets import QToolWindowInterface
 
-class PlotProperties(QtGui.QScrollArea, QToolWindowInterface):
+class PlotProperties(QtGui.QDockWidget):
     def __init__(self, parent=None):
         super(PlotProperties, self).__init__(parent)
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowTitle("Visualization Properties")
-        self.setWidgetResizable(True)
+        self.area = QtGui.QScrollArea()
+        self.area.setWidgetResizable(True)
         self.confWidget = QConfigurationWidget()
-        self.setWidget(self.confWidget)
+        self.area.setWidget(self.confWidget)
+        self.setWidget(self.area)
         self.controller = None
         self.updateLocked = False
         self.hasChanges = False
@@ -18,9 +19,9 @@ class PlotProperties(QtGui.QScrollArea, QToolWindowInterface):
         self.col = -1
         
     @classmethod
-    def instance(klass):
+    def instance(klass, parent=None):
         if not hasattr(klass, '_instance'):
-            klass._instance = klass()
+            klass._instance = klass(parent)
         return klass._instance
         
     def set_controller(self, controller):
@@ -99,14 +100,5 @@ class PlotProperties(QtGui.QScrollArea, QToolWindowInterface):
             self.main_window.raise_()
 
         if enabled:
-            self.toolWindow().show()
-            self.toolWindow().raise_()
-            
-    def set_action(self, action):
-        self.action = action
-        self.connect(self.toolWindow(), 
-                     QtCore.SIGNAL("visibilityChanged(bool)"),
-                     self.visibility_changed)
-        
-    def visibility_changed(self, visible):
-        self.action.setChecked(visible)
+            self.show()
+            self.raise_()

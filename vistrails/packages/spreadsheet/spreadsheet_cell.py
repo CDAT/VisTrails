@@ -254,9 +254,11 @@ class QCellToolBar(QtGui.QToolBar):
         self.col = -1
         self.layout().setMargin(0)
         self.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Preferred)
+        self.setIconSize(QtCore.QSize(24,24))
         pixmap = self.style().standardPixmap(QtGui.QStyle.SP_DialogCloseButton)
         self.appendAction(QCellToolBarRemoveCell(QtGui.QIcon(pixmap), self))
         self.appendAction(QCellToolBarExecutePlot(self))
+        self.appendAction(QCellToolBarViewSource(self))
         self.appendAction(QCellToolBarConfigurePlot(self))
         self.appendAction(QCellToolBarMergeCells(QtGui.QIcon(':celltoolbar/mergecells.png'), self))
         self.createToolBar()
@@ -412,6 +414,51 @@ class QCellToolBarConfigurePlot(QtGui.QAction):
         
         cellWidget = self.toolBar.getSnappedWidget()
         self.toolBar.sheet.requestPlotConfigure(self.toolBar.row, self.toolBar.col)
+
+    def updateStatus(self, info):
+        """ updateStatus(info: tuple) -> None
+        Updates the status of the button based on the input info
+        
+        """
+        from api import _app
+        (sheet, row, col, cellWidget) = info
+        selectedCells = sorted(sheet.getSelectedLocations())
+
+        # Will not show up if there is no cell selected  
+        proj_controller = _app.uvcdatWindow.get_current_project_controller()
+        sheetName = sheet.getSheetName()        
+        if (len(selectedCells)==1 and 
+            proj_controller.is_cell_ready(sheetName,row,col)):
+                self.setVisible(True)
+        else:
+            self.setVisible(False)
+            
+class QCellToolBarViewSource(QtGui.QAction):
+    """
+    QCellToolBarViewSource is the action to see the python commands of the plot 
+    of the current cell
+
+    """
+    def __init__(self, parent=None):
+        """ QCellToolBarViewSource(icon: QIcon, parent: QWidget)
+                                   -> QCellToolBarViewSource
+        Setup the image, status tip, etc. of the action
+        
+        """
+        QtGui.QAction.__init__(self,
+                               QtGui.QIcon(":/images/source_code.png"),
+                               "View source of the current plot",
+                               parent)
+        self.setStatusTip("View source of the current plot")
+
+    def triggeredSlot(self, checked=False):
+        """ toggledSlot(checked: boolean) -> None
+        Execute the action when the button is clicked
+        
+        """
+        
+        cellWidget = self.toolBar.getSnappedWidget()
+        self.toolBar.sheet.requestPlotSource(self.toolBar.row, self.toolBar.col)
 
     def updateStatus(self, info):
         """ updateStatus(info: tuple) -> None

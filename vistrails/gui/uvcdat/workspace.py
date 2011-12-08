@@ -89,7 +89,7 @@ class QProjectItem(QtGui.QTreeWidgetItem):
             vistrail.set_action_annotation(version, 'uvcdatType', plot_type)
         
         if (row, col) not in sheetItem.pos_to_item:
-            item = QWorkflowItem(version, (row, col))
+            item = QWorkflowItem(version, (row, col), plot_type=plot_type)
             sheetItem.addChild(item)
             sheetItem.pos_to_item[(row, col)] = item
             item.update_title()
@@ -109,6 +109,7 @@ class QProjectItem(QtGui.QTreeWidgetItem):
                 add_annotation(vistrail, version, sheetName, row, col, w, h)
                 item.workflowVersion = version
                 item.workflowPos = (row, col)
+                item.plotType = plot_type
                 item.update_title()
             else:
                 sheetItem.takeChild(sheetItem.indexOfChild(item))
@@ -127,7 +128,7 @@ class QSpreadsheetItem(QtGui.QTreeWidgetItem):
         self.setExpanded(True)
 
 class QWorkflowItem(QtGui.QTreeWidgetItem):
-    def __init__(self, version, position=None, span=None, parent=None):
+    def __init__(self, version, position=None, span=None, plot_type=None, parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
         # workflowVersion is the vistrail version id
         self.workflowVersion = version
@@ -135,6 +136,8 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
         self.workflowPos = position
         # workflowSpan is a spreadsheet span like ("1", "2") default is ("1", "1")
         self.workflowSpan = span
+        # plotType is the package type of a plot, like VCS, PVClimate, DV3D
+        self.plotType = plot_type
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/pipeline.png"))
         self.setIcon(0, icon)
@@ -189,6 +192,7 @@ class QDragTreeWidget(QtGui.QTreeWidget):
         m = QtCore.QMimeData()
         m.version = item.workflowVersion
         m.controller = project.view.controller
+        m.plot_type = item.plotType
         return m
         
 class Workspace(QtGui.QDockWidget):
@@ -213,61 +217,39 @@ class Workspace(QtGui.QDockWidget):
         self.verticalLayout = QtGui.QVBoxLayout(self.dockWidgetContents)
         self.verticalLayout.setSpacing(0)
         self.verticalLayout.setMargin(0)
-        self.toolsProject = QtGui.QFrame(self.dockWidgetContents)
-        self.toolsProject.setFrameShape(QtGui.QFrame.StyledPanel)
-        self.toolsProject.setFrameShadow(QtGui.QFrame.Raised)
-        self.horizontalLayout = QtGui.QHBoxLayout(self.toolsProject)
-        self.horizontalLayout.setSpacing(1)
-        self.horizontalLayout.setMargin(0)
-
-        self.btnNewProject = QtGui.QToolButton()
-        self.btnNewProject.setToolTip("Create New Project")
-        self.btnNewProject.setText("New Project")
+        self.toolsProject = QtGui.QToolBar(self.dockWidgetContents)
+        self.toolsProject.setIconSize(QtCore.QSize(24,24))
+        
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/new.png"))
-        self.btnNewProject.setIcon(icon)
-        self.btnNewProject.setIconSize(QtCore.QSize(22, 22))
-        self.horizontalLayout.addWidget(self.btnNewProject)
-
-        self.btnOpenProject = QtGui.QToolButton()
-        self.btnOpenProject.setToolTip("Open Project")
-        self.btnOpenProject.setText("Open Project")
+        self.btnNewProject = QtGui.QAction(icon, "New Project",self)
+        self.btnNewProject.setToolTip("Create New Project")
+        self.toolsProject.addAction(self.btnNewProject)
+        
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/open.png"))
-        self.btnOpenProject.setIcon(icon1)
-        self.btnOpenProject.setIconSize(QtCore.QSize(22, 22))
-        self.horizontalLayout.addWidget(self.btnOpenProject)
+        self.btnOpenProject = QtGui.QAction(icon1,"Open Project", self)
+        self.btnOpenProject.setToolTip("Open Project")
+        self.toolsProject.addAction(self.btnOpenProject)
 
-        self.btnSaveProject = QtGui.QToolButton()
-        self.btnSaveProject.setToolTip("Save Project")
-        self.btnSaveProject.setText("Save Project")
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/save.png"))
-        self.btnSaveProject.setIcon(icon1)
-        self.btnSaveProject.setIconSize(QtCore.QSize(22, 22))
-        self.horizontalLayout.addWidget(self.btnSaveProject)
+        self.btnSaveProject = QtGui.QAction(icon1, "Save Project", self)
+        self.btnSaveProject.setToolTip("Save Project")
+        self.toolsProject.addAction(self.btnSaveProject)
 
-        self.btnSaveProjectAs = QtGui.QToolButton()
-        self.btnSaveProjectAs.setToolTip("Save Project As")
-        self.btnSaveProjectAs.setText("Save Project As")
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/save-as.png"))
-        self.btnSaveProjectAs.setIcon(icon1)
-        self.btnSaveProjectAs.setIconSize(QtCore.QSize(22, 22))
-        self.horizontalLayout.addWidget(self.btnSaveProjectAs)
+        self.btnSaveProjectAs = QtGui.QAction(icon1,"Save Project As", self)
+        self.btnSaveProjectAs.setToolTip("Save Project As")
+        self.toolsProject.addAction(self.btnSaveProjectAs)
 
-        self.btnCloseProject = QtGui.QToolButton()
-        self.btnCloseProject.setToolTip("Close Project")
-        self.btnCloseProject.setText("Close Project")
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/close.png"))
-        self.btnCloseProject.setIcon(icon1)
-        self.btnCloseProject.setIconSize(QtCore.QSize(22, 22))
-        self.horizontalLayout.addWidget(self.btnCloseProject)
+        self.btnCloseProject = QtGui.QAction(icon1, "Close Project", self)
+        self.btnCloseProject.setToolTip("Close Project")
+        self.toolsProject.addAction(self.btnCloseProject)
 
-        spacerItem = QtGui.QSpacerItem(100, 20, QtGui.QSizePolicy.Expanding,
-                                       QtGui.QSizePolicy.Minimum)
-        self.horizontalLayout.addItem(spacerItem)
         self.verticalLayout.addWidget(self.toolsProject)
         self.treeProjects = QDragTreeWidget(self.dockWidgetContents)
         self.treeProjects.setRootIsDecorated(True)
@@ -280,11 +262,11 @@ class Workspace(QtGui.QDockWidget):
 
     def connectSignals(self):
         #self.treeProjects.currentItemChanged.connect(self.selectedNewProject)
-        self.btnNewProject.clicked.connect(self.addProject)
-        self.btnOpenProject.clicked.connect(self.openProject)
-        self.btnSaveProject.clicked.connect(self.saveProject)
-        self.btnSaveProjectAs.clicked.connect(self.saveProjectAs)
-        self.btnCloseProject.clicked.connect(self.closeProject)
+        self.btnNewProject.triggered.connect(self.addProject)
+        self.btnOpenProject.triggered.connect(self.openProject)
+        self.btnSaveProject.triggered.connect(self.saveProject)
+        self.btnSaveProjectAs.triggered.connect(self.saveProjectAs)
+        self.btnCloseProject.triggered.connect(self.closeProject)
         self.treeProjects.itemClicked.connect(self.item_selected)
         self.connect(self, QtCore.SIGNAL("project_changed"),
                      self.spreadsheetWindow.changeTabController)
@@ -316,6 +298,8 @@ class Workspace(QtGui.QDockWidget):
             for annotation in view.controller.vistrail.action_annotations:
                 if annotation.db_key == 'uvcdatCell':
                     cell = fromAnnotation(annotation.db_value)
+                    plot_type = view.controller.vistrail.get_action_annotation(annotation.db_action_id, 
+                                                                               "uvcdatType")
                     if cell[0] not in item.tag_to_item:
                         tc.setCurrentIndex(tc.addTabWidget(
                             StandardWidgetSheetTab(tc), cell[0]))
@@ -327,7 +311,8 @@ class Workspace(QtGui.QDockWidget):
                     # Add cell
                     pipeline = view.controller.vistrail.getPipeline(annotation.db_action_id)
                     item.controller.vis_was_dropped((pipeline,
-                                                     cell[0], int(cell[1]), int(cell[2])))
+                                                     cell[0], int(cell[1]), 
+                                                     int(cell[2]), plot_type.value))
                     
             if not len(item.sheet_to_item):
                 tc.create_first_sheet()
@@ -371,11 +356,11 @@ class Workspace(QtGui.QDockWidget):
             self.current_controller.connect_spreadsheet()
             self.emit(QtCore.SIGNAL("project_changed"),
                       self.current_controller.name)
-        p = self.treeProjects.currentItem()
+        
         defVars = self.root.dockVariable.widget()
         for i in range(defVars.varList.count()):
             v = defVars.varList.item(i)
-            if not str(p.text(0)) in v.projects:
+            if not str(self.currentProject.text(0)) in v.projects:
                 v.setHidden(True)
             else:
                 v.setHidden(False)
@@ -419,6 +404,9 @@ class Workspace(QtGui.QDockWidget):
         for i, tag in tags:
             if tag not in item.tag_to_item:
                 wfitem = QWorkflowItem(i)
+                ann = view.controller.vistrail.get_action_annotation(i, 
+                                                                     "uvcdatType")
+                wfitem.plotType = ann.value
                 item.namedPipelines.addChild(wfitem)
                 wfitem.update_title()
                 item.tag_to_item[tag] = wfitem

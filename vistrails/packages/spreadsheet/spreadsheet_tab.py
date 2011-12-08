@@ -94,6 +94,7 @@ class StandardWidgetToolBar(QtGui.QToolBar):
         """
         QtGui.QToolBar.__init__(self, parent)
         self.sheetTab = parent
+        self.setIconSize(QtCore.QSize(24,24))
         self.addAction(self.sheetTab.tabWidget.newSheetAction())
         #self.addAction(self.sheetTab.tabWidget.openAction())
         #self.addAction(self.sheetTab.tabWidget.saveAction())
@@ -809,6 +810,7 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             event.accept()
             versionId = mimeData.version
             controller = mimeData.controller
+            plot_type = mimeData.plot_type
             pipeline = controller.vistrail.getPipeline(versionId)
             
             localPos = self.sheet.viewport().mapFromGlobal(QtGui.QCursor.pos())
@@ -818,7 +820,7 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             sheetName = self.getSheetName()
             if (row!=-1 and col!=-1):
                 self.emit(QtCore.SIGNAL("dropped_visualization"), 
-                          (pipeline, sheetName, row, col))
+                          (pipeline, sheetName, row, col, plot_type))
             
         elif mimeData.hasFormat("definedVariables"):
             varName = str(mimeData.text()).split()[1]
@@ -898,6 +900,10 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
     
     def requestPlotExecution(self, row, col):
         self.emit(QtCore.SIGNAL("request_plot_execution"), self.getSheetName(), 
+                    row, col)
+        
+    def requestPlotSource(self, row, col):
+        self.emit(QtCore.SIGNAL("request_plot_source"), self.getSheetName(), 
                     row, col)
         
 class StandardWidgetTabBarEditor(QtGui.QLineEdit):    
