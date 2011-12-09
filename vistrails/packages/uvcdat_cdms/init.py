@@ -21,6 +21,7 @@ from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
 from packages.uvcdat.init import Variable, Plot
 
 canvas = None
+original_gm_attributes = {}
 
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
@@ -150,17 +151,17 @@ class CDMSVariable(Variable):
                 var = genutil.statistics.std(var, axis="(%s)" % axis)
         return var
 
-class CDMSPlot(Plot):
+class CDMSPlot(Plot, NotCacheable):
     _input_ports = expand_port_specs([("variable", "CDMSVariable"),
                                       ("variable2", "CDMSVariable", True),
                                       ("graphicsMethodName", "basic:String"),
                                       ("template", "basic:String"),
-                                      ('datawc_calendar', 'basic:String', True),
+                                      ('datawc_calendar', 'basic:Integer', True),
                                       ('datawc_timeunits', 'basic:String', True),
-                                      ('datawc_x1', 'basic:String', True),
-                                      ('datawc_x2', 'basic:String', True),
-                                      ('datawc_y1', 'basic:String', True),
-                                      ('datawc_y2', 'basic:String', True),
+                                      ('datawc_x1', 'basic:Float', True),
+                                      ('datawc_x2', 'basic:Float', True),
+                                      ('datawc_y1', 'basic:Float', True),
+                                      ('datawc_y2', 'basic:Float', True),
                                       ('xticlabels1', 'basic:String', True),
                                       ('xticlabels2', 'basic:String', True),
                                       ('yticlabels1', 'basic:String', True),
@@ -181,6 +182,7 @@ class CDMSPlot(Plot):
 
     def __init__(self):
         Plot.__init__(self)
+        NotCacheable.__init__(self)
         self.template = "starter"
         self.graphics_method_name = "default"
         self.kwargs = {}
@@ -243,8 +245,8 @@ class CDMSPlot(Plot):
             method_name = "get"+str(self.plot_type).lower()
             gm = getattr(canvas,method_name)(gmName)
             for attr in self.gm_attributes:
-                setattr(self,attr,str(getattr(gm,attr)))
-                self.default_values[attr] = str(getattr(gm,attr))
+                setattr(self,attr,getattr(gm,attr))
+                self.default_values[attr] = getattr(gm,attr)
     
     @staticmethod
     def get_canvas_graphics_method( plotType, gmName):
@@ -253,20 +255,30 @@ class CDMSPlot(Plot):
     
     @classmethod    
     def get_initial_values(klass, gmName):
-        cgm = CDMSPlot.get_canvas_graphics_method(klass.plot_type, gmName)
-        attribs = {}
-        for attr in klass.gm_attributes:
-            attribs[attr] = str(getattr(cgm,attr))
-        return InstanceObject(**attribs)
-        
-class CDMSGraphicsMethod(Module):
-    # FIXME fill this in
-    pass
-
-# class CDMSBoxfill(CDMSPlot):
-#     def __init__(self):
-#         CDMSPlot.__init__(self)
-#         self.plot_type = 'Boxfill'
+        global original_gm_attributes
+        return original_gm_attributes[klass.plot_type][gmName]
+#        cgm = CDMSPlot.get_canvas_graphics_method(klass.plot_type, gmName)
+#        attribs = {}
+#        for attr in klass.gm_attributes:
+#            attribs[attr] = getattr(cgm,attr)
+#        return InstanceObject(**attribs)
+      
+class CDMSTDMarker(Module):
+    _input_ports = expand_port_specs([("status", "basic:List", True),
+                                      ("line", "basic:List", True),
+                                      ("id", "basic:List", True),
+                                      ("id_size", "basic:List", True),
+                                      ("id_color", "basic:List", True),
+                                      ("id_font", "basic:List", True),
+                                      ("symbol", "basic:List", True),
+                                      ("color", "basic:List", True),
+                                      ("size", "basic:List", True),
+                                      ("xoffset", "basic:List", True),
+                                      ("yoffset", "basic:List", True),
+                                      ("linecolor", "basic:List", True),
+                                      ("line_size", "basic:List", True),
+                                      ("line_type", "basic:List", True)])
+    _output_ports = expand_port_specs([("self", "CDMSTDMarker")])
 
 class CDMSCell(SpreadsheetCell):
     _input_ports = expand_port_specs([("plot", "CDMSPlot")])
@@ -290,8 +302,8 @@ class QCDATWidget(QCellWidget):
     vcdat already creates 5 canvas objects
     
     """
-    startIndex = 1 #this should be the current number of canvas objects created 
-    maxIndex = 6
+    startIndex = 2 #this should be the current number of canvas objects created 
+    maxIndex = 7
     usedIndexes = []
     
     def __init__(self, parent=None):
@@ -355,39 +367,18 @@ Please delete unused CDAT Cells in the spreadsheet.")
             if plot.graphics_method_name != 'default':
                 for k in plot.gm_attributes:
                     if hasattr(plot,k):
-                        if k in ['level_1', 'level_2', 'color_1',
-                                 'color_2', 'legend', 'levels',
-                                 'missing', 'datawc_calendar', 'datawc_x1', 
-                                 'datawc_x2', 'datawc_y1', 'datawc_y2',
-                                 'fillareacolors', 'fillareaindices']:
-                            #FIXME: need to find out why these settings get overwritten 
-                            if k == 'levels' and getattr(plot,k) == '()':
-                                setattr(plot,k,"([1.0000000200408773e+20, 1.0000000200408773e+20],)")
-                            if k == 'missing':
-                                setattr(plot,k,str(int(float(getattr(plot,k)))))
-                            print getattr(plot,k)
+                        if k in ['legend']:
                             setattr(cgm,k,eval(getattr(plot,k)))
                         else:
-                            try:
-                                setattr(cgm,k,eval(getattr(plot,k)))
-                            except:
-                                setattr(cgm,k,str(getattr(plot,k)))
+                            setattr(cgm,k,getattr(plot,k))
+                        #print k, " = ", getattr(cgm,k)
+                            
             kwargs = plot.kwargs             
             self.canvas.plot(cgm,*args,**kwargs)
 
-        # if len(inputPorts) > 3:
-        #     gm = inputPorts[1]
-        #     args = inputPorts[2]
-        #     kwargs = inputPorts[3]
-        #     if gm is not None:
-        #         if isinstance(gm, Gfb):
-        #             cgm = self.canvas.getboxfill(gm._name)
-        #             for (k,v) in gm.options.iteritems():
-        #                 setattr(cgm,k,v)
-        #     self.canvas.plot(*args, **kwargs)
-
         spreadsheetWindow.setUpdatesEnabled(True)
-
+        self.update()
+        
     def get_graphics_method(self, plotType, gmName):
         method_name = "get"+str(plotType).lower()
         return getattr(self.canvas,method_name)(gmName)
@@ -411,125 +402,121 @@ Please delete unused CDAT Cells in the spreadsheet.")
         QCellWidget.deleteLater(self)    
 
 
-_modules = [CDMSVariable, CDMSPlot, CDMSGraphicsMethod, CDMSCell]
+_modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker]
 
 def get_input_ports(plot_type):
     if plot_type == "Boxfill":
         return expand_port_specs([('boxfill_type', 'basic:String', True),
-                                  ('color_1', 'basic:String', True),
-                                  ('color_2', 'basic:String', True),
-                                  ('levels', 'basic:String', True),
+                                  ('color_1', 'basic:Integer', True),
+                                  ('color_2', 'basic:Integer', True),
+                                  ('levels', 'basic:List', True),
                                   ('ext_1', 'basic:String', True),
                                   ('ext_2', 'basic:String', True),
-                                  ('fillareacolors', 'basic:String', True),
-                                  ('fillareaindices', 'basic:String', True),
+                                  ('fillareacolors', 'basic:List', True),
+                                  ('fillareaindices', 'basic:List', True),
                                   ('fillareastyle', 'basic:String', True),
                                   ('legend', 'basic:String', True),
-                                  ('level_1', 'basic:String', True),
-                                  ('level_2', 'basic:String', True),
-                                  ('missing', 'basic:String', True),
+                                  ('level_1', 'basic:Float', True),
+                                  ('level_2', 'basic:Float', True),
+                                  ('missing', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ])
     elif plot_type == "Isofill":
-        return expand_port_specs([('levels', 'basic:String', True),
+        return expand_port_specs([('levels', 'basic:List', True),
                                   ('ext_1', 'basic:String', True),
                                   ('ext_2', 'basic:String', True),
-                                  ('fillareacolors', 'basic:String', True),
-                                  ('fillareaindices', 'basic:String', True),
+                                  ('fillareacolors', 'basic:List', True),
+                                  ('fillareaindices', 'basic:List', True),
                                   ('fillareastyle', 'basic:String', True),
                                   ('legend', 'basic:String', True),
-                                  ('missing', 'basic:String', True),
+                                  ('missing', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ]) 
     elif plot_type == "Isoline":
         return expand_port_specs([('label', 'basic:String', True),
-                                  ('levels', 'basic:String', True),
+                                  ('levels', 'basic:List', True),
                                   ('ext_1', 'basic:String', True),
                                   ('ext_2', 'basic:String', True),
-                                  ('fillareacolors', 'basic:String', True),
-                                  ('fillareaindices', 'basic:String', True),
-                                  ('fillareastyle', 'basic:String', True),
-                                  ('legend', 'basic:String', True),
-                                  ('level', 'basic:String', True),
-                                  ('line', 'basic:String', True),
-                                  ('linecolors', 'basic:String', True),
+                                  ('level', 'basic:List', True),
+                                  ('line', 'basic:List', True),
+                                  ('linecolors', 'basic:List', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
-                                  ('linewidths', 'basic:String', True),
-                                  ('text', 'basic:String', True),
-                                  ('textcolors', 'basic:String', True),
-                                  ('clockwise', 'basic:String', True),
-                                  ('scale', 'basic:String', True),
-                                  ('angle', 'basic:String', True),
-                                  ('spacing', 'basic:String', True)
+                                  ('linewidths', 'basic:List', True),
+                                  ('text', 'basic:List', True),
+                                  ('textcolors', 'basic:List', True),
+                                  ('clockwise', 'basic:List', True),
+                                  ('scale', 'basic:List', True),
+                                  ('angle', 'basic:List', True),
+                                  ('spacing', 'basic:List', True)
                                   ]) 
     elif plot_type == "Meshfill":
-        return expand_port_specs([('levels', 'basic:String', True),
+        return expand_port_specs([('levels', 'basic:List', True),
                                   ('ext_1', 'basic:String', True),
                                   ('ext_2', 'basic:String', True),
-                                  ('fillareacolors', 'basic:String', True),
-                                  ('fillareaindices', 'basic:String', True),
+                                  ('fillareacolors', 'basic:List', True),
+                                  ('fillareaindices', 'basic:List', True),
                                   ('fillareastyle', 'basic:String', True),
                                   ('legend', 'basic:String', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
-                                  ('missing', 'basic:String', True),
+                                  ('missing', 'basic:Integer', True),
                                   ('mesh', 'basic:String', True),
-                                  ('wrap', 'basic:String', True)
+                                  ('wrap', 'basic:List', True)
                                   ]) 
     elif plot_type == "Outfill":
-        return expand_port_specs([('outfill', 'basic:String', True),
-                                  ('fillareacolor', 'basic:String', True),
-                                  ('fillareaindex', 'basic:String', True),
+        return expand_port_specs([('outfill', 'basic:List', True),
+                                  ('fillareacolor', 'basic:List', True),
+                                  ('fillareaindex', 'basic:List', True),
                                   ('fillareastyle', 'basic:String', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ]) 
     elif plot_type == "Outline":
-        return expand_port_specs([('outline', 'basic:String', True),
-                                  ('linecolor', 'basic:String', True),
+        return expand_port_specs([('outline', 'basic:List', True),
+                                  ('linecolor', 'basic:Integer', True),
                                   ('line', 'basic:String', True),
-                                  ('linewidth', 'basic:String', True),
+                                  ('linewidth', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ]) 
     elif plot_type == "Scatter":
-        return expand_port_specs([('markercolor', 'basic:String', True),
+        return expand_port_specs([('markercolor', 'basic:Integer', True),
                                   ('marker', 'basic:String', True),
-                                  ('markersize', 'basic:String', True),
+                                  ('markersize', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ]) 
     elif plot_type == "Vector":
-        return expand_port_specs([('scale', 'basic:String', True),
+        return expand_port_specs([('scale', 'basic:Float', True),
                                   ('alignment', 'basic:String', True),
                                   ('type', 'basic:String', True),
-                                  ('reference', 'basic:String', True),
-                                  ('linecolor', 'basic:String', True),
+                                  ('reference', 'basic:Float', True),
+                                  ('linecolor', 'basic:Integer', True),
                                   ('line', 'basic:String', True),
-                                  ('linewidth', 'basic:String', True),
+                                  ('linewidth', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ]) 
     elif plot_type == "XvsY":
-        return expand_port_specs([('linecolor', 'basic:String', True),
+        return expand_port_specs([('linecolor', 'basic:Integer', True),
                                   ('line', 'basic:String', True),
-                                  ('linewidth', 'basic:String', True),
-                                  ('markercolor', 'basic:String', True),
+                                  ('linewidth', 'basic:Integer', True),
+                                  ('markercolor', 'basic:Integer', True),
                                   ('marker', 'basic:String', True),
-                                  ('markersize', 'basic:String', True),
+                                  ('markersize', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ]) 
     elif plot_type == "Xyvsy":
-        return expand_port_specs([('linecolor', 'basic:String', True),
+        return expand_port_specs([('linecolor', 'basic:Integer', True),
                                   ('line', 'basic:String', True),
-                                  ('linewidth', 'basic:String', True),
-                                  ('markercolor', 'basic:String', True),
+                                  ('linewidth', 'basic:Integer', True),
+                                  ('markercolor', 'basic:Integer', True),
                                   ('marker', 'basic:String', True),
-                                  ('markersize', 'basic:String', True),
+                                  ('markersize', 'basic:Integer', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ]) 
     elif plot_type == "Yxvsx":
@@ -542,8 +529,21 @@ def get_input_ports(plot_type):
                                   ('xaxisconvert', 'basic:String', True),
                                   ]) 
     elif plot_type=="Taylordiagram":
-        ### TODO!!!!
-        return []
+        return expand_port_specs([('detail', 'basic:Integer', True),
+                                  ('max', 'basic:String', True),
+                                  ('quadrans', 'basic:Integer', True),
+                                  ('skillColor', 'basic:Integer', True),
+                                  ('skillValues', 'basic:List', True),
+                                  ('skillDrawLabels', 'basic:String', True),
+                                  ('skillCoefficient', 'basic:List', True),
+                                  ('referencevalue', 'basic:Float', True),
+                                  ('arrowlength', 'basic:Float', True),
+                                  ('arrowangle', 'basic:Float', True),
+                                  ('arrowbase', 'basic:Float', True),
+                                  ('cmtics1', 'basic:String', True),
+                                  ('cticlabels1', 'basic:String', True),
+                                  ('Marker', 'CDMSTDMarker', True),
+                                  ]) 
     else:
         return []
 def get_gm_attributes(plot_type):
@@ -629,12 +629,10 @@ def get_gm_attributes(plot_type):
                 'ymtics2', 'yticlabels1', 'yticlabels2']
     elif plot_type == "Taylordiagram":
         return ['detail','max','quadrans',
-                'skillValues','skillColors','skillDrawLabels','skillCoefficient',
+                'skillValues','skillColor','skillDrawLabels','skillCoefficient',
                 'referencevalue','arrowlength','arrowangle','arrowbase',
-                'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2',
-                'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2',
-                'cmtics1', 'cticlabels1', 'Marker',
-                ]
+                'xmtics1', 'xticlabels1', 'ymtics1', 
+                'yticlabels1','cmtics1', 'cticlabels1', 'Marker']
     
 def get_canvas():
     global canvas
@@ -650,11 +648,35 @@ for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
             CDMSPlot.__init__(self)
             #self.plot_type = pt
         return __init__
+    def get_is_cacheable_method():
+        def is_cacheable(self):
+            return False
+        return is_cacheable
+    
     klass = type('CDMS' + plot_type, (CDMSPlot,), 
                  {'__init__': get_init_method(),
                   'plot_type': plot_type,
                   '_input_ports': get_input_ports(plot_type),
-                  'gm_attributes': get_gm_attributes(plot_type)})
+                  'gm_attributes': get_gm_attributes(plot_type),
+                  'is_cacheable': get_is_cacheable_method()})
     # print 'adding CDMS module', klass.__name__
     _modules.append((klass,{'configureWidgetType':GraphicsMethodConfigurationWidget}))
+
+def initialize(*args, **keywords):
+    global original_gm_attributes
+    for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
+                  'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
+                  'Xyvsy', 'Yxvsx']:
+        canvas = get_canvas()
+        method_name = "get"+plot_type.lower()
+        attributes = get_gm_attributes(plot_type)
+        gms = canvas.listelements(str(plot_type).lower())
+        original_gm_attributes[plot_type] = {}
+        for gmname in gms:
+            gm = getattr(canvas,method_name)(gmname)
+            attrs = {}
+            for attr in attributes:
+                attrs[attr] = getattr(gm,attr)
+            original_gm_attributes[plot_type][gmname] = InstanceObject(**attrs)
+   
     
