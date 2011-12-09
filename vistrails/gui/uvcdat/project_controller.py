@@ -139,6 +139,8 @@ class ProjectController(QtCore.QObject):
                      self.request_plot_source)
         self.connect(tabController, QtCore.SIGNAL("cell_deleted"),
                      self.clear_cell)
+        self.connect(tabController, QtCore.SIGNAL("sheet_size_changed"),
+                     self.sheetsize_was_changed)
         
     def disconnect_spreadsheet(self):
         ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
@@ -157,6 +159,8 @@ class ProjectController(QtCore.QObject):
                      self.request_plot_source)
         self.disconnect(tabController, QtCore.SIGNAL("cell_deleted"),
                      self.clear_cell)
+        self.disconnect(tabController, QtCore.SIGNAL("sheet_size_changed"),
+                     self.sheetsize_was_changed)
         
     def variable_was_dropped(self, info):
         """variable_was_dropped(info: (varName, sheetName, row, col) """
@@ -262,6 +266,10 @@ class ProjectController(QtCore.QObject):
                 cell.plot = None
                 cell.template = None
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col)
+
+    def sheetsize_was_changed(self, sheet, dim):
+        self.emit(QtCore.SIGNAL("sheet_size_changed"), sheet, dim)
+
 
     def plot_was_dropped(self, info):
         """plot_was_dropped(info: (plot, sheetName, row, col) """

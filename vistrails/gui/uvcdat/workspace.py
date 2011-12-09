@@ -37,7 +37,7 @@ def fromAnnotation(s):
             i = -1
         i += 1
     res.append(''.join(s))
-    return res
+    return [res[0]]+map(int,res[1:])
 
 def add_annotation(vistrail, version, sheet, row, col, w=None, h=None):
     if w or h:
@@ -46,11 +46,11 @@ def add_annotation(vistrail, version, sheet, row, col, w=None, h=None):
         cell = toAnnotation(sheet, row, col)
     new_id = vistrail.idScope.getNewId(ActionAnnotation.vtType)
     annotation = ActionAnnotation(id=new_id,
-                                    action_id=version,
-                                    key='uvcdatCell',
-                                    value=cell,
-                                    date=vistrail.getDate(),
-                                    user=vistrail.getUser())
+                                  action_id=version,
+                                  key='uvcdatCell',
+                                  value=cell,
+                                  date=vistrail.getDate(),
+                                  user=vistrail.getUser())
     vistrail.db_add_actionAnnotation(annotation)
     vistrail.changed = True
 
@@ -118,6 +118,21 @@ class QProjectItem(QtGui.QTreeWidgetItem):
             else:
                 sheetItem.takeChild(sheetItem.indexOfChild(item))
                 del sheetItem.pos_to_item[(row, col)]
+
+    def sheetSizeChanged(self, sheet, dim=[]):
+        if sheet not in self.sheet_to_item:
+            return
+        key = 'uvcdatSheetSize:' + sheet
+        value = ','.join(map(str, dim))
+        self.view.controller.vistrail.set_annotation(key, value)
+        self.view.controller.set_changed(True)
+        self.view.controllervistrail.changed = True
+        
+
+    def sheetSize(self, sheet):
+        dimval = self.view.controller.vistrail.get_annotation(
+                                                     'uvcdatSheetSize:'+sheet)
+        return map(int, dimval.value.split(',')) if dimval else (2,1)
             
 class QSpreadsheetItem(QtGui.QTreeWidgetItem):
     def __init__(self, name='sheet 1', parent=None):
@@ -318,28 +333,36 @@ class Workspace(QtGui.QDockWidget):
                 if annotation.db_key != 'uvcdatCell':
                     continue
                 cell = fromAnnotation(annotation.db_value)
-                plot_type =view.controller.vistrail.get_action_annotation(
+                plot_type = view.controller.vistrail.get_action_annotation(
                                 annotation.db_action_id, "uvcdatType")
-                if cell[0] not in item.tag_to_item:
+                if cell[0] not in item.sheet_to_item:
+                    rows, cols = self.currentProject.sheetSize(cell[0])
                     tc.setCurrentIndex(tc.addTabWidget(
-                        StandardWidgetSheetTab(tc), cell[0]))
-                    tc.currentWidget().sheet.stretchCells()                    
+                                         StandardWidgetSheetTab(tc), cell[0]))
+                    tab = tc.currentWidget()
+                    tab.sheet.stretchCells()
+                    tab.setDimension(rows, cols)
+                    tab.sheet.setRowCount(rows)
+                    tab.sheet.setColumnCount(cols)
+                    tab.sheet.stretchCells()
+                    tab.displayPrompt()
+                    tab.setEditingMode(tab.tabWidget.editingMode)
                 else:
                     tab = item.sheet_to_tab[cell[0]]
                     self.spreadsheetWindow.get_current_tab_controller(
-                                                ).setCurrentWidget(tab)
+                                                       ).setCurrentWidget(tab)
                 # Add cell
                 pipeline = view.controller.vistrail.getPipeline(
-                                                annotation.db_action_id)
+                                                      annotation.db_action_id)
                 if len(cell)<5:
                     item.controller.vis_was_dropped((pipeline, cell[0],
-                            int(cell[1]), int(cell[2]), plot_type.value))
+                                 int(cell[1]), int(cell[2]), plot_type.value))
                     item.update_cell(cell[0], int(cell[1]), int(cell[2]),
                                      None, None, plot_type.value,
                                      annotation.db_action_id, False)
                 else:
                     item.controller.vis_was_dropped((pipeline, cell[0],
-                            int(cell[1]), int(cell[2]), plot_type.value))
+                                 int(cell[1]), int(cell[2]), plot_type.value))
                     item.update_cell(cell[0], int(cell[1]), int(cell[2]),
                                      int(cell[3]), int(cell[4]),
                                      plot_type.value,
@@ -348,6 +371,9 @@ class Workspace(QtGui.QDockWidget):
                 tc.create_first_sheet()
             self.connect(item.controller, QtCore.SIGNAL("update_cell"),
                      item.update_cell)
+            self.connect(item.controller, QtCore.SIGNAL("sheet_size_changed"),
+                     item.sheetSizeChanged)
+ 
         if view.controller.locator:
             name = view.controller.locator.short_name
             self.viewToItem[id(view)].setText(0, name)
@@ -489,6 +515,8 @@ class Workspace(QtGui.QDockWidget):
             item.setExpanded(True)
             self.currentProject.sheet_to_item[title] = item
             self.currentProject.controller.sheet_map[title] = {}
+            if not self.currentProject.sheetSize(title):
+                self.currentProject.sheetSizeChanged(title, (2,1))
 
     def remove_sheet_tab(self, widget):
         title = None
@@ -510,30 +538,35 @@ class Workspace(QtGui.QDockWidget):
             del self.currentProject.sheet_to_tab[title]
             del self.currentProject.sheet_to_item[title]
             del self.currentProject.controller.sheet_map[title]
+            self.currentProject.sheetSizeChanged(title)
 
     def change_tab_text(self, oldtitle, newtitle):
-        if oldtitle in self.currentProject.sheet_to_item:
-            item = self.currentProject.sheet_to_item[oldtitle]
-            tab = self.currentProject.sheet_to_tab[oldtitle]
-            del self.currentProject.sheet_to_item[oldtitle]
-            del self.currentProject.sheet_to_tab[oldtitle]
-            item.sheetName = newtitle
-            item.setText(0, newtitle)
-            self.currentProject.sheet_to_item[newtitle] = item
-            self.currentProject.sheet_to_tab[newtitle] = tab
-            # update controller sheetmap
-            sheetmap = self.currentProject.controller.sheet_map[oldtitle]
-            del self.currentProject.controller.sheet_map[oldtitle]
-            self.currentProject.controller.sheet_map[newtitle] = sheetmap
-            # Update actionannotations
-            vistrail = self.currentProject.view.controller.vistrail
-            for annotation in vistrail.action_annotations:
-                if annotation.db_key == 'uvcdatCell':
-                    cell = fromAnnotation(annotation.db_value)
-                    if cell[0] == oldtitle: # remove and update
-                        vistrail.db_delete_actionAnnotation(annotation)
-                        add_annotation(vistrail, annotation.db_action_id,
-                                       newtitle, *cell[1:])
+        if oldtitle not in self.currentProject.sheet_to_item:
+            return
+        item = self.currentProject.sheet_to_item[oldtitle]
+        tab = self.currentProject.sheet_to_tab[oldtitle]
+        del self.currentProject.sheet_to_item[oldtitle]
+        del self.currentProject.sheet_to_tab[oldtitle]
+        dimval = self.currentProject.sheetSize(oldtitle)
+        self.currentProject.sheetSizeChanged(oldtitle)
+        self.currentProject.sheetSizeChanged(newtitle, dimval)
+        item.sheetName = newtitle
+        item.setText(0, newtitle)
+        self.currentProject.sheet_to_item[newtitle] = item
+        self.currentProject.sheet_to_tab[newtitle] = tab
+        # update controller sheetmap
+        sheetmap = self.currentProject.controller.sheet_map[oldtitle]
+        del self.currentProject.controller.sheet_map[oldtitle]
+        self.currentProject.controller.sheet_map[newtitle] = sheetmap
+        # Update actionannotations
+        vistrail = self.currentProject.view.controller.vistrail
+        for annotation in vistrail.action_annotations:
+            if annotation.db_key == 'uvcdatCell':
+                cell = fromAnnotation(annotation.db_value)
+                if cell[0] == oldtitle: # remove and update
+                    vistrail.db_delete_actionAnnotation(annotation)
+                    add_annotation(vistrail, annotation.db_action_id,
+                                   newtitle, *cell[1:])
 
     def contextMenuEvent(self, event):
         """ Not used """

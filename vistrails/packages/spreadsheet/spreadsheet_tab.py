@@ -655,6 +655,8 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             self.sheet.stretchCells()
             self.displayPrompt()
             self.setEditingMode(self.tabWidget.editingMode)
+            self.emit(QtCore.SIGNAL('sheet_size_changed'),
+                      self.getSheetName(), self.getDimension())
         
     def colSpinBoxChanged(self):
         """ colSpinBoxChanged() -> None
@@ -666,6 +668,8 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             self.sheet.stretchCells()
             self.displayPrompt()
             self.setEditingMode(self.tabWidget.editingMode)
+            self.emit(QtCore.SIGNAL('sheet_size_changed'),
+                      self.getSheetName(), self.getDimension())
 
     def getSheetName(self):
         return str(self.tabWidget.tabText(self.tabWidget.indexOf(self)))
