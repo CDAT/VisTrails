@@ -4,6 +4,7 @@ from gui.uvcdat.ui_workspace import Ui_Workspace
 from gui.uvcdat.project_controller import ProjectController
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from core.vistrail.action_annotation import ActionAnnotation
+from core.thumbnails import ThumbnailCache
 from packages.spreadsheet.spreadsheet_tab import StandardWidgetSheetTab
 import customizeUVCDAT
 
@@ -126,7 +127,7 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         value = ','.join(map(str, dim))
         self.view.controller.vistrail.set_annotation(key, value)
         self.view.controller.set_changed(True)
-        self.view.controllervistrail.changed = True
+        self.view.controller.vistrail.changed = True
         
 
     def sheetSize(self, sheet):
@@ -167,11 +168,12 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
         project = self.parent()
         while type(project) != QProjectItem:
             project = project.parent()
-
-        tag_map = project.view.controller.vistrail.get_tagMap()
-        action_map = project.view.controller.vistrail.actionMap
+            vistrail = project.view.controller.vistrail
+        tag_map = vistrail.get_tagMap()
+        action_map = vistrail.actionMap
         count = 0
         version = self.workflowVersion
+
         while True:
             if version in tag_map or version <= 0:
                 if version in tag_map:
@@ -195,6 +197,20 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
                                                    self.workflowSpan[1]-1),
                                  self.workflowPos[0] + self.workflowSpan[0])
         self.setText(0, name)
+
+        version = self.workflowVersion
+        if vistrail.has_thumbnail(version):
+            tname = vistrail.get_thumbnail(version)
+            cache = ThumbnailCache.getInstance()
+            path = cache.get_abs_name_entry(tname)
+            if path:
+                pixmap = QtGui.QPixmap(path)
+                self.setIcon(0, QtGui.QIcon(pixmap.scaled(20, 20)))
+                tooltip = """<html>%(name)s<br/><img border=0 src='%(path)s'/></html>
+                        """ % {'name':name, 'path':path}
+                self.setToolTip(0, tooltip)
+
+
                         
 class QProjectsWidget(QtGui.QTreeWidget):
     def __init__(self,parent=None, workspace=None):
@@ -448,8 +464,8 @@ class Workspace(QtGui.QDockWidget):
         item.namedPipelines.setHidden(not tags)
         for tag in item.tag_to_item:
             if tag not in tags:
-                item.namedPipelines.takeChild(item.indexOfChild(
-                                                item.tag_to_item[tag]))
+                item.namedPipelines.takeChild(
+                      item.namedPipelines.indexOfChild(item.tag_to_item[tag]))
                 del item.tag_to_item[tag]
                 break
         # check if a tag has been added
