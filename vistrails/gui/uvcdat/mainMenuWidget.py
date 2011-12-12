@@ -182,7 +182,7 @@ class QMenuWidget(QtGui.QWidget):
             funcnm+=".departures"
             rec = "departures from "
         rec += nm.lower()
-        selectedVars=self.root.definedVar.widget.getSelectedDefinedVariables()
+        selectedVars=self.root.dockVariable.widget().getSelectedDefinedVariables()
         for v in selectedVars:
             tmp = func(v)
             ext = "".join(nm.lower().split())
@@ -190,7 +190,7 @@ class QMenuWidget(QtGui.QWidget):
             if menu != "Extract":
                 newid+=menu.lower()
             tmp.id = newid
-            self.root.definedVar.widget.addVariable(tmp)
+            self.root.dockVariable.widget().addVariable(tmp)
             self.root.record(rec)
             self.root.record("%s = %s(%s)" % (newid,funcnm,v.id))
             
@@ -203,7 +203,7 @@ class QMenuWidget(QtGui.QWidget):
             val,ok = self.bDialog.getDouble(self,"Reset Time Bounds to X-Hourly", "Frequency (# of samples per day)")
             if ok is False or val <= 0.:
                 return
-        selectedVars=self.root.definedVar.widget.getSelectedDefinedVariables()
+        selectedVars=self.root.dockVariable.widget().getSelectedDefinedVariables()
         for v in selectedVars:
             if nm == "Set Bounds For Yearly Data":
                 cdutil.times.setTimeBoundsYearly(v)

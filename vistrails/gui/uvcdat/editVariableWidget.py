@@ -230,7 +230,7 @@ class editVariableWidget(QtGui.QWidget):
         self.root.record("## Modify attribute %s on variable %s" % (attName,self.var.id))
         self.root.record("%s.%s = %s" % (self.var.id,attName,repr(attValue)))
         
-        self.root.definedVar.widget.updateVars()
+        self.root.dockVariable.widget().updateVars()
         #self.root.stick_main_dict_into_defvar(None)        
                     
     def addVarAttribute(self):

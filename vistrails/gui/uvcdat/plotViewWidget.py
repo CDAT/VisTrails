@@ -318,12 +318,12 @@ class QPlotView(QtGui.QWidget):
         if self.isVCSPlot(plotType):
             cType = self.plotOptions.getContinentType()            
             
-            selectedVars=self.root.definedVar.widget.getSelectedDefinedVariables()
+            selectedVars=self.root.dockVariable.widget().getSelectedDefinedVariables()
 
             if len(selectedVars)==0:
                 self.root.tabView.widget(0).defineVariableEvent("QuickPlot")
-                self.root.definedVar.widget.selectVariableFromName("QuickPlot")
-                selectedVars=self.root.definedVar.widget.getSelectedDefinedVariables()
+                self.root.dockVariable.widget().selectVariableFromName("QuickPlot")
+                selectedVars=self.root.dockVariable.widget().getSelectedDefinedVariables()
 
             ## First of all we need to go thru the VCS layouts
             nplotted = 0
@@ -366,7 +366,7 @@ class QPlotView(QtGui.QWidget):
                     nSlabs= self.nSlabsRequired(gmType)
                     for j in range(nSlabs):
                         vnm = str(h.itemAt(4+j).widget().label.text()).split()[0]
-                        vars.append(self.root.definedVar.widget.getVariable(vnm))
+                        vars.append(self.root.dockVariable.widget().getVariable(vnm))
                         if vars[-1] is None:
                             if nused>=len(selectedVars):
                                 self.showError('Error Message to User', '%s plots \nmust have %i data variables. The data \nvariables must be selected in the \n"Defined Variables or dropped into the Variable boxes of the VCS Page layout window.\nCould not find the %ith variable' % (gmType,nSlabs,j+1))
@@ -424,7 +424,7 @@ class QPlotView(QtGui.QWidget):
 #                        self.root.record("vcs_canvas[%i].plot(%s)" % (icanvas,plot_args))
 #                        self.root.canvas[icanvas].plot(*vars,**plot_kargs)
             if self.root.tabView.currentIndex()==0:
-                self.root.definedVar.widget.unselectItems(self.root.definedVar.widget.varList.selectedItems())
+                self.root.dockVariable.widget().unselectItems(self.root.dockVariable.widget().varList.selectedItems())
         elif self.isRegisteredPlot(plotType):
             if isinstance(self.plotOptions.customizePlotFrame,
                           vcsPlotControllerWidget.QGenericPlotController):
