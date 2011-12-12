@@ -125,10 +125,21 @@ class QProjectItem(QtGui.QTreeWidgetItem):
             return
         key = 'uvcdatSheetSize:' + sheet
         value = ','.join(map(str, dim))
-        self.view.controller.vistrail.set_annotation(key, value)
+        vistrail = self.view.controller.vistrail
+        vistrail.set_annotation(key, value)
         self.view.controller.set_changed(True)
-        self.view.controller.vistrail.changed = True
-        
+        vistrail.changed = True
+        # remove cells outside new range
+        sheetItem = self.sheet_to_item[sheet]
+        for annotation in vistrail.action_annotations:
+            if annotation.db_key == 'uvcdatCell':
+                cell = fromAnnotation(annotation.db_value)
+                if dim and cell[0] == sheet and \
+                    cell[1] >= dim[0] or cell[2] >= dim[1]:
+                    vistrail.db_delete_actionAnnotation(annotation)
+                    item = sheetItem.pos_to_item[(cell[1], cell[2])]
+                    sheetItem.takeChild(sheetItem.indexOfChild(item))
+                    del sheetItem.pos_to_item[(cell[1], cell[2])]
 
     def sheetSize(self, sheet):
         dimval = self.view.controller.vistrail.get_annotation(
