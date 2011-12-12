@@ -492,6 +492,11 @@ class Workspace(QtGui.QDockWidget):
                     item.tag_to_item[tag] = wfitem
                 else:
                     print "Error: No Plot Type specified!"
+        for sheet in item.sheet_to_item.itervalues():
+            for i in xrange(sheet.childCount()):
+                child = sheet.child(i)
+                child.update_title()
+
     def item_selected(self, widget_item, column):
         """ opens the selected item if possible
             item can be either project, saved workflow, spreadsheet,
@@ -627,12 +632,6 @@ class Workspace(QtGui.QDockWidget):
                 vistrail.addTag(tag, widget.workflowVersion)
             # loop through all existing item and update
             project.view.stateChanged()
-            for sheet in project.sheet_to_item.itervalues():
-                for i in xrange(sheet.childCount()):
-                    child = sheet.child(i)
-                    if child.workflowVersion == widget.workflowVersion:
-                        child.update_title()
-
 
     def dropEvent(self, event):
         """ Not used """
