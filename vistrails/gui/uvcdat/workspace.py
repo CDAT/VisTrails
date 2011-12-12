@@ -251,7 +251,7 @@ class QProjectsWidget(QtGui.QTreeWidget):
                     # remove tag
                     view = item.parent().parent().view
                     view.controller.vistrail.set_tag(item.workflowVersion, '')
-                    self.workspace.state_changed(view)
+                    view.stateChanged()
         else:
             QtGui.QTreeWidget.keyPressEvent(self, event)
 
@@ -485,11 +485,13 @@ class Workspace(QtGui.QDockWidget):
             if tag not in item.tag_to_item:
                 ann = view.controller.vistrail.get_action_annotation(i, 
                                                                 "uvcdatType")
-                wfitem = QWorkflowItem(i, plot_type=ann.value)
-                item.namedPipelines.addChild(wfitem)
-                wfitem.update_title()
-                item.tag_to_item[tag] = wfitem
-
+                if ann:
+                    wfitem = QWorkflowItem(i, plot_type=ann.value)
+                    item.namedPipelines.addChild(wfitem)
+                    wfitem.update_title()
+                    item.tag_to_item[tag] = wfitem
+                else:
+                    print "Error: No Plot Type specified!"
     def item_selected(self, widget_item, column):
         """ opens the selected item if possible
             item can be either project, saved workflow, spreadsheet,
@@ -624,7 +626,7 @@ class Workspace(QtGui.QDockWidget):
             else:
                 vistrail.addTag(tag, widget.workflowVersion)
             # loop through all existing item and update
-            self.state_changed(project.view)
+            project.view.stateChanged()
             for sheet in project.sheet_to_item.itervalues():
                 for i in xrange(sheet.childCount()):
                     child = sheet.child(i)
