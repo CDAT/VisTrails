@@ -41,26 +41,26 @@ class QCommandLineType(QtGui.QLineEdit):
 
     def keyPressEvent(self,event):
         if event.key() in (QtCore.Qt.Key_Up, ):
-           if len(systemCommands.commandHistory) == 0:
-               return
-           systemCommands.command_num += 1
-           if systemCommands.command_num > len(systemCommands.commandHistory):
-              systemCommands.command_num = len(systemCommands.commandHistory)
-           command = systemCommands.commandHistory[len(systemCommands.commandHistory) - systemCommands.command_num]
-           self.setText( command )
-           self.setFocus()
+            if len(systemCommands.commandHistory) == 0:
+                return
+            systemCommands.command_num += 1
+            if systemCommands.command_num > len(systemCommands.commandHistory):
+                systemCommands.command_num = len(systemCommands.commandHistory)
+            command = systemCommands.commandHistory[len(systemCommands.commandHistory) - systemCommands.command_num]
+            self.setText( command )
+            self.setFocus()
         elif event.key() in (QtCore.Qt.Key_Down, ):
-           systemCommands.command_num -= 1
-           if systemCommands.command_num <= 0:
-              systemCommands.command_num = 0
-              command = ""
-           else:
-              command = systemCommands.commandHistory[len(systemCommands.commandHistory) - systemCommands.command_num]
-           self.setText( command )
-           self.setFocus()
+            systemCommands.command_num -= 1
+            if systemCommands.command_num <= 0:
+                systemCommands.command_num = 0
+                command = ""
+            else:
+                command = systemCommands.commandHistory[len(systemCommands.commandHistory) - systemCommands.command_num]
+            self.setText( command )
+            self.setFocus()
         elif (event.key() == QtCore.Qt.Key_U and event.modifiers() == QtCore.Qt.MetaModifier):
-           self.clear()
-           self.setFocus()
+            self.clear()
+            self.setFocus()
         QtGui.QLineEdit.keyPressEvent(self,event)
         
     def dragEnterEvent(self,event):
@@ -267,6 +267,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
     def issueCmd(self,button):
         st=""
         nm=""
+        vars = []
         txt = str(button.text())
         pressEnter=False
         selected = self.root.dockVariable.widget().varList.selectedItems()
@@ -302,6 +303,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)!=2:
                 st=txt[1:-1]
             else:
+                vars = [selected[0].varName,selected[1].varName]
                 st=selected[0].varName+txt[1:-1]+selected[1].varName
                 if txt[1:-1]=="<":
                     nm="less_"
@@ -319,6 +321,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)!=2:
                 st="MV2.power("
             else:
+                vars = [selected[0].varName,selected[1].varName]
                 st="MV2.power(%s,%s)" % (selected[0].varName,selected[1].varName)
                 self.root.dockVariable.widget().unselectItems(selected)
                 nm="power_"+selected[0].varName+"_"+selected[1].varName+" = "
@@ -328,6 +331,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)!=2:
                 st=".regrid("
             else:
+                vars = [selected[0].varName,selected[1].varName]
                 st="%s.regrid(%s.getGrid())" % (
                                      selected[0].varName,selected[1].varName)
                 self.root.dockVariable.widget().unselectItems(selected)
@@ -338,6 +342,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)!=2:
                 st="MV2.masked_where("
             else:
+                vars = [selected[0].varName,selected[1].varName]
                 st="MV2.masked_where(%s,%s)" % (
                                     selected[0].varName,selected[1].varName)
                 self.root.dockVariable.widget().unselectItems(selected)
@@ -346,6 +351,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                     pressEnter=True
         elif txt == "GET_MASK":
             if len(selected)==1:
+                vars = [selected[0].varName]
                 st="MV2.getmask(%s)" % (selected[0].varName)
                 nm=selected[0].varName+"_mask = "
                 if str(self.le.text())=="" :
@@ -356,6 +362,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)!=2:
                 st="genutil.grower("
             else:
+                vars = [selected[0].varName,selected[1].varName]
                 st="genutil.grower(%s,%s)" % (
                                      selected[0].varName,selected[1].varName)
                 self.root.dockVariable.widget().unselectItems(selected)
@@ -365,6 +372,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
         # ! variable only
         elif txt == "x^2":
             if len(selected)==1:
+                vars = [selected[0].varName]
                 st="%s**2" % selected[0].varName
                 self.root.dockVariable.widget().unselectItems(selected)
                 nm="square_"+selected[0].varName+" = "
@@ -374,6 +382,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 st="**2"
         elif txt == "sqRT":
             if len(selected)==1:
+                vars = [selected[0].varName]
                 st="MV2.sqrt(%s)" % selected[0].varName
                 self.root.dockVariable.widget().unselectItems(selected)
                 nm="sqrt_"+selected[0].varName+" = "
@@ -383,6 +392,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 st="MV2.sqrt("
         elif txt == "1/x":
             if len(selected)==1:
+                vars = [selected[0].varName]
                 st="1/%s" % selected[0].varName
                 self.root.dockVariable.widget().unselectItems(selected)
                 nm="invert_"+selected[0].varName+" = "
@@ -392,6 +402,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 st="1/"
         elif txt == "LN":
             if len(selected)==1:
+                vars = [selected[0].varName]
                 st="MV2.log(%s)" % selected[0].varName
                 self.root.dockVariable.widget().unselectItems(selected)
                 nm="ln_"+selected[0].varName+" = "
@@ -401,6 +412,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 st="MV2.log("
         elif txt == "LOG":
             if len(selected)==1:
+                vars = [selected[0].varName]
                 st="MV2.log10(%s)" % selected[0].varName
                 self.root.dockVariable.widget().unselectItems(selected)
                 nm="log10_"+selected[0].varName+" = "
@@ -410,6 +422,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 st="MV2.log10("
         elif txt == "e^x":
             if len(selected)==1:
+                vars = [selected[0].varName]
                 st="MV2.exp(%s)" % selected[0].varName
                 self.root.dockVariable.widget().unselectItems(selected)
                 nm="exp_"+selected[0].varName+" = "
@@ -419,6 +432,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 st="MV2.exp("
         elif txt == "10^x":
             if len(selected)==1:
+                vars = [selected[0].varName]
                 st="MV2.power(10,%s)" % selected[0].varName
                 self.root.dockVariable.widget().unselectItems(selected)
                 nm="power10_"+selected[0].varName+" = "
@@ -428,6 +442,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 st="MV2.power(10,"
         elif txt == "ABS":
             if len(selected)==1:
+                vars = [selected[0].varName]
                 st="MV2.absolute(%s)" % selected[0].varName
                 self.root.dockVariable.widget().unselectItems(selected)
                 nm="abs_"+selected[0].varName+" = "
@@ -437,6 +452,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 st="MV2.absolute(,"
         elif txt in ["SIN","ARCSIN","COS","ARCOS","TAN","ARCTAN"]:
             if len(selected)==1:
+                vars = [selected[0].varName]
                 st="MV2.%s(%s)" % (txt.lower(),selected[0].varName)
                 self.root.dockVariable.widget().unselectItems(selected)
                 nm=txt.lower()+"_"+selected[0].varName+" = "
@@ -446,6 +462,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 st="MV2.%s(," % (txt.lower())
         elif txt == "STD":
             if len(selected)==1:
+                vars = [selected[0].varName]
                 st="genutil.statistics.std(%s)" % (
                                              txt.lower(),selected[0].varName)
                 self.root.dockVariable.widget().unselectItems(selected)
@@ -497,10 +514,15 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
  
         if st!="":
             if pressEnter:
+                orst = st
                 st="%s%s" % (nm,st)
             self.le.setText(str(self.le.text())+st)
         if pressEnter:
             self.run_command()
+            #send command to project controller to be stored as provenance
+            from api import get_current_project_controller
+            prj_controller = get_current_project_controller()
+            prj_controller.calculator_command(vars, txt, orst, nm[:-3].strip())
         self.le.setFocus()
 
     def run_command(self):

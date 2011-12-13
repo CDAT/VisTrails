@@ -39,6 +39,16 @@ class PlotPipelineHelper(object):
         return result
     
     @staticmethod
+    def find_sink_modules_by_type(pipeline, moduletype):
+        res = []
+        for mid in pipeline.graph.sinks():
+            module = pipeline.modules[mid]
+            desc = module.module_descriptor
+            if issubclass(desc.module, moduletype):
+                res.append(module)
+        return res
+    
+    @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, 
                                    plot_obj, row, col):
         #for now, this helper will generate change parameter actions based on the

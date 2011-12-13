@@ -48,6 +48,7 @@ from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from core.vistrail.controller import VistrailController
 from core.configuration import get_vistrails_configuration
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
+from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
 
 class ProjectController(QtCore.QObject):
     """ProjecController is the class that interfaces between GUI actions in
@@ -59,6 +60,7 @@ class ProjectController(QtCore.QObject):
         self.vt_controller = vt_controller
         self.name = name
         self.defined_variables = {}
+        self.computed_variables = {}
 
         self.sheet_map = {}
         self.plot_registry = get_plot_registry()
@@ -67,6 +69,9 @@ class ProjectController(QtCore.QObject):
     def add_defined_variable(self, var):
         self.defined_variables[var.name] = var
 
+    def calculator_command(self, vars, txt, st, varname):
+        self.computed_variables[varname] = (vars, txt, st, varname)
+        
     def emit_defined_variable(self, var):
         from packages.uvcdat_cdms.init import CDMSVariable
         from packages.uvcdat_pv.init import PVVariable
@@ -362,8 +367,33 @@ class ProjectController(QtCore.QObject):
         if len(cell.variables) == cell.plot.varnum:
             self.update_cell(sheetName, row, col)
 
-    def update_cell(self, sheetName, row, col):        
+    def update_cell(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
+        def get_var_module(varname):
+            if varname not in self.computed_variables:
+                var = self.defined_variables[varname]
+                return var.to_module(self.vt_controller)
+            else:
+                (_vars, txt, st, name) = self.computed_variables[varname]   
+                varms = [] 
+                for v in _vars:
+                    varms.append(get_var_module(v))
+                res = CDMSPipelineHelper.build_variable_operation_pipeline(self.vt_controller,
+                                                                            cell.current_parent_version,
+                                                                            varms, 
+                                                                            txt, 
+                                                                            st,
+                                                                            varname)
+                if type(res) == type((1,)):
+                    actions = res[1]
+                    action = actions[-1]
+                    if action:
+                        cell.current_parent_version = action.id 
+                    varm = res[0]
+                else:
+                    varm = res
+                return varm
+                        
         vars = []
         for i in range(cell.plot.varnum):
             vars.append(self.defined_variables[cell.variables[i]])
@@ -372,8 +402,9 @@ class ProjectController(QtCore.QObject):
             len(cell.variables) == cell.plot.varnum):
             var_modules = []
             for var in vars:
-                var_module = var.to_module(self.vt_controller)
-                var_modules.append(var_module)
+                res = get_var_module(var.name)
+                var_modules.append(res)
+            
             # plot_module = plot.to_module(self.vt_controller)
             self.update_workflow(var_modules, cell, row, col)
             self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, 

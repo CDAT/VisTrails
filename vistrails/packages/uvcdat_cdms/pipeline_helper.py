@@ -9,7 +9,8 @@ import core.db.action
 import core.db.io
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import pyqtSlot, pyqtSignal
-from init import CDMSPlot, CDMSVariable, CDMSCell
+from init import CDMSPlot, CDMSVariable, CDMSCell, CDMSVariableOperation, \
+       CDMSUnaryVariableOperation, CDMSBinaryVariableOperation
 from widgets import GraphicsMethodConfigurationWidget
 from gui.theme import CurrentTheme
 from gui.common_widgets import QDockPushButton
@@ -45,6 +46,28 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         return vars
     
     @staticmethod
+    def find_variables_connected_to_unary_operation_module(controller, pipeline, op_id):
+        conns = controller.get_connections_to(pipeline, [op_id], 
+                                              port_name="input_var")
+        
+        vars = []
+        for conn in conns:
+            vars.append(pipeline.modules[conn.source.moduleId])
+        return vars
+    
+    @staticmethod
+    def find_variables_connected_to_binary_operation_module(controller, pipeline, op_id):
+        conns = controller.get_connections_to(pipeline, [op_id], 
+                                              port_name="input_var1")
+        conns.extend(controller.get_connections_to(pipeline, [op_id], 
+                                              port_name="input_var2"))
+        
+        vars = []
+        for conn in conns:
+            vars.append(pipeline.modules[conn.source.moduleId])
+        return vars
+    
+    @staticmethod
     def create_plot_module(controller, plot_type, plot_gm):
         reg = get_module_registry()
         ops = []
@@ -62,6 +85,65 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             plot_module.add_function(f)
         return plot_module
     
+    @staticmethod
+    def build_variable_operation_pipeline(controller, version, vars, txt, st, 
+                                          varname):
+        reg = get_module_registry()
+        controller.change_selected_version(version)
+        if len(vars) == 1:
+            op_desc = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
+                                       'CDMSUnaryVariableOperation')
+        elif len(vars) == 2:
+            op_desc = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
+                                       'CDMSBinaryVariableOperation')
+        op_module = controller.create_module_from_descriptor(op_desc)
+        op_functions = [('varname', [varname]),
+                        ('python_command', [st])]
+        functions = controller.create_functions(op_module,op_functions)
+        for f in functions:
+            op_module.add_function(f)
+        ops = []
+        ops.append(('add', op_module))
+        
+        if (len(vars) == 1 and 
+            issubclass(vars[0].module_descriptor.module, CDMSVariable)):
+                ops.append(('add', vars[0]))
+                conn1 = controller.create_connection(vars[0], 'self',
+                                                     op_module, 'input_var')
+                ops.append(('add', conn1))
+        elif len(vars) == 2:
+            if issubclass(vars[0].module_descriptor.module, CDMSVariable):
+                ops.append(('add', vars[0]))
+                conn1 = controller.create_connection(vars[0], 'self',
+                                                     op_module, 'input_var1')
+                ops.append(('add', conn1))
+            else:
+                # vars[0] is an operation module
+                conn1 = controller.create_connection(vars[0], 'output_var',
+                                                     op_module, 'input_var')
+                ops.append(('add', conn1))
+            if issubclass(vars[1].module_descriptor.module, CDMSVariable):
+                ops.append(('add', vars[1]))
+                conn2 = controller.create_connection(vars[1], 'self',
+                                                     op_module, 'input_var2')
+                ops.append(('add', conn2))
+        
+            else:
+                # vars[1] is an operation module
+                conn2 = controller.create_connection(vars[1], 'output_var',
+                                                     op_module, 'input_var2')
+                ops.append(('add', conn2))
+                                
+        action = core.db.action.create_action(ops)
+        controller.change_selected_version(version)
+        controller.add_new_action(action)
+        controller.perform_action(action)
+        actions = [action]
+        controller.change_selected_version(action.id)
+        action = controller.add_annotation(('__desc__', txt), op_module.id)
+        actions.append(action)
+        return (op_module, actions)
+                
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_obj, row, col):
         # FIXME want to make sure that nothing changes if var_module
@@ -85,16 +167,26 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         functions = controller.create_functions(plot_module,plot_functions)
         for f in functions:
             plot_module.add_function(f)
+        print var_modules[0]
+        if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
+            ops.append(('add', var_modules[0]))
+        ops.append(('add', plot_module)) 
         
-        ops.append(('add', var_modules[0]))
-        ops.append(('add', plot_module))     
-        conn = controller.create_connection(var_modules[0], 'self',
-                                            plot_module, 'variable')
+        if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
+            conn = controller.create_connection(var_modules[0], 'self',
+                                                plot_module, 'variable')
+        else:
+            conn = controller.create_connection(var_modules[0], 'output_var',
+                                                plot_module, 'variable')
         ops.append(('add', conn))
         if len(var_modules) > 1:
-            conn2 = controller.create_connection(var_modules[1], 'self',
-                                                    plot_module, 'variable2')
-            ops.append(('add', var_modules[1]))
+            if issubclass(var_modules[1].module_descriptor.module, CDMSVariable):
+                conn2 = controller.create_connection(var_modules[1], 'self',
+                                                     plot_module, 'variable2')
+                ops.append(('add', var_modules[1]))
+            else:
+                conn2 = controller.create_connection(var_modules[1], 'output_var',
+                                                     plot_module, 'variable')
             ops.append(('add', conn2))
              
         cell_module = controller.create_module_from_descriptor(
@@ -254,6 +346,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     def build_python_script_from_pipeline(controller, version, plot=None):
         pipeline = controller.vistrail.getPipeline(version)
         var_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSVariable)
+        var_operations = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSVariableOperation)
         cell = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSCell)
         plots = CDMSPipelineHelper.find_plot_modules(pipeline)
         text = "from PyQt4 import QtCore, QtGui\n"
@@ -267,6 +360,19 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             var = CDMSVariable.from_module(varm)
             text += var.to_python_script(ident=ident)
     
+        for varop in var_operations:
+            desc = varop.module_descriptor.module
+            op = desc.from_module(varop)
+            if issubclass(desc, CDMSUnaryVariableOperation):
+                varm = CDMSPipelineHelper.find_variables_connected_to_unary_operation_module(controller, pipeline, varop.id)
+                var = CDMSVariable.from_module(varm)
+                text += op.to_python_script(ident=ident)
+            elif issubclass(desc, CDMSBinaryVariableOperation):
+                [varm1, varm2] = CDMSPipelineHelper.find_variables_connected_to_binary_operation_module(controller, pipeline, varop.id)
+                var1 = CDMSVariable.from_module(varm1)
+                var2 = CDMSVariable.from_module(varm2)
+                text += op.to_python_script(ident=ident)
+                
         text += ident + "canvas = vcs.init()\n"
         for mplot in plots:
             plot = mplot.module_descriptor.module.from_module(mplot)
@@ -275,8 +381,15 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                                                  plot.graphics_method_name)
             text += ident + "args = []\n"
             for varm in CDMSPipelineHelper.find_variables_connected_to_plot_module(controller, pipeline, mplot.id):
-                var = CDMSVariable.from_module(varm)
-                text += ident + "args.append(%s)\n"%var.name
+                desc = varm.module_descriptor
+                if issubclass(desc.module, CDMSVariable):
+                    var = CDMSVariable.from_module(varm)
+                    text += ident + "args.append(%s)\n"%var.name
+                else:
+                    #operation
+                    op = desc.module.from_module(varm)
+                    text += ident + "args.append(%s)\n"%op.varname 
+                
             if plot.graphics_method_name != 'default':
                 for k in plot.gm_attributes:
                     if hasattr(plot,k):

@@ -103,15 +103,15 @@ class CDMSVariable(Variable):
             text += ident + "axesOperations = eval(%s)\n"%self.axesOperations
             text += ident + "for axis in list(axesOperations):\n"
             text += ident + "    if axesOperations[axis] == 'sum':\n"
-            text += ident + "        %s = cdutil.averager(var, axis='(%%s)'%%axis, weight='equal', action='sum')\n"% self.name
+            text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis, weight='equal', action='sum')\n"% (self.name, self.name) 
             text += ident + "    elif axesOperations[axis] == 'avg':\n"
-            text += ident + "        %s = cdutil.averager(var, axis='(%%s)'%%axis, weight='equal')\n"% self.name
+            text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis, weight='equal')\n"% (self.name, self.name)
             text += ident + "    elif axesOperations[axis] == 'wgt':\n"
-            text += ident + "        %s = cdutil.averager(var, axis='(%%s)'%%axis)\n"% self.name
+            text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis)\n"% (self.name, self.name)
             text += ident + "    elif axesOperations[axis] == 'gtm':\n"
-            text += ident + "        %s = genutil.statistics.geometricmean(var, axis='(%%s)'%%axis)\n"% self.name
+            text += ident + "        %s = genutil.statistics.geometricmean(var, axis='(%%s)'%%axis)\n"% (self.name, self.name)
             text += ident + "    elif axesOperations[axis] == 'std':\n"
-            text += ident + "        %s = genutil.statistics.std(var, axis='(%%s)'%%axis)\n"% self.name
+            text += ident + "        %s = genutil.statistics.std(%s, axis='(%%s)'%%axis)\n"% (self.name, self.name)
         return text
     
     @staticmethod
@@ -130,7 +130,8 @@ class CDMSVariable(Variable):
         self.var = self.to_python()
         self.setResult("self", self)
 
-    def applyAxesOperations(self, var, axesOperations):
+    @staticmethod
+    def applyAxesOperations(var, axesOperations):
         """ Apply axes operations to update the slab """
         try:
             axesOperations = eval(axesOperations)
@@ -151,6 +152,129 @@ class CDMSVariable(Variable):
                 var = genutil.statistics.std(var, axis="(%s)" % axis)
         return var
 
+class CDMSVariableOperation(Module):
+    pass
+
+class CDMSUnaryVariableOperation(CDMSVariableOperation):
+    _input_ports = expand_port_specs([("input_var", "CDMSVariable"),
+                                      ("varname", "basic:String"),
+                                      ("python_command", "basic:String")
+                                      ])
+    _output_ports = expand_port_specs([("output_var", "CDMSVariable")])
+    
+    def to_python(self):
+        self.python_command = self.python_command.replace(self.var.name, "self.var.var")
+        var = eval(self.python_command)
+        return var
+    
+    def to_python_script(self, ident=""):
+        text = ident + "%s = %s\n"%(self.varname,
+                                    self.python_command)
+        return text
+    
+    def compute(self):
+        if not self.hasInputFromPort('input_var'):
+            raise ModuleError(self, "'input_var' is mandatory.")
+        if not self.hasInputFromPort("varname"):
+            raise ModuleError(self, "'varname' is mandatory.")
+        if not self.hasInputFromPort("python_command"):
+            raise ModuleError(self, "'python_command' is mandatory.")
+        self.var = self.getInputFromPort('input_var')
+        self.varname = self.getInputFromPort("varname")
+        self.python_command = self.getInputFromPort("python_command")
+        self.outvar = CDMSVariable(filename=None,name=self.varname)
+        self.outvar.var = self.to_python()
+        self.setResult("output_var", self.outvar)
+    
+    @staticmethod
+    def from_module(module):
+        from pipeline_helper import CDMSPipelineHelper
+        op = CDMSUnaryVariableOperation()
+        op.varname = CDMSPipelineHelper.get_fun_value_from_module(module, 'varname')
+        op.python_command = CDMSPipelineHelper.get_fun_value_from_module(module, 'python_command')
+        return op
+        
+    def to_module(self, controller, pkg_identifier=None):
+        reg = get_module_registry()
+        if pkg_identifier is None:
+            pkg_identifier = identifier
+        module = controller.create_module_from_descriptor(
+            reg.get_descriptor_by_name(pkg_identifier, self.__class__.__name__))
+        functions = []
+        if self.varname is not None:
+            functions.append(("varname", [self.name]))
+        if self.python_command is not None:
+            functions.append(("python_command", [self.python_command]))
+        functions = controller.create_functions(module, functions)
+        for f in functions:
+            module.add_function(f)
+        return module        
+            
+class CDMSBinaryVariableOperation(CDMSVariableOperation):
+    _input_ports = expand_port_specs([("input_var1", "CDMSVariable"),
+                                      ("input_var2", "CDMSVariable"),
+                                      ("varname", "basic:String"),
+                                      ("python_command", "basic:String")
+                                      ])
+    _output_ports = expand_port_specs([("output_var", "CDMSVariable")])
+    
+    def compute(self):
+        if not self.hasInputFromPort('input_var1'):
+            raise ModuleError(self, "'input_var1' is mandatory.")
+        
+        if not self.hasInputFromPort('input_var2'):
+            raise ModuleError(self, "'input_var2' is mandatory.")
+        
+        if not self.hasInputFromPort("varname"):
+            raise ModuleError(self, "'varname' is mandatory.")
+        
+        if not self.hasInputFromPort("python_command"):
+            raise ModuleError(self, "'python_command' is mandatory.")
+        
+        self.var1 = self.getInputFromPort('input_var1')
+        self.var2 = self.getInputFromPort('input_var2')
+        self.varname = self.getInputFromPort("varname")
+        self.python_command = self.getInputFromPort("python_command")
+        self.outvar = CDMSVariable(filename=None,name=self.varname)
+        self.outvar.var = self.to_python()
+        self.setResult("output_var", self.outvar)
+        
+    def to_python(self):
+        self.python_command = self.python_command.replace(self.var1.name, "self.var1.var")
+        self.python_command = self.python_command.replace(self.var2.name, "self.var2.var")
+        var = eval(self.python_command)
+        return var
+        
+    def to_python_script(self, ident=""):
+        text = ident + "%s = %s\n"%(self.varname,
+                                    self.python_command)
+        return text
+    
+    @staticmethod
+    def from_module(module):
+        from pipeline_helper import CDMSPipelineHelper
+        op = CDMSBinaryVariableOperation()
+        op.varname = CDMSPipelineHelper.get_fun_value_from_module(module, 'varname')
+        op.python_command = CDMSPipelineHelper.get_fun_value_from_module(module, 'python_command')
+        return op
+    
+    def to_module(self, controller, pkg_identifier=None):
+        reg = get_module_registry()
+        if pkg_identifier is None:
+            pkg_identifier = identifier
+        module = controller.create_module_from_descriptor(
+            reg.get_descriptor_by_name(pkg_identifier, self.__class__.__name__))
+        functions = []
+        if self.varname is not None:
+            functions.append(("varname", [self.name]))
+        if self.python_command is not None:
+            functions.append(("python_command", [self.python_command]))
+        functions = controller.create_functions(module, functions)
+        for f in functions:
+            module.add_function(f)
+        return module
+        
+        
 class CDMSPlot(Plot, NotCacheable):
     _input_ports = expand_port_specs([("variable", "CDMSVariable"),
                                       ("variable2", "CDMSVariable", True),
@@ -402,7 +526,8 @@ Please delete unused CDAT Cells in the spreadsheet.")
         QCellWidget.deleteLater(self)    
 
 
-_modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker]
+_modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
+            CDMSUnaryVariableOperation, CDMSBinaryVariableOperation]
 
 def get_input_ports(plot_type):
     if plot_type == "Boxfill":
