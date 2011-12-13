@@ -1808,16 +1808,19 @@ class QVistrailsWindow(QVistrailViewWindow):
             else:
                 try:
                     import gui.uvcdat.mainwindow
-                    import gui.common_widgets
+                    from packages.vtDV3D.VolumeRenderModule import TransferFunctionConfigurationDialog
+                    from packages.vtDV3D.InteractiveConfiguration import ColormapConfigurationDialog
                     if (isinstance(window, gui.uvcdat.mainwindow.UVCDATMainWindow) or
-                        isinstance(window, gui.common_widgets.QToolWindow)):
+                        isinstance(window, QtGui.QDockWidget) or
+                        isinstance(window, TransferFunctionConfigurationDialog) or
+                        isinstance(window, ColormapConfigurationDialog)):
                         return self.stack.currentWidget()
                 except:
                     pass
             #please do not remove this warning. It is necessary to know
             #what type of window is causing the get_current_view to return
             # a wrong value -- Emanuele.
-            debug.warning("[invalid view] get_current_view() -> %s"%window)
+            debug.debug("[invalid view] get_current_view() -> %s"%window)
             return self.stack.currentWidget()
 
         

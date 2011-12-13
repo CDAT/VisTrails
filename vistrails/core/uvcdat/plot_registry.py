@@ -401,15 +401,37 @@ class Plot(object):
     def addMergedAliases( self, aliases, pipeline ):
         if self.serializedConfigAlias:
             if self.serializedConfigAlias in pipeline.aliases:
-                fileAliases = '|'.join( [ "%s!%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
-                varAliases = '|'.join( [ "%s!%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
-                gridAliases = '|'.join( [ "%s!%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
-                aliases[ self.serializedConfigAlias ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
-                print " vcdatInputSpecs: ", str( aliases[ self.serializedConfigAlias ] )
-#            if 'vcdatCellSpecs' in pipeline.aliases:
+                try:
+                    fileAliases = '|'.join( [ "%s!%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
+                    varAliases = '|'.join( [ "%s!%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
+                    gridAliases = '|'.join( [ "%s!%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
+                    aliases[ self.serializedConfigAlias ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
+                    print " vcdatInputSpecs: ", str( aliases[ self.serializedConfigAlias ] )
+                except KeyError:
+                    # it failed because the other aliases do not exist
+                    # it's very likely that the serialized alias is already set.
+                    debug.debug("Could not build serialized alias from other aliases. Using current one.")
+#                if 'vcdatCellSpecs' in pipeline.aliases:
 #                aliases[ 'vcdatCellSpecs' ] = ','.join( [ "%s%s" % ( chr( ord('A') + int(aliases[self.cells[i].col_name]) ), aliases[self.cells[i].row_name] )  for i in range(self.cellnum) ] )
 #                print " vcdatCellSpecs: ", str( aliases[ 'vcdatCellSpecs' ] )
         
+    def unserializeAliases(self, aliases):
+        if self.serializedConfigAlias:
+            if self.serializedConfigAlias in aliases:
+                (fileAliases, varAliases, gridAliases) = aliases[self.serializedConfigAlias].split(";")
+                fileAliases = fileAliases.split("|")
+                varAliases = varAliases.split("|")
+                gridAliases = gridAliases.split("|")
+                for i in range(self.filenum):
+                    a, v = fileAliases[i].split("!")
+                    aliases[self.files[i]] = v
+                for i in range(self.varnum):
+                    a,v = varAliases[i].split("!")
+                    aliases[self.vars[i]] = v
+                for i in range(self.varnum):
+                    a,v = gridAliases[i].split("!")
+                    aliases[self.axes[i]] = v
+                    
     def previewChanges(self, aliases):
         print "previewChanges", aliases
         # we will just execute the pipeline with the given alias dictionary
@@ -471,9 +493,9 @@ class Plot(object):
                         param_changes.append(op)
 #                        print "Added parameter change for alias=%s, value=%s" % ( k, value  )
                     else:
-                        debug.warning("CDAT Package: Change parameter %s in widget %s was not generated"%(k, self.name))
+                        debug.debug("CDAT Package: Change parameter %s in widget %s was not generated"%(k, self.name))
             else:
-                debug.warning( "CDAT Package: Alias %s does not exist in pipeline" % (k) )
+                debug.debug( "CDAT Package: Alias %s does not exist in pipeline" % (k) )
         action = None
         if len(param_changes) > 0:
             action = core.db.action.create_action(param_changes)

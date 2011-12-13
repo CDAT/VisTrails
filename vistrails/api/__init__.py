@@ -98,6 +98,19 @@ def get_current_controller():
         return _app.builderWindow.get_current_controller()
     except AttributeError:
         raise NoVistrail
+    
+def get_current_project_controller():
+    """get_current_project_controller():
+
+    returns the VistrailController of the currently selected vistrail.
+
+    raises NoVistrail.
+
+    """
+    try:
+        return _app.uvcdatWindow.get_current_project_controller()
+    except AttributeError:
+        raise NoVistrail
 
 def get_current_vistrail():
     """get_current_vistrail():

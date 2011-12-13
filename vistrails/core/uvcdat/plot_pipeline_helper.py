@@ -98,7 +98,11 @@ class PlotPipelineHelper(object):
         aliases = {}
         for a in pipeline.aliases:
             aliases[a] = pipeline.get_alias_str_value(a)
-    
+        
+        if (plot_obj.serializedConfigAlias and 
+            plot_obj.serializedConfigAlias in aliases):
+            plot_obj.unserializeAliases(aliases)
+            
         #FIXME: this will always spread the cells in the same column
         for j in range(plot_obj.cellnum):
             aliases[plot_obj.cells[j].row_name] = str(row+1+j)

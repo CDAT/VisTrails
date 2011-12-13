@@ -241,12 +241,19 @@ class ProjectController(QtCore.QObject):
                             self.defined_variables[varname] = var
                             self.emit_defined_variable(var)
                 if cell.plot.package == "DV3D":
+                    aliases = {}
+                    for a in pipeline.aliases:
+                        aliases[a] = pipeline.get_alias_str_value(a)
+                            
+                    if cell.plot.serializedConfigAlias:
+                        cell.plot.unserializeAliases(aliases)
+                        
                     for i in range(len(cell.variables)):
-                        filename = pipeline.get_alias_str_value(cell.plot.files[i])
-                        varname = pipeline.get_alias_str_value(cell.plot.vars[i])
+                        filename = aliases[cell.plot.files[i]]
+                        varname = aliases[cell.plot.vars[i]]
                         axes = None
                         if len(cell.plot.axes) > i:
-                            axes = pipeline.get_alias_str_value(cell.plot.axes[i])
+                            axes = aliases[cell.plot.axes[i]]
                         if varname not in self.defined_variables:
                             var =  CDMSVariable(filename=filename, 
                                                 name=varname, axes=axes)
