@@ -322,6 +322,8 @@ class ProjectController(QtCore.QObject):
     def execute_plot(self, version):
         self.vt_controller.change_selected_version(version)
         (results, _) = self.vt_controller.execute_current_workflow()
+        from gui.vistrails_window import _app
+        _app.notify('execution_updated')
             
     def request_plot_configure(self, sheetName, row, col):
         from gui.uvcdat.plot import PlotProperties
