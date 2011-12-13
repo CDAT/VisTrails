@@ -677,7 +677,7 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         parmRecList.append( ( 'cell_location' , [ self.cellAddress ]  ), )  
         parmRecList.append( ( 'title' , [ self.title ]  ), )  
         parmRecList.append( ( 'opacity' , [ float( self.opacitySlider.value() ) / SLIDER_MAX_VALUE ]  ), )  
-        self.persistParameterList( parmRecList )
+        action = self.persistParameterList( parmRecList )
         self.stateChanged(False)         
 
            

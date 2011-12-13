@@ -232,7 +232,6 @@ class GraphWidget(QtGui.QGraphicsView):
         self.tickLen = 12
         self.tickLabels = ( [], [] )
         self.bounds = None
-        self.maxNNodes = 15
         self.labelTextAlignment = [ QtCore.Qt.AlignHCenter, QtCore.Qt.AlignRight ]
         self.buildTickLabelRects()
 
@@ -250,11 +249,11 @@ class GraphWidget(QtGui.QGraphicsView):
         self.setMinimumSize( self.size[0]+100, self.size[1] )
         self.setWindowTitle("Simple Graph")
         
-    def buildGraph( self ):
+    def buildGraph( self, nNodes ):
         self.clear()
         node1 = None
-        dx = self.size[0]/( self.maxNNodes - 1 )
-        for iN in range( self.maxNNodes ):
+        dx = self.size[0]/( nNodes - 1 )
+        for iN in range(nNodes):
             node2 = Node(self)
             self.nodes.append( node2 )
             x = iN * dx
@@ -317,7 +316,8 @@ class GraphWidget(QtGui.QGraphicsView):
                 self.data.append( point )
             else: last_point = point
         self.bounds = ( xbounds, ybounds )
-        if len( self.nodes ) == 0: self.buildGraph()
+        if len( self.nodes ) <> len( self.data ):
+            self.buildGraph( len( self.data ) )
         for iP in range( len( self.data ) ):
             ptdata = self.data[iP]
             if len( ptdata ) == 3:
@@ -332,9 +332,6 @@ class GraphWidget(QtGui.QGraphicsView):
                 self.nodes[iP].setPos ( pt0 )
                 self.nodes[iP].setVector ( vector )
                 if len( ptdata ) > 5: self.nodes[iP].addCoupledNode( self.nodes[ ptdata[5] ] )
-        xout, yout = self.size[0]*2, self.size[1]*2
-        for iP in range( len( self.data ), self.maxNNodes ):
-            self.nodes[iP].setPos ( xout, yout )
         self.update()
             
     def getScenePoint(self, point, xbounds, ybounds ):

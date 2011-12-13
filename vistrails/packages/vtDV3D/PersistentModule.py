@@ -887,6 +887,7 @@ class PersistentModule( QObject ):
             import api
             DV3DConfigurationWidget.savingChanges = True
             ctrl = api.get_current_controller()
+            prj_ctrl = api.get_current_project_controller()
             strParmRecList = []
             self.getDatasetId( **args )
             for parmRec in parmRecList:
@@ -894,7 +895,7 @@ class PersistentModule( QObject ):
                 output = parmRec[1]
                 param_values_str = [ str(x) for x in output ] if isList(output) else str( output )  
                 strParmRecList.append( ( parameter_name, param_values_str ) )
-            change_parameters( self.moduleID, strParmRecList, ctrl )           
+            action = change_parameters( self.moduleID, strParmRecList, ctrl )           
             tag = self.getParameterId()
             taggedVersion = self.tagCurrentVersion( tag )
             for parmRec in parmRecList:
@@ -907,6 +908,7 @@ class PersistentModule( QObject ):
             if updatePipelineConfiguration: ctrl.select_latest_version() 
             DV3DConfigurationWidget.savingChanges = False
             self.wmod = None
+            return action
                          
     def finalizeParameter(self, parameter_name, *args ):
         try:
