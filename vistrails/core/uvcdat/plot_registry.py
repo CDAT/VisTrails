@@ -192,7 +192,11 @@ class Plot(object):
                         section_name = 'cell' + str(x+1)
                         if config.has_section(section_name):
                             cellType = config.get(section_name, 'celltype')
-                            self.cells.append( Cell( cellType, 'Row' + str(x+1), 'Column' + str(x+1) ) )                                                                    
+                            if config.has_option(section_name, 'address_alias'):
+                                self.cells.append( Cell( cellType, None, None,
+                                                     config.get(section_name, 'address_alias') ) )
+                            else:
+                                self.cells.append(Cell( cellType,"Row"+str(x+1), "Column"+str(x+1) ) )                                                              
                 else:
                     
                     for y in range(self.filenum):
@@ -505,10 +509,11 @@ class Plot(object):
         return action
     
 class Cell(object):
-    def __init__(self, type=None, row_name=None, col_name=None):
+    def __init__(self, type=None, row_name=None, col_name=None, address_name=None):
         self.type = type
         self.row_name = row_name
         self.col_name = col_name
+        self.address_name = address_name
         
 class PlotRegistrySignals(QtCore.QObject):
     # new_module_signal is emitted with descriptor of new module

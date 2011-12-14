@@ -69,10 +69,14 @@ class PlotPipelineHelper(object):
             if len(plot_obj.axes) > i:
                 aliases[plot_obj.axes[i]] = axes
 
-        #FIXME: this will always spread the cells in the same column
+        #FIXME: this will always spread the cells in the same row
         for j in range(plot_obj.cellnum):
-            aliases[plot_obj.cells[j].row_name] = str(row+1+j)
-            aliases[plot_obj.cells[j].col_name] = str(col+1)
+            if plot_obj.cells[j].row_name and plot_obj.cells[j].col_name:
+                aliases[plot_obj.cells[j].row_name] = str(row+1)
+                aliases[plot_obj.cells[j].col_name] = str(col+1+j)
+            elif plot_obj.cells[j].address_name:
+                aliases[plot_obj.cells[j].address_name] = "%s%s"%(chr(ord('A') + col+j),
+                                                                  row+1)
             
         for a,w in plot_obj.alias_widgets.iteritems():
             aliases[a] = w.contents()
@@ -113,10 +117,14 @@ class PlotPipelineHelper(object):
             plot_obj.serializedConfigAlias in aliases):
             plot_obj.unserializeAliases(aliases)
             
-        #FIXME: this will always spread the cells in the same column
+        #FIXME: this will always spread the cells in the same row
         for j in range(plot_obj.cellnum):
-            aliases[plot_obj.cells[j].row_name] = str(row+1+j)
-            aliases[plot_obj.cells[j].col_name] = str(col+1)
+            if plot_obj.cells[j].row_name and plot_obj.cells[j].col_name:
+                aliases[plot_obj.cells[j].row_name] = str(row+1)
+                aliases[plot_obj.cells[j].col_name] = str(col+1+j)
+            elif plot_obj.cells[j].address_name:
+                aliases[plot_obj.cells[j].address_name] = "%s%s"%(chr(ord('A') + col+j),
+                                                                  row+1)
         
         actions = plot_obj.applyChanges(aliases)
         
