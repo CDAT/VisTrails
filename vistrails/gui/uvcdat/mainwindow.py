@@ -167,6 +167,14 @@ class UVCDATMainWindow(QtGui.QMainWindow):
                      QtCore.SIGNAL("change_tab_text"),
                      self.workspace.change_tab_text)
         
+    def closeEvent(self, e):
+        """ closeEvent(e: QCloseEvent) -> None
+        Only hide the builder window
+
+        """
+        if not self.quit():
+            e.ignore()
+        
     def quit(self):
         #FIXME
         #ask to save projects
@@ -176,6 +184,15 @@ class UVCDATMainWindow(QtGui.QMainWindow):
             pass
         if self.preferences.saveB4Exit.isChecked():
             self.preferences.saveState()
+        from gui.vistrails_window import _app
+        _app._is_quitting = True
+        if _app.close_all_vistrails():
+            QtCore.QCoreApplication.quit()
+            # In case the quit() failed (when Qt doesn't have the main
+            # event loop), we have to return True still
+            return True
+        _app._is_quitting = False
+        return False
         QtGui.QApplication.instance().quit()
         
     def showVariableProperties(self):

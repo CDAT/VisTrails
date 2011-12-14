@@ -69,7 +69,7 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         self.setIcon(0,icon)
         if view.controller.locator:
             name = view.locator.short_name 
-        self.setText(0,name)
+        self.setText(0,str(name)+'*')
         self.controller = ProjectController(view.controller, name)
         font = self.font(0)
         font.setBold(True)
@@ -119,6 +119,9 @@ class QProjectItem(QtGui.QTreeWidgetItem):
             else:
                 sheetItem.takeChild(sheetItem.indexOfChild(item))
                 del sheetItem.pos_to_item[(row, col)]
+        self.view.controller.set_changed(True)
+        from gui.vistrails_window import _app
+        _app.state_changed(self.view)
 
     def sheetSizeChanged(self, sheet, dim=[]):
         if sheet not in self.sheet_to_item:
@@ -128,7 +131,8 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         vistrail = self.view.controller.vistrail
         vistrail.set_annotation(key, value)
         self.view.controller.set_changed(True)
-        vistrail.changed = True
+        from gui.vistrails_window import _app
+        _app.state_changed(self.view)
         # remove cells outside new range
         sheetItem = self.sheet_to_item[sheet]
         for annotation in vistrail.action_annotations:
@@ -221,8 +225,6 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
                         """ % {'name':name, 'path':path}
                 self.setToolTip(0, tooltip)
 
-
-                        
 class QProjectsWidget(QtGui.QTreeWidget):
     def __init__(self,parent=None, workspace=None):
         QtGui.QTreeWidget.__init__(self,parent=parent)
@@ -467,11 +469,16 @@ class Workspace(QtGui.QDockWidget):
         _app.close_vistrail()
 
     def state_changed(self, view):
-        """ update tags """
+        """ update tags and project titles"""
         item = self.viewToItem[id(view)]
+        if item.view.controller.locator:
+            name = item.view.locator.short_name 
+            if item.view.has_changes():
+                name += '*'
+            item.setText(0,name)
+        
         # check if a tag has been deleted
         tags = view.controller.vistrail.get_tagMap().values()
-
         item.namedPipelines.setHidden(not tags)
         for tag in item.tag_to_item:
             if tag not in tags:
@@ -602,18 +609,6 @@ class Workspace(QtGui.QDockWidget):
                     add_annotation(vistrail, annotation.db_action_id,
                                    newtitle, *cell[1:])
 
-    def contextMenuEvent(self, event):
-        """ Not used """
-        item = self.treeProjects.itemAt(event.pos())
-        if item and type(item) == QWorkflowItem:
-            # tag this visualization with a name
-            menu = QtGui.QMenu(self)
-            act = QtGui.QAction("Give name", self,
-                                triggered=item.tag_version)
-            act.setStatusTip("Tag this visualization with a name")
-            menu.addAction(act)
-            menu.exec_(event.globalPos())
-
     def item_double_clicked(self, widget, col):
         if widget and type(widget) == QWorkflowItem:
             # tag this visualization with a name
@@ -632,25 +627,6 @@ class Workspace(QtGui.QDockWidget):
                 vistrail.addTag(tag, widget.workflowVersion)
             # loop through all existing item and update
             project.view.stateChanged()
-
-    def dropEvent(self, event):
-        """ Not used """
-        """ Execute the pipeline at the particular location or sends events to
-        project controller so it can set the workflows """
-        mimeData = event.mimeData()       
-        if (hasattr(mimeData, 'versionId') and
-            hasattr(mimeData, 'controller')):
-            event.accept()
-            versionId = mimeData.versionId
-            controller = mimeData.controller
-            pipeline = controller.vistrail.getPipeline(versionId)
-
-            inspector = PipelineInspector()
-            inspector.inspect_spreadsheet_cells(pipeline)
-            inspector.inspect_ambiguous_modules(pipeline)
-            if len(inspector.spreadsheet_cells)==1:
-                print "one cell only"
-            print "cells", inspector.spreadsheet_cells
 
     def get_current_project_controller(self):
         return self.current_controller

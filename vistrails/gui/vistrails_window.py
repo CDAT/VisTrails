@@ -1755,20 +1755,14 @@ class QVistrailsWindow(QVistrailViewWindow):
 
     def closeEvent(self, e):
         """ closeEvent(e: QCloseEvent) -> None
-        Close the whole application when the builder is closed
+        Only hide the builder window
 
         """
         if not self.quit():
             e.ignore()
 
     def quit(self):
-        self._is_quitting = True
-        if self.close_all_vistrails():
-            QtCore.QCoreApplication.quit()
-            # In case the quit() failed (when Qt doesn't have the main
-            # event loop), we have to return True still
-            return True
-        self._is_quitting = False
+        self.hide()
         return False
 
     def link_registry(self):
