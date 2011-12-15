@@ -143,6 +143,34 @@ class PlotPipelineHelper(object):
         return None
     
     @staticmethod
+    def load_pipeline_in_location(pipeline, controller, sheetName, row, col, 
+                                        plot_type, cell):
+        #for now this helper will change the location in place
+        #based on the alias dictionary
+        from core.uvcdat.plotmanager import get_plot_manager
+        controller.change_selected_version(cell.current_parent_version)
+        plot_obj = get_plot_manager().get_plot_by_vistrail_version(plot_type, 
+                                                                   controller.vistrail,
+                                                                   controller.current_version)
+        plot_obj.current_parent_version = cell.current_parent_version
+        plot_obj.current_controller = controller
+        cell.plot = plot_obj
+            
+        #FIXME: this will always spread the cells in the same row
+        for j in range(plot_obj.cellnum):
+            if plot_obj.cells[j].row_name and plot_obj.cells[j].col_name:
+                pipeline.set_alias_str_value(plot_obj.cells[j].row_name, str(row+1))
+                pipeline.set_alias_str_value(plot_obj.cells[j].col_name, str(col+1+j))
+            elif plot_obj.cells[j].address_name:
+                pipeline.set_alias_str_value(plot_obj.cells[j].address_name,
+                                             "%s%s"%(chr(ord('A') + col+j),
+                                                                  row+1))        
+        #this will update the variables
+        for i in range(plot_obj.varnum):
+            cell.variables.append(pipeline.get_alias_str_value(plot_obj.vars[i]))            
+
+    
+    @staticmethod
     def build_python_script_from_pipeline(controller, version, plot=None):
         from api import load_workflow_as_function
         text = "from api import load_workflow_as_function\n"

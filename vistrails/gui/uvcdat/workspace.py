@@ -381,16 +381,17 @@ class Workspace(QtGui.QDockWidget):
                     self.spreadsheetWindow.get_current_tab_controller(
                                                        ).setCurrentWidget(tab)
                 # Add cell
-                pipeline = view.controller.vistrail.getPipeline(
-                                                      annotation.db_action_id)
+               
                 if len(cell)<5:
-                    item.controller.vis_was_dropped((pipeline, cell[0],
+                    item.controller.vis_was_dropped((view.controller, 
+                                 annotation.db_action_id, cell[0],
                                  int(cell[1]), int(cell[2]), plot_type.value))
                     item.update_cell(cell[0], int(cell[1]), int(cell[2]),
                                      None, None, plot_type.value,
                                      annotation.db_action_id, False)
                 else:
-                    item.controller.vis_was_dropped((pipeline, cell[0],
+                    item.controller.vis_was_dropped((view.controller,
+                                 annotation.db_action_id, cell[0],
                                  int(cell[1]), int(cell[2]), plot_type.value))
                     item.update_cell(cell[0], int(cell[1]), int(cell[2]),
                                      int(cell[3]), int(cell[4]),
@@ -472,7 +473,7 @@ class Workspace(QtGui.QDockWidget):
         """ update tags and project titles"""
         item = self.viewToItem[id(view)]
         if item.view.controller.locator:
-            name = item.view.locator.short_name 
+            name = item.view.controller.locator.short_name 
             if item.view.has_changes():
                 name += '*'
             item.setText(0,name)

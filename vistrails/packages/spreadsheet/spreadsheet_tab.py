@@ -805,8 +805,8 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
                 if (row!=-1 and col!=-1):
                     pipeline = self.setPipelineToLocateAt(row, col, pipeline)
             executePipelineWithProgress(pipeline, 'Execute Cell',
-                                        vistrailLocator=controller.locator,
-                                        currentVersion=versionId,
+                                        locator=controller.locator,
+                                        current_version=versionId,
                                         reason='Drop Version')
         
         elif (hasattr(mimeData, 'version') and
@@ -815,7 +815,7 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             versionId = mimeData.version
             controller = mimeData.controller
             plot_type = mimeData.plot_type
-            pipeline = controller.vistrail.getPipeline(versionId)
+            #pipeline = controller.vistrail.getPipeline(versionId)
             
             localPos = self.sheet.viewport().mapFromGlobal(QtGui.QCursor.pos())
             row = self.sheet.rowAt(localPos.y())
@@ -824,7 +824,7 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             sheetName = self.getSheetName()
             if (row!=-1 and col!=-1):
                 self.emit(QtCore.SIGNAL("dropped_visualization"), 
-                          (pipeline, sheetName, row, col, plot_type))
+                          (controller, versionId, sheetName, row, col, plot_type))
             
         elif mimeData.hasFormat("definedVariables"):
             varName = str(mimeData.text()).split()[1]

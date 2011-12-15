@@ -196,8 +196,8 @@ class ProjectController(QtCore.QObject):
                                                                       current_parent_version=0L)
             
     def vis_was_dropped(self, info):
-        """vis_was_dropped(info: (pipeline, sheetName, row, col) """
-        (pipeline, sheetName, row, col, plot_type) = info
+        """vis_was_dropped(info: (controller, version, sheetName, row, col) """
+        (controller, version, sheetName, row, col, plot_type) = info
         
         if sheetName in self.sheet_map:
             if (row,col) not in self.sheet_map[sheetName]:
@@ -213,14 +213,38 @@ class ProjectController(QtCore.QObject):
         cell = self.sheet_map[sheetName][(row,col)]
         if cell.plot is not None and len(cell.variables) > 0:
             self.reset_workflow(cell)
-            
-        helper = self.plot_manager.get_plot_helper(plot_type)
-        action = helper.copy_pipeline_to_other_location(pipeline, self.vt_controller,
-                                                        sheetName, row, col, 
-                                                        plot_type,
-                                                        cell)
         
+        helper = self.plot_manager.get_plot_helper(plot_type)
+        pipeline = controller.vistrail.getPipeline(version)
+
+        if controller == self.vt_controller:
+            #controllers are the same, just point cell to the version
+            cell.current_parent_version = version
+            helper.load_pipeline_in_location(pipeline,self.vt_controller,
+                                             sheetName, row, col, plot_type, cell)
+        else:
+            #copy pipeline to this controller.vistrail
+            action = helper.copy_pipeline_to_other_location(pipeline, self.vt_controller,
+                                                            sheetName, row, col, 
+                                                            plot_type, cell)
+            #cell.current_parent_version was updated in copy_pipeline_to_other_location
+            
         #check if a new var was added:
+        self.search_and_emit_new_variables(cell)
+                    
+        self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, None,
+                  plot_type, cell.current_parent_version)
+        
+        if controller == self.vt_controller:
+            self.execute_plot_pipeline(pipeline, cell)
+        else:
+            self.execute_plot(cell.current_parent_version)
+        
+    def search_and_emit_new_variables(self, cell):
+        """search_and_emit_new_variables(cell) -> None
+        It will go through the variables in the cell and define them if they are 
+        not defined. Sometimes it is necessary to reconstruct the variable 
+        because some workflows are not using the Variable modules yet. """
         not_found = False
         for var in cell.variables:
             if var not in self.defined_variables:
@@ -234,7 +258,7 @@ class ProjectController(QtCore.QObject):
             if len(var_modules) > 0:
                 self.load_variables_from_modules(var_modules)
             else:
-                #when the workflows are updated to include the variable modules.
+                #when all workflows are updated to include the variable modules.
                 #they will be included in the case above. For now we need to 
                 #construct the variables based on the alias values (Emanuele)
                 if cell.plot.package == "PVClimate":
@@ -264,10 +288,6 @@ class ProjectController(QtCore.QObject):
                                                 name=varname, axes=axes)
                             self.defined_variables[varname] = var
                             self.emit_defined_variable(var)
-                    
-        self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, None,
-                  plot_type, cell.current_parent_version)
-        self.execute_plot(cell.current_parent_version)
         
     def clear_cell(self, sheetName, row, col):
         if sheetName in self.sheet_map:
@@ -325,6 +345,15 @@ class ProjectController(QtCore.QObject):
         from gui.vistrails_window import _app
         _app.notify('execution_updated')
             
+    def execute_plot_pipeline(self, pipeline, cell):
+        from packages.spreadsheet.spreadsheet_execute import executePipelineWithProgress
+        executePipelineWithProgress(pipeline, 'Execute Cell',
+                                    locator=self.vt_controller.locator,
+                                    current_version=cell.current_parent_version,
+                                    reason='UV-CDAT Drop Visualization')
+        from gui.vistrails_window import _app
+        _app.notify('execution_updated')
+        
     def request_plot_configure(self, sheetName, row, col):
         from gui.uvcdat.plot import PlotProperties
         cell = self.sheet_map[sheetName][(row,col)]

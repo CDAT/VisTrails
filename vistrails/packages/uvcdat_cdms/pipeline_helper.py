@@ -299,6 +299,40 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         return action
     
     @staticmethod
+    def load_pipeline_in_location(pipeline, controller, sheetName, row, col, 
+                                 plot_type, cell):
+        """load_pipeline_in_location(pipeline, controller, sheetName, row, col, 
+                                 plot_type, cell) -> None
+        This assumes that the pipeline is already set to run in that location 
+        and if not it will update the pipeline in place without generating new 
+        actions. It will update the cell with the variables and plot types """
+        
+        reg = get_module_registry()
+        cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, CellLocation)
+        cell_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, SpreadsheetCell) 
+        var_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSVariable)
+        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSPlot)
+        
+        # we assume that there is only one CellLocation and one SpreadsheetCell
+        # update location values in place.
+        loc_module = cell_locations[0]
+        for i in xrange(loc_module.getNumFunctions()):
+            if loc_module.functions[i].name == 'Row':
+                loc_module.functions[i].params[0].strValue = str(row+1)
+            elif loc_module.functions[i].name == "Column":
+                loc_module.functions[i].params[0].strValue = str(col+1)
+                    
+        # Update project controller cell information
+        cell.variables = []
+        for var in var_modules:
+            cell.variables.append(CDMSPipelineHelper.get_value_from_function(var, 'name'))
+            
+        #FIXME: This will return only the first plot type it finds.
+        gmName = CDMSPipelineHelper.get_graphics_method_name_from_module(plot_modules[0])
+        ptype = CDMSPipelineHelper.get_plot_type_from_module(plot_modules[0])
+        cell.plot = get_plot_manager().get_plot(plot_type, ptype, gmName)
+        
+    @staticmethod
     def update_pipeline_action(controller, version, plot_modules):
         pipeline = controller.vistrail.getPipeline(version)
         pip_plots =  CDMSPipelineHelper.find_plot_modules(pipeline)
