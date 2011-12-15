@@ -119,6 +119,7 @@ class QProjectItem(QtGui.QTreeWidgetItem):
             else:
                 sheetItem.takeChild(sheetItem.indexOfChild(item))
                 del sheetItem.pos_to_item[(row, col)]
+        sheetItem.update_icon()
         self.view.controller.set_changed(True)
         from gui.vistrails_window import _app
         _app.state_changed(self.view)
@@ -144,6 +145,8 @@ class QProjectItem(QtGui.QTreeWidgetItem):
                     item = sheetItem.pos_to_item[(cell[1], cell[2])]
                     sheetItem.takeChild(sheetItem.indexOfChild(item))
                     del sheetItem.pos_to_item[(cell[1], cell[2])]
+        sheetItem.update_icon()
+
 
     def sheetSize(self, sheet):
         dimval = self.view.controller.vistrail.get_annotation(
@@ -153,14 +156,44 @@ class QProjectItem(QtGui.QTreeWidgetItem):
 class QSpreadsheetItem(QtGui.QTreeWidgetItem):
     def __init__(self, name='sheet 1', parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/map-icon.png"))
-        self.setIcon(0, icon)
         self.sheetName = name
         self.setText(0, name)
         self.pos_to_item = {}
         self.setExpanded(True)
         self.setFlags(self.flags() & ~QtCore.Qt.ItemIsSelectable)
+
+    def update_icon(self):
+        """ compose workflow icons into a spreadsheet icon """
+        size = 24
+        pic = QtGui.QPixmap(size, size)
+        cols, rows = self.parent().sheetSize(self.sheetName)
+        w, h = size/cols, size/rows
+        painter = QtGui.QPainter(pic)
+        painter.fillRect(0, 0, size, size, QtCore.Qt.lightGray)
+        vistrail = self.parent().view.controller.vistrail
+        for pos, item in self.pos_to_item.iteritems(): 
+            if vistrail.has_thumbnail(item.workflowVersion):
+                x, y = pos
+                tname = vistrail.get_thumbnail(item.workflowVersion)
+                cache = ThumbnailCache.getInstance()
+                path = cache.get_abs_name_entry(tname)
+                if path:
+                    pixmap = QtGui.QPixmap(path)
+                    painter.fillRect(h*y, w*x, h, w, QtCore.Qt.white)
+                    painter.drawPixmap(h*y, w*x, h, w, pixmap.scaled(h, w, transformMode=QtCore.Qt.SmoothTransformation))
+        # draw spreadsheet grid
+        painter.setPen(QtCore.Qt.black)
+        for x in xrange(rows+1):
+            painter.drawLine(x*h-0.01, 0, x*h-0.01, size)
+        for y in xrange(cols+1):
+            painter.drawLine(0, y*w-0.01, size, y*w-0.01)
+        painter.end()
+        self.setIcon(0, QtGui.QIcon(pic))
+       
+        #tooltip = """<html>%(name)s<br/><img border=0 src='%(path)s'/></html>
+        #                    """ % {'name':name, 'path':path}
+        #self.setToolTip(0, tooltip)
+
 
 class QWorkflowItem(QtGui.QTreeWidgetItem):
     def __init__(self, version, position=None, span=None, plot_type=None, parent=None):
@@ -220,7 +253,7 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
             path = cache.get_abs_name_entry(tname)
             if path:
                 pixmap = QtGui.QPixmap(path)
-                self.setIcon(0, QtGui.QIcon(pixmap.scaled(20, 20)))
+                self.setIcon(0, QtGui.QIcon(pixmap.scaled(24, 24, transformMode=QtCore.Qt.SmoothTransformation)))
                 tooltip = """<html>%(name)s<br/><img border=0 src='%(path)s'/></html>
                         """ % {'name':name, 'path':path}
                 self.setToolTip(0, tooltip)
@@ -525,6 +558,8 @@ class Workspace(QtGui.QDockWidget):
             project = sheet.parent()
         elif type(widget_item)==QWorkflowItem:
             project = widget_item.parent().parent()
+            if type(widget_item.parent()) == QSpreadsheetItem:
+                sheet = widget_item.parent()
         else: # is a Saved Workflows item
             widget_item.setSelected(False)        
             project = widget_item.parent()
@@ -554,6 +589,7 @@ class Workspace(QtGui.QDockWidget):
             self.currentProject.sheet_to_tab[title] = widget
             item = QSpreadsheetItem(title)
             self.currentProject.addChild(item)
+            item.update_icon()
             item.setExpanded(True)
             self.currentProject.sheet_to_item[title] = item
             self.currentProject.controller.sheet_map[title] = {}
