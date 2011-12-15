@@ -524,8 +524,27 @@ Please delete unused CDAT Cells in the spreadsheet.")
         
         QCDATWidget.usedIndexes.remove(self.windowId)
         QCellWidget.deleteLater(self)    
-
-
+        
+    def dumpToFile(self, filename):
+        """ dumpToFile(filename: str, dump_as_pdf: bool) -> None
+        Dumps itself as an image to a file, calling grabWindowPixmap """
+        self.saveToPNG(filename)
+        
+    def saveToPNG(self, filename):
+        """ saveToPNG(filename: str) -> bool
+        Save the current widget contents to an image file
+        
+        """
+        
+        self.canvas.png(filename)
+        
+    def saveToPDF(self, filename):
+        """ saveToPDF(filename: str) -> bool
+        Save the current widget contents to a pdf file
+        
+        """   
+        self.canvas.pdf(filename)
+        
 _modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
             CDMSUnaryVariableOperation, CDMSBinaryVariableOperation]
 
