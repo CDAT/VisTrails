@@ -192,7 +192,11 @@ class Plot(object):
                         section_name = 'cell' + str(x+1)
                         if config.has_section(section_name):
                             cellType = config.get(section_name, 'celltype')
-                            self.cells.append( Cell( cellType, 'Row' + str(x+1), 'Column' + str(x+1) ) )                                                                    
+                            if config.has_option(section_name, 'address_alias'):
+                                self.cells.append( Cell( cellType, None, None,
+                                                     config.get(section_name, 'address_alias') ) )
+                            else:
+                                self.cells.append(Cell( cellType,"Row"+str(x+1), "Column"+str(x+1) ) )                                                              
                 else:
                     
                     for y in range(self.filenum):
@@ -303,17 +307,22 @@ class Plot(object):
             result.append(c.col_name)
         return result
     
-    def checkIfWorkflowsAreCompatible(self):
-        vistrail_a = self.current_controller.vistrail
-        vistrail_b = self.plot_vistrail
-        version_a = self.current_parent_version
-        version_b = self.workflow_version
+    @staticmethod
+    def are_workflows_equal(vistrail_a, vistrail_b, version_a, version_b):
         diff_versions = ((vistrail_a, version_a), (vistrail_b, version_b))
         diff = get_workflow_diff(*diff_versions)
         (p1, p2, v1Andv2, heuristicMatch, v1Only, v2Only, paramChanged) = diff
         if len(v1Only) == 0 and len(v2Only)==0:
             return True
         return False
+    
+    def checkIfWorkflowsAreCompatible(self):
+        vistrail_a = self.current_controller.vistrail
+        vistrail_b = self.plot_vistrail
+        version_a = self.current_parent_version
+        version_b = self.workflow_version
+        return self.are_workflows_equal(vistrail_a, vistrail_b,
+                                        version_a, version_b)
     
     def resetWorkflow(self):
         pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
@@ -396,15 +405,37 @@ class Plot(object):
     def addMergedAliases( self, aliases, pipeline ):
         if self.serializedConfigAlias:
             if self.serializedConfigAlias in pipeline.aliases:
-                fileAliases = '|'.join( [ "%s!%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
-                varAliases = '|'.join( [ "%s!%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
-                gridAliases = '|'.join( [ "%s!%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
-                aliases[ self.serializedConfigAlias ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
-                print " vcdatInputSpecs: ", str( aliases[ self.serializedConfigAlias ] )
-#            if 'vcdatCellSpecs' in pipeline.aliases:
+                try:
+                    fileAliases = '|'.join( [ "%s!%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
+                    varAliases = '|'.join( [ "%s!%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
+                    gridAliases = '|'.join( [ "%s!%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
+                    aliases[ self.serializedConfigAlias ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
+                    print " vcdatInputSpecs: ", str( aliases[ self.serializedConfigAlias ] )
+                except KeyError:
+                    # it failed because the other aliases do not exist
+                    # it's very likely that the serialized alias is already set.
+                    debug.debug("Could not build serialized alias from other aliases. Using current one.")
+#                if 'vcdatCellSpecs' in pipeline.aliases:
 #                aliases[ 'vcdatCellSpecs' ] = ','.join( [ "%s%s" % ( chr( ord('A') + int(aliases[self.cells[i].col_name]) ), aliases[self.cells[i].row_name] )  for i in range(self.cellnum) ] )
 #                print " vcdatCellSpecs: ", str( aliases[ 'vcdatCellSpecs' ] )
         
+    def unserializeAliases(self, aliases):
+        if self.serializedConfigAlias:
+            if self.serializedConfigAlias in aliases:
+                (fileAliases, varAliases, gridAliases) = aliases[self.serializedConfigAlias].split(";")
+                fileAliases = fileAliases.split("|")
+                varAliases = varAliases.split("|")
+                gridAliases = gridAliases.split("|")
+                for i in range(self.filenum):
+                    a, v = fileAliases[i].split("!")
+                    aliases[self.files[i]] = v
+                for i in range(self.varnum):
+                    a,v = varAliases[i].split("!")
+                    aliases[self.vars[i]] = v
+                for i in range(self.varnum):
+                    a,v = gridAliases[i].split("!")
+                    aliases[self.axes[i]] = v
+                    
     def previewChanges(self, aliases):
         print "previewChanges", aliases
         # we will just execute the pipeline with the given alias dictionary
@@ -466,9 +497,9 @@ class Plot(object):
                         param_changes.append(op)
 #                        print "Added parameter change for alias=%s, value=%s" % ( k, value  )
                     else:
-                        debug.warning("CDAT Package: Change parameter %s in widget %s was not generated"%(k, self.name))
+                        debug.debug("CDAT Package: Change parameter %s in widget %s was not generated"%(k, self.name))
             else:
-                debug.warning( "CDAT Package: Alias %s does not exist in pipeline" % (k) )
+                debug.debug( "CDAT Package: Alias %s does not exist in pipeline" % (k) )
         action = None
         if len(param_changes) > 0:
             action = core.db.action.create_action(param_changes)
@@ -478,10 +509,11 @@ class Plot(object):
         return action
     
 class Cell(object):
-    def __init__(self, type=None, row_name=None, col_name=None):
+    def __init__(self, type=None, row_name=None, col_name=None, address_name=None):
         self.type = type
         self.row_name = row_name
         self.col_name = col_name
+        self.address_name = address_name
         
 class PlotRegistrySignals(QtCore.QObject):
     # new_module_signal is emitted with descriptor of new module

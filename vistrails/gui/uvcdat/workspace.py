@@ -3,14 +3,16 @@ from PyQt4 import QtCore, QtGui
 from gui.uvcdat.ui_workspace import Ui_Workspace
 from gui.uvcdat.project_controller import ProjectController
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
-
+from core.vistrail.action_annotation import ActionAnnotation
+from core.thumbnails import ThumbnailCache
+from packages.spreadsheet.spreadsheet_tab import StandardWidgetSheetTab
 import customizeUVCDAT
 
 def toAnnotation(sheet, x, y, w=None, h=None):
     """ toAnnotation(sheet: str, x: int/str, y: int/str, w: int, h: int): str
         escapes sheet string and puts all in a comma-separated string
     """
-    sheet = ''.join(map(lambda x: {'\\':'\\\\', ',':'\,'}.get(x, x), sheet))
+    sheet = ''.join(map(lambda i: {'\\':'\\\\', ',':'\,'}.get(i, i), sheet))
     if w is None or h is None:
         return ','.join(map(str, [sheet, x, y]))   
     return ','.join(map(str, [sheet, x, y, w, h]))
@@ -36,67 +38,165 @@ def fromAnnotation(s):
             i = -1
         i += 1
     res.append(''.join(s))
-    return res
+    return [res[0]]+map(int,res[1:])
+
+def add_annotation(vistrail, version, sheet, row, col, w=None, h=None):
+    if w or h:
+        cell = toAnnotation(sheet, row, col, w, h)
+    else:
+        cell = toAnnotation(sheet, row, col)
+    new_id = vistrail.idScope.getNewId(ActionAnnotation.vtType)
+    annotation = ActionAnnotation(id=new_id,
+                                  action_id=version,
+                                  key='uvcdatCell',
+                                  value=cell,
+                                  date=vistrail.getDate(),
+                                  user=vistrail.getUser())
+    vistrail.db_add_actionAnnotation(annotation)
+    vistrail.changed = True
 
 class QProjectItem(QtGui.QTreeWidgetItem):
     def __init__(self, view=None, name='', parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
         self.view = view
         #i = QtGui.QIcon(customizeVCDAT.appIcon)
+        self.setFlags(self.flags() & ~QtCore.Qt.ItemIsSelectable)
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/folder_blue.png"), state=QtGui.QIcon.Off)
-        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/folder_blue_open.png"), state=QtGui.QIcon.On)
+        closedPixmap, openPixmap = [QtGui.QPixmap(":/icons/resources/icons/" +
+            f + ".png") for f in ['folder_blue', 'folder_blue_open']]
+        icon.addPixmap(closedPixmap, state=QtGui.QIcon.Off)
+        icon.addPixmap(openPixmap, state=QtGui.QIcon.On)
         self.setIcon(0,icon)
         if view.controller.locator:
             name = view.locator.short_name 
-        self.setText(0,name)
+        self.setText(0,str(name)+'*')
         self.controller = ProjectController(view.controller, name)
         font = self.font(0)
         font.setBold(True)
         self.setFont(0, font)
-        self.currentSheet = None
         self.namedPipelines = QtGui.QTreeWidgetItem(['Named Visualizations'])
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/folder_blue.png"), state=QtGui.QIcon.Off)
-        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/folder_blue_open.png"), state=QtGui.QIcon.On)
         self.namedPipelines.setIcon(0,icon)
+        self.namedPipelines.setFlags(self.flags()&~QtCore.Qt.ItemIsSelectable)
+
         self.addChild(self.namedPipelines)
         self.tag_to_item = {}
         self.sheet_to_item = {}
         self.sheet_to_tab = {}
 
-    def update_cell(self, sheetName, row, col, version=0):
+    def update_cell(self, sheetName, row, col, w=None, h=None, plot_type=None,
+                    version=0, annotate=True):
         if sheetName not in self.sheet_to_item:
             return
         sheetItem = self.sheet_to_item[sheetName]
+        vistrail = self.view.controller.vistrail
+        if plot_type and version and annotate:
+            vistrail.set_action_annotation(version, 'uvcdatType', plot_type)
+        
         if (row, col) not in sheetItem.pos_to_item:
-            item = QWorkflowItem(version, (row, col))
+            item = QWorkflowItem(version, (row, col), plot_type=plot_type)
             sheetItem.addChild(item)
             sheetItem.pos_to_item[(row, col)] = item
             item.update_title()
-        else:
+            # add actionAnnotation
+            if annotate:
+                add_annotation(vistrail, version, sheetName, row, col, w, h)
+        elif annotate:
+            # always remove old even if updating
+            for annotation in vistrail.action_annotations:
+                if annotation.db_key == 'uvcdatCell':
+                    cell = fromAnnotation(annotation.db_value)
+                    if cell[0] == sheetName and \
+                        cell[1] == row and cell[2] == col:
+                        vistrail.db_delete_actionAnnotation(annotation)
             item = sheetItem.pos_to_item[(row, col)]
             if version:
+                # update actionAnnotation (add new)
+                add_annotation(vistrail, version, sheetName, row, col, w, h)
                 item.workflowVersion = version
                 item.workflowPos = (row, col)
+                item.plotType = plot_type
                 item.update_title()
             else:
                 sheetItem.takeChild(sheetItem.indexOfChild(item))
                 del sheetItem.pos_to_item[(row, col)]
+        sheetItem.update_icon()
+        self.view.controller.set_changed(True)
+        from gui.vistrails_window import _app
+        _app.state_changed(self.view)
+
+    def sheetSizeChanged(self, sheet, dim=[]):
+        if sheet not in self.sheet_to_item:
+            return
+        key = 'uvcdatSheetSize:' + sheet
+        value = ','.join(map(str, dim))
+        vistrail = self.view.controller.vistrail
+        vistrail.set_annotation(key, value)
+        self.view.controller.set_changed(True)
+        from gui.vistrails_window import _app
+        _app.state_changed(self.view)
+        # remove cells outside new range
+        sheetItem = self.sheet_to_item[sheet]
+        for annotation in vistrail.action_annotations:
+            if annotation.db_key == 'uvcdatCell':
+                cell = fromAnnotation(annotation.db_value)
+                if dim and cell[0] == sheet and \
+                    cell[1] >= dim[0] or cell[2] >= dim[1]:
+                    vistrail.db_delete_actionAnnotation(annotation)
+                    item = sheetItem.pos_to_item[(cell[1], cell[2])]
+                    sheetItem.takeChild(sheetItem.indexOfChild(item))
+                    del sheetItem.pos_to_item[(cell[1], cell[2])]
+        sheetItem.update_icon()
+
+
+    def sheetSize(self, sheet):
+        dimval = self.view.controller.vistrail.get_annotation(
+                                                     'uvcdatSheetSize:'+sheet)
+        return map(int, dimval.value.split(',')) if dimval else (2,1)
             
 class QSpreadsheetItem(QtGui.QTreeWidgetItem):
     def __init__(self, name='sheet 1', parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/map-icon.png"))
-        self.setIcon(0, icon)
         self.sheetName = name
         self.setText(0, name)
         self.pos_to_item = {}
         self.setExpanded(True)
+        self.setFlags(self.flags() & ~QtCore.Qt.ItemIsSelectable)
+
+    def update_icon(self):
+        """ compose workflow icons into a spreadsheet icon """
+        size = 24
+        pic = QtGui.QPixmap(size, size)
+        cols, rows = self.parent().sheetSize(self.sheetName)
+        w, h = size/cols, size/rows
+        painter = QtGui.QPainter(pic)
+        painter.fillRect(0, 0, size, size, QtCore.Qt.lightGray)
+        vistrail = self.parent().view.controller.vistrail
+        for pos, item in self.pos_to_item.iteritems(): 
+            if vistrail.has_thumbnail(item.workflowVersion):
+                x, y = pos
+                tname = vistrail.get_thumbnail(item.workflowVersion)
+                cache = ThumbnailCache.getInstance()
+                path = cache.get_abs_name_entry(tname)
+                if path:
+                    pixmap = QtGui.QPixmap(path)
+                    painter.fillRect(h*y, w*x, h, w, QtCore.Qt.white)
+                    painter.drawPixmap(h*y, w*x, h, w, pixmap.scaled(h, w, transformMode=QtCore.Qt.SmoothTransformation))
+        # draw spreadsheet grid
+        painter.setPen(QtCore.Qt.black)
+        for x in xrange(rows+1):
+            painter.drawLine(x*h-0.01, 0, x*h-0.01, size)
+        for y in xrange(cols+1):
+            painter.drawLine(0, y*w-0.01, size, y*w-0.01)
+        painter.end()
+        self.setIcon(0, QtGui.QIcon(pic))
+       
+        #tooltip = """<html>%(name)s<br/><img border=0 src='%(path)s'/></html>
+        #                    """ % {'name':name, 'path':path}
+        #self.setToolTip(0, tooltip)
+
 
 class QWorkflowItem(QtGui.QTreeWidgetItem):
-    def __init__(self, version, position=None, span=None, parent=None):
+    def __init__(self, version, position=None, span=None, plot_type=None, parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
         # workflowVersion is the vistrail version id
         self.workflowVersion = version
@@ -104,6 +204,8 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
         self.workflowPos = position
         # workflowSpan is a spreadsheet span like ("1", "2") default is ("1", "1")
         self.workflowSpan = span
+        # plotType is the package type of a plot, like VCS, PVClimate, DV3D
+        self.plotType = plot_type
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/pipeline.png"))
         self.setIcon(0, icon)
@@ -114,11 +216,12 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
         project = self.parent()
         while type(project) != QProjectItem:
             project = project.parent()
-
-        tag_map = project.view.controller.vistrail.get_tagMap()
-        action_map = project.view.controller.vistrail.actionMap
+            vistrail = project.view.controller.vistrail
+        tag_map = vistrail.get_tagMap()
+        action_map = vistrail.actionMap
         count = 0
         version = self.workflowVersion
+
         while True:
             if version in tag_map or version <= 0:
                 if version in tag_map:
@@ -142,12 +245,24 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
                                                    self.workflowSpan[1]-1),
                                  self.workflowPos[0] + self.workflowSpan[0])
         self.setText(0, name)
-                        
-class QDragTreeWidget(QtGui.QTreeWidget):
-    
-    def __init__(self,parent=None):
+
+        version = self.workflowVersion
+        if vistrail.has_thumbnail(version):
+            tname = vistrail.get_thumbnail(version)
+            cache = ThumbnailCache.getInstance()
+            path = cache.get_abs_name_entry(tname)
+            if path:
+                pixmap = QtGui.QPixmap(path)
+                self.setIcon(0, QtGui.QIcon(pixmap.scaled(24, 24, transformMode=QtCore.Qt.SmoothTransformation)))
+                tooltip = """<html>%(name)s<br/><img border=0 src='%(path)s'/></html>
+                        """ % {'name':name, 'path':path}
+                self.setToolTip(0, tooltip)
+
+class QProjectsWidget(QtGui.QTreeWidget):
+    def __init__(self,parent=None, workspace=None):
         QtGui.QTreeWidget.__init__(self,parent=parent)
-        
+        self.workspace = workspace
+
     def mimeData(self, items):
         if not len(items) == 1 or type(items[0]) != QWorkflowItem:
             return
@@ -158,84 +273,80 @@ class QDragTreeWidget(QtGui.QTreeWidget):
         m = QtCore.QMimeData()
         m.version = item.workflowVersion
         m.controller = project.view.controller
+        m.plot_type = item.plotType
         return m
-        
+    
+    def keyPressEvent(self, event):
+        if event.key() in [QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
+            items = self.selectedItems()
+            if len(items) == 1:
+                item = items[0]
+                if type(item) == QWorkflowItem and \
+                   type(item.parent()) != QSpreadsheetItem:
+                    # remove tag
+                    view = item.parent().parent().view
+                    view.controller.vistrail.set_tag(item.workflowVersion, '')
+                    view.stateChanged()
+        else:
+            QtGui.QTreeWidget.keyPressEvent(self, event)
+
 class Workspace(QtGui.QDockWidget):
     def __init__(self, parent=None):
         super(Workspace, self).__init__(parent)
         self.root=parent.root
         self.viewToItem = {}
         self.numProjects = 1
-        self.current_controller = None
         self.setupUi(self)
-        self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+        self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow(
+                                                                show=False)
         self.connectSignals()
         self.currentProject = None
+        self.current_controller = None
 
     def setupUi(self, Workspace):
         Workspace.resize(404, 623)
-        Workspace.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea|QtCore.Qt.RightDockWidgetArea)
+        Workspace.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea|
+                                  QtCore.Qt.RightDockWidgetArea)
         Workspace.setWindowTitle("Projects")
         self.dockWidgetContents = QtGui.QWidget()
         self.verticalLayout = QtGui.QVBoxLayout(self.dockWidgetContents)
         self.verticalLayout.setSpacing(0)
         self.verticalLayout.setMargin(0)
-        self.toolsProject = QtGui.QFrame(self.dockWidgetContents)
-        self.toolsProject.setFrameShape(QtGui.QFrame.StyledPanel)
-        self.toolsProject.setFrameShadow(QtGui.QFrame.Raised)
-        self.horizontalLayout = QtGui.QHBoxLayout(self.toolsProject)
-        self.horizontalLayout.setSpacing(1)
-        self.horizontalLayout.setMargin(0)
-
-        self.btnNewProject = QtGui.QToolButton()
-        self.btnNewProject.setToolTip("Create New Project")
-        self.btnNewProject.setText("New Project")
+        self.toolsProject = QtGui.QToolBar(self.dockWidgetContents)
+        self.toolsProject.setIconSize(QtCore.QSize(24,24))
+        
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/new.png"))
-        self.btnNewProject.setIcon(icon)
-        self.btnNewProject.setIconSize(QtCore.QSize(22, 22))
-        self.horizontalLayout.addWidget(self.btnNewProject)
-
-        self.btnOpenProject = QtGui.QToolButton()
-        self.btnOpenProject.setToolTip("Open Project")
-        self.btnOpenProject.setText("Open Project")
+        self.btnNewProject = QtGui.QAction(icon, "New Project",self)
+        self.btnNewProject.setToolTip("Create New Project")
+        self.toolsProject.addAction(self.btnNewProject)
+        
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/open.png"))
-        self.btnOpenProject.setIcon(icon1)
-        self.btnOpenProject.setIconSize(QtCore.QSize(22, 22))
-        self.horizontalLayout.addWidget(self.btnOpenProject)
+        self.btnOpenProject = QtGui.QAction(icon1,"Open Project", self)
+        self.btnOpenProject.setToolTip("Open Project")
+        self.toolsProject.addAction(self.btnOpenProject)
 
-        self.btnSaveProject = QtGui.QToolButton()
-        self.btnSaveProject.setToolTip("Save Project")
-        self.btnSaveProject.setText("Save Project")
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/save.png"))
-        self.btnSaveProject.setIcon(icon1)
-        self.btnSaveProject.setIconSize(QtCore.QSize(22, 22))
-        self.horizontalLayout.addWidget(self.btnSaveProject)
+        self.btnSaveProject = QtGui.QAction(icon1, "Save Project", self)
+        self.btnSaveProject.setToolTip("Save Project")
+        self.toolsProject.addAction(self.btnSaveProject)
 
-        self.btnSaveProjectAs = QtGui.QToolButton()
-        self.btnSaveProjectAs.setToolTip("Save Project As")
-        self.btnSaveProjectAs.setText("Save Project As")
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/save-as.png"))
-        self.btnSaveProjectAs.setIcon(icon1)
-        self.btnSaveProjectAs.setIconSize(QtCore.QSize(22, 22))
-        self.horizontalLayout.addWidget(self.btnSaveProjectAs)
+        self.btnSaveProjectAs = QtGui.QAction(icon1,"Save Project As", self)
+        self.btnSaveProjectAs.setToolTip("Save Project As")
+        self.toolsProject.addAction(self.btnSaveProjectAs)
 
-        self.btnCloseProject = QtGui.QToolButton()
-        self.btnCloseProject.setToolTip("Close Project")
-        self.btnCloseProject.setText("Close Project")
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/close.png"))
-        self.btnCloseProject.setIcon(icon1)
-        self.btnCloseProject.setIconSize(QtCore.QSize(22, 22))
-        self.horizontalLayout.addWidget(self.btnCloseProject)
+        self.btnCloseProject = QtGui.QAction(icon1, "Close Project", self)
+        self.btnCloseProject.setToolTip("Close Project")
+        self.toolsProject.addAction(self.btnCloseProject)
 
-        spacerItem = QtGui.QSpacerItem(100, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
-        self.horizontalLayout.addItem(spacerItem)
         self.verticalLayout.addWidget(self.toolsProject)
-        self.treeProjects = QDragTreeWidget(self.dockWidgetContents)
+        self.treeProjects = QProjectsWidget(self.dockWidgetContents, self)
         self.treeProjects.setRootIsDecorated(True)
         self.treeProjects.setExpandsOnDoubleClick(False)
         self.treeProjects.header().setVisible(False)
@@ -246,11 +357,11 @@ class Workspace(QtGui.QDockWidget):
 
     def connectSignals(self):
         #self.treeProjects.currentItemChanged.connect(self.selectedNewProject)
-        self.btnNewProject.clicked.connect(self.addProject)
-        self.btnOpenProject.clicked.connect(self.openProject)
-        self.btnSaveProject.clicked.connect(self.saveProject)
-        self.btnSaveProjectAs.clicked.connect(self.saveProjectAs)
-        self.btnCloseProject.clicked.connect(self.closeProject)
+        self.btnNewProject.triggered.connect(self.addProject)
+        self.btnOpenProject.triggered.connect(self.openProject)
+        self.btnSaveProject.triggered.connect(self.saveProject)
+        self.btnSaveProjectAs.triggered.connect(self.saveProjectAs)
+        self.btnCloseProject.triggered.connect(self.closeProject)
         self.treeProjects.itemClicked.connect(self.item_selected)
         self.connect(self, QtCore.SIGNAL("project_changed"),
                      self.spreadsheetWindow.changeTabController)
@@ -259,40 +370,86 @@ class Workspace(QtGui.QDockWidget):
         self.connect(self, QtCore.SIGNAL("project_removed"),
                      self.spreadsheetWindow.removeTabController)
         self.connect(self.treeProjects,
-                     QtCore.SIGNAL('itemDoubleClicked(QTreeWidgetItem *, int)'),
+                QtCore.SIGNAL('itemDoubleClicked(QTreeWidgetItem *, int)'),
                      self.item_double_clicked)
 
-
     def add_project(self, view):
-        # vistrails calls this when a project is created
+        # vistrails calls this when a project is opened/created/saved
         if id(view) not in self.viewToItem:
             if self.currentProject:
                 self.setBold(self.currentProject, False)
             p_name = "Project %i" % self.numProjects
             item = QProjectItem(view, p_name)
             self.currentProject = item
+            self.current_controller = item.controller
             self.viewToItem[id(view)] = item
             self.treeProjects.addTopLevelItem(item)
             item.setExpanded(True)
             item.namedPipelines.setExpanded(True)
             self.numProjects += 1
+            self.emit(QtCore.SIGNAL("project_added"), item.controller.name)
             self.state_changed(view)
+            # add sheets from vistrail actionAnnotations
+            tc = self.spreadsheetWindow.get_current_tab_controller()
+            for annotation in view.controller.vistrail.action_annotations:
+                if annotation.db_key != 'uvcdatCell':
+                    continue
+                cell = fromAnnotation(annotation.db_value)
+                plot_type = view.controller.vistrail.get_action_annotation(
+                                annotation.db_action_id, "uvcdatType")
+                if cell[0] not in item.sheet_to_item:
+                    rows, cols = self.currentProject.sheetSize(cell[0])
+                    tc.setCurrentIndex(tc.addTabWidget(
+                                         StandardWidgetSheetTab(tc), cell[0]))
+                    tab = tc.currentWidget()
+                    tab.sheet.stretchCells()
+                    tab.setDimension(rows, cols)
+                    tab.sheet.setRowCount(rows)
+                    tab.sheet.setColumnCount(cols)
+                    tab.sheet.stretchCells()
+                    tab.displayPrompt()
+                    tab.setEditingMode(tab.tabWidget.editingMode)
+                else:
+                    tab = item.sheet_to_tab[cell[0]]
+                    self.spreadsheetWindow.get_current_tab_controller(
+                                                       ).setCurrentWidget(tab)
+                # Add cell
+               
+                if len(cell)<5:
+                    item.controller.vis_was_dropped((view.controller, 
+                                 annotation.db_action_id, cell[0],
+                                 int(cell[1]), int(cell[2]), plot_type.value))
+                    item.update_cell(cell[0], int(cell[1]), int(cell[2]),
+                                     None, None, plot_type.value,
+                                     annotation.db_action_id, False)
+                else:
+                    item.controller.vis_was_dropped((view.controller,
+                                 annotation.db_action_id, cell[0],
+                                 int(cell[1]), int(cell[2]), plot_type.value))
+                    item.update_cell(cell[0], int(cell[1]), int(cell[2]),
+                                     int(cell[3]), int(cell[4]),
+                                     plot_type.value,
+                                     annotation.db_action_id, False)
+            if not len(item.sheet_to_item):
+                tc.create_first_sheet()
             self.connect(item.controller, QtCore.SIGNAL("update_cell"),
                      item.update_cell)
+            self.connect(item.controller, QtCore.SIGNAL("sheet_size_changed"),
+                     item.sheetSizeChanged)
+ 
         if view.controller.locator:
             name = view.controller.locator.short_name
             self.viewToItem[id(view)].setText(0, name)
         self.treeProjects.setCurrentItem(self.viewToItem[id(view)])
-        if item:
-            self.emit(QtCore.SIGNAL("project_added"), item.controller.name)
-        # TODO add sheets from vistrail actionAnnotations
 
     def remove_project(self, view):
         # vistrails calls this when a project is removed
         if id(view) in self.viewToItem:
-            index = self.treeProjects.indexOfTopLevelItem(self.viewToItem[id(view)])
+            index = self.treeProjects.indexOfTopLevelItem(
+                                        self.viewToItem[id(view)])
             self.treeProjects.takeTopLevelItem(index)
-            self.emit(QtCore.SIGNAL("project_removed"), self.viewToItem[id(view)].controller.name)
+            self.emit(QtCore.SIGNAL("project_removed"),
+                      self.viewToItem[id(view)].controller.name)
             del self.viewToItem[id(view)]
             
     def setBold(self, item, value):
@@ -311,13 +468,14 @@ class Workspace(QtGui.QDockWidget):
             self.currentProject = self.viewToItem[id(view)]
             self.setBold(self.currentProject, True)
             self.current_controller = self.currentProject.controller
+            self.emit(QtCore.SIGNAL("project_changed"),
+                      self.current_controller.name)
             self.current_controller.connect_spreadsheet()
-            self.emit(QtCore.SIGNAL("project_changed"),self.current_controller.name)
-        p = self.treeProjects.currentItem()
+        
         defVars = self.root.dockVariable.widget()
         for i in range(defVars.varList.count()):
             v = defVars.varList.item(i)
-            if not str(p.text(0)) in v.projects:
+            if not str(self.currentProject.text(0)) in v.projects:
                 v.setHidden(True)
             else:
                 v.setHidden(False)
@@ -345,25 +503,40 @@ class Workspace(QtGui.QDockWidget):
         _app.close_vistrail()
 
     def state_changed(self, view):
-        """ update tags """
+        """ update tags and project titles"""
         item = self.viewToItem[id(view)]
+        if item.view.controller.locator:
+            name = item.view.controller.locator.short_name 
+            if item.view.has_changes():
+                name += '*'
+            item.setText(0,name)
+        
         # check if a tag has been deleted
         tags = view.controller.vistrail.get_tagMap().values()
-
-        deleted_item = None
-        for tag, wf in item.tag_to_item.items():
+        item.namedPipelines.setHidden(not tags)
+        for tag in item.tag_to_item:
             if tag not in tags:
-                item.namedPipelines.takeChild(item.indexOfChild(item.tag_to_item[tag]))
+                item.namedPipelines.takeChild(
+                      item.namedPipelines.indexOfChild(item.tag_to_item[tag]))
                 del item.tag_to_item[tag]
                 break
         # check if a tag has been added
         tags = view.controller.vistrail.get_tagMap().iteritems()
         for i, tag in tags:
             if tag not in item.tag_to_item:
-                wfitem = QWorkflowItem(i)
-                item.namedPipelines.addChild(wfitem)
-                wfitem.update_title()
-                item.tag_to_item[tag] = wfitem
+                ann = view.controller.vistrail.get_action_annotation(i, 
+                                                                "uvcdatType")
+                if ann:
+                    wfitem = QWorkflowItem(i, plot_type=ann.value)
+                    item.namedPipelines.addChild(wfitem)
+                    wfitem.update_title()
+                    item.tag_to_item[tag] = wfitem
+                else:
+                    print "Error: No Plot Type specified!"
+        for sheet in item.sheet_to_item.itervalues():
+            for i in xrange(sheet.childCount()):
+                child = sheet.child(i)
+                child.update_title()
 
     def item_selected(self, widget_item, column):
         """ opens the selected item if possible
@@ -372,20 +545,25 @@ class Workspace(QtGui.QDockWidget):
         """
         from gui.vistrails_window import _app
         sheet = None
-        workflow = None
         if not widget_item:
             self.currentProject = None
             self.current_controller = None
             return
         elif type(widget_item)==QProjectItem:
+            widget_item.setSelected(False)
             project = widget_item
         elif type(widget_item)==QSpreadsheetItem:
+            widget_item.setSelected(False)        
             sheet = widget_item
             project = sheet.parent()
         elif type(widget_item)==QWorkflowItem:
             project = widget_item.parent().parent()
+            if type(widget_item.parent()) == QSpreadsheetItem:
+                sheet = widget_item.parent()
         else: # is a Saved Workflows item
+            widget_item.setSelected(False)        
             project = widget_item.parent()
+
         view = project.view
         locator = project.view.controller.locator
         if project != self.currentProject:            
@@ -401,20 +579,23 @@ class Workspace(QtGui.QDockWidget):
         #if version:
         #    view.version_selected(version, True, double_click=True)
         
-        if sheet and sheet != project.currentSheet:
-            project.currentSheet = sheet
+        if sheet:
             tab = project.sheet_to_tab[sheet.sheetName]
-            self.spreadsheetWindow.get_current_tab_controller().setCurrentWidget(tab)
+            self.spreadsheetWindow.get_current_tab_controller(
+                                                    ).setCurrentWidget(tab)
             
     def add_sheet_tab(self, title, widget):
         if title not in self.currentProject.sheet_to_tab:
             self.currentProject.sheet_to_tab[title] = widget
             item = QSpreadsheetItem(title)
             self.currentProject.addChild(item)
+            item.update_icon()
             item.setExpanded(True)
             self.currentProject.sheet_to_item[title] = item
-            # TODO: save using annotations when sheet is saved
-    
+            self.currentProject.controller.sheet_map[title] = {}
+            if not self.currentProject.sheetSize(title):
+                self.currentProject.sheetSizeChanged(title, (2,1))
+
     def remove_sheet_tab(self, widget):
         title = None
         for t, tab in self.currentProject.sheet_to_tab.items():
@@ -423,78 +604,66 @@ class Workspace(QtGui.QDockWidget):
                 break
         if title and title in self.currentProject.sheet_to_tab:
             item = self.currentProject.sheet_to_item[title]
-            # TODO remove annotations from vistrail
+            # Remove all actionannotations associated with this sheet
+            vistrail = self.currentProject.view.controller.vistrail
+            for annotation in vistrail.action_annotations:
+                if annotation.db_key == 'uvcdatCell':
+                    cell = fromAnnotation(annotation.db_value)
+                    if cell[0] == title:
+                        vistrail.db_delete_actionAnnotation(annotation)
             index = self.currentProject.indexOfChild(item)
             self.currentProject.takeChild(index)
             del self.currentProject.sheet_to_tab[title]
             del self.currentProject.sheet_to_item[title]
+            del self.currentProject.controller.sheet_map[title]
+            self.currentProject.sheetSizeChanged(title)
 
     def change_tab_text(self, oldtitle, newtitle):
-        if oldtitle in self.currentProject.sheet_to_item:
-            item = self.currentProject.sheet_to_item[oldtitle]
-            tab = self.currentProject.sheet_to_tab[oldtitle]
-            del self.currentProject.sheet_to_item[oldtitle]
-            del self.currentProject.sheet_to_tab[oldtitle]
-            item.sheetName = newtitle
-            item.setText(0, newtitle)
-            self.currentProject.sheet_to_item[newtitle] = item
-            self.currentProject.sheet_to_tab[newtitle] = tab
-            # TODO: update actionannotations
-
-    def contextMenuEvent(self, event):
-        """ Not used """
-        item = self.treeProjects.itemAt(event.pos())
-        if item and type(item) == QWorkflowItem:
-            # tag this visualization with a name
-            menu = QtGui.QMenu(self)
-            act = QtGui.QAction("Give name", self,
-                                triggered=item.tag_version)
-            act.setStatusTip("Tag this visualization with a name")
-            menu.addAction(act)
-            menu.exec_(event.globalPos())
+        if oldtitle not in self.currentProject.sheet_to_item:
+            return
+        item = self.currentProject.sheet_to_item[oldtitle]
+        tab = self.currentProject.sheet_to_tab[oldtitle]
+        del self.currentProject.sheet_to_item[oldtitle]
+        del self.currentProject.sheet_to_tab[oldtitle]
+        dimval = self.currentProject.sheetSize(oldtitle)
+        self.currentProject.sheetSizeChanged(oldtitle)
+        self.currentProject.sheetSizeChanged(newtitle, dimval)
+        item.sheetName = newtitle
+        item.setText(0, newtitle)
+        self.currentProject.sheet_to_item[newtitle] = item
+        self.currentProject.sheet_to_tab[newtitle] = tab
+        # update controller sheetmap
+        sheetmap = self.currentProject.controller.sheet_map[oldtitle]
+        del self.currentProject.controller.sheet_map[oldtitle]
+        self.currentProject.controller.sheet_map[newtitle] = sheetmap
+        # Update actionannotations
+        vistrail = self.currentProject.view.controller.vistrail
+        for annotation in vistrail.action_annotations:
+            if annotation.db_key == 'uvcdatCell':
+                cell = fromAnnotation(annotation.db_value)
+                if cell[0] == oldtitle: # remove and update
+                    vistrail.db_delete_actionAnnotation(annotation)
+                    add_annotation(vistrail, annotation.db_action_id,
+                                   newtitle, *cell[1:])
 
     def item_double_clicked(self, widget, col):
         if widget and type(widget) == QWorkflowItem:
             # tag this visualization with a name
-            tag, ok = QtGui.QInputDialog.getText(self, 'Visualization "%s"' %
-                                             str(widget.text(0)), "Rename to")
-            if ok and str(tag).strip():
-                tag = str(tag).strip()
-                project = widget.parent()
-                while type(project) != QProjectItem:
-                    project = project.parent()
-                vistrail = project.view.controller.vistrail
-                if vistrail.hasTag(widget.workflowVersion):
-                    vistrail.changeTag(tag, widget.workflowVersion)
-                else:
-                    vistrail.addTag(tag, widget.workflowVersion)
-                # loop through all existing item and update
-                self.state_changed(project.view)
-                for sheet in project.sheet_to_item.itervalues():
-                    for i in xrange(sheet.childCount()):
-                        child = sheet.child(i)
-                        if child.workflowVersion == widget.workflowVersion:
-                            child.update_title()
-
-
-    def dropEvent(self, event):
-        """ Not used """
-        """ Execute the pipeline at the particular location or sends events to
-        project controller so it can set the workflows """
-        mimeData = event.mimeData()       
-        if (hasattr(mimeData, 'versionId') and
-            hasattr(mimeData, 'controller')):
-            event.accept()
-            versionId = mimeData.versionId
-            controller = mimeData.controller
-            pipeline = controller.vistrail.getPipeline(versionId)
-
-            inspector = PipelineInspector()
-            inspector.inspect_spreadsheet_cells(pipeline)
-            inspector.inspect_ambiguous_modules(pipeline)
-            if len(inspector.spreadsheet_cells)==1:
-                print "one cell only"
-            print "cells", inspector.spreadsheet_cells
+            tag, ok = QtGui.QInputDialog.getText(self, str(widget.text(0)),
+                                                 "New name")
+            if not ok or not str(tag).strip():
+                return
+            tag = str(tag).strip()
+            project = widget.parent()
+            while type(project) != QProjectItem:
+                project = project.parent()
+            vistrail = project.view.controller.vistrail
+            if vistrail.hasTag(widget.workflowVersion):
+                vistrail.changeTag(tag, widget.workflowVersion)
+            else:
+                vistrail.addTag(tag, widget.workflowVersion)
+            # loop through all existing item and update
+            project.view.stateChanged()
 
     def get_current_project_controller(self):
         return self.current_controller

@@ -3,9 +3,11 @@ from gui.common_widgets import QDockPushButton
 class AliasesPlotWidget(QtGui.QWidget):
     def __init__(self,controller, version, plot_obj, parent=None):
         QtGui.QWidget.__init__(self,parent)
-        self.controller = controller
+        self.proj_controller = controller
+        self.controller = controller.vt_controller
         self.version = version
         self.plot = plot_obj
+        self.state_changed = False
         self.plot_widget = None
         self.buttonLayout = QtGui.QHBoxLayout()
         self.buttonLayout.setMargin(5)

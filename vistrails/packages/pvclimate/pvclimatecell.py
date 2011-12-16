@@ -20,11 +20,16 @@ from gui.modules.module_configure import StandardModuleConfigurationWidget
 from core.vistrail.port import PortEndPoint
 import core.modules.basic_modules as basic_modules
 
+# Needed to parse csv string into a list
+import csv
+import StringIO
+
 class PVClimateCell(SpreadsheetCell):
     def __init__(self):
         SpreadsheetCell.__init__(self)
         self.cellWidget = None
         self.sliceOffset = 0.0
+        self.isoSurfaces = "8"
 
     def compute(self):
         """ compute() -> None
@@ -39,9 +44,13 @@ class PVClimateCell(SpreadsheetCell):
         else:
             pass
 
-        print self.sliceOffset
+        # Fetch iso surfaces from input port
+        if self.hasInputFromPort("isoSurfaces"):
+            self.isoSurfaces = self.getInputFromPort("isoSurfaces")
+        else:
+            pass
 
-        self.cellWidget = self.displayAndWait(QParaViewWidget, (proxies, self.sliceOffset))
+        self.cellWidget = self.displayAndWait(QParaViewWidget, (proxies, self.sliceOffset, self.isoSurfaces))
 
     def persistParameterList( self, parameter_list, **args ):
         print "Getting Something"
@@ -69,8 +78,10 @@ class QParaViewWidget(QVTKWidget):
             iren.SetNonInteractiveRenderDelay(0)
             iren.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
 
+        del self.view.Representations[:]
+
         # Fetch variables from the input port
-        (pvvariables, sliceOffset) = inputPorts
+        (pvvariables, sliceOffset, isoSurfaces) = inputPorts
         for var in pvvariables:
             reader = var.get_reader()
             variableName = var.get_variable_name()
@@ -107,7 +118,7 @@ class QParaViewWidget(QVTKWidget):
             # 2. Add scalar bar
             rep = pvsp.Show(view=self.view)
             rep.LookupTable =  pvsp.GetLookupTableForArray( variableName, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[0.0, 0.23, 0.299, 0.754, 30.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1 )
-            rep.ColorArrayName = 'TEMP'
+            rep.ColorArrayName = variableName
 
             # Apply scale (squish in Z)
             rep.Scale  = [1,1,0.01]
@@ -118,7 +129,14 @@ class QParaViewWidget(QVTKWidget):
             # Create a contour representation
             contour = pvsp.Contour(reader)
             contour.ContourBy = [variableType, variableName]
-            contour.Isosurfaces = [8]
+
+            isoSurfacesStringIO = StringIO.StringIO(isoSurfaces)
+            csvReader = csv.reader(isoSurfacesStringIO, delimiter=',')
+            isoSurfacesValues  = []
+            for i in csvReader:
+                for j in range(len(i)):
+                    isoSurfacesValues.append(float(str(i[j])))
+            contour.Isosurfaces = isoSurfacesValues
             contour.ComputeScalars = 1
             contour.ComputeNormals = 0
 
@@ -177,6 +195,7 @@ def registerSelf():
     registry.add_input_port(PVClimateCell, "Location", CellLocation)
     registry.add_input_port(PVClimateCell, "variable", pvvariable.PVVariableConstant)
     registry.add_input_port(PVClimateCell, "sliceOffset", basic_modules.String)
+    registry.add_input_port(PVClimateCell, "isoSurfaces", basic_modules.String)
     registry.add_output_port(PVClimateCell, "self", PVClimateCell)
 
 
@@ -438,6 +457,7 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         # For now assume parameters changed everytime
         if 1:
             functions.append(("sliceOffset", [self.sliceOffset]))
+            #functions.append(("isoSurfaces", [self.isoSurfaces]))
             self.controller.update_functions(self.module, functions)
 
     def createLayout(self):

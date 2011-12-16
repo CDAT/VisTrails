@@ -95,12 +95,12 @@ class CDATTask(QtCore.QObject):
             inputRecs = taskData[1].split(';')
             key_list.append( dsid )
             for inputRec in inputRecs:
-                inputData = inputRec.split('#')
+                inputData = inputRec.split('+')
                 self.inputMap[ inputData[0] ] = inputData[1]
                 key_list.append( inputData[1] )
             outputRecs = taskData[2].split(';')
             for outputRec in outputRecs:
-                outputData = outputRec.split('#')
+                outputData = outputRec.split('+')
                 self.outputMap[ outputData[0] ] = outputData[1]
                 self.gridMap[ outputData[0] ] = outputData[3].split('*') if (len( outputData ) > 3) else None
             return '.'.join( key_list ) 

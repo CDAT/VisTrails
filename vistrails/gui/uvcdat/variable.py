@@ -209,7 +209,10 @@ class VariableProperties(QtGui.QDockWidget):
         ## layout = QtGui.QVBoxLayout()
         ## self.esgfBrowser = QEsgfBrowser(self)
         ## layout.addWidget(self.esgfBrowser)
-        self.originTabWidget.addTab(QEsgfBrowser(self),"ESGF")
+        esgf = QEsgfBrowser(self)
+        ##esgf.addGateway(gateway=customizeUVCDAT.defaultEsgfNode)
+        self.originTabWidget.addTab(esgf,"ESGF")
+
     
     def createInfoTab(self):
         info = QtGui.QFrame()

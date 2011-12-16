@@ -119,6 +119,7 @@ class QVistrailView(QtGui.QWidget):
         self.locator = locator
         self.controller.set_vistrail(vistrail, self.locator, abstraction_files,
                                      thumbnail_files, mashups)
+        self.is_abstraction = False
         self.tabs.setCurrentIndex(0)
         self.current_tab = self.stack.setCurrentIndex(0)
         self.pipeline_selected()

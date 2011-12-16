@@ -28,7 +28,7 @@ class preFuncPopUp(QtGui.QDialog):
         self.setWindowTitle(nm)
 
          ## First a few error checks
-        selectedVars=self.root.definedVar.widget.getSelectedDefinedVariables()
+        selectedVars=self.root.dockVariable.widget().getSelectedDefinedVariables()
         if len(selectedVars)<defs["nargsMin"]:
             parent.errorMsg.showMessage("%s requires at least %i input variables" % (defs["func"].__name__,defs["nargsMin"]))
             self.accept()
@@ -161,7 +161,7 @@ class preFuncPopUp(QtGui.QDialog):
 
         ## First construct the args list
         ## starting with the sleected vars
-        args = self.root.definedVar.widget.getSelectedDefinedVariables()
+        args = self.root.dockVariable.widget().getSelectedDefinedVariables()
 
         kargs = {}
         ## now do we have an axis option
@@ -222,7 +222,7 @@ class preFuncPopUp(QtGui.QDialog):
 
         if isinstance(tmp,cdms2.tvariable.TransientVariable):
             tmp.id="%s.%s" % (tmp.id,fnm)
-            self.root.definedVar.widget.addVariable(tmp)
+            self.root.dockVariable.widget().addVariable(tmp)
             res = ", %s" % tmp.id
         else:
             res = self.processList(tmp,"%s.%s" % (args[0].id,fnm),"")
@@ -242,7 +242,7 @@ class preFuncPopUp(QtGui.QDialog):
             if isinstance(v,cdms2.tvariable.TransientVariable):
                 v.id="%s.%s" % (v.id,fnm)
                 res+=", %s" %v.id
-                self.root.definedVar.widget.addVariable(v)
+                self.root.dockVariable.widget().addVariable(v)
             elif isinstance(v,(list,tuple)):
                 res+=", (%s)" % self.processList(v,fnm,"")[2:]
             else:

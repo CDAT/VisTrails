@@ -886,26 +886,38 @@ class StandardWidgetTabController(QtGui.QTabWidget):
     def connectTabWigetSignals(self, widget):
         self.connect(widget, QtCore.SIGNAL("dropped_variable"),
                      self.variableDropped)
+        self.connect(widget, QtCore.SIGNAL("dropped_visualization"),
+                     self.visDropped)
         self.connect(widget, QtCore.SIGNAL("dropped_plot"),
                      self.plotDropped)
         self.connect(widget, QtCore.SIGNAL("request_plot_configure"),
                      self.requestPlotConfigure)
         self.connect(widget, QtCore.SIGNAL("request_plot_execution"),
                      self.requestPlotExecution)
+        self.connect(widget, QtCore.SIGNAL("request_plot_source"),
+                     self.requestPlotSource)
         self.connect(widget, QtCore.SIGNAL("cell_deleted"),
                      self.cellDeleted)
+        self.connect(widget, QtCore.SIGNAL("sheet_size_changed"),
+                     self.sheetSizeChanged)
         
     def disconnectTabWigetSignals(self, widget):
         self.disconnect(widget, QtCore.SIGNAL("dropped_variable"),
                      self.variableDropped)
+        self.disconnect(widget, QtCore.SIGNAL("dropped_visualization"),
+                     self.visDropped)
         self.disconnect(widget, QtCore.SIGNAL("dropped_plot"),
                      self.plotDropped)
         self.disconnect(widget, QtCore.SIGNAL("request_plot_configure"),
                      self.requestPlotConfigure)
         self.disconnect(widget, QtCore.SIGNAL("request_plot_execution"),
                      self.requestPlotExecution)
+        self.disconnect(widget, QtCore.SIGNAL("request_plot_source"),
+                     self.requestPlotSource)
         self.disconnect(widget, QtCore.SIGNAL("cell_deleted"),
                      self.cellDeleted)
+        self.disconnect(widget, QtCore.SIGNAL("sheet_size_changed"),
+                     self.sheetSizeChanged)
 
     def variableDropped(self, info):
         """variableDropped(info: tuple)-> None
@@ -914,6 +926,13 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         """
         self.emit(QtCore.SIGNAL("dropped_variable"), info)
         
+    def visDropped(self, info):
+        """visDropped(info: tuple)-> None
+        It will forward the signal 
+        
+        """
+        self.emit(QtCore.SIGNAL("dropped_visualization"), info)
+                  
     def plotDropped(self, info):
         """plotDropped(info: tuple)-> None
         It will forward the signal 
@@ -926,7 +945,13 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         
     def requestPlotExecution(self, sheetName, row, col):
         self.emit(QtCore.SIGNAL("request_plot_execution"), sheetName, row, col )    
+    
+    def requestPlotSource(self, sheetName, row, col):
+        self.emit(QtCore.SIGNAL("request_plot_source"), sheetName, row, col )    
         
     def cellDeleted(self, sheetName, row, col):
         self.emit(QtCore.SIGNAL("cell_deleted"), sheetName, row, col )
+
+    def sheetSizeChanged(self, sheet, dim):
+        self.emit(QtCore.SIGNAL("sheet_size_changed"), sheet, dim)
         

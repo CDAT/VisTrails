@@ -56,9 +56,9 @@
      <string>View</string>
     </property>
    </widget>
-   <widget class="QMenu" name="menuWindow">
+   <widget class="QMenu" name="menuVistrails">
     <property name="title">
-     <string>Window</string>
+     <string>VisTrails</string>
     </property>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -70,7 +70,7 @@
    <addaction name="menuEdit"/>
    <addaction name="menuProject"/>
    <addaction name="menuView"/>
-   <addaction name="menuWindow"/>
+   <addaction name="menuVistrails"/>
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>

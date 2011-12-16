@@ -1,5 +1,4 @@
 from PyQt4 import QtCore, QtGui
-import customizeUVCDAT
 import os
 
 debug = True
@@ -285,6 +284,7 @@ class QFramedWidget(QtGui.QGroupBox):
         return spinbox    
 
     def addButton(self, text, newRow=True, buttonType = "Tool",icon=None,iconSize=None):
+        import customizeUVCDAT
         if newRow == True:
             self.newRow()
             
@@ -428,6 +428,7 @@ def sign ( N ):
         
 class QCommandsFileWidget(QtGui.QDialog):
     def __init__(self,parent,title,readOnly=True,file=None):
+        import customizeUVCDAT
         QtGui.QDialog.__init__(self,parent)
         self.root=parent.root
         layout = QtGui.QVBoxLayout()
@@ -478,6 +479,7 @@ class QCommandsFileWidget(QtGui.QDialog):
         f.close()
 
     def addText(self,textString):
+        import customizeUVCDAT
         sp = textString.split("\n")
         for l in sp:
             st=l.strip()
@@ -500,7 +502,7 @@ class QCommandsFileWidget(QtGui.QDialog):
     def refresh(self):
         txt = self.text.toPlainText()
         self.text.clear()
-        self.text.addText(text)
+        self.text.addText(txt)
 
         
 def getAvailablePrinters():
@@ -529,6 +531,7 @@ class CalcButton(QtGui.QToolButton):
     """Calculator button class - size change & emits clicked text signal"""
     def __init__(self, text, icon = None, tip = None, styles={}, parent=None,signal="clickedMyButton",minimumXSize=35,minimumYSize=35):
         QtGui.QToolButton.__init__(self, parent)
+        import customizeUVCDAT
         if isinstance(styles,dict):
             st=""
             for k in styles.keys():

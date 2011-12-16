@@ -133,12 +133,12 @@ def str2bool( value ):
     return value.strip().lower()[0] == 't'
 
 def serializeStrMap( strMap ): 
-    return ';'.join( [ '#'.join(dsitems) for dsitems in strMap.items() ] )
+    return ';'.join( [ '+'.join(dsitems) for dsitems in strMap.items() ] )
               
 def deserializeStrMap( serialized_strMap ): 
     stringMap = {}
     for dsrec in serialized_strMap.split(';'):
-        dsitems = dsrec.split('#')
+        dsitems = dsrec.split('+')
         if len( dsitems ) == 2: stringMap[ dsitems[0] ] = dsitems[1]
     return stringMap
 
@@ -401,8 +401,8 @@ def isCellModule( module ):
 def getSheetTabWidget( sheet_index = -1 ):
     from packages.spreadsheet.spreadsheet_controller import spreadsheetController
     spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
-    if sheet_index == -1: sheet_index = spreadsheetWindow.tabController.currentIndex () 
-    return spreadsheetWindow.tabController.tabWidgets[ sheet_index ]
+    if sheet_index == -1: sheet_index = spreadsheetWindow.get_current_tab_controller().currentIndex () 
+    return spreadsheetWindow.get_current_tab_controller().tabWidgets[ sheet_index ]
 
 def getConnectedModuleIds( controller,  mid, portName, isDestinationPort = True ):
     connections = getDesignatedConnections( controller,  mid, portName, isDestinationPort )

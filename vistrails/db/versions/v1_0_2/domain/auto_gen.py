@@ -2890,9 +2890,6 @@ class DBLog(object):
             self._db_workflow_execs.append(workflow_exec)
         self.db_workflow_execs_id_index[workflow_exec.db_id] = workflow_exec
     def db_delete_workflow_exec(self, workflow_exec):
-        print "delwfexecid=", workflow_exec.db_id
-        print "wfexecids=", [i.db_id for i in self._db_workflow_execs]
-        print "wfexecidindex=", self.db_workflow_execs_id_index
         self.is_dirty = True
         for i in xrange(len(self._db_workflow_execs)):
             if self._db_workflow_execs[i].db_id == workflow_exec.db_id:
@@ -11299,7 +11296,10 @@ class DBVistrail(object):
                 del self._db_actionAnnotations[i]
                 break
         del self.db_actionAnnotations_id_index[actionAnnotation.db_id]
-        del self.db_actionAnnotations_action_id_index[(actionAnnotation.db_action_id,actionAnnotation.db_key)]
+        try:
+            del self.db_actionAnnotations_action_id_index[(actionAnnotation.db_action_id,actionAnnotation.db_key)]
+        except KeyError:
+            pass
         try:
             del self.db_actionAnnotations_key_index[(actionAnnotation.db_key,actionAnnotation.db_value)]
         except KeyError:

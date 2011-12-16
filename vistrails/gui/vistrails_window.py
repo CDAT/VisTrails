@@ -1544,10 +1544,10 @@ class QVistrailsWindow(QVistrailViewWindow):
             from gui.collection.workspace import QWorkspaceWindow
             QWorkspaceWindow.instance().remove_vt_window(view)
             QWorkspaceWindow.instance().add_vt_window(view)
-            from api import _app
-            if _app.uvcdatWindow:
-                _app.uvcdatWindow.workspace.remove_project(view)
-                _app.uvcdatWindow.workspace.add_project(view)
+            #from api import _app
+            #if _app.uvcdatWindow:
+            #    _app.uvcdatWindow.workspace.remove_project(view)
+            #    _app.uvcdatWindow.workspace.add_project(view)
             return view
         except Exception, e:
             import traceback
@@ -1755,20 +1755,14 @@ class QVistrailsWindow(QVistrailViewWindow):
 
     def closeEvent(self, e):
         """ closeEvent(e: QCloseEvent) -> None
-        Close the whole application when the builder is closed
+        Only hide the builder window
 
         """
         if not self.quit():
             e.ignore()
 
     def quit(self):
-        self._is_quitting = True
-        if self.close_all_vistrails():
-            QtCore.QCoreApplication.quit()
-            # In case the quit() failed (when Qt doesn't have the main
-            # event loop), we have to return True still
-            return True
-        self._is_quitting = False
+        self.hide()
         return False
 
     def link_registry(self):
@@ -1808,16 +1802,19 @@ class QVistrailsWindow(QVistrailViewWindow):
             else:
                 try:
                     import gui.uvcdat.mainwindow
-                    import gui.common_widgets
+                    from packages.vtDV3D.VolumeRenderModule import TransferFunctionConfigurationDialog
+                    from packages.vtDV3D.InteractiveConfiguration import ColormapConfigurationDialog
                     if (isinstance(window, gui.uvcdat.mainwindow.UVCDATMainWindow) or
-                        isinstance(window, gui.common_widgets.QToolWindow)):
+                        isinstance(window, QtGui.QDockWidget) or
+                        isinstance(window, TransferFunctionConfigurationDialog) or
+                        isinstance(window, ColormapConfigurationDialog)):
                         return self.stack.currentWidget()
                 except:
                     pass
             #please do not remove this warning. It is necessary to know
             #what type of window is causing the get_current_view to return
             # a wrong value -- Emanuele.
-            debug.warning("[invalid view] get_current_view() -> %s"%window)
+            debug.debug("[invalid view] get_current_view() -> %s"%window)
             return self.stack.currentWidget()
 
         

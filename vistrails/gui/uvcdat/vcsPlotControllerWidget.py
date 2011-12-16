@@ -133,7 +133,7 @@ class QGenericPlotController(QtGui.QWidget):
                     self.plot.cells[0].row_name : str(self.parent.plotOptions.getRow()),
                     self.plot.cells[0].col_name : str(self.parent.plotOptions.getCol())
                     }
-        selectVariables = self.root.definedVar.widget.getSelectedDefinedVariables()
+        selectVariables = self.root.dockVariable.widget().getSelectedDefinedVariables()
         if len(selectVariables) < self.plot.varnum:
             QtGui.QMessageBox.warning(self.parent,
                                       "UV-CDAT",

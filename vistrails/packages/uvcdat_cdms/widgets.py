@@ -1,15 +1,19 @@
 from PyQt4 import QtCore, QtGui
 from core.utils import InstanceObject
 from gui.uvcdat.graphicsMethodsWidgets import QBoxfillEditor, QIsofillEditor,\
-   QIsolineEditor
+   QIsolineEditor, QMeshfillEditor, QOutfillEditor, QOutlineEditor, \
+   QScatterEditor, QTaylorDiagramEditor, QVectorEditor, Q1DPlotEditor
 from gui.common_widgets import QDockPushButton
 class GraphicsMethodConfigurationWidget(QtGui.QWidget):
-    def __init__(self, module, controller, parent=None):
+    def __init__(self, module, controller, parent=None, show_buttons=True):
         QtGui.QWidget.__init__(self, parent)
         self.module = module
         self.module_descriptor = self.module.module_descriptor.module
         self.controller = controller
+        self.show_buttons = show_buttons
         self.layout = QtGui.QVBoxLayout()
+        self.layout.setSpacing(3)
+        self.layout.setMargin(0)
         self.fun_map = {}
         self.populate_fun_map()
         self.gmName = self.getValueFromFunction("graphicsMethodName")
@@ -31,23 +35,25 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             self.gmEditor.setEnabled(False)
             self.wrldCoordEditor.setEnabled(False)
             
-        self.buttonLayout = QtGui.QHBoxLayout()
-        self.buttonLayout.setMargin(5)
-        self.saveButton = QDockPushButton('&Save', self)
-        self.saveButton.setFixedWidth(100)
-        self.saveButton.setEnabled(True)
-        self.buttonLayout.addWidget(self.saveButton)
-        self.resetButton = QDockPushButton('&Reset', self)
-        self.resetButton.setFixedWidth(100)
-        self.resetButton.setEnabled(True)
-        self.buttonLayout.addWidget(self.resetButton)
-        
-        self.layout.addLayout(self.buttonLayout)
-        self.connect(self.saveButton, QtCore.SIGNAL('clicked(bool)'), 
-                     self.saveTriggered)
-        self.connect(self.resetButton, QtCore.SIGNAL('clicked(bool)'), 
-                     self.resetTriggered)
+        if show_buttons:
+            self.buttonLayout = QtGui.QHBoxLayout()
+            self.buttonLayout.setMargin(5)
+            self.saveButton = QDockPushButton('&Save', self)
+            self.saveButton.setFixedWidth(100)
+            self.saveButton.setEnabled(True)
+            self.buttonLayout.addWidget(self.saveButton)
+            self.resetButton = QDockPushButton('&Reset', self)
+            self.resetButton.setFixedWidth(100)
+            self.resetButton.setEnabled(True)
+            self.buttonLayout.addWidget(self.resetButton)
+            self.layout.addLayout(self.buttonLayout)
+            
+            self.connect(self.saveButton, QtCore.SIGNAL('clicked(bool)'), 
+                         self.saveTriggered)
+            self.connect(self.resetButton, QtCore.SIGNAL('clicked(bool)'), 
+                         self.resetTriggered)
         self.setLayout(self.layout)
+        self.tabWidget.setCurrentIndex(0)
       
     def createEditor(self, parent, gmName):
         plot_type = self.module.module_descriptor.module().plot_type
@@ -57,6 +63,24 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             return QIsofillEditor(self.tabWidget, gmName)
         elif plot_type == "Isoline":
             return QIsolineEditor(self.tabWidget, gmName)
+        elif plot_type == "Meshfill":
+            return QMeshfillEditor(self.tabWidget, gmName)
+        elif plot_type == "Outfill":
+            return QOutfillEditor(self.tabWidget, gmName)
+        elif plot_type == "Outline":
+            return QOutlineEditor(self.tabWidget, gmName)
+        elif plot_type == "Scatter":
+            return QScatterEditor(self.tabWidget, gmName)
+        elif plot_type == "Taylordiagram":
+            return QTaylorDiagramEditor(self.tabWidget, gmName)
+        elif plot_type == "Vector":
+            return QVectorEditor(self.tabWidget, gmName)
+        elif plot_type == "XvsY":
+            return Q1DPlotEditor(self.tabWidget, gmName, type="xvsy")
+        elif plot_type == "Xyvsy":
+            return Q1DPlotEditor(self.tabWidget, gmName, type="xyvsy")
+        elif plot_type == "Yxvsx":
+            return Q1DPlotEditor(self.tabWidget, gmName, type="yxvsx")
         
     def setupEditors(self):
         gm = InstanceObject(**self.attributes)

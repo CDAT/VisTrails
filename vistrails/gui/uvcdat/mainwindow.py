@@ -113,23 +113,27 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         #self.workspace.addProject("Temperature Anomaly")
         #self.workspace.addProject()
         self.dockCalculator = DockCalculator(self)
-        
+        self.plotProp = PlotProperties.instance(self)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.workspace)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.dockTemplate)
         #self.tabifyDockWidget(self.workspace, self.dockTemplate)
         self.tabifyDockWidget(self.dockTemplate, self.dockPlot)
         self.workspace.raise_()
         self.varProp.hide()
-        
+        self.plotProp.hide()
 
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockVariable)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.varProp)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockCalculator)
+        self.tabifyDockWidget(self.dockCalculator, self.plotProp)
+
 
     def createActions(self):
         #VisTrails Window
-        self.showBuilderWindowAct = QtGui.QAction("VisTrails Builder", self,
+        self.showBuilderWindowAct = QtGui.QAction("Builder", self,
                                  triggered=self.showBuilderWindowActTriggered)
+        self.showVistrailsConsoleAct = QtGui.QAction("Console", self,
+                                triggered=self.showVistrailsConsoleActTriggered)
     def updateMenuActions(self):
         #menu View Actions
         self.ui.menuView.addAction(self.workspace.toggleViewAction())
@@ -137,14 +141,19 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.ui.menuView.addAction(self.dockPlot.toggleViewAction())
         self.ui.menuView.addAction(self.dockVariable.toggleViewAction())
         self.ui.menuView.addAction(self.dockCalculator.toggleViewAction())
-        self.ui.menuView.addAction(PlotProperties.instance().toolWindow().toggleViewAction())
-        #Window Menu
-        self.ui.menuWindow.addAction(self.showBuilderWindowAct)
-        
+        self.ui.menuView.addAction(self.plotProp.toggleViewAction())
+        #VisTrails Menu
+        self.ui.menuVistrails.addAction(self.showBuilderWindowAct)
+        self.ui.menuVistrails.addAction(self.showVistrailsConsoleAct)
+    
     def showBuilderWindowActTriggered(self):
         from gui.vistrails_window import _app
         _app.show()
         _app.raise_()
+        
+    def showVistrailsConsoleActTriggered(self):
+        from gui.shell import QShellDialog
+        QShellDialog.instance().set_visible(True)
         
     def connectSignals(self):
         self.ui.actionExit.triggered.connect(self.quit)
@@ -158,6 +167,14 @@ class UVCDATMainWindow(QtGui.QMainWindow):
                      QtCore.SIGNAL("change_tab_text"),
                      self.workspace.change_tab_text)
         
+    def closeEvent(self, e):
+        """ closeEvent(e: QCloseEvent) -> None
+        Only hide the builder window
+
+        """
+        if not self.quit():
+            e.ignore()
+        
     def quit(self):
         #FIXME
         #ask to save projects
@@ -167,6 +184,15 @@ class UVCDATMainWindow(QtGui.QMainWindow):
             pass
         if self.preferences.saveB4Exit.isChecked():
             self.preferences.saveState()
+        from gui.vistrails_window import _app
+        _app._is_quitting = True
+        if _app.close_all_vistrails():
+            QtCore.QCoreApplication.quit()
+            # In case the quit() failed (when Qt doesn't have the main
+            # event loop), we have to return True still
+            return True
+        _app._is_quitting = False
+        return False
         QtGui.QApplication.instance().quit()
         
     def showVariableProperties(self):
@@ -215,6 +241,17 @@ class UVCDATMainWindow(QtGui.QMainWindow):
                 if not k in remove:
                     __main__.__dict__[k].id=k
                     self.dockVariable.widget().addVariable(__main__.__dict__[k])
+                    # Send information to controller so the Variable can be reconstructed
+                    # later. The best way is by emitting a signal to be processed by the
+                    # main window. When this panel becomes a global panel, then we will do
+                    # that. For now I will talk to the main window directly.
+        
+                    from api import get_current_project_controller
+                    from packages.uvcdat_cdms.init import CDMSVariable
+                    controller = get_current_project_controller()
+                    if controller.get_defined_variable(k) is None:
+                        cdmsVar = CDMSVariable(filename=None, name=k)
+                        controller.add_defined_variable(cdmsVar)
         for r in remove:
             del(__main__.__dict__[r])
 

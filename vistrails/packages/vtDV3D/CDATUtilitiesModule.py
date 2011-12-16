@@ -130,13 +130,13 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
                 inputs = taskRecord[1].split(';')
                 self.inputMap = {}
                 for input in inputs:
-                    inputData = input.split('#')
+                    inputData = input.split('+')
                     if len(inputData) > 1:
                         self.inputMap[ inputData[0] ] = ( inputData[1], int(inputData[2]) )
                 outputs = taskRecord[2].split(';')
                 self.outputMap = {}
                 for output in outputs:
-                    outputData = output.split('#')
+                    outputData = output.split('+')
                     if len(outputData) > 1:
                         varNameData =  outputData[1].split('*')
                         self.outputMap[ outputData[0] ] = varNameData[-1]
