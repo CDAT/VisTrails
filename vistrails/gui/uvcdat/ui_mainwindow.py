@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'mainwindow.ui'
+# Form implementation generated from reading ui file 'gui/uvcdat/mainwindow.ui'
 #
-# Created: Wed Dec  7 17:07:37 2011
+# Created: Fri Dec 16 15:28:07 2011
 #      by: PyQt4 UI code generator 4.8.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -102,13 +102,3 @@ class Ui_MainWindow(object):
         self.actionWorkflow.setText(QtGui.QApplication.translate("MainWindow", "Workflow", None, QtGui.QApplication.UnicodeUTF8))
 
 import uvcdat_rc
-
-if __name__ == "__main__":
-    import sys
-    app = QtGui.QApplication(sys.argv)
-    MainWindow = QtGui.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
-    sys.exit(app.exec_())
-

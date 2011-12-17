@@ -15,6 +15,8 @@
         <file>resources/icons/close.png</file>
         <file>resources/icons/save.png</file>
         <file>resources/icons/save-as.png</file>
+        <file>resources/icons/unpinned.png</file>
+        <file>resources/icons/pinned.png</file>
     </qresource>
     <qresource prefix="/images">
         <file>resources/images/clt_isofill.png</file>
