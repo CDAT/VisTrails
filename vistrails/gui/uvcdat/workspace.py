@@ -121,8 +121,6 @@ class QProjectItem(QtGui.QTreeWidgetItem):
                 del sheetItem.pos_to_item[(row, col)]
         sheetItem.update_icon()
         self.view.controller.set_changed(True)
-        from gui.vistrails_window import _app
-        _app.state_changed(self.view)
 
     def sheetSizeChanged(self, sheet, dim=[]):
         if sheet not in self.sheet_to_item:
@@ -131,22 +129,19 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         value = ','.join(map(str, dim))
         vistrail = self.view.controller.vistrail
         vistrail.set_annotation(key, value)
-        self.view.controller.set_changed(True)
-        from gui.vistrails_window import _app
-        _app.state_changed(self.view)
         # remove cells outside new range
         sheetItem = self.sheet_to_item[sheet]
         for annotation in vistrail.action_annotations:
             if annotation.db_key == 'uvcdatCell':
                 cell = fromAnnotation(annotation.db_value)
                 if dim and cell[0] == sheet and \
-                    cell[1] >= dim[0] or cell[2] >= dim[1]:
+                    (cell[1] >= dim[0] or cell[2] >= dim[1]):
                     vistrail.db_delete_actionAnnotation(annotation)
                     item = sheetItem.pos_to_item[(cell[1], cell[2])]
                     sheetItem.takeChild(sheetItem.indexOfChild(item))
                     del sheetItem.pos_to_item[(cell[1], cell[2])]
         sheetItem.update_icon()
-
+        self.view.controller.set_changed(True)
 
     def sheetSize(self, sheet):
         dimval = self.view.controller.vistrail.get_annotation(
@@ -617,8 +612,10 @@ class Workspace(QtGui.QDockWidget):
             del self.currentProject.sheet_to_item[title]
             del self.currentProject.controller.sheet_map[title]
             self.currentProject.sheetSizeChanged(title)
+        self.currentProject.view.controller.set_changed(True)
 
     def change_tab_text(self, oldtitle, newtitle):
+        
         if oldtitle not in self.currentProject.sheet_to_item:
             return
         item = self.currentProject.sheet_to_item[oldtitle]
@@ -627,11 +624,11 @@ class Workspace(QtGui.QDockWidget):
         del self.currentProject.sheet_to_tab[oldtitle]
         dimval = self.currentProject.sheetSize(oldtitle)
         self.currentProject.sheetSizeChanged(oldtitle)
-        self.currentProject.sheetSizeChanged(newtitle, dimval)
         item.sheetName = newtitle
         item.setText(0, newtitle)
         self.currentProject.sheet_to_item[newtitle] = item
         self.currentProject.sheet_to_tab[newtitle] = tab
+        self.currentProject.sheetSizeChanged(newtitle, dimval)
         # update controller sheetmap
         sheetmap = self.currentProject.controller.sheet_map[oldtitle]
         del self.currentProject.controller.sheet_map[oldtitle]
@@ -645,6 +642,8 @@ class Workspace(QtGui.QDockWidget):
                     vistrail.db_delete_actionAnnotation(annotation)
                     add_annotation(vistrail, annotation.db_action_id,
                                    newtitle, *cell[1:])
+        item.update_icon()
+        self.currentProject.view.controller.set_changed(True)
 
     def item_double_clicked(self, widget, col):
         if widget and type(widget) == QWorkflowItem:

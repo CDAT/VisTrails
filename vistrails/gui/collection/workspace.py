@@ -1179,6 +1179,8 @@ class QVistrailList(QtGui.QTreeWidget):
 
     def state_changed(self, view):
         """ update tags and mashups """
+        if not id(view) in self.items:
+            return
         item = self.items[id(view)]
         entity = VistrailEntity(view.controller.vistrail)
         newitem = QVistrailListItem(entity, view)
