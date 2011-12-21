@@ -24,6 +24,7 @@ class CDMSDataType:
     Slice = 2
     Vector = 3
     Hoffmuller = 4
+    ChartData = 5
 
 class WindowRefinementGenerator( QObject ):
 
@@ -166,7 +167,7 @@ class QtWindowLeveler( QObject ):
 
 class OutputRecManager: 
     
-    sep = ';+:|!'   
+    sep = ';#:|!'   
             
     def __init__( self, serializedData = None ): 
         self.outputRecs = {}
@@ -263,6 +264,7 @@ class OutputRec:
         self.varSelections = args.get( "varSelections", [] )
         self.type = args.get( "type", None )
         self.ndim = args.get( "ndim", 3 )
+        self.updateSelections() 
 
     def getVarList(self):
         vlist = []
@@ -307,6 +309,7 @@ class ConfigurableFunction( QObject ):
         self.openHandler = args.get( 'open', None )         #    key press
         self.startHandler = args.get( 'start', None )       #    left click
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
+        self.hasState = args.get( 'hasState', True )
         configFunctionList = ConfigurableFunctions.setdefault( self.name, [] )
         configFunctionList.append( self )
         
@@ -426,6 +429,9 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.windowLeveler.setDataRange( self.range )
         self.setLevelDataHandler( self.range )
         self.module.setParameter( self.name, self.range )
+        if self.widget: 
+            self.widget.initLeveling( self.range )
+            self.connect( self.widget, SIGNAL('update(QString)'), self.broadcastLevelingData )
 
 #        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
         
@@ -450,6 +456,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         else:  
             leveling_range = self.windowLeveler.windowLevel( x, y, wsize )
             for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.initial_range ) if self.boundByRange else leveling_range[iR]
+        return self.broadcastLevelingData()
+        
+    def broadcastLevelingData(  self, range = None  ):
+        if range: self.range = range
         self.setLevelDataHandler( self.range )
         self.module.render()
         for cfgFunction in self.activeFunctionList:
@@ -1405,7 +1415,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                             if taskRecord:
                                 outputs = taskRecord[2].split(';')
                                 for output in outputs:
-                                    outputData = output.split('+')
+                                    outputData = output.split('#')
                                     if len(outputData) > 1:
                                         variableList.add( ( outputData[1], int( outputData[2] ) ) )
         return datasetMap
@@ -1413,7 +1423,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
     @staticmethod
     def getVariableList( mid ): 
         import api
-        from CDMSModule import CDMSDatasetRecord
+        from CDMS_DatasetReaders import CDMSDatasetRecord   
         controller = api.get_current_controller()
         moduleId = mid
         cdmsFile = None
@@ -1467,7 +1477,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                         if taskRecord:
                             outputs = taskRecord[2].split(';')
                             for output in outputs:
-                                outputData = output.split('+')
+                                outputData = output.split('#')
                                 if len(outputData) > 1:
                                     variableList.add( ( outputData[1], int( outputData[2] ) ) )
         return ( variableList, datasetId, timeRange, selected_var, levelsAxis )

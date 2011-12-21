@@ -26,6 +26,27 @@ VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
 VTK_CONTROL_MODIFIER    = 2        
 
+# Some constants used throughout code
+
+VTK_LARGE_FLOAT = 1.0e+38
+VTK_LARGE_INTEGER = 2147483647 # 2^31 - 1
+
+# These types are returned by GetDataType to indicate pixel type.
+VTK_VOID            = 0
+VTK_BIT             = 1
+VTK_CHAR            = 2
+VTK_SIGNED_CHAR     =15
+VTK_UNSIGNED_CHAR   = 3
+VTK_SHORT           = 4
+VTK_UNSIGNED_SHORT  = 5
+VTK_INT             = 6
+VTK_UNSIGNED_INT    = 7
+VTK_LONG            = 8
+VTK_UNSIGNED_LONG   = 9
+VTK_FLOAT           =10
+VTK_DOUBLE          =11
+VTK_ID_TYPE         =12
+
 hyperwall_role = None 
 currentTime = 0
 dvLogFile =  open( os.path.expanduser( '~/.vistrails/dv3d_log.txt' ), 'w' )
@@ -133,12 +154,12 @@ def str2bool( value ):
     return value.strip().lower()[0] == 't'
 
 def serializeStrMap( strMap ): 
-    return ';'.join( [ '+'.join(dsitems) for dsitems in strMap.items() ] )
+    return ';'.join( [ '#'.join(dsitems) for dsitems in strMap.items() ] )
               
 def deserializeStrMap( serialized_strMap ): 
     stringMap = {}
     for dsrec in serialized_strMap.split(';'):
-        dsitems = dsrec.split('+')
+        dsitems = dsrec.split('#')
         if len( dsitems ) == 2: stringMap[ dsitems[0] ] = dsitems[1]
     return stringMap
 
@@ -396,7 +417,7 @@ def getDesignatedConnections( controller,  mid, portName, isDestinationPort = Tr
     return desig_connections
 
 def isCellModule( module ):
-    return  module.name in [ "DV3DCell", "SlicePlotCell" ]
+    return  module.name in [ "MapCell3D", "ChartCell", "SlicePlotCell" ]
 
 def getSheetTabWidget( sheet_index = -1 ):
     from packages.spreadsheet.spreadsheet_controller import spreadsheetController

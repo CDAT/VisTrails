@@ -539,11 +539,6 @@ class QCellToolBarExecutePlot(QtGui.QAction):
         
         self.setVisible(visible)
             
-    def __del__(self):
-        from core.configuration import get_vistrails_configuration
-        uvcdat_conf = get_vistrails_configuration().uvcdat
-        uvcdat_conf.unsubscribe('autoExecute', self.setAutoExecuteConfig)
-            
 class QCellToolBarMergeCells(QtGui.QAction):
     """
     QCellToolBarMergeCells is the action to merge selected cells to a

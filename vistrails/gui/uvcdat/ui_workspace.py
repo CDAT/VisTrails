@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'workspace.ui'
+# Form implementation generated from reading ui file 'gui/uvcdat/workspace.ui'
 #
-# Created: Thu Nov 10 16:27:55 2011
-#      by: PyQt4 UI code generator snapshot-4.8.6-2867ad3ae2e0
+# Created: Fri Dec 16 15:29:21 2011
+#      by: PyQt4 UI code generator 4.8.3
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -19,7 +19,6 @@ class Ui_Workspace(object):
         Workspace.setObjectName(_fromUtf8("Workspace"))
         Workspace.resize(404, 623)
         Workspace.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea|QtCore.Qt.RightDockWidgetArea)
-        Workspace.setWindowTitle(QtGui.QApplication.translate("Workspace", "Projects", None, QtGui.QApplication.UnicodeUTF8))
         self.dockWidgetContents = QtGui.QWidget()
         self.dockWidgetContents.setObjectName(_fromUtf8("dockWidgetContents"))
         self.verticalLayout = QtGui.QVBoxLayout(self.dockWidgetContents)
@@ -57,7 +56,6 @@ class Ui_Workspace(object):
         self.treeProjects.setRootIsDecorated(True)
         self.treeProjects.setExpandsOnDoubleClick(False)
         self.treeProjects.setObjectName(_fromUtf8("treeProjects"))
-        self.treeProjects.headerItem().setText(0, QtGui.QApplication.translate("Workspace", "1", None, QtGui.QApplication.UnicodeUTF8))
         self.treeProjects.header().setVisible(False)
         self.verticalLayout.addWidget(self.treeProjects)
         Workspace.setWidget(self.dockWidgetContents)
@@ -66,16 +64,7 @@ class Ui_Workspace(object):
         QtCore.QMetaObject.connectSlotsByName(Workspace)
 
     def retranslateUi(self, Workspace):
-        pass
+        Workspace.setWindowTitle(QtGui.QApplication.translate("Workspace", "Projects", None, QtGui.QApplication.UnicodeUTF8))
+        self.treeProjects.headerItem().setText(0, QtGui.QApplication.translate("Workspace", "1", None, QtGui.QApplication.UnicodeUTF8))
 
 import uvcdat_rc
-
-if __name__ == "__main__":
-    import sys
-    app = QtGui.QApplication(sys.argv)
-    Workspace = QtGui.QDockWidget()
-    ui = Ui_Workspace()
-    ui.setupUi(Workspace)
-    Workspace.show()
-    sys.exit(app.exec_())
-

@@ -12,6 +12,10 @@ from vtUtilities import *
 from sets import Set
 from PyQt4 import QtCore, QtGui
 
+def getScaledPoint( p ):   
+    if len(p) > 4: return ( p[0] + p[4] * ( p[2] - p[0] ), p[1] + p[4] * ( p[3] - p[1] ) )
+    return p
+
 class Edge(QtGui.QGraphicsItem):
     Pi = math.pi
     TwoPi = 2.0 * Pi
@@ -89,22 +93,95 @@ class Edge(QtGui.QGraphicsItem):
         painter.setPen(QtGui.QPen(QtCore.Qt.black, 1, QtCore.Qt.SolidLine, QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin))
         painter.drawLine(line)
 
+class NodeData( QtCore.QObject ):
+    RED = 0
+    BLUE = 1
+    YELLOW = 2
+    CYAN = 3
+    MAGENTA = 4
+    GRAY = 5
+    
+    def __init__(self, **args ):
+        self.ix0 = args.get( "ix0", None )
+        self.y0 = args.get( "y0", None )
+        self.ix1 = args.get( "ix1", None )
+        self.y1 = args.get( "y1", None )
+        self.s = args.get( "s", 0.5 )
+        self.color = args.get( "color", NodeData.YELLOW )
+        self.free = args.get( "free", False )
+        self.index =  args.get( "index", -1 )
+        self.dx0 = args.get( "dx0", None )
+        self.dx1 = args.get( "dx1", None )
+        self.spt0 = None
+        self.spt1 = None
+        self.vector = None
+
+    def setImageVectorData(self, ipt1, s ): 
+        self.ix1 = ipt1[0] 
+        self.y1 = ipt1[1]  
+        self.s = s 
+
+    def getDataPoint(self):
+        return ( self.dx0, self.y0 )
+
+    def getDataEndPoint(self):
+        return ( self.dx1, self.y1 ) if self.dx1 else None
+    
+    def getDataPosition( self ): 
+        if self.dx1 == None: return [ self.dx0, self.y0 ]
+        return [ self.dx0 + self.s * ( self.dx1 - self.dx0 ), self.y0 + self.s * ( self.y1 - self.y0 ) ]
+        
+    def getImagePosition( self ): 
+        if self.ix1 == None: return [ self.ix0, self.y0 ]
+        return [ self.ix0 + self.s * ( self.ix1 - self.ix0 ), self.y0 + self.s * ( self.y1 - self.y0 ) ]
+    
+    def getScenePoint(self):
+        return self.spt0
+
+    def getSceneEndPoint(self):
+        return self.spt1
+    
+    def getScenePosition(self):
+        vector = self.getVector()
+        if vector and (self.s > 0.0):
+            return vector.getPoint( self.s  ) 
+        return self.spt0
+    
+    def getVector(self):
+        if (self.vector == None) and (self.spt1 <> None):
+            self.vector = MovementConstraintVector( self.spt0, self.spt1 )
+        return self.vector
+    
 class Node(QtGui.QGraphicsItem):
     Type = QtGui.QGraphicsItem.UserType + 1
+    
 
-    def __init__(self, graphWidget, **args ):
+    def __init__(self, id, graphWidget, **args ):
         super(Node, self).__init__()
-
+        self.id = id
         self.graph = graphWidget
         self.edgeList = []
         self.newPos = QtCore.QPointF()
-        self.posConstraintVector = None 
         self.coupledNodes = Set()
-
         self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
         self.setFlag(QtGui.QGraphicsItem.ItemSendsGeometryChanges)
         self.setCacheMode(QtGui.QGraphicsItem.DeviceCoordinateCache)
         self.setZValue(1)
+        self.reset()
+        self.isSelected = False
+        
+    def reset(self):
+        self.index = -1
+        self.colorIndex = NodeData.YELLOW
+        self.posConstraintVector = None 
+        
+    def getColors(self):
+        if self.colorIndex == NodeData.RED: return ( QtCore.Qt.red, QtCore.Qt.darkRed )
+        if self.colorIndex == NodeData.BLUE: return ( QtCore.Qt.blue, QtCore.Qt.darkBlue )
+        if self.colorIndex == NodeData.YELLOW: return ( QtCore.Qt.yellow, QtCore.Qt.darkYellow )
+        if self.colorIndex == NodeData.CYAN: return ( QtCore.Qt.cyan, QtCore.Qt.darkCyan )
+        if self.colorIndex == NodeData.MAGENTA: return ( QtCore.Qt.magenta, QtCore.Qt.darkMagenta )
+        return ( QtCore.Qt.gray, QtCore.Qt.darkGray )
         
     def addCoupledNode( self, node ):
         self.coupledNodes.add( node )
@@ -165,16 +242,19 @@ class Node(QtGui.QGraphicsItem):
             painter.setPen(QtCore.Qt.NoPen)
             painter.setBrush(QtCore.Qt.darkGray)
             painter.drawEllipse(-7, -7, 20, 20)
+            colors = self.getColors()
     
             gradient = QtGui.QRadialGradient(-3, -3, 10)
             if option.state & QtGui.QStyle.State_Sunken:
                 gradient.setCenter(3, 3)
                 gradient.setFocalPoint(3, 3)
-                gradient.setColorAt(1, QtGui.QColor(QtCore.Qt.yellow).light(120))
-                gradient.setColorAt(0, QtGui.QColor(QtCore.Qt.darkYellow).light(120))
+                gradient.setColorAt(1, QtGui.QColor(colors[0]).light(120))
+                gradient.setColorAt(0, QtGui.QColor(colors[1]).light(120))
+                self.isSelected = True
             else:
-                gradient.setColorAt(0, QtCore.Qt.yellow)
-                gradient.setColorAt(1, QtCore.Qt.darkYellow)
+                gradient.setColorAt(0, colors[0])
+                gradient.setColorAt(1, colors[1])
+                self.isSelected = False
     
             painter.setBrush(QtGui.QBrush(gradient))
             painter.setPen(QtGui.QPen(QtCore.Qt.black, 0))
@@ -183,8 +263,11 @@ class Node(QtGui.QGraphicsItem):
     def itemChange(self, change, value):
         if change == QtGui.QGraphicsItem.ItemPositionHasChanged:
             for edge in self.edgeList: edge.adjust()
-            self.graph.itemMoved()
-
+            if self.isSelected:
+                newPos = value.toPointF()                  
+                scaledPos = self.posConstraintVector.getScaling( newPos ) if self.posConstraintVector else float('NaN')                
+                self.graph.itemMoved( self.index, newPos.x(), newPos.y(), scaledPos )
+#                if self.index > 0: print "Item[%d] moved, id = %d " % ( self.index, self.id )
         return super(Node, self).itemChange(change, value)
 
     def mousePressEvent(self, event):
@@ -201,7 +284,6 @@ class MovementConstraintVector( QtCore.QLineF ):
         super(MovementConstraintVector, self).__init__( pt0, pt1 )
         self.length = self.length()
         self.unitVector = self.unitVector()
-
         
     def getPoint( self, s ):
         if s > 1.0:   return self.p2()
@@ -210,6 +292,12 @@ class MovementConstraintVector( QtCore.QLineF ):
         dp = QtCore.QPointF( S * self.unitVector.dx(), S * self.unitVector.dy()  )
         new_pt = self.p1() + dp
         return new_pt
+
+    def getScaling( self, pt ):
+        if abs(self.unitVector.dx()) > abs(self.unitVector.dy()): 
+            return ( pt.x() - self.unitVector.x1() )  / ( self.unitVector.dx() * self.length )
+        else:
+            return ( pt.y() - self.unitVector.y1() ) / ( self.unitVector.dy() * self.length )
     
     def getProjectedPoint( self, pt0 ):
         rel_pt0 = pt0 - self.p1()
@@ -223,6 +311,13 @@ class GraphWidget(QtGui.QGraphicsView):
     xAxis = 0
     yAxis = 1
     
+    configNone = 0  
+    configBounds = 1 
+    configShape = 2 
+    
+    nodeMovedSignal = QtCore.SIGNAL("nodeMoved(int,float,float,float)") 
+    moveCompletedSignal = QtCore.SIGNAL("moveCompleted()") 
+    
     def __init__(self, **args ):
         super(GraphWidget, self).__init__()
         self.nodes = []
@@ -232,8 +327,11 @@ class GraphWidget(QtGui.QGraphicsView):
         self.tickLen = 12
         self.tickLabels = ( [], [] )
         self.bounds = None
+        self.maxNNodes = 15
         self.labelTextAlignment = [ QtCore.Qt.AlignHCenter, QtCore.Qt.AlignRight ]
         self.buildTickLabelRects()
+        self.configType = args.get( 'configType', self.configNone )
+        self.hasChanges = False
 
         scene = QtGui.QGraphicsScene(self)
         scene.setItemIndexMethod(QtGui.QGraphicsScene.NoIndex)
@@ -249,12 +347,17 @@ class GraphWidget(QtGui.QGraphicsView):
         self.setMinimumSize( self.size[0]+100, self.size[1] )
         self.setWindowTitle("Simple Graph")
         
-    def buildGraph( self, nNodes ):
+    def setConfigType( self, cType ):
+        if cType <> self.configType:
+            self.configType = cType
+            self.updateGraph()
+        
+    def buildGraph( self ):
         self.clear()
         node1 = None
-        dx = self.size[0]/( nNodes - 1 )
-        for iN in range(nNodes):
-            node2 = Node(self)
+        dx = self.size[0]/( self.maxNNodes - 1 )
+        for iN in range( self.maxNNodes ):
+            node2 = Node(iN,self)
             self.nodes.append( node2 )
             x = iN * dx
             node2.setPos( x, self.size[1] )
@@ -264,6 +367,9 @@ class GraphWidget(QtGui.QGraphicsView):
                 self.scene().addItem( edge )
                 self.edges.append( edge )
             node1 = node2
+         
+    def setNodeColor(self, nodeIndex, colorIndex ):   
+        self.nodes[ nodeIndex ].colorIndex = colorIndex
 
     def drawTickMark( self, painter, scene_value, axis ):
         if axis == self.xAxis:
@@ -303,35 +409,78 @@ class GraphWidget(QtGui.QGraphicsView):
             coord_value = self.bounds[iAxis][0] + dR * iTick
             painter.drawText( rect, self.labelTextAlignment[iAxis], flt2str( coord_value ) )
                      
+#    def createGraphTest( self, xbounds, ybounds, data ):
+#        self.data = []
+#        pre_points = None
+#        for point in data:
+#            if point[0] > xbounds[0]:
+#                if len(pre_points) > 0:
+#                    for point in pre_points:
+#                        s = ( xbounds[0] - last_point[0] ) / ( point[0] - pre_point[0] )
+#                        yval = pre_point[1] + ( point[1] - pre_point[1] ) * s
+#                        self.data.append( (xbounds[0],yval,False) )
+#                    pre_points = []
+#                self.data.append( point )
+#            else: pre_points.append( point )
+#        self.bounds = ( xbounds, ybounds )
+#        if len( self.nodes ) == 0: self.buildGraph()
+#        for iP in range( len( self.data ) ):
+#            ptdata = self.data[iP]
+#            if len( ptdata ) == 3:
+#                x, y = self.getScenePoint( ptdata, xbounds, ybounds )
+#                self.nodes[iP].setPos ( x, y )
+#                self.nodes[iP].setMovable( ptdata[2] )
+#            else:
+#                x0, y0 = self.getScenePoint( ptdata[0:2], xbounds, ybounds )
+#                x1, y1 = self.getScenePoint( ptdata[2:4], xbounds, ybounds )
+#                vector = MovementConstraintVector( QtCore.QPointF( x0, y0 ), QtCore.QPointF( x1, y1 ) )
+#                pt0 = vector.getPoint( ptdata[4] )
+#                self.nodes[iP].setPos ( pt0 )
+#                self.nodes[iP].setVector ( vector )
+#                if len( ptdata ) > 5: self.nodes[iP].addCoupledNode( self.nodes[ ptdata[5] ] )
+#        for iP in range( len( self.data ), self.maxNNodes ):
+#            self.nodes[iP].setPos ( self.size[0], self.size[1] )
+#            self.nodes[iP].setMovable( False )
+#        self.update()
+
     def createGraph( self, xbounds, ybounds, data ):
         self.data = []
-        last_point = None
-        for point in data:
+        pre_nodes = []
+        for nodeData in data:
+            point = nodeData.getDataPosition()
             if point[0] > xbounds[0]:
-                if last_point <> None:
-                    s = ( xbounds[0] - last_point[0] ) / ( point[0] - last_point[0] )
-                    yval = last_point[1] + ( point[1] - last_point[1] ) * s
-                    self.data.append( (xbounds[0],yval,False) )
-                    last_point = None
-                self.data.append( point )
-            else: last_point = point
+                if len(pre_nodes) > 0:
+                    for pre_node in pre_nodes:
+                        s = ( xbounds[0] - pre_node[0] ) / ( point[0] - pre_node[0] )
+                        yval = pre_node[1] + ( point[1] - pre_node[1] ) * s
+                        self.data.append( NodeData( dx0=xbounds[0], y0=yval ) )
+                    pre_nodes = []
+                self.data.append( nodeData )
+            else: pre_nodes.append( point )
         self.bounds = ( xbounds, ybounds )
-        if len( self.nodes ) <> len( self.data ):
-            self.buildGraph( len( self.data ) )
+        if len( self.nodes ) == 0: self.buildGraph()
+        self.updateGraph()
+        
+        
+    def updateGraph(self):
         for iP in range( len( self.data ) ):
-            ptdata = self.data[iP]
-            if len( ptdata ) == 3:
-                x, y = self.getScenePoint( ptdata, xbounds, ybounds )
-                self.nodes[iP].setPos ( x, y )
-                self.nodes[iP].setMovable( ptdata[2] )
-            else:
-                x0, y0 = self.getScenePoint( ptdata[0:2], xbounds, ybounds )
-                x1, y1 = self.getScenePoint( ptdata[2:4], xbounds, ybounds )
-                vector = MovementConstraintVector( QtCore.QPointF( x0, y0 ), QtCore.QPointF( x1, y1 ) )
-                pt0 = vector.getPoint( ptdata[4] )
-                self.nodes[iP].setPos ( pt0 )
-                self.nodes[iP].setVector ( vector )
-                if len( ptdata ) > 5: self.nodes[iP].addCoupledNode( self.nodes[ ptdata[5] ] )
+            nodeData = self.data[iP]
+            node = self.nodes[iP]
+            node.reset()
+            nodeData.spt0 = self.getScenePoint( nodeData.getDataPoint(), self.bounds[0], self.bounds[1] )
+            if nodeData.getDataEndPoint():
+                nodeData.spt1 = self.getScenePoint( nodeData.getDataEndPoint(), self.bounds[0], self.bounds[1] )
+                node.setVector ( nodeData.getVector() ) 
+                node.setMovable ( True ) 
+            else: 
+                node.setMovable( nodeData.free )                
+            node.setPos ( nodeData.getScenePosition() )  
+            node.colorIndex = nodeData.color
+            node.index = nodeData.index           
+        for iP in range( len( self.data ), self.maxNNodes ):
+            node = self.nodes[iP]
+            node.setPos ( self.size[0], self.size[1] )
+            node.setMovable( False )
         self.update()
             
     def getScenePoint(self, point, xbounds, ybounds ):
@@ -339,15 +488,31 @@ class GraphWidget(QtGui.QGraphicsView):
         dy = ( point[1] - ybounds[0] ) / ( ybounds[1] - ybounds[0] )
         x = self.size[0] * dx
         y = self.size[1] * ( 1.0 - dy )
+        return QtCore.QPointF( x, y )
+
+    def getDataPoint(self, sx, sy ):
+        xbounds, ybounds = self.bounds[0], self.bounds[1]
+        dx = bound( sx, [ 0, self.size[0] ] ) / float( self.size[0] )
+        dy = bound( sy, [ 0, self.size[1] ] ) / float( self.size[1] )
+        x = xbounds[0] + dx * ( xbounds[1] - xbounds[0] )
+        y = ybounds[1] - dy * ( ybounds[1] - ybounds[0] )
         return x, y
 
     def getScenePos( self, point, bounds, isHorizontal ):
         dp = ( point[0] - bounds[0] ) / ( bounds[1] - xbounds[0] )
         if isHorizontal: return self.size[0] * dp  
         else: return self.size[1] * ( 1.0 - dp )
-        
-    def itemMoved(self):
-        pass
+
+    def itemMoved(self, index, sx, sy, s ):
+        x, y = self.getDataPoint( sx, sy )
+        self.emit( self.nodeMovedSignal, index, x, y, s )
+        self.hasChanges = True
+
+    def mouseReleaseEvent( self, event ):
+        super(GraphWidget, self).mouseReleaseEvent(event)
+        if self.hasChanges:
+            self.emit( self.moveCompletedSignal )
+            self.hasChanges = False
 
     def keyPressEvent(self, event):
         key = event.key()

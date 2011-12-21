@@ -239,9 +239,9 @@ class VariableProperties(QtGui.QDockWidget):
         l=QtGui.QLabel("Dimensions")
         labelLayout.addWidget(l)
         
-        selectRoiButton = QtGui.QPushButton('Select ROI', self)
-        labelLayout.addWidget( selectRoiButton )        
-        self.connect( selectRoiButton, QtCore.SIGNAL('clicked(bool)'), self.selectRoi )        
+        self.selectRoiButton = QtGui.QPushButton('Select ROI', self)
+        labelLayout.addWidget( self.selectRoiButton )        
+        self.connect( self.selectRoiButton, QtCore.SIGNAL('clicked(bool)'), self.selectRoi )        
         self.roiSelector = ROISelectionDialog( self.parent )
         self.connect(self.roiSelector, QtCore.SIGNAL('doneConfigure()'), self.setRoi )
         if self.roi: self.roiSelector.setROI( self.roi )
@@ -414,7 +414,16 @@ class VariableProperties(QtGui.QDockWidget):
         for line in var.listall():
             varInfo += line + '\n'
         self.varInfoWidget.setText(varInfo)
-
+        showRoi = False
+        for i in range(len(self.axisListHolder.axisWidgets)):
+            axis = self.axisListHolder.axisWidgets[i]
+            if axis.axis.isLatitude() or axis.virtual==1 or axis.axis.isLongitude() or axis.virtual==1:
+                showRoi = True
+        if showRoi:
+            self.selectRoiButton.setHidden(False)
+        else:
+            self.selectRoiButton.setHidden(True)
+            
     def setupEditTab(self,var):
         self.varEditArea.takeWidget()
         self.varEditArea.setWidget(editVariableWidget.editVariableWidget(var,parent=self.parent,root=self.root))

@@ -1,9 +1,13 @@
+
 from PyQt4 import QtGui, QtCore
 import cdutil
 import cdms2
 import numpy
 import genutil
 import re
+import cdtime
+
+pins = {}
 
 ## class QAxisListTabWidget(QtGui.QTabWidget):
 ##     """ TabWidget where each tab contains a QAxisList """
@@ -132,8 +136,11 @@ class QSliderCombo(QtGui.QWidget):
         vbox.addLayout(hbox)
         self.topSlider = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.topSlider.setTickPosition(QtGui.QSlider.TicksAbove)
+        tip = "Use left/right arrows to move slider by 1 unit"
+        self.topSlider.setToolTip(tip)
         self.bottomSlider = QtGui.QSlider(QtCore.Qt.Horizontal)        
         self.bottomSlider.setTickPosition(QtGui.QSlider.TicksBelow)
+        self.bottomSlider.setToolTip(tip)
         vbox.addWidget(self.topSlider)
         vbox.addWidget(self.bottomSlider)
 
@@ -175,6 +182,32 @@ class QSliderCombo(QtGui.QWidget):
             self.updateMin(self.findAxisIndex(axis[0]))
             self.updateMax(self.findAxisIndex(axis[-1]))
 
+        #Ok at tht point let see if it is a "pinned" axis
+        if axis.isTime():
+            k="UVTIMEAXIS"
+        elif axis.isLatitude():
+            k="UVLATAXIS"
+        elif axis.isLongitude():
+            k="UVLONAXIS"
+        elif axis.isLevel():
+            k="UVLEVELAXIS"
+        else:
+            k=axis.id
+        if k in pins and pins[k]["pinned"]:
+            v1,v2=pins[k]["vals"]
+            if axis.isTime():
+                v1=cdtime.s2r(v1,axis.units,axis.getCalendar()).value
+                v2=cdtime.s2r(v2,axis.units,axis.getCalendar()).value
+            try: # If this falis then we don't need to worry about restting or pinning this guy he's outside the range
+                # But if it faisl other should still be able to be pinned
+                i1,i2=axis.mapInterval((v1,v2))
+                self.updateTopSlider(i1)
+                self.updateBottomSlider(i2)
+                self.parent().pin.click()
+            except:
+                pass
+            
+        
     def findAxisIndex(self,val):
         self.axisValues = numpy.array(self.axisValues)
         i=self.axisValues.searchsorted(val)
@@ -280,6 +313,8 @@ class QSliderCombo(QtGui.QWidget):
             
         self.topLabel.setText(str(minValue))
         self.axisCombo.setMinValue(minValue)
+        if self.parent().pin.isChecked():
+            self.parent().pin.click()
 
     def updateMax(self, maxIndex=None):
         """ Set max value, update the slider label and the comboBox line edit
@@ -295,14 +330,20 @@ class QSliderCombo(QtGui.QWidget):
 
         self.bottomLabel.setText(str(maxValue))
         self.axisCombo.setMaxValue(maxValue)
+        if self.parent().pin.isChecked():
+            self.parent().pin.click()
 
     def updateTopSlider(self, index):
         self.minIndex = index
         self.topSlider.setValue(index)
+        if self.parent().pin.isChecked():
+            self.parent().pin.click()
 
     def updateBottomSlider(self, index):
         self.maxIndex = index
         self.bottomSlider.setValue(index)
+        if self.parent().pin.isChecked():
+            self.parent().pin.click()
 
     def replaceComboBoxValues(self, values):
         self.axisCombo.replaceComboBoxValues(values)
@@ -347,8 +388,13 @@ class QAxis(QtGui.QWidget):
         hbox = QtGui.QHBoxLayout()
         hbox.setSpacing(0)
         hbox.setMargin(0)                
+        self.pin = QtGui.QToolButton()
+        self.pin.setIcon(QtGui.QIcon(":/icons/resources/icons/unpinned.png"))
+        self.pin.setCheckable(True)
+        self.pin.clicked.connect(self.pinClicked)
         self.sliderCombo = QSliderCombo(axis, self)
         hbox.addWidget(self.sliderCombo)
+        hbox.addWidget(self.pin)
         self.setLayout(hbox)        
 
         # These buttons aren't added to the layout here, instead they are added
@@ -391,6 +437,28 @@ class QAxis(QtGui.QWidget):
         ##              QtCore.SIGNAL('valueChanged (int)'),
         ##              parent.setVistrailsVariableAxes)
 
+    def pinClicked(self):
+        if self.axis.isTime():
+            k="UVTIMEAXIS"
+        elif self.axis.isLatitude():
+            k="UVLATAXIS"
+        elif self.axis.isLongitude():
+            k="UVLONAXIS"
+        elif self.axis.isLevel():
+            k="UVLEVELAXIS"
+        else:
+            k=self.axisName
+        if self.pin.isChecked():
+            self.pin.setIcon(QtGui.QIcon(":/icons/resources/icons/pinned.png"))
+            ## Ok now we need to remember the actual values
+            try: # try because when setting up a new Axis it's not ready but we don't really care since it would be the same
+                v1,v2 = self.getCurrentValues()
+                pins[k]={"vals":(v1,v2),"pinned":True}
+            except:
+                pass
+        else:
+            self.pin.setIcon(QtGui.QIcon(":/icons/resources/icons/unpinned.png"))
+            pins[k]["pinned"]=False
     def createAxisOperationsButtonAndMenu(self):
         """ Initialize the button to the right of the axis sliders and it's menu
         with operations: def, sum, avg, wgt, gtm, awt, std
@@ -970,7 +1038,6 @@ class QAxisList(QtGui.QWidget):
             axisWidget = QAxis(axis, axisName, axisIndex, self,virtual=virtual)
             self.axisWidgets.append(axisWidget)
             axisIndex += 1
-
         self.gridLayout.setRowStretch(self.gridLayout.rowCount(), 1)
 
     def defineVarAxis(self, var, teachingCommand):

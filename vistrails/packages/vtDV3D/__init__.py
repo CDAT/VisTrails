@@ -10,7 +10,7 @@ Created on Dec 7, 2010
 """
 identifier = 'gov.nasa.nccs.vtdv3d'
 name = 'vtDV3D'
-version = '0.1.8'
+version = '0.2.0'
 
 #Configuration object
 import sys
@@ -70,7 +70,8 @@ def typeMap(name, package=None):
         else:
             return registry.get_descriptor_by_name(package, name).module
 
-from CDMSModule import *   
+from CDMS_DatasetReaders import *   
+from CDMS_VariableReaders import *   
 from PersistentModule import *
 from vtUtilities import *
 from HyperwallManager import HyperwallManager
@@ -79,11 +80,11 @@ def initialize(*args, **keywords):
     import core.modules.module_registry
     from VolumeSlicerModule import VolumeSlicer
     from VolumeRenderModule import VolumeRenderer
+    from ParallelCoordinatesModule import ParallelCoordinateViewer
     from WorldMapModule import WorldFrame
 #    from DemoDataModule import DemoData, DemoDataConfigurationWidget
-    from DV3DCell import DV3DCell
+    from DV3DCell import *
     from InteractiveConfiguration import LayerConfigurationWidget
-    from DV3DCell import DV3DCellConfigurationWidget
     from LevelSurfaceModule import LevelSurface 
     from CurtainPlotModule import CurtainPlot 
     from ResampleModule import Resample 
@@ -102,18 +103,25 @@ def initialize(*args, **keywords):
     vtkImageDataType = typeMap('vtkImageData')
     reg.add_module( AlgorithmOutputModule, abstract=True) # hide_descriptor=True )       
     reg.add_module( AlgorithmOutputModule3D, abstract=True) # hide_descriptor=True )   
+    reg.add_module( AlgorithmOutputModule2D, abstract=True) # hide_descriptor=True )   
     reg.add_module( WorkflowModule, abstract=True) # hide_descriptor=True )   
     reg.add_module( CDMSDataset, abstract=True) # hide_descriptor=True )   
      
-    reg.add_module( DV3DCell, configureWidgetType=DV3DCellConfigurationWidget, namespace='spreadsheet' ) 
-    reg.add_input_port( DV3DCell, "volume", AlgorithmOutputModule3D  )   
-    reg.add_input_port( DV3DCell, "cell_location", [ ( String, 'cell_coordinates' ) ], True )
-    reg.add_input_port( DV3DCell, "world_cut", Integer, optional=True  )
-    reg.add_input_port( DV3DCell, "map_border_size",  [ ( Float, 'border_in_degrees' ) ], optional=True  )
-    reg.add_input_port( DV3DCell, "enable_basemap",  [ ( Boolean, 'enable' ) ], optional=True  )    
-    reg.add_input_port( DV3DCell, "world_map", [ ( File, 'map_file' ), ( Integer, 'map_cut' ) ], optional=True  ) 
-    reg.add_input_port( DV3DCell, "opacity", [ ( Float, 'value' ) ], optional=True  ) 
-    reg.add_input_port( DV3DCell, "title", [ ( String, 'value' ) ], optional=True  ) 
+    reg.add_module( MapCell3D, configureWidgetType=MapCell3DConfigurationWidget, namespace='spreadsheet' ) 
+    reg.add_input_port( MapCell3D, "volume", AlgorithmOutputModule3D  )   
+    reg.add_input_port( MapCell3D, "cell_location", [ ( String, 'cell_coordinates' ) ], True )
+    reg.add_input_port( MapCell3D, "world_cut", Integer, optional=True  )
+    reg.add_input_port( MapCell3D, "map_border_size",  [ ( Float, 'border_in_degrees' ) ], optional=True  )
+    reg.add_input_port( MapCell3D, "enable_basemap",  [ ( Boolean, 'enable' ) ], optional=True  )    
+    reg.add_input_port( MapCell3D, "world_map", [ ( File, 'map_file' ), ( Integer, 'map_cut' ) ], optional=True  ) 
+    reg.add_input_port( MapCell3D, "opacity", [ ( Float, 'value' ) ], optional=True  ) 
+    reg.add_input_port( MapCell3D, "title", [ ( String, 'value' ) ], optional=True  ) 
+
+    reg.add_module( ChartCell, configureWidgetType=ChartCellConfigurationWidget, namespace='spreadsheet' ) 
+    reg.add_input_port( ChartCell, "chart", AlgorithmOutputModule2D  )   
+    reg.add_input_port( ChartCell, "cell_location", [ ( String, 'cell_coordinates' ) ], True )
+    reg.add_input_port( ChartCell, "opacity", [ ( Float, 'value' ) ], optional=True  ) 
+    reg.add_input_port( ChartCell, "title", [ ( String, 'value' ) ], optional=True  ) 
 
 #    reg.add_module( WorldFrame )
 #    reg.add_input_port( WorldFrame, "world_cut", Integer, optional=True  )
@@ -171,6 +179,12 @@ def initialize(*args, **keywords):
     reg.add_input_port( CDMS_VolumeReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( CDMS_VolumeReader, "volume", AlgorithmOutputModule3D ) 
     CDMS_VolumeReader.registerConfigurableFunctions( reg )
+
+    reg.add_module( CDMS_ChartDataReader, configureWidgetType=CDMS_ChartDataConfigurationWidget, namespace='cdms' )
+    reg.add_input_port( CDMS_ChartDataReader, "dataset", CDMSDataset )      
+    reg.add_input_port( CDMS_ChartDataReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
+    reg.add_output_port( CDMS_ChartDataReader, "volume", AlgorithmOutputModule3D ) 
+    CDMS_ChartDataReader.registerConfigurableFunctions( reg )
 
     reg.add_module( CDMS_SliceReader, configureWidgetType=CDMS_SliceReaderConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_SliceReader, "dataset", CDMSDataset )        
@@ -242,6 +256,13 @@ def initialize(*args, **keywords):
 #    reg.add_input_port( VolumeRenderer, "layer",   [ ( String, 'layer' ), ]   ) 
     reg.add_output_port( VolumeRenderer, "volume", AlgorithmOutputModule3D ) 
     VolumeRenderer.registerConfigurableFunctions( reg )
+
+    reg.add_module( ParallelCoordinateViewer, namespace='vtk'  ) # , configureWidgetType=LayerConfigurationWidget  )
+    reg.add_input_port( ParallelCoordinateViewer, "volume", AlgorithmOutputModule3D  )
+    reg.add_input_port(  ParallelCoordinateViewer, "slice", AlgorithmOutputModule  )
+#    reg.add_input_port( VolumeRenderer, "layer",   [ ( String, 'layer' ), ]   ) 
+    reg.add_output_port( ParallelCoordinateViewer, "chart", AlgorithmOutputModule2D ) 
+    ParallelCoordinateViewer.registerConfigurableFunctions( reg )
 
     reg.add_module( LevelSurface, namespace='vtk'   )
     reg.add_input_port( LevelSurface, "texture", AlgorithmOutputModule3D  )

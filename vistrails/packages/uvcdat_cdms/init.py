@@ -9,6 +9,7 @@ import time
 import api
 import re
 import MV2
+import os
 
 from info import identifier
 from widgets import GraphicsMethodConfigurationWidget
@@ -18,6 +19,7 @@ from core.utils import InstanceObject
 from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
+import packages.spreadsheet.celltoolbar_rc
 from packages.uvcdat.init import Variable, Plot
 
 canvas = None
@@ -431,7 +433,8 @@ class QCDATWidget(QCellWidget):
     usedIndexes = []
     
     def __init__(self, parent=None):
-        QCellWidget.__init__(self, parent)        
+        QCellWidget.__init__(self, parent)
+        self.toolBarType = QCDATWidgetToolBar        
         self.window = None
         self.canvas =  None
         self.windowId = -1
@@ -524,7 +527,100 @@ Please delete unused CDAT Cells in the spreadsheet.")
         
         QCDATWidget.usedIndexes.remove(self.windowId)
         QCellWidget.deleteLater(self)    
+        
+    def dumpToFile(self, filename):
+        """ dumpToFile(filename: str, dump_as_pdf: bool) -> None
+        Dumps itself as an image to a file, calling grabWindowPixmap """
+        self.saveToPNG(filename)
+        
+    def saveToPNG(self, filename):
+        """ saveToPNG(filename: str) -> bool
+        Save the current widget contents to an image file
+        
+        """
+        
+        self.canvas.png(filename)
+        
+    def saveToPDF(self, filename):
+        """ saveToPDF(filename: str) -> bool
+        Save the current widget contents to a pdf file
+        
+        """   
+        self.canvas.pdf(filename, width=11.5)
+        
+    def exportToFile(self):
+        file = QtGui.QFileDialog.getSaveFileName(
+                self, "Select a File to Export the Plot",
+                ".", "Images (*.png *.gif);;PDF file (*.pdf);;SVG file (*.svg)")
+        if not file.isNull():
+            filename = str(file)
+            (_,ext) = os.path.splitext(filename)
+            if  ext.upper() == '.PDF':
+                self.canvas.pdf(filename, width=11.5)
+            elif ext.upper() == ".PNG":
+                self.canvas.png(filename, width=11.5)
+            elif ext.upper() == ".SVG":
+                self.canvas.svg(filename, width=11.5)
+            elif ext.upper() == ".GIF":
+                self.canvas.gif(filename, width=11.5)
+        
+class QCDATWidgetToolBar(QCellToolBar):
+    """
+    QCDATWidgetToolBar derives from QCellToolBar to give CDMSCell
+    a customizable toolbar
+    
+    """
+    def createToolBar(self):
+        """ createToolBar() -> None
+        This will get call initially to add customizable widgets
+        
+        """
+        self.appendAction(QCDATWidgetExport(self))
+        
+class QCDATWidgetExport(QtGui.QAction):
+    """
+    QCDATWidgetExport is the action to export the plot 
+    of the current cell to a file
 
+    """
+    def __init__(self, parent=None):
+        """ QCDATWidgetExport(icon: QIcon, parent: QWidget)
+                                   -> QCDATWidgetExport
+        Setup the image, status tip, etc. of the action
+        
+        """
+        QtGui.QAction.__init__(self,
+                               QtGui.QIcon(":/images/file_save.png"),
+                               "Export the current plot as an image",
+                               parent)
+        self.setStatusTip("Export the current plot as an image")
+
+    def triggeredSlot(self, checked=False):
+        """ toggledSlot(checked: boolean) -> None
+        Execute the action when the button is clicked
+        
+        """
+        
+        cellWidget = self.toolBar.getSnappedWidget()
+        cellWidget.exportToFile()
+
+    def updateStatus(self, info):
+        """ updateStatus(info: tuple) -> None
+        Updates the status of the button based on the input info
+        
+        """
+        from api import _app
+        (sheet, row, col, cellWidget) = info
+        selectedCells = sorted(sheet.getSelectedLocations())
+
+        # Will not show up if there is no cell selected  
+        proj_controller = _app.uvcdatWindow.get_current_project_controller()
+        sheetName = sheet.getSheetName()        
+        if (len(selectedCells)==1 and 
+            proj_controller.is_cell_ready(sheetName,row,col)):
+                self.setVisible(True)
+        else:
+            self.setVisible(False)
 
 _modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
             CDMSUnaryVariableOperation, CDMSBinaryVariableOperation]

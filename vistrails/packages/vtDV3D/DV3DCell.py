@@ -18,6 +18,7 @@ import os
 packagePath = os.path.dirname( __file__ )  
 defaultMapDir = os.path.join( packagePath, 'data' )
 defaultMapFile = os.path.join( defaultMapDir,  'world_huge.jpg' )
+defaultLogoFile = os.path.join( defaultMapDir,  'uvcdat.jpg' )
 defaultMapCut = 0
 SLIDER_MAX_VALUE = 100
 
@@ -36,6 +37,20 @@ def parse_cell_address( address ):
         else:
             return get_coords_from_cell_address( address[:-1], address[-1] )
 
+class QVTKClientWidget(QVTKWidget):
+    """
+    QVTKWidget with interaction observers
+    
+    """
+    def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
+        QVTKWidget.__init__(self, parent, f )
+
+#    def updateContents( self, inputPorts ):
+#        if len( inputPorts ) > 5:
+#            if inputPorts[5]:
+#                self.SetRenderWindow( inputPorts[5] )
+#        QVTKWidget.updateContents(self, inputPorts )
+
 class QVTKServerWidget(QVTKWidget):
     """
     QVTKWidget with interaction observers
@@ -47,6 +62,12 @@ class QVTKServerWidget(QVTKWidget):
         
     def setLocation( self, location ):
         self.location = location
+
+    def updateContents( self, inputPorts ):
+        if len( inputPorts ) > 5:
+            if inputPorts[5]:
+                self.SetRenderWindow( inputPorts[5] )
+        QVTKWidget.updateContents(self, inputPorts )
 
     def event(self, e): 
         dims = [ self.width(), self.height() ]   
@@ -113,49 +134,71 @@ class QVTKServerWidget(QVTKWidget):
 #                    cell.update()
 
 class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
-    """
-    VTKCell is a VisTrails Module that can display vtkRenderWindow inside a cell
-    
-    """
-    baseMapDirty = True
 
     def __init__( self, mid, **args ):
         SpreadsheetCell.__init__(self)
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, **args )
-        self.addConfigurableFunction( 'resetCamera', None, 'A', open=self.resetCamera )
+        self.addConfigurableMethod( 'resetCamera', self.resetCamera, 'A' )
+        self.addConfigurableMethod( 'showLogo', self.toggleLogoVisibility, 'L' )
         if self.isClient:  self.location = ( 0, 0 )
         self.allowMultipleInputs = True
         self.renderers = []
         self.fieldData = []
         self.cellWidget = None
         self.imageInfo = None
-        self.baseMapActor = None
-        self.enableBasemap = True
         self.renWin = None
         self.builtCellWidget = False
-        
-    @classmethod
-    def clearCache(cls):
-        cls.baseMapDirty = True
-        
-#    def get_output(self, port):
-#        module = Module.get_output(self, port)
-#        output_id = id( module )    
-#        print " WorldFrame.get_output: output Module= %s " % str(output_id)
-#        return module
-
-#        # if self.outputPorts.has_key(port) or not self.outputPorts[port]: 
-#        if port not in self.outputPorts:
-#            raise ModuleError(self, "output port '%s' not found" % port)
-#        return self.outputPorts[port]
+        self.logoActor = None
+        self.logoVisible = True
 
     def getSheetTabWidget( self ):   
         return self.cellWidget.findSheetTabWidget() if self.cellWidget else None
     
-#    def setSelectionStatus( self, selected ):
-#        for fd in self.fieldData:
-#            fd.AddArray( getIntDataArray(  'selected', [ selected, ] ) )      
+    def toggleLogoVisibility( self ):
+        self.logoVisible = not self.logoVisible 
+        self.logoActor.SetVisibility( self.logoVisible ) 
+        self.logoActor.Modified()
+        self.renWin.Render() 
     
+    def addLogo(self):
+        if len(self.renderers) and self.renWin:
+            if self.logoActor == None:
+                reader = vtk.vtkJPEGReader()
+                reader.SetFileName( defaultLogoFile )
+                self.logoMapper = vtk.vtkImageMapper()
+                input = reader.GetOutput()
+                self.logoMapper.SetInput( input )
+
+                input.Update()
+                self.logoDims = input.GetDimensions()
+                range = input.GetScalarRange()
+                self.logoMapper.SetColorWindow( 0.5 * ( range[1] - range[0] ) )
+                self.logoMapper.SetColorLevel( 0.5 * (range[1] + range[0]) )
+            else:
+                self.renderer.RemoveActor2D( self.logoActor )
+                self.logoActor = None
+                           
+            self.logoActor = vtk.vtkActor2D()
+            properties = self.logoActor.GetProperty()  
+            properties.SetDisplayLocationToBackground()           
+            self.logoActor.SetMapper( self.logoMapper )
+            self.renderer.AddActor2D( self.logoActor )
+            viewport_dims = self.renWin.GetSize() 
+            self.logoActor.SetDisplayPosition( viewport_dims[0]-self.logoDims[0], viewport_dims[1]-self.logoDims[1] )
+            self.logoActor.SetVisibility( self.logoVisible )
+            self.logoActor.Modified()
+#            imageActor.SetWidth( 0.25 )      
+#            imageActor.SetHeight( 0.1 ) 
+#            coord = self.logoActor.GetPositionCoordinate()  
+#            coord.SetCoordinateSystemToNormalizedViewport()
+#            coord.SetValue( 0.75, 0.9 ) 
+            
+       
+ 
+    def onRender( self, caller, event ):
+        self.addLogo()
+        PersistentVisualizationModule.onRender( self, caller, event  )
+            
     def adjustSheetDimensions(self, row, col ):
         sheetTabWidget = getSheetTabWidget()
         ( rc, cc ) = sheetTabWidget.getDimension()
@@ -186,7 +229,6 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         return False
     
     def syncCamera( self, cpos, cfol, cup ):
-#        print " @@@ syncCamera, module: %s  @@@" % str( self.moduleID )
         rens = self.renWin.GetRenderers()
         rens.InitTraversal()
         for i in xrange(rens.GetNumberOfItems()):
@@ -254,18 +296,310 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             HyperwallManager.addCell( self.moduleID, self.datasetId, str(0), dimensions )
             HyperwallManager.executeCurrentWorkflow( self.moduleID )
 
+    def isBuilt(self):
+        return ( self.cellWidget <> None )
+   
+    def buildPipeline(self):
+        """ compute() -> None
+        Dispatch the vtkRenderer to the actual rendering widget
+        """ 
+        self.buildRendering()
+
+        if not self.builtCellWidget:
+            self.buildWidget()
+            self.renWin.Render() 
+            self.renWin.Render() 
+   
+    def execute(self, **args ):
+        if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
+        PersistentVisualizationModule.execute(self, **args)
+        
+    def addTitle(self):    
+        title = getItem( self.getInputValue( "title", None ) )
+        if title: self.titleBuffer = title
+        if self.titleBuffer and self.renderer:
+            self.getTitleActor().VisibilityOn() 
+                      
+
+
+    def resetCamera(self):
+            aCamera = self.renderer.GetActiveCamera()
+            aCamera.SetViewUp( 0, 0, 1 )
+            aCamera.SetPosition( 0.0, 0.0, ( self.mapCenter[0] + self.mapCenter[1] ) / 4.0 )
+            aCamera.SetFocalPoint( self.mapCenter[0], self.mapCenter[1], 0.0 )
+            aCamera.ComputeViewPlaneNormal()
+            self.renderer.ResetCamera()                
+        
+    def buildWidget(self):                        
+        if self.renderers:
+            renderViews = []
+            renderView = None
+            iStyle = None
+            iHandlers = []
+            picker = None
+            renwin = self.renderer.GetRenderWindow()
+            if renwin:
+                iren = renwin.GetInteractor()
+                iren_name = iren.GetInteractorStyle().__class__.__name__
+                iStyle = wrapVTKModule( iren_name, iren.GetInteractorStyle() )   
+            
+            if self.isServer:
+                self.cellWidget = self.displayAndWait( QVTKServerWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
+                self.cellWidget.setLocation( self.location )
+            elif self.isClient:
+                self.cellWidget = self.displayAndWait( QVTKClientWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
+            else:
+                self.cellWidget = self.displayAndWait( QVTKClientWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
+            #in mashup mode, self.displayAndWait will return None
+            if self.cellWidget:
+                self.renWin = self.cellWidget.GetRenderWindow()             
+                
+#                self.renWin.StereoCapableWindowOn()
+            self.builtCellWidget = True
+        else:               
+            print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
+            
+    def updateStereo( self, enableStereo ):  
+        if enableStereo <> self.stereoEnabled:  
+            self.toggleStereo()   
+            self.stereoEnabled = not self.stereoEnabled 
+ 
+    def toggleStereo(self):
+        iren = self.renWin.GetInteractor()
+        keycode = QString('3').unicode().toLatin1()
+        iren.SetKeyEventInformation( 0, 0, keycode, 0, "3" )     
+        iren.InvokeEvent( vtk.vtkCommand.KeyPressEvent )
+
     def updateModule( self, **args ):
         animate = args.get( 'animate', False )
         if not animate: self.buildPipeline()
+        
+    def activateWidgets( self, iren ):
+        pass
+
+    def buildRendering(self):
+        module = self.getRegisteredModule()
+
+        self.renderers = []
+        self.fieldData = []
+        self.renderer = None
+        moduleList = self.inputModuleList if self.inputModuleList else [ self.inputModule ]
+        for inputModule in moduleList:
+            if inputModule <> None:
+                renderer1 = inputModule.getRenderer() 
+                if  renderer1 <> None: 
+                    if not self.renderer: self.renderer = renderer1
+                    self.renderers.append( wrapVTKModule( 'vtkRenderer', renderer1 ) )
+                    if inputModule.fieldData: self.fieldData.append( inputModule.fieldData )
+        self.addTitle()
+
+
+class PM_ChartCell( PM_DV3DCell ):
+
+    def __init__( self, mid, **args ):
+        PM_DV3DCell.__init__( self, mid, **args)
+        self.primaryInputPort = "chart"
+        
+class ChartCellConfigurationWidget(DV3DConfigurationWidget):
+    """
+    CDMSDatasetConfigurationWidget ...
+    
+    """
+
+    def __init__(self, module, controller, parent=None):
+        """ DV3DCellConfigurationWidget(module: Module,
+                                       controller: VistrailController,
+                                       parent: QWidget)
+                                       -> DemoDataConfigurationWidget
+        Setup the dialog ...
+        
+        """
+        self.cellAddress = 'A1'
+        self.title = ""
+        DV3DConfigurationWidget.__init__(self, module, controller, 'Chart Cell Configuration', parent)
+                
+    def getParameters( self, module ):
+        titleParms = getFunctionParmStrValues( module, "title" )
+        if titleParms: self.title = str( titleParms[0] )
+        if not self.title: self.title = self.pmod.getTitle()
+        celllocParams = getFunctionParmStrValues( module, "cell_location" )
+        if celllocParams:  self.cellAddress = str( celllocParams[0] )
+        opacityParams = getFunctionParmStrValues( module, "opacity" )
+        if opacityParams:  self.mapOpacity = float( opacityParams[0] )
+
+    def createLayout(self):
+        """ createEditor() -> None
+        Configure sections
+        """        
+
+        titleTab = QWidget()        
+        self.tabbedWidget.addTab( titleTab, 'title' )                 
+        layout = QVBoxLayout()
+        titleTab.setLayout( layout ) 
+
+        title_layout = QHBoxLayout()
+        title_label = QLabel( "Title:" )
+        title_layout.addWidget( title_label )
+        self.titleEdit =  QLineEdit ( self.parent() )
+        if self.title: self.titleEdit.setText( self.title )
+        self.connect( self.titleEdit, SIGNAL("editingFinished()"), self.stateChanged ) 
+        title_label.setBuddy( self.titleEdit )
+#        self.titleEdit.setFrameStyle( QFrame.Panel|QFrame.Raised )
+#        self.titleEdit.setLineWidth(2)
+        title_layout.addWidget( self.titleEdit  )        
+        layout.addLayout( title_layout )
+        
+        opacity_layout = QHBoxLayout()
+        opacity_label = QLabel( "Opacity:" )
+        opacity_layout.addWidget( opacity_label )
+        self.opacitySlider = QSlider( Qt.Horizontal )
+        self.opacitySlider.setRange( 0, SLIDER_MAX_VALUE )
+        self.opacitySlider.setSliderPosition( int( self.mapOpacity * SLIDER_MAX_VALUE ) )
+        self.connect(self.opacitySlider, SIGNAL('sliderMoved()'), self.stateChanged )
+        opacity_layout.addWidget( self.opacitySlider )
+        layout.addLayout( opacity_layout )
+        
+        sheet_dims = HyperwallManager.getDimensions()
+
+        locationTab = QWidget()        
+        self.tabbedWidget.addTab( locationTab, 'cell location' )                 
+        location_layout = QVBoxLayout()
+        locationTab.setLayout( location_layout ) 
+
+        cell_coordinates = parse_cell_address( self.cellAddress )
+        cell_selection_layout = QHBoxLayout()
+        cell_selection_label = QLabel( "Cell Address:" )
+        cell_selection_layout.addWidget( cell_selection_label ) 
+
+        self.colCombo =  QComboBox ( self.parent() )
+        self.colCombo.setMaximumHeight( 30 )
+        cell_selection_layout.addWidget( self.colCombo  )        
+        for iCol in range( 5 ):  self.colCombo.addItem( chr( ord('A') + iCol ) )
+        self.colCombo.setCurrentIndex( cell_coordinates[0] )
+
+        self.rowCombo =  QComboBox ( self.parent() )
+        self.rowCombo.setMaximumHeight( 30 )
+        cell_selection_layout.addWidget( self.rowCombo  )        
+        for iRow in range( 5 ):  self.rowCombo.addItem( str(iRow+1) )
+        self.rowCombo.setCurrentIndex( cell_coordinates[1] )
+        location_layout.addLayout(cell_selection_layout)
+        
+    def updateController(self, controller=None):
+        parmRecList = []
+        parmRecList.append( ( 'cell_location' , [ self.cellAddress ]  ), )  
+        parmRecList.append( ( 'title' , [ self.title ]  ), )  
+        parmRecList.append( ( 'opacity' , [ float( self.opacitySlider.value() ) / SLIDER_MAX_VALUE ]  ), )  
+        self.persistParameterList( parmRecList )
+        self.stateChanged(False)         
+
+           
+    def okTriggered(self, checked = False):
+        """ okTriggered(checked: bool) -> None
+        Update vistrail controller (if neccesssary) then close the widget
+        
+        """
+        self.cellAddress = "%s%s" % ( str( self.colCombo.currentText() ), str( self.rowCombo.currentText() ) )
+        self.title = str( self.titleEdit.text() ) 
+        self.updateController(self.controller)
+        self.emit(SIGNAL('doneConfigure()'))
+#        self.close()
+ 
+class ChartCell(WorkflowModule):
+    
+    PersistentModuleClass = PM_ChartCell
+    
+    def __init__( self, **args ):
+        WorkflowModule.__init__(self, **args) 
+        
+    def syncCamera( self, cpos, cfol, cup ):
+        if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
+
+class PM_MapCell3D( PM_DV3DCell ):
+
+    baseMapDirty = True
+
+    def __init__( self, mid, **args ):
+        PM_DV3DCell.__init__( self, mid, **args)
+        self.baseMapActor = None
+        self.enableBasemap = True
+
+    def updateModule( self, **args ):
+        PM_DV3DCell.updateModule( self, **args )
         if self.baseMapActor: self.baseMapActor.SetVisibility( self.enableBasemap )
         if self.renWin: self.renWin.Render()
-        
+
     def activateWidgets( self, iren ):
         widget = self.baseMapActor
         bounds = [ 0.0 for i in range(6) ]
         widget.GetBounds(bounds)
-#        printArgs( " MAP: ", pos=widget.GetPosition(), bounds=bounds, origin=widget.GetOrigin() )
-    
+        
+    def buildRendering(self):
+        PM_DV3DCell.buildRendering( self )
+        self.enableBasemap = self.getInputValue( "enable_basemap", True )
+        if self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
+            if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
+            world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None
+            opacity =  self.getInputValue( "opacity",   0.4  ) #  wmod.forceGetInputFromPort( "opacity",   0.4  )  if wmod else 0.4  
+            map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
+                
+            self.y0 = -90.0  
+            dataPosition = None
+            if world_map == None:
+                self.map_file = defaultMapFile
+                self.map_cut = defaultMapCut
+            else:
+                self.map_file = world_map[0].name
+                self.map_cut = world_map[1]
+            
+            self.world_cut = self.getInputValue( "world_cut", -1 ) # wmod.forceGetInputFromPort( "world_cut", -1 )  if wmod else getFunctionParmStrValues( module, "world_cut", -1 )
+            roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
+            map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
+            if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
+            if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
+            data_origin = self.input.GetOrigin() if self.input else [ 0, 0, 0 ]
+          
+            if self.world_cut == -1: 
+                if  (self.roi <> None): 
+                    if roi_size[0] > 180:             
+                        self.ComputeCornerPosition()
+                        self.world_cut = NormalizeLon( self.x0 )
+                    else:
+                        dataPosition = [ ( self.roi[1] + self.roi[0] ) / 2.0, ( self.roi[3] + self.roi[2] ) / 2.0 ]
+                else:
+                    self.world_cut = self.map_cut
+            
+            self.imageInfo = vtk.vtkImageChangeInformation()        
+            image_reader = vtk.vtkJPEGReader()      
+            image_reader.SetFileName(  self.map_file )
+            baseImage = image_reader.GetOutput() 
+            new_dims, scale = None, None
+            if dataPosition == None:    
+                baseImage = self.RollMap( baseImage ) 
+                new_dims = baseImage.GetDimensions()
+                scale = [ 360.0/new_dims[0], 180.0/new_dims[1], 1 ]
+            else:                       
+                baseImage, new_dims = self.getBoundedMap( baseImage, dataPosition, map_cut_size, map_border_size )             
+                scale = [ map_cut_size[0]/new_dims[0], map_cut_size[1]/new_dims[1], 1 ]
+    #        printArgs( " baseMap: ", extent=baseImage.GetExtent(), spacing=baseImage.GetSpacing(), origin=baseImage.GetOrigin() )        
+                      
+            self.baseMapActor = vtk.vtkImageActor()
+            self.baseMapActor.SetOrigin( 0.0, 0.0, 0.0 )
+            self.baseMapActor.SetScale( scale )
+            self.baseMapActor.SetOrientation( 0.0, 0.0, 0.0 )
+            self.baseMapActor.SetOpacity( opacity )
+    #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
+#            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
+            mapCorner = [ self.x0, self.y0 ]
+#            if ( ( self.roi[0]-map_border_size ) < 0.0 ): mapCorner[0] = mapCorner[0] - 360.0
+            print " DV3DCell, mapCorner = %s, dataPosition = %s " % ( str(mapCorner), str(dataPosition) )
+            self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
+            self.baseMapActor.SetInput( baseImage )
+            self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]            
+            self.resetCamera()
+#            PM_DV3DCell.baseMapDirty = False           
+            self.renderer.AddActor( self.baseMapActor )
+        pass
+            
     def ComputeCornerPosition( self ):
         if (self.roi[0] >= -180) and (self.roi[1] <= 180) and (self.roi[1] > self.roi[0]):
             self.x0 = -180
@@ -411,155 +745,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         result.Update()
         return result, bounded_dims
         
-    def isBuilt(self):
-        return ( self.cellWidget <> None )
-   
-    def buildPipeline(self):
-        """ compute() -> None
-        Dispatch the vtkRenderer to the actual rendering widget
-        """ 
-        self.buildRendering()
-        if not self.builtCellWidget:
-            self.buildWidget()
-   
-    def execute(self, **args ):
-        if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
-        PersistentVisualizationModule.execute(self, **args)
-        
-    def addTitle(self):    
-        title = getItem( self.getInputValue( "title", None ) )
-        if title: self.titleBuffer = title
-        if self.titleBuffer and self.renderer:
-            self.getTitleActor().VisibilityOn() 
-                      
-    def buildRendering(self):
-        module = self.getRegisteredModule()
-        self.enableBasemap = self.getInputValue( "enable_basemap", True )
 
-#        print " DV3DCell compute, id = %s, cachable: %s " % ( str( id(self) ), str( self.is_cacheable() ) )
-        self.renderers = []
-        self.fieldData = []
-        self.renderer = None
-        moduleList = self.inputModuleList if self.inputModuleList else [ self.inputModule ]
-        for inputModule in moduleList:
-            if inputModule <> None:
-                renderer1 = inputModule.getRenderer() 
-                if  renderer1 <> None: 
-                    if not self.renderer: self.renderer = renderer1
-                    self.renderers.append( wrapVTKModule( 'vtkRenderer', renderer1 ) )
-                    self.fieldData.append( inputModule.fieldData )
-#                        renderer.SetNearClippingPlaneTolerance(0.0001)
-#                        print "NearClippingPlaneTolerance: %f" % renderer.GetNearClippingPlaneTolerance()
-#        self.setSelectionStatus( self.isSelected() )
-        self.addTitle()
-        if self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_DV3DCell.baseMapDirty):
-            if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
-            world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None
-            opacity =  self.getInputValue( "opacity",   0.4  ) #  wmod.forceGetInputFromPort( "opacity",   0.4  )  if wmod else 0.4  
-            map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
-                
-            self.y0 = -90.0  
-            dataPosition = None
-            if world_map == None:
-                self.map_file = defaultMapFile
-                self.map_cut = defaultMapCut
-            else:
-                self.map_file = world_map[0].name
-                self.map_cut = world_map[1]
-            
-            self.world_cut = self.getInputValue( "world_cut", -1 ) # wmod.forceGetInputFromPort( "world_cut", -1 )  if wmod else getFunctionParmStrValues( module, "world_cut", -1 )
-            roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
-            map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
-            if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
-            if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
-            data_origin = self.input.GetOrigin() if self.input else [ 0, 0, 0 ]
-          
-            if self.world_cut == -1: 
-                if  (self.roi <> None): 
-                    if roi_size[0] > 180:             
-                        self.ComputeCornerPosition()
-                        self.world_cut = NormalizeLon( self.x0 )
-                    else:
-                        dataPosition = [ ( self.roi[1] + self.roi[0] ) / 2.0, ( self.roi[3] + self.roi[2] ) / 2.0 ]
-                else:
-                    self.world_cut = self.map_cut
-            
-            self.imageInfo = vtk.vtkImageChangeInformation()        
-            image_reader = vtk.vtkJPEGReader()      
-            image_reader.SetFileName(  self.map_file )
-            baseImage = image_reader.GetOutput() 
-            new_dims, scale = None, None
-            if dataPosition == None:    
-                baseImage = self.RollMap( baseImage ) 
-                new_dims = baseImage.GetDimensions()
-                scale = [ 360.0/new_dims[0], 180.0/new_dims[1], 1 ]
-            else:                       
-                baseImage, new_dims = self.getBoundedMap( baseImage, dataPosition, map_cut_size, map_border_size )             
-                scale = [ map_cut_size[0]/new_dims[0], map_cut_size[1]/new_dims[1], 1 ]
-    #        printArgs( " baseMap: ", extent=baseImage.GetExtent(), spacing=baseImage.GetSpacing(), origin=baseImage.GetOrigin() )        
-                      
-            self.baseMapActor = vtk.vtkImageActor()
-            self.baseMapActor.SetOrigin( 0.0, 0.0, 0.0 )
-            self.baseMapActor.SetScale( scale )
-            self.baseMapActor.SetOrientation( 0.0, 0.0, 0.0 )
-            self.baseMapActor.SetOpacity( opacity )
-    #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
-#            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
-            mapCorner = [ self.x0, self.y0 ]
-#            if ( ( self.roi[0]-map_border_size ) < 0.0 ): mapCorner[0] = mapCorner[0] - 360.0
-            print " DV3DCell, mapCorner = %s, dataPosition = %s " % ( str(mapCorner), str(dataPosition) )
-            self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
-            self.baseMapActor.SetInput( baseImage )
-            self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]            
-            self.resetCamera()
-#            PM_DV3DCell.baseMapDirty = False           
-            self.renderer.AddActor( self.baseMapActor )
-        pass
-
-
-    def resetCamera(self):
-            aCamera = self.renderer.GetActiveCamera()
-            aCamera.SetViewUp( 0, 0, 1 )
-            aCamera.SetPosition( 0.0, 0.0, ( self.mapCenter[0] + self.mapCenter[1] ) / 4.0 )
-            aCamera.SetFocalPoint( self.mapCenter[0], self.mapCenter[1], 0.0 )
-            aCamera.ComputeViewPlaneNormal()
-            self.renderer.ResetCamera()                
-        
-    def buildWidget(self):                        
-        if self.renderers:
-            renderViews = []
-            renderView = None
-            iHandlers = []
-            iStyle = None
-            picker = None
-            
-            if self.isServer:
-                self.cellWidget = self.displayAndWait( QVTKServerWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
-                self.cellWidget.setLocation( self.location )
-            elif self.isClient:
-                self.cellWidget = self.displayAndWait( QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker) )
-            else:
-                self.cellWidget = self.displayAndWait( QVTKWidget, (self.renderers, renderView, iHandlers, iStyle, picker) )
-            #in mashup mode, self.displayAndWait will return None
-            if self.cellWidget:
-                self.renWin = self.cellWidget.GetRenderWindow()
-#                self.renWin.StereoCapableWindowOn()
-            self.builtCellWidget = True
-        else:               
-            print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
-            
-    def updateStereo( self, enableStereo ):  
-        if enableStereo <> self.stereoEnabled:  
-            self.toggleStereo()   
-            self.stereoEnabled = not self.stereoEnabled 
- 
-    def toggleStereo(self):
-        iren = self.renWin.GetInteractor()
-        keycode = QString('3').unicode().toLatin1()
-        iren.SetKeyEventInformation( 0, 0, keycode, 0, "3" )     
-        iren.InvokeEvent( vtk.vtkCommand.KeyPressEvent )
-
-class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
+class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
     """
     CDMSDatasetConfigurationWidget ...
     
@@ -677,7 +864,7 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         parmRecList.append( ( 'cell_location' , [ self.cellAddress ]  ), )  
         parmRecList.append( ( 'title' , [ self.title ]  ), )  
         parmRecList.append( ( 'opacity' , [ float( self.opacitySlider.value() ) / SLIDER_MAX_VALUE ]  ), )  
-        action = self.persistParameterList( parmRecList )
+        self.persistParameterList( parmRecList )
         self.stateChanged(False)         
 
            
@@ -694,12 +881,15 @@ class DV3DCellConfigurationWidget(DV3DConfigurationWidget):
         self.emit(SIGNAL('doneConfigure()'))
 #        self.close()
  
-class DV3DCell(WorkflowModule):
+class MapCell3D(WorkflowModule):
     
-    PersistentModuleClass = PM_DV3DCell
+    PersistentModuleClass = PM_MapCell3D
     
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args) 
         
     def syncCamera( self, cpos, cfol, cup ):
         if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
+              
+
+

@@ -132,7 +132,6 @@ class TabControllerStack(QtGui.QStackedWidget):
         It will forward the signal 
         
         """
-        print "emit_change_tab", old, new
         self.emit(QtCore.SIGNAL("change_tab_text"), old, new)
         
     

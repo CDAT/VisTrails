@@ -119,9 +119,8 @@ class QProjectItem(QtGui.QTreeWidgetItem):
             else:
                 sheetItem.takeChild(sheetItem.indexOfChild(item))
                 del sheetItem.pos_to_item[(row, col)]
+        sheetItem.update_icon()
         self.view.controller.set_changed(True)
-        from gui.vistrails_window import _app
-        _app.state_changed(self.view)
 
     def sheetSizeChanged(self, sheet, dim=[]):
         if sheet not in self.sheet_to_item:
@@ -130,20 +129,19 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         value = ','.join(map(str, dim))
         vistrail = self.view.controller.vistrail
         vistrail.set_annotation(key, value)
-        self.view.controller.set_changed(True)
-        from gui.vistrails_window import _app
-        _app.state_changed(self.view)
         # remove cells outside new range
         sheetItem = self.sheet_to_item[sheet]
         for annotation in vistrail.action_annotations:
             if annotation.db_key == 'uvcdatCell':
                 cell = fromAnnotation(annotation.db_value)
                 if dim and cell[0] == sheet and \
-                    cell[1] >= dim[0] or cell[2] >= dim[1]:
+                    (cell[1] >= dim[0] or cell[2] >= dim[1]):
                     vistrail.db_delete_actionAnnotation(annotation)
                     item = sheetItem.pos_to_item[(cell[1], cell[2])]
                     sheetItem.takeChild(sheetItem.indexOfChild(item))
                     del sheetItem.pos_to_item[(cell[1], cell[2])]
+        sheetItem.update_icon()
+        self.view.controller.set_changed(True)
 
     def sheetSize(self, sheet):
         dimval = self.view.controller.vistrail.get_annotation(
@@ -153,14 +151,44 @@ class QProjectItem(QtGui.QTreeWidgetItem):
 class QSpreadsheetItem(QtGui.QTreeWidgetItem):
     def __init__(self, name='sheet 1', parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/map-icon.png"))
-        self.setIcon(0, icon)
         self.sheetName = name
         self.setText(0, name)
         self.pos_to_item = {}
         self.setExpanded(True)
         self.setFlags(self.flags() & ~QtCore.Qt.ItemIsSelectable)
+
+    def update_icon(self):
+        """ compose workflow icons into a spreadsheet icon """
+        size = 24
+        pic = QtGui.QPixmap(size, size)
+        cols, rows = self.parent().sheetSize(self.sheetName)
+        w, h = size/cols, size/rows
+        painter = QtGui.QPainter(pic)
+        painter.fillRect(0, 0, size, size, QtCore.Qt.lightGray)
+        vistrail = self.parent().view.controller.vistrail
+        for pos, item in self.pos_to_item.iteritems(): 
+            if vistrail.has_thumbnail(item.workflowVersion):
+                x, y = pos
+                tname = vistrail.get_thumbnail(item.workflowVersion)
+                cache = ThumbnailCache.getInstance()
+                path = cache.get_abs_name_entry(tname)
+                if path:
+                    pixmap = QtGui.QPixmap(path)
+                    painter.fillRect(h*y, w*x, h, w, QtCore.Qt.white)
+                    painter.drawPixmap(h*y, w*x, h, w, pixmap.scaled(h, w, transformMode=QtCore.Qt.SmoothTransformation))
+        # draw spreadsheet grid
+        painter.setPen(QtCore.Qt.black)
+        for x in xrange(rows+1):
+            painter.drawLine(x*h-0.01, 0, x*h-0.01, size)
+        for y in xrange(cols+1):
+            painter.drawLine(0, y*w-0.01, size, y*w-0.01)
+        painter.end()
+        self.setIcon(0, QtGui.QIcon(pic))
+       
+        #tooltip = """<html>%(name)s<br/><img border=0 src='%(path)s'/></html>
+        #                    """ % {'name':name, 'path':path}
+        #self.setToolTip(0, tooltip)
+
 
 class QWorkflowItem(QtGui.QTreeWidgetItem):
     def __init__(self, version, position=None, span=None, plot_type=None, parent=None):
@@ -220,7 +248,7 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
             path = cache.get_abs_name_entry(tname)
             if path:
                 pixmap = QtGui.QPixmap(path)
-                self.setIcon(0, QtGui.QIcon(pixmap.scaled(20, 20)))
+                self.setIcon(0, QtGui.QIcon(pixmap.scaled(24, 24, transformMode=QtCore.Qt.SmoothTransformation)))
                 tooltip = """<html>%(name)s<br/><img border=0 src='%(path)s'/></html>
                         """ % {'name':name, 'path':path}
                 self.setToolTip(0, tooltip)
@@ -381,16 +409,17 @@ class Workspace(QtGui.QDockWidget):
                     self.spreadsheetWindow.get_current_tab_controller(
                                                        ).setCurrentWidget(tab)
                 # Add cell
-                pipeline = view.controller.vistrail.getPipeline(
-                                                      annotation.db_action_id)
+               
                 if len(cell)<5:
-                    item.controller.vis_was_dropped((pipeline, cell[0],
+                    item.controller.vis_was_dropped((view.controller, 
+                                 annotation.db_action_id, cell[0],
                                  int(cell[1]), int(cell[2]), plot_type.value))
                     item.update_cell(cell[0], int(cell[1]), int(cell[2]),
                                      None, None, plot_type.value,
                                      annotation.db_action_id, False)
                 else:
-                    item.controller.vis_was_dropped((pipeline, cell[0],
+                    item.controller.vis_was_dropped((view.controller,
+                                 annotation.db_action_id, cell[0],
                                  int(cell[1]), int(cell[2]), plot_type.value))
                     item.update_cell(cell[0], int(cell[1]), int(cell[2]),
                                      int(cell[3]), int(cell[4]),
@@ -472,7 +501,7 @@ class Workspace(QtGui.QDockWidget):
         """ update tags and project titles"""
         item = self.viewToItem[id(view)]
         if item.view.controller.locator:
-            name = item.view.locator.short_name 
+            name = item.view.controller.locator.short_name 
             if item.view.has_changes():
                 name += '*'
             item.setText(0,name)
@@ -524,6 +553,8 @@ class Workspace(QtGui.QDockWidget):
             project = sheet.parent()
         elif type(widget_item)==QWorkflowItem:
             project = widget_item.parent().parent()
+            if type(widget_item.parent()) == QSpreadsheetItem:
+                sheet = widget_item.parent()
         else: # is a Saved Workflows item
             widget_item.setSelected(False)        
             project = widget_item.parent()
@@ -553,6 +584,7 @@ class Workspace(QtGui.QDockWidget):
             self.currentProject.sheet_to_tab[title] = widget
             item = QSpreadsheetItem(title)
             self.currentProject.addChild(item)
+            item.update_icon()
             item.setExpanded(True)
             self.currentProject.sheet_to_item[title] = item
             self.currentProject.controller.sheet_map[title] = {}
@@ -580,8 +612,10 @@ class Workspace(QtGui.QDockWidget):
             del self.currentProject.sheet_to_item[title]
             del self.currentProject.controller.sheet_map[title]
             self.currentProject.sheetSizeChanged(title)
+        self.currentProject.view.controller.set_changed(True)
 
     def change_tab_text(self, oldtitle, newtitle):
+        
         if oldtitle not in self.currentProject.sheet_to_item:
             return
         item = self.currentProject.sheet_to_item[oldtitle]
@@ -590,11 +624,11 @@ class Workspace(QtGui.QDockWidget):
         del self.currentProject.sheet_to_tab[oldtitle]
         dimval = self.currentProject.sheetSize(oldtitle)
         self.currentProject.sheetSizeChanged(oldtitle)
-        self.currentProject.sheetSizeChanged(newtitle, dimval)
         item.sheetName = newtitle
         item.setText(0, newtitle)
         self.currentProject.sheet_to_item[newtitle] = item
         self.currentProject.sheet_to_tab[newtitle] = tab
+        self.currentProject.sheetSizeChanged(newtitle, dimval)
         # update controller sheetmap
         sheetmap = self.currentProject.controller.sheet_map[oldtitle]
         del self.currentProject.controller.sheet_map[oldtitle]
@@ -608,6 +642,8 @@ class Workspace(QtGui.QDockWidget):
                     vistrail.db_delete_actionAnnotation(annotation)
                     add_annotation(vistrail, annotation.db_action_id,
                                    newtitle, *cell[1:])
+        item.update_icon()
+        self.currentProject.view.controller.set_changed(True)
 
     def item_double_clicked(self, widget, col):
         if widget and type(widget) == QWorkflowItem:

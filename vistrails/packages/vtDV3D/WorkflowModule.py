@@ -51,8 +51,9 @@ class WorkflowModule( Module ):
     def registerConfigurableFunctions( klass, reg ):
         pmod = klass.PersistentModuleClass( -1 )
         for configFunct in pmod.configurableFunctions.values():
-            reg.add_input_port(  klass, configFunct.name, configFunct.args, True )
-            reg.add_output_port( klass, configFunct.name, configFunct.args, True )
+            if configFunct.args:
+                reg.add_input_port(  klass, configFunct.name, configFunct.args, True )
+                reg.add_output_port( klass, configFunct.name, configFunct.args, True )
                 
     def getModuleID( self ):
         return self.moduleInfo['moduleId'] 

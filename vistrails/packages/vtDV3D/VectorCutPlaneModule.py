@@ -176,7 +176,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         self.planeWidget.GetPlane( self.plane )
         self.ApplyGlyphDecimationFactor()
         self.set3DOutput(wmod=self.wmod) 
-        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
+#        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
 
 #        self.cutter.SetGenerateCutScalars(0)
 #        self.glyph = vtk.vtkGlyph3D() 
@@ -469,7 +469,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.planeWidget.GetPlane( self.plane )
         self.ApplyGlyphDecimationFactor()
         self.set3DOutput(wmod=self.wmod) 
-        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
+#        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
 
     def updateModule(self, **args ):
         self.resample.SetInput( self.input ) 

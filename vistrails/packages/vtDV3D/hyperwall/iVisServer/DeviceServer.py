@@ -369,7 +369,7 @@ class Device:
         self.dimensions = dimensions
         self.addresses = {}
         self.clientDimensions = {}
-        self.cellModuleNames = [ "DV3DCell", "SlicePlotCell" ]
+        self.cellModuleNames = [ "MapCell3D", "ChartCell" ]
 
         self.semaphoredCells = {}
         self.semaphoredGrid = {}

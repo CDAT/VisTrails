@@ -229,7 +229,7 @@ class QiVisClient(QtCore.QObject):
     def getCellModules(self):
         cellModules = []
         for module in self.current_pipeline.module_list:
-            if ( module.name == "DV3DCell" ): cellModules.append( module )
+            if ( module.name == "MapCell3D" ): cellModules.append( module )
         return cellModules
         
     def getCurrentPipeline(self):
