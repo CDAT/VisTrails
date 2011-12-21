@@ -71,6 +71,18 @@ class AlgorithmOutputModule3D( AlgorithmOutputModule ):
     
     def getRenderer(self): 
         return self.renderer
+
+class AlgorithmOutputModule2D( AlgorithmOutputModule ):
+    
+    def __init__( self, view, **args ):
+        AlgorithmOutputModule.__init__( self, **args ) 
+        self.view = view 
+    
+    def getView(self): 
+        return self.view
+
+    def getRenderer(self): 
+        return self.view.GetRenderer()
    
 class PersistentModule( QObject ):
     '''
@@ -92,7 +104,7 @@ class PersistentModule( QObject ):
         cell returns to normal (non-leveling) mode.   
     ''' 
     markedTime = 0.0
-         
+             
     def __init__( self, mid, **args ):
         QObject.__init__(self)
         self.moduleID = mid
@@ -631,6 +643,9 @@ class PersistentModule( QObject ):
 #        self.fieldData.AddArray( getFloatDataArray( 'position', [  0.0, 0.0, 0.0 ] ) )
 #        self.fieldData.AddArray( getFloatDataArray( 'scale',    [  1.0, 1.0, 1.0 ] ) ) 
            
+    def addConfigurableMethod( self, name, method, key ):
+        self.configurableFunctions[name] = ConfigurableFunction( name, None, key, pmod=self, hasState=False, open=method )
+
     def addConfigurableFunction(self, name, function_args, key, **args):
         self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, pmod=self, **args )
 
@@ -887,7 +902,6 @@ class PersistentModule( QObject ):
             import api
             DV3DConfigurationWidget.savingChanges = True
             ctrl = api.get_current_controller()
-            prj_ctrl = api.get_current_project_controller()
             strParmRecList = []
             self.getDatasetId( **args )
             for parmRec in parmRecList:
@@ -895,7 +909,7 @@ class PersistentModule( QObject ):
                 output = parmRec[1]
                 param_values_str = [ str(x) for x in output ] if isList(output) else str( output )  
                 strParmRecList.append( ( parameter_name, param_values_str ) )
-            action = change_parameters( self.moduleID, strParmRecList, ctrl )           
+            change_parameters( self.moduleID, strParmRecList, ctrl )           
             tag = self.getParameterId()
             taggedVersion = self.tagCurrentVersion( tag )
             for parmRec in parmRecList:
@@ -908,7 +922,6 @@ class PersistentModule( QObject ):
             if updatePipelineConfiguration: ctrl.select_latest_version() 
             DV3DConfigurationWidget.savingChanges = False
             self.wmod = None
-            return action
                          
     def finalizeParameter(self, parameter_name, *args ):
         try:
@@ -1010,6 +1023,15 @@ class PersistentVisualizationModule( PersistentModule ):
                                 
     def TestObserver( self, caller=None, event = None ):
         pass 
+
+    def setChartDataOutput( self, view, **args ):  
+        portName = args.get( 'name', 'chart' )
+        outputModule = AlgorithmOutputModule2D( view, **args )
+        if self.wmod == None:
+            print>>sys.stderr, "Missing wmod in setChartDataOutput for class %s" % ( self.__class__.__name__ )
+        else:
+            self.wmod.setResult( portName, outputModule )
+            print "setChartDataOutput for class %s" % ( self.__class__.__name__ ) 
     
     def set3DOutput( self, **args ):  
         portName = args.get( 'name', 'volume' )
@@ -1036,10 +1058,10 @@ class PersistentVisualizationModule( PersistentModule ):
             for ( moduleId, portName ) in connectedModuleIds:
                 module = ModuleStore.getModule( moduleId )
                 if module: 
-                    if module.__class__.__name__ == "PM_DV3DCell":
+                    if module.__class__.__name__ == "MapCell3D":
                         if (not selectedOnly) or module.isSelected(): rmodList.append( module )
                     else:
-                        moduleIdList.append( moduleID )
+                        moduleIdList.append( moduleId )
         return rmodList
 
     def updateTextDisplay( self, text = None ):
@@ -1270,8 +1292,13 @@ class PersistentVisualizationModule( PersistentModule ):
                         self.iren.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )
                         for configurableFunction in self.configurableFunctions.values():
                             configurableFunction.activateWidget( iren )
-                    if ( self.iren.GetInteractorStyle() <> self.navigationInteractorStyle ):               
-                        self.navigationInteractorStyle = self.iren.GetInteractorStyle()  
+                    self.updateInteractor()  
+                    
+    def updateInteractor(self):                        
+        if ( self.iren.GetInteractorStyle() <> self.navigationInteractorStyle ): 
+            istyle = self.iren.GetInteractorStyle()               
+            self.navigationInteractorStyle =  istyle
+            pass
                     
     def setInteractionState(self, caller, event):
         key = caller.GetKeyCode() 
@@ -1330,15 +1357,20 @@ class PersistentVisualizationModule( PersistentModule ):
                 if self.InteractionState <> None: 
                     configFunct = self.configurableFunctions[ self.InteractionState ]
                     configFunct.close()
-                if self.InteractionState == state:
-                    self.endInteraction()            
+                    
+                configFunct = self.configurableFunctions[ state ]
+                if configFunct.hasState:
+                    if self.InteractionState == state:
+                        self.endInteraction()            
+                    else:
+                        self.InteractionState = state                   
+                        configFunct.open( self.InteractionState, self.isAltMode )
+                        self.LastInteractionState = self.InteractionState
                 else:
-                    self.InteractionState = state
-                    configFunct = self.configurableFunctions[ self.InteractionState ]
-                    configFunct.open( self.InteractionState, self.isAltMode )
-                    HyperwallManager.setLevelingState( state, self.isAltMode )
-                    self.isAltMode = False 
-                    self.LastInteractionState = self.InteractionState
+                    configFunct.open( state, self.isAltMode )
+                    
+                HyperwallManager.setLevelingState( state, self.isAltMode )
+                self.isAltMode = False 
                     
     def endInteraction( self ):
         self.InteractionState = None 

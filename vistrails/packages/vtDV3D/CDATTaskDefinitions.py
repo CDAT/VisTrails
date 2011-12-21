@@ -10,6 +10,8 @@ import cdutil, genutil
 from vtUtilities import *
 from CDATTask import CDATTask
 
+enable_user_tasks = False
+
 #########################################################################################################################
 
 def average (a, axis=None ):
@@ -157,7 +159,7 @@ def load_usr_task_modules( **args ):
         raise
     return modules
         
-load_usr_task_modules()        
+if enable_user_tasks: load_usr_task_modules()        
         
         
         
