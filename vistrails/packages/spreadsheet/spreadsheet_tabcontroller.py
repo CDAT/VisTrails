@@ -320,9 +320,14 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         else:
             file = QtGui.QFileDialog.getSaveFileName(
                 self, "Select a File to Export the Sheet",
-                ".", "Images (*.png *.xpm *.jpg)")
+                ".", "Images (*.png *.xpm *.jpg);;PDF file (*.pdf)")
             if not file.isNull():
-                self.currentWidget().exportSheetToImage(str(file))
+                filename = str(file)
+                (_,ext) = os.path.splitext(filename)
+                if  ext.upper() == '.PDF':
+                    self.currentWidget().exportSheetToPDF(filename)
+                else:
+                    self.currentWidget().exportSheetToImage(filename)
         
     def newSheetActionTriggered(self, checked=False):
         """ newSheetActionTriggered(checked: boolean) -> None
@@ -334,8 +339,8 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         names = [str(self.operatingWidget.widget(i).windowTitle())
                        for i in xrange(self.count())]
         while name in names:
-                  N += 1
-                  name = 'Sheet %d' % N
+            N += 1
+            name = 'Sheet %d' % N
         self.setCurrentIndex(self.addTabWidget(StandardWidgetSheetTab(self),
                                                name))
         self.currentWidget().sheet.stretchCells()

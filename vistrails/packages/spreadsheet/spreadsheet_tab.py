@@ -534,7 +534,7 @@ class StandardWidgetSheetTabInterface(object):
             x = 0
             for c in xrange(cCount):
                 widget = self.getCell(r, c)
-                if widget:
+                if widget and hasattr(widget, 'grabWindowPixmap'):
                     pix = widget.grabWindowPixmap()
                     cx = (cellWidths[c]-pix.width())/2
                     cy = (cellHeights[r]-pix.height())/2
@@ -561,10 +561,45 @@ class StandardWidgetSheetTabInterface(object):
             for c in xrange(cCount):
                 widget = self.getCell(r, c)
                 if widget:
-                    widget.grabWindowPixmap().save(dirPath+'/'+
-                                                   chr(c+ord('a'))+
-                                                   str(r+1)+
-                                                   '.'+format)
+                    if configuration.dumpfileType == 'PDF':
+                        widget.saveToPDF(dirPath+'/'+
+                                         chr(c+ord('a'))+
+                                         str(r+1)+'.pdf')
+                    else:
+                        widget.dumpToFile(dirPath+'/'+
+                                          chr(c+ord('a'))+
+                                          str(r+1)+
+                                          '.'+format)
+
+    def exportSheetToPDF(self, fileName):
+        (rCount, cCount) = self.getDimension()
+        if rCount<1 or cCount<1: return
+        cellHeights = [self.getCellRect(r, 0).height()
+                       for r in xrange(rCount)]
+        cellWidths = [self.getCellRect(0, c).width()
+                      for c in xrange(cCount)]
+        
+        printer = QtGui.QPrinter()
+        
+        printer.setOutputFormat(QtGui.QPrinter.PdfFormat)
+        printer.setOutputFileName(fileName)
+        printer.setPaperSize(QtCore.QSizeF(sum(cellWidths), sum(cellHeights)),
+                             QtGui.QPrinter.Point)
+        painter = QtGui.QPainter()
+        painter.begin(printer)        
+        y = 0
+        for r in xrange(rCount):
+            x = 0
+            for c in xrange(cCount):
+                widget = self.getCell(r, c)
+                if widget and hasattr(widget, 'grabWindowPixmap'):
+                    pix = widget.grabWindowPixmap()
+                    cx = (cellWidths[c]-pix.width())/2
+                    cy = (cellHeights[r]-pix.height())/2
+                    painter.drawPixmap(x+cx, y+cy, widget.grabWindowPixmap())
+                x += cellWidths[c]
+            y += cellHeights[r]
+        painter.end()
 
     def setSpan(self, row, col, rowSpan, colSpan):
         """ setSpan(row, col, rowSpan, colSpan: int) -> None
