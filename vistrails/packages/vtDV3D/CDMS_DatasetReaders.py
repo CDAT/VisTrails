@@ -1148,6 +1148,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
     def registerCurrentDataset( self, **args ):
         id = args.get( 'id', None ) 
         relFilePath = args.get( 'file', None )
+        cdmsFile = None
         if self.pmod: self.pmod.setNewConfiguration( **args )
         if id: 
             self.currentDatasetId = str( id )
