@@ -883,8 +883,9 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                     self.timeRange[3] = cval.torel(ReferenceTimeUnits).value
                     print " processed time values: ", str( self.timeRange ), ", units= ", ReferenceTimeUnits
                 elif type.startswith('lat' ):
-                    self.roi[1] = float( values[0] )
-                    self.roi[3] = float( values[1] )
+                    lat_bounds = [ float( values[0] ), float( values[1] ) ]
+                    self.roi[1] = lat_bounds[0] if lat_bounds[0] < lat_bounds[1] else lat_bounds[1]
+                    self.roi[3] = lat_bounds[1] if lat_bounds[0] < lat_bounds[1] else lat_bounds[0] 
                 elif type.startswith('lon' ):
                     self.roi[0] = normalize_lon( float( values[0] ) )
                     self.roi[2] = normalize_lon( float( values[1] ) )                  
@@ -1167,8 +1168,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.initZScale()
             if self.pmod: self.pmod.clearNewConfiguration()
             dataset.close()
-        except:
-            print "Error initializing dataset: %s" % str(cdmsFile)
+        except Exception, err:
+            print>>sys.stderr, " Error initializing dataset '%s': %s " % ( str(relFilePath), str( err ) )
         return cdmsFile
          
     def selectFile(self):
