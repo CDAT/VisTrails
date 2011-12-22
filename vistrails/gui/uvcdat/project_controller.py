@@ -232,13 +232,13 @@ class ProjectController(QtCore.QObject):
         #check if a new var was added:
         self.search_and_emit_new_variables(cell)
                     
-        self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, None,
-                  plot_type, cell.current_parent_version)
-        
         if controller == self.vt_controller:
             self.execute_plot_pipeline(pipeline, cell)
         else:
             self.execute_plot(cell.current_parent_version)
+
+        self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, None,
+                  plot_type, cell.current_parent_version)
         
     def search_and_emit_new_variables(self, cell):
         """search_and_emit_new_variables(cell) -> None
