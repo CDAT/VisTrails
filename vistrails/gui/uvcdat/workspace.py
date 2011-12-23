@@ -1,6 +1,5 @@
 from PyQt4 import QtCore, QtGui
 
-from gui.uvcdat.ui_workspace import Ui_Workspace
 from gui.uvcdat.project_controller import ProjectController
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from core.vistrail.action_annotation import ActionAnnotation
