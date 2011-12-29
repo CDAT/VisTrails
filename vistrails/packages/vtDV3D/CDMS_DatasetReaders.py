@@ -1168,8 +1168,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.initZScale()
             if self.pmod: self.pmod.clearNewConfiguration()
             dataset.close()
-        except:
-            print "Error initializing dataset: %s" % str(cdmsFile)
+        except Exception, err:
+            print>>sys.stderr, " Error initializing dataset '%s': %s " % ( str(relFilePath), str( err ) )
         return cdmsFile
          
     def selectFile(self):

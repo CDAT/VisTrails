@@ -1,6 +1,5 @@
 from PyQt4 import QtCore, QtGui
 
-from gui.uvcdat.ui_workspace import Ui_Workspace
 from gui.uvcdat.project_controller import ProjectController
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from core.vistrail.action_annotation import ActionAnnotation
@@ -9,8 +8,9 @@ from packages.spreadsheet.spreadsheet_tab import StandardWidgetSheetTab
 import customizeUVCDAT
 
 def toAnnotation(sheet, x, y, w=None, h=None):
-    """ toAnnotation(sheet: str, x: int/str, y: int/str, w: int, h: int): str
-        escapes sheet string and puts all in a comma-separated string
+    """ toAnnotation(sheet: str, x: int/str, y: int/str,
+                                 w: int/str, h: int/str) -> str
+    Escapes sheet string and puts all in a comma-separated string
     """
     sheet = ''.join(map(lambda i: {'\\':'\\\\', ',':'\,'}.get(i, i), sheet))
     if w is None or h is None:
@@ -18,8 +18,9 @@ def toAnnotation(sheet, x, y, w=None, h=None):
     return ','.join(map(str, [sheet, x, y, w, h]))
 
 def fromAnnotation(s):
-    """ fromAnnotation(s: str): list
-        un-escapes annotation value string and reads all values into list
+    """ fromAnnotation(s: String) -> List
+    Un-escapes annotation value string and reads all values into list
+    List contains [sheetName, x, y (, w, h)]
     """
     res = []
     s = list(s)
@@ -41,6 +42,10 @@ def fromAnnotation(s):
     return [res[0]]+map(int,res[1:])
 
 def add_annotation(vistrail, version, sheet, row, col, w=None, h=None):
+    """ add_annotation(vistrail: Vistrail, version: int, sheet: str,
+                 row: int/str, col: int/str, w: int/str, h: int/str) -> None
+    Adds corresponding actionAnnotation to vistrail
+    """
     if w or h:
         cell = toAnnotation(sheet, row, col, w, h)
     else:
@@ -56,6 +61,9 @@ def add_annotation(vistrail, version, sheet, row, col, w=None, h=None):
     vistrail.changed = True
 
 class QProjectItem(QtGui.QTreeWidgetItem):
+    """ QProjectItem represents a uv-cdat project containing a set of
+        sheets with visualizations
+    """
     def __init__(self, view=None, name='', parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
         self.view = view
@@ -85,6 +93,11 @@ class QProjectItem(QtGui.QTreeWidgetItem):
 
     def update_cell(self, sheetName, row, col, w=None, h=None, plot_type=None,
                     version=0, annotate=True):
+        """ update_cell(sheetName: str, row: int, col: int, w: int, h: int,
+                         plot_type: str, version: int, annotate: bool) -> None
+        Called when a cell is updated
+        Updates cell item, annotation, cell title, and sheet icon.
+        """
         if sheetName not in self.sheet_to_item:
             return
         sheetItem = self.sheet_to_item[sheetName]
@@ -123,6 +136,10 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         self.view.controller.set_changed(True)
 
     def sheetSizeChanged(self, sheet, dim=[]):
+        """ sheetSizeChanged(sheet: str, dim: List) -> None
+        Called when current sheet tab dimensions are changed
+        Updates uvcdatSheetSize annotation and removes out of bounds item
+        """
         if sheet not in self.sheet_to_item:
             return
         key = 'uvcdatSheetSize:' + sheet
@@ -144,11 +161,17 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         self.view.controller.set_changed(True)
 
     def sheetSize(self, sheet):
+        """ sheetSize(sheet: str) -> 2-List
+        Reads uvcdatSheetSize annotation and returns its value
+        """
         dimval = self.view.controller.vistrail.get_annotation(
                                                      'uvcdatSheetSize:'+sheet)
         return map(int, dimval.value.split(',')) if dimval else (2,1)
             
 class QSpreadsheetItem(QtGui.QTreeWidgetItem):
+    """ QSpreadsheetItem represents a uv-cdat spreadsheet tab containing
+        visualizations
+    """
     def __init__(self, name='sheet 1', parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
         self.sheetName = name
@@ -158,7 +181,9 @@ class QSpreadsheetItem(QtGui.QTreeWidgetItem):
         self.setFlags(self.flags() & ~QtCore.Qt.ItemIsSelectable)
 
     def update_icon(self):
-        """ compose workflow icons into a spreadsheet icon """
+        """ update_icon() -> None
+        Compose workflow icons into a spreadsheet icon
+        """
         size = 24
         pic = QtGui.QPixmap(size, size)
         cols, rows = self.parent().sheetSize(self.sheetName)
@@ -191,6 +216,8 @@ class QSpreadsheetItem(QtGui.QTreeWidgetItem):
 
 
 class QWorkflowItem(QtGui.QTreeWidgetItem):
+    """ QWorkflowItem represents a uv-cdat visualization
+    """
     def __init__(self, version, position=None, span=None, plot_type=None, parent=None):
         QtGui.QTreeWidgetItem.__init__(self)
         # workflowVersion is the vistrail version id
@@ -208,6 +235,9 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
 
 
     def update_title(self):
+        """ update_title() -> None
+        Update title using version, tag name, position and span
+        """
         project = self.parent()
         while type(project) != QProjectItem:
             project = project.parent()
@@ -254,11 +284,18 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
                 self.setToolTip(0, tooltip)
 
 class QProjectsWidget(QtGui.QTreeWidget):
+    """ QProjectsWidget
+        A tree containing project items
+    """
     def __init__(self,parent=None, workspace=None):
         QtGui.QTreeWidget.__init__(self,parent=parent)
         self.workspace = workspace
 
     def mimeData(self, items):
+        """ mimeData() -> QMimeData
+        Sets mimedata for QWorkflowItem's including:
+            version: int, controller: ProjectController, plot_type: str
+        """
         if not len(items) == 1 or type(items[0]) != QWorkflowItem:
             return
         item = items[0]
@@ -272,6 +309,10 @@ class QProjectsWidget(QtGui.QTreeWidget):
         return m
     
     def keyPressEvent(self, event):
+        """ keyPressEvent(event: QKeyEvent) -> None
+            Handles keypresses on items
+            Currently handles deletes of named visualizations
+        """
         if event.key() in [QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
             items = self.selectedItems()
             if len(items) == 1:
@@ -286,6 +327,9 @@ class QProjectsWidget(QtGui.QTreeWidget):
             QtGui.QTreeWidget.keyPressEvent(self, event)
 
 class Workspace(QtGui.QDockWidget):
+    """ Workspace
+    A dock widget containing a tree widget that handles project interactions
+    """
     def __init__(self, parent=None):
         super(Workspace, self).__init__(parent)
         self.root=parent.root
@@ -299,6 +343,9 @@ class Workspace(QtGui.QDockWidget):
         self.current_controller = None
 
     def setupUi(self, Workspace):
+        """ setupUi(Workspace: Widget) -> None
+        Sets up the gui elements for the Workspace Widget
+        """
         Workspace.resize(404, 623)
         Workspace.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea|
                                   QtCore.Qt.RightDockWidgetArea)
@@ -351,6 +398,9 @@ class Workspace(QtGui.QDockWidget):
         Workspace.setWidget(self.dockWidgetContents)
 
     def connectSignals(self):
+        """ connectSignals() -> None
+        Connects the Qt signals for the Workspace Widgets
+        """
         #self.treeProjects.currentItemChanged.connect(self.selectedNewProject)
         self.btnNewProject.triggered.connect(self.addProject)
         self.btnOpenProject.triggered.connect(self.openProject)
@@ -369,7 +419,10 @@ class Workspace(QtGui.QDockWidget):
                      self.item_double_clicked)
 
     def add_project(self, view):
-        # vistrails calls this when a project is opened/created/saved
+        """ add_project(view: QVistrailView) -> None
+        vistrails calls this when a project is opened/created/saved
+        Items and spreadsheets are updated
+        """
         if id(view) not in self.viewToItem:
             if self.currentProject:
                 self.setBold(self.currentProject, False)
@@ -438,7 +491,10 @@ class Workspace(QtGui.QDockWidget):
         self.treeProjects.setCurrentItem(self.viewToItem[id(view)])
 
     def remove_project(self, view):
-        # vistrails calls this when a project is removed
+        """ remove_project(view: QVistrailView) -> None
+        vistrails calls this when a project is closed
+        Items and spreadsheets are removed
+        """
         if id(view) in self.viewToItem:
             index = self.treeProjects.indexOfTopLevelItem(
                                         self.viewToItem[id(view)])
@@ -448,11 +504,19 @@ class Workspace(QtGui.QDockWidget):
             del self.viewToItem[id(view)]
             
     def setBold(self, item, value):
-            font = item.font(0)
-            font.setBold(value)
-            item.setFont(0, font)
+        """ setBold(item: Widget, value: bool) -> None
+        Toggles the boldness of the widget text
+        """
+        font = item.font(0)
+        font.setBold(value)
+        item.setFont(0, font)
 
     def change_project(self, view):
+        """ change_project(view: QVistrailView) -> None
+        vistrails calls this when a different project is selected
+        Current project is highlighted in bold
+        spreadsheet and variables are changed
+        """
         # vistrails calls this when a different project is selected
         if id(view) in self.viewToItem:
             if self.currentProject:
@@ -475,30 +539,46 @@ class Workspace(QtGui.QDockWidget):
             else:
                 v.setHidden(False)
         defVars.refreshVariablesStrings()
-            
 
     def addProject(self, clicked):
+        """ addProject(clicked: bool) -> None
+        Creates new project through vistrails
+        """
         from gui.vistrails_window import _app
         _app.new_vistrail()
         
     def openProject(self, clicked):
+        """ openProject(clicked: bool) -> None
+        Opens project using vistrails
+        """
         from gui.vistrails_window import _app
         _app.open_vistrail_default()
 
     def saveProject(self, clicked):
+        """ saveProject(clicked: bool) -> None
+        Save project using vistrails
+        """
         from gui.vistrails_window import _app
         _app.qactions['saveFile'].trigger()
 
     def saveProjectAs(self, clicked):
+        """ saveProjectAs(clicked: bool) -> None
+        Save project as new file using vistrails
+        """
         from gui.vistrails_window import _app
         _app.qactions['saveFileAs'].trigger()
 
     def closeProject(self, clicked):
+        """ closeProject(clicked: bool) -> None
+        Close file using vistrails
+        """
         from gui.vistrails_window import _app
         _app.close_vistrail()
 
     def state_changed(self, view):
-        """ update tags and project titles"""
+        """ state_changed(view: QVistrailView) -> None
+        Update tags and project titles
+        """
         item = self.viewToItem[id(view)]
         if item.view.controller.locator:
             name = item.view.controller.locator.short_name 
@@ -534,9 +614,10 @@ class Workspace(QtGui.QDockWidget):
                 child.update_title()
 
     def item_selected(self, widget_item, column):
-        """ opens the selected item if possible
-            item can be either project, saved workflow, spreadsheet,
-            spreadsheet cell, or the Saved Workflows item
+        """ item_selected(widget_item: QTreeWidgetItem, cloumn: int) -> None
+        Opens the selected item if possible
+        Existing items are: project, saved workflow, spreadsheet,
+        spreadsheet cell, or the Saved Workflows item
         """
         from gui.vistrails_window import _app
         sheet = None
@@ -578,8 +659,12 @@ class Workspace(QtGui.QDockWidget):
             tab = project.sheet_to_tab[sheet.sheetName]
             self.spreadsheetWindow.get_current_tab_controller(
                                                     ).setCurrentWidget(tab)
-            
+
     def add_sheet_tab(self, title, widget):
+        """ add_sheet_tab(title: str, widget: SpreadsheetTab) -> None
+        Called when a spreadsheet tab is added
+        Add a spreadsheet item and set size annotation
+        """
         if title not in self.currentProject.sheet_to_tab:
             self.currentProject.sheet_to_tab[title] = widget
             item = QSpreadsheetItem(title)
@@ -592,6 +677,10 @@ class Workspace(QtGui.QDockWidget):
                 self.currentProject.sheetSizeChanged(title, (2,1))
 
     def remove_sheet_tab(self, widget):
+        """ remove_sheet_tab(widget: QTreeWidgetItem) -> None
+        Called when a tab is removed from the spreadsheet
+        Removes vistrail annotations, tree items, and indexes
+        """
         title = None
         for t, tab in self.currentProject.sheet_to_tab.items():
             if tab == widget:
@@ -615,6 +704,10 @@ class Workspace(QtGui.QDockWidget):
         self.currentProject.view.controller.set_changed(True)
 
     def change_tab_text(self, oldtitle, newtitle):
+        """ change_tab_text(oldtitle: str, newtitle: str) -> None
+        Called when the title of a spreadsheet tab is changed
+        Updates vistrail annotations, indexes, and item titles
+        """
         
         if oldtitle not in self.currentProject.sheet_to_item:
             return
@@ -646,6 +739,10 @@ class Workspace(QtGui.QDockWidget):
         self.currentProject.view.controller.set_changed(True)
 
     def item_double_clicked(self, widget, col):
+        """ item_double_clicked(widget: QTreeWidgetItem, col: integer) -> None
+        Handles double-click on tree items
+        Currently enables renaming of QWorkflowItem
+        """
         if widget and type(widget) == QWorkflowItem:
             # tag this visualization with a name
             tag, ok = QtGui.QInputDialog.getText(self, str(widget.text(0)),
@@ -665,6 +762,7 @@ class Workspace(QtGui.QDockWidget):
             project.view.stateChanged()
 
     def get_current_project_controller(self):
+        """ get_current_project_controller() -> ProjectController
+        Returns current project controller
+        """
         return self.current_controller
-
-
