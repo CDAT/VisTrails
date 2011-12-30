@@ -698,9 +698,9 @@ class CDMS_VCDATInterfaceSpecs(WorkflowModule):
         self.inputs = {}
         self.configParms = configParms
         
-    def addInput(self, inputName, fileName, variableName, axes ):
+    def addInput(self, inputName, fileId, fileName, variableName, axes ):
         print " --- AddInput: ", inputName, fileName, variableName
-        self.inputs[ inputName ] = ( fileName, variableName, axes )
+        self.inputs[ inputName ] = ( fileId, fileName, variableName, axes )
         
     def getNInputs(self):
         return len(self.inputs)
@@ -729,25 +729,29 @@ class SerializedInterfaceSpecs:
         varInputSpecs = inputSpecElements[1].split('|')
         gridInputSpecs = inputSpecElements[2].split('|')
         if len( fileInputSpecs ) == 1:
-            fileName = fileInputSpecs[0].split('!')[1]
+            fileMetadata = fileInputSpecs[0].split('!')
+            fileId = fileMetadata[1]
+            fileName = fileMetadata[2]
             for iVar in range( len(varInputSpecs) ):
                 varName = varInputSpecs[iVar].split('!')[1]
                 axes = gridInputSpecs[iVar].split('!')[1]
-                self.addInput( ("Input%d" % iVar), fileName, varName, axes )
+                self.addInput( ("Input%d" % iVar), fileId, fileName, varName, axes )
         elif len( fileInputSpecs ) == len( varInputSpecs ):
             for iVar in range( len(varInputSpecs) ):
-                fileName = fileInputSpecs[iVar].split('!')[1]
+                fileMetadata = fileInputSpecs[iVar].split('!')
+                fileId = fileMetadata[1]
+                fileName = fileMetadata[2]
                 varName = varInputSpecs[iVar].split('!')[1]
                 axes = gridInputSpecs[iVar].split('!')[1]
-                self.addInput( ("Input%d" % iVar), fileName, varName, axes )
+                self.addInput( ("Input%d" % iVar), fileId, fileName, varName, axes )
         else:
             print>>sys.stderr, " ERROR: Number of Files and number of Variables do not match."
                 
         
-    def addInput(self, inputName, fileName, variableName, axes ):
-        print " --- AddInput: ", inputName, fileName, variableName, axes
+    def addInput(self, inputName, fileId, fileName, variableName, axes ):
+        print " --- AddInput: ", inputName, fileId, fileName, variableName, axes
         relFilePath = os.path.relpath( fileName, CDMSDatasetRecord.cdmsDataRoot )
-        self.inputs[ inputName ] = ( relFilePath, variableName, axes )
+        self.inputs[ inputName ] = ( fileId, relFilePath, variableName, axes )
         
     def getNInputs(self):
         return len(self.inputs)
@@ -922,19 +926,21 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         
         serializedInputSpecs = getItem( self.getInputValue( "executionSpecs" ) )
         inputSpecs = SerializedInterfaceSpecs( serializedInputSpecs ) if serializedInputSpecs else None
-        self.fileSpecs, self.varSpecs, self.gridSpecs = [], [], []
+        self.idSpecs, self.fileSpecs, self.varSpecs, self.gridSpecs = [], [], [], []
         if inputSpecs:
             print " _____________________ File Reader _____________________ "    
             for iInput in range( inputSpecs.getNInputs() ):
                 inputSpec = inputSpecs.getInput(  index=iInput )
-                print " ** InputSpec: ", str( inputSpec )  
-                self.fileSpecs.append( inputSpec[0] )
-                self.varSpecs.append( inputSpec[1] )
-                if( not len(self.gridSpecs) and len(inputSpec[2]) ): 
-                    self.gridSpecs = splitGridSpecs( inputSpec[2] )                   
+                print " ** InputSpec: ", str( inputSpec ) 
+                self.idSpecs.append( inputSpec[0] ) 
+                self.fileSpecs.append( inputSpec[1] )
+                self.varSpecs.append( inputSpec[2] )
+                if( not len(self.gridSpecs) and len(inputSpec[3]) ): 
+                    self.gridSpecs = splitGridSpecs( inputSpec[3] )                   
                     print " ** Grid Specs: ", str( self.gridSpecs )  
             dsMapData = ';'.join( self.fileSpecs )   
             self.computeGridFromSpecs()
+            print " ** ID Specs: ", str( self.idSpecs )
             print " ** File Specs: ", str( self.fileSpecs )
             print " ** Var Specs: ", str( self.varSpecs )            
             print " ** dsMapData: ", str( dsMapData )

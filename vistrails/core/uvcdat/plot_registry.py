@@ -406,7 +406,7 @@ class Plot(object):
         if self.serializedConfigAlias:
             if self.serializedConfigAlias in pipeline.aliases:
                 try:
-                    fileAliases = '|'.join( [ "%s!%s" % ( self.files[i], aliases[self.files[i]] )  for i in range(self.filenum) ] )
+                    fileAliases = '|'.join( [ "%s!%s!%s" % ( self.files[i], aliases[self.files[i]], aliases[".".join([self.files[i],"url"])] )  for i in range(self.filenum) ] )
                     varAliases = '|'.join( [ "%s!%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
                     gridAliases = '|'.join( [ "%s!%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
                     aliases[ self.serializedConfigAlias ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
