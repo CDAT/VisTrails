@@ -196,6 +196,7 @@ class ROISelectionDialog(QDialog):
         layout.addWidget(self.view)
         layout.addWidget(w)
         self.setLayout(layout)
+        self.view.scale( 0.4, 0.4 )
         
     def setROI( self, roi ):
         geoPt0 = QPointF( roi[0], roi[1] )

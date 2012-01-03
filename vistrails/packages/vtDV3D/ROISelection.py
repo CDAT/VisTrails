@@ -169,6 +169,7 @@ class ROISelectionDialog(QDialog):
         ROIcorner1 = QPointF(360, 90)   if self.lonRangeType == 0 else QPointF( 180, 90 )  
         worldMapExtent = WorldMapGridExtent[ self.lonRangeType ]      
         self.view = GraphicsView( item, worldMapExtent, ROIcorner0, ROIcorner1, self )
+        self.view.setMinimumSize( 500, 500 )
         self.filename = QString()
         self.view.setScene(self.scene)
 #        self.scene.addItem(item)
@@ -275,6 +276,7 @@ class ROISelectionDialog(QDialog):
         panelLayout.addWidget(self.cancelButton)
         self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
         self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close )
+        self.view.scale( 0.4, 0.4 )
 
 
 #        self.renderROIButton = QPushButton("Render ROI")
@@ -298,6 +300,9 @@ class ROISelectionDialog(QDialog):
         layout.addWidget(self.view)
         layout.addWidget(w)
         self.setLayout(layout)
+        
+    def initScaling(self):
+        self.view.scale( 0.4, 0.4 )
         
 #        autoLoad = nvSettings.data['autoLoad Default Field']
 #        if autoLoad:
@@ -768,7 +773,12 @@ class MainForm(QDialog):
 
     def setRoi(self):
         self.roi = self.roiSelector.getROI()
-        self.roiLabel.setText( "ROI: %s" % str( self.roi )  )  
+        self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
+        
+#    def show(self):
+#        self.roiSelector.initScaling()
+#        QDialog.show( self )
+         
         
 if __name__ == '__main__':                                                
     app = QApplication(sys.argv)

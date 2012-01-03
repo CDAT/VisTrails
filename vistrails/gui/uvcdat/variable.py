@@ -240,14 +240,15 @@ class VariableProperties(QtGui.QDockWidget):
         labelLayout.addWidget(l)
         
         self.selectRoiButton = QtGui.QPushButton('Select ROI', self)
+        self.selectRoiButton.setMinimumSize( 50, 50 )
         labelLayout.addWidget( self.selectRoiButton )        
         self.connect( self.selectRoiButton, QtCore.SIGNAL('clicked(bool)'), self.selectRoi )        
         self.roiSelector = ROISelectionDialog( self.parent )
         self.connect(self.roiSelector, QtCore.SIGNAL('doneConfigure()'), self.setRoi )
         if self.roi: self.roiSelector.setROI( self.roi )
         
-        self.dimsLayout.addLayout( labelLayout )
         self.dims.setLayout( self.dimsLayout )
+        self.dimsLayout.addLayout( labelLayout )
 
     def selectRoi( self ): 
         if self.roi: self.roiSelector.setROI( self.roi )
