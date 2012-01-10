@@ -551,7 +551,7 @@ Please delete unused CDAT Cells in the spreadsheet.")
     def exportToFile(self):
         file = QtGui.QFileDialog.getSaveFileName(
                 self, "Select a File to Export the Plot",
-                ".", "Images (*.png *.gif);;PDF file (*.pdf);;SVG file (*.svg)")
+                ".", "Images (*.png *.gif);;PDF file (*.pdf);;Postscript file (*.ps);;SVG file (*.svg)")
         if not file.isNull():
             filename = str(file)
             (_,ext) = os.path.splitext(filename)
@@ -563,6 +563,8 @@ Please delete unused CDAT Cells in the spreadsheet.")
                 self.canvas.svg(filename, width=11.5)
             elif ext.upper() == ".GIF":
                 self.canvas.gif(filename, width=11.5)
+            elif ext.upper() == ".PS":
+                self.canvas.postscript(filename, width=11.5)
         
 class QCDATWidgetToolBar(QCellToolBar):
     """
