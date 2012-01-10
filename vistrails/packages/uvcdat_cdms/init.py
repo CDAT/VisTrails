@@ -10,6 +10,7 @@ import api
 import re
 import MV2
 import os
+import ast
 
 from info import identifier
 from widgets import GraphicsMethodConfigurationWidget
@@ -102,7 +103,7 @@ class CDMSVariable(Variable):
         if self.axes is not None:
             text += ident + "%s = %s(%s)\n"% (self.name, self.name, self.axes)
         if self.axesOperations is not None:
-            text += ident + "axesOperations = eval(%s)\n"%self.axesOperations
+            text += ident + "axesOperations = eval(\"%s\")\n"%self.axesOperations
             text += ident + "for axis in list(axesOperations):\n"
             text += ident + "    if axesOperations[axis] == 'sum':\n"
             text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis, weight='equal', action='sum')\n"% (self.name, self.name) 
@@ -111,7 +112,7 @@ class CDMSVariable(Variable):
             text += ident + "    elif axesOperations[axis] == 'wgt':\n"
             text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis)\n"% (self.name, self.name)
             text += ident + "    elif axesOperations[axis] == 'gtm':\n"
-            text += ident + "        %s = genutil.statistics.geometricmean(var, axis='(%%s)'%%axis)\n"% (self.name, self.name)
+            text += ident + "        %s = genutil.statistics.geometricmean(%s, axis='(%%s)'%%axis)\n"% (self.name, self.name)
             text += ident + "    elif axesOperations[axis] == 'std':\n"
             text += ident + "        %s = genutil.statistics.std(%s, axis='(%%s)'%%axis)\n"% (self.name, self.name)
         return text
@@ -136,7 +137,7 @@ class CDMSVariable(Variable):
     def applyAxesOperations(var, axesOperations):
         """ Apply axes operations to update the slab """
         try:
-            axesOperations = eval(axesOperations)
+            axesOperations = ast.literal_eval(axesOperations)
         except:
             raise TypeError("Invalid string 'axesOperations'")
 

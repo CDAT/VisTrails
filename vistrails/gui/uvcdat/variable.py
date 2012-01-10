@@ -526,11 +526,12 @@ class VariableProperties(QtGui.QDockWidget):
                 if k != 'order':
                     kwargs_str += "%s=%s," % (k, repr(v))
             return kwargs_str
+        axes_ops_dict = axisList.getAxesOperations()
         url = None
         if hasattr(self.cdmsFile, "uri"):
             url = self.cdmsFile.uri
         cdmsVar = CDMSVariable(filename=self.cdmsFile.id, url=url, name=targetId,
-                               axes=get_kwargs_str(kwargs))
+                               axes=get_kwargs_str(kwargs), axesOperations=str(axes_ops_dict))
         controller.add_defined_variable(cdmsVar)
         # controller.add_defined_variable(self.cdmsFile.id,targetId,kwargs)
         self.updateVarInfo(axisList)
