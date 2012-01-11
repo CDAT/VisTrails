@@ -8,10 +8,11 @@ class QMenuWidget(QtGui.QWidget):
     def __init__(self, parent=None):
         QtGui.QWidget.__init__(self,parent)
         
-        self.fileMenu = parent.menuBar().addMenu('&File')
-        self.savePlotsAction = QtGui.QAction('&Save Plots...', self)
-        self.savePlotsAction.setStatusTip("Save Displayed Plots")
-        self.fileMenu.addAction(self.savePlotsAction)
+        ##FIXME: File menu already exists. It should not create another one
+        #self.fileMenu = parent.menuBar().addMenu('&File')
+        #self.savePlotsAction = QtGui.QAction('&Save Plots...', self)
+        #self.savePlotsAction.setStatusTip("Save Displayed Plots")
+        #self.fileMenu.addAction(self.savePlotsAction)
         ## self.connect(self.savePlotsAction,QtCore.SIGNAL('triggered ()'),
         ##              parent.root.tool_bar.savePlots)
         

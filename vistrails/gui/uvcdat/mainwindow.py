@@ -129,12 +129,26 @@ class UVCDATMainWindow(QtGui.QMainWindow):
 
 
     def createActions(self):
+        # Quit Action
+        self.actionExit = QtGui.QAction("Quit", self,
+                                        triggered=self.quit)
         #VisTrails Window
         self.showBuilderWindowAct = QtGui.QAction("Builder", self,
                                  triggered=self.showBuilderWindowActTriggered)
         self.showVistrailsConsoleAct = QtGui.QAction("Console", self,
                                 triggered=self.showVistrailsConsoleActTriggered)
+        
     def updateMenuActions(self):
+        #menu File Actions
+        self.ui.menuFile.addAction(self.workspace.btnNewProject)
+        self.ui.menuFile.addAction(self.workspace.btnOpenProject)
+        self.ui.menuFile.addSeparator()
+        self.ui.menuFile.addAction(self.workspace.btnCloseProject)
+        self.ui.menuFile.addSeparator()
+        self.ui.menuFile.addAction(self.workspace.btnSaveProject)
+        self.ui.menuFile.addAction(self.workspace.btnSaveProjectAs)
+        self.ui.menuFile.addSeparator()
+        self.ui.menuFile.addAction(self.actionExit)
         #menu View Actions
         self.ui.menuView.addAction(self.workspace.toggleViewAction())
         self.ui.menuView.addAction(self.dockTemplate.toggleViewAction())
@@ -156,7 +170,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         QShellDialog.instance().set_visible(True)
         
     def connectSignals(self):
-        self.ui.actionExit.triggered.connect(self.quit)
+        
         self.connect(self.spreadsheetWindow.tabControllerStack,
                      QtCore.SIGNAL("add_tab"),
                      self.workspace.add_sheet_tab)
