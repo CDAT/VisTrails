@@ -1,4 +1,5 @@
 from PyQt4 import QtCore,QtGui
+from gui.common_widgets import QDockPushButton
 
 class editVariableWidget(QtGui.QWidget):
     def __init__(self,var,parent=None,root=None):
@@ -130,7 +131,7 @@ class editVariableWidget(QtGui.QWidget):
         attName = QtGui.QLineEdit()
         self.connect(attName,QtCore.SIGNAL("textEdited(const QString&)"),self.modifiedOn)
         fa1l.addWidget(attName)
-        b = QtGui.QPushButton("Modify")
+        b = QDockPushButton("Modify")
         b.setFocusPolicy(QtCore.Qt.NoFocus)
         fa1l.addWidget(b)
         self.connect(b,QtCore.SIGNAL("clicked()"),modFunc)
@@ -140,11 +141,11 @@ class editVariableWidget(QtGui.QWidget):
         lax.addWidget(fa2)
         newAttName = QtGui.QLineEdit()
         fa2l.addWidget(newAttName)
-        b = QtGui.QPushButton("Create Attribute")
+        b = QDockPushButton("Create Attribute")
         b.setFocusPolicy(QtCore.Qt.NoFocus)
         fa2l.addWidget(b)
         self.connect(b,QtCore.SIGNAL("clicked()"),addFunc)
-        b = QtGui.QPushButton("Delete Attribute")
+        b = QDockPushButton("Delete Attribute")
         b.setFocusPolicy(QtCore.Qt.NoFocus)
         fa2l.addWidget(b)
         self.connect(b,QtCore.SIGNAL("clicked()"),delFunc)
