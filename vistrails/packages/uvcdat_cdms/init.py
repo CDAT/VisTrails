@@ -46,14 +46,17 @@ def expand_port_specs(port_specs, pkg_identifier=None):
 
 class CDMSVariable(Variable):
     _input_ports = expand_port_specs([("axes", "basic:String"),
-                                      ("axesOperations", "basic:String")])
+                                      ("axesOperations", "basic:String"),
+                                      ("varNameInFile", "basic:String")])
     _output_ports = expand_port_specs([("self", "CDMSVariable")])
 
     def __init__(self, filename=None, url=None, source=None, name=None, \
-                     load=False, axes=None, axesOperations=None):
+                     load=False, varNameInFile=None, axes=None, \
+                     axesOperations=None):
         Variable.__init__(self, filename, url, source, name, load)
         self.axes = axes
         self.axesOperations = axesOperations
+        self.varNameInFile = varNameInFile
         self.var = None
 
     def to_module(self, controller):
@@ -61,6 +64,8 @@ class CDMSVariable(Variable):
         # self.__class__.__name__
         module = Variable.to_module(self, controller, identifier)
         functions = []
+        if self.varNameInFile is not None:
+            functions.append(("varNameInFile", [self.varNameInFile]))
         if self.axes is not None:
             functions.append(("axes", [self.axes]))
         if self.axesOperations is not None:
@@ -77,7 +82,11 @@ class CDMSVariable(Variable):
             cdmsfile = cdms2.open(self.url)
         elif self.file:
             cdmsfile = cdms2.open(self.file)
-        var = cdmsfile.__call__(self.name)
+        
+        if self.varNameInFile is not None:
+            var = cdmsfile.__call__(self.varNameInFile)
+        else:    
+            var = cdmsfile.__call__(self.name)
         if self.axes is not None:
             try:
                 var = eval("var(%s)"% self.axes)
@@ -99,7 +108,10 @@ class CDMSVariable(Variable):
         elif self.file:
             text += ident + "cdmsfile = cdms2.open('%s')\n"%self.file
             
-        text += ident + "%s = cdmsfile('%s')\n"%(self.name, self.name)
+        if self.varNameInFile is not None:
+            text += ident + "%s = cdmsfile('%s')\n"%(self.name, self.varNameInFile)
+        else:
+            text += ident + "%s = cdmsfile('%s')\n"%(self.name, self.name)
         if self.axes is not None:
             text += ident + "%s = %s(%s)\n"% (self.name, self.name, self.axes)
         if self.axesOperations is not None:
@@ -123,12 +135,14 @@ class CDMSVariable(Variable):
         var = Variable.from_module(module)
         var.axes = CDMSPipelineHelper.get_fun_value_from_module(module, 'axes')
         var.axesOperations = CDMSPipelineHelper.get_fun_value_from_module(module, 'axesOperations')
+        var.varNameInFile = CDMSPipelineHelper.get_fun_value_from_module(module, 'varNameInFile')
         var.__class__ = CDMSVariable
         return var
         
     def compute(self):
         self.axes = self.forceGetInputFromPort("axes")
         self.axesOperations = self.forceGetInputFromPort("axesOperations")
+        self.varNameInFile = self.forceGetInputFromPort("varNameInFile")
         self.get_port_values()
         self.var = self.to_python()
         self.setResult("self", self)

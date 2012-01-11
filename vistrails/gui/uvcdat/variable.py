@@ -59,7 +59,7 @@ class VariableProperties(QtGui.QDockWidget):
         h.addWidget(self.btnDefine)
         self.btnDefineAs=QtGui.QPushButton("Define As")
         h.addWidget(self.btnDefineAs)
-        self.btnCancel=QtGui.QPushButton("Cancel")
+        self.btnCancel=QtGui.QPushButton("Close")
         h.addWidget(self.btnCancel)
         v.addLayout(h)
         self.layout=v
@@ -113,6 +113,7 @@ class VariableProperties(QtGui.QDockWidget):
 
         ## Define button
         self.btnDefine.clicked.connect(self.defineVarClicked)
+        self.btnDefineAs.clicked.connect(self.defineAsVarClicked)
         self.connect(self,QtCore.SIGNAL('definedVariableEvent'),self.root.dockVariable.widget().addVariable)
 
     def checkTargetVarName(self):
@@ -436,6 +437,15 @@ class VariableProperties(QtGui.QDockWidget):
         elif self.originTabWidget.currentIndex() == 2:
             #paraview
             self.getVarFromPVTab()
+          
+    def defineAsVarClicked(self, *args):
+        ok = False
+        (qtname, ok) = QtGui.QInputDialog.getText(self, "UV-CDAT Variable Definition",
+                                                  "New variable name:", 
+                                                  mode=QtGui.QLineEdit.Normal, 
+                                                  text="")
+        if ok:
+            self.getUpdatedVarCheck(str(qtname))
             
     def getVarFromPVTab(self):
         filename = self._pvProcessFile._fileName
@@ -503,6 +513,7 @@ class VariableProperties(QtGui.QDockWidget):
             oid = updatedVar.id
         else:
             oid = "cdmsFileVariable"
+        original_id = updatedVar.id
         updatedVar.id = targetId
         self.root.record("%s = %s(%s)" % (targetId,oid,cmds))
         ## Squeeze?
@@ -531,7 +542,9 @@ class VariableProperties(QtGui.QDockWidget):
         if hasattr(self.cdmsFile, "uri"):
             url = self.cdmsFile.uri
         cdmsVar = CDMSVariable(filename=self.cdmsFile.id, url=url, name=targetId,
-                               axes=get_kwargs_str(kwargs), axesOperations=str(axes_ops_dict))
+                               varNameInFile=original_id, 
+                               axes=get_kwargs_str(kwargs), 
+                               axesOperations=str(axes_ops_dict))
         controller.add_defined_variable(cdmsVar)
         # controller.add_defined_variable(self.cdmsFile.id,targetId,kwargs)
         self.updateVarInfo(axisList)
