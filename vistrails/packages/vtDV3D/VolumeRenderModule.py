@@ -229,7 +229,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         cfs.append( configFunct )
         
         self.persistParameterList( parmList )
-        for configFunct in cfs: configFunct.initLeveling()
+#        for configFunct in cfs: configFunct.initLeveling()
         
     def clearTransferFunctionConfigDialog(self):
         self.transFunctGraphVisible = False
