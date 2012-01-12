@@ -205,7 +205,7 @@ class PlotTreeWidget(QtGui.QTreeWidget):
                 except:
                     pass
             ## Connect Button
-            save.clicked.connect(widget.applyChanges)
+            save.clicked.connect(widget.saveChanges)
             cancel.clicked.connect(editorDock.close)
         else:
             print "Put code to popup",analyser,"editor"

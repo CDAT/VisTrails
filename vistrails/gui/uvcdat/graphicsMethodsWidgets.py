@@ -214,8 +214,13 @@ class VCSGMs():
         if "yaxisconvert" in self.gmAttributes:
             gm.yaxisconvert = str(self.yaxisconvert.buttonGroup.button(self.yaxisconvert.buttonGroup.checkedId()).text())
 
+    def saveChanges(self,click):
+       self.applyChanges()
+       
 class VCSGMs1D:
 
+    def saveChanges(self,click):
+       self.applyChanges()
     def setupLines(self, target):
         self.lineType = target.addLabeledComboBox('Type: ',
                                                   ["solid", "dash", "dot", "dash-dot", "long-dash"])
@@ -1620,6 +1625,7 @@ class QIsofillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
     def applyChanges(self, gm=None):
         if gm is None:
             gm = self.gm
+        print "Ok gm is now:",gm,gm.name
         self.applyCommonChanges(gm)
         
         gm.legend = eval(str(self.legendLineEdit.text()))
