@@ -372,6 +372,7 @@ Please delete unused CDAT Cells in the spreadsheet.")
            
         self.canvas.clear()
         # Plot
+        print "Ok it seems we are plotting now"
         if len(inputPorts) > 3:
             gm = inputPorts[1]
             args = inputPorts[2]
@@ -381,8 +382,11 @@ Please delete unused CDAT Cells in the spreadsheet.")
                     cgm = self.canvas.getboxfill(gm._name)
                     for (k,v) in gm.options.iteritems():
                         setattr(cgm,k,v)
+            print "OK PLOTTING:",args,kargs
             self.canvas.plot(*args, **kwargs)
 
+        print "Ok it seems we are plotting now ?"
+        raw_input("Press enter")
         spreadsheetWindow.setUpdatesEnabled(True)
 
     def deleteLater(self):

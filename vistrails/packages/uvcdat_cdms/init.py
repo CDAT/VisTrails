@@ -515,7 +515,8 @@ Please delete unused CDAT Cells in the spreadsheet.")
                             setattr(cgm,k,getattr(plot,k))
                         #print k, " = ", getattr(cgm,k)
                             
-            kwargs = plot.kwargs             
+            kwargs = plot.kwargs
+            print "is this the place we plot?",args,kwargs
             self.canvas.plot(cgm,*args,**kwargs)
 
         spreadsheetWindow.setUpdatesEnabled(True)

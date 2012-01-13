@@ -216,6 +216,7 @@ class VCSGMs():
 
     def saveChanges(self,click):
        self.applyChanges()
+       self.root.record(self.changesString())
        
 class VCSGMs1D:
 
@@ -1530,7 +1531,7 @@ class QMeshfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
             self.applyCommonChanges(gm)
             gm.legend = eval(str(self.legendLineEdit.text()))
             gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
-            gm.ext2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
+            gm.ext_2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
             gm.missing = eval(str(self.missingLineEdit.text()))
             gm.wrap = [eval(str(self.yWrap.text())),eval(str(self.xWrap.text()))]
             gm.mesh = str(self.showMesh.buttonGroup.button(self.showMesh.buttonGroup.checkedId()).text()).lower()[0]
@@ -1625,12 +1626,11 @@ class QIsofillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
     def applyChanges(self, gm=None):
         if gm is None:
             gm = self.gm
-        print "Ok gm is now:",gm,gm.name
         self.applyCommonChanges(gm)
         
         gm.legend = eval(str(self.legendLineEdit.text()))
         gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
-        gm.ext2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
+        gm.ext_2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
         gm.missing = eval(str(self.missingLineEdit.text()))
         gm.levels = eval(str(self.rangeLineEdit.text()))
         self.applyRangeSettings()
@@ -1984,7 +1984,7 @@ class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
             from api import _app
             self.root =_app.uvcdatWindow
         self.gm = self.root.canvas[0].getboxfill(gm)
-        self.gmAttributes = ['boxfill_type', 'color_1', 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'levels','ext_1', 'ext_2', 'fillareacolors', 'fillareaindices', 'fillareastyle', 'legend', 'level_1', 'level_2', 'missing', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2']
+        self.gmAttributes = ['boxfill_type', 'color_1', 'color_2', 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'levels','ext_1', 'ext_2', 'fillareacolors', 'fillareaindices', 'fillareastyle', 'legend', 'level_1', 'level_2', 'missing', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2']
         
         self.saveOriginalValues()
         
