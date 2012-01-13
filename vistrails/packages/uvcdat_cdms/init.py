@@ -619,7 +619,9 @@ class QCDATWidgetColormap(QtGui.QAction):
         
         """
         from api import _app
-        canvas = get_canvas()
+        #make sure we get the canvas object used in the cell
+        cellWidget = self.toolBar.getSnappedWidget()
+        canvas = cellWidget.canvas
         _app.uvcdatWindow.colormapEditor.activateFromCell(canvas)
         
 
