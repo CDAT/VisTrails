@@ -175,6 +175,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         self.renderer.AddActor( self.glyphActor )
         self.planeWidget.GetPlane( self.plane )
         self.ApplyGlyphDecimationFactor()
+        self.renderer.SetBackground( 1.0, 1.0, 1.0 ) 
         self.set3DOutput(wmod=self.wmod) 
 #        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
 
@@ -468,6 +469,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.renderer.AddActor( self.glyphActor )
         self.planeWidget.GetPlane( self.plane )
         self.ApplyGlyphDecimationFactor()
+        self.renderer.SetBackground( 1.0, 1.0, 1.0 ) 
         self.set3DOutput(wmod=self.wmod) 
 #        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
 
@@ -766,6 +768,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.planeWidget.GetPlane( self.plane )
         self.UpdateStreamerSeedGrid()
         self.updateScaling()
+        self.renderer.SetBackground( 1.0, 1.0, 1.0 ) 
         self.set3DOutput( wmod=self.wmod, output=self.input ) 
  
     def updateModule(self, **args ):

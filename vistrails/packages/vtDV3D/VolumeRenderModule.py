@@ -304,7 +304,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.volume.SetPosition( self.pos )
 
         self.renderer.AddVolume( self.volume )
-        self.renderer.SetBackground(0.1, 0.1, 0.2) 
+#        self.renderer.SetBackground(0.1, 0.1, 0.2) 
+        self.renderer.SetBackground( 1.0, 1.0, 1.0 ) 
 
 
     def rebuildVolume( self ):

@@ -144,6 +144,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.glyphActor = vtk.vtkActor() 
         self.glyphActor.SetMapper( self.glyph )
         self.renderer.AddActor( self.glyphActor )
+        self.renderer.SetBackground( 1.0, 1.0, 1.0 ) 
         self.set3DOutput(wmod=self.wmod) 
 
     def updateModule(self, **args ):
