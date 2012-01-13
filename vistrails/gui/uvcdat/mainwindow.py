@@ -21,6 +21,7 @@ import commandsRecorderWidget
 import preferencesWidget
 import mainMenuWidget
 import mainToolbarWidget
+from colormapEditorWidget import QColormapEditor
 
 class UVCDATMainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None,customPath=None,styles=None):
@@ -36,6 +37,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.canvas=[]
         
         self.canvas.append(vcs.init())
+        self.colormapEditor =QColormapEditor(self) 
         # Create the command recorder widget
         self.recorder = commandsRecorderWidget.QCommandsRecorderWidget(self)
         #Adds a shortcut to the record function

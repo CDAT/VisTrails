@@ -593,7 +593,56 @@ class QCDATWidgetToolBar(QCellToolBar):
         
         """
         self.appendAction(QCDATWidgetExport(self))
+        self.appendAction(QCDATWidgetColormap(self))
+
+class QCDATWidgetColormap(QtGui.QAction):
+    """
+    QCDATWidgetColormap is the action to export the plot 
+    of the current cell to a file
+
+    """
+    def __init__(self, parent=None):
+        """ QCDATWidgetColormap(icon: QIcon, parent: QWidget)
+                                   -> QCDATWidgetColormap
+        Setup the colormapeditor
         
+        """
+        QtGui.QAction.__init__(self,
+                               QtGui.QIcon(":/icons/resources/icons/colormap.png"),
+                               "Colormap Editor",
+                               parent)
+        self.setStatusTip("Export the current plot as an image")
+
+    def triggeredSlot(self, checked=False):
+        """ toggledSlot(checked: boolean) -> None
+        Execute the action when the button is clicked
+        
+        """
+        from api import _app
+        canvas = get_canvas()
+        _app.uvcdatWindow.colormapEditor.activateFromCell(canvas)
+        
+
+    def updateStatus(self, info):
+        """ updateStatus(info: tuple) -> None
+        Updates the status of the button based on the input info
+        
+        """
+        from api import _app
+        (sheet, row, col, cellWidget) = info
+        selectedCells = sorted(sheet.getSelectedLocations())
+
+        # Will not show up if there is no cell selected  
+        proj_controller = _app.uvcdatWindow.get_current_project_controller()
+        sheetName = sheet.getSheetName()        
+        if (len(selectedCells)==1 and 
+            proj_controller.is_cell_ready(sheetName,row,col)):
+                self.setVisible(True)
+        else:
+            self.setVisible(False)
+
+_modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
+            CDMSUnaryVariableOperation, CDMSBinaryVariableOperation]
 class QCDATWidgetExport(QtGui.QAction):
     """
     QCDATWidgetExport is the action to export the plot 

@@ -28,6 +28,7 @@ class QColormapEditor(QtGui.QColorDialog):
         self.parent=parent
         self.root=parent.root
         self.setOption(QtGui.QColorDialog.DontUseNativeDialog,True)
+        self.activeCanvas = self.root.canvas[0]
 
         self.vcscolor=[0,0,0]
         ## l = QtGui.QVBoxLayout()
@@ -47,7 +48,7 @@ class QColormapEditor(QtGui.QColorDialog):
         ## Colormap selection Area
         f = QtGui.QFrame()
         h = QtGui.QHBoxLayout()
-        colormaps = sorted(self.root.canvas[0].listelements("colormap"))
+        colormaps = sorted(self.activeCanvas.listelements("colormap"))
         self.colormap = QtGui.QComboBox(self)
         for i in colormaps:
             self.colormap.addItem(i)
@@ -95,7 +96,7 @@ class QColormapEditor(QtGui.QColorDialog):
         self.connect(self,QtCore.SIGNAL("currentColorChanged(QColor)"),self.colorChanged)
 
         ## Now that it's connected select the colormap
-        self.colormap.setCurrentIndex(colormaps.index(self.root.canvas[0].getcolormapname()))
+        self.colormap.setCurrentIndex(colormaps.index(self.activeCanvas.getcolormapname()))
 
     def getRgb(self,i,j=None,max=255):
         if j is None:
@@ -126,15 +127,19 @@ class QColormapEditor(QtGui.QColorDialog):
             
         return nr,ng,nb
 
+    def activateFromCell(self,canvas):
+        self.activeCanvas = canvas
+        self.show()
+        
     def applyChanges(self):
-        cnm = self.root.canvas[0].getcolormapname()
+        cnm = self.activeCanvas.getcolormapname()
         n=0
         for i in range(15):
             for j in range(16):
                 r,g,b = self.getRgb(i,j,max=100)
-                self.root.canvas[0].setcolorcell(n,r,g,b)
+                self.activeCanvas.setcolorcell(n,r,g,b)
                 n+=1
-        self.root.canvas[0].setcolormap(cnm)
+        self.activeCanvas.setcolormap(cnm)
         
     def resetChanges(self):
         for i in range(16):
@@ -292,9 +297,9 @@ class QColormapEditor(QtGui.QColorDialog):
         
     def updateColors(self):
         n = self.layout().count()
-        self.cmap = self.root.canvas[0].getcolormap(str(self.colormap.currentText()))
+        self.cmap = self.activeCanvas.getcolormap(str(self.colormap.currentText()))
         self.colors=QtGui.QFrame()
-        self.root.canvas[0].setcolormap(str(self.colormap.currentText()))
+        self.activeCanvas.setcolormap(str(self.colormap.currentText()))
 
         icolor = 0
         for i in range(16):
