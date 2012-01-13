@@ -207,7 +207,8 @@ class PM_LevelSurface(PersistentVisualizationModule):
 #        else: print " ** No point data. "
            
         self.renderer.AddActor( levelSetActor )
-        self.renderer.SetBackground( 0.1, 0.1, 0.2 )
+#        self.renderer.SetBackground(0.1, 0.1, 0.2) 
+        self.renderer.SetBackground( 1.0, 1.0, 1.0 ) 
         self.set3DOutput()                                              
                                                 
 
