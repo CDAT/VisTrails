@@ -10,6 +10,7 @@ from roiSelector import *
 import uvcdatCommons
 import customizeUVCDAT
 import editVariableWidget
+from gui.common_widgets import QDockPushButton
 
 # Paraview related imports
 from paraviewconnection import ParaViewConnectionDialog
@@ -55,11 +56,11 @@ class VariableProperties(QtGui.QDockWidget):
         h=QtGui.QHBoxLayout()
         s=QtGui.QSpacerItem(40,20,QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Preferred)
         h.addItem(s)
-        self.btnDefine=QtGui.QPushButton("Define")
+        self.btnDefine=QDockPushButton("Define")
         h.addWidget(self.btnDefine)
-        self.btnDefineAs=QtGui.QPushButton("Define As")
+        self.btnDefineAs=QDockPushButton("Define As")
         h.addWidget(self.btnDefineAs)
-        self.btnCancel=QtGui.QPushButton("Close")
+        self.btnCancel=QDockPushButton("Close")
         h.addWidget(self.btnCancel)
         v.addLayout(h)
         self.layout=v
@@ -240,8 +241,7 @@ class VariableProperties(QtGui.QDockWidget):
         l=QtGui.QLabel("Dimensions")
         labelLayout.addWidget(l)
         
-        self.selectRoiButton = QtGui.QPushButton('Select ROI', self)
-        self.selectRoiButton.setMinimumSize( 50, 50 )
+        self.selectRoiButton = QDockPushButton('Select ROI', self)
         labelLayout.addWidget( self.selectRoiButton )        
         self.connect( self.selectRoiButton, QtCore.SIGNAL('clicked(bool)'), self.selectRoi )        
         self.roiSelector = ROISelectionDialog( self.parent )

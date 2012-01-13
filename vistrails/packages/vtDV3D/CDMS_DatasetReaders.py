@@ -731,7 +731,7 @@ class SerializedInterfaceSpecs:
         if len( fileInputSpecs ) == 1:
             fileMetadata = fileInputSpecs[0].split('!')
             fileId = fileMetadata[1]
-            fileName = fileMetadata[2]
+            fileName = fileMetadata[2] if fileMetadata[2] else fileId
             for iVar in range( len(varInputSpecs) ):
                 varName = varInputSpecs[iVar].split('!')[1]
                 axes = gridInputSpecs[iVar].split('!')[1]
@@ -740,7 +740,7 @@ class SerializedInterfaceSpecs:
             for iVar in range( len(varInputSpecs) ):
                 fileMetadata = fileInputSpecs[iVar].split('!')
                 fileId = fileMetadata[1]
-                fileName = fileMetadata[2]
+                fileName = fileMetadata[2] if fileMetadata[2] else fileId
                 varName = varInputSpecs[iVar].split('!')[1]
                 axes = gridInputSpecs[iVar].split('!')[1]
                 self.addInput( ("Input%d" % iVar), fileId, fileName, varName, axes )
