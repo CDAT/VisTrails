@@ -115,7 +115,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         selectedItems = self.varList.selectedItems()
         if project:
             varList = []
-            current = str(self.root.workspace.currentProject.text(0))
+            current = str(self.root.get_current_project_controller().name)
             for item in selectedItems:
                 if current in item.projects:
                     varList.append(item)
@@ -126,7 +126,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
     def getItems(self,project=True):
         """ Get a list of all of the defined tabnames / variables """
         varList = []
-        current = str(self.root.workspace.currentProject.text(0))
+        current = str(self.root.get_current_project_controller().name)
         for i in range(self.varList.count()):
             item=self.varList.item(i)
             if project:
@@ -140,7 +140,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         """ Get a list of all of the defined tabnames / variables """
         selectedItems = self.varList.selectedItems()
         varList = []
-        current = str(self.root.workspace.currentProject.text(0))
+        current = str(self.root.get_current_project_controller().name)
         for item in selectedItems:
             if project:
                 if current in item.projects:
@@ -162,24 +162,30 @@ class QDefinedVariableWidget(QtGui.QWidget):
             v = it.getVariable()
             if it.varName != v.id:
                 it.setText(ittxt.replace(it.varName,v.id,1))
-                iTab = self.root.tabView.widget(0).tabWidget.getTabIndexFromName(it.varName)
-                self.root.tabView.widget(0).tabWidget.setTabText(iTab,v.id)
+                #removed as we don't have tabView anymore (by Emanuele)
+                #iTab = self.root.tabView.widget(0).tabWidget.getTabIndexFromName(it.varName)
+                #self.root.tabView.widget(0).tabWidget.setTabText(iTab,v.id)
                 del(__main__.__dict__[it.varName])
                 it.varName = v.id
                 self.root.stick_defvar_into_main_dict(v)
             
-    def addVariable(self, var, type='CDMS'):
+    def addVariable(self, var, type_='CDMS'):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
         """
-        if type == 'CDMS':
+        cdmsVar = None
+        if type_ == 'CDMS':
+            if type(var) == tuple:
+                cdmsVar = var[1]
+                var = var[0]
+                
             self.root.stick_defvar_into_main_dict(var)
-            item = QDefinedVariableItem(var,self.root)
+            item = QDefinedVariableItem(var,self.root,cdmsVar)
             for i in range(self.varList.count()-1,-1,-1):
                 if self.varList.item(i).getVarName() == var.id:
                     self.varList.takeItem(i)
-        elif type == 'PARAVIEW':
-            item = QDefinedVariableItem(var,self.root,QDefinedVariableItem.PARAVIEW)
+        elif type_ == 'PARAVIEW':
+            item = QDefinedVariableItem(var,self.root,None,QDefinedVariableItem.PARAVIEW)
         self.varList.addItem(item)
         # Recording define variable teaching command
 #        self.recordDefineVariableTeachingCommand(varName, var.id, file, axesArgString)
@@ -195,9 +201,15 @@ class QDefinedVariableWidget(QtGui.QWidget):
         for i in range(self.varList.count()-1,-1,-1):
             if self.varList.item(i).getVarName() == varid:
                 del(__main__.__dict__[varid])
+                #this will delete from all projects
+                for project in self.varList.item(i).projects:
+                    controller = self.root.get_project_controller_by_name(project)
+                    if controller:
+                        controller.remove_defined_variable(varid)
                 self.varList.takeItem(i)
-        iTab = self.root.tabView.widget(0).tabWidget.getTabIndexFromName(varid)
-        self.root.tabView.widget(0).tabWidget.removeTab(iTab)
+
+        #iTab = self.root.tabView.widget(0).tabWidget.getTabIndexFromName(varid)
+        #self.root.tabView.widget(0).tabWidget.removeTab(iTab)
         
     def unselectItems(self,items):
         selected = self.varList.selectedItems()
@@ -386,7 +398,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         self.toolBar.setIconSize(QtCore.QSize(customizeUVCDAT.iconsize,customizeUVCDAT.iconsize))
         actionInfo = [
             ('symbol_add.ico', "add",'Add variable(s).',self.newVariable),
-            ('symbol_delete.ico', "del",'Delete selected defined variable(s).',self.trashVariable),
+            ('symbol_delete.ico', "del",'Delete selected defined variable(s) from all projects.',self.trashVariable),
             ('symbol_check.ico', "recycle",'Select ALL variables.',self.selectAllVariables),
             ('symbol_information.ico', "info",'Display selected defined variable(s) information.',self.variableInfo),
             ('pencil.ico', "edit",'Edit selected defined variable(s).',self.editVariables),
@@ -463,17 +475,19 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
     type==2 is for paraview variables """
     CDMS = 1
     PARAVIEW = 2
-    def __init__(self, variable, root, type=1, parent=None,project=None):
+    def __init__(self, variable, root, cdmsVar=None, type=1, parent=None,project=None):
         QtGui.QListWidgetItem.__init__(self, parent, type)
         if type == self.CDMS:
             self.varName = variable.id # This is also the tabname
             self.variable = variable
+            self.cdmsVar = cdmsVar
         elif type == self.PARAVIEW:
             self.varName = variable
             self.variable = variable
         self.root=root
         if project is None:
-            current = str(self.root.workspace.currentProject.text(0))
+            
+            current = str(self.root.get_current_project_controller().name)
             self.projects = [current,]
             
         self.updateVariableString(None)

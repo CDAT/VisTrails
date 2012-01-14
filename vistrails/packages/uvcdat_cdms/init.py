@@ -47,16 +47,20 @@ def expand_port_specs(port_specs, pkg_identifier=None):
 class CDMSVariable(Variable):
     _input_ports = expand_port_specs([("axes", "basic:String"),
                                       ("axesOperations", "basic:String"),
-                                      ("varNameInFile", "basic:String")])
+                                      ("varNameInFile", "basic:String"),
+                                      ("attributes", "basic:Dictionary"),
+                                      ("axisAttributes", "basic:Dictionary")])
     _output_ports = expand_port_specs([("self", "CDMSVariable")])
 
     def __init__(self, filename=None, url=None, source=None, name=None, \
                      load=False, varNameInFile=None, axes=None, \
-                     axesOperations=None):
+                     axesOperations=None, attributes=None, axisAttributes=None):
         Variable.__init__(self, filename, url, source, name, load)
         self.axes = axes
         self.axesOperations = axesOperations
         self.varNameInFile = varNameInFile
+        self.attributes = attributes
+        self.axisAttributes = axisAttributes
         self.var = None
 
     def to_module(self, controller):
@@ -70,6 +74,10 @@ class CDMSVariable(Variable):
             functions.append(("axes", [self.axes]))
         if self.axesOperations is not None:
             functions.append(("axesOperations", [self.axesOperations]))
+        if self.attributes is not None:
+            functions.append(("attributes", [self.attributes]))
+        if self.axisAttributes is not None:
+            functions.append(("axisAttributes", [self.axisAttributes]))
         functions = controller.create_functions(module, functions)
         for f in functions:
             module.add_function(f)
@@ -95,6 +103,26 @@ class CDMSVariable(Variable):
                                       str(e))
         if self.axesOperations is not None:
             var = self.applyAxesOperations(var, self.axesOperations)
+            
+        #make sure that var.id is the same as self.name
+        var.id = self.name
+        if self.attributes is not None:
+            for attr in self.attributes:
+                try:
+                    attValue=eval(str(self.attributes[attr]).strip())
+                except:
+                    attValue=str(self.attributes[attr]).strip()
+                setattr(var,attr, attValue) 
+                       
+        if self.axisAttributes is not None:
+            for axName in self.axisAttributes:
+                for attr in self.axisAttributes[axName]:
+                    try:
+                        attValue=eval(str(self.axisAttributes[axName][attr]).strip())
+                    except:
+                        attValue=str(self.axisAttributes[axName][attr]).strip()
+                    ax = var.getAxis(var.getAxisIndex(axName))
+                    setattr(ax,attr, attValue)        
         return var
     
     def to_python_script(self, include_imports=False, ident=""):
@@ -127,6 +155,21 @@ class CDMSVariable(Variable):
             text += ident + "        %s = genutil.statistics.geometricmean(%s, axis='(%%s)'%%axis)\n"% (self.name, self.name)
             text += ident + "    elif axesOperations[axis] == 'std':\n"
             text += ident + "        %s = genutil.statistics.std(%s, axis='(%%s)'%%axis)\n"% (self.name, self.name)
+       
+        if self.attributes is not None:
+            text += "\n" + ident + "#modifying variable attributes\n"
+            for attr in self.attributes:
+                text += ident + "%s.%s = %s\n" % (self.name, attr,
+                                                  repr(self.attributes[attr]))
+                
+        if self.axisAttributes is not None:
+            text += "\n" + ident + "#modifying axis attributes\n"
+            for axName in self.axisAttributes:
+                text += ident + "ax = %s.getAxis(%s.getAxisIndex('%s'))\n" % (self.name,self.name,axName)
+                for attr in self.axisAttributes[axName]:
+                    text += ident + "ax.%s = %s\n" % ( attr,
+                                        repr(self.axisAttributes[axName][attr]))
+        
         return text
     
     @staticmethod
@@ -136,6 +179,17 @@ class CDMSVariable(Variable):
         var.axes = CDMSPipelineHelper.get_fun_value_from_module(module, 'axes')
         var.axesOperations = CDMSPipelineHelper.get_fun_value_from_module(module, 'axesOperations')
         var.varNameInFile = CDMSPipelineHelper.get_fun_value_from_module(module, 'varNameInFile')
+        attrs = CDMSPipelineHelper.get_fun_value_from_module(module, 'attributes')
+        if attrs is not None:
+            var.attributes = ast.literal_eval(attrs)
+        else:
+            var.attributes = attrs
+            
+        axattrs = CDMSPipelineHelper.get_fun_value_from_module(module, 'axisAttributes')
+        if axattrs is not None:
+            var.axisAttributes = ast.literal_eval(axattrs)
+        else:
+            var.axisAttributes = axattrs
         var.__class__ = CDMSVariable
         return var
         
@@ -143,6 +197,8 @@ class CDMSVariable(Variable):
         self.axes = self.forceGetInputFromPort("axes")
         self.axesOperations = self.forceGetInputFromPort("axesOperations")
         self.varNameInFile = self.forceGetInputFromPort("varNameInFile")
+        self.attributes = self.forceGetInputFromPort("attributes")
+        self.axisAttributes = self.forceGetInputFromPort("axisAttributes")
         self.get_port_values()
         self.var = self.to_python()
         self.setResult("self", self)
@@ -444,7 +500,7 @@ class QCDATWidget(QCellWidget):
     
     """
     startIndex = 2 #this should be the current number of canvas objects created 
-    maxIndex = 7
+    maxIndex = 6
     usedIndexes = []
     
     def __init__(self, parent=None):
@@ -516,7 +572,7 @@ Please delete unused CDAT Cells in the spreadsheet.")
                         #print k, " = ", getattr(cgm,k)
                             
             kwargs = plot.kwargs
-            print "is this the place we plot?",args,kwargs
+            #print "is this the place we plot?",args,kwargs
             self.canvas.plot(cgm,*args,**kwargs)
 
         spreadsheetWindow.setUpdatesEnabled(True)
@@ -626,8 +682,8 @@ class QCDATWidgetAnimation(QtGui.QAction):
         #make sure we get the canvas object used in the cell
         cellWidget = self.toolBar.getSnappedWidget()
         canvas = cellWidget.canvas
-        _app.uvcdatWindow.dockAnimate.widget().setCanvas(canvas)
-        _app.uvcdatWindow.dockAnimate.show()
+        #_app.uvcdatWindow.dockAnimate.widget().setCanvas(canvas)
+        #_app.uvcdatWindow.dockAnimate.show()
         
     def updateStatus(self, info):
         """ updateStatus(info: tuple) -> None

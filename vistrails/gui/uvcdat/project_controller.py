@@ -69,6 +69,56 @@ class ProjectController(QtCore.QObject):
     def add_defined_variable(self, var):
         self.defined_variables[var.name] = var
 
+    def rename_defined_variable(self, oldname, newname):
+        """rename_defined_variable(oldname, newname) -> None
+        This will rename a variable as long as oldname is present and newname
+        is not already used. 
+        """
+        if oldname in self.defined_variables:
+            if newname not in self.defined_variables:
+                var = self.defined_variables[oldname]
+                del self.defined_variables[oldname]
+                var.name = newname
+                self.add_defined_variable(var)
+            else:
+                debug.warning("Variable was not renamed: name '%s' already used." %newname)
+        else:
+            debug.warning("Variable was not renamed: variable named '%s' not found." %oldname)
+            
+    def remove_defined_variable(self, name):
+        if name in self.defined_variables:
+            del self.defined_variables[name]
+            
+    def change_defined_variable_attribute(self, varname, attr, attrval):
+        if varname in self.defined_variables:
+            var = self.defined_variables[varname]
+            if var.attributes is None:
+                var.attributes = {}
+            var.attributes[attr] = attrval
+            
+    def remove_defined_variable_attribute(self, varname, attr):
+        if varname in self.defined_variables:
+            var = self.defined_variables[varname]
+            if var.attributes is not None and attr in var.attributes:
+                del var.attributes[attr]
+                
+    def change_defined_variable_axis_attribute(self, varname, axname, attr, attrval):
+        if varname in self.defined_variables:
+            var = self.defined_variables[varname]
+            if var.axisAttributes is None:
+                var.axisAttributes = {}
+            if axname not in var.axisAttributes:
+                var.axisAttributes[axname] = {}
+                
+            var.axisAttributes[axname][attr] = attrval
+                
+    def remove_defined_variable_axis_attribute(self, varname, axname, attr):
+        if varname in self.defined_variables:
+            var = self.defined_variables[varname]
+            if var.axisAttributes and axname in var.axisAttributes:
+                if var.axisAttributes[axname] and attr in var.axisAttributes[axname]:
+                    del var.axisAttributes[axname][attr]
+                
     def calculator_command(self, vars, txt, st, varname):
         self.computed_variables[varname] = (vars, txt, st, varname)
         
@@ -79,7 +129,7 @@ class ProjectController(QtCore.QObject):
         if isinstance(var, CDMSVariable):
             _app.uvcdatWindow.dockVariable.widget().addVariable(var.to_python())
         elif isinstance(var, PVVariable):
-            _app.uvcdatWindow.dockVariable.widget().addVariable(var.name, type='PARAVIEW')
+            _app.uvcdatWindow.dockVariable.widget().addVariable(var.name, type_='PARAVIEW')
             
     # def add_defined_variable(self, filename, name, kwargs):
     #     var = VariableWrapper(filename, name, kwargs)

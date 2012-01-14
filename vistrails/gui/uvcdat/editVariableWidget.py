@@ -36,10 +36,10 @@ class editVariableWidget(QtGui.QWidget):
             j= i % 3
             if j==0:
                 if i!=0 :
+                    h=QtGui.QHBoxLayout()
                     v.addLayout(h)
                 h=QtGui.QHBoxLayout()
-            proj = self.root.workspace.treeProjects.topLevelItem(i)
-            txt=proj.text(0)
+            txt = self.root.workspace.treeProjects.topLevelItem(i).controller.name
             c=QtGui.QCheckBox(txt)
             if self.it is not None and txt in self.it.projects:
                 c.setCheckState(QtCore.Qt.Checked)
@@ -83,9 +83,12 @@ class editVariableWidget(QtGui.QWidget):
         if b.checkState()==QtCore.Qt.Unchecked: # unchecked because when it gets here state hasn't changed yet
             if not txt in self.it.projects:
                 self.it.projects.append(txt)
-                proj = self.root.workspace.treeProjects.currentItem()
-                if txt == str(proj.text(0)):
+                proj = self.root.get_current_project_controller().name
+                if txt == str(proj):
                     self.it.setHidden(False)
+                from api import _app
+                controller = _app.uvcdatWindow.get_project_controller_by_name(txt)
+                controller.add_defined_variable(self.it.cdmsVar)    
         else:
             if txt in self.it.projects:
                 bsum=0
@@ -93,9 +96,12 @@ class editVariableWidget(QtGui.QWidget):
                     bsum+=int(a.checkState())
                 if bsum!=QtCore.Qt.Checked: # ok ifwe have morethan one (one would the one we want to remove)
                     self.it.projects.remove(txt)
-                    proj = self.root.workspace.treeProjects.currentItem()
-                    if txt == str(proj.text(0)):
+                    proj = self.root.get_current_project_controller().name
+                    if txt == str(proj):
                         self.it.setHidden(True)
+                    from api import _app
+                    controller = _app.uvcdatWindow.get_project_controller_by_name(txt)
+                    controller.remove_defined_variable(self.it.varName) 
 
     def selAxis(self,*args):
         nm = self.axisComboBox.currentText()
@@ -177,6 +183,11 @@ class editVariableWidget(QtGui.QWidget):
         self.root.record("ax = %s.getAxis(%s.getAxisIndex('%s'))" % (self.var.id,self.var.id,axName))
         self.root.record("ax.%s = %s" % (attName,repr(attValue)))
         
+        #provenance calls
+        from api import _app
+        controller = _app.uvcdatWindow.get_current_project_controller()
+        controller.change_defined_variable_axis_attribute(self.var.id, axName, attName, attValue)
+       
         
     def addAxAttribute(self):
         axName = str(self.axisComboBox.currentText())
@@ -197,9 +208,15 @@ class editVariableWidget(QtGui.QWidget):
         self.root.record("## Adding a new attribute to axis %s of variable: %s" % (ax.id,self.var.id))
         self.root.record("ax = %s.getAxis(%s.getAxisIndex('%s'))" % (self.var.id,self.var.id,axName))
         self.root.record("ax.%s = 'newAttribute'" % (newName))
-    
+        
+        #provenance calls
+        from api import _app
+        controller = _app.uvcdatWindow.get_current_project_controller()
+        controller.change_defined_variable_axis_attribute(self.var.id, axName, newName, "newAttribute")
+        
     def delAxAttribute(self):
-        ax = self.var.getAxis(self.var.getAxisIndex(str(self.axisComboBox.currentText())))
+        axName = str(self.axisComboBox.currentText())
+        ax = self.var.getAxis(self.var.getAxisIndex(axName))
         newName=str(self.newVarAttributeName.text()).strip()
         if len(newName)==0:
             return
@@ -214,6 +231,11 @@ class editVariableWidget(QtGui.QWidget):
                 break
         self.axComboBox.setCurrentIndex(0)
     
+        #provenance calls
+        from api import _app
+        controller = _app.uvcdatWindow.get_current_project_controller()
+        controller.remove_defined_variable_axis_attribute(self.var.id, axName, newName)
+        
     def selVarAttribute(self):
         self.varAttributeValue.setText(repr(getattr(self.var,str(self.varComboBox.currentText()))))
 
@@ -223,7 +245,9 @@ class editVariableWidget(QtGui.QWidget):
             attValue=eval(str(self.varAttributeValue.text()).strip())
         except:
             attValue=str(self.varAttributeValue.text()).strip()
-
+        #in case the attribute is the variable id, storing the original one to
+        #change it later in vistrails
+        var_id = self.var.id
         setattr(self.var,attName,attValue)
         tit = str(self.title.text()).split("(Modified)")[0]
         self.title.setText(tit)
@@ -232,6 +256,15 @@ class editVariableWidget(QtGui.QWidget):
         self.root.record("%s.%s = %s" % (self.var.id,attName,repr(attValue)))
         
         self.root.dockVariable.widget().updateVars()
+        
+        #provenance calls
+        from api import _app
+        controller = _app.uvcdatWindow.get_current_project_controller()
+        controller.change_defined_variable_attribute(var_id, attName, attValue)
+        #if attName is id we need also to rename the var in the project controller
+        if attName == 'id':
+            controller.rename_defined_variable(var_id, attValue)
+        
         #self.root.stick_main_dict_into_defvar(None)        
                     
     def addVarAttribute(self):
@@ -251,6 +284,11 @@ class editVariableWidget(QtGui.QWidget):
                 self.varComboBox.insertItem(i,newName)
                 break
         self.varComboBox.setCurrentIndex(i)
+        
+        #provenance calls
+        from api import _app
+        controller = _app.uvcdatWindow.get_current_project_controller()
+        controller.change_defined_variable_attribute(self.var.id, newName, "newAttribute")
     
     def delVarAttribute(self):
         newName=str(self.newVarAttributeName.text()).strip()
@@ -266,4 +304,7 @@ class editVariableWidget(QtGui.QWidget):
                 self.varComboBox.removeItem(i)
                 break
         self.varComboBox.setCurrentIndex(0)
-    
+        #provenance calls
+        from api import _app
+        controller = _app.uvcdatWindow.get_current_project_controller()
+        controller.remove_defined_variable_attribute(self.var.id, newName)
