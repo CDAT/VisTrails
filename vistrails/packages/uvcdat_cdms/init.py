@@ -595,6 +595,60 @@ class QCDATWidgetToolBar(QCellToolBar):
         """
         self.appendAction(QCDATWidgetExport(self))
         self.appendAction(QCDATWidgetColormap(self))
+        self.appendAction(QCDATWidgetAnimation(self))
+
+class QCDATWidgetAnimation(QtGui.QAction):
+    """
+    QCDATWidgetColormap is the action to export the plot 
+    of the current cell to a file
+
+    """
+    def __init__(self, parent=None):
+        """ QCDATWidgetAnimation(icon: QIcon, parent: QWidget)
+                                   -> QCDATWidgetAnimation
+        Brings up the naimation
+        
+        """
+        QtGui.QAction.__init__(self,
+                               QtGui.QIcon(":/icons/resources/icons/animation.png"),
+                               "Animate",
+                               parent)
+        self.setStatusTip("Animate this plot")
+        self.setEnabled(False) # For now because it hangs
+        
+
+    def triggeredSlot(self, checked=False):
+        """ toggledSlot(checked: boolean) -> None
+        Execute the action when the button is clicked
+        
+        """
+        from api import _app
+        #make sure we get the canvas object used in the cell
+        cellWidget = self.toolBar.getSnappedWidget()
+        canvas = cellWidget.canvas
+        _app.uvcdatWindow.dockAnimate.widget().setCanvas(canvas)
+        _app.uvcdatWindow.dockAnimate.show()
+        
+    def updateStatus(self, info):
+        """ updateStatus(info: tuple) -> None
+        Updates the status of the button based on the input info
+        
+        """
+        from api import _app
+        (sheet, row, col, cellWidget) = info
+        selectedCells = sorted(sheet.getSelectedLocations())
+
+        # Will not show up if there is no cell selected  
+        proj_controller = _app.uvcdatWindow.get_current_project_controller()
+        sheetName = sheet.getSheetName()        
+        if (len(selectedCells)==1 and 
+            proj_controller.is_cell_ready(sheetName,row,col)):
+                self.setVisible(True)
+        else:
+            self.setVisible(False)
+
+_modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
+            CDMSUnaryVariableOperation, CDMSBinaryVariableOperation]
 
 class QCDATWidgetColormap(QtGui.QAction):
     """
@@ -612,7 +666,7 @@ class QCDATWidgetColormap(QtGui.QAction):
                                QtGui.QIcon(":/icons/resources/icons/colormap.png"),
                                "Colormap Editor",
                                parent)
-        self.setStatusTip("Export the current plot as an image")
+        self.setStatusTip("Brings up the colormap editor")
 
     def triggeredSlot(self, checked=False):
         """ toggledSlot(checked: boolean) -> None
@@ -644,8 +698,7 @@ class QCDATWidgetColormap(QtGui.QAction):
         else:
             self.setVisible(False)
 
-_modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
-            CDMSUnaryVariableOperation, CDMSBinaryVariableOperation]
+
 class QCDATWidgetExport(QtGui.QAction):
     """
     QCDATWidgetExport is the action to export the plot 
