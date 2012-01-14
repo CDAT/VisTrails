@@ -682,8 +682,8 @@ class QCDATWidgetAnimation(QtGui.QAction):
         #make sure we get the canvas object used in the cell
         cellWidget = self.toolBar.getSnappedWidget()
         canvas = cellWidget.canvas
-        #_app.uvcdatWindow.dockAnimate.widget().setCanvas(canvas)
-        #_app.uvcdatWindow.dockAnimate.show()
+        _app.uvcdatWindow.dockAnimate.widget().setCanvas(canvas)
+        _app.uvcdatWindow.dockAnimate.show()
         
     def updateStatus(self, info):
         """ updateStatus(info: tuple) -> None
