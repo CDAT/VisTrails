@@ -573,6 +573,16 @@ Please delete unused CDAT Cells in the spreadsheet.")
                             
             kwargs = plot.kwargs
             #print "is this the place we plot?",args,kwargs
+            cmd = "#Now plotting\nvcs_canvas[%i].plot(" % (self.canvas.canvasid()-1)
+            for a in args:
+                if isinstance(a,cdms2.tvariable.TransientVariable):
+                    cmd+=" %s," % a.id
+            cmd+=" 'starter', '%s'" % cgm.name
+            for k in kwargs:
+                cmd+=", %s=%s" % (k, repr(kwargs[k]))
+            cmd+=")"
+            from api import _app
+            _app.uvcdatWindow.record(cmd)
             self.canvas.plot(cgm,*args,**kwargs)
 
         spreadsheetWindow.setUpdatesEnabled(True)

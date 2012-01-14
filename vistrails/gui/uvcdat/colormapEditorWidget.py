@@ -22,6 +22,7 @@ def parseLayout(l,prefix=""):
                 print "No Layout"
             else:
                 parseLayout(l2,"%s\t" % prefix)
+                
 class QColormapEditor(QtGui.QColorDialog):
     def __init__(self,parent):
         QtGui.QColorDialog.__init__(self,parent)
@@ -133,12 +134,18 @@ class QColormapEditor(QtGui.QColorDialog):
         self.show()
         
     def applyChanges(self):
+        rec="## Updating colorcells"
+        self.root.record(rec)
         cnm = self.activeCanvas.getcolormapname()
         n=0
         for i in range(15):
             for j in range(16):
                 r,g,b = self.getRgb(i,j,max=100)
-                self.activeCanvas.setcolorcell(n,r,g,b)
+                ored,og,ob = self.activeCanvas.getcolorcell(n)
+                if r!=ored and og!=g and ob!=b:
+                    rec="vcs_canvas[%i].setcolorcell(%i,%i,%i,%i)" % (self.activeCanvas.canvasid()-1,n,r,g,b)
+                    self.root.record(rec)
+                    self.activeCanvas.setcolorcell(n,r,g,b)
                 n+=1
         self.activeCanvas.setcolormap(cnm)
         
@@ -300,6 +307,7 @@ class QColormapEditor(QtGui.QColorDialog):
         n = self.layout().count()
         self.cmap = self.activeCanvas.getcolormap(str(self.colormap.currentText()))
         self.colors=QtGui.QFrame()
+        rec= "##Changing colormap\nvcs_canvas[%i].setcolormap('%s')" % (self.activeCanvas.canvasid()-1,str(self.colormap.currentText()))
         self.activeCanvas.setcolormap(str(self.colormap.currentText()))
 
         icolor = 0
