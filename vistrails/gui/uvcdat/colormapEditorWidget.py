@@ -129,6 +129,7 @@ class QColormapEditor(QtGui.QColorDialog):
 
     def activateFromCell(self,canvas):
         self.activeCanvas = canvas
+        self.updateColors()
         self.show()
         
     def applyChanges(self):
