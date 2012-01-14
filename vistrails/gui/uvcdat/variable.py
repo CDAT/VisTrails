@@ -69,6 +69,7 @@ class VariableProperties(QtGui.QDockWidget):
         self.setWidget(f)
         self.parent=parent
         self.root = parent.root
+        self.varNameInFile = None #store the name of the variable when loaded from file
         self.createFileTab()
         self.createESGFTab()
         self.createPVTab()
@@ -375,6 +376,7 @@ class VariableProperties(QtGui.QDockWidget):
             
     def variableSelected(self, varName):
         if varName == '':
+            self.varNameInFile = None
             return
 
 #        self.defineVarButton.setEnabled(not varName.isNull()) # Enable define button
@@ -382,7 +384,7 @@ class VariableProperties(QtGui.QDockWidget):
         # Send signal to setup axisList in 'quickplot' tab
         self.root.record("## Open a variable in file")
         self.root.record("cdmsFileVariable = cdmsFile['%s']" % varName)
-
+        self.varNameInFile = varName
         # Create and setup the axislist
         axisList = axesWidgets.QAxisList(self.cdmsFile, varName, self)
         axisList.setupVariableAxes()
@@ -453,7 +455,7 @@ class VariableProperties(QtGui.QDockWidget):
         kwargs ={}
         
         #FIXME: need to check if the variable already exists
-        self.root.dockVariable.widget().addVariable(varName,type="PARAVIEW")
+        self.root.dockVariable.widget().addVariable(varName,type_="PARAVIEW")
         from api import _app
         controller = _app.uvcdatWindow.get_current_project_controller()
         pvVar = PVVariable(filename=filename, name=varName)
@@ -513,7 +515,10 @@ class VariableProperties(QtGui.QDockWidget):
             oid = updatedVar.id
         else:
             oid = "cdmsFileVariable"
-        original_id = updatedVar.id
+        if self.varNameInFile is not None:
+            original_id = self.varNameInFile
+        else:
+            original_id = updatedVar.id
         updatedVar.id = targetId
         self.root.record("%s = %s(%s)" % (targetId,oid,cmds))
         ## Squeeze?
@@ -522,7 +527,7 @@ class VariableProperties(QtGui.QDockWidget):
             self.root.record("%s = %s(squeeze=1)" % (targetId,targetId))
             kwargs['squeeze']=1
 
-        self.emit(QtCore.SIGNAL('definedVariableEvent'),updatedVar)
+        
         
         # Send information to controller so the Variable can be reconstructed
         # later. The best way is by emitting a signal to be processed by the
@@ -545,8 +550,10 @@ class VariableProperties(QtGui.QDockWidget):
                                varNameInFile=original_id, 
                                axes=get_kwargs_str(kwargs), 
                                axesOperations=str(axes_ops_dict))
+        self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))
         controller.add_defined_variable(cdmsVar)
-        # controller.add_defined_variable(self.cdmsFile.id,targetId,kwargs)
+
+        
         self.updateVarInfo(axisList)
         return updatedVar
     

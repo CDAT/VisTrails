@@ -534,7 +534,7 @@ class Workspace(QtGui.QDockWidget):
         defVars = self.root.dockVariable.widget()
         for i in range(defVars.varList.count()):
             v = defVars.varList.item(i)
-            if not str(self.currentProject.text(0)) in v.projects:
+            if not str(self.current_controller.name) in v.projects:
                 v.setHidden(True)
             else:
                 v.setHidden(False)
@@ -642,6 +642,7 @@ class Workspace(QtGui.QDockWidget):
 
         view = project.view
         locator = project.view.controller.locator
+        
         if project != self.currentProject:            
             _app.change_view(view)
         # do we ever need to change the vistrail version?
@@ -766,3 +767,11 @@ class Workspace(QtGui.QDockWidget):
         Returns current project controller
         """
         return self.current_controller
+    
+    def get_project_controller_by_name(self, name):
+        for i in range(self.treeProjects.topLevelItemCount()):
+            controller = self.treeProjects.topLevelItem(i).controller
+            if name == controller.name:
+                return controller
+            
+        return None

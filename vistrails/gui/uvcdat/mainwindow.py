@@ -12,7 +12,7 @@ from gui.uvcdat.dockvariable import DockVariable
 from gui.uvcdat.variable import VariableProperties
 from gui.uvcdat.plot import PlotProperties
 from gui.uvcdat.dockcalculator import DockCalculator
-from gui.uvcdat import animationWidget
+#from gui.uvcdat import animationWidget
 
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 import gui.uvcdat.uvcdat_rc
@@ -106,10 +106,10 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.move((screen.width()-size.width())/4, (screen.height()-size.height())/5)
 
     def createDockWindows(self):
-        animate = animationWidget.QAnimationView(self)
-        self.dockAnimate = QtGui.QDockWidget(self)
-        self.dockAnimate.setWidget(animate)
-        self.dockAnimate.setWindowTitle("Animation")
+        #animate = animationWidget.QAnimationView(self)
+        #self.dockAnimate = QtGui.QDockWidget(self)
+        #self.dockAnimate.setWidget(animate)
+        #self.dockAnimate.setWindowTitle("Animation")
         self.dockTemplate = DockTemplate(self)
         self.dockPlot = DockPlot(self)
         self.dockVariable = DockVariable(self)
@@ -123,13 +123,13 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.plotProp = PlotProperties.instance(self)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.workspace)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.dockTemplate)
-        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.dockAnimate)
+        #self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.dockAnimate)
         #self.tabifyDockWidget(self.workspace, self.dockTemplate)
         self.tabifyDockWidget(self.dockTemplate, self.dockPlot)
         self.workspace.raise_()
         self.varProp.hide()
         self.plotProp.hide()
-        self.dockAnimate.hide()
+        #self.dockAnimate.hide()
 
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockVariable)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.varProp)
@@ -293,6 +293,9 @@ class UVCDATMainWindow(QtGui.QMainWindow):
 
     def get_current_project_controller(self):
         return self.workspace.get_current_project_controller()
+    
+    def get_project_controller_by_name(self, name):
+        return self.workspace.get_project_controller_by_name(name)
     
     def link_registry(self):
         self.dockPlot.link_registry()
