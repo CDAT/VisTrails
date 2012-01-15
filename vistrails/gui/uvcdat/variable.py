@@ -398,7 +398,7 @@ class VariableProperties(QtGui.QDockWidget):
         while N>1:
             it = self.dimsLayout.takeAt(N-1)
             it.widget().deleteLater()
-            it.widget().destroy()
+##             it.widget().destroy()
             self.dimsLayout.removeItem(it)
             del(it)
             self.dims.update()
