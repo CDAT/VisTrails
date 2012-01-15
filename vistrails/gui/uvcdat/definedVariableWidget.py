@@ -59,9 +59,9 @@ class QDefinedVariableWidget(QtGui.QWidget):
     def variableDoubleClicked(self,item):
         txt = str(item.text())
         axisList = axesWidgets.QAxisList(None,__main__.__dict__[txt.split()[1]],self)
-        self.setupDimsForEditMode(axisList)
+        self.setupDimsForEditMode(axisList, item.cdmsVar)
         
-    def setupDimsForEditMode(self,axisList):
+    def setupDimsForEditMode(self,axisList, cdmsVar=None):
         varProp = self.root.varProp
         varProp.parent=self
         varProp.label.setText("Edit Variable")
@@ -75,6 +75,8 @@ class QDefinedVariableWidget(QtGui.QWidget):
         axisList.setupVariableAxes()
         varProp.setupEditTab(axisList.getVar())
         varProp.fillDimensionsWidget(axisList)
+        if cdmsVar is not None:
+            varProp.varNameInFile = cdmsVar.varNameInFile
         varProp.setFloating(True)
         varProp.show()
 
