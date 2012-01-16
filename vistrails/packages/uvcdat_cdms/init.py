@@ -67,6 +67,23 @@ class CDMSVariable(Variable):
         self.timeBounds = timeBounds
         self.var = None
 
+    def __copy__(self):
+        """__copy__() -> CDMSVariable - Returns a clone of itself"""
+        cp = CDMSVariable()
+        cp.filename = self.filename
+        cp.file = self.file
+        cp.url = self.url
+        cp.source = self.source
+        cp.name = self.name
+        cp.load = self.load
+        cp.varNameInFile = self.varNameInFile
+        cp.axes = self.axes
+        cp.axesOperations = self.axesOperations
+        cp.attributes = self.attributes
+        cp.axisAttributes = self.axisAttributes
+        cp.timeBounds = self.timeBounds
+        return cp
+        
     def to_module(self, controller):
         module = Variable.to_module(self, controller, identifier)
         functions = []

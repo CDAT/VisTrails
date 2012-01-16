@@ -77,6 +77,8 @@ class QDefinedVariableWidget(QtGui.QWidget):
         varProp.fillDimensionsWidget(axisList)
         if cdmsVar is not None:
             varProp.varNameInFile = cdmsVar.varNameInFile
+        else:
+            varProp.varNameInFile = None
         varProp.setFloating(True)
         varProp.show()
 

@@ -32,6 +32,7 @@
 ##
 ###############################################################################
 import os, os.path
+import copy
 from PyQt4 import QtCore
 
 import api
@@ -224,6 +225,24 @@ class ProjectController(QtCore.QObject):
         #from there
         self.remove_defined_variable(varname)
         
+    def copy_computed_variable(self, oldname, newname, axes=None, 
+                               axesOperations=None):
+        from packages.uvcdat_cdms.init import CDMSVariable
+        if oldname in self.computed_variables:
+            (vars, txt, st, varname) = self.computed_variables[oldname]
+            self.computed_variables[newname] = (vars, txt, st, newname)
+            if oldname in self.computed_variables_ops:
+                oldops = self.computed_variables_ops[oldname]
+                self.computed_variables_ops[newname] = copy.copy(oldops)
+                self.computed_variables_ops[newname].name = newname
+            if axes is not None and axesOperations is not None:
+                if newname not in self.computed_variables_ops:
+                    var = CDMSVariable(name=newname)
+                    self.computed_variables_ops[newname] = var
+                self.computed_variables_ops[newname].axes = axes
+                self.computed_variables_ops[newname].axesOperations = axesOperations
+                  
+                
     def emit_defined_variable(self, var):
         from packages.uvcdat_cdms.init import CDMSVariable
         from packages.uvcdat_pv.init import PVVariable

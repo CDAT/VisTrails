@@ -517,8 +517,10 @@ class VariableProperties(QtGui.QDockWidget):
             oid = "cdmsFileVariable"
         if self.varNameInFile is not None:
             original_id = self.varNameInFile
+            computed_var = False
         else:
             original_id = updatedVar.id
+            computed_var = True
         updatedVar.id = targetId
         self.root.record("%s = %s(%s)" % (targetId,oid,cmds))
         ## Squeeze?
@@ -546,13 +548,18 @@ class VariableProperties(QtGui.QDockWidget):
         url = None
         if hasattr(self.cdmsFile, "uri"):
             url = self.cdmsFile.uri
-        cdmsVar = CDMSVariable(filename=self.cdmsFile.id, url=url, name=targetId,
-                               varNameInFile=original_id, 
-                               axes=get_kwargs_str(kwargs), 
-                               axesOperations=str(axes_ops_dict))
-        self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))
-        controller.add_defined_variable(cdmsVar)
-
+        if not computed_var:
+            cdmsVar = CDMSVariable(filename=self.cdmsFile.id, url=url, name=targetId,
+                                   varNameInFile=original_id, 
+                                   axes=get_kwargs_str(kwargs), 
+                                   axesOperations=str(axes_ops_dict))
+            self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))
+            controller.add_defined_variable(cdmsVar)
+        else:
+            self.emit(QtCore.SIGNAL('definedVariableEvent'),updatedVar)
+            controller.copy_computed_variable(original_id, targetId,
+                                              axes=get_kwargs_str(kwargs), 
+                                              axesOperations=str(axes_ops_dict))    
         
         self.updateVarInfo(axisList)
         return updatedVar
