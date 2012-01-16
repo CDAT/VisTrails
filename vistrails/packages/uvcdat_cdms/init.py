@@ -362,6 +362,30 @@ class CDMSVariableOperation(Module):
         self.axisAttributes = self.forceGetInputFromPort("axisAttributes")
         self.timeBounds = self.forceGetInputFromPort("timeBounds")
         
+    @staticmethod
+    def sort_variables_by_length(vars):
+        """sort_variables_by_length(vars:list of CDMSVariable) -> [CDMSVariable]
+        This will sort the variables according to name length and will place the
+        variables with longest names first
+        
+        """
+        newvars = []
+        newvars.append(vars[0])
+        for v in vars[1:]:
+            i = 0
+            v2 = newvars[i]
+            while len(v.name) < len(v2.name):
+                i += 1
+                if i < len(newvars)-1:
+                    v2 = newvars[i]
+                else:
+                    v2 = None
+            if v2 is None:
+                newvars.append(v)
+            else:
+                newvars.insert(i, v)
+        return newvars 
+                    
     def compute(self):
         pass
     
@@ -518,8 +542,12 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
         self.setResult("output_var", self.outvar)
         
     def to_python(self):
-        self.python_command = self.python_command.replace(self.var1.name, "self.var1.var")
-        self.python_command = self.python_command.replace(self.var2.name, "self.var2.var")
+        replace_map = {self.var1.name: "self.var1.var",
+                       self.var2.name: "self.var2.var"}
+        sorted_vars = self.sort_variables_by_length([self.var1,self.var2])
+        for v in sorted_vars:
+            self.python_command = self.python_command.replace(v.name, replace_map[v.name])
+
         res = eval(self.python_command)
         if type(res) == tuple:
             for r in res:
