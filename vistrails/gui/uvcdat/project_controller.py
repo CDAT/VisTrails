@@ -220,10 +220,10 @@ class ProjectController(QtCore.QObject):
             var.timeBounds = timebounds
            
     def calculator_command(self, vars, txt, st, varname):
-        self.computed_variables[varname] = (vars, txt, st, varname)
         #if the variable was added to defined_variables, we have to remove it 
         #from there
         self.remove_defined_variable(varname)
+        self.computed_variables[varname] = (vars, txt, st, varname)
         
     def copy_computed_variable(self, oldname, newname, axes=None, 
                                axesOperations=None):
