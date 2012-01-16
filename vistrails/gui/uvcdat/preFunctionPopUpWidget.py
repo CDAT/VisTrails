@@ -2,6 +2,7 @@ from PyQt4 import QtCore,QtGui
 import uvcdatCommons
 import cdms2
 import inspect
+from core import debug
 
 class preFuncPopUp(QtGui.QDialog):
     def __init__(self,parent=None,defs={}):
@@ -27,7 +28,7 @@ class preFuncPopUp(QtGui.QDialog):
             nm = "%s.%s" % (module,defs["func"].__name__)
         self.setWindowTitle(nm)
 
-         ## First a few error checks
+        ## First a few error checks
         selectedVars=self.root.dockVariable.widget().getSelectedDefinedVariables()
         if len(selectedVars)<defs["nargsMin"]:
             parent.errorMsg.showMessage("%s requires at least %i input variables" % (defs["func"].__name__,defs["nargsMin"]))
@@ -162,7 +163,9 @@ class preFuncPopUp(QtGui.QDialog):
         ## First construct the args list
         ## starting with the sleected vars
         args = self.root.dockVariable.widget().getSelectedDefinedVariables()
-
+        vtvars = []
+        for arg in args:
+            vtvars.append(arg.id)
         kargs = {}
         ## now do we have an axis option
         if self.defs.get("axes",True):
@@ -220,12 +223,14 @@ class preFuncPopUp(QtGui.QDialog):
             return
         self.setCursor(c)
 
+        resobjs = []
         if isinstance(tmp,cdms2.tvariable.TransientVariable):
             tmp.id="%s.%s" % (tmp.id,fnm)
             self.root.dockVariable.widget().addVariable(tmp)
             res = ", %s" % tmp.id
+            resobjs.append(tmp)
         else:
-            res = self.processList(tmp,"%s.%s" % (args[0].id,fnm),"")
+            res = self.processList(tmp,"%s.%s" % (args[0].id,fnm),"",resobjs)
         self.root.record("## %s" % fnm)
         cargs=args[0].id
         for a in args[1:]:
@@ -234,19 +239,38 @@ class preFuncPopUp(QtGui.QDialog):
         for k in kargs.keys():
             ckargs+=", %s=%s" % (k,repr(kargs[k]))
         cmd="%s = %s(%s%s)" % (res[2:],fnm,cargs,ckargs)
+        
         self.root.record(cmd)
+        #vistrails
+        newvars = []
+        for o in resobjs:
+            if isinstance(o,cdms2.tvariable.TransientVariable):
+                newvars.append(o.id)
+        
+        vtcmd = "%s(%s%s)"  % (fnm,cargs,ckargs)
+        
+        if len(newvars) > 1:
+            debug.warning("Function: '%s' returns more than one variable and is not supported yet." %fnm)
+        else:
+            #send command to project controller to be stored as provenance
+            from api import get_current_project_controller
+            prj_controller = get_current_project_controller()
+            prj_controller.calculator_command(vtvars, fnm, vtcmd, newvars[0])
+
         self.accept()
 
-    def processList(self,myList,fnm,res):
+    def processList(self,myList,fnm,res,resobjs):
         for v in myList:
             if isinstance(v,cdms2.tvariable.TransientVariable):
                 v.id="%s.%s" % (v.id,fnm)
                 res+=", %s" %v.id
                 self.root.dockVariable.widget().addVariable(v)
+                resobjs.append(v)
             elif isinstance(v,(list,tuple)):
-                res+=", (%s)" % self.processList(v,fnm,"")[2:]
+                res+=", (%s)" % self.processList(v,fnm,"",resobjs)[2:]
             else:
                 res+=", nonvar"
+                resobjs.append("nonvar")
         return res
     
 import os

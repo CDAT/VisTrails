@@ -61,7 +61,7 @@ class ProjectController(QtCore.QObject):
         self.name = name
         self.defined_variables = {}
         self.computed_variables = {}
-
+        self.computed_variables_ops = {}
         self.sheet_map = {}
         self.plot_registry = get_plot_registry()
         self.plot_manager = get_plot_manager()
@@ -72,26 +72,104 @@ class ProjectController(QtCore.QObject):
     def rename_defined_variable(self, oldname, newname):
         """rename_defined_variable(oldname, newname) -> None
         This will rename a variable as long as oldname is present and newname
-        is not already used. 
+        is not already used. It will update the computed variables that depend
+        on oldname accordingly.
         """
         if oldname in self.defined_variables:
-            if newname not in self.defined_variables:
+            if (newname not in self.defined_variables and
+                newname not in self.computed_variables):
                 var = self.defined_variables[oldname]
                 del self.defined_variables[oldname]
                 var.name = newname
                 self.add_defined_variable(var)
+                #if there are any computed variables using the old one we need
+                #to update them with the new name
+                (res, cvars) = self.var_used_in_computed_variable(oldname)
+                if res:
+                    for c in cvars:
+                        (vars, txt, st, varname) = self.computed_variables[c]
+                        i = vars.index(oldname)
+                        while i >= 0:
+                            vars[i] = newname
+                            try:
+                                i = vars.index(oldname)
+                            except ValueError:
+                                i = -1
+                        
+            else:
+                debug.warning("Variable was not renamed: name '%s' already used." %newname)
+        elif oldname in self.computed_variables:
+            if (newname not in self.defined_variables and
+                newname not in self.computed_variables):
+                (vars, txt, st, varname) = self.computed_variables[oldname]
+                del self.computed_variables[oldname]
+                self.computed_variables[newname] = (vars, txt, st, newname)
+                #if there are any computed variables using the old one we need
+                #to update them with the new name
+                (res, cvars) = self.var_used_in_computed_variable(oldname)
+                if res:
+                    for c in cvars:
+                        (vars, txt, st, varname) = self.computed_variables[c]
+                        i = vars.index(oldname)
+                        while i >= 0:
+                            vars[i] = newname
+                            try:
+                                i = vars.index(oldname)
+                            except ValueError:
+                                i = -1
+                if oldname in self.computed_variables_ops:
+                    var = self.computed_variables_ops[oldname]
+                    del self.computed_variables_ops[oldname]
+                    var.name = newname
+                    self.computed_variables_ops[newname] = var
             else:
                 debug.warning("Variable was not renamed: name '%s' already used." %newname)
         else:
             debug.warning("Variable was not renamed: variable named '%s' not found." %oldname)
             
     def remove_defined_variable(self, name):
+        """remove_defined_variable(name: str) -> None
+        This will remove the variable only if it is not used to create other
+        variables.
+        
+        """
         if name in self.defined_variables:
-            del self.defined_variables[name]
+            (res, cvars) = self.var_used_in_computed_variable(name)
+            if not res:
+                del self.defined_variables[name]
+        if name in self.computed_variables:
+            (res, cvars) = self.var_used_in_computed_variable(name)
+            if not res:
+                del self.computed_variables[name]
+                if name in self.computed_variables_ops:
+                    del self.computed_variables_ops[name]
+        
+    def var_used_in_computed_variable(self, varname):
+        """var_used_in_computed_variable(varname:str) -> (bool, [var])
+        If varname is used in other computed variables it will return True and 
+        the list of variable names that depend on varname. Else, it will return
+        False and an empty list.
+        """
+        result = False
+        cvars = []
+        for (vars, txt, st, cname) in self.computed_variables.itervalues():
+            if varname in vars:
+                result = True
+                cvars.append(cname)
+        return (result, cvars)
             
     def change_defined_variable_attribute(self, varname, attr, attrval):
+        from packages.uvcdat_cdms.init import CDMSVariable
         if varname in self.defined_variables:
             var = self.defined_variables[varname]
+            if var.attributes is None:
+                var.attributes = {}
+            var.attributes[attr] = attrval
+        elif varname in self.computed_variables:
+            if not varname in self.computed_variables_ops:
+                var = CDMSVariable(name=varname)
+                self.computed_variables_ops[varname] = var
+            var = self.computed_variables_ops[varname]
             if var.attributes is None:
                 var.attributes = {}
             var.attributes[attr] = attrval
@@ -101,15 +179,31 @@ class ProjectController(QtCore.QObject):
             var = self.defined_variables[varname]
             if var.attributes is not None and attr in var.attributes:
                 del var.attributes[attr]
+        elif varname in self.computed_variables:
+            if varname in self.computed_variables_ops:
+                var = self.computed_variables_ops[varname]
+                if var.attributes is not None and attr in var.attributes:
+                    del var.attributes[attr]
                 
-    def change_defined_variable_axis_attribute(self, varname, axname, attr, attrval):
+    def change_defined_variable_axis_attribute(self, varname, axname, attr, 
+                                               attrval):
+        from packages.uvcdat_cdms.init import CDMSVariable
         if varname in self.defined_variables:
             var = self.defined_variables[varname]
             if var.axisAttributes is None:
                 var.axisAttributes = {}
             if axname not in var.axisAttributes:
-                var.axisAttributes[axname] = {}
-                
+                var.axisAttributes[axname] = {}    
+            var.axisAttributes[axname][attr] = attrval
+        elif varname in self.computed_variables:
+            if not varname in self.computed_variables_ops:
+                var = CDMSVariable(name=varname)
+                self.computed_variables_ops[varname] = var
+            var = self.computed_variables_ops[varname]
+            if var.axisAttributes is None:
+                var.axisAttributes = {}
+            if axname not in var.axisAttributes:
+                var.axisAttributes[axname] = {}    
             var.axisAttributes[axname][attr] = attrval
                 
     def remove_defined_variable_axis_attribute(self, varname, axname, attr):
@@ -119,6 +213,11 @@ class ProjectController(QtCore.QObject):
                 if var.axisAttributes[axname] and attr in var.axisAttributes[axname]:
                     del var.axisAttributes[axname][attr]
                 
+    def change_defined_variable_time_bounds(self, varname, timebounds):
+        if varname in self.defined_variables:
+            var = self.defined_variables[varname]
+            var.timeBounds = timebounds
+           
     def calculator_command(self, vars, txt, st, varname):
         self.computed_variables[varname] = (vars, txt, st, varname)
         
@@ -455,16 +554,21 @@ class ProjectController(QtCore.QObject):
                 var = self.defined_variables[varname]
                 return var.to_module(self.vt_controller)
             else:
-                (_vars, txt, st, name) = self.computed_variables[varname]   
+                (_vars, txt, st, name) = self.computed_variables[varname] 
+                opvar = None
+                if varname in self.computed_variables_ops:
+                    opvar = self.computed_variables_ops[varname]   
                 varms = [] 
                 for v in _vars:
                     varms.append(get_var_module(v))
+                
                 res = CDMSPipelineHelper.build_variable_operation_pipeline(self.vt_controller,
                                                                             cell.current_parent_version,
                                                                             varms, 
                                                                             txt, 
                                                                             st,
-                                                                            varname)
+                                                                            varname,
+                                                                            opvar)
                 if type(res) == type((1,)):
                     actions = res[1]
                     action = actions[-1]
@@ -477,13 +581,13 @@ class ProjectController(QtCore.QObject):
                         
         vars = []
         for i in range(cell.plot.varnum):
-            vars.append(self.defined_variables[cell.variables[i]])
+            vars.append(cell.variables[i])
         
         if (cell.plot is not None and
             len(cell.variables) == cell.plot.varnum):
             var_modules = []
             for var in vars:
-                res = get_var_module(var.name)
+                res = get_var_module(var)
                 var_modules.append(res)
             
             # plot_module = plot.to_module(self.vt_controller)

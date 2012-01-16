@@ -16,6 +16,7 @@ from info import identifier
 from widgets import GraphicsMethodConfigurationWidget
 from core.modules.module_registry import get_module_registry
 from core.modules.vistrails_module import Module, ModuleError, NotCacheable
+from core import debug
 from core.utils import InstanceObject
 from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
@@ -49,23 +50,24 @@ class CDMSVariable(Variable):
                                       ("axesOperations", "basic:String"),
                                       ("varNameInFile", "basic:String"),
                                       ("attributes", "basic:Dictionary"),
-                                      ("axisAttributes", "basic:Dictionary")])
+                                      ("axisAttributes", "basic:Dictionary"),
+                                      ("setTimeBounds", "basic:String")])
     _output_ports = expand_port_specs([("self", "CDMSVariable")])
 
     def __init__(self, filename=None, url=None, source=None, name=None, \
                      load=False, varNameInFile=None, axes=None, \
-                     axesOperations=None, attributes=None, axisAttributes=None):
+                     axesOperations=None, attributes=None, axisAttributes=None,
+                     timeBounds=None):
         Variable.__init__(self, filename, url, source, name, load)
         self.axes = axes
         self.axesOperations = axesOperations
         self.varNameInFile = varNameInFile
         self.attributes = attributes
         self.axisAttributes = axisAttributes
+        self.timeBounds = timeBounds
         self.var = None
 
     def to_module(self, controller):
-        # note that the correct module is returned because we use
-        # self.__class__.__name__
         module = Variable.to_module(self, controller, identifier)
         functions = []
         if self.varNameInFile is not None:
@@ -78,6 +80,8 @@ class CDMSVariable(Variable):
             functions.append(("attributes", [self.attributes]))
         if self.axisAttributes is not None:
             functions.append(("axisAttributes", [self.axisAttributes]))
+        if self.timeBounds is not None:
+            functions.append(("setTimeBounds", [self.timeBounds]))
         functions = controller.create_functions(module, functions)
         for f in functions:
             module.add_function(f)
@@ -122,7 +126,11 @@ class CDMSVariable(Variable):
                     except:
                         attValue=str(self.axisAttributes[axName][attr]).strip()
                     ax = var.getAxis(var.getAxisIndex(axName))
-                    setattr(ax,attr, attValue)        
+                    setattr(ax,attr, attValue)
+                    
+        if self.timeBounds is not None:
+            var = self.applySetTimeBounds(var, self.timeBounds)
+                    
         return var
     
     def to_python_script(self, include_imports=False, ident=""):
@@ -170,6 +178,29 @@ class CDMSVariable(Variable):
                     text += ident + "ax.%s = %s\n" % ( attr,
                                         repr(self.axisAttributes[axName][attr]))
         
+        if self.timeBounds is not None:
+            data = self.timeBounds.split(":")
+            if len(data) == 2:
+                timeBounds = data[0]
+                val = float(data[1])
+            else:
+                timeBounds = self.timeBounds
+            text += "\n" + ident + "#%s\n"%timeBounds
+            if timeBounds == "Set Bounds For Yearly Data":
+                text += ident + "cdutil.times.setTimeBoundsYearly(%s)\n"%self.name
+            elif timeBounds == "Set Bounds For Monthly Data":
+                text += ident + "cdutil.times.setTimeBoundsMonthly(%s)\n"%self.name
+            elif timeBounds == "Set Bounds For Daily Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s)\n"%self.name
+            elif timeBounds == "Set Bounds For Twice-daily Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s,2)\n"%self.name
+            elif timeBounds == "Set Bounds For 6-Hourly Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s,4)\n"%self.name
+            elif timeBounds == "Set Bounds For Hourly Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s,24)\n"%self.name
+            elif timeBounds == "Set Bounds For X-Daily Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s,%g)\n"%(self.name,val)
+                
         return text
     
     @staticmethod
@@ -190,6 +221,7 @@ class CDMSVariable(Variable):
             var.axisAttributes = ast.literal_eval(axattrs)
         else:
             var.axisAttributes = axattrs
+        var.timeBounds = CDMSPipelineHelper.get_fun_value_from_module(module, 'setTimeBounds')
         var.__class__ = CDMSVariable
         return var
         
@@ -199,6 +231,7 @@ class CDMSVariable(Variable):
         self.varNameInFile = self.forceGetInputFromPort("varNameInFile")
         self.attributes = self.forceGetInputFromPort("attributes")
         self.axisAttributes = self.forceGetInputFromPort("axisAttributes")
+        self.timeBounds = self.forceGetInputFromPort("setTimeBounds")
         self.get_port_values()
         self.var = self.to_python()
         self.setResult("self", self)
@@ -225,71 +258,250 @@ class CDMSVariable(Variable):
                 var = genutil.statistics.std(var, axis="(%s)" % axis)
         return var
 
+    @staticmethod
+    def applySetTimeBounds(var, timeBounds):
+        data = timeBounds.split(":")
+        if len(data) == 2:
+            timeBounds = data[0]
+            val = float(data[1])
+        if timeBounds == "Set Bounds For Yearly Data":
+            cdutil.times.setTimeBoundsYearly(var)
+        elif timeBounds == "Set Bounds For Monthly Data":
+            cdutil.times.setTimeBoundsMonthly(var)
+        elif timeBounds == "Set Bounds For Daily Data":
+            cdutil.times.setTimeBoundsDaily(var)
+        elif timeBounds == "Set Bounds For Twice-daily Data":
+            cdutil.times.setTimeBoundsDaily(var,2)
+        elif timeBounds == "Set Bounds For 6-Hourly Data":
+            cdutil.times.setTimeBoundsDaily(var,4)
+        elif timeBounds == "Set Bounds For Hourly Data":
+            cdutil.times.setTimeBoundsDaily(var,24)
+        elif timeBounds == "Set Bounds For X-Daily Data":
+            cdutil.times.setTimeBoundsDaily(var,val)
+        return var
+    
 class CDMSVariableOperation(Module):
-    pass
-
-class CDMSUnaryVariableOperation(CDMSVariableOperation):
-    _input_ports = expand_port_specs([("input_var", "CDMSVariable"),
-                                      ("varname", "basic:String"),
-                                      ("python_command", "basic:String")
-                                      ])
+    _input_ports = expand_port_specs([("varname", "basic:String"),
+                                      ("python_command", "basic:String"),
+                                      ("axes", "basic:String"),
+                                      ("axesOperations", "basic:String"),
+                                      ("attributes", "basic:Dictionary"),
+                                      ("axisAttributes", "basic:Dictionary"),
+                                      ("timeBounds", "basic:String")])
+    
     _output_ports = expand_port_specs([("output_var", "CDMSVariable")])
+    
+    def __init__(self, varname=None, python_command=None, axes=None, 
+                 axesOperations=None, attributes=None, axisAttributes=None, 
+                 timeBounds=None ):
+        Module.__init__(self)
+        self.varname = varname
+        self.python_command = python_command
+        self.axes = axes
+        self.axesOperations = axesOperations
+        self.attributes = attributes
+        self.axisAttributes = axisAttributes
+        self.timeBounds = timeBounds
+
+    def to_module(self, controller):
+        reg = get_module_registry()
+        module = controller.create_module_from_descriptor(
+            reg.get_descriptor_by_name(identifier, self.__class__.__name__))
+        functions = []
+        if self.varname is not None:
+            functions.append(("varname", [self.varname]))
+        if self.python_command is not None:
+            functions.append(("python_command", [self.python_command]))
+        if self.axes is not None:
+            functions.append(("axes", [self.axes]))
+        if self.axesOperations is not None:
+            functions.append(("axesOperations", [self.axesOperations]))
+        if self.attributes is not None:
+            functions.append(("attributes", [self.attributes]))
+        if self.axisAttributes is not None:
+            functions.append(("axisAttributes", [self.axisAttributes]))
+        if self.timeBounds is not None:
+            functions.append(("timeBounds", [self.timeBounds]))
+        functions = controller.create_functions(module, functions)
+        for f in functions:
+            module.add_function(f)
+        return module        
+    
+    @staticmethod
+    def from_module(module):
+        from pipeline_helper import CDMSPipelineHelper
+        op = CDMSVariableOperation()
+        op.varname = CDMSPipelineHelper.get_fun_value_from_module(module, 'varname')
+        op.python_command = CDMSPipelineHelper.get_fun_value_from_module(module, 'python_command')
+        op.axes = CDMSPipelineHelper.get_fun_value_from_module(module, 'axes')
+        op.axesOperations = CDMSPipelineHelper.get_fun_value_from_module(module, 'axesOperations')
+        attrs = CDMSPipelineHelper.get_fun_value_from_module(module, 'attributes')
+        if attrs is not None:
+            op.attributes = ast.literal_eval(attrs)
+        else:
+            op.attributes = attrs
+            
+        axattrs = CDMSPipelineHelper.get_fun_value_from_module(module, 'axisAttributes')
+        if axattrs is not None:
+            op.axisAttributes = ast.literal_eval(axattrs)
+        else:
+            op.axisAttributes = axattrs
+        op.timeBounds = CDMSPipelineHelper.get_fun_value_from_module(module, 'setTimeBounds')
+        return op
+    
+    def get_port_values(self):
+        if not self.hasInputFromPort("varname"):
+            raise ModuleError(self, "'varname' is mandatory.")
+        if not self.hasInputFromPort("python_command"):
+            raise ModuleError(self, "'python_command' is mandatory.")
+        self.varname = self.forceGetInputFromPort("varname")
+        self.python_command = self.getInputFromPort("python_command")
+        self.axes = self.forceGetInputFromPort("axes")
+        self.axesOperations = self.forceGetInputFromPort("axesOperations")
+        self.attributes = self.forceGetInputFromPort("attributes")
+        self.axisAttributes = self.forceGetInputFromPort("axisAttributes")
+        self.timeBounds = self.forceGetInputFromPort("timeBounds")
+        
+    def compute(self):
+        pass
+    
+    def applyOperations(self, var):
+        if self.axes is not None:
+            try:
+                var = eval("var(%s)"% self.axes)
+            except Exception, e:
+                raise ModuleError(self, "Invalid 'axes' specification: %s" % \
+                                      str(e))
+        if self.axesOperations is not None:
+            var = CDMSVariable.applyAxesOperations(var, self.axesOperations)
+            
+        if self.attributes is not None:
+            for attr in self.attributes:
+                try:
+                    attValue=eval(str(self.attributes[attr]).strip())
+                except:
+                    attValue=str(self.attributes[attr]).strip()
+                setattr(var,attr, attValue) 
+                       
+        if self.axisAttributes is not None:
+            for axName in self.axisAttributes:
+                for attr in self.axisAttributes[axName]:
+                    try:
+                        attValue=eval(str(self.axisAttributes[axName][attr]).strip())
+                    except:
+                        attValue=str(self.axisAttributes[axName][attr]).strip()
+                    ax = var.getAxis(var.getAxisIndex(axName))
+                    setattr(ax,attr, attValue)
+                    
+        if self.timeBounds is not None:
+            var = CDMSVariable.applySetTimeBounds(var, self.timeBounds)
+        return var
+    
+    def to_python_script(self, ident=""):
+        text = ''
+        if self.axes is not None:
+            text += ident + "%s = %s(%s)\n"% (self.varname, self.varname, self.axes)
+        if self.axesOperations is not None:
+            text += ident + "axesOperations = eval(\"%s\")\n"%self.axesOperations
+            text += ident + "for axis in list(axesOperations):\n"
+            text += ident + "    if axesOperations[axis] == 'sum':\n"
+            text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis, weight='equal', action='sum')\n"% (self.varname, self.varname) 
+            text += ident + "    elif axesOperations[axis] == 'avg':\n"
+            text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis, weight='equal')\n"% (self.varname, self.varname)
+            text += ident + "    elif axesOperations[axis] == 'wgt':\n"
+            text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis)\n"% (self.varname, self.varname)
+            text += ident + "    elif axesOperations[axis] == 'gtm':\n"
+            text += ident + "        %s = genutil.statistics.geometricmean(%s, axis='(%%s)'%%axis)\n"% (self.varname, self.varname)
+            text += ident + "    elif axesOperations[axis] == 'std':\n"
+            text += ident + "        %s = genutil.statistics.std(%s, axis='(%%s)'%%axis)\n"% (self.varname, self.varname)
+       
+        if self.attributes is not None:
+            text += "\n" + ident + "#modifying variable attributes\n"
+            for attr in self.attributes:
+                text += ident + "%s.%s = %s\n" % (self.varname, attr,
+                                                  repr(self.attributes[attr]))
+                
+        if self.axisAttributes is not None:
+            text += "\n" + ident + "#modifying axis attributes\n"
+            for axName in self.axisAttributes:
+                text += ident + "ax = %s.getAxis(%s.getAxisIndex('%s'))\n" % (self.varname,self.varname,axName)
+                for attr in self.axisAttributes[axName]:
+                    text += ident + "ax.%s = %s\n" % ( attr,
+                                        repr(self.axisAttributes[axName][attr]))
+        
+        if self.timeBounds is not None:
+            data = self.timeBounds.split(":")
+            if len(data) == 2:
+                timeBounds = data[0]
+                val = float(data[1])
+            else:
+                timeBounds = self.timeBounds
+            text += "\n" + ident + "#%s\n"%timeBounds
+            if timeBounds == "Set Bounds For Yearly Data":
+                text += ident + "cdutil.times.setTimeBoundsYearly(%s)\n"%self.varname
+            elif timeBounds == "Set Bounds For Monthly Data":
+                text += ident + "cdutil.times.setTimeBoundsMonthly(%s)\n"%self.varname
+            elif timeBounds == "Set Bounds For Daily Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s)\n"%self.varname
+            elif timeBounds == "Set Bounds For Twice-daily Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s,2)\n"%self.varname
+            elif timeBounds == "Set Bounds For 6-Hourly Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s,4)\n"%self.varname
+            elif timeBounds == "Set Bounds For Hourly Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s,24)\n"%self.varname
+            elif timeBounds == "Set Bounds For X-Daily Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s,%g)\n"%(self.varname,val)
+                
+        return text
+    
+        
+class CDMSUnaryVariableOperation(CDMSVariableOperation):
+    _input_ports = expand_port_specs([("input_var", "CDMSVariable")
+                                      ])
     
     def to_python(self):
         self.python_command = self.python_command.replace(self.var.name, "self.var.var")
-        var = eval(self.python_command)
+        res = eval(self.python_command)
+        if type(res) == tuple:
+            for r in res:
+                if isinstance(r,cdms2.tvariable.TransientVariable):
+                    var = r
+                    break
+        else:
+            var = res 
+        var = self.applyOperations(var)
         return var
     
     def to_python_script(self, ident=""):
         text = ident + "%s = %s\n"%(self.varname,
                                     self.python_command)
+        text += CDMSVariableOperation.to_python_script(self, ident)
         return text
     
     def compute(self):
         if not self.hasInputFromPort('input_var'):
             raise ModuleError(self, "'input_var' is mandatory.")
-        if not self.hasInputFromPort("varname"):
-            raise ModuleError(self, "'varname' is mandatory.")
-        if not self.hasInputFromPort("python_command"):
-            raise ModuleError(self, "'python_command' is mandatory.")
+        
         self.var = self.getInputFromPort('input_var')
-        self.varname = self.getInputFromPort("varname")
-        self.python_command = self.getInputFromPort("python_command")
+        self.get_port_values()
         self.outvar = CDMSVariable(filename=None,name=self.varname)
         self.outvar.var = self.to_python()
         self.setResult("output_var", self.outvar)
     
     @staticmethod
     def from_module(module):
-        from pipeline_helper import CDMSPipelineHelper
-        op = CDMSUnaryVariableOperation()
-        op.varname = CDMSPipelineHelper.get_fun_value_from_module(module, 'varname')
-        op.python_command = CDMSPipelineHelper.get_fun_value_from_module(module, 'python_command')
+        op = CDMSVariableOperation.from_module(module)
+        op.__class__ = CDMSUnaryVariableOperation
         return op
         
-    def to_module(self, controller, pkg_identifier=None):
-        reg = get_module_registry()
-        if pkg_identifier is None:
-            pkg_identifier = identifier
-        module = controller.create_module_from_descriptor(
-            reg.get_descriptor_by_name(pkg_identifier, self.__class__.__name__))
-        functions = []
-        if self.varname is not None:
-            functions.append(("varname", [self.name]))
-        if self.python_command is not None:
-            functions.append(("python_command", [self.python_command]))
-        functions = controller.create_functions(module, functions)
-        for f in functions:
-            module.add_function(f)
+    def to_module(self, controller):
+        module = CDMSVariableOperation.to_module(self, controller)   
         return module        
             
 class CDMSBinaryVariableOperation(CDMSVariableOperation):
     _input_ports = expand_port_specs([("input_var1", "CDMSVariable"),
-                                      ("input_var2", "CDMSVariable"),
-                                      ("varname", "basic:String"),
-                                      ("python_command", "basic:String")
+                                      ("input_var2", "CDMSVariable")
                                       ])
-    _output_ports = expand_port_specs([("output_var", "CDMSVariable")])
     
     def compute(self):
         if not self.hasInputFromPort('input_var1'):
@@ -298,16 +510,9 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
         if not self.hasInputFromPort('input_var2'):
             raise ModuleError(self, "'input_var2' is mandatory.")
         
-        if not self.hasInputFromPort("varname"):
-            raise ModuleError(self, "'varname' is mandatory.")
-        
-        if not self.hasInputFromPort("python_command"):
-            raise ModuleError(self, "'python_command' is mandatory.")
-        
         self.var1 = self.getInputFromPort('input_var1')
         self.var2 = self.getInputFromPort('input_var2')
-        self.varname = self.getInputFromPort("varname")
-        self.python_command = self.getInputFromPort("python_command")
+        self.get_port_values()
         self.outvar = CDMSVariable(filename=None,name=self.varname)
         self.outvar.var = self.to_python()
         self.setResult("output_var", self.outvar)
@@ -315,36 +520,31 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
     def to_python(self):
         self.python_command = self.python_command.replace(self.var1.name, "self.var1.var")
         self.python_command = self.python_command.replace(self.var2.name, "self.var2.var")
-        var = eval(self.python_command)
+        res = eval(self.python_command)
+        if type(res) == tuple:
+            for r in res:
+                if isinstance(r,cdms2.tvariable.TransientVariable):
+                    var = r
+                    break
+        else:
+            var = res
+        var = self.applyOperations(var)
         return var
         
     def to_python_script(self, ident=""):
         text = ident + "%s = %s\n"%(self.varname,
                                     self.python_command)
+        text += CDMSVariableOperation.to_python_script(self, ident)
         return text
     
     @staticmethod
     def from_module(module):
-        from pipeline_helper import CDMSPipelineHelper
-        op = CDMSBinaryVariableOperation()
-        op.varname = CDMSPipelineHelper.get_fun_value_from_module(module, 'varname')
-        op.python_command = CDMSPipelineHelper.get_fun_value_from_module(module, 'python_command')
+        op = CDMSVariableOperation.from_module(module)
+        op.__class__ = CDMSBinaryVariableOperation
         return op
     
     def to_module(self, controller, pkg_identifier=None):
-        reg = get_module_registry()
-        if pkg_identifier is None:
-            pkg_identifier = identifier
-        module = controller.create_module_from_descriptor(
-            reg.get_descriptor_by_name(pkg_identifier, self.__class__.__name__))
-        functions = []
-        if self.varname is not None:
-            functions.append(("varname", [self.name]))
-        if self.python_command is not None:
-            functions.append(("python_command", [self.python_command]))
-        functions = controller.create_functions(module, functions)
-        for f in functions:
-            module.add_function(f)
+        module = CDMSVariableOperation.to_module(self, controller)
         return module
         
         
@@ -477,13 +677,46 @@ class CDMSTDMarker(Module):
                                       ("line_type", "basic:List", True)])
     _output_ports = expand_port_specs([("self", "CDMSTDMarker")])
 
+class CDMSColorMap(Module):
+    _input_ports = expand_port_specs([("colorMapName", "basic:String"),
+                                      ("colorCells", "basic:List")])
+    _output_ports = expand_port_specs([("self", "CDMSColorMap")])
+    
+    def __init__(self):
+        Module.__init__(self)
+        self.colorMapName = None
+        self.colorCells = None
+        
+    def compute(self):
+        self.colorMapName = self.forceGetInputFromPort('colorMapName')
+        self.colorCells = self.forceGetInputFromPort("colorCells")
+    
+    def to_module(self, controller): 
+        reg = get_module_registry()   
+        module = controller.create_module_from_descriptor(
+        reg.get_descriptor_by_name(identifier, self.__class__.__name__))
+        functions = []
+        if self.colorMapName is not None:
+            functions.append(("colorMapName", [self.colorMapName]))
+        if self.colorCells is not None:
+            functions.append(("colorCells", [self.colorCells]))
+        functions = controller.create_functions(module, functions)
+        for f in functions:
+            module.add_function(f)
+        return module
+     
 class CDMSCell(SpreadsheetCell):
-    _input_ports = expand_port_specs([("plot", "CDMSPlot")])
+    _input_ports = expand_port_specs([("plot", "CDMSPlot"),
+                                      ("colorMap", "CDMSColorMap", True)])
 
     def compute(self):
         input_ports = []
+        plots = []
         for plot in self.getInputListFromPort('plot'):
-            input_ports.append(plot)
+            plots.append(plot)
+        input_ports.append(plots)
+        if self.hasInputFromPort('colorMap'):
+            input_ports.append(self.getInputFromPort('colorMap'))
         self.cellWidget = self.displayAndWait(QCDATWidget, input_ports)
 
 class QCDATWidget(QCellWidget):
@@ -555,7 +788,7 @@ Please delete unused CDAT Cells in the spreadsheet.")
            
         self.canvas.clear()
         # Plot
-        for plot in inputPorts:
+        for plot in inputPorts[0]:
             # print "PLOT TYPE:", plot.plot_type
             args = [plot.var.var]
             if hasattr(plot, "var2") and plot.var2 is not None:
@@ -584,7 +817,15 @@ Please delete unused CDAT Cells in the spreadsheet.")
             from api import _app
             _app.uvcdatWindow.record(cmd)
             self.canvas.plot(cgm,*args,**kwargs)
-
+            
+        if len(inputPorts) > 1:
+            #setiing colormap
+            colormap = inputPorts[1].colorMapName
+            colorCells = inputPorts[1].colorCells
+            for (n,r,g,b) in colorCells:
+                self.canvas.setcolorcell(n,r,g,b)
+            self.canvas.setcolormap(str(colormap))
+            
         spreadsheetWindow.setUpdatesEnabled(True)
         self.update()
         
@@ -811,7 +1052,7 @@ class QCDATWidgetExport(QtGui.QAction):
             self.setVisible(False)
 
 _modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
-            CDMSUnaryVariableOperation, CDMSBinaryVariableOperation]
+            CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, CDMSColorMap]
 
 def get_input_ports(plot_type):
     if plot_type == "Boxfill":

@@ -87,21 +87,33 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     
     @staticmethod
     def build_variable_operation_pipeline(controller, version, vars, txt, st, 
-                                          varname):
-        reg = get_module_registry()
+                                          varname, varop=None):
         controller.change_selected_version(version)
+        axes = None
+        axesOperations = None
+        attributes = None
+        axisAttributes = None
+        timeBounds = None
+        if varop is not None:
+            axes = varop.axes
+            axesOperations = varop.axesOperations
+            attributes = varop.attributes
+            axisAttributes = varop.axisAttributes
+            timeBounds = varop.timeBounds
+            
         if len(vars) == 1:
-            op_desc = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
-                                       'CDMSUnaryVariableOperation')
+            op_class = CDMSUnaryVariableOperation(varname=varname, 
+                                python_command=st, axes=axes, 
+                                axesOperations=axesOperations, 
+                                attributes=attributes, axisAttributes=axisAttributes, 
+                                timeBounds=timeBounds)
         elif len(vars) == 2:
-            op_desc = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
-                                       'CDMSBinaryVariableOperation')
-        op_module = controller.create_module_from_descriptor(op_desc)
-        op_functions = [('varname', [varname]),
-                        ('python_command', [st])]
-        functions = controller.create_functions(op_module,op_functions)
-        for f in functions:
-            op_module.add_function(f)
+            op_class = CDMSBinaryVariableOperation(varname=varname, 
+                                python_command=st, axes=axes, 
+                                axesOperations=axesOperations, 
+                                attributes=attributes, axisAttributes=axisAttributes, 
+                                timeBounds=timeBounds)
+        op_module = op_class.to_module(controller)
         ops = []
         ops.append(('add', op_module))
         
@@ -399,7 +411,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             op = desc.from_module(varop)
             if issubclass(desc, CDMSUnaryVariableOperation):
                 varm = CDMSPipelineHelper.find_variables_connected_to_unary_operation_module(controller, pipeline, varop.id)
-                var = CDMSVariable.from_module(varm)
+                var = CDMSVariable.from_module(varm[0])
                 text += op.to_python_script(ident=ident)
             elif issubclass(desc, CDMSBinaryVariableOperation):
                 [varm1, varm2] = CDMSPipelineHelper.find_variables_connected_to_binary_operation_module(controller, pipeline, varop.id)

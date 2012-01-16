@@ -173,15 +173,18 @@ class QMenuWidget(QtGui.QWidget):
         else:
             func = getattr(cdutil.times,nm)
             funcnm = "cdutil.times.%s" % nm
+        vtdesc = nm
         ## Now which operator?
         if menu == "Climatology":
             func = func.climatology
             funcnm+=".climatology"
             rec = "climatological "
+            vtdesc = "climatological " + nm.lower() 
         elif menu == "Departures":
             func=func.departures
             funcnm+=".departures"
             rec = "departures from "
+            vtdesc = "departures from " + nm.lower()
         rec += nm.lower()
         selectedVars=self.root.dockVariable.widget().getSelectedDefinedVariables()
         for v in selectedVars:
@@ -194,6 +197,10 @@ class QMenuWidget(QtGui.QWidget):
             self.root.dockVariable.widget().addVariable(tmp)
             self.root.record(rec)
             self.root.record("%s = %s(%s)" % (newid,funcnm,v.id))
+            #send command to project controller to be stored as provenance
+            from api import get_current_project_controller
+            prj_controller = get_current_project_controller()
+            prj_controller.calculator_command([v.id], vtdesc, funcnm, newid)
             
         
     def setBounds(self,action):
@@ -206,6 +213,7 @@ class QMenuWidget(QtGui.QWidget):
                 return
         selectedVars=self.root.dockVariable.widget().getSelectedDefinedVariables()
         for v in selectedVars:
+            vtnm = nm
             if nm == "Set Bounds For Yearly Data":
                 cdutil.times.setTimeBoundsYearly(v)
                 self.root.record("## Set Bounds For Yearly Data")
@@ -234,5 +242,10 @@ class QMenuWidget(QtGui.QWidget):
                 cdutil.times.setTimeBoundsDaily(v,val)
                 self.root.record("## Set Bounds For X-Daily Data")
                 self.root.record("cdutil.times.setTimeBoundDaily(%s,%g)" % (v.id,val))
+                vtnm = "%s:%g"%(nm,val)
+            #send command to project controller to be stored as provenance
+            from api import get_current_project_controller
+            prj_controller = get_current_project_controller()
+            prj_controller.change_defined_variable_time_bounds(v.id, vtnm) 
 
                 
