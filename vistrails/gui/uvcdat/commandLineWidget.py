@@ -296,6 +296,9 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                     nm+="_%s" % s.varName
                 nm+=" = "
                 self.root.dockVariable.widget().unselectItems(selected)
+                #vistrails
+                for s in selected:
+                    vars.append(s.varName)
                 if str(self.le.text())=="" :
                     pressEnter=True
         # 2 variable commands

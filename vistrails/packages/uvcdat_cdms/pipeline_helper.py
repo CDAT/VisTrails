@@ -10,7 +10,8 @@ import core.db.io
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import pyqtSlot, pyqtSignal
 from init import CDMSPlot, CDMSVariable, CDMSCell, CDMSVariableOperation, \
-       CDMSUnaryVariableOperation, CDMSBinaryVariableOperation
+       CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, \
+       CDMSNaryVariableOperation
 from widgets import GraphicsMethodConfigurationWidget
 from gui.theme import CurrentTheme
 from gui.common_widgets import QDockPushButton
@@ -113,6 +114,12 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                                 axesOperations=axesOperations, 
                                 attributes=attributes, axisAttributes=axisAttributes, 
                                 timeBounds=timeBounds)
+        elif len(vars) > 2:
+            op_class = CDMSNaryVariableOperation(varname=varname, 
+                                python_command=st, axes=axes, 
+                                axesOperations=axesOperations, 
+                                attributes=attributes, axisAttributes=axisAttributes, 
+                                timeBounds=timeBounds)
         op_module = op_class.to_module(controller)
         ops = []
         ops.append(('add', op_module))
@@ -146,6 +153,18 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                                                      op_module, 'input_var2')
                 ops.append(('add', conn2))
                                 
+        elif len(vars) > 2:
+            for v in vars:
+                if issubclass(v.module_descriptor.module, CDMSVariable):
+                    ops.append(('add', v))
+                    conn = controller.create_connection(v, 'self',
+                                                        op_module, 'input_vars')
+                    ops.append(('add', conn))
+                else:
+                    # v is an operation module
+                    conn = controller.create_connection(v, 'output_var',
+                                                        op_module, 'input_vars')
+                    ops.append(('add', conn))
         action = core.db.action.create_action(ops)
         controller.change_selected_version(version)
         controller.add_new_action(action)
@@ -402,22 +421,14 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         text += "    import sys\n"
         text += "    app = QtGui.QApplication(sys.argv)\n"
         ident = '    '
-        for varm in var_modules:
-            var = CDMSVariable.from_module(varm)
-            text += var.to_python_script(ident=ident)
-    
-        for varop in var_operations:
-            desc = varop.module_descriptor.module
-            op = desc.from_module(varop)
-            if issubclass(desc, CDMSUnaryVariableOperation):
-                varm = CDMSPipelineHelper.find_variables_connected_to_unary_operation_module(controller, pipeline, varop.id)
-                var = CDMSVariable.from_module(varm[0])
-                text += op.to_python_script(ident=ident)
-            elif issubclass(desc, CDMSBinaryVariableOperation):
-                [varm1, varm2] = CDMSPipelineHelper.find_variables_connected_to_binary_operation_module(controller, pipeline, varop.id)
-                var1 = CDMSVariable.from_module(varm1)
-                var2 = CDMSVariable.from_module(varm2)
-                text += op.to_python_script(ident=ident)
+        
+        var_op_modules = CDMSPipelineHelper.find_topo_sort_modules_by_types(pipeline,
+                                                                            [CDMSVariable, 
+                                                                             CDMSVariableOperation])
+        for m in var_op_modules:
+            desc = m.module_descriptor.module
+            mobj = desc.from_module(m)
+            text += mobj.to_python_script(ident=ident)
                 
         text += ident + "canvas = vcs.init()\n"
         for mplot in plots:

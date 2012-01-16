@@ -39,6 +39,21 @@ class PlotPipelineHelper(object):
         return result
     
     @staticmethod
+    def find_topo_sort_modules_by_types(pipeline, moduletypes):
+        modules = []
+        for m in pipeline.module_list:
+            desc = m.module_descriptor
+            if issubclass(desc.module,tuple(moduletypes)):
+                modules.append(m.id)
+        ids = pipeline.graph.vertices_topological_sort()
+        result = []
+        for i in ids:
+            if i in modules:
+                module = pipeline.modules[i] 
+                result.append(module)
+        return result
+    
+    @staticmethod
     def find_sink_modules_by_type(pipeline, moduletype):
         res = []
         for mid in pipeline.graph.sinks():

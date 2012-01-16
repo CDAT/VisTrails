@@ -575,6 +575,55 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
         module = CDMSVariableOperation.to_module(self, controller)
         return module
         
+class CDMSNaryVariableOperation(CDMSVariableOperation):
+    _input_ports = expand_port_specs([("input_vars", "CDMSVariable"),
+                                      ])
+    
+    def compute(self):
+        if not self.hasInputFromPort('input_vars'):
+            raise ModuleError(self, "'input_vars' is mandatory.")
+        
+        self.vars = self.getInputListFromPort('input_vars')
+        self.get_port_values()
+        self.outvar = CDMSVariable(filename=None,name=self.varname)
+        self.outvar.var = self.to_python()
+        self.setResult("output_var", self.outvar)
+        
+    def to_python(self):
+        replace_map = {}
+        for i in range(len(self.vars)):
+            replace_map[self.vars[i].name] = "self.vars[%s].var"%i
+            
+        sorted_vars = self.sort_variables_by_length(self.vars)
+        for v in sorted_vars:
+            self.python_command = self.python_command.replace(v.name, replace_map[v.name])
+
+        res = eval(self.python_command)
+        if type(res) == tuple:
+            for r in res:
+                if isinstance(r,cdms2.tvariable.TransientVariable):
+                    var = r
+                    break
+        else:
+            var = res
+        var = self.applyOperations(var)
+        return var
+        
+    def to_python_script(self, ident=""):
+        text = ident + "%s = %s\n"%(self.varname,
+                                    self.python_command)
+        text += CDMSVariableOperation.to_python_script(self, ident)
+        return text
+    
+    @staticmethod
+    def from_module(module):
+        op = CDMSVariableOperation.from_module(module)
+        op.__class__ = CDMSNaryVariableOperation
+        return op
+    
+    def to_module(self, controller, pkg_identifier=None):
+        module = CDMSVariableOperation.to_module(self, controller)
+        return module
         
 class CDMSPlot(Plot, NotCacheable):
     _input_ports = expand_port_specs([("variable", "CDMSVariable"),
@@ -982,9 +1031,6 @@ class QCDATWidgetAnimation(QtGui.QAction):
         else:
             self.setVisible(False)
 
-_modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
-            CDMSUnaryVariableOperation, CDMSBinaryVariableOperation]
-
 class QCDATWidgetColormap(QtGui.QAction):
     """
     QCDATWidgetColormap is the action to export the plot 
@@ -1080,7 +1126,8 @@ class QCDATWidgetExport(QtGui.QAction):
             self.setVisible(False)
 
 _modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
-            CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, CDMSColorMap]
+            CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, 
+            CDMSNaryVariableOperation, CDMSColorMap]
 
 def get_input_ports(plot_type):
     if plot_type == "Boxfill":

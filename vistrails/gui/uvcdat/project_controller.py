@@ -137,7 +137,7 @@ class ProjectController(QtCore.QObject):
             (res, cvars) = self.var_used_in_computed_variable(name)
             if not res:
                 del self.defined_variables[name]
-        if name in self.computed_variables:
+        elif name in self.computed_variables:
             (res, cvars) = self.var_used_in_computed_variable(name)
             if not res:
                 del self.computed_variables[name]
@@ -220,6 +220,9 @@ class ProjectController(QtCore.QObject):
            
     def calculator_command(self, vars, txt, st, varname):
         self.computed_variables[varname] = (vars, txt, st, varname)
+        #if the variable was added to defined_variables, we have to remove it 
+        #from there
+        self.remove_defined_variable(varname)
         
     def emit_defined_variable(self, var):
         from packages.uvcdat_cdms.init import CDMSVariable
