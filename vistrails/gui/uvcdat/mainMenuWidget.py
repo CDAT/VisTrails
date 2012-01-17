@@ -75,12 +75,12 @@ class QMenuWidget(QtGui.QWidget):
         stats = self.pcmdiTools.addMenu("Statistics")
         stats.setTearOffEnabled(True)
         self.statsFuncs = {"Mean" : {"func":cdutil.averager,"nargsMin":1,"nargsMax":2},
-                           "Variance" :{"func":genutil.statistics.variance,"nargsMin":1,"nargsMax":2,"choices":["centered","biased","max_pct_missingoptions"]},
-                           "Standard Deviation" : {"func":genutil.statistics.std,"nargsMin":1,"nargsMax":2,"choices":["centered","biased","max_pct_missingoptions"]},
-                           "Root Mean Square" : {"func":genutil.statistics.rms,"nargsMin":2,"nargsMax":3,"choices":["centered","biased","max_pct_missingoptions"]},
-                           "Correlation" : {"func":genutil.statistics.correlation,"nargsMin":2,"nargsMax":3,"choices":["centered","biased","max_pct_missingoptions"]},
+                           "Variance" :{"func":genutil.statistics.variance,"nargsMin":1,"nargsMax":2,"choices":["centered","biased","max_pct_missing"]},
+                           "Standard Deviation" : {"func":genutil.statistics.std,"nargsMin":1,"nargsMax":2,"choices":["centered","biased","max_pct_missing"]},
+                           "Root Mean Square" : {"func":genutil.statistics.rms,"nargsMin":2,"nargsMax":3,"choices":["centered","biased","max_pct_missing"]},
+                           "Correlation" : {"func":genutil.statistics.correlation,"nargsMin":2,"nargsMax":3,"choices":["centered","biased","max_pct_missing"]},
                            "Lagged Corelation" : {"func":genutil.statistics.laggedcorrelation,"nargsMin":2,"nargsMax":2,"choices":["centered","partial","biased","noloop",("lag",[None,len])]},
-                           "Covariance" : {"func":genutil.statistics.covariance,"nargsMin":2,"nargsMax":3,"choices":["centered","biased","max_pct_missingoptions"]},
+                           "Covariance" : {"func":genutil.statistics.covariance,"nargsMin":2,"nargsMax":3,"choices":["centered","biased","max_pct_missing"]},
                            "Lagged Covariance" : {"func":genutil.statistics.laggedcovariance,"nargsMin":2,"nargsMax":2,"choices":["centered","partial","noloop",("lag",[None,len])]},
                            "Autocorrelation" : {"func":genutil.statistics.autocorrelation,"nargsMin":1,"nargsMax":1,"choices":["centered","partial","biased","noloop",("lag",[None,len])]},
                            "Autocovariance" : {"func":genutil.statistics.autocovariance,"nargsMin":1,"nargsMax":1,"choices":["centered","partial","noloop",("lag",[None,len])]},

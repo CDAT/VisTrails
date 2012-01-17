@@ -225,12 +225,12 @@ class preFuncPopUp(QtGui.QDialog):
 
         resobjs = []
         if isinstance(tmp,cdms2.tvariable.TransientVariable):
-            tmp.id="%s.%s" % (tmp.id,fnm)
+            tmp.id="%s_%s" % (tmp.id,fnm.replace(".","_"))
             self.root.dockVariable.widget().addVariable(tmp)
             res = ", %s" % tmp.id
             resobjs.append(tmp)
         else:
-            res = self.processList(tmp,"%s.%s" % (args[0].id,fnm),"",resobjs)
+            res = self.processList(tmp,"%s_%s" % (args[0].id,fnm.replace(".","_")),"",resobjs)
         self.root.record("## %s" % fnm)
         cargs=args[0].id
         for a in args[1:]:
