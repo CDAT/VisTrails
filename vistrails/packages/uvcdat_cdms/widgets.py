@@ -90,7 +90,7 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         if fun in self.fun_map:
             fid = self.fun_map[fun]
             f = self.module.functions[fid]
-            return f.params[0].strValue
+            return f.params[0].value()
         else:
             return None
         
@@ -116,8 +116,8 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         self.gmEditor.applyChanges(gm)
         
         for attr in self.attributes:
-            if str(getattr(gm,attr)) != self.attributes[attr]:
-                functions.append((attr,[getattr(gm,attr)]))
+            if getattr(gm,attr) != self.attributes[attr]:
+                functions.append((attr,[str(getattr(gm,attr))]))
                 
         action = self.controller.update_functions(self.module, 
                                                   functions)
