@@ -224,21 +224,21 @@ class CDMSVariable(Variable):
     def from_module(module):
         from pipeline_helper import CDMSPipelineHelper
         var = Variable.from_module(module)
-        var.axes = CDMSPipelineHelper.get_fun_value_from_module(module, 'axes')
-        var.axesOperations = CDMSPipelineHelper.get_fun_value_from_module(module, 'axesOperations')
-        var.varNameInFile = CDMSPipelineHelper.get_fun_value_from_module(module, 'varNameInFile')
-        attrs = CDMSPipelineHelper.get_fun_value_from_module(module, 'attributes')
+        var.axes = CDMSPipelineHelper.get_value_from_function(module, 'axes')
+        var.axesOperations = CDMSPipelineHelper.get_value_from_function(module, 'axesOperations')
+        var.varNameInFile = CDMSPipelineHelper.get_value_from_function(module, 'varNameInFile')
+        attrs = CDMSPipelineHelper.get_value_from_function(module, 'attributes')
         if attrs is not None:
             var.attributes = ast.literal_eval(attrs)
         else:
             var.attributes = attrs
             
-        axattrs = CDMSPipelineHelper.get_fun_value_from_module(module, 'axisAttributes')
+        axattrs = CDMSPipelineHelper.get_value_from_function(module, 'axisAttributes')
         if axattrs is not None:
             var.axisAttributes = ast.literal_eval(axattrs)
         else:
             var.axisAttributes = axattrs
-        var.timeBounds = CDMSPipelineHelper.get_fun_value_from_module(module, 'setTimeBounds')
+        var.timeBounds = CDMSPipelineHelper.get_value_from_function(module, 'setTimeBounds')
         var.__class__ = CDMSVariable
         return var
         
@@ -348,22 +348,22 @@ class CDMSVariableOperation(Module):
     def from_module(module):
         from pipeline_helper import CDMSPipelineHelper
         op = CDMSVariableOperation()
-        op.varname = CDMSPipelineHelper.get_fun_value_from_module(module, 'varname')
-        op.python_command = CDMSPipelineHelper.get_fun_value_from_module(module, 'python_command')
-        op.axes = CDMSPipelineHelper.get_fun_value_from_module(module, 'axes')
-        op.axesOperations = CDMSPipelineHelper.get_fun_value_from_module(module, 'axesOperations')
-        attrs = CDMSPipelineHelper.get_fun_value_from_module(module, 'attributes')
+        op.varname = CDMSPipelineHelper.get_value_from_function(module, 'varname')
+        op.python_command = CDMSPipelineHelper.get_value_from_function(module, 'python_command')
+        op.axes = CDMSPipelineHelper.get_value_from_function(module, 'axes')
+        op.axesOperations = CDMSPipelineHelper.get_value_from_function(module, 'axesOperations')
+        attrs = CDMSPipelineHelper.get_value_from_function(module, 'attributes')
         if attrs is not None:
             op.attributes = ast.literal_eval(attrs)
         else:
             op.attributes = attrs
             
-        axattrs = CDMSPipelineHelper.get_fun_value_from_module(module, 'axisAttributes')
+        axattrs = CDMSPipelineHelper.get_value_from_function(module, 'axisAttributes')
         if axattrs is not None:
             op.axisAttributes = ast.literal_eval(axattrs)
         else:
             op.axisAttributes = axattrs
-        op.timeBounds = CDMSPipelineHelper.get_fun_value_from_module(module, 'setTimeBounds')
+        op.timeBounds = CDMSPipelineHelper.get_value_from_function(module, 'setTimeBounds')
         return op
     
     def get_port_values(self):
@@ -404,6 +404,9 @@ class CDMSVariableOperation(Module):
         return newvars 
                     
     def compute(self):
+        pass
+    
+    def set_variables(self, vars):
         pass
     
     def applyOperations(self, var):
@@ -458,6 +461,8 @@ class CDMSVariableOperation(Module):
        
         if self.attributes is not None:
             text += "\n" + ident + "#modifying variable attributes\n"
+            if 'id' not in self.attributes:
+                text += ident + "%s.id = %s\n" % (self.varname, self.varname)
             for attr in self.attributes:
                 text += ident + "%s.%s = %s\n" % (self.varname, attr,
                                                   repr(self.attributes[attr]))
@@ -499,7 +504,14 @@ class CDMSVariableOperation(Module):
 class CDMSUnaryVariableOperation(CDMSVariableOperation):
     _input_ports = expand_port_specs([("input_var", "CDMSVariable")
                                       ])
-    
+    def __init__(self, varname=None, python_command=None, axes=None, 
+                 axesOperations=None, attributes=None, axisAttributes=None, 
+                 timeBounds=None ):
+        CDMSVariableOperation.__init__(self, varname, python_command, axes, 
+                                       axesOperations, attributes, axisAttributes, 
+                                       timeBounds)
+        self.var = None
+        
     def to_python(self):
         self.python_command = self.python_command.replace(self.var.name, "self.var.var")
         res = eval(self.python_command)
@@ -510,6 +522,7 @@ class CDMSUnaryVariableOperation(CDMSVariableOperation):
                     break
         else:
             var = res 
+        var.id = self.varname
         var = self.applyOperations(var)
         return var
     
@@ -529,6 +542,9 @@ class CDMSUnaryVariableOperation(CDMSVariableOperation):
         self.outvar.var = self.to_python()
         self.setResult("output_var", self.outvar)
     
+    def set_variables(self, vars):
+        self.var = vars[0]
+        
     @staticmethod
     def from_module(module):
         op = CDMSVariableOperation.from_module(module)
@@ -543,6 +559,14 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
     _input_ports = expand_port_specs([("input_var1", "CDMSVariable"),
                                       ("input_var2", "CDMSVariable")
                                       ])
+    def __init__(self, varname=None, python_command=None, axes=None, 
+                 axesOperations=None, attributes=None, axisAttributes=None, 
+                 timeBounds=None ):
+        CDMSVariableOperation.__init__(self, varname, python_command, axes, 
+                                       axesOperations, attributes, axisAttributes, 
+                                       timeBounds)
+        self.var1 = None
+        self.var2 = None
     
     def compute(self):
         if not self.hasInputFromPort('input_var1'):
@@ -557,6 +581,10 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
         self.outvar = CDMSVariable(filename=None,name=self.varname)
         self.outvar.var = self.to_python()
         self.setResult("output_var", self.outvar)
+        
+    def set_variables(self, vars):
+        self.var1 = vars[0]
+        self.var2 = vars[1]
         
     def to_python(self):
         replace_map = {self.var1.name: "self.var1.var",
@@ -573,6 +601,7 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
                     break
         else:
             var = res
+        var.id = self.varname
         var = self.applyOperations(var)
         return var
         
@@ -595,7 +624,14 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
 class CDMSNaryVariableOperation(CDMSVariableOperation):
     _input_ports = expand_port_specs([("input_vars", "CDMSVariable"),
                                       ])
-    
+    def __init__(self, varname=None, python_command=None, axes=None, 
+                 axesOperations=None, attributes=None, axisAttributes=None, 
+                 timeBounds=None ):
+        CDMSVariableOperation.__init__(self, varname, python_command, axes, 
+                                       axesOperations, attributes, axisAttributes, 
+                                       timeBounds)
+        self.vars = None
+        
     def compute(self):
         if not self.hasInputFromPort('input_vars'):
             raise ModuleError(self, "'input_vars' is mandatory.")
@@ -605,6 +641,10 @@ class CDMSNaryVariableOperation(CDMSVariableOperation):
         self.outvar = CDMSVariable(filename=None,name=self.varname)
         self.outvar.var = self.to_python()
         self.setResult("output_var", self.outvar)
+        
+    def set_variables(self, vars):
+        for v in vars:
+            self.vars.append(v)
         
     def to_python(self):
         replace_map = {}
@@ -623,6 +663,7 @@ class CDMSNaryVariableOperation(CDMSVariableOperation):
                     break
         else:
             var = res
+        var.id = self.varname
         var = self.applyOperations(var)
         return var
         

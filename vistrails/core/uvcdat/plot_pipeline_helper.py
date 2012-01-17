@@ -30,11 +30,11 @@ class PlotPipelineHelper(object):
         return None
 
     @staticmethod
-    def find_modules_by_type(pipeline, moduletype):
+    def find_modules_by_type(pipeline, moduletypes):
         result = []
         for module in pipeline.module_list:
             desc = module.module_descriptor
-            if issubclass(desc.module, moduletype):
+            if issubclass(desc.module, tuple(moduletypes)):
                 result.append(module)
         return result
     

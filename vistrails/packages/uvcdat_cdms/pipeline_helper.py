@@ -24,7 +24,9 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     def show_configuration_widget(controller, version, plot_obj=None):
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
         plots = CDMSPipelineHelper.find_plot_modules(pipeline)
-        vars = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSVariable)
+        vars = CDMSPipelineHelper.find_modules_by_type(pipeline, 
+                                                       [CDMSVariable,
+                                                        CDMSVariableOperation])
         return CDMSPlotWidget(controller,version,plots,vars)
     
     @staticmethod
@@ -47,6 +49,21 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         return vars
     
     @staticmethod
+    def find_variables_connected_to_operation_module(controller, pipeline, op_id):
+        module = pipeline.modules[op_id]
+        vars = []
+        unary = CDMSPipelineHelper.find_variables_connected_to_unary_operation_module
+        binary = CDMSPipelineHelper.find_variables_connected_to_binary_operation_module
+        n_ary = CDMSPipelineHelper.find_variables_connected_to_n_ary_operation_module
+        if issubclass(module.module_descriptor.module, CDMSUnaryVariableOperation):
+            vars = unary(controller, pipeline, op_id)
+        elif issubclass(module.module_descriptor.module, CDMSBinaryVariableOperation):
+            vars = binary(controller, pipeline, op_id)
+        elif issubclass(module.module_descriptor.module, CDMSNaryVariableOperation):
+            vars = n_ary(controller, pipeline, op_id)
+        return vars
+    
+    @staticmethod
     def find_variables_connected_to_unary_operation_module(controller, pipeline, op_id):
         conns = controller.get_connections_to(pipeline, [op_id], 
                                               port_name="input_var")
@@ -63,6 +80,15 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         conns.extend(controller.get_connections_to(pipeline, [op_id], 
                                               port_name="input_var2"))
         
+        vars = []
+        for conn in conns:
+            vars.append(pipeline.modules[conn.source.moduleId])
+        return vars
+    
+    @staticmethod
+    def find_variables_connected_to_n_ary_operation_module(controller, pipeline, op_id):
+        conns = controller.get_connections_to(pipeline, [op_id], 
+                                              port_name="input_vars")        
         vars = []
         for conn in conns:
             vars.append(pipeline.modules[conn.source.moduleId])
@@ -289,8 +315,8 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         pipeline = controller.current_pipeline
         
         reg = get_module_registry()
-        cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, CellLocation)
-        cell_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, SpreadsheetCell) 
+        cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, [CellLocation])
+        cell_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [SpreadsheetCell]) 
         
         #we assume that there is only one CellLocation and one SpreadsheetCell
         # delete location and create another one with the right locations
@@ -317,8 +343,9 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         
         # Update project controller cell information
         pipeline = controller.vistrail.getPipeline(action.id)
-        var_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSVariable)
-        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSPlot)
+        var_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSVariable,
+                                                                         CDMSVariableOperation])
+        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
         cell.variables =[]
         for var in var_modules:
             cell.variables.append(CDMSPipelineHelper.get_value_from_function(var, 'name'))
@@ -339,10 +366,11 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         actions. It will update the cell with the variables and plot types """
         
         reg = get_module_registry()
-        cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, CellLocation)
-        cell_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, SpreadsheetCell) 
-        var_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSVariable)
-        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSPlot)
+        cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, [CellLocation])
+        cell_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [SpreadsheetCell]) 
+        var_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSVariable,
+                                                                         CDMSVariableOperation])
+        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
         
         # we assume that there is only one CellLocation and one SpreadsheetCell
         # update location values in place.
@@ -410,9 +438,6 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     @staticmethod
     def build_python_script_from_pipeline(controller, version, plot=None):
         pipeline = controller.vistrail.getPipeline(version)
-        var_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSVariable)
-        var_operations = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSVariableOperation)
-        cell = CDMSPipelineHelper.find_modules_by_type(pipeline, CDMSCell)
         plots = CDMSPipelineHelper.find_plot_modules(pipeline)
         text = "from PyQt4 import QtCore, QtGui\n"
         text += "import cdms2, cdutil, genutil\n"
@@ -467,7 +492,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     
     @staticmethod    
     def get_graphics_method_name_from_module(module):
-        result = CDMSPipelineHelper.get_fun_value_from_module(module, 
+        result = CDMSPipelineHelper.get_value_from_function(module, 
                                                               "graphicsMethodName")
         if result == None:
             result = 'default'
@@ -481,7 +506,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     
     @staticmethod    
     def get_template_name_from_module(module):
-        result = CDMSPipelineHelper.get_fun_value_from_module(module, 
+        result = CDMSPipelineHelper.get_value_from_function(module, 
                                                               "template")
         if result == None:
             result = 'starter'
@@ -489,11 +514,15 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         return result
     
     @staticmethod
-    def get_fun_value_from_module(module, name):
-        for i in xrange(module.getNumFunctions()):
-            if module.functions[i].name == name:
-                return module.functions[i].params[0].strValue
-        return None
+    def get_variable_name_from_module(module):
+        desc = module.module_descriptor.module
+        if issubclass(desc, CDMSVariable):
+            result = CDMSPipelineHelper.get_value_from_function(module, "name")
+        elif issubclass(desc, CDMSVariableOperation):
+            result = CDMSPipelineHelper.get_value_from_function(module, "varname")
+        else:
+            result = None
+        return result
     
 class CDMSPlotWidget(QtGui.QWidget):
     def __init__(self,controller, version, plot_list, var_list, parent=None):
@@ -639,6 +668,10 @@ class CDMSPlotWidget(QtGui.QWidget):
         hlayout.addWidget(self.var2_edt)
         self.plot_vars_widget.setLayout(hlayout)
         
+    def askToSaveChanges(self):
+        #FIXME: Check if there were changes and save them
+        pass
+    
     def connect_signals(self):
         if type(self.conf_widget) == GraphicsMethodConfigurationWidget:
             self.connect(self.conf_widget, QtCore.SIGNAL("plotDoneConfigure"),
@@ -748,17 +781,16 @@ class CDMSPlotWidget(QtGui.QWidget):
             self.btn_move_down.setEnabled(True)
             
     def update_plot_vars(self, item):
-        manager = get_plot_manager()
         if item is None:
             self.plot_vars_widget.setVisible(False)
             return
         
         self.show_vars(item.reg_plot.varnum)
         if len(item.vars) >= 1:
-            varname = CDMSPipelineHelper.get_value_from_function(item.vars[0], 'name')
+            varname = CDMSPipelineHelper.get_variable_name_from_module(item.vars[0])
             self.var1_edt.setText(varname)
         if len(item.vars) > 1:
-            varname = CDMSPipelineHelper.get_value_from_function(item.vars[1], 'name')
+            varname = CDMSPipelineHelper.get_variable_name_from_module(item.vars[1])
             self.var2_edt.setText(varname)
             
     def show_vars(self, num):
@@ -1014,7 +1046,7 @@ class VarTableWidget(QtGui.QTreeWidget):
         return data
     
     def create_var_item(self, var_module):
-        varname = CDMSPipelineHelper.get_value_from_function( var_module, 'name')
+        varname = CDMSPipelineHelper.get_variable_name_from_module(var_module)
         labels = QtCore.QStringList() << str(varname)
         item = VarTableWidgetItem(self, var_module, labels, varname)
         item.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable |
@@ -1164,14 +1196,19 @@ class AddCDMSVarDialog(QtGui.QDialog):
             if varName not in self._var_list:
                 var = self.proj_controller.defined_variables[varName]
                 var_module = var.to_module(self.proj_controller.vt_controller)
-                item = CDMSVarListWidgetItem(var_module, varName, self.var_list)
+                item = CDMSVarListWidgetItem(var_module, varName, CDMSVariable, self.var_list)
+        for varName in sorted(self.proj_controller.computed_variables):
+            if varName not in self._var_list:
+                var = self.proj_controller.computed_variables[varName]
+                item = CDMSVarListWidgetItem(None, varName, CDMSVariableOperation, self.var_list)
             
         
 class CDMSVarListWidgetItem(QtGui.QListWidgetItem):
-    def __init__(self, var, varName, parent=None):
+    def __init__(self, var, varName, t=CDMSVariable, parent=None):
         super(CDMSVarListWidgetItem, self).__init__(varName, parent)
         self.var = var
         self.varName = varName
+        self.type = t
         
 class DropVarLineEdit(QtGui.QLineEdit):
     

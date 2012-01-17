@@ -244,25 +244,33 @@ class ProjectController(QtCore.QObject):
                   
                 
     def emit_defined_variable(self, var):
-        from packages.uvcdat_cdms.init import CDMSVariable
+        from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
         from packages.uvcdat_pv.init import PVVariable
         from api import _app
         if isinstance(var, CDMSVariable):
             _app.uvcdatWindow.dockVariable.widget().addVariable(var.to_python())
         elif isinstance(var, PVVariable):
             _app.uvcdatWindow.dockVariable.widget().addVariable(var.name, type_='PARAVIEW')
+        elif isinstance(var, CDMSVariableOperation):
+            _app.uvcdatWindow.dockVariable.widget().addVariable(var.to_python())
             
-    # def add_defined_variable(self, filename, name, kwargs):
-    #     var = VariableWrapper(filename, name, kwargs)
-    #     self.defined_variables[name] = var
-
-    def load_variables_from_modules(self, var_modules):
+    def load_variables_from_modules(self, var_modules, helper):
         for varm in var_modules:
-            varname = PlotPipelineHelper.get_value_from_function(varm, 'name')
+            varname = helper.get_value_from_function(varm, 'name')
             if varname not in self.defined_variables:
                 var = varm.module_descriptor.module.from_module(varm)
                 self.defined_variables[varname] = var
                 self.emit_defined_variable(var)
+                
+    def load_computed_variables_from_modules(self, op_modules, info, op_info, helper):
+        for (opm,op) in op_modules:
+            varname = helper.get_value_from_function(opm, 'varname')
+            if (varname not in self.defined_variables and
+                varname not in self.computed_variables):
+                self.computed_variables[varname] = info[varname]
+                if varname in op_info:
+                    self.computed_variables_ops[varname] = op_info[varname]
+                self.emit_defined_variable(op)
                 
     def has_defined_variable(self, name):
         if name in self.defined_variables:
@@ -427,12 +435,46 @@ class ProjectController(QtCore.QObject):
         if not_found:
             from packages.uvcdat.init import Variable
             from packages.uvcdat_pv.init import PVVariable
-            from packages.uvcdat_cdms.init import CDMSVariable
+            from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
+            helper = self.plot_manager.get_plot_helper(cell.plot.package)
             pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
-            var_modules = PlotPipelineHelper.find_modules_by_type(pipeline, Variable)
+            var_modules = helper.find_modules_by_type(pipeline, 
+                                                      [Variable])
+            op_modules = helper.find_modules_by_type(pipeline, 
+                                                     [CDMSVariableOperation])
+            op_tuples = []
             if len(var_modules) > 0:
-                self.load_variables_from_modules(var_modules)
-            else:
+                self.load_variables_from_modules(var_modules, helper)
+            if len(op_modules) > 0:
+                info = {}
+                op_info = {}
+                for opm in op_modules:
+                    varname = helper.get_variable_name_from_module(opm)
+                    mvars= helper.find_variables_connected_to_operation_module(self.vt_controller,
+                                                                               pipeline, opm.id)
+                    ivars= [helper.get_variable_name_from_module(iv) for iv in mvars]
+                    op = opm.module_descriptor.module.from_module(opm)
+                    opvars = []
+                    for mv in mvars:
+                        var = mv.module_descriptor.module.from_module(mv)
+                        var.var = var.to_python()
+                        opvars.append(var)
+                    op.set_variables(opvars)
+                    op_tuples.append((opm,op))
+                    txt = opm.get_annotation_by_key("__desc__").value
+                    info[varname] = (ivars, txt, op.python_command, varname)
+                    if (op.axes is not None or op.axesOperations is not None or
+                        op.attributes is not None or op.axisAttributes is not None or
+                        op.timeBounds is not None):
+                        #we store the attributes in a variable
+                        op_info[varname] = CDMSVariable(name=varname, axes=op.axes,
+                                               axesOperations=op.axesOperations,
+                                               attributes=op.attributes,
+                                               axisAttributes=op.axisAttributes,
+                                               timeBounds=op.timeBounds)
+                self.load_computed_variables_from_modules(op_tuples, info, op_info, 
+                                                          helper)
+            if len(var_modules) == 0:
                 #when all workflows are updated to include the variable modules.
                 #they will be included in the case above. For now we need to 
                 #construct the variables based on the alias values (Emanuele)
