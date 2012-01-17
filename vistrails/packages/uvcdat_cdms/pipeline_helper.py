@@ -532,7 +532,7 @@ class CDMSPlotWidget(QtGui.QWidget):
         b_layout = QtGui.QHBoxLayout()
         b_layout.setMargin(5)
         b_layout.addStretch()
-        self.btn_save = QDockPushButton('&Save', self)
+        self.btn_save = QDockPushButton('&Apply', self)
         self.btn_save.setFixedWidth(100)
         self.btn_save.setEnabled(True)
         b_layout.addWidget(self.btn_save)
@@ -715,6 +715,7 @@ class CDMSPlotWidget(QtGui.QWidget):
             self.conf_widget.deleteLater()
         if len(self.plot_table.selectedItems()) == 1:
             item = self.plot_table.selectedItems()[0]
+            self.controller.change_selected_version(self.version)
             self.conf_widget = GraphicsMethodConfigurationWidget(item.module,
                                                                  self.controller,
                                                                  self,

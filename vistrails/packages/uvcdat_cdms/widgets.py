@@ -117,7 +117,7 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         
         for attr in self.attributes:
             if str(getattr(gm,attr)) != self.attributes[attr]:
-                functions.append((attr,[str(getattr(gm,attr))]))
+                functions.append((attr,[getattr(gm,attr)]))
                 
         action = self.controller.update_functions(self.module, 
                                                   functions)

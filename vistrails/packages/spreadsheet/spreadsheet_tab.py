@@ -670,6 +670,9 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         self.sheet = StandardWidgetSheet(row, col, self)
         self.sheet.setFitToWindow(True)
         self.displayPrompt()
+        self.connect(self.sheet,
+                     QtCore.SIGNAL('cellActivated(int, int, bool)'),
+                     self.cellSelectionChanged)
         self.toolBar = StandardWidgetToolBar(self)
         self.vLayout = QtGui.QVBoxLayout()
         self.vLayout.setSpacing(0)
@@ -944,6 +947,11 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
     def requestPlotSource(self, row, col):
         self.emit(QtCore.SIGNAL("request_plot_source"), self.getSheetName(), 
                     row, col)
+        
+    def cellSelectionChanged(self, row, col, toggling):
+        #ignoring toggling for now
+        self.emit(QtCore.SIGNAL("current_cell_changed"), self.getSheetName(),
+                                row, col)
         
 class StandardWidgetTabBarEditor(QtGui.QLineEdit):    
     """

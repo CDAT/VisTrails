@@ -317,6 +317,8 @@ class ProjectController(QtCore.QObject):
                      self.clear_cell)
         self.connect(tabController, QtCore.SIGNAL("sheet_size_changed"),
                      self.sheetsize_was_changed)
+        self.connect(tabController, QtCore.SIGNAL("current_cell_changed"),
+                     self.current_cell_changed)
         
     def disconnect_spreadsheet(self):
         ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
@@ -337,6 +339,8 @@ class ProjectController(QtCore.QObject):
                      self.clear_cell)
         self.disconnect(tabController, QtCore.SIGNAL("sheet_size_changed"),
                      self.sheetsize_was_changed)
+        self.disconnect(tabController, QtCore.SIGNAL("current_cell_changed"),
+                     self.current_cell_changed)
         
     def variable_was_dropped(self, info):
         """variable_was_dropped(info: (varName, sheetName, row, col) """
@@ -469,10 +473,13 @@ class ProjectController(QtCore.QObject):
                 cell.plot = None
                 cell.template = None
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col)
+                self.update_plot_configure(sheetName, row, col)
 
     def sheetsize_was_changed(self, sheet, dim):
         self.emit(QtCore.SIGNAL("sheet_size_changed"), sheet, dim)
 
+    def current_cell_changed(self, sheetName, row, col):
+        self.update_plot_configure(sheetName, row, col)
 
     def plot_was_dropped(self, info):
         """plot_was_dropped(info: (plot, sheetName, row, col) """
@@ -535,6 +542,18 @@ class ProjectController(QtCore.QObject):
             plot_prop.updateProperties(widget, sheetName,row,col)
             plot_prop.set_visible(True)
             
+    def update_plot_configure(self, sheetName, row, col):
+        from gui.uvcdat.plot import PlotProperties
+        cell = self.sheet_map[sheetName][(row,col)]
+        plot_prop = PlotProperties.instance()
+        if cell.plot is not None:
+            widget = self.get_plot_configuration(sheetName,row,col)
+            plot_prop.set_controller(self)
+            plot_prop.updateProperties(widget, sheetName,row,col)
+        else:
+            plot_prop.set_controller(None)
+            plot_prop.updateProperties(None, sheetName,row,col)
+                
     def get_python_script(self, sheetName, row, col):
         script = None
         cell = self.sheet_map[sheetName][(row,col)]
@@ -613,11 +632,11 @@ class ProjectController(QtCore.QObject):
                 var_modules.append(res)
             
             # plot_module = plot.to_module(self.vt_controller)
-            self.update_workflow(var_modules, cell, row, col)
+            self.update_workflow(var_modules, cell, sheetName, row, col)
             self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, 
                       None, cell.plot.package, cell.current_parent_version)
             
-    def update_workflow(self, var_modules, cell, row, column):
+    def update_workflow(self, var_modules, cell, sheetName, row, column):
         helper = self.plot_manager.get_plot_helper(cell.plot.package)
         action = helper.build_plot_pipeline_action(self.vt_controller, 
                                                    cell.current_parent_version, 
@@ -633,6 +652,7 @@ class ProjectController(QtCore.QObject):
             
             if get_vistrails_configuration().uvcdat.autoExecute:
                 self.execute_plot(cell.current_parent_version)
+                self.update_plot_configure(sheetName, row, column)
                 
         
         #pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)

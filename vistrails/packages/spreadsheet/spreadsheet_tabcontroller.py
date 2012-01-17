@@ -905,6 +905,8 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                      self.cellDeleted)
         self.connect(widget, QtCore.SIGNAL("sheet_size_changed"),
                      self.sheetSizeChanged)
+        self.connect(widget, QtCore.SIGNAL("current_cell_changed"),
+                     self.currentCellChanged)
         
     def disconnectTabWigetSignals(self, widget):
         self.disconnect(widget, QtCore.SIGNAL("dropped_variable"),
@@ -923,6 +925,8 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                      self.cellDeleted)
         self.disconnect(widget, QtCore.SIGNAL("sheet_size_changed"),
                      self.sheetSizeChanged)
+        self.disconnect(widget, QtCore.SIGNAL("current_cell_changed"),
+                     self.currentCellChanged)
 
     def variableDropped(self, info):
         """variableDropped(info: tuple)-> None
@@ -959,4 +963,7 @@ class StandardWidgetTabController(QtGui.QTabWidget):
 
     def sheetSizeChanged(self, sheet, dim):
         self.emit(QtCore.SIGNAL("sheet_size_changed"), sheet, dim)
+        
+    def currentCellChanged(self, sheetName, row, col):
+        self.emit(QtCore.SIGNAL("current_cell_changed"), sheetName, row, col )
         

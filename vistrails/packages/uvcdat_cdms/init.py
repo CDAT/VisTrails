@@ -707,8 +707,7 @@ class CDMSPlot(Plot, NotCacheable):
         if self.graphics_method_name != "default":
             functions.append(("graphicsMethodName", [self.graphicsMethodName]))
             for attr in self.gm_attributes:
-                if getattr(self,attr) != self.default_values[attr]:
-                    functions.append((attr, [getattr(self,attr)]))
+                functions.append((attr, [getattr(self,attr)]))
         if self.template != "starter":
             functions.append(("template", [self.template]))
             
