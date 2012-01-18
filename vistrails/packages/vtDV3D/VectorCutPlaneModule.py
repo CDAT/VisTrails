@@ -175,7 +175,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         self.renderer.AddActor( self.glyphActor )
         self.planeWidget.GetPlane( self.plane )
         self.ApplyGlyphDecimationFactor()
-        self.renderer.SetBackground( 1.0, 1.0, 1.0 ) 
+        self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.set3DOutput(wmod=self.wmod) 
 #        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
 
@@ -469,7 +469,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.renderer.AddActor( self.glyphActor )
         self.planeWidget.GetPlane( self.plane )
         self.ApplyGlyphDecimationFactor()
-        self.renderer.SetBackground( 1.0, 1.0, 1.0 ) 
+        self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.set3DOutput(wmod=self.wmod) 
 #        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
 
@@ -768,7 +768,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.planeWidget.GetPlane( self.plane )
         self.UpdateStreamerSeedGrid()
         self.updateScaling()
-        self.renderer.SetBackground( 1.0, 1.0, 1.0 ) 
+        self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.set3DOutput( wmod=self.wmod, output=self.input ) 
  
     def updateModule(self, **args ):

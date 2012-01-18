@@ -161,6 +161,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.renWin.Render() 
     
     def addLogo(self):
+        upper_corner = False
         if len(self.renderers) and self.renWin:
             if self.logoActor == None:
                 reader = vtk.vtkJPEGReader()
@@ -180,11 +181,15 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                            
             self.logoActor = vtk.vtkActor2D()
             properties = self.logoActor.GetProperty()  
-            properties.SetDisplayLocationToBackground()           
+            properties.SetDisplayLocationToBackground() 
+            properties.SetOpacity( 0.5 )          
             self.logoActor.SetMapper( self.logoMapper )
             self.renderer.AddActor2D( self.logoActor )
             viewport_dims = self.renWin.GetSize() 
-            self.logoActor.SetDisplayPosition( viewport_dims[0]-self.logoDims[0], viewport_dims[1]-self.logoDims[1] )
+            if upper_corner:
+                self.logoActor.SetDisplayPosition( viewport_dims[0]-self.logoDims[0], viewport_dims[1]-self.logoDims[1] )
+            else:
+                self.logoActor.SetDisplayPosition( viewport_dims[0]-self.logoDims[0], 0 )
             self.logoActor.SetVisibility( self.logoVisible )
             self.logoActor.Modified()
 #            imageActor.SetWidth( 0.25 )      

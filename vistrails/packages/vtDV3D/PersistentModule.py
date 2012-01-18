@@ -1198,10 +1198,10 @@ class PersistentVisualizationModule( PersistentModule ):
             self.colorBarActor.SetNumberOfLabels(9)
             labelFormat = vtk.vtkTextProperty()
             labelFormat.SetFontSize( 160 )
-            labelFormat.SetColor( 1.0, 1.0, 0.0 ) 
+            labelFormat.SetColor(  VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] ) 
             titleFormat = vtk.vtkTextProperty()
             titleFormat.SetFontSize( 160 )
-            titleFormat.SetColor( 1.0, 1.0, 0.0 ) 
+            titleFormat.SetColor(  VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2]  ) 
 #            titleFormat.SetVerticalJustificationToTop ()
 #            titleFormat.BoldOn()
             self.colorBarActor.SetPosition( 0.9, 0.2 )    
@@ -1223,9 +1223,9 @@ class PersistentVisualizationModule( PersistentModule ):
           textActor = vtk.vtkTextActor()  
           textActor.SetTextScaleModeToNone()        
           textprop = textActor.GetTextProperty()
-          textprop.SetColor(1,1,1)
+          textprop.SetColor( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] )
           textprop.SetFontFamilyToArial()
-          textprop.SetFontSize( args.get( 'size', 16 ) )
+          textprop.SetFontSize( args.get( 'size', 12 ) )
           if args.get( 'bold', False ): textprop.BoldOn()
           else: textprop.BoldOff()
           textprop.ItalicOff()
@@ -1240,10 +1240,10 @@ class PersistentVisualizationModule( PersistentModule ):
           return textActor
           
     def getLabelActor(self):
-        return self.getTextActor( 'label', self.labelBuff, (.01, .95)   )
+        return self.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
 
     def getTitleActor(self):
-        return self.getTextActor( 'title', self.titleBuffer,  (.01, .01 ), size = 21, bold = True   )
+        return self.getTextActor( 'title', self.titleBuffer,  (.01, .01 ), size = VTK_TITLE_SIZE, bold = True  )
 
     def getTextActor( self, id, text, pos, **args ):
       textActor = self.getProp( 'vtkTextActor', id  )
