@@ -264,17 +264,17 @@ class UVCDATMainWindow(QtGui.QMainWindow):
                 if not k in remove:
                     __main__.__dict__[k].id=k
                     self.dockVariable.widget().addVariable(__main__.__dict__[k])
-                    # Send information to controller so the Variable can be reconstructed
-                    # later. The best way is by emitting a signal to be processed by the
-                    # main window. When this panel becomes a global panel, then we will do
-                    # that. For now I will talk to the main window directly.
-        
-                    from api import get_current_project_controller
-                    from packages.uvcdat_cdms.init import CDMSVariable
-                    controller = get_current_project_controller()
-                    if controller.get_defined_variable(k) is None:
-                        cdmsVar = CDMSVariable(filename=None, name=k)
-                        controller.add_defined_variable(cdmsVar)
+#                    # Send information to controller so the Variable can be reconstructed
+#                    # later. The best way is by emitting a signal to be processed by the
+#                    # main window. When this panel becomes a global panel, then we will do
+#                    # that. For now I will talk to the main window directly.
+#        
+#                    from api import get_current_project_controller
+#                    from packages.uvcdat_cdms.init import CDMSVariable
+#                    controller = get_current_project_controller()
+#                    if controller.get_defined_variable(k) is None:
+#                        cdmsVar = CDMSVariable(filename=None, name=k)
+#                        controller.add_defined_variable(cdmsVar)
         for r in remove:
             del(__main__.__dict__[r])
 

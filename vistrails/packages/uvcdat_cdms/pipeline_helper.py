@@ -140,7 +140,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                                 axesOperations=axesOperations, 
                                 attributes=attributes, axisAttributes=axisAttributes, 
                                 timeBounds=timeBounds)
-        elif len(vars) > 2:
+        else:
             op_class = CDMSNaryVariableOperation(varname=varname, 
                                 python_command=st, axes=axes, 
                                 axesOperations=axesOperations, 
@@ -150,10 +150,15 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         ops = []
         ops.append(('add', op_module))
         
-        if (len(vars) == 1 and 
-            issubclass(vars[0].module_descriptor.module, CDMSVariable)):
+        if len(vars) == 1:
+            if issubclass(vars[0].module_descriptor.module, CDMSVariable):
                 ops.append(('add', vars[0]))
                 conn1 = controller.create_connection(vars[0], 'self',
+                                                     op_module, 'input_var')
+                ops.append(('add', conn1))
+            else:
+                # vars[0] is an operation module
+                conn1 = controller.create_connection(vars[0], 'output_var',
                                                      op_module, 'input_var')
                 ops.append(('add', conn1))
         elif len(vars) == 2:
@@ -224,7 +229,6 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         functions = controller.create_functions(plot_module,plot_functions)
         for f in functions:
             plot_module.add_function(f)
-        print var_modules[0]
         if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
             ops.append(('add', var_modules[0]))
         ops.append(('add', plot_module)) 

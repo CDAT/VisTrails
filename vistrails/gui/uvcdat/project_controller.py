@@ -33,6 +33,7 @@
 ###############################################################################
 import os, os.path
 import copy
+import uuid
 from PyQt4 import QtCore
 
 import api
@@ -220,10 +221,58 @@ class ProjectController(QtCore.QObject):
             var.timeBounds = timebounds
            
     def calculator_command(self, vars, txt, st, varname):
-        #if the variable was added to defined_variables, we have to remove it 
-        #from there
-        self.remove_defined_variable(varname)
+        if varname in self.defined_variables:
+            if varname in vars:
+                #if the variable was already defined, this means that the user
+                #is modifying it by some operation. For the sake of provenance,
+                #we need to rename the old one so we can keep it around for 
+                #building the new variable
+                newname = "var" + str(uuid.uuid1())[:8]
+                self.rename_defined_variable(varname, newname)
+                st = st.replace(varname,newname)
+                i = vars.index(varname)
+                vars[i] = newname
+            else:
+                #we can just remove it as it is not used to compute this variable
+                self.remove_defined_variable(varname)
         self.computed_variables[varname] = (vars, txt, st, varname)
+        
+    def process_typed_calculator_command(self, varname, command):
+        def sort_names_by_length(names):
+            """sort_variables_by_length(names:list of str) -> [str]
+            This will sort the strings according to length and will place the
+            longest names first
+            
+            """
+            newnames = []
+            newnames.append(names[0])
+            for v in names[1:]:
+                i = 0
+                v2 = names[i]
+                while len(v) < len(v2):
+                    i += 1
+                    if i < len(newnames)-1:
+                        v2 = newnames[i]
+                    else:
+                        v2 = None
+                if v2 is None:
+                    newnames.append(v)
+                else:
+                    newnames.insert(i, v)
+            return newnames 
+        
+        defnames = self.defined_variables.keys()
+        compnames = self.computed_variables.keys()
+        defnames.extend(compnames)
+        varnames = sort_names_by_length(defnames)
+        usedvarnames = []
+        findcommand = command
+        for v in varnames:
+            if findcommand.find(v) > -1:
+                usedvarnames.append(v)
+                findcommand.replace(v,"")
+                
+        self.calculator_command(usedvarnames, "calculator command", command, varname)
         
     def copy_computed_variable(self, oldname, newname, axes=None, 
                                axesOperations=None):
@@ -362,6 +411,7 @@ class ProjectController(QtCore.QObject):
                     else:
                         cell.variables.pop()
                         cell.variables.append(varName)
+                        self.reset_workflow(cell) 
                 else:
                     #replace the variable
                     cell.variables = [varName]

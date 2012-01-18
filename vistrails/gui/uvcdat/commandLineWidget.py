@@ -521,14 +521,14 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 st="%s%s" % (nm,st)
             self.le.setText(str(self.le.text())+st)
         if pressEnter:
-            self.run_command()
+            self.run_command(processed=True)
             #send command to project controller to be stored as provenance
             from api import get_current_project_controller
             prj_controller = get_current_project_controller()
             prj_controller.calculator_command(vars, txt, orst, nm[:-3].strip())
         self.le.setFocus()
 
-    def run_command(self):
+    def run_command(self,processed=False):
         """ Event that processes the CDAT/Python command and displays the 
         stdout or stderr in the text editor window. """
         #-----------------------------------------------------------------------
@@ -568,5 +568,13 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             self.root.record(command)
         else:
             self.root.record("%s = %s" % (res,command))
-
+        if not processed:
+            varname = command.split("=")[0].strip()
+            pycommand = command.split("=")[1].strip()
+            # project controller will only capture the results that return 
+            # a variable
+            #send command to project controller to be stored as provenance
+            from api import get_current_project_controller
+            prj_controller = get_current_project_controller()
+            prj_controller.process_typed_calculator_command(varname,pycommand)
         return res
