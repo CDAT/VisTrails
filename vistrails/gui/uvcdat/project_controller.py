@@ -586,9 +586,12 @@ class ProjectController(QtCore.QObject):
             
     def update_plot_configure(self, sheetName, row, col):
         from gui.uvcdat.plot import PlotProperties
-        cell = self.sheet_map[sheetName][(row,col)]
+        cell = None
+        if sheetName in self.sheet_map:
+            if (row,col) in self.sheet_map[sheetName]:
+                cell = self.sheet_map[sheetName][(row,col)]
         plot_prop = PlotProperties.instance()
-        if cell.plot is not None:
+        if cell is not None and cell.plot is not None:
             widget = self.get_plot_configuration(sheetName,row,col)
             plot_prop.set_controller(self)
             plot_prop.updateProperties(widget, sheetName,row,col)

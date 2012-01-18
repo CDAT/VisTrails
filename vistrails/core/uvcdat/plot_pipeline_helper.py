@@ -26,6 +26,13 @@ class PlotPipelineHelper(object):
     def get_value_from_function(module, fun):
         for i in xrange(module.getNumFunctions()):
             if fun == module.functions[i].name:
+                return module.functions[i].params[0].value()
+        return None
+
+    @staticmethod
+    def get_value_from_function_as_str(module, fun):
+        for i in xrange(module.getNumFunctions()):
+            if fun == module.functions[i].name:
                 return module.functions[i].params[0].strValue
         return None
 

@@ -463,28 +463,36 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                                                  plot.graphics_method_name)
             text += ident + "args = []\n"
             for varm in CDMSPipelineHelper.find_variables_connected_to_plot_module(controller, pipeline, mplot.id):
-                desc = varm.module_descriptor
-                if issubclass(desc.module, CDMSVariable):
-                    var = CDMSVariable.from_module(varm)
-                    text += ident + "args.append(%s)\n"%var.name
-                else:
-                    #operation
-                    op = desc.module.from_module(varm)
-                    text += ident + "args.append(%s)\n"%op.varname 
+                text += ident + "args.append(%s)\n"%CDMSPipelineHelper.get_variable_name_from_module(varm)
+#                desc = varm.module_descriptor
+#                if issubclass(desc.module, CDMSVariable):
+#                    var = CDMSVariable.from_module(varm)
+#                    text += ident + "args.append(%s)\n"%var.name
+#                else:
+#                    #operation
+#                    op = desc.module.from_module(varm)
+#                    text += ident + "args.append(%s)\n"%op.varname 
                 
             if plot.graphics_method_name != 'default':
                 for k in plot.gm_attributes:
                     if hasattr(plot,k):
-                        if k in ['level_1', 'level_2', 'color_1',
-                                 'color_2', 'legend', 'levels',
-                                 'missing', 'datawc_calendar', 'datawc_x1', 
-                                 'datawc_x2', 'datawc_y1', 'datawc_y2',
-                                 'fillareacolors', 'fillareaindices']:
-                            text += ident + "gm%s.%s = %s\n"%(plot.plot_type,
-                                                      k,  getattr(plot,k))
-                        else:
+                        kval = getattr(plot,k)
+                        if type(kval) == type("str") and k != 'legend':
                             text += ident + "gm%s.%s = '%s'\n"%(plot.plot_type,
-                                                            k, getattr(plot,k))
+                                                            k, kval)
+                        else:
+                            text += ident + "gm%s.%s = %s\n"%(plot.plot_type,
+                                                      k,  kval)
+#                        if k in ['level_1', 'level_2', 'color_1',
+#                                 'color_2', 'legend', 'levels',
+#                                 'missing', 'datawc_calendar', 'datawc_x1', 
+#                                 'datawc_x2', 'datawc_y1', 'datawc_y2',
+#                                 'fillareacolors', 'fillareaindices']:
+#                            text += ident + "gm%s.%s = %s\n"%(plot.plot_type,
+#                                                      k,  getattr(plot,k))
+#                        else:
+#                            text += ident + "gm%s.%s = '%s'\n"%(plot.plot_type,
+#                                                            k, getattr(plot,k))
             text += ident + "kwargs = %s\n"%plot.kwargs
             text += ident + "canvas.plot(gm%s,*args, **kwargs)\n"%(plot.plot_type) 
         text += '    sys.exit(app.exec_())'           
@@ -549,9 +557,8 @@ class CDMSPlotWidget(QtGui.QWidget):
         
         var_label = QtGui.QLabel("Variables used in this visualization:")
         plot_label = QtGui.QLabel("Plots used in this visualization")
-        #self.tab_widget.addTab(self.var_widget, "Variables")
-        #self.tab_widget.addTab(self.plot_widget, "Plots")
-        #main_layout.addWidget(self.tab_widget)
+
+        self.vars_were_changed = False
         
         main_layout.addWidget(var_label)
         main_layout.addWidget(self.var_widget)
@@ -575,6 +582,28 @@ class CDMSPlotWidget(QtGui.QWidget):
 
         self.btn_save.clicked.connect(self.save_triggered)
         self.btn_reset.clicked.connect(self.reset_triggered)
+        
+    def update_version(self, version, plot_list, var_list):
+        self.version = version
+        self.plots = plot_list
+        self.vars = var_list
+        self.to_be_added = []
+        self.to_be_removed = []
+        self.var_to_be_added = []
+        self.var_to_be_removed = []
+        self.vars_were_changed = False
+        self.plot_table.version = version
+        self.var_table.populate_from_vars(self.vars)
+        selected = None
+        if len(self.plot_table.selectedItems()) == 1:
+            item = self.plot_table.selectedItems()[0]
+            for plot in self.plots:
+                if plot.id == item.module.id:
+                    selected = plot
+        self.plot_table.populate_from_plots(self.plots, selected)
+        item = self.plot_table.selectedItems()[0]
+        self.update_move_buttons(item)
+        self.update_plot_vars(item)
         
     def create_var_widget(self):
         self.var_widget = QtGui.QWidget()
@@ -647,6 +676,7 @@ class CDMSPlotWidget(QtGui.QWidget):
         self.btn_move_down.clicked.connect(self.plot_table.move_item_down)
         self.plot_widget.setLayout(self.v_layout)
         self.plot_table.populate_from_plots(self.plots)
+        self.plot_table.itemOrderChanged.connect(self.update_move_buttons)
         self.update_btn_del_state()
         
     def create_plot_vars_widget(self):
@@ -692,11 +722,12 @@ class CDMSPlotWidget(QtGui.QWidget):
         
         while len(plot_item.vars) <= order:
             plot_item.vars.append(var)
+            self.vars_were_changed = True
             
         if plot_item.vars[order] != var:
             plot_item.vars.pop(order)
             plot_item.vars.insert(order,var)
-            
+            self.vars_were_changed = True
         
     @pyqtSlot()
     def variable1_edited(self):
@@ -705,9 +736,11 @@ class CDMSPlotWidget(QtGui.QWidget):
             plot_item = self.plot_table.selectedItems()[0]
             if len(plot_item.vars) == 0:
                 plot_item.vars.append(var)
+                self.vars_were_changed = True
             elif plot_item.vars[0] != var:
                 plot_item.vars.pop(0)
                 plot_item.vars.insert(0,var)
+                self.vars_were_changed = True
                 
     @pyqtSlot()
     def variable2_edited(self):
@@ -717,9 +750,11 @@ class CDMSPlotWidget(QtGui.QWidget):
             if len(plot_item.vars) < 1:
                 plot_item.vars.append(var)
                 plot_item.vars.append(var)
+                self.vars_were_changed = True
             if plot_item.vars[1] != var:
                 plot_item.vars.pop(1)
-                plot_item.vars.insert(1,var)            
+                plot_item.vars.insert(1,var)
+                self.vars_were_changed = True            
         
     def update_btn_del_state(self):
         if (len(self.plot_table.selectedItems()) > 0 and 
@@ -742,6 +777,9 @@ class CDMSPlotWidget(QtGui.QWidget):
     @pyqtSlot()
     def update_conf_widget(self):
         if self.conf_widget:
+            if isinstance(self.conf_widget,GraphicsMethodConfigurationWidget):
+                if self.conf_widget.checkForChanges():
+                    self.conf_widget.saveTriggered()
             #self.conf_widget.setVisible(False)
             self.v_layout.removeWidget(self.conf_widget)
             self.disconnect_signals()
@@ -828,10 +866,28 @@ class CDMSPlotWidget(QtGui.QWidget):
             self.var_to_be_removed.remove(m)
 
         if (len(self.to_be_added) != 0 or len(self.to_be_removed) != 0 or
-            len(self.var_to_be_added) != 0 or len(self.var_to_be_removed) != 0):
+            len(self.var_to_be_added) != 0 or len(self.var_to_be_removed) != 0 
+            or self.plot_order_changed() or self.vars_were_changed):
             action = self.update_pipeline(action)
-            
+        
         self.emit(QtCore.SIGNAL('plotDoneConfigure'), action)
+        if action is not None:
+            version = action.id
+            pipeline = self.controller.vistrail.getPipeline(version)
+            plots = CDMSPipelineHelper.find_plot_modules(pipeline)
+            vars = CDMSPipelineHelper.find_modules_by_type(pipeline, 
+                                                           [CDMSVariable,
+                                                            CDMSVariableOperation])
+            self.controller.change_selected_version(version)
+            self.update_version(version, plots, vars)
+            
+    def plot_order_changed(self):
+        plot_modules = self.plot_table.get_plots()
+        changed = False
+        for p, cp in zip(self.plots,plot_modules):
+            if p.id != cp.id:
+                changed = True
+        return changed
         
     def state_changed(self):
         self.emit(QtCore.SIGNAL("stateChanged"))
@@ -873,13 +929,17 @@ class CDMSPlotWidget(QtGui.QWidget):
         self.update_btn_del_var_state()
         
     def update_pipeline(self, action):
-        plot_modules = self.plot_table.get_plots()
+        #at this point, the plots should have already be added
+        #plot_modules = self.plot_table.get_plots()
         var_modules = self.var_table.get_vars()
         connections = self.plot_table.get_connections()
         if action is not None:
             version = action.id
         else:
             version = self.version
+        pipeline = self.controller.vistrail.getPipeline(version)
+        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+
         action = CDMSPipelineHelper.rebuild_pipeline_action(self.controller, 
                                                             version, 
                                                             plot_modules, 
@@ -895,8 +955,20 @@ class CDMSPlotWidget(QtGui.QWidget):
     @pyqtSlot(bool)
     def reset_triggered(self, checked):
         pass
+
+class PlotTableWidgetItem(QtGui.QTreeWidgetItem):
+    def __init__(self, parent, order, module, labels, plot_type, gm_name, vars,
+                 reg_plot):
+        QtGui.QTreeWidgetItem.__init__(self, parent, labels)
+        self.module = module    
+        self.order = order
+        self.plot_type = plot_type
+        self.gm_name = gm_name
+        self.vars = vars
+        self.reg_plot = reg_plot
     
 class PlotTableWidget(QtGui.QTreeWidget):
+    itemOrderChanged = pyqtSignal(PlotTableWidgetItem)
     def __init__(self,plot_list, controller, version, parent=None):    
         QtGui.QTreeWidget.__init__(self, parent)
         self.plots = plot_list
@@ -910,13 +982,21 @@ class PlotTableWidget(QtGui.QTreeWidget):
         self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         
-    def populate_from_plots(self,plots=None):
+    def populate_from_plots(self,plots=None, selected=None):
         if plots is not None:
             self.plots = plots
+        self.blockSignals(True)
+        self.clear()
+        self.blockSignals(False)
         for i in range(len(self.plots)):
             item = self.create_plot_item(i, self.plots[i])
-            if item.module == self.plots[0]:
-                self.setItemSelected(item,True)
+            if selected is not None:
+                if item.module == selected:
+                    self.setItemSelected(item,True)
+            else:
+                #select first element
+                if item.module == self.plots[0]:
+                    self.setItemSelected(item,True)
             
     def create_plot_item(self, order, plot_module):
         manager = get_plot_manager()
@@ -945,19 +1025,27 @@ class PlotTableWidget(QtGui.QTreeWidget):
     
     @pyqtSlot(bool)
     def move_item_up(self, checked):
+        self.blockSignals(True)
         item = self.selectedItems()[0]
         pos = self.indexOfTopLevelItem(item)
         item = self.takeTopLevelItem(pos)
         self.insertTopLevelItem(pos-1,item)
+        self.setCurrentItem(item)
         self.update_item_ordering()
+        self.blockSignals(False)
+        self.itemOrderChanged.emit(item)
     
     @pyqtSlot(bool)
     def move_item_down(self, checked):
+        self.blockSignals(True)
         item = self.selectedItems()[0]
         pos = self.indexOfTopLevelItem(item)
         item = self.takeTopLevelItem(pos)
         self.insertTopLevelItem(pos+1,item)
+        self.setCurrentItem(item)
         self.update_item_ordering()
+        self.blockSignals(False)
+        self.itemOrderChanged.emit(item)
         
     def update_item_ordering(self):
         for i in range(self.topLevelItemCount()):
@@ -998,17 +1086,6 @@ class PlotTableWidget(QtGui.QTreeWidget):
             if len(item.vars) > 1:
                 conns.append((item.vars[1], 'self', item.module, 'variable2'))            
         return conns
-    
-class PlotTableWidgetItem(QtGui.QTreeWidgetItem):
-    def __init__(self, parent, order, module, labels, plot_type, gm_name, vars,
-                 reg_plot):
-        QtGui.QTreeWidgetItem.__init__(self, parent, labels)
-        self.module = module    
-        self.order = order
-        self.plot_type = plot_type
-        self.gm_name = gm_name
-        self.vars = vars
-        self.reg_plot = reg_plot
         
 class VarTableWidget(QtGui.QTreeWidget):
     def __init__(self, var_list, parent=None):    
@@ -1026,6 +1103,9 @@ class VarTableWidget(QtGui.QTreeWidget):
     def populate_from_vars(self, _vars=None):
         if _vars is not None:
             self.vars = _vars
+        self.blockSignals(True)
+        self.clear()
+        self.blockSignals(False)
         for i in range(len(self.vars)):
             item = self.create_var_item(self.vars[i])
             if item.module == self.vars[0]:

@@ -1,5 +1,6 @@
 from PyQt4 import QtCore, QtGui
 from core.utils import InstanceObject
+import core.db.action
 from gui.uvcdat.graphicsMethodsWidgets import QBoxfillEditor, QIsofillEditor,\
    QIsolineEditor, QMeshfillEditor, QOutfillEditor, QOutlineEditor, \
    QScatterEditor, QTaylorDiagramEditor, QVectorEditor, Q1DPlotEditor
@@ -114,14 +115,37 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         functions = []
         gm = InstanceObject(**self.attributes)
         self.gmEditor.applyChanges(gm)
+        pipeline = self.controller.vistrail.getPipeline(self.controller.current_version)
+        # maybe this module was just added by the user in the gui and it was not
+        # added to the pipeline yet. So we need to add it before updating the
+        # functions
+        action1 = None
+        if self.module.id not in pipeline.modules:
+            ops = [('add', self.module)]
+            action1 = core.db.action.create_action(ops)
+            self.controller.add_new_action(action1)
+            self.controller.perform_action(action1)
+        for attr in self.attributes:
+            newval = getattr(gm,attr)
+            if newval != self.attributes[attr]:
+                functions.append((attr,[str(getattr(gm,attr))]))
+                self.attributes[attr] = newval
+        action = self.controller.update_functions(self.module, 
+                                                  functions)
+        if action is None:
+            action = action1
+        return (action, True)
+    
+    def checkForChanges(self):
+        gm = InstanceObject(**self.attributes)
+        self.gmEditor.applyChanges(gm)
+        changed = False
         
         for attr in self.attributes:
             if getattr(gm,attr) != self.attributes[attr]:
-                functions.append((attr,[str(getattr(gm,attr))]))
-                
-        action = self.controller.update_functions(self.module, 
-                                                  functions)
-        return (action, True)
+                changed = True
+                break
+        return changed
     
     def saveTriggered(self, checked = False):
         """ saveTriggered(checked: bool) -> None
