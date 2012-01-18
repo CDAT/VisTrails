@@ -11,7 +11,7 @@ import re
 import MV2
 import os
 import ast
-
+import string
 from info import identifier
 from widgets import GraphicsMethodConfigurationWidget
 from core.modules.module_registry import get_module_registry
@@ -379,30 +379,56 @@ class CDMSVariableOperation(Module):
         self.axisAttributes = self.forceGetInputFromPort("axisAttributes")
         self.timeBounds = self.forceGetInputFromPort("timeBounds")
         
-    @staticmethod
-    def sort_variables_by_length(vars):
-        """sort_variables_by_length(vars:list of CDMSVariable) -> [CDMSVariable]
-        This will sort the variables according to name length and will place the
-        variables with longest names first
-        
+    @staticmethod              
+    def find_variable_in_command(v, command, startpos=0):
+        """find_variable(v:str,command:str) -> int
+        find the first occurrence of v in command, respecting identifier
+        names
+        Examples:
+            >>> find_variable("v","av=clt*2")
+            -1
+            >>> find_variable("var","self.var=3* clt"
+            -1
         """
-        newvars = []
-        newvars.append(vars[0])
-        for v in vars[1:]:
-            i = 0
-            v2 = newvars[i]
-            while len(v.name) < len(v2.name):
-                i += 1
-                if i < len(newvars)-1:
-                    v2 = newvars[i]
-                else:
-                    v2 = None
-            if v2 is None:
-                newvars.append(v)
-            else:
-                newvars.insert(i, v)
-        return newvars 
-                    
+        bidentchars = string.letters+string.digits+'_.'
+        aidentchars = string.letters+string.digits+'_'
+        i = command.find(v,startpos)
+        if i < 0: #not found
+            return i
+        #checking before and after
+        before = i-1
+        after = i+len(v)
+        ok_before = True
+        ok_after = True
+        if before >= 0:
+            if command[before] in bidentchars:
+                ok_before = False
+        
+        if after < len(command):
+            if command[after] in aidentchars:
+                ok_after = False
+        
+        if ok_after and ok_before:
+            return i
+        else:
+            spos = i+len(v)
+            while spos<len(command)-1 and command[spos] in aidentchars:
+                spos+=1
+            return CDMSVariableOperation.find_variable_in_command(v,command,spos)
+        
+    @staticmethod
+    def replace_variable_in_command(command, oldv, newv):
+        newcommand=""
+        changedcommand = command
+        i = CDMSVariableOperation.find_variable_in_command(oldv,changedcommand)
+        while i > -1:
+            newcommand += changedcommand[:i]
+            newcommand += newv
+            changedcommand = changedcommand[i+len(oldv):]
+            i = CDMSVariableOperation.find_variable_in_command(oldv,changedcommand)
+        newcommand += changedcommand
+        return newcommand  
+    
     def compute(self):
         pass
     
@@ -513,7 +539,9 @@ class CDMSUnaryVariableOperation(CDMSVariableOperation):
         self.var = None
         
     def to_python(self):
-        self.python_command = self.python_command.replace(self.var.name, "self.var.var")
+        self.python_command = self.replace_variable_in_command(self.python_command,
+                                                               self.var.name, 
+                                                               "self.var.var")
         res = eval(self.python_command)
         if type(res) == tuple:
             for r in res:
@@ -589,9 +617,11 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
     def to_python(self):
         replace_map = {self.var1.name: "self.var1.var",
                        self.var2.name: "self.var2.var"}
-        sorted_vars = self.sort_variables_by_length([self.var1,self.var2])
-        for v in sorted_vars:
-            self.python_command = self.python_command.replace(v.name, replace_map[v.name])
+        
+        vars = [self.var1,self.var2]
+        for v in vars:
+            self.python_command = self.replace_variable_in_command(self.python_command,
+                                                                   v.name, replace_map[v.name])
 
         res = eval(self.python_command)
         if type(res) == tuple:
@@ -651,10 +681,10 @@ class CDMSNaryVariableOperation(CDMSVariableOperation):
         for i in range(len(self.vars)):
             replace_map[self.vars[i].name] = "self.vars[%s].var"%i
             
-        sorted_vars = self.sort_variables_by_length(self.vars)
-        for v in sorted_vars:
-            self.python_command = self.python_command.replace(v.name, replace_map[v.name])
-
+        for v in self.vars:
+            self.python_command = self.replace_variable_in_command(self.python_command,
+                                                                   v.name, replace_map[v.name])
+ 
         res = eval(self.python_command)
         if type(res) == tuple:
             for r in res:

@@ -568,9 +568,10 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             self.root.record(command)
         else:
             self.root.record("%s = %s" % (res,command))
-        if not processed:
-            varname = command.split("=")[0].strip()
-            pycommand = command.split("=")[1].strip()
+        clist = command.split("=")
+        if not processed and len(clist) > 1:
+            varname = clist[0].strip()
+            pycommand = clist[1].strip()
             # project controller will only capture the results that return 
             # a variable
             #send command to project controller to be stored as provenance

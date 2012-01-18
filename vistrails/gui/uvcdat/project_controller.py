@@ -238,39 +238,19 @@ class ProjectController(QtCore.QObject):
         self.computed_variables[varname] = (vars, txt, st, varname)
         
     def process_typed_calculator_command(self, varname, command):
-        def sort_names_by_length(names):
-            """sort_variables_by_length(names:list of str) -> [str]
-            This will sort the strings according to length and will place the
-            longest names first
-            
-            """
-            newnames = []
-            newnames.append(names[0])
-            for v in names[1:]:
-                i = 0
-                v2 = names[i]
-                while len(v) < len(v2):
-                    i += 1
-                    if i < len(newnames)-1:
-                        v2 = newnames[i]
-                    else:
-                        v2 = None
-                if v2 is None:
-                    newnames.append(v)
-                else:
-                    newnames.insert(i, v)
-            return newnames 
+        from packages.uvcdat_cdms.init import CDMSVariableOperation 
+        
         
         defnames = self.defined_variables.keys()
         compnames = self.computed_variables.keys()
         defnames.extend(compnames)
-        varnames = sort_names_by_length(defnames)
+        varnames = defnames
         usedvarnames = []
         findcommand = command
         for v in varnames:
-            if findcommand.find(v) > -1:
+            if CDMSVariableOperation.find_variable_in_command(v, findcommand) > -1:
                 usedvarnames.append(v)
-                findcommand.replace(v,"")
+                findcommand=CDMSVariableOperation.replace_variable_in_command(findcommand,v,"")
                 
         self.calculator_command(usedvarnames, "calculator command", command, varname)
         
