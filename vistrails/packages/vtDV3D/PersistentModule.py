@@ -426,7 +426,12 @@ class PersistentModule( QObject ):
             dtype =  self.metadata.get( 'datatype', None )
             scalars =  self.metadata.get( 'scalars', None )
             self.rangeBounds = getRangeBounds( dtype )
-            self.titleBuffer = self.metadata.get( 'title', None )
+            title = self.metadata.get( 'title', None )
+            targs = title.split(':')
+            if len( targs ) == 1:
+                self.titleBuffer = "\n%s" % ( title )
+            elif len( targs ) > 1:
+                self.titleBuffer = "%s\n%s" % ( targs[1], targs[0] )
 #            self.persistParameterList( [ ( 'title' , [ self.titleBuffer ]  ), ] )
 
             attributes = self.metadata.get( 'attributes' , None )
@@ -1243,7 +1248,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return self.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
 
     def getTitleActor(self):
-        return self.getTextActor( 'title', self.titleBuffer,  (.01, .01 ), size = VTK_TITLE_SIZE, bold = True  )
+        return self.getTextActor( 'title', self.titleBuffer,  (.01, .17 ), size = VTK_TITLE_SIZE, bold = True  )
 
     def getTextActor( self, id, text, pos, **args ):
       textActor = self.getProp( 'vtkTextActor', id  )

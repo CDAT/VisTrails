@@ -4,6 +4,7 @@ Created on Nov 30, 2011
 @author: emanuele
 '''
 import core.db.io
+import core.modules.basic_modules
 
 class PlotPipelineHelper(object):
     '''
@@ -83,6 +84,8 @@ class PlotPipelineHelper(object):
             filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'filename')
             if filename is None:
                 filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'file')
+            if isinstance( filename, core.modules.basic_modules.File ):
+                filename = filename.name
             url = PlotPipelineHelper.get_value_from_function( var_modules[i], 'url')            
             varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'name')
             axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
@@ -98,8 +101,7 @@ class PlotPipelineHelper(object):
                 aliases[plot_obj.cells[j].row_name] = str(row+1)
                 aliases[plot_obj.cells[j].col_name] = str(col+1+j)
             elif plot_obj.cells[j].address_name:
-                aliases[plot_obj.cells[j].address_name] = "%s%s"%(chr(ord('A') + col+j),
-                                                                  row+1)
+                aliases[plot_obj.cells[j].address_name] = "%s%s" % ( chr(ord('A') + col+j ), row+1)
             
         for a,w in plot_obj.alias_widgets.iteritems():
             aliases[a] = w.contents()
