@@ -324,6 +324,8 @@ class GraphWidget(QtGui.QGraphicsView):
         self.edges = []
         self.size = args.get( 'size', (400, 400) )
         self.nticks = args.get( 'nticks', ( 5, 5 ) )
+        self.graphUpdateIndex = 0
+        self.graphUpdatePeriod = 5
         self.tickLen = 12
         self.tickLabels = ( [], [] )
         self.bounds = None
@@ -504,9 +506,11 @@ class GraphWidget(QtGui.QGraphicsView):
         else: return self.size[1] * ( 1.0 - dp )
 
     def itemMoved(self, index, sx, sy, s ):
-        x, y = self.getDataPoint( sx, sy )
-        self.emit( self.nodeMovedSignal, index, x, y, s )
-        self.hasChanges = True
+        if ( self.graphUpdateIndex % self.graphUpdatePeriod ) == 0:
+            x, y = self.getDataPoint( sx, sy )
+            self.emit( self.nodeMovedSignal, index, x, y, s )
+            self.hasChanges = True
+        self.graphUpdateIndex = self.graphUpdateIndex + 1
 
     def mouseReleaseEvent( self, event ):
         super(GraphWidget, self).mouseReleaseEvent(event)

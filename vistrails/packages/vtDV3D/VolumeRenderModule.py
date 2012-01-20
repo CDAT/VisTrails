@@ -145,7 +145,6 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.ctf_data = None
         self.updatingOTF = False
         self.configTime = None
-        self.renderTFConfigCount = 0
         self.transFunctGraphVisible = False
         self.transferFunctionConfig = None
         self.setupTransferFunctionConfigDialog()
@@ -199,10 +198,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #            print " config SHAPE_ADJ_1: ", nodeIndex, value2
         else: return
         
-        self.renderTFConfigCount = ( self.renderTFConfigCount + 1 ) % 10000
-        if self.renderTFConfigCount % 2: 
-            self.updateOTF()
-            self.render()
+        self.updateOTF()
+        self.render()
 
     def getDataRangeBounds(self): 
         range = PersistentVisualizationModule.getDataRangeBounds(self)
