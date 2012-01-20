@@ -1248,7 +1248,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return self.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
 
     def getTitleActor(self):
-        return self.getTextActor( 'title', self.titleBuffer,  (.01, .17 ), size = VTK_TITLE_SIZE, bold = True  )
+        return self.getTextActor( 'title', self.titleBuffer,  (.01, .01 ), size = VTK_TITLE_SIZE, bold = True  )
 
     def getTextActor( self, id, text, pos, **args ):
       textActor = self.getProp( 'vtkTextActor', id  )
