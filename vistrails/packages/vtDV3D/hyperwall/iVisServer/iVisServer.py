@@ -9,18 +9,18 @@ from iPhoneManager import IPhoneManager
 from DeviceServer import Device, StereoDevice
 from VistrailServer import VistrailServer
 #from pipeline_modifier import PipelineModifier
-from vtDV3D.vtUtilities import *
+from packages.vtDV3D.vtUtilities import *
 
 import pickle, os, sys
 
 class QiVisServer(QObject):
     def __init__( self, name, dimensions, port, resource_path ):
         QObject.__init__(self)
-        self.port = port
+        self.port = int(port)
         self.server = QTcpServer(self)
         self.connect(self.server, QtCore.SIGNAL("newConnection()"), self.newConnection)
-        self.server.listen(Qt.QHostAddress(Qt.QHostAddress.Any), port)
-        print " --- iVisServer ---  << Listening on port %d >> " % port
+        self.server.listen(Qt.QHostAddress(Qt.QHostAddress.Any), self.port )
+        print " --- iVisServer ---  Listening on port: ", str( port )
         self.sockets = {}
         self.buffer = ''
 
@@ -278,6 +278,7 @@ class QiVisServer(QObject):
             dimensions = (int(tokens[5]), int(tokens[6]), int(tokens[7]), int(tokens[8]))
 
             pipeline = self.vistrailServer.getPipeline(vistrailName, versionName)
+            print " Executing message executePipeline!!! "
 
             cellID = self.devices[deviceName].dispatchPipeline(pipeline, vistrailName, versionName, moduleId, dimensions)
             replyTokens = "localID,"+deviceName+","+str(cellID)+","+tokens[5]+","+tokens[6]+","+tokens[7]+","+tokens[8]

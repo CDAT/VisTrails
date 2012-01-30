@@ -1,17 +1,15 @@
+import PyQt4.QtNetwork
+import packages
+import gui, core, os
 from PyQt4 import Qt, QtCore, QtGui
 from PyQt4.QtNetwork import QTcpSocket, QHostAddress, QHostInfo, QAbstractSocket
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from displaywall_tab import DisplayWallSheetTab
-import userpackages.vtDV3D.ModuleStore as ModuleStore
-from vtUtilities import *
-
-import PyQt4.QtNetwork
-import packages
-import gui, core
-import os
+import packages.vtDV3D.ModuleStore as ModuleStore
+from packages.vtDV3D.vtUtilities import *
 
 class QiVisClient(QtCore.QObject):
-    def __init__(self, name, x, y, width, height, server, serverPort, displayWidth, displayHeight, fullScreenEnabled ):
+    def __init__(self, name, server, serverPort, x, y, width, height ):
         """__init__() -> None
         initializes the client class"""
 
@@ -25,7 +23,7 @@ class QiVisClient(QtCore.QObject):
         self.socket = QTcpSocket()
 
         self.server = os.environ.get( 'DV3D_HW_SERVER_NAME', server )
-        self.serverPort = serverPort
+        self.serverPort = int(serverPort)
 
         self.buffer = ""
         self.pipelineQueue = []
@@ -34,15 +32,22 @@ class QiVisClient(QtCore.QObject):
         self.deviceName = name
 
         self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
-        self.spreadsheetWindow.tabController.clearTabs()
-        self.currentTab = DisplayWallSheetTab(self.spreadsheetWindow.tabController, x, y, width, height, displayWidth, displayHeight, fullScreenEnabled )
-        self.spreadsheetWindow.tabController.addTabWidget(self.currentTab, self.deviceName)
+        self.spreadsheetWindow.show()
+        self.spreadsheetWindow.activateWindow()
+        self.spreadsheetWindow.raise_()
+        
+        self.dimensions = ( x, y, width, height )
+        self.connectSignals()       
+        
+    def createTab( self,  displayWidth, displayHeight, fullScreenEnabled ):
+        self.spreadsheetWindow.addTabController('DV3D')
+        tabController = self.spreadsheetWindow.get_current_tab_controller()
+        tabController.clearTabs()
+        self.currentTab = DisplayWallSheetTab( tabController, self.dimensions[0], self.dimensions[1], self.dimensions[2], self.dimensions[3], displayWidth, displayHeight, fullScreenEnabled )
+        tabController.addTabWidget(self.currentTab, self.deviceName)
 
-        size = self.currentTab.getDimension()
-        self.dimensions = (x, y, size[1], size[0])
-        print " Startup VisClient, size=%s, dims=%s, inputDims=%s, loc=%s" % ( str(size), str(self.dimensions), str( (width, height) ), str( ( x, y ) ) )
-
-        self.connectSignals()
+        self.size = self.currentTab.getDimension()
+        print " Startup VisClient, size=%s, dims=%s, inputDims=%s, loc=%s" % ( str(size), str(self.dimensions) )
 
     def connectSignals(self):
         """connectSignals() -> None
@@ -60,8 +65,9 @@ class QiVisClient(QtCore.QObject):
         print "retryConnection"
         if self.socket.state()!=QTcpSocket.ConnectedState:
             if self.socket.state()==QTcpSocket.UnconnectedState:
-                print " HWClient connecting to server at %s:%s" % ( self.server, str( self.serverPort ) )
-                self.socket.connectToHost(self.server, self.serverPort)
+                port = int( self.serverPort )
+                print " HWClient connecting to server at %s:%d" % ( self.server, port )
+                self.socket.connectToHost(self.server, port )
             self.timer.start()
         elif core.system.systemType in ['Windows', 'Microsoft']:
             self.socket.setSocketOption(QAbstractSocket.LowDelayOption, 1)

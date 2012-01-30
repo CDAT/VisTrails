@@ -95,9 +95,9 @@ def callbackWrapper( func, wrapped_arg ):
 
 def getConfiguration( defaults ):
     app = gui.application.VistrailsApplication
-#    app.resource_path = None
-    appConfig = app.temp_configuration
-    datasetConfigFile = os.path.expanduser( os.path.join( appConfig.dotVistrails, 'dv3d.cfg' )  )
+    appConfig = app.temp_configuration if app else None
+    dotVistrails = appConfig.dotVistrails if appConfig else os.path.expanduser("~/.vistrails/")
+    datasetConfigFile = os.path.expanduser( os.path.join( dotVistrails, 'dv3d.cfg' )  )
     if not os.path.isfile( datasetConfigFile ):
         defaultConfigFile = os.path.join( resourcePath, 'dv3d.cfg' ) 
         assert os.path.isfile( defaultConfigFile ), "Error, default dv3d Config File does not exist at %s!" % defaultConfigFile

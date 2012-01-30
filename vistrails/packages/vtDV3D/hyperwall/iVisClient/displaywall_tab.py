@@ -24,17 +24,17 @@ class DisplayWallSheetTab(StandardWidgetSheetTab):
         """
         canFullScreen = False
         screenMap = {}
+        self.cellWidgets = {}
         if displayWidth<0 or displayHeight<0:
             canFullScreen = fullScreenEnabled
             desktop = QtGui.QDesktopWidget() 
             screenMap[(row, col)] = desktop.screenGeometry(0)
         else:
-            screenMap[(row, col)] = QtCore.QRect( 0, 0, displayWidth, displayHeight )
+            screenMap[(row, col)] = QtCore.QRect( 0, 0, int(displayWidth), int(displayHeight) )
 
-        StandardWidgetSheetTab.__init__(self, tabWidget, 1, 1 )
         self.canFullScreen = canFullScreen
         self.screenMap = screenMap
-        self.cellWidgets = {}
+        StandardWidgetSheetTab.__init__(self, tabWidget, 1, 1 )
         self.setCellWidget( row, col, BlankWidget(self) )
         
     def setCellWidget(self, row, col, cellWidget):

@@ -3,7 +3,7 @@ Created on Jul 20, 2011
 
 @author: tpmaxwel
 '''
-import sys, os
+import sys, os, traceback
 from PyQt4 import QtGui
 import gui.application, core.requirements
 from HyperwallManager import HyperwallManager
@@ -83,7 +83,9 @@ def start_application(optionsDict=None):
         sys.exit(1)
     gui.application.VistrailsApplication = VistrailsApplication
     x = VistrailsApplication.init(optionsDict)
-    if x == True: return VistrailsApplication
+    if x == True:
+        VistrailsApplication.uvcdatWindow.showBuilderWindowActTriggered() 
+        return VistrailsApplication
     if gui.application.VistrailsApplication:
         gui.application.VistrailsApplication.finishSession()
     sys.exit(v)
@@ -104,7 +106,6 @@ def executeVistrail( *args, **kwargs ):
     except Exception, e:
         restore_stdout()
         print "Uncaught exception on initialization: %s" % e
-        import traceback
         traceback.print_exc()
         if gui.application.VistrailsApplication:
             gui.application.VistrailsApplication.finishSession()
@@ -117,6 +118,8 @@ def executeVistrail( *args, **kwargs ):
     sys.exit(v)
 
 if __name__ == '__main__':
-    optionsDict = {  'hw_role'  : 'global'  }         
+#    optionsDict = {  'hw_role'  : 'global'  }         
+    optionsDict = {  'hw_role'  : 'hw_server'  }         
+#    optionsDict = {  'hw_role'  : 'hw_client', 'hw_node_index'  : 0 }         
     executeVistrail( options=optionsDict )
  

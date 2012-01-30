@@ -52,12 +52,13 @@ def getCompTime( timeString ):
                    
 def deserializeFileMap( serialized_strMap ): 
     stringMap = {}
-    for dsrec in serialized_strMap.split(';'):
-        dsitems = dsrec.split('#')
-        if len( dsitems ) == 2: stringMap[ dsitems[0] ] = dsitems[1]
-        elif len( dsitems ) == 1:
-            fileId = os.path.splitext( os.path.basename( dsitems[0] ) )[0]
-            stringMap[ fileId ] = dsitems[0]
+    if serialized_strMap:
+        for dsrec in serialized_strMap.split(';'):
+            dsitems = dsrec.split('#')
+            if len( dsitems ) == 2: stringMap[ dsitems[0] ] = dsitems[1]
+            elif len( dsitems ) == 1:
+                fileId = os.path.splitext( os.path.basename( dsitems[0] ) )[0]
+                stringMap[ fileId ] = dsitems[0]
     return stringMap
 
 def getDataRoot():

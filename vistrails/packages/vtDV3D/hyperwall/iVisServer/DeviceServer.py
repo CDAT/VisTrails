@@ -7,7 +7,7 @@ from core.db.action import create_action
 
 from core.db.io import serialize, unserialize
 from core.vistrail.pipeline import Pipeline
-from vtDV3D.vtUtilities import *
+from packages.vtDV3D.vtUtilities import *
 import copy
 
 from core import system
@@ -448,7 +448,7 @@ class Device:
                 else:
                     serializedPipelinesDict[self.addresses[socketAddress]] = message
             else: 
-                print self.name, "found no receiver for ", socketAddress
+                print self.name, " found no receiver for ", socketAddress
                 print self.addresses.keys(), self.addresses.values()
 
         for socketKey in serializedPipelinesDict:

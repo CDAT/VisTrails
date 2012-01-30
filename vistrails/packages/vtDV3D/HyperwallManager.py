@@ -45,6 +45,9 @@ class HyperwallManagerSingleton(QtCore.QObject):
     def shutdown(self):
         if self.isServer: 
             self.server.shutdownClients()
+#        for proc in self.processList:
+#            proc[0].kill()
+#            proc[1].close()
         
     def getDimensions(self):
         return ( self.columnCount, self.rowCount )
@@ -111,14 +114,16 @@ class HyperwallManagerSingleton(QtCore.QObject):
             hw_y = node_index % hw_dims[1]
             from hyperwall.iVisClient.iVisClient import QiVisClient
             print " QiVisClient startup, full screen = %s " % str( fullScreen )
-            self.client = QiVisClient(   self.deviceName, hw_x, hw_y, 1, 1, hw_server, hw_port, dv3d_configuration.hw_displayWidth, dv3d_configuration.hw_displayHeight, fullScreen )
+            self.client = QiVisClient(  self.deviceName,  hw_server, hw_port, hw_x, hw_y, 1, 1  )
+#            self.client.createTab(  int(dv3d_configuration.hw_displayWidth), int(dv3d_configuration.hw_displayHeight), fullScreen )
 
     def initialize( self ):
         defaults = { 'hw_debug': False, 'hw_resource_path':'', 'hw_device_name': "Hyperwall",  'hw_x':0, 'hw_y':0, 'hw_width':1, 'hw_height':1,
                                      'hw_displayWidth':-1, 'hw_displayHeight':-1, 'hw_nodes':"", 'hw_server':"localhost",  'hw_server_port':50000 }
         datasetConfig, appConfig = getConfiguration( defaults )
+        app = gui.application.VistrailsApplication
         hw_role = appConfig.hw_role if hasattr( appConfig, 'hw_role' ) else 'global'
-        self.processList = []        
+        self.processList = []               
                 
         self.deviceName = datasetConfig.get( hw_role, 'hw_device_name' )        
         debug = datasetConfig.get( hw_role, 'hw_debug' )    
@@ -154,23 +159,26 @@ class HyperwallManagerSingleton(QtCore.QObject):
             hw_y = node_index % hw_dims[1]
             from hyperwall.iVisClient.iVisClient import QiVisClient
             print " QiVisClient startup, full screen = %s " % str( fullScreen )
-            hw_displayWidth = datasetConfig.get( hw_role, 'hw_displayWidth' )
-            hw_displayHeight = datasetConfig.get( hw_role, 'hw_displayHeight' )
-            self.client = QiVisClient(   self.deviceName, hw_x, hw_y, 1, 1, hw_server, hw_port, hw_displayWidth, hw_displayHeight, fullScreen )
+            hw_displayWidth = int( datasetConfig.get( hw_role, 'hw_displayWidth' ) )
+            hw_displayHeight = int( datasetConfig.get( hw_role, 'hw_displayHeight' ) )
+            self.client = QiVisClient( self.deviceName, hw_server, hw_port, hw_x, hw_y, 1, 1 )
+#            self.client.createTab( hw_displayWidth, hw_displayHeight, fullScreen )
                 
-
     def spawnRemoteViewer( self, node, nodeIndex, debug=False ):
         localhost = os.uname()[1]
         debugStr = ('/usr/X11/bin/xterm -sb -sl 20000 -display :0.0 -e ') if debug else ''
         optionsStr = "-Y" if debug else ''  
+        f = open( os.path.expanduser( '~/.vistrails/dv3d-%d.log' % ( nodeIndex ) ), 'w')
 #            cmd = "ssh %s %s '%s /usr/local/bin/bash -c \"source ~/.vistrails/hw_env; export HW_NODE_INDEX=%d; export DISPLAY=:0.0; python %s/main/client.py\" ' " % ( optionsStr, node, debugStr, nodeIndex, HYPERWALL_SRC_PATH )
-        cmd = [ "ssh", node, 'bash -c \"export HW_NODE_INDEX=%d; export DISPLAY=:0.0; ~/.vistrails/hw_vistrails_client ~/.vistrails-%d %s\" ' % ( nodeIndex, nodeIndex, socket.gethostname() ) ]
+        cmd = [ "ssh", node, '~/.vistrails/hw_vistrails_client %d' % ( nodeIndex ) ] #  socket.gethostname()
         print " --- Executing: ", ' '.join(cmd)
         try:
-            p = subprocess.Popen( cmd, stdout=sys.stdout, stderr=sys.stderr ) 
+            p = subprocess.Popen( cmd, stdout=f, stderr=f ) 
+#            p = subprocess.Popen( cmd ) 
         except Exception, err:
             print>>sys.stderr, " Exception in spawnRemoteViewer: %s " % str( err )
-        self.processList.append( p )  
+            return
+        self.processList.append( ( p, f ) )  
  
     
 #    def registerPipeline(self):

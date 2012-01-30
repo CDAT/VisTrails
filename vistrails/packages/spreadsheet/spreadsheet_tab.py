@@ -42,7 +42,7 @@
 #   StandardWidgetToolBar
 ################################################################################
 from PyQt4 import QtCore, QtGui
-import os.path
+import os.path, traceback
 from spreadsheet_registry import spreadsheetRegistry
 from spreadsheet_sheet import StandardWidgetSheet
 from spreadsheet_cell import QCellPresenter, QCellContainer, QCellToolBar
@@ -665,23 +665,27 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         if not col:
             #col = configuration.columnCount
             col = 1
-        self.type = 'StandardWidgetSheetTab'
-        self.tabWidget = tabWidget
-        self.sheet = StandardWidgetSheet(row, col, self)
-        self.sheet.setFitToWindow(True)
-        self.displayPrompt()
-        self.connect(self.sheet,
-                     QtCore.SIGNAL('cellActivated(int, int, bool)'),
-                     self.cellSelectionChanged)
-        self.toolBar = StandardWidgetToolBar(self)
-        self.vLayout = QtGui.QVBoxLayout()
-        self.vLayout.setSpacing(0)
-        self.vLayout.setMargin(0)
-        self.vLayout.addWidget(self.toolBar, 0)
-        self.vLayout.addWidget(self.sheet, 1)
-        self.setLayout(self.vLayout)
-        self.pipelineInfo = {}
-        self.setAcceptDrops(True)
+        try:
+            self.type = 'StandardWidgetSheetTab'
+            self.tabWidget = tabWidget
+            self.sheet = StandardWidgetSheet(row, col, self)
+            self.sheet.setFitToWindow(True)
+            self.displayPrompt()
+            self.connect(self.sheet,
+                         QtCore.SIGNAL('cellActivated(int, int, bool)'),
+                         self.cellSelectionChanged)
+            self.toolBar = StandardWidgetToolBar(self)
+            self.vLayout = QtGui.QVBoxLayout()
+            self.vLayout.setSpacing(0)
+            self.vLayout.setMargin(0)
+            self.vLayout.addWidget(self.toolBar, 0)
+            self.vLayout.addWidget(self.sheet, 1)
+            self.setLayout(self.vLayout)
+            self.pipelineInfo = {}
+            self.setAcceptDrops(True)
+        except Exception, err:
+            print "Uncaught exception on StandardWidgetSheetTab initialization: %s" % err
+            traceback.print_exc()
 
     def rowSpinBoxChanged(self):
         """ rowSpinBoxChanged() -> None
