@@ -434,7 +434,7 @@ class VariableProperties(QtGui.QDockWidget):
 
         
     def defineVarClicked(self,*args):
-        if self.originTabWidget.currentIndex() in [0, 1]:
+        if self.originTabWidget.currentIndex() in [0, 1, 3]:
             self.getUpdatedVarCheck()
         elif self.originTabWidget.currentIndex() == 2:
             #paraview
