@@ -4,8 +4,10 @@ Created on Mar 10, 2011
 @author: tpmaxwel
 '''
 
-from vtUtilities import *    
+from vtUtilities import *   
+from collections import OrderedDict 
 moduleStoreDatabase = {}
+cells = OrderedDict()
 
 def getDatabase():
     import api
@@ -36,5 +38,18 @@ def refreshParameters(self):
     for module in moduleList:  module.refreshParameters()
     for module in moduleList:  module.persistParameters()          
     executeWorkflow()
+
+def popCell():
+    try:                return cells.popitem(False)
+    except KeyError:    return None
+
+def addCell( id, location ):
+    cells[id] = location
+
+def getNCells():
+    return len(cells) 
+
+def getCell(id):
+    return cells.get(id,None) 
      
     

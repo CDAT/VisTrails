@@ -12,6 +12,7 @@ from PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationMod
 from InteractiveConfiguration import *
 from WorkflowModule import WorkflowModule
 from HyperwallManager import HyperwallManager
+import ModuleStore
 from vtUtilities import *
 import os
 
@@ -271,6 +272,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 #        print " processInteractionEvent: %s, pos = %s, key = %s " % ( name, str(pos), str(key) )
 
     def setCellLocation( self, moduleId ):
+        cell = ModuleStore.popCell()
         cellLocation = CellLocation()
         cellLocation.rowSpan = 1
         cellLocation.colSpan = 1
@@ -279,8 +281,10 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             cellLocation.sheetReference.sheetName = HyperwallManager.deviceName
 
         cell_coordinates = None
+         
             
-        address = getItem( self.getInputValue( "cell_location", None ) )
+        address = cell[1] if cell else getItem( self.getInputValue( "cell_location", None ) )
+        print "Setting Cell Address: %s %s" % ( address, str(cell) )
         if address:
             address = address.replace(' ', '').upper()
             cell_coordinates = parse_cell_address( address )
@@ -294,7 +298,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.overrideLocation( cellLocation )
         self.adjustSheetDimensions( cellLocation.row, cellLocation.col )
         return [ cellLocation.col, cellLocation.row, 1, 1 ]
-
+    
     def updateHyperwall(self):
         dimensions = self.setCellLocation( self.moduleID )  
         if dimensions:      
@@ -546,6 +550,7 @@ class PM_MapCell3D( PM_DV3DCell ):
             world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None
             opacity =  self.getInputValue( "opacity",   0.4  ) #  wmod.forceGetInputFromPort( "opacity",   0.4  )  if wmod else 0.4  
             map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
+            cell_location = self.getInputValue( "cell_location", "00"  )
                 
             self.y0 = -90.0  
             dataPosition = None
@@ -596,7 +601,7 @@ class PM_MapCell3D( PM_DV3DCell ):
 #            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
             mapCorner = [ self.x0, self.y0 ]
 #            if ( ( self.roi[0]-map_border_size ) < 0.0 ): mapCorner[0] = mapCorner[0] - 360.0
-            print " DV3DCell, mapCorner = %s, dataPosition = %s " % ( str(mapCorner), str(dataPosition) )
+            print " DV3DCell, mapCorner = %s, dataPosition = %s, cell_location = %s " % ( str(mapCorner), str(dataPosition), cell_location )
             self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
             self.baseMapActor.SetInput( baseImage )
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]            

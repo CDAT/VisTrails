@@ -315,13 +315,18 @@ class QSliderCombo(QtGui.QWidget):
         self.axisCombo.setMinValue(minValue)
         if self.parent().pin.isChecked():
             self.parent().pin.click()
+            
+    def boundIndex( self, index ):
+        if index >= len( self.axisValues ): return len( self.axisValues ) - 1
+        if index <= 0: return 0
+        return index
 
     def updateMax(self, maxIndex=None):
         """ Set max value, update the slider label and the comboBox line edit
         to show the new max value"""
         
         if not maxIndex is None:
-            self.maxIndex = maxIndex
+            self.maxIndex = self.boundIndex( maxIndex )
             
         if (self.indexMode == True):
             maxValue = self.maxIndex + self.startIndex
@@ -334,12 +339,14 @@ class QSliderCombo(QtGui.QWidget):
             self.parent().pin.click()
 
     def updateTopSlider(self, index):
+        index = self.boundIndex( index )
         self.minIndex = index
         self.topSlider.setValue(index)
         if self.parent().pin.isChecked():
             self.parent().pin.click()
 
     def updateBottomSlider(self, index):
+        index = self.boundIndex( index )
         self.maxIndex = index
         self.bottomSlider.setValue(index)
         if self.parent().pin.isChecked():

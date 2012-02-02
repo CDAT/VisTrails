@@ -11,6 +11,7 @@ from InteractiveConfiguration import *
 from core.modules.vistrails_module import Module, ModuleError
 from WorkflowModule import WorkflowModule 
 from HyperwallManager import HyperwallManager
+import ModuleStore
 #from core.vistrail.port_spec import PortSpec
 from vtUtilities import *
 from PersistentModule import * 
@@ -729,6 +730,7 @@ class SerializedInterfaceSpecs:
         fileInputSpecs = inputSpecElements[0].split('|')
         varInputSpecs = inputSpecElements[1].split('|')
         gridInputSpecs = inputSpecElements[2].split('|')
+        cellInputSpecs = inputSpecElements[3].split('|')
         if len( fileInputSpecs ) == 1:
             fileMetadata = fileInputSpecs[0].split('!')
             fileId = fileMetadata[1]
@@ -747,6 +749,9 @@ class SerializedInterfaceSpecs:
                 self.addInput( ("Input%d" % iVar), fileId, fileName, varName, axes )
         else:
             print>>sys.stderr, " ERROR: Number of Files and number of Variables do not match."
+        for iCell in range( len(cellInputSpecs) ):
+            cellMetadata = cellInputSpecs[iCell].split('!')
+            ModuleStore.addCell( cellMetadata[0], cellMetadata[1] )
                 
         
     def addInput(self, inputName, fileId, fileName, variableName, axes ):
@@ -756,7 +761,7 @@ class SerializedInterfaceSpecs:
         
     def getNInputs(self):
         return len(self.inputs)
-        
+            
     def getInput(self, **args ):
         inputName = args.get( 'name', None )
         if not inputName: 
