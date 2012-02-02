@@ -409,9 +409,10 @@ class Plot(object):
                     fileAliases = '|'.join( [ "%s!%s!%s" % ( self.files[i], aliases[self.files[i]], aliases[".".join([self.files[i],"url"])] )  for i in range(self.filenum) ] )
                     varAliases = '|'.join( [ "%s!%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
                     gridAliases = '|'.join( [ "%s!%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
-                    aliases[ self.serializedConfigAlias ] = ';'.join( [ fileAliases, varAliases, gridAliases ] )
+                    cellAliases = '|'.join( [ "location%d!%s" % ( i, self.cells[i].getAddress( aliases ) ) for i in range( len(self.cells) ) ] )
+                    aliases[ self.serializedConfigAlias ] = ';'.join( [ fileAliases, varAliases, gridAliases, cellAliases ] )
                     print " vcdatInputSpecs: ", str( aliases[ self.serializedConfigAlias ] )
-                except KeyError:
+                except KeyError, err:
                     # it failed because the other aliases do not exist
                     # it's very likely that the serialized alias is already set.
                     debug.debug("Could not build serialized alias from other aliases. Using current one.")
@@ -422,10 +423,11 @@ class Plot(object):
     def unserializeAliases(self, aliases):
         if self.serializedConfigAlias:
             if self.serializedConfigAlias in aliases:
-                (fileAliases, varAliases, gridAliases) = aliases[self.serializedConfigAlias].split(";")
+                (fileAliases, varAliases, gridAliases, cellAliases) = aliases[self.serializedConfigAlias].split(";")
                 fileAliases = fileAliases.split("|")
                 varAliases = varAliases.split("|")
                 gridAliases = gridAliases.split("|")
+                cellAliases = cellAliases.split("|")
                 for i in range(self.filenum):
                     a, v = fileAliases[i].split("!")
                     aliases[self.files[i]] = v
@@ -435,6 +437,9 @@ class Plot(object):
                 for i in range(self.varnum):
                     a,v = gridAliases[i].split("!")
                     aliases[self.axes[i]] = v
+                for i in range( len( cellAliases ) ):
+                    a,v = cellAliases[i].split("!")
+                    aliases[ a ] = v
                     
     def previewChanges(self, aliases):
         print "previewChanges", aliases
@@ -514,6 +519,13 @@ class Cell(object):
         self.row_name = row_name
         self.col_name = col_name
         self.address_name = address_name
+        
+    def getAddress( self, aliases ):
+        srow = aliases[ self.row_name ] 
+        icol = int( aliases[ self.col_name ] ) - 1
+        colHeader = chr( ord('A') + icol )
+        addr = "%c%s" % ( colHeader, srow )
+        return addr
         
 class PlotRegistrySignals(QtCore.QObject):
     # new_module_signal is emitted with descriptor of new module

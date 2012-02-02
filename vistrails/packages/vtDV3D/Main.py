@@ -118,8 +118,8 @@ def executeVistrail( *args, **kwargs ):
     sys.exit(v)
 
 if __name__ == '__main__':
-#    optionsDict = {  'hw_role'  : 'global'  }         
-    optionsDict = {  'hw_role'  : 'hw_server'  }         
+    optionsDict = {  'hw_role'  : 'global'  }         
+#    optionsDict = {  'hw_role'  : 'hw_server'  }         
 #    optionsDict = {  'hw_role'  : 'hw_client', 'hw_node_index'  : 0 }         
     executeVistrail( options=optionsDict )
  

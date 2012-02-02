@@ -406,7 +406,7 @@ class Plot(object):
                         op = ('change', old_param, new_param, 
                               function.vtType, function.real_id)
                         param_changes.append(op)
-#                        print "Added parameter change for alias=%s, value=%s" % ( k, value  )
+                        print "Added parameter change for alias=%s, value=%s" % ( k, value  )
                     else:
                         debug.warning("CDAT Package: Change parameter %s in widget %s was not generated"%(k, self.name))
             else:
