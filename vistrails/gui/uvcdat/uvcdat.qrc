@@ -18,6 +18,8 @@
         <file>resources/icons/unpinned.png</file>
         <file>resources/icons/pinned.png</file>
         <file>resources/icons/colormap.png</file>
+	<file>resources/icons/previous.png</file>
+	<file>resources/icons/next.png</file>
 	<file>resources/icons/animation.png</file>
     </qresource>
     <qresource prefix="/images">

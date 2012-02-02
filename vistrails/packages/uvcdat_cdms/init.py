@@ -902,7 +902,7 @@ class QCDATWidget(QCellWidget):
     
     def __init__(self, parent=None):
         QCellWidget.__init__(self, parent)
-        self.toolBarType = QCDATWidgetToolBar        
+        self.toolBarType = QCDATWidgetToolBar
         self.window = None
         self.canvas =  None
         self.windowId = -1
@@ -925,12 +925,18 @@ Please delete unused CDAT Cells in the spreadsheet.")
                 self.canvas = vcs.canvaslist[windowIndex-1]
             self.windowId = windowIndex
             QCDATWidget.usedIndexes.append(self.windowId)
-             
-    def updateContents(self, inputPorts):
+
+    def prepExtraDims(self,var):
+        k={}
+        for d,i in zip(self.extraDimsNames,self.extraDimsIndex):
+            if d in var.getAxisIds():
+                k[d]=slice(i,i+1)
+        return k
+    
+    def updateContents(self, inputPorts, fromToolBar=False):
         """ Get the vcs canvas, setup the cell's layout, and plot """        
         spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         spreadsheetWindow.setUpdatesEnabled(False)
-
         # Set the canvas
         # if inputPorts[0] is not None:
         #     self.canvas = inputPorts[0]
@@ -951,12 +957,28 @@ Please delete unused CDAT Cells in the spreadsheet.")
         # cell widget's layout
            
         self.canvas.clear()
+        if not fromToolBar:
+            self.extraDimsNames=inputPorts[0][0].var.var.getAxisIds()[:-2]
+            self.extraDimsIndex=[0,]*len(self.extraDimsNames)
+            self.extraDimsLen=inputPorts[0][0].var.var.shape[:-2]
+            self.inputPorts = inputPorts
+            if hasattr(self.parent(),"toolBar"):
+                t = self.parent().toolBar
+                if hasattr(t,"dimSelector"):
+                    while (t.dimSelector.count()>0):
+                        t.dimSelector.removeItem(0)
+                    t.dimSelector.addItems(self.extraDimsNames)
         # Plot
         for plot in inputPorts[0]:
+            cmd = "#Now plotting\nvcs_canvas[%i].plot(" % (self.canvas.canvasid()-1)
             # print "PLOT TYPE:", plot.plot_type
-            args = [plot.var.var]
+            k1 = self.prepExtraDims(plot.var.var)
+            args = [plot.var.var(**k1)]
+            cmd+="%s(**%s), " % (args[0].id,str(k1))
             if hasattr(plot, "var2") and plot.var2 is not None:
-                args.append(plot.var2.var)
+                k2 = self.prepExtraDims(plot.var2.var)
+                args.append(plot.var2.var(**k2))
+                cmd+="%s(**%s), " % (args[-1].id,str(k2))
             args.append(plot.template)
             cgm = self.get_graphics_method(plot.plot_type, plot.graphics_method_name)
             if plot.graphics_method_name != 'default':
@@ -965,15 +987,11 @@ Please delete unused CDAT Cells in the spreadsheet.")
                         if k in ['legend']:
                             setattr(cgm,k,eval(getattr(plot,k)))
                         else:
-                            setattr(cgm,k,getattr(plot,k))
+                            if getattr(plot,k)!=getattr(cgm,k):
+                                setattr(cgm,k,getattr(plot,k))
                         #print k, " = ", getattr(cgm,k)
                             
             kwargs = plot.kwargs
-            #print "is this the place we plot?",args,kwargs
-            cmd = "#Now plotting\nvcs_canvas[%i].plot(" % (self.canvas.canvasid()-1)
-            for a in args:
-                if isinstance(a,cdms2.tvariable.TransientVariable):
-                    cmd+=" %s," % a.id
             cmd+=" 'starter', '%s'" % cgm.name
             for k in kwargs:
                 cmd+=", %s=%s" % (k, repr(kwargs[k]))
@@ -1064,9 +1082,133 @@ class QCDATWidgetToolBar(QCellToolBar):
         This will get call initially to add customizable widgets
         
         """
+        cell = self.parent().getCell(self.parent().parentRow,self.parent().parentCol)
+        if cell.inputPorts[0][0].var.var.rank()>2:
+            self.dimSelector = QCDATDimSelector(self,cell)
+            self.addWidget(self.dimSelector)
+            self.prevAction=QCDATWidgetPrev(self)
+            self.prevAction.setEnabled(False)
+            self.appendAction(self.prevAction)
+            self.nextAction=QCDATWidgetNext(self)
+            self.appendAction(self.nextAction)
+            
+
         self.appendAction(QCDATWidgetExport(self))
         self.appendAction(QCDATWidgetColormap(self))
         self.appendAction(QCDATWidgetAnimation(self))
+
+class QCDATDimSelector(QtGui.QComboBox):
+    """ list of dims to put here"""
+    def __init__(self,parent=None,cell=None):
+        QtGui.QComboBox.__init__(self,parent)
+        self.addItems(cell.extraDimsNames)
+    def valueChanged(*args):
+        print "You changed the dims name",args
+        
+class QCDATWidgetPrev(QtGui.QAction):
+    """
+    QCDATWidgetColormap is the action to export the plot 
+    of the current cell to a file
+
+    """
+    def __init__(self, parent=None):
+        """ QCDATWidgetAnimation(icon: QIcon, parent: QWidget)
+                                   -> QCDATWidgetAnimation
+        Brings up the naimation
+        
+        """
+        QtGui.QAction.__init__(self,
+                               QtGui.QIcon(":/icons/resources/icons/previous.png"),
+                               "Animate",
+                               parent)
+        self.setStatusTip("Move to Next Dimensions")
+        
+
+    def triggeredSlot(self, checked=False):
+        """ toggledSlot(checked: boolean) -> None
+        Execute the action when the button is clicked
+        
+        """
+        from api import _app
+        #make sure we get the canvas object used in the cell
+        cellWidget = self.toolBar.getSnappedWidget()
+        selectedDim = str(self.parent().dimSelector.currentText())
+        i = cellWidget.extraDimsNames.index(selectedDim)
+        cellWidget.extraDimsIndex[i]-=1
+        cellWidget.updateContents(cellWidget.inputPorts,True)
+        self.parent().nextAction.setEnabled(True)
+        if  cellWidget.extraDimsIndex[i]==0:
+            self.setEnabled(False) 
+        
+    def updateStatus(self, info):
+        """ updateStatus(info: tuple) -> None
+        Updates the status of the button based on the input info
+        
+        """
+        from api import _app
+        (sheet, row, col, cellWidget) = info
+        selectedCells = sorted(sheet.getSelectedLocations())
+
+        # Will not show up if there is no cell selected  
+        proj_controller = _app.uvcdatWindow.get_current_project_controller()
+        sheetName = sheet.getSheetName()        
+        if (len(selectedCells)==1 and 
+            proj_controller.is_cell_ready(sheetName,row,col)):
+                self.setVisible(True)
+        else:
+            self.setVisible(False)
+class QCDATWidgetNext(QtGui.QAction):
+    """
+    QCDATWidgetColormap is the action to export the plot 
+    of the current cell to a file
+
+    """
+    def __init__(self, parent=None):
+        """ QCDATWidgetAnimation(icon: QIcon, parent: QWidget)
+                                   -> QCDATWidgetAnimation
+        Brings up the naimation
+        
+        """
+        QtGui.QAction.__init__(self,
+                               QtGui.QIcon(":/icons/resources/icons/next.png"),
+                               "Animate",
+                               parent)
+        self.setStatusTip("Move to Next Dimensions")
+        
+
+    def triggeredSlot(self, checked=False):
+        """ toggledSlot(checked: boolean) -> None
+        Execute the action when the button is clicked
+        
+        """
+        from api import _app
+        #make sure we get the canvas object used in the cell
+        cellWidget = self.toolBar.getSnappedWidget()
+        selectedDim = str(self.parent().dimSelector.currentText())
+        i = cellWidget.extraDimsNames.index(selectedDim)
+        cellWidget.extraDimsIndex[i]+=1
+        cellWidget.updateContents(cellWidget.inputPorts,True)
+        self.parent().prevAction.setEnabled(True)
+        if  cellWidget.extraDimsIndex[i]==cellWidget.extraDimsLen[i]-1:
+            self.setEnabled(False) 
+        
+    def updateStatus(self, info):
+        """ updateStatus(info: tuple) -> None
+        Updates the status of the button based on the input info
+        
+        """
+        from api import _app
+        (sheet, row, col, cellWidget) = info
+        selectedCells = sorted(sheet.getSelectedLocations())
+
+        # Will not show up if there is no cell selected  
+        proj_controller = _app.uvcdatWindow.get_current_project_controller()
+        sheetName = sheet.getSheetName()        
+        if (len(selectedCells)==1 and 
+            proj_controller.is_cell_ready(sheetName,row,col)):
+                self.setVisible(True)
+        else:
+            self.setVisible(False)
 
 class QCDATWidgetAnimation(QtGui.QAction):
     """

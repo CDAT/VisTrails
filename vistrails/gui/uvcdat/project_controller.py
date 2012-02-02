@@ -717,7 +717,7 @@ class ProjectController(QtCore.QObject):
                                                    cell.current_parent_version, 
                                                    var_modules, cell.plot,
                                                    row, column)
-        print '### setting row/column:', row, column
+        #print '### setting row/column:', row, column
         #notice that at this point the action was already performed by the helper
         # we need only to update the current parent version of the cell and 
         # execute the workflow if necessary.

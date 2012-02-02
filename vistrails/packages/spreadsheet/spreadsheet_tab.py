@@ -237,6 +237,8 @@ class StandardWidgetSheetTabInterface(object):
         
         """
         cell = self.getCell(row, col)
+        self.parentRow = row
+        self.parentCol = col
         if cell:
             if hasattr(cell, 'toolBarType'):
                 toolBarType = cell.toolBarType
@@ -625,6 +627,7 @@ class StandardWidgetSheetTabInterface(object):
         
         """
         cellWidget = self.getCell(row, col)
+                
         if type(cellWidget)==QPromptCellWidget:
             cellWidget.addVariable(varName)
             cellWidget.update()
