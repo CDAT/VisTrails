@@ -1051,7 +1051,7 @@ Please delete unused CDAT Cells in the spreadsheet.")
         Save the current widget contents to a pdf file
         
         """   
-        self.canvas.pdf(filename, width=11.5)
+        self.canvas.pdf(filename)#, width=11.5)
         
     def exportToFile(self):
         file = QtGui.QFileDialog.getSaveFileName(
@@ -1061,15 +1061,15 @@ Please delete unused CDAT Cells in the spreadsheet.")
             filename = str(file)
             (_,ext) = os.path.splitext(filename)
             if  ext.upper() == '.PDF':
-                self.canvas.pdf(filename, width=11.5)
+                self.canvas.pdf(filename)#, width=11.5)
             elif ext.upper() == ".PNG":
-                self.canvas.png(filename, width=11.5)
+                self.canvas.png(filename)#, width=11.5)
             elif ext.upper() == ".SVG":
-                self.canvas.svg(filename, width=11.5)
+                self.canvas.svg(filename)#, width=11.5)
             elif ext.upper() == ".GIF":
-                self.canvas.gif(filename, width=11.5)
+                self.canvas.gif(filename)#, width=11.5)
             elif ext.upper() == ".PS":
-                self.canvas.postscript(filename, width=11.5)
+                self.canvas.postscript(filename)#, width=11.5)
         
 class QCDATWidgetToolBar(QCellToolBar):
     """
