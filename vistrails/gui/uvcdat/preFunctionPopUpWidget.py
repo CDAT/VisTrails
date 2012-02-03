@@ -206,7 +206,7 @@ class preFuncPopUp(QtGui.QDialog):
             else:
                 nm = str(e.label.text())
                 try:
-                    val = repr(str(e.text()))
+                    val = eval(str(e.text()))
                 except:
                     val = str(e.text())
             kargs[nm]=val
