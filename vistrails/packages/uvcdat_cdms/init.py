@@ -1084,11 +1084,11 @@ class QCDATWidgetToolBar(QCellToolBar):
         """
         cell = self.parent().getCell(self.parent().parentRow,self.parent().parentCol)
         if cell.inputPorts[0][0].var.var.rank()>2:
-            self.dimSelector = QCDATDimSelector(self,cell)
-            self.addWidget(self.dimSelector)
             self.prevAction=QCDATWidgetPrev(self)
             self.prevAction.setEnabled(False)
             self.appendAction(self.prevAction)
+            self.dimSelector = QCDATDimSelector(self,cell)
+            self.addWidget(self.dimSelector)
             self.nextAction=QCDATWidgetNext(self)
             self.appendAction(self.nextAction)
             

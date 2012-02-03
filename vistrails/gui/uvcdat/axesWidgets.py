@@ -210,10 +210,16 @@ class QSliderCombo(QtGui.QWidget):
         
     def findAxisIndex(self,val):
         self.axisValues = numpy.array(self.axisValues)
-        i=self.axisValues.searchsorted(val)
-        if i>0 and i!=len(self.axisValues):
-            if (val-self.axisValues[i-1])<(self.axisValues[i]-val): # closer from lower bound
+        vals = self.axisValues
+        n = len(vals)
+        if vals[-1]<vals[0]:
+            vals=vals[::-1]
+        i=vals.searchsorted(val)
+        if i>0 and i!=n:
+            if (val-vals[i-1])<(vals[i]-val): # closer from lower bound
                 i-=1
+        if self.axisValues[-1]<self.axisValues[0]:
+            i=n-1-i
         return i
     
     def initAxisValues(self, axis):
