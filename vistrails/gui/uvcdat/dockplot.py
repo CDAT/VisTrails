@@ -1,3 +1,18 @@
+###############################################################################
+#                                                                             #
+# Module:       plot dock module                                              #
+#                                                                             #
+# Copyright:    "See file Legal.htm for copyright information."               #
+#                                                                             #
+# Authors:      PCMDI Software Team                                           #
+#               Lawrence Livermore National Laboratory:                       #
+#               website: http://uv-cdat.llnl.gov/                             #
+#                                                                             #
+# Description:  UV-CDAT GUI plot dock                                         #
+#                                                                             #
+# Version:      6.0                                                           #
+#                                                                             #
+###############################################################################
 from PyQt4 import QtCore, QtGui
 import platform
 from uvcdatCommons import plotTypes
