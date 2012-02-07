@@ -11,11 +11,13 @@ from packages.vtk.vtkcell import QVTKWidget
 from PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
 from InteractiveConfiguration import *
 from WorkflowModule import WorkflowModule
+from JoystickInterface import *
 from HyperwallManager import HyperwallManager
 import ModuleStore
 from vtUtilities import *
-import os
+import os, math
 
+vmath = vtk.vtkMath()
 packagePath = os.path.dirname( __file__ )  
 defaultMapDir = os.path.join( packagePath, 'data' )
 defaultMapFile = os.path.join( defaultMapDir,  'world_huge.jpg' )
@@ -45,6 +47,8 @@ class QVTKClientWidget(QVTKWidget):
     """
     def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
         QVTKWidget.__init__(self, parent, f )
+        self.iRenderCount = 0
+        self.iRenderPeriod = 6
 
 #    def updateContents( self, inputPorts ):
 #        if len( inputPorts ) > 5:
@@ -52,13 +56,76 @@ class QVTKClientWidget(QVTKWidget):
 #                self.SetRenderWindow( inputPorts[5] )
 #        QVTKWidget.updateContents(self, inputPorts )
 
-class QVTKServerWidget(QVTKWidget):
+    def event(self, e): 
+        if   e.type() == ControlEventType:   self.processControllerEvent( e, [ self.width(), self.height() ] )  
+        return qt_super(QVTKClientWidget, self).event(e) 
+    
+    def processControllerEvent(self, event, size ):
+        renWin = self.GetRenderWindow()
+        iren = renWin.GetInteractor()
+        renderers = renWin.GetRenderers()
+        renderer = renderers.GetFirstRenderer()
+        doRender = ( self.iRenderCount == self.iRenderPeriod )
+        self.iRenderCount = 0 if doRender else self.iRenderCount + 1
+        if event.controlEventType == 'J':
+            dx = event.jx
+            dy = event.jy
+            while renderer <> None:
+              center = [ size[0]/2, size[1]/2]           
+              vp = renderer.GetViewport()         
+              delta_elevation = -700.0/((vp[3] - vp[1])*size[1])
+              delta_azimuth = -700.0/((vp[2] - vp[0])*size[0])             
+              rxf = dx * delta_azimuth
+              ryf = dy * delta_elevation 
+#              print "Processing Rotate Event: ( %.2f, %.2f )" % ( rxf, ryf )         
+              camera = renderer.GetActiveCamera()
+              camera.Azimuth(rxf)
+              camera.Elevation(ryf)
+              camera.OrthogonalizeViewUp()           
+              renderer.ResetCameraClippingRange()            
+              if doRender: iren.Render()
+              renderer = renderers.GetNextItem()
+              
+        elif event.controlEventType == 'j':
+            dx = event.jx
+            dy = event.jy
+            while renderer <> None:          
+              vp = renderer.GetViewport()   
+              camera = renderer.GetActiveCamera()            
+#              newAngle = vmath.DegreesFromRadians( math.asin( dy ) )
+#              camera.Roll( newAngle )
+#              camera.OrthogonalizeViewUp()  
+              if dy > 0:
+                    camera.Dolly( math.pow( 1.1, dy ) )
+
+#                    ViewFocus = camera.GetFocalPoint()
+#                    renderer.SetWorldPoint(ViewFocus[0], ViewFocus[1], ViewFocus[2], 1.0)
+#                    renderer.WorldToDisplay()
+#                    ViewFocus = renderer.GetDisplayPoint()
+#                    focalDepth = ViewFocus[2]
+#
+#                    renderer.SetDisplayPoint(iren.GetEventPosition()[0], iren.GetEventPosition()[1], focalDepth )
+#                    renderer.DisplayToWorld()
+#                    newPickPoint = renderer.GetWorldPoint()
+#                    if newPickPoint[3] > 0.0:
+#                        newPickPoint = [ newPickPoint[0] / newPickPoint[3],  newPickPoint[1] / newPickPoint[3], newPickPoint[2] / newPickPoint[3], 1.0]                    
+#                    ViewFocus = camera.GetFocalPoint()
+#                    ViewPoint = camera.GetPosition()
+#                    scale = 0.1                        
+#                    MotionVector = [ scale * (ViewFocus[0] - newPickPoint[0]), scale * (ViewFocus[1] - newPickPoint[1]), scale * (ViewFocus[2] - newPickPoint[2]) ]         
+#                    camera.SetFocalPoint(MotionVector[0] + ViewFocus[0], MotionVector[1] + ViewFocus[1], MotionVector[2] + ViewFocus[2])           
+#                    camera.SetPosition(MotionVector[0] + ViewPoint[0], MotionVector[1] + ViewPoint[1], MotionVector[2] + ViewPoint[2])
+        
+              if doRender: iren.Render()
+              renderer = renderers.GetNextItem()
+
+class QVTKServerWidget( QVTKClientWidget ):
     """
     QVTKWidget with interaction observers
     
     """
     def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
-        QVTKWidget.__init__(self, parent, f )
+        QVTKClientWidget.__init__(self, parent, f )
         self.location = 'A1'
         
     def setLocation( self, location ):
@@ -77,6 +144,7 @@ class QVTKServerWidget(QVTKWidget):
         elif e.type() == QtCore.QEvent.MouseMove:          self.processInteractionEvent('mouseMove',e,dims) 
         elif e.type() == QtCore.QEvent.MouseButtonRelease: self.processInteractionEvent('buttonRelease',e,dims) 
         elif e.type() == QtCore.QEvent.KeyRelease:         self.processInteractionEvent('keyRelease',e,dims)         
+        elif e.type() == ControlEventType:                 self.processInteractionEvent('joystick',e,dims)         
         return qt_super(QVTKServerWidget, self).event(e)
 
     def getSelectedCells(self):
@@ -361,7 +429,9 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 self.cellWidget = self.displayAndWait( QVTKClientWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
             #in mashup mode, self.displayAndWait will return None
             if self.cellWidget:
-                self.renWin = self.cellWidget.GetRenderWindow()             
+                self.renWin = self.cellWidget.GetRenderWindow()  
+                if joystick.enabled():
+                    joystick.addTarget( self.cellWidget )           
                 
 #                self.renWin.StereoCapableWindowOn()
             self.builtCellWidget = True
@@ -401,7 +471,6 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                     self.renderers.append( wrapVTKModule( 'vtkRenderer', renderer1 ) )
                     if inputModule.fieldData: self.fieldData.append( inputModule.fieldData )
         self.addTitle()
-
 
 class PM_ChartCell( PM_DV3DCell ):
 

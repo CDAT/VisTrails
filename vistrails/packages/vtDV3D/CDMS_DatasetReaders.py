@@ -897,8 +897,8 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                     self.roi[1] = lat_bounds[0] if lat_bounds[0] < lat_bounds[1] else lat_bounds[1]
                     self.roi[3] = lat_bounds[1] if lat_bounds[0] < lat_bounds[1] else lat_bounds[0] 
                 elif type.startswith('lon' ):
-                    self.roi[0] = normalize_lon( float( values[0] ) )
-                    self.roi[2] = normalize_lon( float( values[1] ) )                  
+                    self.roi[0] = float( values[0] ) 
+                    self.roi[2] = float( values[1] )                   
         if not self.timeRange[2]:
             dataset_list = []
             start_time, end_time, min_dt  = -float('inf'), float('inf'), float('inf')
