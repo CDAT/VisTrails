@@ -1,3 +1,9 @@
+###############################################################################
+#                                                                             #
+# Authors:      PCMDI Software Team                                           #
+#               Lawrence Livermore National Laboratory:                       #
+#                                                                             #
+###############################################################################
 from PyQt4 import QtCore,QtGui
 import uvcdatCommons
 import customizeUVCDAT

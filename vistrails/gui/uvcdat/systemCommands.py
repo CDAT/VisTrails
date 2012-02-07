@@ -10,7 +10,7 @@
 #                                                                             #
 # Authors:      PCMDI Software Team                                           #
 #               Lawrence Livermore National Laboratory:                       #
-#               website: http://uv-cdat.org/                                  #
+#               website: http://uv-cdat.llnl.gov/                             #
 #                                                                             #
 # Description:  UV-CDAT GUI system commands and miscellaneous functons.       #
 #                                                                             #

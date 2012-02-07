@@ -1,3 +1,18 @@
+###############################################################################
+#                                                                             #
+# Module:       main toolbar module                                           #
+#                                                                             #
+# Copyright:    "See file Legal.htm for copyright information."               #
+#                                                                             #
+# Authors:      PCMDI Software Team                                           #
+#               Lawrence Livermore National Laboratory:                       #
+#               website: http://uv-cdat.llnl.gov/                             #
+#                                                                             #
+# Description:  UV-CDAT GUI main toolbar.                                     #
+#                                                                             #
+# Version:      6.0                                                           #
+#                                                                             #
+###############################################################################
 from PyQt4 import QtGui, QtCore
 import os
 import customizeUVCDAT
