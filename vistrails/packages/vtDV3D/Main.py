@@ -35,6 +35,9 @@ class vtDV3DApplicationSingleton( gui.application.VistrailsApplicationSingleton 
                         self.builderWindow.open_vistrail(f) 
                         break
 
+    def setwindowTitle( self, title ):
+       self.uvcdatWindow.setWindowTitle( title )
+
 #    def interactiveMode(self): 
 #        if self.temp_configuration.check('showSplash'):
 #            self.splashScreen.finish(self.builderWindow)
@@ -60,7 +63,7 @@ class vtDV3DApplicationSingleton( gui.application.VistrailsApplicationSingleton 
         restore_stdout()
         return rv
         
-def start_application(optionsDict=None):
+def start_application(optionsDict):
     """Initializes the application singleton."""
     if gui.application.VistrailsApplication:
         debug.critical("Application already started.")
@@ -84,6 +87,8 @@ def start_application(optionsDict=None):
     gui.application.VistrailsApplication = VistrailsApplication
     x = VistrailsApplication.init(optionsDict)
     if x == True:
+        title = optionsDict.get( 'title', 'UVCDAT' )
+        VistrailsApplication.uvcdatWindow.setWindowTitle( title )
         VistrailsApplication.uvcdatWindow.showBuilderWindowActTriggered() 
         return VistrailsApplication
     if gui.application.VistrailsApplication:
@@ -118,8 +123,8 @@ def executeVistrail( *args, **kwargs ):
     sys.exit(v)
 
 if __name__ == '__main__':
-    optionsDict = {  'hw_role'  : 'global'  }         
-#    optionsDict = {  'hw_role'  : 'hw_server'  }         
+#    optionsDict = {  'hw_role'  : 'global'  }         
+    optionsDict = {  'hw_role'  : 'hw_server', 'title' : " UVCDAT - server "}         
 #    optionsDict = {  'hw_role'  : 'hw_client', 'hw_node_index'  : 0 }         
     executeVistrail( options=optionsDict )
  

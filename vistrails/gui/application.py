@@ -732,7 +732,8 @@ parameters from other instances")
             # self.builderWindow.show()
             # self.setActiveWindow(self.builderWindow)
             pass
-
+        
+ 
     def finishSession(self):
         self.terminating = True
         if QtCore.QT_VERSION >= 0x60400:

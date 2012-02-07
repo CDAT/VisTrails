@@ -48,7 +48,7 @@ class QVTKClientWidget(QVTKWidget):
     def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
         QVTKWidget.__init__(self, parent, f )
         self.iRenderCount = 0
-        self.iRenderPeriod = 6
+        self.iRenderPeriod = 10
 
 #    def updateContents( self, inputPorts ):
 #        if len( inputPorts ) > 5:
@@ -65,9 +65,9 @@ class QVTKClientWidget(QVTKWidget):
         iren = renWin.GetInteractor()
         renderers = renWin.GetRenderers()
         renderer = renderers.GetFirstRenderer()
-        doRender = ( self.iRenderCount == self.iRenderPeriod )
-        self.iRenderCount = 0 if doRender else self.iRenderCount + 1
         if event.controlEventType == 'J':
+            doRender = ( self.iRenderCount == self.iRenderPeriod )
+            self.iRenderCount = 0 if doRender else self.iRenderCount + 1
             dx = event.jx
             dy = event.jy
             while renderer <> None:
@@ -81,22 +81,47 @@ class QVTKClientWidget(QVTKWidget):
               camera = renderer.GetActiveCamera()
               camera.Azimuth(rxf)
               camera.Elevation(ryf)
-              camera.OrthogonalizeViewUp()           
-              renderer.ResetCameraClippingRange()            
-              if doRender: iren.Render()
+                                               
+              if doRender:
+                  camera.OrthogonalizeViewUp()     
+                  renderer.ResetCameraClippingRange()
+                  iren.Render()
               renderer = renderers.GetNextItem()
               
         elif event.controlEventType == 'j':
+            doRender = ( self.iRenderCount == self.iRenderPeriod )
+            self.iRenderCount = 0 if doRender else self.iRenderCount + 1
             dx = event.jx
             dy = event.jy
+            if dy <> 0.0: 
+                while renderer <> None:                                               
+                  if doRender:
+                      camera = renderer.GetActiveCamera()
+                      if dy > 0.0: camera.Dolly( 0.9 )
+                      if dy < 0.0: camera.Dolly( 1.1 )    
+                      renderer.ResetCameraClippingRange()
+                      iren.Render()
+                  renderer = renderers.GetNextItem()
+                               
+        elif event.controlEventType == 'P':
+            i0 = event.buttonId[0]
+            i1 = event.buttonId[1]
             while renderer <> None:          
-              vp = renderer.GetViewport()   
-              camera = renderer.GetActiveCamera()            
+              if i0 == 1:  
+                  camera = renderer.GetActiveCamera()  
+                  if i1 == 4: camera.Dolly( 1.1 )         
+                  if i1 == 6: camera.Dolly( 0.9 ) 
+                  renderer.ResetCameraClippingRange()     
+                  iren.Render()
+                  renderer = renderers.GetNextItem()
+       
 #              newAngle = vmath.DegreesFromRadians( math.asin( dy ) )
 #              camera.Roll( newAngle )
 #              camera.OrthogonalizeViewUp()  
-              if dy > 0:
-                    camera.Dolly( math.pow( 1.1, dy ) )
+#              if dy > 0:
+#                  camera.Dolly( 1.1 )
+#              else:
+#                  camera.Dolly( 0.9 )
 
 #                    ViewFocus = camera.GetFocalPoint()
 #                    renderer.SetWorldPoint(ViewFocus[0], ViewFocus[1], ViewFocus[2], 1.0)
@@ -116,8 +141,6 @@ class QVTKClientWidget(QVTKWidget):
 #                    camera.SetFocalPoint(MotionVector[0] + ViewFocus[0], MotionVector[1] + ViewFocus[1], MotionVector[2] + ViewFocus[2])           
 #                    camera.SetPosition(MotionVector[0] + ViewPoint[0], MotionVector[1] + ViewPoint[1], MotionVector[2] + ViewPoint[2])
         
-              if doRender: iren.Render()
-              renderer = renderers.GetNextItem()
 
 class QVTKServerWidget( QVTKClientWidget ):
     """

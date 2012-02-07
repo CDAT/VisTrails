@@ -272,7 +272,7 @@ class QiVisClient(QtCore.QObject):
     def processMessage(self, message, socket):
         (sender, tokens) = message
         tokens = tokens.split(",")
-#        print " processMessage: %s " % str( tokens )
+        print " ********* CLIENT--> processMessage: %s ********* " % str( tokens )
         if len(tokens) == 0: return
         
         if tokens[0] == "exit":

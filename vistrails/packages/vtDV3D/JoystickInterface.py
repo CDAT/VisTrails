@@ -63,6 +63,7 @@ class Joystick( threading.Thread ):
                     for target in self.targets:
                         QApplication.postEvent( target, QtControllerEvent( event_spec ) )  
             self.controller.stop()
+            print>>sys.stderr, "  Shutting down joystick thread. ",  event_spec
          
 joystick = Joystick()
 joystick.start()

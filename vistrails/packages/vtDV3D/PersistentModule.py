@@ -116,8 +116,8 @@ class PersistentModule( QObject ):
         self.datasetId = None
         self.fieldData = None
         role = get_hyperwall_role( )
-        self.isClient = ( role == 'client' )
-        self.isServer = ( role == 'server' )
+        self.isClient = ( role == 'hw_client' )
+        self.isServer = ( role == 'hw_server' )
         self.rangeBounds = None
         self.timeStepName = 'timestep'
         self.newDataset = False
