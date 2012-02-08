@@ -1,0 +1,13 @@
+#!/bin/bash
+echo $0 $1
+source ~/.vistrails/hw_env
+export VT_DIR=/Developer/Projects/EclipseWorkspace/vistrails-uvcdat/vistrails/
+export DV3D_DIR=$VT_DIR/packages/vtDV3D/
+export PYTHON_DIR=/Developer/Projects/EclipseWorkspace/uvcdat/cdat/install/
+export HW_NODE_INDEX=$1
+export DISPLAY=:0.0
+
+env
+#echo `env`
+
+$PYTHON_DIR/bin/python $DV3D_DIR/hyperwall/main/client.py
