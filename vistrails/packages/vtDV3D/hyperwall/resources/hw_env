@@ -1,0 +1,11 @@
+ulimit -s 2048
+unset DYLD_PRINT_LIBRARIES
+export IMAGEIO_PATH=/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/ImageIO.framework
+export UVCDAT_PREFIX=/Developer/Projects/EclipseWorkspace/uvcdat/cdat/
+export LD_LIBRARY_PATH=/Developer/Applications/PSMoveAPI/lib:/usr/local/cuda/lib:$IMAGEIO_PATH/Resources:/Library/Frameworks:$UVCDAT_PREFIX/install/lib:$UVCDAT_PREFIX/install/Externals/lib:$UVCDAT_PREFIX/install/Externals/lib/paraview-3.11/:/usr/lib:/usr/local/lib:/Developer/usr/lib/
+export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATH
+export VISTRAILS_HOME=/Developer/Projects/EclipseWorkspace/uvcdat/vistrails
+export VISTRAILS_DIR=$VISTRAILS_HOME
+export VTMODULEDIR=~/.vistrails
+export PATH=$UVCDAT_PREFIX/install/bin:$UVCDAT_PREFIX/install/Library/Frameworks/Python.framework/Versions/2.7/bin:$PATH:/opt/local/bin:/opt/local/sbin:/Developer/g95-install/bin:/Developer/Applications/Xcode.app/Contents/MacOS:/Developer/Applications/NetCDF/bin/:/usr/local/git/bin:$HOME/bin:/Developer/usr/bin/
+export PYTHONPATH=$VISTRAILS_HOME/vistrails:$VTMODULEDIR:$VISTRAILS_HOME:$VISTRAILS_HOME/vistrails/packages:$VISTRAILS_HOME/vistrails/packages/vtDV3D:/Developer/Projects/EclipseWorkspace/HyperwallUtilities/src:$UVCDAT_PREFIX/build/build/ParaView-build/bin:$UVCDAT_PREFIX/build/build/ParaView-build/Utilities/VTKPythonWrapping/site-packages
