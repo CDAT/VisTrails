@@ -31,4 +31,35 @@
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
 ###############################################################################
-pass
+import os
+from core.system import vistrails_root_directory, execute_cmdline
+from core.utils import Chdir
+import core.requirements
+
+def uvcdat_version():
+    """uvcdat_version() -> string - Returns the current UV-CDAT version."""
+    # 1.0 alpha is the first version released
+    return '1.0-alpha'
+
+def uvcdat_revision():
+    """uvcdat_revision() -> str 
+    When run on a working copy, shows the current git hash else
+    shows the latest release revision
+
+    """
+    git_dir = os.path.join(vistrails_root_directory(), '..')
+    with Chdir(git_dir):
+        release = "<update_before_release>"
+        if core.requirements.executable_file_exists('git'):
+            lines = []
+            result = execute_cmdline(['git', 'describe', '--always', '--abbrev=12'],
+                                     lines)
+            if len(lines) == 1:
+                if result == 0:
+                    release = lines[0].strip(" \n")
+    return release
+
+def short_about_string():
+    return """UV-CDAT version %s.%s""" % \
+            (uvcdat_version(), uvcdat_revision())
+    

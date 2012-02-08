@@ -161,6 +161,9 @@ class UVCDATMainWindow(QtGui.QMainWindow):
                                  triggered=self.showBuilderWindowActTriggered)
         self.showVistrailsConsoleAct = QtGui.QAction("Console", self,
                                 triggered=self.showVistrailsConsoleActTriggered)
+        #About Message
+        self.showAboutMessageAct = QtGui.QAction("About UV-CDAT...", self,
+                                triggered=self.showAboutMessageActTriggered)
         
     def updateMenuActions(self):
         #menu File Actions
@@ -183,7 +186,9 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         #VisTrails Menu
         self.ui.menuVistrails.addAction(self.showBuilderWindowAct)
         self.ui.menuVistrails.addAction(self.showVistrailsConsoleAct)
-    
+        #About message
+        self.ui.menuHelp.addAction(self.showAboutMessageAct)
+        
     def showBuilderWindowActTriggered(self):
         from gui.vistrails_window import _app
         _app.show()
@@ -192,6 +197,40 @@ class UVCDATMainWindow(QtGui.QMainWindow):
     def showVistrailsConsoleActTriggered(self):
         from gui.shell import QShellDialog
         QShellDialog.instance().set_visible(True)
+        
+    def showAboutMessageActTriggered(self):
+        import core.uvcdat
+        import core.system
+        class About(QtGui.QLabel):
+            def mousePressEvent(self, e):
+                self.emit(QtCore.SIGNAL("clicked()"))
+
+        dlg = QtGui.QDialog(self, QtCore.Qt.FramelessWindowHint)
+        layout = QtGui.QVBoxLayout()
+        layout.setMargin(0)
+        layout.setSpacing(0)
+        bgimage = About(dlg)
+        #The application disclaimer image
+        pixmap = QtGui.QPixmap(
+            core.system.vistrails_root_directory() +
+            '/gui/uvcdat/resources/images/disclaimer.png')
+        bgimage.setPixmap(pixmap)
+        layout.addWidget(bgimage)
+        dlg.setLayout(layout)
+        text = "<font color=\"#105E99\"><b>%s</b></font>" % \
+            core.uvcdat.short_about_string()
+        version = About(text, dlg)
+        version.setGeometry(11,50,450,30)
+        self.connect(bgimage,
+                     QtCore.SIGNAL('clicked()'),
+                     dlg,
+                     QtCore.SLOT('accept()'))
+        self.connect(version,
+                     QtCore.SIGNAL('clicked()'),
+                     dlg,
+                     QtCore.SLOT('accept()'))
+        dlg.setSizeGripEnabled(False)
+        dlg.exec_()
         
     def connectSignals(self):
         

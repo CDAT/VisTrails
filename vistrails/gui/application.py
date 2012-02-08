@@ -694,7 +694,7 @@ parameters from other instances")
         """
         if self.temp_configuration.check('showSplash'):
             splashPath = (system.vistrails_root_directory() +
-                          "/gui/resources/images/vistrails_splash.png")
+                          "/gui/uvcdat/resources/images/splash.png")
             pixmap = QtGui.QPixmap(splashPath)
             self.splashScreen = QtGui.QSplashScreen(pixmap, QtCore.Qt.WindowStaysOnTopHint)
             self.splashScreen.setFont(gui.theme.CurrentTheme.SPLASH_SCREEN_FONT)
@@ -703,9 +703,10 @@ parameters from other instances")
             
     def splashMessage(self, msg):
         if hasattr(self, "splashScreen"):
+            color = QtGui.QColor(16,94,153) #A dark blue color
             self.splashScreen.showMessage(msg,
-                        QtCore.Qt.AlignBottom|QtCore.Qt.AlignLeft,
-                        QtCore.Qt.white)
+                        QtCore.Qt.AlignVCenter|QtCore.Qt.AlignLeft,
+                        color)
             self.processEvents()
 
     def createWindows(self):
