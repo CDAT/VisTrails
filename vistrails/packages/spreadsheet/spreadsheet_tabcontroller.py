@@ -895,6 +895,8 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                      self.visDropped)
         self.connect(widget, QtCore.SIGNAL("dropped_plot"),
                      self.plotDropped)
+        self.connect(widget, QtCore.SIGNAL("dropped_template"),
+                     self.templateDropped)
         self.connect(widget, QtCore.SIGNAL("request_plot_configure"),
                      self.requestPlotConfigure)
         self.connect(widget, QtCore.SIGNAL("request_plot_execution"),
@@ -915,6 +917,8 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                      self.visDropped)
         self.disconnect(widget, QtCore.SIGNAL("dropped_plot"),
                      self.plotDropped)
+        self.disconnect(widget, QtCore.SIGNAL("dropped_template"),
+                     self.templateDropped)
         self.disconnect(widget, QtCore.SIGNAL("request_plot_configure"),
                      self.requestPlotConfigure)
         self.disconnect(widget, QtCore.SIGNAL("request_plot_execution"),
@@ -949,6 +953,13 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         """
         self.emit(QtCore.SIGNAL("dropped_plot"), info)
         
+    def templateDropped(self, info):
+        """templateDropped(info: tuple)-> None
+        It will forward the signal 
+        
+        """
+        self.emit(QtCore.SIGNAL("dropped_template"), info)
+    
     def requestPlotConfigure(self, sheetName, row, col):
         self.emit(QtCore.SIGNAL("request_plot_configure"), sheetName, row, col ) 
         

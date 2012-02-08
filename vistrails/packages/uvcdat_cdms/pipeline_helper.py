@@ -207,7 +207,8 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         return (op_module, actions)
                 
     @staticmethod
-    def build_plot_pipeline_action(controller, version, var_modules, plot_obj, row, col):
+    def build_plot_pipeline_action(controller, version, var_modules, plot_obj, 
+                                   row, col, template=None):
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
         plot_type = plot_obj.parent
@@ -222,6 +223,8 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         desc = plot_descriptor.module
         plot_module = controller.create_module_from_descriptor(plot_descriptor)
         plot_functions =  [('graphicsMethodName', [plot_gm])]
+        if template is not None:
+            plot_functions.append(('template', [template]))
         initial_values = desc.get_initial_values(plot_gm)
         for attr in desc.gm_attributes:
             plot_functions.append((attr,[getattr(initial_values,attr)]))
@@ -671,14 +674,23 @@ class CDMSPlotWidget(QtGui.QWidget):
         self.v_layout.addWidget(self.selected_label)
         self.create_plot_vars_widget()
         self.v_layout.addWidget(self.plot_vars_widget)
-        
+        self.template_widget = QtGui.QGroupBox("Template")
+        template_lbl = QtGui.QLabel("Name:")
+        self.template_edt = QtGui.QLineEdit()
+        template_layout = QtGui.QHBoxLayout()
+        template_layout.addWidget(template_lbl)
+        template_layout.addWidget(self.template_edt)
+        self.template_widget.setLayout(template_layout)
+        self.v_layout.addWidget(self.template_widget)
+        self.plot_widget.setLayout(self.v_layout)
+         
         #signals
         self.plot_table.itemSelectionChanged.connect(self.update_conf_widget)
+        self.template_edt.editingFinished.connect(self.template_edited)
         self.btn_add_plot.clicked.connect(self.add_plot)
         self.btn_del_plot.clicked.connect(self.remove_plot)
         self.btn_move_up.clicked.connect(self.plot_table.move_item_up)
         self.btn_move_down.clicked.connect(self.plot_table.move_item_down)
-        self.plot_widget.setLayout(self.v_layout)
         self.plot_table.populate_from_plots(self.plots)
         self.plot_table.itemOrderChanged.connect(self.update_move_buttons)
         self.update_btn_del_state()
@@ -760,6 +772,15 @@ class CDMSPlotWidget(QtGui.QWidget):
                 plot_item.vars.insert(1,var)
                 self.vars_were_changed = True            
         
+    @pyqtSlot()
+    def template_edited(self):
+        from init import get_canvas
+        template_list = get_canvas().listelements("template")
+        template = str(self.template_edt.text())
+        if template in template_list: 
+            plot_item = self.plot_table.selectedItems()[0]
+            plot_item.template = template
+            
     def update_btn_del_state(self):
         if (len(self.plot_table.selectedItems()) > 0 and 
             self.plot_table.topLevelItemCount() > 1):
@@ -834,6 +855,7 @@ class CDMSPlotWidget(QtGui.QWidget):
         if len(item.vars) > 1:
             varname = CDMSPipelineHelper.get_variable_name_from_module(item.vars[1])
             self.var2_edt.setText(varname)
+        self.template_edt.setText(item.template)
             
     def show_vars(self, num):
         self.var1_edt.setText("")
@@ -854,6 +876,8 @@ class CDMSPlotWidget(QtGui.QWidget):
     def configure_done(self, action):
         canceled = []
         
+        action = self.update_templates(action)
+                
         for a in self.to_be_added:
             if a in self.to_be_removed:
                 canceled.append(a)
@@ -951,6 +975,28 @@ class CDMSPlotWidget(QtGui.QWidget):
                                                             connections)    
         return action
     
+    def update_templates(self, ori_action):
+        if ori_action is not None:
+            version = ori_action.id
+        else:
+            version = self.version
+        action = None
+        #check if the template changed and update provenance
+        for i in range(self.plot_table.topLevelItemCount()):
+            plot_item = self.plot_table.topLevelItem(i)
+            pipeline = self.controller.vistrail.getPipeline(version)
+            plot_module = pipeline.modules[plot_item.module.id]
+            functions = [('template', [plot_item.template])]
+            action = self.controller.update_functions(plot_module, 
+                                                      functions)
+            if action is not None:
+                version = action.id
+        
+        if action is not None:
+            return action
+        else:
+            return ori_action
+            
     @pyqtSlot(bool)
     def save_triggered(self, checked):
         
@@ -962,7 +1008,7 @@ class CDMSPlotWidget(QtGui.QWidget):
 
 class PlotTableWidgetItem(QtGui.QTreeWidgetItem):
     def __init__(self, parent, order, module, labels, plot_type, gm_name, vars,
-                 reg_plot):
+                 reg_plot, template):
         QtGui.QTreeWidgetItem.__init__(self, parent, labels)
         self.module = module    
         self.order = order
@@ -970,6 +1016,7 @@ class PlotTableWidgetItem(QtGui.QTreeWidgetItem):
         self.gm_name = gm_name
         self.vars = vars
         self.reg_plot = reg_plot
+        self.template = template
     
 class PlotTableWidget(QtGui.QTreeWidget):
     itemOrderChanged = pyqtSignal(PlotTableWidgetItem)
@@ -1018,7 +1065,7 @@ class PlotTableWidget(QtGui.QTreeWidget):
             _vars = []
         reg_plot = manager.get_plot_by_name(desc.plot_type, gm_name)
         item = PlotTableWidgetItem(self, order, plot_module, labels, 
-                                   desc.plot_type, gm_name, _vars, reg_plot)
+                                   desc.plot_type, gm_name, _vars, reg_plot, template)
         item.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable)
         return item
     

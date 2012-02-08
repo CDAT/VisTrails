@@ -20,7 +20,7 @@ class DockTemplate(QtGui.QDockWidget):
             self.templateTree.addTopLevelItem(self.uvcdat_items[k])
             for t in self.getMethods(self.uvcdat_items[k]):
                 item = QtGui.QTreeWidgetItem(self.uvcdat_items[k], QtCore.QStringList(t),4)
-        #self.plotTree.expandAll()
+        self.templateTree.expandAll()
 
     def getMethods(self,item):
         analyser=item.text(0)
@@ -37,12 +37,16 @@ class TemplateTreeWidget(QtGui.QTreeWidget):
         self.setRootIsDecorated(False)
         self.delegate = dockplot.PlotTreeWidgetItemDelegate(self, self)
         self.setItemDelegate(self.delegate)
+        self.setDragEnabled(True)
+        self.flags = QtCore.Qt.ItemIsDragEnabled
+        self.setAcceptDrops(False)
         self.connect(self,
                      QtCore.SIGNAL('itemPressed(QTreeWidgetItem *,int)'),
                      self.onItemPressed)
-        self.connect(self,
-                     QtCore.SIGNAL('itemDoubleClicked(QTreeWidgetItem *,int)'),
-                     self.popupEditor)
+        #FIXME: Disabling template editor for now
+        #self.connect(self,
+        #             QtCore.SIGNAL('itemDoubleClicked(QTreeWidgetItem *,int)'),
+        #             self.popupEditor)
 
     def onItemPressed(self, item, column):
         """ onItemPressed(item: QTreeWidgetItem, column: int) -> None
@@ -52,6 +56,17 @@ class TemplateTreeWidget(QtGui.QTreeWidget):
         if item and item.parent() == None:
             self.setItemExpanded(item, not self.isItemExpanded(item))
         
+    def mimeData(self, itemList):
+        """ mimeData(itemList) -> None        
+        Setup the mime data to contain itemList because Qt 4.2.2
+        implementation doesn't instantiate QTreeWidgetMimeData
+        anywhere as it's supposed to. It must have been a bug...
+        
+        """
+        data = QtGui.QTreeWidget.mimeData(self, itemList)
+        data.items = itemList
+        data.template = str(self.currentItem().text(0))
+        return data
         
     def popupEditor(self,item,column):
         if item.type()!=4:

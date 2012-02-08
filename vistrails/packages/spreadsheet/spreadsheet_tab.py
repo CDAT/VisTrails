@@ -807,7 +807,8 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             (hasattr(mimeData, 'version') and
             hasattr(mimeData, 'controller')) or
             mimeData.hasFormat("definedVariables") or
-            mimeData.hasFormat("plotType")):
+            mimeData.hasFormat("plotType") or
+            hasattr(mimeData,"template")):
             event.accept()
         else:
             event.ignore()
@@ -823,7 +824,8 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             (hasattr(mimeData, 'version') and
             hasattr(mimeData, 'controller')) or
             mimeData.hasFormat("definedVariables") or
-            mimeData.hasFormat("plotType")):
+            mimeData.hasFormat("plotType") or
+            hasattr(mimeData,"template")):
             event.setDropAction(QtCore.Qt.CopyAction)
             event.accept()
         else:
@@ -906,6 +908,17 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             col = self.sheet.columnAt(localPos.x())
             sheetName = str(self.tabWidget.tabText(self.tabWidget.indexOf(self)))
             # TODO update the selected cell with the workflow specified by version        
+        elif hasattr(mimeData,"template"):
+            if hasattr(mimeData, 'items') and len(mimeData.items) == 1:
+                event.setDropAction(QtCore.Qt.CopyAction)
+                event.accept()
+                template = mimeData.template
+                localPos = self.sheet.viewport().mapFromGlobal(QtGui.QCursor.pos())
+                row = self.sheet.rowAt(localPos.y())
+                col = self.sheet.columnAt(localPos.x())
+                sheetName = str(self.tabWidget.tabText(self.tabWidget.indexOf(self)))
+                self.emit(QtCore.SIGNAL("dropped_template"), (template, 
+                                                          sheetName, row, col))
         else:
             event.ignore()
 

@@ -344,6 +344,8 @@ class ProjectController(QtCore.QObject):
                      self.vis_was_dropped)
         self.connect(tabController, QtCore.SIGNAL("dropped_plot"),
                      self.plot_was_dropped)
+        self.connect(tabController, QtCore.SIGNAL("dropped_template"),
+                     self.template_was_dropped)
         self.connect(tabController, QtCore.SIGNAL("request_plot_configure"),
                      self.request_plot_configure)
         self.connect(tabController, QtCore.SIGNAL("request_plot_execution"),
@@ -366,6 +368,8 @@ class ProjectController(QtCore.QObject):
                      self.vis_was_dropped)
         self.disconnect(tabController, QtCore.SIGNAL("dropped_plot"),
                      self.plot_was_dropped)
+        self.disconnect(tabController, QtCore.SIGNAL("dropped_template"),
+                     self.template_was_dropped)
         self.disconnect(tabController, QtCore.SIGNAL("request_plot_configure"),
                      self.request_plot_configure)
         self.disconnect(tabController, QtCore.SIGNAL("request_plot_execution"),
@@ -407,7 +411,27 @@ class ProjectController(QtCore.QObject):
                                                                       plot=None,
                                                                       template=None,
                                                                       current_parent_version=0L)
-            
+    def template_was_dropped(self, info):
+        """variable_was_dropped(info: (varName, sheetName, row, col) """
+        (template, sheetName, row, col) = info
+        if sheetName in self.sheet_map:
+            if (row,col) in self.sheet_map[sheetName]:
+                cell = self.sheet_map[sheetName][(row,col)]
+                if self.is_cell_ready(sheetName, row, col):
+                    cell.template = template
+                    self.reset_workflow(cell)
+                self.update_template(sheetName,row,col)
+            else:
+                self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[],
+                                                                      plot=None,
+                                                                      template=template,
+                                                                      current_parent_version=0L)
+        else:
+            self.sheet_map[sheetName] = {}
+            self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[],
+                                                                      plot=None,
+                                                                      template=template,
+                                                                      current_parent_version=0L)        
     def vis_was_dropped(self, info):
         """vis_was_dropped(info: (controller, version, sheetName, row, col) """
         (controller, version, sheetName, row, col, plot_type) = info
@@ -657,7 +681,10 @@ class ProjectController(QtCore.QObject):
         cell = self.sheet_map[sheetName][(row,col)]
         if cell.plot is not None and len(cell.variables) == cell.plot.varnum:
             self.update_cell(sheetName, row, col)
-    
+            
+    def update_template(self, sheetName, row, col):
+        self.update_variable(sheetName, row, col)
+            
     def update_plot(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
         if len(cell.variables) == cell.plot.varnum:
@@ -716,7 +743,7 @@ class ProjectController(QtCore.QObject):
         action = helper.build_plot_pipeline_action(self.vt_controller, 
                                                    cell.current_parent_version, 
                                                    var_modules, cell.plot,
-                                                   row, column)
+                                                   row, column, cell.template)
         #print '### setting row/column:', row, column
         #notice that at this point the action was already performed by the helper
         # we need only to update the current parent version of the cell and 

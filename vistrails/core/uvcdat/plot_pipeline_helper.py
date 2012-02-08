@@ -73,7 +73,7 @@ class PlotPipelineHelper(object):
     
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, 
-                                   plot_obj, row, col):
+                                   plot_obj, row, col, template=None):
         #for now, this helper will generate change parameter actions based on the
         #alias dictionary
         #first set the plot:
