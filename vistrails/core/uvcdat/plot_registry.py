@@ -429,8 +429,9 @@ class Plot(object):
                 gridAliases = gridAliases.split("|")
                 cellAliases = cellAliases.split("|")
                 for i in range(self.filenum):
-                    a, v = fileAliases[i].split("!")
+                    a, v, url = fileAliases[i].split("!")
                     aliases[self.files[i]] = v
+                    aliases[".".join([self.files[i],"url"])] = url
                 for i in range(self.varnum):
                     a,v = varAliases[i].split("!")
                     aliases[self.vars[i]] = v
