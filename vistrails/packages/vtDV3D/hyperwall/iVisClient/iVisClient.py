@@ -278,7 +278,7 @@ class QiVisClient(QtCore.QObject):
         if tokens[0] == "exit":
             print "Received shutdown message"
             socket.close()
-            gui.application.VistrailsApplication.quit()
+            gui.application.get_vistrails_application().quit()
 #            gui.application.stop_application()
 #            sys.exit(0)
 

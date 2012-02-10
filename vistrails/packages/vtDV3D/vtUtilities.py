@@ -94,7 +94,7 @@ def callbackWrapper( func, wrapped_arg ):
     return callMe
 
 def getConfiguration( defaults ):
-    app = gui.application.VistrailsApplication
+    app = gui.application.get_vistrails_application()
     appConfig = app.temp_configuration if app else None
     dotVistrails = appConfig.dotVistrails if appConfig else os.path.expanduser("~/.vistrails/")
     datasetConfigFile = os.path.expanduser( os.path.join( dotVistrails, 'dv3d.cfg' )  )

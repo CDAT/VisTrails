@@ -420,7 +420,8 @@ class QCellToolBarConfigurePlot(QtGui.QAction):
         Updates the status of the button based on the input info
         
         """
-        from api import _app
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
         (sheet, row, col, cellWidget) = info
         selectedCells = sorted(sheet.getSelectedLocations())
 
@@ -465,7 +466,8 @@ class QCellToolBarViewSource(QtGui.QAction):
         Updates the status of the button based on the input info
         
         """
-        from api import _app
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
         (sheet, row, col, cellWidget) = info
         selectedCells = sorted(sheet.getSelectedLocations())
 
@@ -521,7 +523,8 @@ class QCellToolBarExecutePlot(QtGui.QAction):
         """
         from core.configuration import get_vistrails_configuration
         (sheet, row, col, cellWidget) = info
-        from api import _app
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
         (sheet, row, col, cellWidget) = info
         proj_controller = _app.uvcdatWindow.get_current_project_controller()
         sheetName = sheet.getSheetName()        

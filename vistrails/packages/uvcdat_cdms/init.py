@@ -1003,7 +1003,8 @@ Please delete unused CDAT Cells in the spreadsheet.")
             for k in kwargs:
                 cmd+=", %s=%s" % (k, repr(kwargs[k]))
             cmd+=")"
-            from api import _app
+            from gui.application import get_vistrails_application
+            _app = get_vistrails_application()
             _app.uvcdatWindow.record(cmd)
             self.canvas.plot(cgm,*args,**kwargs)
             
@@ -1136,7 +1137,6 @@ class QCDATWidgetPrev(QtGui.QAction):
         Execute the action when the button is clicked
         
         """
-        from api import _app
         #make sure we get the canvas object used in the cell
         cellWidget = self.toolBar.getSnappedWidget()
         selectedDim = str(self.parent().dimSelector.currentText())
@@ -1152,7 +1152,8 @@ class QCDATWidgetPrev(QtGui.QAction):
         Updates the status of the button based on the input info
         
         """
-        from api import _app
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
         (sheet, row, col, cellWidget) = info
         selectedCells = sorted(sheet.getSelectedLocations())
 
@@ -1188,7 +1189,6 @@ class QCDATWidgetNext(QtGui.QAction):
         Execute the action when the button is clicked
         
         """
-        from api import _app
         #make sure we get the canvas object used in the cell
         cellWidget = self.toolBar.getSnappedWidget()
         selectedDim = str(self.parent().dimSelector.currentText())
@@ -1204,7 +1204,8 @@ class QCDATWidgetNext(QtGui.QAction):
         Updates the status of the button based on the input info
         
         """
-        from api import _app
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
         (sheet, row, col, cellWidget) = info
         selectedCells = sorted(sheet.getSelectedLocations())
 
@@ -1242,7 +1243,8 @@ class QCDATWidgetAnimation(QtGui.QAction):
         Execute the action when the button is clicked
         
         """
-        from api import _app
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
         #make sure we get the canvas object used in the cell
         cellWidget = self.toolBar.getSnappedWidget()
         canvas = cellWidget.canvas
@@ -1254,7 +1256,8 @@ class QCDATWidgetAnimation(QtGui.QAction):
         Updates the status of the button based on the input info
         
         """
-        from api import _app
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
         (sheet, row, col, cellWidget) = info
         selectedCells = sorted(sheet.getSelectedLocations())
 
@@ -1290,7 +1293,8 @@ class QCDATWidgetColormap(QtGui.QAction):
         Execute the action when the button is clicked
         
         """
-        from api import _app
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
         #make sure we get the canvas object used in the cell
         cellWidget = self.toolBar.getSnappedWidget()
         canvas = cellWidget.canvas
@@ -1302,7 +1306,8 @@ class QCDATWidgetColormap(QtGui.QAction):
         Updates the status of the button based on the input info
         
         """
-        from api import _app
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
         (sheet, row, col, cellWidget) = info
         selectedCells = sorted(sheet.getSelectedLocations())
 
@@ -1348,7 +1353,8 @@ class QCDATWidgetExport(QtGui.QAction):
         Updates the status of the button based on the input info
         
         """
-        from api import _app
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
         (sheet, row, col, cellWidget) = info
         selectedCells = sorted(sheet.getSelectedLocations())
 

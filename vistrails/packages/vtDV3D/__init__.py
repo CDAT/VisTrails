@@ -293,10 +293,11 @@ def executeVistrail( *args, **kwargs ):
         optionsDict = kwargs.get( 'options', None )
         v = gui.application.start_application( optionsDict )
         if v != 0:
-            if gui.application.VistrailsApplication:
-                gui.application.VistrailsApplication.finishSession()
+            app = gui.application.get_vistrails_application()
+            if app:
+                app.finishSession()
             sys.exit(v)
-        app = gui.application.VistrailsApplication()
+        app = gui.application.get_vistrails_application()
         resource_path = app.resource_path if hasattr( app, "resource_path" ) else None
         for vistrail_name in args:
             workflow_dir =  resource_path if resource_path else os.path.join( packagePath, "workflows" )
@@ -305,13 +306,15 @@ def executeVistrail( *args, **kwargs ):
             f = FileLocator(vistrail_filename)
             app.builderWindow.open_vistrail(f) 
     except SystemExit, e:
-        if gui.application.VistrailsApplication:
-            gui.application.VistrailsApplication.finishSession()
+        app = gui.application.get_vistrails_application()
+        if app:
+            app.finishSession()
         print "Uncaught exception on initialization: %s" % e
         sys.exit(e)
     except Exception, e:
-        if gui.application.VistrailsApplication:
-            gui.application.VistrailsApplication.finishSession()
+        app = gui.application.get_vistrails_application()
+        if app:
+            app.finishSession()
         print "Uncaught exception on initialization: %s" % e
         import traceback
         traceback.print_exc()

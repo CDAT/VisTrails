@@ -297,7 +297,8 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         """
         from core.configuration import get_vistrails_persistent_configuration,\
             get_vistrails_configuration
-        from api import _app
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
         get_vistrails_persistent_configuration().uvcdat.autoExecute = checked
         get_vistrails_configuration().uvcdat.autoExecute = checked
         _app.save_configuration()
@@ -310,7 +311,8 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         
         from core.configuration import get_vistrails_persistent_configuration,\
             get_vistrails_configuration
-        from api import _app
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
         get_vistrails_persistent_configuration().uvcdat.aspectRatio = checked
         get_vistrails_configuration().uvcdat.aspectRatio = checked
         _app.save_configuration()

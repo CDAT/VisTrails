@@ -284,20 +284,23 @@ if __name__ == '__main__':
         import api
         v = gui.application.start_application()
         if v != 0:
-            if gui.application.VistrailsApplication:
-                gui.application.VistrailsApplication.finishSession()
+            app = gui.application.get_vistrails_application()
+            if app:
+                app.finishSession()
             sys.exit(v)
-        app = gui.application.VistrailsApplication()
+        app = gui.application.get_vistrails_application()
         f = FileLocator(vistrail_filename)
         app.builderWindow.open_vistrail(f) 
 #        app.builderWindow.viewModeChanged(0)   
     except SystemExit, e:
-        if gui.application.VistrailsApplication:
-            gui.application.VistrailsApplication.finishSession()
+        app = gui.application.get_vistrails_application()
+        if app:
+            app.finishSession()
         sys.exit(e)
     except Exception, e:
-        if gui.application.VistrailsApplication:
-            gui.application.VistrailsApplication.finishSession()
+        app = gui.application.get_vistrails_application()
+        if app:
+            app.finishSession()
         print "Uncaught exception on initialization: %s" % e
         import traceback
         traceback.print_exc()

@@ -15,6 +15,7 @@
 ###############################################################################
 from PyQt4 import QtCore,QtGui
 from gui.common_widgets import QDockPushButton
+from gui.application import get_vistrails_application
 
 class editVariableWidget(QtGui.QWidget):
     def __init__(self,var,parent=None,root=None):
@@ -101,7 +102,7 @@ class editVariableWidget(QtGui.QWidget):
                 proj = self.root.get_current_project_controller().name
                 if txt == str(proj):
                     self.it.setHidden(False)
-                from api import _app
+                _app = get_vistrails_application()
                 controller = _app.uvcdatWindow.get_project_controller_by_name(txt)
                 controller.add_defined_variable(self.it.cdmsVar)    
         else:
@@ -114,7 +115,7 @@ class editVariableWidget(QtGui.QWidget):
                     proj = self.root.get_current_project_controller().name
                     if txt == str(proj):
                         self.it.setHidden(True)
-                    from api import _app
+                    _app = get_vistrails_application()
                     controller = _app.uvcdatWindow.get_project_controller_by_name(txt)
                     controller.remove_defined_variable(self.it.varName) 
 
@@ -199,7 +200,7 @@ class editVariableWidget(QtGui.QWidget):
         self.root.record("ax.%s = %s" % (attName,repr(attValue)))
         
         #provenance calls
-        from api import _app
+        _app = get_vistrails_application()
         controller = _app.uvcdatWindow.get_current_project_controller()
         controller.change_defined_variable_axis_attribute(self.var.id, axName, attName, attValue)
        
@@ -225,7 +226,7 @@ class editVariableWidget(QtGui.QWidget):
         self.root.record("ax.%s = 'newAttribute'" % (newName))
         
         #provenance calls
-        from api import _app
+        _app = get_vistrails_application()
         controller = _app.uvcdatWindow.get_current_project_controller()
         controller.change_defined_variable_axis_attribute(self.var.id, axName, newName, "newAttribute")
         
@@ -247,7 +248,7 @@ class editVariableWidget(QtGui.QWidget):
         self.axComboBox.setCurrentIndex(0)
     
         #provenance calls
-        from api import _app
+        _app = get_vistrails_application()
         controller = _app.uvcdatWindow.get_current_project_controller()
         controller.remove_defined_variable_axis_attribute(self.var.id, axName, newName)
         
@@ -273,7 +274,7 @@ class editVariableWidget(QtGui.QWidget):
         self.root.dockVariable.widget().updateVars()
         
         #provenance calls
-        from api import _app
+        _app = get_vistrails_application()
         controller = _app.uvcdatWindow.get_current_project_controller()
         controller.change_defined_variable_attribute(var_id, attName, attValue)
         #if attName is id we need also to rename the var in the project controller
@@ -301,7 +302,7 @@ class editVariableWidget(QtGui.QWidget):
         self.varComboBox.setCurrentIndex(i)
         
         #provenance calls
-        from api import _app
+        _app = get_vistrails_application()
         controller = _app.uvcdatWindow.get_current_project_controller()
         controller.change_defined_variable_attribute(self.var.id, newName, "newAttribute")
     
@@ -320,6 +321,6 @@ class editVariableWidget(QtGui.QWidget):
                 break
         self.varComboBox.setCurrentIndex(0)
         #provenance calls
-        from api import _app
+        _app = get_vistrails_application()
         controller = _app.uvcdatWindow.get_current_project_controller()
         controller.remove_defined_variable_attribute(self.var.id, newName)

@@ -18,7 +18,7 @@ import uvcdatCommons
 import customizeUVCDAT
 import editVariableWidget
 from gui.common_widgets import QDockPushButton
-
+from gui.application import get_vistrails_application
 # Paraview related imports
 from paraviewconnection import ParaViewConnectionDialog
 from pvprocessfile import PVProcessFile
@@ -464,7 +464,7 @@ class VariableProperties(QtGui.QDockWidget):
         
         #FIXME: need to check if the variable already exists
         self.root.dockVariable.widget().addVariable(varName,type_="PARAVIEW")
-        from api import _app
+        _app = get_vistrails_application()
         controller = _app.uvcdatWindow.get_current_project_controller()
         pvVar = PVVariable(filename=filename, name=varName)
         controller.add_defined_variable(pvVar)
@@ -544,7 +544,7 @@ class VariableProperties(QtGui.QDockWidget):
         # main window. When this panel becomes a global panel, then we will do
         # that. For now I will talk to the main window directly.
         
-        from api import _app
+        _app = get_vistrails_application()
         controller = _app.uvcdatWindow.get_current_project_controller()
         def get_kwargs_str(kwargs_dict):
             kwargs_str = ""

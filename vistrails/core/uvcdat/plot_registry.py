@@ -494,8 +494,7 @@ class Plot(object):
                 old_param = function.parameter_idx[alias[1]]
                 #print alias, module, function, old_param
                 if old_param.strValue != value:
-                    new_param = VistrailController.update_parameter(controller, 
-                                                                    old_param, 
+                    new_param = controller.create_updated_parameter(old_param, 
                                                                     value)
                     if new_param is not None:
                         op = ('change', old_param, new_param, 

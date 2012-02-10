@@ -275,7 +275,8 @@ class ProjectController(QtCore.QObject):
     def emit_defined_variable(self, var):
         from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
         from packages.uvcdat_pv.init import PVVariable
-        from api import _app
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
         if isinstance(var, CDMSVariable):
             _app.uvcdatWindow.dockVariable.widget().addVariable(var.to_python())
         elif isinstance(var, PVVariable):

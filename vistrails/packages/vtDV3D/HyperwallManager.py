@@ -5,7 +5,7 @@ Created on May 16, 2011
 '''
 from PyQt4 import QtCore, QtGui
 import sys, copy, os, argparse, gui, subprocess, socket
-from gui.application import VistrailsApplication
+from gui.application import get_vistrails_application
 from packages.spreadsheet.spreadsheet_config import configuration as spreadsheet_configuration
 from vtUtilities import *
 HYPERWALL_SRC_PATH = os.path.join( os.path.dirname(__file__),  'hyperwall')
@@ -75,7 +75,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
         
     def initialize_from_config( self ):
         from vtDV3DConfiguration import configuration as dv3d_configuration
-        app = gui.application.VistrailsApplication
+        app = gui.application.get_vistrails_application()
         app.resource_path = None
         hwConfig = app.temp_configuration
         self.processList = []
@@ -121,7 +121,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
         defaults = { 'hw_debug': False, 'hw_resource_path':'', 'hw_device_name': "Hyperwall",  'hw_x':0, 'hw_y':0, 'hw_width':1, 'hw_height':1,
                                      'hw_displayWidth':-1, 'hw_displayHeight':-1, 'hw_nodes':"", 'hw_server':"localhost",  'hw_server_port':50000 }
         datasetConfig, appConfig = getConfiguration( defaults )
-        app = gui.application.VistrailsApplication
+        app = gui.application.get_vistrails_application()
         hw_role = appConfig.hw_role if hasattr( appConfig, 'hw_role' ) else 'global'
         self.processList = []               
                 
@@ -182,13 +182,13 @@ class HyperwallManagerSingleton(QtCore.QObject):
  
     
 #    def registerPipeline(self):
-#        buildWin = VistrailsApplication.builderWindow
+#        buildWin = get_vistrails_application().builderWindow
 #        buildWin.open_vistrail(f) 
         
     def connectSignals(self):
         if not self.connected:
             try:
-                buildWin = VistrailsApplication.builderWindow
+                buildWin = get_vistrails_application().builderWindow
                 buildWin.connect( buildWin.viewToolBar.executeAction(), QtCore.SIGNAL('triggered(bool)'), onExecute )
                 buildWin.connect( buildWin.executeCurrentWorkflowAction, QtCore.SIGNAL('triggered(bool)'), onExecute )
                 self.connected = True

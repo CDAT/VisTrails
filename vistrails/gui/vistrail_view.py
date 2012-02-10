@@ -924,7 +924,8 @@ class QVistrailView(QtGui.QWidget):
         # reload workspace entry
         from gui.collection.workspace import QWorkspaceWindow
         QWorkspaceWindow.instance().add_vt_window(self)
-        from api import _app
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
         if _app.uvcdatWindow:
             _app.uvcdatWindow.workspace.add_project(self)
 

@@ -5,7 +5,7 @@ Created on Jul 20, 2011
 '''
 import sys, os, traceback
 from PyQt4 import QtGui
-import gui.application, core.requirements
+import core.application, gui.application, core.requirements
 from HyperwallManager import HyperwallManager
 
 def restore_stdout():
@@ -65,7 +65,7 @@ class vtDV3DApplicationSingleton( gui.application.VistrailsApplicationSingleton 
         
 def start_application(optionsDict):
     """Initializes the application singleton."""
-    if gui.application.VistrailsApplication:
+    if gui.application.get_vistrails_application():
         debug.critical("Application already started.")
         return
     VistrailsApplication = vtDV3DApplicationSingleton()
@@ -84,15 +84,16 @@ def start_application(optionsDict):
         msg = ("VisTrails requires %s to properly run.\n" % e.requirement)
         debug.critical("Missing requirement", msg)
         sys.exit(1)
-    gui.application.VistrailsApplication = VistrailsApplication
+    core.application.VistrailsApplication = VistrailsApplication
     x = VistrailsApplication.init(optionsDict)
     if x == True:
         title = optionsDict.get( 'title', 'UVCDAT' )
         VistrailsApplication.uvcdatWindow.setWindowTitle( title )
         VistrailsApplication.uvcdatWindow.showBuilderWindowActTriggered() 
         return VistrailsApplication
-    if gui.application.VistrailsApplication:
-        gui.application.VistrailsApplication.finishSession()
+    app = gui.application.get_vistrails_application()
+    if app:
+        app.finishSession()
     sys.exit(v)
     
                 
@@ -105,15 +106,17 @@ def executeVistrail( *args, **kwargs ):
     except SystemExit, e:
         restore_stdout()
         print "Uncaught exception on initialization: %s" % e
-        if gui.application.VistrailsApplication:
-            gui.application.VistrailsApplication.finishSession()
+        app = gui.application.get_vistrails_application()
+        if app:
+            app.finishSession()
         sys.exit(e)
     except Exception, e:
         restore_stdout()
         print "Uncaught exception on initialization: %s" % e
         traceback.print_exc()
-        if gui.application.VistrailsApplication:
-            gui.application.VistrailsApplication.finishSession()
+        app = gui.application.get_vistrails_application()
+        if app:
+            app.finishSession()
         sys.exit(255)
     if (app.temp_configuration.interactiveMode and not app.temp_configuration.check('spreadsheetDumpCells')): 
         v = app.exec_()
