@@ -417,8 +417,8 @@ class ProjectController(QtCore.QObject):
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
+                cell.template = template
                 if self.is_cell_ready(sheetName, row, col):
-                    cell.template = template
                     self.reset_workflow(cell)
                 self.update_template(sheetName,row,col)
             else:
@@ -740,6 +740,7 @@ class ProjectController(QtCore.QObject):
             
     def update_workflow(self, var_modules, cell, sheetName, row, column):
         helper = self.plot_manager.get_plot_helper(cell.plot.package)
+        print cell.template
         action = helper.build_plot_pipeline_action(self.vt_controller, 
                                                    cell.current_parent_version, 
                                                    var_modules, cell.plot,

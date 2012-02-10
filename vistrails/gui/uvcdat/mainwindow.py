@@ -69,6 +69,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.updateMenuActions()
         self.embedSpreadsheet()
         self.connectSignals()
+        self.resize(1150,800)
         
     def initCustomize(self,customPath,styles):
         if customPath is None:

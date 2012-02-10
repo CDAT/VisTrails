@@ -248,27 +248,47 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                          self.openSpreadsheetAs)
         return self.openActionVar
 
-    def uvcdatAutoExecuteAction(self):
+    def uvcdatPreferencesAction(self):
         """ uvcdatAutoExecuteAction(self) -> QAction
-        Execute workflows automatically after changes
+        It will show a popup with preferences
         
         """
         from core.configuration import get_vistrails_configuration
-        if not hasattr(self, 'uvcdatAutoExecuteVar'):
-            self.uvcdatAutoExecuteVar = QtGui.QAction('Auto execute', self)
-            self.uvcdatAutoExecuteVar.setStatusTip(
+        if not hasattr(self, 'uvcdatPreferencesVar'):
+            self.uvcdatPreferencesVar = QtGui.QAction(QtGui.QIcon(":/images/preferences.png"),
+                                                      'Preferences',
+                                                      self)
+            self.uvcdatPreferencesVar.setStatusTip("Show Preferences")
+            
+            prefMenu = QtGui.QMenu(self)
+            executeAction = prefMenu.addAction("Auto-Execute")
+            executeAction.setStatusTip(
                 'Execute visualization automatically after changes')
-            self.uvcdatAutoExecuteVar.setCheckable(True)
+            executeAction.setCheckable(True)
             conf = get_vistrails_configuration()
+            checked = True
             if conf.has('uvcdat'):
                 checked = conf.uvcdat.check('autoExecute')
-            self.uvcdatAutoExecuteVar.setChecked(checked)
+            executeAction.setChecked(checked)
             
-            self.connect(self.uvcdatAutoExecuteVar,
+            aspectAction = prefMenu.addAction("Keep Aspect Ratio in VCS plots")
+            aspectAction.setStatusTip("Keep Aspect Ratio in VCS plots")
+            aspectAction.setCheckable(True)
+            checked = True
+            if conf.has('uvcdat'):
+                checked = conf.uvcdat.check('aspectRatio')
+            aspectAction.setChecked(checked)
+            
+            self.uvcdatPreferencesVar.setMenu(prefMenu)
+            
+            self.connect(executeAction,
                          QtCore.SIGNAL('triggered(bool)'),
                          self.uvcdatAutoExecuteActionTriggered)
+            self.connect(aspectAction,
+                         QtCore.SIGNAL('triggered(bool)'),
+                         self.uvcdatAspectRatioActionTriggered)
                 
-        return self.uvcdatAutoExecuteVar
+        return self.uvcdatPreferencesVar
     
     def uvcdatAutoExecuteActionTriggered(self, checked):
         """uvcdatAutoExecuteActionTriggered(checked: boolean) -> None 
@@ -280,6 +300,19 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         from api import _app
         get_vistrails_persistent_configuration().uvcdat.autoExecute = checked
         get_vistrails_configuration().uvcdat.autoExecute = checked
+        _app.save_configuration()
+        
+    def uvcdatAspectRatioActionTriggered(self, checked):
+        """uvcdatAspectRatioActionTriggered(checked: boolean) -> None 
+        When the check state changes the configuration needs to be updated.
+        
+        """
+        
+        from core.configuration import get_vistrails_persistent_configuration,\
+            get_vistrails_configuration
+        from api import _app
+        get_vistrails_persistent_configuration().uvcdat.aspectRatio = checked
+        get_vistrails_configuration().uvcdat.aspectRatio = checked
         _app.save_configuration()
         
     def exportSheetToImageAction(self):

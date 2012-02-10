@@ -14,6 +14,7 @@ import ast
 import string
 from info import identifier
 from widgets import GraphicsMethodConfigurationWidget
+from core.configuration import get_vistrails_configuration
 from core.modules.module_registry import get_module_registry
 from core.modules.vistrails_module import Module, ModuleError, NotCacheable
 from core import debug
@@ -992,7 +993,13 @@ Please delete unused CDAT Cells in the spreadsheet.")
                         #print k, " = ", getattr(cgm,k)
                             
             kwargs = plot.kwargs
-            cmd+=" 'starter', '%s'" % cgm.name
+            #check aspect Ratio
+            
+            conf = get_vistrails_configuration()
+            if conf.has('uvcdat'):
+                if conf.uvcdat.check('aspectRatio'):
+                    kwargs['ratio'] = 'autot'
+            cmd+=" '%s', '%s'" %( plot.template,cgm.name)
             for k in kwargs:
                 cmd+=", %s=%s" % (k, repr(kwargs[k]))
             cmd+=")"
@@ -1591,7 +1598,12 @@ def get_gm_attributes(plot_type):
 def get_canvas():
     global canvas
     if canvas is None:
+        from gui.uvcdat import customizeUVCDAT
         canvas = vcs.init()
+        try:
+            canvas.createtemplate(customizeUVCDAT.defaultTemplateName)
+        except:
+            pass
     return canvas
     
 for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
