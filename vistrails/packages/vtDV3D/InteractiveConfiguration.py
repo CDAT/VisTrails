@@ -1599,15 +1599,18 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 #        self.emit( self.update_animation_signal, self.iTimeStep, self.getTextDisplay() )
 
     def setTimestep( self, iTimestep ):
-        self.setValue( iTimestep )
-        sheetTabs = set()
-        relTimeValue = self.relTimeStart + self.iTimeStep * self.relTimeStep
-        print " ** Update Animation, timestep = %d, timeValue = %.3f " % ( self.iTimeStep, relTimeValue )
-        displayText = self.getTextDisplay()
-        HyperwallManager.processGuiCommand( ['reltimestep', relTimeValue, displayText ], False  )
-        for module in self.activeModuleList:
-            dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
-            module.updateAnimation( relTimeValue, displayText  )
+        if self.timeRange[0] == self.timeRange[1]:
+            self.running = False
+        else:
+            self.setValue( iTimestep )
+            sheetTabs = set()
+            relTimeValue = self.relTimeStart + self.iTimeStep * self.relTimeStep
+            print " ** Update Animation, timestep = %d, timeValue = %.3f " % ( self.iTimeStep, relTimeValue )
+            displayText = self.getTextDisplay()
+            HyperwallManager.processGuiCommand( ['reltimestep', relTimeValue, displayText ], False  )
+            for module in self.activeModuleList:
+                dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
+                module.updateAnimation( relTimeValue, displayText  )
                    
 #            except Exception, err:
 #                dvLog( module, " ----> Error %s " % str( err ) )

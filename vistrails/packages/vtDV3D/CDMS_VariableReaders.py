@@ -49,7 +49,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         if parmName == 'timestep':
 #            timestep = self.getTimeIndex( int( parmValue[0] ) )
             timestep = int( parmValue[0] )
-            return str( self.timeLabels[ timestep ] ), 10
+            try:    return str( self.timeLabels[ timestep ] ), 10
+            except: pass
         return None, 1
         
     def execute(self, **args ):
@@ -71,6 +72,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.timeValue = cdtime.reltime( float(timeValue), ReferenceTimeUnits )
             self.timeLabels = self.cdmsDataset.getTimeValues()
             self.nTimesteps = len( self.timeLabels )
+            print "Time Steps: %d, Labels: %s " % ( self.nTimesteps, str( self.timeLabels ) )
             self.generateOutput()
             if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
  

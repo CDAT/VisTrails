@@ -926,7 +926,7 @@ class PersistentModule( QObject ):
             updatePipelineConfiguration = args.get( 'update', False ) # False )                  
             if updatePipelineConfiguration: ctrl.select_latest_version() 
             DV3DConfigurationWidget.savingChanges = False
-            self.wmod = None
+#            self.wmod = None
                          
     def finalizeParameter(self, parameter_name, *args ):
         try:
@@ -1042,8 +1042,7 @@ class PersistentVisualizationModule( PersistentModule ):
         portName = args.get( 'name', 'volume' )
         outputModule = AlgorithmOutputModule3D( self.renderer, fieldData=self.fieldData, **args )
         output =  outputModule.getOutput() 
-        oid = id( outputModule )
-        print "Setting 3D output for port %s" % ( portName ) 
+#        print "Setting 3D output for port %s" % ( portName ) 
         if output <> None:
             fd = output.GetFieldData() 
             fd.PassData( self.fieldData ) 
@@ -1051,7 +1050,7 @@ class PersistentVisualizationModule( PersistentModule ):
             print>>sys.stderr, "Missing wmod in set3DOutput for class %s" % ( self.__class__.__name__ )
         else:
             self.wmod.setResult( portName, outputModule )
-            print "set3DOutput for class %s" % ( self.__class__.__name__ ) 
+#            print "set3DOutput for class %s" % ( self.__class__.__name__ ) 
 
     def getDownstreamCellModules( self, selectedOnly=False ): 
         import api, ModuleStore

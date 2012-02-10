@@ -376,6 +376,9 @@ class CDMSDatasetRecord():
             refDelLon = ( LonMax - LonMin ) / nRefLon
 #            nodataMask = cdutil.WeightsMaker( source=self.cdmsFile, var=varName,  actions=[ MV2.not_equal ], values=[ nodata_value ] ) if nodata_value else None
             gridMaker = cdutil.WeightedGridMaker( flat=LatMin, flon=LonMin, nlat=int(nRefLat/decimationFactor), nlon=int(nRefLon/decimationFactor), dellat=(refDelLat*decimationFactor), dellon=(refDelLon*decimationFactor) ) # weightsMaker=nodataMask  )                    
+                
+            from CDMS_DatasetReaders import getRelativeTimeValues 
+            time_values, dt, time_units = getRelativeTimeValues ( cdms2.open( self.cdmsFile ) ) 
             
             vc = cdutil.VariableConditioner( source=self.cdmsFile, var=varName,  cdmsKeywords=args1, weightedGridMaker=gridMaker ) 
             regridded_var_slice = vc.get( returnTuple=0 )
@@ -877,7 +880,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
 #        PM_MapCell3D.clearCache()    
         
     def computeGridFromSpecs(self):
-        self.timeRange = [ 0, 0, None, None ]
+        start_time, end_time, min_dt  = -float('inf'), float('inf'), float('inf')
         self.roi = [ 0.0, -90.0, 360.0, 90.0 ]
         for gridSpec in self.gridSpecs:
             print " -- GridSpec: ", gridSpec
@@ -886,12 +889,11 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 type = gridFields[0].strip()
                 values = gridFields[1].strip('() ').split(',')
                 if type == 'time':
-                    print " init time values: ", str( values )
                     cval = getCompTime( values[0].strip(" ") )
-                    self.timeRange[2] = cval.torel(ReferenceTimeUnits).value
+                    start_time = cval.torel(ReferenceTimeUnits).value
                     cval = getCompTime( values[1].strip(" ") )
-                    self.timeRange[3] = cval.torel(ReferenceTimeUnits).value
-                    print " processed time values: ", str( self.timeRange ), ", units= ", ReferenceTimeUnits
+                    end_time = cval.torel(ReferenceTimeUnits).value
+#                    print " TimeRange Specs: ", str( values ), str( start_time ), str( end_time ), str( ReferenceTimeUnits )
                 elif type.startswith('lat' ):
                     lat_bounds = [ float( values[0] ), float( values[1] ) ]
                     self.roi[1] = lat_bounds[0] if lat_bounds[0] < lat_bounds[1] else lat_bounds[1]
@@ -899,27 +901,30 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 elif type.startswith('lon' ):
                     self.roi[0] = float( values[0] ) 
                     self.roi[2] = float( values[1] )                   
-        if not self.timeRange[2]:
-            dataset_list = []
-            start_time, end_time, min_dt  = -float('inf'), float('inf'), float('inf')
-            for relFilePath in self.fileSpecs:
-                try:
-                    cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
-                    dataset = cdms2.open( cdmsFile ) 
-                    dataset_list.append( dataset )
-                except:
-                    print "Error opening dataset: %s" % str(cdmsFile)
-            for dataset in dataset_list:
-                time_values, dt, time_units = getRelativeTimeValues ( dataset )
+        dataset_list = []
+        for relFilePath in self.fileSpecs:
+            try:
+                cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                dataset = cdms2.open( cdmsFile ) 
+                dataset_list.append( dataset )
+            except:
+                print "Error opening dataset: %s" % str(cdmsFile)
+        for dataset in dataset_list:
+            time_values, dt, time_units = getRelativeTimeValues ( dataset )
+            if time_values:
+                nTS = len( time_values )
                 if time_values[0].value > start_time: start_time  = time_values[0].value
                 if dt == 0.0: end_time = start_time
-                elif time_values[1].value < end_time:   end_time = time_values[1].value
+                elif time_values[nTS-1].value < end_time:   end_time = time_values[1].value
                 if dt < min_dt: min_dt = dt               
-            for dataset in dataset_list: dataset.close()
-            print "ComputeGridFromSpecs: ", str( [ start_time, end_time, min_dt ] )
-            if min_dt == 0: nTS = 1
-            else: nTS = int( ( start_time - end_time ) / min_dt )  
-            self.timeRange = [ 0, nTS-1, start_time, end_time ]
+        for dataset in dataset_list: dataset.close()
+        if min_dt == float('inf'): 
+            nTS = 1
+            start_time = 0 
+            end_time = 0
+        else: nTS = int( ( ( end_time - start_time ) / min_dt ) + 0.0001 )  
+        self.timeRange = [ 0, nTS-1, start_time, end_time ]
+#        print "Compute TimeRange From Specs: ", str( [ start_time, end_time, min_dt ] ), str( self.timeRange )
 
             
     def execute(self, **args ):
@@ -1079,11 +1084,11 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.variableList = ( [], [] )
         self.lonRangeType = 1
         self.fullRoi = [ [ 0.0, -90.0, 360.0, 90.0 ], [ -180.0, -90.0, 180.0, 90.0 ] ]
+        self.decimation = [ 0, 0 ]
         self.roi = self.fullRoi[ self.lonRangeType ]
         self.zscale = 1.0
         self.relativeStartTime = None
         self.relativeTimeStep = None
-        self.multiFileSelection = True
         self.currentDatasetId = None
         self.datasetChanged = False
         self.datasets = {}
@@ -1092,18 +1097,9 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.selectedGrid = None
         DV3DConfigurationWidget.__init__(self, module, controller, 'CDMS Dataset Configuration', parent)
         self.metadataViewer = MetadataViewerDialog( self )
-        if self.multiFileSelection:
-            self.updateTimeValues()
-            self.initTimeRange()
-            self.initRoi()
-            self.initDecimation()
-            self.initZScale()
-            if self.pmod: self.pmod.clearNewConfiguration()
-        elif (self.currentDatasetId <> None): 
-            self.registerCurrentDataset( id=self.currentDatasetId )           
+        if self.pmod: self.pmod.clearNewConfiguration()
+        if self.currentDatasetId: self.registerCurrentDataset( id=self.currentDatasetId )
         self.stateChanged( False )
-#        self.initTimeRange()
-#        self.initRoi()
         
     def initTimeRange( self ):
         timeRangeParams =   self.pmod.getInputValue( "timeRange"  ) # getFunctionParmStrValues( self.module, "timeRange"  )
@@ -1145,10 +1141,9 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         if datasetParams: 
             gridParams = getFunctionParmStrValues( module, "grid" )
             if gridParams:  self.selectedGrid = gridParams[0]
-            self.currentDatasetId = datasetParams[0]
+            self.currentDatasetId = datasetParams[0] 
             self.pmod.datasetId = self.currentDatasetId
             if( len(datasetParams) > 1 ): DataSetVersion = int( datasetParams[1] )
-        self.updateGrids()
 
     def setDatasetProperties(self, dataset, cdmsFile ):
         self.currentDatasetId = dataset.id  
@@ -1170,11 +1165,11 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
             dataset = cdms2.open( cdmsFile ) 
             self.setDatasetProperties( dataset, cdmsFile )
-            self.updateGrids()           
+            self.updateGrids( dataset )           
             self.timeRange = None
             self.nTS = 0
-            self.updateTimeValues()
-            self.initTimeRange()
+            if not self.updateTimeValues( dataset ):
+                self.initTimeRange()
             self.initRoi()
             self.initDecimation()
             self.initZScale()
@@ -1190,22 +1185,19 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         if file <> None:
             cdmsFile = str( file ).strip() 
             if len( cdmsFile ) > 0:                             
-                if self.multiFileSelection:
-                    try:
-                        dataset = cdms2.open( cdmsFile )
-                        relFilePath = os.path.relpath( cdmsFile, CDMSDatasetRecord.cdmsDataRoot )
-                        self.currentDatasetId = dataset.id 
-                        self.datasets[ self.currentDatasetId ] = relFilePath  
+                try:
+                    dataset = cdms2.open( cdmsFile )
+                    relFilePath = os.path.relpath( cdmsFile, CDMSDatasetRecord.cdmsDataRoot )
+                    self.currentDatasetId = dataset.id 
+                    self.datasets[ self.currentDatasetId ] = relFilePath  
 #                        self.cdmsDataRoot = os.path.dirname( cdmsFile )
-                        self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
-                        self.dsCombo.setCurrentIndex( 0 )
-                        self.pmod.datasetId = '*'.join( self.datasets.keys() )
-                        dataset.close()
-                    except:
-                        print "Error opening dataset: %s" % str(cdmsFile)
-                else:
-                    self.registerCurrentDataset( file=cdmsFile, newLayerConfig=True ) 
-                    self.dataset_selection.setText( QString( self.currentDatasetId ) ) 
+                    self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
+                    self.dsCombo.setCurrentIndex( 0 )
+                    self.pmod.datasetId = '*'.join( self.datasets.keys() )
+                    dataset.close()
+                except:
+                    print "Error opening dataset: %s" % str(cdmsFile)
+                self.registerCurrentDataset( file=cdmsFile, newLayerConfig=True ) 
                 global DataSetVersion 
                 DataSetVersion = DataSetVersion + 1 
                 self.stateChanged()
@@ -1215,23 +1207,41 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.metadataViewer.show()
         
     def removeDataset(self):
-        if self.multiFileSelection:
-            del self.datasets[ str(self.dsCombo.currentText()) ]
-            self.dsCombo.removeItem( self.dsCombo.currentIndex() )
-            if self.dsCombo.count() == 0: self.metadataViewer.clear() 
-            else:
-                self.dsCombo.setCurrentIndex(0)
-                if self.multiFileSelection: 
-                    self.updateGrids()
-                    self.updateTimeValues( )
-                    self.initTimeRange()
-                    self.pmod.datasetId = '*'.join( self.datasets.keys() )     
-                else:                       
-                    self.registerCurrentDataset( id=self.dsCombo.currentText() )
-            global DataSetVersion 
-            DataSetVersion = DataSetVersion + 1 
+        del self.datasets[ str(self.dsCombo.currentText()) ]
+        self.dsCombo.removeItem( self.dsCombo.currentIndex() )
+        if self.dsCombo.count() == 0: self.metadataViewer.clear() 
+        else:
+            self.dsCombo.setCurrentIndex(0) 
+            self.pmod.datasetId = '*'.join( self.datasets.keys() )                         
+            self.registerCurrentDataset( id=self.dsCombo.currentText() )
+        global DataSetVersion 
+        DataSetVersion = DataSetVersion + 1 
             
-    def updateGrids(self):
+    def updateGrids( self, dataset ):
+        self.grids = []
+        self.variableList = ( [], [] )
+        try:
+            for var in dataset.variables:
+                vardata = dataset[var]
+                var_ndim = getVarNDim( vardata )
+                if (var_ndim) == 2 or (var_ndim == 3):
+                    self.variableList[var_ndim-2].append( '%s*%s' % ( dataset.id, var ) )
+#            if not self.selectedGrid:
+#                if len( self.variableList[1] ): self.selectedGrid = self.variableList[1][0]
+#                elif len( self.variableList[0] ): self.selectedGrid = self.variableList[0][0]
+            for grid_id in dataset.grids:
+                self.grids.append( '*'.join( [ dataset.id, grid_id ] ) )
+                grid = dataset.grids[ grid_id ]
+                lonAxis = grid.getLongitude()
+                if lonAxis:
+                    lonVals = lonAxis.getValue()
+                    if lonVals[0] < 0.0: self.lonRangeType = 1
+        except Exception, err:
+            print>>sys.stderr, " Error opening dataset: ", str( err ) 
+                
+        self.updateRefVarSelection() 
+
+    def updateMultiGrids(self):
         self.grids = []
         self.variableList = ( [], [] )
         for datasetId in self.datasets:
@@ -1260,8 +1270,33 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
                     print>>sys.stderr, " Error opening dataset file %s: %s " % ( cdmsFile, str( err ) )
                 
         self.updateRefVarSelection() 
-     
-    def updateTimeValues( self):
+
+    def updateTimeValues( self, dataset ):
+        self.startCombo.clear()
+        self.endCombo.clear()
+        if dataset:
+            time_values, dt, time_units = getRelativeTimeValues ( dataset )
+            if time_values:
+                iStart = 0
+                iEnd = ( len( time_values ) - 1 )                            
+                self.nTS = len(time_values) if time_values else 0
+                self.relativeTimeStep = dt
+                self.relativeTimeUnits = time_units
+                self.relativeStartTime = time_values[ iStart ]
+                for iT in range( iStart, iEnd+1 ):
+                    time_value = time_values[ iT ].tocomp()
+                    tval = str( time_value ) 
+                    self.startCombo.addItem ( tval )
+                    self.endCombo.addItem ( tval )
+                self.timeRange = [ 0, iEnd-iStart ]
+                self.startCombo.setCurrentIndex( self.timeRange[0] ) 
+                self.startIndexEdit.setText( str( self.timeRange[0] ) )  
+                self.endCombo.setCurrentIndex( self.timeRange[1] ) 
+                self.endIndexEdit.setText( str( self.timeRange[1] ) ) 
+                return True
+        return False 
+         
+    def updateMultiTimeValues( self):
         self.startCombo.clear()
         self.endCombo.clear()
         current_time_values = None
@@ -1322,9 +1357,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
        
     def selectDataset(self): 
         self.datasetChanged = True
-        if self.multiFileSelection:
-            self.registerCurrentDataset( id=str( self.dsCombo.currentText() ), newLayerConfig=True )
-            self.updateController()
+        self.registerCurrentDataset( id=str( self.dsCombo.currentText() ), newLayerConfig=True )
+        self.updateController()
                                                        
     def createLayout(self):
         """ createEditor() -> None
@@ -1339,54 +1373,33 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         ds_label = QLabel( "Dataset:"  )
         ds_layout.addWidget( ds_label ) 
                 
-        if self.multiFileSelection:
-            self.dsCombo =  QComboBox ( self.parent() )
-            ds_label.setBuddy( self.dsCombo )
-            self.dsCombo.setMaximumHeight( 30 )
-            ds_layout.addWidget( self.dsCombo  )
-            for ds in self.datasets.keys(): self.dsCombo.addItem ( ds )
-            if self.currentDatasetId:
-                iCurrentDsIndex = self.dsCombo.findText( self.currentDatasetId )
-                self.dsCombo.setCurrentIndex( iCurrentDsIndex )   
-            self.connect( self.dsCombo, SIGNAL("currentIndexChanged(QString)"), self.selectDataset )
-            
-            layout.addLayout( ds_layout )
-            ds_button_layout = QHBoxLayout()
-    
-            self.selectDirButton = QPushButton('Add Dataset', self)
-            ds_button_layout.addWidget( self.selectDirButton )
-            self.connect( self.selectDirButton, SIGNAL('clicked(bool)'), self.selectFile )
-    
-            self.removeDatasetButton = QPushButton('Remove Dataset', self)
-            ds_button_layout.addWidget( self.removeDatasetButton )
-            self.connect( self.removeDatasetButton, SIGNAL('clicked(bool)'), self.removeDataset )
+        self.dsCombo =  QComboBox ( self.parent() )
+        ds_label.setBuddy( self.dsCombo )
+        self.dsCombo.setMaximumHeight( 30 )
+        ds_layout.addWidget( self.dsCombo  )
+        for ds in self.datasets.keys(): self.dsCombo.addItem ( ds )
+        if self.currentDatasetId:
+            iCurrentDsIndex = self.dsCombo.findText( self.currentDatasetId )
+            self.dsCombo.setCurrentIndex( iCurrentDsIndex )   
+        self.connect( self.dsCombo, SIGNAL("currentIndexChanged(QString)"), self.selectDataset )
+        
+        layout.addLayout( ds_layout )
+        ds_button_layout = QHBoxLayout()
 
-            self.viewMetadataButton = QPushButton('View Metadata', self)
-            ds_button_layout.addWidget( self.viewMetadataButton )
-            self.connect( self.viewMetadataButton, SIGNAL('clicked(bool)'), self.viewMetadata )
-    
-            layout.addLayout( ds_button_layout )
-        else:              
-            self.dataset_selection  = QLabel( )
-            self.dataset_selection.setFrameStyle( QFrame.Panel|QFrame.Raised )
-            self.dataset_selection.setLineWidth(2)
-            ds_layout.addWidget( self.dataset_selection )
-            if self.currentDatasetId: self.dataset_selection.setText( QString( self.currentDatasetId ) )  
-            
-            layout.addLayout( ds_layout )
-            ds_button_layout = QHBoxLayout()
-    
-            self.selectDirButton = QPushButton('Select Dataset', self)
-            ds_button_layout.addWidget( self.selectDirButton )
-            self.connect( self.selectDirButton, SIGNAL('clicked(bool)'), self.selectFile )
-    
-            self.viewMetadataButton = QPushButton('View Metadata', self)
-            ds_button_layout.addWidget( self.viewMetadataButton )
-            self.connect( self.viewMetadataButton, SIGNAL('clicked(bool)'), self.viewMetadata )
-    
-            layout.addLayout( ds_button_layout )
-            ds_button1_layout = QHBoxLayout()
+        self.selectDirButton = QPushButton('Add Dataset', self)
+        ds_button_layout.addWidget( self.selectDirButton )
+        self.connect( self.selectDirButton, SIGNAL('clicked(bool)'), self.selectFile )
 
+        self.removeDatasetButton = QPushButton('Remove Dataset', self)
+        ds_button_layout.addWidget( self.removeDatasetButton )
+        self.connect( self.removeDatasetButton, SIGNAL('clicked(bool)'), self.removeDataset )
+
+        self.viewMetadataButton = QPushButton('View Metadata', self)
+        ds_button_layout.addWidget( self.viewMetadataButton )
+        self.connect( self.viewMetadataButton, SIGNAL('clicked(bool)'), self.viewMetadata )
+
+        layout.addLayout( ds_button_layout )
+        
         timeTab = QWidget() 
 #        timeTab.setFocusPolicy( Qt.NoFocus ) 
         self.tabbedWidget.addTab( timeTab, 'time' )                 

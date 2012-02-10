@@ -104,7 +104,8 @@ class PlotPipelineHelper(object):
                 aliases[plot_obj.cells[j].address_name] = "%s%s" % ( chr(ord('A') + col+j ), row+1)
             
         for a,w in plot_obj.alias_widgets.iteritems():
-            aliases[a] = w.contents()
+            try:    aliases[a] = w.contents()
+            except: print>>sys.stderr, "Error updating alias %s", str( a )
 
         actions = plot_obj.applyChanges(aliases)
         action = actions.pop()
