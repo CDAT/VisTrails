@@ -1,3 +1,4 @@
+import ast
 from PyQt4 import QtCore, QtGui
 from core.utils import InstanceObject
 import core.db.action
@@ -91,7 +92,11 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         if fun in self.fun_map:
             fid = self.fun_map[fun]
             f = self.module.functions[fid]
-            return f.params[0].value()
+            try:
+                value = f.params[0].value()
+            except:
+                value = ast.literal_eval(f.params[0].strValue)
+            return value
         else:
             return None
         

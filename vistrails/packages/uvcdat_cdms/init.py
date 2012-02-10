@@ -1110,7 +1110,7 @@ class QCDATDimSelector(QtGui.QComboBox):
     def __init__(self,parent=None,cell=None):
         QtGui.QComboBox.__init__(self,parent)
         self.addItems(cell.extraDimsNames)
-    def valueChanged(*args):
+    def valueChanged(self, *args):
         print "You changed the dims name",args
         
 class QCDATWidgetPrev(QtGui.QAction):
@@ -1649,6 +1649,12 @@ def initialize(*args, **keywords):
             attrs = {}
             for attr in attributes:
                 attrs[attr] = getattr(gm,attr)
+                if attr == 'linecolor' and attrs[attr] == None:
+                    attrs[attr] = 241
+                elif attr == 'linewidth' and attrs[attr] == None:
+                    attrs[attr] = 1
+                elif attr == 'line' and attrs[attr] == None:
+                    attrs[attr] = 'solid'
             original_gm_attributes[plot_type][gmname] = InstanceObject(**attrs)
    
     

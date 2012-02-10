@@ -369,7 +369,7 @@ class VCSGMRanges:
             gm.linecolors=eval(str(self.colorsLineEdit.text()))
             gm.line= eval(str(self.patternsLineEdit.text()))
             gm.linewidths = eval(str(self.lineWidthsEdit.text()))
-        self.levels = eval(str(self.rangeLineEdit.text()))
+        gm.levels = eval(str(self.rangeLineEdit.text()))
 
     def initRangeValues(self, gm=None):
         if gm is None:
@@ -1649,7 +1649,7 @@ class QIsofillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         gm.ext_2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
         gm.missing = eval(str(self.missingLineEdit.text()))
         gm.levels = eval(str(self.rangeLineEdit.text()))
-        self.applyRangeSettings()
+        self.applyRangeSettings(gm)
 
 class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
     def __init__(self, parent=None, gm=None):
