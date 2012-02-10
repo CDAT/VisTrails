@@ -31,6 +31,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.glyphRange = None
         self.glyphDecimationFactor = [ 20.0, 2.0 ] 
         self.primaryInputPort = 'volume'
+        self.resample = None
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, units=self.units, bound=False )
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False )
