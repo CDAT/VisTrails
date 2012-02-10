@@ -32,17 +32,45 @@
 ##
 ###############################################################################
 
-from core.configuration import ConfigurationObject
+"""Module with utilities to inspect bundles, if possible."""
 
+from gui.bundles.utils import guess_system, guess_graphical_sudo
+import gui.bundles.checkbundle # this is on purpose
+import os
 
-identifier = 'edu.utah.sci.vistrails.persistence'
-version = '0.2.3'
-name = 'Persistence'
+##############################################################################
 
-configuration = ConfigurationObject(global_db=(None, str), 
-                                    local_db=(None, str),
-                                    git_bin=(None, str),
-                                    tar_bin=(None, str),
-                                    search_dbs=(None, str),
-                                    compress_by_default=False,
-                                    debug=False)
+def linux_ubuntu_check(package_name):
+    import apt_pkg
+    apt_pkg.init()
+    cache = apt_pkg.GetCache()
+    depcache = apt_pkg.GetDepCache(cache)
+
+    def get_single_package(name):
+        if type(package) != str:
+            raise TypeError("Expected string")
+        cache = apt_pkg.GetCache()
+        depcache = apt_pkg.GetDepCache(cache)
+        records = apt_pkg.GetPkgRecords(cache)
+        sourcelist = apt_pkg.GetPkgSourceList()
+        pkg = apt.package.Package(cache, depcache, records,
+                                  sourcelist, None, cache[sys.argv[1]])
+        return pkg
+
+    if type(package_name) == str:
+        return get_single_package(package_name).candidateVersion
+    elif type(package_name) == list:
+        return [get_single_package(name).candidateVersion
+                for name in package_name]
+
+def get_version(dependency_dictionary):
+    """Tries to determine a bundle version.
+    """
+    distro = guess_system()
+    if not dependency_dictionary.has_key(distro):
+        return None
+    else:
+        callable_ = getattr(core.bundles.checkbundle,
+                            distro.replace('-', '_') + '_get_version')
+        
+        return callable_(dependency_dictionary[distro])

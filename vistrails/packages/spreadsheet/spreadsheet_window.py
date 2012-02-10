@@ -67,6 +67,7 @@ class SpreadsheetWindow(QtGui.QMainWindow):
         QtGui.QMainWindow.__init__(self, parent, f)
         self.createEventMap()
         self.setWindowTitle('UV-CDAT - Spreadsheet - Untitled')
+        self.shownConfig = False #flag to control the window setup code is done only once
         self.stackedCentralWidget = QtGui.QStackedWidget(self)
         self.tabControllerStack = TabControllerStack(self.stackedCentralWidget)
         self.stackedCentralWidget.addWidget(self.tabControllerStack)
@@ -294,6 +295,8 @@ class SpreadsheetWindow(QtGui.QMainWindow):
         
         """
         if hasattr(self.visApp, 'configuration'):
+            if self.shownConfig:
+                self.show()
             ### Multiheads
             desktop = QtGui.QApplication.desktop()
             if self.visApp.temp_configuration.multiHeads and desktop.numScreens()>1:
@@ -314,6 +317,7 @@ class SpreadsheetWindow(QtGui.QMainWindow):
                         self.move(r.center()-self.rect().center()-frameDiff)
                         break
             if not self.visApp.temp_configuration.interactiveMode:
+                self.shownConfig = True
                 return
             ### Maximize
             if self.visApp.temp_configuration.maximizeWindows:
@@ -330,6 +334,8 @@ class SpreadsheetWindow(QtGui.QMainWindow):
                     self.raise_()                
         else:
             self.show()
+            
+        self.shownConfig = True
 
     def showEvent(self, e):
         """ showEvent(e: QShowEvent) -> None

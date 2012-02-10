@@ -58,6 +58,8 @@ from time import strptime
 
 from core.configuration import get_vistrails_configuration
 from gui.application import VistrailsApplicationInterface
+import gui.theme
+import core.application
 from gui import qt
 from core.db.locator import DBLocator, ZIPFileLocator, FileLocator
 from core.db import io
@@ -70,7 +72,7 @@ from core import command_line
 from core import system
 from core.modules.module_registry import get_module_registry as module_registry
 from core import interpreter
-from core.vistrail.controller import VistrailController
+from gui.vistrail_controller import VistrailController
 import core
 import db.services.io
 import gc
@@ -1006,9 +1008,10 @@ class RequestHandler(object):
                                         thumbnails, mashups)
                 controller.change_selected_version(version)
 
-                p = controller.current_pipeline
                 from gui.pipeline_view import QPipelineView
                 pipeline_view = QPipelineView()
+                controller.current_pipeline_view = pipeline_view.scene()
+                p = controller.current_pipeline
                 pipeline_view.scene().setupScene(p)
                 pipeline_view.scene().saveToPDF(filename)
                 del pipeline_view
@@ -1090,12 +1093,13 @@ class RequestHandler(object):
                                     connection_id=None)
                 (v, abstractions , thumbnails, mashups)  = io.load_vistrail(locator)
                 controller = VistrailController()
+                from gui.pipeline_view import QPipelineView
+                pipeline_view = QPipelineView()
+                controller.current_pipeline_view = pipeline_view.scene()
                 controller.set_vistrail(v, locator, abstractions, thumbnails,
                                         mashups)
                 controller.change_selected_version(version)
                 p = controller.current_pipeline
-                from gui.pipeline_view import QPipelineView
-                pipeline_view = QPipelineView()
                 pipeline_view.scene().setupScene(p)
                 pipeline_view.scene().saveToPNG(filename)
                 del pipeline_view
@@ -1203,9 +1207,13 @@ class RequestHandler(object):
                                         mashups)
                 from gui.version_view import QVersionTreeView
                 version_view = QVersionTreeView()
+                from gui.pipeline_view import QPipelineView
+                pipeline_view = QPipelineView()
+                controller.current_pipeline_view = pipeline_view.scene()
                 version_view.scene().setupScene(controller)
                 version_view.scene().saveToPNG(filename)
                 del version_view
+                del pipeline_view
             else:
                 self.server_logger.info("Found cached image: %s" % filename)
             if is_local:
@@ -1292,9 +1300,13 @@ class RequestHandler(object):
                                         mashups)
                 from gui.version_view import QVersionTreeView
                 version_view = QVersionTreeView()
+                from gui.pipeline_view import QPipelineView
+                pipeline_view = QPipelineView()
+                controller.current_pipeline_view = pipeline_view.scene()
                 version_view.scene().setupScene(controller)
                 version_view.scene().saveToPDF(filename)
                 del version_view
+                del pipeline_view
             else:
                 self.server_logger.info("Found cached pdf: %s" % filename)
             if is_local:
@@ -2084,6 +2096,8 @@ def start_server(optionsDict=None):
         print "Server already started."
         return
     VistrailsServer = VistrailsServerSingleton()
+    gui.theme.initializeCurrentTheme()
+    core.application.set_vistrails_application(VistrailsServer)
     try:
         core.requirements.check_all_vistrails_requirements()
     except core.requirements.MissingRequirement, e:
