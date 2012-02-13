@@ -913,9 +913,10 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             time_values, dt, time_units = getRelativeTimeValues ( dataset )
             if time_values:
                 nTS = len( time_values )
-                if time_values[0].value > start_time: start_time  = time_values[0].value
+                tbounds = [ time_values[0].value, time_values[nTS-1].value ]
+                if  tbounds[0] > start_time: start_time  = tbounds[0]
                 if dt == 0.0: end_time = start_time
-                elif time_values[nTS-1].value < end_time:   end_time = time_values[1].value
+                elif tbounds[1] < end_time:   end_time = tbounds[1]
                 if dt < min_dt: min_dt = dt               
         for dataset in dataset_list: dataset.close()
         if min_dt == float('inf'): 
