@@ -235,7 +235,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
   
         #self.connect(self,QtCore.SIGNAL("keyRelease"),self.key)
         #-----------------------------------------------------------------------
-	# connect signal - if the return key is pressed, then call run_command
+        # connect signal - if the return key is pressed, then call run_command
         #-----------------------------------------------------------------------
         self.connect(self.le, QtCore.SIGNAL("returnPressed(void)"),
                      self.run_command)

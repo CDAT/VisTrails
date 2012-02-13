@@ -107,7 +107,7 @@ def get_current_project_controller():
 
     """
     try:
-        return _app.uvcdatWindow.get_current_project_controller()
+        return get_vistrails_application().uvcdatWindow.get_current_project_controller()
     except AttributeError:
         raise NoVistrail
 
