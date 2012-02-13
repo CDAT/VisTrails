@@ -7,6 +7,7 @@ import editVariableWidget
 import axesWidgets
 import  __main__
 from gui.uvcdat.variable import VariableProperties
+import gui.uvcdat.uvcdat_rc
 
 class QDefinedVariableWidget(QtGui.QWidget):
     """ QDefinedVariable contains a list of the user defined variables and allows the
@@ -395,18 +396,18 @@ class QDefinedVariableWidget(QtGui.QWidget):
         varProp.show()
                 
     def createToolbar(self):
-        ICONPATH = customizeUVCDAT.ICONPATH
+        ICONPATH = ":/icons/resources/icons/"
 
         # Create options bar
         self.toolBar = QtGui.QToolBar()
         self.toolBar.setIconSize(QtCore.QSize(customizeUVCDAT.iconsize,customizeUVCDAT.iconsize))
         actionInfo = [
-            ('symbol_add.ico', "add",'Add variable(s).',self.newVariable),
-            ('symbol_delete.ico', "del",'Delete selected defined variable(s) from all projects.',self.trashVariable),
-            ('symbol_check.ico', "recycle",'Select ALL variables.',self.selectAllVariables),
-            ('symbol_information.ico', "info",'Display selected defined variable(s) information.',self.variableInfo),
-            ('pencil.ico', "edit",'Edit selected defined variable(s).',self.editVariables),
-            ('floppy_disk_blue.ico', "save",'Save selected defined variable(s) to a netCDF file.',self.saveVariables),
+            ('edit_add.png', "add",'Add variable(s).',self.newVariable),
+            ('delete.png', "del",'Delete selected defined variable(s) from all projects.',self.trashVariable),
+            ('checked.png', "recycle",'Select ALL variables.',self.selectAllVariables),
+            ('info.png', "info",'Display selected defined variable(s) information.',self.variableInfo),
+            ('edit.png', "edit",'Edit selected defined variable(s).',self.editVariables),
+            ('file_save.png', "save",'Save selected defined variable(s) to a netCDF file.',self.saveVariables),
             ## ('log.gif', "log",'Logged information about the defined variables.',self.variablesInfo),
             ## ('trashcan_empty.gif', "trash",'Defined variable items that can be disposed of permanetly or restored.',self.empytTrash),
             ]
