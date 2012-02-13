@@ -370,16 +370,17 @@ class Workspace(QtGui.QDockWidget):
         self.toolsProject.addAction(self.btnOpenProject)
 
         icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/save.png"))
+        icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/file_save.png"))
         self.btnSaveProject = QtGui.QAction(icon1, "Save Project", self)
         self.btnSaveProject.setToolTip("Save Project")
         self.toolsProject.addAction(self.btnSaveProject)
 
+        #the save as action will be added to the menu only
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/save-as.png"))
         self.btnSaveProjectAs = QtGui.QAction(icon1,"Save Project As", self)
         self.btnSaveProjectAs.setToolTip("Save Project As")
-        self.toolsProject.addAction(self.btnSaveProjectAs)
+        #self.toolsProject.addAction(self.btnSaveProjectAs)
 
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/close.png"))

@@ -50,6 +50,7 @@ import copy
 import gc
 from gui.theme import CurrentTheme
 from gui.utils import show_warning
+import gui.uvcdat.uvcdat_rc
 
 ################################################################################
 
@@ -255,7 +256,7 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         """
         from core.configuration import get_vistrails_configuration
         if not hasattr(self, 'uvcdatPreferencesVar'):
-            self.uvcdatPreferencesVar = QtGui.QAction(QtGui.QIcon(":/images/preferences.png"),
+            self.uvcdatPreferencesVar = QtGui.QAction(QtGui.QIcon(":/icons/resources/icons/preferences.png"),
                                                       'Preferences',
                                                       self)
             self.uvcdatPreferencesVar.setStatusTip("Show Preferences")

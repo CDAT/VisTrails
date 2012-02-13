@@ -22,8 +22,8 @@ from core.utils import InstanceObject
 from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
-import packages.spreadsheet.celltoolbar_rc
 from packages.uvcdat.init import Variable, Plot
+import gui.uvcdat.uvcdat_rc
 
 canvas = None
 original_gm_attributes = {}
@@ -1334,7 +1334,7 @@ class QCDATWidgetExport(QtGui.QAction):
         
         """
         QtGui.QAction.__init__(self,
-                               QtGui.QIcon(":/images/file_save.png"),
+                               QtGui.QIcon(":/icons/resources/icons/file_export.png"),
                                "Export the current plot as an image",
                                parent)
         self.setStatusTip("Export the current plot as an image")

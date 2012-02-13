@@ -13,14 +13,18 @@
         <file>resources/icons/open.png</file>
         <file>resources/icons/add.png</file>
         <file>resources/icons/close.png</file>
-        <file>resources/icons/save.png</file>
-        <file>resources/icons/save-as.png</file>
         <file>resources/icons/unpinned.png</file>
         <file>resources/icons/pinned.png</file>
         <file>resources/icons/colormap.png</file>
-	<file>resources/icons/previous.png</file>
-	<file>resources/icons/next.png</file>
-	<file>resources/icons/animation.png</file>
+        <file>resources/icons/previous.png</file>
+        <file>resources/icons/next.png</file>
+        <file>resources/icons/animation.png</file>
+        <file>resources/icons/file_save.png</file>
+        <file>resources/icons/source_code.png</file>
+        <file>resources/icons/preferences.png</file>
+        <file>resources/icons/checked.png</file>
+        <file>resources/icons/file_export.png</file>
+        <file>resources/icons/animation2.png</file>
     </qresource>
     <qresource prefix="/images">
         <file>resources/images/clt_isofill.png</file>

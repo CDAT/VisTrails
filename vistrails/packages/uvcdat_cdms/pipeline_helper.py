@@ -928,7 +928,7 @@ class CDMSPlotWidget(QtGui.QWidget):
             plot_module = CDMSPipelineHelper.create_plot_module(self.controller, 
                                                                 plot.parent, 
                                                                 plot.name)
-            self.plot_table.add_plot_item(plot_module)
+            self.plot_table.add_plot_item(plot_module, copy_vars=True)
             self.to_be_added.append(plot_module.id)
         self.update_btn_del_state()
         
@@ -966,8 +966,11 @@ class CDMSPlotWidget(QtGui.QWidget):
         else:
             version = self.version
         pipeline = self.controller.vistrail.getPipeline(version)
-        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
-
+        pip_plots = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+        plot_modules = []
+        for plot in pip_plots:
+            if plot.id not in self.to_be_removed:
+                plot_modules.append(plot)
         action = CDMSPipelineHelper.rebuild_pipeline_action(self.controller, 
                                                             version, 
                                                             plot_modules, 
@@ -1049,7 +1052,7 @@ class PlotTableWidget(QtGui.QTreeWidget):
                 if item.module == self.plots[0]:
                     self.setItemSelected(item,True)
             
-    def create_plot_item(self, order, plot_module):
+    def create_plot_item(self, order, plot_module, copy_vars=False):
         manager = get_plot_manager()
         desc = plot_module.module_descriptor.module()
         gm_name = CDMSPipelineHelper.get_graphics_method_name_from_module(plot_module)
@@ -1063,16 +1066,24 @@ class PlotTableWidget(QtGui.QTreeWidget):
                                                                                plot_module.id)
         else:
             _vars = []
+            if copy_vars:
+                plot_modules = CDMSPipelineHelper.find_plot_modules(pipeline)
+                if len(plot_modules) > 0:
+                    p_module = plot_modules[0]
+                    _vars = CDMSPipelineHelper.find_variables_connected_to_plot_module(self.controller, 
+                                                                                        pipeline, 
+                                                                                        p_module.id)
+                      
         reg_plot = manager.get_plot_by_name(desc.plot_type, gm_name)
         item = PlotTableWidgetItem(self, order, plot_module, labels, 
                                    desc.plot_type, gm_name, _vars, reg_plot, template)
         item.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable)
         return item
     
-    def add_plot_item(self, plot_module):
+    def add_plot_item(self, plot_module, copy_vars=False):
         order = self.topLevelItemCount()
         self.plots.append(plot_module)
-        self.create_plot_item(order,plot_module)
+        self.create_plot_item(order,plot_module, copy_vars)
     
     @pyqtSlot(bool)
     def move_item_up(self, checked):
@@ -1110,6 +1121,11 @@ class PlotTableWidget(QtGui.QTreeWidget):
         item = self.takeTopLevelItem(index)
         self.remove_plot_by_id(item.module.id)
         self.update_item_ordering()
+        if index >= self.topLevelItemCount():
+            index -= 1
+        if index >=0:
+            sel_item = self.topLevelItem(index)
+            self.setItemSelected(sel_item, True)
         return item.module
     
     def remove_plot_by_id(self, _id):
