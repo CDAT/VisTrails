@@ -675,7 +675,7 @@ class Package(DBPackage):
         child = enter_named_element(element, 'configuration')
         if child:
             element.removeChild(child)
-        self.configuration.write_to_dom(dom, element)
+        if self.configuration: self.configuration.write_to_dom(dom, element)
         get_vistrails_application().vistrailsStartup.write_startup_dom(dom)
         dom.unlink()
 
@@ -695,7 +695,8 @@ class Package(DBPackage):
             packages.appendChild(oldpackage)
             configuration = enter_named_element(oldpackage, 'configuration')
             if configuration:
-                self.configuration.set_from_dom_node(configuration)
+                if self.configuration: self.configuration.set_from_dom_node(configuration)
+                else: print>>sys.stderr, "Error, missing configuration in package"
             get_vistrails_application().vistrailsStartup.write_startup_dom(dom)
         dom.unlink()
 

@@ -13,7 +13,7 @@ from db.domain import DBModule, DBAnnotation
 from core.db.action import create_action
 from core.debug import DebugPrint
 import numpy.core.umath as umath
-from vtk.util.vtkConstants import *
+# from vtk.util.vtkConstants import *
 import numpy as np
 packagePath = os.path.dirname( __file__ ) 
 resourcePath = os.path.join( packagePath,  'resources')

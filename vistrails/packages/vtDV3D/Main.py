@@ -98,7 +98,8 @@ def start_application(optionsDict):
     
                 
 def executeVistrail( *args, **kwargs ):
-    core.requirements.check_pyqt4()     
+    import gui.requirements
+    gui.requirements.check_pyqt4()
     try:
         optionsDict = kwargs.get( 'options', None )
         app = start_application( optionsDict )

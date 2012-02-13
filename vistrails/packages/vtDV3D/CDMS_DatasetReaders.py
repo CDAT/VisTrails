@@ -381,6 +381,7 @@ class CDMSDatasetRecord():
             time_values, dt, time_units = getRelativeTimeValues ( cdms2.open( self.cdmsFile ) ) 
             
             vc = cdutil.VariableConditioner( source=self.cdmsFile, var=varName,  cdmsKeywords=args1, weightedGridMaker=gridMaker ) 
+            print " regridded_var_slice(%s:%s): %s " % ( self.dataset.id, varName, str( args1 ) )
             regridded_var_slice = vc.get( returnTuple=0 )
 #            if (referenceLev <> None) and ( referenceLev.shape[0] <> currentLevel.shape[0] ): 
 #                regridded_var_slice = regridded_var_slice.pressureRegrid( referenceLev ) 
