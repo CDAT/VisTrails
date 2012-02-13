@@ -664,10 +664,10 @@ class CDMSNaryVariableOperation(CDMSVariableOperation):
         self.vars = None
         
     def compute(self):
-        if not self.hasInputFromPort('input_vars'):
-            raise ModuleError(self, "'input_vars' is mandatory.")
-        
-        self.vars = self.getInputListFromPort('input_vars')
+        if self.hasInputFromPort('input_vars'):
+            self.vars = self.getInputListFromPort('input_vars')
+        else:
+            self.vars = []
         self.get_port_values()
         self.outvar = CDMSVariable(filename=None,name=self.varname)
         self.outvar.var = self.to_python()
