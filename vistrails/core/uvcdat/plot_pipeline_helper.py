@@ -3,7 +3,7 @@ Created on Nov 30, 2011
 
 @author: emanuele
 '''
-import core.db.io
+import core.db.io, sys
 import core.modules.basic_modules
 
 class PlotPipelineHelper(object):

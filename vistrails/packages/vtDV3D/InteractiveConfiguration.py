@@ -1577,7 +1577,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     def getTimeRange( self ): 
 #        wmods = getWorkflowObjectMap()
         for module in self.modules: 
-            timeRangeInput =  module.getInputValue( "timeRange", None )
+            timeRangeInput =  module.getCachedParameter( "timeRange" )
             if timeRangeInput: 
                 self.timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
                 self.relTimeStart = float( timeRangeInput[2] )

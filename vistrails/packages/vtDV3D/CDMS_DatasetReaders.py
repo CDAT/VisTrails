@@ -922,8 +922,9 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             nTS = 1
             start_time = 0 
             end_time = 0
+            min_dt = 0.0
         else: nTS = int( ( ( end_time - start_time ) / min_dt ) + 0.0001 )  
-        self.timeRange = [ 0, nTS-1, start_time, end_time ]
+        self.timeRange = [ 0, nTS, start_time, min_dt ]
 #        print "Compute TimeRange From Specs: ", str( [ start_time, end_time, min_dt ] ), str( self.timeRange )
 
             
@@ -986,10 +987,18 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         self.setParameter( "timeRange" , self.timeRange )
         self.setParameter( "roi", self.roi )
         self.datasetModule.timeRange = self.timeRange
-        self.datasetModule.setReferenceVariable( self.ref_var ) 
+        self.datasetModule.setReferenceVariable( self.ref_var )
+        if inputSpecs: self.persistDatasetParameters() 
         self.setResult( 'dataset', self.datasetModule )
         print " ......  Start Workflow, dsid=%s, zscale = %.2f ......  " % ( self.datasetModule.getDsetId(), zscale )
 
+    def persistDatasetParameters( self ):
+        parmRecList = []
+        parmRecList.append( ( 'datasets', [ serializeStrMap(self.datasetMap), ] ), )
+        parmRecList.append( ( 'grid', [ self.ref_var, ] ), )
+        parmRecList.append( ( 'timeRange' , [ self.timeRange[0], self.timeRange[1], self.timeRange[2], self.timeRange[3] ]  ), )      
+        parmRecList.append( ( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  ), )                  
+        self.persistParameterList( parmRecList ) 
 
     def dvUpdate( self, **args ):
         pass     

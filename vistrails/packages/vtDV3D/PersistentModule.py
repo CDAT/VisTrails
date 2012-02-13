@@ -211,7 +211,7 @@ class PersistentModule( QObject ):
 
     def getCachedParameter(self, parameter_name ):
         layerCache = self.parameterCache.setdefault( self.getParameterId(), {} )
-        return layerCache.get( parameter_name )
+        return layerCache.get( parameter_name, None )
         
     def getParameter(self, parameter_name, default_value = None ):
         paramVal = self.getCachedParameter( parameter_name  )
@@ -934,7 +934,7 @@ class PersistentModule( QObject ):
             assert (output <> None), "Attempt to finalize parameter that has not been cached." 
             self.persistParameterList( [ (parameter_name, output) ] )             
         except Exception, err:
-            print "Error changing parameter for %s module: %s", ( self.__class__.__name__, str(err) )
+            print "Error changing parameter %s for %s module: %s" % ( parameter_name, self.__class__.__name__, str(err) )
            
     def finalizeConfigurationObserver( self, parameter_name, *args ):
         self.finalizeParameter( parameter_name, *args )    
