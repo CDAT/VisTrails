@@ -50,7 +50,7 @@ import copy
 import gc
 from gui.theme import CurrentTheme
 from gui.utils import show_warning
-import gui.uvcdat.uvcdat_rc
+from gui.uvcdat.theme import UVCDATTheme
 
 ################################################################################
 
@@ -256,7 +256,7 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         """
         from core.configuration import get_vistrails_configuration
         if not hasattr(self, 'uvcdatPreferencesVar'):
-            self.uvcdatPreferencesVar = QtGui.QAction(QtGui.QIcon(":/icons/resources/icons/preferences.png"),
+            self.uvcdatPreferencesVar = QtGui.QAction(UVCDATTheme.PREFERENCES_ICON,
                                                       'Preferences',
                                                       self)
             self.uvcdatPreferencesVar.setStatusTip("Show Preferences")
@@ -280,6 +280,22 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                 checked = conf.uvcdat.check('aspectRatio')
             aspectAction.setChecked(checked)
             
+            themeMenu = prefMenu.addMenu("Icons Theme")
+            defaultThemeAction = themeMenu.addAction("Default")
+            defaultThemeAction.setCheckable(True)
+            defaultThemeAction.setStatusTip("Use the default theme (the application must be restarted for changes to take effect)")
+            
+            minimalThemeAction = themeMenu.addAction("Minimal")
+            minimalThemeAction.setCheckable(True)
+            minimalThemeAction.setStatusTip("Use the minimal theme (the application must be restarted for changes to take effect)")
+            themegroup = QtGui.QActionGroup(self)
+            themegroup.addAction(defaultThemeAction)
+            themegroup.addAction(minimalThemeAction)
+            if conf.uvcdat.theme == "Default":
+                defaultThemeAction.setChecked(True)
+            elif conf.uvcdat.theme == "Minimal":
+                minimalThemeAction.setChecked(True)
+                
             self.uvcdatPreferencesVar.setMenu(prefMenu)
             
             self.connect(executeAction,
@@ -288,7 +304,12 @@ class StandardWidgetTabController(QtGui.QTabWidget):
             self.connect(aspectAction,
                          QtCore.SIGNAL('triggered(bool)'),
                          self.uvcdatAspectRatioActionTriggered)
-                
+            self.connect(defaultThemeAction,
+                         QtCore.SIGNAL('triggered(bool)'),
+                         self.uvcdatDefaultThemeActionTriggered)
+            self.connect(minimalThemeAction,
+                         QtCore.SIGNAL('triggered(bool)'),
+                         self.uvcdatMinimalThemeActionTriggered)    
         return self.uvcdatPreferencesVar
     
     def uvcdatAutoExecuteActionTriggered(self, checked):
@@ -316,6 +337,34 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         _app = get_vistrails_application()
         get_vistrails_persistent_configuration().uvcdat.aspectRatio = checked
         get_vistrails_configuration().uvcdat.aspectRatio = checked
+        _app.save_configuration()
+        
+    def uvcdatDefaultThemeActionTriggered(self, checked):
+        """uvcdatDefaultThemeActionTriggered(checked: boolean) -> None 
+        When the check state changes the configuration needs to be updated.
+        
+        """
+        
+        from core.configuration import get_vistrails_persistent_configuration,\
+            get_vistrails_configuration
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
+        get_vistrails_persistent_configuration().uvcdat.theme = "Default"
+        get_vistrails_configuration().uvcdat.theme = "Default"
+        _app.save_configuration()
+        
+    def uvcdatMinimalThemeActionTriggered(self, checked):
+        """uvcdatMinimalThemeActionTriggered(checked: boolean) -> None 
+        When the check state changes the configuration needs to be updated.
+        
+        """
+        
+        from core.configuration import get_vistrails_persistent_configuration,\
+            get_vistrails_configuration
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
+        get_vistrails_persistent_configuration().uvcdat.theme = "Minimal"
+        get_vistrails_configuration().uvcdat.theme = "Minimal"
         _app.save_configuration()
         
     def exportSheetToImageAction(self):

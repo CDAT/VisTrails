@@ -1,6 +1,7 @@
 from PyQt4 import QtCore, QtGui
 
 from gui.uvcdat.project_controller import ProjectController
+from gui.uvcdat.theme import UVCDATTheme
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from core.vistrail.action_annotation import ActionAnnotation
 from core.thumbnails import ThumbnailCache
@@ -70,8 +71,8 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         #i = QtGui.QIcon(customizeVCDAT.appIcon)
         self.setFlags(self.flags() & ~QtCore.Qt.ItemIsSelectable)
         icon = QtGui.QIcon()
-        closedPixmap, openPixmap = [QtGui.QPixmap(":/icons/resources/icons/" +
-            f + ".png") for f in ['folder_blue', 'folder_blue_open']]
+        openPixmap = UVCDATTheme.WORKSPACE_FOLDER_OPEN_PIXMAP
+        closedPixmap = UVCDATTheme.WORKSPACE_FOLDER_CLOSED_PIXMAP 
         icon.addPixmap(closedPixmap, state=QtGui.QIcon.Off)
         icon.addPixmap(openPixmap, state=QtGui.QIcon.On)
         self.setIcon(0,icon)
@@ -228,8 +229,7 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
         self.workflowSpan = span
         # plotType is the package type of a plot, like VCS, PVClimate, DV3D
         self.plotType = plot_type
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/pipeline.png"))
+        icon = UVCDATTheme.WORKSPACE_PIPELINE_ICON
         self.setIcon(0, icon)
         self.setFlags(self.flags() | QtCore.Qt.ItemIsDragEnabled)
 
@@ -357,33 +357,27 @@ class Workspace(QtGui.QDockWidget):
         self.toolsProject = QtGui.QToolBar(self.dockWidgetContents)
         self.toolsProject.setIconSize(QtCore.QSize(24,24))
         
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/icons/resources/icons/new.png"))
+        icon = UVCDATTheme.WORKSPACE_NEW_PROJECT_ICON
         self.btnNewProject = QtGui.QAction(icon, "New Project",self)
         self.btnNewProject.setToolTip("Create New Project")
         self.toolsProject.addAction(self.btnNewProject)
         
-        icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/open.png"))
+        icon1 = UVCDATTheme.WORKSPACE_OPEN_PROJECT_ICON
         self.btnOpenProject = QtGui.QAction(icon1,"Open Project", self)
         self.btnOpenProject.setToolTip("Open Project")
         self.toolsProject.addAction(self.btnOpenProject)
 
-        icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/file_save.png"))
+        icon1 = UVCDATTheme.WORKSPACE_SAVE_PROJECT_ICON
         self.btnSaveProject = QtGui.QAction(icon1, "Save Project", self)
         self.btnSaveProject.setToolTip("Save Project")
         self.toolsProject.addAction(self.btnSaveProject)
 
         #the save as action will be added to the menu only
-        icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/save-as.png"))
-        self.btnSaveProjectAs = QtGui.QAction(icon1,"Save Project As", self)
+        self.btnSaveProjectAs = QtGui.QAction("Save Project As", self)
         self.btnSaveProjectAs.setToolTip("Save Project As")
         #self.toolsProject.addAction(self.btnSaveProjectAs)
 
-        icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap(":/icons/resources/icons/close.png"))
+        icon1 = UVCDATTheme.WORKSPACE_CLOSE_PROJECT_ICON
         self.btnCloseProject = QtGui.QAction(icon1, "Close Project", self)
         self.btnCloseProject.setToolTip("Close Project")
         self.toolsProject.addAction(self.btnCloseProject)

@@ -41,11 +41,12 @@ from PyQt4 import QtCore, QtGui
 import datetime
 import os
 from core import system, debug
+from gui.uvcdat.theme import UVCDATTheme
 import cell_rc
 import celltoolbar_rc
 import spreadsheet_controller
 import analogy_api
-import gui.uvcdat.uvcdat_rc
+
 ################################################################################
 
 class QCellWidget(QtGui.QWidget):
@@ -255,7 +256,7 @@ class QCellToolBar(QtGui.QToolBar):
         self.layout().setMargin(0)
         self.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Preferred)
         self.setIconSize(QtCore.QSize(24,24))
-        icon = QtGui.QIcon(":/icons/resources/icons/delete.png")
+        icon = UVCDATTheme.DELETE_CELL_ICON
         self.appendAction(QCellToolBarRemoveCell(icon, self))
         self.appendAction(QCellToolBarExecutePlot(self))
         self.appendAction(QCellToolBarViewSource(self))
@@ -398,8 +399,7 @@ class QCellToolBarConfigurePlot(QtGui.QAction):
         Setup the image, status tip, etc. of the action
         
         """
-        from gui.theme import CurrentTheme
-        icon = QtGui.QIcon(":/icons/resources/icons/edit.png")
+        icon = UVCDATTheme.PLOT_EDIT_ICON 
         QtGui.QAction.__init__(self,
                                icon,
                                "Configure the current plot",
@@ -447,7 +447,7 @@ class QCellToolBarViewSource(QtGui.QAction):
         
         """
         QtGui.QAction.__init__(self,
-                               QtGui.QIcon(":/icons/resources/icons/source_code.png"),
+                               UVCDATTheme.PLOT_VIEW_SOURCE_ICON,
                                "View source of the current plot",
                                parent)
         self.setStatusTip("View source of the current plot")
