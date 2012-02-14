@@ -74,6 +74,7 @@ from CDMS_DatasetReaders import *
 from CDMS_VariableReaders import *   
 from PersistentModule import *
 from vtUtilities import *
+from DV3DCell import *
 from HyperwallManager import HyperwallManager
 
 def initialize(*args, **keywords):
@@ -83,7 +84,6 @@ def initialize(*args, **keywords):
     from ParallelCoordinatesModule import ParallelCoordinateViewer
     from WorldMapModule import WorldFrame
 #    from DemoDataModule import DemoData, DemoDataConfigurationWidget
-    from DV3DCell import *
     from InteractiveConfiguration import LayerConfigurationWidget
     from LevelSurfaceModule import LevelSurface 
     from CurtainPlotModule import CurtainPlot 
