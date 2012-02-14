@@ -373,7 +373,7 @@ class DefaultTheme(object):
         #The application icon
         self.APPLICATION_ICON = QtGui.QIcon(
             core.system.vistrails_root_directory() +
-            '/gui/resources/images/UV-CDAT_logo_sites.gif')
+            '/gui/resources/images/uvcdat-icon.png')
 
         #The application pixmap
         self.APPLICATION_PIXMAP = QtGui.QPixmap(
@@ -669,12 +669,12 @@ class MacTheme(DefaultTheme):
         #The application icon
         self.APPLICATION_ICON = QtGui.QIcon(
             core.system.vistrails_root_directory() +
-            '/gui/resources/images/UV-CDAT_logo_sites.gif')
+            '/gui/resources/images/uvcdat-icon.png')
 
         #The application pixmap
         self.APPLICATION_PIXMAP = QtGui.QPixmap(
              core.system.vistrails_root_directory() +
-            '/gui/resources/images/UV-CDAT_logo_sites.gif')
+            '/gui/resources/images/uvcdat-icon.png')
 
         # Toolbar icon for close button on the vistrail tabbar
         self.VIEW_MANAGER_CLOSE_ICON = QtGui.QIcon(
