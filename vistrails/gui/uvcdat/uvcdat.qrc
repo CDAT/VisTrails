@@ -24,7 +24,22 @@
         <file>resources/icons/preferences.png</file>
         <file>resources/icons/checked.png</file>
         <file>resources/icons/file_export.png</file>
-        <file>resources/icons/animation2.png</file>
+        <file>resources/icons/minimal/source_code.png</file>
+        <file>resources/icons/minimal/previous.png</file>
+        <file>resources/icons/minimal/preferences.png</file>
+        <file>resources/icons/minimal/open.png</file>
+        <file>resources/icons/minimal/next.png</file>
+        <file>resources/icons/minimal/new.png</file>
+        <file>resources/icons/minimal/info.png</file>
+        <file>resources/icons/minimal/file_save.png</file>
+        <file>resources/icons/minimal/file_export.png</file>
+        <file>resources/icons/minimal/edit.png</file>
+        <file>resources/icons/minimal/edit_add.png</file>
+        <file>resources/icons/minimal/delete.png</file>
+        <file>resources/icons/minimal/colormap.png</file>
+        <file>resources/icons/minimal/close.png</file>
+        <file>resources/icons/minimal/checked.png</file>
+        <file>resources/icons/minimal/animation.png</file>
     </qresource>
     <qresource prefix="/images">
         <file>resources/images/clt_isofill.png</file>

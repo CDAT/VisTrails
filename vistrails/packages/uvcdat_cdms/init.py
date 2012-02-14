@@ -23,7 +23,7 @@ from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
 from packages.uvcdat.init import Variable, Plot
-import gui.uvcdat.uvcdat_rc
+from gui.uvcdat.theme import UVCDATTheme
 
 canvas = None
 original_gm_attributes = {}
@@ -1126,10 +1126,10 @@ class QCDATWidgetPrev(QtGui.QAction):
         
         """
         QtGui.QAction.__init__(self,
-                               QtGui.QIcon(":/icons/resources/icons/previous.png"),
-                               "Animate",
+                               UVCDATTheme.PLOT_PREVIOUS_ICON,
+                               "Previous",
                                parent)
-        self.setStatusTip("Move to Next Dimensions")
+        self.setStatusTip("Move to Previous Dimensions")
         
 
     def triggeredSlot(self, checked=False):
@@ -1178,8 +1178,8 @@ class QCDATWidgetNext(QtGui.QAction):
         
         """
         QtGui.QAction.__init__(self,
-                               QtGui.QIcon(":/icons/resources/icons/next.png"),
-                               "Animate",
+                               UVCDATTheme.PLOT_NEXT_ICON,
+                               "Next",
                                parent)
         self.setStatusTip("Move to Next Dimensions")
         
@@ -1231,7 +1231,7 @@ class QCDATWidgetAnimation(QtGui.QAction):
         
         """
         QtGui.QAction.__init__(self,
-                               QtGui.QIcon(":/icons/resources/icons/animation.png"),
+                               UVCDATTheme.PLOT_ANIMATION_ICON,
                                "Animate",
                                parent)
         self.setStatusTip("Animate this plot")
@@ -1283,7 +1283,7 @@ class QCDATWidgetColormap(QtGui.QAction):
         
         """
         QtGui.QAction.__init__(self,
-                               QtGui.QIcon(":/icons/resources/icons/colormap.png"),
+                               UVCDATTheme.PLOT_COLORMAP_ICON,
                                "Colormap Editor",
                                parent)
         self.setStatusTip("Brings up the colormap editor")
@@ -1334,7 +1334,7 @@ class QCDATWidgetExport(QtGui.QAction):
         
         """
         QtGui.QAction.__init__(self,
-                               QtGui.QIcon(":/icons/resources/icons/file_export.png"),
+                               UVCDATTheme.PLOT_EXPORT_ICON,
                                "Export the current plot as an image",
                                parent)
         self.setStatusTip("Export the current plot as an image")

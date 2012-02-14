@@ -289,6 +289,7 @@ def default_uvcdat():
     uvcdat_conf = {
                    'autoExecute': True,
                    'aspectRatio': True,
+                   'theme': 'Default',
                    }
     return ConfigurationObject(**uvcdat_conf)
 

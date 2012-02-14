@@ -118,11 +118,15 @@ parameters from other instances")
         Create the application with a dict of settings
         
         """
+        import gui.uvcdat.theme
         gui.theme.initializeCurrentTheme()
+        
         # DAK this is handled by finalize_vistrails in core.application now
         # self.connect(self, QtCore.SIGNAL("aboutToQuit()"), self.finishSession)
         VistrailsApplicationInterface.init(self,optionsDict)
 
+        # the uvcdat theme needs to be initialized after the configuration is loaded
+        gui.uvcdat.theme.initializeUVCDATTheme()
         interactive = self.temp_configuration.check('interactiveMode')
         if interactive:
             self.setIcon()

@@ -7,7 +7,7 @@ import editVariableWidget
 import axesWidgets
 import  __main__
 from gui.uvcdat.variable import VariableProperties
-import gui.uvcdat.uvcdat_rc
+from gui.uvcdat.theme import UVCDATTheme
 
 class QDefinedVariableWidget(QtGui.QWidget):
     """ QDefinedVariable contains a list of the user defined variables and allows the
@@ -396,24 +396,24 @@ class QDefinedVariableWidget(QtGui.QWidget):
         varProp.show()
                 
     def createToolbar(self):
-        ICONPATH = ":/icons/resources/icons/"
+        #ICONPATH = ":/icons/resources/icons/"
 
         # Create options bar
         self.toolBar = QtGui.QToolBar()
         self.toolBar.setIconSize(QtCore.QSize(customizeUVCDAT.iconsize,customizeUVCDAT.iconsize))
         actionInfo = [
-            ('edit_add.png', "add",'Add variable(s).',self.newVariable),
-            ('delete.png', "del",'Delete selected defined variable(s) from all projects.',self.trashVariable),
-            ('checked.png', "recycle",'Select ALL variables.',self.selectAllVariables),
-            ('info.png', "info",'Display selected defined variable(s) information.',self.variableInfo),
-            ('edit.png', "edit",'Edit selected defined variable(s).',self.editVariables),
-            ('file_save.png', "save",'Save selected defined variable(s) to a netCDF file.',self.saveVariables),
+            (UVCDATTheme.VARIABLE_ADD_ICON, "add",'Add variable(s).',self.newVariable),
+            (UVCDATTheme.VARIABLE_DELETE_ICON, "del",'Delete selected defined variable(s) from all projects.',self.trashVariable),
+            (UVCDATTheme.VARIABLE_SELECT_ALL_ICON, "recycle",'Select ALL variables.',self.selectAllVariables),
+            (UVCDATTheme.VARIABLE_INFO_ICON, "info",'Display selected defined variable(s) information.',self.variableInfo),
+            (UVCDATTheme.VARIABLE_EDIT_ICON, "edit",'Edit selected defined variable(s).',self.editVariables),
+            (UVCDATTheme.VARIABLE_SAVE_ICON, "save",'Save selected defined variable(s) to a netCDF file.',self.saveVariables),
             ## ('log.gif', "log",'Logged information about the defined variables.',self.variablesInfo),
             ## ('trashcan_empty.gif', "trash",'Defined variable items that can be disposed of permanetly or restored.',self.empytTrash),
             ]
         
         for info in actionInfo:
-            icon = QtGui.QIcon(os.path.join(ICONPATH, info[0]))
+            icon = info[0]
             action = self.toolBar.addAction(icon, info[1])
             action.setStatusTip(info[2])
             action.setToolTip(info[2])
