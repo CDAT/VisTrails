@@ -661,16 +661,17 @@ class Workspace(QtGui.QDockWidget):
         Called when a spreadsheet tab is added
         Add a spreadsheet item and set size annotation
         """
-        if title not in self.currentProject.sheet_to_tab:
-            self.currentProject.sheet_to_tab[title] = widget
-            item = QSpreadsheetItem(title)
-            self.currentProject.addChild(item)
-            item.update_icon()
-            item.setExpanded(True)
-            self.currentProject.sheet_to_item[title] = item
-            self.currentProject.controller.sheet_map[title] = {}
-            if not self.currentProject.sheetSize(title):
-                self.currentProject.sheetSizeChanged(title, (2,1))
+        if self.currentProject:
+            if title not in self.currentProject.sheet_to_tab:
+                self.currentProject.sheet_to_tab[title] = widget
+                item = QSpreadsheetItem(title)
+                self.currentProject.addChild(item)
+                item.update_icon()
+                item.setExpanded(True)
+                self.currentProject.sheet_to_item[title] = item
+                self.currentProject.controller.sheet_map[title] = {}
+                if not self.currentProject.sheetSize(title):
+                    self.currentProject.sheetSizeChanged(title, (2,1))
 
     def remove_sheet_tab(self, widget):
         """ remove_sheet_tab(widget: QTreeWidgetItem) -> None

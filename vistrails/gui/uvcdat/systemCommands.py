@@ -36,7 +36,9 @@ class OutLog:
         self.color = color
         self.original_stream = original_stream
         
-
+    def flush(self):
+        if self.original_stream: self.original_stream.flush()
+        
     def write(self, stdtext):
         """ Write the text for standard out or error to the text editor window."""
         tex = QtCore.QString(stdtext)

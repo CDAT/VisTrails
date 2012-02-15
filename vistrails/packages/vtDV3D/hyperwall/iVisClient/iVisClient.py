@@ -30,6 +30,7 @@ class QiVisClient(QtCore.QObject):
         current_pipeline = None
 
         self.deviceName = name
+        self.currentTab = None
 
         self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         self.spreadsheetWindow.show()
@@ -45,10 +46,17 @@ class QiVisClient(QtCore.QObject):
         tabController.clearTabs()
         self.currentTab = DisplayWallSheetTab( tabController, self.dimensions[0], self.dimensions[1], self.dimensions[2], self.dimensions[3], displayWidth, displayHeight, fullScreenEnabled )
         tabController.addTabWidget(self.currentTab, self.deviceName)
-
         self.size = self.currentTab.getDimension()
-        print " Startup VisClient, size=%s, dims=%s, inputDims=%s, loc=%s" % ( str(size), str(self.dimensions) )
+        print " Startup VisClient, size=%s, dims=%s, fullScreen=%s " % ( str(self.size), str(self.dimensions), str(fullScreenEnabled) )
 
+    def updateCurrentTab(self):
+        if self.currentTab == None:
+            tabController = self.spreadsheetWindow.get_current_tab_controller()
+            self.currentTab = tabController.tabWidgets[1]
+            self.dims = self.currentTab.getDimension()
+            print " UpdateCurrentTab: ntabs=%d, dims=%s " % ( len( tabController.tabWidgets ), str( self.dims ) )
+        return self.currentTab <> None
+            
     def connectSignals(self):
         """connectSignals() -> None
         Connects all relevant signals to this class"""
@@ -172,7 +180,7 @@ class QiVisClient(QtCore.QObject):
                 m = QtCore.Qt.ControlModifier
             elif event[4] == "alt": 
                 m = QtCore.Qt.AltModifier
-#            print " Client process %s %s event: pos = %s " % ( button, event[0], str( pos ) )
+            print " Client process %s %s event: pos = %s, screenDims=%s " % ( button, event[0], str( pos ), str( screenDims ) )
 
             return QtGui.QMouseEvent(t, QtCore.QPoint(pos[0], pos[1]), button, button, m)
 
@@ -194,35 +202,37 @@ class QiVisClient(QtCore.QObject):
                 m = QtCore.Qt.ControlModifier
             elif event[2] == "alt": 
                 m = QtCore.Qt.AltModifier
-#            print " Client process key event: %s " % str( event )
+            print " Client process key event: %s " % str( event )
 
             return QtGui.QKeyEvent( type, key, QtCore.Qt.KeyboardModifiers(m) )
 
         app = QtCore.QCoreApplication.instance()
-
-        cell = (int(terms[0]), int(terms[1]))
-        print " ------------- QiVisClient.processEvent: %s-%s in cell %s  ---------------------" % ( terms[2], terms[3], str( cell ) )
-        if terms[2] == "singleClick":
-            cellModules = self.getCellModules()
-            cpos = [ float(terms[i]) for i in range(7,10) ]
-            cfol = [ float(terms[i]) for i in range(10,13) ]
-            cup  = [ float(terms[i]) for i in range(13,16) ]
-#            print " >>> QiVisClient.cellModules: %s, modules: %s" % ( str( [ cellMod.id for cellMod in cellModules ] ), str( ModuleStore.getModuleIDs() ) )           
-            for cellMod in cellModules:
-                persistentCellModule = ModuleStore.getModule( cellMod.id ) 
-                if persistentCellModule: persistentCellModule.syncCamera( cpos, cfol, cup )            
-        if terms[2] in ["singleClick", "mouseMove", "mouseRelease"]:
-            screenRect = self.currentTab.screenMap[ (cell[0]-1, cell[1]-1) ]
-            screenDims = ( screenRect.width(), screenRect.height() )
-            newEvent = decodeMouseEvent( terms[2:], screenDims )
-        elif terms[2] in ["keyPress", "keyRelease" ]:
-            newEvent = decodeKeyEvent(terms[2:])
-
-        if self.currentTab:
-             (rCount, cCount) = self.currentTab.getDimension()
-             widget = self.currentTab.getCell(cell[0]-1, cell[1]-1)
-             if widget:
-                 app.postEvent(widget, newEvent)
+        if self.updateCurrentTab():
+            cell = (int(terms[0]), int(terms[1]))
+            widget = self.currentTab.getCellWidget(cell[0]-1, cell[1]-1)            
+            print " ------------- QiVisClient.processEvent: %s-%s in cell %s, widget: %x  ---------------------" % ( terms[2], terms[3], str( cell ), id(widget) )
+            
+            if terms[2] == "singleClick":
+                cellModules = self.getCellModules()
+                cpos = [ float(terms[i]) for i in range(7,10) ]
+                cfol = [ float(terms[i]) for i in range(10,13) ]
+                cup  = [ float(terms[i]) for i in range(13,16) ]
+    #            print " >>> QiVisClient.cellModules: %s, modules: %s" % ( str( [ cellMod.id for cellMod in cellModules ] ), str( ModuleStore.getModuleIDs() ) )           
+                for cellMod in cellModules:
+                    persistentCellModule = ModuleStore.getModule( cellMod.id ) 
+                    if persistentCellModule: persistentCellModule.syncCamera( cpos, cfol, cup )            
+            if terms[2] in ["singleClick", "mouseMove", "mouseRelease"]:
+                screenRect = self.currentTab.getCellRect( cell[0]-1, cell[1]-1 )
+                screenDims = ( screenRect.width(), screenRect.height() )
+                newEvent = decodeMouseEvent( terms[2:], screenDims )
+            elif terms[2] in ["keyPress", "keyRelease" ]:
+                newEvent = decodeKeyEvent(terms[2:])
+    
+            if widget: 
+                app.postEvent(widget, newEvent)
+#                cellWidget = widget.widget()
+#                cellWidget.setFocus()
+#                cellWidget.update()
 
     def executeNextPipeline(self):
         if len(self.pipelineQueue) == 0:
@@ -255,6 +265,8 @@ class QiVisClient(QtCore.QObject):
         from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
         from core.utils import DummyView
         import api
+
+        tabController = self.spreadsheetWindow.get_current_tab_controller()
 
         pip = unserialize(str(pipeline), Pipeline)
 #        print " **** Client-%s ---Received Pipeline--- modules:" % str( self.dimensions )
@@ -299,6 +311,7 @@ class QiVisClient(QtCore.QObject):
             self.processCommand(tokens[3:])
             
         elif tokens[0] == "refresh":
+            self.updateCurrentTab()
             if self.currentTab:
                 widget = self.currentTab.getCell(int(tokens[1]), int(tokens[2]))
 #                if widget:

@@ -162,6 +162,7 @@ def executeVistrail( *args, **kwargs ):
     gui.requirements.check_pyqt4()
     optionsDict = kwargs.get( 'options', None )
     title = kwargs.get( 'title', 'UVCDAT' )
+    showBuilder = kwargs.get( 'showBuilder', False )
 
     try:
         v = gui.application.start_application( optionsDict )
@@ -184,14 +185,14 @@ def executeVistrail( *args, **kwargs ):
         import traceback
         traceback.print_exc()
         sys.exit(255)
-    if (app.temp_configuration.interactiveMode and
-        not app.temp_configuration.check('spreadsheetDumpCells')): 
-        v = app.exec_()
-        
+                
     app.uvcdatWindow.setWindowTitle( title )
+    if showBuilder: app.uvcdatWindow.showBuilderWindowActTriggered() 
+    v = app.exec_()
+    HyperwallManager.shutdown()      
     gui.application.stop_application()
     sys.exit(v)
 
 if __name__ == '__main__':  
-    optionsDict = { "hw_role" : 'global' }   #  'global'   'hw_client'  'hw_server'    
+    optionsDict = { "hw_role" : 'hw_server' }   #  'global'   'hw_client'  'hw_server'    
     executeVistrail( options = optionsDict, title = " UVCDAT - server" )
