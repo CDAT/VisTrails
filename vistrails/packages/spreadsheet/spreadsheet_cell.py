@@ -492,9 +492,8 @@ class QCellToolBarExecutePlot(QtGui.QAction):
         Setup the image, status tip, etc. of the action
         
         """
-        from gui.theme import CurrentTheme
         from core.configuration import get_vistrails_configuration
-        icon = CurrentTheme.EXECUTE_PIPELINE_ICON
+        icon = UVCDATTheme.EXECUTE_CELL_ICON
         QtGui.QAction.__init__(self,
                                icon,
                                "Execute the current plot",
