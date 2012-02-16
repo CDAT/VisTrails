@@ -355,7 +355,8 @@ class QiVisServer(QObject):
             key = event.key() 
             tokens = [ event_type, key, mod ]
 #            print ' >>----------iVisServer--> process Key Event:  %s '   % str( ( event_type, key, mod, event.text() ) )
-        else:               
+        else: 
+            fullSpec = True # ( etype == QtCore.QEvent.MouseButtonPress )            
             x = event.x()
             y = event.y()
             xf = '%.4f' % (float(x)/screen_dims[0])
@@ -364,7 +365,7 @@ class QiVisServer(QObject):
             button = "none"       
             if b == QtCore.Qt.LeftButton: button = "left"
             if b == QtCore.Qt.RightButton: button = "right" 
-            if etype == QtCore.QEvent.MouseButtonPress:
+            if fullSpec:
                 cpos = camera_pos[0]  
                 cfol = camera_pos[1]  
                 cup = camera_pos[2]         

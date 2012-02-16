@@ -5,7 +5,7 @@ Created on Jul 20, 2011
 '''
 
 import sys, os, traceback
-from PyQt4 import QtGui
+from PyQt4 import QtGui, QtCore
 import core.application, gui.application, gui.requirements
 from HyperwallManager import HyperwallManager
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
@@ -39,10 +39,10 @@ def disable_lion_restore():
     os.system('defaults write org.vistrails NSQuitAlwaysKeepsWindows -bool false')
 
 
-#def restore_stdout():
-#    sys.stdout = sys.__stdout__
-#    sys.stderr = sys.__stderr__
-#
+def restore_stdout():
+    sys.stdout = sys.__stdout__
+    sys.stderr = sys.__stderr__
+
 #class vtDV3DApplicationSingleton( gui.application.VistrailsApplicationSingleton ):
 #
 #    def __init__(self):
@@ -127,47 +127,50 @@ def disable_lion_restore():
 #    sys.exit(v)
     
                 
-def executeVistrail1( *args, **kwargs ):
-    disable_lion_restore()
-    gui.requirements.check_pyqt4()
-    
-    title = kwargs.get( 'title', 'UVCDAT' )
-    hw_role = kwargs.get( 'role', None ) 
-    node_index = kwargs.get( 'node_index', -1 ) 
-    full_screen = kwargs.get( 'full_screen', True ) 
-    HyperwallManager.hw_role = hw_role 
-    HyperwallManager.node_index = node_index 
-    HyperwallManager.full_screen = full_screen 
+#def executeVistrail1( *args, **kwargs ):
+#    disable_lion_restore()
+#    gui.requirements.check_pyqt4()
+#    
+#    title = kwargs.get( 'title', 'UVCDAT' )
+#    hw_role = kwargs.get( 'role', None ) 
+#    node_index = kwargs.get( 'node_index', -1 ) 
+#    full_screen = kwargs.get( 'full_screen', True ) 
+#    HyperwallManager.hw_role = hw_role 
+#    HyperwallManager.node_index = node_index 
+#    HyperwallManager.full_screen = full_screen 
+#
+#    try:
+#        optionsDict = kwargs.get( 'options', None )
+#        v = gui.application.start_application()
+#        if v != 0:
+#            app = gui.application.get_vistrails_application()
+#            if app: app.finishSession()
+#            sys.exit(v)
+#        app = gui.application.get_vistrails_application()
+#    except SystemExit, e:
+#        app = gui.application.get_vistrails_application()
+#        if app:
+#            app.finishSession()
+#        sys.exit(e)
+#    except Exception, e:
+#        app = gui.application.get_vistrails_application()
+#        if app:
+#            app.finishSession()
+#        print "Uncaught exception on initialization: %s" % e
+#        import traceback
+#        traceback.print_exc()
+#        sys.exit(255)
+#    
+#    app.uvcdatWindow.setWindowTitle( title )
+#    app.uvcdatWindow.showBuilderWindowActTriggered() 
+#    v = app.exec_()
+#    if hw_role: HyperwallManager.shutdown()      
+#    gui.application.stop_application()
+#    sys.exit(v)
 
-    try:
-        optionsDict = kwargs.get( 'options', None )
-        v = gui.application.start_application()
-        if v != 0:
-            app = gui.application.get_vistrails_application()
-            if app: app.finishSession()
-            sys.exit(v)
-        app = gui.application.get_vistrails_application()
-    except SystemExit, e:
-        app = gui.application.get_vistrails_application()
-        if app:
-            app.finishSession()
-        sys.exit(e)
-    except Exception, e:
-        app = gui.application.get_vistrails_application()
-        if app:
-            app.finishSession()
-        print "Uncaught exception on initialization: %s" % e
-        import traceback
-        traceback.print_exc()
-        sys.exit(255)
-    
-    app.uvcdatWindow.setWindowTitle( title )
-    app.uvcdatWindow.showBuilderWindowActTriggered() 
-    v = app.exec_()
-    if hw_role: HyperwallManager.shutdown()      
-    gui.application.stop_application()
-    sys.exit(v)
-
+def shutdown():
+    print " !! --shutdown-- !! "
+    HyperwallManager.shutdown()      
  
 def executeVistrail( *args, **kwargs ):
     disable_lion_restore()
@@ -200,10 +203,9 @@ def executeVistrail( *args, **kwargs ):
                 
     app.uvcdatWindow.setWindowTitle( title )
     if showBuilder: app.uvcdatWindow.showBuilderWindowActTriggered() 
+    app.connect( app, QtCore.SIGNAL("aboutToQuit()"), shutdown ) 
     v = app.exec_()
-    HyperwallManager.shutdown()      
-    gui.application.stop_application()
-    sys.exit(v)
+    
 
 if __name__ == '__main__':  
     optionsDict = { "hw_role" : 'hw_server' }   #  'global'   'hw_client'  'hw_server'    
