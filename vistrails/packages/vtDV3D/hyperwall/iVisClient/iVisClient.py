@@ -33,9 +33,10 @@ class QiVisClient(QtCore.QObject):
         self.currentTab = None
         self.mainWindow = None
 
-        self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
-        self.spreadsheetWindow.show()
+        self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow( False )
+        self.spreadsheetWindow.setParent( None )
         self.spreadsheetWindow.activateWindow()
+        self.spreadsheetWindow.showMaximized()
         self.spreadsheetWindow.raise_()
         
         self.dimensions = ( x, y, width, height )
@@ -55,13 +56,7 @@ class QiVisClient(QtCore.QObject):
             tabController = self.spreadsheetWindow.get_current_tab_controller()            
 #            self.currentTab = tabController.tabWidgets[1]
             self.currentTab = tabController.widget ( 1 )
-            print " --- CurrentTab: ", self.currentTab.__class__.__name__
             self.dims = self.currentTab.getDimension()
-#            tabController.removeTab ( 1 )
-#            self.mainWindow = QtGui.QMainWindow()
-#            self.currentTab.setParent ( self.mainWindow )
-#            self.mainWindow.setCentralWidget ( self.currentTab )
-#            self.mainWindow.showMaximized()
             print " UpdateCurrentTab: ntabs=%d, dims=%s " % ( len( tabController.tabWidgets ), str( self.dims ) )
             return True
         return False
@@ -221,6 +216,7 @@ class QiVisClient(QtCore.QObject):
         widget = self.currentTab.getCellWidget(cell[0]-1, cell[1]-1) 
                   
         print " ------------- QiVisClient.processEvent: %s-%s in cell %s, widget: %x  ---------------------" % ( terms[2], terms[3], str( cell ), id(widget) )
+        sys.stdout.flush()
         
         if terms[2] == "singleClick":
             cellModules = self.getCellModules()
@@ -240,9 +236,9 @@ class QiVisClient(QtCore.QObject):
 
         if widget: 
             app.postEvent(widget, newEvent)
-#                cellWidget = widget.widget()
-#                cellWidget.setFocus()
-#                cellWidget.update()
+            cellWidget = widget.widget()
+            cellWidget.setFocus()
+            cellWidget.update()
 
     def executeNextPipeline(self):
         if len(self.pipelineQueue) == 0:
@@ -299,10 +295,11 @@ class QiVisClient(QtCore.QObject):
         
         if tokens[0] == "exit":
             print "Received shutdown message"
+            sys.stdout.flush()
             socket.close()
             gui.application.get_vistrails_application().quit()
-#            gui.application.stop_application()
-#            sys.exit(0)
+            gui.application.stop_application()
+            sys.exit(0)
 
         if tokens[0] == "pipeline":
 #            print " $$$$$$$$$$$ pipeline message: %s " % str(tokens)
