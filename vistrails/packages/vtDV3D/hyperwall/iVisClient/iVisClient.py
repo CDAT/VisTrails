@@ -1,7 +1,7 @@
 import PyQt4.QtNetwork
 import packages
 import gui, core, os
-from PyQt4 import Qt, QtCore, QtGui
+from PyQt4 import QtCore, QtGui
 from PyQt4.QtNetwork import QTcpSocket, QHostAddress, QHostInfo, QAbstractSocket
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from displaywall_tab import DisplayWallSheetTab
@@ -34,10 +34,10 @@ class QiVisClient(QtCore.QObject):
         self.mainWindow = None
 
         self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow( False )
-        self.spreadsheetWindow.setParent( None )
+        self.spreadsheetWindow.setWindowFlags( self.spreadsheetWindow.windowFlags() | QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.Window )
         self.spreadsheetWindow.activateWindow()
         self.spreadsheetWindow.showMaximized()
-        self.spreadsheetWindow.raise_()
+#        self.spreadsheetWindow.raise_()
         
         self.dimensions = ( x, y, width, height )
         self.connectSignals()       

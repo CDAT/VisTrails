@@ -44,6 +44,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
         
     def shutdown(self):
         if self.isServer: 
+            print "Shutting down hyperwall nodes."
             self.server.shutdownClients()
 #        for proc in self.processList:
 #            proc[0].kill()
