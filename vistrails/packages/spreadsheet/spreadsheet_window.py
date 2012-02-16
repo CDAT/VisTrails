@@ -55,7 +55,7 @@ class SpreadsheetWindow(QtGui.QMainWindow):
     """
     SpreadsheetWindow is the top-level main window containing a
     stacked widget of QTabWidget and its stacked widget for slideshow
-    mode
+    mode   
     
     """
     def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):

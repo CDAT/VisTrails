@@ -31,6 +31,7 @@ class QiVisClient(QtCore.QObject):
 
         self.deviceName = name
         self.currentTab = None
+        self.mainWindow = None
 
         self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         self.spreadsheetWindow.show()
@@ -51,11 +52,19 @@ class QiVisClient(QtCore.QObject):
 
     def updateCurrentTab(self):
         if self.currentTab == None:
-            tabController = self.spreadsheetWindow.get_current_tab_controller()
-            self.currentTab = tabController.tabWidgets[1]
+            tabController = self.spreadsheetWindow.get_current_tab_controller()            
+#            self.currentTab = tabController.tabWidgets[1]
+            self.currentTab = tabController.widget ( 1 )
+            print " --- CurrentTab: ", self.currentTab.__class__.__name__
             self.dims = self.currentTab.getDimension()
+#            tabController.removeTab ( 1 )
+#            self.mainWindow = QtGui.QMainWindow()
+#            self.currentTab.setParent ( self.mainWindow )
+#            self.mainWindow.setCentralWidget ( self.currentTab )
+#            self.mainWindow.showMaximized()
             print " UpdateCurrentTab: ntabs=%d, dims=%s " % ( len( tabController.tabWidgets ), str( self.dims ) )
-        return self.currentTab <> None
+            return True
+        return False
             
     def connectSignals(self):
         """connectSignals() -> None
@@ -207,29 +216,30 @@ class QiVisClient(QtCore.QObject):
             return QtGui.QKeyEvent( type, key, QtCore.Qt.KeyboardModifiers(m) )
 
         app = QtCore.QCoreApplication.instance()
-        if self.updateCurrentTab():
-            cell = (int(terms[0]), int(terms[1]))
-            widget = self.currentTab.getCellWidget(cell[0]-1, cell[1]-1)            
-            print " ------------- QiVisClient.processEvent: %s-%s in cell %s, widget: %x  ---------------------" % ( terms[2], terms[3], str( cell ), id(widget) )
-            
-            if terms[2] == "singleClick":
-                cellModules = self.getCellModules()
-                cpos = [ float(terms[i]) for i in range(7,10) ]
-                cfol = [ float(terms[i]) for i in range(10,13) ]
-                cup  = [ float(terms[i]) for i in range(13,16) ]
-    #            print " >>> QiVisClient.cellModules: %s, modules: %s" % ( str( [ cellMod.id for cellMod in cellModules ] ), str( ModuleStore.getModuleIDs() ) )           
-                for cellMod in cellModules:
-                    persistentCellModule = ModuleStore.getModule( cellMod.id ) 
-                    if persistentCellModule: persistentCellModule.syncCamera( cpos, cfol, cup )            
-            if terms[2] in ["singleClick", "mouseMove", "mouseRelease"]:
-                screenRect = self.currentTab.getCellRect( cell[0]-1, cell[1]-1 )
-                screenDims = ( screenRect.width(), screenRect.height() )
-                newEvent = decodeMouseEvent( terms[2:], screenDims )
-            elif terms[2] in ["keyPress", "keyRelease" ]:
-                newEvent = decodeKeyEvent(terms[2:])
-    
-            if widget: 
-                app.postEvent(widget, newEvent)
+        newTab = self.updateCurrentTab()
+        cell = (int(terms[0]), int(terms[1]))
+        widget = self.currentTab.getCellWidget(cell[0]-1, cell[1]-1) 
+                  
+        print " ------------- QiVisClient.processEvent: %s-%s in cell %s, widget: %x  ---------------------" % ( terms[2], terms[3], str( cell ), id(widget) )
+        
+        if terms[2] == "singleClick":
+            cellModules = self.getCellModules()
+            cpos = [ float(terms[i]) for i in range(7,10) ]
+            cfol = [ float(terms[i]) for i in range(10,13) ]
+            cup  = [ float(terms[i]) for i in range(13,16) ]
+#            print " >>> QiVisClient.cellModules: %s, modules: %s" % ( str( [ cellMod.id for cellMod in cellModules ] ), str( ModuleStore.getModuleIDs() ) )           
+            for cellMod in cellModules:
+                persistentCellModule = ModuleStore.getModule( cellMod.id ) 
+                if persistentCellModule: persistentCellModule.syncCamera( cpos, cfol, cup )            
+        if terms[2] in ["singleClick", "mouseMove", "mouseRelease"]:
+            screenRect = self.currentTab.getCellRect( cell[0]-1, cell[1]-1 )
+            screenDims = ( screenRect.width(), screenRect.height() )
+            newEvent = decodeMouseEvent( terms[2:], screenDims )
+        elif terms[2] in ["keyPress", "keyRelease" ]:
+            newEvent = decodeKeyEvent(terms[2:])
+
+        if widget: 
+            app.postEvent(widget, newEvent)
 #                cellWidget = widget.widget()
 #                cellWidget.setFocus()
 #                cellWidget.update()

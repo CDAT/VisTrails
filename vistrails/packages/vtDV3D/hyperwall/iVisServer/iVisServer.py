@@ -2,7 +2,6 @@ from PyQt4 import Qt, QtCore
 
 from PyQt4.QtNetwork import QTcpSocket, QTcpServer, QHostAddress
 from PyQt4.QtCore import QObject
-from PyQt4.QtGui import QMainWindow
 
 from users import User, UserPool
 from iPhoneManager import IPhoneManager

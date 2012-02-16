@@ -8,7 +8,19 @@ import sys, os, traceback
 from PyQt4 import QtGui
 import core.application, gui.application, gui.requirements
 from HyperwallManager import HyperwallManager
+from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 
+def maximizeSpreadsheet():
+    spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
+#    spreadsheetWindow.show()
+#    spreadsheetWindow.activateWindow()
+#    spreadsheetWindow.raise_()
+    tabControllerStack = spreadsheetWindow.tabControllerStack
+    spreadsheetWindow.stackedCentralWidget.removeWidget ( tabControllerStack )
+    tabControllerStack.showMaximized()
+    
+    
+    
 def disable_lion_restore():
     """ Prevent Mac OS 10.7 to restore windows state since it would
     make Qt 4.7.3 unstable due to its lack of handling Cocoa's Main

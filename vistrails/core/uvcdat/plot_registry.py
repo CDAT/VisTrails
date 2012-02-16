@@ -380,6 +380,7 @@ class Plot(object):
                 
         #now we update pipeline with current parameter values
         pipeline = self.current_controller.vistrail.getPipeline(self.current_parent_version)
+        print " @@ Pipeline aliases: ", str( pipeline.aliases )
         self.addMergedAliases( aliases, pipeline )
         action = self.addParameterChangesFromAliasesAction(pipeline, 
                                         self.current_controller, 
