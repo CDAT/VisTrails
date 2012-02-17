@@ -168,7 +168,26 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         dimval = self.view.controller.vistrail.get_annotation(
                                                      'uvcdatSheetSize:'+sheet)
         return map(int, dimval.value.split(',')) if dimval else (2,1)
-            
+    
+    def show_provenance(self, sheetName, row, col):
+        """show_provenance(sheetName: str, row: int, col: int)  -> None
+        Will display pipeline for current item.
+        """
+        if sheetName not in self.sheet_to_item:
+            return
+        
+        sheetItem = self.sheet_to_item[sheetName]
+        if (row, col) not in sheetItem.pos_to_item:
+            return
+        
+        item = sheetItem.pos_to_item[(row, col)]
+        version = item.workflowVersion
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
+        _app.uvcdatWindow.showBuilderWindowActTriggered()
+        self.view.version_selected(version, True, double_click=True)
+        
+        
 class QSpreadsheetItem(QtGui.QTreeWidgetItem):
     """ QSpreadsheetItem represents a uv-cdat spreadsheet tab containing
         visualizations
@@ -479,6 +498,8 @@ class Workspace(QtGui.QDockWidget):
                      item.update_cell)
             self.connect(item.controller, QtCore.SIGNAL("sheet_size_changed"),
                      item.sheetSizeChanged)
+            self.connect(item.controller, QtCore.SIGNAL("show_provenance"),
+                         item.show_provenance)
  
         if view.controller.locator:
             name = view.controller.locator.short_name

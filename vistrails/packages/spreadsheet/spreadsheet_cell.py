@@ -261,6 +261,7 @@ class QCellToolBar(QtGui.QToolBar):
         self.appendAction(QCellToolBarExecutePlot(self))
         self.appendAction(QCellToolBarViewSource(self))
         self.appendAction(QCellToolBarConfigurePlot(self))
+        self.appendAction(QCellToolBarViewProvenance(self))
         self.appendAction(QCellToolBarMergeCells(QtGui.QIcon(':celltoolbar/mergecells.png'), self))
         self.createToolBar()
 
@@ -540,6 +541,49 @@ class QCellToolBarExecutePlot(QtGui.QAction):
                 visible = True
         
         self.setVisible(visible)
+            
+class QCellToolBarViewProvenance(QtGui.QAction):
+    """
+    QCellToolBarViewProvenance is the action to see the workflow of the plot 
+    of the current cell
+
+    """
+    def __init__(self, parent=None):
+        """ QCellToolBarViewProvenance(icon: QIcon, parent: QWidget)
+                                   -> QCellToolBarViewProvenance
+        Setup the image, status tip, etc. of the action
+        
+        """
+        QtGui.QAction.__init__(self,
+                               UVCDATTheme.VIEW_PROVENANCE_ICON,
+                               "View provenance of the current plot",
+                               parent)
+        self.setStatusTip("View provenance of the current plot")
+
+    def triggeredSlot(self, checked=False):
+        """ toggledSlot(checked: boolean) -> None
+        Execute the action when the button is clicked
+        
+        """
+        
+        cellWidget = self.toolBar.getSnappedWidget()
+        self.toolBar.sheet.requestPlotProvenance(self.toolBar.row, self.toolBar.col)
+
+    def updateStatus(self, info):
+        """ updateStatus(info: tuple) -> None
+        Updates the status of the button based on the input info
+        
+        """
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
+        (sheet, row, col, cellWidget) = info
+        selectedCells = sorted(sheet.getSelectedLocations())
+
+        # Will not show up if there is no cell selected  
+        if len(selectedCells)==1:
+            self.setVisible(True)
+        else:
+            self.setVisible(False)
             
 class QCellToolBarMergeCells(QtGui.QAction):
     """
