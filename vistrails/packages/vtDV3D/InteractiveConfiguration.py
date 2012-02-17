@@ -12,6 +12,7 @@ from core.modules.vistrails_module import Module, ModuleError
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, Boolean, Variant
 from ColorMapManager import ColorMapManager 
+from core.utils import getHomeRelativePath, getFullPath
 from HyperwallManager import HyperwallManager
 from CDATTask import deserializeTaskData
 from collections import OrderedDict
@@ -1393,7 +1394,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                     if datasetsInput: 
                         datasets = deserializeStrMap( getItem( datasetsInput ) )
                         relFilePath = datasets[ datasetId ]
-                        cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                        cdmsFile = getFullPath( relFilePath )
                         vlist = DV3DConfigurationWidget.readVariableList( datasetId, cdmsFile )
                         variableList.update( vlist )
                         timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
@@ -1444,7 +1445,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                     for datasetId in datasets:
                         relFilePath = datasets[ datasetId ]
                         if relFilePath:
-                            cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                            cdmsFile = getFullPath( relFilePath )
                             vlist = DV3DConfigurationWidget.readVariableList( datasetId, cdmsFile )
                             variableList.update( vlist )
                             timeRangeInput = getFunctionParmStrValues( module, "timeRange" )
@@ -1457,7 +1458,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                                     refDsid = referenceData[0]
                                     refVar  = referenceData[1].split(' ')[0]                                
                                     relFilePath = datasets[ refDsid ]
-                                    cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                                    cdmsFile = getFullPath( relFilePath )
                                     dataset = cdms2.open( cdmsFile ) 
                                     levelsAxis=dataset[refVar].getLevel()
                             datasetIds.add( datasetId )

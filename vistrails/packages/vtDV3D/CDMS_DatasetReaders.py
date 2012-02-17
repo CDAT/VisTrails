@@ -11,6 +11,7 @@ from InteractiveConfiguration import *
 from core.modules.vistrails_module import Module, ModuleError
 from WorkflowModule import WorkflowModule 
 from HyperwallManager import HyperwallManager
+from core.utils import getHomeRelativePath, getFullPath
 import ModuleStore
 #from core.vistrail.port_spec import PortSpec
 from vtUtilities import *
@@ -127,8 +128,6 @@ def getRelativeTimeValues( dataset ):
     return rv, dt, time_units
 
 class CDMSDatasetRecord(): 
-    
-    cdmsDataRoot = getDataRoot()
    
     def __init__( self, id, dataset=None, dataFile = None ):
         self.id = id
@@ -195,7 +194,7 @@ class CDMSDatasetRecord():
             refFileRelPath = referenceData[1]
             refVar  = referenceData[2]
             try:
-                refFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, refFileRelPath )
+                refFile = getFullPath( refFileRelPath )
                 f=cdms2.open( refFile )
                 refGrid=f[refVar].getGrid()
             except cdms2.error.CDMSError, err:
@@ -312,7 +311,7 @@ class CDMSDatasetRecord():
             relFilePath = referenceData[1]
             refVar  = referenceData[2]
             try:
-                cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                cdmsFile = getFullPath( relFilePath )
                 f=cdms2.open( cdmsFile )
                 refGrid=f[refVar].getGrid()
             except cdms2.error.CDMSError, err:
@@ -676,7 +675,7 @@ class CDMSDataset(Module):
         try:
             relFilePath = relFilePath.strip()
             if relFilePath:
-                cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                cdmsFile = getFullPath( relFilePath )
                 dataset = cdms2.open( cdmsFile ) 
                 cdmsDSet = CDMSDatasetRecord( dsetId, dataset, cdmsFile )
                 self.datasetRecs[ dsetId ] = cdmsDSet
@@ -760,7 +759,7 @@ class SerializedInterfaceSpecs:
         
     def addInput(self, inputName, fileId, fileName, variableName, axes ):
         print " --- AddInput: ", inputName, fileId, fileName, variableName, axes
-        relFilePath = os.path.relpath( fileName, CDMSDatasetRecord.cdmsDataRoot )
+        relFilePath = getHomeRelativePath( fileName )
         self.inputs[ inputName ] = ( fileId, relFilePath, variableName, axes )
         
     def getNInputs(self):
@@ -905,7 +904,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         dataset_list = []
         for relFilePath in self.fileSpecs:
             try:
-                cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                cdmsFile = getFullPath( relFilePath )
                 dataset = cdms2.open( cdmsFile ) 
                 dataset_list.append( dataset )
             except:
@@ -929,7 +928,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
            nTS = 1 
         else: nTS = int( ( ( end_time - start_time ) / min_dt ) + 0.0001 )  
         self.timeRange = [ 0, nTS, start_time, min_dt ]
-#        print "Compute TimeRange From Specs: ", str( [ start_time, end_time, min_dt ] ), str( self.timeRange )
+        print "Compute TimeRange From Specs: ", str( [ start_time, end_time, min_dt ] ), str( self.timeRange )
 
             
     def execute(self, **args ):
@@ -1161,9 +1160,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
     def setDatasetProperties(self, dataset, cdmsFile ):
         self.currentDatasetId = dataset.id  
         self.pmod.datasetId = dataset.id 
-        relFilePath = os.path.relpath( cdmsFile, CDMSDatasetRecord.cdmsDataRoot )
+        relFilePath = getHomeRelativePath( cdmsFile )
         self.datasets[ self.currentDatasetId ] = relFilePath  
-#        self.cdmsDataRoot = os.path.dirname( cdmsFile )
         self.metadataViewer.setDatasetProperties( dataset, cdmsFile ) 
         
     def registerCurrentDataset( self, **args ):
@@ -1175,7 +1173,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.currentDatasetId = str( id )
             relFilePath = self.datasets.get( self.currentDatasetId, None ) 
         try:
-            cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+            cdmsFile = getFullPath( relFilePath )
             dataset = cdms2.open( cdmsFile ) 
             self.setDatasetProperties( dataset, cdmsFile )
             self.updateGrids( dataset )           
@@ -1194,16 +1192,15 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
          
     def selectFile(self):
         dataset = None
-        file = QFileDialog.getOpenFileName( self, "Find Dataset", CDMSDatasetRecord.cdmsDataRoot, "CDMS Files (*.xml *.cdms *.nc *.nc4)") 
+        file = QFileDialog.getOpenFileName( self, "Find Dataset", os.path.expanduser('~'), "CDMS Files (*.xml *.cdms *.nc *.nc4)") 
         if file <> None:
             cdmsFile = str( file ).strip() 
             if len( cdmsFile ) > 0:                             
                 try:
                     dataset = cdms2.open( cdmsFile )
-                    relFilePath = os.path.relpath( cdmsFile, CDMSDatasetRecord.cdmsDataRoot )
+                    relFilePath = getHomeRelativePath( cdmsFile )
                     self.currentDatasetId = dataset.id 
                     self.datasets[ self.currentDatasetId ] = relFilePath  
-#                        self.cdmsDataRoot = os.path.dirname( cdmsFile )
                     self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
                     self.dsCombo.setCurrentIndex( 0 )
                     self.pmod.datasetId = '*'.join( self.datasets.keys() )
@@ -1260,7 +1257,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         for datasetId in self.datasets:
             if datasetId:
                 relFilePath = self.datasets[ datasetId ]
-                cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                cdmsFile = getFullPath( relFilePath )
                 try:
                     dataset = cdms2.open( cdmsFile ) 
                     for var in dataset.variables:
@@ -1321,7 +1318,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         for datasetId in self.datasets:
             if datasetId:
                 relFilePath = self.datasets[ datasetId ]
-                cdmsFile = os.path.join( CDMSDatasetRecord.cdmsDataRoot, relFilePath )
+                cdmsFile = getFullPath( relFilePath )
                 try:
                     dataset = cdms2.open( cdmsFile ) 
                     dataset_list.append( dataset )

@@ -35,8 +35,8 @@ class QiVisClient(QtCore.QObject):
         print " Init VisClient, server=%s, serverPort=%s, name=%s " % ( str(self.server), str(self.serverPort), str(name) )
 
         self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow( False )
-#        self.spreadsheetWindow.setWindowFlags( self.spreadsheetWindow.windowFlags() | QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.Window )
-        self.spreadsheetWindow.setWindowFlags( self.spreadsheetWindow.windowFlags() | QtCore.Qt.Window )
+        self.spreadsheetWindow.setWindowFlags( self.spreadsheetWindow.windowFlags() | QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.Window )
+#        self.spreadsheetWindow.setWindowFlags( self.spreadsheetWindow.windowFlags() | QtCore.Qt.Window )
         self.spreadsheetWindow.activateWindow()
         self.spreadsheetWindow.showMaximized()
         
@@ -57,9 +57,10 @@ class QiVisClient(QtCore.QObject):
             tabController = self.spreadsheetWindow.get_current_tab_controller()            
 #            self.currentTab = tabController.tabWidgets[1]
             self.currentTab = tabController.widget ( 1 )
-            self.dims = self.currentTab.getDimension()
-            print " UpdateCurrentTab: ntabs=%d, dims=%s " % ( len( tabController.tabWidgets ), str( self.dims ) )
-            return True
+            if self.currentTab:
+                self.dims = self.currentTab.getDimension()
+                print " UpdateCurrentTab: ntabs=%d, dims=%s " % ( len( tabController.tabWidgets ), str( self.dims ) )
+                return True
         return False
             
     def connectSignals(self):
@@ -215,7 +216,7 @@ class QiVisClient(QtCore.QObject):
         app = QtCore.QCoreApplication.instance()
         newTab = self.updateCurrentTab()
         cell = (int(terms[0]), int(terms[1]))
-        widget = self.currentTab.getCellWidget(cell[0]-1, cell[1]-1) 
+        widget = self.currentTab.getCellWidget(cell[0]-1, cell[1]-1) if self.currentTab else None
                   
         print " ------------- QiVisClient.processEvent: %s-%s in cell %s, widget: %x  ---------------------" % ( terms[2], terms[3], str( cell ), id(widget) )
         sys.stdout.flush()
@@ -230,9 +231,10 @@ class QiVisClient(QtCore.QObject):
                 persistentCellModule = ModuleStore.getModule( cellMod.id ) 
                 if persistentCellModule: persistentCellModule.syncCamera( cpos, cfol, cup )            
         if terms[2] in ["singleClick", "mouseMove", "mouseRelease"]:
-            screenRect = self.currentTab.getCellRect( cell[0]-1, cell[1]-1 )
-            screenDims = ( screenRect.width(), screenRect.height() )
-            newEvent = decodeMouseEvent( terms[2:], screenDims )
+            if self.currentTab:
+                screenRect = self.currentTab.getCellRect( cell[0]-1, cell[1]-1 )
+                screenDims = ( screenRect.width(), screenRect.height() )
+                newEvent = decodeMouseEvent( terms[2:], screenDims )
         elif terms[2] in ["keyPress", "keyRelease" ]:
             newEvent = decodeKeyEvent(terms[2:])
 

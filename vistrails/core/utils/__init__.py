@@ -72,6 +72,20 @@ def abstract():
 
 ################################################################################
 
+def getHomeRelativePath( fullpath ):
+    if not fullpath or not os.path.isabs( fullpath ): return fullpath
+    homepath = os.path.expanduser('~')
+    commonpath = os.path.commonprefix( [ homepath, fullpath ] )
+    if (len(commonpath) > 1) and os.path.exists( commonpath ): 
+        relpath = os.path.relpath( fullpath, homepath )
+        return '/'.join( [ '~', relpath ] )
+    return fullpath
+
+def getFullPath( relPath ):
+    return os.path.expanduser( relPath )
+
+################################################################################
+
 class NoMakeConnection(Exception):
     """NoMakeConnection is raised when a VisConnection doesn't know
     how to create a live version of itself. This is an internal error

@@ -70,8 +70,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             timeValue = args.get( 'timeValue', self.timeRange[2] )
             self.timeValue = cdtime.reltime( float(timeValue), ReferenceTimeUnits )
             self.timeLabels = self.cdmsDataset.getTimeValues()
-            self.nTimesteps = len( self.timeLabels )
+            self.nTimesteps = self.timeRange[1]
             print "Set Time: %s, %s, NTS: %d, Range: %s" % ( str(timeValue), str(self.timeValue), self.nTimesteps, str(self.timeRange) )
+            print "Time Step Labels: %s" % str( self.timeLabels ) 
             self.generateOutput()
             if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
  

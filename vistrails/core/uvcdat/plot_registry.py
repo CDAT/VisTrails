@@ -46,6 +46,7 @@ from core.modules.module_registry import get_module_registry
 from core.vistrail.controller import VistrailController
 from core.uvcdat.utils import UVCDATInternalError
 from core.packagemanager import get_package_manager
+from core.utils import getHomeRelativePath, getFullPath
 from core import debug
 
 #assuming vistrail files and config files for plots are in ./plots
@@ -407,7 +408,9 @@ class Plot(object):
         if self.serializedConfigAlias:
             if self.serializedConfigAlias in pipeline.aliases:
                 try:
-                    fileAliases = '|'.join( [ "%s!%s!%s" % ( self.files[i], aliases[self.files[i]], aliases[".".join([self.files[i],"url"])] )  for i in range(self.filenum) ] )
+                    file = [ getHomeRelativePath( aliases[       self.files[i]        ] ) for i in range(self.filenum) ]
+                    url =  [ getHomeRelativePath( aliases[  "%s.url" % self.files[i]  ] ) for i in range(self.filenum) ]
+                    fileAliases = '|'.join( [ "%s!%s!%s" % ( self.files[i], file[i], url[i] )  for i in range(self.filenum) ] )
                     varAliases = '|'.join( [ "%s!%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
                     gridAliases = '|'.join( [ "%s!%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
                     cellAliases = '|'.join( [ "location%d!%s" % ( i, self.cells[i].getAddress( aliases ) ) for i in range( len(self.cells) ) ] )
