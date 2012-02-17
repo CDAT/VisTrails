@@ -925,6 +925,8 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             start_time = 0 
             end_time = 0
             min_dt = 0.0
+        elif min_dt == 0.0:
+           nTS = 1 
         else: nTS = int( ( ( end_time - start_time ) / min_dt ) + 0.0001 )  
         self.timeRange = [ 0, nTS, start_time, min_dt ]
 #        print "Compute TimeRange From Specs: ", str( [ start_time, end_time, min_dt ] ), str( self.timeRange )

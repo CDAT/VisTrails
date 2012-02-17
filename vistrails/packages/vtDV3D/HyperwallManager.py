@@ -159,7 +159,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
             hw_x = node_index / hw_dims[1]
             hw_y = node_index % hw_dims[1]
             from hyperwall.iVisClient.iVisClient import QiVisClient
-            print " QiVisClient startup, full screen = %s " % str( fullScreen )
+            print " QiVisClient startup: %s %s %s " % ( self.deviceName, hw_server, hw_port )
             hw_displayWidth = int( datasetConfig.get( hw_role, 'hw_displayWidth' ) )
             hw_displayHeight = int( datasetConfig.get( hw_role, 'hw_displayHeight' ) )
             self.client = QiVisClient( self.deviceName, hw_server, hw_port, hw_x, hw_y, 1, 1 )

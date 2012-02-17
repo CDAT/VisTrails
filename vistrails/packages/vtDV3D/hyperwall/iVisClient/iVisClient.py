@@ -1,6 +1,6 @@
 import PyQt4.QtNetwork
 import packages
-import gui, core, os
+import gui, core, os, sys
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtNetwork import QTcpSocket, QHostAddress, QHostInfo, QAbstractSocket
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
@@ -22,7 +22,7 @@ class QiVisClient(QtCore.QObject):
         self.timer.start()
         self.socket = QTcpSocket()
 
-        self.server = os.environ.get( 'DV3D_HW_SERVER_NAME', server )
+        self.server = server # os.environ.get( 'DV3D_HW_SERVER_NAME', server )
         self.serverPort = int(serverPort)
 
         self.buffer = ""
@@ -32,12 +32,13 @@ class QiVisClient(QtCore.QObject):
         self.deviceName = name
         self.currentTab = None
         self.mainWindow = None
+        print " Init VisClient, server=%s, serverPort=%s, name=%s " % ( str(self.server), str(self.serverPort), str(name) )
 
         self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow( False )
-        self.spreadsheetWindow.setWindowFlags( self.spreadsheetWindow.windowFlags() | QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.Window )
+#        self.spreadsheetWindow.setWindowFlags( self.spreadsheetWindow.windowFlags() | QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.Window )
+        self.spreadsheetWindow.setWindowFlags( self.spreadsheetWindow.windowFlags() | QtCore.Qt.Window )
         self.spreadsheetWindow.activateWindow()
         self.spreadsheetWindow.showMaximized()
-#        self.spreadsheetWindow.raise_()
         
         self.dimensions = ( x, y, width, height )
         self.connectSignals()       
@@ -75,6 +76,7 @@ class QiVisClient(QtCore.QObject):
         this method is called once everytime self.timer ticks. It
         tries to connect to the server again"""
         print "retryConnection"
+        sys.stdout.flush()
         if self.socket.state()!=QTcpSocket.ConnectedState:
             if self.socket.state()==QTcpSocket.UnconnectedState:
                 port = int( self.serverPort )

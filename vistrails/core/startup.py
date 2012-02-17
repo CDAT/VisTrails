@@ -43,7 +43,7 @@ import core.packagemanager
 import core.utils
 import os.path
 import shutil
-import sys
+import sys, time
 import tempfile
 import core.configuration
 import xml.dom.minidom
@@ -123,9 +123,15 @@ class VistrailsStartup(object):
     # startup.xml related
 
     def startup_dom(self):
-        filename = os.path.join(self.temp_configuration.dotVistrails,'startup.xml')
-        return xml.dom.minidom.parse(filename)
-
+        filename = os.path.join( self.temp_configuration.dotVistrails,'startup.xml' )
+        dom = None
+        for iAttempt in range(10):
+            try:     
+                dom = xml.dom.minidom.parse(filename)
+                break
+            except:   time.sleep( 0.5 )
+        return dom
+                
     def write_startup_dom(self, dom):
         filename = os.path.join(self.temp_configuration.dotVistrails,'startup.xml')
         f = file(filename, 'w')

@@ -35,7 +35,7 @@
 import __builtin__
 import copy
 import os
-import sys
+import sys, time
 import traceback
 import xml.dom
 
@@ -662,13 +662,21 @@ class Package(DBPackage):
         return (dom, package_node)
 
     def load_persistent_configuration(self):
-        (dom, element) = self.find_own_dom_element()
+        (dom, element) = ( None, None )
+        for iAttempt in range(10):
+            try:     
+                (dom, element) = self.find_own_dom_element()
+                break
+            except:   time.sleep( 0.5 )
 
-        configuration = enter_named_element(element, 'configuration')
-        if configuration and self.configuration:
-            if self.configuration: self.configuration.set_from_dom_node(configuration)
-            else: print>>sys.stderr, "Error, missing configuration in package"
-        dom.unlink()
+        if element <> None:       
+            configuration = enter_named_element(element, 'configuration')
+            if configuration and self.configuration:
+                if self.configuration: self.configuration.set_from_dom_node(configuration)
+                else: print>>sys.stderr, "Error, missing configuration in package"
+            if dom <> None:  dom.unlink()
+        else:
+            print>>sys.stderr, "Error reading dom for package"
 
     def set_persistent_configuration(self):
         (dom, element) = self.find_own_dom_element()
