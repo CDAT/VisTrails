@@ -56,6 +56,8 @@ class UVCDATDefaultTheme(object):
             ':/icons/resources/icons/delete.png')
         self.EXECUTE_CELL_ICON =  QtGui.QIcon(
             ':/icons/resources/icons/execute.png')
+        self.VIEW_PROVENANCE_ICON =  QtGui.QIcon(
+            ':/icons/resources/icons/pipeline.png')
         
         #VCS Plots Icons
         self.PLOT_VIEW_SOURCE_ICON =  QtGui.QIcon(
@@ -109,6 +111,8 @@ class UVCDATMinimalTheme(UVCDATDefaultTheme):
             ':/icons/resources/icons/minimal/delete.png')
         self.EXECUTE_CELL_ICON =  QtGui.QIcon(
             ':/icons/resources/icons/minimal/execute.png')
+        self.VIEW_PROVENANCE_ICON =  QtGui.QIcon(
+            ':/icons/resources/icons/minimal/pipeline.png')
         
         #VCS Plots Icons
         self.PLOT_VIEW_SOURCE_ICON =  QtGui.QIcon(

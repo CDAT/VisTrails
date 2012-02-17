@@ -368,7 +368,10 @@ class QSliderCombo(QtGui.QWidget):
         return self.axisValues
 
     def getCurrentValues(self):
-        return (self.axisValues[self.minIndex], self.axisValues[self.maxIndex])
+        if int(self.axisCombo.stride)==1:
+            return (self.axisValues[self.minIndex], self.axisValues[self.maxIndex])
+        else:
+            return slice(self.minIndex,self.maxIndex,int(self.axisCombo.stride))
 
     def getCurrentValuesAsStr(self):
         if self.isTime:
@@ -911,7 +914,6 @@ class QAxisComboWidget(QtGui.QComboBox):
         slider / label with the same value
         """
         index = self.findData(QtCore.QVariant(QtCore.QStringList(['variables', str(axisValue)])))
-
         # If user entered a value into the lineEdit.
         if index == -1:
             self.updateValueFromLineEditText(axisValue)
@@ -941,7 +943,6 @@ class QAxisComboWidget(QtGui.QComboBox):
         # The lineEdit text must have format "ValueA : ValueB by Stride"
         pattern = re.compile("(.*)\s:\s(.*)\sby\s(\w*)")
         result = pattern.match(axisValue)
-
         # If invalid string format, do nothing
         if (result == None):
             return
@@ -953,8 +954,9 @@ class QAxisComboWidget(QtGui.QComboBox):
 
         minValue = result.group(1)
         maxValue = result.group(2)
-        minIndex = self.findData(QtCore.QVariant(QtCore.QStringList(['variables', str(minValue)])))
-        maxIndex = self.findData(QtCore.QVariant(QtCore.QStringList(['variables', str(maxValue)])))
+        minIndex,maxIndex = self.parent().parent().axis.mapInterval((float(minValue),float(maxValue)))
+        #minIndex = self.findData(QtCore.QVariant(QtCore.QStringList(['variables', str(minValue)])))
+        #maxIndex = self.findData(QtCore.QVariant(QtCore.QStringList(['variables', str(maxValue)])))
 
         # If min or max values are not in the list of values do nothing
         if (minIndex == -1 or maxIndex == -1):

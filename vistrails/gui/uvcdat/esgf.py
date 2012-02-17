@@ -529,8 +529,12 @@ class QEsgfBrowser(QtGui.QDialog):
                 #print "i mapping is:",i.mapping.template
                 datasets+=d
         except Exception,err:
-            m = QtGui.QMessageBox()
-            m.setText(str(err))
+            m = QtGui.QDialog()
+            l=QtGui.QVBoxLayout()
+            te=QtGui.QTextEdit()
+            te.insertPlainText(str(err))
+            l.addWidget(te)
+            m.setLayout(l)
             m.exec_()
             return
         query=""

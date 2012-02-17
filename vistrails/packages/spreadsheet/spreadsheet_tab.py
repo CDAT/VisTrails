@@ -968,6 +968,10 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         self.emit(QtCore.SIGNAL("request_plot_source"), self.getSheetName(), 
                     row, col)
         
+    def requestPlotProvenance(self, row, col):
+        self.emit(QtCore.SIGNAL("request_plot_provenance"), self.getSheetName(), 
+                    row, col)
+        
     def cellSelectionChanged(self, row, col, toggling):
         #ignoring toggling for now
         self.emit(QtCore.SIGNAL("current_cell_changed"), self.getSheetName(),

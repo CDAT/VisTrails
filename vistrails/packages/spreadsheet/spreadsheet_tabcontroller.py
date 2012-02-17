@@ -49,7 +49,7 @@ from core.utils.uxml import XMLWrapper, named_elements
 import copy
 import gc
 from gui.theme import CurrentTheme
-from gui.utils import show_warning
+from gui.utils import show_warning, show_info
 from gui.uvcdat.theme import UVCDATTheme
 
 ################################################################################
@@ -339,6 +339,10 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         get_vistrails_configuration().uvcdat.aspectRatio = checked
         _app.save_configuration()
         
+    def uvcdat_show_changes_message(self):
+        msg = "The changes will be applied next time you restart UV-CDAT."
+        show_info("UV-CDAT", msg)
+        
     def uvcdatDefaultThemeActionTriggered(self, checked):
         """uvcdatDefaultThemeActionTriggered(checked: boolean) -> None 
         When the check state changes the configuration needs to be updated.
@@ -352,6 +356,7 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         get_vistrails_persistent_configuration().uvcdat.theme = "Default"
         get_vistrails_configuration().uvcdat.theme = "Default"
         _app.save_configuration()
+        self.uvcdat_show_changes_message()
         
     def uvcdatMinimalThemeActionTriggered(self, checked):
         """uvcdatMinimalThemeActionTriggered(checked: boolean) -> None 
@@ -366,6 +371,7 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         get_vistrails_persistent_configuration().uvcdat.theme = "Minimal"
         get_vistrails_configuration().uvcdat.theme = "Minimal"
         _app.save_configuration()
+        self.uvcdat_show_changes_message()
         
     def exportSheetToImageAction(self):
         """ exportSheetToImageAction() -> QAction
@@ -988,6 +994,8 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                      self.requestPlotExecution)
         self.connect(widget, QtCore.SIGNAL("request_plot_source"),
                      self.requestPlotSource)
+        self.connect(widget, QtCore.SIGNAL("request_plot_provenance"),
+                     self.requestPlotProvenance)
         self.connect(widget, QtCore.SIGNAL("cell_deleted"),
                      self.cellDeleted)
         self.connect(widget, QtCore.SIGNAL("sheet_size_changed"),
@@ -1010,6 +1018,8 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                      self.requestPlotExecution)
         self.disconnect(widget, QtCore.SIGNAL("request_plot_source"),
                      self.requestPlotSource)
+        self.disconnect(widget, QtCore.SIGNAL("request_plot_provenance"),
+                     self.requestPlotProvenance)
         self.disconnect(widget, QtCore.SIGNAL("cell_deleted"),
                      self.cellDeleted)
         self.disconnect(widget, QtCore.SIGNAL("sheet_size_changed"),
@@ -1052,7 +1062,10 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         self.emit(QtCore.SIGNAL("request_plot_execution"), sheetName, row, col )    
     
     def requestPlotSource(self, sheetName, row, col):
-        self.emit(QtCore.SIGNAL("request_plot_source"), sheetName, row, col )    
+        self.emit(QtCore.SIGNAL("request_plot_source"), sheetName, row, col ) 
+         
+    def requestPlotProvenance(self, sheetName, row, col):
+        self.emit(QtCore.SIGNAL("request_plot_provenance"), sheetName, row, col )   
         
     def cellDeleted(self, sheetName, row, col):
         self.emit(QtCore.SIGNAL("cell_deleted"), sheetName, row, col )

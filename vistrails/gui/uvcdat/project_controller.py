@@ -353,6 +353,8 @@ class ProjectController(QtCore.QObject):
                      self.request_plot_execution)
         self.connect(tabController, QtCore.SIGNAL("request_plot_source"),
                      self.request_plot_source)
+        self.connect(tabController, QtCore.SIGNAL("request_plot_provenance"),
+                     self.request_plot_provenance)
         self.connect(tabController, QtCore.SIGNAL("cell_deleted"),
                      self.clear_cell)
         self.connect(tabController, QtCore.SIGNAL("sheet_size_changed"),
@@ -377,6 +379,8 @@ class ProjectController(QtCore.QObject):
                      self.request_plot_execution)
         self.disconnect(tabController, QtCore.SIGNAL("request_plot_source"),
                      self.request_plot_source)
+        self.disconnect(tabController, QtCore.SIGNAL("request_plot_provenance"),
+                     self.request_plot_provenance)
         self.disconnect(tabController, QtCore.SIGNAL("cell_deleted"),
                      self.clear_cell)
         self.disconnect(tabController, QtCore.SIGNAL("sheet_size_changed"),
@@ -670,7 +674,10 @@ class ProjectController(QtCore.QObject):
         plot_source = PlotSource.instance()
         plot_source.showSource(source, sheetName, row, col)
         plot_source.show()
-            
+        
+    def request_plot_provenance(self, sheetName, row, col):
+        self.emit(QtCore.SIGNAL("show_provenance"), sheetName, row, col)   
+         
     def get_plot_configuration(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
         helper = self.plot_manager.get_plot_helper(cell.plot.package)
