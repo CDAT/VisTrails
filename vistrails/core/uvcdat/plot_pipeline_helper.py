@@ -88,10 +88,12 @@ class PlotPipelineHelper(object):
                 filename = filename.name
             url = PlotPipelineHelper.get_value_from_function( var_modules[i], 'url')            
             varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'name')
+            file_varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varNameInFile')
             axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
             aliases[plot_obj.files[i]] = filename
             aliases[ ".".join( [plot_obj.files[i],"url"] )  ] = url if url else ""
             aliases[plot_obj.vars[i]] = varname
+            aliases[ "%s.file" % plot_obj.vars[i] ] = file_varname if file_varname else ""
             if len(plot_obj.axes) > i:
                 aliases[plot_obj.axes[i]] = axes
 

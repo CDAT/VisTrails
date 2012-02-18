@@ -411,7 +411,7 @@ class Plot(object):
                     file = [ getHomeRelativePath( aliases[       self.files[i]        ] ) for i in range(self.filenum) ]
                     url =  [ getHomeRelativePath( aliases[  "%s.url" % self.files[i]  ] ) for i in range(self.filenum) ]
                     fileAliases = '|'.join( [ "%s!%s!%s" % ( self.files[i], file[i], url[i] )  for i in range(self.filenum) ] )
-                    varAliases = '|'.join( [ "%s!%s" % ( self.vars[i], aliases[self.vars[i]] )  for i in range(self.varnum) ] )
+                    varAliases = '|'.join( [ "%s!%s!%s" % ( self.vars[i], aliases[self.vars[i]], aliases[ "%s.file" % self.vars[i]] )  for i in range(self.varnum) ] )
                     gridAliases = '|'.join( [ "%s!%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
                     cellAliases = '|'.join( [ "location%d!%s" % ( i, self.cells[i].getAddress( aliases ) ) for i in range( len(self.cells) ) ] )
                     aliases[ self.serializedConfigAlias ] = ';'.join( [ fileAliases, varAliases, gridAliases, cellAliases ] )
