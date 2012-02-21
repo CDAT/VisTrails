@@ -96,6 +96,15 @@ class PlotPipelineHelper(object):
             aliases[ "%s.file" % plot_obj.vars[i] ] = file_varname if file_varname else ""
             if len(plot_obj.axes) > i:
                 aliases[plot_obj.axes[i]] = axes
+            if var_modules[i].descriptor_info[1].endswith( 'VariableOperation' ):
+                pass
+            
+#                module = var_modules[i].summon()
+#                module.update()
+#                output_var = PlotPipelineHelper.get_value_from_function( var_modules[i], 'output_var' )
+#                print " "
+                
+
 
         #FIXME: this will always spread the cells in the same row
         for j in range(plot_obj.cellnum):

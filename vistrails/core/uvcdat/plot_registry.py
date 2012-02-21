@@ -411,7 +411,7 @@ class Plot(object):
                     file = [ getHomeRelativePath( aliases[       self.files[i]        ] ) for i in range(self.filenum) ]
                     url =  [ getHomeRelativePath( aliases[  "%s.url" % self.files[i]  ] ) for i in range(self.filenum) ]
                     fileAliases = '|'.join( [ "%s!%s!%s" % ( self.files[i], file[i], url[i] )  for i in range(self.filenum) ] )
-                    varAliases = '|'.join( [ "%s!%s!%s" % ( self.vars[i], aliases[self.vars[i]], aliases[ "%s.file" % self.vars[i]] )  for i in range(self.varnum) ] )
+                    varAliases  = '|'.join( [ "%s!%s!%s" % ( self.vars[i], aliases[self.vars[i]], aliases[ "%s.file" % self.vars[i]] )  for i in range(self.varnum) ] )
                     gridAliases = '|'.join( [ "%s!%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
                     cellAliases = '|'.join( [ "location%d!%s" % ( i, self.cells[i].getAddress( aliases ) ) for i in range( len(self.cells) ) ] )
                     aliases[ self.serializedConfigAlias ] = ';'.join( [ fileAliases, varAliases, gridAliases, cellAliases ] )
@@ -422,7 +422,6 @@ class Plot(object):
                     debug.debug("Could not build serialized alias from other aliases. Using current one.")
 #                if 'vcdatCellSpecs' in pipeline.aliases:
 #                aliases[ 'vcdatCellSpecs' ] = ','.join( [ "%s%s" % ( chr( ord('A') + int(aliases[self.cells[i].col_name]) ), aliases[self.cells[i].row_name] )  for i in range(self.cellnum) ] )
-#                print " vcdatCellSpecs: ", str( aliases[ 'vcdatCellSpecs' ] )
         
     def unserializeAliases(self, aliases):
         if self.serializedConfigAlias:

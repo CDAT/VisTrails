@@ -890,6 +890,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             if len( gridFields ) == 2:
                 type = gridFields[0].strip()
                 values = gridFields[1].strip('() ').split(',')
+                if len(values) == 1: values = values[0].strip(' ').split(' ')
                 if type == 'time':
                     cval = getCompTime( values[0].strip(" ") )
                     start_time = cval.torel(ReferenceTimeUnits).value
@@ -943,6 +944,8 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         
         serializedInputSpecs = getItem( self.getInputValue( "executionSpecs" ) )
         inputSpecs = SerializedInterfaceSpecs( serializedInputSpecs ) if serializedInputSpecs else None
+        print " ** serializedInputSpecs: ", str( serializedInputSpecs ) 
+        print " ** InputSpecs: ", str( inputSpecs ) 
         self.idSpecs, self.fileSpecs, self.varSpecs, self.gridSpecs = [], [], [], []
         if inputSpecs:
             print " _____________________ File Reader _____________________ "    

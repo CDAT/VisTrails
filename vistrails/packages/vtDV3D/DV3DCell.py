@@ -454,7 +454,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             if self.cellWidget:
                 self.renWin = self.cellWidget.GetRenderWindow()  
                 if joystick.enabled():
-                    joystick.addTarget( self.cellWidget )           
+                    joystick.addTarget( self.cellWidget )   
+            else: print "  --- Error creating cellWidget --- "        
                 
 #                self.renWin.StereoCapableWindowOn()
             self.builtCellWidget = True
