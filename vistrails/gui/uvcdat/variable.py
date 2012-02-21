@@ -532,10 +532,16 @@ class VariableProperties(QtGui.QDockWidget):
         updatedVar.id = targetId
         self.root.record("%s = %s(%s)" % (targetId,oid,cmds))
         ## Squeeze?
-        if self.root.preferences.squeeze.isChecked():
-            updatedVar=updatedVar(squeeze=1)
-            self.root.record("%s = %s(squeeze=1)" % (targetId,targetId))
-            kwargs['squeeze']=1
+        if updatedVar.rank() !=0:
+            if self.root.preferences.squeeze.isChecked():
+                updatedVar=updatedVar(squeeze=1)
+                self.root.record("%s = %s(squeeze=1)" % (targetId,targetId))
+                kwargs['squeeze']=1
+        else:
+            val = QtGui.QMessageBox()
+            val.setText("%s = %f" % (updatedVar.id,float(updatedVar)))
+            val.exec_()
+            
 
         
         
