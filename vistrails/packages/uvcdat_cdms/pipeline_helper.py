@@ -876,8 +876,6 @@ class CDMSPlotWidget(QtGui.QWidget):
     def configure_done(self, action):
         canceled = []
         
-        action = self.update_templates(action)
-                
         for a in self.to_be_added:
             if a in self.to_be_removed:
                 canceled.append(a)
@@ -898,6 +896,8 @@ class CDMSPlotWidget(QtGui.QWidget):
             or self.plot_order_changed() or self.vars_were_changed):
             action = self.update_pipeline(action)
         
+        action = self.update_templates(action)
+                
         self.emit(QtCore.SIGNAL('plotDoneConfigure'), action)
         if action is not None:
             version = action.id
@@ -988,12 +988,13 @@ class CDMSPlotWidget(QtGui.QWidget):
         for i in range(self.plot_table.topLevelItemCount()):
             plot_item = self.plot_table.topLevelItem(i)
             pipeline = self.controller.vistrail.getPipeline(version)
-            plot_module = pipeline.modules[plot_item.module.id]
-            functions = [('template', [plot_item.template])]
-            action = self.controller.update_functions(plot_module, 
-                                                      functions)
-            if action is not None:
-                version = action.id
+            if plot_item.module.id in pipeline.modules:
+                plot_module = pipeline.modules[plot_item.module.id]
+                functions = [('template', [plot_item.template])]
+                action = self.controller.update_functions(plot_module, 
+                                                          functions)
+                if action is not None:
+                    version = action.id
         
         if action is not None:
             return action
