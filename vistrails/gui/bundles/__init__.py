@@ -32,9 +32,3 @@
 ##
 ###############################################################################
 
-def get_vistrails_application():
-    import core.application
-    return core.application.get_vistrails_application()
-
-def is_running_gui():
-    return get_vistrails_application() and get_vistrails_application().is_running_gui()
