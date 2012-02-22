@@ -12,7 +12,9 @@ cells = OrderedDict()
 def getDatabase():
     import api
     global moduleStoreDatabase
-    page_id = id( api.get_current_controller() )
+    page_id = 0
+    try: page_id = id( api.get_current_controller() )
+    except: pass
     return moduleStoreDatabase.setdefault( page_id, {} )
 
 def getModule( mid ):

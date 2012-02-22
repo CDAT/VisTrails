@@ -232,7 +232,10 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, **args )
         self.addConfigurableMethod( 'resetCamera', self.resetCamera, 'A' )
         self.addConfigurableMethod( 'showLogo', self.toggleLogoVisibility, 'L' )
-        if self.isClient:  self.location = ( 0, 0 )
+        if self.isClient:  
+            self.location = CellLocation()
+            self.location.row = 0
+            self.location.col = 0
         self.allowMultipleInputs = True
         self.renderers = []
         self.fieldData = []
@@ -455,7 +458,9 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 self.renWin = self.cellWidget.GetRenderWindow()  
                 if joystick.enabled():
                     joystick.addTarget( self.cellWidget )   
-            else: print "  --- Error creating cellWidget --- "        
+            else: 
+                print "  --- Error creating cellWidget --- "   
+                sys.stdout.flush()     
                 
 #                self.renWin.StereoCapableWindowOn()
             self.builtCellWidget = True

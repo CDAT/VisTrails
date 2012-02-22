@@ -62,6 +62,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
         return dims[1] * self.columnCount + dims[0]
         
     def getCellCoordinatesForModule( self, moduleId ):
+        if self.isClient: return ( 0, 0 )
         cellData = self.cells.get( moduleId, None )
         if cellData == None:
             for cellIndex in range( self.nCells ):
