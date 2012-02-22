@@ -239,8 +239,8 @@ class QiVisClient(QtCore.QObject):
             newEvent = decodeKeyEvent(terms[2:])
 
         if widget: 
-            app.postEvent(widget, newEvent)
             cellWidget = widget.widget()
+            app.postEvent( cellWidget, newEvent)
             cellWidget.setFocus()
             cellWidget.update()
 
