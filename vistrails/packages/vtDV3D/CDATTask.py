@@ -48,7 +48,7 @@ class CDATTask(QtCore.QObject):
         if varName:
             vNameComp =  varName.split('*')          
             input = self.cdmsDataset.getVarDataCube( vNameComp[0], vNameComp[1], timeValue  )
-            current_grid = input.getGrid()
+#            current_grid = input.getGrid()
 #            print " Get Input for task %s: %s[%.3f], grid=%s" % ( self.__class__.name, varName, timeValue.value, str(current_grid) )
 #            if (nInputs > 1) and (self.grid == None): 
 #                gridData = self.getGridData( iOutputIndex  )

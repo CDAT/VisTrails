@@ -22,6 +22,7 @@ import numpy.ma as ma
 # packagePath = os.path.dirname( __file__ ) 
 import cdms2, cdtime, cdutil, MV2 
 DataSetVersion = 0
+DefaultDecimation = [ 0, 7 ]
 cdms2.axis.level_aliases.append('isobaric')
 
 def normalize_lon( lon ):
@@ -68,11 +69,6 @@ def getDataRoot():
     datasetConfig, appConfig = getConfiguration( defaults )
     hw_role = appConfig.hw_role if hasattr( appConfig, 'hw_role' ) else 'global'
     return os.path.expanduser( datasetConfig.get( hw_role, 'data_root' ) )
-
-def printGrid( var ):
-    var._grid_ = None  # Work around CDAT bug
-    grid = var.getGrid()
-    print " +++++ Variable %s grid: shape = %s, order = %s, lat axis start = %.1f +++++ " % ( var.id, str(grid.shape), grid._order_, grid._lataxis_._data_[0] )
 
 def getComponentTimeValues( dataset ):
     rv = None
@@ -200,6 +196,9 @@ class CDMSDatasetRecord():
             except cdms2.error.CDMSError, err:
                 print>>sys.stderr, " --- Error[1] opening dataset file %s: %s " % ( refFile, str( err ) )
         if not refGrid: refGrid = varData.getGrid()
+        if not refGrid: 
+            mb = QMessageBox.warning( None, "DV3D Error", "CDAT is unable to create a grid for this dataset."  )
+            return None
         refLat=refGrid.getLatitude()
         refLon=refGrid.getLongitude()
         nRefLat, nRefLon = len(refLat) - 1, len(refLon) - 1
@@ -213,7 +212,7 @@ class CDMSDatasetRecord():
         args1 = {} 
         gridMaker = None
         decimationFactor = 1
-        if decimation: decimationFactor = decimation[0]+1 if HyperwallManager.isClient else decimation[1]+1
+        if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.isServer else decimation[0]+1
 #        try:
         args1['time'] = timeValue
         if gridBounds[0] < LonMin and gridBounds[0]+360.0<LonMax: gridBounds[0] = gridBounds[0] + 360.0
@@ -225,14 +224,15 @@ class CDMSDatasetRecord():
             args1['lat'] = ( gridBounds[1], gridBounds[3] )
         else:
             varGrid = varData.getGrid() 
-            varLonInt = varGrid.getLongitude().mapIntervalExt( [ gridBounds[0], gridBounds[2] ] )
-            latAxis = varGrid.getLatitude()
-            latVals = latAxis.getValue()
-            latBounds =  [ gridBounds[3], gridBounds[1] ] if latVals[0] > latVals[1] else  [ gridBounds[1], gridBounds[3] ]            
-            varLatInt = latAxis.mapIntervalExt( latBounds )
-            args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
-            args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
-            print " ---- Decimate(%d) grid %s: varLonInt=%s, varLatInt=%s, lonSlice=%s, latSlice=%s" % ( decimationFactor, str(gridBounds), str(varLonInt), str(varLatInt), str(args1['lon']), str(args1['lat']) )
+            if varGrid: 
+                varLonInt = varGrid.getLongitude().mapIntervalExt( [ gridBounds[0], gridBounds[2] ] )
+                latAxis = varGrid.getLatitude()
+                latVals = latAxis.getValue()
+                latBounds =  [ gridBounds[3], gridBounds[1] ] if latVals[0] > latVals[1] else  [ gridBounds[1], gridBounds[3] ]            
+                varLatInt = latAxis.mapIntervalExt( latBounds )
+                args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
+                args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
+                print " ---- Decimate(%d) grid %s: varLonInt=%s, varLatInt=%s, lonSlice=%s, latSlice=%s" % ( decimationFactor, str(gridBounds), str(varLonInt), str(varLatInt), str(args1['lon']), str(args1['lat']) )
 #        args1['squeeze'] = 1
         start_t = time.time() 
             
@@ -264,7 +264,6 @@ class CDMSDatasetRecord():
             end_t = time.time() 
             self.cachedFileVariables[ varName ] = ( timeValue, rv )
 #            print  "Reading variable %s, shape = %s, base shape = %s, time = %s (%s), args = %s, slice duration = %.4f sec." % ( varName, str(rv.shape), str(varData.shape), str(timeValue), str(timeValue.tocomp()), str(args1), end_t-start_t  ) 
-#            printGrid( rv )
 #        except Exception, err:
 #            print>>sys.stderr, ' Exception getting var slice: %s ' % str( err )
         return rv
@@ -317,6 +316,9 @@ class CDMSDatasetRecord():
             except cdms2.error.CDMSError, err:
                 print>>sys.stderr, " --- Error[2] opening dataset file %s: %s " % ( cdmsFile, str( err ) )
         if not refGrid: refGrid = varData.getGrid()
+        if not refGrid: 
+            mb = QMessageBox.warning( None, "DV3D Error", "CDAT is unable to create a grid for this dataset."  )
+            return None
         refLat=refGrid.getLatitude()
         refLon=refGrid.getLongitude()
         nRefLat, nRefLon = len(refLat) - 1, len(refLon) - 1
@@ -331,7 +333,7 @@ class CDMSDatasetRecord():
         gridMaker = None
         decimationFactor = 1
         order = 'xyt' if ( timeBounds == None) else 'xyz'
-        if decimation: decimationFactor = decimation[0]+1 if HyperwallManager.isClient else decimation[1]+1
+        if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.isServer else decimation[0]+1
         try:
             nts = self.dataset['time'].shape[0]
             if timeValue and (nts>1): args1['time'] = timeValue
@@ -400,7 +402,6 @@ class CDMSDatasetRecord():
             end_t = time.time() 
             self.cachedFileVariables[ varName ] = ( timeValue, rv )
             print  "Reading variable %s, shape = %s, base shape = %s, args = %s" % ( varName, str(rv.shape), str(varData.shape), str(args1) ) 
-#            printGrid( rv )
 #        except Exception, err:
 #            print>>sys.stderr, ' Exception getting var slice: %s ' % str( err )
         return rv
@@ -421,7 +422,6 @@ class CDMSDatasetRecord():
         gridShape = newList( 3, 0 )
         gridSize = 1
         domain = var.getDomain()
-        grid = var.getGrid()
         if not self.lev: self.lev = var.getLevel()
         axis_list = var.getAxisList()
         for axis in axis_list:
@@ -966,6 +966,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             print " ** dsMapData: ", str( dsMapData )
             print " ** ROI: ", str( self.roi )
             print " ** zscale: ", str( zscale )
+            print " ** decimation: ", str( decimation )
             print " ________________________________________________________ "   
             self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
             dsKeys = self.datasetMap.keys()
@@ -982,7 +983,6 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             dsMapData = self.getInputValue( "datasets" ) 
             self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
             self.ref_var = self.getInputValue( "grid"  )
-
         
         self.datasetModule.setBounds( self.timeRange, self.roi, zscale, decimation ) 
   
@@ -1101,7 +1101,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.variableList = ( [], [] )
         self.lonRangeType = 1
         self.fullRoi = [ [ 0.0, -90.0, 360.0, 90.0 ], [ -180.0, -90.0, 180.0, 90.0 ] ]
-        self.decimation = [ 0, 0 ]
+        self.decimation = DefaultDecimation
         self.roi = self.fullRoi[ self.lonRangeType ]
         self.zscale = 1.0
         self.relativeStartTime = None
@@ -1140,7 +1140,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
     def initDecimation( self ):
         decimationParams = self.pmod.getInputValue( "decimation" ) #getFunctionParmStrValues( self.module, "roi"  )self.getParameterId()
         if decimationParams:  self.decimation = [ int(dec) for dec in decimationParams ]
-        else: self.decimation = [ 0, 0 ] 
+        else: self.decimation = DefaultDecimation
         self.clientDecimationCombo.setCurrentIndex( self.decimation[0] ) 
         self.serverDecimationCombo.setCurrentIndex( self.decimation[1] ) 
         
@@ -1673,7 +1673,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         try: self.zscale = float( self.selectZScaleLineEdit.text() )
         except: self.zscale = 1.0
         try: self.decimation = [  self.clientDecimationCombo.currentIndex(), self.serverDecimationCombo.currentIndex() ]
-        except: self.decimation = [ 0, 0 ]
+        except: self.decimation = DefaultDecimation
         self.updateController(self.controller)
         self.emit(SIGNAL('doneConfigure()'))
 

@@ -324,7 +324,8 @@ class XMLFileLocator(BaseLocator):
 
         """
         def remove_it(fname):
-            os.unlink(fname)
+            try: os.unlink(fname)
+            except: print>>sys.stderr, " --- Error removing temp file %s --- " % str( fname )
         self._iter_temporaries(remove_it)
 
     def has_temporaries(self):
