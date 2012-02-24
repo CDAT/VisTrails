@@ -370,15 +370,15 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         cellLocation = CellLocation()
         cellLocation.rowSpan = 1
         cellLocation.colSpan = 1
+        cell_coordinates = None
+        address = "A1"   
         if self.isClient:            
             cellLocation.sheetReference = StandardSheetReference()
             cellLocation.sheetReference.sheetName = HyperwallManager.deviceName
-
-        cell_coordinates = None
-         
+        else: 
+            address = cell[1] if cell else getItem( self.getInputValue( "cell_location", None ) )
             
-        address = cell[1] if cell else getItem( self.getInputValue( "cell_location", None ) )
-        print "Setting Cell Address: %s %s" % ( address, str(cell) )
+#        print "Setting Cell Address: %s %s" % ( address, str(cell) )
         if address:
             address = address.replace(' ', '').upper()
             cell_coordinates = parse_cell_address( address )
@@ -388,7 +388,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         cellLocation.col = cell_coordinates[0]
         cellLocation.row = cell_coordinates[1]
          
-#        print " --- Set cell location[%s]: %s, address: %s "  % ( str(moduleId), str( [ cellLocation.col, cellLocation.row ] ), str(address) )
+        print " --- Set cell location[%s]: %s, address: %s "  % ( str(moduleId), str( [ cellLocation.col, cellLocation.row ] ), str(address) )
         self.overrideLocation( cellLocation )
         self.adjustSheetDimensions( cellLocation.row, cellLocation.col )
         return [ cellLocation.col, cellLocation.row, 1, 1 ]

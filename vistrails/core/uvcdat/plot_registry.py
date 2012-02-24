@@ -436,8 +436,8 @@ class Plot(object):
                     aliases[self.files[i]] = v
                     aliases[".".join([self.files[i],"url"])] = url
                 for i in range(self.varnum):
-                    a,v = varAliases[i].split("!")
-                    aliases[self.vars[i]] = v
+                    a,v,vF = varAliases[i].split("!")
+                    aliases[self.vars[i]] = v if v else vF
                 for i in range(self.varnum):
                     a,v = gridAliases[i].split("!")
                     aliases[self.axes[i]] = v

@@ -6,7 +6,9 @@ Created on Jul 20, 2011
 
 import sys, os, traceback
 from PyQt4 import QtGui, QtCore
-import core.application, gui.application, gui.requirements
+from core.requirements import check_all_vistrails_requirements
+from gui.requirements import check_pyqt4, MissingRequirement
+from gui.application import VistrailsApplicationSingleton, get_vistrails_application, set_vistrails_application
 from HyperwallManager import HyperwallManager
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 
@@ -43,6 +45,30 @@ def restore_stdout():
     sys.stdout = sys.__stdout__
     sys.stderr = sys.__stderr__
 
+class vtDV3DApplicationSingleton( VistrailsApplicationSingleton ):
+
+    def __init__(self, isClient):
+        VistrailsApplicationSingleton.__init__( self )
+        self.isClient = isClient
+
+    def interactiveMode(self):
+        """ interactiveMode() -> None
+        Instantiate the GUI for interactive mode
+        
+        """     
+        if self.temp_configuration.check('showSplash'):
+            self.splashScreen.finish(self.builderWindow)
+        # self.builderWindow.modulePalette.updateFromModuleRegistry()
+        # self.builderWindow.modulePalette.connect_registry_signals()
+        self.builderWindow.link_registry()
+        self.uvcdatWindow.link_registry()
+        
+        self.process_interactive_input()
+        if not self.temp_configuration.showSpreadsheetOnly:
+            self.builderWindow.hide()
+            self.showWindow(self.uvcdatWindow)
+        self.builderWindow.create_first_vistrail( not self.isClient )
+        
 #class vtDV3DApplicationSingleton( gui.application.VistrailsApplicationSingleton ):
 #
 #    def __init__(self):
@@ -171,29 +197,63 @@ def restore_stdout():
 def shutdown():
     print " !! --shutdown-- !! "
     HyperwallManager.shutdown()      
- 
+
+def start_uvcdat_application(optionsDict=None):
+    """Initializes the application singleton."""
+    VistrailsApplication = get_vistrails_application()
+    if VistrailsApplication:
+        debug.critical("Application already started.")
+        return
+    hw_role = optionsDict.get( "hw_role", 'global')
+    isClient = ( hw_role == 'hw_client' )
+    VistrailsApplication = vtDV3DApplicationSingleton( isClient )
+    set_vistrails_application( VistrailsApplication )
+    if VistrailsApplication.is_running():
+        debug.critical("Found another instance of VisTrails running")
+        msg = str(sys.argv[1:])
+        debug.critical("Will send parameters to main instance %s" % msg)
+        res = VistrailsApplication.send_message(msg)
+        if res:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+    try:
+        check_all_vistrails_requirements()
+    except MissingRequirement, e:
+        msg = ("VisTrails requires %s to properly run.\n" %
+               e.requirement)
+        debug.critical("Missing requirement", msg)
+        sys.exit(1)
+    x = VistrailsApplication.init(optionsDict)
+    title =  ' UVCDAT - client ' if  isClient else " UVCDAT - server " 
+    showBuilder = optionsDict.get( 'showBuilder', False )
+    VistrailsApplication.uvcdatWindow.setWindowTitle( title )
+    if showBuilder: VistrailsApplication.uvcdatWindow.showBuilderWindowActTriggered() 
+    if x == True:
+        return 0
+    else:
+        return 1
+     
 def executeVistrail( *args, **kwargs ):
     disable_lion_restore()
-    gui.requirements.check_pyqt4()
+    check_pyqt4()
     optionsDict = kwargs.get( 'options', None )
-    title = kwargs.get( 'title', 'UVCDAT' )
-    showBuilder = kwargs.get( 'showBuilder', False )
 
     try:
-        v = gui.application.start_application( optionsDict )
+        v = start_uvcdat_application( optionsDict )
         if v != 0:
-            app = gui.application.get_vistrails_application()
+            app = get_vistrails_application()
             if app:
                 app.finishSession()
             sys.exit(v)
-        app = gui.application.get_vistrails_application()
+        app = get_vistrails_application()
     except SystemExit, e:
-        app = gui.application.get_vistrails_application()
+        app = get_vistrails_application()
         if app:
             app.finishSession()
         sys.exit(e)
     except Exception, e:
-        app = gui.application.get_vistrails_application()
+        app = get_vistrails_application()
         if app:
             app.finishSession()
         print "Uncaught exception on initialization: %s" % e
@@ -201,12 +261,10 @@ def executeVistrail( *args, **kwargs ):
         traceback.print_exc()
         sys.exit(255)
                 
-    app.uvcdatWindow.setWindowTitle( title )
-    if showBuilder: app.uvcdatWindow.showBuilderWindowActTriggered() 
     app.connect( app, QtCore.SIGNAL("aboutToQuit()"), shutdown ) 
     v = app.exec_()
     
 
 if __name__ == '__main__':  
-    optionsDict = { "hw_role" : 'hw_server' }   #  'global'   'hw_client'  'hw_server'    
-    executeVistrail( options = optionsDict, title = " UVCDAT - server" )
+    optionsDict = { "hw_role" : 'global' }   #  'global'   'hw_client'  'hw_server'    
+    executeVistrail( options = optionsDict )

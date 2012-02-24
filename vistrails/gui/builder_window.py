@@ -150,15 +150,18 @@ class QBuilderWindow(QtGui.QMainWindow):
         
         self.is_main_window = True
 
-    def create_first_vistrail(self):
+    def create_first_vistrail(self, prompt_autosave=True):
         """ create_first_vistrail() -> None
         Create untitled vistrail in interactive mode
         """
         # FIXME: when interactive and non-interactive modes are separated,
         # this autosave code can move to the viewManager
-        if not self.dbDefault and untitled_locator().has_temporaries():
-            if not FileLocator().prompt_autosave(self):
-                untitled_locator().clean_temporaries()
+        if prompt_autosave:
+            if not self.dbDefault and untitled_locator().has_temporaries():
+                if not FileLocator().prompt_autosave(self):
+                    untitled_locator().clean_temporaries()
+        else: untitled_locator().clean_temporaries()
+        
         if self.viewManager.newVistrail(True):
             self.viewModeChanged(0)
         self.viewManager.set_first_view(self.viewManager.currentView())

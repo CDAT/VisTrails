@@ -215,10 +215,9 @@ class QiVisClient(QtCore.QObject):
 
         app = QtCore.QCoreApplication.instance()
         newTab = self.updateCurrentTab()
-        cell = (int(terms[0]), int(terms[1]))
-        widget = self.currentTab.getCellWidget(cell[0]-1, cell[1]-1) if self.currentTab else None
+        widget = self.currentTab.getCellWidget( 0, 0 ) if self.currentTab else None
                   
-        print " ------------- QiVisClient.processEvent: %s-%s in cell %s, widget: %x  ---------------------" % ( terms[2], terms[3], str( cell ), id(widget) )
+        print " ------------- QiVisClient.processEvent: %s-%s, widget: %x  ---------------------" % ( terms[2], terms[3], id(widget) )
         sys.stdout.flush()
         
         if terms[2] == "singleClick":
@@ -232,7 +231,7 @@ class QiVisClient(QtCore.QObject):
                 if persistentCellModule: persistentCellModule.syncCamera( cpos, cfol, cup )            
         if terms[2] in ["singleClick", "mouseMove", "mouseRelease"]:
             if self.currentTab:
-                screenRect = self.currentTab.getCellRect( cell[0]-1, cell[1]-1 )
+                screenRect = self.currentTab.getCellRect( 0, 0 )
                 screenDims = ( screenRect.width(), screenRect.height() )
                 newEvent = decodeMouseEvent( terms[2:], screenDims )
         elif terms[2] in ["keyPress", "keyRelease" ]:

@@ -1293,13 +1293,16 @@ class QVistrailsWindow(QVistrailViewWindow):
     def sizeHint(self):
         return QtCore.QSize(1280, 768)
 
-    def create_first_vistrail(self):
+    def create_first_vistrail(self, prompt_autosave=True):
         #print 'calling create_first_vistrail'
         if self.get_current_view():
             return
-        if not self.dbDefault and untitled_locator().has_temporaries():
-            if not FileLocator().prompt_autosave(self):
-                untitled_locator().clean_temporaries()
+        if prompt_autosave:
+            if not self.dbDefault and untitled_locator().has_temporaries():
+                if not FileLocator().prompt_autosave(self):
+                    untitled_locator().clean_temporaries()
+        else: untitled_locator().clean_temporaries()
+        
         self._first_view = None
         self.new_vistrail(True)
         self._first_view = self.get_current_view()
