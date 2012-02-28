@@ -74,6 +74,7 @@ class PlotPipelineHelper(object):
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, 
                                    plot_obj, row, col, template=None):
+#        from packages.uvcdat_cdms.init import CDMSVariableOperation 
         #for now, this helper will generate change parameter actions based on the
         #alias dictionary
         #first set the plot:
@@ -81,23 +82,29 @@ class PlotPipelineHelper(object):
         plot_obj.current_controller = controller
         aliases = {}
         for i in range(len(var_modules)):
-            filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'filename')
-            if filename is None:
-                filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'file')
-            if isinstance( filename, core.modules.basic_modules.File ):
-                filename = filename.name
-            url = PlotPipelineHelper.get_value_from_function( var_modules[i], 'url')            
-            varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'name')
-            file_varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varNameInFile')
-            axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
-            aliases[plot_obj.files[i]] = filename
-            aliases[ ".".join( [plot_obj.files[i],"url"] )  ] = url if url else ""
-            aliases[plot_obj.vars[i]] = varname
-            aliases[ "%s.file" % plot_obj.vars[i] ] = file_varname if file_varname else ""
-            if len(plot_obj.axes) > i:
-                aliases[plot_obj.axes[i]] = axes
             if var_modules[i].descriptor_info[1].endswith( 'VariableOperation' ):
-                pass
+                varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varname' )
+                python_command = PlotPipelineHelper.get_value_from_function( var_modules[i], 'python_command' )
+                aliases[plot_obj.vars[i]] = varname
+                aliases[ "%s.cmd" % plot_obj.vars[i] ] = python_command
+            else:
+                filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'filename')
+                if filename is None:
+                    filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'file')
+                if isinstance( filename, core.modules.basic_modules.File ):
+                    filename = filename.name
+                url = PlotPipelineHelper.get_value_from_function( var_modules[i], 'url')            
+                varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'name')
+                file_varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varNameInFile')
+                axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
+                aliases[plot_obj.files[i]] = filename
+                aliases[ ".".join( [plot_obj.files[i],"url"] )  ] = url if url else ""
+                aliases[plot_obj.vars[i]] = varname
+                aliases[ "%s.file" % plot_obj.vars[i] ] = file_varname if file_varname else ""
+                if len(plot_obj.axes) > i:
+                    aliases[plot_obj.axes[i]] = axes
+#                if var_modules[i].descriptor_info[1].endswith( 'VariableOperation' ):
+#                    pass
             
 #                module = var_modules[i].summon()
 #                module.update()

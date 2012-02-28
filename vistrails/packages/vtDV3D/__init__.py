@@ -87,6 +87,7 @@ def initialize(*args, **keywords):
     from InteractiveConfiguration import LayerConfigurationWidget
     from LevelSurfaceModule import LevelSurface 
     from CurtainPlotModule import CurtainPlot 
+    from packages.uvcdat_cdms.init import CDMSVariable
     from ResampleModule import Resample 
     from CDATUtilitiesModule import CDMS_CDATUtilities, CDATUtilitiesModuleConfigurationWidget
     from GradientModule import  Gradient
@@ -170,12 +171,14 @@ def initialize(*args, **keywords):
 
     reg.add_module( CDMS_HoffmullerReader, configureWidgetType=CDMS_HoffmullerReaderConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_HoffmullerReader, "dataset", CDMSDataset )      
+    reg.add_input_port( CDMS_HoffmullerReader, "variable", CDMSVariable )      
     reg.add_input_port( CDMS_HoffmullerReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( CDMS_HoffmullerReader, "volume", AlgorithmOutputModule3D ) 
     CDMS_HoffmullerReader.registerConfigurableFunctions( reg )
 
     reg.add_module( CDMS_VolumeReader, configureWidgetType=CDMS_VolumeReaderConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_VolumeReader, "dataset", CDMSDataset )      
+    reg.add_input_port( CDMS_VolumeReader, "variable", CDMSVariable )      
     reg.add_input_port( CDMS_VolumeReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( CDMS_VolumeReader, "volume", AlgorithmOutputModule3D ) 
     CDMS_VolumeReader.registerConfigurableFunctions( reg )
@@ -194,6 +197,7 @@ def initialize(*args, **keywords):
 
     reg.add_module( CDMS_VectorReader, configureWidgetType=CDMS_VectorReaderConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_VectorReader, "dataset", CDMSDataset )        
+    reg.add_input_port( CDMS_VectorReader, "variable", CDMSVariable )      
     reg.add_input_port( CDMS_VectorReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( CDMS_VectorReader, "volume", AlgorithmOutputModule3D ) 
     CDMS_SliceReader.registerConfigurableFunctions( reg )

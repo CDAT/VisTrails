@@ -55,26 +55,28 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         
     def execute(self, **args ):
         import api
-        dset = self.getInputValue( "dataset"  ) 
-        if dset: self.cdmsDataset = dset
-        dsptr = id( self.cdmsDataset )
-        dsetid = self.getAnnotation( "datasetId" )
-        if dsetid: self.datasetId = dsetid 
-               
-        if self.cdmsDataset:
-            dsetId = self.cdmsDataset.getDsetId()
-            self.newDataset = ( self.datasetId <> dsetId )
-            self.newLayerConfiguration = self.newDataset
-            self.datasetId = dsetId
-            self.timeRange = self.cdmsDataset.timeRange
-            timeValue = args.get( 'timeValue', self.timeRange[2] )
-            self.timeValue = cdtime.reltime( float(timeValue), ReferenceTimeUnits )
-            self.timeLabels = self.cdmsDataset.getTimeValues()
-            self.nTimesteps = self.timeRange[1]
-            print "Set Time: %s, %s, NTS: %d, Range: %s" % ( str(timeValue), str(self.timeValue), self.nTimesteps, str(self.timeRange) )
-            print "Time Step Labels: %s" % str( self.timeLabels ) 
-            self.generateOutput()
-            if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
+        cdms_var = self.getInputValue( "variable"  ) 
+        if cdms_var:
+            self.generateVariableOutput()
+        else:
+            dset = self.getInputValue( "dataset"  ) 
+            if dset: 
+                self.cdmsDataset = dset
+                dsetid = self.getAnnotation( "datasetId" )
+                if dsetid: self.datasetId = dsetid 
+                dsetId = self.cdmsDataset.getDsetId()
+                self.newDataset = ( self.datasetId <> dsetId )
+                self.newLayerConfiguration = self.newDataset
+                self.datasetId = dsetId
+                self.timeRange = self.cdmsDataset.timeRange
+                timeValue = args.get( 'timeValue', self.timeRange[2] )
+                self.timeValue = cdtime.reltime( float(timeValue), ReferenceTimeUnits )
+                self.timeLabels = self.cdmsDataset.getTimeValues()
+                self.nTimesteps = self.timeRange[1]
+                print "Set Time: %s, %s, NTS: %d, Range: %s" % ( str(timeValue), str(self.timeValue), self.nTimesteps, str(self.timeRange) )
+                print "Time Step Labels: %s" % str( self.timeLabels ) 
+                self.generateOutput()
+                if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
  
             
     def getParameterId(self):
@@ -82,6 +84,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             
     def getPortData( self, **args ):
         return self.getInputValue( "portData", **args )  
+
+    def generateVariableOutput( self ): 
+        return None
  
     def generateOutput( self ): 
         oRecMgr = None 

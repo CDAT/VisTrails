@@ -554,7 +554,9 @@ class ProjectController(QtCore.QObject):
                         cell.plot.unserializeAliases(aliases)
                         
                     for i in range(len(cell.variables)):
-                        filename = aliases[cell.plot.files[i]]
+                        filename = aliases[ cell.plot.files[i] ]
+                        if not os.path.isfile(filename):
+                            filename = aliases.get( "%s.url" % cell.plot.files[i], filename )
                         varname = aliases[cell.plot.vars[i]]
                         axes = None
                         if len(cell.plot.axes) > i:
