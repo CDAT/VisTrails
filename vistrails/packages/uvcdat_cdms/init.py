@@ -1101,6 +1101,7 @@ class QCDATWidgetToolBar(QCellToolBar):
             self.appendAction(self.nextAction)
             
 
+        self.appendAction(QCDATWidgetPrint(self))
         self.appendAction(QCDATWidgetExport(self))
         self.appendAction(QCDATWidgetColormap(self))
         self.appendAction(QCDATWidgetAnimation(self))
@@ -1199,6 +1200,55 @@ class QCDATWidgetNext(QtGui.QAction):
         if  cellWidget.extraDimsIndex[i]==cellWidget.extraDimsLen[i]-1:
             self.setEnabled(False) 
         
+    def updateStatus(self, info):
+        """ updateStatus(info: tuple) -> None
+        Updates the status of the button based on the input info
+        
+        """
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
+        (sheet, row, col, cellWidget) = info
+        selectedCells = sorted(sheet.getSelectedLocations())
+
+        # Will not show up if there is no cell selected  
+        proj_controller = _app.uvcdatWindow.get_current_project_controller()
+        sheetName = sheet.getSheetName()        
+        if (len(selectedCells)==1 and 
+            proj_controller.is_cell_ready(sheetName,row,col)):
+                self.setVisible(True)
+        else:
+            self.setVisible(False)
+
+class QCDATWidgetPrint(QtGui.QAction):
+    """
+    QCDATWidgetExport is the action to export the plot 
+    of the current cell to a file
+
+    """
+    def __init__(self, parent=None):
+        """ QCDATWidgetExport(icon: QIcon, parent: QWidget)
+                                   -> QCDATWidgetExport
+        Setup the image, status tip, etc. of the action
+        
+        """
+        QtGui.QAction.__init__(self,
+                               UVCDATTheme.PLOT_PRINTER_ICON,
+                               "Print the current plot",
+                               parent)
+        self.setStatusTip("Print the current plot")
+
+    def triggeredSlot(self, checked=False):
+        """ toggledSlot(checked: boolean) -> None
+        Execute the action when the button is clicked
+        
+        """
+        
+        cellWidget = self.toolBar.getSnappedWidget()
+        printer,ok = QtGui.QInputDialog.getText(self.parent(),"Send Picture To A Printer",
+                                             "Printer",text=os.environ.get("PRINTER",""))
+        if ok:
+            cellWidget.canvas.printer(str(printer))
+
     def updateStatus(self, info):
         """ updateStatus(info: tuple) -> None
         Updates the status of the button based on the input info

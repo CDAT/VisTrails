@@ -63,9 +63,11 @@ class VariableProperties(QtGui.QDockWidget):
         h=QtGui.QHBoxLayout()
         s=QtGui.QSpacerItem(40,20,QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Preferred)
         h.addItem(s)
-        self.btnDefine=QDockPushButton("Define")
+        self.btnDefine=QDockPushButton("Load")
         h.addWidget(self.btnDefine)
-        self.btnDefineAs=QDockPushButton("Define As")
+        self.btnDefineClose=QDockPushButton("Load and Close")
+        h.addWidget(self.btnDefineClose)
+        self.btnDefineAs=QDockPushButton("Load As")
         h.addWidget(self.btnDefineAs)
         self.btnCancel=QDockPushButton("Close")
         h.addWidget(self.btnCancel)
@@ -122,6 +124,7 @@ class VariableProperties(QtGui.QDockWidget):
 
         ## Define button
         self.btnDefine.clicked.connect(self.defineVarClicked)
+        self.btnDefineClose.clicked.connect(self.defineVarCloseClicked)
         self.btnDefineAs.clicked.connect(self.defineAsVarClicked)
         self.connect(self,QtCore.SIGNAL('definedVariableEvent'),self.root.dockVariable.widget().addVariable)
 
@@ -447,6 +450,14 @@ class VariableProperties(QtGui.QDockWidget):
         elif self.originTabWidget.currentIndex() == 2:
             #paraview
             self.getVarFromPVTab()
+          
+    def defineVarCloseClicked(self,*args):
+        if self.originTabWidget.currentIndex() in [0, 1, 3]:
+            self.getUpdatedVarCheck()
+        elif self.originTabWidget.currentIndex() == 2:
+            #paraview
+            self.getVarFromPVTab()
+        self.close()
           
     def defineAsVarClicked(self, *args):
         ok = False

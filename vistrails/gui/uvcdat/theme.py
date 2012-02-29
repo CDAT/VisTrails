@@ -74,6 +74,8 @@ class UVCDATDefaultTheme(object):
             ':/icons/resources/icons/colormap.png')
         self.PLOT_ANIMATION_ICON = QtGui.QIcon(
             ':/icons/resources/icons/animation.png')
+        self.PLOT_PRINTER_ICON = QtGui.QIcon(
+            ':/icons/resources/icons/printer.png')
         
 class UVCDATMinimalTheme(UVCDATDefaultTheme):
     def __init__(self):
@@ -129,6 +131,8 @@ class UVCDATMinimalTheme(UVCDATDefaultTheme):
             ':/icons/resources/icons/minimal/colormap.png')
         self.PLOT_ANIMATION_ICON = QtGui.QIcon(
             ':/icons/resources/icons/minimal/animation.png')
+        self.PLOT_PRINTER_ICON = QtGui.QIcon(
+            ':/icons/resources/icons/minimal/printer.png')
         
 class ThemeHolder(object):
     """
