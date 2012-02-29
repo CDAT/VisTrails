@@ -74,7 +74,7 @@ class CDATTask(QtCore.QObject):
     def setOutput( self, iOutputIndex, output ):
         outputName = self.getOutputName( iOutputIndex )
         varNameComp = outputName.split('*')
-        self.cdmsDataset.addTransientVariable( varNameComp[-1], output )
+        self.cdmsDataset.addOutputVariable( varNameComp[-1], output )
         if output.rank() == 3: output.getAxis(2).designateLevel() 
         output._grid_ = None
         current_grid = output.getGrid()

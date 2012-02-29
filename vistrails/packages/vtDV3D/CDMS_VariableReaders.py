@@ -12,7 +12,7 @@ from packages.uvcdat_cdms.init import CDMSVariable
 from WorkflowModule import WorkflowModule 
 from vtUtilities import *
 from PersistentModule import * 
-from CDMS_DatasetReaders import CDMSDataset
+from CDMS_DatasetReaders import CDMSDataset, CDMSDatasetRecord
 import cdms2, cdtime, cdutil, MV2 
 PortDataVersion = 0
 
@@ -21,7 +21,7 @@ def getTitle( dsid, name, attributes, showUnits=False ):
        if not showUnits: return "%s:%s" % ( dsid, long_name )
        units = attributes.get( 'units', 'unitless' )
        return  "%s:%s (%s)" % ( dsid, long_name, units )
-
+    
 class PM_CDMSDataReader( PersistentVisualizationModule ):
     
     dataCache = {}
@@ -65,7 +65,22 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.newDataset = ( self.datasetId <> dsetId )
             self.newLayerConfiguration = self.newDataset
             self.datasetId = dsetId
-            self.cdmsDataset.setVariableRecord( dsetId, '*'.join( dsetId, cdms_var.name ) )
+            self.cdmsDataset.setVariableRecord( dsetId, '*'.join( [ dsetId, cdms_var.name ] ) )
+            timeAxis = cdms_var.var.getTime()
+            self.nTimesteps = len( timeAxis )
+            comp_time_values = timeAxis.asComponentTime()
+            t0 = comp_time_values[0].torel(ReferenceTimeUnits).value
+            dt = 0.0
+            if self.nTimesteps > 1:
+                t1 = comp_time_values[1].torel(ReferenceTimeUnits).value
+                dt = t1-t0
+            self.timeRange = [ 0, self.nTimesteps, t0, dt ]
+            self.cdmsDataset.timeRange = self.timeRange
+            self.timeLabels = self.cdmsDataset.getTimeValues()
+            timeValue = args.get( 'timeValue', self.cdmsDataset.timeRange[2] )
+            self.timeValue = cdtime.reltime( float(timeValue), ReferenceTimeUnits )
+            print "Set Time: %s, %s, NTS: %d, Range: %s" % ( str(timeValue), str(self.timeValue), self.nTimesteps, str(self.timeRange) )
+            print "Time Step Labels: %s" % str( self.timeLabels ) 
             self.generateOutput()
             if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
         else:
@@ -186,7 +201,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue ] 
                     varData = self.cdmsDataset.getVarDataCube( dsid, varName, tval, selectedLevel )
                     if varData.id <> 'NULL':
-                        varDataSpecs = ds.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale, self.outputType )
+                        varDataSpecs = self.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale, self.outputType, ds )
                         if (exampleVarDataSpecs == None) and (varDataSpecs <> None): exampleVarDataSpecs = varDataSpecs
                         range_min = varData.min()
                         range_max = varData.max()
@@ -194,7 +209,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         newDataArray = varData
                                                           
                         if scalar_dtype == np.float:
-                             newDataArray = newDataArray.filled( 1.0e-15 * range_min )
+                            newDataArray = newDataArray.filled( 1.0e-15 * range_min )
                         else:
                             shift = -range_min
                             scale = ( self._max_scalar_value ) / ( range_max - range_min )            
@@ -306,7 +321,102 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         image_data.Modified()
         return cachedImageDataName
 
-                
+
+    def getAxisValues( self, axis, roi ):
+        values = axis.getValue()
+        bounds = None
+        if roi:
+            if   axis.isLongitude():  bounds = [ roi[0], roi[2] ]
+            elif axis.isLatitude():   bounds = [ roi[1], roi[3] ] 
+        if bounds:
+            if axis.isLongitude() and (values[0] > values[-1]):
+               values[-1] = values[-1] + 360.0 
+            value_bounds = [ min(values[0],values[-1]), max(values[0],values[-1]) ]
+            mid_value = ( value_bounds[0] + value_bounds[1] ) / 2.0
+            mid_bounds = ( bounds[0] + bounds[1] ) / 2.0
+            offset = (360.0 if mid_bounds > mid_value else -360.0)
+            trans_val = mid_value + offset
+            if (trans_val > bounds[0]) and (trans_val < bounds[1]):
+                value_bounds[0] = value_bounds[0] + offset
+                value_bounds[1] = value_bounds[1] + offset           
+            bounds[0] = max( [ bounds[0], value_bounds[0] ] )
+            bounds[1] = min( [ bounds[1], value_bounds[1] ] )
+        return bounds, values
+
+    def getCoordType( self, axis, outputType ):
+        iCoord = -2
+        if axis.isLongitude(): 
+            self.lon = axis
+            iCoord  = 0
+        if axis.isLatitude(): 
+            self.lat = axis
+            iCoord  = 1
+        if isLevelAxis( axis ): 
+            self.lev = axis
+            iCoord  = 2 if ( outputType <> CDMSDataType.Hoffmuller ) else -1
+        if axis.isTime():
+            self.time = axis
+            iCoord  = 2 if ( outputType == CDMSDataType.Hoffmuller ) else -1
+        return iCoord
+       
+    def getGridSpecs( self, var, roi, zscale, outputType, dset ):   
+        dims = var.getAxisIds()
+        gridOrigin = newList( 3, 0.0 )
+        outputOrigin = newList( 3, 0.0 )
+        gridBounds = newList( 6, 0.0 )
+        gridSpacing = newList( 3, 1.0 )
+        gridExtent = newList( 6, 0 )
+        outputExtent = newList( 6, 0 )
+        gridShape = newList( 3, 0 )
+        gridSize = 1
+        domain = var.getDomain()
+        self.lev = var.getLevel()
+        axis_list = var.getAxisList()
+        for axis in axis_list:
+            size = len( axis )
+            iCoord = self.getCoordType( axis, outputType )
+            roiBounds, values = self.getAxisValues( axis, roi )
+            if iCoord >= 0:
+                iCoord2 = 2*iCoord
+                gridShape[ iCoord ] = size
+                gridSize = gridSize * size
+                outputExtent[ iCoord2+1 ] = gridExtent[ iCoord2+1 ] = size-1                    
+                if iCoord < 2:
+                    lonOffset = 0.0 #360.0 if ( ( iCoord == 0 ) and ( roiBounds[0] < -180.0 ) ) else 0.0
+                    outputOrigin[ iCoord ] = gridOrigin[ iCoord ] = values[0] + lonOffset
+                    spacing = (values[size-1] - values[0])/(size-1)
+                    if roiBounds:
+                        if ( roiBounds[1] < 0.0 ) and  ( roiBounds[0] >= 0.0 ): roiBounds[1] = roiBounds[1] + 360.0
+                        gridExtent[ iCoord2 ] = int( round( ( roiBounds[0] - values[0] )  / spacing ) )                
+                        gridExtent[ iCoord2+1 ] = int( round( ( roiBounds[1] - values[0] )  / spacing ) )
+                        outputExtent[ iCoord2+1 ] = gridExtent[ iCoord2+1 ] - gridExtent[ iCoord2 ]
+                        outputOrigin[ iCoord ] = lonOffset + roiBounds[0]
+                    roisize = gridExtent[ iCoord2+1 ] - gridExtent[ iCoord2 ] + 1                  
+                    gridSpacing[ iCoord ] = spacing
+                    gridBounds[ iCoord2 ] = roiBounds[0] if roiBounds else values[0] 
+                    gridBounds[ iCoord2+1 ] = (roiBounds[0] + roisize*spacing) if roiBounds else values[ size-1 ]
+                else:                                             
+                    gridSpacing[ iCoord ] = zscale
+                    gridBounds[ iCoord2 ] = values[0]  # 0.0
+                    gridBounds[ iCoord2+1 ] = values[ size-1 ] # float( size-1 )
+        if gridBounds[ 2 ] > gridBounds[ 3 ]:
+            tmp = gridBounds[ 2 ]
+            gridBounds[ 2 ] = gridBounds[ 3 ]
+            gridBounds[ 3 ] = tmp
+        gridSpecs = {}
+        md = { 'datasetId' : self.datasetId,  'bounds':gridBounds, 'lat':self.lat, 'lon':self.lon, 'lev':self.lev }
+        gridSpecs['gridOrigin'] = gridOrigin
+        gridSpecs['outputOrigin'] = outputOrigin
+        gridSpecs['gridBounds'] = gridBounds
+        gridSpecs['gridSpacing'] = gridSpacing
+        gridSpecs['gridExtent'] = gridExtent
+        gridSpecs['outputExtent'] = outputExtent
+        gridSpecs['gridShape'] = gridShape
+        gridSpecs['gridSize'] = gridSize
+        gridSpecs['md'] = md
+        if dset:  gridSpecs['attributes'] = dset.dataset.attributes
+        return gridSpecs   
+                 
     def getMetadata( self, metadata={}, port=None ):
         PersistentVisualizationModule.getMetadata( self, metadata )
         if self.cdmsDataset:
