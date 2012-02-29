@@ -50,20 +50,35 @@ class Joystick( threading.Thread ):
         self.isActive = False
 
     def run(self):
+        debug = False
         if self.controller == None: return 
-        if self.controller.start() == 0:
+        ierr = self.controller.start()
+        iOut = 0
+        if ierr == 0:
+            f = open( '/tmp/controller_log.txt', 'w') if debug else None
             self.isActive = True
             while self.isActive:
                 status, event_spec = self.controller.getEventData( )  
                 if status < 0: break  
                 if event_spec[0] == 'E':
-                   print>>sys.stderr, "Control device generated error: ",  event_spec
+                    print>>sys.stderr, "Control device generated error: ",  event_spec
                 else:
-#                    print "Posting event: %s, status = %d" % ( event_spec, status )
+                    if f:
+                        f.write( "Posting event: %s, status = %d" % ( event_spec, status ) )
+                        if iOut == 0: f.flush()
+                        iOut = ( iOut + 1 ) % 4
                     for target in self.targets:
                         QApplication.postEvent( target, QtControllerEvent( event_spec ) )  
             self.controller.stop()
             print>>sys.stderr, "  Shutting down joystick thread. ",  event_spec
-         
-joystick = Joystick()
-joystick.start()
+        else:
+            print "Wireless controller returned %s on startup" % str(ierr)
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    joystick = Joystick()
+    joystick.start() 
+    sys.exit(app.exec_())  
+else:         
+    joystick = Joystick()
+    joystick.start()

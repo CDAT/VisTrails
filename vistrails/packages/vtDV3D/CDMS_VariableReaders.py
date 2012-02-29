@@ -8,9 +8,11 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from InteractiveConfiguration import *
 from core.modules.vistrails_module import Module, ModuleError
+from packages.uvcdat_cdms.init import CDMSVariable
 from WorkflowModule import WorkflowModule 
 from vtUtilities import *
 from PersistentModule import * 
+from CDMS_DatasetReaders import CDMSDataset
 import cdms2, cdtime, cdutil, MV2 
 PortDataVersion = 0
 
@@ -57,7 +59,15 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         import api
         cdms_var = self.getInputValue( "variable"  ) 
         if cdms_var:
-            self.generateVariableOutput()
+            self.cdmsDataset = CDMSDataset()
+            self.cdmsDataset.addTransientVariable( cdms_var.name,  cdms_var.var )
+            dsetId = 'Calculated'
+            self.newDataset = ( self.datasetId <> dsetId )
+            self.newLayerConfiguration = self.newDataset
+            self.datasetId = dsetId
+            self.cdmsDataset.setVariableRecord( dsetId, '*'.join( dsetId, cdms_var.name ) )
+            self.generateOutput()
+            if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
         else:
             dset = self.getInputValue( "dataset"  ) 
             if dset: 
@@ -85,8 +95,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     def getPortData( self, **args ):
         return self.getInputValue( "portData", **args )  
 
-    def generateVariableOutput( self ): 
-        return None
+    def generateVariableOutput( self, cdms_var ): 
+        print str(cdms_var.var)
+        self.set3DOutput( name=cdms_var.name,  output=cdms_var.var )
  
     def generateOutput( self ): 
         oRecMgr = None 

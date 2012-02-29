@@ -266,5 +266,5 @@ def executeVistrail( *args, **kwargs ):
     
 
 if __name__ == '__main__':  
-    optionsDict = { "hw_role" : 'hw_server' }   #  'global'   'hw_client'  'hw_server'    
+    optionsDict = { "hw_role" : 'global' }   #  'global'   'hw_client'  'hw_server'    
     executeVistrail( options = optionsDict )
