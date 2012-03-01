@@ -3,6 +3,7 @@ Created on Feb 14, 2011
 
 @author: tpmaxwel
 '''
+ENABLE_JOYSTICK = False
 from PyQt4 import QtCore, QtGui
 from gui.qt import qt_super
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
@@ -11,7 +12,8 @@ from packages.vtk.vtkcell import QVTKWidget
 from PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
 from InteractiveConfiguration import *
 from WorkflowModule import WorkflowModule
-from JoystickInterface import *
+if ENABLE_JOYSTICK: from JoystickInterface import *
+else:               ControlEventType = None
 from HyperwallManager import HyperwallManager
 import ModuleStore
 from vtUtilities import *
@@ -50,14 +52,9 @@ class QVTKClientWidget(QVTKWidget):
         self.iRenderCount = 0
         self.iRenderPeriod = 10
 
-#    def updateContents( self, inputPorts ):
-#        if len( inputPorts ) > 5:
-#            if inputPorts[5]:
-#                self.SetRenderWindow( inputPorts[5] )
-#        QVTKWidget.updateContents(self, inputPorts )
-
     def event(self, e): 
-        if   e.type() == ControlEventType:   self.processControllerEvent( e, [ self.width(), self.height() ] )  
+        if ENABLE_JOYSTICK and ( e.type() == ControlEventType ):   
+            self.processControllerEvent( e, [ self.width(), self.height() ] )  
         return qt_super(QVTKClientWidget, self).event(e) 
     
     def processControllerEvent(self, event, size ):
@@ -455,9 +452,10 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 self.cellWidget = self.displayAndWait( QVTKClientWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
             #in mashup mode, self.displayAndWait will return None
             if self.cellWidget:
-                self.renWin = self.cellWidget.GetRenderWindow()  
-                if joystick.enabled():
-                    joystick.addTarget( self.cellWidget )   
+                self.renWin = self.cellWidget.GetRenderWindow() 
+                if ENABLE_JOYSTICK: 
+                    if joystick.enabled():
+                        joystick.addTarget( self.cellWidget )   
             else: 
                 print "  --- Error creating cellWidget --- "   
                 sys.stdout.flush()     

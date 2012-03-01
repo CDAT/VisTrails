@@ -198,6 +198,7 @@ def initialize(*args, **keywords):
     reg.add_module( CDMS_VectorReader, configureWidgetType=CDMS_VectorReaderConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_VectorReader, "dataset", CDMSDataset )        
     reg.add_input_port( CDMS_VectorReader, "variable", CDMSVariable )      
+    reg.add_input_port( CDMS_VectorReader, "variable2", CDMSVariable )      
     reg.add_input_port( CDMS_VectorReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( CDMS_VectorReader, "volume", AlgorithmOutputModule3D ) 
     CDMS_SliceReader.registerConfigurableFunctions( reg )

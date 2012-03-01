@@ -66,21 +66,29 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.newLayerConfiguration = self.newDataset
             self.datasetId = dsetId
             self.cdmsDataset.setVariableRecord( dsetId, '*'.join( [ dsetId, cdms_var.name ] ) )
+            self.nTimesteps = 1
+            self.timeRange = [ 0, self.nTimesteps, 0.0, 0.0 ]
             timeAxis = cdms_var.var.getTime()
-            self.nTimesteps = len( timeAxis )
-            comp_time_values = timeAxis.asComponentTime()
-            t0 = comp_time_values[0].torel(ReferenceTimeUnits).value
-            dt = 0.0
-            if self.nTimesteps > 1:
-                t1 = comp_time_values[1].torel(ReferenceTimeUnits).value
-                dt = t1-t0
-            self.timeRange = [ 0, self.nTimesteps, t0, dt ]
+            if timeAxis:
+                self.nTimesteps = len( timeAxis ) if timeAxis else 1
+                comp_time_values = timeAxis.asComponentTime()
+                t0 = comp_time_values[0].torel(ReferenceTimeUnits).value
+                dt = 0.0
+                if self.nTimesteps > 1:
+                    t1 = comp_time_values[1].torel(ReferenceTimeUnits).value
+                    dt = t1-t0
+                    self.timeRange = [ 0, self.nTimesteps, t0, dt ]
             self.cdmsDataset.timeRange = self.timeRange
             self.timeLabels = self.cdmsDataset.getTimeValues()
             timeValue = args.get( 'timeValue', self.cdmsDataset.timeRange[2] )
             self.timeValue = cdtime.reltime( float(timeValue), ReferenceTimeUnits )
             print "Set Time: %s, %s, NTS: %d, Range: %s" % ( str(timeValue), str(self.timeValue), self.nTimesteps, str(self.timeRange) )
-            print "Time Step Labels: %s" % str( self.timeLabels ) 
+            print "Time Step Labels: %s" % str( self.timeLabels )
+            for iVar in range( 2,5 ):
+                cdms_var2 = self.getInputValue( "variable%d" % iVar  ) 
+                if cdms_var2:
+                    self.cdmsDataset.addTransientVariable( cdms_var2.name,  cdms_var2.var )
+                    self.cdmsDataset.setVariableRecord( dsetId, '*'.join( [ dsetId, cdms_var2.name ] ) )
             self.generateOutput()
             if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
         else:
