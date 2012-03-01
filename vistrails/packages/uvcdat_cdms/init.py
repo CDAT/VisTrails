@@ -1537,12 +1537,12 @@ def get_input_ports(plot_type):
                                   ('yaxisconvert', 'basic:String', True),
                                   ]) 
     elif plot_type == "Yxvsx":
-        return expand_port_specs([('linecolor', 'basic:String', True),
+        return expand_port_specs([('linecolor', 'basic:Integer', True),
                                   ('line', 'basic:String', True),
-                                  ('linewidth', 'basic:String', True),
-                                  ('markercolor', 'basic:String', True),
+                                  ('linewidth', 'basic:Integer', True),
+                                  ('markercolor', 'basic:Integer', True),
                                   ('marker', 'basic:String', True),
-                                  ('markersize', 'basic:String', True),
+                                  ('markersize', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ]) 
     elif plot_type=="Taylordiagram":
