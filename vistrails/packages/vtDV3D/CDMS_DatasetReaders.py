@@ -739,7 +739,7 @@ class SerializedInterfaceSpecs:
     def __init__( self, serializedConfiguration = None ):
         self.inputs = {}
         self.configParms = None
-        if serializedConfiguration:
+        if serializedConfiguration and (serializedConfiguration <> 'None'):
             self.parseInputSpecs( serializedConfiguration )
             
     def parseInputSpecs( self, serializedConfiguration ):
@@ -962,8 +962,10 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         print " ** InputSpecs: ", str( inputSpecs ) 
         self.idSpecs, self.fileSpecs, self.varSpecs, self.gridSpecs = [], [], [], []
         if inputSpecs:
+            nInputs = inputSpecs.getNInputs()
+            if not nInputs: return
             print " _____________________ File Reader _____________________ "    
-            for iInput in range( inputSpecs.getNInputs() ):
+            for iInput in range( nInputs  ):
                 inputSpec = inputSpecs.getInput(  index=iInput )
                 print " ** InputSpec: ", str( inputSpec ) 
                 self.idSpecs.append( inputSpec[0] ) 

@@ -406,7 +406,7 @@ class Plot(object):
         
     def addMergedAliases( self, aliases, pipeline ):
         if self.serializedConfigAlias:
-            if self.serializedConfigAlias in pipeline.aliases:
+            if self.serializedConfigAlias in pipeline.aliases and not self.serializedConfigAlias in aliases:
                 try:
                     file = [ getHomeRelativePath( aliases[       self.files[i]        ] ) for i in range(self.filenum) ]
                     url =  [ getHomeRelativePath( aliases[  "%s.url" % self.files[i]  ] ) for i in range(self.filenum) ]

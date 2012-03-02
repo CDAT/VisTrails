@@ -8,6 +8,7 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from InteractiveConfiguration import *
 from core.modules.vistrails_module import Module, ModuleError
+from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.uvcdat_cdms.init import CDMSVariable
 from WorkflowModule import WorkflowModule 
 from vtUtilities import *
@@ -61,7 +62,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         if cdms_var:
             self.cdmsDataset = CDMSDataset()
             self.cdmsDataset.addTransientVariable( cdms_var.name,  cdms_var.var )
-            dsetId = 'Calculated'
+            dsetId = cdms_var.file if cdms_var.file else "Computed"
             self.newDataset = ( self.datasetId <> dsetId )
             self.newLayerConfiguration = self.newDataset
             self.datasetId = dsetId
