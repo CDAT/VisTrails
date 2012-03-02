@@ -39,6 +39,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         PersistentVisualizationModule.__init__( self, mid, **args )
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'opacity', 'O',    setLevel=self.setOpacity,    getLevel=self.getOpacity, isDataValue=False, layerDependent=True )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setZScale, getLevel=self.getScaleBounds )
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
         self.opacity = 1.0
         self.iOrientation = 0
@@ -52,7 +53,22 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
     def __del__(self):
         del VolumeSlicerModules[ self.moduleID ]
-        
+    
+    def setZScale( self, zscale_data ):
+        if self.planeWidgetX <> None:
+            spacing = self.input.GetSpacing()
+            ix, iy, iz = spacing
+            sz = ( zscale_data[0] + zscale_data[1] ) / 0.5
+            self.input.SetSpacing( ix, iy, sz )  
+            self.input.Modified()     
+            bounds = list( self.input.GetBounds() ) 
+            self.planeWidgetX.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
+            self.planeWidgetY.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
+#            self.planeWidgetZ.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   ) 
+                    
+    def getScaleBounds(self):
+        return [ 1.0, 10.0 ]
+                
     def getOpacity(self):
         return [ self.opacity, self.opacity ]
     
@@ -133,7 +149,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         prop2 = self.planeWidgetY.GetPlaneProperty()
         prop2.SetColor(1, 1, 0)
 #        if bounds[0] < 0.0: self.planeWidgetY.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
-        self.planeWidgetX.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
+        self.planeWidgetY.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
         self.planeWidgetY.SetUserControlledLookupTable(1)
         self.planeWidgetY.SetLookupTable( self.lut )
         
@@ -154,7 +170,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         prop3 = self.planeWidgetZ.GetPlaneProperty()
         prop3.SetColor(0, 0, 1)
 #        if bounds[0] < 0.0: self.planeWidgetZ.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
-        self.planeWidgetX.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )
+        self.planeWidgetZ.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )
 
         self.planeWidgetZ.SetUserControlledLookupTable(1)
         self.planeWidgetZ.SetLookupTable( self.lut )

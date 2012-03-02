@@ -122,7 +122,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     def generateVariableOutput( self, cdms_var ): 
         print str(cdms_var.var)
         self.set3DOutput( name=cdms_var.name,  output=cdms_var.var )
- 
+             
     def generateOutput( self ): 
         oRecMgr = None 
         varRecs = self.cdmsDataset.getVarRecValues()

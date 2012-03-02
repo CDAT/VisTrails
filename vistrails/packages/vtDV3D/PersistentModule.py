@@ -1051,7 +1051,7 @@ class PersistentVisualizationModule( PersistentModule ):
         else:
             self.wmod.setResult( portName, outputModule )
 #            print "set3DOutput for class %s" % ( self.__class__.__name__ ) 
-
+             
     def getDownstreamCellModules( self, selectedOnly=False ): 
         import api, ModuleStore
         controller = api.get_current_controller()
