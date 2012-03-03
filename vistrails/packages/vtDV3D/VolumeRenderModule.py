@@ -159,9 +159,6 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             sz = ( zscale_data[0] + zscale_data[1] ) / 0.5
             self.volume.SetScale( 1.0, 1.0, sz )
             self.volume.Modified()
-        
-    def getScaleBounds(self):
-        return [ 1.0, 10.0 ]
 
     def getZScale( self ):
         if self.volume <> None:

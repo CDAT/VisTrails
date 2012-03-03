@@ -1022,6 +1022,19 @@ class PersistentVisualizationModule( PersistentModule ):
         self.isAltMode = False
         self.navigationInteractorStyle = None
         self.stereoEnabled = 0
+
+    def setZScale( self, zscale_data ):
+        if self.input <> None:
+            spacing = self.input.GetSpacing()
+            ix, iy, iz = spacing
+            sz = ( zscale_data[0] + zscale_data[1] ) / 0.5
+            self.input.SetSpacing( ix, iy, sz )  
+            self.input.Modified() 
+            return True
+        return False
+                    
+    def getScaleBounds(self):
+        return [ 1.0, 8.0 ]
         
     def getTitle(self):
         return self.titleBuffer

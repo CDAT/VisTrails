@@ -55,19 +55,11 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         del VolumeSlicerModules[ self.moduleID ]
     
     def setZScale( self, zscale_data ):
-        if self.planeWidgetX <> None:
-            spacing = self.input.GetSpacing()
-            ix, iy, iz = spacing
-            sz = ( zscale_data[0] + zscale_data[1] ) / 0.5
-            self.input.SetSpacing( ix, iy, sz )  
-            self.input.Modified()     
-            bounds = list( self.input.GetBounds() ) 
-            self.planeWidgetX.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
-            self.planeWidgetY.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
-#            self.planeWidgetZ.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   ) 
-                    
-    def getScaleBounds(self):
-        return [ 1.0, 10.0 ]
+        if PersistentVisualizationModule.setZScale( self, zscale_data ):
+            if self.planeWidgetX <> None:
+                bounds = list( self.input.GetBounds() ) 
+                self.planeWidgetX.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
+                self.planeWidgetY.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )                
                 
     def getOpacity(self):
         return [ self.opacity, self.opacity ]

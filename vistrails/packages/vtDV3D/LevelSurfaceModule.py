@@ -40,6 +40,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'opacity', 'O', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addConfigurableGuiFunction( 'nLevels', NLevelConfigurationWidget, 'n', setValue=self.setNumberOfLevels, getValue=self.getNumberOfLevels, layerDependent=True )
         pass
+        self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setZScale, getLevel=self.getScaleBounds )
     
     def setOpacityRange( self, opacity_range ):
         print "Update Opacity, range = %s" %  str( opacity_range )
