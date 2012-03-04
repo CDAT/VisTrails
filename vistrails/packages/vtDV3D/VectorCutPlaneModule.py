@@ -29,12 +29,21 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         PersistentVisualizationModule.__init__( self, mid, **args )
         self.glyphScale = [ 0.0, 2.0 ] 
         self.glyphRange = None
+        self.planeWidget = None
         self.glyphDecimationFactor = [ 1.0, 5.0 ] 
         self.primaryInputPort = 'volume'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, units=self.units, bound=False  )
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False  )
-      
+        self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setZScale, getLevel=self.getScaleBounds )
+
+    def setZScale( self, zscale_data ):
+        if PersistentVisualizationModule.setZScale( self, zscale_data ):
+            if self.planeWidget <> None:
+                bounds = list( self.input.GetBounds() ) 
+                self.planeWidget.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
+                self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
+                
     def scaleColormap( self, ctf_data ):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
         self.colormapManager.setDisplayRange( ctf_data )
@@ -295,12 +304,25 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.glyphRange = 1.0
         self.glyphDecimationFactor = [ 10.0, 10.0 ] 
         self.glyph = None
-        self.useGlyphMapper = True     
+        self.useGlyphMapper = True 
+        self.planeWidget = None    
         self.primaryInputPort = 'volume'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, windowing=False, bound=False  )
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False  )
-      
+        self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setZScale, getLevel=self.getScaleBounds )
+
+    def setZScale( self, zscale_data ):
+        if PersistentVisualizationModule.setZScale( self, zscale_data ):
+            if self.planeWidget <> None:
+                self.dataBounds = list( self.input.GetBounds() )
+                dataExtents = ( (self.dataBounds[1]-self.dataBounds[0])/2.0, (self.dataBounds[3]-self.dataBounds[2])/2.0, (self.dataBounds[5]-self.dataBounds[4])/2.0 )
+                self.planeWidget.PlaceWidget( self.dataBounds[0]-dataExtents[0], self.dataBounds[1]+dataExtents[0], self.dataBounds[2]-dataExtents[1], self.dataBounds[3]+dataExtents[1], self.dataBounds[4]-dataExtents[2], self.dataBounds[5]+dataExtents[2] )
+                centroid = ( (self.dataBounds[0]+self.dataBounds[1])/2.0, (self.dataBounds[2]+self.dataBounds[3])/2.0, (self.dataBounds[4]+self.dataBounds[5])/2.0  )
+                self.planeWidget.SetOrigin( centroid[0], centroid[1], centroid[2]  )
+                self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
+#                print "PlaceWidget: Data bounds = %s, data extents = %s " % ( str( self.dataBounds ), str( dataExtents ) )  
+                                                
     def scaleColormap( self, ctf_data ):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
         self.colormapManager.setDisplayRange( ctf_data )
@@ -422,7 +444,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.planeWidget.SetOrigin( centroid[0], centroid[1], centroid[2]  )
         self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
         self.planeWidget.AddObserver( 'InteractionEvent', self.SliceObserver )
-#        print "Data bounds %s, origin = %s, spacing = %s, extent = %s, widget origin = %s " % ( str( self.dataBounds ), str( self.initialOrigin ), str( self.initialSpacing ), str( self.initialExtent ), str( self.planeWidget.GetOrigin( ) ) )
+#        print "Data bounds = %s, Data extents = %s, origin = %s, spacing = %s, extent = %s, widget origin = %s " % ( str( self.dataBounds ), str( dataExtents ), str( self.initialOrigin ), str( self.initialSpacing ), str( self.initialExtent ), str( self.planeWidget.GetOrigin( ) ) )
         self.cutter = vtk.vtkCutter()
         self.cutter.SetInput( self.cutterInput )        
         self.cutter.SetGenerateCutScalars(0)
@@ -626,10 +648,19 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.streamerSeedGridSpacing = [ 10.0, 10.0 ] 
         self.minStreamerSeedGridSpacing = [ 2.0, 2.0 ] 
         self.streamer = None
+        self.planeWidget = None
         self.primaryInputPort = 'volume'
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'streamerScale', 'T', setLevel=self.setStreamerScale, getLevel=self.getStreamerScale, layerDependent=True, windowing=False, bound=False )
         self.addConfigurableLevelingFunction( 'streamerDensity', 'G', setLevel=self.setStreamerDensity, getLevel=self.getStreamerDensity, layerDependent=True, windowing=False, bound=False )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setZScale, getLevel=self.getScaleBounds )
+
+    def setZScale( self, zscale_data ):
+        if PersistentVisualizationModule.setZScale( self, zscale_data ):
+            if self.planeWidget <> None:
+                bounds = list( self.input.GetBounds() ) 
+                self.planeWidget.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
+                self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
       
     def scaleColormap( self, ctf_data ):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 

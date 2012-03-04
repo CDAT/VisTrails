@@ -66,7 +66,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.newDataset = ( self.datasetId <> dsetId )
             self.newLayerConfiguration = self.newDataset
             self.datasetId = dsetId
-            self.cdmsDataset.setVariableRecord( dsetId, '*'.join( [ dsetId, cdms_var.name ] ) )
+            self.cdmsDataset.setVariableRecord( "VariableName1", '*'.join( [ dsetId, cdms_var.name ] ) )
             self.nTimesteps = 1
             self.timeRange = [ 0, self.nTimesteps, 0.0, 0.0 ]
             timeAxis = cdms_var.var.getTime()
@@ -89,7 +89,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 cdms_var2 = self.getInputValue( "variable%d" % iVar  ) 
                 if cdms_var2:
                     self.cdmsDataset.addTransientVariable( cdms_var2.name,  cdms_var2.var )
-                    self.cdmsDataset.setVariableRecord( dsetId, '*'.join( [ dsetId, cdms_var2.name ] ) )
+                    self.cdmsDataset.setVariableRecord( "VariableName%d" % iVar, '*'.join( [ dsetId, cdms_var2.name ] ) )
             self.generateOutput()
             if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
         else:
