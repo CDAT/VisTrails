@@ -22,6 +22,12 @@ class PlotPipelineHelper(object):
         for module in pipeline.module_list:
             if module.name == module_name:
                 return module
+
+    @staticmethod
+    def find_module_by_id( pipeline, id ):
+        for module in pipeline.module_list:
+            if module.id == id:
+                return module
     
     @staticmethod
     def get_value_from_function(module, fun):
@@ -72,9 +78,8 @@ class PlotPipelineHelper(object):
         return res
     
     @staticmethod
-    def build_plot_pipeline_action(controller, version, var_modules, 
-                                   plot_obj, row, col, template=None):
-#        from packages.uvcdat_cdms.init import CDMSVariableOperation 
+    def build_plot_pipeline_action(controller, version, var_modules,  plot_obj, row, col, template=None):
+        from packages.uvcdat_cdms.init import CDMSVariableOperation 
         #for now, this helper will generate change parameter actions based on the
         #alias dictionary
         #first set the plot:
@@ -82,7 +87,7 @@ class PlotPipelineHelper(object):
         plot_obj.current_controller = controller
         aliases = {}
         for i in range(len(var_modules)):
-            if var_modules[i].descriptor_info[1].endswith( 'VariableOperation' ):
+            if issubclass( var_modules[i].module_descriptor.module, CDMSVariableOperation):
                 varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varname' )
                 python_command = PlotPipelineHelper.get_value_from_function( var_modules[i], 'python_command' )
                 aliases[plot_obj.vars[i]] = varname
@@ -123,7 +128,7 @@ class PlotPipelineHelper(object):
             
         for a,w in plot_obj.alias_widgets.iteritems():
             try:    aliases[a] = w.contents()
-            except: print>>sys.stderr, "Error updating alias %s", str( a )
+            except Exception, err: print>>sys.stderr, "Error updating alias %s:" % str( a ), str(err)
 
         actions = plot_obj.applyChanges(aliases)
         action = actions.pop()

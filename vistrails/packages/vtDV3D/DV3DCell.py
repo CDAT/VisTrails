@@ -17,7 +17,7 @@ else:               ControlEventType = None
 from HyperwallManager import HyperwallManager
 import ModuleStore
 from vtUtilities import *
-import os, math
+import os, math, sys
 
 vmath = vtk.vtkMath()
 packagePath = os.path.dirname( __file__ )  

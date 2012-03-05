@@ -9,7 +9,7 @@ from PyQt4.QtGui import *
 from InteractiveConfiguration import *
 from core.modules.vistrails_module import Module, ModuleError
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
-from packages.uvcdat_cdms.init import CDMSVariable
+from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation 
 from WorkflowModule import WorkflowModule 
 from vtUtilities import *
 from PersistentModule import * 
@@ -55,21 +55,34 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             try:    return str( self.timeLabels[ timestep ] ), 10
             except: pass
         return None, 1
+
+    def addCDMSVariable( self, cdms_var, index ):
+        dsetId = "Computed"
+        var = None
+        varname = None
+        if issubclass( cdms_var.__class__, CDMSVariableOperation ):
+            varname = cdms_var.outvar.name
+            var =  cdms_var.outvar.var
+        else:
+            varname = cdms_var.name
+            var = cdms_var.var
+            if cdms_var.file : dsetId = cdms_var.file
+        self.cdmsDataset.addTransientVariable( varname, var )
+        self.cdmsDataset.setVariableRecord( "VariableName%d" % index, '*'.join( [ dsetId, varname ] ) )
+        return var, dsetId
         
     def execute(self, **args ):
         import api
         cdms_var = self.getInputValue( "variable"  ) 
         if cdms_var:
             self.cdmsDataset = CDMSDataset()
-            self.cdmsDataset.addTransientVariable( cdms_var.name,  cdms_var.var )
-            dsetId = cdms_var.file if cdms_var.file else "Computed"
+            var, dsetId = self.addCDMSVariable( cdms_var, 1 )
             self.newDataset = ( self.datasetId <> dsetId )
             self.newLayerConfiguration = self.newDataset
             self.datasetId = dsetId
-            self.cdmsDataset.setVariableRecord( "VariableName1", '*'.join( [ dsetId, cdms_var.name ] ) )
             self.nTimesteps = 1
             self.timeRange = [ 0, self.nTimesteps, 0.0, 0.0 ]
-            timeAxis = cdms_var.var.getTime()
+            timeAxis = var.getTime()
             if timeAxis:
                 self.nTimesteps = len( timeAxis ) if timeAxis else 1
                 comp_time_values = timeAxis.asComponentTime()
@@ -87,9 +100,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             print "Time Step Labels: %s" % str( self.timeLabels )
             for iVar in range( 2,5 ):
                 cdms_var2 = self.getInputValue( "variable%d" % iVar  ) 
-                if cdms_var2:
-                    self.cdmsDataset.addTransientVariable( cdms_var2.name,  cdms_var2.var )
-                    self.cdmsDataset.setVariableRecord( "VariableName%d" % iVar, '*'.join( [ dsetId, cdms_var2.name ] ) )
+                if cdms_var2: self.addCDMSVariable( cdms_var2, iVar )
             self.generateOutput()
             if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
         else:

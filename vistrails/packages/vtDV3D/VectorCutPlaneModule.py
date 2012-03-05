@@ -658,8 +658,11 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
     def setZScale( self, zscale_data ):
         if PersistentVisualizationModule.setZScale( self, zscale_data ):
             if self.planeWidget <> None:
-                bounds = list( self.input.GetBounds() ) 
-                self.planeWidget.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
+                self.dataBounds = list( self.input.GetBounds() )
+                dataExtents = ( (self.dataBounds[1]-self.dataBounds[0])/2.0, (self.dataBounds[3]-self.dataBounds[2])/2.0, (self.dataBounds[5]-self.dataBounds[4])/2.0 )
+                self.planeWidget.PlaceWidget( self.dataBounds[0]-dataExtents[0], self.dataBounds[1]+dataExtents[0], self.dataBounds[2]-dataExtents[1], self.dataBounds[3]+dataExtents[1], self.dataBounds[4]-dataExtents[2], self.dataBounds[5]+dataExtents[2] )
+                centroid = ( (self.dataBounds[0]+self.dataBounds[1])/2.0, (self.dataBounds[2]+self.dataBounds[3])/2.0, (self.dataBounds[4]+self.dataBounds[5])/2.0  )
+                self.planeWidget.SetOrigin( centroid[0], centroid[1], centroid[2]  )
                 self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
       
     def scaleColormap( self, ctf_data ):
