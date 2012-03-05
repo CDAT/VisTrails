@@ -566,7 +566,15 @@ class VariableProperties(QtGui.QDockWidget):
         def get_kwargs_str(kwargs_dict):
             kwargs_str = ""
             for k, v in kwargs_dict.iteritems():
-                if k != 'order':
+                if k == 'order':
+                    o = kwargs_dict[k]
+                    skip = True
+                    for i in range(len(o)):
+                        if int(o[i])!=i:
+                            skip = False
+                            break
+                    if skip:
+                        continue
                     kwargs_str += "%s=%s," % (k, repr(v))
             return kwargs_str
         axes_ops_dict = axisList.getAxesOperations()
