@@ -99,6 +99,10 @@ class DV3DPipelineHelper(PlotPipelineHelper):
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_obj, row, col, template=None):
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
+        controller.change_selected_version(version)
+#        print "build_plot_pipeline_action[%d,%d], version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
+#        print " --> plot_modules = ",  str( controller.current_pipeline.modules.keys() )
+#        print " --> var_modules = ",  str( [ var.id for var in var_modules ] )
         plot_obj.current_parent_version = version
         plot_obj.current_controller = controller
         aliases = {}
@@ -118,24 +122,25 @@ class DV3DPipelineHelper(PlotPipelineHelper):
 #                axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
 
         #FIXME: this will always spread the cells in the same row
+        cell_specs = []
         for j in range(plot_obj.cellnum):
             cell = plot_obj.cells[j] 
             location = cell.address_name if cell.address_name else 'location%d' % (j+1)   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
-            aliases[ location ] = "%s%s" % ( chr(ord('A') + col+j ), row+1)
+            cell_spec = "%s%s" % ( chr(ord('A') + col+j ), row+1)
+#            aliases[ location ] = cell_spec
+            cell_specs.append( 'location%d!%s' % ( j, cell_spec ) )
 #            
-        for a,w in plot_obj.alias_widgets.iteritems():
-            try:    aliases[a] = w.contents()
-            except Exception, err: print>>sys.stderr, "Error updating alias %s:" % str( a ), str(err)
+#        for a,w in plot_obj.alias_widgets.iteritems():
+#            try:    aliases[a] = w.contents()
+#            except Exception, err: print>>sys.stderr, "Error updating alias %s:" % str( a ), str(err)
 
-        if plot_obj.serializedConfigAlias and var_modules: aliases[ plot_obj.serializedConfigAlias ] = 'None'
+        if plot_obj.serializedConfigAlias and var_modules: aliases[ plot_obj.serializedConfigAlias ] = ';;;' + ( '|'.join( cell_specs) )
         pip_str = core.db.io.serialize(plot_obj.workflow)
         controller.paste_modules_and_connections(pip_str, (0.0,0.0))
 
         action = plot_obj.addParameterChangesFromAliasesAction( controller.current_pipeline,  controller,  controller.vistrail, controller.current_version, aliases)        
         if action: controller.change_selected_version( action.id )   
         
-        print " ++++++++++++++++++++++++ Running DV3DPipelineHelper ++++++++++++++++++++++++ ++++++++++++++++++++++++  "
-        sys.stdout.flush()
         reader_1v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader ] )
         reader_2v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VectorReader ] )
 #        cell_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ MapCell3D ] )
@@ -145,14 +150,18 @@ class DV3DPipelineHelper(PlotPipelineHelper):
         for module in reader_modules:
             nInputs = 1 if module in reader_1v_modules else 2
             for iInput in range( nInputs ):
-                var_module = var_modules[ iVarModule ]
-                var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
-                if var_module_in_pipeline == None: 
-                    ops.append( ( 'add', var_module ) )
-                inputPort = 'variable' if (iInput == 0) else "variable%d" % ( iInput + 1)
-                conn1 = controller.create_connection( var_module, 'self', module, inputPort )
-                ops.append( ( 'add', conn1 ) )
-                iVarModule = iVarModule+1
+                try:
+                    var_module = var_modules[ iVarModule ]
+                    var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
+                    if var_module_in_pipeline == None: 
+                        ops.append( ( 'add', var_module ) )
+                    inputPort = 'variable' if (iInput == 0) else "variable%d" % ( iInput + 1)
+                    conn1 = controller.create_connection( var_module, 'self', module, inputPort )
+                    ops.append( ( 'add', conn1 ) )
+                    iVarModule = iVarModule+1
+                except Exception, err:
+                    print>>sys.stderr, "Exception adding CDMSVaraible input:", str( err)
+                    break
                                    
         try:
             action = core.db.action.create_action(ops)
@@ -163,51 +172,6 @@ class DV3DPipelineHelper(PlotPipelineHelper):
             traceback.print_exc()
         return action
 
-                           
-#                desc = var_module.module_descriptor
-#                if issubclass( desc.module, CDMSVariableOperation ):
-#                    varname = PlotPipelineHelper.get_value_from_function( var_module, 'varname' )
-#                    python_command = PlotPipelineHelper.get_value_from_function( var_module, 'python_command' )
-#                    aliases[plot_obj.vars[iVarModule]] = varname
-#                    aliases[ "%s.cmd" % plot_obj.vars[iVarModule] ] = python_command
-#                else:
-#                    filename = PlotPipelineHelper.get_value_from_function( var_module, 'filename')
-#                    if filename is None:
-#                        filename = PlotPipelineHelper.get_value_from_function( var_module, 'file')
-#                    if isinstance( filename, core.modules.basic_modules.File ):
-#                        filename = filename.name
-#                    url = PlotPipelineHelper.get_value_from_function( var_module, 'url')            
-#                    varname = PlotPipelineHelper.get_value_from_function( var_module, 'name')
-#                    file_varname = PlotPipelineHelper.get_value_from_function( var_module, 'varNameInFile')
-#                    axes = PlotPipelineHelper.get_value_from_function( var_module, 'axes')
-#                    aliases[plot_obj.files[iVarModule]] = filename
-#                    aliases[ ".".join( [plot_obj.files[iVarModule],"url"] )  ] = url if url else ""
-#                    aliases[plot_obj.vars[iVarModule]] = varname
-#                    aliases[ "%s.file" % plot_obj.vars[iVarModule] ] = file_varname if file_varname else ""
-#                    if len(plot_obj.axes) > iVarModule:
-#                        aliases[plot_obj.axes[iVarModule]] = axes
-#
-#        #FIXME: this will always spread the cells in the same row
-#        for j in range(plot_obj.cellnum):
-#            if plot_obj.cells[j].row_name and plot_obj.cells[j].col_name:
-#                aliases[plot_obj.cells[j].row_name] = str(row+1)
-#                aliases[plot_obj.cells[j].col_name] = str(col+1+j)
-#            elif plot_obj.cells[j].address_name:
-#                aliases[plot_obj.cells[j].address_name] = "%s%s" % ( chr(ord('A') + col+j ), row+1)
-#            
-#        for a,w in plot_obj.alias_widgets.iteritems():
-#            try:    aliases[a] = w.contents()
-#            except: print>>sys.stderr, "Error updating alias %s", str( a )
-#
-#
-#        actions = plot_obj.applyChanges(aliases)
-#        action = actions.pop()
-#        
-#        #get the most recent action that is not None
-#        while action == None:
-#            action = actions.pop()
-#        
-#        return action
     
     @staticmethod
     def copy_pipeline_to_other_location(pipeline, controller, sheetName, row, col, 

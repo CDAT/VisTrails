@@ -748,26 +748,27 @@ class SerializedInterfaceSpecs:
         varInputSpecs = inputSpecElements[1].split('|')
         gridInputSpecs = inputSpecElements[2].split('|')
         cellInputSpecs = inputSpecElements[3].split('|')
-        if len( fileInputSpecs ) == 1:
-            fileMetadata = fileInputSpecs[0].split('!')
-            fileId = fileMetadata[1]
-            fileName = fileMetadata[2] if fileMetadata[2] else fileId
-            for iVar in range( len(varInputSpecs) ):
-                varSpecs = varInputSpecs[iVar].split('!')
-                varName = varSpecs[2] if varSpecs[2] else varSpecs[1]
-                axes = gridInputSpecs[iVar].split('!')[1]
-                self.addInput( ("Input%d" % iVar), fileId, fileName, varName, axes )
-        elif len( fileInputSpecs ) == len( varInputSpecs ):
-            for iVar in range( len(varInputSpecs) ):
-                fileMetadata = fileInputSpecs[iVar].split('!')
+        if fileInputSpecs[0]:
+            if len( fileInputSpecs ) == 1:
+                fileMetadata = fileInputSpecs[0].split('!')
                 fileId = fileMetadata[1]
                 fileName = fileMetadata[2] if fileMetadata[2] else fileId
-                varSpecs = varInputSpecs[iVar].split('!')
-                varName = varSpecs[2] if varSpecs[2] else varSpecs[1]
-                axes = gridInputSpecs[iVar].split('!')[1]
-                self.addInput( ("Input%d" % iVar), fileId, fileName, varName, axes )
-        else:
-            print>>sys.stderr, " ERROR: Number of Files and number of Variables do not match."
+                for iVar in range( len(varInputSpecs) ):
+                    varSpecs = varInputSpecs[iVar].split('!')
+                    varName = varSpecs[2] if varSpecs[2] else varSpecs[1]
+                    axes = gridInputSpecs[iVar].split('!')[1]
+                    self.addInput( ("Input%d" % iVar), fileId, fileName, varName, axes )
+            elif len( fileInputSpecs ) == len( varInputSpecs ):
+                for iVar in range( len(varInputSpecs) ):
+                    fileMetadata = fileInputSpecs[iVar].split('!')
+                    fileId = fileMetadata[1]
+                    fileName = fileMetadata[2] if fileMetadata[2] else fileId
+                    varSpecs = varInputSpecs[iVar].split('!')
+                    varName = varSpecs[2] if varSpecs[2] else varSpecs[1]
+                    axes = gridInputSpecs[iVar].split('!')[1]
+                    self.addInput( ("Input%d" % iVar), fileId, fileName, varName, axes )
+            else:
+                print>>sys.stderr, " ERROR: Number of Files and number of Variables do not match."
         for iCell in range( len(cellInputSpecs) ):
             cellMetadata = cellInputSpecs[iCell].split('!')
             ModuleStore.addCell( cellMetadata[0], cellMetadata[1] )
