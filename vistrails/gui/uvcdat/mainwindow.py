@@ -256,7 +256,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
     def quit(self):
         #FIXME
         #ask to save projects
-        print "quiting"
+        print "quitting"
         if self.preferences.confirmB4Exit.isChecked():
             # put here code to confirm exit
             pass

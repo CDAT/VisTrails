@@ -128,7 +128,8 @@ class DV3DPipelineHelper(PlotPipelineHelper):
             location = cell.address_name if cell.address_name else 'location%d' % (j+1)   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
             cell_spec = "%s%s" % ( chr(ord('A') + col+j ), row+1)
 #            aliases[ location ] = cell_spec
-            cell_specs.append( 'location%d!%s' % ( j, cell_spec ) )
+            cell_specs.append( '%s!%s' % ( location, cell_spec ) )
+#            cell_specs.append( 'location%d!%s' % ( j, cell_spec ) )
 #            
 #        for a,w in plot_obj.alias_widgets.iteritems():
 #            try:    aliases[a] = w.contents()

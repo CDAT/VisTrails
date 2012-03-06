@@ -453,14 +453,16 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             #in mashup mode, self.displayAndWait will return None
             if self.cellWidget:
                 self.renWin = self.cellWidget.GetRenderWindow() 
+                self.iren = self.renWin.GetInteractor()
                 if ENABLE_JOYSTICK: 
                     if joystick.enabled():
                         joystick.addTarget( self.cellWidget )   
             else: 
                 print "  --- Error creating cellWidget --- "   
                 sys.stdout.flush()     
-                
-#                self.renWin.StereoCapableWindowOn()
+            
+            cell_location = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )   
+            PersistentVisualizationModule.renderMap[ cell_location ] = self.iren
             self.builtCellWidget = True
         else:               
             print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 

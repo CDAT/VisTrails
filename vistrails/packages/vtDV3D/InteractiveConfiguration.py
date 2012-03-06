@@ -317,9 +317,11 @@ class ConfigurableFunction( QObject ):
     def updateActiveFunctionList( self ):
         cfgFunctionList = ConfigurableFunctions.get( self.name, [] )
         self.activeFunctionList = []
+        active_irens = self.module.getActiveIrens() 
+        print " ** N active_irens: %d " % len( active_irens )      
         for cfgFunction in cfgFunctionList:
             if (cfgFunction <> self) and cfgFunction.module:
-                isActive = len( cfgFunction.module.getDownstreamCellModules( True ) )
+                isActive = ( cfgFunction.module.iren in active_irens )
                 if isActive and (cfgFunction.units == self.units):
                     self.activeFunctionList.append( cfgFunction )
              
@@ -1584,20 +1586,6 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 self.relTimeStart = float( timeRangeInput[2] )
                 self.relTimeStep = float( timeRangeInput[3] )
                 return
-            
-                          
-#            wmod = wmods[ module.moduleID ]
-#            if wmod:
-#                try:
-#                    timeRangeInput =  wmod.forceGetInputFromPort( "timeRange", None )
-#                    if timeRangeInput: 
-#                        self.timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
-#                        return
-#                except: pass
-
-#    def setTimestep1( self, iTimestep ):
-#        self.setValue( iTimestep )
-#        self.emit( self.update_animation_signal, self.iTimeStep, self.getTextDisplay() )
 
     def setTimestep( self, iTimestep ):
         if self.timeRange[0] == self.timeRange[1]:
@@ -1612,16 +1600,6 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             for module in self.activeModuleList:
                 dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
                 module.updateAnimation( relTimeValue, displayText  )
-                   
-#            except Exception, err:
-#                dvLog( module, " ----> Error %s " % str( err ) )
-       
-#    def setTimestep1(self, iTimestep, refresh = True ):
-#        if refresh: 
-#            self.refreshPipeline()
-#            self.getTimeRange()
-#        self.setValue( iTimestep )
-#        self.updateParameter()
 
     def stop(self):
         self.runButton.setText('Run')

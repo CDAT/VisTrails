@@ -262,9 +262,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.updateSliceOutput()
         self.endInteraction()
         HyperwallManager.setLevelingState( None )
-                
+        
+        active_irens = self.getActiveIrens()        
         for module in VolumeSlicerModules.values():
-            if len( module.getDownstreamCellModules( True ) ):
+            if module.iren in active_irens:
                 if   (iAxis == 0) and module.planeWidgetX: module.planeWidgetX.SetSliceIndex( sliceIndex )
                 elif (iAxis == 1) and module.planeWidgetY: module.planeWidgetY.SetSliceIndex( sliceIndex )
                 elif (iAxis == 2) and module.planeWidgetZ: module.planeWidgetZ.SetSliceIndex( sliceIndex )

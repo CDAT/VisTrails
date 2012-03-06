@@ -1001,7 +1001,7 @@ class PersistentVisualizationModule( PersistentModule ):
     LEFT_BUTTON = 0
     RIGHT_BUTTON = 1
     
-    
+    renderMap = {}    
     moduleDocumentationDialog = None 
 
     def __init__( self, mid, **args ):
@@ -1075,7 +1075,7 @@ class PersistentVisualizationModule( PersistentModule ):
             for ( moduleId, portName ) in connectedModuleIds:
                 module = ModuleStore.getModule( moduleId )
                 if module: 
-                    if module.__class__.__name__ == "MapCell3D":
+                    if module.__class__.__name__ == "PM_MapCell3D":
                         if (not selectedOnly) or module.isSelected(): rmodList.append( module )
                     else:
                         moduleIdList.append( moduleId )
@@ -1295,7 +1295,7 @@ class PersistentVisualizationModule( PersistentModule ):
                         self.iren.AddObserver( 'CharEvent', self.setInteractionState )                   
                         self.iren.AddObserver( 'MouseMoveEvent', self.updateLevelingEvent )
                         self.iren.AddObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
-    #                    self.iren.AddObserver( 'AnyEvent', self.onAnyEvent )  
+                        self.iren.AddObserver( 'AnyEvent', self.onAnyEvent )  
 #                        self.iren.AddObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
 #                        self.iren.AddObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
                         self.iren.AddObserver( 'CharEvent', self.onKeyPress )
@@ -1465,8 +1465,31 @@ class PersistentVisualizationModule( PersistentModule ):
     def onKeyPress( self, caller, event ):
         return 0
     
+    def getActiveIrens(self):
+        sheetTabWidget = getSheetTabWidget()
+        selected_cells = sheetTabWidget.getSelectedLocations() 
+        irens = []
+        for cell in selected_cells:
+            cell_spec = "%s%s" % ( chr(ord('A') + cell[1] ), cell[0]+1 )
+            iren = PersistentVisualizationModule.renderMap.get( cell_spec, None )
+            irens.append( iren )
+        return irens
+    
     def onAnyEvent(self, caller, event ):
-        print " >> %s Event: %s " % ( str(caller.__class__), event )
+        isKeyEvent = ( event in [ 'KeyPressEvent', 'CharEvent', 'KeyReleaseEvent' ] )
+#        if isKeyEvent:
+#            sheetTabWidget = getSheetTabWidget()
+#            selected_cells = sheetTabWidget.getSelectedLocations() 
+#            for cell in selected_cells:
+#                cell_spec = "%s%s" % ( chr(ord('A') + cell[0] ), cell[1]+1 )
+#                iren = PersistentVisualizationModule.renderMap.get( cell_spec, None )
+#                if iren <> caller:
+#                    print " >> %s Event: %s " % ( str(caller.__class__), event )
+##                    renderer.SetEventInformation(int x, int y, int ctrl=0, int shift=0, char keycode=0, int repeatcount=0, const char *keysym=0)
+#                    iren.SetKeyEventInformation( caller.GetControlKey(), caller.GetShiftKey(), caller.GetKeyCode(), caller.GetRepeatCount(),  caller.GetKeySym() )
+#                    if   event == 'KeyPressEvent':    iren.KeyPressEvent()
+#                    elif event == 'KeyReleaseEvent':  iren.KeyReleaseEvent()
+#                    elif event == 'CharEvent':        iren.CharEvent()
         return 0
     
     def clearDocumenation(self):
