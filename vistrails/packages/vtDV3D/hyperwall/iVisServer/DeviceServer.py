@@ -13,6 +13,7 @@ import copy
 from core import system
 import core
 ElementTree = core.system.get_elementtree_library()
+MessageTokenSep = '@'
 
 def get_cell_address_from_coords( row, col ):
     return "%s%d" % ( chr( ord('A') + col ), row+1 )
@@ -408,7 +409,7 @@ class Device:
                             delete_module( module, localPipeline )
                       
                 serializedPipeline = serialize(localPipeline)
-#                print " Serialized pipeline: %s " % str( serializedPipeline )
+#                print " HW-DeviceServer: Serialized pipeline:\n %s " % str( serializedPipeline )
                 result.append( ((dimensions[0]+column, dimensions[1]+row), serializedPipeline) )
         
         return result
@@ -438,7 +439,7 @@ class Device:
         serializedPipelinesDict = {}
         for (socketAddress, pipeline) in pipelineList:
             message = "server-displayClient-"
-            pipelineString = "pipeline,"
+            pipelineString = "pipeline" + MessageTokenSep
             pipelineString+=str(pipeline)
             message += str(len(pipelineString))+":"+pipelineString
 
@@ -502,7 +503,7 @@ class Device:
         serializedPipelinesDict = {}
         for (socketAddress, pipeline) in pipelineList:
             message = "server-displayClient-"
-            pipelineString = "pipeline,"
+            pipelineString = "pipeline" + MessageTokenSep
             pipelineString+=str(pipeline)
             message += str(len(pipelineString))+":"+pipelineString
 
@@ -538,7 +539,7 @@ class Device:
     
     def processInteractionMessage( self, tokens, selected_cells, msgType="interaction" ):
         eventType = tokens[0]
-        event_data=','.join(  [ str(tokens[i]) for i in range( len(tokens) ) ]  )
+        event_data=MessageTokenSep.join(  [ str(tokens[i]) for i in range( len(tokens) ) ]  )
 #        print "         --- processInteractionMessage --- "
         for dimensions in self.dimensionsForKey.values():
             x = dimensions[0]
@@ -549,8 +550,7 @@ class Device:
                 columnValue = x + 1
                 rowValue = y + 1
                 message = "server-displayClient-"
-                tokensString = msgType
-                tokensString += "," + str(rowValue)+","+str(columnValue)+","+event_data
+                tokensString = MessageTokenSep.join( [ msgType, str(rowValue), str(columnValue), event_data ] )
                 message += str(len(tokensString))+":"+tokensString
                 if self.addresses.has_key((x,y)): self.addresses[(x,y)].write(message)
 
@@ -685,7 +685,7 @@ class StereoDevice(Device):
         serializedPipelinesDict = {}
         for (socketAddress, pipeline) in pipelineList:
             message = "server-displayClient-"
-            pipelineString = "pipeline,"
+            pipelineString = "pipeline" + MessageTokenSep
             pipelineString+=str(pipeline)
             message += str(len(pipelineString))+":"+pipelineString
 
@@ -729,8 +729,7 @@ class StereoDevice(Device):
                 columnValue = x % 2 + 1
                 rowValue = y % 2 + 1
                 message = "server-displayClient-"
-                tokensString = "interaction,"
-                tokensString += str(rowValue)+","+str(columnValue)+","+eventType+","+button+","+str(pos[0])+","+str(pos[1])
+                tokensString = MessageTokenSep.join( [ "interaction", str(rowValue), str(columnValue), eventType, button, str(pos[0]), str(pos[1]) ] )
                 message += str(len(tokensString))+":"+tokensString
                 if self.addresses.has_key((x,y)):
                     print "sending event to", (x,y)

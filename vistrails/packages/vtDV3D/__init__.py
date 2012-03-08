@@ -71,14 +71,14 @@ def typeMap(name, package=None):
             return registry.get_descriptor_by_name(package, name).module
 
 from CDMS_DatasetReaders import *   
-from CDMS_VariableReaders import *   
 from PersistentModule import *
 from vtUtilities import *
 from DV3DCell import *
-from HyperwallManager import HyperwallManager
 
 def initialize(*args, **keywords):
     import core.modules.module_registry
+    from HyperwallManager import HyperwallManager
+    from CDMS_VariableReaders import CDMS_HoffmullerReader, CDMS_VolumeReader, CDMS_ChartDataReader, CDMS_SliceReader, CDMS_VectorReader, CDMS_HoffmullerReaderConfigurationWidget, CDMS_VolumeReaderConfigurationWidget, CDMS_ChartDataConfigurationWidget, CDMS_SliceReaderConfigurationWidget, CDMS_VectorReaderConfigurationWidget 
     from VolumeSlicerModule import VolumeSlicer
     from VolumeRenderModule import VolumeRenderer
     from ParallelCoordinatesModule import ParallelCoordinateViewer

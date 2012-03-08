@@ -5,7 +5,7 @@ from PyQt4.QtCore import QObject
 
 from users import User, UserPool
 from iPhoneManager import IPhoneManager
-from DeviceServer import Device, StereoDevice
+from DeviceServer import Device, StereoDevice, MessageTokenSep
 from VistrailServer import VistrailServer
 #from pipeline_modifier import PipelineModifier
 from packages.vtDV3D.vtUtilities import *
@@ -147,8 +147,8 @@ class QiVisServer(QObject):
 
     def processMessage(self, message, socket=None):
         (sender, tokens) = message
-        print " -- Server process message: %s " % tokens
-        tokens = tokens.split(",")
+#        print " -- Server process message: %s " % tokens
+        tokens = tokens.split( MessageTokenSep )
         if len(tokens) == 0: return
 
         ### connection attempt

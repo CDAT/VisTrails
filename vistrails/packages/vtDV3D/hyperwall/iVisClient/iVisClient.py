@@ -7,6 +7,7 @@ from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from displaywall_tab import DisplayWallSheetTab
 import packages.vtDV3D.ModuleStore as ModuleStore
 from packages.vtDV3D.vtUtilities import *
+from packages.vtDV3D.hyperwall.iVisServer.DeviceServer import MessageTokenSep
 
 class QiVisClient(QtCore.QObject):
     def __init__(self, name, server, serverPort, x, y, width, height ):
@@ -93,7 +94,7 @@ class QiVisClient(QtCore.QObject):
         has been established to the server"""
         sender = "displayClient"
         receiver = "server"
-        tokens = "dimensions," + self.deviceName + "," + str(self.dimensions[0]) + "," + str(self.dimensions[1]) + "," + str(self.dimensions[2]) + "," + str(self.dimensions[3])
+        tokens = MessageTokenSep.join( [ "dimensions", self.deviceName, str(self.dimensions[0]), str(self.dimensions[1]), str(self.dimensions[2]), str(self.dimensions[3]) ] )
         reply = sender + "-" + receiver + "-" + str(len(tokens)) + ":" + tokens
         print "   ****** Connected to server!  CellCoords = ( %d, %d ), reply: %s " % ( self.dimensions[0], self.dimensions[1], reply )
         self.socket.write(reply)
@@ -125,6 +126,8 @@ class QiVisClient(QtCore.QObject):
                     break
                 tokens = rest[:int(size)]
                 self.buffer = rest[int(size):]
+#                print " ********* CLIENT--> gotMessage: %s %s %s ********* " % ( str( receiver ), str( sender ), str( tokens ) )
+                sys.stdout.flush()
 
                 if (receiver == "displayClient"):
                     reply = self.processMessage((sender, tokens), self.socket)
@@ -276,7 +279,6 @@ class QiVisClient(QtCore.QObject):
         import api
 
         tabController = self.spreadsheetWindow.get_current_tab_controller()
-
         pip = unserialize(str(pipeline), Pipeline)
 #        print " **** Client-%s ---Received Pipeline--- modules:" % str( self.dimensions )
 #        for module in pip.module_list:
@@ -292,8 +294,9 @@ class QiVisClient(QtCore.QObject):
 
     def processMessage(self, message, socket):
         (sender, tokens) = message
-        tokens = tokens.split(",")
-        print " ********* CLIENT--> processMessage: %s ********* " % str( tokens )
+#        print " ********* CLIENT--> processMessage: %s ********* " % str( tokens )
+        tokens = tokens.split( MessageTokenSep )
+#        print " ********* CLIENT--> splitMessage: %s ********* " % str( tokens )
         if len(tokens) == 0: return
         
         if tokens[0] == "exit":
@@ -305,12 +308,12 @@ class QiVisClient(QtCore.QObject):
             sys.exit(0)
 
         if tokens[0] == "pipeline":
-#            print " $$$$$$$$$$$ pipeline message: %s " % str(tokens)
+#            print " $$$$$$$$$$$ Client-- pipeline message: %s " % str(tokens)
             ### we must execute a pipeline
 #            return ("", "", "")
             if len(tokens[2:]) != 0:
                 for t in tokens[2:]:
-                    tokens[1] += t + ","
+                    tokens[1] += t + "@"
                 tokens[1] = tokens[1][:-1]
             
             self.executePipeline(tokens[1])

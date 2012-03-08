@@ -67,6 +67,7 @@ class CDMSVariable(Variable):
         self.axisAttributes = axisAttributes
         self.timeBounds = timeBounds
         self.var = None
+#        print "  Creating CDMSVariable, filename: %s, url: %s, axesOperations: %s " % ( str(filename), str(url), str(self.axesOperations) )
 
     def __copy__(self):
         """__copy__() -> CDMSVariable - Returns a clone of itself"""
@@ -260,7 +261,7 @@ class CDMSVariable(Variable):
         try:
             axesOperations = ast.literal_eval(axesOperations)
         except:
-            raise TypeError("Invalid string 'axesOperations'")
+            raise TypeError("Invalid string 'axesOperations': %s" % str(axesOperations) )
 
         for axis in list(axesOperations):
             if axesOperations[axis] == 'sum':

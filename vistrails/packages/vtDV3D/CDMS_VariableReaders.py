@@ -13,7 +13,6 @@ from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
 from WorkflowModule import WorkflowModule 
 from vtUtilities import *
 from PersistentModule import * 
-from CDMS_DatasetReaders import CDMSDataset, CDMSDatasetRecord
 import cdms2, cdtime, cdutil, MV2 
 PortDataVersion = 0
 
@@ -73,6 +72,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         
     def execute(self, **args ):
         import api
+        from CDMS_DatasetReaders import CDMSDataset
         cdms_var = self.getInputValue( "variable"  ) 
         if cdms_var:
             self.cdmsDataset = CDMSDataset()
