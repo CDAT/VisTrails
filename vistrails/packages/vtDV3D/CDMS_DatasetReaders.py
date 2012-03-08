@@ -634,6 +634,13 @@ class CDMSDataset(Module):
         """
         This method returns a data slice with the correct axis ordering (returning a NumPy masked array).
         """ 
+        invert_z = False
+        levaxis = transVar.getLevel() 
+        if levaxis:
+            values = levaxis.getValue()
+            ascending_values = ( values[-1] > values[0] )
+            invert_z = ( (levaxis.attributes.get( 'positive', '' ) == 'down') and ascending_values ) or ( (levaxis.attributes.get( 'positive', '' ) == 'up') and not ascending_values )
+               
         timeBounds = args.get( 'time', None )
         timeValue = None
         if timeBounds <> None:
@@ -657,6 +664,7 @@ class CDMSDataset(Module):
         except: pass
         
         args1['order'] = order
+        if invert_z:  args1['lev'] = slice( None, None, -1 )
         rv = transVar( **args1 )
         try: rv = MV2.masked_equal( rv, rv.fill_value )
         except: pass          

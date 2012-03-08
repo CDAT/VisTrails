@@ -575,7 +575,7 @@ class VariableProperties(QtGui.QDockWidget):
                             break
                     if skip:
                         continue
-                    kwargs_str += "%s=%s," % (k, repr(v))
+                kwargs_str += "%s=%s," % (k, repr(v))
             return kwargs_str
         axes_ops_dict = axisList.getAxesOperations()
         url = None
