@@ -2,6 +2,7 @@ from info import identifier
 from core.modules.basic_modules import new_constant, string_compare, String
 from core.modules.vistrails_module import Module, ModuleError
 from core.modules.module_registry import get_module_registry
+from core.utils import getHomeRelativePath, getFullPath
 
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
@@ -77,7 +78,11 @@ class Variable(Module):
         var.name = PlotPipelineHelper.get_value_from_function(module, 'name')
         var.load = PlotPipelineHelper.get_value_from_function(module, 'load')
         return var
-     
+
+    def relativizePaths(self):
+        self.file = getHomeRelativePath( self.file ) 
+        self.url = getHomeRelativePath( self.url ) 
+             
     def get_port_values(self):
         if not self.hasInputFromPort("file") and not self.hasInputFromPort("url") and not self.hasInputFromPort("source"):
             raise ModuleError('Must set one of "file", "url", "source".')
@@ -90,6 +95,7 @@ class Variable(Module):
             self.source = self.getInputFromPort("source")
         self.name = self.getInputFromPort("name")
         self.load = self.forceGetInputFromPort("load", False)
+        self.relativizePaths()
 
     def compute(self):
         self.get_port_values()

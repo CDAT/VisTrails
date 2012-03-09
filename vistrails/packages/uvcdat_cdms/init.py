@@ -67,7 +67,6 @@ class CDMSVariable(Variable):
         self.axisAttributes = axisAttributes
         self.timeBounds = timeBounds
         self.var = None
-#        print "  Creating CDMSVariable, filename: %s, url: %s, axesOperations: %s " % ( str(filename), str(url), str(self.axesOperations) )
 
     def __copy__(self):
         """__copy__() -> CDMSVariable - Returns a clone of itself"""
@@ -110,9 +109,9 @@ class CDMSVariable(Variable):
         if self.source:
             cdmsfile = self.source.var
         elif self.url:
-            cdmsfile = cdms2.open(self.url)
+            cdmsfile = cdms2.open( os.path.expanduser(self.url) )
         elif self.file:
-            cdmsfile = cdms2.open(self.file)
+            cdmsfile = cdms2.open( os.path.expanduser(self.file) )
         
         if self.varNameInFile is not None:
             var = cdmsfile.__call__(self.varNameInFile)
@@ -159,9 +158,9 @@ class CDMSVariable(Variable):
         if self.source:
             cdmsfile = self.source.var
         elif self.url:
-            text += ident + "cdmsfile = cdms2.open('%s')\n"%self.url
+            text += ident + "cdmsfile = cdms2.open('%s')\n" % os.path.expanduser(self.url)
         elif self.file:
-            text += ident + "cdmsfile = cdms2.open('%s')\n"%self.file
+            text += ident + "cdmsfile = cdms2.open('%s')\n" % os.path.expanduser(self.file)
             
         if self.varNameInFile is not None:
             text += ident + "%s = cdmsfile('%s')\n"%(self.name, self.varNameInFile)
@@ -252,6 +251,7 @@ class CDMSVariable(Variable):
         self.axisAttributes = self.forceGetInputFromPort("axisAttributes")
         self.timeBounds = self.forceGetInputFromPort("setTimeBounds")
         self.get_port_values()
+#        print " ---> CDMSVariable-->compute: ", str(self.file), str(self.url), str(self.name)
         self.var = self.to_python()
         self.setResult("self", self)
 
