@@ -12,7 +12,7 @@ from WorkflowModule import WorkflowModule
 
 packagePath = os.path.dirname( __file__ )  
 defaultMapDir = os.path.join( packagePath, 'data' )
-defaultMapFile = os.path.join( defaultMapDir,  'world_huge.jpg' )
+defaultMapFile = os.path.join( defaultMapDir,  'earth2k.png' )
 defaultMapCut = 0
 
 class PM_WorldFrame(PersistentVisualizationModule):

@@ -22,9 +22,11 @@ import os, math, sys
 vmath = vtk.vtkMath()
 packagePath = os.path.dirname( __file__ )  
 defaultMapDir = os.path.join( packagePath, 'data' )
-defaultMapFile = os.path.join( defaultMapDir,  'world_huge.jpg' )
 defaultLogoFile = os.path.join( defaultMapDir,  'uvcdat.jpg' )
-defaultMapCut = 0
+defaultMapFile = os.path.join( defaultMapDir,  'earth2k.jpg' )
+defaultMapCut = -180
+defaultMapFile = os.path.join( defaultMapDir,  'world_huge.jpg' )
+defaultMapCut1 = 0
 SLIDER_MAX_VALUE = 100
 
 def get_coords_from_cell_address( row, col):
