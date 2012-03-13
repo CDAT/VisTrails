@@ -409,7 +409,7 @@ class Device:
                             delete_module( module, localPipeline )
                       
                 serializedPipeline = serialize(localPipeline)
-#                print " HW-DeviceServer: Serialized pipeline:\n %s " % str( serializedPipeline )
+                print " HW-DeviceServer: Serialized pipeline:\n %s " % str( serializedPipeline )
                 result.append( ((dimensions[0]+column, dimensions[1]+row), serializedPipeline) )
         
         return result

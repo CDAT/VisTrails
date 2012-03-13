@@ -46,6 +46,7 @@ class Variable(Module):
         self.name = name
         self.load = load
         self.file = self.filename
+        self.relativizePaths()
 
     def to_module(self, controller, pkg_identifier=None):
         reg = get_module_registry()
@@ -77,6 +78,7 @@ class Variable(Module):
         var.url = PlotPipelineHelper.get_value_from_function(module, 'url')
         var.name = PlotPipelineHelper.get_value_from_function(module, 'name')
         var.load = PlotPipelineHelper.get_value_from_function(module, 'load')
+        var.relativizePaths()
         return var
 
     def relativizePaths(self):
