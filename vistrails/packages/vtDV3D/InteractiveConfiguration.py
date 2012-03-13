@@ -650,6 +650,7 @@ class IVModuleConfigurationDialog( QWidget ):
         self.createContent()
         self.createButtonLayout()
         self.createActiveModulePanel()
+        self.setWindowFlags( self.windowFlags() | Qt.WindowStaysOnTopHint )
     
     @staticmethod    
     def getInstance( klass, name, caller, **args  ):

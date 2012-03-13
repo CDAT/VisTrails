@@ -1377,12 +1377,10 @@ class PersistentVisualizationModule( PersistentModule ):
                     
                 configFunct = self.configurableFunctions[ state ]
                 if configFunct.hasState:
-                    if self.InteractionState == state:
-                        self.endInteraction()            
-                    else:
-                        self.InteractionState = state                   
-                        configFunct.open( self.InteractionState, self.isAltMode )
-                        self.LastInteractionState = self.InteractionState
+                    if self.InteractionState == state:  self.endInteraction()            
+                    self.InteractionState = state                   
+                    configFunct.open( self.InteractionState, self.isAltMode )
+                    self.LastInteractionState = self.InteractionState
                 else:
                     configFunct.open( state, self.isAltMode )
                     
