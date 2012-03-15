@@ -53,6 +53,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        print " Volume Slicer init, id = %s " % str( id(self) )
 
     def __del__(self):
+        self.planeWidgetX.RemoveAllObservers()
+        self.planeWidgetY.RemoveAllObservers()
+        self.planeWidgetZ.RemoveAllObservers()
         del VolumeSlicerModules[ self.moduleID ]
     
     def setZScale( self, zscale_data ):
