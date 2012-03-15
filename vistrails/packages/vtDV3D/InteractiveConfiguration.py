@@ -13,7 +13,7 @@ from core.interpreter.default import get_default_interpreter as getDefaultInterp
 from core.modules.basic_modules import Integer, Float, String, Boolean, Variant
 from ColorMapManager import ColorMapManager 
 from core.utils import getHomeRelativePath, getFullPath
-from HyperwallManager import HyperwallManager
+from Main import HyperwallManager
 from CDATTask import deserializeTaskData
 from collections import OrderedDict
 from vtUtilities import *

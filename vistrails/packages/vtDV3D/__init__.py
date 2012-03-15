@@ -77,7 +77,6 @@ from DV3DCell import *
 
 def initialize(*args, **keywords):
     import core.modules.module_registry
-    from HyperwallManager import HyperwallManager
     from CDMS_VariableReaders import CDMS_HoffmullerReader, CDMS_VolumeReader, CDMS_ChartDataReader, CDMS_SliceReader, CDMS_VectorReader, CDMS_HoffmullerReaderConfigurationWidget, CDMS_VolumeReaderConfigurationWidget, CDMS_ChartDataConfigurationWidget, CDMS_SliceReaderConfigurationWidget, CDMS_VectorReaderConfigurationWidget 
     from VolumeSlicerModule import VolumeSlicer
     from VolumeRenderModule import VolumeRenderer
@@ -284,7 +283,6 @@ def initialize(*args, **keywords):
         reg.add_output_port( SlicePlotCell, 'File', File)
         SlicePlotCell.registerConfigurableFunctions( reg )
     
-    HyperwallManager.initialize()
 
 def executeVistrail( *args, **kwargs ):
     import core.requirements, os
@@ -327,8 +325,7 @@ def executeVistrail( *args, **kwargs ):
     if (app.temp_configuration.interactiveMode and
         not app.temp_configuration.check('spreadsheetDumpCells')): 
         v = app.exec_()
-     
-    HyperwallManager.shutdown()   
+       
     gui.application.stop_application()
     sys.exit(v)
    

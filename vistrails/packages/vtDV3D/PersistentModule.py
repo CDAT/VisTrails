@@ -12,7 +12,6 @@ from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from InteractiveConfiguration import *
 from ColorMapManager import ColorMapManager 
 from db.domain import DBModule, DBAnnotation
-from HyperwallManager import HyperwallManager
 from vtUtilities import *
 import cdms2, cdtime
 ReferenceTimeUnits = "days since 1900-1-1"

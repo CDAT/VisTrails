@@ -14,7 +14,6 @@ from InteractiveConfiguration import *
 from WorkflowModule import WorkflowModule
 if ENABLE_JOYSTICK: from JoystickInterface import *
 else:               ControlEventType = None
-from HyperwallManager import HyperwallManager
 import ModuleStore
 from vtUtilities import *
 import os, math, sys

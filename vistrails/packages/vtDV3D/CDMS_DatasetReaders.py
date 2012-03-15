@@ -10,7 +10,6 @@ import core.modules.module_registry
 from InteractiveConfiguration import *
 from core.modules.vistrails_module import Module, ModuleError
 from WorkflowModule import WorkflowModule 
-from HyperwallManager import HyperwallManager
 from core.utils import getHomeRelativePath, getFullPath
 import ModuleStore
 #from core.vistrail.port_spec import PortSpec

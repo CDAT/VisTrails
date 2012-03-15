@@ -30,16 +30,18 @@ class WorkflowModule( Module ):
         self.pmod.dvCompute( wmod=self )
     
     @classmethod    
-    def forceGetPersistentModule( klass, mid, **args ):         
-        return ModuleStore.forceGetModule(  mid, klass.PersistentModuleClass( mid, **args ) ) 
+    def forceGetPersistentModule( klass, mid, **args ):
+        module = ModuleStore.getModule( mid ) 
+        if not module: module = ModuleStore.forceGetModule(  mid, klass.PersistentModuleClass( mid, **args ) )        
+        return module
 
     @classmethod    
     def getPersistentModule( klass, mid ):            
-        return ModuleStore.forceGetModule(  mid, None ) 
+        return ModuleStore.getModule(  mid ) 
 
     @staticmethod    
     def persistentModule( mid ):            
-        return ModuleStore.forceGetModule(  mid, None ) 
+        return ModuleStore.getModule(  mid ) 
 
     def updatePersistentModule( self ):
         DV3DConfigurationWidget.saveNewConfigurations()            

@@ -119,12 +119,11 @@ class HyperwallManagerSingleton(QtCore.QObject):
             self.client = QiVisClient(  self.deviceName,  hw_server, hw_port, hw_x, hw_y, 1, 1  )
 #            self.client.createTab(  int(dv3d_configuration.hw_displayWidth), int(dv3d_configuration.hw_displayHeight), fullScreen )
 
-    def initialize( self ):
+    def initialize( self, hw_role  ):
         defaults = { 'hw_debug': False, 'hw_resource_path':'', 'hw_device_name': "Hyperwall",  'hw_x':0, 'hw_y':0, 'hw_width':1, 'hw_height':1,
                                      'hw_displayWidth':-1, 'hw_displayHeight':-1, 'hw_nodes':"", 'hw_server':"localhost",  'hw_server_port':50000 }
         datasetConfig, appConfig = getConfiguration( defaults )
         app = gui.application.get_vistrails_application()
-        hw_role = appConfig.hw_role if hasattr( appConfig, 'hw_role' ) else 'global'
         self.processList = []               
                 
         self.deviceName = datasetConfig.get( hw_role, 'hw_device_name' )        

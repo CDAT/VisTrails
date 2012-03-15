@@ -229,6 +229,7 @@ def start_uvcdat_application(optionsDict=None):
     showBuilder = optionsDict.get( 'showBuilder', False )
     VistrailsApplication.uvcdatWindow.setWindowTitle( title )
     if showBuilder: VistrailsApplication.uvcdatWindow.showBuilderWindowActTriggered() 
+    HyperwallManager.initialize( hw_role )      
     if x == True:
         return 0
     else:

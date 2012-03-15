@@ -294,7 +294,7 @@ class QiVisClient(QtCore.QObject):
 
     def processMessage(self, message, socket):
         (sender, tokens) = message
-#        print " ********* CLIENT--> processMessage: %s ********* " % str( tokens )
+        print " ********* CLIENT--> processMessage: %s ********* " % str( tokens )
         tokens = tokens.split( MessageTokenSep )
 #        print " ********* CLIENT--> splitMessage: %s ********* " % str( tokens )
         if len(tokens) == 0: return
