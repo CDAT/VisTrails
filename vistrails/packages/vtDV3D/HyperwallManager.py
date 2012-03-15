@@ -214,7 +214,8 @@ class HyperwallManagerSingleton(QtCore.QObject):
             isButtonRelease = ( event.type() == QtCore.QEvent.MouseButtonRelease ) 
             isLevelingState = ( self.levelingState <> None ) and not isButtonRelease
             sheetTabWidget = getSheetTabWidget()
-            selected_cells = [ screen_pos, ] if ( isLevelingState or isKeyPress ) else sheetTabWidget.getSelectedLocations()
+#            selected_cells = [ screen_pos, ] if ( isLevelingState or isKeyPress ) else sheetTabWidget.getSelectedLocations()
+            selected_cells = sheetTabWidget.getSelectedLocations()
             print " processInteractionEvent, type = %s, leveling = %s, selected_cells = %s" % ( name, str(self.levelingState <> None), str(selected_cells) )
             self.server.processInteractionEvent( self.deviceName, event, screen_dims, selected_cells, camera_pos  ) 
 #            if (event.type() == QtCore.QEvent.MouseButtonPress):
