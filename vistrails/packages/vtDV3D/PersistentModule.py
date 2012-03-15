@@ -9,10 +9,11 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from core.modules.vistrails_module import Module, ModuleError
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
-from InteractiveConfiguration import *
-from ColorMapManager import ColorMapManager 
+from packages.vtDV3D.InteractiveConfiguration import *
+from packages.vtDV3D.ColorMapManager import ColorMapManager 
 from db.domain import DBModule, DBAnnotation
-from vtUtilities import *
+from packages.vtDV3D import HyperwallManager
+from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
 ReferenceTimeUnits = "days since 1900-1-1"
 
@@ -657,7 +658,7 @@ class PersistentModule( QObject ):
         self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, pmod=self, **args )
 
     def addConfigurableGuiFunction(self, name, guiClass, key, **args):
-        isActive = not HyperwallManager.isClient
+        isActive = not HyperwallManager.singleton.isClient
         guiCF = GuiConfigurableFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
 
@@ -812,7 +813,7 @@ class PersistentModule( QObject ):
         if self.ndims == 3: self.getLabelActor().VisibilityOff()
         isLeveling = self.isLeveling()
         if isLeveling: 
-            HyperwallManager.setLevelingState( None )
+            HyperwallManager.singleton.setLevelingState( None )
             self.finalizeConfigurationObserver( self.InteractionState )            
             if self.ndims == 3: self.iren.SetInteractorStyle( self.navigationInteractorStyle )
             self.configuring = False
@@ -1065,7 +1066,8 @@ class PersistentVisualizationModule( PersistentModule ):
 #            print "set3DOutput for class %s" % ( self.__class__.__name__ ) 
              
     def getDownstreamCellModules( self, selectedOnly=False ): 
-        import api, ModuleStore
+        from packages.vtDV3D import ModuleStore
+        import api
         controller = api.get_current_controller()
         moduleIdList = [ self.moduleID ]
         rmodList = []
@@ -1383,7 +1385,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 else:
                     configFunct.open( state, self.isAltMode )
                     
-                HyperwallManager.setLevelingState( state, self.isAltMode )
+                HyperwallManager.singleton.setLevelingState( state, self.isAltMode )
                 self.isAltMode = False 
                     
     def endInteraction( self ):

@@ -7,8 +7,8 @@ from PyQt4 import QtCore, QtGui
 import sys, copy, os, cdms2, md5, imp, traceback
 import numpy as np
 import cdutil, genutil
-from vtUtilities import *
-from CDATTask import CDATTask
+from packages.vtDV3D.vtUtilities import *
+from packages.vtDV3D.CDATTask import CDATTask
 
 enable_user_tasks = False
 

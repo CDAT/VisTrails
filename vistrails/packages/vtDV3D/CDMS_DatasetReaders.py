@@ -7,15 +7,15 @@ import vtk, sys, os, copy, time
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import core.modules.module_registry
-from InteractiveConfiguration import *
+from packages.vtDV3D.InteractiveConfiguration import *
 from core.modules.vistrails_module import Module, ModuleError
-from WorkflowModule import WorkflowModule 
+from packages.vtDV3D.WorkflowModule import WorkflowModule 
 from core.utils import getHomeRelativePath, getFullPath
-import ModuleStore
+from packages.vtDV3D import HyperwallManager, ModuleStore
 #from core.vistrail.port_spec import PortSpec
-from vtUtilities import *
-from PersistentModule import * 
-from ROISelection import ROISelectionDialog
+from packages.vtDV3D.vtUtilities import *
+from packages.vtDV3D.PersistentModule import * 
+from packages.vtDV3D.ROISelection import ROISelectionDialog
 import numpy.ma as ma
 # from vtk.util.misc import vtkGetDataRoot
 # packagePath = os.path.dirname( __file__ ) 
@@ -211,7 +211,7 @@ class CDMSDatasetRecord():
         args1 = {} 
         gridMaker = None
         decimationFactor = 1
-        if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.isServer else decimation[0]+1
+        if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.singleton.isServer else decimation[0]+1
 #        try:
         args1['time'] = timeValue
         if gridBounds[0] < LonMin and gridBounds[0]+360.0<LonMax: gridBounds[0] = gridBounds[0] + 360.0
@@ -332,7 +332,7 @@ class CDMSDatasetRecord():
         gridMaker = None
         decimationFactor = 1
         order = 'xyt' if ( timeBounds == None) else 'xyz'
-        if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.isServer else decimation[0]+1
+        if decimation: decimationFactor = decimation[1]+1 if hyperwallManager.isServer else decimation[0]+1
         try:
             nts = self.dataset['time'].shape[0]
             if timeValue and (nts>1): args1['time'] = timeValue
@@ -377,7 +377,7 @@ class CDMSDatasetRecord():
 #            nodataMask = cdutil.WeightsMaker( source=self.cdmsFile, var=varName,  actions=[ MV2.not_equal ], values=[ nodata_value ] ) if nodata_value else None
             gridMaker = cdutil.WeightedGridMaker( flat=LatMin, flon=LonMin, nlat=int(nRefLat/decimationFactor), nlon=int(nRefLon/decimationFactor), dellat=(refDelLat*decimationFactor), dellon=(refDelLon*decimationFactor) ) # weightsMaker=nodataMask  )                    
                 
-            from CDMS_DatasetReaders import getRelativeTimeValues 
+            from packages.vtDV3D.CDMS_DatasetReaders import getRelativeTimeValues 
             time_values, dt, time_units = getRelativeTimeValues ( cdms2.open( self.cdmsFile ) ) 
             
             vc = cdutil.VariableConditioner( source=self.cdmsFile, var=varName,  cdmsKeywords=args1, weightedGridMaker=gridMaker ) 
@@ -897,8 +897,8 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         self.datasetModule = CDMSDataset()
         
     def clearDataCache(self):
-        from DV3DCell import PM_MapCell3D
-        from CDMS_VariableReaders import PM_CDMSDataReader
+        from packages.vtDV3D.DV3DCell import PM_MapCell3D
+        from packages.vtDV3D.CDMS_VariableReaders import PM_CDMSDataReader
         self.datasetModule.clearDataCache()
         PM_CDMSDataReader.clearCache()
 #        PM_MapCell3D.clearCache()    
@@ -1999,7 +1999,7 @@ class MetadataViewerDialog( QDialog ):
 #        self.emit(SIGNAL('doneConfigure()'))
 #        self.close()
 
-#    from Main import executeVistrail
+#    from packages.vtDV3D.Main import executeVistrail
 #    optionsDict = {  'hw_role'  : 'none' }
 #    try:
 #        executeVistrail( options=optionsDict )

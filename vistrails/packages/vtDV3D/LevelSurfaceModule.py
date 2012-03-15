@@ -12,10 +12,10 @@ from packages.vtk.base_module import vtkBaseModule
 from core.modules.module_registry import get_module_registry
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
-from ColorMapManager import ColorMapManager 
-from InteractiveConfiguration import QtWindowLeveler 
-from vtUtilities import *
-from PersistentModule import *
+from packages.vtDV3D.ColorMapManager import ColorMapManager 
+from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
+from packages.vtDV3D.vtUtilities import *
+from packages.vtDV3D.PersistentModule import *
         
 class PM_LevelSurface(PersistentVisualizationModule):
     """
@@ -249,7 +249,7 @@ class NLevelConfigurationWidget( IVModuleConfigurationDialog ):
         self.connect( self.nLevelCombo, SIGNAL("currentIndexChanged(QString)"), self.updateParameter )  
 
 
-from WorkflowModule import WorkflowModule
+from packages.vtDV3D.WorkflowModule import WorkflowModule
 
 class LevelSurface(WorkflowModule):
     

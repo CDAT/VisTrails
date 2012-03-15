@@ -16,7 +16,7 @@ Created on Feb 29, 2012
 import core.db.io, sys, traceback, api
 import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
-from CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
+from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
 from packages.uvcdat_cdms.init import CDMSVariableOperation, CDMSVariable 
 from core.uvcdat.plot_registry import get_plot_registry
 from core.modules.module_registry import get_module_registry

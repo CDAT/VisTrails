@@ -18,9 +18,9 @@ from core.interpreter.default import get_default_interpreter as getDefaultInterp
 
 from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
 
-from InteractiveConfiguration import QtWindowLeveler 
-from vtUtilities import *
-from PersistentModule import *
+from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
+from packages.vtDV3D.vtUtilities import *
+from packages.vtDV3D.PersistentModule import *
         
 class PM_Gradient(PersistentVisualizationModule):
     """
@@ -49,7 +49,7 @@ class PM_Gradient(PersistentVisualizationModule):
         
         self.set3DOutput( output=self.gradient.GetOutput() )
 
-from WorkflowModule import WorkflowModule
+from packages.vtDV3D.WorkflowModule import WorkflowModule
 
 class Gradient(WorkflowModule):
     

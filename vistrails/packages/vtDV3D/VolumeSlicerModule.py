@@ -12,10 +12,11 @@ from core.modules.module_registry import get_module_registry
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
 from packages.vtk.base_module import vtkBaseModule
-from ColorMapManager import ColorMapManager 
-from WorkflowModule import WorkflowModule 
-from PersistentModule import * 
-from vtUtilities import *
+from packages.vtDV3D.ColorMapManager import ColorMapManager 
+from packages.vtDV3D.WorkflowModule import WorkflowModule 
+from packages.vtDV3D.PersistentModule import * 
+from packages.vtDV3D.vtUtilities import *
+from packages.vtDV3D import HyperwallManager
 VolumeSlicerModules = {}
         
 class PM_VolumeSlicer(PersistentVisualizationModule):
@@ -216,7 +217,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         print " TestObserver: event = %s, " % ( event )
 
     def PickObserver( self, iAxis, caller, event = None ):
-        HyperwallManager.setLevelingState( 'VolumeSlicer.Slicing' )
+        HyperwallManager.singleton.setLevelingState( 'VolumeSlicer.Slicing' )
         if caller.GetCursorDataStatus():     
             image_value = caller.GetCurrentImageValue() 
             cpos = caller.GetCurrentCursorPosition()     
@@ -261,7 +262,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.imageRescale.SetInput( resliceOutput )
         self.updateSliceOutput()
         self.endInteraction()
-        HyperwallManager.setLevelingState( None )
+        HyperwallManager.singleton.setLevelingState( None )
         
         active_irens = self.getActiveIrens()        
         for module in VolumeSlicerModules.values():

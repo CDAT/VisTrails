@@ -12,7 +12,7 @@ Created on Feb 18, 2010
 '''
 import os, time, copy, sys, re, vtk
 from netCDF4 import Dataset
-from vtUtilities import *
+from packages.vtDV3D.vtUtilities import *
 import numpy as np
 import numpy.ma as ma
 localDebug = False

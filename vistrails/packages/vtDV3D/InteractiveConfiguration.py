@@ -11,12 +11,12 @@ from core.vistrail.port import PortEndPoint
 from core.modules.vistrails_module import Module, ModuleError
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, Boolean, Variant
-from ColorMapManager import ColorMapManager 
+from packages.vtDV3D.ColorMapManager import ColorMapManager 
 from core.utils import getHomeRelativePath, getFullPath
-from Main import HyperwallManager
-from CDATTask import deserializeTaskData
+from packages.vtDV3D.CDATTask import deserializeTaskData
+from packages.vtDV3D import HyperwallManager
 from collections import OrderedDict
-from vtUtilities import *
+from packages.vtDV3D.vtUtilities import *
 import cdms2
 
 
@@ -802,7 +802,7 @@ class IVModuleConfigurationDialog( QWidget ):
         command = [ self.name ]
         value = self.getValue()
         command.extend( value )
-        HyperwallManager.processGuiCommand( command  )
+        HyperwallManager.singleton.processGuiCommand( command  )
 
     def startParameter( self, *args ):
         self.emit( GuiConfigurableFunction.start_parameter_signal, self.name, self.getValue() )
@@ -1427,7 +1427,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
     @staticmethod
     def getVariableList( mid ): 
         import api
-        from CDMS_DatasetReaders import CDMSDatasetRecord   
+        from packages.vtDV3D.CDMS_DatasetReaders import CDMSDatasetRecord   
         controller = api.get_current_controller()
         moduleId = mid
         cdmsFile = None
@@ -1597,7 +1597,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             relTimeValue = self.relTimeStart + self.iTimeStep * self.relTimeStep
             print " ** Update Animation, timestep = %d, timeValue = %.3f " % ( self.iTimeStep, relTimeValue )
             displayText = self.getTextDisplay()
-            HyperwallManager.processGuiCommand( ['reltimestep', relTimeValue, displayText ], False  )
+            HyperwallManager.singleton.processGuiCommand( ['reltimestep', relTimeValue, displayText ], False  )
             for module in self.activeModuleList:
                 dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
                 module.updateAnimation( relTimeValue, displayText  )

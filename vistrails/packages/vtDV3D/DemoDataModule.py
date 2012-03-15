@@ -219,7 +219,7 @@ class DemoDataConfigurationWidget(DV3DConfigurationWidget):
 
 
 
-from WorkflowModule import WorkflowModule
+from packages.vtDV3D.WorkflowModule import WorkflowModule
 
 class DemoData(WorkflowModule):
     

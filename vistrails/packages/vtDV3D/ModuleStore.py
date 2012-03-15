@@ -4,7 +4,7 @@ Created on Mar 10, 2011
 @author: tpmaxwel
 '''
 
-from vtUtilities import *   
+from packages.vtDV3D.vtUtilities import *   
 from collections import OrderedDict 
 moduleStoreDatabase = {}
 cells = OrderedDict()

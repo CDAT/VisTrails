@@ -9,8 +9,8 @@ from PyQt4 import QtGui, QtCore
 from core.requirements import check_all_vistrails_requirements
 from gui.requirements import check_pyqt4, MissingRequirement
 from gui.application import VistrailsApplicationSingleton, get_vistrails_application, set_vistrails_application
-from HyperwallManager import HyperwallManager
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
+from packages.vtDV3D import HyperwallManager
 
 def maximizeSpreadsheet():
     spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
@@ -161,9 +161,9 @@ class vtDV3DApplicationSingleton( VistrailsApplicationSingleton ):
 #    hw_role = kwargs.get( 'role', None ) 
 #    node_index = kwargs.get( 'node_index', -1 ) 
 #    full_screen = kwargs.get( 'full_screen', True ) 
-#    HyperwallManager.hw_role = hw_role 
-#    HyperwallManager.node_index = node_index 
-#    HyperwallManager.full_screen = full_screen 
+#    hyperwallManager.hw_role = hw_role 
+#    hyperwallManager.node_index = node_index 
+#    hyperwallManager.full_screen = full_screen 
 #
 #    try:
 #        optionsDict = kwargs.get( 'options', None )
@@ -190,13 +190,13 @@ class vtDV3DApplicationSingleton( VistrailsApplicationSingleton ):
 #    app.uvcdatWindow.setWindowTitle( title )
 #    app.uvcdatWindow.showBuilderWindowActTriggered() 
 #    v = app.exec_()
-#    if hw_role: HyperwallManager.shutdown()      
+#    if hw_role: hyperwallManager.shutdown()      
 #    gui.application.stop_application()
 #    sys.exit(v)
 
 def shutdown():
     print " !! --shutdown-- !! "
-    HyperwallManager.shutdown()      
+    HyperwallManager.singleton.shutdown()      
 
 def start_uvcdat_application(optionsDict=None):
     """Initializes the application singleton."""
@@ -229,7 +229,7 @@ def start_uvcdat_application(optionsDict=None):
     showBuilder = optionsDict.get( 'showBuilder', False )
     VistrailsApplication.uvcdatWindow.setWindowTitle( title )
     if showBuilder: VistrailsApplication.uvcdatWindow.showBuilderWindowActTriggered() 
-    HyperwallManager.initialize( hw_role )      
+    HyperwallManager.singleton.initialize( hw_role )      
     if x == True:
         return 0
     else:

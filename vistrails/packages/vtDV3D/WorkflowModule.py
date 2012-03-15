@@ -9,9 +9,9 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from core.modules.vistrails_module import Module, ModuleError
 from core.modules.module_registry import get_module_registry, ModuleRegistryException   
-import ModuleStore
-from InteractiveConfiguration import DV3DConfigurationWidget
-from vtUtilities import *
+from packages.vtDV3D import ModuleStore
+from packages.vtDV3D.InteractiveConfiguration import DV3DConfigurationWidget
+from packages.vtDV3D.vtUtilities import *
 
 ################################################################################
 

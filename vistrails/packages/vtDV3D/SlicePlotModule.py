@@ -11,11 +11,11 @@ from core.modules.module_registry import get_module_registry
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
 from core.modules.vistrails_module import Module, InvalidOutput, ModuleError
-from ColorMapManager import ColorMapManager 
-from InteractiveConfiguration import QtWindowLeveler 
-from PersistentModule import * 
-from WorkflowModule import WorkflowModule
-from vtUtilities import *
+from packages.vtDV3D.ColorMapManager import ColorMapManager 
+from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
+from packages.vtDV3D.PersistentModule import * 
+from packages.vtDV3D.WorkflowModule import WorkflowModule
+from packages.vtDV3D.vtUtilities import *
 from packages.pylab.figure_cell import MplFigureCellWidget
 from packages.spreadsheet.basic_widgets import SpreadsheetCell 
 from matplotlib.pyplot import figure, show, axes, sci
@@ -24,6 +24,7 @@ from matplotlib.font_manager import FontProperties
 from matplotlib.colors import LinearSegmentedColormap, ListedColormap, Normalize
 from numpy import amin, amax, ravel
 from vtk.util.numpy_support import *
+from packages.vtDV3D import HyperwallManager
 import time
 PlotVersion = 0
         
@@ -57,7 +58,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.drawImageData()
 
     def updateHyperwall(self):
-        HyperwallManager.executeCurrentWorkflow( self.moduleID )
+        HyperwallManager.singleton.executeCurrentWorkflow( self.moduleID )
 
     def formatCoord( self, x, y ):
         numrows, numcols  = self.image_data.shape

@@ -9,7 +9,7 @@ from core.modules.vistrails_module import Module, ModuleError
 import sys, copy, os, cdms2, traceback
 import numpy as np
 import cdutil, genutil
-from vtUtilities import getItem
+from packages.vtDV3D.vtUtilities import getItem
 
 def deserializeTaskData( taskData ):
     taskMap = {}

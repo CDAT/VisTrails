@@ -4,14 +4,14 @@ Created on Mar 22, 2011
 @author: tpmaxwel
 '''
 import vtk, sys, os, copy, time
-from InteractiveConfiguration import *
+from packages.vtDV3D.InteractiveConfiguration import *
 from core.modules.vistrails_module import Module, ModuleError
-from WorkflowModule import WorkflowModule 
+from packages.vtDV3D.WorkflowModule import WorkflowModule 
 from core.vistrail.port_spec import PortSpec
-from vtUtilities import *
-from PersistentModule import * 
-from CDATTaskDefinitions import TaskManager
-from CDATTask import deserializeTaskData
+from packages.vtDV3D.vtUtilities import *
+from packages.vtDV3D.PersistentModule import * 
+from packages.vtDV3D.CDATTaskDefinitions import TaskManager
+from packages.vtDV3D.CDATTask import deserializeTaskData
 import numpy.ma as ma
 from vtk.util.misc import vtkGetDataRoot
 import cdms2, cdtime 

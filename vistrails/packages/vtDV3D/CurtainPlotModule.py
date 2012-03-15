@@ -12,9 +12,9 @@ from packages.vtk.base_module import vtkBaseModule
 from core.modules.module_registry import get_module_registry
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
-from InteractiveConfiguration import QtWindowLeveler 
-from vtUtilities import *
-from PersistentModule import *
+from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
+from packages.vtDV3D.vtUtilities import *
+from packages.vtDV3D.PersistentModule import *
 
 packagePath = os.path.dirname( __file__ )  
 defaultDataDir = os.path.join( packagePath, 'data' )
@@ -240,7 +240,7 @@ class NLevelConfigurationWidget( IVModuleConfigurationDialog ):
 
 
 
-from WorkflowModule import WorkflowModule
+from packages.vtDV3D.WorkflowModule import WorkflowModule
 
 class CurtainPlot(WorkflowModule):
     

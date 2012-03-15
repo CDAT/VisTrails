@@ -12,11 +12,11 @@ from packages.vtk.base_module import vtkBaseModule
 from core.modules.module_registry import get_module_registry
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
-from ColorMapManager import ColorMapManager 
-from InteractiveConfiguration import QtWindowLeveler 
-from vtUtilities import *
-from SimplePlot import GraphWidget, NodeData 
-from PersistentModule import *
+from packages.vtDV3D.ColorMapManager import ColorMapManager 
+from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
+from packages.vtDV3D.vtUtilities import *
+from packages.vtDV3D.SimplePlot import GraphWidget, NodeData 
+from packages.vtDV3D.PersistentModule import *
 
 LegacyAbsValueTransferFunction = 0
 LinearTransferFunction = 1 
@@ -586,7 +586,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             if self.otf_data: self.transferFunctionConfig.updateGraph( self.scalarRange, [ 0.0, 1.0 ], nodeDataList ) 
         self.updatingOTF = False
         
-from WorkflowModule import WorkflowModule
+from packages.vtDV3D.WorkflowModule import WorkflowModule
 
 class VolumeRenderer(WorkflowModule):
     

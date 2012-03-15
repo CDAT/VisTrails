@@ -7,7 +7,7 @@ from PyQt4 import QtCore, QtGui
 import sys, copy, os, argparse, gui, subprocess, socket
 from gui.application import get_vistrails_application
 from packages.spreadsheet.spreadsheet_config import configuration as spreadsheet_configuration
-from vtUtilities import *
+from packages.vtDV3D.vtUtilities import *
 HYPERWALL_SRC_PATH = os.path.join( os.path.dirname(__file__),  'hyperwall')
 
 class HyperwallManagerSingleton(QtCore.QObject):
@@ -76,7 +76,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
 #        print " HyperwallManager--> addCell: %s " % str( ( moduleId, vistrailName, versionName, dimensions ) )
         
     def initialize_from_config( self ):
-        from vtDV3DConfiguration import configuration as dv3d_configuration
+        from packages.vtDV3D.vtDV3DConfiguration import configuration as dv3d_configuration
         app = gui.application.get_vistrails_application()
         app.resource_path = None
         hwConfig = app.temp_configuration
@@ -237,7 +237,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
 #            self.server.processInteractionEvent( self.deviceName, closing_event, self.screen_dims, selected_cells, self.intial_camera_pos  )  
 #            self.opening_event = None      
     
-HyperwallManager = HyperwallManagerSingleton()
+singleton = HyperwallManagerSingleton()
 
     
 def onExecute( ):

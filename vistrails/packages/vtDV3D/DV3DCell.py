@@ -9,13 +9,14 @@ from gui.qt import qt_super
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.spreadsheet.spreadsheet_base import StandardSheetReference, StandardSingleCellSheetReference
 from packages.vtk.vtkcell import QVTKWidget
-from PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
-from InteractiveConfiguration import *
-from WorkflowModule import WorkflowModule
-if ENABLE_JOYSTICK: from JoystickInterface import *
+from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
+from packages.vtDV3D.InteractiveConfiguration import *
+from packages.vtDV3D.WorkflowModule import WorkflowModule
+if ENABLE_JOYSTICK: from packages.vtDV3D.JoystickInterface import *
 else:               ControlEventType = None
-import ModuleStore
-from vtUtilities import *
+from packages.vtDV3D import ModuleStore
+from packages.vtDV3D import HyperwallManager
+from packages.vtDV3D.vtUtilities import *
 import os, math, sys
 
 vmath = vtk.vtkMath()
@@ -192,7 +193,7 @@ class QVTKServerWidget( QVTKClientWidget ):
             cup = cam.GetViewUp()
             camera_pos = (cpos,cfol,cup)
         screen_pos = ( self.location.row, self.location.col )
-        HyperwallManager.processInteractionEvent( name, event, screen_pos, dims, camera_pos ) 
+        HyperwallManager.singleton.processInteractionEvent( name, event, screen_pos, dims, camera_pos ) 
         
 #    def interactionEvent(self, istyle, name):
 #        """ interactionEvent(istyle: vtkInteractorStyle, name: str) -> None
@@ -372,7 +373,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         address = "A1"   
         if self.isClient:            
             cellLocation.sheetReference = StandardSheetReference()
-            cellLocation.sheetReference.sheetName = HyperwallManager.deviceName
+            cellLocation.sheetReference.sheetName = HyperwallManager.singleton.deviceName
         else: 
             address = cell[1] if cell else getItem( self.getInputValue( "cell_location", None ) )
             
@@ -381,7 +382,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             address = address.replace(' ', '').upper()
             cell_coordinates = parse_cell_address( address )
         else:
-            cell_coordinates = HyperwallManager.getCellCoordinatesForModule( moduleId )
+            cell_coordinates = HyperwallManager.singleton.getCellCoordinatesForModule( moduleId )
             if cell_coordinates == None: return None
         cellLocation.col = cell_coordinates[0]
         cellLocation.row = cell_coordinates[1]
@@ -394,8 +395,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def updateHyperwall(self):
         dimensions = self.setCellLocation( self.moduleID )  
         if dimensions:      
-            HyperwallManager.addCell( self.moduleID, self.datasetId, str(0), dimensions )
-            HyperwallManager.executeCurrentWorkflow( self.moduleID )
+            HyperwallManager.singleton.addCell( self.moduleID, self.datasetId, str(0), dimensions )
+            HyperwallManager.singleton.executeCurrentWorkflow( self.moduleID )
 
     def isBuilt(self):
         return ( self.cellWidget <> None )
@@ -538,7 +539,7 @@ class ChartCellConfigurationWidget(DV3DConfigurationWidget):
     def createLayout(self):
         """ createEditor() -> None
         Configure sections
-        """        
+        """ 
 
         titleTab = QWidget()        
         self.tabbedWidget.addTab( titleTab, 'title' )                 
@@ -567,7 +568,7 @@ class ChartCellConfigurationWidget(DV3DConfigurationWidget):
         opacity_layout.addWidget( self.opacitySlider )
         layout.addLayout( opacity_layout )
         
-        sheet_dims = HyperwallManager.getDimensions()
+        sheet_dims = HyperwallManager.singleton.getDimensions()
 
         locationTab = QWidget()        
         self.tabbedWidget.addTab( locationTab, 'cell location' )                 
@@ -892,7 +893,8 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
     def createLayout(self):
         """ createEditor() -> None
         Configure sections
-        """        
+        """   
+             
         basemapTab = QWidget()        
         self.tabbedWidget.addTab( basemapTab, 'base map' )                 
         layout = QVBoxLayout()
@@ -938,7 +940,7 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
         opacity_layout.addWidget( self.opacitySlider )
         layout.addLayout( opacity_layout )
         
-        sheet_dims = HyperwallManager.getDimensions()
+        sheet_dims = HyperwallManager.singleton.getDimensions()
 
         locationTab = QWidget()        
         self.tabbedWidget.addTab( locationTab, 'cell location' )                 

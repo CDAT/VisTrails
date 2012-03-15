@@ -5,7 +5,7 @@ from PyQt4 import QtCore, QtGui
 from PyQt4.QtNetwork import QTcpSocket, QHostAddress, QHostInfo, QAbstractSocket
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from displaywall_tab import DisplayWallSheetTab
-import packages.vtDV3D.ModuleStore as ModuleStore
+from packages.vtDV3D import ModuleStore
 from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.hyperwall.iVisServer.DeviceServer import MessageTokenSep
 

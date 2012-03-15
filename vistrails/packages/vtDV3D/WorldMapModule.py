@@ -7,8 +7,8 @@ Created on Dec 27, 2010
 import ConfigParser
 import numpy as np
 import os, vtk
-from PersistentModule import *
-from WorkflowModule import WorkflowModule 
+from packages.vtDV3D.PersistentModule import *
+from packages.vtDV3D.WorkflowModule import WorkflowModule 
 
 packagePath = os.path.dirname( __file__ )  
 defaultMapDir = os.path.join( packagePath, 'data' )

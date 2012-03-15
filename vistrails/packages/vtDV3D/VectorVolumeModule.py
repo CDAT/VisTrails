@@ -14,10 +14,10 @@ from core.modules.module_registry import get_module_registry
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
 from packages.vtk.base_module import vtkBaseModule
-from ColorMapManager import ColorMapManager 
-from InteractiveConfiguration import QtWindowLeveler 
-from PersistentModule import * 
-from vtUtilities import *
+from packages.vtDV3D.ColorMapManager import ColorMapManager 
+from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
+from packages.vtDV3D.PersistentModule import * 
+from packages.vtDV3D.vtUtilities import *
         
 class PM_VectorVolume(PersistentVisualizationModule):
     """Takes an arbitrary slice of the input data using an implicit cut
@@ -174,7 +174,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
 
 
 
-from WorkflowModule import WorkflowModule
+from packages.vtDV3D.WorkflowModule import WorkflowModule
 
 class VectorVolume(WorkflowModule):
     

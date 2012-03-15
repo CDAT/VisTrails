@@ -6,13 +6,13 @@ Created on Nov 21, 2011
 import vtk, sys, os, copy, time
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-from InteractiveConfiguration import *
+from packages.vtDV3D.InteractiveConfiguration import *
 from core.modules.vistrails_module import Module, ModuleError
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation 
-from WorkflowModule import WorkflowModule 
-from vtUtilities import *
-from PersistentModule import * 
+from packages.vtDV3D.WorkflowModule import WorkflowModule 
+from packages.vtDV3D.vtUtilities import *
+from packages.vtDV3D.PersistentModule import * 
 import cdms2, cdtime, cdutil, MV2 
 PortDataVersion = 0
 
@@ -72,7 +72,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         
     def execute(self, **args ):
         import api
-        from CDMS_DatasetReaders import CDMSDataset
+        from packages.vtDV3D.CDMS_DatasetReaders import CDMSDataset
         cdms_var = self.getInputValue( "variable"  ) 
         if cdms_var:
             self.cdmsDataset = CDMSDataset()

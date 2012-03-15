@@ -70,30 +70,30 @@ def typeMap(name, package=None):
         else:
             return registry.get_descriptor_by_name(package, name).module
 
-from CDMS_DatasetReaders import *   
-from PersistentModule import *
-from vtUtilities import *
-from DV3DCell import *
+from packages.vtDV3D.CDMS_DatasetReaders import *   
+from packages.vtDV3D.PersistentModule import *
+from packages.vtDV3D.vtUtilities import *
+from packages.vtDV3D.DV3DCell import *
 
 def initialize(*args, **keywords):
     import core.modules.module_registry
-    from CDMS_VariableReaders import CDMS_HoffmullerReader, CDMS_VolumeReader, CDMS_ChartDataReader, CDMS_SliceReader, CDMS_VectorReader, CDMS_HoffmullerReaderConfigurationWidget, CDMS_VolumeReaderConfigurationWidget, CDMS_ChartDataConfigurationWidget, CDMS_SliceReaderConfigurationWidget, CDMS_VectorReaderConfigurationWidget 
-    from VolumeSlicerModule import VolumeSlicer
-    from VolumeRenderModule import VolumeRenderer
-    from ParallelCoordinatesModule import ParallelCoordinateViewer
-    from WorldMapModule import WorldFrame
+    from packages.vtDV3D.CDMS_VariableReaders import CDMS_HoffmullerReader, CDMS_VolumeReader, CDMS_ChartDataReader, CDMS_SliceReader, CDMS_VectorReader, CDMS_HoffmullerReaderConfigurationWidget, CDMS_VolumeReaderConfigurationWidget, CDMS_ChartDataConfigurationWidget, CDMS_SliceReaderConfigurationWidget, CDMS_VectorReaderConfigurationWidget 
+    from packages.vtDV3D.VolumeSlicerModule import VolumeSlicer
+    from packages.vtDV3D.VolumeRenderModule import VolumeRenderer
+    from packages.vtDV3D.ParallelCoordinatesModule import ParallelCoordinateViewer
+    from packages.vtDV3D.WorldMapModule import WorldFrame
 #    from DemoDataModule import DemoData, DemoDataConfigurationWidget
-    from InteractiveConfiguration import LayerConfigurationWidget
-    from LevelSurfaceModule import LevelSurface 
-    from CurtainPlotModule import CurtainPlot 
+    from packages.vtDV3D.InteractiveConfiguration import LayerConfigurationWidget
+    from packages.vtDV3D.LevelSurfaceModule import LevelSurface 
+    from packages.vtDV3D.CurtainPlotModule import CurtainPlot 
     from packages.uvcdat_cdms.init import CDMSVariable
-    from ResampleModule import Resample 
-    from CDATUtilitiesModule import CDMS_CDATUtilities, CDATUtilitiesModuleConfigurationWidget
-    from GradientModule import  Gradient
-    from WorkflowModule import WorkflowModule
+    from packages.vtDV3D.ResampleModule import Resample 
+    from packages.vtDV3D.CDATUtilitiesModule import CDMS_CDATUtilities, CDATUtilitiesModuleConfigurationWidget
+    from packages.vtDV3D.GradientModule import  Gradient
+    from packages.vtDV3D.WorkflowModule import WorkflowModule
 #        from packages.pylab.init import MplFigureManager
-    from VectorCutPlaneModule import GlyphArrayCutPlane, StreamlineCutPlane 
-    from VectorVolumeModule import VectorVolume 
+    from packages.vtDV3D.VectorCutPlaneModule import GlyphArrayCutPlane, StreamlineCutPlane 
+    from packages.vtDV3D.VectorVolumeModule import VectorVolume 
     from packages.spreadsheet.basic_widgets import CellLocation
     from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
     import api
