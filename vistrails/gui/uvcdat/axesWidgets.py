@@ -6,6 +6,8 @@ import numpy
 import genutil
 import re
 import cdtime
+import MV2
+from gui.application import get_vistrails_application
 
 pins = {}
 
@@ -660,18 +662,20 @@ class QAxis(QtGui.QWidget):
         define a new variable / tab with the axis' weight values
         """
         var = self.parent.getVar()
-        axisVar = genutil.getAxisWeightByName(var, self.axis.id)
-        axisVar.id = var.id +'_' + self.axis.id + '_weight'
+        _app = get_vistrails_application()
+        w=_app.uvcdatWindow.dockCalculator.widget()
+        le=w.le
+        #axisVar = genutil.getAxisWeightByName(var, self.axis.id)
+        axisVarid = var.id +'_' + self.axis.id + '_weight'
 
         # Generate teaching command string
-        fileID = 'fid2'
-        teachingCommand = "\n## Getting axis %s\n" % self.axis.id
-        teachingCommand += "%s = genutil.getAxisWeightByName(%s[\"%s\"], \"%s\")\n" % (axisVar.id, fileID, var.id, self.axis.id)
-        teachingCommand += "%s.id = \"%s\"\n" % (axisVar.id, axisVar.id)
-
-        # Record teaching commands associate 'get axis weight values' and
-        # define a new variable/tab with only the axis' weight values
-        self.parent.defineVarAxis(axisVar, teachingCommand)
+        fileID = self.parent.cdmsFile.id
+        le.setText("cdmsFile=cdms2.open('%s')" % fileID)
+        w.run_command()
+        le.setText("%s = genutil.getAxisWeightByName(cdmsFile[\"%s\"], \"%s\")\n" % (axisVarid, var.id, self.axis.id))
+        w.run_command()
+        le.setText( "%s.id = \"%s\"\n" % (axisVarid, axisVarid) )
+        w.run_command()
 
     def getAxisValuesEvent(self):
         """ getAxisValuesEvent is called when the user selects 'Get Axis
@@ -679,20 +683,14 @@ class QAxis(QtGui.QWidget):
         define a new variable / tab with the axis' values
         """        
         varID = self.parent.getVar().id
-        axisVar = MV2.array(self.axis)
-        axisVar.setAxis(0, self.axis)
-        axisVar.id = varID +'_' + self.axis.id + '_axis'
-
-        # Generate teaching command string
-        fileID = 'fid2'
-        teachingCommand = "\n## Getting axis %s\n" % self.axis.id
-        teachingCommand += "%s = MV2.array(%s[\"%s\"].getAxisList(axes = \"%s\")[0][:])\n" % (axisVar.id, fileID, varID, self.axis.id)
-        teachingCommand += "%s.setAxis(0, %s[\"%s\"].getAxisList(axes = \"%s\")[0])\n" % (axisVar.id, fileID, varID, self.axis.id)
-        teachingCommand += "%s.id = \"%s\"\n" % (axisVar.id, axisVar.id)
-
-        # Record teaching commands associate 'get axis values' and
-        # define a new variable/tab with only the axis' values        
-        self.parent.defineVarAxis(axisVar, teachingCommand)
+        _app = get_vistrails_application()
+        w=_app.uvcdatWindow.dockCalculator.widget()
+        le=w.le
+        axisVarid = varID +'_' + self.axis.id + '_axis'
+        le.setText("cdmsFile=cdms2.open('%s')" % self.parent.cdmsFile.id)
+        w.run_command()
+        le.setText("%s = MV2.array(cdmsFile['%s'],axes=[cdmsFile['%s'],],id='%s')" % (axisVarid,self.axis.id,self.axis.id,axisVarid))
+        w.run_command()
 
     def setIndexModeEvent(self, indexMode):
         """ setIndexModeEvent(indexMode: bool)
@@ -1021,8 +1019,13 @@ class QAxisList(QtGui.QWidget):
                 self.axisList = self.var.getAxisList()
                 self.grid=self.var.getGrid()
             else:
-                self.axisList = self.cdmsFile[self.var].getAxisList()
-                self.grid=self.cdmsFile[self.var].getGrid()
+                try:
+                    self.axisList = self.cdmsFile[self.var].getAxisList()
+                    self.grid=self.cdmsFile[self.var].getGrid()
+                except:
+                    ## Ok this is probably a simple axis
+                    self.axisList=[self.cdmsFile[self.var],]
+                    self.grid=None
             self.axisOrder = range(len(self.axisList))
 
         self.clear()            

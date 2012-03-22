@@ -11,7 +11,6 @@ import os
 import cdms2
 
 from esgf import QEsgfBrowser
-from commandLineWidget import QCommandLine
 import axesWidgets
 from roiSelector import *
 import uvcdatCommons
@@ -354,10 +353,10 @@ class VariableProperties(QtGui.QDockWidget):
     def updateVariableList(self):
         self.varCombo.clear()
         if self.cdmsFile!=None:
-            # Add Variables sorted based on their dimensions
+            # Add Variables sorted based on their dimensions (most dims first)
             curDim = -1
             for (dim, varId) in sorted([(len(var.listdimnames()), var.id)
-                                        for var in self.cdmsFile.variables.itervalues()]):
+                                        for var in self.cdmsFile.variables.itervalues()])[::-1]:
                 if dim!=curDim:
                     curDim = dim
                     count = self.varCombo.count()
@@ -419,6 +418,7 @@ class VariableProperties(QtGui.QDockWidget):
         self.dimsLayout.addWidget(axisList)
         self.updateVarInfo(axisList)
         
+        
     def updateVarInfo(self, axisList):
         """ Update the text box with the variable's information """
         if axisList is None:
@@ -442,7 +442,6 @@ class VariableProperties(QtGui.QDockWidget):
     def setupEditTab(self,var):
         self.varEditArea.takeWidget()
         self.varEditArea.setWidget(editVariableWidget.editVariableWidget(var,parent=self.parent,root=self.root))
-
         
     def defineVarClicked(self,*args):
         if self.originTabWidget.currentIndex() in [0, 1, 3]:
@@ -524,7 +523,11 @@ class VariableProperties(QtGui.QDockWidget):
                     continue
             cmds += "%s=%s," % (k, repr(kwargs[k]))
         cmds=cmds[:-1]
-        updatedVar = axisList.getVar()(**kwargs)
+        uvar=axisList.getVar()
+        if isinstance(uvar,cdms2.axis.FileAxis):
+            updatedVar = cdms2.MV2.array(uvar)
+        else:
+            updatedVar = uvar(**kwargs)
 
         # Get the variable after carrying out the: def, sum, avg... operations
         updatedVar = axisList.execAxesOperations(updatedVar)
