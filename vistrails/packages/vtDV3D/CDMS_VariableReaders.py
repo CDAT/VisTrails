@@ -409,6 +409,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         if ( roiBounds[1] < 0.0 ) and  ( roiBounds[0] >= 0.0 ): roiBounds[1] = roiBounds[1] + 360.0
                         gridExtent[ iCoord2 ] = int( round( ( roiBounds[0] - values[0] )  / spacing ) )                
                         gridExtent[ iCoord2+1 ] = int( round( ( roiBounds[1] - values[0] )  / spacing ) )
+                        if gridExtent[ iCoord2 ] > gridExtent[ iCoord2+1 ]:
+                            geTmp = gridExtent[ iCoord2+1 ]
+                            gridExtent[ iCoord2+1 ] = gridExtent[ iCoord2 ] 
+                            gridExtent[ iCoord2 ] = geTmp
                         outputExtent[ iCoord2+1 ] = gridExtent[ iCoord2+1 ] - gridExtent[ iCoord2 ]
                         outputOrigin[ iCoord ] = lonOffset + roiBounds[0]
                     roisize = gridExtent[ iCoord2+1 ] - gridExtent[ iCoord2 ] + 1                  

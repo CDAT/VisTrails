@@ -339,6 +339,8 @@ class CDMSDatasetRecord():
         except: pass
         
         if lonBounds <> None:
+            if lonBounds[0] < LonMin: lonBounds[0] = LonMin
+            if lonBounds[1] > LonMax: lonBounds[1] = LonMax
 #            if lonBounds[0] < LonMin and lonBounds[0]+360.0 < LonMax: lonBounds[0] = lonBounds[0] + 360.0
 #            if lonBounds[0] > LonMax and lonBounds[0]-360.0 > LonMin: lonBounds[0] = lonBounds[0] - 360.0
 #            if len( lonBounds ) > 1:
