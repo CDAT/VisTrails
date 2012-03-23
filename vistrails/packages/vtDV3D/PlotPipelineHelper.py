@@ -231,27 +231,36 @@ class DV3DPipelineHelper(PlotPipelineHelper):
                                         plot_type, cell):
         #for now this helper will change the location in place
         #based on the alias dictionary
-        from core.uvcdat.plotmanager import get_plot_manager
+        
+        var_modules = DV3DPipelineHelper.find_modules_by_type(pipeline, 
+                                                              [CDMSVariable,
+                                                               CDMSVariableOperation])
+        
+        # This assumes that the pipelines will be different except for variable 
+        # modules
         controller.change_selected_version(cell.current_parent_version)
-        plot_obj = get_plot_manager().get_plot_by_vistrail_version(plot_type, 
-                                                                   controller.vistrail,
+        plot_obj = DV3DPipelineHelper.get_plot_by_vistrail_version(plot_type, 
+                                                                   controller.vistrail, 
                                                                    controller.current_version)
-        plot_obj.current_parent_version = cell.current_parent_version
-        plot_obj.current_controller = controller
-        cell.plot = plot_obj
+        if plot_obj is not None:
+            plot_obj.current_parent_version = cell.current_parent_version
+            plot_obj.current_controller = controller
+            cell.plot = plot_obj
+            #FIXME: this will always spread the cells in the same row
+            cell_specs = []
+            for j in range(plot_obj.cellnum):
+                cell = plot_obj.cells[j] 
+                location = cell.address_name if cell.address_name else 'location%d' % (j+1)   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
+                cell_spec = "%s%s" % ( chr(ord('A') + col+j ), row+1)
+                cell_specs.append( '%s!%s' % ( location, cell_spec ) )
             
-        #FIXME: this will always spread the cells in the same row
-        for j in range(plot_obj.cellnum):
-            if plot_obj.cells[j].row_name and plot_obj.cells[j].col_name:
-                pipeline.set_alias_str_value(plot_obj.cells[j].row_name, str(row+1))
-                pipeline.set_alias_str_value(plot_obj.cells[j].col_name, str(col+1+j))
-            elif plot_obj.cells[j].address_name:
-                pipeline.set_alias_str_value(plot_obj.cells[j].address_name,
-                                             "%s%s"%(chr(ord('A') + col+j),
-                                                                  row+1))        
-        #this will update the variables
-        for i in range(plot_obj.varnum):
-            cell.variables.append(pipeline.get_alias_str_value(plot_obj.vars[i]))            
+            # Update project controller cell information    
+            cell.variables = []
+            for var in var_modules:
+                cell.variables.append(DV3DPipelineHelper.get_value_from_function(var, 'name'))
+        else:
+            print "Error: Could not find DV3D plot type based on the pipeline"
+            print "Visualizations can't be loaded."            
 
     
     @staticmethod
@@ -274,5 +283,41 @@ class DV3DPipelineHelper(PlotPipelineHelper):
         from gui.uvcdat.plot_configuration import AliasesPlotWidget
         return AliasesPlotWidget(controller,version,plot_obj)
             
-
+    @staticmethod
+    def are_workflows_compatible(vistrail_a, vistrail_b, version_a, version_b):
+        #FIXME:
+        # This assumes that the workflows will be different by at most variable
+        # modules added to the pipeline. If modules can be deleted from original
+        # vistrails, then this function needs to be updated.
+        diff_versions = ((vistrail_a, version_a), (vistrail_b, version_b))
+        diff = core.db.io.get_workflow_diff(*diff_versions)
+        (p1, p2, v1Andv2, heuristicMatch, v1Only, v2Only, paramChanged) = diff
+        if len(v1Only) == 0 and len(v2Only)==0:
+            return True
+        elif len(v2Only) == 0 and len(v1Only) > 0:
+            moduletypes =  (CDMSVariable, CDMSVariableOperation)
+            invalid = []
+            for mid in v1Only:
+                module = p1.modules[mid]
+                desc = module.module_descriptor
+                if not issubclass(desc.module, moduletypes):
+                    invalid.append(module)
+            if len(invalid) == 0:
+                return True
+        return False
     
+    @staticmethod
+    def get_plot_by_vistrail_version(plot_type, vistrail, version):
+        from core.uvcdat.plotmanager import get_plot_manager
+        plots = get_plot_manager()._plot_list[plot_type]
+        vistrail_a = vistrail
+        version_a = version
+        pipeline = vistrail.getPipeline(version)
+        for pl in plots.itervalues():
+            vistrail_b = pl.plot_vistrail
+            version_b = pl.workflow_version
+            if (DV3DPipelineHelper.are_workflows_compatible(vistrail_a, vistrail_b, 
+                                                           version_a, version_b) and
+                len(pipeline.aliases) == len(pl.workflow.aliases)):
+                return pl
+        return None

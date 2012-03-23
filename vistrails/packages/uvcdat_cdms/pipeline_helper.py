@@ -372,7 +372,6 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         and if not it will update the pipeline in place without generating new 
         actions. It will update the cell with the variables and plot types """
         
-        reg = get_module_registry()
         cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, [CellLocation])
         cell_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [SpreadsheetCell]) 
         var_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSVariable,
