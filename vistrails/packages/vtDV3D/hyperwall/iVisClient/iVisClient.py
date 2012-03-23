@@ -22,6 +22,7 @@ class QiVisClient(QtCore.QObject):
         self.timer.setInterval(1000)
         self.timer.start()
         self.socket = QTcpSocket()
+        self.current_pipeline = None
 
         self.server = server # os.environ.get( 'DV3D_HW_SERVER_NAME', server )
         self.serverPort = int(serverPort)
@@ -144,13 +145,15 @@ class QiVisClient(QtCore.QObject):
         if terms[0] == "reltimestep":
             relTimeValue = float( terms[1] )  
             displayText =  terms[2] 
-            for module in self.current_pipeline.module_list:
-                persistentCellModule = ModuleStore.getModule( module.id ) 
-                persistentCellModule.updateAnimation( relTimeValue, displayText  )
+            if self.current_pipeline:
+                for module in self.current_pipeline.module_list:
+                    persistentCellModule = ModuleStore.getModule( module.id ) 
+                    persistentCellModule.updateAnimation( relTimeValue, displayText  )
         else:
-            for module in self.current_pipeline.module_list:
-                persistentCellModule = ModuleStore.getModule( module.id ) 
-                persistentCellModule.updateConfigurationObserver( terms[0], terms[1:] )
+            if self.current_pipeline:
+                for module in self.current_pipeline.module_list:
+                    persistentCellModule = ModuleStore.getModule( module.id ) 
+                    persistentCellModule.updateConfigurationObserver( terms[0], terms[1:] )
 #        if terms[0] == 'colormap':
 #             cmapData = terms[1]
 #             displayText =  terms[2]  
@@ -256,8 +259,9 @@ class QiVisClient(QtCore.QObject):
 
     def getCellModules(self):
         cellModules = []
-        for module in self.current_pipeline.module_list:
-            if ( module.name == "MapCell3D" ): cellModules.append( module )
+        if self.current_pipeline:
+            for module in self.current_pipeline.module_list:
+                if ( module.name == "MapCell3D" ): cellModules.append( module )
         return cellModules
         
     def getCurrentPipeline(self):
@@ -265,10 +269,11 @@ class QiVisClient(QtCore.QObject):
     
     def setCellLocation(self):
         cellModule = None
-        print " Executing Client Workflow, modules: "
-        for module in self.current_pipeline.module_list:
-            print str( module )
-#            if : cellModule = module
+        if self.current_pipeline:
+            print " Executing Client Workflow, modules: "
+            for module in self.current_pipeline.module_list:
+                print str( module )
+    #            if : cellModule = module
 
 
     def executePipeline(self,pipeline):

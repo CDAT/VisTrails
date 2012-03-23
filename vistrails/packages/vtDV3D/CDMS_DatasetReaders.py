@@ -339,6 +339,8 @@ class CDMSDatasetRecord():
         except: pass
         
         if lonBounds <> None:
+            if lonBounds[0] < LonMin: lonBounds[0] = LonMin
+            if lonBounds[1] > LonMax: lonBounds[1] = LonMax
 #            if lonBounds[0] < LonMin and lonBounds[0]+360.0 < LonMax: lonBounds[0] = lonBounds[0] + 360.0
 #            if lonBounds[0] > LonMax and lonBounds[0]-360.0 > LonMin: lonBounds[0] = lonBounds[0] - 360.0
 #            if len( lonBounds ) > 1:
@@ -1003,7 +1005,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             time_range = self.getInputValue( "timeRange"  )
             self.timeRange =[ int(time_range[0]), int(time_range[1]), float(time_range[2]), float(time_range[3])  ] if time_range else None
             roi_data = self.getInputValue( "roi" )
-            self.roi = [ float(sroi) for sroi in roi_data ] 
+            self.roi = [ float(sroi) for sroi in roi_data ] if roi_data else None 
             dsMapData = self.getInputValue( "datasets" ) 
             self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
             self.ref_var = self.getInputValue( "grid"  )
