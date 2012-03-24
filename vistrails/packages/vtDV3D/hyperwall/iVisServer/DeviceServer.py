@@ -545,7 +545,7 @@ class Device:
             x = dimensions[0]
             y = dimensions[1]
             isSelectedCell = cellCoordsInList( y, x, selected_cells )
-            print " Device server -> sendMouseInteractionMessage[%s]: %s " % ( str(isSelectedCell), str( (x,y) ) )
+#            print " Device server -> sendMouseInteractionMessage[%s]: %s " % ( str(isSelectedCell), str( (x,y) ) )
             if isSelectedCell:
                 columnValue = x + 1
                 rowValue = y + 1

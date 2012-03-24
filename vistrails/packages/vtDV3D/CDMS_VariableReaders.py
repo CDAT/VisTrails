@@ -271,7 +271,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             image_data.SetExtent( extent )
             image_data.SetWholeExtent( extent )
             image_data.SetSpacing(  gridSpacing[0], gridSpacing[1], gridSpacing[2] )
-            print "Create Image Data, extent = %s, spacing = %s" % ( str(extent), str(gridSpacing) )
+            print " ********************* Create Image Data, extent = %s, spacing = %s ********************* " % ( str(extent), str(gridSpacing) )
 #            offset = ( -gridSpacing[0]*gridExtent[0], -gridSpacing[1]*gridExtent[2], -gridSpacing[2]*gridExtent[4] )
             imageDataCache[ cachedImageDataName ] = image_data
                 
@@ -420,7 +420,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     gridBounds[ iCoord2 ] = roiBounds[0] if roiBounds else values[0] 
                     gridBounds[ iCoord2+1 ] = (roiBounds[0] + roisize*spacing) if roiBounds else values[ size-1 ]
                 else:                                             
-                    gridSpacing[ iCoord ] = zscale
+                    gridSpacing[ iCoord ] = 1.0
+#                    gridSpacing[ iCoord ] = zscale
                     gridBounds[ iCoord2 ] = values[0]  # 0.0
                     gridBounds[ iCoord2+1 ] = values[ size-1 ] # float( size-1 )
         if gridBounds[ 2 ] > gridBounds[ 3 ]:

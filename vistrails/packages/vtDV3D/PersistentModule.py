@@ -1023,11 +1023,12 @@ class PersistentVisualizationModule( PersistentModule ):
         self.navigationInteractorStyle = None
         self.stereoEnabled = 0
 
-    def setZScale( self, zscale_data ):
+    def setInputZScale( self, zscale_data ):
         if self.input <> None:
             spacing = self.input.GetSpacing()
             ix, iy, iz = spacing
-            sz = ( zscale_data[0] + zscale_data[1] ) / 0.5
+            sz = zscale_data[0]
+#            print " PVM >---------------> Set input zscale: %.2f" % sz
             self.input.SetSpacing( ix, iy, sz )  
             self.input.Modified() 
             return True

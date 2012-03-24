@@ -35,7 +35,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
         self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, units=self.units, bound=False )
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False )
-        self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setZScale, getLevel=self.getScaleBounds )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setInputZScale, getLevel=self.getScaleBounds )
       
     def scaleColormap( self, ctf_data ):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 

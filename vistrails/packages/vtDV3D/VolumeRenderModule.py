@@ -152,13 +152,14 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'functionScale', 'T', setLevel=self.generateOTF, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units, initRange=[ 0.0, 1.0, 1, self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
         self.addConfigurableLevelingFunction( 'opacityScale',  'O', setLevel=self.adjustOpacity, layerDependent=True  )
         self.addConfigurableMethod( 'showTransFunctGraph', self.showTransFunctGraph, 'g' )
-        self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setZScale, getLevel=self.getScaleBounds )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setInputZScale, getLevel=self.getScaleBounds )
     
-    def setZScale( self, zscale_data ):
-        if self.volume <> None:
-            sz = ( zscale_data[0] + zscale_data[1] ) / 0.5
-            self.volume.SetScale( 1.0, 1.0, sz )
-            self.volume.Modified()
+#    def setZScale( self, zscale_data ):
+#        if self.volume <> None:
+#            sz = ( zscale_data[0] + zscale_data[1] ) / 0.5
+#            self.volume.SetScale( 1.0, 1.0, sz )
+#            self.volume.Modified()
+#            print " VR >---------------> Set zscale: %.2f, scale: %s, spacing: %s " % ( sz, str(self.volume.GetScale()), str(self.input.GetSpacing()) )
 
     def getZScale( self ):
         if self.volume <> None:

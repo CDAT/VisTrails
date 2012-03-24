@@ -38,7 +38,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setZScale, getLevel=self.getScaleBounds )
 
     def setZScale( self, zscale_data ):
-        if PersistentVisualizationModule.setZScale( self, zscale_data ):
+        if self.setInputZScale( zscale_data ):
             if self.planeWidget <> None:
                 bounds = list( self.input.GetBounds() ) 
                 self.planeWidget.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
@@ -313,7 +313,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setZScale, getLevel=self.getScaleBounds )
 
     def setZScale( self, zscale_data ):
-        if PersistentVisualizationModule.setZScale( self, zscale_data ):
+        if self.setInputZScale( zscale_data ):
             if self.planeWidget <> None:
                 self.dataBounds = list( self.input.GetBounds() )
                 dataExtents = ( (self.dataBounds[1]-self.dataBounds[0])/2.0, (self.dataBounds[3]-self.dataBounds[2])/2.0, (self.dataBounds[5]-self.dataBounds[4])/2.0 )
@@ -656,7 +656,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setZScale, getLevel=self.getScaleBounds )
 
     def setZScale( self, zscale_data ):
-        if PersistentVisualizationModule.setZScale( self, zscale_data ):
+        if self.setInputZScale( zscale_data ):
             if self.planeWidget <> None:
                 self.dataBounds = list( self.input.GetBounds() )
                 dataExtents = ( (self.dataBounds[1]-self.dataBounds[0])/2.0, (self.dataBounds[3]-self.dataBounds[2])/2.0, (self.dataBounds[5]-self.dataBounds[4])/2.0 )

@@ -328,15 +328,16 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         return False
     
     def syncCamera( self, cpos, cfol, cup ):
-        rens = self.renWin.GetRenderers()
-        rens.InitTraversal()
-        for i in xrange(rens.GetNumberOfItems()):
-            ren = rens.GetNextItem()
-            dcam = ren.GetActiveCamera()
-            if dcam:
-                dcam.SetPosition(cpos)
-                dcam.SetFocalPoint(cfol)
-                dcam.SetViewUp(cup)
+        if self.renWin:
+            rens = self.renWin.GetRenderers()
+            rens.InitTraversal()
+            for i in xrange(rens.GetNumberOfItems()):
+                ren = rens.GetNextItem()
+                dcam = ren.GetActiveCamera()
+                if dcam:
+                    dcam.SetPosition(cpos)
+                    dcam.SetFocalPoint(cfol)
+                    dcam.SetViewUp(cup)
         
 #    def processInteractionEvent(self, istyle, name):
 #        iren = self.renWin.GetInteractor()

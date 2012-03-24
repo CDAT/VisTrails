@@ -59,7 +59,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         del VolumeSlicerModules[ self.moduleID ]
     
     def setZScale( self, zscale_data ):
-        if PersistentVisualizationModule.setZScale( self, zscale_data ):
+        if self.setInputZScale( zscale_data ):
             if self.planeWidgetX <> None:
                 bounds = list( self.input.GetBounds() ) 
                 self.planeWidgetX.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        

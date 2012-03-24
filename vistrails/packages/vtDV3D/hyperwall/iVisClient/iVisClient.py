@@ -223,7 +223,7 @@ class QiVisClient(QtCore.QObject):
         newTab = self.updateCurrentTab()
         widget = self.currentTab.getCellWidget( 0, 0 ) if self.currentTab else None
                   
-        print " ------------- QiVisClient.processEvent: %s-%s, widget: %x  ---------------------" % ( terms[2], terms[3], id(widget) )
+#        print " ------------- QiVisClient.processEvent: %s-%s, widget: %x  ---------------------" % ( terms[2], terms[3], id(widget) )
         sys.stdout.flush()
         
         if terms[2] == "singleClick":
@@ -299,7 +299,7 @@ class QiVisClient(QtCore.QObject):
 
     def processMessage(self, message, socket):
         (sender, tokens) = message
-        print " ********* CLIENT--> processMessage: %s ********* " % str( tokens )
+#        print " ********* CLIENT--> processMessage: %s ********* " % str( tokens )
         tokens = tokens.split( MessageTokenSep )
 #        print " ********* CLIENT--> splitMessage: %s ********* " % str( tokens )
         if len(tokens) == 0: return
