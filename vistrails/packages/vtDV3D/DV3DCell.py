@@ -378,8 +378,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         else: 
             address = cell[1] if cell else getItem( self.getInputValue( "cell_location", None ) )
             
-#        print "Setting Cell Address: %s %s" % ( address, str(cell) )
         if address:
+            print "Setting Cell Address from Input: %s %s" % ( address, str(cell) )
             address = address.replace(' ', '').upper()
             cell_coordinates = parse_cell_address( address )
         else:

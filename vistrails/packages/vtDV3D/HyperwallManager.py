@@ -67,8 +67,12 @@ class HyperwallManagerSingleton(QtCore.QObject):
         if cellData == None:
             for cellIndex in range( self.nCells ):
                 if not cellIndex in self.cellIds: 
-                    return self.getCellCoordinates( cellIndex )
-        else: return cellData[2] 
+                    coords = self.getCellCoordinates( cellIndex )
+                    print "Setting Cell Address from cellIndex(%s): %s" % ( str(cellIndex), str(coords) )
+                    return coords 
+        else: 
+            print "Setting cellData from ModuleId: %s" % ( str(cellData) )
+            return cellData[2] 
         
     def addCell( self, moduleId, vistrailName, versionName, dimensions ):
         self.cells[ moduleId ] = ( vistrailName, versionName, dimensions )
