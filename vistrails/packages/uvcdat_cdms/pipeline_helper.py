@@ -170,7 +170,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             else:
                 # vars[0] is an operation module
                 conn1 = controller.create_connection(vars[0], 'output_var',
-                                                     op_module, 'input_var')
+                                                     op_module, 'input_var1')
                 ops.append(('add', conn1))
             if issubclass(vars[1].module_descriptor.module, CDMSVariable):
                 ops.append(('add', vars[1]))
