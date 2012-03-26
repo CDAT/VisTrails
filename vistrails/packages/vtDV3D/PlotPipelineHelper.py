@@ -249,8 +249,8 @@ class DV3DPipelineHelper(PlotPipelineHelper):
             #FIXME: this will always spread the cells in the same row
             cell_specs = []
             for j in range(plot_obj.cellnum):
-                cell = plot_obj.cells[j] 
-                location = cell.address_name if cell.address_name else 'location%d' % (j+1)   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
+                ccell = plot_obj.cells[j] 
+                location = ccell.address_name if ccell.address_name else 'location%d' % (j+1)   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
                 cell_spec = "%s%s" % ( chr(ord('A') + col+j ), row+1)
                 cell_specs.append( '%s!%s' % ( location, cell_spec ) )
             
