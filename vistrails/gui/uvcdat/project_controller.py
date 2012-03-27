@@ -499,9 +499,13 @@ class ProjectController(QtCore.QObject):
             pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
             var_modules = helper.find_modules_by_type(pipeline, 
                                                       [Variable])
-            op_modules = helper.find_modules_by_type(pipeline, 
+            #this will give me the modules in topological order
+            #so when I try to reconstruct the operations they will be on the
+            #right order
+            op_modules = helper.find_topo_sort_modules_by_types(pipeline, 
                                                      [CDMSVariableOperation])
             op_tuples = []
+            computed_ops = {}
             if len(var_modules) > 0:
                 self.load_variables_from_modules(var_modules, helper)
             if len(op_modules) > 0:
@@ -515,11 +519,20 @@ class ProjectController(QtCore.QObject):
                     op = opm.module_descriptor.module.from_module(opm)
                     opvars = []
                     for mv in mvars:
-                        var = mv.module_descriptor.module.from_module(mv)
-                        var.var = var.to_python()
+                        if mv in computed_ops:
+                            #this means this operation uses another operation that
+                            #was already processed. We need ony to create a new variable
+                            # and associate the computed cdms variable
+                            var =  CDMSVariable(filename=None,name=computed_ops[mv].varname) 
+                            var.var = computed_ops[mv].to_python()
+                        else:
+                            #using a simple variable. Just recreate it
+                            var = mv.module_descriptor.module.from_module(mv)
+                            var.var = var.to_python()
                         opvars.append(var)
                     op.set_variables(opvars)
                     op_tuples.append((opm,op))
+                    computed_ops[opm] = op
                     txt = opm.get_annotation_by_key("__desc__").value
                     info[varname] = (ivars, txt, op.python_command, varname)
                     if (op.axes is not None or op.axesOperations is not None or
