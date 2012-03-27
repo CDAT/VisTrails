@@ -320,6 +320,7 @@ class VCSGMRanges:
         self.rangeLineEdit.setToolTip("The level range values.\ne.g: (10, 20, 30, 50)\nor: ([10,20],[20,30],[30,50])")
         self.colorsLineEdit = target.addLabeledLineEdit('Colors:')
         self.colorsLineEdit.setToolTip("The level color index values. The index colors range\nfrom 0 to 255. For example:\n   Use explicit indices: 16, 32, 48, 64, 80;\n   Use two values to generate index range: 16, 32")
+        self.allBlack = target.addCheckBox("Make All Colors Black",newRow=False)
         if hasattr(self.gm,"fillareaindices"):
             self.patternsLineEdit = target.addLabeledLineEdit('Patterns:')
             self.patternsLineEdit.setToolTip("The level pattern index values. The index pattern range\nfrom 0 to 18.")
@@ -458,7 +459,8 @@ class VCSGMRanges:
             values.insert(0, 0.0)
 
         self.rangeLineEdit.setText(str(values))
-
+        if self.allBlack.isChecked():
+           colors=[1,]
         self.colorsLineEdit.setText(str(colors))
     def clearCustomSettings(self):
         self.rangeLineEdit.setText('')
