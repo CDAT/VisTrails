@@ -172,6 +172,7 @@ class QPreferencesDialog(QtGui.QDialog):
         l=QtGui.QVBoxLayout()
         tab.setLayout(l)
         nc = uvcdatCommons.QFramedWidget("NetCDF Settings")
+        self.netCDF3 = nc.addCheckBox("Generate NetCDF 3 Format Files")
         self.ncShuffle = nc.addCheckBox("Shuffle")
         if cdms2.getNetcdfShuffleFlag():
             self.ncShuffle.setChecked(True)
@@ -182,6 +183,7 @@ class QPreferencesDialog(QtGui.QDialog):
         self.ncDeflateLevel.setTickInterval(1)
         self.ncDeflateLevel.setTickPosition(QtGui.QSlider.TicksAbove)
         self.ncDeflateLevel.setValue(cdms2.getNetcdfDeflateLevelFlag())
+        self.connect(self.netCDF3,QtCore.SIGNAL("stateChanged(int)"),self.nc)
         self.connect(self.ncShuffle,QtCore.SIGNAL("stateChanged(int)"),self.nc)
         self.connect(self.ncDeflate,QtCore.SIGNAL("stateChanged(int)"),self.nc)
         self.connect(self.ncDeflateLevel,QtCore.SIGNAL("valueChanged(int)"),self.nc)
@@ -233,15 +235,24 @@ class QPreferencesDialog(QtGui.QDialog):
             self.aspectCustom.setEnabled(False)
         customizeUVCDAT.defaultAspectRatio=str(self.aspectType.buttonGroup.checkedButton().text())
     def nc(self):
-        if self.ncShuffle.isChecked():
-            cdms2.setNetcdfShuffleFlag(1)
+        if self.netCDF3.isChecked():
+            cdms2.useNetcdf3()
+            self.ncShuffle.setEnabled(False)
+            self.ncDeflate.setEnabled(False)
+            self.ncDeflateLevel.setEnabled(False)
         else:
-            cdms2.setNetcdfShuffleFlag(0)
-        if self.ncDeflate.isChecked():
-            cdms2.setNetcdfDeflateFlag(1)
-        else:
-            cdms2.setNetcdfDeflateFlag(0)
-        cdms2.setNetcdfDeflateLevelFlag(self.ncDeflateLevel.value())
+            self.ncShuffle.setEnabled(True)
+            self.ncDeflate.setEnabled(True)
+            self.ncDeflateLevel.setEnabled(True)
+            if self.ncShuffle.isChecked():
+                cdms2.setNetcdfShuffleFlag(1)
+            else:
+                cdms2.setNetcdfShuffleFlag(0)
+            if self.ncDeflate.isChecked():
+                cdms2.setNetcdfDeflateFlag(1)
+            else:
+                cdms2.setNetcdfDeflateFlag(0)
+            cdms2.setNetcdfDeflateLevelFlag(self.ncDeflateLevel.value())
 
     def saveState(self):
         fnm=os.path.join(os.environ["HOME"],"PCMDI_GRAPHICS","customizeUVCDAT.py")
