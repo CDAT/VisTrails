@@ -394,6 +394,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 varProp.originTabWidget.setCurrentIndex(i)
         varProp.setFloating(True)
         varProp.show()
+        return varProp
                 
     def createToolbar(self):
         #ICONPATH = ":/icons/resources/icons/"

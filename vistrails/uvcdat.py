@@ -48,6 +48,18 @@ if __name__ == '__main__':
         import traceback
         traceback.print_exc()
         sys.exit(255)
+    ## trying to load up file/var
+    print app.uvcdatLoadFileStart,app.uvcdatLoadVariableStart
+    if app.uvcdatLoadFileStart is not None:
+        w = app.uvcdatWindow.dockVariable.widget()
+        var= w.newVariable()
+        var.setFileName(app.uvcdatLoadFileStart)
+        var.updateFile()
+        if app.uvcdatLoadVariableStart is not None:
+            for i in range(var.varCombo.count()):
+                if str(var.varCombo.itemText(i)).split()[0]==app.uvcdatLoadVariableStart:
+                    var.varCombo.setCurrentIndex(i)
+        #var.show()
     if (app.temp_configuration.interactiveMode and
         not app.temp_configuration.check('spreadsheetDumpCells')): 
         v = app.exec_()

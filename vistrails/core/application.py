@@ -166,6 +166,12 @@ The builder window can be accessed by a spreadsheet menu option.")
             default = None,
             help=("Save evolution graph in specified directory without running "
                   "any workflow (only valid in console mode)."))
+        add("-F","--file",
+            help="Open UVCDAT compatible file in add variable dock",
+            action="store",dest="uvcdat_filename")
+        add("--var",
+            help="Load variable from selected file in add variable dock",
+            action="store",dest="uvcdat_var")
         command_line.CommandLineParser.parse_options()
 
     def printVersion(self):
@@ -191,7 +197,11 @@ The builder window can be accessed by a spreadsheet menu option.")
         Read arguments from the command line
         
         """
+        print self
+        print self.__class__
         get = command_line.CommandLineParser().get_option
+        self.uvcdatLoadFileStart = get('uvcdat_filename')
+        self.uvcdatLoadVariableStart = get('uvcdat_var')
         if get('nosplash')!=None:
             self.temp_configuration.showSplash = bool(get('nosplash'))
         if get('debugsignals')!=None:
