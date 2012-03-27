@@ -579,6 +579,7 @@ class CDMSUnaryVariableOperation(CDMSVariableOperation):
     def from_module(module):
         op = CDMSVariableOperation.from_module(module)
         op.__class__ = CDMSUnaryVariableOperation
+        op.var = None
         return op
         
     def to_module(self, controller):
@@ -647,6 +648,8 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
     def from_module(module):
         op = CDMSVariableOperation.from_module(module)
         op.__class__ = CDMSBinaryVariableOperation
+        op.var1 = None
+        op.var2 = None
         return op
     
     def to_module(self, controller, pkg_identifier=None):
@@ -709,6 +712,7 @@ class CDMSNaryVariableOperation(CDMSVariableOperation):
     def from_module(module):
         op = CDMSVariableOperation.from_module(module)
         op.__class__ = CDMSNaryVariableOperation
+        op.vars = []
         return op
     
     def to_module(self, controller, pkg_identifier=None):
