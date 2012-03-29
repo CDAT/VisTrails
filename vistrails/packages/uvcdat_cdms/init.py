@@ -1710,6 +1710,10 @@ def initialize(*args, **keywords):
                     attrs[attr] = 1
                 elif attr == 'line' and attrs[attr] == None:
                     attrs[attr] = 'solid'
+                elif attr == 'markercolor' and attrs[attr] == None:
+                    attrs[attr] = 22
+                elif attr == 'markersize' and attrs[attr] == None:
+                    attrs[attr] = 5
             original_gm_attributes[plot_type][gmname] = InstanceObject(**attrs)
    
     
