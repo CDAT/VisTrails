@@ -19,13 +19,14 @@ class WorkflowModule( Module ):
       
     def __init__( self, **args ):
         Module.__init__(self) 
-        self.pmod = None 
+        self.pmod = None
         
     def __del__( self ):
 #        print " $$$$$$$$$$$$$$$$$$$$$$ deleting class %s $$$$$$$$$$$$$$$$$$$$$$ " % ( self.__class__.__name__ )
         self.pmod.invalidateWorkflowModule( self ) 
 
     def compute(self):
+        DV3DConfigurationWidget.saveNewConfigurations()            
         self.updatePersistentModule()
         self.pmod.dvCompute( wmod=self )
     
@@ -44,7 +45,6 @@ class WorkflowModule( Module ):
         return ModuleStore.getModule(  mid ) 
 
     def updatePersistentModule( self ):
-        DV3DConfigurationWidget.saveNewConfigurations()            
         if not self.pmod: 
             self.pmod = self.__class__.forceGetPersistentModule( self.moduleInfo['moduleId'], pipeline=self.moduleInfo['pipeline'] )
         self.pmod.setWorkflowModule( self )

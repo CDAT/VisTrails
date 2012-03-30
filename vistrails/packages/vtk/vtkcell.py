@@ -233,7 +233,7 @@ class QVTKWidget(QCellWidget):
         j = 0
         for renderer in renderers:
             if renderView==None:
-                vtkInstance = renderer.vtkInstance
+                vtkInstance = renderer.vtkInstance                 
                 renWin.AddRenderer(vtkInstance)
                 self.renderer_maps[vtkInstance] = renderer.moduleInfo['moduleId']
             else:

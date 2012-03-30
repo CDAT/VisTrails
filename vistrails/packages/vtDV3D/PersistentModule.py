@@ -1054,6 +1054,13 @@ class PersistentVisualizationModule( PersistentModule ):
     
     def set3DOutput( self, **args ):  
         portName = args.get( 'name', 'volume' )
+        if not ( ('output' in args) or ('port' in args) ):
+            if self.input <> None: 
+                args[ 'output' ] = self.input
+            elif self.inputModule <> None: 
+                port = self.inputModule.getOutputPort()
+                if port: args[ 'port' ] = port
+                else:    args[ 'output' ] = self.inputModule.getOutput()
         outputModule = AlgorithmOutputModule3D( self.renderer, fieldData=self.fieldData, **args )
         output =  outputModule.getOutput() 
 #        print "Setting 3D output for port %s" % ( portName ) 
@@ -1231,8 +1238,12 @@ class PersistentVisualizationModule( PersistentModule ):
             self.colorBarActor.SetVisibility(0)
             self.renderer.AddActor( self.colorBarActor )
         else:
-            self.colorBarActor.SetLookupTable( self.colormapManager.getDisplayLookupTable() )
-            self.colorBarActor.Modified()
+            if self.colormapManager == None:
+                self.lut = self.colorBarActor.GetLookupTable()
+                self.colormapManager = ColorMapManager( self.lut ) 
+            else:
+                self.colorBarActor.SetLookupTable( self.colormapManager.getDisplayLookupTable() )
+                self.colorBarActor.Modified()
         
 
     def creatTitleActor( self ):

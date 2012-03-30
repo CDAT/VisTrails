@@ -410,8 +410,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 
         if not self.builtCellWidget:
             self.buildWidget()
-            self.renWin.Render() 
-            self.renWin.Render() 
+            if self.renWin: self.renWin.Render() 
    
     def execute(self, **args ):
         if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )

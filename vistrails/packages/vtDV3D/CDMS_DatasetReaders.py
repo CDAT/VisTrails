@@ -524,16 +524,16 @@ class CDMSDataset(Module):
         return None
 
     def setReferenceVariable( self, selected_grid_id ):
-        refVarData = selected_grid_id.split('*')
-        dsid = refVarData[0]
-        varName = refVarData[1].split('(')[0].strip()
-        dsetRec = self.datasetRecs.get( dsid, None )
-        if dsetRec:
-            variable = dsetRec.dataset.variables.get( varName, None )
-            if variable: 
-                self.referenceVariable = "*".join( [ dsid, dsetRec.cdmsFile, varName ] )
-                self.referenceLev = variable.getLevel()
-                pass
+        if selected_grid_id:
+            refVarData = selected_grid_id.split('*')
+            dsid = refVarData[0]
+            varName = refVarData[1].split('(')[0].strip()
+            dsetRec = self.datasetRecs.get( dsid, None )
+            if dsetRec:
+                variable = dsetRec.dataset.variables.get( varName, None )
+                if variable: 
+                    self.referenceVariable = "*".join( [ dsid, dsetRec.cdmsFile, varName ] )
+                    self.referenceLev = variable.getLevel()
             
     def getReferenceDsetId(self):
         if self.referenceVariable == None: return self.datasetRecs.keys()[0]
