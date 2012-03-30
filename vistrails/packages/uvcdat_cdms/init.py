@@ -994,6 +994,7 @@ Please delete unused CDAT Cells in the spreadsheet.")
                             setattr(cgm,k,eval(getattr(plot,k)))
                         else:
                             if getattr(plot,k)!=getattr(cgm,k):
+                                #print "Setting:",k,getattr(plot,k)
                                 setattr(cgm,k,getattr(plot,k))
                         #print k, " = ", getattr(cgm,k)
                             
@@ -1711,9 +1712,11 @@ def initialize(*args, **keywords):
                 elif attr == 'line' and attrs[attr] == None:
                     attrs[attr] = 'solid'
                 elif attr == 'markercolor' and attrs[attr] == None:
-                    attrs[attr] = 22
+                    attrs[attr] = 241
                 elif attr == 'markersize' and attrs[attr] == None:
-                    attrs[attr] = 5
+                    attrs[attr] = 1
+                elif attr == 'marker' and attrs[attr] == None:
+                    attrs[attr] = 'dot'
             original_gm_attributes[plot_type][gmname] = InstanceObject(**attrs)
    
     

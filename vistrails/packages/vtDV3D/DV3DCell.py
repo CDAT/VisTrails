@@ -25,8 +25,8 @@ defaultMapDir = os.path.join( packagePath, 'data' )
 defaultLogoFile = os.path.join( defaultMapDir,  'uvcdat.jpg' )
 defaultMapFile = os.path.join( defaultMapDir,  'earth2k.jpg' )
 defaultMapCut = -180
-defaultMapFile = os.path.join( defaultMapDir,  'world_huge.jpg' )
-defaultMapCut1 = 0
+# defaultMapFile = os.path.join( defaultMapDir,  'world_huge.jpg' )
+# defaultMapCut1 = 0
 SLIDER_MAX_VALUE = 100
 
 def get_coords_from_cell_address( row, col):
@@ -740,6 +740,7 @@ class PM_MapCell3D( PM_DV3DCell ):
         x1 = baseExtent[1]
         newCut = NormalizeLon( self.world_cut )
         delCut = NormalizeLon( self.map_cut - newCut )
+        print "  %%%%%% Roll Map %%%%%%: world_cut=%.1f, map_cut=%.1f, newCut=%.1f " % ( float(self.world_cut), float(self.map_cut), float(newCut) )
         imageLen = x1 - x0 + 1
         sliceSize =  imageLen * ( delCut / 360.0 )
         sliceCoord = int( round( x0 + sliceSize) )        
