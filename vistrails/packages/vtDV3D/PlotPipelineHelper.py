@@ -256,8 +256,11 @@ class DV3DPipelineHelper(PlotPipelineHelper):
             
             # Update project controller cell information    
             cell.variables = []
+            #FIXME: this doesn't work as expected... DV3D should provide a way 
+            #to find the variables connected to a plot module so that only the
+            # operation or variable connected is added.
             for var in var_modules:
-                cell.variables.append(DV3DPipelineHelper.get_value_from_function(var, 'name'))
+                cell.variables.append(DV3DPipelineHelper.get_variable_name_from_module(var))
         else:
             print "Error: Could not find DV3D plot type based on the pipeline"
             print "Visualizations can't be loaded."            
@@ -312,12 +315,26 @@ class DV3DPipelineHelper(PlotPipelineHelper):
         plots = get_plot_manager()._plot_list[plot_type]
         vistrail_a = vistrail
         version_a = version
+        if vistrail_a is None or version_a <=0:
+            return None
         pipeline = vistrail.getPipeline(version)
         for pl in plots.itervalues():
             vistrail_b = pl.plot_vistrail
             version_b = pl.workflow_version
-            if (DV3DPipelineHelper.are_workflows_compatible(vistrail_a, vistrail_b, 
-                                                           version_a, version_b) and
-                len(pipeline.aliases) == len(pl.workflow.aliases)):
-                return pl
+            if vistrail_b is not None and version_b > 0:
+                if (DV3DPipelineHelper.are_workflows_compatible(vistrail_a, vistrail_b, 
+                                                                version_a, version_b) and
+                    len(pipeline.aliases) == len(pl.workflow.aliases)):
+                    return pl
         return None
+    
+    @staticmethod
+    def get_variable_name_from_module(module):
+        desc = module.module_descriptor.module
+        if issubclass(desc, CDMSVariable):
+            result = DV3DPipelineHelper.get_value_from_function(module, "name")
+        elif issubclass(desc, CDMSVariableOperation):
+            result = DV3DPipelineHelper.get_value_from_function(module, "varname")
+        else:
+            result = None
+        return result

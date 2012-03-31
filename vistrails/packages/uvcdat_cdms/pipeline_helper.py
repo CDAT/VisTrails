@@ -209,6 +209,22 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_obj, 
                                    row, col, template=None):
+        """build_plot_pipeline_action(controller: VistrailController,
+                                      version: long,
+                                      var_modules: [list of modules],
+                                      plot_obj: Plot,
+                                      row: int,
+                                      col: int,
+                                      template: str) -> Action 
+        
+        This function will create the complete workflow and add it to the
+        provenance. You should make sure to update the state of the controller
+        so its current_version is version before adding the VisTrails action to 
+        the provenance.
+        row and col contain the position of the cell in the spreadsheet the 
+        workflow should be displayed.
+         
+        """
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
         plot_type = plot_obj.parent
@@ -350,12 +366,14 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         
         # Update project controller cell information
         pipeline = controller.vistrail.getPipeline(action.id)
-        var_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSVariable,
-                                                                         CDMSVariableOperation])
         plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
         cell.variables =[]
-        for var in var_modules:
-            cell.variables.append(CDMSPipelineHelper.get_value_from_function(var, 'name'))
+        for plot in plot_modules:
+            vars = CDMSPipelineHelper.find_variables_connected_to_plot_module(controller, 
+                                                                       pipeline, 
+                                                                       plot.id)
+            for var in vars:
+                cell.variables.append(CDMSPipelineHelper.get_variable_name_from_module(var))
             
         #FIXME: This does not consider if the workflow has more than one plot
         gmName = CDMSPipelineHelper.get_graphics_method_name_from_module(plot_modules[0])
@@ -366,16 +384,23 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     @staticmethod
     def load_pipeline_in_location(pipeline, controller, sheetName, row, col, 
                                  plot_type, cell):
-        """load_pipeline_in_location(pipeline, controller, sheetName, row, col, 
-                                 plot_type, cell) -> None
-        This assumes that the pipeline is already set to run in that location 
-        and if not it will update the pipeline in place without generating new 
-        actions. It will update the cell with the variables and plot types """
+        """load_pipeline_in_location(pipeline: Pipeline, 
+                                     controller: VistrailController,
+                                     sheetName: str, 
+                                     row: int, col: int,
+                                     plot_type:,
+                                     cell: InstanceObject) -> None        
+        This function will load the workflow in another location. It will not
+        update provenance, because provenance already exists. So it will 
+        basically update the CellLocation modules of the workflow with the new
+        locations in place without generating actions.
+        It will also update the cell object with the variables and plot types so
+        this information must also be extracted from the workflow
+         
+        """
         
         cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, [CellLocation])
         cell_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [SpreadsheetCell]) 
-        var_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSVariable,
-                                                                         CDMSVariableOperation])
         plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
         
         # we assume that there is only one CellLocation and one SpreadsheetCell
@@ -389,8 +414,12 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                     
         # Update project controller cell information
         cell.variables = []
-        for var in var_modules:
-            cell.variables.append(CDMSPipelineHelper.get_value_from_function(var, 'name'))
+        for plot in plot_modules:
+            vars = CDMSPipelineHelper.find_variables_connected_to_plot_module(controller, 
+                                                                       pipeline, 
+                                                                       plot.id)
+            for var in vars:
+                cell.variables.append(CDMSPipelineHelper.get_variable_name_from_module(var))
             
         #FIXME: This will return only the first plot type it finds.
         gmName = CDMSPipelineHelper.get_graphics_method_name_from_module(plot_modules[0])
@@ -443,6 +472,13 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         
     @staticmethod
     def build_python_script_from_pipeline(controller, version, plot=None):
+        """build_python_script_from_pipeline(controller, version, plot) -> str
+           
+           This will build the corresponding python script for the pipeline
+           identified by version in the controller. In this implementation,
+           plot is ignored.
+           
+        """
         pipeline = controller.vistrail.getPipeline(version)
         plots = CDMSPipelineHelper.find_plot_modules(pipeline)
         text = "from PyQt4 import QtCore, QtGui\n"
