@@ -215,7 +215,8 @@ class QMenuWidget(QtGui.QWidget):
             #send command to project controller to be stored as provenance
             from api import get_current_project_controller
             prj_controller = get_current_project_controller()
-            prj_controller.calculator_command([v.id], vtdesc, funcnm, newid)
+            vtfuncnm = "%s(%s)"%(funcnm,v.id)
+            prj_controller.calculator_command([v.id], vtdesc, vtfuncnm, newid)
             
         
     def setBounds(self,action):
