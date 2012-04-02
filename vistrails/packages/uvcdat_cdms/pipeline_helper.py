@@ -21,7 +21,7 @@ import api
 
 class CDMSPipelineHelper(PlotPipelineHelper):
     @staticmethod
-    def show_configuration_widget(controller, version, plot_obj=None):
+    def show_configuration_widget(controller, version, plot_objs=[]):
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
         plots = CDMSPipelineHelper.find_plot_modules(pipeline)
         vars = CDMSPipelineHelper.find_modules_by_type(pipeline, 
@@ -207,15 +207,15 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         return (op_module, actions)
                 
     @staticmethod
-    def build_plot_pipeline_action(controller, version, var_modules, plot_obj, 
-                                   row, col, template=None):
+    def build_plot_pipeline_action(controller, version, var_modules, plot_objs, 
+                                   row, col, templates=[]):
         """build_plot_pipeline_action(controller: VistrailController,
                                       version: long,
                                       var_modules: [list of modules],
-                                      plot_obj: Plot,
+                                      plot_objs: [list of Plot objects],
                                       row: int,
                                       col: int,
-                                      template: str) -> Action 
+                                      templates: [list of str]) -> Action 
         
         This function will create the complete workflow and add it to the
         provenance. You should make sure to update the state of the controller
@@ -223,56 +223,100 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         the provenance.
         row and col contain the position of the cell in the spreadsheet the 
         workflow should be displayed.
-         
+        It will create plot overlays based on the list of plot_objs given. 
         """
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
-        plot_type = plot_obj.parent
-        plot_gm = plot_obj.name
+        added_vars = []
         if controller is None:
             controller = api.get_current_controller()
             version = 0L
         reg = get_module_registry()
-        ops = []
-        plot_descriptor = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
-                                       'CDMS' + plot_type)
-        desc = plot_descriptor.module
-        plot_module = controller.create_module_from_descriptor(plot_descriptor)
-        plot_functions =  [('graphicsMethodName', [plot_gm])]
-        if template is not None:
-            plot_functions.append(('template', [template]))
-        initial_values = desc.get_initial_values(plot_gm)
-        for attr in desc.gm_attributes:
-            plot_functions.append((attr,[getattr(initial_values,attr)]))
-            
-        functions = controller.create_functions(plot_module,plot_functions)
-        for f in functions:
-            plot_module.add_function(f)
-        if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
-            ops.append(('add', var_modules[0]))
-        ops.append(('add', plot_module)) 
-        
-        if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
-            conn = controller.create_connection(var_modules[0], 'self',
-                                                plot_module, 'variable')
-        else:
-            conn = controller.create_connection(var_modules[0], 'output_var',
-                                                plot_module, 'variable')
-        ops.append(('add', conn))
-        if len(var_modules) > 1:
-            if issubclass(var_modules[1].module_descriptor.module, CDMSVariable):
-                conn2 = controller.create_connection(var_modules[1], 'self',
-                                                     plot_module, 'variable2')
-                ops.append(('add', var_modules[1]))
-            else:
-                conn2 = controller.create_connection(var_modules[1], 'output_var',
-                                                     plot_module, 'variable')
-            ops.append(('add', conn2))
-             
         cell_module = controller.create_module_from_descriptor(
             reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 'CDMSCell'))
-        cell_conn = controller.create_connection(plot_module, 'self',
+        ops = [('add', cell_module)]
+        for i, plot_obj in enumerate(plot_objs):
+            plot_type = plot_obj.parent
+            plot_gm = plot_obj.name
+            plot_descriptor = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
+                                                         'CDMS' + plot_type)
+            desc = plot_descriptor.module
+            plot_module = controller.create_module_from_descriptor(plot_descriptor)
+            plot_functions =  [('graphicsMethodName', [plot_gm])]
+            if i < len(templates):
+                plot_functions.append(('template', [templates[i]]))
+            elif i >= len(templates) and len(templates) > 0:
+                plot_functions.append(('template', [templates[-1]]))
+
+            initial_values = desc.get_initial_values(plot_gm)
+            for attr in desc.gm_attributes:
+                plot_functions.append((attr,[getattr(initial_values,attr)]))
+            
+            functions = controller.create_functions(plot_module,plot_functions)
+            for f in functions:
+                plot_module.add_function(f)
+        
+            if i < len(var_modules):    
+                if issubclass(var_modules[i].module_descriptor.module, CDMSVariable):
+                    ops.append(('add', var_modules[i]))
+                    added_vars.append(var_modules[i])
+            
+                ops.append(('add', plot_module)) 
+        
+                if issubclass(var_modules[i].module_descriptor.module, CDMSVariable):
+                    conn = controller.create_connection(var_modules[i], 'self',
+                                                plot_module, 'variable')
+                else:
+                    conn = controller.create_connection(var_modules[i], 'output_var',
+                                                plot_module, 'variable')
+                ops.append(('add', conn))
+                if plot_obj.varnum > 1:
+                    if i + 1 < len(var_modules):
+                        idx = i+1
+                    else:
+                        idx = i
+                    if issubclass(var_modules[idx].module_descriptor.module, CDMSVariable):
+                        conn2 = controller.create_connection(var_modules[idx], 'self',
+                                                     plot_module, 'variable2')
+                        if var_modules[idx] not in added_vars:
+                            ops.append(('add', var_modules[idx]))
+                            added_vars.append(var_modules[idx])
+                    else:
+                        conn2 = controller.create_connection(var_modules[idx], 'output_var',
+                                                     plot_module, 'variable')
+                    ops.append(('add', conn2))
+            else:
+                #there are fewer variables than plots. We will use the last
+                #variable in the list
+                if issubclass(var_modules[-1].module_descriptor.module, CDMSVariable):
+                    if var_modules[-1] not in added_vars:
+                        ops.append(('add', var_modules[-1]))
+                        added_vars.append(var_modules[-1])
+                ops.append(('add', plot_module)) 
+        
+                if issubclass(var_modules[-1].module_descriptor.module, CDMSVariable):
+                    conn = controller.create_connection(var_modules[-1], 'self',
+                                                plot_module, 'variable')
+                else:
+                    conn = controller.create_connection(var_modules[-1], 'output_var',
+                                                plot_module, 'variable')
+                ops.append(('add', conn))
+                if plot_obj.varnum > 1:
+                    if issubclass(var_modules[-1].module_descriptor.module, CDMSVariable):
+                        conn2 = controller.create_connection(var_modules[-1], 'self',
+                                                     plot_module, 'variable2')
+                        if var_modules[-1] not in added_vars:
+                            ops.append(('add', var_modules[-1]))
+                            added_vars.append(var_modules[-1])
+                        
+                    else:
+                        conn2 = controller.create_connection(var_modules[-1], 'output_var',
+                                                     plot_module, 'variable')
+                    ops.append(('add', conn2))
+             
+            cell_conn = controller.create_connection(plot_module, 'self',
                                                          cell_module, 'plot')
+            ops.append(('add', cell_conn))
         loc_module = controller.create_module_from_descriptor(
             reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet', 
                                        'CellLocation'))
@@ -282,9 +326,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             loc_module.add_function(f)
         loc_conn = controller.create_connection(loc_module, 'self',
                                                         cell_module, 'Location')
-        ops.extend([('add', cell_module),
-                    ('add', cell_conn),
-                    ('add', loc_module),
+        ops.extend([('add', loc_module),
                     ('add', loc_conn)])
         action = core.db.action.create_action(ops)
         controller.change_selected_version(version)
@@ -375,10 +417,11 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             for var in vars:
                 cell.variables.append(CDMSPipelineHelper.get_variable_name_from_module(var))
             
-        #FIXME: This does not consider if the workflow has more than one plot
-        gmName = CDMSPipelineHelper.get_graphics_method_name_from_module(plot_modules[0])
-        ptype = CDMSPipelineHelper.get_plot_type_from_module(plot_modules[0])
-        cell.plot = get_plot_manager().get_plot(plot_type, ptype, gmName)
+        cell.plots = []
+        for pl_module in plot_modules:
+            gmName = CDMSPipelineHelper.get_graphics_method_name_from_module(pl_module)
+            ptype = CDMSPipelineHelper.get_plot_type_from_module(pl_module)
+            cell.plots.append(get_plot_manager().get_plot(plot_type, ptype, gmName))
         return action
     
     @staticmethod
@@ -421,10 +464,11 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             for var in vars:
                 cell.variables.append(CDMSPipelineHelper.get_variable_name_from_module(var))
             
-        #FIXME: This will return only the first plot type it finds.
-        gmName = CDMSPipelineHelper.get_graphics_method_name_from_module(plot_modules[0])
-        ptype = CDMSPipelineHelper.get_plot_type_from_module(plot_modules[0])
-        cell.plot = get_plot_manager().get_plot(plot_type, ptype, gmName)
+        cell.plots = []
+        for pl_module in plot_modules:
+            gmName = CDMSPipelineHelper.get_graphics_method_name_from_module(pl_module)
+            ptype = CDMSPipelineHelper.get_plot_type_from_module(pl_module)
+            cell.plots.append(get_plot_manager().get_plot(plot_type, ptype, gmName))
         
     @staticmethod
     def update_pipeline_action(controller, version, plot_modules):
@@ -471,12 +515,12 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         return action
         
     @staticmethod
-    def build_python_script_from_pipeline(controller, version, plot=None):
-        """build_python_script_from_pipeline(controller, version, plot) -> str
+    def build_python_script_from_pipeline(controller, version, plot_objs=[]):
+        """build_python_script_from_pipeline(controller, version, plot_objs) -> str
            
            This will build the corresponding python script for the pipeline
            identified by version in the controller. In this implementation,
-           plot is ignored.
+           plot_objs list is ignored.
            
         """
         pipeline = controller.vistrail.getPipeline(version)

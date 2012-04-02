@@ -78,11 +78,14 @@ class PlotPipelineHelper(object):
         return res
     
     @staticmethod
-    def build_plot_pipeline_action(controller, version, var_modules,  plot_obj, row, col, template=None):
+    def build_plot_pipeline_action(controller, version, var_modules,  plot_objs, 
+                                   row, col, templates=[]):
         from packages.uvcdat_cdms.init import CDMSVariableOperation 
         #for now, this helper will generate change parameter actions based on the
         #alias dictionary
         #first set the plot:
+        #assuming that the list of plots has a single plot
+        plot_obj = plot_objs[0] 
         plot_obj.current_parent_version = version
         plot_obj.current_controller = controller
         aliases = {}
@@ -156,7 +159,7 @@ class PlotPipelineHelper(object):
                                                                    controller.current_version)
         plot_obj.current_parent_version = cell.current_parent_version
         plot_obj.current_controller = controller
-        cell.plot = plot_obj
+        cell.plots = [plot_obj]
         
         aliases = {}
         for a in pipeline.aliases:
@@ -203,7 +206,7 @@ class PlotPipelineHelper(object):
                                                                    controller.current_version)
         plot_obj.current_parent_version = cell.current_parent_version
         plot_obj.current_controller = controller
-        cell.plot = plot_obj
+        cell.plots = [plot_obj]
             
         #FIXME: this will always spread the cells in the same row
         for j in range(plot_obj.cellnum):
@@ -220,10 +223,10 @@ class PlotPipelineHelper(object):
 
     
     @staticmethod
-    def build_python_script_from_pipeline(controller, version, plot=None):
+    def build_python_script_from_pipeline(controller, version, plot_objs=[]):
         from api import load_workflow_as_function
         text = "from api import load_workflow_as_function\n"
-        if plot:
+        if len(plot_objs) > 0:
             text += "proj_file = '%s'\n"%controller.get_locator().name
             text += "vis_id = %s\n"%version
             text += "vis = load_workflow_as_function(proj_file, vis_id)\n"
@@ -235,9 +238,10 @@ class PlotPipelineHelper(object):
             return text
     
     @staticmethod
-    def show_configuration_widget(controller, version, plot_obj=None):
+    def show_configuration_widget(controller, version, plot_objs=[]):
         from gui.uvcdat.plot_configuration import AliasesPlotWidget
-        return AliasesPlotWidget(controller,version,plot_obj)
+        #FIXME: This will create the widget for the first plot object
+        return AliasesPlotWidget(controller,version,plot_objs[0])
             
 
     

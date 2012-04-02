@@ -51,6 +51,7 @@ from core.vistrail.controller import VistrailController
 from core.configuration import get_vistrails_configuration
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
+from gui.uvcdat.project_controller_cell import ControllerCell
 
 class ProjectController(QtCore.QObject):
     """ProjecController is the class that interfaces between GUI actions in
@@ -324,15 +325,14 @@ class ProjectController(QtCore.QObject):
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
-                if cell.plot is not None and len(cell.variables) == cell.plot.varnum:
-                    return True
+                return cell.is_ready()
         return False
     
     def cell_has_plot(self, sheetName, row, col):
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
-                if cell.plot is not None:
+                if len(cell.plots) > 0:
                     return True
         return False
     
@@ -394,66 +394,59 @@ class ProjectController(QtCore.QObject):
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
-                if cell.plot:
-                    if len(cell.variables) < cell.plot.varnum:
-                        cell.variables.append(varName)
-                    else:
-                        cell.variables.pop()
-                        cell.variables.append(varName)
-                        self.reset_workflow(cell) 
-                else:
-                    #replace the variable
-                    cell.variables = [varName]
-                self.update_variable(sheetName,row,col)
+                if cell.is_ready():
+                    self.reset_workflow(cell)
+                cell.add_variable(varName)
+                self.check_update_cell(sheetName,row,col)
             else:
-                self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[varName],
-                                                                      plot=None,
-                                                                      template=None,
+                self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[varName],
+                                                                      plots=[],
+                                                                      templates=[],
                                                                       current_parent_version=0L)
         else:
             self.sheet_map[sheetName] = {}
-            self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[varName],
-                                                                      plot=None,
-                                                                      template=None,
-                                                                      current_parent_version=0L)
+            self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[varName],
+                                                                  plots=[],
+                                                                  templates=[],
+                                                                  current_parent_version=0L)
     def template_was_dropped(self, info):
-        """variable_was_dropped(info: (varName, sheetName, row, col) """
+        """template_was_dropped(info: (varName, sheetName, row, col) """
         (template, sheetName, row, col) = info
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
-                cell.template = template
-                if self.is_cell_ready(sheetName, row, col):
+                cell.add_template(template)
+                if cell.is_ready():
                     self.reset_workflow(cell)
-                self.update_template(sheetName,row,col)
+                self.check_update_cell(sheetName,row,col)
             else:
-                self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[],
-                                                                      plot=None,
-                                                                      template=template,
+                self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
+                                                                      plots=[],
+                                                                      templates=[template],
                                                                       current_parent_version=0L)
         else:
             self.sheet_map[sheetName] = {}
-            self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[],
-                                                                      plot=None,
-                                                                      template=template,
-                                                                      current_parent_version=0L)        
+            self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
+                                                                  plots=[],
+                                                                  templates=[template],
+                                                                  current_parent_version=0L)        
     def vis_was_dropped(self, info):
         """vis_was_dropped(info: (controller, version, sheetName, row, col) """
         (controller, version, sheetName, row, col, plot_type) = info
         
         if sheetName in self.sheet_map:
             if (row,col) not in self.sheet_map[sheetName]:
-                self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[],
-                                                                      plot=None,
-                                                                      template=None,
+                self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
+                                                                      plots=[],
+                                                                      templates=[],
                                                                       current_parent_version=0L)
         else:
-            self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[],
-                                                                  plot=None,
-                                                                  template=None,
+            self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
+                                                                  plots=[],
+                                                                  templates=[],
                                                                   current_parent_version=0L)
         cell = self.sheet_map[sheetName][(row,col)]
-        if cell.plot is not None and len(cell.variables) > 0:
+        if cell.is_ready():
             self.reset_workflow(cell)
         
         helper = self.plot_manager.get_plot_helper(plot_type)
@@ -495,7 +488,7 @@ class ProjectController(QtCore.QObject):
             from packages.uvcdat.init import Variable
             from packages.uvcdat_pv.init import PVVariable
             from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
-            helper = self.plot_manager.get_plot_helper(cell.plot.package)
+            helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
             pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
             var_modules = helper.find_modules_by_type(pipeline, 
                                                       [Variable])
@@ -550,30 +543,30 @@ class ProjectController(QtCore.QObject):
                 #when all workflows are updated to include the variable modules.
                 #they will be included in the case above. For now we need to 
                 #construct the variables based on the alias values (Emanuele)
-                if cell.plot.package == "PVClimate":
+                if cell.plots[0].package == "PVClimate":
                     for i in range(len(cell.variables)):
-                        filename = pipeline.get_alias_str_value(cell.plot.files[i])
-                        varname = pipeline.get_alias_str_value(cell.plot.vars[i])
+                        filename = pipeline.get_alias_str_value(cell.plots[0].files[i])
+                        varname = pipeline.get_alias_str_value(cell.plots[0].vars[i])
                         if varname not in self.defined_variables:
                             var = PVVariable(filename=filename, name=varname)
                             self.defined_variables[varname] = var
                             self.emit_defined_variable(var)
-                if cell.plot.package == "DV3D":
+                if cell.plots[0].package == "DV3D":
                     aliases = {}
                     for a in pipeline.aliases:
                         aliases[a] = pipeline.get_alias_str_value(a)
                             
-                    if cell.plot.serializedConfigAlias:
-                        cell.plot.unserializeAliases(aliases)
+                    if cell.plots[0].serializedConfigAlias:
+                        cell.plots[0].unserializeAliases(aliases)
                         
                     for i in range(len(cell.variables)):
-                        filename = aliases[ cell.plot.files[i] ]
+                        filename = aliases[ cell.plots[0].files[i] ]
                         if not os.path.isfile(filename):
                             filename = aliases.get( "%s.url" % cell.plot.files[i], filename )
-                        varname = aliases[cell.plot.vars[i]]
+                        varname = aliases[cell.plots[0].vars[i]]
                         axes = None
-                        if len(cell.plot.axes) > i:
-                            axes = aliases[cell.plot.axes[i]]
+                        if len(cell.plots[0].axes) > i:
+                            axes = aliases[cell.plots[0].axes[i]]
                         if varname not in self.defined_variables:
                             var =  CDMSVariable(filename=filename, 
                                                 name=varname, axes=axes)
@@ -586,8 +579,8 @@ class ProjectController(QtCore.QObject):
                 cell = self.sheet_map[sheetName][(row,col)]
                 self.reset_workflow(cell)
                 cell.variables = []
-                cell.plot = None
-                cell.template = None
+                cell.plots = []
+                cell.templates = []
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col)
                 self.update_plot_configure(sheetName, row, col)
 
@@ -603,20 +596,20 @@ class ProjectController(QtCore.QObject):
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
-                if cell.plot is not None and len(cell.variables) > 0:
-                    self.reset_workflow(cell) 
-                self.sheet_map[sheetName][(row,col)].plot = plot
-                self.update_plot(sheetName,row,col)
+                if cell.is_ready():
+                    self.reset_workflow(cell)
+                self.sheet_map[sheetName][(row,col)].plots.append(plot)
+                self.check_update_cell(sheetName,row,col)
             else:
-                self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[],
-                                                                      plot=plot,
-                                                                      template=None,
+                self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
+                                                                      plots=[plot],
+                                                                      templates=[],
                                                                       current_parent_version=0L)
         else:
             self.sheet_map[sheetName] = {}
-            self.sheet_map[sheetName][(row,col)] = InstanceObject(variables=[],
-                                                                  plot=plot,
-                                                                  template=None,
+            self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
+                                                                  plots=[plot],
+                                                                  templates=[],
                                                                   current_parent_version=0L)
     
     def reset_workflow(self, cell):
@@ -630,7 +623,7 @@ class ProjectController(QtCore.QObject):
         
     def request_plot_execution(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
-        if cell.plot is not None:
+        if cell.is_ready():
             self.execute_plot(cell.current_parent_version)
             
     def execute_plot(self, version):
@@ -651,7 +644,7 @@ class ProjectController(QtCore.QObject):
     def request_plot_configure(self, sheetName, row, col):
         from gui.uvcdat.plot import PlotProperties
         cell = self.sheet_map[sheetName][(row,col)]
-        if cell.plot is not None:
+        if len(cell.plots) > 0:
             widget = self.get_plot_configuration(sheetName,row,col)
             plot_prop = PlotProperties.instance()
             plot_prop.set_controller(self)
@@ -665,7 +658,7 @@ class ProjectController(QtCore.QObject):
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
         plot_prop = PlotProperties.instance()
-        if cell is not None and cell.plot is not None:
+        if cell is not None and len(cell.plots) > 0:
             widget = self.get_plot_configuration(sheetName,row,col)
             plot_prop.set_controller(self)
             plot_prop.updateProperties(widget, sheetName,row,col)
@@ -676,11 +669,11 @@ class ProjectController(QtCore.QObject):
     def get_python_script(self, sheetName, row, col):
         script = None
         cell = self.sheet_map[sheetName][(row,col)]
-        if cell.plot is not None:
-            helper = self.plot_manager.get_plot_helper(cell.plot.package)
+        if len(cell.plots) > 0:
+            helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
             script = helper.build_python_script_from_pipeline(self.vt_controller, 
                                                               cell.current_parent_version, 
-                                                              cell.plot)
+                                                              cell.plots)
         return script
         
     def request_plot_source(self, sheetName, row, col):
@@ -695,24 +688,16 @@ class ProjectController(QtCore.QObject):
          
     def get_plot_configuration(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
-        helper = self.plot_manager.get_plot_helper(cell.plot.package)
+        helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
         return helper.show_configuration_widget(self, 
                                                 cell.current_parent_version,
-                                                cell.plot)
+                                                cell.plots)
         
-    def update_variable(self, sheetName, row, col):
+    def check_update_cell(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
-        if cell.plot is not None and len(cell.variables) == cell.plot.varnum:
+        if cell.is_ready():
             self.update_cell(sheetName, row, col)
-            
-    def update_template(self, sheetName, row, col):
-        self.update_variable(sheetName, row, col)
-            
-    def update_plot(self, sheetName, row, col):
-        cell = self.sheet_map[sheetName][(row,col)]
-        if len(cell.variables) == cell.plot.varnum:
-            self.update_cell(sheetName, row, col)
-
+        
     def update_cell(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
         def get_var_module(varname):
@@ -746,11 +731,10 @@ class ProjectController(QtCore.QObject):
                 return varm
                         
         vars = []
-        for i in range(cell.plot.varnum):
-            vars.append(cell.variables[i])
+        for v in cell.variables:
+            vars.append(v)
         
-        if (cell.plot is not None and
-            len(cell.variables) == cell.plot.varnum):
+        if len(cell.plots) > 0 and cell.has_enough_variables():
             var_modules = []
             for var in vars:
                 res = get_var_module(var)
@@ -759,15 +743,15 @@ class ProjectController(QtCore.QObject):
             # plot_module = plot.to_module(self.vt_controller)
             self.update_workflow(var_modules, cell, sheetName, row, col)
             self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, 
-                      None, cell.plot.package, cell.current_parent_version)
+                      None, cell.plots[0].package, cell.current_parent_version)
             
     def update_workflow(self, var_modules, cell, sheetName, row, column):
-        helper = self.plot_manager.get_plot_helper(cell.plot.package)
-        print cell.template
+        #Assuming that all plots in a cell are from the same package
+        helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
         action = helper.build_plot_pipeline_action(self.vt_controller, 
                                                    cell.current_parent_version, 
-                                                   var_modules, cell.plot,
-                                                   row, column, cell.template)
+                                                   var_modules, cell.plots,
+                                                   row, column, cell.templates)
         #print '### setting row/column:', row, column
         #notice that at this point the action was already performed by the helper
         # we need only to update the current parent version of the cell and 
@@ -780,15 +764,6 @@ class ProjectController(QtCore.QObject):
                 self.execute_plot(cell.current_parent_version)
                 self.update_plot_configure(sheetName, row, column)
                 
-        
-        #pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
-        #print "Controller changed ", self.vt_controller.changed
-        #controller = VistrailController()
-        #controller.set_vistrail(self.vt_controller.vistrail,
-        #                        self.vt_controller.locator)
-        #controller.change_selected_version(cell.current_parent_version)
-        #(results, _) = controller.execute_current_workflow()
-
     
     def plot_properties_were_changed(self, sheetName, row, col, action):
         if not action:
@@ -800,120 +775,6 @@ class ProjectController(QtCore.QObject):
                 if get_vistrails_configuration().uvcdat.autoExecute:
                     self.execute_plot(cell.current_parent_version)
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
-                      None, None, cell.plot.package, cell.current_parent_version)
-        
-    def writePipelineToCurrentVistrail(self, aliases):
-        """writePipelineToVistrail(aliases: dict) -> None 
-        It will compute necessary actions and add to the current vistrail, 
-        starting at self.parent_version. In the case self.parent_version
-        does not contain a valid workflow, we will start from the root with
-        a new pipeline.
-        
-        """
-        #print self.vt_controller
-        if self.vt_controller is None:
-            self.vt_controller = api.get_current_controller()
-            self.current_parent_version = 0L
-        else:
-            if self.current_parent_version > 0L:
-                pipeline = self.vt_controller.vistrail.getPipeline(self.current_parent_version)
-                if len(pipeline.aliases) >= len(self.workflow_template.aliases):
-                    paliases = set(pipeline.aliases.keys())
-                    waliases = set(self.workflow_template.aliases.keys())
-                    if len(waliases - paliases) != 0:
-                        self.current_parent_version = 0
-        # print "writePipelineToCurrentVistrail: controller ", self.vt_controller
-        #print "version ", self.current_parent_version 
-        if self.current_parent_version == 0L:
-            #create actions and paste them in current vistrail
-            vistrail = self.vt_controller.vistrail
-            if vistrail:
-                newid = self.addPipelineAction(self.workflow_template,
-                                               self.vt_controller,
-                                               vistrail, 
-                                               self.current_parent_version)
-                #newtag = self.name
-                #count = 1
-                #while vistrail.hasTag(newtag):
-                #    newtag = "%s %s"%(self.name, count)
-                #    count += 1 
-                #vistrail.addTag(newtag, newid)
-                self.current_parent_version = newid
-                
-        #now we update pipeline with current parameter values
-        pipeline = self.vt_controller.vistrail.getPipeline(self.current_parent_version)
-        #self.addMergedAliases( aliases, pipeline )
-        newid = self.addParameterChangesFromAliasesAction(pipeline, 
-                                        self.vt_controller, 
-                                        self.vt_controller.vistrail, 
-                                        self.current_parent_version, aliases)
-        self.current_parent_version = newid
-            
-                
-    def applyChanges(self, aliases):
-#        print "applyChanges"
-        self.writePipelineToCurrentVistrail(aliases)
-        pipeline = self.vt_controller.vistrail.getPipeline(self.current_parent_version)
-        #print "Controller changed ", self.vt_controller.changed
-        controller = VistrailController()
-        controller.set_vistrail(self.vt_controller.vistrail,
-                                self.vt_controller.locator)
-        controller.change_selected_version(self.current_parent_version)
-        (results, _) = controller.execute_current_workflow()
-        
-    def addPipelineAction(self, pipeline, controller, vistrail, 
-                             parent_version):
-        """addPipelineAction(pipeline: Pipeline, controller: VistrailController,
-                             vistrail: Vistrail, parent_version: long) -> long
-        
-        """
-        #print "addPipelineAction(%s,%s,%s,%s)"%(pipeline, controller, vistrail, parent_version)
-        id_remap = {}
-        action = core.db.action.create_paste_action(pipeline,
-                                                    vistrail.idScope, 
-                                                    id_remap)
-                
-        vistrail.add_action(action, parent_version, 
-                            controller.current_session)
-        controller.set_changed(True)
-        controller.recompute_terse_graph()
-        controller.invalidate_version_tree()
-        #print "will return ", action.id
-        return action.id
-        #print results[0]
-        
-    def addParameterChangesFromAliasesAction(self, pipeline, controller, vistrail, parent_version, aliases):
-        param_changes = []
-        newid = parent_version
-        #print "addParameterChangesFromAliasesAction()"
-        #print "Aliases: %s " % str( aliases )
-        #print "Pipeline Aliases: %s " % str( pipeline.aliases )
-        aliasList = aliases.iteritems()
-        for k,value in aliasList:
-            alias = pipeline.aliases.get(k,None) # alias = (type, oId, parentType, parentId, mId)
-            if alias:
-                module = pipeline.modules[alias[4]]
-                function = module.function_idx[alias[3]]
-                old_param = function.parameter_idx[alias[1]]
-                #print alias, module, function, old_param
-                if old_param.strValue != value:
-                    new_param = VistrailController.update_parameter(controller, 
-                                                                    old_param, 
-                                                                    value)
-                    if new_param is not None:
-                        op = ('change', old_param, new_param, 
-                              function.vtType, function.real_id)
-                        param_changes.append(op)
-#                        print "Added parameter change for alias=%s, value=%s" % ( k, value  )
-                    else:
-                        debug.warning("CDAT Package: Change parameter %s in widget %s was not generated"%(k, self.name))
-            else:
-                debug.warning( "CDAT Package: Alias %s does not exist in pipeline" % (k) )
-        if len(param_changes) > 0:
-            action = core.db.action.create_action(param_changes)
-            vistrail.add_action(action, parent_version, controller.current_session)
-            controller.set_changed(True)
-            controller.recompute_terse_graph()
-            controller.invalidate_version_tree()
-            newid = action.id
-        return newid
+                      None, None, cell.plots[0].package, cell.current_parent_version)     
+   
+    

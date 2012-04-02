@@ -97,12 +97,14 @@ class DV3DPipelineHelper(PlotPipelineHelper):
 #        return action
      
     @staticmethod
-    def build_plot_pipeline_action(controller, version, var_modules, plot_obj, row, col, template=None):
+    def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col, templates=[]):
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
         controller.change_selected_version(version)
 #        print "build_plot_pipeline_action[%d,%d], version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
 #        print " --> plot_modules = ",  str( controller.current_pipeline.modules.keys() )
 #        print " --> var_modules = ",  str( [ var.id for var in var_modules ] )
+        #Considering that plot_objs has a single plot_obj
+        plot_obj = plot_objs[0]
         plot_obj.current_parent_version = version
         plot_obj.current_controller = controller
         aliases = {}
@@ -191,7 +193,7 @@ class DV3DPipelineHelper(PlotPipelineHelper):
                                                                    controller.current_version)
         plot_obj.current_parent_version = cell.current_parent_version
         plot_obj.current_controller = controller
-        cell.plot = plot_obj
+        cell.plots = [plot_obj]
         
         aliases = {}
         for a in pipeline.aliases:
@@ -245,7 +247,7 @@ class DV3DPipelineHelper(PlotPipelineHelper):
         if plot_obj is not None:
             plot_obj.current_parent_version = cell.current_parent_version
             plot_obj.current_controller = controller
-            cell.plot = plot_obj
+            cell.plots = [plot_obj]
             #FIXME: this will always spread the cells in the same row
             cell_specs = []
             for j in range(plot_obj.cellnum):
@@ -267,10 +269,10 @@ class DV3DPipelineHelper(PlotPipelineHelper):
 
     
     @staticmethod
-    def build_python_script_from_pipeline(controller, version, plot=None):
+    def build_python_script_from_pipeline(controller, version, plot_objs=[]):
         from api import load_workflow_as_function
         text = "from api import load_workflow_as_function\n"
-        if plot:
+        if len(plot_objs) > 0:
             text += "proj_file = '%s'\n"%controller.get_locator().name
             text += "vis_id = %s\n"%version
             text += "vis = load_workflow_as_function(proj_file, vis_id)\n"
@@ -280,11 +282,6 @@ class DV3DPipelineHelper(PlotPipelineHelper):
             for line in lines:
                 text += "# %s\n"%line                 
             return text
-    
-    @staticmethod
-    def show_configuration_widget(controller, version, plot_obj=None):
-        from gui.uvcdat.plot_configuration import AliasesPlotWidget
-        return AliasesPlotWidget(controller,version,plot_obj)
             
     @staticmethod
     def are_workflows_compatible(vistrail_a, vistrail_b, version_a, version_b):
