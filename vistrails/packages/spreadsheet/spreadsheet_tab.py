@@ -872,6 +872,8 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             if (row!=-1 and col!=-1):
                 self.emit(QtCore.SIGNAL("dropped_visualization"), 
                           (controller, versionId, sheetName, row, col, plot_type))
+                self.sheet.selectCell(row, col, False)
+
             
         elif mimeData.hasFormat("definedVariables"):
             varName = str(mimeData.text()).split()[1]
@@ -885,7 +887,8 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             self.emit(QtCore.SIGNAL("dropped_variable"), (varName, sheetName, 
                                                           row, col))
             self.droppedVariable(varName, row, col)
-            
+            self.sheet.selectCell(row, col, False)
+
         elif mimeData.hasFormat("plotType"):
             if hasattr(mimeData, 'items') and len(mimeData.items) == 1:
                 event.setDropAction(QtCore.Qt.CopyAction)
@@ -898,6 +901,8 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
                 self.emit(QtCore.SIGNAL("dropped_plot"), (item.plot, 
                                                           sheetName, row, col))
                 self.droppedPlot(item.plot, row, col)
+                self.sheet.selectCell(row, col, False)
+                
         elif (hasattr(mimeData, 'version') and
             hasattr(mimeData, 'controller')):
             event.accept()
@@ -919,6 +924,8 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
                 sheetName = str(self.tabWidget.tabText(self.tabWidget.indexOf(self)))
                 self.emit(QtCore.SIGNAL("dropped_template"), (template, 
                                                           sheetName, row, col))
+                self.sheet.selectCell(row, col, False)
+
         else:
             event.ignore()
 
