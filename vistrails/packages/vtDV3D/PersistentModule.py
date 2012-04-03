@@ -702,6 +702,7 @@ class PersistentModule( QObject ):
                 configFunct.start( self.InteractionState, x, y )
                 if self.ndims == 3: 
                     self.iren.SetInteractorStyle( self.configurationInteractorStyle )
+                    print " ~~~~~~~~~ Set Interactor Style: Configuration  ~~~~~~~~~  "
                     self.getLabelActor().VisibilityOn()
     
     def isActive( self ):
@@ -812,10 +813,13 @@ class PersistentModule( QObject ):
     def finalizeLeveling( self ):
         if self.ndims == 3: self.getLabelActor().VisibilityOff()
         isLeveling = self.isLeveling()
+        print " ~~~~~~ Finalize Leveling: isLeveling = %s, ndims = %d " % ( str( isLeveling ), self.ndims )
         if isLeveling: 
-            HyperwallManager.singleton.setLevelingState( None )
+            HyperwallManager.singleton.setInteractionState( None )
             self.finalizeConfigurationObserver( self.InteractionState )            
-            if self.ndims == 3: self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+            if (self.ndims == 3) and self.iren: 
+                self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+                print " ~~~~~~~~~ Set Interactor Style: Navigation ~~~~~~~~~ "
             self.configuring = False
             self.InteractionState = None
         return isLeveling
@@ -823,7 +827,7 @@ class PersistentModule( QObject ):
     def isLeveling( self ):
         if self.InteractionState <> None: 
             configFunct = self.configurableFunctions[ self.InteractionState ]
-            if configFunct.type == 'leveling':
+            if (configFunct.type == 'leveling') or (configFunct.type == 'generic'):
                 return True
         return False
     
@@ -1011,6 +1015,7 @@ class PersistentVisualizationModule( PersistentModule ):
         self._max_scalar_value = None
         self.colormapManager = None
         self.colormapName = 'Spectral'
+        self.labelBuff = "NA                          "
         self.invertColormap = 1
         self.renderer = None
         self.iren = None 
@@ -1186,7 +1191,7 @@ class PersistentVisualizationModule( PersistentModule ):
         renderer_import = inputModule.getRenderer() if  inputModule <> None else None 
         self.renderer = vtk.vtkRenderer() if renderer_import == None else renderer_import
         self.renderer.AddObserver( 'ModifiedEvent', self.activateEvent )
-        self.labelBuff = "NA                           "
+        self.labelBuff = "NA                          "
         if self.createColormap: 
             self.createColorBarActor()
 
@@ -1279,7 +1284,7 @@ class PersistentVisualizationModule( PersistentModule ):
       textActor = self.getProp( 'vtkTextActor', id  )
       if textActor == None:
           textActor = self.createTextActor( id, pos, **args  )
-          self.renderer.AddViewProp( textActor )
+          if self.renderer: self.renderer.AddViewProp( textActor )
       textActor.SetInput( text )
       textActor.Modified()
       return textActor
@@ -1376,31 +1381,42 @@ class PersistentVisualizationModule( PersistentModule ):
                 if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True )
                 if configFunct.type == 'leveling':
                     self.finalizeConfigurationObserver( self.InteractionState )            
-                    if self.ndims == 3: self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+                    if self.ndims == 3: 
+                        self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+                        print " ~~~~~~~~~ SetInteractorStyle: navigationInteractorStyle "
                 if self.InteractionState <> None: 
                     configFunct.close()
                     self.endInteraction() 
         else:
             state =  self.getInteractionState( key )
 #            print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
-            if state <> None:
-                if self.InteractionState <> None: 
-                    configFunct = self.configurableFunctions[ self.InteractionState ]
-                    configFunct.close()
-                    
-                configFunct = self.configurableFunctions[ state ]
-                if configFunct.hasState:
-                    if self.InteractionState == state:  self.endInteraction()            
-                    self.InteractionState = state                   
-                    configFunct.open( self.InteractionState, self.isAltMode )
-                    self.LastInteractionState = self.InteractionState
-                else:
-                    configFunct.open( state, self.isAltMode )
-                    
-                HyperwallManager.singleton.setLevelingState( state, self.isAltMode )
+            if state <> None: 
+                self.updateInteractionState( state, self.isAltMode  )                 
+                HyperwallManager.singleton.setInteractionState( state, self.isAltMode )
                 self.isAltMode = False 
-                    
+                
+    def updateInteractionState( self, state, altMode ): 
+        if state == None: 
+            self.finalizeLeveling()
+            self.endInteraction()   
+        else:            
+            if self.InteractionState <> None: 
+                configFunct = self.configurableFunctions[ self.InteractionState ]
+                configFunct.close()   
+            configFunct = self.configurableFunctions.get( state, None )
+            if configFunct:
+#                if configFunct.hasState:
+##                    if self.InteractionState == state:  self.endInteraction()            
+#                    configFunct.open( state, self.isAltMode )
+#                else:
+                configFunct.open( state, self.isAltMode )
+            else:
+                self.configurableFunctions[ state ] = ConfigurableFunction( state, None, None, pmod=self )              
+            self.InteractionState = state                   
+            self.LastInteractionState = self.InteractionState
+                   
     def endInteraction( self ):
+        print " *** ~~~~~~ End Interaction ~~~~~~ *** "
         self.InteractionState = None 
         self.configuring = False 
         if self.ndims == 3:

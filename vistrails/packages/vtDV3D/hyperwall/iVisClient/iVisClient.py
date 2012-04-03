@@ -226,28 +226,40 @@ class QiVisClient(QtCore.QObject):
 #        print " ------------- QiVisClient.processEvent: %s-%s, widget: %x  ---------------------" % ( terms[2], terms[3], id(widget) )
         sys.stdout.flush()
         
-        if terms[2] == "singleClick":
-            cellModules = self.getCellModules()
-            cpos = [ float(terms[i]) for i in range(7,10) ]
-            cfol = [ float(terms[i]) for i in range(10,13) ]
-            cup  = [ float(terms[i]) for i in range(13,16) ]
-#            print " >>> QiVisClient.cellModules: %s, modules: %s" % ( str( [ cellMod.id for cellMod in cellModules ] ), str( ModuleStore.getModuleIDs() ) )           
-            for cellMod in cellModules:
-                persistentCellModule = ModuleStore.getModule( cellMod.id ) 
-                if persistentCellModule: persistentCellModule.syncCamera( cpos, cfol, cup )            
-        if terms[2] in ["singleClick", "mouseMove", "mouseRelease"]:
-            if self.currentTab:
-                screenRect = self.currentTab.getCellRect( 0, 0 )
-                screenDims = ( screenRect.width(), screenRect.height() )
-                newEvent = decodeMouseEvent( terms[2:], screenDims )
-        elif terms[2] in ["keyPress", "keyRelease" ]:
-            newEvent = decodeKeyEvent(terms[2:])
-
-        if widget: 
-            cellWidget = widget.widget()
-            app.postEvent( cellWidget, newEvent)
-            cellWidget.setFocus()
-            cellWidget.update()
+        if terms[2] == "interactionState":           
+            if self.current_pipeline:
+                state =   terms[3] if ( len(terms) > 3 ) else None
+                altMode = terms[4] if ( len(terms) > 4 ) else None
+                print " ~~~~~ Setting Client Interaction State: ", str(state), str(altMode)
+                for module in self.current_pipeline.module_list:
+                    persistentModule = ModuleStore.getModule( module.id ) 
+                    if persistentModule:
+                        persistentModule.updateInteractionState( state, altMode )   
+                    else: print "Can't find client persistentModule: ", module.id        
+        else: 
+            newEvent = None      
+            if terms[2] == "singleClick":
+                cellModules = self.getCellModules()
+                cpos = [ float(terms[i]) for i in range(7,10) ]
+                cfol = [ float(terms[i]) for i in range(10,13) ]
+                cup  = [ float(terms[i]) for i in range(13,16) ]
+    #            print " >>> QiVisClient.cellModules: %s, modules: %s" % ( str( [ cellMod.id for cellMod in cellModules ] ), str( ModuleStore.getModuleIDs() ) )           
+                for cellMod in cellModules:
+                    persistentCellModule = ModuleStore.getModule( cellMod.id ) 
+                    if persistentCellModule: persistentCellModule.syncCamera( cpos, cfol, cup )            
+            if terms[2] in ["singleClick", "mouseMove", "mouseRelease"]:
+                if self.currentTab:
+                    screenRect = self.currentTab.getCellRect( 0, 0 )
+                    screenDims = ( screenRect.width(), screenRect.height() )
+                    newEvent = decodeMouseEvent( terms[2:], screenDims )
+            elif terms[2] in ["keyPress", "keyRelease" ]:
+                newEvent = decodeKeyEvent(terms[2:])
+    
+            if widget and newEvent: 
+                cellWidget = widget.widget()
+                app.postEvent( cellWidget, newEvent)
+                cellWidget.setFocus()
+                cellWidget.update()
 
     def executeNextPipeline(self):
         if len(self.pipelineQueue) == 0:

@@ -27,17 +27,17 @@ class HyperwallManagerSingleton(QtCore.QObject):
         self.resource_path = None
         self.isServer = False
         self.isClient = False
-        self.levelingState = None
-        self.altMode = False
         self.opening_event = None
         self.intial_camera_pos = None
         
 #    def __del__(self):
 #        self.shutdown()
 
-    def setLevelingState( self, state, altMode=False ):
-        self.levelingState = state
-        self.altMode = altMode
+    def setInteractionState( self, levelingState, altMode=False ):
+        if self.isServer:
+            sheetTabWidget = getSheetTabWidget()
+            selected_cells = sheetTabWidget.getSelectedLocations()
+            self.server.processInteractionState( self.deviceName, selected_cells, levelingState, altMode ) 
 
     def getLevelingState():
         return self.levelingState
@@ -215,13 +215,12 @@ class HyperwallManagerSingleton(QtCore.QObject):
     def processInteractionEvent( self, name, event, screen_pos, screen_dims, camera_pos  ):
         if self.isServer:
             isKeyPress = ( event.type() == QtCore.QEvent.KeyPress )
-            isButtonRelease = ( event.type() == QtCore.QEvent.MouseButtonRelease ) 
-            isLevelingState = ( self.levelingState <> None ) and not isButtonRelease
             sheetTabWidget = getSheetTabWidget()
-#            selected_cells = [ screen_pos, ] if ( isLevelingState or isKeyPress ) else sheetTabWidget.getSelectedLocations()
             selected_cells = sheetTabWidget.getSelectedLocations()
+#            selected_cells = [ screen_pos, ]  else sheetTabWidget.getSelectedLocations()
 #            print " processInteractionEvent, type = %s, leveling = %s, selected_cells = %s" % ( name, str(self.levelingState <> None), str(selected_cells) )
-            self.server.processInteractionEvent( self.deviceName, event, screen_dims, selected_cells, camera_pos  ) 
+            if not isKeyPress:
+                self.server.processInteractionEvent( self.deviceName, event, screen_dims, selected_cells, camera_pos  ) 
 #            if (event.type() == QtCore.QEvent.MouseButtonPress):
 #                self.screen_dims = screen_dims
 #                self.opening_event = event
@@ -243,7 +242,6 @@ class HyperwallManagerSingleton(QtCore.QObject):
 #            self.opening_event = None      
     
 singleton = HyperwallManagerSingleton()
-
     
 def onExecute( ):
     pass

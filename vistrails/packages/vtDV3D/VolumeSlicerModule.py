@@ -45,6 +45,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.opacity = 1.0
         self.iOrientation = 0
         self.updatingPlacement = False
+        self.isSlicing = False
         self.planeWidgetX = None
         self.planeWidgetY = None
         self.planeWidgetZ = None
@@ -220,8 +221,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         print " TestObserver: event = %s, " % ( event )
 
     def PickObserver( self, iAxis, caller, event = None ):
-        HyperwallManager.singleton.setLevelingState( 'VolumeSlicer.Slicing' )
         if caller.GetCursorDataStatus():     
+            if not self.isSlicing:
+                HyperwallManager.singleton.setInteractionState( 'VolumeSlicer.Slicing' )
+                self.isSlicing = True
             image_value = caller.GetCurrentImageValue() 
             cpos = caller.GetCurrentCursorPosition()     
             dataValue = self.getDataValue( image_value )
@@ -265,7 +268,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.imageRescale.SetInput( resliceOutput )
         self.updateSliceOutput()
         self.endInteraction()
-        HyperwallManager.singleton.setLevelingState( None )
+        HyperwallManager.singleton.setInteractionState( None )
+        self.isSlicing = False
         
         active_irens = self.getActiveIrens()        
         for module in VolumeSlicerModules.values():

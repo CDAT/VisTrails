@@ -348,12 +348,12 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 
     def UpdateCamera( self ):
 #        self.volume.UseBoundsOff()     
-        print " *** volume visible: %s " % ( self.volume.GetVisibility() )
+#        print " *** volume visible: %s " % ( self.volume.GetVisibility() )
         aCamera = self.renderer.GetActiveCamera()
         bounds = self.volume.GetBounds()
         p = aCamera.GetPosition()
         f = aCamera.GetFocalPoint()
-        printArgs( "ResetCameraClippingRange", focal_point=f, cam_pos=p, vol_bounds=bounds )
+#        printArgs( "ResetCameraClippingRange", focal_point=f, cam_pos=p, vol_bounds=bounds )
         self.renderer.ResetCameraClippingRange() 
 #        bounds = self.volume.GetBounds()
 #        center = ( (bounds[0]+bounds[1])/2.0, (bounds[2]+bounds[3])/2.0, (bounds[4]+bounds[5])/2.0 ) 

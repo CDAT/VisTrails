@@ -335,6 +335,14 @@ class QiVisServer(QObject):
     def processGuiCommand( self, deviceName, command, selected_cells ):
         self.devices[deviceName].processInteractionMessage( command, selected_cells, "command" )
 
+    def processInteractionState( self, deviceName, selected_cells, interactionState, altMode  ):
+        print " Process Interaction State Event %s" % ( interactionState ) 
+        tokens = [ "interactionState" ]
+        if interactionState: 
+            tokens.append( interactionState )
+            if altMode: tokens.append( altMode )
+        self.devices[deviceName].processInteractionMessage( tokens, selected_cells  )
+
     def processInteractionEvent( self, deviceName, event, screen_dims, selected_cells, camera_pos   ):
         etype = event.type()
         event_type = "none"

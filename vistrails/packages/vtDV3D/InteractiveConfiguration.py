@@ -144,7 +144,7 @@ class QtWindowLeveler( QObject ):
         rmin = self.InitialLevel - 0.5 * abs( self.CurrentWindow )
         rmax = rmin + abs( self.CurrentWindow )
         self.InitialRange = [ rmin, rmax ] if ( rmax > rmin ) else [ rmax, rmin ]
-        print " --- Initialize Range: ( %f, %f ), P = ( %d, %d ) WL = ( %f, %f ) " % ( self.InitialRange[0]*self.scaling, self.InitialRange[1]*self.scaling, X, Y, self.InitialWindow, self.InitialLevel )     
+#        print " --- Initialize Range: ( %f, %f ), P = ( %d, %d ) WL = ( %f, %f ) " % ( self.InitialRange[0]*self.scaling, self.InitialRange[1]*self.scaling, X, Y, self.InitialWindow, self.InitialLevel )     
 
     def setWindowLevel( self, window,  level ):
         if ( (self.CurrentWindow == window) and (self.CurrentLevel == level) ): return
@@ -318,7 +318,7 @@ class ConfigurableFunction( QObject ):
         cfgFunctionList = ConfigurableFunctions.get( self.name, [] )
         self.activeFunctionList = []
         active_irens = self.module.getActiveIrens() 
-        print " ** N active_irens: %d " % len( active_irens )      
+#        print " ** N active_irens: %d " % len( active_irens )      
         for cfgFunction in cfgFunctionList:
             if (cfgFunction <> self) and cfgFunction.module:
                 isActive = ( cfgFunction.module.iren in active_irens )
