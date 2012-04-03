@@ -39,14 +39,14 @@ class VisItPipelineHelper(CDMSPipelineHelper):
     def build_plot_pipeline_action(controller, version, var_modules, plot_obj,row, col, template=None):
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
-        plot_type = plot_obj.parent
-        plot_gm = plot_obj.name
+        plot_type = plot_obj[0].parent
+        plot_gm = plot_obj[0].name
         if controller is None:
             controller = api.get_current_controller()
             version = 0L
         reg = get_module_registry()
         ops = []
-        print row,col, plot_obj.name, plot_type, plot_obj, var_modules
+        print row,col, plot_obj[0].name, plot_type, plot_obj[0], var_modules
         #plot_descriptor = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms',
         #                               'CDMS' + plot_type)
         plot_descriptor = reg.get_descriptor_by_name('gov.lbl.visit','VisItCell')
