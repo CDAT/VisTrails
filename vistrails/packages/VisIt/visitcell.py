@@ -1,7 +1,7 @@
 from info import identifier
 from PyQt4 import QtCore
 from PyQt4 import QtGui
-from core.modules.vistrails_module import Module, ModuleError
+from core.modules.vistrails_module import Module, ModuleError, NotCacheable
 from core.modules.module_registry import get_module_registry
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.spreadsheet.spreadsheet_cell import QCellWidget
@@ -22,6 +22,14 @@ from packages.uvcdat.init import expand_port_specs as _expand_port_specs
 import sys
 import visit
 import pyqt_pyqtviewer
+
+
+from core.modules.vistrails_module import Module, NotCacheable, ModuleError
+from packages.spreadsheet.spreadsheet_base import (StandardSheetReference,
+                              StandardSingleCellSheetReference)
+from packages.spreadsheet.spreadsheet_controller import spreadsheetController
+from packages.spreadsheet.spreadsheet_event import DisplayCellEvent
+
 
 viswin = pyqt_pyqtviewer.PyQtViewer(sys.argv)
 visit.Launch()
@@ -44,18 +52,29 @@ class VisItCell(SpreadsheetCell):
     def __init__(self):
         SpreadsheetCell.__init__(self)
         self.cellWidget = None
+        self.location = None
+        self.cdms_var = None
+
+    def GetVars():
+        return self.cellWidget
 
     def compute(self):
         """ compute() -> None
         Dispatch the QVisItWidget to do the actual rendering 
         """
-        print "computing ..", self.cellWidget
-        location = self.getInputFromPort("Location")
-        cdms_var = self.getInputFromPort("variable")
-        #print location, cdms_var
-        #print location.row, location.col
-        #print cdms_var.varNameInFile, cdms_var.filename, cdms_var.url
-        self.cellWidget = self.displayAndWait(QVisItWidget,(cdms_var,location))
+        self.location = self.getInputFromPort("Location")
+        self.cdms_var = self.getInputFromPort("variable")
+        #display and wait returns NULL...
+        self.cellWidget = self.displayAndWait(QVisItWidget,(self.cdms_var,self.location))
+        print "HERE -->", self.cellWidget, self
+
+    def LoadPseudocolorPlot(self):
+        print "Loading Pseudocolor Plot"
+        self.cellWidget.LoadPseudocolorPlot()
+
+    def LoadContourPlot(self):
+        print "Loading Contour Plot"
+        self.cellWidget.LoadContourPlot()
 
 def AddWindow():
     visit.AddWindow()
@@ -112,17 +131,39 @@ class QVisItWidget(QCellWidget):
     #def isVisible(self):
     #    print "is visible"
     #    return True
-    def LoadPseudocolorPlot(self,windowid,filename,var):
-        visit.SetActiveWindow(windowid)
+    
+    def GetDetails(self):
+        windowid = str(self.location.row)+"_"+str(self.location.col)
+        filename = self.cdms_var.filename
+        var = self.cdms_var.varNameInFile
+        return (windowid,filename,var)
+        
+    def LoadPseudocolorPlot(self):
+        (windowid,filename,var) = self.GetDetails()
+        wid = viswinmapper[windowid]
+        visit.SetActiveWindow(wid[0])
         visit.DeleteAllPlots()
         visit.OpenDatabase(filename)
         visit.AddPlot("Pseudocolor",var)
         visit.DrawPlots()
 
+    def LoadContourPlot(self,windowid,filename,var):
+        (windowid,filename,var) = self.GetDetails() 
+        wid = viswinmapper[windowid]
+        visit.SetActiveWindow(wid[0])
+        visit.DeleteAllPlots()
+        visit.OpenDatabase(filename)
+        visit.AddPlot("Contour",var)
+        visit.DrawPlots()
+
+    def LoadExtremeValueAnalysis():
+        pass
+
     def updateContents(self, inputPorts):
         global viswin
         global viswinmapper
         (cdms_var,location) = inputPorts
+
         windowkey = str(location.row)+"_"+str(location.col)
         print self, self.view
         if self.view is None:
@@ -147,10 +188,10 @@ class QVisItWidget(QCellWidget):
             viswinmapper[windowkey]=(res[0],self.view,self)
             #self.view.destroyed.connect(cellDestroyed)
 
-        print cdms_var.filename, cdms_var.url , cdms_var.varNameInFile
-        filename = cdms_var.filename
-        var = cdms_var.varNameInFile
-        self.LoadPseudocolorPlot(viswinmapper[windowkey][0],filename,var)
+        self.cdms_var = cdms_var
+        self.location = location
+
+        self.LoadPseudocolorPlot()
 
         QCellWidget.updateContents(self, inputPorts)
 
@@ -285,6 +326,7 @@ class VisItConfigurationWidget(StandardModuleConfigurationWidget):
         return listContainer
 
     def closeEvent(self, event):
+        print "close event set"
         self.askToSaveChanges()
         event.accept()
 
@@ -359,15 +401,12 @@ class VisItConfigurationWidget(StandardModuleConfigurationWidget):
         pass
 
     def createLayout( self ):
-        print "CREATING"
-        self.canvasLayout = QVBoxLayout(self)
         self.groupBox = QGroupBox()
         self.groupBoxLayout = QHBoxLayout(self.groupBox)
         self.fileLabel = QLabel("Filename: ")
         self.fileEntry = QLineEdit();
         self.groupBoxLayout.addWidget(self.fileLabel)
         self.groupBoxLayout.addWidget(self.fileEntry)
-        self.layout().addWidget(canvasLayout)
 
     def createButtonLayout(self):
         """ createButtonLayout() -> None
@@ -445,10 +484,34 @@ class VisItCellConfigurationWidget(VisItConfigurationWidget):
         Configure sections
         """
         print "Creating layout VisIt"
-        VisItWidget = QWidget()
+        VisItWidget = QGroupBox()
         self.tabbedWidget.addTab( VisItWidget, 'VisIt' )
-        layout = QVBoxLayout()
-        VisItWidget.setLayout( layout )
+        self.layout = QVBoxLayout()
+        VisItWidget.setLayout( self.layout )
+    
+        
+        #self.groupBox = QGroupBox()
+        #self.groupBoxLayout = QHBoxLayout(self.groupBox)
+        #self.fileLabel = QLabel("Filename: ")
+        #self.fileEntry = QLineEdit();
+        #self.groupBoxLayout.addWidget(self.fileLabel)
+        #self.groupBoxLayout.addWidget(self.fileEntry)
+        #self.layout.addWidget(self.groupBox)
+        
+        self.groupChoice = QGroupBox()
+        self.groupChoiceLayout = QVBoxLayout(self.groupChoice)
+        self.pseudocolor = QRadioButton("Pseudocolor Plot");
+        self.pseudocolor.setChecked(True)
+        self.contour = QRadioButton("Contour Plot");
+        self.eva = QRadioButton("Extreme Value Analysis");
+        self.groupChoiceLayout.addWidget(self.pseudocolor)
+        self.groupChoiceLayout.addWidget(self.contour)
+        self.groupChoiceLayout.addWidget(self.eva)
+        self.layout.addWidget(self.groupChoice)
+        moduleInstance = self.module.module_descriptor.module()
+        print moduleInstance
+        QObject.connect(self.pseudocolor,SIGNAL("clicked()"),moduleInstance.LoadPseudocolorPlot)
+        QObject.connect(self.contour,SIGNAL("clicked()"),moduleInstance.LoadContourPlot)
 
 
     def setDefaults(self):

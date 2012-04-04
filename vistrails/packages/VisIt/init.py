@@ -17,4 +17,3 @@ def initialize():
     else:
         print 'Spreadsheet not found!'
 
-#_modules = [visitcell.VisItVariable]

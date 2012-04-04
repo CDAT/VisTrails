@@ -28,12 +28,14 @@ class VisItPipelineHelper(CDMSPipelineHelper):
     @staticmethod
     def show_configuration_widget(controller, version, plot_obj=None):
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
-        plots = VisItPipelineHelper.find_plot_modules(pipeline)
+        #plots = VisItPipelineHelper.find_plot_modules(pipeline)
+        cell = CDMSPipelineHelper.find_modules_by_type(pipeline,[visitcell.VisItCell])
         vars = CDMSPipelineHelper.find_modules_by_type(pipeline,
                                                        [CDMSVariable,
                                                         CDMSVariableOperation])
-        #print "CALLING CONFIGURATION WITH: ", plots, vars, version
-        return CDMSPlotWidget(controller,version,plots,vars)
+        vcell = cell[0].module_descriptor.module()
+        print "cellWidget should not be None", vcell, vcell.cellWidget
+        return visitcell.VisItCellConfigurationWidget(cell[0],controller)
 
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_obj,row, col, template=None):
@@ -41,30 +43,24 @@ class VisItPipelineHelper(CDMSPipelineHelper):
         # or plot_module do not change
         plot_type = plot_obj[0].parent
         plot_gm = plot_obj[0].name
+
         if controller is None:
             controller = api.get_current_controller()
             version = 0L
+
         reg = get_module_registry()
         ops = []
         print row,col, plot_obj[0].name, plot_type, plot_obj[0], var_modules
-        #plot_descriptor = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms',
-        #                               'CDMS' + plot_type)
         plot_descriptor = reg.get_descriptor_by_name('gov.lbl.visit','VisItCell')
         desc = plot_descriptor.module
-        plot_module = controller.create_module_from_descriptor(plot_descriptor)
-        #plot_functions =  [('graphicsMethodName', [plot_gm])]
-        #plot_functions =  [([plot_gm])]
-        #if template is not None:
-        #    plot_functions.append(('template', [template]))
-        #initial_values = desc.get_initial_values(plot_gm)
-        #for var_mods in var_modules:
-            #print "mods: ",var_mods
-        #for attr in desc.gm_attributes:
-        #    plot_functions.append((attr,[getattr(initial_values,attr)]))
 
-        #functions = controller.create_functions(plot_module,plot_functions)
-        #for f in functions:
-        #    plot_module.add_function(f)
+        #print "DESC: ",desc
+        plot_module = controller.create_module_from_descriptor(plot_descriptor)
+        #print "plot_module",plot_module, template
+
+        #for var_mods in var_modules:
+        #    print "mods: ",var_mods
+
         if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
             ops.append(('add', var_modules[0]))
         ops.append(('add', plot_module))
@@ -89,10 +85,6 @@ class VisItPipelineHelper(CDMSPipelineHelper):
             loc_module.add_function(f)
         loc_conn = controller.create_connection(loc_module, 'self',
                                                         plot_module, 'Location')
-        #ops.extend([('add', cell_module),
-        #            ('add', cell_conn),
-        #            ('add', loc_module),
-        #            ('add', loc_conn)])
         ops.extend([('add', loc_module),
                     ('add', loc_conn)])
         action = core.db.action.create_action(ops)
@@ -114,6 +106,7 @@ class VisItPipelineHelper(CDMSPipelineHelper):
 
     @staticmethod
     def load_pipeline_in_location(pipeline, controller, sheetName, row, col,plot_type, cell):
+       print "Load pipeline is called"
        cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, [CellLocation])
        cell_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [SpreadsheetCell])
        #plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
@@ -144,6 +137,7 @@ class VisItPipelineHelper(CDMSPipelineHelper):
 
     @staticmethod
     def build_python_script_from_pipeline(controller, version, plot=None):
+        print "build_python_script"
         pipeline = controller.vistrail.getPipeline(version)
         plots = CDMSPipelineHelper.find_plot_modules(pipeline)
         text = "from PyQt4 import QtCore, QtGui\n"
@@ -191,6 +185,7 @@ class VisItPipelineHelper(CDMSPipelineHelper):
 
     @staticmethod
     def copy_pipeline_to_other_location(pipeline, controller, sheetName, row, col,plot_type, cell):
+        print "copyt pipeline to other location"
         pip_str = core.db.io.serialize(pipeline)
         controller.change_selected_version(cell.current_parent_version)
 
