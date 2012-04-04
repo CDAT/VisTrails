@@ -240,7 +240,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             if textDisplay: self.updateTextDisplay( textDisplay )
             
         else:
-                        
+            if not self.isSlicing:
+                HyperwallManager.singleton.setInteractionState( 'VolumeSlicer.Slicing' )
+                self.isSlicing = True                        
             axes = [ 'Longitude', 'Latitude', 'Level' ]
             sliceIndex = caller.GetSliceIndex() 
             wpos = self.getWorldCoord( sliceIndex, iAxis )

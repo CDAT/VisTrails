@@ -38,11 +38,14 @@ def get_coords_from_cell_address( row, col):
         raise Exception('ColumnRowAddress format error: %s ' % str( [ row, col ] ) )
 
 def parse_cell_address( address ):
-    if len(address)>1:
-        if address[0] >= 'A' and address[0] <= 'Z':
-            return get_coords_from_cell_address( address[1:], address[0] )
-        else:
-            return get_coords_from_cell_address( address[:-1], address[-1] )
+    try:
+        if len(address)>1:
+            if address[0] >= 'A' and address[0] <= 'Z':
+                return get_coords_from_cell_address( address[1:], address[0] )
+            else:
+                return get_coords_from_cell_address( address[:-1], address[-1] )
+    except TypeError:
+        return ( address.row, address.col )
 
 class QVTKClientWidget(QVTKWidget):
     """
@@ -192,7 +195,7 @@ class QVTKServerWidget( QVTKClientWidget ):
             cfol = cam.GetFocalPoint()
             cup = cam.GetViewUp()
             camera_pos = (cpos,cfol,cup)
-        screen_pos = ( self.location.row, self.location.col )
+        screen_pos = parse_cell_address( self.location )
         HyperwallManager.singleton.processInteractionEvent( name, event, screen_pos, dims, camera_pos ) 
         
 #    def interactionEvent(self, istyle, name):
@@ -235,6 +238,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             self.location = CellLocation()
             self.location.row = 0
             self.location.col = 0
+            self.acceptsGenericConfigs = True
         self.allowMultipleInputs = True
         self.renderers = []
         self.fieldData = []

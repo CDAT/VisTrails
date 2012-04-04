@@ -223,7 +223,7 @@ class QiVisClient(QtCore.QObject):
         newTab = self.updateCurrentTab()
         widget = self.currentTab.getCellWidget( 0, 0 ) if self.currentTab else None
                   
-#        print " ------------- QiVisClient.processEvent: %s-%s, widget: %x  ---------------------" % ( terms[2], terms[3], id(widget) )
+        print " ------------- QiVisClient.processEvent: %s  ---------------------" % ( str(terms) )
         sys.stdout.flush()
         
         if terms[2] == "interactionState":           
@@ -231,6 +231,7 @@ class QiVisClient(QtCore.QObject):
                 state =   terms[3] if ( len(terms) > 3 ) else None
                 altMode = terms[4] if ( len(terms) > 4 ) else None
                 print " ~~~~~ Setting Client Interaction State: ", str(state), str(altMode)
+                sys.stdout.flush()
                 for module in self.current_pipeline.module_list:
                     persistentModule = ModuleStore.getModule( module.id ) 
                     if persistentModule:

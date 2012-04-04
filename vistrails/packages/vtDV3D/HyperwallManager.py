@@ -123,15 +123,14 @@ class HyperwallManagerSingleton(QtCore.QObject):
             self.client = QiVisClient(  self.deviceName,  hw_server, hw_port, hw_x, hw_y, 1, 1  )
 #            self.client.createTab(  int(dv3d_configuration.hw_displayWidth), int(dv3d_configuration.hw_displayHeight), fullScreen )
 
-    def initialize( self, hw_role  ):
+    def initialize( self, hw_role, spawn=True  ):
         defaults = { 'hw_debug': False, 'hw_resource_path':'', 'hw_device_name': "Hyperwall",  'hw_x':0, 'hw_y':0, 'hw_width':1, 'hw_height':1,
                                      'hw_displayWidth':-1, 'hw_displayHeight':-1, 'hw_nodes':"", 'hw_server':"localhost",  'hw_server_port':50000 }
         datasetConfig, appConfig = getConfiguration( defaults )
         app = gui.application.get_vistrails_application()
         self.processList = []               
                 
-        self.deviceName = datasetConfig.get( hw_role, 'hw_device_name' )        
-        debug = datasetConfig.get( hw_role, 'hw_debug' )    
+        self.deviceName = datasetConfig.get( hw_role, 'hw_device_name' )           
         self.isServer = ( hw_role == 'hw_server' )
         self.isClient = ( hw_role == 'hw_client' )
         set_hyperwall_role( hw_role )
@@ -145,10 +144,9 @@ class HyperwallManagerSingleton(QtCore.QObject):
             self.server = QiVisServer( self.deviceName, hw_dims, hw_port, app.resource_path )
             self.connectSignals()
             
-            if not debug:
+            if spawn:
                 hw_nodes = datasetConfig.get( hw_role, 'hw_nodes' )
                 nodeList = hw_nodes.split(',')
-#                nodeList = [ 'visrend01', 'visrend02', 'visrend03' ]
                 print "hwServer initialization, server: %x, mgr: %x, dims=%s, nodes=%s" % ( id(self.server), id( self ), str(hw_dims), str(nodeList) )
                 nodeIndex = 0
                 for node in nodeList:
@@ -218,7 +216,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
             sheetTabWidget = getSheetTabWidget()
             selected_cells = sheetTabWidget.getSelectedLocations()
 #            selected_cells = [ screen_pos, ]  else sheetTabWidget.getSelectedLocations()
-#            print " processInteractionEvent, type = %s, leveling = %s, selected_cells = %s" % ( name, str(self.levelingState <> None), str(selected_cells) )
+#            print " Server processInteractionEvent, type = %s, leveling = %s, selected_cells = %s" % ( name, str(self.levelingState <> None), str(selected_cells) )
             if not isKeyPress:
                 self.server.processInteractionEvent( self.deviceName, event, screen_dims, selected_cells, camera_pos  ) 
 #            if (event.type() == QtCore.QEvent.MouseButtonPress):

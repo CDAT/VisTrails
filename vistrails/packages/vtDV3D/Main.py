@@ -205,6 +205,7 @@ def start_uvcdat_application(optionsDict=None):
         debug.critical("Application already started.")
         return
     hw_role = optionsDict.get( "hw_role", 'global')
+    spawn = optionsDict.get( "spawn", True )
     isClient = ( hw_role == 'hw_client' )
     VistrailsApplication = vtDV3DApplicationSingleton( isClient )
     set_vistrails_application( VistrailsApplication )
@@ -229,7 +230,7 @@ def start_uvcdat_application(optionsDict=None):
     showBuilder = optionsDict.get( 'showBuilder', False )
     VistrailsApplication.uvcdatWindow.setWindowTitle( title )
     if showBuilder: VistrailsApplication.uvcdatWindow.showBuilderWindowActTriggered() 
-    HyperwallManager.singleton.initialize( hw_role )      
+    HyperwallManager.singleton.initialize( hw_role, spawn )      
     if x == True:
         return 0
     else:
@@ -267,5 +268,5 @@ def executeVistrail( *args, **kwargs ):
     
 
 if __name__ == '__main__':  
-    optionsDict = { "hw_role" : 'hw_server', "showBuilder": True }   #  'global'   'hw_client'  'hw_server'    
+    optionsDict = { "hw_role" : 'hw_server', "showBuilder": True, 'spawn': False }   #  'global'   'hw_client'  'hw_server'    
     executeVistrail( options = optionsDict )

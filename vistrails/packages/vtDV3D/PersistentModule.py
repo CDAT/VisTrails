@@ -690,20 +690,17 @@ class PersistentModule( QObject ):
     def startConfigurationObserver( self, parameter_name, *args ):
         self.getLabelActor().VisibilityOn() 
     
-    def startLevelingEvent( self, caller, event ):    
-        x, y = caller.GetEventPosition()
-        self.startLeveling( x, y )
                   
-    def startLeveling( self, x, y ):
+    def startConfiguration( self, x, y, config_types ):
         if (self.InteractionState <> None) and not self.configuring:
             configFunct = self.configurableFunctions[ self.InteractionState ]
-            if configFunct.type == 'leveling':
+            if configFunct.type in config_types:
                 self.configuring = True
                 configFunct.start( self.InteractionState, x, y )
                 if self.ndims == 3: 
                     self.iren.SetInteractorStyle( self.configurationInteractorStyle )
                     print " ~~~~~~~~~ Set Interactor Style: Configuration  ~~~~~~~~~  "
-                    self.getLabelActor().VisibilityOn()
+                    if (configFunct.type == 'leveling'): self.getLabelActor().VisibilityOn()
     
     def isActive( self ):
         pipeline = self.getCurentPipeline()
@@ -1012,6 +1009,7 @@ class PersistentVisualizationModule( PersistentModule ):
         self.currentButton = None
         PersistentModule.__init__(self, mid, **args  )
         self.modifier = self.NoModifier
+        self.acceptsGenericConfigs = False
         self._max_scalar_value = None
         self.colormapManager = None
         self.colormapName = 'Spectral'
@@ -1323,7 +1321,6 @@ class PersistentVisualizationModule( PersistentModule ):
                         self.iren.AddObserver( 'RenderEvent', self.onRender )                   
                         self.iren.AddObserver( 'LeftButtonReleaseEvent', self.onLeftButtonRelease )
                         self.iren.AddObserver( 'RightButtonReleaseEvent', self.onRightButtonRelease )
-                        self.iren.AddObserver( 'LeftButtonPressEvent', self.startLevelingEvent )
                         self.iren.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )
                         for configurableFunction in self.configurableFunctions.values():
                             configurableFunction.activateWidget( iren )
@@ -1404,16 +1401,13 @@ class PersistentVisualizationModule( PersistentModule ):
                 configFunct = self.configurableFunctions[ self.InteractionState ]
                 configFunct.close()   
             configFunct = self.configurableFunctions.get( state, None )
+            if not configFunct and self.acceptsGenericConfigs:
+                configFunct = ConfigurableFunction( state, None, None, pmod=self )              
+                self.configurableFunctions[ state ] = configFunct
             if configFunct:
-#                if configFunct.hasState:
-##                    if self.InteractionState == state:  self.endInteraction()            
-#                    configFunct.open( state, self.isAltMode )
-#                else:
                 configFunct.open( state, self.isAltMode )
-            else:
-                self.configurableFunctions[ state ] = ConfigurableFunction( state, None, None, pmod=self )              
-            self.InteractionState = state                   
-            self.LastInteractionState = self.InteractionState
+                self.InteractionState = state                   
+                self.LastInteractionState = self.InteractionState
                    
     def endInteraction( self ):
         print " *** ~~~~~~ End Interaction ~~~~~~ *** "
@@ -1475,12 +1469,16 @@ class PersistentVisualizationModule( PersistentModule ):
     
     def onLeftButtonPress( self, caller, event ):
         self.currentButton = self.LEFT_BUTTON
-        self.UpdateCamera()    
+        self.UpdateCamera()   
+        x, y = caller.GetEventPosition()
+        self.startConfiguration( x, y, [ 'leveling', 'generic' ] )                 
         return 0
 
     def onRightButtonPress( self, caller, event ):
         self.currentButton = self.RIGHT_BUTTON
         self.UpdateCamera()
+        x, y = caller.GetEventPosition()
+        self.startConfiguration( x, y,  [ 'generic' ] )
         return 0
 
     def onModified( self, caller, event ):
