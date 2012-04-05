@@ -48,12 +48,21 @@ class VisItEventFilter(QObject):
             return True
         return False
 
+class VisItParams(Module):
+    def __init__(self):
+        Module.__init__(self)
+        self.renderType = "Pseudocolor Plot"
+
+    def compute(self):
+        self.renderType = self.getInputFromPort("renderType")
+
 class VisItCell(SpreadsheetCell):
     def __init__(self):
         SpreadsheetCell.__init__(self)
         self.cellWidget = None
         self.location = None
         self.cdms_var = None
+        self.renderType = None
 
     def GetVars():
         return self.cellWidget
@@ -62,10 +71,14 @@ class VisItCell(SpreadsheetCell):
         """ compute() -> None
         Dispatch the QVisItWidget to do the actual rendering 
         """
+        print "PRINTING"
         self.location = self.getInputFromPort("Location")
         self.cdms_var = self.getInputFromPort("variable")
+        self.params = self.getInputFromPort("visitparams")
+
+        #print "TYPE: ", self.params
         #display and wait returns NULL...
-        self.cellWidget = self.displayAndWait(QVisItWidget,(self.cdms_var,self.location))
+        self.cellWidget = self.displayAndWait(QVisItWidget,(self.cdms_var,self.location,self.params))
         print "HERE -->", self.cellWidget, self
 
     def LoadPseudocolorPlot(self):
@@ -107,10 +120,12 @@ class QVisItWidget(QCellWidget):
 
         self.layout = QVBoxLayout(self)
         self.view = None
+        self.location = None
+        self.cdms_var = None
+        self.params = None
         #self.eventFilter = VisItEventFilter()
         #QMainWindow.installEventFilter(self,self.eventFilter)
         #self.connect(self,QtCore.SIGNAL("destroyed()"),cellDestroyed)
-        #self.setObjectName("BOB")
         #self.destroyed.connect(cellDestroyed)
 
     def showEvent(self,event):
@@ -147,7 +162,7 @@ class QVisItWidget(QCellWidget):
         visit.AddPlot("Pseudocolor",var)
         visit.DrawPlots()
 
-    def LoadContourPlot(self,windowid,filename,var):
+    def LoadContourPlot(self):
         (windowid,filename,var) = self.GetDetails() 
         wid = viswinmapper[windowid]
         visit.SetActiveWindow(wid[0])
@@ -156,14 +171,32 @@ class QVisItWidget(QCellWidget):
         visit.AddPlot("Contour",var)
         visit.DrawPlots()
 
-    def LoadExtremeValueAnalysis():
-        pass
+    def LoadExtremeValueAnalysisPlot(self):
+        (windowid,filename,var) = self.GetDetails() 
+        wid = viswinmapper[windowid]
+        visit.SetActiveWindow(wid[0])
+        visit.DeleteAllPlots()
+        visit.OpenDatabase(filename, 0)
+        visit.AddPlot("Pseudocolor", var, 1, 1)
+        visit.AddOperator("Box", 1)
+        visit.SetActivePlots(0)
+        visit.SetActivePlots(0)
+        BoxAtts = visit.BoxAttributes()
+        BoxAtts.amount = BoxAtts.Some # Some, All
+        BoxAtts.minx = 90
+        BoxAtts.maxx = 100
+        BoxAtts.miny = -10
+        BoxAtts.maxy = 10
+        BoxAtts.minz = 0
+        BoxAtts.maxz = 1
+        visit.SetOperatorOptions(BoxAtts, 1)
+        visit.AddOperator("ExtremeValueAnalysis", 1)
+        visit.DrawPlots()
 
     def updateContents(self, inputPorts):
         global viswin
         global viswinmapper
-        (cdms_var,location) = inputPorts
-
+        (cdms_var,location,params) = inputPorts
         windowkey = str(location.row)+"_"+str(location.col)
         print self, self.view
         if self.view is None:
@@ -190,8 +223,18 @@ class QVisItWidget(QCellWidget):
 
         self.cdms_var = cdms_var
         self.location = location
+        self.params = params
+    
+        if "Pseudocolor" in params.renderType :
+            self.LoadPseudocolorPlot()
 
-        self.LoadPseudocolorPlot()
+        if "Contour" in params.renderType :
+            self.LoadContourPlot()
+
+        if "Extreme Value Analysis" in params.renderType :
+            self.LoadExtremeValueAnalysisPlot()
+
+
 
         QCellWidget.updateContents(self, inputPorts)
 
@@ -207,9 +250,15 @@ class QVisItWidget(QCellWidget):
 
 def registerSelf():
     registry = get_module_registry()
+
+    registry.add_module(VisItParams)
+    registry.add_input_port(VisItParams,"renderType", basic_modules.String)
+    registry.add_output_port(VisItParams,"self",VisItParams)
+
     registry.add_module(VisItCell, configureWidgetType=VisItCellConfigurationWidget)
     registry.add_input_port(VisItCell, "Location", CellLocation)
     registry.add_input_port(VisItCell, "variable", CDMSVariable)
+    registry.add_input_port(VisItCell, "visitparams", VisItParams)
     registry.add_output_port(VisItCell, "self", VisItCell)
 
 
