@@ -271,7 +271,12 @@ class ProjectController(QtCore.QObject):
                     self.computed_variables_ops[newname] = var
                 self.computed_variables_ops[newname].axes = axes
                 self.computed_variables_ops[newname].axesOperations = axesOperations
-                  
+        elif oldname in self.defined_variables:
+            new_var = copy.copy(self.defined_variables[oldname])
+            new_var.name = newname
+            new_var.axes = axes
+            new_var.axesOperations = axesOperations
+            self.add_defined_variable(new_var)
                 
     def emit_defined_variable(self, var):
         from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
