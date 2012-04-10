@@ -1,0 +1,1103 @@
+'''
+Created on Apr 9, 2012
+
+@author: tpmaxwel
+'''
+
+import vtk, sys
+
+VTK_NEAREST_RESLICE = 0
+VTK_LINEAR_RESLICE  = 1
+VTK_CUBIC_RESLICE   = 2
+
+#vtkCxxSetObjectMacro(vtkImagePlaneWidget, PlaneProperty, vtkProperty)
+#vtkCxxSetObjectMacro(vtkImagePlaneWidget, SelectedPlaneProperty, vtkProperty)
+#vtkCxxSetObjectMacro(vtkImagePlaneWidget, CursorProperty, vtkProperty)
+#vtkCxxSetObjectMacro(vtkImagePlaneWidget, MarginProperty, vtkProperty)
+#vtkCxxSetObjectMacro(vtkImagePlaneWidget, TexturePlaneProperty, vtkProperty)
+#vtkCxxSetObjectMacro(vtkImagePlaneWidget, ColorMap, vtkImageMapToColors)
+
+class ImagePlaneWidget:
+
+    VTK_NO_MODIFIER   = 0
+    VTK_SHIFT_MODIFIER= 1
+    VTK_CONTROL_MODIFIER    = 2
+
+    VTK_NO_BUTTON     = 0
+    VTK_LEFT_BUTTON   = 1
+    VTK_MIDDLE_BUTTON = 2
+    VTK_RIGHT_BUTTON  = 3
+
+    Start = 0
+    Cursoring = 1
+    Pushing = 2
+    Moving = 3
+    Outside  = 4
+    
+    def __init__( self, **args ):  
+        self.State  = ImagePlaneWidget.Start            
+        self.Interaction  = 1
+        self.PlaceFactor = 0.5;
+        self.PlaneOrientation   = 0
+        self.PlaceFactor  = 1.0
+        self.TextureInterpolate = 1
+        self.ResliceInterpolate = VTK_LINEAR_RESLICE
+        self.UserControlledLookupTable= 0
+        self.DisplayText  = 0
+        self.CurrentCursorPosition = [ 0, 0, 0 ]
+        self.CurrentImageValue   = vtk.VTK_DOUBLE_MAX
+                        
+        # Represent the plane's outline
+        #
+        self.PlaneSource  = vtk.vtkPlaneSource()
+        self.PlaneSource.SetXResolution(1)
+        self.PlaneSource.SetYResolution(1)
+        self.PlaneOutlinePolyData  = vtk.vtkPolyData()
+        self.PlaneOutlineActor     = vtk.vtkActor()
+            
+        # Represent the resliced image plane
+        #
+        self.ColorMap      = vtk.vtkImageMapToColors()
+        self.Reslice = vtk.vtkImageReslice()
+        self.Reslice.TransformInputSamplingOff()
+        self.ResliceAxes   = vtk.vtkMatrix4x4()
+        self.Texture = vtk.vtkTexture()
+        self.TexturePlaneActor   = vtk.vtkActor()
+        self.Transform     = vtk.vtkTransform()
+        self.ImageData    = 0
+        self.LookupTable  = 0
+            
+        # Represent the cross hair cursor
+        #
+        self.CursorPolyData  = vtk.vtkPolyData()
+        self.CursorActor     = vtk.vtkActor()
+                        
+        # Represent the text: annotation for cursor position and W/L
+        #
+        self.TextActor  = vtk.vtkTextActor()
+            
+        self.GeneratePlaneOutline()
+            
+        # Define some default point coordinates
+        #
+        bounds = [ -0.5, 0.5, -0.5, 0.5, -0.5, 0.5 ]
+            
+        # Initial creation of the widget, serves to initialize it
+        #
+        self.PlaceWidget(bounds)
+            
+        self.GenerateTexturePlane()
+        self.GenerateCursor()
+        self.GenerateText()
+            
+        # Manage the picking stuff
+        #
+        self.PlanePicker = None
+        picker  = vtk.vtkCellPicker()
+        picker.SetTolerance(0.005) #need some fluff
+        self.SetPicker(picker)
+            
+        # Set up the initial properties
+        #
+        self.PlaneProperty   = 0
+        self.SelectedPlaneProperty = 0
+        self.TexturePlaneProperty  = 0
+        self.CursorProperty  = 0
+        self.CreateDefaultProperties()
+            
+        # Set up actions            
+#        self.LeftButtonAction  = ImagePlaneWidget.VTK_CURSOR_ACTION
+#        self.MiddleButtonAction  = ImagePlaneWidget.VTK_SLICE_MOTION_ACTION
+#        self.RightButtonAction  = ImagePlaneWidget.VTK_WINDOW_LEVEL_ACTION
+                                    
+        self.LastButtonPressed  = ImagePlaneWidget.VTK_NO_BUTTON
+            
+        self.TextureVisibility = 1
+
+
+#----------------------------------------------------------------------------
+    def SetTextureVisibility( self, vis ):
+        if (self.TextureVisibility == vis): return
+        self.TextureVisibility = vis
+         
+        if ( self.Enabled ): 
+            if (self.TextureVisibility):
+                self.CurrentRenderer.AddViewProp(self.TexturePlaneActor)
+        else:
+            self.CurrentRenderer.RemoveViewProp(self.TexturePlaneActor)
+        self.Modified()
+
+#----------------------------------------------------------------------------
+    def SetEnabled( self, enabling ):
+
+        if ( not self.Interactor ):   
+            print>>sys.stderr, "The interactor must be set prior to enabling/disabling widget"
+            return
+    
+        if enabling:
+            if self.Enabled:  return
+   
+            if ( self.CurrentRenderer == None ):       
+                self.SetCurrentRenderer(self.Interactor.FindPokedRenderer( self.Interactor.GetLastEventPosition()[0],  self.Interactor.GetLastEventPosition()[1]))
+                if (self.CurrentRenderer == None): return
+                     
+            self.Enabled = 1
+            
+            if (self.Interaction):  self.AddObservers()       
+            # Add the plane
+            self.CurrentRenderer.AddViewProp(self.PlaneOutlineActor)
+            self.PlaneOutlineActor.SetProperty(self.PlaneProperty)
+        
+            #add the TexturePlaneActor
+            if (self.TextureVisibility):  self.CurrentRenderer.AddViewProp(self.TexturePlaneActor)
+        
+            self.TexturePlaneActor.SetProperty(self.TexturePlaneProperty)
+            
+            # Add the cross-hair cursor
+            self.CurrentRenderer.AddViewProp(self.CursorActor)
+            self.CursorActor.SetProperty(self.CursorProperty)
+        
+            # Add the image data annotation
+            self.CurrentRenderer.AddViewProp(self.TextActor)
+        
+            self.TexturePlaneActor.PickableOn()
+        
+            self.InvokeEvent( vtk.vtkCommand.EnableEvent, 0 )
+           
+        else:
+        
+            if ( not self.Enabled ): return
+        
+        
+            self.Enabled = 0
+        
+            # don't listen for events any more
+            self.Interactor.RemoveObserver(self.EventCallbackCommand)
+        
+            # turn off the plane
+            self.CurrentRenderer.RemoveViewProp(self.PlaneOutlineActor)
+        
+            #turn off the texture plane
+            self.CurrentRenderer.RemoveViewProp(self.TexturePlaneActor)
+        
+            #turn off the cursor
+            self.CurrentRenderer.RemoveViewProp(self.CursorActor)
+        
+            #turn off the image data annotation
+            self.CurrentRenderer.RemoveViewProp(self.TextActor)
+        
+            self.TexturePlaneActor.PickableOff()
+        
+            self.InvokeEvent( vtk.vtkCommand.DisableEvent, 0 )
+            self.SetCurrentRenderer(None)
+            
+        
+        self.Interactor.Render()
+
+#----------------------------------------------------------------------------
+    def BuildRepresentation(self):    
+        self.PlaneSource.Update()
+        o = self.PlaneSource.GetOrigin()
+        pt1 = self.PlaneSource.GetPoint1()
+        pt2 = self.PlaneSource.GetPoint2()
+        
+        x = [ o[0] + (pt1[0]-o[0]) + (pt2[0]-o[0]), o[1] + (pt1[1]-o[1]) + (pt2[1]-o[1]), o[2] + (pt1[2]-o[2]) + (pt2[2]-o[2]) ]
+        
+        points = self.PlaneOutlinePolyData.GetPoints()
+        points.SetPoint(0,o)
+        points.SetPoint(1,pt1)
+        points.SetPoint(2,x)
+        points.SetPoint(3,pt2)
+        points.GetData().Modified()
+        self.PlaneOutlinePolyData.Modified()
+
+
+#----------------------------------------------------------------------------
+
+    def HighlightPlane( self, highlight ):   
+        if ( highlight ):       
+            self.PlaneOutlineActor.SetProperty(self.SelectedPlaneProperty)
+            self.PlanePicker.GetPickPosition(self.LastPickPosition)        
+        else:       
+            self.PlaneOutlineActor.SetProperty(self.PlaneProperty)
+    
+#----------------------------------------------------------------------------
+
+    def OnLeftButtonDown(self):
+        self.StartCursor()
+
+#----------------------------------------------------------------------------
+
+    def OnLeftButtonUp(self):
+        self.StopCursor()
+
+#----------------------------------------------------------------------------
+
+    def OnRightButtonDown(self):
+        self.StartSliceMotion()
+
+#----------------------------------------------------------------------------
+
+    def OnRightButtonUp(self):
+        self.StopSliceMotion()
+
+#----------------------------------------------------------------------------
+    def StartCursor(self):
+    
+        X = self.Interactor.GetEventPosition()[0]
+        Y = self.Interactor.GetEventPosition()[1]
+        
+        # Okay, make sure that the pick is in the current renderer
+        if ( not self.CurrentRenderer or  not self.CurrentRenderer.IsInViewport(X, Y)):        
+            self.State  = ImagePlaneWidget.Outside
+            return
+        
+        self.PlanePicker.Pick( X,Y,0.0, self.CurrentRenderer)       
+        self.State  = ImagePlaneWidget.Cursoring
+        self.HighlightPlane(1)
+        self.ActivateCursor(1)
+        self.ActivateText(1)
+        self.UpdateCursor(X,Y)
+        self.ManageTextDisplay()
+        
+        self.EventCallbackCommand.SetAbortFlag(1)
+        self.StartInteraction()
+        self.InvokeEvent(vtk.vtkCommand.StartInteractionEvent,0)
+        self.Interactor.Render()
+
+
+#----------------------------------------------------------------------------
+    def StopCursor(self):
+    
+        if ( self.State == ImagePlaneWidget.Outside or self.State == ImagePlaneWidget.Start ):         
+            return
+                  
+        self.State  = ImagePlaneWidget.Start
+        self.HighlightPlane(0)
+        self.ActivateCursor(0)
+        self.ActivateText(0)
+        
+        self.EventCallbackCommand.SetAbortFlag(1)
+        self.EndInteraction()
+        self.InvokeEvent( vtk.vtkCommand.EndInteractionEvent, 0 )
+        self.Interactor.Render()
+
+
+#----------------------------------------------------------------------------
+    def StartSliceMotion(self):
+    
+        X = self.Interactor.GetEventPosition()[0]
+        Y = self.Interactor.GetEventPosition()[1]
+        
+        # Okay, make sure that the pick is in the current renderer
+        if ( not self.CurrentRenderer or  not self.CurrentRenderer.IsInViewport(X, Y)):    
+            self.State  = ImagePlaneWidget.Outside
+            return
+          
+        # Okay, we can process this. If anything is picked, then we
+        # can start pushing or check for adjusted states.
+        self.PlanePicker.Pick(X,Y,0.0,self.CurrentRenderer) 
+        self.State  = ImagePlaneWidget.Pushing
+        self.HighlightPlane(1)
+                 
+        self.EventCallbackCommand.SetAbortFlag(1)
+        self.StartInteraction()
+        self.InvokeEvent( vtk.vtkCommand.StartInteractionEvent, 0 )
+        self.Interactor.Render()
+    
+#----------------------------------------------------------------------------
+    def StopSliceMotion(self):
+    
+        if ( self.State == ImagePlaneWidget.Outside or self.State == ImagePlaneWidget.Start ): 
+            return
+            
+        self.State  = ImagePlaneWidget.Start
+        self.HighlightPlane(0)
+        
+        self.EventCallbackCommand.SetAbortFlag(1)
+        self.EndInteraction()
+        self.InvokeEvent( vtk.vtkCommand.EndInteractionEvent, 0 )
+        self.Interactor.Render()
+
+#----------------------------------------------------------------------------
+    def OnMouseMove(self):
+    
+        if ( self.State == ImagePlaneWidget.Outside or self.State == ImagePlaneWidget.Start ): return
+          
+        
+        X = self.Interactor.GetEventPosition()[0]
+        Y = self.Interactor.GetEventPosition()[1]
+                
+        camera = self.CurrentRenderer.GetActiveCamera()
+        if (  not camera ): return
+                          
+        if ( self.State == ImagePlaneWidget.Pushing ):
+            # Compute the two points defining the motion vector
+            #
+            focalPoint = self.ComputeWorldToDisplay( self.LastPickPosition[0],  self.LastPickPosition[1],  self.LastPickPosition[2] )
+            z = focalPoint[2]
+            
+            prevPickPoint = self.ComputeDisplayToWorld( float(self.Interactor.GetLastEventPosition()[0]), float(self.Interactor.GetLastEventPosition()[1]), z )        
+            pickPoint = self.ComputeDisplayToWorld( float(X), float(Y) )
+          
+            self.Push( prevPickPoint, pickPoint )
+            self.UpdatePlane()
+            self.BuildRepresentation()
+          
+        elif ( self.State == ImagePlaneWidget.Cursoring ):          
+            self.UpdateCursor(X,Y)
+            self.ManageTextDisplay()
+          
+        self.EventCallbackCommand.SetAbortFlag(1)
+        self.Interactor.Render()
+
+#----------------------------------------------------------------------------
+    def GetCursorData(self):
+        if ( self.State <> ImagePlaneWidget.Cursoring  or  self.CurrentImageValue == vtk.VTK_DOUBLE_MAX ): return None                  
+        return [ self.CurrentCursorPosition[0], self.CurrentCursorPosition[1], self.CurrentCursorPosition[2], self.CurrentImageValue ]        
+
+#----------------------------------------------------------------------------
+    def GetCursorDataStatus(self):
+        if ( self.State <> ImagePlaneWidget.Cursoring  or  self.CurrentImageValue == vtk.VTK_DOUBLE_MAX ): return 0
+        return 1
+
+#----------------------------------------------------------------------------
+    def ManageTextDisplay(self):         
+        if ( not self.DisplayText ): return                
+        if ( self.State == ImagePlaneWidget.Cursoring ):          
+            if( self.CurrentImageValue <> vtk.VTK_DOUBLE_MAX ):        
+                self.TextBuff = "( %g, %g, %g ): %g" % ( self.CurrentCursorPosition[0], self.CurrentCursorPosition[1], self.CurrentCursorPosition[2], self.CurrentImageValue )               
+                self.TextActor.SetInput(self.TextBuff)
+                self.TextActor.Modified()
+    
+#----------------------------------------------------------------------------
+
+    def Push( self, p1, p2 ):
+        v = [  p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] ]
+        self.PlaneSource.Push( vtk.vtkMath.Dot( v, self.PlaneSource.GetNormal() ) )
+
+#----------------------------------------------------------------------------
+
+    def CreateDefaultProperties(self):
+
+        if (  not  self.PlaneProperty ):          
+            self.PlaneProperty  = vtk.vtkProperty()
+            self.PlaneProperty.SetAmbient(1)
+            self.PlaneProperty.SetColor(1,1,1)
+            self.PlaneProperty.SetRepresentationToWireframe()
+            self.PlaneProperty.SetInterpolationToFlat()
+                        
+        if (  not  self.SelectedPlaneProperty ):           
+            self.SelectedPlaneProperty  = vtk.vtkProperty()
+            self.SelectedPlaneProperty.SetAmbient(1)
+            self.SelectedPlaneProperty.SetColor(0,1,0)
+            self.SelectedPlaneProperty.SetRepresentationToWireframe()
+            self.SelectedPlaneProperty.SetInterpolationToFlat()
+                       
+        if (  not  self.CursorProperty ):           
+            self.CursorProperty  = vtk.vtkProperty()
+            self.CursorProperty.SetAmbient(1)
+            self.CursorProperty.SetColor(1,0,0)
+            self.CursorProperty.SetRepresentationToWireframe()
+            self.CursorProperty.SetInterpolationToFlat()
+                       
+        if (  not  self.TexturePlaneProperty ):            
+            self.TexturePlaneProperty  = vtk.vtkProperty()
+            self.TexturePlaneProperty.SetAmbient(1)
+            self.TexturePlaneProperty.SetInterpolationToFlat()
+    
+#----------------------------------------------------------------------------
+    def PlaceWidget( self, bnds ):
+        
+        placeFactor = self.PlaceFactor
+        center = [ (bnds[0] + bnds[1])/2.0, (bnds[2] + bnds[3])/2.0,  (bnds[4] + bnds[5])/2.0 ] 
+        bounds = []
+        bounds.append(  center[0] + placeFactor*(bnds[0]-center[0]) )
+        bounds.append(  center[0] + placeFactor*(bnds[1]-center[0]) )
+        bounds.append(  center[1] + placeFactor*(bnds[2]-center[1]) )
+        bounds.append(  center[1] + placeFactor*(bnds[3]-center[1]) )
+        bounds.append(  center[2] + placeFactor*(bnds[4]-center[2]) )
+        bounds.append(  center[2] + placeFactor*(bnds[5]-center[2]) )
+        
+        if ( self.PlaneOrientation == 1 ):
+        
+            self.PlaneSource.SetOrigin(bounds[0],center[1],bounds[4])
+            self.PlaneSource.SetPoint1(bounds[1],center[1],bounds[4])
+            self.PlaneSource.SetPoint2(bounds[0],center[1],bounds[5])
+            
+        elif ( self.PlaneOrientation == 2 ):
+            
+            self.PlaneSource.SetOrigin(bounds[0],bounds[2],center[2])
+            self.PlaneSource.SetPoint1(bounds[1],bounds[2],center[2])
+            self.PlaneSource.SetPoint2(bounds[0],bounds[3],center[2])
+            
+        else: #default or x-normal
+            
+            self.PlaneSource.SetOrigin(center[0],bounds[2],bounds[4])
+            self.PlaneSource.SetPoint1(center[0],bounds[3],bounds[4])
+            self.PlaneSource.SetPoint2(center[0],bounds[2],bounds[5])
+                   
+        self.UpdatePlane()
+        self.BuildRepresentation()
+    
+#----------------------------------------------------------------------------
+
+    def SetPlaneOrientation( self, i ):
+
+        # Generate a XY plane if i = 2, z-normal
+        # or a YZ plane if i = 0, x-normal
+        # or a ZX plane if i = 1, y-normal
+        #
+        self.PlaneOrientation = i
+        
+        # This method must be called _after_ SetInput
+        #
+        self.ImageData  = self.Reslice.GetInput()
+        if ( not self.ImageData ):        
+            print>>sys.stderr, "SetInput() before setting plane orientation."
+            return
+               
+        self.ImageData.UpdateInformation()
+        extent = self.ImageData.GetWholeExtent()
+        origin = self.ImageData.GetOrigin()
+        spacing = self.ImageData.GetSpacing()
+        
+        # Prevent obscuring voxels by offsetting the plane geometry
+        #
+        xbounds = [ origin[0] + spacing[0] * (extent[0] - 0.5), origin[0] + spacing[0] * (extent[1] + 0.5) ]
+        ybounds = [ origin[1] + spacing[1] * (extent[2] - 0.5), origin[1] + spacing[1] * (extent[3] + 0.5) ]
+        zbounds = [ origin[2] + spacing[2] * (extent[4] - 0.5), origin[2] + spacing[2] * (extent[5] + 0.5) ]
+        
+        if ( spacing[0] < 0.0 ):
+            
+            t = xbounds[0]
+            xbounds[0] = xbounds[1]
+            xbounds[1] = t
+            
+        if ( spacing[1] < 0.0 ):
+            
+            t = ybounds[0]
+            ybounds[0] = ybounds[1]
+            ybounds[1] = t
+            
+        if ( spacing[2] < 0.0 ):
+            
+            t = zbounds[0]
+            zbounds[0] = zbounds[1]
+            zbounds[1] = t
+            
+            
+        if ( i == 2 ): #XY, z-normal
+            
+            self.PlaneSource.SetOrigin(xbounds[0],ybounds[0],zbounds[0])
+            self.PlaneSource.SetPoint1(xbounds[1],ybounds[0],zbounds[0])
+            self.PlaneSource.SetPoint2(xbounds[0],ybounds[1],zbounds[0])
+            
+        elif ( i == 0 ): #YZ, x-normal
+            
+            self.PlaneSource.SetOrigin(xbounds[0],ybounds[0],zbounds[0])
+            self.PlaneSource.SetPoint1(xbounds[0],ybounds[1],zbounds[0])
+            self.PlaneSource.SetPoint2(xbounds[0],ybounds[0],zbounds[1])
+            
+        else:  #ZX, y-normal
+            
+            self.PlaneSource.SetOrigin(xbounds[0],ybounds[0],zbounds[0])
+            self.PlaneSource.SetPoint1(xbounds[0],ybounds[0],zbounds[1])
+            self.PlaneSource.SetPoint2(xbounds[1],ybounds[0],zbounds[0])
+        
+        
+        self.UpdatePlane()
+        self.BuildRepresentation()
+        self.Modified()
+
+
+#----------------------------------------------------------------------------
+    def SetInput(self, inputData ):
+    
+        self.ImageData = inputData
+        
+        if(  not self.ImageData ):       
+            # If None is passed, remove any reference that Reslice had
+            # on the old ImageData
+            self.Reslice.SetInput(None)
+            return
+                   
+        scalar_range = self.ImageData.GetScalarRange()
+        
+        if (  not self.UserControlledLookupTable ):       
+            self.LookupTable.SetTableRange( scalar_range[0], scalar_range[1] )
+            self.LookupTable.Build()
+            
+        self.Reslice.SetInput(self.ImageData)
+        interpolate = self.ResliceInterpolate
+        self.ResliceInterpolate = -1 # Force change
+        self.SetResliceInterpolate(interpolate)
+        
+        self.ColorMap.SetInput(self.Reslice.GetOutput())
+        
+        self.Texture.SetInput(self.ColorMap.GetOutput())
+        self.Texture.SetInterpolate(self.TextureInterpolate)
+        
+        self.SetPlaneOrientation(self.PlaneOrientation)
+        
+
+#----------------------------------------------------------------------------
+
+    def UpdatePlane(self):
+        
+        self.ImageData  =self.Reslice.GetInput()
+        if (  not self.Reslice or not self.ImageData ): return
+           
+        # Calculate appropriate pixel spacing for the reslicing
+        #
+        self.ImageData.UpdateInformation()
+        spacing = self.ImageData.GetSpacing()
+        origin = self.ImageData.GetOrigin()
+        extent = self.ImageData.GetWholeExtent()        
+        bounds = [ origin[0] + spacing[0]*extent[0], origin[0] + spacing[0]*extent[1],  origin[1] + spacing[1]*extent[2],  origin[1] + spacing[1]*extent[3],  origin[2] + spacing[2]*extent[4],  origin[2] + spacing[2]*extent[5] ]    
+        
+        for j in range( 3 ): 
+            i = 2*j   
+            if ( bounds[i] > bounds[i+1] ):
+                t = bounds[i+1]
+                bounds[i+1] = bounds[i]
+                bounds[i] = t
+           
+        abs_normal = self.PlaneSource.GetNormal()
+        planeCenter = self.PlaneSource.GetCenter()
+        nmax = 0.0
+        k = 0
+        for i in range( 3 ):    
+            abs_normal[i] = abs(abs_normal[i])
+            if ( abs_normal[i]>nmax ):       
+                nmax = abs_normal[i]
+                k = i
+            
+        # Force the plane to lie within the true image bounds along its normal
+        #
+        if ( planeCenter[k] > bounds[2*k+1] ):    
+            planeCenter[k] = bounds[2*k+1]   
+        elif ( planeCenter[k] < bounds[2*k] ):   
+            planeCenter[k] = bounds[2*k]
+               
+        self.PlaneSource.SetCenter(planeCenter)
+            
+        planeAxis1 = self.GetVector1()
+        planeAxis2 = self.GetVector2()
+        
+        # The x,y dimensions of the plane
+        #
+        planeSizeX  = vtk.vtkMath.Normalize(planeAxis1)
+        planeSizeY  = vtk.vtkMath.Normalize(planeAxis2)
+        normal = self.PlaneSource.GetNormal()
+        
+        # Generate the slicing matrix
+        #
+        
+        self.ResliceAxes.Identity()
+        for i in range( 3 ):       
+            self.ResliceAxes.SetElement(0,i,planeAxis1[i])
+            self.ResliceAxes.SetElement(1,i,planeAxis2[i])
+            self.ResliceAxes.SetElement(2,i,normal[i])
+           
+        planeOrigin = self.PlaneSource.GetOrigin()
+        
+        planeOrigin[3] = 1.0
+        originXYZW = self.ResliceAxes.MultiplyPoint(planeOrigin)    
+        self.ResliceAxes.Transpose()
+        neworiginXYZW = self.ResliceAxes.MultiplyPoint(originXYZW)
+        
+        self.ResliceAxes.SetElement(0,3,neworiginXYZW[0])
+        self.ResliceAxes.SetElement(1,3,neworiginXYZW[1])
+        self.ResliceAxes.SetElement(2,3,neworiginXYZW[2])
+        
+        self.Reslice.SetResliceAxes(self.ResliceAxes)
+        
+        spacingX = abs(planeAxis1[0]*spacing[0]) + abs(planeAxis1[1]*spacing[1]) + abs(planeAxis1[2]*spacing[2])   
+        spacingY = abs(planeAxis2[0]*spacing[0]) + abs(planeAxis2[1]*spacing[1]) + abs(planeAxis2[2]*spacing[2])
+        
+        # make sure we're working with valid values
+        realExtentX = vtk.VTK_INT_MAX if ( spacingX == 0 ) else planeSizeX / spacingX       
+        # make sure extentY doesn't wrap during padding
+        realExtentY = vtk.VTK_INT_MAX if ( spacingY == 0 ) else planeSizeY / spacingY
+
+        extentX = 1
+        while (extentX < realExtentX): extentX = extentX << 1
+        extentY = 1
+        while (extentY < realExtentY): extentY = extentY << 1
+            
+        outputSpacingX = 1.0 if (planeSizeX == 0) else planeSizeX/extentX
+        outputSpacingY = 1.0 if (planeSizeY == 0) else planeSizeY/extentY
+        self.Reslice.SetOutputSpacing(outputSpacingX, outputSpacingY, 1)
+        self.Reslice.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
+        self.Reslice.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
+    
+#----------------------------------------------------------------------------
+
+    def GetResliceOutput(self):      
+        if (  not  self.Reslice ): return 0           
+        return self.Reslice.GetOutput()
+
+#----------------------------------------------------------------------------
+    def SetResliceInterpolate( self, i ):
+        
+        if ( self.ResliceInterpolate == i ):  return
+          
+        self.ResliceInterpolate = i
+        self.Modified()
+        
+        if (  not self.Reslice ): return
+                  
+        if ( i == VTK_NEAREST_RESLICE ):    self.Reslice.SetInterpolationModeToNearestNeighbor()          
+        elif ( i == VTK_LINEAR_RESLICE): self.Reslice.SetInterpolationModeToLinear()          
+        else:                               self.Reslice.SetInterpolationModeToCubic()
+          
+        self.Texture.SetInterpolate(self.TextureInterpolate)
+
+#----------------------------------------------------------------------------
+
+    def SetPicker( self, picker):
+        
+# we have to have a picker for slice motion, window level and cursor to work
+        if (self.PlanePicker <> picker):
+        
+            self.PlanePicker = picker            
+                
+            if (self.PlanePicker == None):           
+                self.PlanePicker  = vtk.vtkCellPicker()
+                self.PlanePicker.SetTolerance(0.005)
+            
+            self.PlanePicker.AddPickList(self.TexturePlaneActor)
+            self.PlanePicker.PickFromListOn()
+
+#----------------------------------------------------------------------------
+
+    def CreateDefaultLookupTable(self):    
+        lut  = vtk.vtkLookupTable()
+        lut.SetNumberOfColors( 256)
+        lut.SetHueRange( 0, 0)
+        lut.SetSaturationRange( 0, 0)
+        lut.SetValueRange( 0 ,1)
+        lut.SetAlphaRange( 1, 1)
+        lut.Build()
+        return lut
+
+#----------------------------------------------------------------------------
+
+    def SetLookupTable( self, table ):
+        
+        if (self.LookupTable <> table):
+            self.LookupTable = table       
+            if (self.LookupTable == None): self.LookupTable = self.CreateDefaultLookupTable()
+               
+        self.ColorMap.SetLookupTable(self.LookupTable)
+        self.Texture.SetLookupTable(self.LookupTable)
+        
+        if( self.ImageData and  not self.UserControlledLookupTable):       
+            scalar_range = self.ImageData.GetScalarRange()            
+            self.LookupTable.SetTableRange(scalar_range[0],scalar_range[1])
+            self.LookupTable.Build()
+                
+#----------------------------------------------------------------------------
+
+    def SetSlicePosition( self, position ):
+    
+        amount = 0.0
+        planeOrigin = self.PlaneSource.GetOrigin()
+        
+        if ( self.PlaneOrientation == 2 ): # z axis        
+            amount = position - planeOrigin[2]       
+        elif ( self.PlaneOrientation == 0 ): # x axis        
+            amount = position - planeOrigin[0]        
+        elif ( self.PlaneOrientation == 1 ):  #y axis       
+            amount = position - planeOrigin[1]
+                
+        self.PlaneSource.Push( amount )
+        self.UpdatePlane()
+        self.BuildRepresentation()
+        self.Modified()
+
+#----------------------------------------------------------------------------
+    def GetSlicePosition(self):
+        
+        planeOrigin = self.PlaneSource.GetOrigin( )
+        
+        if ( self.PlaneOrientation == 2 ):
+        
+            return planeOrigin[2]
+        
+        elif ( self.PlaneOrientation == 1 ):
+         
+            return planeOrigin[1]
+        
+        elif ( self.PlaneOrientation == 0 ):
+          
+            return planeOrigin[0]        
+        
+        return 0.0
+
+#----------------------------------------------------------------------------
+
+    def SetSliceIndex(self, index):
+        
+        if (  not self.Reslice ): return
+        
+        self.ImageData  = self.Reslice.GetInput()
+        if (  not self.ImageData ): return
+         
+        self.ImageData.UpdateInformation()
+        origin = self.ImageData.GetOrigin()
+        spacing = self.ImageData.GetSpacing()
+        planeOrigin = self.PlaneSource.GetOrigin()
+        pt1 = self.PlaneSource.GetPoint1()
+        pt2 = self.PlaneSource.GetPoint2()
+        
+        if ( self.PlaneOrientation == 2 ):
+        
+            planeOrigin[2] = origin[2] + index*spacing[2]
+            pt1[2] = planeOrigin[2]
+            pt2[2] = planeOrigin[2]
+        
+        elif ( self.PlaneOrientation == 1 ):
+        
+            planeOrigin[1] = origin[1] + index*spacing[1] 
+            pt1[1] = planeOrigin[1]
+            pt2[1] = planeOrigin[1]
+        
+        elif ( self.PlaneOrientation == 0 ):
+        
+            planeOrigin[0] = origin[0] + index*spacing[0] 
+            pt1[0] = planeOrigin[0]
+            pt2[0] = planeOrigin[0]
+        
+        
+        self.PlaneSource.SetOrigin(planeOrigin)
+        self.PlaneSource.SetPoint1(pt1)
+        self.PlaneSource.SetPoint2(pt2)
+        self.UpdatePlane()
+        self.BuildRepresentation()
+        self.Modified()
+
+
+#----------------------------------------------------------------------------
+
+    def GetSliceIndex(self):
+        
+        if (  not  self.Reslice ): return 0
+        
+        self.ImageData  = self.Reslice.GetInput()
+        if (  not  self.ImageData ): return 0
+         
+        self.ImageData.UpdateInformation()
+        origin = self.ImageData.GetOrigin()
+        spacing = self.ImageData.GetSpacing()
+        planeOrigin = self.PlaneSource.GetOrigin()
+        
+        if ( self.PlaneOrientation == 2 ):        
+            return vtk.vtkMath.Round((planeOrigin[2]-origin[2])/spacing[2])
+        
+        elif ( self.PlaneOrientation == 1 ):        
+            return vtk.vtkMath.Round((planeOrigin[1]-origin[1])/spacing[1])
+        
+        elif ( self.PlaneOrientation == 0 ):        
+            return vtk.vtkMath.Round((planeOrigin[0]-origin[0])/spacing[0])
+        return 0
+
+
+#----------------------------------------------------------------------------
+    def ActivateCursor(self, i):        
+        if(  not self.CurrentRenderer ):  return        
+        if( i == 0 ):   self.CursorActor.VisibilityOff()        
+        else:           self.CursorActor.VisibilityOn()
+        
+#----------------------------------------------------------------------------
+
+    def ActivateText(self, i):        
+        if(  not self.CurrentRenderer or  not self.DisplayText ):  return        
+        if( i == 0 ):   self.TextActor.VisibilityOff()        
+        else:           self.TextActor.VisibilityOn()
+
+
+#----------------------------------------------------------------------------
+
+    def UpdateCursor( self, X, Y ):
+        
+        self.ImageData  = self.Reslice.GetInput()
+        if (  not self.ImageData ): return
+        
+        # We're going to be extracting values with GetScalarComponentAsDouble(),
+        # we might as well make sure that the data is there.  If the data is
+        # up to date already, this call doesn't cost very much.  If we don't make
+        # this call and the data is not up to date, the GetScalar... call will
+        # cause a segfault.
+        self.ImageData.Update()
+        
+        self.PlanePicker.Pick(X,Y,0.0,self.CurrentRenderer)
+        self.CurrentImageValue = vtk.VTK_DOUBLE_MAX
+        self.CursorActor.VisibilityOn()
+              
+        q = self.PlanePicker.GetPickPosition()    
+        q = self.UpdateDiscreteCursor(q)    
+ 
+        if( q == None ):        
+            self.CursorActor.VisibilityOff()
+            return
+ 
+        o = self.PlaneSource.GetOrigin()
+        
+        # q relative to the plane origin
+        #
+        qro = [ q[0] - o[0], q[1] - o[1], q[2] - o[2] ]
+        
+        p1o = self.GetVector1()
+        p2o = self.GetVector2()        
+        Lp1  = vtk.vtkMath.Dot(qro,p1o)/vtk.vtkMath.Dot(p1o,p1o)
+        Lp2  = vtk.vtkMath.Dot(qro,p2o)/vtk.vtkMath.Dot(p2o,p2o)
+        
+        p1 = self.PlaneSource.GetPoint1()
+        p2 = self.PlaneSource.GetPoint2()
+               
+        a = [ o[i]  + Lp2*p2o[i]  for i in range(3) ]
+        b = [ p1[i] + Lp2*p2o[i]  for i in range(3) ] #  right
+        c = [ o[i]  + Lp1*p1o[i]  for i in range(3) ] # bottom
+        d = [ p2[i] + Lp1*p1o[i]  for i in range(3) ]  # top
+        
+        
+        cursorPts = self.CursorPolyData.GetPoints()        
+        cursorPts.SetPoint(0,a)
+        cursorPts.SetPoint(1,b)
+        cursorPts.SetPoint(2,c)
+        cursorPts.SetPoint(3,d)
+        
+        self.CursorPolyData.Modified()
+
+
+#----------------------------------------------------------------------------
+
+    def UpdateDiscreteCursor( self, q ):   
+        # vtkImageData will find the nearest implicit point to q
+        ptId = self.ImageData.FindPoint(q)        
+        if ( ptId == -1 ): return None
+         
+        closestPt = self.ImageData.GetPoint(ptId,)       
+        origin = self.ImageData.GetOrigin()
+        spacing = self.ImageData.GetSpacing()
+        extent = self.ImageData.GetExtent()
+        rq = []       
+        for i in range(3):         
+            # compute world to image coords
+            iqtemp  = vtk.vtkMath.Round((closestPt[i]-origin[i])/spacing[i])           
+            # we have a valid pick already, just enforce bounds check
+            iq = extent[2*i] if( iqtemp < extent[2*i] ) else ( extent[2*i+1] if (iqtemp > extent[2*i+1]) else iqtemp )            
+            # compute image to world coords
+            rq.append( iq*spacing[i] + origin[i] )            
+            self.CurrentCursorPosition[i] = int(iq)
+                  
+        self.CurrentImageValue = self.ImageData.GetScalarComponentAsDouble( self.CurrentCursorPosition[0], self.CurrentCursorPosition[1], self.CurrentCursorPosition[2], 0 )
+        return rq
+
+#----------------------------------------------------------------------------
+
+    def Modified(self):
+        pass
+#----------------------------------------------------------------------------
+
+    def SetOrigin( self,  x,  y,  z ):
+        self.PlaneSource.SetOrigin(x,y,z)
+        self.Modified()
+
+
+#----------------------------------------------------------------------------
+    def GetOrigin( self ):
+        return self.PlaneSource.GetOrigin()
+
+#----------------------------------------------------------------------------
+
+    def SetPoint1( self, x, y, z):
+        self.PlaneSource.SetPoint1(x,y,z)
+        self.Modified()
+
+#----------------------------------------------------------------------------
+
+    def GetPoint1(self):
+        return self.PlaneSource.GetPoint1()
+
+#----------------------------------------------------------------------------
+
+    def SetPoint2( self, x, y, z):
+        self.PlaneSource.SetPoint2(x,y,z)
+        self.Modified()
+
+#----------------------------------------------------------------------------
+
+    def GetPoint2(self):
+        return self.PlaneSource.GetPoint2()
+
+
+#----------------------------------------------------------------------------
+
+    def GetCenter(self): 
+        return self.PlaneSource.GetCenter()
+
+#----------------------------------------------------------------------------
+    def GetNormal(self): 
+        return self.PlaneSource.GetNormal()
+
+#----------------------------------------------------------------------------
+    def GetPolyData(self, pd):
+        pd.ShallowCopy(self.PlaneSource.GetOutput())
+
+
+#----------------------------------------------------------------------------
+    def GetPolyDataAlgorithm(self):
+        return self.PlaneSource
+
+#----------------------------------------------------------------------------
+    def UpdatePlacement(self):
+        self.UpdatePlane()
+        self.BuildRepresentation()
+
+#----------------------------------------------------------------------------
+
+    def SetTextProperty(self, tprop):
+        self.TextActor.SetTextProperty(tprop)
+
+#----------------------------------------------------------------------------
+    def GetTextProperty(self):
+        return self.TextActor.GetTextProperty()
+
+#----------------------------------------------------------------------------
+    def GetTexture(self):
+        return self.Texture
+
+#----------------------------------------------------------------------------
+
+    def GetVector1(self):
+        p1 = self.PlaneSource.GetPoint1()
+        o =  self.PlaneSource.GetOrigin()
+        v1 = [  p1[0] - o[0], p1[1] - o[1], p1[2] - o[2] ]
+        return v1
+
+#----------------------------------------------------------------------------
+
+    def GetVector2(self):
+        p2 = self.PlaneSource.GetPoint2()
+        o =  self.PlaneSource.GetOrigin()
+        v2 = [  p2[0] - o[0], p2[1] - o[1], p2[2] - o[2] ]
+        return v2
+
+
+#----------------------------------------------------------------------------
+
+    def GeneratePlaneOutline(self):
+        points = vtk.vtkPoints()
+        points.SetNumberOfPoints(4)
+        for i in range(4): points.SetPoint(i,0.0,0.0,0.0)
+                 
+        cells  = vtk.vtkCellArray()
+        ids = vtk.vtkIdList()
+        cells.Allocate(cells.EstimateSize(4,2))
+        ids.Reset()
+        ids.InsertNextId(3)
+        ids.InsertNextId(2)
+        cells.InsertNextCell(ids)
+        ids.Reset()
+        ids.InsertNextId(0)
+        ids.InsertNextId(1)
+        cells.InsertNextCell(ids)
+        ids.Reset()
+        ids.InsertNextId(0)
+        ids.InsertNextId(3)
+        cells.InsertNextCell(ids)
+        ids.Reset()
+        ids.InsertNextId(1)
+        ids.InsertNextId(2)
+        cells.InsertNextCell(ids)
+        
+        self.PlaneOutlinePolyData.SetPoints(points)
+        self.PlaneOutlinePolyData.SetLines(cells)
+        
+        planeOutlineMapper  = vtk.vtkPolyDataMapper()
+        planeOutlineMapper.SetInput( self.PlaneOutlinePolyData )
+        planeOutlineMapper.SetResolveCoincidentTopologyToPolygonOffset()
+        self.PlaneOutlineActor.SetMapper(planeOutlineMapper)
+        self.PlaneOutlineActor.PickableOff()    
+
+#----------------------------------------------------------------------------
+
+    def GenerateTexturePlane(self):
+
+        self.SetResliceInterpolate(self.ResliceInterpolate)       
+        self.LookupTable = self.CreateDefaultLookupTable()
+        
+        self.ColorMap.SetLookupTable(self.LookupTable)
+        self.ColorMap.SetOutputFormatToRGBA()
+        self.ColorMap.PassAlphaToOutputOn()
+        
+        texturePlaneMapper  = vtk.vtkPolyDataMapper()
+        texturePlaneMapper.SetInput( self.PlaneSource.GetOutput() )
+        
+        self.Texture.SetQualityTo32Bit()
+        self.Texture.MapColorScalarsThroughLookupTableOff()
+        self.Texture.SetInterpolate(self.TextureInterpolate)
+        self.Texture.RepeatOff()
+        self.Texture.SetLookupTable(self.LookupTable)
+        
+        self.TexturePlaneActor.SetMapper(texturePlaneMapper)
+        self.TexturePlaneActor.SetTexture(self.Texture)
+        self.TexturePlaneActor.PickableOn()
+
+#----------------------------------------------------------------------------
+
+    def GenerateCursor(self):
+        # Construct initial points
+        points  = vtk.vtkPoints()
+        points.SetNumberOfPoints(4)
+        for i in range(4): points.SetPoint(i,0.0,0.0,0.0)       
+        cells  = vtk.vtkCellArray()
+        cells.Allocate(cells.EstimateSize(2,2))
+        
+        ids = vtk.vtkIdList()
+        ids.Reset()
+        ids.InsertNextId(0)
+        ids.InsertNextId(1)
+        cells.InsertNextCell(ids)
+        ids.Reset()
+        ids.InsertNextId(2)
+        ids.InsertNextId(3)
+        cells.InsertNextCell(ids)
+        
+        self.CursorPolyData.SetPoints(points)
+        self.CursorPolyData.SetLines(cells)        
+        cursorMapper  = vtk.vtkPolyDataMapper()
+        cursorMapper.SetInput(self.CursorPolyData)
+        cursorMapper.SetResolveCoincidentTopologyToPolygonOffset()
+        self.CursorActor.SetMapper(cursorMapper)
+        self.CursorActor.PickableOff()
+        self.CursorActor.VisibilityOff()
+
+#----------------------------------------------------------------------------
+    def GenerateText(self):
+
+        self.TextBuff = "NA"
+        self.TextActor.SetInput(self.TextBuff)
+        self.TextActor.SetTextScaleModeToNone()
+        
+        textprop = self.TextActor.GetTextProperty()
+        textprop.SetColor(1,1,1)
+        textprop.SetFontFamilyToArial()
+        textprop.SetFontSize(18)
+        textprop.BoldOff()
+        textprop.ItalicOff()
+        textprop.ShadowOff()
+        textprop.SetJustificationToLeft()
+        textprop.SetVerticalJustificationToBottom()
+        
+        coord = self.TextActor.GetPositionCoordinate()
+        coord.SetCoordinateSystemToNormalizedViewport()
+        coord.SetValue(.01, .01)
+        
+        self.TextActor.VisibilityOff()
+        
+if __name__ == '__main__': 
+    ipw =   ImagePlaneWidget()     
