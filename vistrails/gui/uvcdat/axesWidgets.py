@@ -271,7 +271,7 @@ class QSliderCombo(QtGui.QWidget):
         ## Ok here we check for circular axes
         if axis.isCircular():
             try:
-                modulo = axis.modulo
+                modulo = float(axis.modulo)
             except:
                 if axis.isLongitude():
                     modulo=360.
