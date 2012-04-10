@@ -16,6 +16,7 @@ from packages.vtDV3D.ColorMapManager import ColorMapManager
 from packages.vtDV3D.WorkflowModule import WorkflowModule 
 from packages.vtDV3D.PersistentModule import * 
 from packages.vtDV3D.vtUtilities import *
+from packages.vtDV3D.ImagePlaneWidget import *
 from packages.vtDV3D import HyperwallManager
 VolumeSlicerModules = {}
         
@@ -113,6 +114,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         picker.SetTolerance(0.005) 
          
         self.planeWidgetX = vtk.vtkImagePlaneWidget()
+#        self.planeWidgetX = ImagePlaneWidget()
         self.planeWidgetX.DisplayTextOff()
         self.planeWidgetX.SetInput( self.input )
         self.planeWidgetX.SetPlaneOrientationToXAxes()
