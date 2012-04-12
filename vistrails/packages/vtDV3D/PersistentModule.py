@@ -643,7 +643,8 @@ class PersistentModule( QObject ):
 
     def initializeMetadata( self ):
         self.fieldData = vtk.vtkDataSetAttributes()
-        self.fieldData.AddArray( getStringDataArray( 'metadata' ) )
+        mdarray = getStringDataArray( 'metadata' )
+        self.fieldData.AddArray( mdarray )
 #        print " %s:initializeMetadata---> # FieldData Arrays = %d " % ( self.__class__.__name__, self.fieldData.GetNumberOfArrays() )
 #        self.fieldData.AddArray( getFloatDataArray( 'position', [  0.0, 0.0, 0.0 ] ) )
 #        self.fieldData.AddArray( getFloatDataArray( 'scale',    [  1.0, 1.0, 1.0 ] ) ) 
@@ -1282,7 +1283,8 @@ class PersistentVisualizationModule( PersistentModule ):
       textActor = self.getProp( 'vtkTextActor', id  )
       if textActor == None:
           textActor = self.createTextActor( id, pos, **args  )
-          if self.renderer: self.renderer.AddViewProp( textActor )
+          if self.renderer: 
+              self.renderer.AddViewProp( textActor )
       textActor.SetInput( text )
       textActor.Modified()
       return textActor

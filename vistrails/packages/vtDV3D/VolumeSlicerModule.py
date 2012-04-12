@@ -50,7 +50,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetX = None
         self.planeWidgetY = None
         self.planeWidgetZ = None
-        self.imageRescale = None
+#        self.imageRescale = None
         VolumeSlicerModules[mid] = self
 #        print " Volume Slicer init, id = %s " % str( id(self) )
 
@@ -64,8 +64,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         if self.setInputZScale( zscale_data ):
             if self.planeWidgetX <> None:
                 bounds = list( self.input.GetBounds() ) 
-                self.planeWidgetX.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
-                self.planeWidgetY.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )                
+                self.planeWidgetX.PlaceWidget( bounds )        
+                self.planeWidgetY.PlaceWidget( bounds )                
                 
     def getOpacity(self):
         return [ self.opacity, self.opacity ]
@@ -91,6 +91,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.planeWidgetZ.UpdatePlacement() 
 #        self.planeWidgetZ.PlaceWidget()
 #        self.updatingPlacement = False
+
                                                   
     def buildPipeline(self):
         """ execute() -> None
@@ -112,77 +113,169 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         # and gets the picking order right
         picker = vtk.vtkCellPicker()
         picker.SetTolerance(0.005) 
-         
-        self.planeWidgetX = vtk.vtkImagePlaneWidget()
-#        self.planeWidgetX = ImagePlaneWidget()
-        self.planeWidgetX.DisplayTextOff()
+        useVtkImagePlaneWidget = False
+        
+        self.planeWidgetX = ImagePlaneWidget( self, 0 )
+#        self.planeWidgetX.DisplayTextOff()
+        self.planeWidgetX.SetRenderer( self.renderer )
         self.planeWidgetX.SetInput( self.input )
         self.planeWidgetX.SetPlaneOrientationToXAxes()
         self.planeWidgetX.SetSliceIndex( self.slicePosition[0] )
         self.planeWidgetX.SetPicker(picker)
-        self.planeWidgetX.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )
         prop1 = self.planeWidgetX.GetPlaneProperty()
         prop1.SetColor(1, 0, 0)
         self.planeWidgetX.SetUserControlledLookupTable(1)
         self.planeWidgetX.SetLookupTable( self.lut )
-        self.planeWidgetX.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 0 ) )
-        self.planeWidgetX.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
-        self.planeWidgetX.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
-        self.planeWidgetX.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )
+#            self.planeWidgetX.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 0 ) )
+#            self.planeWidgetX.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
+#            self.planeWidgetX.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
+        self.planeWidgetX.PlaceWidget( bounds )       
+
 #        if bounds[0] < 0.0: self.planeWidgetX.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
 #        self.planeWidgetX.SetOrigin( self.input.GetOrigin() )
 #        self.planeWidgetX.AddObserver( 'AnyEvent', self.TestObserver )
                 
-        self.planeWidgetY = vtk.vtkImagePlaneWidget()
-        self.planeWidgetY.DisplayTextOff()
+        self.planeWidgetY = ImagePlaneWidget( self, 1)
+#        self.planeWidgetY.DisplayTextOff()
+        self.planeWidgetY.SetRenderer( self.renderer )
         self.planeWidgetY.SetInput( self.input )
         self.planeWidgetY.SetPlaneOrientationToYAxes()
         self.planeWidgetY.SetUserControlledLookupTable(1)
         self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
-        self.planeWidgetY.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )
         self.planeWidgetY.SetPicker(picker)
-        self.planeWidgetY.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 1 ) )
-        self.planeWidgetY.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
-        self.planeWidgetY.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
+#        self.planeWidgetY.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 1 ) )
+#        self.planeWidgetY.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
+#        self.planeWidgetY.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
 #        self.planeWidgetY.AddObserver( 'AnyEvent', self.TestObserver )
         prop2 = self.planeWidgetY.GetPlaneProperty()
         prop2.SetColor(1, 1, 0)
 #        if bounds[0] < 0.0: self.planeWidgetY.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
-        self.planeWidgetY.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
+        self.planeWidgetY.PlaceWidget(  bounds  )        
         self.planeWidgetY.SetUserControlledLookupTable(1)
         self.planeWidgetY.SetLookupTable( self.lut )
         
-        self.planeWidgetZ = vtk.vtkImagePlaneWidget()
-        self.planeWidgetZ.DisplayTextOff()
+        self.planeWidgetZ = ImagePlaneWidget( self, 2 )
+#        self.planeWidgetZ.DisplayTextOff()
+        self.planeWidgetZ.SetRenderer( self.renderer )
         self.planeWidgetZ.SetInput( self.input )
         self.planeWidgetZ.SetPlaneOrientationToZAxes()
         self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
-        self.planeWidgetZ.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )
         self.planeWidgetZ.SetPicker(picker)
-        self.planeWidgetZ.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 2 ) )
-        self.planeWidgetZ.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
-        self.planeWidgetZ.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
+#        self.planeWidgetZ.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 2 ) )
+#        self.planeWidgetZ.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
+#        self.planeWidgetZ.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
 #        self.planeWidgetZ.AddObserver( 'AnyEvent', self.TestObserver )
-        self.planeWidgetZ.AddObserver( 'LeftButtonPressEvent', self.onSlicerLeftButtonPress )
-        self.planeWidgetZ.AddObserver( 'RightButtonPressEvent', self.onSlicerRightButtonPress )
+#        self.planeWidgetZ.AddObserver( 'LeftButtonPressEvent', self.onSlicerLeftButtonPress )
+#        self.planeWidgetZ.AddObserver( 'RightButtonPressEvent', self.onSlicerRightButtonPress )
                 
         prop3 = self.planeWidgetZ.GetPlaneProperty()
         prop3.SetColor(0, 0, 1)
 #        if bounds[0] < 0.0: self.planeWidgetZ.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
-        self.planeWidgetZ.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )
+        self.planeWidgetZ.PlaceWidget( bounds )
 
         self.planeWidgetZ.SetUserControlledLookupTable(1)
         self.planeWidgetZ.SetLookupTable( self.lut )
-        self.setMarginSize( 0.0 )  
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.updateOpacity() 
-        self.imageRescale = vtk.vtkImageReslice() 
-        self.imageRescale.SetOutputDimensionality(2) 
-        self.imageRescale.SetInterpolationModeToLinear() 
-        self.imageRescale.SetResliceAxesDirectionCosines( [-1, 0, 0], [0, -1, 0], [0, 0, -1] )
+#        self.imageRescale = vtk.vtkImageReslice() 
+#        self.imageRescale.SetOutputDimensionality(2) 
+#        self.imageRescale.SetInterpolationModeToLinear() 
+#        self.imageRescale.SetResliceAxesDirectionCosines( [-1, 0, 0], [0, -1, 0], [0, 0, -1] )
 
-        self.set2DOutput( port=self.imageRescale.GetOutputPort(), name='slice' ) 
+#        self.set2DOutput( port=self.imageRescale.GetOutputPort(), name='slice' ) 
         self.set3DOutput() 
+
+#    def buildPipeline0(self):
+#        """ execute() -> None
+#        Dispatch the vtkRenderer to the actual rendering widget
+#        """           
+#        # The 3 image plane widgets are used to probe the dataset.    
+#        print " Volume Slicer buildPipeline, id = %s " % str( id(self) )
+#        self.sliceOutput = vtk.vtkImageData()  
+#        xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
+#        self.slicePosition = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
+#        dataType = self.input.GetScalarTypeAsString()
+#        bounds = list(self.input.GetBounds()) 
+#        origin = self.input.GetOrigin()
+#        if (dataType <> 'float') and (dataType <> 'double'):
+#             self.setMaxScalarValue( self.input.GetScalarType() )
+#        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input.GetWholeExtent()), str(origin), str(bounds) )
+#      
+#        # The shared picker enables us to use 3 planes at one time
+#        # and gets the picking order right
+#        picker = vtk.vtkCellPicker()
+#        picker.SetTolerance(0.005) 
+#
+#        self.planeWidgetX = vtk.vtkImagePlaneWidget()
+#        self.planeWidgetX.DisplayTextOff()
+#        self.planeWidgetX.SetInput( self.input )
+#        self.planeWidgetX.SetPlaneOrientationToXAxes()
+#        self.planeWidgetX.SetSliceIndex( self.slicePosition[0] )
+#        self.planeWidgetX.SetPicker(picker)
+#        self.planeWidgetX.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )
+#        prop1 = self.planeWidgetX.GetPlaneProperty()
+#        prop1.SetColor(1, 0, 0)
+#        self.planeWidgetX.SetUserControlledLookupTable(1)
+#        self.planeWidgetX.SetLookupTable( self.lut )
+#        self.planeWidgetX.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 0 ) )
+#        self.planeWidgetX.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
+#        self.planeWidgetX.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
+#        self.planeWidgetX.PlaceWidget(  bounds  )
+#   
+#
+##        if bounds[0] < 0.0: self.planeWidgetX.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
+##        self.planeWidgetX.SetOrigin( self.input.GetOrigin() )
+##        self.planeWidgetX.AddObserver( 'AnyEvent', self.TestObserver )
+#                
+#        self.planeWidgetY = vtk.vtkImagePlaneWidget()
+#        self.planeWidgetY.DisplayTextOff()
+#        self.planeWidgetY.SetInput( self.input )
+#        self.planeWidgetY.SetPlaneOrientationToYAxes()
+#        self.planeWidgetY.SetUserControlledLookupTable(1)
+#        self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
+#        self.planeWidgetY.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )
+#        self.planeWidgetY.SetPicker(picker)
+#        self.planeWidgetY.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 1 ) )
+#        self.planeWidgetY.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
+#        self.planeWidgetY.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
+##        self.planeWidgetY.AddObserver( 'AnyEvent', self.TestObserver )
+#        prop2 = self.planeWidgetY.GetPlaneProperty()
+#        prop2.SetColor(1, 1, 0)
+##        if bounds[0] < 0.0: self.planeWidgetY.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
+#        self.planeWidgetY.PlaceWidget(  bounds  )        
+#        self.planeWidgetY.SetUserControlledLookupTable(1)
+#        self.planeWidgetY.SetLookupTable( self.lut )
+#        
+#        self.planeWidgetZ = vtk.vtkImagePlaneWidget()
+#        self.planeWidgetZ.DisplayTextOff()
+#        self.planeWidgetZ.SetInput( self.input )
+#        self.planeWidgetZ.SetPlaneOrientationToZAxes()
+#        self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
+#        self.planeWidgetZ.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )
+#        self.planeWidgetZ.SetPicker(picker)
+#        self.planeWidgetZ.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 2 ) )
+#        self.planeWidgetZ.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
+#        self.planeWidgetZ.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
+##        self.planeWidgetZ.AddObserver( 'AnyEvent', self.TestObserver )
+#        self.planeWidgetZ.AddObserver( 'LeftButtonPressEvent', self.onSlicerLeftButtonPress )
+#        self.planeWidgetZ.AddObserver( 'RightButtonPressEvent', self.onSlicerRightButtonPress )
+#                
+#        prop3 = self.planeWidgetZ.GetPlaneProperty()
+#        prop3.SetColor(0, 0, 1)
+##        if bounds[0] < 0.0: self.planeWidgetZ.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
+#        self.planeWidgetZ.PlaceWidget( bounds )
+#
+#        self.planeWidgetZ.SetUserControlledLookupTable(1)
+#        self.planeWidgetZ.SetLookupTable( self.lut )
+#        self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
+#        self.updateOpacity() 
+##        self.imageRescale = vtk.vtkImageReslice() 
+##        self.imageRescale.SetOutputDimensionality(2) 
+##        self.imageRescale.SetInterpolationModeToLinear() 
+##        self.imageRescale.SetResliceAxesDirectionCosines( [-1, 0, 0], [0, -1, 0], [0, 0, -1] )
+#
+##        self.set2DOutput( port=self.imageRescale.GetOutputPort(), name='slice' ) 
+#        self.set3DOutput() 
 
     def onSlicerLeftButtonPress( self, caller, event ):
         self.currentButton = self.LEFT_BUTTON   
@@ -212,7 +305,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        na1 = self.input.GetPointData().GetNumberOfArrays()
 #        self.setActiveScalars()
 #        na2 = self.input.GetPointData().GetNumberOfArrays()
-        self.SliceObserver( 2, self.planeWidgetZ )
+#        self.SliceObserver( 2, self.planeWidgetZ )
         self.set3DOutput()
         
 #    def InputModifiedObserver( self, caller, event = None ):
@@ -222,80 +315,76 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def TestObserver( self, caller=None, event = None ):
         print " TestObserver: event = %s, " % ( event )
 
-    def PickObserver( self, iAxis, caller, event = None ):
-        if caller.GetCursorDataStatus():     
-            if not self.isSlicing:
-                HyperwallManager.singleton.setInteractionState( 'VolumeSlicer.Slicing' )
-                self.isSlicing = True
-            image_value = caller.GetCurrentImageValue() 
-            cpos = caller.GetCurrentCursorPosition()     
-            dataValue = self.getDataValue( image_value )
-            wpos = self.getWorldCoords( cpos )
-    #        textDisplay = None
-    #        if (self.currentButton == self.LEFT_BUTTON):  textDisplay = " value: %s." % str( spos )
-    #        if (self.currentButton == self.RIGHT_BUTTON): textDisplay = " value: %.5G %s." % ( dataValue, units )
-            textDisplay = " Position: (%.1f, %.1f, %.1f), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, self.units )
-            sliceIndex = caller.GetSliceIndex() 
-            self.slicePosition[iAxis] = sliceIndex
-    #        print " Event %s: caller: %s, interaction: %d " % ( str(event), dir( caller ), caller.GetInteraction() )
-    #        print "textDisplay: '%s' " % textDisplay
-            if textDisplay: self.updateTextDisplay( textDisplay )
+    def ProcessIPWAction( self, caller, event, **args ):
+        action = caller.State
+        iAxis = caller.PlaneIndex
+        if event == ImagePlaneWidget.InteractionUpdateEvent:
             
-        else:
-            if not self.isSlicing:
-                HyperwallManager.singleton.setInteractionState( 'VolumeSlicer.Slicing' )
-                self.isSlicing = True                        
-            axes = [ 'Longitude', 'Latitude', 'Level' ]
-            sliceIndex = caller.GetSliceIndex() 
-            wpos = self.getWorldCoord( sliceIndex, iAxis )
-            textDisplay = " %s = %.1f ." % ( axes[ iAxis ], wpos )
-            self.updateTextDisplay( textDisplay )
-            
-         
-#        print " -- PickObserver: axis %d, dataValue = %f " % ( iAxis, dataValue )
-                      
-    def SliceObserver( self, iAxis, caller, event = None ):
-        import api
-        self.iOrientation = caller.GetPlaneOrientation()
-        resliceOutput = caller.GetResliceOutput()
-        resliceOutput.Update()
-        self.imageRescale.RemoveAllInputs()
-        sliceIndex = caller.GetSliceIndex() 
-#        print " Slice Orientation: %s " % self.iOrientation
-        if self.iOrientation == 0: self.imageRescale.SetResliceAxesDirectionCosines( [ 1, 0, 0], [0, -1, 0], [0, 0, -1] )
-        if self.iOrientation == 1: self.imageRescale.SetResliceAxesDirectionCosines( [ 0, 1, 0], [ -1, 0, 0], [0, 0,  1] )
-        if self.iOrientation == 2: self.imageRescale.SetResliceAxesDirectionCosines( [ 1, 0, 0], [0, -1, 0], [0, 0, -1] )
-        output_slice_extent = self.getAdjustedSliceExtent()
-        self.imageRescale.SetOutputExtent( output_slice_extent )
-        output_slice_spacing = self.getAdjustedSliceSpacing( resliceOutput )
-        self.imageRescale.SetOutputSpacing( output_slice_spacing )
-        self.imageRescale.SetInput( resliceOutput )
-        self.updateSliceOutput()
-        self.endInteraction()
-        HyperwallManager.singleton.setInteractionState( None )
-        self.isSlicing = False
-        
-        active_irens = self.getActiveIrens()        
-        for module in VolumeSlicerModules.values():
-            if module.iren in active_irens:
-                if   (iAxis == 0) and module.planeWidgetX: module.planeWidgetX.SetSliceIndex( sliceIndex )
-                elif (iAxis == 1) and module.planeWidgetY: module.planeWidgetY.SetSliceIndex( sliceIndex )
-                elif (iAxis == 2) and module.planeWidgetZ: module.planeWidgetZ.SetSliceIndex( sliceIndex )
-                  
-        
-    def updateSliceOutput(self):
-        sliceOutput = self.imageRescale.GetOutput()
-        sliceOutput.Update()
-        self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
-        self.set2DOutput( name='slice', output=sliceOutput )
-        sliceOutput.InvokeEvent("RenderEvent")
-        self.refreshCells()
-#        imageWriter = vtk.vtkJPEGWriter()
-#        imageWriter.SetFileName ("~/sliceImage.jpg")
-#        imageWriter.SetInput( sliceOutput )
-#        imageWriter.Write()    
-#        print " Slice Output: extent: %s, spacing: %s " % ( str( sliceOutput.GetExtent() ), str( sliceOutput.GetSpacing() ) )
-        pass
+            if action == ImagePlaneWidget.Cursoring:   
+                if not self.isSlicing:
+                    HyperwallManager.singleton.setInteractionState( 'VolumeSlicer.Slicing' )
+                    self.isSlicing = True
+                image_value = caller.GetCurrentImageValue() 
+                cpos = caller.GetCurrentCursorPosition()     
+                dataValue = self.getDataValue( image_value )
+                wpos = self.getWorldCoords( cpos )
+                textDisplay = " Position: (%.1f, %.1f, %.1f), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, self.units )
+                sliceIndex = caller.GetSliceIndex() 
+                self.slicePosition[iAxis] = sliceIndex
+                self.updateTextDisplay( textDisplay )
+                
+            if action == ImagePlaneWidget.Pushing:  
+                if not self.isSlicing:
+                    HyperwallManager.singleton.setInteractionState( 'VolumeSlicer.Slicing' )
+                    self.isSlicing = True                        
+                axes = [ 'Longitude', 'Latitude', 'Level' ]
+                sliceIndex = caller.GetSliceIndex() 
+                wpos = self.getWorldCoord( sliceIndex, iAxis )
+                textDisplay = " %s = %.1f ." % ( axes[ iAxis ], wpos )
+                self.updateTextDisplay( textDisplay )                    
+                    
+#    def getSlice( self, iAxis ):
+#        import api
+#        self.iOrientation = caller.GetPlaneOrientation()
+#        resliceOutput = caller.GetResliceOutput()
+#        resliceOutput.Update()
+#        self.imageRescale.RemoveAllInputs()
+#        sliceIndex = caller.GetSliceIndex() 
+##        print " Slice Orientation: %s " % self.iOrientation
+#        if self.iOrientation == 0: self.imageRescale.SetResliceAxesDirectionCosines( [ 1, 0, 0], [0, -1, 0], [0, 0, -1] )
+#        if self.iOrientation == 1: self.imageRescale.SetResliceAxesDirectionCosines( [ 0, 1, 0], [ -1, 0, 0], [0, 0,  1] )
+#        if self.iOrientation == 2: self.imageRescale.SetResliceAxesDirectionCosines( [ 1, 0, 0], [0, -1, 0], [0, 0, -1] )
+#        output_slice_extent = self.getAdjustedSliceExtent()
+#        self.imageRescale.SetOutputExtent( output_slice_extent )
+#        output_slice_spacing = self.getAdjustedSliceSpacing( resliceOutput )
+#        self.imageRescale.SetOutputSpacing( output_slice_spacing )
+#        self.imageRescale.SetInput( resliceOutput )
+#        self.updateSliceOutput()
+#        self.endInteraction()
+#        HyperwallManager.singleton.setInteractionState( None )
+#        self.isSlicing = False
+#        
+#        active_irens = self.getActiveIrens()        
+#        for module in VolumeSlicerModules.values():
+#            if module.iren in active_irens:
+#                if   (iAxis == 0) and module.planeWidgetX: module.planeWidgetX.SetSliceIndex( sliceIndex )
+#                elif (iAxis == 1) and module.planeWidgetY: module.planeWidgetY.SetSliceIndex( sliceIndex )
+#                elif (iAxis == 2) and module.planeWidgetZ: module.planeWidgetZ.SetSliceIndex( sliceIndex )
+#                  
+#        
+#    def updateSliceOutput(self):
+#        sliceOutput = self.imageRescale.GetOutput()
+#        sliceOutput.Update()
+#        self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
+#        self.set2DOutput( name='slice', output=sliceOutput )
+#        sliceOutput.InvokeEvent("RenderEvent")
+#        self.refreshCells()
+##        imageWriter = vtk.vtkJPEGWriter()
+##        imageWriter.SetFileName ("~/sliceImage.jpg")
+##        imageWriter.SetInput( sliceOutput )
+##        imageWriter.Write()    
+##        print " Slice Output: extent: %s, spacing: %s " % ( str( sliceOutput.GetExtent() ), str( sliceOutput.GetSpacing() ) )
+
        
     def getAdjustedSliceExtent( self ):
         ext = None
@@ -314,16 +403,16 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        print " Slice Spacing = %s " % str( spacing )
         return spacing
                 
-    def activateWidgets( self, iren ):
-        self.planeWidgetX.SetInteractor( iren )
-        self.planeWidgetX.On()
-        self.planeWidgetY.SetInteractor( iren )
-        self.planeWidgetY.On() 
-        self.planeWidgetZ.SetInteractor( iren )     
-        self.planeWidgetZ.On() 
-        print "Initial Camera Position = %s\n Origins: " % str( self.renderer.GetActiveCamera().GetPosition() )
-        for widget in [ self.planeWidgetX, self.planeWidgetY, self.planeWidgetZ ]: 
-            print " slice-%d: %s %s %s %s " % ( widget.GetPlaneOrientation(), str( widget.GetOrigin() ), str( widget.GetPoint1 () ), str( widget.GetPoint2 () ), str( widget.GetCenter() ) )
+#    def activateWidgets( self, iren ):    
+#        self.planeWidgetX.SetInteractor( iren )
+#        self.planeWidgetX.On()
+#        self.planeWidgetY.SetInteractor( iren )
+#        self.planeWidgetY.On() 
+#        self.planeWidgetZ.SetInteractor( iren )     
+#        self.planeWidgetZ.On() 
+#        print "Initial Camera Position = %s\n Origins: " % str( self.renderer.GetActiveCamera().GetPosition() )
+#        for widget in [ self.planeWidgetX, self.planeWidgetY, self.planeWidgetZ ]: 
+#            print " slice-%d: %s %s %s %s " % ( widget.GetPlaneOrientation(), str( widget.GetOrigin() ), str( widget.GetPoint1 () ), str( widget.GetPoint2 () ), str( widget.GetCenter() ) )
        
     def initColorScale( self, caller, event ): 
         x, y = caller.GetEventPosition()
@@ -349,7 +438,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
     def setColormap( self, data ):
         PersistentVisualizationModule.setColormap( self, data )
-        self.updateSliceOutput()
+#        self.updateSliceOutput()
 
     def updateColorScale( self, caller, event ):
         x, y = caller.GetEventPosition()
@@ -364,8 +453,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         ctrl = caller.GetControlKey() 
         shift = caller.GetShiftKey() 
 #        print " -- Key Press: %c ( %d: %s ), ctrl: %s, shift: %s, alt: %s, event = %s " % ( key, ord(key), str(keysym), bool(ctrl), bool(shift), bool(alt), str( event ) )
-        if ( key == 'm' ):  self.setMarginSize( 0.05 ) 
-        elif ( key == 'x' ): 
+        if ( key == 'x' ): 
             self.planeWidgetX.SetPlaneOrientationToXAxes() 
             self.planeWidgetX.SetSliceIndex( 0 ) #self.slicePosition[0] )
             self.render()      
@@ -381,15 +469,6 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
               
     def onKeyRelease( self, caller, event ):
         key = caller.GetKeyCode()
-        if ( key == 'm' ):  self.setMarginSize( 0.0 )  
-                
-    def setMarginSize(self, msize ):    
-        self.planeWidgetX.SetMarginSizeX( msize ) 
-        self.planeWidgetX.SetMarginSizeY( msize ) 
-        self.planeWidgetY.SetMarginSizeX( msize ) 
-        self.planeWidgetY.SetMarginSizeY( msize ) 
-        self.planeWidgetZ.SetMarginSizeX( msize ) 
-        self.planeWidgetZ.SetMarginSizeY( msize ) 
 
 class VolumeSlicer(WorkflowModule):
     

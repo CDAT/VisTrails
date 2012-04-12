@@ -1,8 +1,3 @@
-'''
-Created on Apr 9, 2012
-
-@author: tpmaxwel
-'''
 
 import vtk, sys
 
@@ -10,40 +5,39 @@ VTK_NEAREST_RESLICE = 0
 VTK_LINEAR_RESLICE  = 1
 VTK_CUBIC_RESLICE   = 2
 
-#vtkCxxSetObjectMacro(vtkImagePlaneWidget, PlaneProperty, vtkProperty)
-#vtkCxxSetObjectMacro(vtkImagePlaneWidget, SelectedPlaneProperty, vtkProperty)
-#vtkCxxSetObjectMacro(vtkImagePlaneWidget, CursorProperty, vtkProperty)
-#vtkCxxSetObjectMacro(vtkImagePlaneWidget, MarginProperty, vtkProperty)
-#vtkCxxSetObjectMacro(vtkImagePlaneWidget, TexturePlaneProperty, vtkProperty)
-#vtkCxxSetObjectMacro(vtkImagePlaneWidget, ColorMap, vtkImageMapToColors)
-
-class ImagePlaneWidget:
-
-    VTK_NO_MODIFIER   = 0
-    VTK_SHIFT_MODIFIER= 1
-    VTK_CONTROL_MODIFIER    = 2
-
-    VTK_NO_BUTTON     = 0
-    VTK_LEFT_BUTTON   = 1
-    VTK_MIDDLE_BUTTON = 2
-    VTK_RIGHT_BUTTON  = 3
-
+class ImagePlaneWidget:  
+    
+    InteractionStartEvent = 0
+    InteractionUpdateEvent = 1
+    InteractionEndEvent = 2
+    
+    NoButtonDown = 0
+    RightButtonDown = 1
+    LeftButtonDown = 2
+   
     Start = 0
     Cursoring = 1
     Pushing = 2
     Moving = 3
     Outside  = 4
     
-    def __init__( self, **args ):  
+    def __init__( self, actionHandler, planeIndex, **args ):  
         self.State  = ImagePlaneWidget.Start            
         self.Interaction  = 1
+        self.PlaneIndex = planeIndex
+        self.ActionHandler = actionHandler
+        self.Interactor = None
+        self.Enabled = False
+        self.CurrentRenderer = None
+        self.CurrentButton = self.NoButtonDown
+        self.RenderWindow = None
+        self.LastPickPosition = None
         self.PlaceFactor = 0.5;
         self.PlaneOrientation   = 0
         self.PlaceFactor  = 1.0
         self.TextureInterpolate = 1
         self.ResliceInterpolate = VTK_LINEAR_RESLICE
         self.UserControlledLookupTable= 0
-        self.DisplayText  = 0
         self.CurrentCursorPosition = [ 0, 0, 0 ]
         self.CurrentImageValue   = vtk.VTK_DOUBLE_MAX
                         
@@ -54,10 +48,12 @@ class ImagePlaneWidget:
         self.PlaneSource.SetYResolution(1)
         self.PlaneOutlinePolyData  = vtk.vtkPolyData()
         self.PlaneOutlineActor     = vtk.vtkActor()
+        self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
+        self.navigationInteractorStyle = None
             
         # Represent the resliced image plane
         #
-        self.ColorMap      = vtk.vtkImageMapToColors()
+        self.ColorMap = vtk.vtkImageMapToColors()
         self.Reslice = vtk.vtkImageReslice()
         self.Reslice.TransformInputSamplingOff()
         self.ResliceAxes   = vtk.vtkMatrix4x4()
@@ -71,11 +67,7 @@ class ImagePlaneWidget:
         #
         self.CursorPolyData  = vtk.vtkPolyData()
         self.CursorActor     = vtk.vtkActor()
-                        
-        # Represent the text: annotation for cursor position and W/L
-        #
-        self.TextActor  = vtk.vtkTextActor()
-            
+                                    
         self.GeneratePlaneOutline()
             
         # Define some default point coordinates
@@ -88,7 +80,6 @@ class ImagePlaneWidget:
             
         self.GenerateTexturePlane()
         self.GenerateCursor()
-        self.GenerateText()
             
         # Manage the picking stuff
         #
@@ -103,19 +94,102 @@ class ImagePlaneWidget:
         self.SelectedPlaneProperty = 0
         self.TexturePlaneProperty  = 0
         self.CursorProperty  = 0
-        self.CreateDefaultProperties()
-            
-        # Set up actions            
-#        self.LeftButtonAction  = ImagePlaneWidget.VTK_CURSOR_ACTION
-#        self.MiddleButtonAction  = ImagePlaneWidget.VTK_SLICE_MOTION_ACTION
-#        self.RightButtonAction  = ImagePlaneWidget.VTK_WINDOW_LEVEL_ACTION
-                                    
-        self.LastButtonPressed  = ImagePlaneWidget.VTK_NO_BUTTON
-            
+        self.CreateDefaultProperties()                                              
         self.TextureVisibility = 1
 
+#----------------------------------------------------------------------------
+
+    def GetCurrentButton(self): 
+        return self.CurrentButton
+
+    def GetCurrentImageValue(self): 
+        return self.CurrentImageValue
+
+    def GetCurrentCursorPosition(self): 
+        return self.CurrentCursorPosition
+                
+    def SetResliceInterpolateToNearestNeighbour(self):
+        self.SetResliceInterpolate(VTK_NEAREST_RESLICE)
+        
+    def SetResliceInterpolateToLinear(self):
+        self.SetResliceInterpolate(VTK_LINEAR_RESLICE)
+        
+    def SetResliceInterpolateToCubic(self):
+        self.SetResliceInterpolate(VTK_CUBIC_RESLICE)
+
+    def SetColorMap( self, value ):
+        self.ColorMap = value
+
+    def SetPlaneProperty( self, value ):
+        self.PlaneProperty = value
+        
+    def GetPlaneProperty(self):
+        return self.PlaneProperty
+
+    def SetSelectedPlaneProperty( self, value ):
+        self.SelectedPlaneProperty = value
+
+    def SetTexturePlaneProperty( self, value ):
+        self.TexturePlaneProperty = value
+
+    def SetCursorProperty( self, value ):
+        self.CursorProperty = value
+
+    def SetUserControlledLookupTable( self, value ):
+        self.UserControlledLookupTable = value
+
+    def SetTextureInterpolate( self, value ):
+        self.TextureInterpolate = value
+        
+    def SetPlaneOrientationToXAxes(self):
+        self.SetPlaneOrientation(0)
+        
+    def SetPlaneOrientationToYAxes(self):
+        self.SetPlaneOrientation(1)
+        
+    def SetPlaneOrientationToZAxes(self):
+        self.SetPlaneOrientation(2)
 
 #----------------------------------------------------------------------------
+
+    def updateInteractor(self):                        
+        if ( self.Interactor and ( self.Interactor.GetInteractorStyle() <> self.navigationInteractorStyle ) ):             
+            self.navigationInteractorStyle =  self.Interactor.GetInteractorStyle() 
+
+#----------------------------------------------------------------------------
+
+    def SetRenderer( self, value ):
+        self.CurrentRenderer = value
+        if self.CurrentRenderer: self.CurrentRenderer.AddObserver( 'ModifiedEvent', self.ActivateEvent )
+
+#----------------------------------------------------------------------------
+
+    def ActivateEvent( self, caller, event ):
+        if self.Interactor == None: 
+            if self.CurrentRenderer:
+                self.RenderWindow = self.CurrentRenderer.GetRenderWindow( )
+                if self.RenderWindow <> None:
+                    iren = self.RenderWindow.GetInteractor()
+                    if iren: self.SetInteractor( iren ) 
+
+#----------------------------------------------------------------------------
+                                
+    def SetInteractor( self, iren ):
+        if ( iren <> None ):
+            if ( iren <> self.Interactor ):
+                self.Interactor = iren  
+                self.Interactor.AddObserver( 'LeftButtonPressEvent', self.OnLeftButtonDown )
+                self.Interactor.AddObserver( 'LeftButtonReleaseEvent', self.OnLeftButtonUp )
+                self.Interactor.AddObserver( 'RightButtonReleaseEvent', self.OnRightButtonUp )
+                self.Interactor.AddObserver( 'RightButtonPressEvent', self.OnRightButtonDown )
+                self.Interactor.AddObserver( 'ModifiedEvent', self.OnUpdateInteraction )
+#                self.Interactor.AddObserver( 'MouseMoveEvent', self.OnMouseMove )
+                self.Interactor.AddObserver( 'CharEvent', self.OnKeyPress ) 
+#                self.Interactor.AddObserver( 'AnyEvent', self.OnAnyEvent )   
+                self.SetEnabled()       
+         
+#----------------------------------------------------------------------------
+
     def SetTextureVisibility( self, vis ):
         if (self.TextureVisibility == vis): return
         self.TextureVisibility = vis
@@ -128,73 +202,36 @@ class ImagePlaneWidget:
         self.Modified()
 
 #----------------------------------------------------------------------------
-    def SetEnabled( self, enabling ):
+    def SetEnabled( self ):
 
         if ( not self.Interactor ):   
             print>>sys.stderr, "The interactor must be set prior to enabling/disabling widget"
             return
     
-        if enabling:
-            if self.Enabled:  return
-   
-            if ( self.CurrentRenderer == None ):       
-                self.SetCurrentRenderer(self.Interactor.FindPokedRenderer( self.Interactor.GetLastEventPosition()[0],  self.Interactor.GetLastEventPosition()[1]))
-                if (self.CurrentRenderer == None): return
-                     
-            self.Enabled = 1
-            
-            if (self.Interaction):  self.AddObservers()       
-            # Add the plane
-            self.CurrentRenderer.AddViewProp(self.PlaneOutlineActor)
-            self.PlaneOutlineActor.SetProperty(self.PlaneProperty)
+        if self.Enabled:  return                     
+        self.Enabled = True
+        if self.CurrentRenderer == None:
+            self.RenderWindow = self.Interactor.GetRenderWindow()
+#            self.CurrentRenderer = self.RenderWindow
+    
+        self.CurrentRenderer.AddViewProp(self.PlaneOutlineActor)
+        self.PlaneOutlineActor.SetProperty(self.PlaneProperty)
+    
+        #add the TexturePlaneActor
+        if (self.TextureVisibility):  
+            self.CurrentRenderer.AddViewProp(self.TexturePlaneActor)
+    
+        self.TexturePlaneActor.SetProperty(self.TexturePlaneProperty)
         
-            #add the TexturePlaneActor
-            if (self.TextureVisibility):  self.CurrentRenderer.AddViewProp(self.TexturePlaneActor)
+        # Add the cross-hair cursor
+        self.CurrentRenderer.AddViewProp(self.CursorActor)
+        self.CursorActor.SetProperty(self.CursorProperty)
         
-            self.TexturePlaneActor.SetProperty(self.TexturePlaneProperty)
-            
-            # Add the cross-hair cursor
-            self.CurrentRenderer.AddViewProp(self.CursorActor)
-            self.CursorActor.SetProperty(self.CursorProperty)
-        
-            # Add the image data annotation
-            self.CurrentRenderer.AddViewProp(self.TextActor)
-        
-            self.TexturePlaneActor.PickableOn()
-        
-            self.InvokeEvent( vtk.vtkCommand.EnableEvent, 0 )
-           
-        else:
-        
-            if ( not self.Enabled ): return
-        
-        
-            self.Enabled = 0
-        
-            # don't listen for events any more
-            self.Interactor.RemoveObserver(self.EventCallbackCommand)
-        
-            # turn off the plane
-            self.CurrentRenderer.RemoveViewProp(self.PlaneOutlineActor)
-        
-            #turn off the texture plane
-            self.CurrentRenderer.RemoveViewProp(self.TexturePlaneActor)
-        
-            #turn off the cursor
-            self.CurrentRenderer.RemoveViewProp(self.CursorActor)
-        
-            #turn off the image data annotation
-            self.CurrentRenderer.RemoveViewProp(self.TextActor)
-        
-            self.TexturePlaneActor.PickableOff()
-        
-            self.InvokeEvent( vtk.vtkCommand.DisableEvent, 0 )
-            self.SetCurrentRenderer(None)
-            
-        
+        self.TexturePlaneActor.PickableOn()                  
         self.Interactor.Render()
 
 #----------------------------------------------------------------------------
+
     def BuildRepresentation(self):    
         self.PlaneSource.Update()
         o = self.PlaneSource.GetOrigin()
@@ -211,38 +248,43 @@ class ImagePlaneWidget:
         points.GetData().Modified()
         self.PlaneOutlinePolyData.Modified()
 
-
 #----------------------------------------------------------------------------
 
     def HighlightPlane( self, highlight ):   
         if ( highlight ):       
             self.PlaneOutlineActor.SetProperty(self.SelectedPlaneProperty)
-            self.PlanePicker.GetPickPosition(self.LastPickPosition)        
+            self.LastPickPosition = self.PlanePicker.GetPickPosition()        
         else:       
             self.PlaneOutlineActor.SetProperty(self.PlaneProperty)
     
 #----------------------------------------------------------------------------
 
-    def OnLeftButtonDown(self):
-        self.StartCursor()
+    def OnLeftButtonDown(self, caller, event ):
+         self.CurrentButton = self.LeftButtonDown
+         self.StartCursor()
 
 #----------------------------------------------------------------------------
 
-    def OnLeftButtonUp(self):
+    def OnLeftButtonUp( self, caller, event ):
         self.StopCursor()
-
+        self.CurrentButton = self.NoButtonDown
+        
 #----------------------------------------------------------------------------
 
-    def OnRightButtonDown(self):
-        self.StartSliceMotion()
-
-#----------------------------------------------------------------------------
-
-    def OnRightButtonUp(self):
+    def OnRightButtonUp( self, caller, event ):
         self.StopSliceMotion()
+        self.CurrentButton = self.NoButtonDown
 
 #----------------------------------------------------------------------------
+
+    def OnRightButtonDown(self, caller, event ):
+        self.CurrentButton = self.RightButtonDown
+        self.StartSliceMotion()
+        
+#----------------------------------------------------------------------------
+
     def StartCursor(self):
+        if self.State == ImagePlaneWidget.Cursoring: return
     
         X = self.Interactor.GetEventPosition()[0]
         Y = self.Interactor.GetEventPosition()[1]
@@ -252,39 +294,76 @@ class ImagePlaneWidget:
             self.State  = ImagePlaneWidget.Outside
             return
         
-        self.PlanePicker.Pick( X,Y,0.0, self.CurrentRenderer)       
-        self.State  = ImagePlaneWidget.Cursoring
-        self.HighlightPlane(1)
-        self.ActivateCursor(1)
-        self.ActivateText(1)
-        self.UpdateCursor(X,Y)
-        self.ManageTextDisplay()
-        
-        self.EventCallbackCommand.SetAbortFlag(1)
-        self.StartInteraction()
-        self.InvokeEvent(vtk.vtkCommand.StartInteractionEvent,0)
-        self.Interactor.Render()
-
+        if self.DoPick( X, Y ):      
+            self.State  = ImagePlaneWidget.Cursoring
+            self.HighlightPlane(1)
+            self.ActivateCursor(1)
+            self.UpdateCursor(X,Y)
+            self.StartInteraction()
+            self.ProcessEvent( self.InteractionStartEvent )
+            self.Interactor.Render()       
+        else:
+            self.State  = ImagePlaneWidget.Outside
+            self.HighlightPlane(0)
+            self.ActivateCursor(0)
 
 #----------------------------------------------------------------------------
-    def StopCursor(self):
-    
-        if ( self.State == ImagePlaneWidget.Outside or self.State == ImagePlaneWidget.Start ):         
-            return
-                  
+
+    def ProcessEvent( self, event, **args ):
+        self.ActionHandler.ProcessIPWAction( self, event, **args )
+        
+#----------------------------------------------------------------------------
+
+    def StartInteraction(self): 
+        update_rate = self.Interactor.GetDesiredUpdateRate()
+        self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
+        self.updateInteractor()
+        self.Interactor.SetInteractorStyle( self.configurationInteractorStyle )  
+              
+#----------------------------------------------------------------------------
+
+    def EndInteraction(self): 
+        update_rate = self.Interactor.GetStillUpdateRate()
+        self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
+        self.Interactor.SetInteractorStyle( self.navigationInteractorStyle )  
+
+#----------------------------------------------------------------------------
+
+    def ComputeWorldToDisplay( self, x, y, z ):  
+        if self.CurrentRenderer == None: return None  
+        self.CurrentRenderer.SetWorldPoint( x, y, z, 1.0 )
+        self.CurrentRenderer.WorldToDisplay()
+        return self.CurrentRenderer.GetDisplayPoint()
+
+#----------------------------------------------------------------------------
+
+    def ComputeDisplayToWorld( self, x, y, z ): 
+        if self.CurrentRenderer == None: return None  
+        self.CurrentRenderer.SetDisplayPoint(x, y, z);
+        self.CurrentRenderer.DisplayToWorld();
+        worldPt = list( self.CurrentRenderer.GetWorldPoint() )
+        if worldPt[3]:
+            worldPt[0] /= worldPt[3];
+            worldPt[1] /= worldPt[3];
+            worldPt[2] /= worldPt[3];
+            worldPt[3] = 1.0;
+        return worldPt
+
+#----------------------------------------------------------------------------
+
+    def StopCursor(self): 
+        if ( self.State == ImagePlaneWidget.Outside or self.State == ImagePlaneWidget.Start ):   return                  
+        self.ProcessEvent( self.InteractionEndEvent )
         self.State  = ImagePlaneWidget.Start
         self.HighlightPlane(0)
-        self.ActivateCursor(0)
-        self.ActivateText(0)
-        
-        self.EventCallbackCommand.SetAbortFlag(1)
+        self.ActivateCursor(0)        
         self.EndInteraction()
-        self.InvokeEvent( vtk.vtkCommand.EndInteractionEvent, 0 )
         self.Interactor.Render()
 
-
 #----------------------------------------------------------------------------
+
     def StartSliceMotion(self):
+        if self.State == ImagePlaneWidget.Pushing: return
     
         X = self.Interactor.GetEventPosition()[0]
         Y = self.Interactor.GetEventPosition()[1]
@@ -294,37 +373,46 @@ class ImagePlaneWidget:
             self.State  = ImagePlaneWidget.Outside
             return
           
-        # Okay, we can process this. If anything is picked, then we
-        # can start pushing or check for adjusted states.
-        self.PlanePicker.Pick(X,Y,0.0,self.CurrentRenderer) 
-        self.State  = ImagePlaneWidget.Pushing
-        self.HighlightPlane(1)
-                 
-        self.EventCallbackCommand.SetAbortFlag(1)
-        self.StartInteraction()
-        self.InvokeEvent( vtk.vtkCommand.StartInteractionEvent, 0 )
-        self.Interactor.Render()
+        if self.DoPick( X, Y ):      
+            self.State  = ImagePlaneWidget.Pushing
+            self.HighlightPlane(1) 
+            self.ActivateCursor(0)                
+            self.StartInteraction()
+            self.ProcessEvent( self.InteractionStartEvent )
+            self.Interactor.Render() 
+        else:
+            self.State  = ImagePlaneWidget.Outside
+            self.HighlightPlane(0)                 
     
 #----------------------------------------------------------------------------
-    def StopSliceMotion(self):
-    
-        if ( self.State == ImagePlaneWidget.Outside or self.State == ImagePlaneWidget.Start ): 
-            return
+    def StopSliceMotion(self):     
+        if ( self.State == ImagePlaneWidget.Outside or self.State == ImagePlaneWidget.Start ): return
             
+        self.ProcessEvent( self.InteractionEndEvent )
         self.State  = ImagePlaneWidget.Start
         self.HighlightPlane(0)
         
-        self.EventCallbackCommand.SetAbortFlag(1)
         self.EndInteraction()
-        self.InvokeEvent( vtk.vtkCommand.EndInteractionEvent, 0 )
         self.Interactor.Render()
 
 #----------------------------------------------------------------------------
-    def OnMouseMove(self):
+
+    def OnKeyPress(self, caller, event ):
+        pass
     
-        if ( self.State == ImagePlaneWidget.Outside or self.State == ImagePlaneWidget.Start ): return
-          
-        
+#----------------------------------------------------------------------------
+    
+    def OnAnyEvent( self, caller, event ):
+        print " ************* ImagePlaneWidget Event: ", str( event )
+    
+#----------------------------------------------------------------------------
+   
+    def OnMouseMove(self, caller, event ):
+        pass
+
+    def OnUpdateInteraction(self, caller, event ):
+    
+        if ( self.State == ImagePlaneWidget.Outside or self.State == ImagePlaneWidget.Start ): return        
         X = self.Interactor.GetEventPosition()[0]
         Y = self.Interactor.GetEventPosition()[1]
                 
@@ -338,7 +426,7 @@ class ImagePlaneWidget:
             z = focalPoint[2]
             
             prevPickPoint = self.ComputeDisplayToWorld( float(self.Interactor.GetLastEventPosition()[0]), float(self.Interactor.GetLastEventPosition()[1]), z )        
-            pickPoint = self.ComputeDisplayToWorld( float(X), float(Y) )
+            pickPoint = self.ComputeDisplayToWorld( float(X), float(Y), z )
           
             self.Push( prevPickPoint, pickPoint )
             self.UpdatePlane()
@@ -346,12 +434,26 @@ class ImagePlaneWidget:
           
         elif ( self.State == ImagePlaneWidget.Cursoring ):          
             self.UpdateCursor(X,Y)
-            self.ManageTextDisplay()
           
-        self.EventCallbackCommand.SetAbortFlag(1)
         self.Interactor.Render()
 
 #----------------------------------------------------------------------------
+
+    def DoPick( self, X, Y ):  
+        self.PlanePicker.Pick( X, Y, 0.0, self.CurrentRenderer )
+        path = self.PlanePicker.GetPath()        
+        found = 0;
+        if path:
+            path.InitTraversal()
+            for i in range( path.GetNumberOfItems() ):
+                node = path.GetNextNode()
+                if node.GetViewProp() == self.TexturePlaneActor:
+                    found = 1
+                    break
+        return found
+    
+#----------------------------------------------------------------------------
+
     def GetCursorData(self):
         if ( self.State <> ImagePlaneWidget.Cursoring  or  self.CurrentImageValue == vtk.VTK_DOUBLE_MAX ): return None                  
         return [ self.CurrentCursorPosition[0], self.CurrentCursorPosition[1], self.CurrentCursorPosition[2], self.CurrentImageValue ]        
@@ -360,21 +462,13 @@ class ImagePlaneWidget:
     def GetCursorDataStatus(self):
         if ( self.State <> ImagePlaneWidget.Cursoring  or  self.CurrentImageValue == vtk.VTK_DOUBLE_MAX ): return 0
         return 1
-
-#----------------------------------------------------------------------------
-    def ManageTextDisplay(self):         
-        if ( not self.DisplayText ): return                
-        if ( self.State == ImagePlaneWidget.Cursoring ):          
-            if( self.CurrentImageValue <> vtk.VTK_DOUBLE_MAX ):        
-                self.TextBuff = "( %g, %g, %g ): %g" % ( self.CurrentCursorPosition[0], self.CurrentCursorPosition[1], self.CurrentCursorPosition[2], self.CurrentImageValue )               
-                self.TextActor.SetInput(self.TextBuff)
-                self.TextActor.Modified()
     
 #----------------------------------------------------------------------------
 
     def Push( self, p1, p2 ):
         v = [  p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] ]
         self.PlaneSource.Push( vtk.vtkMath.Dot( v, self.PlaneSource.GetNormal() ) )
+        self.ProcessEvent( self.InteractionUpdateEvent )
 
 #----------------------------------------------------------------------------
 
@@ -439,6 +533,11 @@ class ImagePlaneWidget:
                    
         self.UpdatePlane()
         self.BuildRepresentation()
+
+#----------------------------------------------------------------------------
+
+    def GetPlaneOrientation( self ):
+        return self.PlaneOrientation   
     
 #----------------------------------------------------------------------------
 
@@ -512,6 +611,7 @@ class ImagePlaneWidget:
 
 
 #----------------------------------------------------------------------------
+
     def SetInput(self, inputData ):
     
         self.ImageData = inputData
@@ -540,7 +640,6 @@ class ImagePlaneWidget:
         
         self.SetPlaneOrientation(self.PlaneOrientation)
         
-
 #----------------------------------------------------------------------------
 
     def UpdatePlane(self):
@@ -563,8 +662,8 @@ class ImagePlaneWidget:
                 bounds[i+1] = bounds[i]
                 bounds[i] = t
            
-        abs_normal = self.PlaneSource.GetNormal()
-        planeCenter = self.PlaneSource.GetCenter()
+        abs_normal = list( self.PlaneSource.GetNormal() )
+        planeCenter = list( self.PlaneSource.GetCenter() )
         nmax = 0.0
         k = 0
         for i in range( 3 ):    
@@ -589,7 +688,7 @@ class ImagePlaneWidget:
         #
         planeSizeX  = vtk.vtkMath.Normalize(planeAxis1)
         planeSizeY  = vtk.vtkMath.Normalize(planeAxis2)
-        normal = self.PlaneSource.GetNormal()
+        normal = list( self.PlaneSource.GetNormal() )
         
         # Generate the slicing matrix
         #
@@ -600,12 +699,11 @@ class ImagePlaneWidget:
             self.ResliceAxes.SetElement(1,i,planeAxis2[i])
             self.ResliceAxes.SetElement(2,i,normal[i])
            
-        planeOrigin = self.PlaneSource.GetOrigin()
-        
-        planeOrigin[3] = 1.0
+        srcPlaneOrigin = self.PlaneSource.GetOrigin()         
+        planeOrigin = [ srcPlaneOrigin[0], srcPlaneOrigin[1], srcPlaneOrigin[2], 1.0 ]
         originXYZW = self.ResliceAxes.MultiplyPoint(planeOrigin)    
         self.ResliceAxes.Transpose()
-        neworiginXYZW = self.ResliceAxes.MultiplyPoint(originXYZW)
+        neworiginXYZW = self.ResliceAxes.MultiplyPoint(originXYZW) 
         
         self.ResliceAxes.SetElement(0,3,neworiginXYZW[0])
         self.ResliceAxes.SetElement(1,3,neworiginXYZW[1])
@@ -748,9 +846,9 @@ class ImagePlaneWidget:
         self.ImageData.UpdateInformation()
         origin = self.ImageData.GetOrigin()
         spacing = self.ImageData.GetSpacing()
-        planeOrigin = self.PlaneSource.GetOrigin()
-        pt1 = self.PlaneSource.GetPoint1()
-        pt2 = self.PlaneSource.GetPoint2()
+        planeOrigin = list( self.PlaneSource.GetOrigin() )
+        pt1 = list( self.PlaneSource.GetPoint1() )
+        pt2 = list( self.PlaneSource.GetPoint2() )
         
         if ( self.PlaneOrientation == 2 ):
         
@@ -807,16 +905,10 @@ class ImagePlaneWidget:
 #----------------------------------------------------------------------------
     def ActivateCursor(self, i):        
         if(  not self.CurrentRenderer ):  return        
-        if( i == 0 ):   self.CursorActor.VisibilityOff()        
-        else:           self.CursorActor.VisibilityOn()
-        
-#----------------------------------------------------------------------------
-
-    def ActivateText(self, i):        
-        if(  not self.CurrentRenderer or  not self.DisplayText ):  return        
-        if( i == 0 ):   self.TextActor.VisibilityOff()        
-        else:           self.TextActor.VisibilityOn()
-
+        if( i == 0 ):   
+            self.CursorActor.VisibilityOff()        
+        else:           
+            self.CursorActor.VisibilityOn()
 
 #----------------------------------------------------------------------------
 
@@ -834,7 +926,12 @@ class ImagePlaneWidget:
         
         self.PlanePicker.Pick(X,Y,0.0,self.CurrentRenderer)
         self.CurrentImageValue = vtk.VTK_DOUBLE_MAX
-        self.CursorActor.VisibilityOn()
+        
+        if self.DoPick( X, Y ):    
+            self.CursorActor.VisibilityOn()
+        else:
+            self.CursorActor.VisibilityOff()
+            return
               
         q = self.PlanePicker.GetPickPosition()    
         q = self.UpdateDiscreteCursor(q)    
@@ -861,8 +958,7 @@ class ImagePlaneWidget:
         b = [ p1[i] + Lp2*p2o[i]  for i in range(3) ] #  right
         c = [ o[i]  + Lp1*p1o[i]  for i in range(3) ] # bottom
         d = [ p2[i] + Lp1*p1o[i]  for i in range(3) ]  # top
-        
-        
+                
         cursorPts = self.CursorPolyData.GetPoints()        
         cursorPts.SetPoint(0,a)
         cursorPts.SetPoint(1,b)
@@ -870,7 +966,7 @@ class ImagePlaneWidget:
         cursorPts.SetPoint(3,d)
         
         self.CursorPolyData.Modified()
-
+        self.ProcessEvent( self.InteractionUpdateEvent )
 
 #----------------------------------------------------------------------------
 
@@ -956,15 +1052,6 @@ class ImagePlaneWidget:
     def UpdatePlacement(self):
         self.UpdatePlane()
         self.BuildRepresentation()
-
-#----------------------------------------------------------------------------
-
-    def SetTextProperty(self, tprop):
-        self.TextActor.SetTextProperty(tprop)
-
-#----------------------------------------------------------------------------
-    def GetTextProperty(self):
-        return self.TextActor.GetTextProperty()
 
 #----------------------------------------------------------------------------
     def GetTexture(self):
@@ -1075,29 +1162,6 @@ class ImagePlaneWidget:
         self.CursorActor.SetMapper(cursorMapper)
         self.CursorActor.PickableOff()
         self.CursorActor.VisibilityOff()
-
-#----------------------------------------------------------------------------
-    def GenerateText(self):
-
-        self.TextBuff = "NA"
-        self.TextActor.SetInput(self.TextBuff)
-        self.TextActor.SetTextScaleModeToNone()
-        
-        textprop = self.TextActor.GetTextProperty()
-        textprop.SetColor(1,1,1)
-        textprop.SetFontFamilyToArial()
-        textprop.SetFontSize(18)
-        textprop.BoldOff()
-        textprop.ItalicOff()
-        textprop.ShadowOff()
-        textprop.SetJustificationToLeft()
-        textprop.SetVerticalJustificationToBottom()
-        
-        coord = self.TextActor.GetPositionCoordinate()
-        coord.SetCoordinateSystemToNormalizedViewport()
-        coord.SetValue(.01, .01)
-        
-        self.TextActor.VisibilityOff()
         
 if __name__ == '__main__': 
     ipw =   ImagePlaneWidget()     

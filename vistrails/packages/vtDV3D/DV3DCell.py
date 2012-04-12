@@ -676,7 +676,7 @@ class PM_MapCell3D( PM_DV3DCell ):
                 if  (self.roi <> None): 
                     if roi_size[0] > 180:             
                         self.ComputeCornerPosition()
-                        self.world_cut = NormalizeLon( self.x0 )
+                        self.world_cut = self.NormalizeMapLon( self.x0 )
                     else:
                         dataPosition = [ ( self.roi[1] + self.roi[0] ) / 2.0, ( self.roi[3] + self.roi[2] ) / 2.0 ]
                 else:
@@ -730,11 +730,7 @@ class PM_MapCell3D( PM_DV3DCell ):
     def GetFilePath( self, cut ):
         filename = "%s_%d.jpg" % ( self.world_image, cut )
         return os.path.join( self.data_dir, filename ) 
-    
-    def NormalizeCut( self, cut ): 
-        while cut < 0: cut = cut + 360
-        return cut % 360  
-    
+        
     def RollMap( self, baseImage ):
         baseImage.Update()
         if self.world_cut  == self.map_cut: return baseImage
@@ -742,8 +738,8 @@ class PM_MapCell3D( PM_DV3DCell ):
         baseSpacing = baseImage.GetSpacing()
         x0 = baseExtent[0]
         x1 = baseExtent[1]
-        newCut = NormalizeLon( self.world_cut )
-        delCut = NormalizeLon( self.map_cut - newCut )
+        newCut = self.NormalizeMapLon( self.world_cut )
+        delCut = newCut - self.map_cut
         print "  %%%%%% Roll Map %%%%%%: world_cut=%.1f, map_cut=%.1f, newCut=%.1f " % ( float(self.world_cut), float(self.map_cut), float(newCut) )
         imageLen = x1 - x0 + 1
         sliceSize =  imageLen * ( delCut / 360.0 )
@@ -775,6 +771,10 @@ class PM_MapCell3D( PM_DV3DCell ):
         result.Update()
         return result
 
+    def NormalizeMapLon( self, lon ): 
+        while ( lon < ( self.map_cut - 0.01 ) ): lon = lon + 360
+        return ( ( lon - self.map_cut ) % 360 ) + self.map_cut
+
     def getBoundedMap( self, baseImage, dataLocation, map_cut_size, map_border_size ):
         baseImage.Update()
         baseExtent = baseImage.GetExtent()
@@ -800,10 +800,10 @@ class PM_MapCell3D( PM_DV3DCell ):
             extOffset = int( round( ( yOffset / 180.0 ) * imageLen[1] ) )
             vertExtent[1] = y1 - extOffset
             
-        overlapsBorder = (dataLocation[0]-selectionDim[0] < 0.0) and ((dataLocation[0]+selectionDim[0]) > 0.0) 
+        overlapsBorder = ( self.NormalizeMapLon(dataLocation[0]-selectionDim[0]) > self.NormalizeMapLon(dataLocation[0]+selectionDim[0]) )
         if overlapsBorder:
-            cut0 = NormalizeLon( dataXLoc + selectionDim[0] )
-            sliceSize =  imageLen[0] * ( cut0 / 360.0 )
+            cut0 = self.NormalizeMapLon( dataXLoc + selectionDim[0] )
+            sliceSize =  imageLen[0] * ( ( cut0 - self.map_cut ) / 360.0 )
             sliceCoord = int( round( x0 + sliceSize) )        
             extent = list( baseExtent )         
             extent[0:2] = [ x0, x0 + sliceCoord - 1 ]
@@ -813,8 +813,8 @@ class PM_MapCell3D( PM_DV3DCell ):
             size0 = extent[1] - extent[0] + 1
         
             self.x0 = dataLocation[0] - selectionDim[0]
-            cut1 = NormalizeLon( self.x0 ) 
-            sliceSize =  imageLen[0] * ( cut1 / 360.0 )
+            cut1 = self.NormalizeMapLon( self.x0 ) 
+            sliceSize =  imageLen[0] * ( ( cut1 - self.map_cut )/ 360.0 )
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[0:2] = [ x0 + sliceCoord, x1 ]
             clip1 = vtk.vtkImageClip()
@@ -834,14 +834,14 @@ class PM_MapCell3D( PM_DV3DCell ):
         else:
                         
             self.x0 = dataXLoc - selectionDim[0]
-            cut0 = NormalizeLon( self.x0 )
-            sliceSize =  imageLen[0] * ( cut0 / 360.0 )
+            cut0 = self.NormalizeMapLon( self.x0 )
+            sliceSize =  imageLen[0] * ( ( cut0 - self.map_cut ) / 360.0 )
             sliceCoord = int( round( x0 + sliceSize) )        
             extent = list( baseExtent )         
             extent[0] = x0 + sliceCoord - 1
         
-            cut1 = NormalizeLon( dataXLoc + selectionDim[0] )
-            sliceSize =  imageLen[0] * ( cut1 / 360.0 )
+            cut1 = self.NormalizeMapLon( dataXLoc + selectionDim[0] )
+            sliceSize =  imageLen[0] * ( ( cut1 - self.map_cut ) / 360.0 )
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[1] = x0 + sliceCoord
             clip = vtk.vtkImageClip()
