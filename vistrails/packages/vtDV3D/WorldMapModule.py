@@ -12,7 +12,7 @@ from packages.vtDV3D.WorkflowModule import WorkflowModule
 
 packagePath = os.path.dirname( __file__ )  
 defaultMapDir = os.path.join( packagePath, 'data' )
-defaultMapFile = os.path.join( defaultMapDir,  'earth2k.png' )
+defaultMapFile = os.path.join( defaultMapDir,  'earth1k.png' )
 defaultMapCut = 0
 
 class PM_WorldFrame(PersistentVisualizationModule):

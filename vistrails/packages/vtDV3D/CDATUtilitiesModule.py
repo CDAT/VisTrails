@@ -155,8 +155,10 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         if self.inputTabIndex  >= 0: self.tabbedWidget.removeTab( self.inputTabIndex )
         inputsTab = QWidget()        
         self.inputTabIndex = self.tabbedWidget.addTab( inputsTab, 'inputs' )                 
+        self.tabbedWidget.setCurrentWidget(inputsTab)
         outputsTab = QWidget()        
         self.outputTabIndex = self.tabbedWidget.addTab( outputsTab, 'outputs' ) 
+        self.tabbedWidget.setCurrentWidget(outputsTab)
 
         taskClass = TaskManager.getTask( taskName )
         if taskClass:
@@ -276,6 +278,7 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
     def createLayout(self):       
         tasksTab = QWidget()        
         self.tabbedWidget.addTab( tasksTab, 'tasks' )                 
+        self.tabbedWidget.setCurrentWidget(tasksTab)
         tasks_layout = QVBoxLayout()
         tasksTab.setLayout( tasks_layout ) 
         

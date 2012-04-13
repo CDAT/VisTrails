@@ -429,7 +429,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         isLeveling =  PersistentVisualizationModule.finalizeLeveling( self )
         if isLeveling:
             self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
-            self.updateSliceOutput()
+#            self.updateSliceOutput()
 
     def initializeConfiguration(self):
         PersistentModule.initializeConfiguration(self)

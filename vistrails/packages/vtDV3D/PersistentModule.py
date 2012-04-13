@@ -203,6 +203,7 @@ class PersistentModule( QObject ):
 
     def clearNewConfiguration(self):
         self.newLayerConfiguration = False
+        self.setResult( "executionSpecs", "" )
     
     def generateDocumentation(self):
         self.documentation = "\n <h2>Module %s</h2> \n" % ( self.__class__.__name__ )
@@ -340,7 +341,7 @@ class PersistentModule( QObject ):
 #                    print " %s.Get-Input-Value[%s:%s] (v. %s): %s " % ( self.getName(), tag, inputName, str(tagged_version_number), str(pval) )
             except Exception, err:
                 print>>sys.stderr, "vtDV3D Error getting tagged version:\n { %s }" % str(err)
-        if not pval:         
+        if pval == None:         
             pval = self.getParameter( inputName, default_value )
 #            print ' ***** GetInputValue[%s] = %s ' % ( inputName, str(pval) )
         return pval

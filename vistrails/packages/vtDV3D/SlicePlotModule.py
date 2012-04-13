@@ -369,6 +369,7 @@ class SlicePlotConfigurationWidget(DV3DConfigurationWidget):
         """        
         plotTypeTab = QWidget()        
         self.tabbedWidget.addTab( plotTypeTab, 'plot' ) 
+        self.tabbedWidget.setCurrentWidget(plotTypeTab)
         plotTypeLayout = QVBoxLayout()                
         plotTypeTab.setLayout( plotTypeLayout )
 

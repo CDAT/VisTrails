@@ -1080,6 +1080,7 @@ class VCDATInterfaceWidget(DV3DConfigurationWidget):
 
         zscaleTab = QWidget()  
         self.tabbedWidget.addTab( zscaleTab, 'vertScale' ) 
+        self.tabbedWidget.setCurrentWidget(zscaleTab)
         zscaleTab_layout = QVBoxLayout()
         zscaleTab.setLayout( zscaleTab_layout ) 
         
@@ -1215,7 +1216,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.initRoi()
             self.initDecimation()
             self.initZScale()
-            if self.pmod: self.pmod.clearNewConfiguration()
+            if self.pmod: 
+                self.pmod.clearNewConfiguration()
             dataset.close()
         except Exception, err:
             print>>sys.stderr, " Error initializing dataset '%s': %s " % ( str(relFilePath), str( err ) )
@@ -1407,6 +1409,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         """        
         datasetTab = QWidget()        
         self.tabbedWidget.addTab( datasetTab, 'dataset' )                 
+        self.tabbedWidget.setCurrentWidget(datasetTab)
         layout = QVBoxLayout()
         datasetTab.setLayout( layout ) 
         
@@ -1444,6 +1447,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         timeTab = QWidget() 
 #        timeTab.setFocusPolicy( Qt.NoFocus ) 
         self.tabbedWidget.addTab( timeTab, 'time' )                 
+        self.tabbedWidget.setCurrentWidget(timeTab)
         time_layout = QVBoxLayout()
         timeTab.setLayout( time_layout ) 
 
@@ -1484,6 +1488,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
 
         roiTab = QWidget()  
         self.tabbedWidget.addTab( roiTab, 'roi' ) 
+        self.tabbedWidget.setCurrentWidget(roiTab)
         roiTab_layout = QVBoxLayout()
         roiTab.setLayout( roiTab_layout ) 
         
@@ -1507,6 +1512,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
 
         zscaleTab = QWidget()  
         self.tabbedWidget.addTab( zscaleTab, 'vertScale' ) 
+        self.tabbedWidget.setCurrentWidget(zscaleTab)
         zscaleTab_layout = QVBoxLayout()
         zscaleTab.setLayout( zscaleTab_layout ) 
         
@@ -1522,6 +1528,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
 
         gridTab = QWidget()  
         self.tabbedWidget.addTab( gridTab, 'grid' ) 
+        self.tabbedWidget.setCurrentWidget(gridTab)
         gridTab_layout = QVBoxLayout()
         gridTab.setLayout( gridTab_layout ) 
 

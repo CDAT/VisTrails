@@ -560,6 +560,7 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         """        
         outputsTab = QWidget()        
         self.tabbedWidget.addTab( outputsTab, 'output' ) 
+        self.tabbedWidget.setCurrentWidget(outputsTab)
         outputsLayout = QVBoxLayout()                
         outputsTab.setLayout( outputsLayout )
         
@@ -623,6 +624,7 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
                 outputTab = self.createOutputTab( ndim, output_name, variableSelections, level )  
                 if outputTab <> None:
                     self.outputsTabbedWidget.addTab( outputTab, output_name ) 
+                    self.outputsTabbedWidget.setCurrentWidget( outputTab )
                     return outputTab
         return None, None
         

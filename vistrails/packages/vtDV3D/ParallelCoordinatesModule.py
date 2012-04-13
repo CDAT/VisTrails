@@ -211,7 +211,7 @@ class PM_ParallelCoordinateViewer(PersistentVisualizationModule):
         isLeveling =  PersistentVisualizationModule.finalizeLeveling( self )
         if isLeveling:
             self.addMetadata( { 'colormap' : self.getColormapSpec() } ) 
-            self.updateSliceOutput()
+#            self.updateSliceOutput()
 
     def initializeConfiguration(self):
         PersistentModule.initializeConfiguration(self)

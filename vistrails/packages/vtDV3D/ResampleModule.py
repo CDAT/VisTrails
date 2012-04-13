@@ -445,6 +445,7 @@ class DecimationConfigurationWidget( IVModuleConfigurationDialog ):
     def createContent( self ):
         resTab = QWidget()  
         self.tabbedWidget.addTab( resTab, 'Decimation' )                                                                
+        self.tabbedWidget.setCurrentWidget(resTab)
         layout = QGridLayout()
         resTab.setLayout( layout ) 
         layout.setMargin(10)

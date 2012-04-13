@@ -51,6 +51,7 @@ class QiVisClient(QtCore.QObject):
         tabController.clearTabs()
         self.currentTab = DisplayWallSheetTab( tabController, self.dimensions[0], self.dimensions[1], self.dimensions[2], self.dimensions[3], displayWidth, displayHeight, fullScreenEnabled )
         tabController.addTabWidget(self.currentTab, self.deviceName)
+        tabController.setCurrentWidget(self.currentTab)
         self.size = self.currentTab.getDimension()
         print " Startup VisClient, size=%s, dims=%s, fullScreen=%s " % ( str(self.size), str(self.dimensions), str(fullScreenEnabled) )
 

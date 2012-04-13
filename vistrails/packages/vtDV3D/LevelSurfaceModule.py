@@ -233,6 +233,7 @@ class NLevelConfigurationWidget( IVModuleConfigurationDialog ):
     def createContent(self):
         nLevelTab = QWidget() 
         self.tabbedWidget.addTab( nLevelTab, 'Levels' )                                                     
+        self.tabbedWidget.setCurrentWidget(nLevelTab)
         layout = QGridLayout()
         nLevelTab.setLayout( layout ) 
         layout.setMargin(10)

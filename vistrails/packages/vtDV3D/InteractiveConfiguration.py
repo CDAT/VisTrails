@@ -598,6 +598,7 @@ class ModuleDocumentationDialog( QDialog ):
             textEdit = QTextEdit(self)
             textEdit.setReadOnly(True)
             index = self.tabbedWidget.addTab( textEdit, name ) 
+            self.tabbedWidget.setCurrentWidget(textEdit)
             tabPage = [ textEdit, [] ]
             self.textPages[name] = tabPage
         return tabPage
@@ -737,6 +738,7 @@ class IVModuleConfigurationDialog( QWidget ):
         """       
         activeModuleTab = QWidget()        
         self.tabbedWidget.addTab( activeModuleTab, 'Active Modules' )
+        self.tabbedWidget.setCurrentWidget(activeModuleTab)
         self.moduleTabLayout = QGridLayout()
         self.moduleTabLayout.setMargin( 5 )
         self.moduleTabLayout.setSpacing( 5 )
@@ -930,6 +932,7 @@ class ColormapConfigurationDialog( IVModuleConfigurationDialog ):
         """       
         colorMapTab = QWidget() 
         self.tabbedWidget.addTab( colorMapTab, 'Colormap' )                      
+        self.tabbedWidget.setCurrentWidget(colorMapTab)
         layout = QGridLayout()
         colorMapTab.setLayout( layout ) 
         layout.setMargin(10)
@@ -1012,6 +1015,7 @@ class LayerConfigurationDialog( IVModuleConfigurationDialog ):
         """       
         colorMapTab = QWidget() 
         self.tabbedWidget.addTab( colorMapTab, 'Layers' )                      
+        self.tabbedWidget.setCurrentWidget(colorMapTab)
         layout = QGridLayout()
         colorMapTab.setLayout( layout ) 
         layout.setMargin(10)
@@ -1074,7 +1078,8 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
     def addPortConfigTab(self):
         portConfigPanel = self.getPortConfigPanel()
         self.tabbedWidget.addTab( portConfigPanel, 'ports' )           
-         
+        self.tabbedWidget.setCurrentWidget(portConfigPanel)
+                 
     @staticmethod   
     def setupSaveConfigurations():
         import api
@@ -1202,6 +1207,10 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         if not self.state_changed:
             self.state_changed = True
             self.emit(SIGNAL("stateChanged"))
+            
+    def saveAndClose( self, checked = False ):
+        self.saveTriggered( checked )
+        self.close()
 
     def saveTriggered(self, checked = False):
         self.okTriggered()
@@ -1223,7 +1232,6 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         self.state_changed = False
         self.emit(SIGNAL("stateChanged"))
         self.emit(SIGNAL('doneConfigure'), self.module.id)
-        self.close()
 
         
 #    def saveTriggered(self, checked = False):
@@ -1676,6 +1684,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         """       
         animMapTab = QWidget()        
         self.tabbedWidget.addTab( animMapTab, 'Animation' )                                       
+        self.tabbedWidget.setCurrentWidget(animMapTab)
         layout = QVBoxLayout()
         animMapTab.setLayout( layout ) 
         layout.setMargin(10)
@@ -1791,6 +1800,7 @@ class LayerConfigurationWidget(DV3DConfigurationWidget):
         """
         layersTab = QWidget()        
         self.tabbedWidget.addTab( layersTab, 'Layers' ) 
+        self.tabbedWidget.setCurrentWidget(layersTab)
         layersLayout = QVBoxLayout()                
         layersTab.setLayout( layersLayout )
                                

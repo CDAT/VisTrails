@@ -23,7 +23,7 @@ vmath = vtk.vtkMath()
 packagePath = os.path.dirname( __file__ )  
 defaultMapDir = os.path.join( packagePath, 'data' )
 defaultLogoFile = os.path.join( defaultMapDir,  'uvcdat.jpg' )
-defaultMapFile = os.path.join( defaultMapDir,  'earth2k.jpg' )
+defaultMapFile = os.path.join( defaultMapDir,  'earth1k.jpg' )
 defaultMapCut = -180
 # defaultMapFile = os.path.join( defaultMapDir,  'world_huge.jpg' )
 # defaultMapCut1 = 0
@@ -547,6 +547,7 @@ class ChartCellConfigurationWidget(DV3DConfigurationWidget):
 
         titleTab = QWidget()        
         self.tabbedWidget.addTab( titleTab, 'title' )                 
+        self.tabbedWidget.setCurrentWidget(titleTab)
         layout = QVBoxLayout()
         titleTab.setLayout( layout ) 
 
@@ -576,6 +577,7 @@ class ChartCellConfigurationWidget(DV3DConfigurationWidget):
 
         locationTab = QWidget()        
         self.tabbedWidget.addTab( locationTab, 'cell location' )                 
+        self.tabbedWidget.setCurrentWidget(locationTab)
         location_layout = QVBoxLayout()
         locationTab.setLayout( location_layout ) 
 
@@ -638,13 +640,26 @@ class PM_MapCell3D( PM_DV3DCell ):
 
     def updateModule( self, **args ):
         PM_DV3DCell.updateModule( self, **args )
-        if self.baseMapActor: self.baseMapActor.SetVisibility( self.enableBasemap )
+        if self.baseMapActor: self.baseMapActor.SetVisibility( int( self.enableBasemap ) )
         if self.renWin: self.renWin.Render()
 
     def activateWidgets( self, iren ):
-        widget = self.baseMapActor
-        bounds = [ 0.0 for i in range(6) ]
-        widget.GetBounds(bounds)
+        if self.baseMapActor:
+            bounds = [ 0.0 for i in range(6) ]
+            self.baseMapActor.GetBounds( bounds )
+
+    def decimateImage( self, image, decx, decy ):
+        image.Update()
+        dims = image.GetDimensions()
+        image_size = dims[0] * dims[1]
+        result = image
+        if image_size > MAX_IMAGE_SIZE:
+            resample = vtk.vtkImageShrink3D()
+            resample.SetInput( image )
+            resample.SetShrinkFactors( decx, decy, 1 )
+            result = resample.GetOutput() 
+            result.Update()
+        return result
         
     def buildRendering(self):
         PM_DV3DCell.buildRendering( self )
@@ -902,6 +917,7 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
              
         basemapTab = QWidget()        
         self.tabbedWidget.addTab( basemapTab, 'base map' )                 
+        self.tabbedWidget.setCurrentWidget(basemapTab)
         layout = QVBoxLayout()
         basemapTab.setLayout( layout ) 
                 
@@ -949,6 +965,7 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
 
         locationTab = QWidget()        
         self.tabbedWidget.addTab( locationTab, 'cell location' )                 
+        self.tabbedWidget.setCurrentWidget(locationTab)
         location_layout = QVBoxLayout()
         locationTab.setLayout( location_layout ) 
 
