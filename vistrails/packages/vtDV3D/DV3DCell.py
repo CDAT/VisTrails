@@ -23,11 +23,12 @@ vmath = vtk.vtkMath()
 packagePath = os.path.dirname( __file__ )  
 defaultMapDir = os.path.join( packagePath, 'data' )
 defaultLogoFile = os.path.join( defaultMapDir,  'uvcdat.jpg' )
-defaultMapFile = os.path.join( defaultMapDir,  'earth1k.jpg' )
+defaultMapFile = os.path.join( defaultMapDir,  'earth2k.jpg' )
 defaultMapCut = -180
 # defaultMapFile = os.path.join( defaultMapDir,  'world_huge.jpg' )
 # defaultMapCut1 = 0
 SLIDER_MAX_VALUE = 100
+MAX_IMAGE_SIZE = 1000000
 
 def get_coords_from_cell_address( row, col):
     try:
@@ -686,7 +687,7 @@ class PM_MapCell3D( PM_DV3DCell ):
             if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
             if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
             data_origin = self.input.GetOrigin() if self.input else [ 0, 0, 0 ]
-          
+                      
             if self.world_cut == -1: 
                 if  (self.roi <> None): 
                     if roi_size[0] > 180:             
@@ -710,7 +711,7 @@ class PM_MapCell3D( PM_DV3DCell ):
                 baseImage, new_dims = self.getBoundedMap( baseImage, dataPosition, map_cut_size, map_border_size )             
                 scale = [ map_cut_size[0]/new_dims[0], map_cut_size[1]/new_dims[1], 1 ]
     #        printArgs( " baseMap: ", extent=baseImage.GetExtent(), spacing=baseImage.GetSpacing(), origin=baseImage.GetOrigin() )        
-                      
+                              
             self.baseMapActor = vtk.vtkImageActor()
             self.baseMapActor.SetOrigin( 0.0, 0.0, 0.0 )
             self.baseMapActor.SetScale( scale )
@@ -721,14 +722,13 @@ class PM_MapCell3D( PM_DV3DCell ):
             mapCorner = [ self.x0, self.y0 ]
 #            if ( ( self.roi[0]-map_border_size ) < 0.0 ): mapCorner[0] = mapCorner[0] - 360.0
             print " DV3DCell, mapCorner = %s, dataPosition = %s, cell_location = %s " % ( str(mapCorner), str(dataPosition), cell_location )
+                    
             self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
             self.baseMapActor.SetInput( baseImage )
-            self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]            
-            self.resetCamera()
-#            PM_DV3DCell.baseMapDirty = False           
+            self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]        
             self.renderer.AddActor( self.baseMapActor )
-        pass
-            
+
+
     def ComputeCornerPosition( self ):
         if (self.roi[0] >= -180) and (self.roi[1] <= 180) and (self.roi[1] > self.roi[0]):
             self.x0 = -180
