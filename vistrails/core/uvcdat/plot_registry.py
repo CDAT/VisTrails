@@ -413,13 +413,15 @@ class Plot(object):
                     fileAliases = '|'.join( [ "%s!%s!%s" % ( self.files[i], file[i], url[i] )  for i in range(self.filenum) ] )
                     varAliases  = '|'.join( [ "%s!%s!%s" % ( self.vars[i], aliases[self.vars[i]], aliases[ "%s.file" % self.vars[i]] )  for i in range(self.varnum) ] )
                     gridAliases = '|'.join( [ "%s!%s" % ( self.axes[i], aliases[self.axes[i]] )  for i in range(self.varnum) ] )
-                    cellAliases = '|'.join( [ "location%d!%s" % ( i, self.cells[i].getAddress( aliases ) ) for i in range( len(self.cells) ) ] )
+                    cellAliases = '' # '|'.join( cell_specs) if cell_specs else '|'.join( [ "location%d!%s" % ( i, self.cells[i].getAddress( aliases ) ) for i in range( len(self.cells) ) ] )                    
                     aliases[ self.serializedConfigAlias ] = ';'.join( [ fileAliases, varAliases, gridAliases, cellAliases ] )
                     print " vcdatInputSpecs: ", str( aliases[ self.serializedConfigAlias ] )
                 except KeyError, err:
                     # it failed because the other aliases do not exist
                     # it's very likely that the serialized alias is already set.
-                    debug.debug("Could not build serialized alias from other aliases. Using current one.")
+                    print>>sys.stderr, "---------------------------------------------------------------------------------"
+                    print>>sys.stderr, " WARNING: Could not build serialized alias from other aliases. Using current one."
+                    print>>sys.stderr, "---------------------------------------------------------------------------------"
 #                if 'vcdatCellSpecs' in pipeline.aliases:
 #                aliases[ 'vcdatCellSpecs' ] = ','.join( [ "%s%s" % ( chr( ord('A') + int(aliases[self.cells[i].col_name]) ), aliases[self.cells[i].row_name] )  for i in range(self.cellnum) ] )
         

@@ -54,6 +54,7 @@ class ImagePlaneWidget:
         # Represent the resliced image plane
         #
         self.ColorMap = vtk.vtkImageMapToColors()
+#        self.ContourFilter = vtk.vtkContourFilter
         self.Reslice = vtk.vtkImageReslice()
         self.Reslice.TransformInputSamplingOff()
         self.ResliceAxes   = vtk.vtkMatrix4x4()
@@ -632,6 +633,8 @@ class ImagePlaneWidget:
         interpolate = self.ResliceInterpolate
         self.ResliceInterpolate = -1 # Force change
         self.SetResliceInterpolate(interpolate)
+        
+        
         
         self.ColorMap.SetInput(self.Reslice.GetOutput())
         

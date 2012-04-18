@@ -780,7 +780,7 @@ class SerializedInterfaceSpecs:
                 print>>sys.stderr, " ERROR: Number of Files and number of Variables do not match."
         for iCell in range( len(cellInputSpecs) ):
             cellMetadata = cellInputSpecs[iCell].split('!')
-            ModuleStore.addCell( cellMetadata[0], cellMetadata[1] )
+            if len( cellMetadata ) > 1: ModuleStore.addCell( cellMetadata[0], cellMetadata[1] )
                 
         
     def addInput(self, inputName, fileId, fileName, variableName, axes ):

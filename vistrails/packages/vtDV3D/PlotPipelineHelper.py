@@ -17,7 +17,9 @@ import core.db.io, sys, traceback, api
 import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
+from packages.vtDV3D.DV3DCell import MapCell3D
 from packages.uvcdat_cdms.init import CDMSVariableOperation, CDMSVariable 
+from packages.vtDV3D.vtUtilities import *
 from core.uvcdat.plot_registry import get_plot_registry
 from core.modules.module_registry import get_module_registry
 
@@ -108,20 +110,28 @@ class DV3DPipelineHelper(PlotPipelineHelper):
         plot_obj.current_parent_version = version
         plot_obj.current_controller = controller
         aliases = {}
-#        for i in range(len(var_modules)):
-#            aliases[plot_obj.files[i]] = ''
-#            aliases[ ".".join( [plot_obj.files[i],"url"] )  ] =  ""
-#            aliases[plot_obj.vars[i]] = ''
-#            aliases[ "%s.file" % plot_obj.vars[i] ] =  ""
-#                filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'filename')
-#                if filename is None:
-#                    filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'file')
-#                if isinstance( filename, core.modules.basic_modules.File ):
-#                    filename = filename.name
-#                url = PlotPipelineHelper.get_value_from_function( var_modules[i], 'url')            
-#                varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'name')
-#                file_varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varNameInFile')
-#                axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
+        for i in range(len(var_modules)):
+            if issubclass( var_modules[i].module_descriptor.module, CDMSVariableOperation):
+                varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varname' )
+                python_command = PlotPipelineHelper.get_value_from_function( var_modules[i], 'python_command' )
+                aliases[plot_obj.vars[i]] = varname
+                aliases[ "%s.cmd" % plot_obj.vars[i] ] = python_command
+            else:
+                filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'filename')
+                if filename is None:
+                    filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'file')
+                if isinstance( filename, core.modules.basic_modules.File ):
+                    filename = filename.name
+                url = PlotPipelineHelper.get_value_from_function( var_modules[i], 'url')            
+                varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'name')
+                file_varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varNameInFile')
+                axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
+                aliases[plot_obj.files[i]] = filename
+                aliases[ ".".join( [plot_obj.files[i],"url"] )  ] = url if url else ""
+                aliases[plot_obj.vars[i]] = varname
+                aliases[ "%s.file" % plot_obj.vars[i] ] = file_varname if file_varname else ""
+                if len(plot_obj.axes) > i:
+                    aliases[plot_obj.axes[i]] = axes
 
         #FIXME: this will always spread the cells in the same row
         cell_specs = []
@@ -130,26 +140,28 @@ class DV3DPipelineHelper(PlotPipelineHelper):
             location = cell.address_name if cell.address_name else 'location%d' % (j+1)   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
             cell_spec = "%s%s" % ( chr(ord('A') + col+j ), row+1)
 #            aliases[ location ] = cell_spec
-            cell_specs.append( '%s!%s' % ( location, cell_spec ) )
+#            cell_specs.append( '%s!%s' % ( location, cell_spec ) )
+            cell_specs.append( cell_spec )
 #            cell_specs.append( 'location%d!%s' % ( j, cell_spec ) )
 #            
 #        for a,w in plot_obj.alias_widgets.iteritems():
 #            try:    aliases[a] = w.contents()
 #            except Exception, err: print>>sys.stderr, "Error updating alias %s:" % str( a ), str(err)
 
-        if plot_obj.serializedConfigAlias and var_modules: aliases[ plot_obj.serializedConfigAlias ] = ';;;' + ( '|'.join( cell_specs) )
+        if plot_obj.serializedConfigAlias and var_modules: aliases[ plot_obj.serializedConfigAlias ] = ';;;' # + ( '|'.join( cell_specs) )
         pip_str = core.db.io.serialize(plot_obj.workflow)
         controller.paste_modules_and_connections(pip_str, (0.0,0.0))
 
-        action = plot_obj.addParameterChangesFromAliasesAction( controller.current_pipeline,  controller,  controller.vistrail, controller.current_version, aliases)        
+#        Disable File Reader, get Variable from UVCDAT
+#        plot_obj.addMergedAliases( aliases, controller.current_pipeline )
+        action = DV3DPipelineHelper.addParameterChangesAction( controller.current_pipeline,  controller,  controller.vistrail, controller.current_version, aliases, iter(cell_specs) )        
         if action: controller.change_selected_version( action.id )   
         
         reader_1v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader ] )
         reader_2v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VectorReader ] )
-#        cell_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ MapCell3D ] )
         reader_modules = reader_1v_modules + reader_2v_modules
         iVarModule = 0
-        ops = []
+        ops = []           
         for module in reader_modules:
             nInputs = 1 if module in reader_1v_modules else 2
             for iInput in range( nInputs ):
@@ -174,6 +186,61 @@ class DV3DPipelineHelper(PlotPipelineHelper):
             print " Error connecting CDMSVariable to workflow: ", str(err)
             traceback.print_exc()
         return action
+
+    @staticmethod
+    def addParameterChangesAction( pipeline, controller, vistrail, parent_version, aliases, cell_spec_iter ):
+        param_changes = []
+        newid = parent_version
+        print "addParameterChangesAction()"
+        print "Aliases: %s " % str( aliases )
+        print "Pipeline Aliases: %s " % str( pipeline.aliases )
+        aliasList = aliases.iteritems()
+        for k,value in aliasList:
+            alias = pipeline.aliases.get(k,None) # alias = (type, oId, parentType, parentId, mId)
+            if alias:
+                module = pipeline.modules[alias[4]]
+                function = module.function_idx[alias[3]]
+                old_param = function.parameter_idx[alias[1]]
+                #print alias, module, function, old_param
+                if old_param.strValue != value:
+                    new_param = controller.create_updated_parameter(old_param, 
+                                                                    value)
+                    if new_param is not None:
+                        op = ('change', old_param, new_param, function.vtType, function.real_id)
+                        param_changes.append(op)
+#                        print "Added parameter change for alias=%s, value=%s" % ( k, value  )
+                    else:
+                        print>>sys.stderr, "CDAT Package: Change parameter %s in widget %s was not generated"%(k, self.name)
+                 
+        cell_modules = PlotPipelineHelper.find_modules_by_type( pipeline, [ MapCell3D ] )
+        for module in cell_modules:
+            op = DV3DPipelineHelper.get_parameter_change_op( controller, module, 'title', 0, '' )
+            if op: param_changes.append(op)
+            op = DV3DPipelineHelper.get_parameter_change_op( controller, module, 'cell_location', 0, cell_spec_iter.next() )
+            if op: param_changes.append(op)
+            
+        action = None
+        if len(param_changes) > 0:
+            action = core.db.action.create_action(param_changes)
+            controller.change_selected_version(parent_version)
+            controller.add_new_action(action)
+            controller.perform_action(action)
+        return action
+
+    @staticmethod    
+    def get_parameter_change_op( controller, module, function_name, parameter_index, new_value ):
+        op = None
+        function = None
+        for fn in module.functions:
+            if fn.name == function_name:
+                function = fn
+                break
+        if function:
+            old_param = function.parameters[ parameter_index ]
+            new_param = controller.create_updated_parameter( old_param, new_value )
+            if new_param is not None:
+                op = ('change', old_param, new_param, function.vtType, function.real_id )
+        return op
 
     
     @staticmethod

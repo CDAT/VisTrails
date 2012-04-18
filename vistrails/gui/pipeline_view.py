@@ -72,7 +72,7 @@ from gui.theme import CurrentTheme
 from gui.utils import getBuilderWindow
 from gui.variable_dropbox import QDragVariableLabel
 
-import copy
+import copy, sys
 import math
 import operator
 
@@ -2084,10 +2084,13 @@ mutual connections."""
                 #update the dependency list on the other side of connections
                 connections = []
                 for c_id in connection_ids:
-                    conn = self.connections[c_id]
-                    connections.append(conn)
-                    self._old_connection_ids.remove(c_id)
-                    del self.connections[c_id]
+                    try:
+                        conn = self.connections[c_id]
+                        connections.append(conn)
+                        self._old_connection_ids.remove(c_id)
+                        del self.connections[c_id]
+                    except:
+                        print>>sys.stderr, "Missing connection in delete_selected_items: ", str(c_id)
                 self.controller.delete_module_list(idList)
                 self.removeItems(connections)
                 for (mId, item) in self.modules.items():

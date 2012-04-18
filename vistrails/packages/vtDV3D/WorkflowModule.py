@@ -26,9 +26,12 @@ class WorkflowModule( Module ):
         self.pmod.invalidateWorkflowModule( self ) 
 
     def compute(self):
+        start_t = time.time() 
         DV3DConfigurationWidget.saveNewConfigurations()            
         self.updatePersistentModule()
         self.pmod.dvCompute( wmod=self )
+        end_t = time.time() 
+        print " +----------------------------------{ Computed Module %s: time = %.3f }----------------------------------+ " % ( self.__class__.__name__, ( end_t-start_t ) )
     
     @classmethod    
     def forceGetPersistentModule( klass, mid, **args ):

@@ -40,16 +40,17 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.imageRange = None
         PersistentVisualizationModule.__init__( self, mid, **args )
         self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'opacity', 'O',    setLevel=self.setOpacity,    getLevel=self.getOpacity, isDataValue=False, layerDependent=True )
+        self.addConfigurableLevelingFunction( 'opacity', 'O',    setLevel=self.setOpacity,    getLevel=self.getOpacity, isDataValue=False, layerDependent=True, bound = False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setZScale, getLevel=self.getScaleBounds )
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
-        self.opacity = 1.0
+        self.opacity = [ 0.75, 1.0 ]
         self.iOrientation = 0
         self.updatingPlacement = False
         self.isSlicing = False
         self.planeWidgetX = None
         self.planeWidgetY = None
         self.planeWidgetZ = None
+        self.opacityUpdateCount = 0
 #        self.imageRescale = None
         VolumeSlicerModules[mid] = self
 #        print " Volume Slicer init, id = %s " % str( id(self) )
@@ -68,18 +69,20 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 self.planeWidgetY.PlaceWidget( bounds )                
                 
     def getOpacity(self):
-        return [ self.opacity, self.opacity ]
+        return self.opacity
     
     def setOpacity(self, range ):
-        rop = math.fabs( range[0] )
-        iop = int( rop )
-        self.opacity = (rop-iop) if ( (iop%2) == 0 ) else 1.0 - (rop-iop)
-#        printArgs( " Leveling: ", opacity=self.opacity ) 
+        self.opacity = range
+#        printArgs( " Leveling: ", opacity=self.opacity, range=range ) 
         self.updateOpacity() 
 
     def updateOpacity(self):
-        self.lut.SetAlpha( self.opacity ) 
-        print "  ---> Set Opacity = %f " % self.opacity
+        self.colormapManager.setAlphaRange( [ bound( self.opacity[i], [ 0.0, 1.0 ] ) for i in (0,1) ] )
+        if (self.opacityUpdateCount % 5) == 0: self.render()
+        self.opacityUpdateCount = self.opacityUpdateCount + 1  
+#        self.lut.SetAlpha( self.opacity[1] )
+#        self.lut.SetAlphaRange ( self.opacity[0], self.opacity[1] )
+        print "  ---> Set Opacity = %s " % str( self.opacity )
 #        self.UpdateWidgetPlacement()
         
 #    def UpdateWidgetPlacement(self):
