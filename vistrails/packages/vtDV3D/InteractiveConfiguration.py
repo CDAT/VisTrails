@@ -1198,7 +1198,15 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
          
     def closeEvent(self, event):
         self.askToSaveChanges()
-        event.accept()
+        w = self.getTopLevelWidget()
+        w.close()
+        
+    def getTopLevelWidget(self):
+        topWidget = self
+        while True:
+            w = topWidget.parentWidget()
+            if w: topWidget = w
+            else: return topWidget
         
     def updateState(self, state):
         self.setFocus(Qt.MouseFocusReason)
@@ -1212,7 +1220,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         self.saveTriggered( checked )
         self.close()
 
-    def saveTriggered(self, checked = False):
+    def saveTriggered( self, checked = False ):
         self.okTriggered()
         for port in self.inputPorts:
             if (port.optional and
@@ -1343,7 +1351,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         self.buttonLayout.addWidget(self.resetButton)
         
         self.layout().addLayout(self.buttonLayout)
-        self.connect(self.saveButton,SIGNAL('clicked(bool)'),  self.saveTriggered)
+        self.connect(self.saveButton,SIGNAL('clicked(bool)'),  self.saveAndClose )
         self.connect(self.resetButton,SIGNAL('clicked(bool)'),  self.close )
         self.setMouseTracking(True)
         self.setFocusPolicy( Qt.WheelFocus )
