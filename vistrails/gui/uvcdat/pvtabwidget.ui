@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>510</width>
-    <height>127</height>
+    <width>548</width>
+    <height>141</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -48,34 +48,62 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="0" colspan="2">
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
+   <item row="1" column="0">
+    <widget class="QLabel" name="lVar">
+     <property name="text">
+      <string>Variables:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QComboBox" name="cbVar">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>100</width>
+       <height>20</height>
+      </size>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="strideLabel">
+     <property name="text">
+      <string>Stride</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QLabel" name="lVar">
+      <widget class="QLineEdit" name="strideLineEditX">
        <property name="text">
-        <string>Variables:</string>
+        <string>1</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QComboBox" name="cbVar">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
+      <widget class="QLineEdit" name="strideLineEditZ">
+       <property name="text">
+        <string>1</string>
        </property>
-       <property name="minimumSize">
-        <size>
-         <width>100</width>
-         <height>20</height>
-        </size>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="strideLineEditY">
+       <property name="text">
+        <string>1</string>
        </property>
       </widget>
      </item>
     </layout>
    </item>
-   <item row="2" column="3">
+   <item row="3" column="1">
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>

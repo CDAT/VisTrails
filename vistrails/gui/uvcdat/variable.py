@@ -468,7 +468,7 @@ class VariableProperties(QtGui.QDockWidget):
             self.getUpdatedVarCheck(str(qtname))
             
     def getVarFromPVTab(self):
-        filename = self._pvProcessFile._fileName
+        filename = str(self._pvProcessFile._fileName)
         varName = str(self.pvTabWidget.cbVar.currentText()).strip()
         kwargs ={}
         
@@ -629,16 +629,7 @@ class VariableProperties(QtGui.QDockWidget):
     def processFile(self, fileName):
         #print fileName
         self._pvProcessFile.setFileName(fileName)
-        #print self._pvProcessFile.getPointVariables()
-        #print self._pvProcessFile.getCellVariables()
-
-        # First clear all previous entries
-        # @NOTE (Aashish) Commented out for now
-        #self.listWidget.clear()
-
-        # Now populate (in the case of POP, we will have have only Variables)
-        #self.populateVariables(self._pvProcessFile.getPointVariables())
-        #self.populateVariables(self._pvProcessFile.getCellVariables()) 
+        self._pvProcessFile.setStride(self.pvTabWidget.getStride())         
         self.populateVariables(self._pvProcessFile.getVariables())
 
     def updateConnectionStatus(self, isConnected):
@@ -649,7 +640,7 @@ class VariableProperties(QtGui.QDockWidget):
 
     def selectRemoteFile(self):
         fileName = self.openRemoteFile()
-        self.processFile(fileName)
+        self.processFile(fileName)        
         self.pvTabWidget.pvSelectedFileLineEdit.setText(fileName)
 
     def onClickConnectServer(self):

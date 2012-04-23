@@ -5,9 +5,13 @@ class PVProcessFile:
     def __init__(self):
         self._fileName = ""
         self._reader = None
+        self._stride = [1,1,1]
         
     def setFileName(self, fileName):
         self._fileName = fileName
+        
+    def setStride(self, stride):
+        self._stride = stride
         
     def getOrCreateReader(self):
         # Assuming we are going to have one reader type for now.
@@ -15,9 +19,8 @@ class PVProcessFile:
             print self._fileName
             self._reader = NetCDFPOPreader(FileName=str(self._fileName))
 
-            # Read part data only (to save read time)
-            # Using hardcoded value for now
-            self._reader.Stride = [5,5,5]
+            # Read part data only
+            self._reader.Stride = self._stride
         return self._reader;
     
     def getPointVariables(self):
