@@ -1,5 +1,6 @@
 from paraview.simple import *
 from paraview import servermanager
+from pvselect_reader import PVSelectReaderDialog
 
 class PVProcessFile:
     def __init__(self):
@@ -17,9 +18,13 @@ class PVProcessFile:
         # Assuming we are going to have one reader type for now.
         if not self._reader:
             print self._fileName
-            self._reader = NetCDFPOPreader(FileName=str(self._fileName))
+            selectReader = PVSelectReaderDialog()
+            selectReader.exec_()
+            self._reader = (selectReader.getSelectedReader())(FileName=str(self._fileName))
+            #self._reader = NetCDFPOPreader(FileName=str(self._fileName))
 
             # Read part data only
+            # \TODO Check if the reader has stride option
             self._reader.Stride = self._stride
         return self._reader;
     
