@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'pvtabwidget.ui'
+# Form implementation generated from reading ui file 'gui/uvcdat/pvtabwidget.ui'
 #
-# Created: Mon Apr 23 13:15:29 2012
-#      by: PyQt4 UI code generator 4.8.3
+# Created: Mon Apr 23 15:20:12 2012
+#      by: PyQt4 UI code generator 4.9.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -17,7 +17,7 @@ except AttributeError:
 class Ui_PVTabWidget(object):
     def setupUi(self, PVTabWidget):
         PVTabWidget.setObjectName(_fromUtf8("PVTabWidget"))
-        PVTabWidget.resize(548, 141)
+        PVTabWidget.resize(518, 144)
         self.gridLayout = QtGui.QGridLayout(PVTabWidget)
         self.gridLayout.setObjectName(_fromUtf8("gridLayout"))
         self.label = QtGui.QLabel(PVTabWidget)
@@ -32,12 +32,6 @@ class Ui_PVTabWidget(object):
         self.pvSelectedFileLineEdit.setMinimumSize(QtCore.QSize(400, 20))
         self.pvSelectedFileLineEdit.setObjectName(_fromUtf8("pvSelectedFileLineEdit"))
         self.gridLayout.addWidget(self.pvSelectedFileLineEdit, 0, 1, 1, 1)
-        self.pvPickLocalFileButton = QtGui.QToolButton(PVTabWidget)
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(_fromUtf8(":/icons/16x16/browse")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.pvPickLocalFileButton.setIcon(icon)
-        self.pvPickLocalFileButton.setObjectName(_fromUtf8("pvPickLocalFileButton"))
-        self.gridLayout.addWidget(self.pvPickLocalFileButton, 0, 2, 1, 1)
         self.lVar = QtGui.QLabel(PVTabWidget)
         self.lVar.setObjectName(_fromUtf8("lVar"))
         self.gridLayout.addWidget(self.lVar, 1, 0, 1, 1)
@@ -65,8 +59,23 @@ class Ui_PVTabWidget(object):
         self.strideLineEditY.setObjectName(_fromUtf8("strideLineEditY"))
         self.horizontalLayout.addWidget(self.strideLineEditY)
         self.gridLayout.addLayout(self.horizontalLayout, 2, 1, 1, 1)
+        self.pvPickLocalFileButton = QtGui.QToolButton(PVTabWidget)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(_fromUtf8(":/icons/16x16/browse")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.pvPickLocalFileButton.setIcon(icon)
+        self.pvPickLocalFileButton.setObjectName(_fromUtf8("pvPickLocalFileButton"))
+        self.gridLayout.addWidget(self.pvPickLocalFileButton, 0, 2, 1, 1)
+        self.applyButton = QtGui.QPushButton(PVTabWidget)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.applyButton.sizePolicy().hasHeightForWidth())
+        self.applyButton.setSizePolicy(sizePolicy)
+        self.applyButton.setLayoutDirection(QtCore.Qt.RightToLeft)
+        self.applyButton.setObjectName(_fromUtf8("applyButton"))
+        self.gridLayout.addWidget(self.applyButton, 4, 1, 1, 1)
         spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
-        self.gridLayout.addItem(spacerItem, 3, 1, 1, 1)
+        self.gridLayout.addItem(spacerItem, 5, 1, 1, 1)
 
         self.retranslateUi(PVTabWidget)
         QtCore.QMetaObject.connectSlotsByName(PVTabWidget)
@@ -74,12 +83,12 @@ class Ui_PVTabWidget(object):
     def retranslateUi(self, PVTabWidget):
         PVTabWidget.setWindowTitle(QtGui.QApplication.translate("PVTabWidget", "Form", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("PVTabWidget", "File:", None, QtGui.QApplication.UnicodeUTF8))
-        self.pvPickLocalFileButton.setText(QtGui.QApplication.translate("PVTabWidget", "...", None, QtGui.QApplication.UnicodeUTF8))
         self.lVar.setText(QtGui.QApplication.translate("PVTabWidget", "Variables:", None, QtGui.QApplication.UnicodeUTF8))
         self.strideLabel.setText(QtGui.QApplication.translate("PVTabWidget", "Stride", None, QtGui.QApplication.UnicodeUTF8))
         self.strideLineEditX.setText(QtGui.QApplication.translate("PVTabWidget", "1", None, QtGui.QApplication.UnicodeUTF8))
         self.strideLineEditZ.setText(QtGui.QApplication.translate("PVTabWidget", "1", None, QtGui.QApplication.UnicodeUTF8))
         self.strideLineEditY.setText(QtGui.QApplication.translate("PVTabWidget", "1", None, QtGui.QApplication.UnicodeUTF8))
+        self.pvPickLocalFileButton.setText(QtGui.QApplication.translate("PVTabWidget", "...", None, QtGui.QApplication.UnicodeUTF8))
+        self.applyButton.setText(QtGui.QApplication.translate("PVTabWidget", "Apply", None, QtGui.QApplication.UnicodeUTF8))
 
-import pv_rc
 import pv_rc

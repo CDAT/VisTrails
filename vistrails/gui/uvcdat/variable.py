@@ -117,6 +117,7 @@ class VariableProperties(QtGui.QDockWidget):
             # Paraview
             # @NOTE: Disabled this feature for now
             #self.pvTabWidget.serverConnectButton.clicked.connect(self.onClickConnectServer)
+            self.pvTabWidget.applyButton.clicked.connect(self.processFile)
             self.pvTabWidget.pvPickLocalFileButton.clicked.connect(self.selectRemoteFile)
         
         self.connect(self.root.dockVariable.widget(),QtCore.SIGNAL("setupDefinedVariableAxes"),self.varAddedToDefined)
@@ -621,14 +622,11 @@ class VariableProperties(QtGui.QDockWidget):
                                                      QtCore.QDir.homePath(), "Files (%s)" % " ".join("*.*"))
         return fileName
 
-    def populateVariables(self, variables):
-        # @NOTE (Aashish): Commented out for now until
-        # we know the right thing to do
+    def populateVariables(self, variables):        
         self.pvTabWidget.populateVars(variables)
 
-    def processFile(self, fileName):
-        #print fileName
-        self._pvProcessFile.setFileName(fileName)
+    def processFile(self):        
+        self._pvProcessFile.setFileName(self.pvTabWidget.pvSelectedFileLineEdit.text())
         self._pvProcessFile.setStride(self.pvTabWidget.getStride())         
         self.populateVariables(self._pvProcessFile.getVariables())
 
@@ -639,8 +637,8 @@ class VariableProperties(QtGui.QDockWidget):
             self.pvTabWidget.serverConnectButton.setText("Connect")
 
     def selectRemoteFile(self):
-        fileName = self.openRemoteFile()
-        self.processFile(fileName)        
+        # Do not process the file right away. Wait till user hits the apply button
+        fileName = self.openRemoteFile()        
         self.pvTabWidget.pvSelectedFileLineEdit.setText(fileName)
 
     def onClickConnectServer(self):
