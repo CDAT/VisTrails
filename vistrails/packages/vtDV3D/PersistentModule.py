@@ -1127,7 +1127,6 @@ class PersistentVisualizationModule( PersistentModule ):
             self.initializeConfiguration()  
         else:   
             self.applyConfiguration()
-              
         
     def buildPipeline(self): 
         pass 

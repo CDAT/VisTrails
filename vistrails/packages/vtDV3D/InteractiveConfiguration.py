@@ -1573,7 +1573,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 
     def setValue( self, value ):
         iTS = getItem( value )
-        if self.timeRange and ( ( iTS > self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
+        if self.timeRange and ( ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
         self.iTimeStep = iTS
                 
 #    def loadAnimation(self):
@@ -1611,7 +1611,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             self.setValue( iTimestep )
             sheetTabs = set()
             relTimeValue = self.relTimeStart + self.iTimeStep * self.relTimeStep
-            print " ** Update Animation, timestep = %d, timeValue = %.3f " % ( self.iTimeStep, relTimeValue )
+            print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValue, str( self.timeRange ) )
             displayText = self.getTextDisplay()
             HyperwallManager.singleton.processGuiCommand( ['reltimestep', relTimeValue, displayText ], False  )
             for module in self.activeModuleList:

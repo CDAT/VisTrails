@@ -967,64 +967,65 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         zscale = getItem( self.getInputValue( "zscale",   1.0  )  )
         
         serializedInputSpecs = getItem( self.getInputValue( "executionSpecs" ) )
-        inputSpecs = SerializedInterfaceSpecs( serializedInputSpecs ) if serializedInputSpecs else None
-        print " ** serializedInputSpecs: ", str( serializedInputSpecs ) 
-        print " ** InputSpecs: ", str( inputSpecs ) 
-        self.idSpecs, self.fileSpecs, self.varSpecs, self.gridSpecs = [], [], [], []
-        if inputSpecs:
-            nInputs = inputSpecs.getNInputs()
-            if not nInputs: return
-            print " _____________________ File Reader _____________________ "    
-            for iInput in range( nInputs  ):
-                inputSpec = inputSpecs.getInput(  index=iInput )
-                print " ** InputSpec: ", str( inputSpec ) 
-                self.idSpecs.append( inputSpec[0] ) 
-                self.fileSpecs.append( inputSpec[1] )
-                self.varSpecs.append( inputSpec[2] )
-                if( not len(self.gridSpecs) and len(inputSpec[3]) ): 
-                    self.gridSpecs = splitGridSpecs( inputSpec[3] )                   
-                    print " ** Grid Specs: ", str( self.gridSpecs )  
-            dsMapData = ';'.join( self.fileSpecs )   
-            self.computeGridFromSpecs()
-            print " ** ID Specs: ", str( self.idSpecs )
-            print " ** File Specs: ", str( self.fileSpecs )
-            print " ** Var Specs: ", str( self.varSpecs )            
-            print " ** dsMapData: ", str( dsMapData )
-            print " ** ROI: ", str( self.roi )
-            print " ** zscale: ", str( zscale )
-            print " ** decimation: ", str( decimation )
-            print " ________________________________________________________ "   
-            self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
-            dsKeys = self.datasetMap.keys()
-            for iVar in range( len(self.varSpecs) ):
-                iDset = 0 if ( len( dsKeys ) == 1 ) else iVar
-                varSpec = "%s*%s" % ( dsKeys[ iDset ], self.varSpecs[iVar] )
-                if iVar == 0: self.ref_var = varSpec
-                self.datasetModule.setVariableRecord( "VariableName%d" % iVar, varSpec )
-        else:    
-            time_range = self.getInputValue( "timeRange"  )
-            self.timeRange =[ int(time_range[0]), int(time_range[1]), float(time_range[2]), float(time_range[3])  ] if time_range else None
-            roi_data = self.getInputValue( "roi" )
-            self.roi = [ float(sroi) for sroi in roi_data ] if roi_data else None
-            dsMapData = self.getInputValue( "datasets" ) 
-            self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
-            self.ref_var = self.getInputValue( "grid"  )
-        
-        self.datasetModule.setBounds( self.timeRange, self.roi, zscale, decimation ) 
-  
-        if self.datasetMap:             
-            for datasetId in self.datasetMap:
-                relFilePath = self.datasetMap[ datasetId ]
-                if relFilePath.strip():
-                    self.datasetModule.addDatasetRecord( datasetId, relFilePath )
-#                print " - addDatasetRecord: ", str( datasetId ), str( cdmsFile )
-        self.setParameter( "timeRange" , self.timeRange )
-        self.setParameter( "roi", self.roi )
-        self.datasetModule.timeRange = self.timeRange
-        self.datasetModule.setReferenceVariable( self.ref_var )
-        if inputSpecs: self.persistDatasetParameters() 
-        self.setResult( 'dataset', self.datasetModule )
-        print " ......  Start Workflow, dsid=%s, zscale = %.2f ......  " % ( self.datasetModule.getDsetId(), zscale )
+        if serializedInputSpecs:
+            inputSpecs = SerializedInterfaceSpecs( serializedInputSpecs ) if serializedInputSpecs else None
+            print " ** serializedInputSpecs: ", str( serializedInputSpecs ) 
+            print " ** InputSpecs: ", str( inputSpecs ) 
+            self.idSpecs, self.fileSpecs, self.varSpecs, self.gridSpecs = [], [], [], []
+            if inputSpecs:
+                nInputs = inputSpecs.getNInputs()
+                if not nInputs: return
+                print " _____________________ File Reader _____________________ "    
+                for iInput in range( nInputs  ):
+                    inputSpec = inputSpecs.getInput(  index=iInput )
+                    print " ** InputSpec: ", str( inputSpec ) 
+                    self.idSpecs.append( inputSpec[0] ) 
+                    self.fileSpecs.append( inputSpec[1] )
+                    self.varSpecs.append( inputSpec[2] )
+                    if( not len(self.gridSpecs) and len(inputSpec[3]) ): 
+                        self.gridSpecs = splitGridSpecs( inputSpec[3] )                   
+                        print " ** Grid Specs: ", str( self.gridSpecs )  
+                dsMapData = ';'.join( self.fileSpecs )   
+                self.computeGridFromSpecs()
+                print " ** ID Specs: ", str( self.idSpecs )
+                print " ** File Specs: ", str( self.fileSpecs )
+                print " ** Var Specs: ", str( self.varSpecs )            
+                print " ** dsMapData: ", str( dsMapData )
+                print " ** ROI: ", str( self.roi )
+                print " ** zscale: ", str( zscale )
+                print " ** decimation: ", str( decimation )
+                print " ________________________________________________________ "   
+                self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
+                dsKeys = self.datasetMap.keys()
+                for iVar in range( len(self.varSpecs) ):
+                    iDset = 0 if ( len( dsKeys ) == 1 ) else iVar
+                    varSpec = "%s*%s" % ( dsKeys[ iDset ], self.varSpecs[iVar] )
+                    if iVar == 0: self.ref_var = varSpec
+                    self.datasetModule.setVariableRecord( "VariableName%d" % iVar, varSpec )
+            else:    
+                time_range = self.getInputValue( "timeRange"  )
+                self.timeRange =[ int(time_range[0]), int(time_range[1]), float(time_range[2]), float(time_range[3])  ] if time_range else None
+                roi_data = self.getInputValue( "roi" )
+                self.roi = [ float(sroi) for sroi in roi_data ] if roi_data else None
+                dsMapData = self.getInputValue( "datasets" ) 
+                self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
+                self.ref_var = self.getInputValue( "grid"  )
+            
+            self.datasetModule.setBounds( self.timeRange, self.roi, zscale, decimation ) 
+      
+            if self.datasetMap:             
+                for datasetId in self.datasetMap:
+                    relFilePath = self.datasetMap[ datasetId ]
+                    if relFilePath.strip():
+                        self.datasetModule.addDatasetRecord( datasetId, relFilePath )
+    #                print " - addDatasetRecord: ", str( datasetId ), str( cdmsFile )
+            self.setParameter( "timeRange" , self.timeRange )
+            self.setParameter( "roi", self.roi )
+            self.datasetModule.timeRange = self.timeRange
+            self.datasetModule.setReferenceVariable( self.ref_var )
+            if inputSpecs: self.persistDatasetParameters() 
+            self.setResult( 'dataset', self.datasetModule )
+            print " ......  Start Workflow, dsid=%s, zscale = %.2f ......  " % ( self.datasetModule.getDsetId(), zscale )
 
     def persistDatasetParameters( self ):
         parmRecList = []

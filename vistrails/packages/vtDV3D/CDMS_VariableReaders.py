@@ -92,6 +92,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     t1 = comp_time_values[1].torel(ReferenceTimeUnits).value
                     dt = t1-t0
                     self.timeRange = [ 0, self.nTimesteps, t0, dt ]
+            self.setParameter( "timeRange" , self.timeRange )
             self.cdmsDataset.timeRange = self.timeRange
             self.timeLabels = self.cdmsDataset.getTimeValues()
             timeValue = args.get( 'timeValue', self.cdmsDataset.timeRange[2] )

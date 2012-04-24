@@ -110,7 +110,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         origin = self.input.GetOrigin()
         if (dataType <> 'float') and (dataType <> 'double'):
              self.setMaxScalarValue( self.input.GetScalarType() )
-        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input.GetWholeExtent()), str(origin), str(bounds) )
+        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s, slicePosition=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input.GetWholeExtent()), str(origin), str(bounds), str(self.slicePosition)  )
       
         # The shared picker enables us to use 3 planes at one time
         # and gets the picking order right
@@ -129,7 +129,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         prop1.SetColor(1, 0, 0)
         self.planeWidgetX.SetUserControlledLookupTable(1)
         self.planeWidgetX.SetLookupTable( self.lut )
-#            self.planeWidgetX.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 0 ) )
+#        self.planeWidgetX.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 0 ) )
 #            self.planeWidgetX.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
 #            self.planeWidgetX.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
         self.planeWidgetX.PlaceWidget( bounds )       
@@ -280,6 +280,11 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 ##        self.set2DOutput( port=self.imageRescale.GetOutputPort(), name='slice' ) 
 #        self.set3DOutput() 
 
+#    def SliceObserver(self, index, caller, event ):
+#        iS = caller.GetSliceIndex()
+#        self.slicePosition[index] = iS
+#        print "Volume Slicer[%d], set slice index = %d" % ( index, iS )
+
     def onSlicerLeftButtonPress( self, caller, event ):
         self.currentButton = self.LEFT_BUTTON   
         return 0
@@ -292,26 +297,27 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.transferInputLayer( self.sliceInput ) 
 #        self.SliceObserver( self.planeWidgetZ ) 
 
+    def applyConfiguration( self ):
+        PersistentVisualizationModule.applyConfiguration( self )
+        self.planeWidgetX.SetSliceIndex( self.slicePosition[0] ) 
+        self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
+        self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
+                
     def updateModule(self, **args ):
+        self.planeWidgetX.SetInput( self.input )         
+        self.planeWidgetY.SetInput( self.input )         
+        self.planeWidgetZ.SetInput( self.input ) 
+        self.set3DOutput()
+
 #        print " Volume Slicer: updateModule, cachable: %s " % str( self.is_cacheable() )
 #        print " ******** Input extent: %s, origin: %s, spacing: %s " % ( self.input.GetExtent(), self.input.GetOrigin(), self.input.GetSpacing() )
-
-        self.planeWidgetX.SetInput( self.input ) 
-        self.planeWidgetX.SetSliceIndex( self.slicePosition[0] )
-        
-        self.planeWidgetY.SetInput( self.input ) 
-        self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
-        
-        self.planeWidgetZ.SetInput( self.input ) 
-        self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
+#        print " >++++++++++++++++++> UpdateModule: sliceIndex = ", str( self.slicePosition )
 
 #        na1 = self.input.GetPointData().GetNumberOfArrays()
 #        self.setActiveScalars()
 #        na2 = self.input.GetPointData().GetNumberOfArrays()
 #        self.SliceObserver( 2, self.planeWidgetZ )
-        self.set3DOutput()
         
-#    def InputModifiedObserver( self, caller, event = None ):
 #        if not self.updatingPlacement:
 #            self.UpdateWidgetPlacement()
            
@@ -344,7 +350,11 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 sliceIndex = caller.GetSliceIndex() 
                 wpos = self.getWorldCoord( sliceIndex, iAxis )
                 textDisplay = " %s = %.1f ." % ( axes[ iAxis ], wpos )
-                self.updateTextDisplay( textDisplay )                    
+                if iAxis == 0:
+                    p1 = caller.GetPoint1()
+                    print " >++++++++++++++++++> Slicing: Set Slice[%d], index=%d, pos=%.2f, " % ( iAxis, sliceIndex, p1[0] ), textDisplay
+                self.slicePosition[ iAxis ] = sliceIndex                  
+                self.updateTextDisplay( textDisplay ) 
                     
 #    def getSlice( self, iAxis ):
 #        import api

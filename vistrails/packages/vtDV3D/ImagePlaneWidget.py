@@ -813,6 +813,7 @@ class ImagePlaneWidget:
         elif ( self.PlaneOrientation == 1 ):  #y axis       
             amount = position - planeOrigin[1]
                 
+        print " >+++++++++> ImagePlaneWidget[%d].SetSlice: Push=%.2f " % ( self.PlaneIndex, amount )
         self.PlaneSource.Push( amount )
         self.UpdatePlane()
         self.BuildRepresentation()
@@ -872,6 +873,8 @@ class ImagePlaneWidget:
             pt2[0] = planeOrigin[0]
         
         
+        if self.PlaneIndex == 0: 
+            print " >+++++++++> ImagePlaneWidget[%d].SetSlice: Index=%d, pos=%.2f " % ( self.PlaneIndex, index, pt1[0] )
         self.PlaneSource.SetOrigin(planeOrigin)
         self.PlaneSource.SetPoint1(pt1)
         self.PlaneSource.SetPoint2(pt2)
