@@ -14,8 +14,7 @@ class PVSelectReaderDialog(QtGui.QDialog, Ui_PVSelectReaderDialog):
               
     def populateReaders(self):
         self.readersListWidget.clear()
-        for i in self._readers:
-          print 'i is ', i 
+        for i in self._readers:           
           self.readersListWidget.addItem(i)
           
     def setCurrentReader(self):
@@ -25,5 +24,5 @@ class PVSelectReaderDialog(QtGui.QDialog, Ui_PVSelectReaderDialog):
         if self._currentReader == 'NetCDF POP Reader':
           return NetCDFPOPreader
         else:
-          return null
+          return None
         

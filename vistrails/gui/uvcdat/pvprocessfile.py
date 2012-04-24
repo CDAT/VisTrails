@@ -20,12 +20,15 @@ class PVProcessFile:
             print self._fileName
             selectReader = PVSelectReaderDialog()
             selectReader.exec_()
-            self._reader = (selectReader.getSelectedReader())(FileName=str(self._fileName))
-            #self._reader = NetCDFPOPreader(FileName=str(self._fileName))
+            readerCreateFunc = selectReader.getSelectedReader() 
+            if readerCreateFunc is not None:
+              self._reader = readerCreateFunc(FileName=str(self._fileName))            
 
-            # Read part data only
-            # \TODO Check if the reader has stride option
-            self._reader.Stride = self._stride
+              # Read part data only
+              # \TODO Check if the reader has stride option
+              self._reader.Stride = self._stride
+            else:
+              self._reader = None              
         return self._reader;
     
     def getPointVariables(self):

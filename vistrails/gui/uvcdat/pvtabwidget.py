@@ -14,8 +14,8 @@ class PVTabWidget(QtGui.QTabWidget, Ui_PVTabWidget):
             self.cbVar.addItem(variable)
             
     def getStride(self):
-        newList = []        
+        newList = []
         newList.append(self.strideLineEditX.text().toDouble()[0])
         newList.append(self.strideLineEditY.text().toDouble()[0])
-        newList.append(self.strideLineEditZ.text().toDouble()[0])        
+        newList.append(self.strideLineEditZ.text().toDouble()[0])
         return newList
