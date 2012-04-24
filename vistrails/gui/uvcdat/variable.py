@@ -118,7 +118,6 @@ class VariableProperties(QtGui.QDockWidget):
             # @NOTE: Disabled this feature for now
             #self._pvTabWidget.serverConnectButton.clicked.connect(self.onClickConnectServer)            
             self._pvTabWidget.applyButton.clicked.connect(self.processFile)
-            self._pvTabWidget.applyButton.setDisabled(True)
             self._pvTabWidget.pvPickLocalFileButton.clicked.connect(self.selectRemoteFile)
         
         self.connect(self.root.dockVariable.widget(),QtCore.SIGNAL("setupDefinedVariableAxes"),self.varAddedToDefined)
@@ -645,6 +644,10 @@ class VariableProperties(QtGui.QDockWidget):
           self._pvTabWidget.pvSelectedFileLineEdit.setText(fileName)
           self._pvTabWidget.readerNameLabel.setText(reader.__class__.__name__)
           self._pvTabWidget.applyButton.setEnabled(True)
+          if 'Stride' in dir(reader):
+            self._pvTabWidget.enableStride()
+          else:
+            self._pvTabWidget.disableStride()
         else:
           QtGui.QMessageBox.warning(self,'Message', QString('Unable to read file ' + fileName),
                                     QMessageBox.Ok) 
