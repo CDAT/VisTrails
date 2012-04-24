@@ -271,7 +271,6 @@ class PersistentModule( QObject ):
 
     def dvUpdate(self, **args):
 #        self.markTime( ' Update %s' % self.__class__.__name__ ) 
-        args['anim'] = True
         self.initializeInputs( **args )     
         self.execute( **args )
  
@@ -485,7 +484,7 @@ class PersistentModule( QObject ):
         return image_data
 
     def initializeInputs( self, **args ):
-        isAnimation = args.get( 'anim', False)
+        isAnimation = args.get( 'animate', False)
         if self.allowMultipleInputs:
             try:
                 self.inputModuleList = self.getPrimaryInputList( **args )
@@ -1110,6 +1109,7 @@ class PersistentVisualizationModule( PersistentModule ):
 
     def execute(self, **args ):
         initConfig = False
+        isAnimation = args.get( 'animate', False )
         if not self.isBuilt():
             if self.ndims == 3: self.initializeRendering()
             
@@ -1123,10 +1123,11 @@ class PersistentVisualizationModule( PersistentModule ):
         
         self.updateModule( **args ) 
         
-        if initConfig: 
-            self.initializeConfiguration()  
-        else:   
-            self.applyConfiguration()
+        if not isAnimation:
+            if initConfig: 
+                self.initializeConfiguration()  
+            else:   
+                self.applyConfiguration()
         
     def buildPipeline(self): 
         pass 

@@ -297,21 +297,25 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.transferInputLayer( self.sliceInput ) 
 #        self.SliceObserver( self.planeWidgetZ ) 
 
-    def applyConfiguration( self ):
-        PersistentVisualizationModule.applyConfiguration( self )
-        self.planeWidgetX.SetSliceIndex( self.slicePosition[0] ) 
-        self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
-        self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
+#    def applyConfiguration( self ):
+#        PersistentVisualizationModule.applyConfiguration( self )
+#        self.planeWidgetX.SetSliceIndex( self.slicePosition[0] ) 
+#        self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
+#        self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
                 
     def updateModule(self, **args ):
         self.planeWidgetX.SetInput( self.input )         
         self.planeWidgetY.SetInput( self.input )         
         self.planeWidgetZ.SetInput( self.input ) 
+        self.planeWidgetX.SetSliceIndex( self.slicePosition[0] ) 
+        self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
+        self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
         self.set3DOutput()
 
 #        print " Volume Slicer: updateModule, cachable: %s " % str( self.is_cacheable() )
 #        print " ******** Input extent: %s, origin: %s, spacing: %s " % ( self.input.GetExtent(), self.input.GetOrigin(), self.input.GetSpacing() )
-#        print " >++++++++++++++++++> UpdateModule: sliceIndex = ", str( self.slicePosition )
+        p1 = self.planeWidgetX.GetPoint1()
+        print " >++++++++++++++++++> UpdateModule: sliceIndex0 = %d, xpos = %.2f " % ( self.slicePosition[0], p1[0] )
 
 #        na1 = self.input.GetPointData().GetNumberOfArrays()
 #        self.setActiveScalars()

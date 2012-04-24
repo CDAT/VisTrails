@@ -515,10 +515,11 @@ class ImagePlaneWidget:
         bounds.append(  center[2] + placeFactor*(bnds[5]-center[2]) )
         
         if ( self.PlaneOrientation == 1 ):
-        
-            self.PlaneSource.SetOrigin(bounds[0],center[1],bounds[4])
-            self.PlaneSource.SetPoint1(bounds[1],center[1],bounds[4])
-            self.PlaneSource.SetPoint2(bounds[0],center[1],bounds[5])
+#            pt1 = self.PlaneSource.GetPoint1()
+            y0 = center[1] # pt1[1] # center[1]       
+            self.PlaneSource.SetOrigin(bounds[0],y0,bounds[4])
+            self.PlaneSource.SetPoint1(bounds[1],y0,bounds[4])
+            self.PlaneSource.SetPoint2(bounds[0],y0,bounds[5])
             
         elif ( self.PlaneOrientation == 2 ):
             
@@ -527,10 +528,11 @@ class ImagePlaneWidget:
             self.PlaneSource.SetPoint2(bounds[0],bounds[3],center[2])
             
         else: #default or x-normal
-            
-            self.PlaneSource.SetOrigin(center[0],bounds[2],bounds[4])
-            self.PlaneSource.SetPoint1(center[0],bounds[3],bounds[4])
-            self.PlaneSource.SetPoint2(center[0],bounds[2],bounds[5])
+#            pt1 = self.PlaneSource.GetPoint1()
+            x0 = center[0] # pt1[0] # center[0]
+            self.PlaneSource.SetOrigin(x0,bounds[2],bounds[4])
+            self.PlaneSource.SetPoint1(x0,bounds[3],bounds[4])
+            self.PlaneSource.SetPoint2(x0,bounds[2],bounds[5])
                    
         self.UpdatePlane()
         self.BuildRepresentation()
