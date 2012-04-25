@@ -24,6 +24,9 @@ DataSetVersion = 0
 DefaultDecimation = [ 0, 7 ]
 cdms2.axis.level_aliases.append('isobaric')
 
+messageDialog = QErrorMessage()
+messageDialog.hide()
+
 def normalize_lon( lon ):
     return lon if lon <= 180.0 else (lon - 360.0)
 
@@ -666,7 +669,12 @@ class CDMSDataset(Module):
         
         args1['order'] = order
         if invert_z:  args1['lev'] = slice( None, None, -1 )
-        rv = transVar( **args1 )
+        try: 
+            rv = transVar( **args1 )
+        except CDMSError, err: 
+            messageDialog.setWindowTitle( "Error Reading Variable" )
+            messageDialog.showMessage( str(err) )
+            return CDMSDataset.NullVariable
         try: rv = MV2.masked_equal( rv, rv.fill_value )
         except: pass          
         self.cachedTransVariables[ varName ] = ( timeValue, rv )

@@ -484,7 +484,7 @@ class PersistentModule( QObject ):
         return image_data
 
     def initializeInputs( self, **args ):
-        isAnimation = args.get( 'animate', False)
+        isAnimation = args.get( 'animate', False )
         if self.allowMultipleInputs:
             try:
                 self.inputModuleList = self.getPrimaryInputList( **args )

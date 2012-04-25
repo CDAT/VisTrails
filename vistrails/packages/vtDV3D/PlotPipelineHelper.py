@@ -140,15 +140,15 @@ class DV3DPipelineHelper(PlotPipelineHelper):
             location = cell.address_name if cell.address_name else 'location%d' % (j+1)   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
             cell_spec = "%s%s" % ( chr(ord('A') + col+j ), row+1)
 #            aliases[ location ] = cell_spec
-#            cell_specs.append( '%s!%s' % ( location, cell_spec ) )
-            cell_specs.append( cell_spec )
+            cell_specs.append( '%s!%s' % ( location, cell_spec ) )
+#            cell_specs.append( cell_spec )
 #            cell_specs.append( 'location%d!%s' % ( j, cell_spec ) )
 #            
 #        for a,w in plot_obj.alias_widgets.iteritems():
 #            try:    aliases[a] = w.contents()
 #            except Exception, err: print>>sys.stderr, "Error updating alias %s:" % str( a ), str(err)
 
-        if plot_obj.serializedConfigAlias and var_modules: aliases[ plot_obj.serializedConfigAlias ] = ';;;' # + ( '|'.join( cell_specs) )
+        if plot_obj.serializedConfigAlias and var_modules: aliases[ plot_obj.serializedConfigAlias ] = ';;;' + ( '|'.join( cell_specs ) )
         pip_str = core.db.io.serialize(plot_obj.workflow)
         controller.paste_modules_and_connections(pip_str, (0.0,0.0))
 
@@ -203,8 +203,7 @@ class DV3DPipelineHelper(PlotPipelineHelper):
                 old_param = function.parameter_idx[alias[1]]
                 #print alias, module, function, old_param
                 if old_param.strValue != value:
-                    new_param = controller.create_updated_parameter(old_param, 
-                                                                    value)
+                    new_param = controller.create_updated_parameter(old_param, value)
                     if new_param is not None:
                         op = ('change', old_param, new_param, function.vtType, function.real_id)
                         param_changes.append(op)
@@ -216,7 +215,8 @@ class DV3DPipelineHelper(PlotPipelineHelper):
         for module in cell_modules:
             op = DV3DPipelineHelper.get_parameter_change_op( controller, module, 'title', 0, '' )
             if op: param_changes.append(op)
-            op = DV3DPipelineHelper.get_parameter_change_op( controller, module, 'cell_location', 0, cell_spec_iter.next() )
+            cell_loc = cell_spec_iter.next()
+            op = DV3DPipelineHelper.get_parameter_change_op( controller, module, 'cell_location', 0, cell_loc )
             if op: param_changes.append(op)
             
         action = None

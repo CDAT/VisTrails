@@ -381,7 +381,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             cellLocation.sheetReference = StandardSheetReference()
             cellLocation.sheetReference.sheetName = HyperwallManager.singleton.deviceName
         else: 
-            address = cell[1] if cell else getItem( self.getInputValue( "cell_location", None ) )
+            address_input = self.getInputValue( "cell_location", None )
+            address = cell[1] if cell else getItem(  address_input )
             
         if address:
             print "Setting Cell Address from Input: %s %s" % ( address, str(cell) )
