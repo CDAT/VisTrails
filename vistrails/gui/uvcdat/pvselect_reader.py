@@ -2,52 +2,61 @@ from PyQt4 import QtCore, QtGui
 from ui_pvselect_reader import Ui_PVSelectReaderDialog
 from paraview.simple import *
 
-class PVSelectReaderDialog(QtGui.QDialog, Ui_PVSelectReaderDialog, filename):
+class PVSelectReaderDialog(QtGui.QDialog, Ui_PVSelectReaderDialog):
     def __init__(self, parent=None):
-        super(PVSelectReaderDialog, self).__init__(parent)
-        self._filename = filename        
+        super(PVSelectReaderDialog, self).__init__(parent)                
         self.setupUi(self)
-        self.root = self
-        self._readers = ['NetCDF POP Reader','Foo']
-        self._currentReader = ''        
-        self.buttonBox.accepted.connect(self.setCurrentReader)        
+        self.root = self        
+        self._currentReader = None
+        self._session = None
+        self._reader_factory = None
+        self._filename = ''                
               
-    def populateReaders(self):
+    def populateReaders(self, filename):      
+        # incoming filename could be a Qt string
+        self._filename = str(filename)
+      
         # Clear old entries
         self.readersListWidget.clear()
       
         # First grab the session
-        session = servermanager.ActiveConnection.Session
+        self._session = servermanager.ActiveConnection.Session
                 
         # Get the factory
-        reader_factory = pv.servermanager.vtkSMProxyManager.GetProxyManager().GetReaderFactory()
+        self._reader_factory = servermanager.vtkSMProxyManager.GetProxyManager().GetReaderFactory()
         
         # Test for readability
-        if not reader_factory.TestFileReadability(self._filename, session):
-          msg = "File not readable: %s " % filename
+        if not self._reader_factory.TestFileReadability(self._filename, self._session):
+          msg = "File not readable: %s " % self._filename
           raise RuntimeError, msg
         
         # This is required
-        if rf.GetNumberOfRegisteredPrototypes() == 0:
-          rf.RegisterPrototypes("sources")
+        if self._reader_factory.GetNumberOfRegisteredPrototypes() == 0:
+          self._reader_factory.RegisterPrototypes("sources")
 
-        # Print possible readers
-        sl = rf.GetReaders(filename, sess)
-        for i in range(0,sl.GetLength(),3):
-          group = sl.GetString(i)
-          name = sl.GetString(i+1)
-          desc = sl.GetString(i+2)
-                              
-          lwItem = QtListWidgetItem(desc, self.readersListWidget)
-          lwItem.setData(Qt.UserRole, group)
-          lwItem.setData(Qt.UserRole+1, name)
-          
-    def setCurrentReader(self):
-      self._currentReader = self.readersListWidget.currentItem().text()
-            
+        # Get all the possible readers
+        stringList = self._reader_factory.GetReaders(self._filename, self._session)
+        for i in range(0, stringList.GetLength(),3):
+          group = stringList.GetString(i)
+          name = stringList.GetString(i+1)
+          desc = stringList.GetString(i+2)
+
+          lwItem = QtGui.QListWidgetItem(desc, self.readersListWidget)
+          lwItem.setData(QtCore.Qt.UserRole, group)
+          lwItem.setData(QtCore.Qt.UserRole+1, name)
+
     def getSelectedReader(self):
-        if self._currentReader == 'NetCDF POP Reader':
-          return NetCDFPOPreader
-        else:
-          return None
+      item = self.readersListWidget.currentItem()
+      group = str(item.data(QtCore.Qt.UserRole).toString())
+      name = str(item.data(QtCore.Qt.UserRole+1).toString())
+            
+      prototype = servermanager.ProxyManager().GetPrototypeProxy(group, name)
+      xml_name = paraview.make_name_valid(prototype.GetXMLLabel())
+      reader_func = paraview.simple._create_func(xml_name, servermanager.sources)
+      if prototype.GetProperty("FileNames"):
+        self._currentReader = reader_func(FileNames=self._filename)
+      else:
+        self._currentReader = reader_func(FileName=self._filename)
+        
+      return self._currentReader
         

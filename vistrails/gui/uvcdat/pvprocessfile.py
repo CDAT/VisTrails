@@ -14,34 +14,25 @@ class PVProcessFile:
     def setStride(self, stride):
         self._stride = stride
         
-    def getOrCreateReader(self):
-        # Assuming we are going to have one reader type for now.
-        if not self._reader:
-            print self._fileName
-            selectReader = PVSelectReaderDialog(self._fileName)            
-            selectReader.exec_()
-            readerCreateFunc = selectReader.getSelectedReader() 
-            if readerCreateFunc is not None:
-              self._reader = readerCreateFunc(FileName=str(self._fileName))            
-
-              # Read part data only
-              # \TODO Check if the reader has stride option
-              self._reader.Stride = self._stride
-            else:
-              self._reader = None              
-        return self._reader;
+    def createReader(self):
+      selectReader = PVSelectReaderDialog()
+      selectReader.populateReaders(self._fileName)            
+      selectReader.exec_()
+      self._reader = selectReader.getSelectedReader()                        
+  
+      # Read part data only (default is read all the data) 
+      if 'Stride' in dir(self._reader):                          
+        self._reader.Stride = self._stride
+                                      
+      return self._reader;
     
-    def getPointVariables(self):
-        self.getOrCreateReader()
+    def getPointVariables(self):        
         return self._reader.PointVariables.Available
     
-    def getCellVariables(self):
-        self.getOrCreateReader()
+    def getCellVariables(self):        
         return self._reader.ElementVariables.Available
 
     def getVariables(self):
-        self.getOrCreateReader()
-        
         # @NOTE: For now get only point data arrays
         variables = []
         numberOfPointDataArrays = self._reader.PointData.GetNumberOfArrays() 

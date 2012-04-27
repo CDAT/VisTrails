@@ -626,7 +626,7 @@ class VariableProperties(QtGui.QDockWidget):
         self._pvTabWidget.populateVars(variables)
 
     def processFile(self):
-        self._pvProcessFile.setStride(self._pvTabWidget.getStride())         
+        self._pvProcessFile.setStride(self._pvTabWidget.getStride())        
         self.populateVariables(self._pvProcessFile.getVariables())
 
     def updateConnectionStatus(self, isConnected):
@@ -639,7 +639,7 @@ class VariableProperties(QtGui.QDockWidget):
         # Do not process the file right away. Wait till user hits the apply button
         fileName = self.openRemoteFile()
         self._pvProcessFile.setFileName(fileName)
-        reader = self._pvProcessFile.getOrCreateReader()
+        reader = self._pvProcessFile.createReader()
         if reader is not None:                
           self._pvTabWidget.pvSelectedFileLineEdit.setText(fileName)
           self._pvTabWidget.readerNameLabel.setText(reader.__class__.__name__)
