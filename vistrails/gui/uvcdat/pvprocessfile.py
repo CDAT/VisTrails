@@ -18,7 +18,7 @@ class PVProcessFile:
         # Assuming we are going to have one reader type for now.
         if not self._reader:
             print self._fileName
-            selectReader = PVSelectReaderDialog()
+            selectReader = PVSelectReaderDialog(self._fileName)            
             selectReader.exec_()
             readerCreateFunc = selectReader.getSelectedReader() 
             if readerCreateFunc is not None:
