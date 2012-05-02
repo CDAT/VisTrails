@@ -21,7 +21,7 @@ from packages.uvcdat.init import expand_port_specs as _expand_port_specs
 
 import sys
 import visit
-import pyqt_pyqtviewer
+import visit.pyqt_pyqtviewer
 
 
 from core.modules.vistrails_module import Module, NotCacheable, ModuleError
@@ -31,22 +31,15 @@ from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_event import DisplayCellEvent
 
 
-viswin = pyqt_pyqtviewer.PyQtViewer(sys.argv)
+viswin = visit.pyqt_pyqtviewer.PyQtViewer(sys.argv)
 visit.Launch()
-firstwin = viswin.GetRenderWindow(1)
-firstwin.hide()
+viswin.GetRenderWindow(1).hide()
 
 viswinmapper = {}
+availWindows = []
+availWindows.append((viswin.GetRenderWindow(1),1))
 
-class VisItEventFilter(QObject):
-    def eventFilter(self,qobject,event):
-        #print "here", qobject, event, event.type()
-        if event.type() == QEvent.ChildRemoved:
-            child = event.child()
-            print "child removed = ", child
-            event.ignore()
-            return True
-        return False
+
 
 class VisItParams(Module):
     def __init__(self):
@@ -71,15 +64,10 @@ class VisItCell(SpreadsheetCell):
         """ compute() -> None
         Dispatch the QVisItWidget to do the actual rendering 
         """
-        print "PRINTING"
         self.location = self.getInputFromPort("Location")
         self.cdms_var = self.getInputFromPort("variable")
         self.params = self.getInputFromPort("visitparams")
-
-        #print "TYPE: ", self.params
-        #display and wait returns NULL...
         self.cellWidget = self.displayAndWait(QVisItWidget,(self.cdms_var,self.location,self.params))
-        print "HERE -->", self.cellWidget, self
 
     def LoadPseudocolorPlot(self):
         print "Loading Pseudocolor Plot"
@@ -89,47 +77,21 @@ class VisItCell(SpreadsheetCell):
         print "Loading Contour Plot"
         self.cellWidget.LoadContourPlot()
 
-def AddWindow():
-    visit.AddWindow()
-
-def cellDestroyed(args):
-    global viswin
-    print "cell is destroyed",args.objectName()
-    print viswinmapper,args, args.parent()
-    print args.children()
-    for i in viswinmapper.keys():
-        (windowid,window,cell) = viswinmapper[i]
-        if(window == args):
-            print "removing cell: ",cell
-            visit.SetActiveWindow(1)
-            viswin.GetRenderWindow(1).hide()
-            #visit.DeleteWindow()
-            cell.view = None
-            #cell.layout.removeWidget(window)
-            cell.layout = None
-            #cell.setCentralWidget(None)
-            #remove entry..
-            del viswinmapper[i]
-            break
-
-    print "now is :",viswinmapper
-
 class QVisItWidget(QCellWidget):
     def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
         QCellWidget.__init__(self,parent,f)
-
         self.layout = QVBoxLayout(self)
         self.view = None
         self.location = None
         self.cdms_var = None
         self.params = None
-        #self.eventFilter = VisItEventFilter()
-        #QMainWindow.installEventFilter(self,self.eventFilter)
-        #self.connect(self,QtCore.SIGNAL("destroyed()"),cellDestroyed)
-        #self.destroyed.connect(cellDestroyed)
 
     def showEvent(self,event):
         print "show event"
+        if self.view is not None:
+            self.view.setParent(self)
+            self.view.show()
+            self.layout.addWidget(self.view)
 
     def closeEvent(self,event):
         print "closing called"
@@ -137,18 +99,12 @@ class QVisItWidget(QCellWidget):
 
     def hideEvent(self,event):
         print "hiding event"
-        #QMainWidget.setCentralWidget(None)
+        if self.view is not None:
+            self.view.setParent(None)
+            self.view.hide()
 
-    #def setParent(self,parent):
-    #    print "setting parent"
-    #    QMainWindow.setParent(self,parent)
-
-    #def isVisible(self):
-    #    print "is visible"
-    #    return True
-    
     def GetDetails(self):
-        windowid = str(self.location.row)+"_"+str(self.location.col)
+        windowid = self.getKey()
         filename = self.cdms_var.filename
         var = self.cdms_var.varNameInFile
         return (windowid,filename,var)
@@ -156,7 +112,7 @@ class QVisItWidget(QCellWidget):
     def LoadPseudocolorPlot(self):
         (windowid,filename,var) = self.GetDetails()
         wid = viswinmapper[windowid]
-        visit.SetActiveWindow(wid[0])
+        visit.SetActiveWindow(wid)
         visit.DeleteAllPlots()
         visit.OpenDatabase(filename)
         visit.AddPlot("Pseudocolor",var)
@@ -165,7 +121,7 @@ class QVisItWidget(QCellWidget):
     def LoadContourPlot(self):
         (windowid,filename,var) = self.GetDetails() 
         wid = viswinmapper[windowid]
-        visit.SetActiveWindow(wid[0])
+        visit.SetActiveWindow(wid)
         visit.DeleteAllPlots()
         visit.OpenDatabase(filename)
         visit.AddPlot("Contour",var)
@@ -174,7 +130,7 @@ class QVisItWidget(QCellWidget):
     def LoadExtremeValueAnalysisPlot(self):
         (windowid,filename,var) = self.GetDetails() 
         wid = viswinmapper[windowid]
-        visit.SetActiveWindow(wid[0])
+        visit.SetActiveWindow(wid)
         visit.DeleteAllPlots()
         visit.OpenDatabase(filename, 0)
         visit.AddPlot("Pseudocolor", var, 1, 1)
@@ -196,45 +152,39 @@ class QVisItWidget(QCellWidget):
     def updateContents(self, inputPorts):
         global viswin
         global viswinmapper
-        (cdms_var,location,params) = inputPorts
-        windowkey = str(location.row)+"_"+str(location.col)
-        print self, self.view
-        if self.view is None:
-            print "updating contents"
-            a = set(viswin.GetRenderWindowIDs())
-            print "a = ", a
-            AddWindow()
-            b = set(viswin.GetRenderWindowIDs())
-            print "b = ",b 
-            res = tuple(b - a)
-            print "a = ", a, "b = ",b, "result: ",res[0]
+        global availWindows
 
-            self.view = viswin.GetRenderWindow(res[0])  
-            print "creating ", self.view, self.view.parent()
-            #self.setCentralWidget(self.view)
+        (self.cdms_var,self.location,self.params) = inputPorts
+
+        windowkey = self.getKey()
+        windowid  = 0
+
+        if self.view is None:
+            a = set(viswin.GetRenderWindowIDs())
+            if len(availWindows) > 0:
+                (self.view,windowid) = availWindows[0]
+                availWindows = availWindows[1:]
+            else:
+                a = set(viswin.GetRenderWindowIDs())
+                visit.AddWindow()
+                b = set(viswin.GetRenderWindowIDs())
+                res = tuple(b - a)
+                windowid = res[0]
+                self.view = viswin.GetRenderWindow(windowid)  
+
             self.layout.addWidget(self.view)
             self.view.show()
             visit.HideToolbars()
-            #self.view.installEventFilter(self.eventFilter)
-            visit.DrawPlots()
-            #keep track of window id 
-            viswinmapper[windowkey]=(res[0],self.view,self)
-            #self.view.destroyed.connect(cellDestroyed)
+            viswinmapper[windowkey] = windowid
 
-        self.cdms_var = cdms_var
-        self.location = location
-        self.params = params
-    
-        if "Pseudocolor" in params.renderType :
+        if "Pseudocolor" in self.params.renderType :
             self.LoadPseudocolorPlot()
 
-        if "Contour" in params.renderType :
+        if "Contour" in self.params.renderType :
             self.LoadContourPlot()
 
-        if "Extreme Value Analysis" in params.renderType :
+        if "Extreme Value Analysis" in self.params.renderType :
             self.LoadExtremeValueAnalysisPlot()
-
-
 
         QCellWidget.updateContents(self, inputPorts)
 
@@ -244,9 +194,18 @@ class QVisItWidget(QCellWidget):
     def dumpToFile(self,filename):
         print "writing to file."
 
-    #def deleteLater(self):
-    #    print "deleting" 
-    #    QCellWidget.deleteLater(self)
+    def deleteLater(self):
+        global viswinmapper
+        print "deleting" 
+        if self.view is not None:
+            self.view.setParent(None)
+            windowKey = self.getKey()
+            availWindows.append((self.view,viswinmapper[windowKey]))
+            del viswinmapper[windowKey]
+        QCellWidget.deleteLater(self)
+
+    def getKey(self):
+        return str(self.location.row) + "_" + str(self.location.col)
 
 def registerSelf():
     registry = get_module_registry()
@@ -497,9 +456,9 @@ class VisItConfigurationWidget(StandardModuleConfigurationWidget):
         return checkBox
 
     def persistParameterList( self, parameter_list, **args ):
-        print self.module
+        #print self.module
         #self.module_descriptor.module.persistParameterList(parameter_list, **args)
-        #pass
+        pass
 
 class VisItCellConfigurationWidget(VisItConfigurationWidget):
     """
@@ -532,7 +491,6 @@ class VisItCellConfigurationWidget(VisItConfigurationWidget):
         """ createLayout() -> None
         Configure sections
         """
-        print "Creating layout VisIt"
         VisItWidget = QGroupBox()
         self.tabbedWidget.addTab( VisItWidget, 'VisIt' )
         self.layout = QVBoxLayout()
@@ -558,7 +516,7 @@ class VisItCellConfigurationWidget(VisItConfigurationWidget):
         self.groupChoiceLayout.addWidget(self.eva)
         self.layout.addWidget(self.groupChoice)
         moduleInstance = self.module.module_descriptor.module()
-        print moduleInstance
+        #print moduleInstance
         QObject.connect(self.pseudocolor,SIGNAL("clicked()"),moduleInstance.LoadPseudocolorPlot)
         QObject.connect(self.contour,SIGNAL("clicked()"),moduleInstance.LoadContourPlot)
 
