@@ -33,6 +33,7 @@ from packages.spreadsheet.spreadsheet_event import DisplayCellEvent
 
 viswin = visit.pyqt_pyqtviewer.PyQtViewer(sys.argv)
 visit.Launch()
+visit.HideToolbars()
 viswin.GetRenderWindow(1).hide()
 
 viswinmapper = {}
@@ -174,7 +175,6 @@ class QVisItWidget(QCellWidget):
 
             self.layout.addWidget(self.view)
             self.view.show()
-            visit.HideToolbars()
             viswinmapper[windowkey] = windowid
 
         if "Pseudocolor" in self.params.renderType :
