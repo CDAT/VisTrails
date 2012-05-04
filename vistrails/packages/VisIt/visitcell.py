@@ -135,19 +135,19 @@ class QVisItWidget(QCellWidget):
         visit.DeleteAllPlots()
         visit.OpenDatabase(filename, 0)
         visit.AddPlot("Pseudocolor", var, 1, 1)
-        visit.AddOperator("Box", 1)
-        visit.SetActivePlots(0)
-        visit.SetActivePlots(0)
-        BoxAtts = visit.BoxAttributes()
-        BoxAtts.amount = BoxAtts.Some # Some, All
-        BoxAtts.minx = 90
-        BoxAtts.maxx = 100
-        BoxAtts.miny = -10
-        BoxAtts.maxy = 10
-        BoxAtts.minz = 0
-        BoxAtts.maxz = 1
-        visit.SetOperatorOptions(BoxAtts, 1)
-        visit.AddOperator("ExtremeValueAnalysis", 1)
+        #visit.AddOperator("Box", 1)
+        #visit.SetActivePlots(0)
+        #visit.SetActivePlots(0)
+        #BoxAtts = visit.BoxAttributes()
+        #BoxAtts.amount = BoxAtts.Some # Some, All
+        #BoxAtts.minx = 90
+        #BoxAtts.maxx = 100
+        #BoxAtts.miny = -10
+        #BoxAtts.maxy = 10
+        #BoxAtts.minz = 0
+        #BoxAtts.maxz = 1
+        #visit.SetOperatorOptions(BoxAtts, 1)
+        visit.AddOperator("ExtremeValueAnalysis")
         visit.DrawPlots()
 
     def updateContents(self, inputPorts):
