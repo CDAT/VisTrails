@@ -376,7 +376,12 @@ class PersistentModule( QObject ):
                 self.scalarRange = list( range )
                 self.scalarRange.append( 1 )
                 if not self.seriesScalarRange:
-                    self.seriesScalarRange = range
+                    self.seriesScalarRange = list(range)
+                else:
+                    if self.seriesScalarRange[0] > range[0]:
+                        self.seriesScalarRange[0] = range[0] 
+                    if self.seriesScalarRange[1] < range[1]:
+                        self.seriesScalarRange[1] = range[1] 
 #        print " --- Update scalar range = %s" % str( self.scalarRange  )
 
     
@@ -508,6 +513,10 @@ class PersistentModule( QObject ):
                 self.initializeLayers()
                 
             self.initializeScalarRange()
+            
+            if isAnimation:
+                for configFunct in self.configurableFunctions.values(): configFunct.expandRange()
+
 #            self.setActiveScalars()
             
         elif ( self.fieldData == None ): 

@@ -337,6 +337,9 @@ class ConfigurableFunction( QObject ):
         if ( self.initHandler != None ):
             self.initHandler( **self.kwargs ) 
             
+    def expandRange( self ):
+        pass
+            
 #    def setParameterInputEnabled( self, isEnabled ):
 #        self.parameterInputEnabled = isEnabled
             
@@ -422,6 +425,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.module.render() 
         return self.initial_range
 
+    def expandRange( self ):
+        self.windowLeveler.setDataRange( self.module.seriesScalarRange )
+        self.initial_range[0:2] = self.module.seriesScalarRange[0:2]
+ 
     def initLeveling( self, **args ):
         if self.key == 'T':
             pass
