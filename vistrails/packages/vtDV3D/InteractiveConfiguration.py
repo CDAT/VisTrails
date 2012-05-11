@@ -430,12 +430,14 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         if self.adjustRange:
             if ( self.initial_range[0] <> self.module.seriesScalarRange[0] ) or ( self.initial_range[1] <> self.module.seriesScalarRange[1] ):
                 self.initial_range[0:2] = self.module.seriesScalarRange[0:2]
-                self.initLeveling() 
+                self.initLeveling( init_range=False ) 
  
     def initLeveling( self, **args ):
+        init_range = args.get( 'init_range', True )
         if self.key == 'T':
             pass
-        self.initial_range =  self.defaultRange if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
+        if init_range:
+            self.initial_range =  self.defaultRange if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
         self.range = list( self.module.getInputValue( self.name, self.initial_range ) if not self.module.newDataset else self.initial_range )
         if len( self.range ) == 3: 
             for iR in [ 3, 4 ]: self.range.append( self.defaultRange[iR] )
