@@ -426,8 +426,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         return self.initial_range
 
     def expandRange( self ):
-        self.windowLeveler.setDataRange( self.module.seriesScalarRange )
-        self.initial_range[0:2] = self.module.seriesScalarRange[0:2]
+#        self.windowLeveler.setDataRange( self.module.seriesScalarRange ):
+        if ( self.initial_range[0] <> self.module.seriesScalarRange[0] ) or ( self.initial_range[1] <> self.module.seriesScalarRange[1] ):
+            self.initial_range[0:2] = self.module.seriesScalarRange[0:2]
+            self.initLeveling() 
  
     def initLeveling( self, **args ):
         if self.key == 'T':
