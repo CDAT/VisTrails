@@ -39,7 +39,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def __init__( self, mid, **args ):
         self.imageRange = None
         PersistentVisualizationModule.__init__( self, mid, **args )
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units )
         self.addConfigurableLevelingFunction( 'opacity', 'O',    setLevel=self.setOpacity,    getLevel=self.getOpacity, isDataValue=False, layerDependent=True, bound = False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setZScale, getLevel=self.getScaleBounds )
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )

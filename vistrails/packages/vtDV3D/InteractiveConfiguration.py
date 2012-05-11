@@ -412,6 +412,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.isDataValue = args.get( 'isDataValue', True )
         self.defaultRange = args.get( 'initRange', [ 0.0, 1.0, 1, 0.0, 1.0 ] )
         self.boundByRange = args.get( 'bound', True )
+        self.adjustRange = args.get( 'adjustRange', False )
         self.widget = args.get( 'gui', None )
 
     def applyParameter( self, module, **args ):
@@ -426,10 +427,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         return self.initial_range
 
     def expandRange( self ):
-#        self.windowLeveler.setDataRange( self.module.seriesScalarRange ):
-        if ( self.initial_range[0] <> self.module.seriesScalarRange[0] ) or ( self.initial_range[1] <> self.module.seriesScalarRange[1] ):
-            self.initial_range[0:2] = self.module.seriesScalarRange[0:2]
-            self.initLeveling() 
+        if self.adjustRange:
+            if ( self.initial_range[0] <> self.module.seriesScalarRange[0] ) or ( self.initial_range[1] <> self.module.seriesScalarRange[1] ):
+                self.initial_range[0:2] = self.module.seriesScalarRange[0:2]
+                self.initLeveling() 
  
     def initLeveling( self, **args ):
         if self.key == 'T':

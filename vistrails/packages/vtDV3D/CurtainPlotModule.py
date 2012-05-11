@@ -77,7 +77,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         PersistentVisualizationModule.__init__(self, mid, **args)
         self.opacityRange =  [ 0.8, 0.8 ]
         self.numberOfLevels = 2
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.setColorScale, getLevel=self.getColorScale, getInitLevel=self.getScalarRange, units=self.units )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.setColorScale, getLevel=self.getColorScale, getInitLevel=self.getScalarRange, adjustRange=True, units=self.units )
         self.addConfigurableLevelingFunction( 'opacity', 'O', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange )
         pass
     
