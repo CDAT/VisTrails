@@ -29,6 +29,7 @@ VTK_BACKGROUND_COLOR = ( 1.0, 1.0, 1.0 )
 VTK_FOREGROUND_COLOR = ( 0.0, 0.0, 0.0 )
 VTK_TITLE_SIZE = 14
 VTK_NOTATION_SIZE = 14
+VTK_INSTRUCTION_SIZE = 24
 
 # Some constants used throughout code
 

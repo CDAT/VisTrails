@@ -32,10 +32,10 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.glyphDecimationFactor = [ 20.0, 2.0 ] 
         self.primaryInputPort = 'volume'
         self.resample = None
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'glyphScale', 'T', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, units=self.units, bound=False )
-        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False )
-        self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setInputZScale, getLevel=self.getScaleBounds )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units )
+        self.addConfigurableLevelingFunction( 'glyphScale', 'T', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, units=self.units, bound=False )
+        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds )
       
     def scaleColormap( self, ctf_data ):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 

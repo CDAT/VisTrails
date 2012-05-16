@@ -39,9 +39,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def __init__( self, mid, **args ):
         self.imageRange = None
         PersistentVisualizationModule.__init__( self, mid, **args )
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'opacity', 'O',    setLevel=self.setOpacity,    getLevel=self.getOpacity, isDataValue=False, layerDependent=True, bound = False )
-        self.addConfigurableLevelingFunction( 'zScale', 'z', setLevel=self.setZScale, getLevel=self.getScaleBounds )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units )
+        self.addConfigurableLevelingFunction( 'opacity', 'O', label='Opacity',    setLevel=self.setOpacity,    getLevel=self.getOpacity, isDataValue=False, layerDependent=True, bound = False )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, getLevel=self.getScaleBounds )
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
         self.opacity = [ 0.75, 1.0 ]
         self.iOrientation = 0
@@ -95,7 +95,16 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.planeWidgetZ.PlaceWidget()
 #        self.updatingPlacement = False
 
-                                                  
+    def enableVisualizationInteraction(self): 
+        self.planeWidgetX.EnableInteraction()                                                
+        self.planeWidgetY.EnableInteraction()                                                
+        self.planeWidgetZ.EnableInteraction()  
+
+    def disableVisualizationInteraction(self): 
+        self.planeWidgetX.DisableInteraction()                                                
+        self.planeWidgetY.DisableInteraction()                                                
+        self.planeWidgetZ.DisableInteraction()  
+                                                            
     def buildPipeline(self):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
