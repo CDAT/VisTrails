@@ -824,12 +824,6 @@ class PersistentModule( QObject ):
         if isLeveling: 
             HyperwallManager.singleton.setInteractionState( None )
             self.finalizeConfigurationObserver( self.InteractionState )            
-            if (self.ndims == 3) and self.iren: 
-                self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-                print " ~~~~~~~~~ Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
-            self.configuring = False
-            self.InteractionState = None
-            self.enableVisualizationInteraction()
         return isLeveling
      
     def isLeveling( self ):
@@ -950,7 +944,16 @@ class PersistentModule( QObject ):
            
     def finalizeConfigurationObserver( self, parameter_name, *args ):
         self.finalizeParameter( parameter_name, *args )    
-        for parameter_name in self.getModuleParameters(): self.finalizeParameter( parameter_name, *args )           
+        for parameter_name in self.getModuleParameters(): self.finalizeParameter( parameter_name, *args ) 
+        self.endInteraction() 
+        
+    def endInteraction(self):       
+        if (self.ndims == 3) and self.iren: 
+            self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+            print " ~~~~~~~~~ Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
+        self.configuring = False
+        self.InteractionState = None
+        self.enableVisualizationInteraction()
 
     def setActivation( self, name, value ):
         bval = bool(value)  
@@ -1365,7 +1368,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return self.getTextActor( 'title', self.titleBuffer,  (.01, .01 ), size = VTK_TITLE_SIZE, bold = True  )
 
     def getInstructionActor(self):
-        return self.getTextActor( 'instruction', self.instructionBuffer,  (.1, .9 ), size = VTK_INSTRUCTION_SIZE, bold = True, color = ( 1.0, 0.1, 0.1 ), opacity=0.75  )
+        return self.getTextActor( 'instruction', self.instructionBuffer,  (.1, .85 ), size = VTK_INSTRUCTION_SIZE, bold = True, color = ( 1.0, 0.1, 0.1 ), opacity=0.75  )
 
     def getTextActor( self, id, text, pos, **args ):
       textActor = self.getProp( 'vtkTextActor', id  )
@@ -1502,13 +1505,8 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.disableVisualizationInteraction()
                    
     def endInteraction( self ):
-        print " *** ~~~~~~ End Interaction ~~~~~~ *** "
-        self.InteractionState = None 
-        self.configuring = False 
-        self.enableVisualizationInteraction()
-        if self.ndims == 3:
-            self.getLabelActor().VisibilityOff()              
-#            self.render()
+        PersistentModule.endInteraction( self )
+        if self.ndims == 3: self.getLabelActor().VisibilityOff()              
         
     def onLeftButtonRelease( self, caller, event ):
         self.currentButton = None 
