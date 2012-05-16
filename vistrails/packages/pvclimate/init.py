@@ -18,7 +18,8 @@ def initialize():
     
     if registry.has_module('edu.utah.sci.vistrails.spreadsheet',
                            'SpreadsheetCell'):                
-        import pvclimatecell        
+        import pvclimatecell, pvisosurfacecell
         pvclimatecell.registerSelf()
+        pvisosurfacecell.registerSelf()
     else:
         print 'Not it does has cell'
