@@ -11,8 +11,8 @@ import pvvariable
 import paraview.simple as pvsp
 
 class PVClimateSource(Module):
-    """PVClimateSource is a module that performs simple arithmetic operations
-on its inputs."""
+    """PVClimateSource is a module that reads the file and creates reader,
+    and variable name."""
 
     # This constructor is strictly unnecessary. However, some modules
     # might want to initialize per-object data. When implementing your
