@@ -251,14 +251,14 @@ class VariableProperties(QtGui.QDockWidget):
         l=QtGui.QLabel("Dimensions")
         labelLayout.addWidget(l)
         
-        self.selectRoiButton = QDockPushButton('Select ROI', self)
+        self.selectRoiButton = QDockPushButton('Select Region Of Interest (ROI)', self)
         labelLayout.addWidget( self.selectRoiButton )        
         self.connect( self.selectRoiButton, QtCore.SIGNAL('clicked(bool)'), self.selectRoi )        
         self.roiSelector = ROISelectionDialog( self.parent )
         self.roiSelector.setWindowFlags( self.roiSelector.windowFlags() | Qt.WindowStaysOnTopHint )
         self.connect(self.roiSelector, QtCore.SIGNAL('doneConfigure()'), self.setRoi )
-        if self.roi: self.roiSelector.setROI( self.roi )
-        
+        if self.roi:
+            self.roiSelector.setROI( self.roi )
         self.dims.setLayout( self.dimsLayout )
         self.dimsLayout.addLayout( labelLayout )
 
