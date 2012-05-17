@@ -146,8 +146,8 @@ class PersistentModule( QObject ):
         self.parameterCache = {}
         self.timeValue = cdtime.reltime( 0.0, ReferenceTimeUnits ) 
         if self.createColormap:
-            self.addConfigurableGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
-        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', setValue=self.setTimeValue, getValue=self.getTimeValue )
+            self.addConfigurableGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Colormap', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
+        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
 #        self.addConfigurableGuiFunction( 'layer', LayerConfigurationDialog, 'l', setValue=self.setLayer, getValue=self.getLayer )
 
 #    def getSelectionStatus( self ):
@@ -376,7 +376,12 @@ class PersistentModule( QObject ):
                 self.scalarRange = list( range )
                 self.scalarRange.append( 1 )
                 if not self.seriesScalarRange:
-                    self.seriesScalarRange = range
+                    self.seriesScalarRange = list(range)
+                else:
+                    if self.seriesScalarRange[0] > range[0]:
+                        self.seriesScalarRange[0] = range[0] 
+                    if self.seriesScalarRange[1] < range[1]:
+                        self.seriesScalarRange[1] = range[1] 
 #        print " --- Update scalar range = %s" % str( self.scalarRange  )
 
     
@@ -508,6 +513,10 @@ class PersistentModule( QObject ):
                 self.initializeLayers()
                 
             self.initializeScalarRange()
+            
+            if isAnimation:
+                for configFunct in self.configurableFunctions.values(): configFunct.expandRange()
+
 #            self.setActiveScalars()
             
         elif ( self.fieldData == None ): 
@@ -649,15 +658,15 @@ class PersistentModule( QObject ):
 #        self.fieldData.AddArray( getFloatDataArray( 'position', [  0.0, 0.0, 0.0 ] ) )
 #        self.fieldData.AddArray( getFloatDataArray( 'scale',    [  1.0, 1.0, 1.0 ] ) ) 
            
-    def addConfigurableMethod( self, name, method, key ):
-        self.configurableFunctions[name] = ConfigurableFunction( name, None, key, pmod=self, hasState=False, open=method )
+    def addConfigurableMethod( self, name, method, key, **args ):
+        self.configurableFunctions[name] = ConfigurableFunction( name, None, key, pmod=self, hasState=False, open=method, **args )
 
     def addConfigurableFunction(self, name, function_args, key, **args):
         self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, pmod=self, **args )
 
     def addConfigurableLevelingFunction(self, name, key, **args):
         self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, pmod=self, **args )
-
+                        
     def addConfigurableGuiFunction(self, name, guiClass, key, **args):
         isActive = not HyperwallManager.singleton.isClient
         guiCF = GuiConfigurableFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
@@ -811,15 +820,10 @@ class PersistentModule( QObject ):
     def finalizeLeveling( self ):
         if self.ndims == 3: self.getLabelActor().VisibilityOff()
         isLeveling = self.isLeveling()
-        print " ~~~~~~ Finalize Leveling: isLeveling = %s, ndims = %d " % ( str( isLeveling ), self.ndims )
+        print " ~~~~~~ Finalize Leveling: isLeveling = %s, ndims = %d, interactionState = %s " % ( str( isLeveling ), self.ndims, self.InteractionState )
         if isLeveling: 
             HyperwallManager.singleton.setInteractionState( None )
             self.finalizeConfigurationObserver( self.InteractionState )            
-            if (self.ndims == 3) and self.iren: 
-                self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-                print " ~~~~~~~~~ Set Interactor Style: Navigation ~~~~~~~~~ "
-            self.configuring = False
-            self.InteractionState = None
         return isLeveling
      
     def isLeveling( self ):
@@ -940,7 +944,16 @@ class PersistentModule( QObject ):
            
     def finalizeConfigurationObserver( self, parameter_name, *args ):
         self.finalizeParameter( parameter_name, *args )    
-        for parameter_name in self.getModuleParameters(): self.finalizeParameter( parameter_name, *args )           
+        for parameter_name in self.getModuleParameters(): self.finalizeParameter( parameter_name, *args ) 
+        self.endInteraction() 
+        
+    def endInteraction(self):       
+        if (self.ndims == 3) and self.iren: 
+            self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+            print " ~~~~~~~~~ Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
+        self.configuring = False
+        self.InteractionState = None
+        self.enableVisualizationInteraction()
 
     def setActivation( self, name, value ):
         bval = bool(value)  
@@ -992,7 +1005,34 @@ class PersistentModule( QObject ):
 
     def onNewTimestep(self):
         pass                                              
-      
+
+TextBlinkEventEventType =  QEvent.User + 2
+
+class TextBlinkEvent( QEvent ):
+    
+    def __init__( self, type ):
+         QEvent.__init__ ( self, TextBlinkEventEventType )
+         self.textType = type
+         
+class TextBlinkThread( threading.Thread ):
+
+    def __init__( self, target, type, timestep = 0.5 ):
+        threading.Thread.__init__( self )
+        self.isActive = False 
+        self.daemon = True
+        self.target = target
+        self.timestep = timestep
+        self.textType = type
+           
+    def stop(self):
+        self.isActive = False
+
+    def run(self):
+        self.isActive = True
+        while self.isActive:
+            QApplication.postEvent( self.target, TextBlinkEvent( self.textType ) )
+            time.sleep( self.timestep )  
+       
 class PersistentVisualizationModule( PersistentModule ):
 
     NoModifier = 0
@@ -1021,11 +1061,20 @@ class PersistentVisualizationModule( PersistentModule ):
         self.lut = None
         self.gui = None
         self.titleBuffer = None
+        self.instructionBuffer = " "
+        self.textBlinkThread = None 
         self.pipelineBuilt = False
         self.activation = {}
         self.isAltMode = False
         self.navigationInteractorStyle = None
+        self.configurationInteractorStyle = None
         self.stereoEnabled = 0
+
+    def enableVisualizationInteraction(self): 
+        pass
+ 
+    def disableVisualizationInteraction(self): 
+        pass
 
     def setInputZScale( self, zscale_data ):
         if self.input <> None:
@@ -1099,7 +1148,44 @@ class PersistentVisualizationModule( PersistentModule ):
             self.labelBuff = text
             if (self.ndims == 3):                
                 self.getLabelActor().VisibilityOn()
-#                print "updateTextDisplay: %s" % ( text ) 
+                
+    def displayInstructions( self, text ):
+        if (self.renderer <> None) and (self.textBlinkThread == None): 
+            self.instructionBuffer = text
+            if (self.ndims == 3):                
+                actor = self.getInstructionActor()
+                if actor:
+                    actor.VisibilityOn()
+                    self.render()
+                    self.textBlinkThread = TextBlinkThread( self, 'instructions' )
+                    self.textBlinkThread.start()
+                    return True
+        return False
+
+    def clearInstructions( self ):
+        actor = self.getInstructionActor()
+        if actor:
+            if self.textBlinkThread:
+                self.textBlinkThread.stop() 
+                self.textBlinkThread = None
+            actor.VisibilityOff()
+            
+    def toggleTextVisibility( self, textType ):
+        actor = None
+        if textType == 'instructions':
+            actor = self.getInstructionActor()
+        if actor:
+            if actor.GetVisibility():
+                actor.VisibilityOff()
+            else: 
+                actor.VisibilityOn()
+            self.render()
+
+    def event(self, e): 
+        if e.type() == TextBlinkEventEventType: 
+            self.toggleTextVisibility( e.textType ) 
+            return True
+        return False        
             
     def UpdateCamera(self):
         pass
@@ -1258,8 +1344,9 @@ class PersistentVisualizationModule( PersistentModule ):
           textActor = vtk.vtkTextActor()  
           textActor.SetTextScaleModeToNone()        
           textprop = textActor.GetTextProperty()
-          textprop.SetColor( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] )
+          textprop.SetColor( *args.get( 'color', ( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] ) ) )
           textprop.SetFontFamilyToArial()
+          textprop.SetOpacity ( args.get( 'opacity', 1.0 ) )
           textprop.SetFontSize( args.get( 'size', 12 ) )
           if args.get( 'bold', False ): textprop.BoldOn()
           else: textprop.BoldOff()
@@ -1279,6 +1366,9 @@ class PersistentVisualizationModule( PersistentModule ):
 
     def getTitleActor(self):
         return self.getTextActor( 'title', self.titleBuffer,  (.01, .01 ), size = VTK_TITLE_SIZE, bold = True  )
+
+    def getInstructionActor(self):
+        return self.getTextActor( 'instruction', self.instructionBuffer,  (.1, .85 ), size = VTK_INSTRUCTION_SIZE, bold = True, color = ( 1.0, 0.1, 0.1 ), opacity=0.75  )
 
     def getTextActor( self, id, text, pos, **args ):
       textActor = self.getProp( 'vtkTextActor', id  )
@@ -1304,7 +1394,7 @@ class PersistentVisualizationModule( PersistentModule ):
             self.renwin = self.renderer.GetRenderWindow( )
             if self.renwin <> None:
                 iren = self.renwin.GetInteractor() 
-                if ( iren <> None ):
+                if ( iren <> None ) and ( iren.GetInteractorStyle() <> self.configurationInteractorStyle ):
                     if ( iren <> self.iren ):
                         if self.iren == None: 
                             self.renwin.AddObserver("AbortCheckEvent", CheckAbort)
@@ -1333,7 +1423,7 @@ class PersistentVisualizationModule( PersistentModule ):
         if ( self.iren.GetInteractorStyle() <> self.navigationInteractorStyle ): 
             istyle = self.iren.GetInteractorStyle()               
             self.navigationInteractorStyle =  istyle
-            pass
+            print " ~~~~~~~~~ Set Navigation Interactor Style:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
                     
     def setInteractionState(self, caller, event):
         key = caller.GetKeyCode() 
@@ -1389,7 +1479,7 @@ class PersistentVisualizationModule( PersistentModule ):
                     self.endInteraction() 
         else:
             state =  self.getInteractionState( key )
-#            print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
+            print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
             if state <> None: 
                 self.updateInteractionState( state, self.isAltMode  )                 
                 HyperwallManager.singleton.setInteractionState( state, self.isAltMode )
@@ -1409,16 +1499,14 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.configurableFunctions[ state ] = configFunct
             if configFunct:
                 configFunct.open( state, self.isAltMode )
+                configFunct.postInstructions( self )
                 self.InteractionState = state                   
                 self.LastInteractionState = self.InteractionState
+                self.disableVisualizationInteraction()
                    
     def endInteraction( self ):
-        print " *** ~~~~~~ End Interaction ~~~~~~ *** "
-        self.InteractionState = None 
-        self.configuring = False 
-        if self.ndims == 3:
-            self.getLabelActor().VisibilityOff()              
-#            self.render()
+        PersistentModule.endInteraction( self )
+        if self.ndims == 3: self.getLabelActor().VisibilityOff()              
         
     def onLeftButtonRelease( self, caller, event ):
         self.currentButton = None 
@@ -1471,17 +1559,27 @@ class PersistentVisualizationModule( PersistentModule ):
         return 0
     
     def onLeftButtonPress( self, caller, event ):
+        shift = caller.GetShiftKey()
         self.currentButton = self.LEFT_BUTTON
+        self.clearInstructions()
         self.UpdateCamera()   
-        x, y = caller.GetEventPosition()
-        self.startConfiguration( x, y, [ 'leveling', 'generic' ] )                 
+        x, y = caller.GetEventPosition()      
+        self.startConfiguration( x, y, [ 'leveling', 'generic' ] )  
         return 0
 
     def onRightButtonPress( self, caller, event ):
+        shift = caller.GetShiftKey()
         self.currentButton = self.RIGHT_BUTTON
+        self.clearInstructions()
         self.UpdateCamera()
         x, y = caller.GetEventPosition()
-        self.startConfiguration( x, y,  [ 'generic' ] )
+        if self.InteractionState <> None:
+            self.startConfiguration( x, y,  [ 'generic' ] )
+        elif shift:
+            ConfigCommandPopupManager.show( self, x, y ) 
+            self.iren.SetInteractorStyle( self.configurationInteractorStyle )             
+        else:
+            self.iren.SetInteractorStyle( self.navigationInteractorStyle )             
         return 0
 
     def onModified( self, caller, event ):
@@ -1504,7 +1602,11 @@ class PersistentVisualizationModule( PersistentModule ):
         return irens
     
     def onAnyEvent(self, caller, event ):
-        isKeyEvent = ( event in [ 'KeyPressEvent', 'CharEvent', 'KeyReleaseEvent' ] )
+        if self.iren:
+            istyle = self.iren.GetInteractorStyle() 
+            print "onAnyEvent: %s, iren style = %s, interactionState = %s  " % ( str( event ), istyle.__class__.__name__, self.InteractionState )
+
+#        isKeyEvent = ( event in [ 'KeyPressEvent', 'CharEvent', 'KeyReleaseEvent' ] )
 #        if isKeyEvent:
 #            sheetTabWidget = getSheetTabWidget()
 #            selected_cells = sheetTabWidget.getSelectedLocations() 

@@ -116,8 +116,9 @@ class VariableProperties(QtGui.QDockWidget):
             
             # Paraview
             # @NOTE: Disabled this feature for now
-            #self.pvTabWidget.serverConnectButton.clicked.connect(self.onClickConnectServer)
-            self.pvTabWidget.pvPickLocalFileButton.clicked.connect(self.selectRemoteFile)
+            #self._pvTabWidget.serverConnectButton.clicked.connect(self.onClickConnectServer)            
+            self._pvTabWidget.applyButton.clicked.connect(self.processFile)
+            self._pvTabWidget.pvPickLocalFileButton.clicked.connect(self.selectRemoteFile)
         
         self.connect(self.root.dockVariable.widget(),QtCore.SIGNAL("setupDefinedVariableAxes"),self.varAddedToDefined)
 
@@ -468,8 +469,8 @@ class VariableProperties(QtGui.QDockWidget):
             self.getUpdatedVarCheck(str(qtname))
             
     def getVarFromPVTab(self):
-        filename = self._pvProcessFile._fileName
-        varName = str(self.pvTabWidget.cbVar.currentText()).strip()
+        filename = str(self._pvProcessFile._fileName)
+        varName = str(self._pvTabWidget.cbVar.currentText()).strip()
         kwargs ={}
         
         #FIXME: need to check if the variable already exists
@@ -621,36 +622,35 @@ class VariableProperties(QtGui.QDockWidget):
                                                      QtCore.QDir.homePath(), "Files (%s)" % " ".join("*.*"))
         return fileName
 
-    def populateVariables(self, variables):
-        # @NOTE (Aashish): Commented out for now until
-        # we know the right thing to do
-        self.pvTabWidget.populateVars(variables)
+    def populateVariables(self, variables):        
+        self._pvTabWidget.populateVars(variables)
 
-    def processFile(self, fileName):
-        #print fileName
-        self._pvProcessFile.setFileName(fileName)
-        #print self._pvProcessFile.getPointVariables()
-        #print self._pvProcessFile.getCellVariables()
-
-        # First clear all previous entries
-        # @NOTE (Aashish) Commented out for now
-        #self.listWidget.clear()
-
-        # Now populate (in the case of POP, we will have have only Variables)
-        #self.populateVariables(self._pvProcessFile.getPointVariables())
-        #self.populateVariables(self._pvProcessFile.getCellVariables()) 
+    def processFile(self):
+        self._pvProcessFile.setStride(self._pvTabWidget.getStride())        
         self.populateVariables(self._pvProcessFile.getVariables())
 
     def updateConnectionStatus(self, isConnected):
         if isConnected:
-            self.pvTabWidget.serverConnectButton.setText("Connected")
+            self._pvTabWidget.serverConnectButton.setText("Connected")
         else:
-            self.pvTabWidget.serverConnectButton.setText("Connect")
+            self._pvTabWidget.serverConnectButton.setText("Connect")
 
     def selectRemoteFile(self):
+        # Do not process the file right away. Wait till user hits the apply button
         fileName = self.openRemoteFile()
-        self.processFile(fileName)
-        self.pvTabWidget.pvSelectedFileLineEdit.setText(fileName)
+        self._pvProcessFile.setFileName(fileName)
+        reader = self._pvProcessFile.createReader()
+        if reader is not None:                
+          self._pvTabWidget.pvSelectedFileLineEdit.setText(fileName)
+          self._pvTabWidget.readerNameLabel.setText(reader.__class__.__name__)
+          self._pvTabWidget.applyButton.setEnabled(True)
+          if 'Stride' in dir(reader):
+            self._pvTabWidget.enableStride()
+          else:
+            self._pvTabWidget.disableStride()
+        else:
+          QtGui.QMessageBox.warning(self,'Message', QString('Unable to read file ' + fileName),
+                                    QMessageBox.Ok) 
 
     def onClickConnectServer(self):
         isConnected = self._paraviewConnectionDialog.isConnected()
@@ -669,5 +669,5 @@ class VariableProperties(QtGui.QDockWidget):
             self.updateConnectionStatus(isConnected);       
             
     def createPVTab(self):        
-        self.pvTabWidget = PVTabWidget(self)    
-        self.originTabWidget.addTab(self.pvTabWidget,"ParaView")
+        self._pvTabWidget = PVTabWidget(self)    
+        self.originTabWidget.addTab(self._pvTabWidget,"ParaView")

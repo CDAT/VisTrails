@@ -233,8 +233,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def __init__( self, mid, **args ):
         SpreadsheetCell.__init__(self)
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, **args )
-        self.addConfigurableMethod( 'resetCamera', self.resetCamera, 'A' )
-        self.addConfigurableMethod( 'showLogo', self.toggleLogoVisibility, 'L' )
+#        self.addConfigurableMethod( 'resetCamera', self.resetCamera, 'A' )
+#        self.addConfigurableMethod( 'showLogo', self.toggleLogoVisibility, 'L' )
         if self.isClient:  
             self.location = CellLocation()
             self.location.row = 0

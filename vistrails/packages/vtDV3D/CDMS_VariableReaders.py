@@ -21,6 +21,22 @@ def getTitle( dsid, name, attributes, showUnits=False ):
        if not showUnits: return "%s:%s" % ( dsid, long_name )
        units = attributes.get( 'units', 'unitless' )
        return  "%s:%s (%s)" % ( dsid, long_name, units )
+   
+def isDesignated( axis ):
+    return ( axis.isLatitude() or axis.isLongitude() or axis.isLevel() or axis.isTime() )
+
+def matchesAxisType( axis, axis_attr, axis_aliases ):
+    matches = False
+    aname = axis.id.lower()
+    axis_attribute = axis.attributes.get('axis',None)
+    if axis_attribute and ( axis_attribute.lower() in axis_attr ):
+        matches = True
+    else:
+        for axis_alias in axis_aliases:
+            if ( aname.find( axis_alias ) >= 0): 
+                matches = True
+                break
+    return matches
     
 class PM_CDMSDataReader( PersistentVisualizationModule ):
     
@@ -69,7 +85,26 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         self.cdmsDataset.addTransientVariable( varname, var )
         self.cdmsDataset.setVariableRecord( "VariableName%d" % index, '*'.join( [ dsetId, varname ] ) )
         return var, dsetId
-        
+    
+    def designateAxes(self,var):
+        lev_aliases = [ 'bottom', 'top', 'zdim' ]
+        lev_axis_attr = [ 'z' ]
+        lat_aliases = [ 'north', 'south', 'ydim' ]
+        lat_axis_attr = [ 'y' ]
+        lon_aliases = [ 'east', 'west', 'xdim' ]
+        lon_axis_attr = [ 'x' ]
+        for axis in var.getAxisList():
+            if not isDesignated( axis ):
+                if matchesAxisType( axis, lev_axis_attr, lev_aliases ):
+                    axis.designateLevel()
+                    print " --> Designating axis %s as a Level axis " % axis.id            
+                elif matchesAxisType( axis, lat_axis_attr, lat_aliases ):
+                    axis.designateLatitude()
+                    print " --> Designating axis %s as a Latitude axis " % axis.id                     
+                elif matchesAxisType( axis, lon_axis_attr, lon_aliases ):
+                    axis.designateLongitude()
+                    print " --> Designating axis %s as a Longitude axis " % axis.id 
+            
     def execute(self, **args ):
         import api
         from packages.vtDV3D.CDMS_DatasetReaders import CDMSDataset
@@ -80,17 +115,24 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.newDataset = ( self.datasetId <> dsetId )
             self.newLayerConfiguration = self.newDataset
             self.datasetId = dsetId
+            self.designateAxes(var)
             self.nTimesteps = 1
             self.timeRange = [ 0, self.nTimesteps, 0.0, 0.0 ]
             timeAxis = var.getTime()
             if timeAxis:
                 self.nTimesteps = len( timeAxis ) if timeAxis else 1
-                comp_time_values = timeAxis.asComponentTime()
-                t0 = comp_time_values[0].torel(ReferenceTimeUnits).value
-                dt = 0.0
-                if self.nTimesteps > 1:
-                    t1 = comp_time_values[1].torel(ReferenceTimeUnits).value
-                    dt = t1-t0
+                try:
+                    comp_time_values = timeAxis.asComponentTime()
+                    t0 = comp_time_values[0].torel(ReferenceTimeUnits).value
+                    dt = 0.0
+                    if self.nTimesteps > 1:
+                        t1 = comp_time_values[1].torel(ReferenceTimeUnits).value
+                        dt = t1-t0
+                        self.timeRange = [ 0, self.nTimesteps, t0, dt ]
+                except:
+                    values = timeAxis.getValue()
+                    t0 = values[0] if len(values) > 0 else 0
+                    dt = ( values[1] - values[0] ) if len(values) > 1 else 0
                     self.timeRange = [ 0, self.nTimesteps, t0, dt ]
             self.setParameter( "timeRange" , self.timeRange )
             self.cdmsDataset.timeRange = self.timeRange

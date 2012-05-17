@@ -38,7 +38,7 @@ class VisItPipelineHelper(PlotPipelineHelper):
             return visitcell.VisItCellConfigurationWidget(None,controller)
         else:
             vcell = cell[0].module_descriptor.module()
-            print "cellWidget should not be None", vcell, vcell.cellWidget
+            #print "cellWidget should not be None", vcell, vcell.cellWidget
             return visitcell.VisItCellConfigurationWidget(cell[0],controller)
 
     @staticmethod
@@ -54,7 +54,7 @@ class VisItPipelineHelper(PlotPipelineHelper):
 
         reg = get_module_registry()
         ops = []
-        print row,col, plot_obj[0].name, plot_type, plot_obj[0], var_modules
+        #print row,col, plot_obj[0].name, plot_type, plot_obj[0], var_modules
         plot_descriptor = reg.get_descriptor_by_name('gov.lbl.visit','VisItCell')
         plot_module = controller.create_module_from_descriptor(plot_descriptor)
 

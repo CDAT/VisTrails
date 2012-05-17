@@ -28,6 +28,7 @@ class ImagePlaneWidget:
         self.ActionHandler = actionHandler
         self.Interactor = None
         self.Enabled = False
+        self.VisualizationInteractionEnabled = True
         self.CurrentRenderer = None
         self.CurrentButton = self.NoButtonDown
         self.RenderWindow = None
@@ -153,9 +154,11 @@ class ImagePlaneWidget:
 
 #----------------------------------------------------------------------------
 
-    def updateInteractor(self):                        
-        if ( self.Interactor and ( self.Interactor.GetInteractorStyle() <> self.navigationInteractorStyle ) ):             
+    def updateInteractor(self):  
+        istyle =  self.Interactor.GetInteractorStyle()                     
+        if ( self.Interactor and ( istyle <> self.navigationInteractorStyle ) and ( istyle <> self.configurationInteractorStyle ) ):             
             self.navigationInteractorStyle =  self.Interactor.GetInteractorStyle() 
+#            print " ~~~~~~~~~ Set Navigation Interactor Style:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
 
 #----------------------------------------------------------------------------
 
@@ -230,6 +233,18 @@ class ImagePlaneWidget:
         
         self.TexturePlaneActor.PickableOn()                  
         self.Interactor.Render()
+        
+    def EnablePicking( self ):
+        self.TexturePlaneActor.PickableOn()  
+
+    def DisablePicking( self ):
+        self.TexturePlaneActor.PickableOff()  
+
+    def EnableInteraction( self ):
+        self.VisualizationInteractionEnabled = True 
+
+    def DisableInteraction( self ):
+        self.VisualizationInteractionEnabled = False
 
 #----------------------------------------------------------------------------
 
@@ -261,26 +276,32 @@ class ImagePlaneWidget:
 #----------------------------------------------------------------------------
 
     def OnLeftButtonDown(self, caller, event ):
-         self.CurrentButton = self.LeftButtonDown
-         self.StartCursor()
+        shift = caller.GetShiftKey()
+        if self.VisualizationInteractionEnabled and not shift:
+            self.CurrentButton = self.LeftButtonDown
+            self.StartCursor()
 
 #----------------------------------------------------------------------------
 
     def OnLeftButtonUp( self, caller, event ):
-        self.StopCursor()
-        self.CurrentButton = self.NoButtonDown
+        if self.VisualizationInteractionEnabled and (self.CurrentButton <> self.NoButtonDown):
+            self.StopCursor()
+            self.CurrentButton = self.NoButtonDown
         
 #----------------------------------------------------------------------------
 
     def OnRightButtonUp( self, caller, event ):
-        self.StopSliceMotion()
-        self.CurrentButton = self.NoButtonDown
+        if self.VisualizationInteractionEnabled and (self.CurrentButton <> self.NoButtonDown):
+            self.StopSliceMotion()
+            self.CurrentButton = self.NoButtonDown
 
 #----------------------------------------------------------------------------
 
     def OnRightButtonDown(self, caller, event ):
-        self.CurrentButton = self.RightButtonDown
-        self.StartSliceMotion()
+        shift = caller.GetShiftKey()
+        if self.VisualizationInteractionEnabled and not shift:
+            self.CurrentButton = self.RightButtonDown
+            self.StartSliceMotion()
         
 #----------------------------------------------------------------------------
 

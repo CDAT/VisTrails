@@ -26,6 +26,41 @@ class CDMSDataType:
     Vector = 3
     Hoffmuller = 4
     ChartData = 5
+    
+class ConfigPopupManager( QObject ):
+    
+    def __init__( self, **args ):
+        self.menu = QMenu()
+        self.resetActions = True
+        self.connect ( self.menu, SIGNAL("aboutToHide()"), lambda: self.reset() )
+            
+    def show( self, module, x, y ):
+        if self.resetActions: 
+            self.resetActions = False
+            self.menu.clear()  
+            self.actionMap = {}
+            
+        for configFunc in module.configurableFunctions.values():
+            action_key = str( configFunc.label )
+            menuItem = self.menu.addAction( action_key )
+            self.actionMap.setdefault( action_key, [] ).append( ( module, configFunc.key ) ) 
+            self.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key: self.execAction( akey ) )
+
+        if self.menu.isHidden():    
+            self.menu.popup( QCursor.pos() )
+        else:                       
+            self.menu.updateGeometry()
+    
+    def execAction( self, action_key ): 
+        print " execAction: ", action_key
+        actionList  =  self.actionMap[ action_key ]
+        for ( module, key ) in actionList:
+            module.processKeyEvent( key )
+                
+    def reset(self):
+        self.resetActions = True
+
+ConfigCommandPopupManager = ConfigPopupManager()
 
 class WindowRefinementGenerator( QObject ):
 
@@ -297,6 +332,7 @@ class ConfigurableFunction( QObject ):
         self.type = 'generic'
         self.args = function_args
         self.kwargs = args
+        self.label = args.get( 'label', self.name )
         self.units = args.get( 'units', '' ).strip().lower()
         self.key = key
         self.functionID = -1 
@@ -313,6 +349,9 @@ class ConfigurableFunction( QObject ):
         self.hasState = args.get( 'hasState', True )
         configFunctionList = ConfigurableFunctions.setdefault( self.name, [] )
         configFunctionList.append( self )
+        
+    def postInstructions( self, module ):
+        pass
         
     def updateActiveFunctionList( self ):
         cfgFunctionList = ConfigurableFunctions.get( self.name, [] )
@@ -337,11 +376,14 @@ class ConfigurableFunction( QObject ):
         if ( self.initHandler != None ):
             self.initHandler( **self.kwargs ) 
             
+    def expandRange( self ):
+        pass
+            
 #    def setParameterInputEnabled( self, isEnabled ):
 #        self.parameterInputEnabled = isEnabled
             
     def getHelpText( self ):
-        return "<tr>   <td>%s</td>  <td>%s</td> <td>%s</td> </tr>\n" % ( self.key, self.name, self.type )
+        return "<tr>   <td>%s</td>  <td>%s</td> <td>%s</td> </tr>\n" % ( self.key, self.label, self.type )
 
     def open( self, state, alt = False ):
         if( self.name == state ): 
@@ -409,8 +451,12 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.isDataValue = args.get( 'isDataValue', True )
         self.defaultRange = args.get( 'initRange', [ 0.0, 1.0, 1, 0.0, 1.0 ] )
         self.boundByRange = args.get( 'bound', True )
+        self.adjustRange = args.get( 'adjustRange', False )
         self.widget = args.get( 'gui', None )
 
+    def postInstructions( self, module ):
+        module.displayInstructions( "Left-click and drag in this cell." )
+    
     def applyParameter( self, module, **args ):
         try:
             self.setLevelDataHandler( self.range )
@@ -422,10 +468,18 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.module.render() 
         return self.initial_range
 
+    def expandRange( self ):
+        if self.adjustRange:
+            if ( self.initial_range[0] <> self.module.seriesScalarRange[0] ) or ( self.initial_range[1] <> self.module.seriesScalarRange[1] ):
+                self.initial_range[0:2] = self.module.seriesScalarRange[0:2]
+                self.initLeveling( init_range=False ) 
+ 
     def initLeveling( self, **args ):
+        init_range = args.get( 'init_range', True )
         if self.key == 'T':
             pass
-        self.initial_range =  self.defaultRange if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
+        if init_range:
+            self.initial_range =  self.defaultRange if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
         self.range = list( self.module.getInputValue( self.name, self.initial_range ) if not self.module.newDataset else self.initial_range )
         if len( self.range ) == 3: 
             for iR in [ 3, 4 ]: self.range.append( self.defaultRange[iR] )
@@ -1844,12 +1898,11 @@ class LayerConfigurationWidget(DV3DConfigurationWidget):
         """
         self.updateController(self.controller)
         self.emit(SIGNAL('doneConfigure()'))
-        self.close()    
-    
-if __name__ == '__main__':  
-     test = LayerConfigurationWidget( None, None )     
-    
-    
+        self.close() 
+        
+ConfigCommandPopupManager = ConfigPopupManager()   
+
+
     
     
     

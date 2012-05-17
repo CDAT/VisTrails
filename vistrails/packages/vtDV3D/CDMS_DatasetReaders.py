@@ -671,7 +671,7 @@ class CDMSDataset(Module):
         if invert_z:  args1['lev'] = slice( None, None, -1 )
         try: 
             rv = transVar( **args1 )
-        except CDMSError, err: 
+        except Exception, err: 
             messageDialog.setWindowTitle( "Error Reading Variable" )
             messageDialog.showMessage( str(err) )
             return CDMSDataset.NullVariable
