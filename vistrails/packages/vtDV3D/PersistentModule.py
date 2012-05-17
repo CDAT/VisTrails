@@ -1473,7 +1473,7 @@ class PersistentVisualizationModule( PersistentModule ):
                     self.finalizeConfigurationObserver( self.InteractionState )            
                     if self.ndims == 3: 
                         self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-                        print " ~~~~~~~~~ SetInteractorStyle: navigationInteractorStyle "
+                        print " ~~~~~~~~~ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)     
                 if self.InteractionState <> None: 
                     configFunct.close()
                     self.endInteraction() 
@@ -1578,15 +1578,15 @@ class PersistentVisualizationModule( PersistentModule ):
         elif shift:
             ConfigCommandPopupManager.show( self, x, y ) 
             self.iren.SetInteractorStyle( self.configurationInteractorStyle )  
-            print " ~~~~~~~~~++ SetInteractorStyle: configurationInteractorStyle "           
+            print " ~~~~~~~~~++ SetInteractorStyle: configurationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)       
         else:
             self.iren.SetInteractorStyle( self.navigationInteractorStyle ) 
-            print " ~~~~~~~~~++ SetInteractorStyle: navigationInteractorStyle "            
+            print " ~~~~~~~~~++ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)            
         return 0
     
     def resetNavigation(self):
         self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-        print " ~~~~~~~~~+++ SetInteractorStyle: navigationInteractorStyle "
+        print " ~~~~~~~~~+++ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)  
 
     def onModified( self, caller, event ):
         return 0
