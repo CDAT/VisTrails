@@ -706,11 +706,11 @@ class PersistentModule( QObject ):
             configFunct = self.configurableFunctions[ self.InteractionState ]
             if configFunct.type in config_types:
                 self.configuring = True
-                configFunct.start( self.InteractionState, x, y )
                 if self.ndims == 3: 
                     self.iren.SetInteractorStyle( self.configurationInteractorStyle )
                     print " ~~~~~~~~~ Set Interactor Style: Configuration  ~~~~~~~~~  "
                     if (configFunct.type == 'leveling'): self.getLabelActor().VisibilityOn()
+                configFunct.start( self.InteractionState, x, y )
     
     def isActive( self ):
         pipeline = self.getCurentPipeline()
@@ -1368,7 +1368,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return self.getTextActor( 'title', self.titleBuffer,  (.01, .01 ), size = VTK_TITLE_SIZE, bold = True  )
 
     def getInstructionActor(self):
-        return self.getTextActor( 'instruction', self.instructionBuffer,  (.1, .85 ), size = VTK_INSTRUCTION_SIZE, bold = True, color = ( 1.0, 0.1, 0.1 ), opacity=0.75  )
+        return self.getTextActor( 'instruction', self.instructionBuffer,  (.1, .85 ), size = VTK_INSTRUCTION_SIZE, bold = True, color = ( 1.0, 0.1, 0.1 ), opacity=0.65  )
 
     def getTextActor( self, id, text, pos, **args ):
       textActor = self.getProp( 'vtkTextActor', id  )
@@ -1577,10 +1577,16 @@ class PersistentVisualizationModule( PersistentModule ):
             self.startConfiguration( x, y,  [ 'generic' ] )
         elif shift:
             ConfigCommandPopupManager.show( self, x, y ) 
-            self.iren.SetInteractorStyle( self.configurationInteractorStyle )             
+            self.iren.SetInteractorStyle( self.configurationInteractorStyle )  
+            print " ~~~~~~~~~++ SetInteractorStyle: configurationInteractorStyle "           
         else:
-            self.iren.SetInteractorStyle( self.navigationInteractorStyle )             
+            self.iren.SetInteractorStyle( self.navigationInteractorStyle ) 
+            print " ~~~~~~~~~++ SetInteractorStyle: navigationInteractorStyle "            
         return 0
+    
+    def resetNavigation(self):
+        self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+        print " ~~~~~~~~~+++ SetInteractorStyle: navigationInteractorStyle "
 
     def onModified( self, caller, event ):
         return 0
@@ -1604,7 +1610,7 @@ class PersistentVisualizationModule( PersistentModule ):
     def onAnyEvent(self, caller, event ):
         if self.iren:
             istyle = self.iren.GetInteractorStyle() 
-            print "onAnyEvent: %s, iren style = %s, interactionState = %s  " % ( str( event ), istyle.__class__.__name__, self.InteractionState )
+#            print "onAnyEvent: %s, iren style = %s, interactionState = %s  " % ( str( event ), istyle.__class__.__name__, self.InteractionState )
 
 #        isKeyEvent = ( event in [ 'KeyPressEvent', 'CharEvent', 'KeyReleaseEvent' ] )
 #        if isKeyEvent:

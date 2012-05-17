@@ -340,14 +340,16 @@ class ImagePlaneWidget:
         update_rate = self.Interactor.GetDesiredUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.updateInteractor()
-        self.Interactor.SetInteractorStyle( self.configurationInteractorStyle )  
+        self.Interactor.SetInteractorStyle( self.configurationInteractorStyle ) 
+        print " ~~~~~~~~~W SetInteractorStyle: configurationInteractorStyle "     
               
 #----------------------------------------------------------------------------
 
     def EndInteraction(self): 
         update_rate = self.Interactor.GetStillUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
-        self.Interactor.SetInteractorStyle( self.navigationInteractorStyle )  
+        self.Interactor.SetInteractorStyle( self.navigationInteractorStyle )
+        print " ~~~~~~~~~W SetInteractorStyle: navigationInteractorStyle "    
 
 #----------------------------------------------------------------------------
 

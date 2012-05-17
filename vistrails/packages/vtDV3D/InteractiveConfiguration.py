@@ -496,6 +496,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         if self.altMode:    self.windowRefiner.initRefinement( [ x, y ], self.range[3:5] )   
         else:               self.windowLeveler.startWindowLevel( x, y )
         self.updateActiveFunctionList()
+        self.adjustRange = False
         self.emit(SIGNAL('startLeveling()'))
 
     def getTextDisplay(self, **args ):
@@ -567,6 +568,7 @@ class GuiConfigurableFunction( ConfigurableFunction ):
              value = self.getValueHandler()  
              self.gui.initWidgetFields( value )
         self.gui.show()
+        self.module.resetNavigation()
         
     def getTextDisplay(self, **args ):
         return self.gui.getTextDisplay( **args )
@@ -610,6 +612,7 @@ class WidgetConfigurableFunction( ConfigurableFunction ):
     def openWidget( self ):
         start_value = None if ( self.getValueHandler == None ) else self.getValueHandler() 
         self.widget.open( start_value )
+        self.module.resetNavigation()
         
     def getTextDisplay(self, **args ):
         return self.widget.getTextDisplay(**args)
@@ -706,6 +709,7 @@ class IVModuleConfigurationDialog( QWidget ):
         self.createButtonLayout()
         self.createActiveModulePanel()
         self.setWindowFlags( self.windowFlags() | Qt.WindowStaysOnTopHint )
+        self.tabbedWidget.setCurrentIndex(0)
     
     @staticmethod    
     def getInstance( klass, name, caller, **args  ):

@@ -552,7 +552,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         if self.updatingOTF: return   # Avoid infinite recursion
         self.updatingOTF = True
         self.setupTransferFunctionConfigDialog()
-#        print " Update Volume OTF, self._range = %s, max opacity = %s " % ( str( self._range ), str( self.max_opacity ) )
+        print " Update Volume OTF, self._range = %s, max opacity = %s " % ( str( self._range ), str( self.max_opacity ) )
         self.opacityTransferFunction.RemoveAllPoints()  
         transferFunctionType = self.transferFunctionConfig.getTransferFunctionType()
 #        dthresh = self._range[3]
