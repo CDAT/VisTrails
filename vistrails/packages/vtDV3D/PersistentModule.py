@@ -1010,9 +1010,10 @@ TextBlinkEventEventType =  QEvent.User + 2
 
 class TextBlinkEvent( QEvent ):
     
-    def __init__( self, type ):
+    def __init__( self, type, textOn ):
          QEvent.__init__ ( self, TextBlinkEventEventType )
          self.textType = type
+         self.textOn = textOn
          
 class TextBlinkThread( threading.Thread ):
 
@@ -1029,9 +1030,12 @@ class TextBlinkThread( threading.Thread ):
 
     def run(self):
         self.isActive = True
+        textOn = True
         while self.isActive:
-            QApplication.postEvent( self.target, TextBlinkEvent( self.textType ) )
-            time.sleep( self.timestep )  
+            QApplication.postEvent( self.target, TextBlinkEvent( self.textType, textOn ) )
+            delay_time = self.timestep*2 if textOn else self.timestep
+            time.sleep( delay_time ) 
+            textOn = not textOn 
        
 class PersistentVisualizationModule( PersistentModule ):
 
@@ -1170,20 +1174,18 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.textBlinkThread = None
             actor.VisibilityOff()
             
-    def toggleTextVisibility( self, textType ):
+    def toggleTextVisibility( self, textType, textOn ):
         actor = None
         if textType == 'instructions':
             actor = self.getInstructionActor()
         if actor:
-            if actor.GetVisibility():
-                actor.VisibilityOff()
-            else: 
-                actor.VisibilityOn()
+            if textOn:  actor.VisibilityOn()
+            else:       actor.VisibilityOff()
             self.render()
 
     def event(self, e): 
         if e.type() == TextBlinkEventEventType: 
-            self.toggleTextVisibility( e.textType ) 
+            self.toggleTextVisibility( e.textType, e.textOn ) 
             return True
         return False        
             
@@ -1210,6 +1212,7 @@ class PersistentVisualizationModule( PersistentModule ):
         self.updateModule( **args ) 
         
         if not isAnimation:
+            self.displayInstructions( "Shift-right-click for config menu" )
             if initConfig: 
                 self.initializeConfiguration()  
             else:   
