@@ -43,9 +43,11 @@ class ConfigMenuManager( QObject ):
         actionList  =  self.actionMap[ action_key ]
         for ( module, key ) in actionList:
             module.processKeyEvent( key )
+            
+    def reset(self):
+        self.actionMap = {}
                 
     def startNewMenu(self):
-        self.actionMap = {}
         self.menu = QMenu()
         return self.menu
 
@@ -53,20 +55,39 @@ ConfigCommandMenuManager = ConfigMenuManager()
 
 class DV3DConfigurationWidget(QWidget):
     
-    def __init__( self, configMenu, parent=None):
+    def __init__( self, configMenu, optionsMenu, parent=None):
         QWidget.__init__(self,parent)
 #        
-        main_layout = QVBoxLayout()
-        main_layout.setMargin(0)
-        main_layout.setSpacing(2)
+        main_layout = QHBoxLayout()
+        main_layout.setMargin(1)
+        main_layout.setSpacing(1)
+
+        cfg_layout = QVBoxLayout()
+        cfg_layout.setMargin(2)
+        cfg_layout.setSpacing(1)
                 
         cfg_label = QLabel("Configuration Commands:")
         cfg_label.setFont( QFont( "Arial", 14, QFont.Bold ) )
-        main_layout.addWidget(cfg_label)
-        main_layout.addStrut(2)
-        main_layout.addWidget(configMenu)
-        main_layout.addStretch()
+        cfg_label.setAlignment( Qt.AlignHCenter )
+        cfg_layout.addWidget(cfg_label)
+        cfg_layout.addStrut(2)
+        cfg_layout.addWidget(configMenu)
+        cfg_layout.addStretch()
 
+        opt_layout = QVBoxLayout()
+        opt_layout.setMargin(2)
+        opt_layout.setSpacing(1)
+                
+        opt_label = QLabel("Options:")
+        opt_label.setFont( QFont( "Arial", 14, QFont.Bold ) )
+        opt_label.setAlignment( Qt.AlignHCenter )
+        opt_layout.addWidget(opt_label)
+        opt_layout.addStrut(2)
+        opt_layout.addWidget(optionsMenu)
+        opt_layout.addStretch()
+               
+        main_layout.addLayout( cfg_layout )
+        main_layout.addLayout( opt_layout )
         self.setLayout(main_layout)
 
 
@@ -427,17 +448,26 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
         print " ------------ show_configuration_widget ----------------------------------"
         
+        pmods = set()
+        ConfigCommandMenuManager.reset()
         menu = ConfigCommandMenuManager.startNewMenu()
         for module in pipeline.module_list:
             pmod = ModuleStore.getModule(  module.id ) 
             if pmod:
+                pmods.add(pmod)
                 configFuncs = pmod.configurableFunctions.values()
                 for configFunc in configFuncs:
                     action_key = str( configFunc.label )
                     config_key = configFunc.key               
                     ConfigCommandMenuManager.addAction( pmod, action_key, config_key ) 
+                    
+        menu1 = ConfigCommandMenuManager.startNewMenu() 
+        for pmod in pmods:
+            ConfigCommandMenuManager.addAction( pmod, 'Help', 'h' )
+            ConfigCommandMenuManager.addAction( pmod, 'Colorbar', 'l' )
+            ConfigCommandMenuManager.addAction( pmod, 'Reset', 'r' )
             
-        return DV3DConfigurationWidget(menu)
+        return DV3DConfigurationWidget(menu,menu1)
 
                
     @staticmethod

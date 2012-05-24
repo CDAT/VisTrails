@@ -1461,7 +1461,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.generateDocumentation()           
                 PersistentVisualizationModule.moduleDocumentationDialog.addDocument( 'modules', self.documentation )
                 PersistentVisualizationModule.moduleDocumentationDialog.addCloseObserver( self.clearDocumenation )
-                PersistentVisualizationModule.moduleDocumentationDialog.show()
+            PersistentVisualizationModule.moduleDocumentationDialog.show()
         elif ( self.createColormap and ( key == 'l' ) ): 
             if  self.colorBarActor.GetVisibility(): 
                   self.colorBarActor.VisibilityOff()  
