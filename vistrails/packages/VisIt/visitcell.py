@@ -31,14 +31,14 @@ from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_event import DisplayCellEvent
 
 
-viswin = visit.pyqt_pyqtviewer.PyQtViewer(sys.argv)
-visit.Launch()
-visit.HideToolbars()
-viswin.GetRenderWindow(1).hide()
-
-viswinmapper = {}
-availWindows = []
-availWindows.append((viswin.GetRenderWindow(1),1))
+#viswin = visit.pyqt_pyqtviewer.PyQtViewer(sys.argv)
+#visit.Launch()
+#visit.HideToolbars()
+#viswin.GetRenderWindow(1).hide()
+#
+#viswinmapper = {}
+#availWindows = []
+#availWindows.append((viswin.GetRenderWindow(1),1))
 
 
 

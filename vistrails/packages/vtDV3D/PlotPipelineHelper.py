@@ -18,19 +18,67 @@ import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
 from packages.vtDV3D.DV3DCell import MapCell3D
+from packages.vtDV3D import ModuleStore
 from packages.uvcdat_cdms.init import CDMSVariableOperation, CDMSVariable 
 from packages.vtDV3D.vtUtilities import *
 from core.uvcdat.plot_registry import get_plot_registry
 from core.modules.module_registry import get_module_registry
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
+
+class ConfigMenuManager( QObject ):
+    
+    def __init__( self, **args ):
+        QObject.__init__( self )
+             
+    def addAction( self, module, action_key, config_key ):
+        actionList = self.actionMap.setdefault( action_key, [] )
+        actionList.append( ( module, config_key ) ) 
+        if len( actionList ) == 1:
+            menuItem = self.menu.addAction( action_key )
+            self.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key: self.execAction( akey ) )
+    
+    def execAction( self, action_key ): 
+        print " execAction: ", action_key
+        actionList  =  self.actionMap[ action_key ]
+        for ( module, key ) in actionList:
+            module.processKeyEvent( key )
+                
+    def startNewMenu(self):
+        self.actionMap = {}
+        self.menu = QMenu()
+        return self.menu
+
+ConfigCommandMenuManager = ConfigMenuManager()
+
+class DV3DConfigurationWidget(QWidget):
+    
+    def __init__( self, configMenu, parent=None):
+        QWidget.__init__(self,parent)
+#        
+        main_layout = QVBoxLayout()
+        main_layout.setMargin(0)
+        main_layout.setSpacing(2)
+                
+        cfg_label = QLabel("Configuration Commands:")
+        cfg_label.setFont( QFont( "Arial", 14, QFont.Bold ) )
+        main_layout.addWidget(cfg_label)
+        main_layout.addStrut(2)
+        main_layout.addWidget(configMenu)
+        main_layout.addStretch()
+
+        self.setLayout(main_layout)
 
 
-class DV3DPipelineHelper(PlotPipelineHelper):
+class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     '''
     This will take care of pipeline manipulation for plots.
     '''
 
 
     def __init__(self):
+        QObject.__init__( self )
+        PlotPipelineHelper.__init__( self )
         '''
         Constructor
         '''
@@ -209,7 +257,7 @@ class DV3DPipelineHelper(PlotPipelineHelper):
                         param_changes.append(op)
 #                        print "Added parameter change for alias=%s, value=%s" % ( k, value  )
                     else:
-                        print>>sys.stderr, "CDAT Package: Change parameter %s in widget %s was not generated"%(k, self.name)
+                        print>>sys.stderr, "CDAT Package: Change parameter %s was not generated"%(k)
                  
         cell_modules = PlotPipelineHelper.find_modules_by_type( pipeline, [ MapCell3D ] )
         for module in cell_modules:
@@ -372,7 +420,26 @@ class DV3DPipelineHelper(PlotPipelineHelper):
             if len(invalid) == 0:
                 return True
         return False
-    
+
+    @staticmethod
+    def show_configuration_widget( controller, version, plot_objs=[] ):
+        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper, CDMSPlotWidget
+        pipeline = controller.vt_controller.vistrail.getPipeline(version)
+        print " ------------ show_configuration_widget ----------------------------------"
+        
+        menu = ConfigCommandMenuManager.startNewMenu()
+        for module in pipeline.module_list:
+            pmod = ModuleStore.getModule(  module.id ) 
+            if pmod:
+                configFuncs = pmod.configurableFunctions.values()
+                for configFunc in configFuncs:
+                    action_key = str( configFunc.label )
+                    config_key = configFunc.key               
+                    ConfigCommandMenuManager.addAction( pmod, action_key, config_key ) 
+            
+        return DV3DConfigurationWidget(menu)
+
+               
     @staticmethod
     def get_plot_by_vistrail_version(plot_type, vistrail, version):
         from core.uvcdat.plotmanager import get_plot_manager

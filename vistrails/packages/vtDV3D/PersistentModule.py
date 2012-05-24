@@ -1212,7 +1212,7 @@ class PersistentVisualizationModule( PersistentModule ):
         self.updateModule( **args ) 
         
         if not isAnimation:
-            self.displayInstructions( "Shift-right-click for config menu" )
+#            self.displayInstructions( "Shift-right-click for config menu" )
             if initConfig: 
                 self.initializeConfiguration()  
             else:   
@@ -1578,18 +1578,12 @@ class PersistentVisualizationModule( PersistentModule ):
         x, y = caller.GetEventPosition()
         if self.InteractionState <> None:
             self.startConfiguration( x, y,  [ 'generic' ] )
-        elif shift:
-            ConfigCommandPopupManager.show( self, x, y ) 
-            self.iren.SetInteractorStyle( self.configurationInteractorStyle )  
-            print " ~~~~~~~~~++ SetInteractorStyle: configurationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)       
         else:
-            self.iren.SetInteractorStyle( self.navigationInteractorStyle ) 
-            print " ~~~~~~~~~++ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)            
+            self.iren.SetInteractorStyle( self.navigationInteractorStyle )          
         return 0
     
     def resetNavigation(self):
-        self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-        print " ~~~~~~~~~+++ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)  
+        if self.iren: self.iren.SetInteractorStyle( self.navigationInteractorStyle )
 
     def onModified( self, caller, event ):
         return 0

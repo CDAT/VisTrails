@@ -60,8 +60,6 @@ class ConfigPopupManager( QObject ):
     def reset(self):
         self.resetActions = True
 
-ConfigCommandPopupManager = ConfigPopupManager()
-
 class WindowRefinementGenerator( QObject ):
 
     def __init__( self, **args ):
