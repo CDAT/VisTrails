@@ -166,7 +166,7 @@ class QtWindowLeveler( QObject ):
               print str( [dx,dy,self.CurrentWindow,self.CurrentLevel] )
               result = [ self.CurrentWindow, self.CurrentLevel, 0 ]
               self.emit( self.update_range_signal, result )
-#        print " --- Set Range: ( %f, %f ),   Initial Range = ( %f, %f ), P = ( %d, %d ) dP = ( %f, %f ) " % ( result[0], result[1], self.InitialRange[0], self.InitialRange[1], X, Y, dx, dy )      
+        print " --- Set Range: ( %f, %f ),   Initial Range = ( %f, %f ), P = ( %d, %d ) dP = ( %f, %f ) " % ( result[0], result[1], self.InitialRange[0], self.InitialRange[1], X, Y, dx, dy )      
         return result
       
     def startWindowLevel( self, X, Y ):   
@@ -447,7 +447,9 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.getLevelDataHandler = args.get( 'getLevel', None )
         self.getInitLevelDataHandler = args.get( 'getInitLevel', None )
         self.isDataValue = args.get( 'isDataValue', True )
-        self.defaultRange = args.get( 'initRange', [ 0.0, 1.0, 1, 0.0, 1.0 ] )
+        self.initial_range = args.get( 'initRange', None )
+        self.initRefinement = args.get( 'initRefinement', [ 0.0, 1.0 ] )
+        self.range_bounds = None
         self.boundByRange = args.get( 'bound', True )
         self.adjustRange = args.get( 'adjustRange', False )
         self.widget = args.get( 'gui', None )
@@ -468,19 +470,20 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
 
     def expandRange( self ):
         if self.adjustRange:
-            if ( self.initial_range[0] <> self.module.seriesScalarRange[0] ) or ( self.initial_range[1] <> self.module.seriesScalarRange[1] ):
-                self.initial_range[0:2] = self.module.seriesScalarRange[0:2]
-                self.initLeveling( init_range=False ) 
+            if ( self.range_bounds[0] <> self.module.seriesScalarRange[0] ) or ( self.range_bounds[1] <> self.module.seriesScalarRange[1] ):
+                self.range_bounds[0:2] = self.module.seriesScalarRange[0:2]
+                self.initLeveling() 
  
     def initLeveling( self, **args ):
-        init_range = args.get( 'init_range', True )
         if self.key == 'T':
             pass
-        if init_range:
-            self.initial_range =  self.defaultRange if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
+        if self.initial_range == None:
+            self.initial_range =  [ 0.0, 1.0, 1 ] if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
+        if self.range_bounds == None:
+            self.range_bounds = self.initial_range if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
         self.range = list( self.module.getInputValue( self.name, self.initial_range ) if not self.module.newDataset else self.initial_range )
         if len( self.range ) == 3: 
-            for iR in [ 3, 4 ]: self.range.append( self.defaultRange[iR] )
+            for iR in range(2): self.range.append( self.initRefinement[iR] )
         self.windowLeveler.setDataRange( self.range )
         self.setLevelDataHandler( self.range )
         self.module.setParameter( self.name, self.range )
@@ -511,7 +514,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             for iR in [ 0, 1 ]: self.range[3+iR] = refinement_range[iR]
         else:  
             leveling_range = self.windowLeveler.windowLevel( x, y, wsize )
-            for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.initial_range ) if self.boundByRange else leveling_range[iR]
+            for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.range_bounds ) if self.boundByRange else leveling_range[iR]
         return self.broadcastLevelingData()
         
     def broadcastLevelingData(  self, range = None  ):
@@ -766,7 +769,15 @@ class IVModuleConfigurationDialog( QWidget ):
             if wmod == None:
                 executeWorkflow()
                 return
-        
+            
+    def resetNavigation(self):   
+        for module in self.modules: 
+            module.resetNavigation()
+            
+    def close(self):
+        self.resetNavigation()  
+        QWidget.close( self ) 
+ 
     def getTextDisplay( self, **args  ):
         value = self.getTextValue( self.getValue() )
         return "%s: %s" % ( self.name, value ) if value else None

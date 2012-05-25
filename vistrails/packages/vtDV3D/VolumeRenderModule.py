@@ -149,10 +149,10 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.transferFunctionConfig = None
         self.setupTransferFunctionConfigDialog()
         self.addConfigurableLevelingFunction( 'colorScale',    'C', label='Colormap Scale', setLevel=self.generateCTF, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'functionScale', 'T', label='Transfer Function Scale', setLevel=self.generateOTF, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units, initRange=[ 0.0, 1.0, 1, self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
+        self.addConfigurableLevelingFunction( 'functionScale', 'T', label='Transfer Function Scale', setLevel=self.generateOTF, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units, initRefinement=[ self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
         self.addConfigurableLevelingFunction( 'opacityScale',  'O', label='Opacity', setLevel=self.adjustOpacity, layerDependent=True, adjustRange=True  )
         self.addConfigurableMethod( 'showTransFunctGraph', self.showTransFunctGraph, 'g', label='Transfer Function Graph' )
-        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
     
 #    def setZScale( self, zscale_data ):
 #        if self.volume <> None:
@@ -241,6 +241,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         
     def clearTransferFunctionConfigDialog(self):
         self.transFunctGraphVisible = False
+        self.resetNavigation()
 
     def showTransFunctGraph( self ): 
         self.transFunctGraphVisible = True

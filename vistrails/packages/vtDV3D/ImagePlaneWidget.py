@@ -284,6 +284,7 @@ class ImagePlaneWidget:
 #----------------------------------------------------------------------------
 
     def OnLeftButtonUp( self, caller, event ):
+        print " ImagePlaneWidget: LeftButtonRelease "
         if self.VisualizationInteractionEnabled and (self.CurrentButton <> self.NoButtonDown):
             self.StopCursor()
             self.CurrentButton = self.NoButtonDown

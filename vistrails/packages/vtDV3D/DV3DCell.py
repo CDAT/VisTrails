@@ -344,32 +344,6 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                     dcam.SetFocalPoint(cfol)
                     dcam.SetViewUp(cup)
         
-#    def processInteractionEvent(self, istyle, name):
-#        iren = self.renWin.GetInteractor()
-#        pos = iren.GetLastEventPosition ()
-#        key = iren.GetKeyCode ()
-#        rp = iren.GetRepeatCount()
-#        keysym = iren.GetKeySym()
-#        ctrl = iren.GetControlKey ()
-#        shift = iren.GetShiftKey ()
-##        iren.SetEventInformation( pos[0], pos[1], ctrl, shift, key, rp, keysym )
-#        if name == 'MouseMoveEvent':
-#            iren.MouseMoveEvent()
-#        if name ==  'LeftButtonReleaseEvent': 
-#            iren.LeftButtonReleaseEvent()      
-#        if name ==  'CharEvent':
-#            iren.CharEvent()
-#        if name ==  'KeyReleaseEvent':
-#            iren.KeyReleaseEvent()
-#        if name ==  'LeftButtonPressEvent':
-#            iren.LeftButtonPressEvent()
-#        if name ==  'RightButtonReleaseEvent':
-#            iren.RightButtonReleaseEvent()
-#        if name ==  'RightButtonPressEvent':
-#            iren.RightButtonPressEvent()           
-#
-#        print " processInteractionEvent: %s, pos = %s, key = %s " % ( name, str(pos), str(key) )
-
     def setCellLocation( self, moduleId ):
         cell = ModuleStore.popCell()
         cellLocation = CellLocation()

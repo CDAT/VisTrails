@@ -706,11 +706,11 @@ class PersistentModule( QObject ):
             configFunct = self.configurableFunctions[ self.InteractionState ]
             if configFunct.type in config_types:
                 self.configuring = True
+                configFunct.start( self.InteractionState, x, y )
                 if self.ndims == 3: 
                     self.iren.SetInteractorStyle( self.configurationInteractorStyle )
                     print " ~~~~~~~~~ Set Interactor Style: Configuration  ~~~~~~~~~  "
                     if (configFunct.type == 'leveling'): self.getLabelActor().VisibilityOn()
-                configFunct.start( self.InteractionState, x, y )
     
     def isActive( self ):
         pipeline = self.getCurentPipeline()
@@ -824,6 +824,11 @@ class PersistentModule( QObject ):
         if isLeveling: 
             HyperwallManager.singleton.setInteractionState( None )
             self.finalizeConfigurationObserver( self.InteractionState )            
+            if (self.ndims == 3) and self.iren: 
+                self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+                print " ~~~~~~~~~ Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
+            self.configuring = False
+            self.InteractionState = None
         return isLeveling
      
     def isLeveling( self ):
@@ -1084,7 +1089,7 @@ class PersistentVisualizationModule( PersistentModule ):
         if self.input <> None:
             spacing = self.input.GetSpacing()
             ix, iy, iz = spacing
-            sz = zscale_data[0]
+            sz = zscale_data[1]
 #            print " PVM >---------------> Set input zscale: %.2f" % sz
             self.input.SetSpacing( ix, iy, sz )  
             self.input.Modified() 
@@ -1092,7 +1097,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return False
                     
     def getScaleBounds(self):
-        return [ 1.0, 8.0 ]
+        return [ 0.5, 100.0 ]
         
     def getTitle(self):
         return self.titleBuffer
@@ -1512,6 +1517,7 @@ class PersistentVisualizationModule( PersistentModule ):
         if self.ndims == 3: self.getLabelActor().VisibilityOff()              
         
     def onLeftButtonRelease( self, caller, event ):
+        print " --- Persistent Module: LeftButtonRelease --- "
         self.currentButton = None 
     
     def onRightButtonRelease( self, caller, event ):
