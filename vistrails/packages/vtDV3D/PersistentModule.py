@@ -1590,6 +1590,7 @@ class PersistentVisualizationModule( PersistentModule ):
     
     def resetNavigation(self):
         if self.iren: self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+        self.enableVisualizationInteraction()
 
     def onModified( self, caller, event ):
         return 0

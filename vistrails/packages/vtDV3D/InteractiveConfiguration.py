@@ -472,18 +472,19 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         if self.adjustRange:
             if ( self.range_bounds[0] <> self.module.seriesScalarRange[0] ) or ( self.range_bounds[1] <> self.module.seriesScalarRange[1] ):
                 self.range_bounds[0:2] = self.module.seriesScalarRange[0:2]
-                self.initLeveling() 
+                self.range = list( self.range_bounds )
+                self.initLeveling( initRange = False ) 
  
     def initLeveling( self, **args ):
-        if self.key == 'T':
-            pass
-        if self.initial_range == None:
-            self.initial_range =  [ 0.0, 1.0, 1 ] if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
-        if self.range_bounds == None:
-            self.range_bounds = self.initial_range if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
-        self.range = list( self.module.getInputValue( self.name, self.initial_range ) if not self.module.newDataset else self.initial_range )
-        if len( self.range ) == 3: 
-            for iR in range(2): self.range.append( self.initRefinement[iR] )
+        initRange = args.get( 'initRange', True )
+        if initRange:
+            if self.initial_range == None:
+                self.initial_range =  [ 0.0, 1.0, 1 ] if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
+            if self.range_bounds == None:
+                self.range_bounds = self.initial_range if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
+            self.range = list( self.module.getInputValue( self.name, self.initial_range ) if not self.module.newDataset else self.initial_range )
+            if len( self.range ) == 3: 
+                for iR in range(2): self.range.append( self.initRefinement[iR] )
         self.windowLeveler.setDataRange( self.range )
         self.setLevelDataHandler( self.range )
         self.module.setParameter( self.name, self.range )
