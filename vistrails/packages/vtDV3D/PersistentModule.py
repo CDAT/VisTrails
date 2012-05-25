@@ -59,7 +59,7 @@ class AlgorithmOutputModule( Module ):
             else:           algorithm.SetInputConnection( iPort, self.algoOutputPort )
         else: 
             output = self.getOutput() 
-            print " inputToAlgorithm: oid = %x " % id( output ) 
+#            print " inputToAlgorithm: oid = %x " % id( output ) 
             algorithm.SetInput( output )
             algorithm.Modified()
 
@@ -689,9 +689,9 @@ class PersistentModule( QObject ):
         for configFunct in self.configurableFunctions.values():
             configFunct.init( self )
             
-    def applyConfiguration(self):
+    def applyConfiguration(self, **args ):
         for configFunct in self.configurableFunctions.values():
-            configFunct.applyParameter( self )
+            configFunct.applyParameter( self, **args  )
             
 #    def setParameterInputsEnabled( self, isEnabled ):
 #        for configFunct in self.configurableFunctions.values():
@@ -1212,7 +1212,7 @@ class PersistentVisualizationModule( PersistentModule ):
             self.pipelineBuilt = True
             initConfig = True
             
-        if not initConfig: self.applyConfiguration()   
+        if not initConfig: self.applyConfiguration( **args  )   
         
         self.updateModule( **args ) 
         

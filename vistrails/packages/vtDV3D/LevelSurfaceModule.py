@@ -36,7 +36,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.imageRange = None
         self.numberOfLevels = 1
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, adjustRange=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', label='Level Range', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
+        self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', label='Level Range', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units, adjustRange=True )
         self.addConfigurableLevelingFunction( 'opacity', 'O', label='Opacity', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addConfigurableGuiFunction( 'nLevels', NLevelConfigurationWidget, 'n', label='# Levels', setValue=self.setNumberOfLevels, getValue=self.getNumberOfLevels, layerDependent=True )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
@@ -74,8 +74,8 @@ class PM_LevelSurface(PersistentVisualizationModule):
     def getNumberOfLevels( self ):
         return [ self.numberOfLevels, ]
     
-    def setLevelRange( self, range ):
-        print "setLevelRange, data range = %s" % str( range ) 
+    def setLevelRange( self, range, **args ):
+        print "  ---> setLevelRange, data range = %s" % str( range ) 
         self.range = self.getImageValues( range )
         self.updateLevels()
     
@@ -108,6 +108,12 @@ class PM_LevelSurface(PersistentVisualizationModule):
         if self.InteractionState <> None: 
             self.levelSetFilter.ComputeNormalsOff()
             self.levelSetFilter.ComputeGradientsOff()
+
+    def updateModule(self, **args ):
+        self.inputModule.inputToAlgorithm( self.levelSetFilter ) 
+#        self.levelSetFilter.Modified()
+        self.set3DOutput()
+        print "Update Level Surface Module with %d Level(s), range = [ %f, %f ], levels = %s" %  ( self.numberOfLevels, self.range[0], self.range[1], str(self.getLevelValues()) )  
                            
     def buildPipeline(self):
         """ execute() -> None

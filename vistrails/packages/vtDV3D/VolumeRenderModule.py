@@ -466,13 +466,13 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             self._range = self.getImageValues( ( otf_data[0], otf_data[1], 0.0 ) )
             if len( otf_data ) > 3: self.refinement = [ otf_data[3], otf_data[4] ]
             self.updateOTF()
-#        printArgs( "generateOTF", irange=self._range,  otf_data=otf_data )   
+        printArgs( "generateOTF", irange=self._range,  otf_data=otf_data, refinement=self.refinement  )   
            
     def  getTransferFunctionPoints( self, image_value_range, pointType ):
         zero_point = image_value_range[2] 
         scalar_bounds = [ 0, self._max_scalar_value ]
         points = []
-#        print "Generate OTF: image_value_range = ( %f %f ), zero_point = %f, refinement = ( %f %f ), max_opacity = %s" % ( image_value_range[0], image_value_range[1], zero_point, self.refinement[0], self.refinement[1], self.max_opacity )             
+        print "getTransferFunctionPoints: image_value_range = ( %f %f ), zero_point = %f, refinement = ( %f %f ), max_opacity = %s" % ( image_value_range[0], image_value_range[1], zero_point, self.refinement[0], self.refinement[1], self.max_opacity )             
         if pointType == PositiveValues:
             full_range = [ image_value_range[i] if image_value_range[i] >= zero_point else zero_point for i in range(2) ]
             mid_point = ( full_range[0] + full_range[1] ) / 2.0   
@@ -553,7 +553,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         if self.updatingOTF: return   # Avoid infinite recursion
         self.updatingOTF = True
         self.setupTransferFunctionConfigDialog()
-        print " Update Volume OTF, self._range = %s, max opacity = %s " % ( str( self._range ), str( self.max_opacity ) )
+        print " Update Volume OTF, self._range = %s, max opacity = %s, refinement = %s  " % ( str( self._range ), str( self.max_opacity ), str( self.refinement ) )
         self.opacityTransferFunction.RemoveAllPoints()  
         transferFunctionType = self.transferFunctionConfig.getTransferFunctionType()
 #        dthresh = self._range[3]

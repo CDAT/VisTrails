@@ -140,7 +140,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             timeValue = args.get( 'timeValue', self.cdmsDataset.timeRange[2] )
             self.timeValue = cdtime.reltime( float(timeValue), ReferenceTimeUnits )
             print "Set Time: %s, %s, NTS: %d, Range: %s" % ( str(timeValue), str(self.timeValue), self.nTimesteps, str(self.timeRange) )
-            print "Time Step Labels: %s" % str( self.timeLabels )
+#            print "Time Step Labels: %s" % str( self.timeLabels )
             for iVar in range( 2,5 ):
                 cdms_var2 = self.getInputValue( "variable%d" % iVar  ) 
                 if cdms_var2: self.addCDMSVariable( cdms_var2, iVar )
@@ -162,7 +162,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 self.timeLabels = self.cdmsDataset.getTimeValues()
                 self.nTimesteps = self.timeRange[1]
                 print "Set Time: %s, %s, NTS: %d, Range: %s" % ( str(timeValue), str(self.timeValue), self.nTimesteps, str(self.timeRange) )
-                print "Time Step Labels: %s" % str( self.timeLabels ) 
+#                print "Time Step Labels: %s" % str( self.timeLabels ) 
                 self.generateOutput()
                 if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
  
@@ -181,7 +181,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         oRecMgr = None 
         varRecs = self.cdmsDataset.getVarRecValues()
         if len( varRecs ):
-            print " VolumeReader->generateOutput, varSpecs: ", str(varRecs)
+#            print " VolumeReader->generateOutput, varSpecs: ", str(varRecs)
             oRecMgr = OutputRecManager() 
 #            varCombo = QComboBox()
 #            for var in varRecs: varCombo.addItem( str(var) ) 
@@ -190,7 +190,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         else:
             portData = self.getPortData()
             if portData:
-                print " VolumeReader->generateOutput, portData: ", portData
+#                print " VolumeReader->generateOutput, portData: ", portData
                 oRecMgr = OutputRecManager( portData[0]  )
         orecs = oRecMgr.getOutputRecs( self.datasetId ) if oRecMgr else None
         if not orecs: raise ModuleError( self, 'No Variable selected for dataset %s.' % self.datasetId )             

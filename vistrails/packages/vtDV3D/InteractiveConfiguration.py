@@ -459,7 +459,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     
     def applyParameter( self, module, **args ):
         try:
-            self.setLevelDataHandler( self.range )
+            self.setLevelDataHandler( self.range, **args )
         except:
             pass
         
