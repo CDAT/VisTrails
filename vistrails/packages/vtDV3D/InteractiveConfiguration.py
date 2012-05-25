@@ -472,7 +472,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         if self.adjustRange:
             if ( self.range_bounds[0] <> self.module.seriesScalarRange[0] ) or ( self.range_bounds[1] <> self.module.seriesScalarRange[1] ):
                 self.range_bounds[0:2] = self.module.seriesScalarRange[0:2]
-                self.range = list( self.range_bounds )
+                self.range[0:2] = self.range_bounds[0:2]
                 self.initLeveling( initRange = False ) 
  
     def initLeveling( self, **args ):

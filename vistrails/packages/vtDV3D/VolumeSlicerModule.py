@@ -324,7 +324,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        print " Volume Slicer: updateModule, cachable: %s " % str( self.is_cacheable() )
 #        print " ******** Input extent: %s, origin: %s, spacing: %s " % ( self.input.GetExtent(), self.input.GetOrigin(), self.input.GetSpacing() )
         p1 = self.planeWidgetX.GetPoint1()
-        print " >++++++++++++++++++> UpdateModule: sliceIndex0 = %d, xpos = %.2f " % ( self.slicePosition[0], p1[0] )
+#        print " >++++++++++++++++++> UpdateModule: sliceIndex0 = %d, xpos = %.2f " % ( self.slicePosition[0], p1[0] )
 
 #        na1 = self.input.GetPointData().GetNumberOfArrays()
 #        self.setActiveScalars()
@@ -365,7 +365,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 textDisplay = " %s = %.1f ." % ( axes[ iAxis ], wpos )
                 if iAxis == 0:
                     p1 = caller.GetPoint1()
-                    print " >++++++++++++++++++> Slicing: Set Slice[%d], index=%d, pos=%.2f, " % ( iAxis, sliceIndex, p1[0] ), textDisplay
+#                    print " >++++++++++++++++++> Slicing: Set Slice[%d], index=%d, pos=%.2f, " % ( iAxis, sliceIndex, p1[0] ), textDisplay
                 self.slicePosition[ iAxis ] = sliceIndex                  
                 self.updateTextDisplay( textDisplay ) 
                     
