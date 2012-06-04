@@ -325,7 +325,7 @@ class GraphWidget(QtGui.QGraphicsView):
         self.size = args.get( 'size', (400, 400) )
         self.nticks = args.get( 'nticks', ( 5, 5 ) )
         self.graphUpdateIndex = 0
-        self.graphUpdatePeriod = 5
+        self.graphUpdatePeriod = 2
         self.tickLen = 12
         self.tickLabels = ( [], [] )
         self.bounds = None

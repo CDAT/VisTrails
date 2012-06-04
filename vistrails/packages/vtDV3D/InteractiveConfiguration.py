@@ -455,13 +455,13 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.widget = args.get( 'gui', None )
 
     def postInstructions( self, module ):
-        module.displayInstructions( "Left-click and drag in this cell." )
+        module.displayInstructions( "Left-click, mouse-move, left-click in this cell." )
     
     def applyParameter( self, module, **args ):
         try:
             self.setLevelDataHandler( self.range, **args )
-        except:
-            pass
+        except Exception, err:
+            print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
         
     def reset(self):
         self.setLevelDataHandler( self.initial_range )

@@ -819,9 +819,8 @@ class PersistentModule( QObject ):
                                     
     def finalizeLeveling( self ):
         if self.ndims == 3: self.getLabelActor().VisibilityOff()
-        isLeveling = self.isLeveling()
-        print " ~~~~~~ Finalize Leveling: isLeveling = %s, ndims = %d, interactionState = %s " % ( str( isLeveling ), self.ndims, self.InteractionState )
-        if isLeveling: 
+        if self.configuring: 
+            print " ~~~~~~ Finalize Leveling: ndims = %d, interactionState = %s " % ( self.ndims, self.InteractionState )
             HyperwallManager.singleton.setInteractionState( None )
             self.finalizeConfigurationObserver( self.InteractionState )            
             if (self.ndims == 3) and self.iren: 
@@ -829,7 +828,8 @@ class PersistentModule( QObject ):
                 print " ~~~~~~~~~ Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
             self.configuring = False
             self.InteractionState = None
-        return isLeveling
+            return True
+        return False
      
     def isLeveling( self ):
         if self.InteractionState <> None: 
@@ -1085,7 +1085,7 @@ class PersistentVisualizationModule( PersistentModule ):
     def disableVisualizationInteraction(self): 
         pass
 
-    def setInputZScale( self, zscale_data ):
+    def setInputZScale( self, zscale_data, **args  ):
         if self.input <> None:
             spacing = self.input.GetSpacing()
             ix, iy, iz = spacing
@@ -1411,7 +1411,7 @@ class PersistentVisualizationModule( PersistentModule ):
                         self.activateWidgets( self.iren )                                  
                         self.iren.AddObserver( 'CharEvent', self.setInteractionState )                   
                         self.iren.AddObserver( 'MouseMoveEvent', self.updateLevelingEvent )
-                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
+#                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
                         self.iren.AddObserver( 'AnyEvent', self.onAnyEvent )  
 #                        self.iren.AddObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
 #                        self.iren.AddObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
@@ -1568,12 +1568,13 @@ class PersistentVisualizationModule( PersistentModule ):
         return 0
     
     def onLeftButtonPress( self, caller, event ):
-        shift = caller.GetShiftKey()
-        self.currentButton = self.LEFT_BUTTON
-        self.clearInstructions()
-        self.UpdateCamera()   
-        x, y = caller.GetEventPosition()      
-        self.startConfiguration( x, y, [ 'leveling', 'generic' ] )  
+        if not self.finalizeLeveling(): 
+            shift = caller.GetShiftKey()
+            self.currentButton = self.LEFT_BUTTON
+            self.clearInstructions()
+            self.UpdateCamera()   
+            x, y = caller.GetEventPosition()      
+            self.startConfiguration( x, y, [ 'leveling', 'generic' ] )  
         return 0
 
     def onRightButtonPress( self, caller, event ):

@@ -61,7 +61,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ.RemoveAllObservers()
         del VolumeSlicerModules[ self.moduleID ]
     
-    def setZScale( self, zscale_data ):
+    def setZScale( self, zscale_data, **args ):
         if self.setInputZScale( zscale_data ):
             if self.planeWidgetX <> None:
                 bounds = list( self.input.GetBounds() ) 
@@ -71,7 +71,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def getOpacity(self):
         return self.opacity
     
-    def setOpacity(self, range ):
+    def setOpacity(self, range, **args ):
         self.opacity = range
 #        printArgs( " Leveling: ", opacity=self.opacity, range=range ) 
         self.updateOpacity() 
@@ -444,7 +444,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         x, y = caller.GetEventPosition()
         self.ColorLeveler.startWindowLevel( x, y )
 
-    def scaleColormap( self, ctf_data ):
+    def scaleColormap( self, ctf_data, **args ):
         self.imageRange = self.getImageValues( ctf_data[0:2] ) 
         self.lut.SetTableRange( self.imageRange[0], self.imageRange[1] ) 
         self.colormapManager.setDisplayRange( ctf_data )

@@ -411,7 +411,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         keysym = caller.GetKeySym()
 #        print " -- Key Press: %c ( %d: %s ), event = %s " % ( key, ord(key), str(keysym), str( event ) )
                
-    def generateCTF( self, ctf_data= None ):
+    def generateCTF( self, ctf_data= None, **args  ):
         if ctf_data: self.ctf_data = ctf_data
         else: ctf_data = self.ctf_data
         if ctf_data:
@@ -449,7 +449,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.print_traits()
         print "Volume: bounds=%s, scale=%s, mapper=%s" % ( str(self.volume.bounds), str(self.volume.scale), str(self.volume_mapper_type) )
 
-    def adjustOpacity( self, opacity_data ):
+    def adjustOpacity( self, opacity_data, **args ):
         maxop = abs( opacity_data[1] ) 
         self.max_opacity = maxop if maxop < 1.0 else 1.0
         range_min, range_max = self.rangeBounds[0], self.rangeBounds[1]
@@ -457,7 +457,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.updateOTF()
 #        printArgs( "adjustOpacity", irange=self._range,  max_opacity=self.max_opacity, opacity_data=opacity_data, vthresh=vthresh, ithresh=self._range[3] )   
 
-    def generateOTF( self, otf_data=None ): 
+    def generateOTF( self, otf_data=None, **args ): 
         if otf_data: self.otf_data = otf_data
         else: otf_data = self.otf_data
         if otf_data:
