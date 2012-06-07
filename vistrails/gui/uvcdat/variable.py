@@ -23,8 +23,11 @@ from paraviewconnection import ParaViewConnectionDialog
 from pvprocessfile import PVProcessFile
 from pvtabwidget import PVTabWidget
 from packages.uvcdat_cdms.init import CDMSVariable
+
 from packages.pvclimate.pvvariable import PVVariable
 from gui.uvcdat.pvreadermanager import PVReaderManager
+
+import pvFileDialog as fd
 
 class VariableProperties(QtGui.QDockWidget):
 
@@ -625,10 +628,13 @@ class VariableProperties(QtGui.QDockWidget):
         kwargs['order'] = axisList.getAxesOrderString()
         return kwargs
     
-    def openRemoteFile(self):
-        fileName = QtGui.QFileDialog.getOpenFileName(self, 
-                                                     "%s - Select File" % QtGui.QApplication.applicationName(),
-                                                     QtCore.QDir.homePath(), "Files (%s)" % " ".join("*.*"))
+    def openRemoteFile(self):        
+        #fileName = QtGui.QFileDialog.getOpenFileName(self, 
+        #                                             "%s - Select File" % QtGui.QApplication.applicationName(),
+        #                                             QtCore.QDir.homePath(), "Files (%s)" % " ".join("*.*"))
+        #return fileName
+        fileDialog = fd.PVFileDialog()
+        fileName = fileDialog.exec_()
         return fileName
 
     def populateVariables(self, variables):        
