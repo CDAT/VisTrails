@@ -633,9 +633,12 @@ class VariableProperties(QtGui.QDockWidget):
         #                                             "%s - Select File" % QtGui.QApplication.applicationName(),
         #                                             QtCore.QDir.homePath(), "Files (%s)" % " ".join("*.*"))
         #return fileName
-        fileDialog = fd.PVFileDialog()
-        fileName = fileDialog.exec_()
-        return fileName
+        dir(fd)
+        fileDialog = fd.PVFileDialog(self)
+        if fileDialog.exec_():
+          print 'all files ', fileDialog.getAllSelectedFiles()
+          return fileDialog.getAllSelectedFiles()[0][0]
+        return ''
 
     def populateVariables(self, variables):        
         self._pvTabWidget.populateVars(variables)
@@ -653,6 +656,8 @@ class VariableProperties(QtGui.QDockWidget):
     def selectRemoteFile(self):
         # Do not process the file right away. Wait till user hits the apply button
         fileName = self.openRemoteFile()
+        if not fileName:
+          return        
         self._pvProcessFile.setFileName(fileName)
         reader = self._pvProcessFile.createReader()
         if reader is not None:                

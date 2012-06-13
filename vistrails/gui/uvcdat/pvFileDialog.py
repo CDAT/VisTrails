@@ -10,18 +10,20 @@ import pvFileDialogModelWrapper
 class PVFileDialog(QtGui.QDialog, Ui_pvFileDialog):
     #--------------------------------------------------------------------------
     def __init__(self, parent=None):
-        super(PVFileDialog, self).__init__(parent)
+        super(PVFileDialog, self).__init__(parent)        
         self.setupUi(self)
-        self.wrapper = pvFileDialogModelWrapper.pvFileDialogModelWrapper()
+        self.wrapper = pvFileDialogModelWrapper.pvFileDialogModelWrapper()        
         self.model = self.wrapper.getModel()
-        self.fileNames = QtCore.QStringList()
         self.Files.setModel(self.model)
-        mi = self.model.index(0,0)
-        self.wrapper.setCurrentPath(self.wrapper.getCurrentPath())
+        self.currentPath = self.wrapper.getCurrentPath()        
         
-        # For testing purposes        
-        self.onModelReset()
-
+        # List of file names in the FileName ui text edit
+        self.fileNames = QtCore.QStringList()
+        
+        # List of files that selected by the user
+        self.selectedFiles = []
+        self.wrapper.setCurrentPath(QtCore.QString(self.currentPath))
+        
         # Connect signal-slots
         QtCore.QObject.connect(self.Parents,
           QtCore.SIGNAL("activated(const QString&)"),
@@ -39,62 +41,47 @@ class PVFileDialog(QtGui.QDialog, Ui_pvFileDialog):
             "doubleClicked(const QModelIndex&)"),
             self,
             QtCore.SLOT("onDoubleClickFile(const QModelIndex&)"));
+          
+        QtCore.QObject.connect(self.model,
+          QtCore.SIGNAL(
+            "modelReset()"),
+            self,
+            QtCore.SLOT("onModelReset()"));           
+        
+        # \TODO: Implement get start path
+        self.wrapper.setCurrentPath(self.wrapper.getCurrentPath())
 
-    #--------------------------------------------------------------------------
     @pyqtSlot(QtCore.QModelIndex)
     def onDoubleClickFile(self, index):
-      # NOTE: Not cosidering directory mode
       self.accept()
 
     #--------------------------------------------------------------------------
     def accept(self):
-      # TODO: Do we really need mode stuff?
       loadedFile = False
-      #switch(this->Implementation->Mode)
-      #{
-      #case AnyFile:
-      #case Directory:
-        #loadedFile = this->acceptDefault(false);
-        #break;
-      #case ExistingFiles:
-      #case ExistingFile:
-        #loadedFile = this->acceptExistingFiles();
-        #break;
-      #}
-
       loadedFile = self.acceptDefault(False)
       if loadedFile == True:
         self.emitFilesSelectionDone()
 
     #--------------------------------------------------------------------------
     def emitFilesSelectionDone(self):
-      # TODO: Look at this later
-      #emit filesSelected(this->Implementation->SelectedFiles);
-      #if (this->Implementation->Mode != this->ExistingFiles
-        #&& this->Implementation->SelectedFiles.size() > 0)
-        #{
-        #emit filesSelected(this->Implementation->SelectedFiles[0]);
-        #}
+      self.emit(QtCore.SIGNAL("fileAccepted"), self.selectedFiles)      
       self.done(QtGui.QDialog.Accepted)
 
     #--------------------------------------------------------------------------
     def acceptDefault(self, checkForGrouping = False):
+      loadedFiles = False  
       filename = self.FileName.text()
       filename = filename.trimmed()
 
       fullFilePath = self.wrapper.absoluteFilePath(filename)
 
-      print 'fullFilePath ', fullFilePath
-
       self.emit(QtCore.SIGNAL("fileAccepted"), fullFilePath)      
-
-      # TODO: Implement later
+      
       files = QtCore.QStringList()
       if checkForGrouping:
-        pass
-        #{
-        #files = this->buildFileGroup(filename);
-        #}
+        # TODO: Implement later
+        pass        
+        #files = this->buildFileGroup(filename);        
       else:
         files = QtCore.QStringList(fullFilePath)
 
@@ -112,6 +99,9 @@ class PVFileDialog(QtGui.QDialog, Ui_pvFileDialog):
         self.onNavigate(file)
         self.FileName.clear()
         return False
+
+      # User chose an existing file
+      self.addToFilesSelected(selectedFiles)
       return True
 
     #--------------------------------------------------------------------------
@@ -134,7 +124,7 @@ class PVFileDialog(QtGui.QDialog, Ui_pvFileDialog):
         return
 
       fileNames = QtCore.QStringList()
-      name = QtCore.QString()
+      name = QtCore.QString()      
 
       for i in range(0, len(indices)):
         index = indices[i]
@@ -148,48 +138,30 @@ class PVFileDialog(QtGui.QDialog, Ui_pvFileDialog):
             # Hard coded for now
             #fileString += this->Implementation->FileNamesSeperator
             fileString += '/'
-          fileNames.append(name)
+          fileNames.append(self.wrapper.absoluteFilePath(name))      
+      
+      # user is currently editing a name, don't change the text
+      if(self.FileName.hasFocus() == False):
+        self.FileName.blockSignals(True)
+        self.FileName.setText(fileString)
+        self.FileName.blockSignals(False)
 
-      # TODO: I am not sure if we need this
-      #//if we are in directory mode we have to enable / disable the OK button
-      #//based on if the user has selected a file.
-      #if ( this->Implementation->Mode == pqFileDialog::Directory &&
-        #indices[0].model() == &this->Implementation->FileFilter)
-        #{
-        #QModelIndex idx = this->Implementation->FileFilter.mapToSource(indices[0]);
-        #bool enabled = this->Implementation->Model->isDir(idx);
-        #this->Implementation->Ui.OK->setEnabled( enabled );
-        #if ( enabled )
-          #{
-          #this->Implementation->Ui.FileName->setText(fileString);
-          #}
-        #else
-          #{
-          #this->Implementation->Ui.FileName->clear();
-          #}
-        #return;
-        #}
-
-      #user is currently editing a name, don't change the text
-      self.FileName.blockSignals(True)
-      self.FileName.setText(fileString)
-      self.FileName.blockSignals(False)
-
-      self.fileNames = fileNames;
+      self.fileNames = fileNames      
 
     #--------------------------------------------------------------------------
+    @pyqtSlot()
     def onModelReset(self):
       self.Parents.clear()
 
-      currentPath = self.wrapper.getCurrentPath()
-
+      currentPath = self.wrapper.getCurrentPath()     
+      
       # Clean the path to always look like a unix path
       currentPath = QtCore.QDir.cleanPath(currentPath)
 
       # The separator is always the unix separator
       separator = '/'
 
-      parents = currentPath.split(separator, QtCore.QString.SkipEmptyParts)
+      parents = currentPath.split(separator, QtCore.QString.SkipEmptyParts)     
 
       # Put our root back in
       if(parents.count()):
@@ -198,13 +170,22 @@ class PVFileDialog(QtGui.QDialog, Ui_pvFileDialog):
           parents.prepend(currentPath.left(idx))
       else:
         parents.prepend(separator);
-
-      for i in range(0, parents.count()):
-        str = ''
+        
+      for i in range(0, (parents.count() + 1)):
+        str = QtCore.QString()
         for j in range(0, i):
-          str += parents[j]
+          str += parents[j]          
           if str.endsWith(separator) == False :
             str += separator
         self.Parents.addItem(str);
 
-      self.Parents.setCurrentIndex(parents.count() - 1)
+      self.Parents.setCurrentIndex(parents.count())
+      
+    #--------------------------------------------------------------------------
+    def getAllSelectedFiles(self):      
+      return self.selectedFiles
+        
+    #--------------------------------------------------------------------------  
+    def addToFilesSelected(self, files):
+      self.setVisible(False)
+      self.selectedFiles.append(files)
