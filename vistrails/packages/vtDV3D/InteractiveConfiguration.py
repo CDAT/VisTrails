@@ -1689,6 +1689,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     def stop(self):
         self.runButton.setText('Run')
         self.running = False 
+        for module in self.activeModuleList:
+            module.stopAnimation()
         
     def updateTimeRange(self):   
         newConfig = DV3DConfigurationWidget.saveConfigurations()

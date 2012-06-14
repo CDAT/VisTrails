@@ -102,7 +102,7 @@ class TransferFunctionConfigurationDialog( QDialog ):
         self.emit( SIGNAL('config(int,float,float,float)'), index, value0, value1, value2 )
     
     def updateGraph( self, xbounds, ybounds, data ):
-        self.graph.createGraph( xbounds, ybounds, data )
+        self.graph.redrawGraph( xbounds, ybounds, data )
                 
     def updateTransferFunctionType( self, value ):
         if self.currentTransferFunction: self.currentTransferFunction.setType( self.tf_map[ str(value) ] )
@@ -150,7 +150,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.setupTransferFunctionConfigDialog()
         self.addConfigurableLevelingFunction( 'colorScale',    'C', label='Colormap Scale', setLevel=self.generateCTF, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units )
         self.addConfigurableLevelingFunction( 'functionScale', 'T', label='Transfer Function Scale', setLevel=self.generateOTF, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units, initRefinement=[ self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
-        self.addConfigurableLevelingFunction( 'opacityScale',  'O', label='Opacity', setLevel=self.adjustOpacity, layerDependent=True, adjustRange=True  )
+        self.addConfigurableLevelingFunction( 'opacityScale',  'O', label='Opacity', setLevel=self.adjustOpacity, layerDependent=True, adjustRange=False  )
         self.addConfigurableMethod( 'showTransFunctGraph', self.showTransFunctGraph, 'g', label='Transfer Function Graph' )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
     
@@ -223,6 +223,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         cfs = []
         configFunct = self.configurableFunctions[ 'opacityScale' ]
         opacity_value = [ 0.0, self.max_opacity ] 
+        for i in range( 2 ): configFunct.range[i] = opacity_value[i]
         parmList.append( ('opacityScale', opacity_value ) )
         cfs.append( configFunct )
 
@@ -507,12 +508,12 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #            elif adjustment_point > 0: self.getNewNode( points, ( 0.0, interp_zero( peak_handles[1], ph_opacity, adjustment_point, self.refinement[0]*self.max_opacity ) ) )
 #            if adjustment_point > 0: self.getNewNode( points, ( adjustment_point, self.refinement[0]*self.max_opacity )  )           
 #            else: self.getNewNode( points, ( 0.0, interp_zero( adjustment_point, self.refinement[0]*self.max_opacity, zero_point, 0. ) ) )
-            if full_range[1] > scalar_bounds[0]: self.getNewNode( points, (scalar_bounds[0], 0. ) )
-            if peak_handles[0] > 0: self.getNewNode( points, ( full_range[1], 0.0 ) )
-            if mid_point > 0: self.getNewNode( points, ( peak_handles[0], ph_opacity ) )            
-            if peak_handles[1] > 0: self.getNewNode( points, ( mid_point, self.max_opacity ) ) 
-            if adjustment_point > 0: self.getNewNode( points, ( peak_handles[1], ph_opacity ) )  
-            if zero_point > 0: self.getNewNode( points, ( adjustment_point, self.refinement[0]*self.max_opacity )  )           
+            self.getNewNode( points, (scalar_bounds[0], 0. ) )
+            self.getNewNode( points, ( full_range[1], 0.0 ) )
+            self.getNewNode( points, ( peak_handles[0], ph_opacity ) )            
+            self.getNewNode( points, ( mid_point, self.max_opacity ) ) 
+            self.getNewNode( points, ( peak_handles[1], ph_opacity ) )  
+            self.getNewNode( points, ( adjustment_point, self.refinement[0]*self.max_opacity )  )           
             self.getNewNode( points, ( zero_point, 0. ) )
         elif pointType == AllValues:
             full_range = [ image_value_range[0], image_value_range[1] ]
@@ -568,16 +569,20 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             graphData = []
             nodeDataList = self.getTransferFunctionPoints( self._range, NegativeValues )
 #            points = []
+            pcount = 0
             for nodeData in nodeDataList:  
                 pos = nodeData.getImagePosition()
                 self.opacityTransferFunction.AddPoint( pos[0], pos[1] ) 
                 graphData.append( nodeData  ) 
+#                points.append( "\n [%d]--- p(-)[%d]: %s " % ( pcount, nodeData.index, str( nodeData.getDataPosition() ) ) )
+                pcount += 1
             nodeDataList = self.getTransferFunctionPoints( self._range, PositiveValues ) 
             for nodeData in nodeDataList:    
                 pos = nodeData.getImagePosition()
                 self.opacityTransferFunction.AddPoint( pos[0], pos[1] ) 
                 graphData.append( nodeData  )  
-#                points.append( str( nodeData.getDataPosition() ) )
+#                points.append( "\n [%d]--- p(+)[%d]: %s " % ( pcount, nodeData.index, str( nodeData.getDataPosition() ) ) )
+                pcount += 1
             if self.otf_data: self.transferFunctionConfig.updateGraph( self.scalarRange, [ 0.0, 1.0 ], graphData )
 #            print "OTF: [ %s ] " % " ".join( points ) 
         elif transferFunctionType == FullValueTransferFunction:

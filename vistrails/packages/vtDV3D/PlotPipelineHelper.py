@@ -43,6 +43,7 @@ class ConfigMenuManager( QObject ):
         actionList  =  self.actionMap[ action_key ]
         for ( module, key ) in actionList:
             module.processKeyEvent( key )
+        self.emit( SIGNAL('startConfig(QString,QString)'), action_key, key )
             
     def reset(self):
         self.actionMap = {}
@@ -53,14 +54,133 @@ class ConfigMenuManager( QObject ):
 
 ConfigCommandMenuManager = ConfigMenuManager()
 
+class DV3DParameterSliderWidget(QWidget):
+    
+    def __init__( self, label, parent=None):
+        QWidget.__init__(self,parent)
+        self.range = [ 0.0, 1.0, 1.0 ]
+        
+        main_layout = QVBoxLayout()                       
+        self.label = QLabel( label, self )
+        self.label.setAlignment( Qt.AlignLeft )
+        self.label.setFont( QFont( "Arial", 14, QFont.Bold ) )
+        self.label.setAlignment( Qt.AlignHCenter )
+        main_layout.addWidget( self.label )
+        
+        data_layout = QHBoxLayout()
+        self.slider = QSlider(Qt.Horizontal, self)
+        self.slider.setRange( 0, 100 )
+        data_layout.addWidget(self.slider)
+        data_layout.addStrut(2)
+        self.textbox = QLineEdit(self)
+        data_layout.addWidget( self.textbox )  
+        main_layout.addLayout( data_layout )
+              
+        self.setLayout(main_layout)
+        
+    def setDisplayValue( self, fval ):
+        self.textbox.setText( '%.3g' % float(fval) )
+        
+    def setRange( self, fmin, fmax ):
+        self.range = [ fmin, fmax, (fmax-fmin) ]
+
+    def setValue( self, value ):
+        sliderVal = int( 100 * ( value-self.range[0] ) / self.range[2] ) 
+        self.slider.setValue( sliderVal )
+        self.textbox.setText( "%.2g" % float(value) )
+        
+    def disable(self):
+        self.slider.setValue( sliderVal )
+        
+class DV3DRangeConfigWidget(QWidget):
+    MIN_SLIDER = 0
+    MAX_SLIDER = 1
+    
+    def __init__( self, parent=None):
+        QWidget.__init__(self,parent)
+        self.setStyleSheet("background-color: rgb(200,200,200); margin:5px; border:1px solid rgb(100, 100, 100); " )
+        self.cfg_cmds = {}
+        self.active_cfg_cmd = None
+        self.active_module = None
+        
+        main_layout = QVBoxLayout()         
+        self.cfg_action_label = QLabel("Configuration:")
+        main_layout.addWidget( self.cfg_action_label )
+        
+        rangeMinEditor = DV3DParameterSliderWidget('Range Min:')
+        rangeMaxEditor = DV3DParameterSliderWidget('Range Max:')
+        self.sliders = [ rangeMinEditor, rangeMaxEditor ]
+        self.connect( rangeMinEditor.slider, SIGNAL("valueChanged(int)"), lambda ival: self.sliderValueChanged(self.MIN_SLIDER,ival) ) 
+        self.connect( rangeMaxEditor.slider, SIGNAL("valueChanged(int)"), lambda ival: self.sliderValueChanged(self.MAX_SLIDER,ival) ) 
+        main_layout.addWidget( rangeMinEditor )
+        main_layout.addWidget( rangeMaxEditor )
+        rangeMinEditor.setValue( 0.5 )
+        rangeMaxEditor.setValue( 0.5 )
+        main_layout.addStretch()             
+        self.setLayout(main_layout)
+        
+    def sliderValueChanged( self, iSlider, iValue = None ):
+         if self.active_cfg_cmd:
+             rbnds = self.active_cfg_cmd.range_bounds
+             range = list( self.active_cfg_cmd.range )
+             if iValue:
+                 fval = rbnds[0] + (rbnds[1]-rbnds[0]) * ( iValue / 100.0 )
+                 range[ iSlider ] = fval
+             self.sliders[iSlider].setDisplayValue( fval )
+             self.active_cfg_cmd.broadcastLevelingData( range )             
+             if self.active_module: self.active_module.render()
+             
+    def initSliderValues( self ): 
+         if self.active_cfg_cmd:
+             rbnds = self.active_cfg_cmd.range_bounds
+             range = list( self.active_cfg_cmd.range )
+             for iSlider in range(2):
+                 slider = self.sliders[iSlider]
+                 fval = range[ iSlider ]
+                 slider.setDisplayValue( fval )   
+                 slider.setRange( rbnds )       
+                 slider.setValue( fval )       
+     
+    def enable(self): 
+        self.setVisible(True)
+
+    def disable(self): 
+        self.setVisible(False)
+          
+    def startConfig(self, qs_action_key, qs_cfg_key ):
+        self.enable()
+        cfg_key = str(qs_cfg_key)
+        action_key = str(qs_action_key)
+        print " StartConfig: %s %s " % ( action_key, cfg_key )
+        cmd_list = self.cfg_cmds.get( cfg_key, None )
+        if cmd_list:
+            for cmd_entry in cmd_list:
+                self.active_module = cmd_entry[0] 
+                self.active_cfg_cmd = cmd_entry[1] 
+                break
+            self.initSliderValues()
+        
+    def addConfigCommand( self, pmod, cmd ):
+        cmd_list = self.cfg_cmds.setdefault( cmd.key, [] )
+        cmd_list.append( ( pmod, cmd ) )
+
 class DV3DConfigurationWidget(QWidget):
+    MIN_SLIDER = 0
+    MAX_SLIDER = 1
+    USE_RANGE_CONFIG_PANEL = False
     
     def __init__( self, configMenu, optionsMenu, parent=None):
         QWidget.__init__(self,parent)
+        self.cfg_cmds = {}
+        self.active_cfg_cmd = None
+        self.active_module = None
+        self.rangeConfigWidget = None
+        
+        main_layout = QVBoxLayout()
 #        
-        main_layout = QHBoxLayout()
-        main_layout.setMargin(1)
-        main_layout.setSpacing(1)
+        button_layout = QHBoxLayout()
+        button_layout.setMargin(1)
+        button_layout.setSpacing(1)
 
         cfg_layout = QVBoxLayout()
         cfg_layout.setMargin(2)
@@ -86,9 +206,24 @@ class DV3DConfigurationWidget(QWidget):
         opt_layout.addWidget(optionsMenu)
         opt_layout.addStretch()
                
-        main_layout.addLayout( cfg_layout )
-        main_layout.addLayout( opt_layout )
+        button_layout.addLayout( cfg_layout )
+        button_layout.addLayout( opt_layout )
+        main_layout.addLayout( button_layout )
+        main_layout.addStrut(2)
+        
+        if self.USE_RANGE_CONFIG_PANEL:
+            self.rangeConfigWidget = DV3DRangeConfigWidget()
+            self.addWidget( self.rangeConfigWidget )    
+                     
         self.setLayout(main_layout)
+                
+    def startConfig(self, qs_action_key, qs_cfg_key ):
+        if self.rangeConfigWidget:
+            self.rangeConfigWidget.startConfig( qs_action_key, qs_cfg_key )
+        
+    def addConfigCommand( self, pmod, cmd ):
+        if self.rangeConfigWidget:
+            self.rangeConfigWidget.addConfigCommand( pmod, cmd )
 
 
 class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
@@ -100,6 +235,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def __init__(self):
         QObject.__init__( self )
         PlotPipelineHelper.__init__( self )
+        self.config_widget = None
         '''
         Constructor
         '''
@@ -466,8 +602,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             ConfigCommandMenuManager.addAction( pmod, 'Help', 'h' )
             ConfigCommandMenuManager.addAction( pmod, 'Colorbar', 'l' )
             ConfigCommandMenuManager.addAction( pmod, 'Reset', 'r' )
-            
-        return DV3DConfigurationWidget(menu,menu1)
+        
+        config_widget = DV3DConfigurationWidget(menu,menu1)
+        ConfigCommandMenuManager.connect ( ConfigCommandMenuManager, SIGNAL("startConfig(QString,QString)"), config_widget.startConfig )   
+        for pmod in pmods:
+            cmdList = pmod.getConfigFunctions( [ 'leveling' ] )
+            for cmd in cmdList:
+                config_widget.addConfigCommand( pmod, cmd )
+        return config_widget
 
                
     @staticmethod

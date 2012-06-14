@@ -156,6 +156,19 @@ class PersistentModule( QObject ):
 #            if dataArray: return dataArray.GetValue(0)
 #        return 0
 
+    def getConfigFunctions( self, types=None ):
+        cmdList = []
+        for items in self.configurableFunctions.items():
+            cmd = items[1]
+            if types == None:
+                cmdList.append( cmd ) 
+            else:
+                for type in types:
+                    if cmd.type == type:
+                        cmdList.append( cmd ) 
+        return cmdList
+                        
+
     def getRangeBounds(self): 
         return self.rangeBounds  
         
@@ -719,6 +732,9 @@ class PersistentModule( QObject ):
     def updateAnimation( self, relTimeValue, textDisplay=None ):
         self.dvUpdate( timeValue=relTimeValue, animate=True )
         if textDisplay <> None:  self.updateTextDisplay( textDisplay )
+        
+    def stopAnimation( self ):
+        self.resetNavigation()
                
     def updateConfigurationObserver( self, parameter_name, new_parameter_value, *args ):
         try:

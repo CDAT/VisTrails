@@ -361,6 +361,7 @@ class GraphWidget(QtGui.QGraphicsView):
         self.selectedNodeIndex = -99
         
     def checkSelection( self, index ):
+#        print "checkSelection: ", str( self.selectedNodeIndex )
         return ( index == self.selectedNodeIndex ) 
         
     def setConfigType( self, cType ):
@@ -459,7 +460,8 @@ class GraphWidget(QtGui.QGraphicsView):
 #            self.nodes[iP].setMovable( False )
 #        self.update()
 
-    def createGraph( self, xbounds, ybounds, data ):
+    def createGraphWithPreNodes( self, xbounds, ybounds, data ):
+        self.data = data
         self.data = []
         pre_nodes = []
         for nodeData in data:
@@ -476,9 +478,22 @@ class GraphWidget(QtGui.QGraphicsView):
         self.bounds = ( xbounds, ybounds )
         if len( self.nodes ) == 0: self.buildGraph()
         self.updateGraph()
-        
 
+    def createGraph( self, xbounds, ybounds, data ):
+        self.data = []
+        for nodeData in data:
+            self.data.append( nodeData )
+        self.bounds = ( xbounds, ybounds )
+        if len( self.nodes ) == 0: self.buildGraph()
+        self.updateGraph()
+
+    def redrawGraph( self, xbounds, ybounds, data ):
+        self.createGraphWithPreNodes( xbounds, ybounds, data )
+        
     def updateSelection( self, index ):
+        if index == 1004:
+            pass
+        print "updateSelection: ", str( index )
         self.selectedNodeIndex = index        
             
     def updateGraph(self):
