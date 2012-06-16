@@ -134,6 +134,7 @@ class DV3DRangeConfigWidget(QFrame):
         self.setFrameStyle( QFrame.StyledPanel | QFrame.Raised )
         self.setLineWidth(2)
         self.setObjectName('RangeConfigWidget') 
+        self.initialRange = [ 0, 0, 0 ]
         self.initialize()
         
         main_layout = QVBoxLayout()         
@@ -197,7 +198,7 @@ class DV3DRangeConfigWidget(QFrame):
             self.active_cfg_cmd.broadcastLevelingData( parm_range )             
             if self.active_module: self.active_module.render()
              
-    def updateSliderValues( self ): 
+    def updateSliderValues( self, initialize=False ): 
         if self.active_cfg_cmd:
             rbnds = self.active_cfg_cmd.range_bounds
             parm_range = list( self.active_cfg_cmd.range )
@@ -208,6 +209,7 @@ class DV3DRangeConfigWidget(QFrame):
                 slider.setDisplayValue( fval )   
                 slider.setRange( rbnds[0], rbnds[1] )       
                 slider.setValue( fval ) 
+                if initialize: self.initialRange[iSlider] = fval
                 
     def updateRange(self, min, max ): 
         pass     
@@ -230,7 +232,7 @@ class DV3DRangeConfigWidget(QFrame):
                     self.active_module = cmd_entry[0] 
                     self.active_cfg_cmd = cmd_entry[1] 
                     break
-                self.updateSliderValues()
+                self.updateSliderValues(True)
                 self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), lambda: self.updateSliderValues() )
         except RuntimeError:
             print "RuntimeError"
@@ -247,7 +249,11 @@ class DV3DRangeConfigWidget(QFrame):
 
     def revertConfig(self):
         if self.active_module:
-            self.active_module.finalizeLeveling()
+            self.initialRange[2] = self.active_cfg_cmd.range[2]
+            self.active_cfg_cmd.broadcastLevelingData( self.initialRange )  
+            interactionState = self.active_cfg_cmd.name
+            self.active_module.finalizeConfigurationObserver( interactionState ) 
+            self.active_cfg_cmd.updateWindow()   
         self.endConfig()
         
 
