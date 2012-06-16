@@ -166,7 +166,7 @@ class QtWindowLeveler( QObject ):
               print str( [dx,dy,self.CurrentWindow,self.CurrentLevel] )
               result = [ self.CurrentWindow, self.CurrentLevel, 0 ]
               self.emit( self.update_range_signal, result )
-        print " --- Set Range: ( %f, %f ),   Initial Range = ( %f, %f ), P = ( %d, %d ) dP = ( %f, %f ) " % ( result[0], result[1], self.InitialRange[0], self.InitialRange[1], X, Y, dx, dy )      
+ #       print " --- Set Range: ( %f, %f ),   Initial Range = ( %f, %f ), P = ( %d, %d ) dP = ( %f, %f ) " % ( result[0], result[1], self.InitialRange[0], self.InitialRange[1], X, Y, dx, dy )      
         return result
       
     def startWindowLevel( self, X, Y ):   
@@ -196,6 +196,11 @@ class QtWindowLeveler( QObject ):
         self.emit( self.update_range_signal, result )
 
         return result
+
+    def setWindowLevelFromRange( self, range ):
+        self.CurrentWindow = ( range[1] - range[0] ) / self.scaling
+        self.CurrentLevel = ( range[1] + range[0] ) / ( 2 * self.scaling )
+        
 
 ###############################################################################   
 
@@ -462,6 +467,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             self.setLevelDataHandler( self.range, **args )
         except Exception, err:
             print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
+        print "applyParameter: %s " % str( self.range )
         
     def reset(self):
         self.setLevelDataHandler( self.initial_range )
@@ -492,7 +498,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             self.widget.initLeveling( self.range )
             self.connect( self.widget, SIGNAL('update(QString)'), self.broadcastLevelingData )
 
-#        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
+        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
         
     def startLeveling( self, x, y ):
         if self.altMode:    self.windowRefiner.initRefinement( [ x, y ], self.range[3:5] )   
@@ -500,6 +506,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.updateActiveFunctionList()
         self.adjustRange = False
         self.emit(SIGNAL('startLeveling()'))
+        print "startLeveling: %s " % str( self.range )
 
     def getTextDisplay(self, **args ):
         rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
@@ -507,7 +514,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         units = self.module.units if self.module else None
         if units: textDisplay = " Range: %.4G, %.4G %s . " % ( rmin, rmax, units )
         else: textDisplay = " Range: %.4G, %.4G . " % ( rmin, rmax )
-        return textDisplay 
+        return textDisplay
+    
+    def updateWindow( self ): 
+        self.windowLeveler.setWindowLevelFromRange( self.range )
             
     def updateLeveling( self, x, y, wsize ):
         if self.altMode:
@@ -516,7 +526,9 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         else:  
             leveling_range = self.windowLeveler.windowLevel( x, y, wsize )
             for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.range_bounds ) if self.boundByRange else leveling_range[iR]
+        self.emit( SIGNAL('updateLeveling()') )
         return self.broadcastLevelingData()
+#        print "updateLeveling: %s " % str( self.range )
         
     def broadcastLevelingData(  self, range = None  ):
         if range: self.range = range

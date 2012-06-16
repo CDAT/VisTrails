@@ -15,7 +15,7 @@ from core.interpreter.default import get_default_interpreter as getDefaultInterp
 from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
 from packages.vtk.base_module import vtkBaseModule
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
-from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
+# from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
 from packages.vtDV3D.PersistentModule import * 
 from packages.vtDV3D.vtUtilities import *
         

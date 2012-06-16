@@ -968,11 +968,13 @@ class PersistentModule( QObject ):
         for parameter_name in self.getModuleParameters(): self.finalizeParameter( parameter_name, *args ) 
         self.endInteraction() 
         
-    def endInteraction(self):       
+    def endInteraction(self):  
+        from packages.vtDV3D.PlotPipelineHelper import ConfigCommandMenuManager     
         if (self.ndims == 3) and self.iren: 
             self.iren.SetInteractorStyle( self.navigationInteractorStyle )
             print " ~~~~~~~~~ Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
         self.configuring = False
+        ConfigCommandMenuManager.endInteraction()
         self.InteractionState = None
         self.enableVisualizationInteraction()
 
@@ -1038,12 +1040,13 @@ class TextBlinkEvent( QEvent ):
          
 class TextBlinkThread( threading.Thread ):
 
-    def __init__( self, target, type, timestep = 0.5 ):
+    def __init__( self, target, type, **args ):
         threading.Thread.__init__( self )
         self.isActive = False 
         self.daemon = True
         self.target = target
-        self.timestep = timestep
+        self.timestep = args.get( 'timestep', 0.5 )
+        self.nblinks = args.get( 'nblinks', -1 )
         self.textType = type
            
     def stop(self):
@@ -1052,11 +1055,15 @@ class TextBlinkThread( threading.Thread ):
     def run(self):
         self.isActive = True
         textOn = True
+        blinkCount = 0
         while self.isActive:
             QApplication.postEvent( self.target, TextBlinkEvent( self.textType, textOn ) )
             delay_time = self.timestep*2 if textOn else self.timestep
             time.sleep( delay_time ) 
             textOn = not textOn 
+            if textOn:
+                blinkCount += 1
+                if self.nblinks > 0 and blinkCount >= self.nblinks: return
        
 class PersistentVisualizationModule( PersistentModule ):
 
@@ -1182,7 +1189,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 if actor:
                     actor.VisibilityOn()
                     self.render()
-                    self.textBlinkThread = TextBlinkThread( self, 'instructions' )
+                    self.textBlinkThread = TextBlinkThread( self, 'instructions', nblinks=3 )
                     self.textBlinkThread.start()
                     return True
         return False
