@@ -628,24 +628,21 @@ class VariableProperties(QtGui.QDockWidget):
         kwargs['order'] = axisList.getAxesOrderString()
         return kwargs
     
-    def openRemoteFile(self):        
-        #fileName = QtGui.QFileDialog.getOpenFileName(self, 
-        #                                             "%s - Select File" % QtGui.QApplication.applicationName(),
-        #                                             QtCore.QDir.homePath(), "Files (%s)" % " ".join("*.*"))
-        #return fileName
+    def openRemoteFile(self):
         dir(fd)
-        fileDialog = fd.PVFileDialog(self)
-        if fileDialog.exec_():
-          print 'all files ', fileDialog.getAllSelectedFiles()
-          return fileDialog.getAllSelectedFiles()[0][0]
+        fileDialog = fd.PVFileDialog(self)        
+        if fileDialog.exec_():                         
+          return fileDialog.getAllSelectedFiles()[0][0]        
         return ''
 
     def populateVariables(self, variables):        
         self._pvTabWidget.populateVars(variables)
 
     def processFile(self):
+        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self._pvProcessFile.setStride(self._pvTabWidget.getStride())        
         self.populateVariables(self._pvProcessFile.getVariables())
+        QtGui.QApplication.restoreOverrideCursor()
 
     def updateConnectionStatus(self, isConnected):
         if isConnected:
