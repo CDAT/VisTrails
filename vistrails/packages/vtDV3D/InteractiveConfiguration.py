@@ -578,9 +578,8 @@ class GuiConfigurableFunction( ConfigurableFunction ):
             self.module.setResult( self.name, value )
 
     def openGui( self ):
-        if self.getValueHandler <> None:
-             value = self.getValueHandler()  
-             self.gui.initWidgetFields( value )
+        value = self.getValueHandler() if (self.getValueHandler <> None) else None 
+        self.gui.initWidgetFields( value, self.module )
         self.gui.show()
         self.module.resetNavigation()
         
@@ -698,7 +697,7 @@ class ModuleDocumentationDialog( QDialog ):
 #        self.textEdit.setTextCursor( QTextCursor(self.textEdit.document()) )   
         
  ################################################################################
- 
+
 class IVModuleConfigurationDialog( QWidget ):
     """
     IVModuleConfigurationDialog ...   
@@ -711,6 +710,7 @@ class IVModuleConfigurationDialog( QWidget ):
         QWidget.__init__(self, None)
         self.modules = OrderedDict()
         self.module = None
+        self.initValue = None
         self.name = name
         title = ( '%s configuration' % name )
         self.setWindowTitle( title )        
@@ -809,8 +809,9 @@ class IVModuleConfigurationDialog( QWidget ):
     def activateWidget( self, iren ):
         pass
 
-    def initWidgetFields( self, value ):
-        pass
+    def initWidgetFields( self, value, module ):
+        self.module = module
+        self.initValue = value
 
     def createActiveModulePanel(self ):
         """ createEditor() -> None
@@ -1083,7 +1084,8 @@ class LayerConfigurationDialog( IVModuleConfigurationDialog ):
             if len(layerList): return layerList
         return []
 
-    def initWidgetFields( self, value ):
+    def initWidgetFields( self, value, module ):
+        IVModuleConfigurationDialog.initWidgetFields( self, value, module )
         self.layerCombo.clear()
         layerlist = self.getLayerList()
         for layer in layerlist:
@@ -1814,6 +1816,83 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.resetButton.setFixedWidth(100)
         self.buttonLayout.addWidget(self.resetButton)
         self.connect(self.resetButton, SIGNAL('clicked(bool)'), self.reset )
+
+class LevelConfigurationDialog( IVModuleConfigurationDialog ):
+    """
+    LevelConfigurationDialog ...   
+    """ 
+   
+    def __init__(self, name, **args):
+        self.datasetId = None
+        self.activeModule = None
+        self.levelsCombo  = None
+        IVModuleConfigurationDialog.__init__( self, name, **args )
+                                  
+    @staticmethod   
+    def getSignature():
+        return [ ( Float, 'levelValue'), ]
+    
+    def finalizeParameter(self):
+        self.setLevel()
+        IVModuleConfigurationDialog.finalizeParameter(self)
+        
+    def getValue( self ):
+        return str( self.levelsCombo.currentText() )
+                       
+    def setLevel( self ):
+        levValue = self.getValue()
+        self.module.setCurrentLevel( levValue )
+        textDisplay = "%s: %s" % ( self.name, levValue )
+        for module in self.activeModuleList:
+            module.dvUpdate( animate=True ) 
+            module.updateTextDisplay( textDisplay ) 
+        
+    def updateLayout(self):
+        if self.levelsCombo.count() == 0:
+            levels = self.module.lev.getValue()
+            for level in levels: self.levelsCombo.addItem( str(level) )
+            self.levelsCombo.update()
+        
+    def showEvent ( self, event ):
+        self.updateLayout()
+        IVModuleConfigurationDialog.showEvent( self, event )
+                                  
+    def createContent(self ):
+        """ createEditor() -> None
+        Configure sections       
+        """       
+        levelMapTab = QWidget()        
+        self.tabbedWidget.addTab( levelMapTab, 'Levels' )                                       
+        self.tabbedWidget.setCurrentWidget(levelMapTab)
+        layout = QVBoxLayout()
+        levelMapTab.setLayout( layout ) 
+        layout.setMargin(10)
+        layout.setSpacing(20)
+        
+        self.levelsCombo = QComboBox()
+        layout.addWidget( self.levelsCombo )
+        
+#        self.buttonLayout = QHBoxLayout()
+#        self.buttonLayout.setMargin(5)
+#        layout.addLayout(self.buttonLayout)
+#        
+#        self.setButton = QPushButton( 'Set Level', self )
+#        self.setButton.setAutoDefault(False)
+#        self.setButton.setFixedWidth(100)
+#        self.buttonLayout.addWidget(self.setButton)
+#        self.connect(self.setButton, SIGNAL('clicked(bool)'), self.setLevel )
+
+#        self.stepButton = QPushButton( 'Step Level', self )
+#        self.stepButton.setAutoDefault(False)
+#        self.stepButton.setFixedWidth(100)
+#        self.buttonLayout.addWidget(self.stepButton)
+#        self.connect(self.stepButton, SIGNAL('clicked(bool)'), self.step )
+
+#        self.cancelButton = QPushButton( 'Cancel', self )
+#        self.cancelButton.setAutoDefault(False)
+#        self.cancelButton.setFixedWidth(100)
+#        self.buttonLayout.addWidget(self.cancelButton)
+#        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.cancelLevel )
 
 #class LayerConfigurationDialog( IVModuleConfigurationDialog ):
 #    """

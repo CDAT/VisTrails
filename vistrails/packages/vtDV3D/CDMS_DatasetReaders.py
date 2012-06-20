@@ -620,7 +620,7 @@ class CDMSDataset(Module):
                     rv = dsetRec.getFileVarDataCube( varName, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]], refVar=self.referenceVariable, refLev=self.referenceLev )  
             elif varName in self.getTransientVariableNames():
                 tvar = self.getTransientVariable( varName ) 
-                rv = self.getTransVarDataCube( varName, tvar, self.decimation, time=timeValues )  
+                rv = self.getTransVarDataCube( varName, tvar, self.decimation, time=timeValues, lev=levelValues )  
         if (rv.id == "NULL") and (varName in self.outputVariables):
             rv = self.outputVariables[ varName ]
         if rv.id <> "NULL": 
@@ -640,6 +640,7 @@ class CDMSDataset(Module):
         """ 
         invert_z = False
         levaxis = transVar.getLevel() 
+        level = args.get( 'lev', None )
         if levaxis:
             values = levaxis.getValue()
             ascending_values = ( values[-1] > values[0] )
@@ -668,7 +669,9 @@ class CDMSDataset(Module):
         except: pass
         
         args1['order'] = order
-        if invert_z:  args1['lev'] = slice( None, None, -1 )
+        if levaxis:
+            if level: args1['lev'] = float( level )
+            elif invert_z:  args1['lev'] = slice( None, None, -1 )
         try: 
             rv = transVar( **args1 )
         except Exception, err: 

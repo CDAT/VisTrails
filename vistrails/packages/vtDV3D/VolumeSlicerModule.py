@@ -336,6 +336,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
            
     def TestObserver( self, caller=None, event = None ):
         print " TestObserver: event = %s, " % ( event )
+        
+    def getAxes(self):
+        pass
 
     def ProcessIPWAction( self, caller, event, **args ):
         action = caller.State
@@ -350,7 +353,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 cpos = caller.GetCurrentCursorPosition()     
                 dataValue = self.getDataValue( image_value )
                 wpos = self.getWorldCoords( cpos )
-                textDisplay = " Position: (%.1f, %.1f, %.1f), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, self.units )
+                textDisplay = " Position: (%s, %s, %s), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, self.units )
                 sliceIndex = caller.GetSliceIndex() 
                 self.slicePosition[iAxis] = sliceIndex
                 self.updateTextDisplay( textDisplay )
@@ -358,11 +361,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             if action == ImagePlaneWidget.Pushing:  
                 if not self.isSlicing:
                     HyperwallManager.singleton.setInteractionState( 'VolumeSlicer.Slicing' )
-                    self.isSlicing = True                        
-                axes = [ 'Longitude', 'Latitude', 'Level' ]
+                    self.isSlicing = True 
                 sliceIndex = caller.GetSliceIndex() 
-                wpos = self.getWorldCoord( sliceIndex, iAxis )
-                textDisplay = " %s = %.1f ." % ( axes[ iAxis ], wpos )
+                axisName, spos = self.getWorldCoord( sliceIndex, iAxis )
+                textDisplay = " %s = %s ." % ( axisName, spos )
                 if iAxis == 0:
                     p1 = caller.GetPoint1()
 #                    print " >++++++++++++++++++> Slicing: Set Slice[%d], index=%d, pos=%.2f, " % ( iAxis, sliceIndex, p1[0] ), textDisplay

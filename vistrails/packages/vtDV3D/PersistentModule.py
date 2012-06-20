@@ -23,6 +23,10 @@ def CheckAbort(obj, event):
    if obj.GetEventPending() != 0:
        obj.SetAbortRender(1)
        
+def getFloatStr( val ):
+    if ( type(val) == type(' ') ): return val
+    return "%.1f" % val
+       
 def IsListType( val ):
     valtype = type(val)
     return ( valtype ==type(list()) ) or  ( valtype ==type(tuple()) )
@@ -199,6 +203,9 @@ class PersistentModule( QObject ):
         try:
             controller.add_annotation( (id, str(note)), self.moduleID ) 
         except: pass
+        
+    def getOutputRecord( self, ndim  ):
+        return None
     
     def setLabel( self, label ):      
         if self.isClient: return
@@ -519,7 +526,8 @@ class PersistentModule( QObject ):
 #            print " --- %s:initializeInputs---> # Arrays = %d " % ( self.__class__.__name__,  ( self.input.GetFieldData().GetNumberOfArrays() if self.input else -1 ) )
             
             if isAnimation:
-                self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ReferenceTimeUnits )
+                tval = args.get( 'timeValue', None )
+                if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ReferenceTimeUnits )
                 self.fieldData = self.inputModule.getFieldData() 
             else:
                 self.updateMetadata()  
@@ -544,26 +552,45 @@ class PersistentModule( QObject ):
         return dataValue
     
     def getWorldCoords( self, image_coords ):
+        plotType = self.metadata[ 'plotType' ]                   
         world_coords = None
         try:
-            lat = self.metadata[ 'lat' ]
-            lon = self.metadata[ 'lon' ]
-            lev = self.metadata[ 'lev' ]
-            world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], lev[ image_coords[2] ] ]            
+            if plotType == 'zyt':
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                timeAxis = self.metadata[ 'time' ]
+                tval = timeAxis[ image_coords[2] ]
+                relTimeValue = cdtime.reltime( float( tval ), timeAxis.units ) 
+                timeValue = str( relTimeValue.tocomp() )          
+                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), timeValue ]   
+            else:         
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                lev = self.metadata[ 'lev' ]
+                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), getFloatStr(lev[ image_coords[2] ]) ]   
         except:
             gridSpacing = self.input.GetSpacing()
             gridOrigin = self.input.GetOrigin()
-            world_coords = [ (gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
+            world_coords = [ getFloatStr(gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
         return world_coords
 
     def getWorldCoord( self, image_coord, iAxis ):
+        plotType = self.metadata[ 'plotType' ]                   
+        axisNames = [ 'Longitude', 'Latitude', 'Time' ] if plotType == 'zyt'  else [ 'Longitude', 'Latitude', 'Level' ]
         try:
-            axes = [ 'lon', 'lat', 'lev' ]
-            return self.metadata[ axes[iAxis] ][ image_coord ]
+            axes = [ 'lon', 'lat', 'time' ] if plotType == 'zyt'  else [ 'lon', 'lat', 'lev' ]
+            world_coord = self.metadata[ axes[iAxis] ][ image_coord ]
+            if ( plotType == 'zyt') and  ( iAxis == 2 ):
+                timeAxis = self.metadata[ 'time' ]     
+                timeValue = cdtime.reltime( float( world_coord ), timeAxis.units ) 
+                world_coord = str( timeValue.tocomp() )          
+            return axisNames[iAxis], getFloatStr( world_coord )
         except:
-            gridSpacing = self.input.GetSpacing()
-            gridOrigin = self.input.GetOrigin()
-            return (gridOrigin[iAxis] + image_coord*gridSpacing[iAxis]) 
+            if (plotType == 'zyx') or (iAxis < 2):
+                gridSpacing = self.input.GetSpacing()
+                gridOrigin = self.input.GetOrigin()
+                return axes[iAxis], getFloatStr( gridOrigin[iAxis] + image_coord*gridSpacing[iAxis] ) 
+            return axes[iAxis], ""
                 
     def getDataValues( self, image_value_list ):
         if not self.scalarRange: 

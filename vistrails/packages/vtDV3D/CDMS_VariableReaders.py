@@ -46,7 +46,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['portData'], **args)
         self.currentTime = 0
-        
+        self.currentLevel = None
+        if self.outputType == CDMSDataType.Hoffmuller:
+            self.addConfigurableGuiFunction( 'chooseLevel', LevelConfigurationDialog, 'L', label='Choose Level' ) 
+       
     def getImageDataCache(self):
         return self.imageDataCache.setdefault( self.moduleID, {} )
 
@@ -104,7 +107,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 elif matchesAxisType( axis, lon_axis_attr, lon_aliases ):
                     axis.designateLongitude()
                     print " --> Designating axis %s as a Longitude axis " % axis.id 
-            
+           
     def execute(self, **args ):
         import api
         from packages.vtDV3D.CDMS_DatasetReaders import CDMSDataset
@@ -176,6 +179,16 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     def generateVariableOutput( self, cdms_var ): 
         print str(cdms_var.var)
         self.set3DOutput( name=cdms_var.name,  output=cdms_var.var )
+        
+    def getOutputRecord( self, ndim = -1 ):
+        portData = self.getPortData()
+        if portData:
+            oRecMgr = OutputRecManager( portData[0]  )
+            orecs = oRecMgr.getOutputRecs( self.datasetId ) if oRecMgr else None
+            if not orecs: raise ModuleError( self, 'No Variable selected for dataset %s.' % self.datasetId )             
+            for orec in orecs:
+                if (ndim < 0 ) or (orec.ndim == ndim): return orec
+        return None
              
     def generateOutput( self ): 
         oRecMgr = None 
@@ -213,7 +226,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     def getTimestep( self ):
         dt = self.timeRange[3]
         return 0 if dt <= 0.0 else int( round( ( self.timeValue.value - self.timeRange[2] ) / dt ) )
-    
+
+    def setCurrentLevel(self, level ): 
+        self.currentLevel = level
+       
     def getImageData( self, orec, **args ):
         """
         This method converts cdat data into vtkImageData objects. The ds object is a CDMSDataset instance which wraps a CDAT CDMS Dataset object. 
@@ -241,7 +257,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             ds = self.cdmsDataset[ dsid ]
             self.timeRange = self.cdmsDataset.timeRange
             portName = orec.name
-            selectedLevel = orec.getSelectedLevel()
+            selectedLevel = orec.getSelectedLevel() if ( self.currentLevel == None ) else self.currentLevel
             ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
             default_dtype = np.ushort if ( (self.outputType == CDMSDataType.Volume ) or (self.outputType == CDMSDataType.Hoffmuller ) )  else np.float 
             scalar_dtype = args.get( "dtype", default_dtype )
@@ -249,7 +265,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self._range = [ 0.0, self._max_scalar_value ]  
             datatype = getDatatypeString( scalar_dtype )
             iTimestep = 0 if varName == '__zeros__' else self.getTimestep()
-            varDataId = '%s;%s;%d;%d' % ( dsid, varName, self.outputType, iTimestep )
+            varDataIdIndex = iTimestep
+            if (self.outputType == CDMSDataType.Hoffmuller):
+                if ( selectedLevel == None ):
+                    varDataIdIndex = 0
+                else:
+                    varDataIdIndex = selectedLevel
+            varDataId = '%s;%s;%d;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex) )
             varDataIds.append( varDataId )
             varDataSpecs = self.getCachedData( varDataId )
             flatArray = None
@@ -293,6 +315,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         md['datatype'] = datatype
                         md['timeValue']= self.timeValue.value
                         md[ 'attributes' ] = var_md
+                        md[ 'plotType' ] = 'zyt' if (self.outputType == CDMSDataType.Hoffmuller) else 'xyz'
                         
                 
                 self.setCachedData( varDataId, varDataSpecs )  
@@ -472,7 +495,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             gridBounds[ 2 ] = gridBounds[ 3 ]
             gridBounds[ 3 ] = tmp
         gridSpecs = {}
-        md = { 'datasetId' : self.datasetId,  'bounds':gridBounds, 'lat':self.lat, 'lon':self.lon, 'lev':self.lev }
+        md = { 'datasetId' : self.datasetId,  'bounds':gridBounds, 'lat':self.lat, 'lon':self.lon, 'lev':self.lev, 'time':self.time }
         gridSpecs['gridOrigin'] = gridOrigin
         gridSpecs['outputOrigin'] = outputOrigin
         gridSpecs['gridBounds'] = gridBounds
@@ -526,7 +549,7 @@ class PM_CDMS_HoffmullerReader( PM_CDMSDataReader ):
     def __init__(self, mid, **args):
         self.outputType = CDMSDataType.Hoffmuller
         PM_CDMSDataReader.__init__( self, mid, **args)
-        
+    
 class CDMS_HoffmullerReader(WorkflowModule):
     
     PersistentModuleClass = PM_CDMS_HoffmullerReader
