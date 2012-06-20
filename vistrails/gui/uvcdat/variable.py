@@ -316,7 +316,7 @@ class VariableProperties(QtGui.QDockWidget):
         self.historyList.setCurrentRow(0)
         # I imagine that there will be filetypes that both ParaView and
         # CDAT will know how to deal with them.
-        if fi.exists() or fn[:7]=="http://":
+        if fi.exists() or fnm[:7]=="http://":
             if fi.exists():
                 self.root.dockVariable.lastDirectory=str(fi.dir().path())
             self.emit(QtCore.SIGNAL('fileChanged'), str(fnm))
