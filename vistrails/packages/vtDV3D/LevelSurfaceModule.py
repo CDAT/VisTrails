@@ -36,18 +36,18 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.imageRange = None
         self.numberOfLevels = 1
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, adjustRange=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', label='Level Range', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
+        self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', label='Level Range', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units, adjustRange=True )
         self.addConfigurableLevelingFunction( 'opacity', 'O', label='Opacity', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addConfigurableGuiFunction( 'nLevels', NLevelConfigurationWidget, 'n', label='# Levels', setValue=self.setNumberOfLevels, getValue=self.getNumberOfLevels, layerDependent=True )
-        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
     
-    def setOpacityRange( self, opacity_range ):
+    def setOpacityRange( self, opacity_range, **args  ):
         print "Update Opacity, range = %s" %  str( opacity_range )
         self.opacityRange = opacity_range
         self.colormapManager.setAlphaRange ( opacity_range[0:2] ) 
 #        self.levelSetProperty.SetOpacity( opacity_range[1] )
         
-    def setColorScale( self, range ):
+    def setColorScale( self, range, **args  ):
         self.imageRange = self.getImageValues( range[0:2] ) 
         self.levelSetMapper.SetScalarRange( self.imageRange[0], self.imageRange[1] )
         self.colormapManager.setDisplayRange( range )
@@ -66,7 +66,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
 #        return level_data_values
 ##        return [ self.range[0], self.range[1], 0 ]
 
-    def setNumberOfLevels( self, nLevelsData  ):
+    def setNumberOfLevels( self, nLevelsData, **args   ):
         self.numberOfLevels = int( getItem( nLevelsData ) )
         if self.numberOfLevels < 1: self.numberOfLevels = 1
         self.updateLevels()
@@ -74,8 +74,8 @@ class PM_LevelSurface(PersistentVisualizationModule):
     def getNumberOfLevels( self ):
         return [ self.numberOfLevels, ]
     
-    def setLevelRange( self, range ):
-        print "setLevelRange, data range = %s" % str( range ) 
+    def setLevelRange( self, range, **args ):
+        print "  ---> setLevelRange, data range = %s" % str( range ) 
         self.range = self.getImageValues( range )
         self.updateLevels()
     
@@ -108,6 +108,12 @@ class PM_LevelSurface(PersistentVisualizationModule):
         if self.InteractionState <> None: 
             self.levelSetFilter.ComputeNormalsOff()
             self.levelSetFilter.ComputeGradientsOff()
+
+    def updateModule(self, **args ):
+        self.inputModule.inputToAlgorithm( self.levelSetFilter ) 
+#        self.levelSetFilter.Modified()
+        self.set3DOutput()
+        print "Update Level Surface Module with %d Level(s), range = [ %f, %f ], levels = %s" %  ( self.numberOfLevels, self.range[0], self.range[1], str(self.getLevelValues()) )  
                            
     def buildPipeline(self):
         """ execute() -> None

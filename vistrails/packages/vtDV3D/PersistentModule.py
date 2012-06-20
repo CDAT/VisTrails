@@ -23,6 +23,10 @@ def CheckAbort(obj, event):
    if obj.GetEventPending() != 0:
        obj.SetAbortRender(1)
        
+def getFloatStr( val ):
+    if ( type(val) == type(' ') ): return val
+    return "%.1f" % val
+       
 def IsListType( val ):
     valtype = type(val)
     return ( valtype ==type(list()) ) or  ( valtype ==type(tuple()) )
@@ -59,7 +63,7 @@ class AlgorithmOutputModule( Module ):
             else:           algorithm.SetInputConnection( iPort, self.algoOutputPort )
         else: 
             output = self.getOutput() 
-            print " inputToAlgorithm: oid = %x " % id( output ) 
+#            print " inputToAlgorithm: oid = %x " % id( output ) 
             algorithm.SetInput( output )
             algorithm.Modified()
 
@@ -156,6 +160,19 @@ class PersistentModule( QObject ):
 #            if dataArray: return dataArray.GetValue(0)
 #        return 0
 
+    def getConfigFunctions( self, types=None ):
+        cmdList = []
+        for items in self.configurableFunctions.items():
+            cmd = items[1]
+            if types == None:
+                cmdList.append( cmd ) 
+            else:
+                for type in types:
+                    if cmd.type == type:
+                        cmdList.append( cmd ) 
+        return cmdList
+                        
+
     def getRangeBounds(self): 
         return self.rangeBounds  
         
@@ -186,6 +203,9 @@ class PersistentModule( QObject ):
         try:
             controller.add_annotation( (id, str(note)), self.moduleID ) 
         except: pass
+        
+    def getOutputRecord( self, ndim  ):
+        return None
     
     def setLabel( self, label ):      
         if self.isClient: return
@@ -506,7 +526,8 @@ class PersistentModule( QObject ):
 #            print " --- %s:initializeInputs---> # Arrays = %d " % ( self.__class__.__name__,  ( self.input.GetFieldData().GetNumberOfArrays() if self.input else -1 ) )
             
             if isAnimation:
-                self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ReferenceTimeUnits )
+                tval = args.get( 'timeValue', None )
+                if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ReferenceTimeUnits )
                 self.fieldData = self.inputModule.getFieldData() 
             else:
                 self.updateMetadata()  
@@ -531,26 +552,45 @@ class PersistentModule( QObject ):
         return dataValue
     
     def getWorldCoords( self, image_coords ):
+        plotType = self.metadata[ 'plotType' ]                   
         world_coords = None
         try:
-            lat = self.metadata[ 'lat' ]
-            lon = self.metadata[ 'lon' ]
-            lev = self.metadata[ 'lev' ]
-            world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], lev[ image_coords[2] ] ]            
+            if plotType == 'zyt':
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                timeAxis = self.metadata[ 'time' ]
+                tval = timeAxis[ image_coords[2] ]
+                relTimeValue = cdtime.reltime( float( tval ), timeAxis.units ) 
+                timeValue = str( relTimeValue.tocomp() )          
+                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), timeValue ]   
+            else:         
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                lev = self.metadata[ 'lev' ]
+                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), getFloatStr(lev[ image_coords[2] ]) ]   
         except:
             gridSpacing = self.input.GetSpacing()
             gridOrigin = self.input.GetOrigin()
-            world_coords = [ (gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
+            world_coords = [ getFloatStr(gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
         return world_coords
 
     def getWorldCoord( self, image_coord, iAxis ):
+        plotType = self.metadata[ 'plotType' ]                   
+        axisNames = [ 'Longitude', 'Latitude', 'Time' ] if plotType == 'zyt'  else [ 'Longitude', 'Latitude', 'Level' ]
         try:
-            axes = [ 'lon', 'lat', 'lev' ]
-            return self.metadata[ axes[iAxis] ][ image_coord ]
+            axes = [ 'lon', 'lat', 'time' ] if plotType == 'zyt'  else [ 'lon', 'lat', 'lev' ]
+            world_coord = self.metadata[ axes[iAxis] ][ image_coord ]
+            if ( plotType == 'zyt') and  ( iAxis == 2 ):
+                timeAxis = self.metadata[ 'time' ]     
+                timeValue = cdtime.reltime( float( world_coord ), timeAxis.units ) 
+                world_coord = str( timeValue.tocomp() )          
+            return axisNames[iAxis], getFloatStr( world_coord )
         except:
-            gridSpacing = self.input.GetSpacing()
-            gridOrigin = self.input.GetOrigin()
-            return (gridOrigin[iAxis] + image_coord*gridSpacing[iAxis]) 
+            if (plotType == 'zyx') or (iAxis < 2):
+                gridSpacing = self.input.GetSpacing()
+                gridOrigin = self.input.GetOrigin()
+                return axes[iAxis], getFloatStr( gridOrigin[iAxis] + image_coord*gridSpacing[iAxis] ) 
+            return axes[iAxis], ""
                 
     def getDataValues( self, image_value_list ):
         if not self.scalarRange: 
@@ -689,9 +729,9 @@ class PersistentModule( QObject ):
         for configFunct in self.configurableFunctions.values():
             configFunct.init( self )
             
-    def applyConfiguration(self):
+    def applyConfiguration(self, **args ):
         for configFunct in self.configurableFunctions.values():
-            configFunct.applyParameter( self )
+            configFunct.applyParameter( self, **args  )
             
 #    def setParameterInputsEnabled( self, isEnabled ):
 #        for configFunct in self.configurableFunctions.values():
@@ -719,6 +759,9 @@ class PersistentModule( QObject ):
     def updateAnimation( self, relTimeValue, textDisplay=None ):
         self.dvUpdate( timeValue=relTimeValue, animate=True )
         if textDisplay <> None:  self.updateTextDisplay( textDisplay )
+        
+    def stopAnimation( self ):
+        self.resetNavigation()
                
     def updateConfigurationObserver( self, parameter_name, new_parameter_value, *args ):
         try:
@@ -819,12 +862,17 @@ class PersistentModule( QObject ):
                                     
     def finalizeLeveling( self ):
         if self.ndims == 3: self.getLabelActor().VisibilityOff()
-        isLeveling = self.isLeveling()
-        print " ~~~~~~ Finalize Leveling: isLeveling = %s, ndims = %d, interactionState = %s " % ( str( isLeveling ), self.ndims, self.InteractionState )
-        if isLeveling: 
+        if self.configuring: 
+            print " ~~~~~~ Finalize Leveling: ndims = %d, interactionState = %s " % ( self.ndims, self.InteractionState )
             HyperwallManager.singleton.setInteractionState( None )
             self.finalizeConfigurationObserver( self.InteractionState )            
-        return isLeveling
+            if (self.ndims == 3) and self.iren: 
+                self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+                print " ~~~~~~~~~ Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
+            self.configuring = False
+            self.InteractionState = None
+            return True
+        return False
      
     def isLeveling( self ):
         if self.InteractionState <> None: 
@@ -947,11 +995,13 @@ class PersistentModule( QObject ):
         for parameter_name in self.getModuleParameters(): self.finalizeParameter( parameter_name, *args ) 
         self.endInteraction() 
         
-    def endInteraction(self):       
+    def endInteraction(self):  
+        from packages.vtDV3D.PlotPipelineHelper import ConfigCommandMenuManager     
         if (self.ndims == 3) and self.iren: 
             self.iren.SetInteractorStyle( self.navigationInteractorStyle )
             print " ~~~~~~~~~ Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
         self.configuring = False
+        ConfigCommandMenuManager.endInteraction()
         self.InteractionState = None
         self.enableVisualizationInteraction()
 
@@ -1010,18 +1060,20 @@ TextBlinkEventEventType =  QEvent.User + 2
 
 class TextBlinkEvent( QEvent ):
     
-    def __init__( self, type ):
+    def __init__( self, type, textOn ):
          QEvent.__init__ ( self, TextBlinkEventEventType )
          self.textType = type
+         self.textOn = textOn
          
 class TextBlinkThread( threading.Thread ):
 
-    def __init__( self, target, type, timestep = 0.5 ):
+    def __init__( self, target, type, **args ):
         threading.Thread.__init__( self )
         self.isActive = False 
         self.daemon = True
         self.target = target
-        self.timestep = timestep
+        self.timestep = args.get( 'timestep', 0.5 )
+        self.nblinks = args.get( 'nblinks', -1 )
         self.textType = type
            
     def stop(self):
@@ -1029,9 +1081,16 @@ class TextBlinkThread( threading.Thread ):
 
     def run(self):
         self.isActive = True
+        textOn = True
+        blinkCount = 0
         while self.isActive:
-            QApplication.postEvent( self.target, TextBlinkEvent( self.textType ) )
-            time.sleep( self.timestep )  
+            QApplication.postEvent( self.target, TextBlinkEvent( self.textType, textOn ) )
+            delay_time = self.timestep*2 if textOn else self.timestep
+            time.sleep( delay_time ) 
+            textOn = not textOn 
+            if textOn:
+                blinkCount += 1
+                if self.nblinks > 0 and blinkCount >= self.nblinks: return
        
 class PersistentVisualizationModule( PersistentModule ):
 
@@ -1076,11 +1135,11 @@ class PersistentVisualizationModule( PersistentModule ):
     def disableVisualizationInteraction(self): 
         pass
 
-    def setInputZScale( self, zscale_data ):
+    def setInputZScale( self, zscale_data, **args  ):
         if self.input <> None:
             spacing = self.input.GetSpacing()
             ix, iy, iz = spacing
-            sz = zscale_data[0]
+            sz = zscale_data[1]
 #            print " PVM >---------------> Set input zscale: %.2f" % sz
             self.input.SetSpacing( ix, iy, sz )  
             self.input.Modified() 
@@ -1088,7 +1147,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return False
                     
     def getScaleBounds(self):
-        return [ 1.0, 8.0 ]
+        return [ 0.5, 100.0 ]
         
     def getTitle(self):
         return self.titleBuffer
@@ -1157,7 +1216,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 if actor:
                     actor.VisibilityOn()
                     self.render()
-                    self.textBlinkThread = TextBlinkThread( self, 'instructions' )
+                    self.textBlinkThread = TextBlinkThread( self, 'instructions', nblinks=3 )
                     self.textBlinkThread.start()
                     return True
         return False
@@ -1170,20 +1229,18 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.textBlinkThread = None
             actor.VisibilityOff()
             
-    def toggleTextVisibility( self, textType ):
+    def toggleTextVisibility( self, textType, textOn ):
         actor = None
         if textType == 'instructions':
             actor = self.getInstructionActor()
         if actor:
-            if actor.GetVisibility():
-                actor.VisibilityOff()
-            else: 
-                actor.VisibilityOn()
+            if textOn:  actor.VisibilityOn()
+            else:       actor.VisibilityOff()
             self.render()
 
     def event(self, e): 
         if e.type() == TextBlinkEventEventType: 
-            self.toggleTextVisibility( e.textType ) 
+            self.toggleTextVisibility( e.textType, e.textOn ) 
             return True
         return False        
             
@@ -1205,11 +1262,12 @@ class PersistentVisualizationModule( PersistentModule ):
             self.pipelineBuilt = True
             initConfig = True
             
-        if not initConfig: self.applyConfiguration()   
+        if not initConfig: self.applyConfiguration( **args  )   
         
         self.updateModule( **args ) 
         
         if not isAnimation:
+#            self.displayInstructions( "Shift-right-click for config menu" )
             if initConfig: 
                 self.initializeConfiguration()  
             else:   
@@ -1368,7 +1426,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return self.getTextActor( 'title', self.titleBuffer,  (.01, .01 ), size = VTK_TITLE_SIZE, bold = True  )
 
     def getInstructionActor(self):
-        return self.getTextActor( 'instruction', self.instructionBuffer,  (.1, .85 ), size = VTK_INSTRUCTION_SIZE, bold = True, color = ( 1.0, 0.1, 0.1 ), opacity=0.75  )
+        return self.getTextActor( 'instruction', self.instructionBuffer,  (.1, .85 ), size = VTK_INSTRUCTION_SIZE, bold = True, color = ( 1.0, 0.1, 0.1 ), opacity=0.65  )
 
     def getTextActor( self, id, text, pos, **args ):
       textActor = self.getProp( 'vtkTextActor', id  )
@@ -1403,7 +1461,7 @@ class PersistentVisualizationModule( PersistentModule ):
                         self.activateWidgets( self.iren )                                  
                         self.iren.AddObserver( 'CharEvent', self.setInteractionState )                   
                         self.iren.AddObserver( 'MouseMoveEvent', self.updateLevelingEvent )
-                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
+#                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
                         self.iren.AddObserver( 'AnyEvent', self.onAnyEvent )  
 #                        self.iren.AddObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
 #                        self.iren.AddObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
@@ -1458,7 +1516,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.generateDocumentation()           
                 PersistentVisualizationModule.moduleDocumentationDialog.addDocument( 'modules', self.documentation )
                 PersistentVisualizationModule.moduleDocumentationDialog.addCloseObserver( self.clearDocumenation )
-                PersistentVisualizationModule.moduleDocumentationDialog.show()
+            PersistentVisualizationModule.moduleDocumentationDialog.show()
         elif ( self.createColormap and ( key == 'l' ) ): 
             if  self.colorBarActor.GetVisibility(): 
                   self.colorBarActor.VisibilityOff()  
@@ -1473,7 +1531,7 @@ class PersistentVisualizationModule( PersistentModule ):
                     self.finalizeConfigurationObserver( self.InteractionState )            
                     if self.ndims == 3: 
                         self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-                        print " ~~~~~~~~~ SetInteractorStyle: navigationInteractorStyle "
+                        print " ~~~~~~~~~ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)     
                 if self.InteractionState <> None: 
                     configFunct.close()
                     self.endInteraction() 
@@ -1509,6 +1567,7 @@ class PersistentVisualizationModule( PersistentModule ):
         if self.ndims == 3: self.getLabelActor().VisibilityOff()              
         
     def onLeftButtonRelease( self, caller, event ):
+        print " --- Persistent Module: LeftButtonRelease --- "
         self.currentButton = None 
     
     def onRightButtonRelease( self, caller, event ):
@@ -1559,12 +1618,13 @@ class PersistentVisualizationModule( PersistentModule ):
         return 0
     
     def onLeftButtonPress( self, caller, event ):
-        shift = caller.GetShiftKey()
-        self.currentButton = self.LEFT_BUTTON
-        self.clearInstructions()
-        self.UpdateCamera()   
-        x, y = caller.GetEventPosition()      
-        self.startConfiguration( x, y, [ 'leveling', 'generic' ] )  
+        if not self.finalizeLeveling(): 
+            shift = caller.GetShiftKey()
+            self.currentButton = self.LEFT_BUTTON
+            self.clearInstructions()
+            self.UpdateCamera()   
+            x, y = caller.GetEventPosition()      
+            self.startConfiguration( x, y, [ 'leveling', 'generic' ] )  
         return 0
 
     def onRightButtonPress( self, caller, event ):
@@ -1575,12 +1635,13 @@ class PersistentVisualizationModule( PersistentModule ):
         x, y = caller.GetEventPosition()
         if self.InteractionState <> None:
             self.startConfiguration( x, y,  [ 'generic' ] )
-        elif shift:
-            ConfigCommandPopupManager.show( self, x, y ) 
-            self.iren.SetInteractorStyle( self.configurationInteractorStyle )             
         else:
-            self.iren.SetInteractorStyle( self.navigationInteractorStyle )             
+            self.iren.SetInteractorStyle( self.navigationInteractorStyle )          
         return 0
+    
+    def resetNavigation(self):
+        if self.iren: self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+        self.enableVisualizationInteraction()
 
     def onModified( self, caller, event ):
         return 0
@@ -1604,7 +1665,7 @@ class PersistentVisualizationModule( PersistentModule ):
     def onAnyEvent(self, caller, event ):
         if self.iren:
             istyle = self.iren.GetInteractorStyle() 
-            print "onAnyEvent: %s, iren style = %s, interactionState = %s  " % ( str( event ), istyle.__class__.__name__, self.InteractionState )
+#            print "onAnyEvent: %s, iren style = %s, interactionState = %s  " % ( str( event ), istyle.__class__.__name__, self.InteractionState )
 
 #        isKeyEvent = ( event in [ 'KeyPressEvent', 'CharEvent', 'KeyReleaseEvent' ] )
 #        if isKeyEvent:

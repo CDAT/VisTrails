@@ -60,8 +60,6 @@ class ConfigPopupManager( QObject ):
     def reset(self):
         self.resetActions = True
 
-ConfigCommandPopupManager = ConfigPopupManager()
-
 class WindowRefinementGenerator( QObject ):
 
     def __init__( self, **args ):
@@ -168,7 +166,7 @@ class QtWindowLeveler( QObject ):
               print str( [dx,dy,self.CurrentWindow,self.CurrentLevel] )
               result = [ self.CurrentWindow, self.CurrentLevel, 0 ]
               self.emit( self.update_range_signal, result )
-#        print " --- Set Range: ( %f, %f ),   Initial Range = ( %f, %f ), P = ( %d, %d ) dP = ( %f, %f ) " % ( result[0], result[1], self.InitialRange[0], self.InitialRange[1], X, Y, dx, dy )      
+ #       print " --- Set Range: ( %f, %f ),   Initial Range = ( %f, %f ), P = ( %d, %d ) dP = ( %f, %f ) " % ( result[0], result[1], self.InitialRange[0], self.InitialRange[1], X, Y, dx, dy )      
         return result
       
     def startWindowLevel( self, X, Y ):   
@@ -198,6 +196,11 @@ class QtWindowLeveler( QObject ):
         self.emit( self.update_range_signal, result )
 
         return result
+
+    def setWindowLevelFromRange( self, range ):
+        self.CurrentWindow = ( range[1] - range[0] ) / self.scaling
+        self.CurrentLevel = ( range[1] + range[0] ) / ( 2 * self.scaling )
+        
 
 ###############################################################################   
 
@@ -449,19 +452,22 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.getLevelDataHandler = args.get( 'getLevel', None )
         self.getInitLevelDataHandler = args.get( 'getInitLevel', None )
         self.isDataValue = args.get( 'isDataValue', True )
-        self.defaultRange = args.get( 'initRange', [ 0.0, 1.0, 1, 0.0, 1.0 ] )
+        self.initial_range = args.get( 'initRange', None )
+        self.initRefinement = args.get( 'initRefinement', [ 0.0, 1.0 ] )
+        self.range_bounds = None
         self.boundByRange = args.get( 'bound', True )
         self.adjustRange = args.get( 'adjustRange', False )
         self.widget = args.get( 'gui', None )
 
     def postInstructions( self, module ):
-        module.displayInstructions( "Left-click and drag in this cell." )
+        module.displayInstructions( "Left-click, mouse-move, left-click in this cell." )
     
     def applyParameter( self, module, **args ):
         try:
-            self.setLevelDataHandler( self.range )
-        except:
-            pass
+            self.setLevelDataHandler( self.range, **args )
+        except Exception, err:
+            print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
+        print "applyParameter: %s " % str( self.range )
         
     def reset(self):
         self.setLevelDataHandler( self.initial_range )
@@ -470,19 +476,21 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
 
     def expandRange( self ):
         if self.adjustRange:
-            if ( self.initial_range[0] <> self.module.seriesScalarRange[0] ) or ( self.initial_range[1] <> self.module.seriesScalarRange[1] ):
-                self.initial_range[0:2] = self.module.seriesScalarRange[0:2]
-                self.initLeveling( init_range=False ) 
+            if ( self.range_bounds[0] <> self.module.seriesScalarRange[0] ) or ( self.range_bounds[1] <> self.module.seriesScalarRange[1] ):
+                self.range_bounds[0:2] = self.module.seriesScalarRange[0:2]
+                self.range[0:2] = self.range_bounds[0:2]
+                self.initLeveling( initRange = False ) 
  
     def initLeveling( self, **args ):
-        init_range = args.get( 'init_range', True )
-        if self.key == 'T':
-            pass
-        if init_range:
-            self.initial_range =  self.defaultRange if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
-        self.range = list( self.module.getInputValue( self.name, self.initial_range ) if not self.module.newDataset else self.initial_range )
-        if len( self.range ) == 3: 
-            for iR in [ 3, 4 ]: self.range.append( self.defaultRange[iR] )
+        initRange = args.get( 'initRange', True )
+        if initRange:
+            if self.initial_range == None:
+                self.initial_range =  [ 0.0, 1.0, 1 ] if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
+            if self.range_bounds == None:
+                self.range_bounds = self.initial_range if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
+            self.range = list( self.module.getInputValue( self.name, self.initial_range ) if not self.module.newDataset else self.initial_range )
+            if len( self.range ) == 3: 
+                for iR in range(2): self.range.append( self.initRefinement[iR] )
         self.windowLeveler.setDataRange( self.range )
         self.setLevelDataHandler( self.range )
         self.module.setParameter( self.name, self.range )
@@ -490,13 +498,15 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             self.widget.initLeveling( self.range )
             self.connect( self.widget, SIGNAL('update(QString)'), self.broadcastLevelingData )
 
-#        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
+        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
         
     def startLeveling( self, x, y ):
         if self.altMode:    self.windowRefiner.initRefinement( [ x, y ], self.range[3:5] )   
         else:               self.windowLeveler.startWindowLevel( x, y )
         self.updateActiveFunctionList()
+        self.adjustRange = False
         self.emit(SIGNAL('startLeveling()'))
+        print "startLeveling: %s " % str( self.range )
 
     def getTextDisplay(self, **args ):
         rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
@@ -504,7 +514,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         units = self.module.units if self.module else None
         if units: textDisplay = " Range: %.4G, %.4G %s . " % ( rmin, rmax, units )
         else: textDisplay = " Range: %.4G, %.4G . " % ( rmin, rmax )
-        return textDisplay 
+        return textDisplay
+    
+    def updateWindow( self ): 
+        self.windowLeveler.setWindowLevelFromRange( self.range )
             
     def updateLeveling( self, x, y, wsize ):
         if self.altMode:
@@ -512,8 +525,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             for iR in [ 0, 1 ]: self.range[3+iR] = refinement_range[iR]
         else:  
             leveling_range = self.windowLeveler.windowLevel( x, y, wsize )
-            for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.initial_range ) if self.boundByRange else leveling_range[iR]
+            for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.range_bounds ) if self.boundByRange else leveling_range[iR]
+        self.emit( SIGNAL('updateLeveling()') )
         return self.broadcastLevelingData()
+#        print "updateLeveling: %s " % str( self.range )
         
     def broadcastLevelingData(  self, range = None  ):
         if range: self.range = range
@@ -563,10 +578,10 @@ class GuiConfigurableFunction( ConfigurableFunction ):
             self.module.setResult( self.name, value )
 
     def openGui( self ):
-        if self.getValueHandler <> None:
-             value = self.getValueHandler()  
-             self.gui.initWidgetFields( value )
+        value = self.getValueHandler() if (self.getValueHandler <> None) else None 
+        self.gui.initWidgetFields( value, self.module )
         self.gui.show()
+        self.module.resetNavigation()
         
     def getTextDisplay(self, **args ):
         return self.gui.getTextDisplay( **args )
@@ -610,6 +625,7 @@ class WidgetConfigurableFunction( ConfigurableFunction ):
     def openWidget( self ):
         start_value = None if ( self.getValueHandler == None ) else self.getValueHandler() 
         self.widget.open( start_value )
+        self.module.resetNavigation()
         
     def getTextDisplay(self, **args ):
         return self.widget.getTextDisplay(**args)
@@ -681,7 +697,7 @@ class ModuleDocumentationDialog( QDialog ):
 #        self.textEdit.setTextCursor( QTextCursor(self.textEdit.document()) )   
         
  ################################################################################
- 
+
 class IVModuleConfigurationDialog( QWidget ):
     """
     IVModuleConfigurationDialog ...   
@@ -694,6 +710,7 @@ class IVModuleConfigurationDialog( QWidget ):
         QWidget.__init__(self, None)
         self.modules = OrderedDict()
         self.module = None
+        self.initValue = None
         self.name = name
         title = ( '%s configuration' % name )
         self.setWindowTitle( title )        
@@ -706,6 +723,7 @@ class IVModuleConfigurationDialog( QWidget ):
         self.createButtonLayout()
         self.createActiveModulePanel()
         self.setWindowFlags( self.windowFlags() | Qt.WindowStaysOnTopHint )
+        self.tabbedWidget.setCurrentIndex(0)
     
     @staticmethod    
     def getInstance( klass, name, caller, **args  ):
@@ -764,7 +782,15 @@ class IVModuleConfigurationDialog( QWidget ):
             if wmod == None:
                 executeWorkflow()
                 return
-        
+            
+    def resetNavigation(self):   
+        for module in self.modules: 
+            module.resetNavigation()
+            
+    def close(self):
+        self.resetNavigation()  
+        QWidget.close( self ) 
+ 
     def getTextDisplay( self, **args  ):
         value = self.getTextValue( self.getValue() )
         return "%s: %s" % ( self.name, value ) if value else None
@@ -783,8 +809,9 @@ class IVModuleConfigurationDialog( QWidget ):
     def activateWidget( self, iren ):
         pass
 
-    def initWidgetFields( self, value ):
-        pass
+    def initWidgetFields( self, value, module ):
+        self.module = module
+        self.initValue = value
 
     def createActiveModulePanel(self ):
         """ createEditor() -> None
@@ -1057,7 +1084,8 @@ class LayerConfigurationDialog( IVModuleConfigurationDialog ):
             if len(layerList): return layerList
         return []
 
-    def initWidgetFields( self, value ):
+    def initWidgetFields( self, value, module ):
+        IVModuleConfigurationDialog.initWidgetFields( self, value, module )
         self.layerCombo.clear()
         layerlist = self.getLayerList()
         for layer in layerlist:
@@ -1675,6 +1703,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     def stop(self):
         self.runButton.setText('Run')
         self.running = False 
+        for module in self.activeModuleList:
+            module.stopAnimation()
         
     def updateTimeRange(self):   
         newConfig = DV3DConfigurationWidget.saveConfigurations()
@@ -1786,6 +1816,83 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.resetButton.setFixedWidth(100)
         self.buttonLayout.addWidget(self.resetButton)
         self.connect(self.resetButton, SIGNAL('clicked(bool)'), self.reset )
+
+class LevelConfigurationDialog( IVModuleConfigurationDialog ):
+    """
+    LevelConfigurationDialog ...   
+    """ 
+   
+    def __init__(self, name, **args):
+        self.datasetId = None
+        self.activeModule = None
+        self.levelsCombo  = None
+        IVModuleConfigurationDialog.__init__( self, name, **args )
+                                  
+    @staticmethod   
+    def getSignature():
+        return [ ( Float, 'levelValue'), ]
+    
+    def finalizeParameter(self):
+        self.setLevel()
+        IVModuleConfigurationDialog.finalizeParameter(self)
+        
+    def getValue( self ):
+        return str( self.levelsCombo.currentText() )
+                       
+    def setLevel( self ):
+        levValue = self.getValue()
+        self.module.setCurrentLevel( levValue )
+        textDisplay = "%s: %s" % ( self.name, levValue )
+        for module in self.activeModuleList:
+            module.dvUpdate( animate=True ) 
+            module.updateTextDisplay( textDisplay ) 
+        
+    def updateLayout(self):
+        if self.levelsCombo.count() == 0:
+            levels = self.module.lev.getValue()
+            for level in levels: self.levelsCombo.addItem( str(level) )
+            self.levelsCombo.update()
+        
+    def showEvent ( self, event ):
+        self.updateLayout()
+        IVModuleConfigurationDialog.showEvent( self, event )
+                                  
+    def createContent(self ):
+        """ createEditor() -> None
+        Configure sections       
+        """       
+        levelMapTab = QWidget()        
+        self.tabbedWidget.addTab( levelMapTab, 'Levels' )                                       
+        self.tabbedWidget.setCurrentWidget(levelMapTab)
+        layout = QVBoxLayout()
+        levelMapTab.setLayout( layout ) 
+        layout.setMargin(10)
+        layout.setSpacing(20)
+        
+        self.levelsCombo = QComboBox()
+        layout.addWidget( self.levelsCombo )
+        
+#        self.buttonLayout = QHBoxLayout()
+#        self.buttonLayout.setMargin(5)
+#        layout.addLayout(self.buttonLayout)
+#        
+#        self.setButton = QPushButton( 'Set Level', self )
+#        self.setButton.setAutoDefault(False)
+#        self.setButton.setFixedWidth(100)
+#        self.buttonLayout.addWidget(self.setButton)
+#        self.connect(self.setButton, SIGNAL('clicked(bool)'), self.setLevel )
+
+#        self.stepButton = QPushButton( 'Step Level', self )
+#        self.stepButton.setAutoDefault(False)
+#        self.stepButton.setFixedWidth(100)
+#        self.buttonLayout.addWidget(self.stepButton)
+#        self.connect(self.stepButton, SIGNAL('clicked(bool)'), self.step )
+
+#        self.cancelButton = QPushButton( 'Cancel', self )
+#        self.cancelButton.setAutoDefault(False)
+#        self.cancelButton.setFixedWidth(100)
+#        self.buttonLayout.addWidget(self.cancelButton)
+#        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.cancelLevel )
 
 #class LayerConfigurationDialog( IVModuleConfigurationDialog ):
 #    """

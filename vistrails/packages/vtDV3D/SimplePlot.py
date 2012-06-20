@@ -168,7 +168,6 @@ class Node(QtGui.QGraphicsItem):
         self.setCacheMode(QtGui.QGraphicsItem.DeviceCoordinateCache)
         self.setZValue(1)
         self.reset()
-        self.isSelected = False
         
     def reset(self):
         self.index = -1
@@ -250,32 +249,40 @@ class Node(QtGui.QGraphicsItem):
                 gradient.setFocalPoint(3, 3)
                 gradient.setColorAt(1, QtGui.QColor(colors[0]).light(120))
                 gradient.setColorAt(0, QtGui.QColor(colors[1]).light(120))
-                self.isSelected = True
             else:
                 gradient.setColorAt(0, colors[0])
                 gradient.setColorAt(1, colors[1])
-                self.isSelected = False
     
             painter.setBrush(QtGui.QBrush(gradient))
             painter.setPen(QtGui.QPen(QtCore.Qt.black, 0))
             painter.drawEllipse(-10, -10, 20, 20)
+            
+    def isSelected(self):
+        return self.graph.checkSelection( self.index )
 
     def itemChange(self, change, value):
         if change == QtGui.QGraphicsItem.ItemPositionHasChanged:
             for edge in self.edgeList: edge.adjust()
-            if self.isSelected:
+            if self.isSelected():
+                self.setSelected(True)
                 newPos = value.toPointF()                  
                 scaledPos = self.posConstraintVector.getScaling( newPos ) if self.posConstraintVector else float('NaN')                
                 self.graph.itemMoved( self.index, newPos.x(), newPos.y(), scaledPos )
-#                if self.index > 0: print "Item[%d] moved, id = %d " % ( self.index, self.id )
+                if self.index > 0: print "Item[%d] moved, id = %d " % ( self.index, self.id )
+            else: self.setSelected(False)
         return super(Node, self).itemChange(change, value)
 
     def mousePressEvent(self, event):
         self.update()
+        print "   ^^^^^^^    Mouse press event: node = %d    ^^^^^^^ "  % self.index
+        self.graph.updateSelection( self.index )
+        self.setSelected(True)
         super(Node, self).mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         self.update()
+        self.graph.clearSelection()
+        self.setSelected(False)
         super(Node, self).mouseReleaseEvent(event)
 
 class MovementConstraintVector( QtCore.QLineF ):
@@ -326,6 +333,7 @@ class GraphWidget(QtGui.QGraphicsView):
         self.nticks = args.get( 'nticks', ( 5, 5 ) )
         self.graphUpdateIndex = 0
         self.graphUpdatePeriod = 5
+        self.selectedNodeIndex = -99 
         self.tickLen = 12
         self.tickLabels = ( [], [] )
         self.bounds = None
@@ -348,6 +356,13 @@ class GraphWidget(QtGui.QGraphicsView):
         self.scale(0.8, 0.8)
         self.setMinimumSize( self.size[0]+100, self.size[1] )
         self.setWindowTitle("Simple Graph")
+        
+    def clearSelection( self ):
+        self.selectedNodeIndex = -99
+        
+    def checkSelection( self, index ):
+#        print "checkSelection: ", str( self.selectedNodeIndex )
+        return ( index == self.selectedNodeIndex ) 
         
     def setConfigType( self, cType ):
         if cType <> self.configType:
@@ -445,7 +460,8 @@ class GraphWidget(QtGui.QGraphicsView):
 #            self.nodes[iP].setMovable( False )
 #        self.update()
 
-    def createGraph( self, xbounds, ybounds, data ):
+    def createGraphWithPreNodes( self, xbounds, ybounds, data ):
+        self.data = data
         self.data = []
         pre_nodes = []
         for nodeData in data:
@@ -462,8 +478,24 @@ class GraphWidget(QtGui.QGraphicsView):
         self.bounds = ( xbounds, ybounds )
         if len( self.nodes ) == 0: self.buildGraph()
         self.updateGraph()
+
+    def createGraph( self, xbounds, ybounds, data ):
+        self.data = []
+        for nodeData in data:
+            self.data.append( nodeData )
+        self.bounds = ( xbounds, ybounds )
+        if len( self.nodes ) == 0: self.buildGraph()
+        self.updateGraph()
+
+    def redrawGraph( self, xbounds, ybounds, data ):
+        self.createGraphWithPreNodes( xbounds, ybounds, data )
         
-        
+    def updateSelection( self, index ):
+        if index == 1004:
+            pass
+        print "updateSelection: ", str( index )
+        self.selectedNodeIndex = index        
+            
     def updateGraph(self):
         for iP in range( len( self.data ) ):
             nodeData = self.data[iP]
@@ -479,6 +511,10 @@ class GraphWidget(QtGui.QGraphicsView):
             node.setPos ( nodeData.getScenePosition() )  
             node.colorIndex = nodeData.color
             node.index = nodeData.index           
+            if node.index == self.selectedNodeIndex:
+                node.setSelected ( True )
+                print "Item[%d] selected, id = %d " % ( node.index, node.id )
+            else: node.setSelected ( False )
         for iP in range( len( self.data ), self.maxNNodes ):
             node = self.nodes[iP]
             node.setPos ( self.size[0], self.size[1] )

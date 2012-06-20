@@ -15,7 +15,7 @@ from core.interpreter.default import get_default_interpreter as getDefaultInterp
 from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
 from packages.vtk.base_module import vtkBaseModule
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
-from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
+# from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
 from packages.vtDV3D.PersistentModule import * 
 from packages.vtDV3D.vtUtilities import *
         
@@ -35,7 +35,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units )
         self.addConfigurableLevelingFunction( 'glyphScale', 'T', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, units=self.units, bound=False )
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False )
-        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
       
     def scaleColormap( self, ctf_data ):
         self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 

@@ -10,27 +10,328 @@ Created on Feb 29, 2012
 
 '''
 
-'''
-
-'''
 import core.db.io, sys, traceback, api
 import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
 from packages.vtDV3D.DV3DCell import MapCell3D
+from packages.vtDV3D import ModuleStore
 from packages.uvcdat_cdms.init import CDMSVariableOperation, CDMSVariable 
 from packages.vtDV3D.vtUtilities import *
 from core.uvcdat.plot_registry import get_plot_registry
 from core.modules.module_registry import get_module_registry
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
 
+def getFormattedQString( value ):
+    val = float( value )
+    if val > 99999 or val < 0.001:  sval = "%.2g" % val
+    if val > 1:                     sval = "%.2f" % val
+    else:                           sval = "%.4f" % val
+    return QString( sval )
 
-class DV3DPipelineHelper(PlotPipelineHelper):
+class ConfigMenuManager( QObject ):
+    
+    def __init__( self, **args ):
+        QObject.__init__( self )
+        self.cfg_cmds = {}
+        self.callbacks = None
+#        self.signals = [ SIGNAL("startConfig(QString,QString)"), SIGNAL("endConfig()") ]
+             
+    def addAction( self, module, action_key, config_key ):
+        actionList = self.actionMap.setdefault( action_key, [] )
+        actionList.append( ( module, config_key ) ) 
+        if len( actionList ) == 1:
+            menuItem = self.menu.addAction( action_key )
+            self.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key: self.execAction( akey ) )
+    
+    def getConfigCmd( self, cfg_key ):   
+        return self.cfg_cmds.get( cfg_key, None )
+
+    def addConfigCommand( self, pmod, cmd ):
+        cmd_list = self.cfg_cmds.setdefault( cmd.key, [] )
+        cmd_list.append( ( pmod, cmd ) )
+        
+    def setCallbacks( self, startConfigCallable, endConfigCallable ):
+        self.callbacks = [ startConfigCallable, endConfigCallable ]
+#        for iC in range(2): self.connect ( self, self.signals[iC], self.callbacks[iC] ) 
+
+    
+    def execAction( self, action_key ): 
+        print " execAction: ", action_key
+        actionList  =  self.actionMap[ action_key ]
+        for ( module, key ) in actionList:
+            module.processKeyEvent( key )
+        if self.callbacks:
+            self.callbacks[0]( action_key, key )
+#        self.emit( SIGNAL('startConfig(QString,QString)'), action_key, key )
+
+    def endInteraction( self ):
+        self.callbacks[1]()
+#        self.emit( SIGNAL('endConfig()') ) 
+                
+    def reset(self):
+        self.actionMap = {}
+        self.cfg_cmds = {}
+#        if self.callbacks:
+#            for iC in range(2):
+#                self.disconnect ( self, self.signals[iC], self.callbacks[iC] ) 
+        self.callbacks = None
+               
+    def startNewMenu(self):
+        self.menu = QMenu()
+        return self.menu
+
+ConfigCommandMenuManager = ConfigMenuManager()
+
+class DV3DParameterSliderWidget(QWidget):
+    
+    def __init__( self, label, parent=None):
+        QWidget.__init__(self,parent)
+        self.range = [ 0.0, 1.0, 1.0 ]
+        
+        main_layout = QVBoxLayout()  
+        
+        label_layout = QHBoxLayout()                     
+        self.label = QLabel( label, self )
+        self.label.setAlignment( Qt.AlignLeft )
+        self.label.setFont( QFont( "Arial", 12 ) )
+        label_layout.addWidget( self.label )
+        label_layout.addStretch()
+        main_layout.addLayout( label_layout )
+        
+        data_layout = QHBoxLayout()
+        self.slider = QSlider(Qt.Horizontal, self)
+        self.slider.setRange( 0, 100 )
+        data_layout.addWidget(self.slider)
+        data_layout.addStrut(2)
+        self.textbox = QLineEdit(self)
+        data_layout.addWidget( self.textbox )  
+        main_layout.addLayout( data_layout )
+              
+        self.setLayout(main_layout)
+        
+    def setDisplayValue( self, fval ):
+        qsval = getFormattedQString( fval ) 
+        self.textbox.setText( qsval )
+        
+    def setRange( self, fmin, fmax ):
+        self.range = [ fmin, fmax, (fmax-fmin) ]
+
+    def setValue( self, value ):
+        sliderVal = int( 100 * ( value-self.range[0] ) / self.range[2] ) 
+        self.slider.setValue( sliderVal )
+        qsval = getFormattedQString( value ) 
+        self.textbox.setText( qsval  )
+                
+class DV3DRangeConfigWidget(QFrame):
+    MIN_SLIDER = 0
+    MAX_SLIDER = 1
+    
+    def __init__( self, parent=None):
+        QWidget.__init__( self, parent )
+#        self.setStyleSheet("QWidget#RangeConfigWidget { border-style: outset; border-width: 2px; border-color: blue; }" )
+        self.setFrameStyle( QFrame.StyledPanel | QFrame.Raised )
+        self.setLineWidth(2)
+        self.setObjectName('RangeConfigWidget') 
+        self.initialRange = [ 0, 0, 0 ]
+        self.initialize()
+        
+        main_layout = QVBoxLayout()         
+        self.cfg_action_label = QLabel("Configuration:")
+        self.cfg_action_label.setFont( QFont( "Arial", 14, QFont.Bold ) )
+        main_layout.addWidget( self.cfg_action_label )
+        
+        self.rangeMinEditor = DV3DParameterSliderWidget( 'Range Min:', self )
+        self.rangeMaxEditor = DV3DParameterSliderWidget( 'Range Max:', self )
+        self.sliders = [ self.rangeMinEditor, self.rangeMaxEditor ]
+        self.connect( self.rangeMinEditor.slider, SIGNAL("sliderMoved(int)"), lambda ival: self.sliderValueChanged(self.MIN_SLIDER,ival) ) 
+        self.connect( self.rangeMaxEditor.slider, SIGNAL("sliderMoved(int)"), lambda ival: self.sliderValueChanged(self.MAX_SLIDER,ival) ) 
+        self.connect( self.rangeMinEditor.textbox, SIGNAL("returnPressed()"),  lambda: self.processTextValueEntry(self.MIN_SLIDER) ) 
+        self.connect( self.rangeMaxEditor.textbox, SIGNAL("returnPressed()"),  lambda: self.processTextValueEntry(self.MAX_SLIDER) ) 
+               
+        main_layout.addWidget( self.rangeMinEditor )
+        main_layout.addWidget( self.rangeMaxEditor )
+        self.rangeMinEditor.setValue( 0.5 )
+        self.rangeMaxEditor.setValue( 0.5 )
+        
+        button_layout = QHBoxLayout() 
+        revert_button = QPushButton("Revert", self)
+        save_button = QPushButton("Save", self)
+        button_layout.addWidget( revert_button )
+        button_layout.addWidget( save_button )
+        revert_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
+        save_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
+        self.connect( revert_button, SIGNAL("clicked()"), lambda: self.revertConfig() ) 
+        self.connect( save_button, SIGNAL("clicked()"), lambda: self.finalizeConfig() ) 
+        
+        main_layout.addLayout( button_layout )
+        main_layout.addStretch()             
+        self.setLayout(main_layout)
+        self.disable()
+        
+    def initialize(self):
+        self.active_cfg_cmd = None
+        self.active_module = None
+        
+    def processTextValueEntry( self, iSlider ):
+        if self.active_cfg_cmd:
+            textbox = self.sliders[iSlider].textbox
+            fval = float( textbox.text() )
+            slider = self.sliders[iSlider]
+            slider.setValue( fval ) 
+            parm_range = list( self.active_cfg_cmd.range ) 
+            parm_range[ iSlider ] = fval
+            self.active_cfg_cmd.broadcastLevelingData( parm_range )             
+            if self.active_module: self.active_module.render()
+        
+    def setTitle(self, title ):
+        self.cfg_action_label.setText( title )
+        
+    def sliderValueChanged( self, iSlider, iValue = None ):
+        if self.active_cfg_cmd:
+            rbnds = self.active_cfg_cmd.range_bounds
+            parm_range = list( self.active_cfg_cmd.range )
+            fval = rbnds[0] + (rbnds[1]-rbnds[0]) * ( iValue / 100.0 )
+            parm_range[ iSlider ] = fval
+            self.sliders[iSlider].setDisplayValue( fval )
+            self.active_cfg_cmd.broadcastLevelingData( parm_range )             
+            if self.active_module: self.active_module.render()
+             
+    def updateSliderValues( self, initialize=False ): 
+        if self.active_cfg_cmd:
+            rbnds = self.active_cfg_cmd.range_bounds
+            parm_range = list( self.active_cfg_cmd.range )
+#            print " Update Slider Values-> range: %s, bounds: %s " % ( str(parm_range), str(rbnds) )
+            for iSlider in range(2):
+                slider = self.sliders[iSlider]
+                fval = parm_range[ iSlider ]
+                slider.setDisplayValue( fval )   
+                slider.setRange( rbnds[0], rbnds[1] )       
+                slider.setValue( fval ) 
+                if initialize: self.initialRange[iSlider] = fval
+                
+    def updateRange(self, min, max ): 
+        pass     
+     
+    def enable(self): 
+        self.setVisible(True)
+
+    def disable(self): 
+        self.setVisible(False)
+          
+    def startConfig(self, qs_action_key, qs_cfg_key ):
+        self.enable()
+        cfg_key = str(qs_cfg_key)
+        action_key = str(qs_action_key)
+        self.setTitle( action_key )
+        try:
+            cmd_list = ConfigCommandMenuManager.getConfigCmd ( cfg_key )
+            if cmd_list:
+                for cmd_entry in cmd_list:
+                    self.active_module = cmd_entry[0] 
+                    self.active_cfg_cmd = cmd_entry[1] 
+                    break
+                self.updateSliderValues(True)
+                self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), lambda: self.updateSliderValues() )
+        except RuntimeError:
+            print "RuntimeError"
+            
+    def endConfig(self):
+        self.disable()
+        
+    def finalizeConfig(self):
+        if self.active_module:
+            interactionState = self.active_cfg_cmd.name
+            self.active_module.finalizeConfigurationObserver( interactionState ) 
+            self.active_cfg_cmd.updateWindow()   
+        self.endConfig()
+
+    def revertConfig(self):
+        if self.active_module:
+            self.initialRange[2] = self.active_cfg_cmd.range[2]
+            self.active_cfg_cmd.broadcastLevelingData( self.initialRange )  
+            interactionState = self.active_cfg_cmd.name
+            self.active_module.finalizeConfigurationObserver( interactionState ) 
+            self.active_cfg_cmd.updateWindow()   
+        self.endConfig()
+        
+
+class DV3DConfigControlPanel(QWidget):
+    MIN_SLIDER = 0
+    MAX_SLIDER = 1
+
+    def __init__( self, configMenu, optionsMenu, parent=None):
+        QWidget.__init__(self,parent)
+        self.active_cfg_cmd = None
+        self.active_module = None
+           
+        main_layout = QVBoxLayout()        
+        button_layout = QHBoxLayout()
+        button_layout.setMargin(1)
+        button_layout.setSpacing(1)
+
+        self.cfg_frame = QFrame()
+        cfg_layout = QVBoxLayout() 
+        cfg_layout.setMargin(2)
+        cfg_layout.setSpacing(1)
+        self.cfg_frame.setFrameStyle( QFrame.StyledPanel | QFrame.Raised )
+        self.cfg_frame.setLineWidth(2)
+        self.cfg_frame.setLayout(cfg_layout)
+                
+        cfg_label = QLabel("Configuration Commands:")
+        cfg_label.setFont( QFont( "Arial", 14, QFont.Bold ) )
+        cfg_label.setAlignment( Qt.AlignHCenter )
+        cfg_layout.addWidget(cfg_label)
+        cfg_layout.addWidget( configMenu )
+        cfg_layout.addStretch()
+
+        self.opt_frame = QFrame()
+        opt_layout = QVBoxLayout() 
+        opt_layout.setMargin(2)
+        opt_layout.setSpacing(1)
+        self.opt_frame.setFrameStyle( QFrame.StyledPanel | QFrame.Raised )
+        self.opt_frame.setLineWidth(2)
+        self.opt_frame.setLayout(opt_layout)
+                
+        opt_label = QLabel("Options:")
+        opt_label.setFont( QFont( "Arial", 14, QFont.Bold ) )
+        opt_label.setAlignment( Qt.AlignHCenter )
+        opt_layout.addWidget(opt_label)
+        opt_layout.addWidget( optionsMenu )
+        opt_layout.addStretch()
+               
+        button_layout.addWidget( self.cfg_frame )
+        button_layout.addWidget( self.opt_frame )
+        main_layout.addLayout( button_layout )
+        main_layout.addStrut(2)
+        
+        self.rangeConfigWidget = DV3DRangeConfigWidget(self)
+        main_layout.addWidget( self.rangeConfigWidget ) 
+        print "DV3DConfigControlPanel: %x %x " % ( id(self), id( self.rangeConfigWidget) )
+            
+        main_layout.addStretch()                       
+        self.setLayout(main_layout)
+
+                           
+    def startConfig(self, qs_action_key, qs_cfg_key ):
+        if self.rangeConfigWidget:
+            self.rangeConfigWidget.startConfig( qs_action_key, qs_cfg_key )
+            
+    def endConfig(self):
+        if self.rangeConfigWidget:
+            self.rangeConfigWidget.endConfig()
+        
+class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     '''
     This will take care of pipeline manipulation for plots.
     '''
 
+    config_widget = None
 
     def __init__(self):
+        QObject.__init__( self )
+        PlotPipelineHelper.__init__( self )
         '''
         Constructor
         '''
@@ -209,7 +510,7 @@ class DV3DPipelineHelper(PlotPipelineHelper):
                         param_changes.append(op)
 #                        print "Added parameter change for alias=%s, value=%s" % ( k, value  )
                     else:
-                        print>>sys.stderr, "CDAT Package: Change parameter %s in widget %s was not generated"%(k, self.name)
+                        print>>sys.stderr, "CDAT Package: Change parameter %s was not generated"%(k)
                  
         cell_modules = PlotPipelineHelper.find_modules_by_type( pipeline, [ MapCell3D ] )
         for module in cell_modules:
@@ -372,7 +673,41 @@ class DV3DPipelineHelper(PlotPipelineHelper):
             if len(invalid) == 0:
                 return True
         return False
-    
+
+    @staticmethod
+    def show_configuration_widget( controller, version, plot_objs=[] ):
+        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper, CDMSPlotWidget
+        pipeline = controller.vt_controller.vistrail.getPipeline(version)
+        print " ------------ show_configuration_widget ----------------------------------"
+        
+        pmods = set()
+        ConfigCommandMenuManager.reset()
+        menu = ConfigCommandMenuManager.startNewMenu()
+        for module in pipeline.module_list:
+            pmod = ModuleStore.getModule(  module.id ) 
+            if pmod:
+                pmods.add(pmod)
+                configFuncs = pmod.configurableFunctions.values()
+                for configFunc in configFuncs:
+                    action_key = str( configFunc.label )
+                    config_key = configFunc.key               
+                    ConfigCommandMenuManager.addAction( pmod, action_key, config_key ) 
+                    
+        menu1 = ConfigCommandMenuManager.startNewMenu() 
+        for pmod in pmods:
+            ConfigCommandMenuManager.addAction( pmod, 'Help', 'h' )
+            ConfigCommandMenuManager.addAction( pmod, 'Colorbar', 'l' )
+            ConfigCommandMenuManager.addAction( pmod, 'Reset', 'r' )
+        
+        config_widget = DV3DConfigControlPanel( menu, menu1 )
+        ConfigCommandMenuManager.setCallbacks( config_widget.startConfig, config_widget.endConfig )
+        for pmod in pmods:
+            cmdList = pmod.getConfigFunctions( [ 'leveling' ] )
+            for cmd in cmdList:
+                ConfigCommandMenuManager.addConfigCommand( pmod, cmd )
+        return config_widget
+
+               
     @staticmethod
     def get_plot_by_vistrail_version(plot_type, vistrail, version):
         from core.uvcdat.plotmanager import get_plot_manager
