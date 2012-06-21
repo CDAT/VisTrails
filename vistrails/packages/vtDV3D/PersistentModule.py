@@ -11,6 +11,7 @@ from core.modules.vistrails_module import Module, ModuleError
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.vtDV3D.InteractiveConfiguration import *
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
+from packages.vtDV3D import ModuleStore
 from db.domain import DBModule, DBAnnotation
 from packages.vtDV3D import HyperwallManager
 from packages.vtDV3D.vtUtilities import *
@@ -470,6 +471,9 @@ class PersistentModule( QObject ):
 #        return scalars
     def getUnits():
         return self.units
+    
+    def getCDMSDataset(self):
+        return ModuleStore.getCdmsDataset( self.datasetId )
            
     def setActiveScalars( self ):
         pass

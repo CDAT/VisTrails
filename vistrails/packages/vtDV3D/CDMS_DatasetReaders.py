@@ -630,7 +630,7 @@ class CDMSDataset(Module):
 #            else:       
 #                vc = cdutil.VariableConditioner( source=rv, weightedGridMaker=gridMaker )
 #                return vc.get( returnTuple=0 )
-        print>>sys.stderr, "Error: can't find time slice variable %s in dataset" % varName
+        print>>sys.stderr, "Error: can't find time slice data cube for variable %s in dataset" % varName
         return rv
 
 
@@ -640,6 +640,7 @@ class CDMSDataset(Module):
         """ 
         invert_z = False
         levaxis = transVar.getLevel() 
+        timeaxis = transVar.getTime() 
         level = args.get( 'lev', None )
         if levaxis:
             values = levaxis.getValue()

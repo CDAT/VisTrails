@@ -17,7 +17,7 @@ from packages.vtDV3D.CDATTask import deserializeTaskData
 from packages.vtDV3D import HyperwallManager
 from collections import OrderedDict
 from packages.vtDV3D.vtUtilities import *
-import cdms2
+import cdms2, cdtime
 
 
 class CDMSDataType:
@@ -1687,18 +1687,29 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 return
 
     def setTimestep( self, iTimestep ):
+        from packages.vtDV3D.PersistentModule import ReferenceTimeUnits 
         if self.timeRange[0] == self.timeRange[1]:
             self.running = False
         else:
             self.setValue( iTimestep )
             sheetTabs = set()
-            relTimeValue = self.relTimeStart + self.iTimeStep * self.relTimeStep
-            print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValue, str( self.timeRange ) )
+            relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
+            timeAxis = self.module.metadata['time']
+            timeValues = np.array( object=timeAxis.getValue() )
+            relTimeRef = cdtime.reltime( relTimeValueRef, ReferenceTimeUnits )
+            relTime0 = relTimeRef.torel( timeAxis.units )
+            timeIndex = timeValues.searchsorted( relTime0.value ) 
+            if ( timeIndex >= len( timeValues ) ): timeIndex = len( timeValues ) - 1
+            relTimeValue0 =  timeValues[ timeIndex ]
+            r0 = cdtime.reltime( relTimeValue0, timeAxis.units )
+            relTimeRef = r0.torel( ReferenceTimeUnits )
+            relTimeValueRefAdj = relTimeRef.value
+            print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
             displayText = self.getTextDisplay()
-            HyperwallManager.singleton.processGuiCommand( ['reltimestep', relTimeValue, displayText ], False  )
+            HyperwallManager.singleton.processGuiCommand( ['reltimestep', relTimeValueRefAdj, displayText ], False  )
             for module in self.activeModuleList:
                 dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
-                module.updateAnimation( relTimeValue, displayText  )
+                module.updateAnimation( relTimeValueRefAdj, displayText  )
 
     def stop(self):
         self.runButton.setText('Run')

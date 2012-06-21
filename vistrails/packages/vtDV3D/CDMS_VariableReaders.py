@@ -11,6 +11,7 @@ from core.modules.vistrails_module import Module, ModuleError
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation 
 from packages.vtDV3D.WorkflowModule import WorkflowModule 
+from packages.vtDV3D import ModuleStore
 from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.PersistentModule import * 
 import cdms2, cdtime, cdutil, MV2 
@@ -47,6 +48,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['portData'], **args)
         self.currentTime = 0
         self.currentLevel = None
+        self.timeAxis = None
         if self.outputType == CDMSDataType.Hoffmuller:
             self.addConfigurableGuiFunction( 'chooseLevel', LevelConfigurationDialog, 'L', label='Choose Level' ) 
        
@@ -116,16 +118,17 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.cdmsDataset = CDMSDataset()
             var, dsetId = self.addCDMSVariable( cdms_var, 1 )
             self.newDataset = ( self.datasetId <> dsetId )
+            if self.newDataset: ModuleStore.archiveCdmsDataset( dsetId, self.cdmsDataset )
             self.newLayerConfiguration = self.newDataset
             self.datasetId = dsetId
             self.designateAxes(var)
             self.nTimesteps = 1
             self.timeRange = [ 0, self.nTimesteps, 0.0, 0.0 ]
-            timeAxis = var.getTime()
-            if timeAxis:
-                self.nTimesteps = len( timeAxis ) if timeAxis else 1
+            self.timeAxis = var.getTime()
+            if self.timeAxis:
+                self.nTimesteps = len( self.timeAxis ) if self.timeAxis else 1
                 try:
-                    comp_time_values = timeAxis.asComponentTime()
+                    comp_time_values = self.timeAxis.asComponentTime()
                     t0 = comp_time_values[0].torel(ReferenceTimeUnits).value
                     dt = 0.0
                     if self.nTimesteps > 1:
@@ -133,7 +136,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         dt = t1-t0
                         self.timeRange = [ 0, self.nTimesteps, t0, dt ]
                 except:
-                    values = timeAxis.getValue()
+                    values = self.timeAxis.getValue()
                     t0 = values[0] if len(values) > 0 else 0
                     dt = ( values[1] - values[0] ) if len(values) > 1 else 0
                     self.timeRange = [ 0, self.nTimesteps, t0, dt ]
@@ -159,6 +162,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 self.newDataset = ( self.datasetId <> dsetId )
                 self.newLayerConfiguration = self.newDataset
                 self.datasetId = dsetId
+                ModuleStore.archiveCdmsDataset( self.datasetId, self.cdmsDataset )
                 self.timeRange = self.cdmsDataset.timeRange
                 timeValue = args.get( 'timeValue', self.timeRange[2] )
                 self.timeValue = cdtime.reltime( float(timeValue), ReferenceTimeUnits )
@@ -495,7 +499,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             gridBounds[ 2 ] = gridBounds[ 3 ]
             gridBounds[ 3 ] = tmp
         gridSpecs = {}
-        md = { 'datasetId' : self.datasetId,  'bounds':gridBounds, 'lat':self.lat, 'lon':self.lon, 'lev':self.lev, 'time':self.time }
+        md = { 'datasetId' : self.datasetId,  'bounds':gridBounds, 'lat':self.lat, 'lon':self.lon, 'lev':self.lev, 'time': self.timeAxis }
         gridSpecs['gridOrigin'] = gridOrigin
         gridSpecs['outputOrigin'] = outputOrigin
         gridSpecs['gridBounds'] = gridBounds

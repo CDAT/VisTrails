@@ -343,6 +343,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def ProcessIPWAction( self, caller, event, **args ):
         action = caller.State
         iAxis = caller.PlaneIndex
+
         if event == ImagePlaneWidget.InteractionUpdateEvent:
             
             if action == ImagePlaneWidget.Cursoring:   
