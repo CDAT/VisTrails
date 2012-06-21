@@ -62,7 +62,7 @@ class ConfigMenuManager( QObject ):
         actionList  =  self.actionMap[ action_key ]
         for ( module, key ) in actionList:
             module.processKeyEvent( key )
-        if self.callbacks:
+        if self.callbacks and (key in self.cfg_cmds):
             self.callbacks[0]( action_key, key )
 #        self.emit( SIGNAL('startConfig(QString,QString)'), action_key, key )
 
