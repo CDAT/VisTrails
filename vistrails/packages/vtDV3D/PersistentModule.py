@@ -976,7 +976,7 @@ class PersistentModule( QObject ):
             change_parameters( self.moduleID, strParmRecList, ctrl )           
             tag = self.getParameterId()
             taggedVersion = self.tagCurrentVersion( tag )
-            listParameterPersist = args.get( 'list', True ) 
+            listParameterPersist = args.get( 'list', True )  
             for parmRec in parmRecList:
                 parameter_name = parmRec[0]
                 output = parmRec[1]
@@ -1530,12 +1530,13 @@ class PersistentVisualizationModule( PersistentModule ):
             else: self.colorBarActor.VisibilityOn() 
             self.render() 
         elif (  key == 'r'  ):
+            self.resetCamera()              
             if  len(self.persistedParameters):
                 pname = self.persistedParameters.pop()
                 configFunct = self.configurableFunctions[pname]
                 param_value = configFunct.reset() 
                 if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )
-            self.resetCamera()
+            
                 
 #            if self.LastInteractionState <> None: 
 #                configFunct = self.configurableFunctions[ self.LastInteractionState ]

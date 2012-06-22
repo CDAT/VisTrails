@@ -130,6 +130,7 @@ class DV3DRangeConfigWidget(QFrame):
     
     def __init__( self, parent=None):
         QWidget.__init__( self, parent )
+        print ' ----------------------------------------- create new widget: %x ----------------------------------------- ----------------------------------------- ----------------------------------------- ' % id( self )
 #        self.setStyleSheet("QWidget#RangeConfigWidget { border-style: outset; border-width: 2px; border-color: blue; }" )
         self.setFrameStyle( QFrame.StyledPanel | QFrame.Raised )
         self.setLineWidth(2)
@@ -170,6 +171,9 @@ class DV3DRangeConfigWidget(QFrame):
         self.setLayout(main_layout)
         self.disable()
         
+    def __del__(self):
+        self.deactivate_current_command()
+        
     def initialize(self):
         self.active_cfg_cmd = None
         self.active_module = None
@@ -197,9 +201,10 @@ class DV3DRangeConfigWidget(QFrame):
             self.sliders[iSlider].setDisplayValue( fval )
             self.active_cfg_cmd.broadcastLevelingData( parm_range )             
             if self.active_module: self.active_module.render()
-             
+        
     def updateSliderValues( self, initialize=False ): 
         if self.active_cfg_cmd:
+            print ' update Slider Values, widget = %x ' % id( self )
             rbnds = self.active_cfg_cmd.range_bounds
             parm_range = list( self.active_cfg_cmd.range )
 #            print " Update Slider Values-> range: %s, bounds: %s " % ( str(parm_range), str(rbnds) )
@@ -219,6 +224,11 @@ class DV3DRangeConfigWidget(QFrame):
 
     def disable(self): 
         self.setVisible(False)
+        
+    def deactivate_current_command(self):
+        if self.active_cfg_cmd:
+            self.disconnect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues )
+            self.active_cfg_cmd = None
           
     def startConfig(self, qs_action_key, qs_cfg_key ):
         self.enable()
@@ -229,11 +239,13 @@ class DV3DRangeConfigWidget(QFrame):
             cmd_list = ConfigCommandMenuManager.getConfigCmd ( cfg_key )
             if cmd_list:
                 for cmd_entry in cmd_list:
+                    self.deactivate_current_command()
                     self.active_module = cmd_entry[0] 
                     self.active_cfg_cmd = cmd_entry[1] 
                     break
                 self.updateSliderValues(True)
-                self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), lambda: self.updateSliderValues() )
+                self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues ) 
+                self.active_cfg_cmd.updateActiveFunctionList()
         except RuntimeError:
             print "RuntimeError"
             

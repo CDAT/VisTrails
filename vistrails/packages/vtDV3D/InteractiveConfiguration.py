@@ -532,12 +532,14 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         
     def broadcastLevelingData(  self, range = None  ):
         if range: self.range = range
+        print " ** Broadcast Leveling: altMode = %s, range = %s, refine = %s, Modules: " % ( str( self.altMode ) , str( self.range[0:2] ), str( self.range[3:5] )  )
         self.setLevelDataHandler( self.range )
         self.module.render()
+        print "   -> self = %x " % id(self.module)
         for cfgFunction in self.activeFunctionList:
             cfgFunction.setLevelDataHandler( self.range )
             cfgFunction.module.render()
-#        print " updateLeveling: altMode = %s, range = %s, refine = %s " % ( str( self.altMode ) , str( self.range[0:2] ), str( self.range[3:5] )  )
+            print "   -> module = %x " % id(cfgFunction.module)
         return self.range # self.wrapData( range )
 
 ################################################################################

@@ -415,7 +415,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         aCamera.SetPosition( *self.cameraPosition )
         aCamera.SetFocalPoint( *self.cameraFocalPoint )
         aCamera.ComputeViewPlaneNormal()
-        self.renderer.ResetCamera()                
+        self.renderer.ResetCamera() 
+        self.render()                            
         
     def buildWidget(self):                        
         if self.renderers:
