@@ -116,6 +116,7 @@ class PersistentModule( QObject ):
         self.pipeline = args.get( 'pipeline', None )
         self.units = ''
         self.taggedVersionMap = {}
+        self.persistedParameters = []
         self.versionTags = {}
         self.initVersionMap()
         self.datasetId = None
@@ -975,10 +976,12 @@ class PersistentModule( QObject ):
             change_parameters( self.moduleID, strParmRecList, ctrl )           
             tag = self.getParameterId()
             taggedVersion = self.tagCurrentVersion( tag )
+            listParameterPersist = args.get( 'list', True ) 
             for parmRec in parmRecList:
                 parameter_name = parmRec[0]
                 output = parmRec[1]
                 self.setParameter( parameter_name, output, tag ) 
+                if listParameterPersist: self.persistedParameters.append( parameter_name )
 #            print " %s.Persist-Parameter-List[%s] (v. %s): %s " % ( self.getName(), tag, str(taggedVersion), str(parmRecList) )
             self.persistVersionMap() 
             updatePipelineConfiguration = args.get( 'update', False ) # False )                  
@@ -1526,19 +1529,26 @@ class PersistentVisualizationModule( PersistentModule ):
                   self.colorBarActor.VisibilityOff()  
             else: self.colorBarActor.VisibilityOn() 
             self.render() 
-        elif (  key == 'r'  ): 
-            if self.LastInteractionState <> None: 
-                configFunct = self.configurableFunctions[ self.LastInteractionState ]
+        elif (  key == 'r'  ):
+            if  len(self.persistedParameters):
+                pname = self.persistedParameters.pop()
+                configFunct = self.configurableFunctions[pname]
                 param_value = configFunct.reset() 
-                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True )
-                if configFunct.type == 'leveling':
-                    self.finalizeConfigurationObserver( self.InteractionState )            
-                    if self.ndims == 3: 
-                        self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-                        print " ~~~~~~~~~ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)     
-                if self.InteractionState <> None: 
-                    configFunct.close()
-                    self.endInteraction() 
+                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )
+            self.resetCamera()
+                
+#            if self.LastInteractionState <> None: 
+#                configFunct = self.configurableFunctions[ self.LastInteractionState ]
+#                param_value = configFunct.reset() 
+#                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True )
+#                if configFunct.type == 'leveling':
+#                    self.finalizeConfigurationObserver( self.InteractionState )            
+#                    if self.ndims == 3: 
+#                        self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+#                        print " ~~~~~~~~~ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)     
+#                if self.InteractionState <> None: 
+#                    configFunct.close()
+#                    self.endInteraction() 
         else:
             state =  self.getInteractionState( key )
             print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
@@ -1546,6 +1556,9 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.updateInteractionState( state, self.isAltMode  )                 
                 HyperwallManager.singleton.setInteractionState( state, self.isAltMode )
                 self.isAltMode = False 
+                
+    def resetCamera(self):
+        pass
                 
     def updateInteractionState( self, state, altMode ): 
         if state == None: 

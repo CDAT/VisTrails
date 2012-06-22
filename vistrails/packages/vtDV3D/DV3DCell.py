@@ -395,6 +395,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def execute(self, **args ):
         if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
         PersistentVisualizationModule.execute(self, **args)
+        self.recordCameraPosition()
         
     def addTitle(self):    
         title = getItem( self.getInputValue( "title", None ) )
@@ -402,15 +403,19 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if self.titleBuffer and self.renderer:
             self.getTitleActor().VisibilityOn() 
                       
-
-
+    def recordCameraPosition(self):
+        aCamera = self.renderer.GetActiveCamera()
+        self.cameraPosition = aCamera.GetPosition()
+        self.cameraFocalPoint = aCamera.GetFocalPoint()
+        self.cameraViewUp = aCamera.GetViewUp()
+         
     def resetCamera(self):
-            aCamera = self.renderer.GetActiveCamera()
-            aCamera.SetViewUp( 0, 0, 1 )
-            aCamera.SetPosition( 0.0, 0.0, ( self.mapCenter[0] + self.mapCenter[1] ) / 4.0 )
-            aCamera.SetFocalPoint( self.mapCenter[0], self.mapCenter[1], 0.0 )
-            aCamera.ComputeViewPlaneNormal()
-            self.renderer.ResetCamera()                
+        aCamera = self.renderer.GetActiveCamera()
+        aCamera.SetViewUp( *self.cameraViewUp )
+        aCamera.SetPosition( *self.cameraPosition )
+        aCamera.SetFocalPoint( *self.cameraFocalPoint )
+        aCamera.ComputeViewPlaneNormal()
+        self.renderer.ResetCamera()                
         
     def buildWidget(self):                        
         if self.renderers:

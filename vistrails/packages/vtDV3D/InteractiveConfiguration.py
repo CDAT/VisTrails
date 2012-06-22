@@ -810,7 +810,8 @@ class IVModuleConfigurationDialog( QWidget ):
         pass
 
     def initWidgetFields( self, value, module ):
-        self.module = module
+        if ( self.module == None ) or ( module.renderer <> None ): 
+            self.module = module
         self.initValue = value
 
     def createActiveModulePanel(self ):
@@ -1691,25 +1692,28 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         if self.timeRange[0] == self.timeRange[1]:
             self.running = False
         else:
-            self.setValue( iTimestep )
-            sheetTabs = set()
-            relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
-            timeAxis = self.module.metadata['time']
-            timeValues = np.array( object=timeAxis.getValue() )
-            relTimeRef = cdtime.reltime( relTimeValueRef, ReferenceTimeUnits )
-            relTime0 = relTimeRef.torel( timeAxis.units )
-            timeIndex = timeValues.searchsorted( relTime0.value ) 
-            if ( timeIndex >= len( timeValues ) ): timeIndex = len( timeValues ) - 1
-            relTimeValue0 =  timeValues[ timeIndex ]
-            r0 = cdtime.reltime( relTimeValue0, timeAxis.units )
-            relTimeRef = r0.torel( ReferenceTimeUnits )
-            relTimeValueRefAdj = relTimeRef.value
-            print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
-            displayText = self.getTextDisplay()
-            HyperwallManager.singleton.processGuiCommand( ['reltimestep', relTimeValueRefAdj, displayText ], False  )
-            for module in self.activeModuleList:
-                dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
-                module.updateAnimation( relTimeValueRefAdj, displayText  )
+            try:
+                self.setValue( iTimestep )
+                sheetTabs = set()
+                relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
+                timeAxis = self.module.metadata['time']
+                timeValues = np.array( object=timeAxis.getValue() )
+                relTimeRef = cdtime.reltime( relTimeValueRef, ReferenceTimeUnits )
+                relTime0 = relTimeRef.torel( timeAxis.units )
+                timeIndex = timeValues.searchsorted( relTime0.value ) 
+                if ( timeIndex >= len( timeValues ) ): timeIndex = len( timeValues ) - 1
+                relTimeValue0 =  timeValues[ timeIndex ]
+                r0 = cdtime.reltime( relTimeValue0, timeAxis.units )
+                relTimeRef = r0.torel( ReferenceTimeUnits )
+                relTimeValueRefAdj = relTimeRef.value
+                print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
+                displayText = self.getTextDisplay()
+                HyperwallManager.singleton.processGuiCommand( ['reltimestep', relTimeValueRefAdj, displayText ], False  )
+                for module in self.activeModuleList:
+                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
+                    module.updateAnimation( relTimeValueRefAdj, displayText  )
+            except Exception, err:
+                print>>sys.stdout, "Error in setTimestep[%d]: %s " % ( iTimestep, str(err) )
 
     def stop(self):
         self.runButton.setText('Run')
