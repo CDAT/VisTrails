@@ -888,7 +888,7 @@ class IVModuleConfigurationDialog( QWidget ):
         command = [ self.name ]
         value = self.getValue()
         command.extend( value )
-        HyperwallManager.singleton.processGuiCommand( command  )
+        HyperwallManager.getInstance().processGuiCommand( command  )
 
     def startParameter( self, *args ):
         self.emit( GuiConfigurableFunction.start_parameter_signal, self.name, self.getValue() )
@@ -1710,7 +1710,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 relTimeValueRefAdj = relTimeRef.value
                 print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
                 displayText = self.getTextDisplay()
-                HyperwallManager.singleton.processGuiCommand( ['reltimestep', relTimeValueRefAdj, displayText ], False  )
+                HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, displayText ], False  )
                 for module in self.activeModuleList:
                     dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
                     module.updateAnimation( relTimeValueRefAdj, displayText  )

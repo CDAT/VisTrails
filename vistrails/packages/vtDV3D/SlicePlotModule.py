@@ -58,7 +58,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.drawImageData()
 
     def updateHyperwall(self):
-        HyperwallManager.singleton.executeCurrentWorkflow( self.moduleID )
+        HyperwallManager.getInstance().executeCurrentWorkflow( self.moduleID )
 
     def formatCoord( self, x, y ):
         numrows, numcols  = self.image_data.shape

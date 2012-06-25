@@ -23,6 +23,7 @@ class QiVisClient(QtCore.QObject):
         self.timer.start()
         self.socket = QTcpSocket()
         self.current_pipeline = None
+        self.current_config_function = None  
 
         self.server = server # os.environ.get( 'DV3D_HW_SERVER_NAME', server )
         self.serverPort = int(serverPort)
@@ -149,12 +150,21 @@ class QiVisClient(QtCore.QObject):
             if self.current_pipeline:
                 for module in self.current_pipeline.module_list:
                     persistentCellModule = ModuleStore.getModule( module.id ) 
-                    persistentCellModule.updateAnimation( relTimeValue, displayText  )
+                    if persistentCellModule: persistentCellModule.updateAnimation( relTimeValue, displayText  )
+        elif terms[0] == "pipelineHelper":
+            if self.current_config_function:
+                if self.current_config_function.type == 'leveling':
+                    range = list( self.current_config_function.range )
+                    cmd_args = terms[1].split('-')
+                    print " --- PipelineHelper: ", str( cmd_args )
+                    self.current_config_function.broadcastLevelingData( range  )
+                else:
+                    print " --- PipelineHelper, config type: ", self.current_config_function.type
         else:
             if self.current_pipeline:
                 for module in self.current_pipeline.module_list:
                     persistentCellModule = ModuleStore.getModule( module.id ) 
-                    persistentCellModule.updateConfigurationObserver( terms[0], terms[1:] )
+                    if persistentCellModule: persistentCellModule.updateConfigurationObserver( terms[0], terms[1:] )
 #        if terms[0] == 'colormap':
 #             cmapData = terms[1]
 #             displayText =  terms[2]  
@@ -236,7 +246,8 @@ class QiVisClient(QtCore.QObject):
                 for module in self.current_pipeline.module_list:
                     persistentModule = ModuleStore.getModule( module.id ) 
                     if persistentModule:
-                        persistentModule.updateInteractionState( state, altMode )   
+                        cf = persistentModule.updateInteractionState( state, altMode ) 
+                        if cf: self.current_config_function = cf  
                     else: print "Can't find client persistentModule: ", module.id        
         else: 
             newEvent = None      

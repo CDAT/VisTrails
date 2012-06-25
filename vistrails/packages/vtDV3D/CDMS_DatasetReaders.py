@@ -214,7 +214,7 @@ class CDMSDatasetRecord():
         args1 = {} 
         gridMaker = None
         decimationFactor = 1
-        if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.singleton.isServer else decimation[0]+1
+        if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.getInstance().isServer else decimation[0]+1
 #        try:
         args1['time'] = timeValue
         if gridBounds[0] < LonMin and gridBounds[0]+360.0<LonMax: gridBounds[0] = gridBounds[0] + 360.0
@@ -335,7 +335,7 @@ class CDMSDatasetRecord():
         gridMaker = None
         decimationFactor = 1
         order = 'xyt' if ( timeBounds == None) else 'xyz'
-        if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.singleton.isServer else decimation[0]+1
+        if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.getInstance().isServer else decimation[0]+1
         try:
             nts = self.dataset['time'].shape[0]
             if timeValue and (nts>1): args1['time'] = timeValue

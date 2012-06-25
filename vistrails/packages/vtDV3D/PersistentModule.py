@@ -713,7 +713,7 @@ class PersistentModule( QObject ):
         self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, pmod=self, **args )
                         
     def addConfigurableGuiFunction(self, name, guiClass, key, **args):
-        isActive = not HyperwallManager.singleton.isClient
+        isActive = not HyperwallManager.getInstance().isClient
         guiCF = GuiConfigurableFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
 
@@ -869,7 +869,7 @@ class PersistentModule( QObject ):
         if self.ndims == 3: self.getLabelActor().VisibilityOff()
         if self.configuring: 
             print " ~~~~~~ Finalize Leveling: ndims = %d, interactionState = %s " % ( self.ndims, self.InteractionState )
-            HyperwallManager.singleton.setInteractionState( None )
+            HyperwallManager.getInstance().setInteractionState( None )
             self.finalizeConfigurationObserver( self.InteractionState )            
             if (self.ndims == 3) and self.iren: 
                 self.iren.SetInteractorStyle( self.navigationInteractorStyle )
@@ -1555,13 +1555,14 @@ class PersistentVisualizationModule( PersistentModule ):
             print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
             if state <> None: 
                 self.updateInteractionState( state, self.isAltMode  )                 
-                HyperwallManager.singleton.setInteractionState( state, self.isAltMode )
+                HyperwallManager.getInstance().setInteractionState( state, self.isAltMode )
                 self.isAltMode = False 
                 
     def resetCamera(self):
         pass
                 
     def updateInteractionState( self, state, altMode ): 
+        rcf = None
         if state == None: 
             self.finalizeLeveling()
             self.endInteraction()   
@@ -1570,6 +1571,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 configFunct = self.configurableFunctions[ self.InteractionState ]
                 configFunct.close()   
             configFunct = self.configurableFunctions.get( state, None )
+            if configFunct.type <> 'generic': rcf = configFunct
             if not configFunct and self.acceptsGenericConfigs:
                 configFunct = ConfigurableFunction( state, None, None, pmod=self )              
                 self.configurableFunctions[ state ] = configFunct
@@ -1579,6 +1581,8 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.InteractionState = state                   
                 self.LastInteractionState = self.InteractionState
                 self.disableVisualizationInteraction()
+                return configFunct
+        return rcf
                    
     def endInteraction( self ):
         PersistentModule.endInteraction( self )

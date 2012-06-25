@@ -22,6 +22,7 @@ from core.uvcdat.plot_registry import get_plot_registry
 from core.modules.module_registry import get_module_registry
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+from packages.vtDV3D import HyperwallManager
 
 def getFormattedQString( value ):
     val = float( value )
@@ -67,7 +68,7 @@ class ConfigMenuManager( QObject ):
 #        self.emit( SIGNAL('startConfig(QString,QString)'), action_key, key )
 
     def endInteraction( self ):
-        self.callbacks[1]()
+        if self.callbacks: self.callbacks[1]()
 #        self.emit( SIGNAL('endConfig()') ) 
                 
     def reset(self):
@@ -187,7 +188,9 @@ class DV3DRangeConfigWidget(QFrame):
             parm_range = list( self.active_cfg_cmd.range ) 
             parm_range[ iSlider ] = fval
             self.active_cfg_cmd.broadcastLevelingData( parm_range )             
-            if self.active_module: self.active_module.render()
+            if self.active_module:
+                self.active_module.render()
+                HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'text-%d' % iSlider, fval ]  )
         
     def setTitle(self, title ):
         self.cfg_action_label.setText( title )
@@ -200,7 +203,9 @@ class DV3DRangeConfigWidget(QFrame):
             parm_range[ iSlider ] = fval
             self.sliders[iSlider].setDisplayValue( fval )
             self.active_cfg_cmd.broadcastLevelingData( parm_range )             
-            if self.active_module: self.active_module.render()
+            if self.active_module: 
+                self.active_module.render()
+                HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'slider-%d' % iSlider, fval ]  )
         
     def updateSliderValues( self, initialize=False ): 
         if self.active_cfg_cmd:

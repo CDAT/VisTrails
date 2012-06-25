@@ -348,7 +348,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             
             if action == ImagePlaneWidget.Cursoring:   
                 if not self.isSlicing:
-                    HyperwallManager.singleton.setInteractionState( 'VolumeSlicer.Slicing' )
+                    HyperwallManager.getInstance().setInteractionState( 'VolumeSlicer.Slicing' )
                     self.isSlicing = True
                 image_value = caller.GetCurrentImageValue() 
                 cpos = caller.GetCurrentCursorPosition()     
@@ -361,7 +361,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 
             if action == ImagePlaneWidget.Pushing:  
                 if not self.isSlicing:
-                    HyperwallManager.singleton.setInteractionState( 'VolumeSlicer.Slicing' )
+                    HyperwallManager.getInstance().setInteractionState( 'VolumeSlicer.Slicing' )
                     self.isSlicing = True 
                 sliceIndex = caller.GetSliceIndex() 
                 axisName, spos = self.getWorldCoord( sliceIndex, iAxis )
@@ -390,7 +390,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.imageRescale.SetInput( resliceOutput )
 #        self.updateSliceOutput()
 #        self.endInteraction()
-#        HyperwallManager.singleton.setInteractionState( None )
+#        HyperwallManager.getInstance().setInteractionState( None )
 #        self.isSlicing = False
 #        
 #        active_irens = self.getActiveIrens()        
