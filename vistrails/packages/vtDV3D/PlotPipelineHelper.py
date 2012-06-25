@@ -261,6 +261,7 @@ class DV3DRangeConfigWidget(QFrame):
         if self.active_module:
             interactionState = self.active_cfg_cmd.name
             self.active_module.finalizeConfigurationObserver( interactionState ) 
+            HyperwallManager.getInstance().setInteractionState( None )
             self.active_cfg_cmd.updateWindow()   
         self.endConfig()
 
@@ -270,6 +271,7 @@ class DV3DRangeConfigWidget(QFrame):
             self.active_cfg_cmd.broadcastLevelingData( self.initialRange )  
             interactionState = self.active_cfg_cmd.name
             self.active_module.finalizeConfigurationObserver( interactionState ) 
+            HyperwallManager.getInstance().setInteractionState( None )
             self.active_cfg_cmd.updateWindow()   
         self.endConfig()
         

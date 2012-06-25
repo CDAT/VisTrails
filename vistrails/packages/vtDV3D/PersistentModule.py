@@ -1571,7 +1571,9 @@ class PersistentVisualizationModule( PersistentModule ):
                 configFunct = self.configurableFunctions[ self.InteractionState ]
                 configFunct.close()   
             configFunct = self.configurableFunctions.get( state, None )
-            if configFunct.type <> 'generic': rcf = configFunct
+            if configFunct and ( configFunct.type <> 'generic' ): 
+                rcf = configFunct
+                print " UpdateInteractionState, state = %s, cf = %s " % ( state, str(configFunct) )
             if not configFunct and self.acceptsGenericConfigs:
                 configFunct = ConfigurableFunction( state, None, None, pmod=self )              
                 self.configurableFunctions[ state ] = configFunct
@@ -1581,7 +1583,6 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.InteractionState = state                   
                 self.LastInteractionState = self.InteractionState
                 self.disableVisualizationInteraction()
-                return configFunct
         return rcf
                    
     def endInteraction( self ):
