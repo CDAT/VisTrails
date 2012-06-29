@@ -16,7 +16,7 @@ from widgets import GraphicsMethodConfigurationWidget
 from gui.theme import CurrentTheme
 from gui.common_widgets import QDockPushButton
 from gui.uvcdat.dockplot import PlotTreeWidgetItem
-from gui.uvcdat.uvcdatCommons import plotTypes
+from gui.uvcdat.uvcdatCommons import plotTypes, gmInfos
 import api
 
 class CDMSPipelineHelper(PlotPipelineHelper):
@@ -207,35 +207,13 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         return (op_module, actions)
                 
     @staticmethod
-    def build_plot_pipeline_action(controller, version, var_modules, plot_objs, 
-                                   row, col, templates=[]):
-        """build_plot_pipeline_action(controller: VistrailController,
-                                      version: long,
-                                      var_modules: [list of modules],
-                                      plot_objs: [list of Plot objects],
-                                      row: int,
-                                      col: int,
-                                      templates: [list of str]) -> Action 
-        
-        This function will create the complete workflow and add it to the
-        provenance. You should make sure to update the state of the controller
-        so its current_version is version before adding the VisTrails action to 
-        the provenance.
-        row and col contain the position of the cell in the spreadsheet the 
-        workflow should be displayed.
-        It will create plot overlays based on the list of plot_objs given. 
-        """
-        # FIXME want to make sure that nothing changes if var_module
-        # or plot_module do not change
-        added_vars = []
-        if controller is None:
-            controller = api.get_current_controller()
-            version = 0L
+    def create_actions_from_plot_objs(controller, var_modules, cell_module, 
+                                      plot_objs, templates, added_vars, istart=0):
         reg = get_module_registry()
-        cell_module = controller.create_module_from_descriptor(
-            reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 'CDMSCell'))
-        ops = [('add', cell_module)]
+        ops = []
         for i, plot_obj in enumerate(plot_objs):
+            if i < istart:
+                continue
             plot_type = plot_obj.parent
             plot_gm = plot_obj.name
             plot_descriptor = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
@@ -313,10 +291,47 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                         conn2 = controller.create_connection(var_modules[-1], 'output_var',
                                                      plot_module, 'variable')
                     ops.append(('add', conn2))
-             
             cell_conn = controller.create_connection(plot_module, 'self',
                                                          cell_module, 'plot')
             ops.append(('add', cell_conn))
+        return ops
+    
+    @staticmethod
+    def build_plot_pipeline_action(controller, version, var_modules, plot_objs, 
+                                   row, col, templates=[]):
+        """build_plot_pipeline_action(controller: VistrailController,
+                                      version: long,
+                                      var_modules: [list of modules],
+                                      plot_objs: [list of Plot objects],
+                                      row: int,
+                                      col: int,
+                                      templates: [list of str]) -> Action 
+        
+        This function will create the complete workflow and add it to the
+        provenance. You should make sure to update the state of the controller
+        so its current_version is version before adding the VisTrails action to 
+        the provenance.
+        row and col contain the position of the cell in the spreadsheet the 
+        workflow should be displayed.
+        It will create plot overlays based on the list of plot_objs given. 
+        """
+        # FIXME want to make sure that nothing changes if var_module
+        # or plot_module do not change
+        if controller is None:
+            controller = api.get_current_controller()
+            version = 0L
+        added_vars = []
+        reg = get_module_registry()
+        cell_module = controller.create_module_from_descriptor(
+            reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 'CDMSCell'))
+        ops = [('add', cell_module)]
+        ops2 = CDMSPipelineHelper.create_actions_from_plot_objs(controller, 
+                                                                var_modules, 
+                                                                cell_module, 
+                                                                plot_objs, 
+                                                                templates,
+                                                                added_vars)
+        ops.extend(ops2)
         loc_module = controller.create_module_from_descriptor(
             reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet', 
                                        'CellLocation'))
@@ -328,6 +343,125 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                                                         cell_module, 'Location')
         ops.extend([('add', loc_module),
                     ('add', loc_conn)])
+        action = core.db.action.create_action(ops)
+        controller.change_selected_version(version)
+        controller.add_new_action(action)
+        controller.perform_action(action)
+        return action
+    
+    @staticmethod
+    def remove_variables_from_pipeline_action(controller, version):
+        pipeline = controller.vistrail.getPipeline(version)
+        
+        variable_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSVariable,
+                                                                          CDMSVariableOperation])
+        ids = []
+        for var in variable_modules:
+            ids.append(var.id)
+        action = controller.delete_module_list(ids)
+        return action
+        
+    @staticmethod
+    def update_plot_pipeline_action(controller, version, var_modules, plot_objs,
+                                    row, col, templates=[]):
+        """update_plot_pipeline_action(controller: VistrailController,
+                                      version: long,
+                                      var_modules: [list of modules],
+                                      plot_objs: [list of Plot objects],
+                                      row: int,
+                                      col: int,
+                                      templates: [list of str]) -> Action 
+        
+        This function will update the workflow and add it to the
+        provenance. It will reuse the plot configurations that are already in 
+        the pipeline. You should make sure to update the state of the controller
+        so its current_version is version before adding the VisTrails action to 
+        the provenance.
+        row and col contain the position of the cell in the spreadsheet the 
+        workflow should be displayed, but as we keep a single cell, we don't
+        use those parameters.
+         
+        """
+        # FIXME want to make sure that nothing changes if var_module
+        # or plot_module do not change
+        added_vars = []
+        if controller is None:
+            controller = api.get_current_controller()
+            version = 0L
+        action = CDMSPipelineHelper.remove_variables_from_pipeline_action(controller, version)
+        version = action.id
+        pipeline = controller.vistrail.getPipeline(version)
+        ops = []
+        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+        cell_module = CDMSPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
+        for i, plot_module in enumerate(plot_modules):
+            if i < len(var_modules):    
+                if issubclass(var_modules[i].module_descriptor.module, CDMSVariable):
+                    ops.append(('add', var_modules[i]))
+                    added_vars.append(var_modules[i])
+        
+                if issubclass(var_modules[i].module_descriptor.module, CDMSVariable):
+                    conn = controller.create_connection(var_modules[i], 'self',
+                                                plot_module, 'variable')
+                else:
+                    conn = controller.create_connection(var_modules[i], 'output_var',
+                                                plot_module, 'variable')
+                ops.append(('add', conn))
+                var_num = int(gmInfos[plot_module.module_descriptor.module.plot_type]["nSlabs"])
+                if var_num > 1:
+                    if i + 1 < len(var_modules):
+                        idx = i+1
+                    else:
+                        idx = i
+                    if issubclass(var_modules[idx].module_descriptor.module, CDMSVariable):
+                        conn2 = controller.create_connection(var_modules[idx], 'self',
+                                                     plot_module, 'variable2')
+                        if var_modules[idx] not in added_vars:
+                            ops.append(('add', var_modules[idx]))
+                            added_vars.append(var_modules[idx])
+                    else:
+                        conn2 = controller.create_connection(var_modules[idx], 'output_var',
+                                                     plot_module, 'variable')
+                    ops.append(('add', conn2))
+            else:
+                #there are fewer variables than plots. We will use the last
+                #variable in the list
+                if issubclass(var_modules[-1].module_descriptor.module, CDMSVariable):
+                    if var_modules[-1] not in added_vars:
+                        ops.append(('add', var_modules[-1]))
+                        added_vars.append(var_modules[-1])
+                ops.append(('add', plot_module)) 
+        
+                if issubclass(var_modules[-1].module_descriptor.module, CDMSVariable):
+                    conn = controller.create_connection(var_modules[-1], 'self',
+                                                plot_module, 'variable')
+                else:
+                    conn = controller.create_connection(var_modules[-1], 'output_var',
+                                                plot_module, 'variable')
+                ops.append(('add', conn))
+                var_num = int(gmInfos[plot_module.module_descriptor.module.plot_type]["nSlabs"])
+                if var_num > 1:
+                    if issubclass(var_modules[-1].module_descriptor.module, CDMSVariable):
+                        conn2 = controller.create_connection(var_modules[-1], 'self',
+                                                     plot_module, 'variable2')
+                        if var_modules[-1] not in added_vars:
+                            ops.append(('add', var_modules[-1]))
+                            added_vars.append(var_modules[-1])
+                        
+                    else:
+                        conn2 = controller.create_connection(var_modules[-1], 'output_var',
+                                                     plot_module, 'variable')
+                    ops.append(('add', conn2))
+             
+        istart = len(plot_modules)
+        ops2 = CDMSPipelineHelper.create_actions_from_plot_objs(controller, 
+                                                                var_modules, 
+                                                                cell_module, 
+                                                                plot_objs, 
+                                                                templates,
+                                                                added_vars,
+                                                                istart)
+        ops.extend(ops2)
         action = core.db.action.create_action(ops)
         controller.change_selected_version(version)
         controller.add_new_action(action)
@@ -470,49 +604,49 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             ptype = CDMSPipelineHelper.get_plot_type_from_module(pl_module)
             cell.plots.append(get_plot_manager().get_plot(plot_type, ptype, gmName))
         
-    @staticmethod
-    def update_pipeline_action(controller, version, plot_modules):
-        pipeline = controller.vistrail.getPipeline(version)
-        pip_plots =  CDMSPipelineHelper.find_plot_modules(pipeline)
-        cell = CDMSPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
-        
-        pip_plot_map = {}
-        plot_map = {}
-        
-        to_be_added = []
-        for pm in pip_plots:
-            pip_plot_map[pm.id] = pm
-        for m in plot_modules:
-            plot_map[m.id] = m
-            if m.id not in pip_plot_map:
-                to_be_added.append(m)
-        to_be_removed = []
-        for pm in pip_plots:
-            if pm.id not in plot_map:
-                to_be_removed.append(pm.id)
-        if len(to_be_removed) > 0:
-            action = controller.delete_module_list(to_be_removed)
-            version = action.id
-            pipeline = controller.vistrail.getPipeline(version)
-            
-        
-        ops = []
-        conns_to = controller.get_connections_to(pipeline,[cell.id],"plot")    
-        for conn in conns_to:
-            if conn.source.moduleId not in to_be_removed:
-                ops.append(('delete',conn.id))
-        for m in to_be_added:
-            ops.append(('add', m))
-        for m in plot_modules:
-            conn = controller.create_connection(m, 'self',
-                                                cell, 'plot')
-            ops.append('add',conn)
-        
-        action = core.db.action.create_action(ops)
-        controller.change_selected_version(version)
-        controller.add_new_action(action)
-        controller.perform_action(action)
-        return action
+#    @staticmethod
+#    def update_pipeline_action(controller, version, plot_modules):
+#        pipeline = controller.vistrail.getPipeline(version)
+#        pip_plots =  CDMSPipelineHelper.find_plot_modules(pipeline)
+#        cell = CDMSPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
+#        
+#        pip_plot_map = {}
+#        plot_map = {}
+#        
+#        to_be_added = []
+#        for pm in pip_plots:
+#            pip_plot_map[pm.id] = pm
+#        for m in plot_modules:
+#            plot_map[m.id] = m
+#            if m.id not in pip_plot_map:
+#                to_be_added.append(m)
+#        to_be_removed = []
+#        for pm in pip_plots:
+#            if pm.id not in plot_map:
+#                to_be_removed.append(pm.id)
+#        if len(to_be_removed) > 0:
+#            action = controller.delete_module_list(to_be_removed)
+#            version = action.id
+#            pipeline = controller.vistrail.getPipeline(version)
+#            
+#        
+#        ops = []
+#        conns_to = controller.get_connections_to(pipeline,[cell.id],"plot")    
+#        for conn in conns_to:
+#            if conn.source.moduleId not in to_be_removed:
+#                ops.append(('delete',conn.id))
+#        for m in to_be_added:
+#            ops.append(('add', m))
+#        for m in plot_modules:
+#            conn = controller.create_connection(m, 'self',
+#                                                cell, 'plot')
+#            ops.append('add',conn)
+#        
+#        action = core.db.action.create_action(ops)
+#        controller.change_selected_version(version)
+#        controller.add_new_action(action)
+#        controller.perform_action(action)
+#        return action
         
     @staticmethod
     def build_python_script_from_pipeline(controller, version, plot_objs=[]):

@@ -46,13 +46,16 @@ class ControllerCell(object):
         return res
     
     def add_variable(self, varname):
+        replaced = False
         if len(self.variables) < self.get_plots_varnum():
             self.variables.append(varname)
         else:
             if len(self.variables) > 0:
                 self.variables.pop()
+                replaced = True
             self.variables.append(varname)
-            
+        return replaced
+    
     def add_template(self, template):
         if len(self.templates) < len(self.plots):
             self.templates.append(template)
