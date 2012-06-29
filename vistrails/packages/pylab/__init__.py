@@ -46,9 +46,10 @@ def package_dependencies():
     import core.packagemanager
     manager = core.packagemanager.get_package_manager()
     if manager.has_package('edu.utah.sci.vistrails.spreadsheet'):
-        return ['edu.utah.sci.vistrails.spreadsheet']
+        return ['edu.utah.sci.vistrails.spreadsheet',
+                'gov.llnl.uvcdat.cdms']
     else:
-        return []
+        return ['gov.llnl.uvcdat.cdms']
 
 def package_requirements():
     import core.requirements
