@@ -1405,26 +1405,32 @@ class PersistentVisualizationModule( PersistentModule ):
     def creatTitleActor( self ):
         pass
     
-    def createTextActor( self, id, pos, **args ):
-          textActor = vtk.vtkTextActor()  
-          textActor.SetTextScaleModeToNone()        
-          textprop = textActor.GetTextProperty()
-          textprop.SetColor( *args.get( 'color', ( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] ) ) )
-          textprop.SetFontFamilyToArial()
-          textprop.SetOpacity ( args.get( 'opacity', 1.0 ) )
-          textprop.SetFontSize( args.get( 'size', 12 ) )
-          if args.get( 'bold', False ): textprop.BoldOn()
-          else: textprop.BoldOff()
-          textprop.ItalicOff()
-          textprop.ShadowOff()
-          textprop.SetJustificationToLeft()
-          textprop.SetVerticalJustificationToBottom()        
-          coord = textActor.GetPositionCoordinate()
-          coord.SetCoordinateSystemToNormalizedViewport()
-          coord.SetValue( pos[0], pos[1] )        
-          textActor.VisibilityOff()
-          textActor.id = id
-          return textActor
+    def setTextPosition(self, textActor, pos, size=[300,30] ):
+        vpos = [ 2, 2 ]
+        if self.renderer: 
+            vp = self.renderer.GetSize()
+            vpos = [ pos[i]*vp[i] for i in [0,1] ]
+        textActor.GetPositionCoordinate().SetValue( vpos[0], vpos[1] )      
+        textActor.GetPosition2Coordinate().SetValue( vpos[0] + size[0], vpos[1] + size[1] )      
+    
+    def createTextActor( self, id, **args ):
+        textActor = vtk.vtkTextActor()  
+        textActor.SetTextScaleMode( vtk.vtkTextActor.TEXT_SCALE_MODE_PROP )        
+        textprop = textActor.GetTextProperty()
+        textprop.SetColor( *args.get( 'color', ( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] ) ) )
+        textprop.SetOpacity ( args.get( 'opacity', 1.0 ) )
+        textprop.SetFontSize( args.get( 'size', 10 ) )
+        if args.get( 'bold', False ): textprop.BoldOn()
+        else: textprop.BoldOff()
+        textprop.ItalicOff()
+        textprop.ShadowOff()
+        textprop.SetJustificationToLeft()
+        textprop.SetVerticalJustificationToBottom()        
+        textActor.GetPositionCoordinate().SetCoordinateSystemToDisplay()
+        textActor.GetPosition2Coordinate().SetCoordinateSystemToDisplay() 
+        textActor.VisibilityOff()
+        textActor.id = id
+        return textActor
           
     def getLabelActor(self):
         return self.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
@@ -1436,14 +1442,14 @@ class PersistentVisualizationModule( PersistentModule ):
         return self.getTextActor( 'instruction', self.instructionBuffer,  (.1, .85 ), size = VTK_INSTRUCTION_SIZE, bold = True, color = ( 1.0, 0.1, 0.1 ), opacity=0.65  )
 
     def getTextActor( self, id, text, pos, **args ):
-      textActor = self.getProp( 'vtkTextActor', id  )
-      if textActor == None:
-          textActor = self.createTextActor( id, pos, **args  )
-          if self.renderer: 
-              self.renderer.AddViewProp( textActor )
-      textActor.SetInput( text )
-      textActor.Modified()
-      return textActor
+        textActor = self.getProp( 'vtkTextActor', id  )
+        if textActor == None:
+            textActor = self.createTextActor( id, **args  )
+            if self.renderer: self.renderer.AddViewProp( textActor )
+        self.setTextPosition( textActor, pos )
+        textActor.SetInput( str(text) )
+        textActor.Modified()
+        return textActor
 
     def finalizeRendering(self):
         pass
