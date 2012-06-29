@@ -17,6 +17,7 @@ from packages.vtDV3D import HyperwallManager
 from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
 ReferenceTimeUnits = "days since 1900-1-1"
+MIN_LINE_LEN = 50
 
 moduleInstances = {}
 
@@ -36,7 +37,25 @@ def ExtendClassDocumentation( klass ):
     instance = klass()
     default_doc = "" if ( klass.__doc__ == None ) else klass.__doc__ 
     klass.__doc__ = " %s\n %s " % ( default_doc, instance.getConfigurationHelpText() )
- 
+
+def massageText( text, target_line_len=60 ):
+    text_lines = text.split('\n')
+    linelen = 0
+    for iLine in range(len(text_lines)):
+        line = text_lines[iLine]
+        linelen = len( line )
+        if linelen > target_line_len: 
+            line_segs = line.split('/')
+            seg_len = 0
+            for iSeg in range(len( line_segs )):
+                seg_len += len( line_segs[iSeg] )
+                if seg_len > target_line_len: break
+            text_lines[iLine] = '/'.join(line_segs[0:iSeg]) + '/\n' + '/'.join( line_segs[iSeg:-1] )  
+                         
+    if linelen < target_line_len: text_lines[-1] += (' '*(target_line_len-linelen)) 
+    rv = '\n'.join( text_lines )
+    print "PROCESSED TEXT: { %s }" % rv
+    return rv 
 ################################################################################      
 
 class AlgorithmOutputModule( Module ):
@@ -1211,13 +1230,13 @@ class PersistentVisualizationModule( PersistentModule ):
 
     def updateTextDisplay( self, text = None ):
         if (text <> None) and (self.renderer <> None): 
-            self.labelBuff = text
+            self.labelBuff = str(text)
             if (self.ndims == 3):                
                 self.getLabelActor().VisibilityOn()
                 
     def displayInstructions( self, text ):
         if (self.renderer <> None) and (self.textBlinkThread == None): 
-            self.instructionBuffer = text
+            self.instructionBuffer = str(text)
             if (self.ndims == 3):                
                 actor = self.getInstructionActor()
                 if actor:
@@ -1405,7 +1424,7 @@ class PersistentVisualizationModule( PersistentModule ):
     def creatTitleActor( self ):
         pass
     
-    def setTextPosition(self, textActor, pos, size=[300,30] ):
+    def setTextPosition(self, textActor, pos, size=[400,30] ):
         vpos = [ 2, 2 ]
         if self.renderer: 
             vp = self.renderer.GetSize()
@@ -1415,7 +1434,8 @@ class PersistentVisualizationModule( PersistentModule ):
     
     def createTextActor( self, id, **args ):
         textActor = vtk.vtkTextActor()  
-        textActor.SetTextScaleMode( vtk.vtkTextActor.TEXT_SCALE_MODE_PROP )        
+        textActor.SetTextScaleMode( vtk.vtkTextActor.TEXT_SCALE_MODE_PROP )  
+#        textActor.SetMaximumLineHeight( 0.4 )       
         textprop = textActor.GetTextProperty()
         textprop.SetColor( *args.get( 'color', ( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] ) ) )
         textprop.SetOpacity ( args.get( 'opacity', 1.0 ) )
@@ -1447,7 +1467,11 @@ class PersistentVisualizationModule( PersistentModule ):
             textActor = self.createTextActor( id, **args  )
             if self.renderer: self.renderer.AddViewProp( textActor )
         self.setTextPosition( textActor, pos )
-        textActor.SetInput( str(text) )
+        text_lines = text.split('\n')
+        linelen = len(text_lines[-1])
+        if linelen < MIN_LINE_LEN: text += (' '*(MIN_LINE_LEN-linelen)) 
+        text += '.'
+        textActor.SetInput( text )
         textActor.Modified()
         return textActor
 
