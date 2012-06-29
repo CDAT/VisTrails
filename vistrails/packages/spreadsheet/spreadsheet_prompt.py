@@ -95,5 +95,11 @@ class QPromptCellWidget(QCellContainer):
     def setPlotPromptText(self, text):
         self.plot_prompt.setPromptText(text)
         
+    def dumpToFile(self, filename):
+        #do nothing
+        pass
     
+    def saveToPDF(self, filename):
+        #do nothing
+        pass
         
