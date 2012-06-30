@@ -22,6 +22,7 @@ from core.uvcdat.plot_registry import get_plot_registry
 from core.modules.module_registry import get_module_registry
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+from packages.vtDV3D import HyperwallManager
 
 def getFormattedQString( value ):
     val = float( value )
@@ -62,12 +63,12 @@ class ConfigMenuManager( QObject ):
         actionList  =  self.actionMap[ action_key ]
         for ( module, key ) in actionList:
             module.processKeyEvent( key )
-        if self.callbacks:
+        if self.callbacks and (key in self.cfg_cmds):
             self.callbacks[0]( action_key, key )
 #        self.emit( SIGNAL('startConfig(QString,QString)'), action_key, key )
 
     def endInteraction( self ):
-        self.callbacks[1]()
+        if self.callbacks: self.callbacks[1]()
 #        self.emit( SIGNAL('endConfig()') ) 
                 
     def reset(self):
@@ -130,6 +131,7 @@ class DV3DRangeConfigWidget(QFrame):
     
     def __init__( self, parent=None):
         QWidget.__init__( self, parent )
+        print ' ----------------------------------------- create new widget: %x ----------------------------------------- ----------------------------------------- ----------------------------------------- ' % id( self )
 #        self.setStyleSheet("QWidget#RangeConfigWidget { border-style: outset; border-width: 2px; border-color: blue; }" )
         self.setFrameStyle( QFrame.StyledPanel | QFrame.Raised )
         self.setLineWidth(2)
@@ -170,6 +172,9 @@ class DV3DRangeConfigWidget(QFrame):
         self.setLayout(main_layout)
         self.disable()
         
+    def __del__(self):
+        self.deactivate_current_command()
+        
     def initialize(self):
         self.active_cfg_cmd = None
         self.active_module = None
@@ -183,7 +188,9 @@ class DV3DRangeConfigWidget(QFrame):
             parm_range = list( self.active_cfg_cmd.range ) 
             parm_range[ iSlider ] = fval
             self.active_cfg_cmd.broadcastLevelingData( parm_range )             
-            if self.active_module: self.active_module.render()
+            if self.active_module:
+                self.active_module.render()
+                HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'text-%d' % iSlider, fval ]  )
         
     def setTitle(self, title ):
         self.cfg_action_label.setText( title )
@@ -196,10 +203,13 @@ class DV3DRangeConfigWidget(QFrame):
             parm_range[ iSlider ] = fval
             self.sliders[iSlider].setDisplayValue( fval )
             self.active_cfg_cmd.broadcastLevelingData( parm_range )             
-            if self.active_module: self.active_module.render()
-             
+            if self.active_module: 
+                self.active_module.render()
+                HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'slider-%d' % iSlider, fval ]  )
+        
     def updateSliderValues( self, initialize=False ): 
         if self.active_cfg_cmd:
+            print ' update Slider Values, widget = %x ' % id( self )
             rbnds = self.active_cfg_cmd.range_bounds
             parm_range = list( self.active_cfg_cmd.range )
 #            print " Update Slider Values-> range: %s, bounds: %s " % ( str(parm_range), str(rbnds) )
@@ -219,6 +229,11 @@ class DV3DRangeConfigWidget(QFrame):
 
     def disable(self): 
         self.setVisible(False)
+        
+    def deactivate_current_command(self):
+        if self.active_cfg_cmd:
+            self.disconnect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues )
+            self.active_cfg_cmd = None
           
     def startConfig(self, qs_action_key, qs_cfg_key ):
         self.enable()
@@ -229,11 +244,13 @@ class DV3DRangeConfigWidget(QFrame):
             cmd_list = ConfigCommandMenuManager.getConfigCmd ( cfg_key )
             if cmd_list:
                 for cmd_entry in cmd_list:
+                    self.deactivate_current_command()
                     self.active_module = cmd_entry[0] 
                     self.active_cfg_cmd = cmd_entry[1] 
                     break
                 self.updateSliderValues(True)
-                self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), lambda: self.updateSliderValues() )
+                self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues ) 
+                self.active_cfg_cmd.updateActiveFunctionList()
         except RuntimeError:
             print "RuntimeError"
             
@@ -244,6 +261,7 @@ class DV3DRangeConfigWidget(QFrame):
         if self.active_module:
             interactionState = self.active_cfg_cmd.name
             self.active_module.finalizeConfigurationObserver( interactionState ) 
+            HyperwallManager.getInstance().setInteractionState( None )
             self.active_cfg_cmd.updateWindow()   
         self.endConfig()
 
@@ -253,6 +271,7 @@ class DV3DRangeConfigWidget(QFrame):
             self.active_cfg_cmd.broadcastLevelingData( self.initialRange )  
             interactionState = self.active_cfg_cmd.name
             self.active_module.finalizeConfigurationObserver( interactionState ) 
+            HyperwallManager.getInstance().setInteractionState( None )
             self.active_cfg_cmd.updateWindow()   
         self.endConfig()
         

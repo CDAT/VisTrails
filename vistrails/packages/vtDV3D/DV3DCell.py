@@ -197,7 +197,9 @@ class QVTKServerWidget( QVTKClientWidget ):
             cup = cam.GetViewUp()
             camera_pos = (cpos,cfol,cup)
         screen_pos = parse_cell_address( self.location )
-        HyperwallManager.singleton.processInteractionEvent( name, event, screen_pos, dims, camera_pos ) 
+        HyperwallManager.getInstance().processInteractionEvent( name, event, screen_pos, dims, camera_pos ) 
+        
+        
         
 #    def interactionEvent(self, istyle, name):
 #        """ interactionEvent(istyle: vtkInteractorStyle, name: str) -> None
@@ -353,7 +355,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         address = "A1"   
         if self.isClient:            
             cellLocation.sheetReference = StandardSheetReference()
-            cellLocation.sheetReference.sheetName = HyperwallManager.singleton.deviceName
+            cellLocation.sheetReference.sheetName = HyperwallManager.getInstance().deviceName
         else: 
             address_input = self.getInputValue( "cell_location", None )
             address = cell[1] if cell else getItem(  address_input )
@@ -363,7 +365,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             address = address.replace(' ', '').upper()
             cell_coordinates = parse_cell_address( address )
         else:
-            cell_coordinates = HyperwallManager.singleton.getCellCoordinatesForModule( moduleId )
+            cell_coordinates = HyperwallManager.getInstance().getCellCoordinatesForModule( moduleId )
             if cell_coordinates == None: return None
         cellLocation.col = cell_coordinates[0]
         cellLocation.row = cell_coordinates[1]
@@ -376,8 +378,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def updateHyperwall(self):
         dimensions = self.setCellLocation( self.moduleID )  
         if dimensions:      
-            HyperwallManager.singleton.addCell( self.moduleID, self.datasetId, str(0), dimensions )
-            HyperwallManager.singleton.executeCurrentWorkflow( self.moduleID )
+            HyperwallManager.getInstance().addCell( self.moduleID, self.datasetId, str(0), dimensions )
+            HyperwallManager.getInstance().executeCurrentWorkflow( self.moduleID )
 
     def isBuilt(self):
         return ( self.cellWidget <> None )
@@ -395,6 +397,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def execute(self, **args ):
         if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
         PersistentVisualizationModule.execute(self, **args)
+        self.recordCameraPosition()
         
     def addTitle(self):    
         title = getItem( self.getInputValue( "title", None ) )
@@ -402,15 +405,20 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if self.titleBuffer and self.renderer:
             self.getTitleActor().VisibilityOn() 
                       
-
-
+    def recordCameraPosition(self):
+        aCamera = self.renderer.GetActiveCamera()
+        self.cameraPosition = aCamera.GetPosition()
+        self.cameraFocalPoint = aCamera.GetFocalPoint()
+        self.cameraViewUp = aCamera.GetViewUp()
+         
     def resetCamera(self):
-            aCamera = self.renderer.GetActiveCamera()
-            aCamera.SetViewUp( 0, 0, 1 )
-            aCamera.SetPosition( 0.0, 0.0, ( self.mapCenter[0] + self.mapCenter[1] ) / 4.0 )
-            aCamera.SetFocalPoint( self.mapCenter[0], self.mapCenter[1], 0.0 )
-            aCamera.ComputeViewPlaneNormal()
-            self.renderer.ResetCamera()                
+        aCamera = self.renderer.GetActiveCamera()
+        aCamera.SetViewUp( *self.cameraViewUp )
+        aCamera.SetPosition( *self.cameraPosition )
+        aCamera.SetFocalPoint( *self.cameraFocalPoint )
+        aCamera.ComputeViewPlaneNormal()
+        self.renderer.ResetCamera() 
+        self.render()                            
         
     def buildWidget(self):                        
         if self.renderers:
@@ -549,7 +557,7 @@ class ChartCellConfigurationWidget(DV3DConfigurationWidget):
         opacity_layout.addWidget( self.opacitySlider )
         layout.addLayout( opacity_layout )
         
-        sheet_dims = HyperwallManager.singleton.getDimensions()
+        sheet_dims = HyperwallManager.getInstance().getDimensions()
 
         locationTab = QWidget()        
         self.tabbedWidget.addTab( locationTab, 'cell location' )                 
@@ -936,7 +944,7 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
         opacity_layout.addWidget( self.opacitySlider )
         layout.addLayout( opacity_layout )
         
-        sheet_dims = HyperwallManager.singleton.getDimensions()
+        sheet_dims = HyperwallManager.getInstance().getDimensions()
 
         locationTab = QWidget()        
         self.tabbedWidget.addTab( locationTab, 'cell location' )                 

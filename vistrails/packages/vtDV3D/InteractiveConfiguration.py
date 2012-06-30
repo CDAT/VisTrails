@@ -17,7 +17,7 @@ from packages.vtDV3D.CDATTask import deserializeTaskData
 from packages.vtDV3D import HyperwallManager
 from collections import OrderedDict
 from packages.vtDV3D.vtUtilities import *
-import cdms2
+import cdms2, cdtime
 
 
 class CDMSDataType:
@@ -532,12 +532,14 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         
     def broadcastLevelingData(  self, range = None  ):
         if range: self.range = range
+#        print " ** Broadcast Leveling: altMode = %s, range = %s, refine = %s, Modules: " % ( str( self.altMode ) , str( self.range[0:2] ), str( self.range[3:5] )  )
         self.setLevelDataHandler( self.range )
         self.module.render()
+#        print "   -> self = %x " % id(self.module)
         for cfgFunction in self.activeFunctionList:
             cfgFunction.setLevelDataHandler( self.range )
             cfgFunction.module.render()
-#        print " updateLeveling: altMode = %s, range = %s, refine = %s " % ( str( self.altMode ) , str( self.range[0:2] ), str( self.range[3:5] )  )
+#            print "   -> module = %x " % id(cfgFunction.module)
         return self.range # self.wrapData( range )
 
 ################################################################################
@@ -810,7 +812,8 @@ class IVModuleConfigurationDialog( QWidget ):
         pass
 
     def initWidgetFields( self, value, module ):
-        self.module = module
+        if ( self.module == None ) or ( module.renderer <> None ): 
+            self.module = module
         self.initValue = value
 
     def createActiveModulePanel(self ):
@@ -885,7 +888,7 @@ class IVModuleConfigurationDialog( QWidget ):
         command = [ self.name ]
         value = self.getValue()
         command.extend( value )
-        HyperwallManager.singleton.processGuiCommand( command  )
+        HyperwallManager.getInstance().processGuiCommand( command  )
 
     def startParameter( self, *args ):
         self.emit( GuiConfigurableFunction.start_parameter_signal, self.name, self.getValue() )
@@ -1687,18 +1690,32 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 return
 
     def setTimestep( self, iTimestep ):
+        from packages.vtDV3D.PersistentModule import ReferenceTimeUnits 
         if self.timeRange[0] == self.timeRange[1]:
             self.running = False
         else:
-            self.setValue( iTimestep )
-            sheetTabs = set()
-            relTimeValue = self.relTimeStart + self.iTimeStep * self.relTimeStep
-            print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValue, str( self.timeRange ) )
-            displayText = self.getTextDisplay()
-            HyperwallManager.singleton.processGuiCommand( ['reltimestep', relTimeValue, displayText ], False  )
-            for module in self.activeModuleList:
-                dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
-                module.updateAnimation( relTimeValue, displayText  )
+            try:
+                self.setValue( iTimestep )
+                sheetTabs = set()
+                relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
+                timeAxis = self.module.metadata['time']
+                timeValues = np.array( object=timeAxis.getValue() )
+                relTimeRef = cdtime.reltime( relTimeValueRef, ReferenceTimeUnits )
+                relTime0 = relTimeRef.torel( timeAxis.units )
+                timeIndex = timeValues.searchsorted( relTime0.value ) 
+                if ( timeIndex >= len( timeValues ) ): timeIndex = len( timeValues ) - 1
+                relTimeValue0 =  timeValues[ timeIndex ]
+                r0 = cdtime.reltime( relTimeValue0, timeAxis.units )
+                relTimeRef = r0.torel( ReferenceTimeUnits )
+                relTimeValueRefAdj = relTimeRef.value
+                print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
+                displayText = self.getTextDisplay()
+                HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, displayText ], False  )
+                for module in self.activeModuleList:
+                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
+                    module.updateAnimation( relTimeValueRefAdj, displayText  )
+            except Exception, err:
+                print>>sys.stdout, "Error in setTimestep[%d]: %s " % ( iTimestep, str(err) )
 
     def stop(self):
         self.runButton.setText('Run')

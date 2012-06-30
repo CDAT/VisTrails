@@ -5,6 +5,7 @@ Created on Nov 30, 2011
 '''
 import core.db.io, sys
 import core.modules.basic_modules
+from core.utils import unimplemented
 
 class PlotPipelineHelper(object):
     '''
@@ -16,6 +17,11 @@ class PlotPipelineHelper(object):
         '''
         Constructor
         '''
+        
+    @staticmethod
+    def update_plot_pipeline_action(controller, version, var_modules, plot_objs,
+                                     row, column, templates=[]):
+        unimplemented()
         
     @staticmethod
     def find_module_by_name(pipeline, module_name):

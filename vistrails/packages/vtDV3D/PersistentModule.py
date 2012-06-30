@@ -11,11 +11,13 @@ from core.modules.vistrails_module import Module, ModuleError
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.vtDV3D.InteractiveConfiguration import *
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
+from packages.vtDV3D import ModuleStore
 from db.domain import DBModule, DBAnnotation
 from packages.vtDV3D import HyperwallManager
 from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
 ReferenceTimeUnits = "days since 1900-1-1"
+MIN_LINE_LEN = 50
 
 moduleInstances = {}
 
@@ -35,7 +37,25 @@ def ExtendClassDocumentation( klass ):
     instance = klass()
     default_doc = "" if ( klass.__doc__ == None ) else klass.__doc__ 
     klass.__doc__ = " %s\n %s " % ( default_doc, instance.getConfigurationHelpText() )
- 
+
+def massageText( text, target_line_len=60 ):
+    text_lines = text.split('\n')
+    linelen = 0
+    for iLine in range(len(text_lines)):
+        line = text_lines[iLine]
+        linelen = len( line )
+        if linelen > target_line_len: 
+            line_segs = line.split('/')
+            seg_len = 0
+            for iSeg in range(len( line_segs )):
+                seg_len += len( line_segs[iSeg] )
+                if seg_len > target_line_len: break
+            text_lines[iLine] = '/'.join(line_segs[0:iSeg]) + '/\n' + '/'.join( line_segs[iSeg:-1] )  
+                         
+    if linelen < target_line_len: text_lines[-1] += (' '*(target_line_len-linelen)) 
+    rv = '\n'.join( text_lines )
+    print "PROCESSED TEXT: { %s }" % rv
+    return rv 
 ################################################################################      
 
 class AlgorithmOutputModule( Module ):
@@ -115,6 +135,7 @@ class PersistentModule( QObject ):
         self.pipeline = args.get( 'pipeline', None )
         self.units = ''
         self.taggedVersionMap = {}
+        self.persistedParameters = []
         self.versionTags = {}
         self.initVersionMap()
         self.datasetId = None
@@ -470,6 +491,9 @@ class PersistentModule( QObject ):
 #        return scalars
     def getUnits():
         return self.units
+    
+    def getCDMSDataset(self):
+        return ModuleStore.getCdmsDataset( self.datasetId )
            
     def setActiveScalars( self ):
         pass
@@ -708,7 +732,7 @@ class PersistentModule( QObject ):
         self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, pmod=self, **args )
                         
     def addConfigurableGuiFunction(self, name, guiClass, key, **args):
-        isActive = not HyperwallManager.singleton.isClient
+        isActive = not HyperwallManager.getInstance().isClient
         guiCF = GuiConfigurableFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
 
@@ -864,7 +888,7 @@ class PersistentModule( QObject ):
         if self.ndims == 3: self.getLabelActor().VisibilityOff()
         if self.configuring: 
             print " ~~~~~~ Finalize Leveling: ndims = %d, interactionState = %s " % ( self.ndims, self.InteractionState )
-            HyperwallManager.singleton.setInteractionState( None )
+            HyperwallManager.getInstance().setInteractionState( None )
             self.finalizeConfigurationObserver( self.InteractionState )            
             if (self.ndims == 3) and self.iren: 
                 self.iren.SetInteractorStyle( self.navigationInteractorStyle )
@@ -971,10 +995,12 @@ class PersistentModule( QObject ):
             change_parameters( self.moduleID, strParmRecList, ctrl )           
             tag = self.getParameterId()
             taggedVersion = self.tagCurrentVersion( tag )
+            listParameterPersist = args.get( 'list', True )  
             for parmRec in parmRecList:
                 parameter_name = parmRec[0]
                 output = parmRec[1]
                 self.setParameter( parameter_name, output, tag ) 
+                if listParameterPersist: self.persistedParameters.append( parameter_name )
 #            print " %s.Persist-Parameter-List[%s] (v. %s): %s " % ( self.getName(), tag, str(taggedVersion), str(parmRecList) )
             self.persistVersionMap() 
             updatePipelineConfiguration = args.get( 'update', False ) # False )                  
@@ -1204,13 +1230,13 @@ class PersistentVisualizationModule( PersistentModule ):
 
     def updateTextDisplay( self, text = None ):
         if (text <> None) and (self.renderer <> None): 
-            self.labelBuff = text
+            self.labelBuff = str(text)
             if (self.ndims == 3):                
                 self.getLabelActor().VisibilityOn()
                 
     def displayInstructions( self, text ):
         if (self.renderer <> None) and (self.textBlinkThread == None): 
-            self.instructionBuffer = text
+            self.instructionBuffer = str(text)
             if (self.ndims == 3):                
                 actor = self.getInstructionActor()
                 if actor:
@@ -1398,26 +1424,33 @@ class PersistentVisualizationModule( PersistentModule ):
     def creatTitleActor( self ):
         pass
     
-    def createTextActor( self, id, pos, **args ):
-          textActor = vtk.vtkTextActor()  
-          textActor.SetTextScaleModeToNone()        
-          textprop = textActor.GetTextProperty()
-          textprop.SetColor( *args.get( 'color', ( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] ) ) )
-          textprop.SetFontFamilyToArial()
-          textprop.SetOpacity ( args.get( 'opacity', 1.0 ) )
-          textprop.SetFontSize( args.get( 'size', 12 ) )
-          if args.get( 'bold', False ): textprop.BoldOn()
-          else: textprop.BoldOff()
-          textprop.ItalicOff()
-          textprop.ShadowOff()
-          textprop.SetJustificationToLeft()
-          textprop.SetVerticalJustificationToBottom()        
-          coord = textActor.GetPositionCoordinate()
-          coord.SetCoordinateSystemToNormalizedViewport()
-          coord.SetValue( pos[0], pos[1] )        
-          textActor.VisibilityOff()
-          textActor.id = id
-          return textActor
+    def setTextPosition(self, textActor, pos, size=[400,30] ):
+        vpos = [ 2, 2 ]
+        if self.renderer: 
+            vp = self.renderer.GetSize()
+            vpos = [ pos[i]*vp[i] for i in [0,1] ]
+        textActor.GetPositionCoordinate().SetValue( vpos[0], vpos[1] )      
+        textActor.GetPosition2Coordinate().SetValue( vpos[0] + size[0], vpos[1] + size[1] )      
+    
+    def createTextActor( self, id, **args ):
+        textActor = vtk.vtkTextActor()  
+        textActor.SetTextScaleMode( vtk.vtkTextActor.TEXT_SCALE_MODE_PROP )  
+#        textActor.SetMaximumLineHeight( 0.4 )       
+        textprop = textActor.GetTextProperty()
+        textprop.SetColor( *args.get( 'color', ( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] ) ) )
+        textprop.SetOpacity ( args.get( 'opacity', 1.0 ) )
+        textprop.SetFontSize( args.get( 'size', 10 ) )
+        if args.get( 'bold', False ): textprop.BoldOn()
+        else: textprop.BoldOff()
+        textprop.ItalicOff()
+        textprop.ShadowOff()
+        textprop.SetJustificationToLeft()
+        textprop.SetVerticalJustificationToBottom()        
+        textActor.GetPositionCoordinate().SetCoordinateSystemToDisplay()
+        textActor.GetPosition2Coordinate().SetCoordinateSystemToDisplay() 
+        textActor.VisibilityOff()
+        textActor.id = id
+        return textActor
           
     def getLabelActor(self):
         return self.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
@@ -1429,14 +1462,18 @@ class PersistentVisualizationModule( PersistentModule ):
         return self.getTextActor( 'instruction', self.instructionBuffer,  (.1, .85 ), size = VTK_INSTRUCTION_SIZE, bold = True, color = ( 1.0, 0.1, 0.1 ), opacity=0.65  )
 
     def getTextActor( self, id, text, pos, **args ):
-      textActor = self.getProp( 'vtkTextActor', id  )
-      if textActor == None:
-          textActor = self.createTextActor( id, pos, **args  )
-          if self.renderer: 
-              self.renderer.AddViewProp( textActor )
-      textActor.SetInput( text )
-      textActor.Modified()
-      return textActor
+        textActor = self.getProp( 'vtkTextActor', id  )
+        if textActor == None:
+            textActor = self.createTextActor( id, **args  )
+            if self.renderer: self.renderer.AddViewProp( textActor )
+        self.setTextPosition( textActor, pos )
+        text_lines = text.split('\n')
+        linelen = len(text_lines[-1])
+        if linelen < MIN_LINE_LEN: text += (' '*(MIN_LINE_LEN-linelen)) 
+        text += '.'
+        textActor.SetInput( text )
+        textActor.Modified()
+        return textActor
 
     def finalizeRendering(self):
         pass
@@ -1522,28 +1559,40 @@ class PersistentVisualizationModule( PersistentModule ):
                   self.colorBarActor.VisibilityOff()  
             else: self.colorBarActor.VisibilityOn() 
             self.render() 
-        elif (  key == 'r'  ): 
-            if self.LastInteractionState <> None: 
-                configFunct = self.configurableFunctions[ self.LastInteractionState ]
+        elif (  key == 'r'  ):
+            self.resetCamera()              
+            if  len(self.persistedParameters):
+                pname = self.persistedParameters.pop()
+                configFunct = self.configurableFunctions[pname]
                 param_value = configFunct.reset() 
-                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True )
-                if configFunct.type == 'leveling':
-                    self.finalizeConfigurationObserver( self.InteractionState )            
-                    if self.ndims == 3: 
-                        self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-                        print " ~~~~~~~~~ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)     
-                if self.InteractionState <> None: 
-                    configFunct.close()
-                    self.endInteraction() 
+                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )
+            
+                
+#            if self.LastInteractionState <> None: 
+#                configFunct = self.configurableFunctions[ self.LastInteractionState ]
+#                param_value = configFunct.reset() 
+#                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True )
+#                if configFunct.type == 'leveling':
+#                    self.finalizeConfigurationObserver( self.InteractionState )            
+#                    if self.ndims == 3: 
+#                        self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+#                        print " ~~~~~~~~~ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)     
+#                if self.InteractionState <> None: 
+#                    configFunct.close()
+#                    self.endInteraction() 
         else:
             state =  self.getInteractionState( key )
             print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
             if state <> None: 
                 self.updateInteractionState( state, self.isAltMode  )                 
-                HyperwallManager.singleton.setInteractionState( state, self.isAltMode )
+                HyperwallManager.getInstance().setInteractionState( state, self.isAltMode )
                 self.isAltMode = False 
                 
+    def resetCamera(self):
+        pass
+                
     def updateInteractionState( self, state, altMode ): 
+        rcf = None
         if state == None: 
             self.finalizeLeveling()
             self.endInteraction()   
@@ -1552,6 +1601,9 @@ class PersistentVisualizationModule( PersistentModule ):
                 configFunct = self.configurableFunctions[ self.InteractionState ]
                 configFunct.close()   
             configFunct = self.configurableFunctions.get( state, None )
+            if configFunct and ( configFunct.type <> 'generic' ): 
+                rcf = configFunct
+                print " UpdateInteractionState, state = %s, cf = %s " % ( state, str(configFunct) )
             if not configFunct and self.acceptsGenericConfigs:
                 configFunct = ConfigurableFunction( state, None, None, pmod=self )              
                 self.configurableFunctions[ state ] = configFunct
@@ -1561,6 +1613,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.InteractionState = state                   
                 self.LastInteractionState = self.InteractionState
                 self.disableVisualizationInteraction()
+        return rcf
                    
     def endInteraction( self ):
         PersistentModule.endInteraction( self )

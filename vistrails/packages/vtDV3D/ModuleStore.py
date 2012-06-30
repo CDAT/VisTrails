@@ -7,6 +7,7 @@ Created on Mar 10, 2011
 from packages.vtDV3D.vtUtilities import *   
 from collections import OrderedDict 
 moduleStoreDatabase = {}
+cdmsStoreDatabase = {}
 cells = OrderedDict()
 
 def getDatabase():
@@ -16,6 +17,14 @@ def getDatabase():
     try: page_id = id( api.get_current_controller() )
     except: pass
     return moduleStoreDatabase.setdefault( page_id, {} )
+
+def getCdmsDatabase():
+    import api
+    global cdmsStoreDatabase
+    page_id = 0
+    try: page_id = id( api.get_current_controller() )
+    except: pass
+    return cdmsStoreDatabase.setdefault( page_id, {} )
 
 def getModule( mid ):
     db = getDatabase()
@@ -32,6 +41,14 @@ def getModuleList():
 def getModuleIDs():
     db = getDatabase()     
     return db.keys()
+
+def getCdmsDataset( dsid ):
+    db = getDatabase()
+    return db.get( dsid, None )
+
+def archiveCdmsDataset( dsid, ds ):
+    db = getDatabase()
+    db[ dsid ] = ds
 
 def refreshParameters(self):
     executeWorkflow()
