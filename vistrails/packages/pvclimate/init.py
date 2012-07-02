@@ -9,16 +9,17 @@ from core.modules.basic_modules import Integer, Float, String, File, \
      Variant, Color, Boolean, identifier as basic_pkg
 from core.modules.module_registry import get_module_registry
 from core.modules.vistrails_module import new_module, ModuleError
-
+  
 def initialize():
     registry = get_module_registry()       
     import pvclimatesource, pvvariable
-    pvvariable.initialize()
+    #pvvariable.initialize()
+    pvvariable.registerSelf()
     pvclimatesource.initialize()   
     
     if registry.has_module('edu.utah.sci.vistrails.spreadsheet',
                            'SpreadsheetCell'):                
-        import pvclimatecell, pvisosurfacecell
+        import pvclimatecell, pvisosurfacecell        
         pvclimatecell.registerSelf()
         pvisosurfacecell.registerSelf()
     else:

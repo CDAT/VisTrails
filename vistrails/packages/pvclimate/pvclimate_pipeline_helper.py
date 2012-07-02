@@ -23,6 +23,8 @@ import api
 
 import pvclimatecell
 
+import sys
+
 class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
@@ -54,7 +56,7 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
     def build_plot_pipeline_action(controller, version, var_modules, plot_obj,row, col, template=None):
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
-        print 'Calling build_plot_pipeline_action'
+        print 'Calling build_plot_pipWeline_action' 
         
         plot_type = plot_obj[0].parent
         plot_gm = plot_obj[0].name
