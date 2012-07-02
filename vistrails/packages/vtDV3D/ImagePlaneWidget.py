@@ -40,6 +40,7 @@ class ImagePlaneWidget:
         self.ResliceInterpolate = VTK_LINEAR_RESLICE
         self.UserControlledLookupTable= 0
         self.CurrentCursorPosition = [ 0, 0, 0 ]
+        self.CurrentScreenPosition = [ 0, 0 ]
         self.CurrentImageValue   = vtk.VTK_DOUBLE_MAX
                         
         # Represent the plane's outline
@@ -109,6 +110,9 @@ class ImagePlaneWidget:
 
     def GetCurrentCursorPosition(self): 
         return self.CurrentCursorPosition
+    
+    def GetCurrentScreenPosition(self): 
+        return self.CurrentScreenPosition
                 
     def SetResliceInterpolateToNearestNeighbour(self):
         self.SetResliceInterpolate(VTK_NEAREST_RESLICE)
@@ -311,6 +315,7 @@ class ImagePlaneWidget:
     
         X = self.Interactor.GetEventPosition()[0]
         Y = self.Interactor.GetEventPosition()[1]
+        self.CurrentScreenPosition = [ X, Y ]
         
         # Okay, make sure that the pick is in the current renderer
         if ( not self.CurrentRenderer or  not self.CurrentRenderer.IsInViewport(X, Y)):        
@@ -440,6 +445,7 @@ class ImagePlaneWidget:
         if ( self.State == ImagePlaneWidget.Outside or self.State == ImagePlaneWidget.Start ): return        
         X = self.Interactor.GetEventPosition()[0]
         Y = self.Interactor.GetEventPosition()[1]
+        self.CurrentScreenPosition = [ X, Y ]
                 
         camera = self.CurrentRenderer.GetActiveCamera()
         if (  not camera ): return

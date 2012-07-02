@@ -598,6 +598,29 @@ class PersistentModule( QObject ):
             world_coords = [ getFloatStr(gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
         return world_coords
 
+    def getWorldCoordsAsFloat( self, image_coords ):
+        plotType = self.metadata[ 'plotType' ]                   
+        world_coords = None
+        try:
+            if plotType == 'zyt':
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                timeAxis = self.metadata[ 'time' ]
+                tval = timeAxis[ image_coords[2] ]
+                relTimeValue = cdtime.reltime( float( tval ), timeAxis.units ) 
+                timeValue = str( relTimeValue.tocomp() )          
+                world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], timeValue ]   
+            else:         
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                lev = self.metadata[ 'lev' ]
+                world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], lev[ image_coords[2] ] ]   
+        except:
+            gridSpacing = self.input.GetSpacing()
+            gridOrigin = self.input.GetOrigin()
+            world_coords = [ gridOrigin[i] + image_coords[i]*gridSpacing[i] for i in range(3) ]
+        return world_coords
+    
     def getWorldCoord( self, image_coord, iAxis ):
         plotType = self.metadata[ 'plotType' ]                   
         axisNames = [ 'Longitude', 'Latitude', 'Time' ] if plotType == 'zyt'  else [ 'Longitude', 'Latitude', 'Level' ]
@@ -763,6 +786,7 @@ class PersistentModule( QObject ):
 # TBD: integrate
     def startConfigurationObserver( self, parameter_name, *args ):
         self.getLabelActor().VisibilityOn() 
+        self.getLensActor().VisibilityOff() 
     
                   
     def startConfiguration( self, x, y, config_types ):
@@ -885,7 +909,9 @@ class PersistentModule( QObject ):
         return self.finalizeLeveling()  
                                     
     def finalizeLeveling( self ):
-        if self.ndims == 3: self.getLabelActor().VisibilityOff()
+        if self.ndims == 3:
+            self.getLabelActor().VisibilityOff()
+            self.getLensActor().VisibilityOff()
         if self.configuring: 
             print " ~~~~~~ Finalize Leveling: ndims = %d, interactionState = %s " % ( self.ndims, self.InteractionState )
             HyperwallManager.getInstance().setInteractionState( None )
@@ -1233,6 +1259,10 @@ class PersistentVisualizationModule( PersistentModule ):
             self.labelBuff = str(text)
             if (self.ndims == 3):                
                 self.getLabelActor().VisibilityOn()
+    
+    def updateLensDisplay(self, screenPos, coord):
+        if (screenPos <> None) and (self.renderer <> None): 
+            self.getLensActor(screenPos, coord).VisibilityOn()
                 
     def displayInstructions( self, text ):
         if (self.renderer <> None) and (self.textBlinkThread == None): 
@@ -1451,7 +1481,52 @@ class PersistentVisualizationModule( PersistentModule ):
         textActor.VisibilityOff()
         textActor.id = id
         return textActor
-          
+    
+    def createData(self, coord):
+        import cdms2, random
+        from paraview.vtk.dataset_adapter import numpyTovtkDataArray
+
+        ds = self.getCDMSDataset()
+        if len(ds.transientVariables)<>1:
+            print 'ERROR: this module has many', 
+        var = ds.transientVariables.values()[0]
+        
+        newvar = var(lat=coord[1], lon=coord[0], lev=coord[2], squeeze=1)
+        
+        fieldData = vtk.vtkFieldData()
+        fieldData.AllocateArrays(2)
+        fieldData.AddArray(numpyTovtkDataArray(newvar.getTime()[:], name='x'))
+        fieldData.AddArray(numpyTovtkDataArray(newvar.data, name='y'))
+
+        dataobject = vtk.vtkDataObject()
+        dataobject.SetFieldData(fieldData)
+
+        return dataobject
+    
+    def createLensActor(self, id, pos):
+        lensActor = vtk.vtkXYPlotActor();
+        lensActor.SetTitle("Time vs. VAR")
+        lensActor.SetXTitle("Time")
+        lensActor.SetYTitle("VAR")
+        lensActor.SetBorder(1)
+        lensActor.PlotPointsOn()
+
+        ds = self.getCDMSDataset()
+        if len(ds.transientVariables)<>1:
+            print 'ERROR: this module has many', 
+        var = ds.transientVariables.values()[0]
+        lensActor.SetYRange(var.min(), var.max())
+
+        prop = lensActor.GetProperty()
+        prop.SetColor( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] )
+        prop.SetLineWidth(2)
+        prop.SetPointSize(4)
+    
+        lensActor.VisibilityOff()
+        lensActor.id = id
+
+        return lensActor
+
     def getLabelActor(self):
         return self.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
 
@@ -1474,6 +1549,33 @@ class PersistentVisualizationModule( PersistentModule ):
         textActor.SetInput( text )
         textActor.Modified()
         return textActor
+    
+    def getLensActor(self, pos=None, coord=None):
+        id = 'lens'
+      
+        lensActor = self.getProp( 'vtkXYPlotActor', id)
+        if lensActor == None:
+            lensActor = self.createLensActor(id, pos)
+            if self.renderer: 
+                self.renderer.AddViewProp( lensActor )
+          
+        # update data
+        if (coord<>None):
+            lensActor.GetDataObjectInputList().RemoveAllItems()
+            lensActor.AddDataObjectInput(self.createData(coord))
+
+        lensActor.SetXValuesToValue()
+        lensActor.SetDataObjectXComponent(0, 0)
+        lensActor.SetDataObjectYComponent(0, 1)
+      
+
+        # update position      
+        if pos<>None:
+            coord = lensActor.GetPositionCoordinate()
+            coord.SetCoordinateSystemToDisplay()
+            coord.SetValue( pos[0], pos[1])
+      
+        return lensActor
 
     def finalizeRendering(self):
         pass
@@ -1617,7 +1719,9 @@ class PersistentVisualizationModule( PersistentModule ):
                    
     def endInteraction( self ):
         PersistentModule.endInteraction( self )
-        if self.ndims == 3: self.getLabelActor().VisibilityOff()              
+        if self.ndims == 3: 
+            self.getLabelActor().VisibilityOff()
+            self.getLensActor().VisibilityOff()
         
     def onLeftButtonRelease( self, caller, event ):
         print " --- Persistent Module: LeftButtonRelease --- "

@@ -359,6 +359,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 self.slicePosition[iAxis] = sliceIndex
                 self.updateTextDisplay( textDisplay )
                 
+                coord = self.getWorldCoordsAsFloat(cpos)
+                screenPos = caller.GetCurrentScreenPosition()
+                self.updateLensDisplay(screenPos, coord)
+                
             if action == ImagePlaneWidget.Pushing:  
                 if not self.isSlicing:
                     HyperwallManager.getInstance().setInteractionState( 'VolumeSlicer.Slicing' )
