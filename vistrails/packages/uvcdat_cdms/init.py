@@ -12,6 +12,7 @@ import MV2
 import os
 import ast
 import string
+import gui
 from info import identifier
 from widgets import GraphicsMethodConfigurationWidget
 from core.configuration import get_vistrails_configuration
