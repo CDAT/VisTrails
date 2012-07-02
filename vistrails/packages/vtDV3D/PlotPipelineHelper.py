@@ -112,6 +112,9 @@ class DV3DParameterSliderWidget(QWidget):
               
         self.setLayout(main_layout)
         
+    def setLabel( self, text ):
+        self.label.setText( text )
+        
     def setDisplayValue( self, fval ):
         qsval = getFormattedQString( fval ) 
         self.textbox.setText( qsval )
@@ -124,6 +127,9 @@ class DV3DParameterSliderWidget(QWidget):
         self.slider.setValue( sliderVal )
         qsval = getFormattedQString( value ) 
         self.textbox.setText( qsval  )
+
+    def enable(self, enabled ): 
+        self.setVisible( enabled )
                 
 class DV3DRangeConfigWidget(QFrame):
     MIN_SLIDER = 0
@@ -226,6 +232,13 @@ class DV3DRangeConfigWidget(QFrame):
      
     def enable(self): 
         self.setVisible(True)
+        maxEnabled = self.active_cfg_cmd and self.active_cfg_cmd.activeBound in [ 'both', 'max' ]
+        minEnabled = self.active_cfg_cmd and self.active_cfg_cmd.activeBound in [ 'both', 'min' ]
+        self.rangeMinEditor.enable( minEnabled )
+        self.rangeMinEditor.setLabel( 'Value: ' if not maxEnabled else 'Range Min: ' )
+        self.rangeMaxEditor.enable( maxEnabled )
+        self.rangeMaxEditor.setLabel( 'Value: ' if not minEnabled else 'Range Max: ' )
+
 
     def disable(self): 
         self.setVisible(False)
@@ -236,7 +249,6 @@ class DV3DRangeConfigWidget(QFrame):
             self.active_cfg_cmd = None
           
     def startConfig(self, qs_action_key, qs_cfg_key ):
-        self.enable()
         cfg_key = str(qs_cfg_key)
         action_key = str(qs_action_key)
         self.setTitle( action_key )
@@ -251,6 +263,7 @@ class DV3DRangeConfigWidget(QFrame):
                 self.updateSliderValues(True)
                 self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues ) 
                 self.active_cfg_cmd.updateActiveFunctionList()
+                self.enable()
         except RuntimeError:
             print "RuntimeError"
             

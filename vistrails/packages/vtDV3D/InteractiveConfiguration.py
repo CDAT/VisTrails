@@ -340,6 +340,7 @@ class ConfigurableFunction( QObject ):
         self.key = key
         self.functionID = -1 
         self.isLayerDependent = args.get( 'layerDependent', False )
+        self.activeBound = args.get( 'activeBound', 'both' )
         self.active = args.get( 'active', True )
         self.activeFunctionList = []
         self.module = None
