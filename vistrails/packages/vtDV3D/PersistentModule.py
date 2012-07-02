@@ -1277,6 +1277,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return self.pipelineBuilt
 
     def execute(self, **args ):
+        print "Execute Module[ %s ]: %s " % ( str(self.moduleID), str( self.__class__.__name__ ) )
         initConfig = False
         isAnimation = args.get( 'animate', False )
         if not self.isBuilt():

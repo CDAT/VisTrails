@@ -152,7 +152,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'functionScale', 'T', label='Transfer Function Scale', setLevel=self.generateOTF, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units, initRefinement=[ self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
         self.addConfigurableLevelingFunction( 'opacityScale',  'O', label='Opacity', setLevel=self.adjustOpacity, layerDependent=True, adjustRange=False  )
         self.addConfigurableMethod( 'showTransFunctGraph', self.showTransFunctGraph, 'g', label='Transfer Function Graph' )
-        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
     
 #    def setZScale( self, zscale_data ):
 #        if self.volume <> None:
