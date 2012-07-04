@@ -738,7 +738,8 @@ class ProjectController(QtCore.QObject):
                 else:
                     varm = res
                 return varm
-                        
+        if not reuse_workflow:
+            self.reset_workflow(cell)                
         vars = []
         for v in cell.variables:
             vars.append(v)
@@ -759,7 +760,6 @@ class ProjectController(QtCore.QObject):
         #Assuming that all plots in a cell are from the same package
         helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
         if not reuse_workflow:
-            self.reset_workflow(cell)
             action = helper.build_plot_pipeline_action(self.vt_controller, 
                                                        cell.current_parent_version, 
                                                        var_modules, cell.plots,
