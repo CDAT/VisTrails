@@ -41,3 +41,6 @@ class PVProcessFile:
             # GetArray returns array information in this format -> Array: Name
             variables.append(array.split(':')[1])
         return variables
+    
+    def getReader(self):
+        return self._reader

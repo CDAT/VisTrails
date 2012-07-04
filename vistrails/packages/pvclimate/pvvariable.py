@@ -13,6 +13,7 @@ from gui.modules.constant_configuration import ConstantWidgetMixin
 from core.modules.basic_modules import new_constant, init_constant, Module, Constant
 from packages.uvcdat.init import Variable
 from core.utils import InstanceObject
+from packages.pvclimate import identifier
 
 # Not sure why we need these
 import math
@@ -20,14 +21,12 @@ import math
 # Import paraview
 import paraview.simple as pvsp
 
-class PVVariableConstant(Constant):    
-    def __init__(self):
-        Constant.__init__(self)
-        self._reader = 0
+class PVVariableConstant(Variable):
+    def __init__(self, filename=None, name=None, reader=None):
+        Variable.__init__(self, filename, None, None, name, False)
+        self._reader = reader
         self._variableName = ''
         self._variableType = ''
-        
-    default_value = InstanceObject()
         
     @staticmethod
     def translate_to_python(x):
@@ -49,15 +48,17 @@ class PVVariableConstant(Constant):
         
     def get_reader(self):
         # TODO: Hard coded for now
-        #return pvsp.NetCDFPOPreader(FileName=str('/home/aashish/tools/cdat/install/sample_data/clt.nc'))  
+        #return pvsp.NetCDFPOPreader(FileName=str('/home/cjh/climate/TEMP.t.t0.1_42l_oilspill12c.00060101.pop.nc'))  
         return self._reader
     
     def set_variable_name(self, variableName):
         self._variableName = variableName
+        self.name = variableName
         
     def get_variable_name(self):
         # TODO: Hard coded for now
         #return 'clt'
+        #return 'TEMP'#
         return self._variableName
     
     def set_variable_type(self, type):
@@ -67,24 +68,36 @@ class PVVariableConstant(Constant):
         
     def get_variable_type(self):
         return self._variableType
-
-default_pvv = PVVariableConstant()    
     
-class PVVariableConstantWidget(QtGui.QWidget, ConstantWidgetMixin):
-    def __init__(self, parent=None):
-        QtGui.QWidget.__init__(self, parent)
-        ConstantWidgetMixin.__init__(self, param.strValue)
-        if not param.strValue:
-            self._tf = copy.copy(default_pvv)
-        else:
-            self._tf = pickle.loads(param.strValue.decode('hex'))
+    def to_module(self, controller):
+        # note that the correct module is returned because we use
+        # self.__class__.__name__
+        module = Variable.to_module(self, controller, identifier)
+        return module
+    
+    def from_module(module):
+        print "from_module"
+    
+    def __copy__(self):
+        print "COPY"
 
-    def contents(self): 
-        return pickle.dumps(self).encode('hex')
+#default_pvv = PVVariableConstant()    
+    
+#class PVVariableConstantWidget(QtGui.QWidget, ConstantWidgetMixin):
+#    def __init__(self, parent=None):
+#        QtGui.QWidget.__init__(self, parent)
+#        ConstantWidgetMixin.__init__(self, param.strValue)
+#        if not param.strValue:
+#            self._tf = copy.copy(default_pvv)
+#        else:
+#            self._tf = pickle.loads(param.strValue.decode('hex'))
+#
+#    def contents(self): 
+#        return pickle.dumps(self).encode('hex')
       
 def registerSelf(): 
     print 'REGISTERING... '
     registry = core.modules.module_registry.get_module_registry()
-    registry.add_module(PVVariableConstant, configureWidgetType=PVVariableConstant)
+    registry.add_module(PVVariableConstant)
     registry.add_output_port(PVVariableConstant, "self", PVVariableConstant)
           

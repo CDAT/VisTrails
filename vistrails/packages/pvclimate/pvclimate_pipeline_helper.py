@@ -75,8 +75,9 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         plot_module = controller.create_module_from_descriptor(plot_descriptor)
         
         # Get the variable and the plot and create the pipeline connection        
-        if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
-            ops.append(('add', var_modules[0]))
+        #if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
+        #    ops.append(('add', var_modules[0]))
+        ops.append(('add', var_modules[0]))
         ops.append(('add', plot_module))
         
         print >> sys.stderr, 'var_modules[0] ', var_modules[0]
