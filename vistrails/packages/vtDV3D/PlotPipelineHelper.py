@@ -14,8 +14,10 @@ import core.db.io, sys, traceback, api
 import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
+from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.vtDV3D.DV3DCell import MapCell3D
 from packages.vtDV3D import ModuleStore
+from packages.vtDV3D.InteractiveConfiguration import *
 from packages.uvcdat_cdms.init import CDMSVariableOperation, CDMSVariable 
 from packages.vtDV3D.vtUtilities import *
 from core.uvcdat.plot_registry import get_plot_registry
@@ -183,7 +185,7 @@ class DV3DRangeConfigWidget(QFrame):
         
     def initialize(self):
         self.active_cfg_cmd = None
-        self.active_module = None
+        self.active_modules = set()
         
     def processTextValueEntry( self, iSlider ):
         if self.active_cfg_cmd:
@@ -193,9 +195,9 @@ class DV3DRangeConfigWidget(QFrame):
             slider.setValue( fval ) 
             parm_range = list( self.active_cfg_cmd.range ) 
             parm_range[ iSlider ] = fval
-            self.active_cfg_cmd.broadcastLevelingData( parm_range )             
-            if self.active_module:
-                self.active_module.render()
+            self.active_cfg_cmd.broadcastLevelingData( parm_range ) 
+            if len( self.active_modules ):            
+                for module in self.active_modules: module.render()
                 HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'text-%d' % iSlider, fval ]  )
         
     def setTitle(self, title ):
@@ -208,9 +210,9 @@ class DV3DRangeConfigWidget(QFrame):
             fval = rbnds[0] + (rbnds[1]-rbnds[0]) * ( iValue / 100.0 )
             parm_range[ iSlider ] = fval
             self.sliders[iSlider].setDisplayValue( fval )
-            self.active_cfg_cmd.broadcastLevelingData( parm_range )             
-            if self.active_module: 
-                self.active_module.render()
+            self.active_cfg_cmd.broadcastLevelingData( parm_range ) 
+            if len( self.active_modules ):            
+                for module in self.active_modules: module.render()
                 HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'slider-%d' % iSlider, fval ]  )
         
     def updateSliderValues( self, initialize=False ): 
@@ -257,9 +259,8 @@ class DV3DRangeConfigWidget(QFrame):
             if cmd_list:
                 for cmd_entry in cmd_list:
                     self.deactivate_current_command()
-                    self.active_module = cmd_entry[0] 
+                    self.active_modules.add( cmd_entry[0] )
                     self.active_cfg_cmd = cmd_entry[1] 
-                    break
                 self.updateSliderValues(True)
                 self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues ) 
                 self.active_cfg_cmd.updateActiveFunctionList()
@@ -271,19 +272,21 @@ class DV3DRangeConfigWidget(QFrame):
         self.disable()
         
     def finalizeConfig(self):
-        if self.active_module:
+        if len( self.active_modules ):
             interactionState = self.active_cfg_cmd.name
-            self.active_module.finalizeConfigurationObserver( interactionState ) 
+            for module in self.active_modules: 
+                module.finalizeConfigurationObserver( interactionState ) 
             HyperwallManager.getInstance().setInteractionState( None )
             self.active_cfg_cmd.updateWindow()   
         self.endConfig()
 
     def revertConfig(self):
-        if self.active_module:
+        if len( self.active_modules ):
             self.initialRange[2] = self.active_cfg_cmd.range[2]
             self.active_cfg_cmd.broadcastLevelingData( self.initialRange )  
             interactionState = self.active_cfg_cmd.name
-            self.active_module.finalizeConfigurationObserver( interactionState ) 
+            for module in self.active_modules: 
+                module.finalizeConfigurationObserver( interactionState ) 
             HyperwallManager.getInstance().setInteractionState( None )
             self.active_cfg_cmd.updateWindow()   
         self.endConfig()
@@ -353,6 +356,11 @@ class DV3DConfigControlPanel(QWidget):
     def endConfig(self):
         if self.rangeConfigWidget:
             self.rangeConfigWidget.endConfig()
+            
+class ConnectionType:
+    INPUT = 0
+    OUTPUT = 1
+    BOTH = 2
         
 class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     '''
@@ -367,6 +375,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         '''
         Constructor
         '''
+                
 
 #    @staticmethod
 #    def build_plot_pipeline_action(controller, version, var_modules, plot_obj, row, col, template=None):
@@ -432,14 +441,57 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        return action
      
     @staticmethod
+    def add_additional_plot_to_pipeline( controller, version, plot ):
+        workflow = plot.workflow
+        pipeline = controller.current_pipeline
+        cell_module = None
+        reader_module = None
+        for module in pipeline.module_list:
+            pmod = module.module_descriptor.module
+            if issubclass( pmod.PersistentModuleClass, SpreadsheetCell ):
+                cell_module = module
+            elif issubclass( pmod, ( CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader ) ):
+                reader_module = module
+        ops = []
+        added_modules = []
+        for module in workflow.module_list:
+            pmod = module.module_descriptor.module
+            if issubclass( pmod.PersistentModuleClass, SpreadsheetCell ):
+                connected_module_ids = workflow.get_inputPort_modules( module.id, 'volume' )
+                for connected_module_id in connected_module_ids:
+                    connected_module = workflow.modules[ connected_module_id ]
+                    plot_module = controller.create_module_from_descriptor( connected_module.module_descriptor )
+                    ops.append( ('add', plot_module) )
+                    if reader_module:
+                        conn0 = controller.create_connection( reader_module, 'volume', plot_module, 'volume' )
+                        ops.append( ('add', conn0) )
+                    else: print>>sys.stderr, " Warning: Can't find reader module in plot pipeline."
+                    if cell_module:
+                        conn1 = controller.create_connection( plot_module, 'volume', cell_module, 'volume' )
+                        ops.append(('add', conn1))
+                    else: print>>sys.stderr, " Warning: Can't find cell module in plot pipeline."
+            elif issubclass( pmod, ( CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader ) ):
+                pass # Check data type compatibility
+            else:
+                pass
+                
+        action2 = core.db.action.create_action(ops)
+        controller.add_new_action(action2)
+        controller.perform_action(action2)
+        return action2
+                
+                        
+    @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col, templates=[]):
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
+        ConfigurableFunction.clear()
         controller.change_selected_version(version)
 #        print "build_plot_pipeline_action[%d,%d], version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
 #        print " --> plot_modules = ",  str( controller.current_pipeline.modules.keys() )
 #        print " --> var_modules = ",  str( [ var.id for var in var_modules ] )
+        plots = list( plot_objs )
         #Considering that plot_objs has a single plot_obj
-        plot_obj = plot_objs[0]
+        plot_obj = plots.pop()
         plot_obj.current_parent_version = version
         plot_obj.current_controller = controller
         aliases = {}
@@ -484,6 +536,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         if plot_obj.serializedConfigAlias and var_modules: aliases[ plot_obj.serializedConfigAlias ] = ';;;' + ( '|'.join( cell_specs ) )
         pip_str = core.db.io.serialize(plot_obj.workflow)
         controller.paste_modules_and_connections(pip_str, (0.0,0.0))
+        
+        for plot_obj in plots:
+            plot_obj.current_parent_version = version
+            plot_obj.current_controller = controller
+            DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot_obj )
 
 #        Disable File Reader, get Variable from UVCDAT
 #        plot_obj.addMergedAliases( aliases, controller.current_pipeline )
