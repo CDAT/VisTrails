@@ -325,9 +325,10 @@ class OutputRec:
 
 ###############################################################################   
 
-ConfigurableFunctions = {}    
   
 class ConfigurableFunction( QObject ):
+    
+    ConfigurableFunctions = {}    
     
     def __init__( self, name, function_args, key, **args ):
         QObject.__init__(self)
@@ -351,18 +352,21 @@ class ConfigurableFunction( QObject ):
         self.startHandler = args.get( 'start', None )       #    left click
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
         self.hasState = args.get( 'hasState', True )
-        configFunctionList = ConfigurableFunctions.setdefault( self.name, [] )
-        configFunctionList.append( self )
         
     def postInstructions( self, module ):
         pass
+    
+    @staticmethod
+    def clear():
+        ConfigurableFunction.ConfigurableFunctions = {}
+        print "clear"
         
     def updateActiveFunctionList( self ):
-        cfgFunctionList = ConfigurableFunctions.get( self.name, [] )
+        cfgFunctionMap = ConfigurableFunction.ConfigurableFunctions.get( self.name, {} )
         self.activeFunctionList = []
         active_irens = self.module.getActiveIrens() 
 #        print " ** N active_irens: %d " % len( active_irens )      
-        for cfgFunction in cfgFunctionList:
+        for cfgFunction in cfgFunctionMap.values():
             if (cfgFunction <> self) and cfgFunction.module:
                 isActive = ( cfgFunction.module.iren in active_irens )
                 if isActive and (cfgFunction.units == self.units):
@@ -379,6 +383,9 @@ class ConfigurableFunction( QObject ):
         self.module = module
         if ( self.initHandler != None ):
             self.initHandler( **self.kwargs ) 
+        configFunctionMap = ConfigurableFunction.ConfigurableFunctions.setdefault( self.name, {} )
+        configFunctionMap[self.module] = self
+
             
     def expandRange( self ):
         pass
@@ -535,12 +542,19 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         if range: self.range = range
 #        print " ** Broadcast Leveling: altMode = %s, range = %s, refine = %s, Modules: " % ( str( self.altMode ) , str( self.range[0:2] ), str( self.range[3:5] )  )
         self.setLevelDataHandler( self.range )
-        self.module.render()
+        affected_renderers = set()
+        affected_renderers.add( self.module.renderer )
 #        print "   -> self = %x " % id(self.module)
         for cfgFunction in self.activeFunctionList:
             cfgFunction.setLevelDataHandler( self.range )
-            cfgFunction.module.render()
+            affected_renderers.add( cfgFunction.module.renderer)
 #            print "   -> module = %x " % id(cfgFunction.module)
+
+        for renderer in affected_renderers:
+            if renderer <> None:
+                rw = renderer.GetRenderWindow()
+                if rw <> None: rw.Render()
+
         return self.range # self.wrapData( range )
 
 ################################################################################
