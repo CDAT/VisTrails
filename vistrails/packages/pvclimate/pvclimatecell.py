@@ -82,17 +82,14 @@ class QParaViewWidget(QVTKWidget):
 
         # Fetch variables from the input port
         (pvvariables, sliceOffset, isoSurfaces) = inputPorts
-        for var in pvvariables:
+        for var in pvvariables:            
             reader = var.get_reader()
             variableName = var.get_variable_name()
             variableType = var.get_variable_type()
-            #print reader
-            #contour = pvsp.Contour(reader)
-            #contour.ContourBy = [variableType, variableName]
-            #contour.Isosurfaces = [0]
-            #rep = pvsp.GetDisplayProperties(contour)
-            # Now make a representation and add it to the view
-            reader.Stride = [5,5,5]
+            
+            print 'reader is ', reader
+            print 'variableName is ', variableName
+            print 'variableType is ', variableType
 
             # Update pipeline
             reader.UpdatePipeline()
@@ -193,7 +190,7 @@ def registerSelf():
     registry = get_module_registry()
     registry.add_module(PVClimateCell, configureWidgetType=PVClimateCellConfigurationWidget)
     registry.add_input_port(PVClimateCell, "Location", CellLocation)
-    registry.add_input_port(PVClimateCell, "variable", pvvariable.PVVariableConstant)
+    registry.add_input_port(PVClimateCell, "variable", pvvariable.PVVariable)
     registry.add_input_port(PVClimateCell, "sliceOffset", basic_modules.String)
     registry.add_input_port(PVClimateCell, "isoSurfaces", basic_modules.String)
     registry.add_output_port(PVClimateCell, "self", PVClimateCell)

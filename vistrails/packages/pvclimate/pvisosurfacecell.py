@@ -82,6 +82,8 @@ class QPVIsoSurfaceWidget(QVTKWidget):
         # Fetch variables from the input port
         (pvvariables, sliceOffset, isoSurfaces) = inputPorts
         for var in pvvariables:
+            print 'Hey ', var.getInputFromPort("file")
+            print 'Hey ', var.getInputFromPort("name")
             reader = var.get_reader()
             variableName = var.get_variable_name()
             variableType = var.get_variable_type()
@@ -172,7 +174,7 @@ def registerSelf():
     #registry.add_module(PVIsoSurfaceCell, configureWidgetType=PVClimateCellConfigurationWidget)
     registry.add_module(PVIsoSurfaceCell)
     registry.add_input_port(PVIsoSurfaceCell, "Location", CellLocation)
-    registry.add_input_port(PVIsoSurfaceCell, "variable", pvvariable.PVVariableConstant)    
+    registry.add_input_port(PVIsoSurfaceCell, "variable", pvvariable.PVVariable)    
     registry.add_input_port(PVIsoSurfaceCell, "isoSurfaces", basic_modules.String)
     registry.add_output_port(PVIsoSurfaceCell, "self", PVIsoSurfaceCell)
 

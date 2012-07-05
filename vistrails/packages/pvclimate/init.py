@@ -12,10 +12,8 @@ from core.modules.vistrails_module import new_module, ModuleError
   
 def initialize():
     registry = get_module_registry()       
-    import pvclimatesource, pvvariable
-    #pvvariable.initialize()
+    import pvvariable
     pvvariable.registerSelf()
-    pvclimatesource.initialize()   
     
     if registry.has_module('edu.utah.sci.vistrails.spreadsheet',
                            'SpreadsheetCell'):                

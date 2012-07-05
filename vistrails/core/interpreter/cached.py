@@ -195,7 +195,7 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
             obj.signature = module._signature
                 
             reg = modules.module_registry.get_module_registry()
-            for f in module.functions:
+            for f in module.functions:                                
                 connector = None
                 if len(f.params) == 0:
                     connector = ModuleConnector(create_null(), 'value')
@@ -236,6 +236,7 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
                             to_delete.append(obj.id)
                     connector = ModuleConnector(tupleModule, 'value')
                 if connector:
+                    print 'f.name ', f.name
                     obj.set_input_port(f.name, connector, is_method=True)
 
         # Create the new connections
