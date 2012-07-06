@@ -33,59 +33,12 @@ def getFormattedQString( value ):
     else:                           sval = "%.4f" % val
     return QString( sval )
 
-class ConfigMenuManager( QObject ):
-    
-    def __init__( self, **args ):
-        QObject.__init__( self )
-        self.cfg_cmds = {}
-        self.callbacks = None
-#        self.signals = [ SIGNAL("startConfig(QString,QString)"), SIGNAL("endConfig()") ]
-             
-    def addAction( self, module, action_key, config_key ):
-        actionList = self.actionMap.setdefault( action_key, [] )
-        actionList.append( ( module, config_key ) ) 
-        if len( actionList ) == 1:
-            menuItem = self.menu.addAction( action_key )
-            self.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key: self.execAction( akey ) )
-    
-    def getConfigCmd( self, cfg_key ):   
-        return self.cfg_cmds.get( cfg_key, None )
 
-    def addConfigCommand( self, pmod, cmd ):
-        cmd_list = self.cfg_cmds.setdefault( cmd.key, [] )
-        cmd_list.append( ( pmod, cmd ) )
-        
-    def setCallbacks( self, startConfigCallable, endConfigCallable ):
-        self.callbacks = [ startConfigCallable, endConfigCallable ]
-#        for iC in range(2): self.connect ( self, self.signals[iC], self.callbacks[iC] ) 
+class PlotListItem( QListWidgetItem ):
 
-    
-    def execAction( self, action_key ): 
-        print " execAction: ", action_key
-        actionList  =  self.actionMap[ action_key ]
-        for ( module, key ) in actionList:
-            module.processKeyEvent( key )
-        if self.callbacks and (key in self.cfg_cmds):
-            self.callbacks[0]( action_key, key )
-#        self.emit( SIGNAL('startConfig(QString,QString)'), action_key, key )
-
-    def endInteraction( self ):
-        if self.callbacks: self.callbacks[1]()
-#        self.emit( SIGNAL('endConfig()') ) 
-                
-    def reset(self):
-        self.actionMap = {}
-        self.cfg_cmds = {}
-#        if self.callbacks:
-#            for iC in range(2):
-#                self.disconnect ( self, self.signals[iC], self.callbacks[iC] ) 
-        self.callbacks = None
-               
-    def startNewMenu(self):
-        self.menu = QMenu()
-        return self.menu
-
-ConfigCommandMenuManager = ConfigMenuManager()
+    def __init__( self, label, module, parent=None):
+        QListWidgetItem.__init__(self, label, parent)
+        self.module = module
 
 class DV3DParameterSliderWidget(QWidget):
     
@@ -139,6 +92,7 @@ class DV3DRangeConfigWidget(QFrame):
     
     def __init__( self, parent=None):
         QWidget.__init__( self, parent )
+        self.active_cfg_cmd = None
         print ' ----------------------------------------- create new widget: %x ----------------------------------------- ----------------------------------------- ----------------------------------------- ' % id( self )
 #        self.setStyleSheet("QWidget#RangeConfigWidget { border-style: outset; border-width: 2px; border-color: blue; }" )
         self.setFrameStyle( QFrame.StyledPanel | QFrame.Raised )
@@ -195,7 +149,7 @@ class DV3DRangeConfigWidget(QFrame):
             slider.setValue( fval ) 
             parm_range = list( self.active_cfg_cmd.range ) 
             parm_range[ iSlider ] = fval
-            self.active_cfg_cmd.broadcastLevelingData( parm_range ) 
+            self.active_cfg_cmd.broadcastLevelingData( parm_range, active_modules = DV3DPipelineHelper.getActivePlotList() ) 
             if len( self.active_modules ):            
                 for module in self.active_modules: module.render()
                 HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'text-%d' % iSlider, fval ]  )
@@ -210,7 +164,7 @@ class DV3DRangeConfigWidget(QFrame):
             fval = rbnds[0] + (rbnds[1]-rbnds[0]) * ( iValue / 100.0 )
             parm_range[ iSlider ] = fval
             self.sliders[iSlider].setDisplayValue( fval )
-            self.active_cfg_cmd.broadcastLevelingData( parm_range ) 
+            self.active_cfg_cmd.broadcastLevelingData( parm_range, active_modules = DV3DPipelineHelper.getActivePlotList( )  ) 
             if len( self.active_modules ):            
                 for module in self.active_modules: module.render()
                 HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'slider-%d' % iSlider, fval ]  )
@@ -244,7 +198,11 @@ class DV3DRangeConfigWidget(QFrame):
 
     def disable(self): 
         self.setVisible(False)
+        self.deactivate_current_command()
         
+    def isEligibleCommand( self, cmd ):
+        return (self.active_cfg_cmd == None) or ( cmd == self.active_cfg_cmd )
+       
     def deactivate_current_command(self):
         if self.active_cfg_cmd:
             self.disconnect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues )
@@ -255,7 +213,7 @@ class DV3DRangeConfigWidget(QFrame):
         action_key = str(qs_action_key)
         self.setTitle( action_key )
         try:
-            cmd_list = ConfigCommandMenuManager.getConfigCmd ( cfg_key )
+            cmd_list = DV3DPipelineHelper.getConfigCmd ( cfg_key )
             if cmd_list:
                 for cmd_entry in cmd_list:
                     self.deactivate_current_command()
@@ -268,10 +226,10 @@ class DV3DRangeConfigWidget(QFrame):
         except RuntimeError:
             print "RuntimeError"
             
-    def endConfig(self):
+    def endConfig( self ):
         self.disable()
         
-    def finalizeConfig(self):
+    def finalizeConfig( self ):
         if len( self.active_modules ):
             interactionState = self.active_cfg_cmd.name
             for module in self.active_modules: 
@@ -298,7 +256,6 @@ class DV3DConfigControlPanel(QWidget):
 
     def __init__( self, configMenu, optionsMenu, parent=None):
         QWidget.__init__(self,parent)
-        self.active_cfg_cmd = None
         self.active_module = None
            
         main_layout = QVBoxLayout()        
@@ -344,16 +301,52 @@ class DV3DConfigControlPanel(QWidget):
         self.rangeConfigWidget = DV3DRangeConfigWidget(self)
         main_layout.addWidget( self.rangeConfigWidget ) 
         print "DV3DConfigControlPanel: %x %x " % ( id(self), id( self.rangeConfigWidget) )
-            
+
+        self.modules_frame = QFrame()
+        modules_layout = QVBoxLayout() 
+        modules_layout.setMargin(2)
+        modules_layout.setSpacing(1)
+        self.modules_frame.setFrameStyle( QFrame.StyledPanel | QFrame.Raised )
+        self.modules_frame.setLineWidth(2)
+        self.modules_frame.setLayout(modules_layout)
+                
+        modules_label = QLabel("Active Plots:")
+        modules_label.setFont( QFont( "Arial", 14, QFont.Bold ) )
+        modules_label.setAlignment( Qt.AlignHCenter )
+        modules_layout.addWidget(modules_label)
+
+        main_layout.addWidget( self.modules_frame )
+        self.modules_frame.setVisible(False)
+        self.plot_list = QListWidget()
+        modules_layout.addWidget( self.plot_list )
+        modules_layout.addStretch()
+        self.connect( self.plot_list, SIGNAL("itemClicked(QListWidgetItem *)"),  self.processPlotListEvent ) 
+                    
         main_layout.addStretch()                       
         self.setLayout(main_layout)
+        
+    def isEligibleCommand( self, cmd ):
+        return self.rangeConfigWidget.isEligibleCommand( cmd )
 
+    def addActivePlot( self, module ):
+        plot_type = module.__class__.__name__
+        cells = module.renderMap.keys()
+        if plot_type[0:3] == "PM_": plot_type = plot_type[3:]
+        label = "%s: %s" % ( cells[0], plot_type )
+        plot_list_item = PlotListItem( label, module, self.plot_list )
+        plot_list_item.setCheckState( Qt.Checked )
+    
+    def  processPlotListEvent( self, list_item ): 
+        DV3DPipelineHelper.setModuleActivation( list_item.module, ( list_item.checkState() == Qt.Checked ) ) 
                            
     def startConfig(self, qs_action_key, qs_cfg_key ):
+        self.plot_list.clear()
+        self.modules_frame.setVisible(True)
         if self.rangeConfigWidget:
             self.rangeConfigWidget.startConfig( qs_action_key, qs_cfg_key )
             
-    def endConfig(self):
+    def endConfig( self ):
+        self.modules_frame.setVisible(False)
         if self.rangeConfigWidget:
             self.rangeConfigWidget.endConfig()
             
@@ -361,13 +354,17 @@ class ConnectionType:
     INPUT = 0
     OUTPUT = 1
     BOTH = 2
-        
+     
 class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     '''
     This will take care of pipeline manipulation for plots.
     '''
 
     config_widget = None
+    cfg_cmds = {}
+    actionMap = {}
+    activationMap = {}
+    actionMenu = None
 
     def __init__(self):
         QObject.__init__( self )
@@ -375,7 +372,65 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         '''
         Constructor
         '''
-                
+    
+    @staticmethod                         
+    def addAction( module, action_key, config_key ):
+        actionList = DV3DPipelineHelper.actionMap.setdefault( action_key, [] )
+        actionList.append( ( module, config_key ) ) 
+        if len( actionList ) == 1:
+            menuItem = DV3DPipelineHelper.actionMenu.addAction( action_key )
+            menuItem.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key: DV3DPipelineHelper.execAction( akey ) )
+    
+    @staticmethod
+    def getConfigCmd( cfg_key ):   
+        return DV3DPipelineHelper.cfg_cmds.get( cfg_key, None )
+
+    @staticmethod
+    def addConfigCommand( pmod, cmd ):
+        cmd_list = DV3DPipelineHelper.cfg_cmds.setdefault( cmd.key, [] )
+        cmd_list.append( ( pmod, cmd ) )
+    
+    @staticmethod    
+    def getPlotActivation( module ):
+        return DV3DPipelineHelper.activationMap[ module ]
+
+    @staticmethod    
+    def getActivePlotList( ):
+        active_plots = []
+        for module in DV3DPipelineHelper.activationMap.keys():
+            if DV3DPipelineHelper.activationMap[ module ]:
+                active_plots.append( module )
+        return active_plots
+ 
+    @staticmethod
+    def setModuleActivation( module, isActive ):
+        DV3DPipelineHelper.activationMap[ module ] = isActive 
+   
+    @staticmethod
+    def execAction( action_key ): 
+        print " execAction: ", action_key
+        actionList  =  DV3DPipelineHelper.actionMap[ action_key ]
+        for ( module, key ) in actionList:
+            module.processKeyEvent( key )
+
+        if  (key in DV3DPipelineHelper.cfg_cmds): DV3DPipelineHelper.config_widget.startConfig( action_key, key )
+        for ( module, key ) in actionList: 
+            DV3DPipelineHelper.config_widget.addActivePlot( module )
+            DV3DPipelineHelper.activationMap[ module ] = True 
+
+    @staticmethod
+    def endInteraction():
+        DV3DPipelineHelper.config_widget.endConfig()
+     
+    @staticmethod           
+    def reset():
+        DV3DPipelineHelper.actionMap = {}
+        DV3DPipelineHelper.cfg_cmds = {}
+     
+    @staticmethod          
+    def startNewMenu():
+        DV3DPipelineHelper.actionMenu = QMenu()
+        return DV3DPipelineHelper.actionMenu
 
 #    @staticmethod
 #    def build_plot_pipeline_action(controller, version, var_modules, plot_obj, row, col, template=None):
@@ -770,8 +825,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         print " ------------ show_configuration_widget ----------------------------------"
         
         pmods = set()
-        ConfigCommandMenuManager.reset()
-        menu = ConfigCommandMenuManager.startNewMenu()
+        DV3DPipelineHelper.reset()
+        menu = DV3DPipelineHelper.startNewMenu()
         for module in pipeline.module_list:
             pmod = ModuleStore.getModule(  module.id ) 
             if pmod:
@@ -780,23 +835,25 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 for configFunc in configFuncs:
                     action_key = str( configFunc.label )
                     config_key = configFunc.key               
-                    ConfigCommandMenuManager.addAction( pmod, action_key, config_key ) 
+                    DV3DPipelineHelper.addAction( pmod, action_key, config_key ) 
                     
-        menu1 = ConfigCommandMenuManager.startNewMenu() 
+        menu1 = DV3DPipelineHelper.startNewMenu() 
         for pmod in pmods:
-            ConfigCommandMenuManager.addAction( pmod, 'Help', 'h' )
-            ConfigCommandMenuManager.addAction( pmod, 'Colorbar', 'l' )
-            ConfigCommandMenuManager.addAction( pmod, 'Reset', 'r' )
+            DV3DPipelineHelper.addAction( pmod, 'Help', 'h' )
+            DV3DPipelineHelper.addAction( pmod, 'Colorbar', 'l' )
+            DV3DPipelineHelper.addAction( pmod, 'Reset', 'r' )
         
-        config_widget = DV3DConfigControlPanel( menu, menu1 )
-        ConfigCommandMenuManager.setCallbacks( config_widget.startConfig, config_widget.endConfig )
+        DV3DPipelineHelper.config_widget = DV3DConfigControlPanel( menu, menu1 )
         for pmod in pmods:
             cmdList = pmod.getConfigFunctions( [ 'leveling' ] )
             for cmd in cmdList:
-                ConfigCommandMenuManager.addConfigCommand( pmod, cmd )
-        return config_widget
-
-               
+                DV3DPipelineHelper.addConfigCommand( pmod, cmd )
+        return DV3DPipelineHelper.config_widget
+    
+    @staticmethod
+    def isEligibleFunction( configFn ):
+        return DV3DPipelineHelper.config_widget.isEligibleCommand( configFn )
+         
     @staticmethod
     def get_plot_by_vistrail_version(plot_type, vistrail, version):
         from core.uvcdat.plotmanager import get_plot_manager

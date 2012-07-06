@@ -538,17 +538,20 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         return self.broadcastLevelingData()
 #        print "updateLeveling: %s " % str( self.range )
         
-    def broadcastLevelingData(  self, range = None  ):
+    def broadcastLevelingData(  self, range = None, **args  ):
         if range: self.range = range
 #        print " ** Broadcast Leveling: altMode = %s, range = %s, refine = %s, Modules: " % ( str( self.altMode ) , str( self.range[0:2] ), str( self.range[3:5] )  )
-        self.setLevelDataHandler( self.range )
         affected_renderers = set()
-        affected_renderers.add( self.module.renderer )
+        active_module_list = args.get( 'active_modules', None )
+        if (active_module_list == None) or (self.module in active_module_list):
+            self.setLevelDataHandler( self.range )
+            affected_renderers.add( self.module.renderer )
 #        print "   -> self = %x " % id(self.module)
         for cfgFunction in self.activeFunctionList:
-            cfgFunction.setLevelDataHandler( self.range )
-            affected_renderers.add( cfgFunction.module.renderer)
-#            print "   -> module = %x " % id(cfgFunction.module)
+            if (active_module_list == None) or (cfgFunction.module in active_module_list):
+                cfgFunction.setLevelDataHandler( self.range )
+                affected_renderers.add( cfgFunction.module.renderer)
+#               print "   -> module = %x " % id(cfgFunction.module)
 
         for renderer in affected_renderers:
             if renderer <> None:
