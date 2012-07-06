@@ -882,16 +882,18 @@ class PersistentModule( QObject ):
         self.updateLeveling( x, y, wsize )
                 
     def updateLeveling( self, x, y, wsize, **args ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
         if self.configuring:
             configFunct = self.configurableFunctions[ self.InteractionState ]
             if configFunct.type == 'leveling':
-                configData = configFunct.update( self.InteractionState, x, y, wsize )
-                if configData <> None:
-#                    print>>sys.stderr, " Update %s Leveling, data = %s " % ( configFunct.name, str( configData ) )
-                    if self.wmod: self.wmod.setResult( configFunct.name, configData )
-                    self.setParameter( configFunct.name, configData ) 
-                    textDisplay = configFunct.getTextDisplay()
-                    if textDisplay <> None:  self.updateTextDisplay( textDisplay )
+                if DV3DPipelineHelper.isEligibleFunction( configFunct ): 
+                    configData = configFunct.update( self.InteractionState, x, y, wsize )
+                    if configData <> None:
+    #                    print>>sys.stderr, " Update %s Leveling, data = %s " % ( configFunct.name, str( configData ) )
+                        if self.wmod: self.wmod.setResult( configFunct.name, configData )
+                        self.setParameter( configFunct.name, configData ) 
+                        textDisplay = configFunct.getTextDisplay()
+                        if textDisplay <> None:  self.updateTextDisplay( textDisplay )
                                      
     def getInteractionState( self, key ):
         for configFunct in self.configurableFunctions.values():
@@ -1047,13 +1049,13 @@ class PersistentModule( QObject ):
         for parameter_name in self.getModuleParameters(): self.finalizeParameter( parameter_name, *args ) 
         self.endInteraction() 
         
-    def endInteraction(self):  
-        from packages.vtDV3D.PlotPipelineHelper import ConfigCommandMenuManager     
+    def endInteraction(self): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper      
         if (self.ndims == 3) and self.iren: 
             self.iren.SetInteractorStyle( self.navigationInteractorStyle )
             print " ~~~~~~~~~ Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
         self.configuring = False
-        ConfigCommandMenuManager.endInteraction()
+        DV3DPipelineHelper.endInteraction()
         self.InteractionState = None
         self.enableVisualizationInteraction()
 
