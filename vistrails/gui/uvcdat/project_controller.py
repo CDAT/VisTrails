@@ -709,10 +709,17 @@ class ProjectController(QtCore.QObject):
         
     def update_cell(self, sheetName, row, col, reuse_workflow=False):
         cell = self.sheet_map[sheetName][(row,col)]
+        helper = CDMSPipelineHelper
+        # helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
         def get_var_module(varname):
             if varname not in self.computed_variables:
                 var = self.defined_variables[varname]
-                return var.to_module(self.vt_controller)
+                module = var.to_module(self.vt_controller)
+                self.vt_controller.change_selected_version(
+                    cell.current_parent_version)
+                self.vt_controller.add_module_action(module)
+                cell.current_parent_version = self.vt_controller.current_version
+                return module
             else:
                 (_vars, txt, st, name) = self.computed_variables[varname] 
                 opvar = None
@@ -721,14 +728,15 @@ class ProjectController(QtCore.QObject):
                 varms = [] 
                 for v in _vars:
                     varms.append(get_var_module(v))
-                
-                res = CDMSPipelineHelper.build_variable_operation_pipeline(self.vt_controller,
-                                                                            cell.current_parent_version,
-                                                                            varms, 
-                                                                            txt, 
-                                                                            st,
-                                                                            varname,
-                                                                            opvar)
+
+                build_op_pipeline = helper.build_variable_operation_pipeline
+                res = build_op_pipeline(self.vt_controller,
+                                        cell.current_parent_version,
+                                        varms,
+                                        txt,
+                                        st,
+                                        varname,
+                                        opvar)
                 if type(res) == type((1,)):
                     actions = res[1]
                     action = actions[-1]
@@ -739,7 +747,13 @@ class ProjectController(QtCore.QObject):
                     varm = res
                 return varm
         if not reuse_workflow:
-            self.reset_workflow(cell)                
+            self.reset_workflow(cell)
+        else:
+            helper_remove = helper.remove_variables_from_pipeline_action
+            action = helper_remove(self.vt_controller,
+                                   cell.current_parent_version)
+            if action:
+                cell.current_parent_version = action.id
         vars = []
         for v in cell.variables:
             vars.append(v)
