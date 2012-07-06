@@ -709,7 +709,8 @@ class ProjectController(QtCore.QObject):
         
     def update_cell(self, sheetName, row, col, reuse_workflow=False):
         cell = self.sheet_map[sheetName][(row,col)]
-        helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
+        helper = CDMSPipelineHelper
+        # helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
         def get_var_module(varname):
             if varname not in self.computed_variables:
                 var = self.defined_variables[varname]
