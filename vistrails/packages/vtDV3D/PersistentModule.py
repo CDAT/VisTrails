@@ -1501,7 +1501,7 @@ class PersistentVisualizationModule( PersistentModule ):
         fieldData = vtk.vtkFieldData()
         fieldData.AllocateArrays(2)
         fieldData.AddArray(numpyTovtkDataArray(newvar.getTime()[:], name='x'))
-        fieldData.AddArray(numpyTovtkDataArray(newvar.data, name='y'))
+        fieldData.AddArray(numpyTovtkDataArray(newvar.filled(), name='y'))
 
         dataobject = vtk.vtkDataObject()
         dataobject.SetFieldData(fieldData)
