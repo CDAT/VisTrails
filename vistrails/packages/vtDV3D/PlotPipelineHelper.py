@@ -205,6 +205,7 @@ class DV3DRangeConfigWidget(QFrame):
        
     def deactivate_current_command(self):
         if self.active_cfg_cmd:
+            self.active_cfg_cmd.updateWindow()
             self.disconnect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues )
             self.active_cfg_cmd = None
           
@@ -234,8 +235,7 @@ class DV3DRangeConfigWidget(QFrame):
             interactionState = self.active_cfg_cmd.name
             for module in self.active_modules: 
                 module.finalizeConfigurationObserver( interactionState ) 
-            HyperwallManager.getInstance().setInteractionState( None )
-            self.active_cfg_cmd.updateWindow()   
+            HyperwallManager.getInstance().setInteractionState( None )               
         self.endConfig()
 
     def revertConfig(self):
@@ -245,8 +245,7 @@ class DV3DRangeConfigWidget(QFrame):
             interactionState = self.active_cfg_cmd.name
             for module in self.active_modules: 
                 module.finalizeConfigurationObserver( interactionState ) 
-            HyperwallManager.getInstance().setInteractionState( None )
-            self.active_cfg_cmd.updateWindow()   
+            HyperwallManager.getInstance().setInteractionState( None )  
         self.endConfig()
         
 
