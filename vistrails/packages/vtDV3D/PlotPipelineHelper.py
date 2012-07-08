@@ -140,6 +140,9 @@ class DV3DRangeConfigWidget(QFrame):
     def initialize(self):
         self.active_cfg_cmd = None
         self.active_modules = set()
+
+    def getInteractionState( self ):
+        return self.active_cfg_cmd.name         
         
     def processTextValueEntry( self, iSlider ):
         if self.active_cfg_cmd:
@@ -343,7 +346,12 @@ class DV3DConfigControlPanel(QWidget):
         self.modules_frame.setVisible(True)
         if self.rangeConfigWidget:
             self.rangeConfigWidget.startConfig( qs_action_key, qs_cfg_key )
-            
+
+    def stopConfig( self, module ):          
+        interactionState = self.rangeConfigWidget.getInteractionState()
+        module.finalizeConfigurationObserver( interactionState, notifyHelper=False ) 
+        module.render()
+
     def endConfig( self ):
         self.modules_frame.setVisible(False)
         if self.rangeConfigWidget:
@@ -404,7 +412,9 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     @staticmethod
     def setModuleActivation( module, isActive ):
         DV3DPipelineHelper.activationMap[ module ] = isActive 
-   
+        if not isActive: 
+            DV3DPipelineHelper.config_widget.stopConfig( module )
+              
     @staticmethod
     def execAction( action_key ): 
         print " execAction: ", action_key
