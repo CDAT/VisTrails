@@ -1010,7 +1010,7 @@ class PersistentModule( QObject ):
             DV3DConfigurationWidget.savingChanges = False
 #            self.wmod = None
                          
-    def finalizeParameter(self, parameter_name, *args ):
+    def finalizeParameter(self, parameter_name, **args ):
         try:
             output = self.getParameter( parameter_name )
             assert (output <> None), "Attempt to finalize parameter that has not been cached." 
@@ -1018,18 +1018,19 @@ class PersistentModule( QObject ):
         except Exception, err:
             print "Error changing parameter %s for %s module: %s" % ( parameter_name, self.__class__.__name__, str(err) )
            
-    def finalizeConfigurationObserver( self, parameter_name, *args ):
-        self.finalizeParameter( parameter_name, *args )    
+    def finalizeConfigurationObserver( self, parameter_name, **args ):
+        self.finalizeParameter( parameter_name, **args )    
         for parameter_name in self.getModuleParameters(): self.finalizeParameter( parameter_name, *args ) 
-        self.endInteraction() 
+        self.endInteraction( **args ) 
         
-    def endInteraction(self): 
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper      
+    def endInteraction( self, **args ): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        notifyHelper =  args.get( 'notifyHelper', True )    
         if (self.ndims == 3) and self.iren: 
             self.iren.SetInteractorStyle( self.navigationInteractorStyle )
             print " ~~~~~~~~~ Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
         self.configuring = False
-        DV3DPipelineHelper.endInteraction()
+        if notifyHelper: DV3DPipelineHelper.endInteraction()
         self.InteractionState = None
         self.enableVisualizationInteraction()
 
@@ -1620,8 +1621,8 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.disableVisualizationInteraction()
         return rcf
                    
-    def endInteraction( self ):
-        PersistentModule.endInteraction( self )
+    def endInteraction( self, **args ):
+        PersistentModule.endInteraction( self, **args  )
         if self.ndims == 3: self.getLabelActor().VisibilityOff()              
         
     def onLeftButtonRelease( self, caller, event ):
