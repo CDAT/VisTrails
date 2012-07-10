@@ -23,37 +23,50 @@ import api
 
 import pvclimatecell
 
-class VisItPipelineHelper(PlotPipelineHelper):
+import sys
+
+class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def show_configuration_widget(controller, version, plot_obj=None):
-        pipeline = controller.vt_controller.vistrail.getPipeline(version)        
+        print 'Calling show_configuration_widget'
+
+        # Grab the pipeline
+        pipeline = controller.vt_controller.vistrail.getPipeline(version)
+
         #plots = VisItPipelineHelper.find_plot_modules(pipeline)
+        # Fine the cell
         cell = CDMSPipelineHelper.find_modules_by_type(pipeline,[pvclimatecell.PVClimateCell])
-        print 'cell is ', cell        
         vars = CDMSPipelineHelper.find_modules_by_type(pipeline,
                                                        [CDMSVariable,
                                                         CDMSVariableOperation])
+
+        # FIXME: Remove this hack
+        if len(cell) == 0:
+          print >> sys.stderr, 'cell is empty'
+          return None
+
         if len(cell) == 0:
             return pvclimatecell.PVClimateCellConfigurationWidget(None,controller)
         else:
             pvcell = cell[0].module_descriptor.module()
-            #print "cellWidget should not be None", vcell, vcell.cellWidget
             return pvclimatecell.PVClimateCellConfigurationWidget(cell[0],controller)
 
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_obj,row, col, template=None):
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
+        print 'Calling build_plot_pipWeline_action'
+
         plot_type = plot_obj[0].parent
         plot_gm = plot_obj[0].name
 
-        # Get the controller first
+        # Get controller
         if controller is None:
             controller = api.get_current_controller()
             version = 0L
 
-        # Get the registry instance
+        # Get module registry
         reg = get_module_registry()
         ops = []                
 
@@ -61,33 +74,39 @@ class VisItPipelineHelper(PlotPipelineHelper):
         plot_descriptor = reg.get_descriptor_by_name('com.kitware.pvclimate','PVClimateCell')
         plot_module = controller.create_module_from_descriptor(plot_descriptor)
         
-        # ??
-        if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
-            ops.append(('add', var_modules[0]))
+        # Get the variable and the plot and create the pipeline connection
+        #if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
+        #    ops.append(('add', var_modules[0]))
+        ops.append(('add', var_modules[0]))
         ops.append(('add', plot_module))
+
+        print >> sys.stderr, 'var_modules[0] ', var_modules[0]
 
         if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
             conn = controller.create_connection(var_modules[0], 'self',
                                                 plot_module, 'variable')
         else:
-            conn = controller.create_connection(var_modules[0], 'output_var',
+            conn = controller.create_connection(var_modules[0], 'self',
                                                 plot_module, 'variable')
         ops.append(('add', conn))
 
         type_of_plot = str(plot_gm)
-        param_module = controller.create_module_from_descriptor(
-            reg.get_descriptor_by_name('gov.lbl.visit',
-                                       'VisItParams'))
+        print 'Type of plot is ', type_of_plot
 
-        functions = controller.create_functions(param_module,
-            [('renderType', [type_of_plot])])
-        for f in functions:
-            param_module.add_function(f)
-        param_conn = controller.create_connection(param_module, 'self',
-                                                        plot_module, 'visitparams')
-        ops.extend([('add', param_module),
-                    ('add', param_conn)])
-
+        # Aashish: I don't think this is required
+#        param_module = controller.create_module_from_descriptor(
+#            reg.get_descriptor_by_name('gov.lbl.visit',
+#                                       'VisItParams'))
+#
+#        functions = controller.create_functions(param_module,
+#            [('renderType', [type_of_plot])])
+#        for f in functions:
+#            param_module.add_function(f)
+#        param_conn = controller.create_connection(param_module, 'self',
+#                                                        plot_module, 'visitparams')
+#        ops.extend([('add', param_module),
+#                    ('add', param_conn)])
+#
         loc_module = controller.create_module_from_descriptor(
             reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet',
                                        'CellLocation'))
@@ -96,23 +115,9 @@ class VisItPipelineHelper(PlotPipelineHelper):
         for f in functions:
             loc_module.add_function(f)
         loc_conn = controller.create_connection(loc_module, 'self',
-                                                        plot_module, 'Location')
+                                                plot_module, 'Location')
         ops.extend([('add', loc_module),
                     ('add', loc_conn)])
-
-        #type_of_plot = plot_gm
-        #param_module = controller.create_module_from_descriptor(
-        #    reg.get_descriptor_by_name('gov.lbl.visit',
-        #                               'VisItParams'))
-
-        #functions = controller.create_functions(param_module,
-        #    [('renderType', [type_of_plot])])
-        #for f in functions:
-        #    param_module.add_function(f)
-        #param_conn = controller.create_connection(param_module, 'self',
-         #                                               plot_module, 'visitparams')
-        #ops.extend([('add', param_module),
-        #            ('add', param_conn)])
 
         action = core.db.action.create_action(ops)
         controller.change_selected_version(version)
