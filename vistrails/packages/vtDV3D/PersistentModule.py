@@ -1142,6 +1142,7 @@ class PersistentVisualizationModule( PersistentModule ):
         self._max_scalar_value = None
         self.colormapManager = None
         self.colormapName = 'Spectral'
+        self.colorBarActor = None
         self.labelBuff = "NA                          "
         self.invertColormap = 1
         self.renderer = None
@@ -1396,10 +1397,11 @@ class PersistentVisualizationModule( PersistentModule ):
       return None
   
     def createColorBarActor( self ):
-        self.colorBarActor = self.getProp( 'vtkScalarBarActor' )
+#        self.colorBarActor = self.getProp( 'vtkScalarBarActor' )
         if self.colorBarActor == None:
             self.lut = vtk.vtkLookupTable()
             self.colormapManager = ColorMapManager( self.lut ) 
+            print " Persistent Module %s (%x): SetLookupTable: %x " % ( self.__class__.__name__, id(self), id( self.lut ) )
             self.colorBarActor = vtk.vtkScalarBarActor()
             self.colorBarActor.SetMaximumWidthInPixels( 50 )
             self.colorBarActor.SetNumberOfLabels(9)
@@ -1421,6 +1423,7 @@ class PersistentVisualizationModule( PersistentModule ):
         else:
             if self.colormapManager == None:
                 self.lut = self.colorBarActor.GetLookupTable()
+                print " Persistent Module %s (%x): SetLookupTable: %x " % ( self.__class__.__name__, id(self), id( self.lut ) )
                 self.colormapManager = ColorMapManager( self.lut ) 
             else:
                 self.colorBarActor.SetLookupTable( self.colormapManager.getDisplayLookupTable() )
@@ -1710,7 +1713,14 @@ class PersistentVisualizationModule( PersistentModule ):
              
     def onKeyPress( self, caller, event ):
         return 0
-    
+ 
+    def getCellAddress(self):  
+        cell_items = self.renderMap.items()
+        for cell_item in cell_items:
+            if id(cell_item[1]) == id(self.iren):
+                return cell_item[0]
+        return None
+        
     def getActiveIrens(self):
         sheetTabWidget = getSheetTabWidget()
         selected_cells = sheetTabWidget.getSelectedLocations() 

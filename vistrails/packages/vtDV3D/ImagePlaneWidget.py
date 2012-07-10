@@ -5,6 +5,7 @@ VTK_NEAREST_RESLICE = 0
 VTK_LINEAR_RESLICE  = 1
 VTK_CUBIC_RESLICE   = 2
 
+
 class ImagePlaneWidget:  
     
     InteractionStartEvent = 0
@@ -100,6 +101,9 @@ class ImagePlaneWidget:
         self.TextureVisibility = 1
 
 #----------------------------------------------------------------------------
+    def LookupTableObserver( self, caller=None, event = None ):
+        table_range = self.LookupTable.GetTableRange()
+        print " Image Plane Widget LookupTable Observer: event = %s, caller=%x, range=%s, LookupTable=%x, self=%s" % ( event, id(caller), str( table_range ), id(self.LookupTable), id(self) )        
 
     def GetCurrentButton(self): 
         return self.CurrentButton
@@ -284,7 +288,7 @@ class ImagePlaneWidget:
 #----------------------------------------------------------------------------
 
     def OnLeftButtonUp( self, caller, event ):
-        print " ImagePlaneWidget: LeftButtonRelease "
+#        print " ImagePlaneWidget: LeftButtonRelease "
         if self.VisualizationInteractionEnabled and (self.CurrentButton <> self.NoButtonDown):
             self.StopCursor()
             self.CurrentButton = self.NoButtonDown
@@ -816,6 +820,8 @@ class ImagePlaneWidget:
         if (self.LookupTable <> table):
             self.LookupTable = table       
             if (self.LookupTable == None): self.LookupTable = self.CreateDefaultLookupTable()
+#            self.LookupTable.AddObserver( 'AnyEvent', self.LookupTableObserver )
+#            print " Image Plane Widget %x: SetLookupTable: %x " % ( id(self), id( self.LookupTable ) )
                
         self.ColorMap.SetLookupTable(self.LookupTable)
         self.Texture.SetLookupTable(self.LookupTable)
@@ -839,7 +845,7 @@ class ImagePlaneWidget:
         elif ( self.PlaneOrientation == 1 ):  #y axis       
             amount = position - planeOrigin[1]
                 
-        print " >+++++++++> ImagePlaneWidget[%d].SetSlice: Push=%.2f " % ( self.PlaneIndex, amount )
+#        print " >+++++++++> ImagePlaneWidget[%d].SetSlice: Push=%.2f " % ( self.PlaneIndex, amount )
         self.PlaneSource.Push( amount )
         self.UpdatePlane()
         self.BuildRepresentation()
@@ -899,8 +905,8 @@ class ImagePlaneWidget:
             pt2[0] = planeOrigin[0]
         
         
-        if self.PlaneIndex == 0: 
-            print " >+++++++++> ImagePlaneWidget[%d].SetSlice: Index=%d, pos=%.2f " % ( self.PlaneIndex, index, pt1[0] )
+#        if self.PlaneIndex == 0: 
+#            print " >+++++++++> ImagePlaneWidget[%d].SetSlice: Index=%d, pos=%.2f " % ( self.PlaneIndex, index, pt1[0] )
         self.PlaneSource.SetOrigin(planeOrigin)
         self.PlaneSource.SetPoint1(pt1)
         self.PlaneSource.SetPoint2(pt2)

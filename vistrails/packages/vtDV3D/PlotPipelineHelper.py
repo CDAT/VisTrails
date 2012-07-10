@@ -329,12 +329,13 @@ class DV3DConfigControlPanel(QWidget):
         
     def isEligibleCommand( self, cmd ):
         return self.rangeConfigWidget.isEligibleCommand( cmd )
+    
 
     def addActivePlot( self, module ):
         plot_type = module.__class__.__name__
-        cells = module.renderMap.keys()
+        cell_addr = module.getCellAddress()
         if plot_type[0:3] == "PM_": plot_type = plot_type[3:]
-        label = "%s: %s" % ( cells[0], plot_type )
+        label = "%s: %s" % ( cell_addr, plot_type )
         plot_list_item = PlotListItem( label, module, self.plot_list )
         plot_list_item.setCheckState( Qt.Checked )
     
@@ -548,7 +549,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col, templates=[]):
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
-        ConfigurableFunction.clear()
+#        ConfigurableFunction.clear()
         controller.change_selected_version(version)
 #        print "build_plot_pipeline_action[%d,%d], version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
 #        print " --> plot_modules = ",  str( controller.current_pipeline.modules.keys() )
@@ -828,6 +829,18 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return False
 
     @staticmethod
+    def getActiveIrens():
+        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule
+        sheetTabWidget = getSheetTabWidget()
+        selected_cells = sheetTabWidget.getSelectedLocations() 
+        irens = []
+        for cell in selected_cells:
+            cell_spec = "%s%s" % ( chr(ord('A') + cell[1] ), cell[0]+1 )
+            iren = PersistentVisualizationModule.renderMap.get( cell_spec, None )
+            irens.append( iren )
+        return irens
+
+    @staticmethod
     def show_configuration_widget( controller, version, plot_objs=[] ):
         from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper, CDMSPlotWidget
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
@@ -836,15 +849,23 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         pmods = set()
         DV3DPipelineHelper.reset()
         menu = DV3DPipelineHelper.startNewMenu()
-        for module in pipeline.module_list:
-            pmod = ModuleStore.getModule(  module.id ) 
-            if pmod:
-                pmods.add(pmod)
-                configFuncs = pmod.configurableFunctions.values()
-                for configFunc in configFuncs:
-                    action_key = str( configFunc.label )
-                    config_key = configFunc.key               
-                    DV3DPipelineHelper.addAction( pmod, action_key, config_key ) 
+        configFuncs = ConfigurableFunction.getActiveFunctionList( DV3DPipelineHelper.getActiveIrens() )
+        for configFunc in configFuncs:
+            action_key = str( configFunc.label )
+            config_key = configFunc.key 
+            pmod = configFunc.module              
+            DV3DPipelineHelper.addAction( pmod, action_key, config_key ) 
+            pmods.add(pmod)
+                    
+#        for module in pipeline.module_list:
+#            pmod = ModuleStore.getModule(  module.id ) 
+#            if pmod:
+#                pmods.add(pmod)
+#                configFuncs = pmod.configurableFunctions.values()
+#                for configFunc in configFuncs:
+#                    action_key = str( configFunc.label )
+#                    config_key = configFunc.key               
+#                    DV3DPipelineHelper.addAction( pmod, action_key, config_key ) 
                     
         menu1 = DV3DPipelineHelper.startNewMenu() 
         for pmod in pmods:
