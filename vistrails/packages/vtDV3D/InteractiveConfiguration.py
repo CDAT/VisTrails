@@ -355,6 +355,15 @@ class ConfigurableFunction( QObject ):
         
     def postInstructions( self, module ):
         pass
+
+    @staticmethod
+    def getActiveFunctionList( active_irens = None ):
+        activeFunctionList = []
+        for cfgFunctionMap in ConfigurableFunction.ConfigurableFunctions.values():
+            for cfgFunction in cfgFunctionMap.values():
+                if cfgFunction.module and (  ( active_irens == None ) or ( cfgFunction.module.iren in active_irens ) ):
+                    activeFunctionList.append( cfgFunction )
+        return activeFunctionList
     
     @staticmethod
     def clear():
@@ -362,7 +371,8 @@ class ConfigurableFunction( QObject ):
         print "clear"
         
     def updateActiveFunctionList( self ):
-        cfgFunctionMap = ConfigurableFunction.ConfigurableFunctions.get( self.name, {} )
+        cfgFunctGlobalMap = ConfigurableFunction.ConfigurableFunctions
+        cfgFunctionMap = cfgFunctGlobalMap.get( self.name, {} )
         self.activeFunctionList = []
         active_irens = self.module.getActiveIrens() 
 #        print " ** N active_irens: %d " % len( active_irens )      
@@ -379,6 +389,8 @@ class ConfigurableFunction( QObject ):
         pass
 
     def init( self, module ):
+#        if self.name == 'colorScale':
+#            print "."
         self.moduleID = module.moduleID
         self.module = module
         if ( self.initHandler != None ):

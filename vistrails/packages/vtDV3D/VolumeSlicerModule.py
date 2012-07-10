@@ -52,8 +52,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ = None
         self.opacityUpdateCount = 0
 #        self.imageRescale = None
+        print " Volume Slicer init, id = %x " % id(self)
         VolumeSlicerModules[mid] = self
-#        print " Volume Slicer init, id = %s " % str( id(self) )
 
     def __del__(self):
         self.planeWidgetX.RemoveAllObservers()
@@ -335,7 +335,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #            self.UpdateWidgetPlacement()
            
     def TestObserver( self, caller=None, event = None ):
-        print " TestObserver: event = %s, " % ( event )
+        print " Volume Slicer TestObserver: event = %s, " % ( event )
         
     def getAxes(self):
         pass
