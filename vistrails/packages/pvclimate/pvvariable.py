@@ -14,6 +14,7 @@ from core.modules.basic_modules import new_constant, init_constant, Module, Cons
 from packages.uvcdat.init import Variable
 from core.utils import InstanceObject
 from packages.pvclimate import identifier
+from gui.uvcdat.pvreadermanager import PVReaderManager
 
 # Not sure why we need these
 import math
@@ -38,55 +39,18 @@ def expand_port_specs(port_specs, pkg_identifier=None):
                               port_spec[2])) 
     return out_specs
 
-class PVConstant(Constant):
-    def __init__(self):
-        Constant.__init__(self)
-        self.name = 'pvinfo'
-        self.reader = None
-    
-    @staticmethod
-    def translate_to_python(x):
-        result = PVConstant()
-        result.name = x
-        result.reader = None
-        result.setResult("value", result)
-        return result
-
-    @staticmethod
-    def translate_to_string(x):
-        return str(x.name)
-
-    @staticmethod
-    def validate(v):        
-        return isinstance(v, PVConstant)
-
-    def get_name(self):
-        return self.name
-    
-    def set_reader(self, reader):
-        print 'Setting reader ', reader        
-        self.reader = reader
-    
-    def get_reader(self):
-        print 'reader is ', self.reader
-        return self.reader    
-    
-PVConstant.default_value = PVConstant()
-
-
 class PVVariable(Variable):
     _input_ports = expand_port_specs([
-          ("vartype", "basic:String"),
-          ("pvinfo", "PVConstant"),
-          ])
+         ("readerParameters", "basic:Dictionary"),
+         ("vartype", "basic:String")])
     
-    def __init__(self, filename=None, name=None, vartype=None, reader=None):
+    _output_ports = expand_port_specs([("self", "PVVariable")])
+    
+    def __init__(self, filename=None, name=None, vartype=None, readerParameters=None):
         Variable.__init__(self, filename, None, None, name, False)        
         self.varname = name
         self.vartype = vartype
-        pvinfo = PVConstant()
-        pvinfo.set_reader(reader)
-        self.pvinfo = pvinfo
+        self.readerParameters = readerParameters
         
     @staticmethod
     def translate_to_python(self, x):
@@ -101,20 +65,18 @@ class PVVariable(Variable):
       isinstance(self, PVVariable)  
         
     def compute(self):
-        print 'Compute got called'
         self.filename = self.forceGetInputFromPort("filename")
         self.name = self.forceGetInputFromPort("name")
-        self.pvinfo = self.forceGetInputFromPort("pvinfo")    
-        print 'Getting reader ', self.pvinfo.get_reader()    
+        self.readerParameters = self.forceGetInputFromPort("readerParameters")
         self.varname = self.name
         self.vartype = self.forceGetInputFromPort("vartype")
         self.setResult("self", self)        
-        
-    def set_reader(self, reader):
-        self.pvinfo.set_reader(reader)
-        
+
+    def set_reader_parameters(self, readerParameters):
+        self.readerParameters = readerParameters
+
     def get_reader(self):
-        return self.pvinfo.get_reader() 
+        return PVReaderManager.get_reader(self.readerParameters)
     
     def set_variable_name(self, variableName):
         self.varname = variableName
@@ -134,23 +96,27 @@ class PVVariable(Variable):
         functions = []
         if self.vartype is not None:
             functions.append(("vartype", [self.vartype]))
-        if self.pvinfo is not None:
-            print 'reader is ', self.pvinfo.get_reader()
-            functions.append(("pvinfo", [self.pvinfo]))    
+        if self.readerParameters is not None:
+            functions.append(("readerParameters", [self.readerParameters]))
+            
         functions = controller.create_functions(module, functions)
         for f in functions:
             module.add_function(f)
         return module
     
-    def __copy__(self):
-        print "COPY"
-      
+    @staticmethod
+    def from_module(module):
+        from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
+        var = Variable.from_module(module)
+        readerParameters = PlotPipelineHelper.get_value_from_function_as_str(module,
+                                                                             'readerParameters')
+        var.set_reader_parameters(readerParameters)
+
+        return var
+
 def registerSelf(): 
     print 'REGISTERING... '
     registry = core.modules.module_registry.get_module_registry()
-    registry.add_module(PVConstant)
-    registry.add_input_port(PVConstant, "value", PVConstant)
-    registry.add_output_port(PVConstant, "value", PVConstant)
     registry.add_module(PVVariable)    
-    registry.add_output_port(PVVariable, "self", PVVariable)
+    #registry.add_output_port(PVVariable, "self", PVVariable)
           

@@ -24,6 +24,7 @@ from pvprocessfile import PVProcessFile
 from pvtabwidget import PVTabWidget
 from packages.uvcdat_cdms.init import CDMSVariable
 from packages.pvclimate.pvvariable import PVVariable
+from gui.uvcdat.pvreadermanager import PVReaderManager
 
 class VariableProperties(QtGui.QDockWidget):
 
@@ -470,20 +471,22 @@ class VariableProperties(QtGui.QDockWidget):
             
     def getVarFromPVTab(self):
         fileName = str(self._pvProcessFile._fileName)
-        varName = str(self._pvTabWidget.cbVar.currentText()).strip()
+        varName = str(self._pvTabWidget.cbVar.currentText()).strip()        
         kwargs ={}
-
+                
         #FIXME: need to check if the variable already exists
         self.root.dockVariable.widget().addVariable(varName,type_="PARAVIEW")
         _app = get_vistrails_application()
         controller = _app.uvcdatWindow.get_current_project_controller()
-
+        
         # Hard coded for point variables for now
-        pvVar = PVVariable(fileName, varName, 'POINTS', self._pvProcessFile.getReader())
+        parameters = PVReaderManager.register(self._pvProcessFile.getReader(),
+                                              varName)
+        pvVar = PVVariable(fileName, varName, 'POINTS', parameters)
 
         # TODO: We should emit this but for now it is not working
         #self.emit(QtCore.SIGNAL('definedVariableEvent'),(None,pvVar))
-
+        
         controller.add_defined_variable(pvVar)
         # controller.add_defined_variable(filename, varName, kwargs)
         
