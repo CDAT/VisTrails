@@ -324,8 +324,20 @@ class VariableProperties(QtGui.QDockWidget):
             for name, types in VariableProperties.FILETYPE.iteritems():
                 if ft in types:
                     if name == 'CDAT':
-                        self.updateCDMSFile(str(fnm))
-
+                        try:
+                            self.httpUrl = None
+                            self.updateCDMSFile(str(fnm))
+                        except:
+                            # File can't be open using CDAT. 
+                            # So, we'll try downloading the file to a temporal location
+                            from packages.HTTP.init import HTTPFile
+                            (downloaded, file, localname) = HTTPFile().download(str(fnm))
+                            self.updateCDMSFile(str(localname))
+                            self.historyList.takeItem(0)
+                            self.historyList.insertItem(0,QtCore.QString(fnm))
+                            self.historyList.setCurrentRow(0)
+                            self.httpUrl = str(fnm)
+                            
                     if name not in other_list:
                         other_list.append(name)
             
@@ -590,6 +602,11 @@ class VariableProperties(QtGui.QDockWidget):
                                    varNameInFile=original_id, 
                                    axes=get_kwargs_str(kwargs), 
                                    axesOperations=str(axes_ops_dict))
+            if self.httpUrl<>None:
+                cdmsVar.httpUrl = self.httpUrl
+                cdmsVar.file = None
+                cdmsVar.filename = None
+                
             self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))
             controller.add_defined_variable(cdmsVar)
         else:
