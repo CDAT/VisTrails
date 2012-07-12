@@ -390,7 +390,7 @@ class ImagePlaneWidget:
         self.ProcessEvent( self.InteractionEndEvent )
         self.State  = ImagePlaneWidget.Start
         self.HighlightPlane(0)
-        self.ActivateCursor(0)        
+        if not self.ActionHandler.showInteractiveLens: self.ActivateCursor(0)        
         self.EndInteraction()
         self.Interactor.Render()
 
