@@ -872,6 +872,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             DV3DPipelineHelper.addAction( pmod, 'Help', 'h' )
             DV3DPipelineHelper.addAction( pmod, 'Colorbar', 'l' )
             DV3DPipelineHelper.addAction( pmod, 'Reset', 'r' )
+            DV3DPipelineHelper.addAction( pmod, 'Time series', 't' )
+
         
         DV3DPipelineHelper.config_widget = DV3DConfigControlPanel( menu, menu1 )
         for pmod in pmods:

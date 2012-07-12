@@ -786,8 +786,6 @@ class PersistentModule( QObject ):
 # TBD: integrate
     def startConfigurationObserver( self, parameter_name, *args ):
         self.getLabelActor().VisibilityOn() 
-        self.getLensActor().VisibilityOff() 
-    
                   
     def startConfiguration( self, x, y, config_types ):
         if (self.InteractionState <> None) and not self.configuring:
@@ -914,6 +912,7 @@ class PersistentModule( QObject ):
         if self.ndims == 3:
             self.getLabelActor().VisibilityOff()
             self.getLensActor().VisibilityOff()
+
         if self.configuring: 
             print " ~~~~~~ Finalize Leveling: ndims = %d, interactionState = %s " % ( self.ndims, self.InteractionState )
             HyperwallManager.getInstance().setInteractionState( None )
@@ -1184,6 +1183,7 @@ class PersistentVisualizationModule( PersistentModule ):
         self.navigationInteractorStyle = None
         self.configurationInteractorStyle = None
         self.stereoEnabled = 0
+        self.showInteractiveLens = False
 
     def enableVisualizationInteraction(self): 
         pass
@@ -1267,7 +1267,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.getLabelActor().VisibilityOn()
     
     def updateLensDisplay(self, screenPos, coord):
-        if (screenPos <> None) and (self.renderer <> None): 
+        if (screenPos <> None) and (self.renderer <> None) and self.showInteractiveLens: 
             self.getLensActor(screenPos, coord).VisibilityOn()
                 
     def displayInstructions( self, text ):
@@ -1577,7 +1577,6 @@ class PersistentVisualizationModule( PersistentModule ):
         lensActor.SetDataObjectXComponent(0, 0)
         lensActor.SetDataObjectYComponent(0, 1)
       
-
         # update position      
         if pos<>None:
             coord = lensActor.GetPositionCoordinate()
@@ -1690,7 +1689,10 @@ class PersistentVisualizationModule( PersistentModule ):
 #                        print " ~~~~~~~~~ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)     
 #                if self.InteractionState <> None: 
 #                    configFunct.close()
-#                    self.endInteraction() 
+#                    self.endInteraction()
+        elif ( self.createColormap and ( key == 't' ) ):
+            self.showInteractiveLens = not self.showInteractiveLens 
+            self.render() 
         else:
             state =  self.getInteractionState( key )
             print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
