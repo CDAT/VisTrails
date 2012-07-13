@@ -346,7 +346,7 @@ class ImagePlaneWidget:
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.updateInteractor()
         self.Interactor.SetInteractorStyle( self.configurationInteractorStyle ) 
-        print " ~~~~~~~~~W SetInteractorStyle: configurationInteractorStyle: ", str(self.Interactor.GetInteractorStyle().__class__.__name__)        
+        print " ~~~~~~~~~SS SetInteractorStyle: configurationInteractorStyle: ", str(self.Interactor.GetInteractorStyle().__class__.__name__)        
               
 #----------------------------------------------------------------------------
 
@@ -354,7 +354,7 @@ class ImagePlaneWidget:
         update_rate = self.Interactor.GetStillUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.Interactor.SetInteractorStyle( self.navigationInteractorStyle )
-        print " ~~~~~~~~~W SetInteractorStyle: navigationInteractorStyle: ", str(self.Interactor.GetInteractorStyle().__class__.__name__)     
+        print " ~~~~~~~~~ES SetInteractorStyle: navigationInteractorStyle: ", str(self.Interactor.GetInteractorStyle().__class__.__name__)     
 
 #----------------------------------------------------------------------------
 

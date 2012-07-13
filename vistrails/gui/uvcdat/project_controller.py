@@ -31,7 +31,7 @@
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
 ###############################################################################
-import os, os.path
+import os, os.path, sys, traceback
 import copy
 import uuid
 from PyQt4 import QtCore
@@ -703,9 +703,12 @@ class ProjectController(QtCore.QObject):
                                                 cell.plots)
         
     def check_update_cell(self, sheetName, row, col, reuse_workflow=False):
-        cell = self.sheet_map[sheetName][(row,col)]
-        if cell.is_ready():
-            self.update_cell(sheetName, row, col, reuse_workflow)
+        try:
+            cell = self.sheet_map[sheetName][(row,col)]
+            if cell.is_ready():
+                self.update_cell(sheetName, row, col, reuse_workflow)
+        except:
+            traceback.print_exc( 100, sys.stderr )
         
     def update_cell(self, sheetName, row, col, reuse_workflow=False):
         cell = self.sheet_map[sheetName][(row,col)]
