@@ -3,7 +3,7 @@ Created on Dec 15, 2010
 
 @author: tpmaxwel
 '''
-import sys, threading
+import sys, threading, traceback
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from gui.modules.module_configure import StandardModuleConfigurationWidget
@@ -1669,8 +1669,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.relTimeStart = None
         self.relTimeStep = 1.0
         self.maxSpeedIndex = 100
-        ss = args.get( "speedScale", 1.0 )
-        self.delayTimeScale = (2.0*ss)/self.maxSpeedIndex
+        self.maxDelaySec = args.get( "maxDelaySec", 1.0 )
         self.running = False
         self.timeRange = None
         self.datasetId = None
@@ -1744,8 +1743,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 for module in self.activeModuleList:
                     dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
                     module.updateAnimation( relTimeValueRefAdj, displayText  )
-            except Exception, err:
-                print>>sys.stdout, "Error in setTimestep[%d]: %s " % ( iTimestep, str(err) )
+            except Exception:
+                traceback.print_exc( 100, stderr )
+#                print>>sys.stdout, "Error in setTimestep[%d]: %s " % ( iTimestep, str(err) )
 
     def stop(self):
         self.runButton.setText('Run')
@@ -1785,7 +1785,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     def animate(self):
         self.setTimestep( self.iTimeStep + 1 )  
         if self.running: 
-            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.delayTimeScale 
+            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
+            print " Animate step, delay time = %.2f msec" % delayTime
             self.timer.start( delayTime ) 
                 
 #    def run1(self):

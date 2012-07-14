@@ -306,6 +306,7 @@ class PersistentModule( QObject ):
         elif self.requiresPrimaryInput:
             print>>sys.stderr, " Error, no input to module %s " % ( self.__class__.__name__ )
         self.persistLayerDependentParameters()
+        self.resetNavigation()
         
     def updateHyperwall(self):
         pass
@@ -919,7 +920,7 @@ class PersistentModule( QObject ):
             self.finalizeConfigurationObserver( self.InteractionState )            
             if (self.ndims == 3) and self.iren: 
                 self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-                print " ~~~~~~~~~ Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
+                print " ~~~~~~~~~ FL: Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
             self.configuring = False
             self.InteractionState = None
             return True
@@ -1053,7 +1054,7 @@ class PersistentModule( QObject ):
         notifyHelper =  args.get( 'notifyHelper', True )    
         if (self.ndims == 3) and self.iren: 
             self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-            print " ~~~~~~~~~ Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
+            print " ~~~~~~~~~ EI: Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
         self.configuring = False
         if notifyHelper: DV3DPipelineHelper.endInteraction()
         self.InteractionState = None
@@ -1624,11 +1625,14 @@ class PersistentVisualizationModule( PersistentModule ):
                             configurableFunction.activateWidget( iren )
                     self.updateInteractor()  
                     
-    def updateInteractor(self):                        
-        if ( self.iren.GetInteractorStyle() <> self.navigationInteractorStyle ): 
-            istyle = self.iren.GetInteractorStyle()               
+    def updateInteractor(self): 
+        istyle = self.iren.GetInteractorStyle()                       
+        if ( istyle <> self.navigationInteractorStyle ) and ( istyle <> self.configurationInteractorStyle ):               
             self.navigationInteractorStyle =  istyle
-            print " ~~~~~~~~~ Set Navigation Interactor Style:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
+            style_name = self.navigationInteractorStyle.__class__.__name__
+            print " ~~~~~~~~~ Update Navigation Interactor Style:  %s " % ( style_name )
+#            if style_name == "vtkInteractorStyleUser":
+#                print "x"
                     
     def setInteractionState(self, caller, event):
         key = caller.GetKeyCode() 

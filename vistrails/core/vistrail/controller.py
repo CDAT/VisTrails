@@ -33,7 +33,7 @@
 ###############################################################################
 
 import copy
-import os
+import os, sys
 import uuid
 import shutil
 import tempfile
@@ -557,9 +557,13 @@ class VistrailController(object):
         connect_ids = self.get_module_connection_ids(module_ids, graph)
         ops = []
         for c_id in connect_ids:
-            ops.append(('delete', pipeline.connections[c_id]))
+            conn = pipeline.connections.get( c_id, None )
+            if conn: ops.append(('delete', conn ))
+            else: print>>sys.stderr, "Error, missing connection in pipeline: id = ", str( c_id )
         for m_id in module_ids:
-            ops.append(('delete', pipeline.modules[m_id]))
+            mod =  pipeline.modules.get( m_id, None )
+            if mod: ops.append( ('delete', mod ) )
+            else: print>>sys.stderr, "Error, missing module in pipeline: id = ", str( m_id )
         return ops
 
     def update_port_spec_ops(self, module, deleted_ports, added_ports):

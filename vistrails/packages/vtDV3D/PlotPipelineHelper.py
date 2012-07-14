@@ -93,7 +93,7 @@ class DV3DRangeConfigWidget(QFrame):
     def __init__( self, parent=None):
         QWidget.__init__( self, parent )
         self.active_cfg_cmd = None
-        print ' ----------------------------------------- create new widget: %x ----------------------------------------- ----------------------------------------- ----------------------------------------- ' % id( self )
+#        print ' ----------------------------------------- create new widget: %x ----------------------------------------- ----------------------------------------- ----------------------------------------- ' % id( self )
 #        self.setStyleSheet("QWidget#RangeConfigWidget { border-style: outset; border-width: 2px; border-color: blue; }" )
         self.setFrameStyle( QFrame.StyledPanel | QFrame.Raised )
         self.setLineWidth(2)
@@ -302,7 +302,7 @@ class DV3DConfigControlPanel(QWidget):
         
         self.rangeConfigWidget = DV3DRangeConfigWidget(self)
         main_layout.addWidget( self.rangeConfigWidget ) 
-        print "DV3DConfigControlPanel: %x %x " % ( id(self), id( self.rangeConfigWidget) )
+#        print "DV3DConfigControlPanel: %x %x " % ( id(self), id( self.rangeConfigWidget) )
 
         self.modules_frame = QFrame()
         modules_layout = QVBoxLayout() 
@@ -844,7 +844,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def show_configuration_widget( controller, version, plot_objs=[] ):
         from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper, CDMSPlotWidget
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
-        print " ------------ show_configuration_widget ----------------------------------"
+#        print " ------------ show_configuration_widget ----------------------------------"
         
         pmods = set()
         DV3DPipelineHelper.reset()
