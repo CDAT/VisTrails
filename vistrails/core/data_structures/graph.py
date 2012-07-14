@@ -187,7 +187,7 @@ class Graph(object):
         id : 'immutable' vertex id
         
         """
-        return self.inverse_adjacency_list[id]
+        return self.inverse_adjacency_list.get( id, [] )
 
     def edges_from(self, id):
         """ edges_from(id: id type) -> list(list)
@@ -197,7 +197,7 @@ class Graph(object):
         id : 'immutable' vertex id
 
         """
-        return self.adjacency_list[id]
+        return self.adjacency_list.get( id, [] )
 
     def get_edge(self, frm, to):
         """ get_edge(frm, to) -> edge_id
