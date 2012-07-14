@@ -707,7 +707,7 @@ class ProjectController(QtCore.QObject):
             cell = self.sheet_map[sheetName][(row,col)]
             if cell.is_ready():
                 self.update_cell(sheetName, row, col, reuse_workflow)
-        except:
+        except KeyError, err:
             traceback.print_exc( 100, sys.stderr )
         
     def update_cell(self, sheetName, row, col, reuse_workflow=False):
