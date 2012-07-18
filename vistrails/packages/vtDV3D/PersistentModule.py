@@ -727,7 +727,10 @@ class PersistentModule( QObject ):
             enc_mdata = encodeToString( metadata )
             dataVector.InsertNextValue( enc_mdata  )
 
-    def getMetadata( self, metadata = {}, port=None  ):
+    def getMetadata( self, metadata = None, port=None  ):
+        if metadata is None:
+            metadata = {}
+    
         if self.fieldData:
             md = extractMetadata( self.fieldData )
             if md: metadata.update( md )
