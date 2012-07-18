@@ -74,10 +74,10 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         plot_descriptor = reg.get_descriptor_by_name('com.kitware.pvclimate','PVClimateCell')
         plot_module = controller.create_module_from_descriptor(plot_descriptor)
         
-        # Get the variable and the plot and create the pipeline connection
-        #if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
-        #    ops.append(('add', var_modules[0]))
-        ops.append(('add', var_modules[0]))
+        # Aashish: This is no longer required as of this commit e13bb034ceb302afe3aad3caf20153e1525586db
+        # I am not sure though why we still need to add plot module        
+        #ops.append(('add', var_modules[0]))
+        
         ops.append(('add', plot_module))
 
         print >> sys.stderr, 'var_modules[0] ', var_modules[0]

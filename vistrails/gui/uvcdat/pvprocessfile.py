@@ -19,10 +19,11 @@ class PVProcessFile:
 
     def createReader(self):
       selectReader = PVSelectReaderDialog()
-      selectReader.populateReaders(self._fileName)            
-      selectReader.exec_()
-      self._reader = selectReader.getSelectedReader()                        
-
+      selectReader.populateReaders(self._fileName)
+      if selectReader.exec_():
+        self._reader = selectReader.getSelectedReader()
+      else:
+        self._reader = None  
       # Read part data only (default is read all the data) 
       if 'Stride' in dir(self._reader):                          
         self._reader.Stride = self._stride

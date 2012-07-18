@@ -23,8 +23,11 @@ from paraviewconnection import ParaViewConnectionDialog
 from pvprocessfile import PVProcessFile
 from pvtabwidget import PVTabWidget
 from packages.uvcdat_cdms.init import CDMSVariable
+
 from packages.pvclimate.pvvariable import PVVariable
 from gui.uvcdat.pvreadermanager import PVReaderManager
+
+import pvFileDialog as fd
 
 class VariableProperties(QtGui.QDockWidget):
 
@@ -626,17 +629,20 @@ class VariableProperties(QtGui.QDockWidget):
         return kwargs
     
     def openRemoteFile(self):
-        fileName = QtGui.QFileDialog.getOpenFileName(self, 
-                                                     "%s - Select File" % QtGui.QApplication.applicationName(),
-                                                     QtCore.QDir.homePath(), "Files (%s)" % " ".join("*.*"))
-        return fileName
+        dir(fd)
+        fileDialog = fd.PVFileDialog(self)        
+        if fileDialog.exec_():                         
+          return fileDialog.getAllSelectedFiles()[0][0]        
+        return ''
 
     def populateVariables(self, variables):        
         self._pvTabWidget.populateVars(variables)
 
     def processFile(self):
+        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self._pvProcessFile.setStride(self._pvTabWidget.getStride())        
         self.populateVariables(self._pvProcessFile.getVariables())
+        QtGui.QApplication.restoreOverrideCursor()
 
     def updateConnectionStatus(self, isConnected):
         if isConnected:
@@ -647,6 +653,8 @@ class VariableProperties(QtGui.QDockWidget):
     def selectRemoteFile(self):
         # Do not process the file right away. Wait till user hits the apply button
         fileName = self.openRemoteFile()
+        if len(fileName) == 0:
+          return        
         self._pvProcessFile.setFileName(fileName)
         reader = self._pvProcessFile.createReader()
         if reader is not None:                
