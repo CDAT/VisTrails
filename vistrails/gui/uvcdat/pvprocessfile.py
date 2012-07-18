@@ -1,6 +1,7 @@
 from paraview.simple import *
 from paraview import servermanager
 from pvselect_reader import PVSelectReaderDialog
+from pvreadermanager import PVReaderManager
 
 class PVProcessFile:
     def __init__(self):
@@ -13,13 +14,16 @@ class PVProcessFile:
         
     def setStride(self, stride):
         self._stride = stride
-        
+        if self._reader is not None and 'Stride' in dir(self._reader):
+            self._reader.Stride = stride
+
     def createReader(self):
       selectReader = PVSelectReaderDialog()
-      selectReader.populateReaders(self._fileName)            
-      selectReader.exec_()
-      self._reader = selectReader.getSelectedReader()                        
-  
+      selectReader.populateReaders(self._fileName)
+      if selectReader.exec_():
+        self._reader = selectReader.getSelectedReader()
+      else:
+        self._reader = None  
       # Read part data only (default is read all the data) 
       if 'Stride' in dir(self._reader):                          
         self._reader.Stride = self._stride
@@ -41,3 +45,6 @@ class PVProcessFile:
             # GetArray returns array information in this format -> Array: Name
             variables.append(array.split(':')[1])
         return variables
+
+    def getReader(self):
+        return self._reader

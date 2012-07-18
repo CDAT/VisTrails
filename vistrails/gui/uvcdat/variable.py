@@ -23,7 +23,11 @@ from paraviewconnection import ParaViewConnectionDialog
 from pvprocessfile import PVProcessFile
 from pvtabwidget import PVTabWidget
 from packages.uvcdat_cdms.init import CDMSVariable
-from packages.uvcdat_pv.init import PVVariable
+
+from packages.pvclimate.pvvariable import PVVariable
+from gui.uvcdat.pvreadermanager import PVReaderManager
+
+import pvFileDialog as fd
 
 class VariableProperties(QtGui.QDockWidget):
 
@@ -481,15 +485,23 @@ class VariableProperties(QtGui.QDockWidget):
             self.getUpdatedVarCheck(str(qtname))
             
     def getVarFromPVTab(self):
-        filename = str(self._pvProcessFile._fileName)
-        varName = str(self._pvTabWidget.cbVar.currentText()).strip()
+        fileName = str(self._pvProcessFile._fileName)
+        varName = str(self._pvTabWidget.cbVar.currentText()).strip()        
         kwargs ={}
-        
+                
         #FIXME: need to check if the variable already exists
         self.root.dockVariable.widget().addVariable(varName,type_="PARAVIEW")
         _app = get_vistrails_application()
         controller = _app.uvcdatWindow.get_current_project_controller()
-        pvVar = PVVariable(filename=filename, name=varName)
+        
+        # Hard coded for point variables for now
+        parameters = PVReaderManager.register(self._pvProcessFile.getReader(),
+                                              varName)
+        pvVar = PVVariable(fileName, varName, 'POINTS', parameters)
+
+        # TODO: We should emit this but for now it is not working
+        #self.emit(QtCore.SIGNAL('definedVariableEvent'),(None,pvVar))
+        
         controller.add_defined_variable(pvVar)
         # controller.add_defined_variable(filename, varName, kwargs)
         
@@ -634,17 +646,20 @@ class VariableProperties(QtGui.QDockWidget):
         return kwargs
     
     def openRemoteFile(self):
-        fileName = QtGui.QFileDialog.getOpenFileName(self, 
-                                                     "%s - Select File" % QtGui.QApplication.applicationName(),
-                                                     QtCore.QDir.homePath(), "Files (%s)" % " ".join("*.*"))
-        return fileName
+        dir(fd)
+        fileDialog = fd.PVFileDialog(self)        
+        if fileDialog.exec_():                         
+          return fileDialog.getAllSelectedFiles()[0][0]        
+        return ''
 
     def populateVariables(self, variables):        
         self._pvTabWidget.populateVars(variables)
 
     def processFile(self):
+        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self._pvProcessFile.setStride(self._pvTabWidget.getStride())        
         self.populateVariables(self._pvProcessFile.getVariables())
+        QtGui.QApplication.restoreOverrideCursor()
 
     def updateConnectionStatus(self, isConnected):
         if isConnected:
@@ -655,6 +670,8 @@ class VariableProperties(QtGui.QDockWidget):
     def selectRemoteFile(self):
         # Do not process the file right away. Wait till user hits the apply button
         fileName = self.openRemoteFile()
+        if len(fileName) == 0:
+          return        
         self._pvProcessFile.setFileName(fileName)
         reader = self._pvProcessFile.createReader()
         if reader is not None:                
