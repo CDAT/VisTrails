@@ -240,6 +240,36 @@ class ImagePlaneWidget:
         self.CursorActor.SetProperty(self.CursorProperty)
         
         self.TexturePlaneActor.PickableOn()                  
+        
+        if self.PlaneIndex==2:
+            range = self.outlineMap.GetPointData().GetScalars('scalars').GetRange()
+            
+            bwLut = vtk.vtkLookupTable()
+            bwLut.SetTableRange (range[0], range[1])
+            bwLut.SetSaturationRange (0, 0) # no color saturation
+            bwLut.SetValueRange (0, 1)      # from black to white
+            bwLut.SetAlphaRange(1, 0)
+            bwLut.Build()
+            
+            map2rgb = vtk.vtkImageMapToColors()
+            map2rgb.SetInput(self.outlineMap)
+            map2rgb.SetOutputFormatToRGBA()
+            map2rgb.SetLookupTable(bwLut)
+            map2rgb.Update()
+            
+            atext = vtk.vtkTexture()
+            atext.SetInput(self.outlineMap)
+            atext.SetLookupTable(bwLut)
+#            atext.SetBlendingMode(vtk.vtkTexture.VTK_TEXTURE_BLENDING_MODE_ADD)
+      
+            planeMapper = vtk.vtkPolyDataMapper()
+            planeMapper.SetInputConnection(self.PlaneSource.GetOutputPort())
+            
+            planeActor = vtk.vtkActor()
+            planeActor.SetMapper(planeMapper)
+            planeActor.SetTexture(atext)
+            self.CurrentRenderer.AddViewProp(planeActor)
+                                         
         self.Interactor.Render()
         
     def EnablePicking( self ):
@@ -681,6 +711,9 @@ class ImagePlaneWidget:
         
 #----------------------------------------------------------------------------
 
+    def SetOutlineMap(self, outlineMap):
+        self.outlineMap = outlineMap
+    
     def UpdatePlane(self):
         
         self.ImageData  =self.Reslice.GetInput()

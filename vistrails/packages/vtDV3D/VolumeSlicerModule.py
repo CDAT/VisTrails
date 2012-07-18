@@ -19,6 +19,10 @@ from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.ImagePlaneWidget import *
 from packages.vtDV3D import HyperwallManager
 VolumeSlicerModules = {}
+
+packagePath = os.path.dirname( __file__ )  
+defaultMapDir = os.path.join( packagePath, 'data' )
+defaultOutlineMapFile = os.path.join( defaultMapDir,  'political_map.png' )
         
 class PM_VolumeSlicer(PersistentVisualizationModule):
     """
@@ -187,6 +191,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
         self.planeWidgetZ.SetUserControlledLookupTable(1)
         self.planeWidgetZ.SetLookupTable( self.lut )
+        self.planeWidgetZ.SetOutlineMap(self.buildOutlineMap())
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.updateOpacity() 
 #        self.imageRescale = vtk.vtkImageReslice() 
@@ -197,6 +202,42 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.set2DOutput( port=self.imageRescale.GetOutputPort(), name='slice' ) 
         self.set3DOutput() 
 
+    def buildOutlineMap(self):
+        from pylab import imread, normalize
+        from vtk.util import numpy_support
+        from vtk.util.vtkImageImportFromArray import vtkImageImportFromArray
+        import cdms2
+
+        # read outline image and convert to gray scale
+        data = imread(defaultOutlineMapFile)
+        data = data.mean(axis=2)
+
+#        # create a variable using the data loaded in the image and an uniform grid
+        dims = data.shape
+        reso = [180.0/dims[0], 360.0/dims[1]]
+        igrid = cdms2.createUniformGrid(90, dims[0], -reso[0], -180, dims[1], reso[1])
+        var = cdms2.createVariable(data)
+        lat = cdms2.createUniformLatitudeAxis(90, dims[0], -reso[0])
+        lon = cdms2.createUniformLongitudeAxis(-180, dims[1], reso[1])
+        var.setAxis(0, lat)
+        var.setAxis(1, lon)
+
+        # create the final map using the ROI
+        odims = [ (self.roi[3]-self.roi[2])/reso[0] , (self.roi[1]-self.roi[0])/reso[1] ]
+        ogrid = cdms2.createUniformGrid(self.roi[2], odims[0], reso[0], self.roi[0], odims[1], reso[1])
+        ovar = var.regrid(ogrid)
+        
+        # replace outlier numbers
+        d = ovar.data
+        d[d==1e+20] = d[d<>1e+20].max()
+        
+        # convert to vtkImageData
+        img = vtkImageImportFromArray()
+        img.SetArray(ovar.data)
+        img.Update()
+        
+        return img.GetOutput()
+    
 #    def buildPipeline0(self):
 #        """ execute() -> None
 #        Dispatch the vtkRenderer to the actual rendering widget

@@ -587,12 +587,12 @@ class PersistentModule( QObject ):
                 tval = timeAxis[ image_coords[2] ]
                 relTimeValue = cdtime.reltime( float( tval ), timeAxis.units ) 
                 timeValue = str( relTimeValue.tocomp() )          
-                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), timeValue ]   
+                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), timeValue ]
             else:         
                 lat = self.metadata[ 'lat' ]
                 lon = self.metadata[ 'lon' ]
                 lev = self.metadata[ 'lev' ]
-                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), getFloatStr(lev[ image_coords[2] ]) ]   
+                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), getFloatStr(lev[ image_coords[2] ]) ]
         except:
             gridSpacing = self.input.GetSpacing()
             gridOrigin = self.input.GetOrigin()
@@ -727,10 +727,7 @@ class PersistentModule( QObject ):
             enc_mdata = encodeToString( metadata )
             dataVector.InsertNextValue( enc_mdata  )
 
-    def getMetadata( self, metadata = None, port=None  ):
-        if metadata is None:
-            metadata = {}
-    
+    def getMetadata( self, metadata = {}, port=None  ):
         if self.fieldData:
             md = extractMetadata( self.fieldData )
             if md: metadata.update( md )
@@ -1501,7 +1498,7 @@ class PersistentVisualizationModule( PersistentModule ):
 
         ds = self.getCDMSDataset()
         if len(ds.transientVariables)<>1:
-            print 'ERROR: this module has many', 
+            print 'ERROR: this module has many variables'
         var = ds.transientVariables.values()[0]
         
         newvar = var(lat=coord[1], lon=coord[0], lev=coord[2], squeeze=1)
