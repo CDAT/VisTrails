@@ -653,7 +653,7 @@ class VariableProperties(QtGui.QDockWidget):
     def selectRemoteFile(self):
         # Do not process the file right away. Wait till user hits the apply button
         fileName = self.openRemoteFile()
-        if not fileName:
+        if len(fileName) == 0:
           return        
         self._pvProcessFile.setFileName(fileName)
         reader = self._pvProcessFile.createReader()
