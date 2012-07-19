@@ -27,7 +27,6 @@ from packages.uvcdat_cdms.init import CDMSVariable
 from packages.pvclimate.pvvariable import PVVariable
 from gui.uvcdat.pvreadermanager import PVReaderManager
 
-import pvFileDialog as fd
 
 class VariableProperties(QtGui.QDockWidget):
 
@@ -629,6 +628,7 @@ class VariableProperties(QtGui.QDockWidget):
         return kwargs
     
     def openRemoteFile(self):
+        import pvFileDialog as fd
         dir(fd)
         fileDialog = fd.PVFileDialog(self)        
         if fileDialog.exec_():                         
