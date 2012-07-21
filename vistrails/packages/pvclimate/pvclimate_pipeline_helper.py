@@ -179,12 +179,12 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def find_plot_modules(pipeline):
-        #find plot modules in the order they appear in the Cell
+        # Find plot modules in the order they appear in the Cell
         res = []
-        #cell = CDMSPipelineHelper.find_module_by_name(pipeline, 'VisItCell')
-        #plots = pipeline.get_inputPort_modules(cell.id,'plot')
-        #for plot in plots:
-        #    res.append(pipeline.modules[plot])
+        cell = PlotPipelineHelper.find_module_by_name(pipeline, 'PVGenericCell')
+        plots = pipeline.get_inputPort_modules(cell.id, 'plot')
+        for plot in plots:
+            res.append(pipeline.modules[plot])
         return res
 
     @staticmethod
