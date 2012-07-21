@@ -70,17 +70,31 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         reg = get_module_registry()
         ops = []
 
-        # Create the module from the descriptor
-        plot_descriptor = reg.get_descriptor_by_name('com.kitware.pvclimate', "PVContourRepresentation")
+        #
+        # Create plot module from the descriptor
+        #
+        #######################################################################
+
+        # Is there a better way? I looked around and found none
+        import re
+        plotUsableName = re.sub(r'\s', '', plot_gm)
+
+        plot_descriptor = reg.get_descriptor_by_name('com.kitware.pvclimate', plotUsableName)
         plot_module = controller.create_module_from_descriptor(plot_descriptor)
 
-        # Aashish: This is no longer required as of this commit e13bb034ceb302afe3aad3caf20153e1525586db
+        # Aashish: This is no longer required as of this commit
+        # e13bb034ceb302afe3aad3caf20153e1525586db
         # I am not sure though why we still need to add plot module
         #ops.append(('add', var_modules[0]))
 
         ops.append(('add', plot_module))
 
-        print >> sys.stderr, 'var_modules[0] ', var_modules[0]
+        #print >> sys.stderr, 'var_modules[0] ', var_modules[0]
+
+        #
+        # Create cell - representation linkage
+        #
+        #######################################################################
 
         # Check to see if a cell already exits, if yes then set the input (representation on it) or else
         # create a new one and then set the representation on it.
@@ -102,7 +116,10 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
             # Add the connection to the pipeline operations
             ops.append(('add', conn))
 
-            # Now create a connection between the cell and the variable
+        #
+        # Create a connection between the cell and the variable
+        #
+        #######################################################################
 
         if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
             conn = controller.create_connection(var_modules[0], 'self',
@@ -112,10 +129,9 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
                                                 cell_module, 'variable')
         ops.append(('add', conn))
 
-        type_of_plot = str(plot_gm)
-        print 'Type of plot is ', type_of_plot
-
         # Aashish: I don't think this is required
+
+#        type_of_plot = str(plot_gm)
 #        param_module = controller.create_module_from_descriptor(
 #            reg.get_descriptor_by_name('gov.lbl.visit',
 #                                       'VisItParams'))
