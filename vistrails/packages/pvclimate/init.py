@@ -23,9 +23,10 @@ def initialize():
         pvcontourrepresentation.registerSelf()
         pvslicerepresentation.registerSelf()
                         
-        import pvclimatecell, pvisosurfacecell
+        import pvclimatecell, pvisosurfacecell, pvgenericcell
         pvclimatecell.registerSelf()
         pvisosurfacecell.registerSelf()
+        pvgenericcell.registerSelf()
     else:
         print 'Not it does has cell'
 

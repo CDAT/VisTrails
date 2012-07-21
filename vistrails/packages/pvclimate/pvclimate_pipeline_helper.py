@@ -21,7 +21,8 @@ from packages.uvcdat_cdms.init import CDMSPlot, CDMSVariable, CDMSCell, CDMSVari
 from gui.uvcdat.uvcdatCommons import plotTypes
 import api
 
-import pvclimatecell
+# Import PV Generic Cell
+from pvgenericcell import PVGenericCell
 
 import sys
 
@@ -29,34 +30,31 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def show_configuration_widget(controller, version, plot_obj=None):
-        print 'Calling show_configuration_widget'
-
         # Grab the pipeline
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
 
-        #plots = VisItPipelineHelper.find_plot_modules(pipeline)
-        # Fine the cell
-        cell = CDMSPipelineHelper.find_modules_by_type(pipeline,[pvclimatecell.PVClimateCell])
-        vars = CDMSPipelineHelper.find_modules_by_type(pipeline,
-                                                       [CDMSVariable,
-                                                        CDMSVariableOperation])
+        # plots = VisItPipelineHelper.find_plot_modules(pipeline)
+
+        # Find the cell
+        cell = CDMSPipelineHelper.find_modules_by_type(pipeline,[PVGenericCell])
 
         # FIXME: Remove this hack
         if len(cell) == 0:
           print >> sys.stderr, 'cell is empty'
           return None
 
-        if len(cell) == 0:
-            return pvclimatecell.PVClimateCellConfigurationWidget(None,controller)
-        else:
-            pvcell = cell[0].module_descriptor.module()
-            return pvclimatecell.PVClimateCellConfigurationWidget(cell[0],controller)
+        # FIXME: Implement this
+#        if len(cell) == 0:
+#            return pvclimatecell.PVClimateCellConfigurationWidget(None,controller)
+#        else:
+#            pvcell = cell[0].module_descriptor.module()
+#            return pvclimatecell.PVClimateCellConfigurationWidget(cell[0],controller)
 
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plots,row, col, template=None):
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
-        print 'Calling build_plot_pipWeline_action'
+        #print 'Calling build_plot_pipWeline_action'
 
         # Get controller
         if controller is None:
@@ -128,11 +126,11 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
             # create a new one and then set the representation on it.
 
             if cell_module is None:
-                cell_module = PlotPipelineHelper.find_module_by_name(pipeline, "PVIsoSurfaceCell")
+                cell_module = PlotPipelineHelper.find_module_by_name(pipeline, "PVGenericCell")
 
             # If cell module is None, then create a new one
             if cell_module is None:
-                cell_desc = reg.get_descriptor_by_name('com.kitware.pvclimate', "PVIsoSurfaceCell")
+                cell_desc = reg.get_descriptor_by_name('com.kitware.pvclimate', "PVGenericCell")
                 cell_module = controller.create_module_from_descriptor(cell_desc)
                 ops.append(('add', cell_module))
 
