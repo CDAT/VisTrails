@@ -71,7 +71,8 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         ops = []                
 
         # Create the module from the descriptor          
-        plot_descriptor = reg.get_descriptor_by_name('com.kitware.pvclimate','PVClimateCell')
+        # Hard coded plot type for now
+        plot_descriptor = reg.get_descriptor_by_name('com.kitware.pvclimate', "PVContourRepresentation")
         plot_module = controller.create_module_from_descriptor(plot_descriptor)
         
         # Aashish: This is no longer required as of this commit e13bb034ceb302afe3aad3caf20153e1525586db
