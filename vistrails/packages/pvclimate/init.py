@@ -16,7 +16,12 @@ def initialize():
     pvvariable.registerSelf()
     
     if registry.has_module('edu.utah.sci.vistrails.spreadsheet',
-                           'SpreadsheetCell'):                
+                           'SpreadsheetCell'):
+        
+        import pvrepresentationbase, pvcontourrepresentation
+        pvrepresentationbase.registerSelf()
+        pvcontourrepresentation.registerSelf()
+                        
         import pvclimatecell, pvisosurfacecell
         pvclimatecell.registerSelf()
         pvisosurfacecell.registerSelf()
