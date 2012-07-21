@@ -71,7 +71,6 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         ops = []                
 
         # Create the module from the descriptor          
-        # Hard coded plot type for now
         plot_descriptor = reg.get_descriptor_by_name('com.kitware.pvclimate', "PVContourRepresentation")
         plot_module = controller.create_module_from_descriptor(plot_descriptor)
         
@@ -82,13 +81,30 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         ops.append(('add', plot_module))
 
         print >> sys.stderr, 'var_modules[0] ', var_modules[0]
+        
+        # Check to see if CELL already exits, if yes then set the input port or else
+        # create a new one and set the input port on it
+        # First get the pipeline
+        pipeline = controller.vistrail.getPipeline(version)
+        cell_module = PlotPipelineHelper.find_module_by_name(pipeline, "PVIsoSurfaceCell")        
+        if cell_module is None:
+            cell_desc = reg.get_descriptor_by_name('com.kitware.pvclimate', "PVIsoSurfaceCell")
+            cell_module = controller.create_module_from_descriptor(cell_desc)
+            ops.append(('add', cell_module))
+            
+            # Create connection between the cell and the plot
+            conn = controller.create_connection(plot_module, 'self',
+                                                cell_module, 'representation')
+            ops.append(('add', conn))
+            
+            # Now create a connection between the cell and the variable
 
         if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
             conn = controller.create_connection(var_modules[0], 'self',
                                                 plot_module, 'variable')
         else:
             conn = controller.create_connection(var_modules[0], 'self',
-                                                plot_module, 'variable')
+                                                cell_module, 'variable')
         ops.append(('add', conn))
 
         type_of_plot = str(plot_gm)
@@ -116,7 +132,7 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         for f in functions:
             loc_module.add_function(f)
         loc_conn = controller.create_connection(loc_module, 'self',
-                                                plot_module, 'Location')
+                                                cell_module, 'Location')
         ops.extend([('add', loc_module),
                     ('add', loc_conn)])
 

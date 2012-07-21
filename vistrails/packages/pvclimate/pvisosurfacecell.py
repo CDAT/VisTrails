@@ -85,6 +85,8 @@ class QPVIsoSurfaceWidget(QVTKWidget):
         # Fetch variables from the input port
         (location, variables, representation) = inputPorts
         for var in variables:
+            reader = var.get_reader()
+            representation.setReader(reader)
             representation.setVariables(variables)
             representation.setView(self.view)            
             representation.execute()            
