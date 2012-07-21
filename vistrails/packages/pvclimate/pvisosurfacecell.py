@@ -31,29 +31,29 @@ class PVIsoSurfaceCell(SpreadsheetCell):
         SpreadsheetCell.__init__(self)
         self.cellWidget = None
         self.location = None
-        self.representation = None
+        self.representations = None
 
     def compute(self):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """
         # Fetch input variable
-        variables = self.forceGetInputListFromPort('variable')        
+        variables = self.forceGetInputListFromPort('variable')
 
         # Fetch slice offset from input port
         if self.hasInputFromPort("location"):
             self.location = self.getInputFromPort("location")
         else:
             pass
-        
+
         # Get representation from the input
         if self.hasInputFromPort("representation"):
-            self.representation = self.getInputFromPort("representation")
-        
-        if self.representation is None:
-          return;
+            self.representations = self.forceGetInputListFromPort("representation")
 
-        self.cellWidget = self.displayAndWait(QPVIsoSurfaceWidget, (self.location, variables, self.representation))
+        if self.representations is None:
+            return;
+
+        self.cellWidget = self.displayAndWait(QPVIsoSurfaceWidget, (self.location, variables, self.representations))
 
     def persistParameterList( self, parameter_list, **args ):
         print "Getting Something"
@@ -83,14 +83,16 @@ class QPVIsoSurfaceWidget(QVTKWidget):
         del self.view.Representations[:]
 
         # Fetch variables from the input port
-        (location, variables, representation) = inputPorts
+        (location, variables, representations) = inputPorts
         for var in variables:
             reader = var.get_reader()
-            representation.setReader(reader)
-            representation.setVariables(variables)
-            representation.setView(self.view)            
-            representation.execute()            
-            
+
+            for rep in representations:
+                rep.setReader(reader)
+                rep.setVariables(variables)
+                rep.setView(self.view)
+                rep.execute()
+
         # Set view specific properties
         self.view.CenterAxesVisibility = 0
         self.view.Background = [0.5, 0.5, 0.5]
@@ -133,6 +135,6 @@ def registerSelf():
     #registry.add_module(PVIsoSurfaceCell, configureWidgetType=PVClimateCellConfigurationWidget)
     registry.add_module(PVIsoSurfaceCell)
     registry.add_input_port(PVIsoSurfaceCell, "Location", CellLocation)
-    registry.add_input_port(PVIsoSurfaceCell, "variable", PVVariable)    
+    registry.add_input_port(PVIsoSurfaceCell, "variable", PVVariable)
     registry.add_input_port(PVIsoSurfaceCell, "representation", PVRepresentationBase)
     registry.add_output_port(PVIsoSurfaceCell, "self", PVIsoSurfaceCell)
