@@ -136,5 +136,6 @@ def registerSelf():
     registry.add_module(PVIsoSurfaceCell)
     registry.add_input_port(PVIsoSurfaceCell, "Location", CellLocation)
     registry.add_input_port(PVIsoSurfaceCell, "variable", PVVariable)
-    registry.add_input_port(PVIsoSurfaceCell, "representation", PVRepresentationBase)
+#    registry.add_input_port(PVIsoSurfaceCell, "representation", PVRepresentationBase)
+    registry.add_input_port(PVIsoSurfaceCell, "representation", [])
     registry.add_output_port(PVIsoSurfaceCell, "self", PVIsoSurfaceCell)
