@@ -58,7 +58,6 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         # or plot_module do not change
         print 'Calling build_plot_pipWeline_action'
 
-
         # Get controller
         if controller is None:
             controller = api.get_current_controller()
@@ -72,11 +71,12 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         # First get the pipeline
         pipeline = controller.vistrail.getPipeline(version)
 
-        # Use only the first var module
+        # FIXME: Add support for multiple variables per plot
+        # Use only the first var module for now
         var_module = var_modules[0]
 
-        # Aashish: As of now, very first time var_module is being added to the pipeline by the project controller
-        # but second time on the same cell, it gets removed and hence we needed to add var_module again to pipeline.
+        # Aashish: As of now, very first time var module is being added to the pipeline by the project controller
+        # but second time on the same cell, it gets removed and hence we needed to add var module again to pipeline.
         # I need to put this code under try catch because as of now looking for an id that does not exists
         # results in exception.
         try:
@@ -85,10 +85,9 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
             temp_var_module = None
 
         if temp_var_module is not None:
-            print 'hello'
             var_module = temp_var_module
         else:
-            print 'adding'
+            # This time we need to add var module to the pipeline
             ops.append(('add', var_module))
 
         for plot in plots:
@@ -139,11 +138,12 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
                 #
                 # Create a connection between the cell and the variable
+                # Aashish: I am expecting that every time we drop a variable, we will get a
+                # pipeline that does not have modules from the previous execution. I need to verify
+                # this but for now this assumption seems to hold.
                 #
                 #######################################################################
 
-                # NOTE: This needs to be fixed if the user has dropped another variable on
-                # earlier created representations. Currently we are not handling that case
                 if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
                     conn = controller.create_connection(var_module, 'self',
                                                         plot_module, 'variable')
@@ -151,9 +151,8 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
                     conn = controller.create_connection(var_module, 'self',
                                                         cell_module, 'variable')
                 ops.append(('add', conn))
-                print 'connection source id is ', conn.sourceId
-                print 'connection dest id is ', conn.destinationId
-
+                #print 'connection source id is ', conn.sourceId
+                #print 'connection dest id is ', conn.destinationId
 
                 loc_module = controller.create_module_from_descriptor(
                     reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet',
@@ -189,7 +188,6 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         #for plot in plots:
         #    res.append(pipeline.modules[plot])
         return res
-
 
     @staticmethod
     def load_pipeline_in_location(pipeline, controller, sheetName, row, col,plot_type, cell):
@@ -268,8 +266,6 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         text += '    sys.exit(app.exec_())'
         return text
 
-
-
     @staticmethod
     def copy_pipeline_to_other_location(pipeline, controller, sheetName, row, col,plot_type, cell):
         print "copyt pipeline to other location"
@@ -323,5 +319,3 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         #ptype = CDMSPipelineHelper.get_plot_type_from_module(plot_modules[0])
         #cell.plot = get_plot_manager().get_plot(plot_type, ptype, gmName)
         return action
-
-
