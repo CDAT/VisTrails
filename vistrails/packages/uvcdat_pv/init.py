@@ -9,7 +9,7 @@ def expand_port_specs(port_specs, pkg_identifier=None):
     return _expand_port_specs(port_specs, pkg_identifier)
 
 class PVPlot(Plot):
-    _input_ports = expand_port_specs([("variable", "PVVariable"),
+    _input_ports = expand_port_specs([("variable", "com.kitware.pvclimate:PVVariable"),
                                       ])
 
     def to_module(self, controller):
