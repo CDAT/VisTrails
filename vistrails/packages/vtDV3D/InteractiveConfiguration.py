@@ -487,7 +487,9 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             self.setLevelDataHandler( self.range, **args )
         except Exception, err:
             print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
-        print "applyParameter: %s " % str( self.range )
+        print "Apply %s Parameter[%s]: %s " % ( self.type, self.name, str( self.range ) )
+        if self.name == 'colorScale':
+            print "x"
         
     def reset(self):
         self.setLevelDataHandler( self.initial_range )
@@ -1744,7 +1746,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                     dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
                     module.updateAnimation( relTimeValueRefAdj, displayText  )
             except Exception:
-                traceback.print_exc( 100, stderr )
+                traceback.print_exc( 100, sys.stderr )
 #                print>>sys.stdout, "Error in setTimestep[%d]: %s " % ( iTimestep, str(err) )
 
     def stop(self):
