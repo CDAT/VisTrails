@@ -29,12 +29,12 @@ class DockVariable(QtGui.QDockWidget):
         self.lastDirectory=customizeUVCDAT.lastDirectory
         self.setWidget(QDefinedVariableWidget(self))
         self.connectSignals()
-        
+
     def connectSignals(self):
         #self.ui.btnNewVar.clicked.connect(self.newVariable)
         pass
-        
+
     def newVariable(self):
         varProp = VariableProperties(self)
         varProp.show()
-        
+
