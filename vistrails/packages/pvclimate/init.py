@@ -16,10 +16,17 @@ def initialize():
     pvvariable.registerSelf()
     
     if registry.has_module('edu.utah.sci.vistrails.spreadsheet',
-                           'SpreadsheetCell'):                
-        import pvclimatecell, pvisosurfacecell
+                           'SpreadsheetCell'):
+        
+        import pvrepresentationbase, pvcontourrepresentation, pvslicerepresentation
+        pvrepresentationbase.registerSelf()
+        pvcontourrepresentation.registerSelf()
+        pvslicerepresentation.registerSelf()
+                        
+        import pvclimatecell, pvisosurfacecell, pvgenericcell
         pvclimatecell.registerSelf()
         pvisosurfacecell.registerSelf()
+        pvgenericcell.registerSelf()
     else:
         print 'Not it does has cell'
 
