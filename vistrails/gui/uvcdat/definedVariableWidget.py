@@ -61,7 +61,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         txt = str(item.text())
         axisList = axesWidgets.QAxisList(None,__main__.__dict__[txt.split()[1]],self)
         self.setupDimsForEditMode(axisList, item.cdmsVar)
-        
+
     def setupDimsForEditMode(self,axisList, cdmsVar=None):
         varProp = self.root.varProp
         varProp.parent=self
@@ -94,7 +94,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
             self.varList.addItem(self.quickplotItem)
         else:
             self.quickplotItem.setVariable(var)
-            self.quickplotItem.setFile(file)            
+            self.quickplotItem.setFile(file)
 
 
     def refreshVariablesStrings(self):
@@ -113,8 +113,8 @@ class QDefinedVariableWidget(QtGui.QWidget):
         for item in selectedItems:
             val = int(str(item.text()).split()[0])
             item.updateVariableString(nums.index(val)+1)
-            
-            
+
+
     def getSelectedItems(self,project=True):
         """ Get a list of all of the defined tabnames / variables """
         selectedItems = self.varList.selectedItems()
@@ -127,7 +127,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         else:
             varList=selectedItems
         return varList
-    
+
     def getItems(self,project=True):
         """ Get a list of all of the defined tabnames / variables """
         varList = []
@@ -173,7 +173,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 del(__main__.__dict__[it.varName])
                 it.varName = v.id
                 self.root.stick_defvar_into_main_dict(v)
-            
+
     def addVariable(self, var, type_='CDMS'):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
@@ -183,7 +183,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
             if type(var) == tuple:
                 cdmsVar = var[1]
                 var = var[0]
-                
+
             self.root.stick_defvar_into_main_dict(var)
             item = QDefinedVariableItem(var,self.root,cdmsVar)
             for i in range(self.varList.count()-1,-1,-1):
@@ -198,7 +198,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         # emit signal to tell to update edit area
         ## print "Added variable"
         ## self.emit(QtCore.SIGNAL('setupDefinedVariableAxes'), var)
-        
+
     def deleteVariable(self, varid):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
@@ -215,7 +215,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
 
         #iTab = self.root.tabView.widget(0).tabWidget.getTabIndexFromName(varid)
         #self.root.tabView.widget(0).tabWidget.removeTab(iTab)
-        
+
     def unselectItems(self,items):
         selected = self.varList.selectedItems()
         for item in items:
@@ -223,7 +223,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 item.setSelected(False)
                 self.selectVariableFromListEvent(item)
 
-        
+
     def unselectVariableFromName(self,name):
         for i in range(self.varList.count()):
             it = self.varList.item(i)
@@ -245,7 +245,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
             it = self.varList.item(i)
             if not it in selected:
                 self.selectVariableFromName(it.varName)
-    
+
     def selectVariableFromListEvent(self, item):
         """ Update the number next to the selected defined variable and
         send a signal to QVariableView to display the selected variable
@@ -259,7 +259,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         if item not in selectedItems:
             unselectedNum = item.getSelectNum()
             item.updateVariableString(None)
-            
+
             for item in selectedItems:
                 num = item.getSelectNum()
                 if num > unselectedNum:
@@ -276,13 +276,13 @@ class QDefinedVariableWidget(QtGui.QWidget):
         var = item.getVariable()
         ## selectedVars = [item.getVariable() for item in selectedItems]
         tabName = item.getVarName()
-        
+
         self.emit(QtCore.SIGNAL('selectDefinedVariableEvent'), tabName, var)
 
     def isVariableDefined(self, varID):
         """ Return true if a variable with the given id is defined (this does
         not include 'quickplot' """
-        
+
         for i in range(self.varList.count()):
             item = self.varList.item(i)
             if varID == item.getVariable().id and not item.isQuickplotItem():
@@ -295,13 +295,13 @@ class QDefinedVariableWidget(QtGui.QWidget):
     ##         listItem = self.varList.item(i)
     ##         if varID == listItem.getVariable().id:
     ##             return listItem
-    ##     return None  
+    ##     return None
 
     def recordDefineVariableTeachingCommand(self, name, varName, file, axesArgString):
         if varName in list(getattr(file, 'variables')):
-            fileID = "fid2"            
+            fileID = "fid2"
             command = '\n# Get new slab\n'
-            command += "%s = %s('%s', %s)\n" %(name, fileID, varName, axesArgString)        
+            command += "%s = %s('%s', %s)\n" %(name, fileID, varName, axesArgString)
 
             self.emit(QtCore.SIGNAL('recordTeachingCommand'), command)
 
@@ -312,7 +312,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         s=sel[-1] # Only do the last one
         axisList = axesWidgets.QAxisList(None,s,self)
         self.setupDimsForEditMode(axisList)
-        
+
 
     def saveVariables(self):
         sel = self.getSelectedDefinedVariables()
@@ -337,7 +337,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         except Exception,err:
             QtGui.QMessageBox.question(self,"Existing File","Error while saving variables: %s" % err)
         self.setCursor(c)
-            
+
     def variableInfo(self):
         self.ieds=[]
         class MyLog():
@@ -371,18 +371,17 @@ class QDefinedVariableWidget(QtGui.QWidget):
             self.connect(b,QtCore.SIGNAL("clicked()"),d.hide)
             d.show()
             self.ieds.append(d)
-            
+
     def trashVariable(self):
         for v in self.getSelectedDefinedVariables():
             self.deleteVariable(v.id)
-            
+
     def trashAll(self):
         self.selectAllVariables()
         for v in self.getSelectedDefinedVariables():
             self.deleteVariable(v.id)
-        
+
     def newVariable(self):
-        #self.root.varProp.parent=self
         varProp = self.root.varProp
         varProp.label.setText("Load From")
         for i in range(varProp.originTabWidget.count()):
@@ -392,10 +391,9 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 varProp.originTabWidget.setTabEnabled(i,False)
             if varProp.originTabWidget.tabText(i)=="File":
                 varProp.originTabWidget.setCurrentIndex(i)
-        varProp.setFloating(True)
         varProp.show()
         return varProp
-                
+
     def createToolbar(self):
         #ICONPATH = ":/icons/resources/icons/"
 
@@ -412,19 +410,19 @@ class QDefinedVariableWidget(QtGui.QWidget):
             ## ('log.gif', "log",'Logged information about the defined variables.',self.variablesInfo),
             ## ('trashcan_empty.gif', "trash",'Defined variable items that can be disposed of permanetly or restored.',self.empytTrash),
             ]
-        
+
         for info in actionInfo:
             icon = info[0]
             action = self.toolBar.addAction(icon, info[1])
             action.setStatusTip(info[2])
             action.setToolTip(info[2])
             self.connect(action,QtCore.SIGNAL("triggered()"),info[3])
-            
+
         ## self.toolBar.addSeparator()
 
         ## self.opButton = QtGui.QToolButton()
         ## self.opButton.setText('Ops')
-        
+
         ## # Create Operations Menu
         ## menu = QtGui.QMenu(self)
         ## grid = QtGui.QGridLayout()
@@ -472,11 +470,11 @@ class QDefinedVariableWidget(QtGui.QWidget):
         ## self.opButton.setMenu(menu)
         ## self.opButton.setPopupMode(QtGui.QToolButton.InstantPopup)
         ## self.connect(self.opButton, QtCore.SIGNAL('clicked(bool)'), self.opButton.showMenu)
-        
+
         ## self.toolBar.addWidget(self.opButton)
 
 class QDefinedVariableItem(QtGui.QListWidgetItem):
-    """ Item to be stored by QDefinedVariable's list widget 
+    """ Item to be stored by QDefinedVariable's list widget
     type ==1 is for cdms variables
     type==2 is for paraview variables """
     CDMS = 1
@@ -492,10 +490,10 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
             self.variable = variable
         self.root=root
         if project is None:
-            
+
             current = str(self.root.get_current_project_controller().name)
             self.projects = [current,]
-            
+
         self.updateVariableString(None)
 
     def getVariable(self):
@@ -509,10 +507,10 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
 
     def getSelectNum(self):
         return self.selectNum
-        
+
     def isQuickplotItem(self):
         return self.varName == 'quickplot'
-        
+
     def updateVariableString(self, num=None):
         """ updateVariableString(num: int)
 
@@ -533,7 +531,7 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
 
     def setFile(self, cdmsFile):
         self.cdmsFile = cdmsFile
-        
+
     def setVariable(self, variable):
         """ Set the variable and update the variable string that is shown to the
         user in the list
@@ -563,7 +561,7 @@ class QDefVarWarningBox(QtGui.QDialog):
         # Add OK / Cancel Buttons
         okButton = QtGui.QPushButton('OK')
         cancelButton = QtGui.QPushButton('Cancel')
-        hbox.addWidget(cancelButton)        
+        hbox.addWidget(cancelButton)
         hbox.addWidget(okButton)
 
         vbox.addWidget(self.text)
@@ -579,12 +577,12 @@ class QDefVarWarningBox(QtGui.QDialog):
     def showWarning(self, varID, file, var, axesArgString):
         """ Show warning message and prompt user for a new variable name. Or use
         the same var name to replace the existing defined variable """
-        
+
         self.varID = varID
         self.file = file
         self.var = var
         self.axesArgString = axesArgString
-        
+
         message = "'%s' has already been defined.  Enter a new variable name \n or press 'OK' to replace '%s'" %(varID, varID)
         self.text.setText(message)
         self.lineEdit.setText(varID)
@@ -593,7 +591,7 @@ class QDefVarWarningBox(QtGui.QDialog):
 
     def okPressedEvent(self):
         self.varID = self.lineEdit.text() # get the user entered variable name
-        self.close()        
+        self.close()
 
         # Emit signal to QDefinedVar to indicate it's ok to add the variable to defined list
         self.emit(QtCore.SIGNAL('newVarID'),
