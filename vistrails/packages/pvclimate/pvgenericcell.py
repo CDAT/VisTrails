@@ -26,7 +26,7 @@ from pvrepresentationbase import *
 
 from pvvariable import *
 
-class PVIsoSurfaceCell(SpreadsheetCell):
+class PVGenericCell(SpreadsheetCell):
     def __init__(self):
         SpreadsheetCell.__init__(self)
         self.cellWidget = None
@@ -132,10 +132,10 @@ class QPVIsoSurfaceWidget(QVTKWidget):
 def registerSelf():
     registry = get_module_registry()
     # For now, we don't have configuration widget
-    #registry.add_module(PVIsoSurfaceCell, configureWidgetType=PVClimateCellConfigurationWidget)
-    registry.add_module(PVIsoSurfaceCell)
-    registry.add_input_port(PVIsoSurfaceCell, "Location", CellLocation)
-    registry.add_input_port(PVIsoSurfaceCell, "variable", PVVariable)
-#    registry.add_input_port(PVIsoSurfaceCell, "representation", PVRepresentationBase)
-    registry.add_input_port(PVIsoSurfaceCell, "representation", [])
-    registry.add_output_port(PVIsoSurfaceCell, "self", PVIsoSurfaceCell)
+    #registry.add_module(PVGenericCell, configureWidgetType=PVClimateCellConfigurationWidget)
+    registry.add_module(PVGenericCell)
+    registry.add_input_port(PVGenericCell, "Location", CellLocation)
+    registry.add_input_port(PVGenericCell, "variable", PVVariable)
+#    registry.add_input_port(PVGenericCell, "representation", PVRepresentationBase)
+    registry.add_input_port(PVGenericCell, "representation", [])
+    registry.add_output_port(PVGenericCell, "self", PVGenericCell)

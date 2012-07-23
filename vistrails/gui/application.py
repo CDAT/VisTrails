@@ -135,7 +135,6 @@ parameters from other instances")
             
         self.vistrailsStartup.set_needed_packages(['uvcdat',
                                                    'uvcdat_cdms',
-                                                   'uvcdat_pv',
                                                    'ParaView',
                                                    'pvclimate',
                                                    'vtk',
