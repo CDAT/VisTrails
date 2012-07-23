@@ -40,6 +40,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         <tr> <td> m </td> <td> Enable margins. Right-clicking and dragging the slice margins enables rotations and translations of the planes </td>
         </table>
     """
+    global_coords = [-1, -1, -1]
+
     def __init__( self, mid, **args ):
         self.imageRange = None
         PersistentVisualizationModule.__init__( self, mid, **args )
@@ -201,6 +203,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
 #        self.set2DOutput( port=self.imageRescale.GetOutputPort(), name='slice' ) 
         self.set3DOutput() 
+        
+        # Fixme. Forcing to show Time series on VolumeSlicer with VolumeReader
+        if self.getMetadata()['plotType']=='xyz':
+            self.addConfigurableFunction('Show Time Series', None, 't' )
 
     def buildOutlineMap(self):
         from pylab import imread, normalize
@@ -401,6 +407,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 self.updateTextDisplay( textDisplay )
                 
                 coord = self.getWorldCoordsAsFloat(cpos)
+                PM_VolumeSlicer.global_coords = coord
                 screenPos = caller.GetCurrentScreenPosition()
                 self.updateLensDisplay(screenPos, coord)
                 

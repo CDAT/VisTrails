@@ -430,6 +430,20 @@ def getSheetTabWidget( sheet_index = -1 ):
     if sheet_index == -1: sheet_index = spreadsheetWindow.get_current_tab_controller().currentIndex () 
     return spreadsheetWindow.get_current_tab_controller().tabWidgets[ sheet_index ]
 
+def adjustSheetDimensions(row, col ):
+    sheetTabWidget = getSheetTabWidget()
+    ( rc, cc ) = sheetTabWidget.getDimension()
+    rowChanged, colChanged = False, False
+    if row >= rc: 
+        rc = row + 1
+        rowChanged = True
+    if col >= cc: 
+        cc = col + 1
+        colChanged = True
+    if rowChanged or colChanged:    sheetTabWidget.setDimension( rc, cc )
+    if rowChanged:                  sheetTabWidget.rowSpinBoxChanged()            
+    if colChanged:                  sheetTabWidget.colSpinBoxChanged()
+
 def getConnectedModuleIds( controller,  mid, portName, isDestinationPort = True ):
     connections = getDesignatedConnections( controller,  mid, portName, isDestinationPort )
     connectedModuleIds = []
