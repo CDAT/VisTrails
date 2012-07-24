@@ -184,8 +184,6 @@ class QParaViewWidget(QVTKWidget):
     def deleteLater(self):
         QCellWidget.deleteLater(self)
 
-
-
 def registerSelf():
     registry = get_module_registry()
     registry.add_module(PVClimateCell, configureWidgetType=PVClimateCellConfigurationWidget)
@@ -194,7 +192,6 @@ def registerSelf():
     registry.add_input_port(PVClimateCell, "sliceOffset", basic_modules.String)
     registry.add_input_port(PVClimateCell, "isoSurfaces", basic_modules.String)
     registry.add_output_port(PVClimateCell, "self", PVClimateCell)
-
 
 class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
 

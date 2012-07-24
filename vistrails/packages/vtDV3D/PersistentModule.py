@@ -550,12 +550,12 @@ class PersistentModule( QObject ):
             self.input =  self.inputModule.getOutput() 
 #            print " --- %s:initializeInputs---> # Arrays = %d " % ( self.__class__.__name__,  ( self.input.GetFieldData().GetNumberOfArrays() if self.input else -1 ) )
             
+            self.updateMetadata()  
             if isAnimation:
                 tval = args.get( 'timeValue', None )
                 if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ReferenceTimeUnits )
                 self.fieldData = self.inputModule.getFieldData() 
             else:
-                self.updateMetadata()  
                 self.initializeLayers()
                 
             self.initializeScalarRange()

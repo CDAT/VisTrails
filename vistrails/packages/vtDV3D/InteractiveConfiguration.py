@@ -463,6 +463,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     def __init__( self, name, key, **args ):
         ConfigurableFunction.__init__( self, name, [ ( Float, 'min'), ( Float, 'max'),  ( Integer, 'ctrl'), ( Float, 'refine0'), ( Float, 'refine1') ], key, **args  )
         self.type = 'leveling'
+        self.manuallyAdjusted = False
         self.windowLeveler = QtWindowLeveler( **args )
         self.windowRefiner = WindowRefinementGenerator( range=[ 0.001, 0.999 ] )
         if( self.initHandler == None ): self.initHandler = self.initLeveling
@@ -487,7 +488,9 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             self.setLevelDataHandler( self.range, **args )
         except Exception, err:
             print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
-        print "applyParameter: %s " % str( self.range )
+        print "Apply %s Parameter[%s]: %s " % ( self.type, self.name, str( self.range ) )
+        if self.name == 'colorScale':
+            print "x"
         
     def reset(self):
         self.setLevelDataHandler( self.initial_range )
@@ -498,8 +501,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         if self.adjustRange:
             if ( self.range_bounds[0] <> self.module.seriesScalarRange[0] ) or ( self.range_bounds[1] <> self.module.seriesScalarRange[1] ):
                 self.range_bounds[0:2] = self.module.seriesScalarRange[0:2]
-                self.range[0:2] = self.range_bounds[0:2]
-                self.initLeveling( initRange = False ) 
+                self.initial_range[:] = self.range_bounds[:]
+                if not self.manuallyAdjusted: 
+                    self.range[0:2] = self.range_bounds[0:2]
+                    self.initLeveling( initRange = False ) 
  
     def initLeveling( self, **args ):
         initRange = args.get( 'initRange', True )
@@ -558,6 +563,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         if (active_module_list == None) or (self.module in active_module_list):
             self.setLevelDataHandler( self.range )
             affected_renderers.add( self.module.renderer )
+            self.manuallyAdjusted = True
 #        print "   -> self = %x " % id(self.module)
         for cfgFunction in self.activeFunctionList:
             if (active_module_list == None) or (cfgFunction.module in active_module_list):
@@ -1744,7 +1750,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                     dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
                     module.updateAnimation( relTimeValueRefAdj, displayText  )
             except Exception:
-                traceback.print_exc( 100, stderr )
+                traceback.print_exc( 100, sys.stderr )
 #                print>>sys.stdout, "Error in setTimestep[%d]: %s " % ( iTimestep, str(err) )
 
     def stop(self):
