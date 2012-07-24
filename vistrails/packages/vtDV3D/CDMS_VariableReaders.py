@@ -46,6 +46,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['portData'], **args)
+        self.fileSpecs = None
+        self.varSpecs = None
+        self.gridSpecs = None
         self.currentTime = 0
         self.currentLevel = None
         self.timeAxis = None
@@ -218,14 +221,6 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 if   orec.ndim >= 3: self.set3DOutput( name=orec.name,  output=imageDataCache[cachedImageDataName] )
                 elif orec.ndim == 2: self.set2DOutput( name=orec.name,  output=imageDataCache[cachedImageDataName] )
         self.currentTime = self.getTimestep()
-
-#    def getMetadata( self, metadata={}, port=None ):
-#        PersistentVisualizationModule.getMetadata( metadata )
-#        portData = self.getPortData()  
-#        oRecMgr = OutputRecManager( portData[0] if portData else None )
-#        orec = oRecMgr.getOutputRec( self.datasetId, port )
-#        if orec: metadata[ 'layers' ] = orec.varList
-#        return metadata
      
     def getTimestep( self ):
         dt = self.timeRange[3]
@@ -512,8 +507,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         if dset:  gridSpecs['attributes'] = dset.dataset.attributes
         return gridSpecs   
                  
-    def getMetadata( self, metadata={}, port=None ):
-        PersistentVisualizationModule.getMetadata( self, metadata )
+    def computeMetadata( self, metadata={}, port=None ):
+        PersistentVisualizationModule.computeMetadata( self, metadata )
         if self.cdmsDataset:
             metadata[ 'vars2d' ] = self.cdmsDataset.getVariableList( 2 )
             metadata[ 'vars3d' ] = self.cdmsDataset.getVariableList( 3 )

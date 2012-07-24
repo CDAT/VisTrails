@@ -152,7 +152,7 @@ class DV3DRangeConfigWidget(QFrame):
             slider.setValue( fval ) 
             parm_range = list( self.active_cfg_cmd.range ) 
             parm_range[ iSlider ] = fval
-            self.active_cfg_cmd.broadcastLevelingData( parm_range, active_modules = DV3DPipelineHelper.getActivePlotList() ) 
+            self.active_cfg_cmd.broadcastLevelingData( parm_range,  active_modules = DV3DPipelineHelper.getActivePlotList() ) 
             if len( self.active_modules ):            
                 for module in self.active_modules: module.render()
                 HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'text-%d' % iSlider, fval ]  )
@@ -332,12 +332,14 @@ class DV3DConfigControlPanel(QWidget):
     
 
     def addActivePlot( self, module ):
+        active_irens = DV3DPipelineHelper.getActiveIrens()
+        isActive = ( module.iren in active_irens )
         plot_type = module.__class__.__name__
         cell_addr = module.getCellAddress()
         if plot_type[0:3] == "PM_": plot_type = plot_type[3:]
         label = "%s: %s" % ( cell_addr, plot_type )
         plot_list_item = PlotListItem( label, module, self.plot_list )
-        plot_list_item.setCheckState( Qt.Checked )
+        plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
     
     def  processPlotListEvent( self, list_item ): 
         DV3DPipelineHelper.setModuleActivation( list_item.module, ( list_item.checkState() == Qt.Checked ) ) 
@@ -362,7 +364,7 @@ class ConnectionType:
     INPUT = 0
     OUTPUT = 1
     BOTH = 2
-     
+    
 class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     '''
     This will take care of pipeline manipulation for plots.
@@ -417,16 +419,26 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             DV3DPipelineHelper.config_widget.stopConfig( module )
               
     @staticmethod
-    def execAction( action_key ): 
+    def execAction( action_key ):
+        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 
         print " execAction: ", action_key
-        actionList  =  DV3DPipelineHelper.actionMap[ action_key ]
+        currentActionList  =  DV3DPipelineHelper.actionMap[ action_key ]
+        
+        actionList = [] 
+        valid_irens = PersistentVisualizationModule.getValidIrens()
+        for ( module, key ) in currentActionList:
+             if module.iren in valid_irens:
+                 actionList.append( ( module, key ) )
+                 
+        DV3DPipelineHelper.actionMap[ action_key ] = actionList
+                        
         for ( module, key ) in actionList:
             module.processKeyEvent( key )
 
         if  (key in DV3DPipelineHelper.cfg_cmds): DV3DPipelineHelper.config_widget.startConfig( action_key, key )
         for ( module, key ) in actionList: 
-            DV3DPipelineHelper.config_widget.addActivePlot( module )
             DV3DPipelineHelper.activationMap[ module ] = True 
+            DV3DPipelineHelper.config_widget.addActivePlot( module )
 
     @staticmethod
     def endInteraction():
