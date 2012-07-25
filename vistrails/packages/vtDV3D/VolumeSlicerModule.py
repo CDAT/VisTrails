@@ -452,7 +452,15 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.lut.SetTableRange( self.imageRange[0], self.imageRange[1] ) 
         self.colormapManager.setDisplayRange( ctf_data )
         self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
-        print " Volume Slicer: Scale Colormap: [ %.2f, %.2f ] " % ( self.imageRange[0], self.imageRange[1] )
+        print " Volume Slicer[%d]: Scale Colormap: [ %d, %d ] ( %.2g, %.2g ) " % ( self.moduleID, int(self.imageRange[0]), int(self.imageRange[1]), ctf_data[0], ctf_data[1] )
+        
+    def scaleColormapRelative( self, image_data, **args ):
+        self.imageRange = image_data 
+        self.lut.SetTableRange( self.imageRange[0], self.imageRange[1] ) 
+        self.range[0:2] = self.getDataValues( image_data[0:2] )
+        self.colormapManager.setDisplayRange( self.range )
+        self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
+        print " Volume Slicer: Scale Colormap: [ %.2f, %.2f ] " % ( self.imageRange[0], self.imageRange[1] )       
         
     def finalizeLeveling( self ):
         isLeveling =  PersistentVisualizationModule.finalizeLeveling( self )
