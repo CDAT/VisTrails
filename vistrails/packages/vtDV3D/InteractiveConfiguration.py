@@ -490,7 +490,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         except Exception, err:
             print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
         print "Apply %s Parameter[%s]: %s " % ( self.type, self.name, str( self.range ) )
-        if self.name == 'colorScale':
+        if self.name == 'zScale':
             print "x"
         
     def reset(self):
@@ -569,6 +569,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         for cfgFunction in self.activeFunctionList:
             if (active_module_list == None) or (cfgFunction.module in active_module_list):
                 cfgFunction.setLevelDataHandler( self.range )
+                cfgFunction.range[:] = self.range[:]
                 affected_renderers.add( cfgFunction.module.renderer)
 #               print "   -> module = %x " % id(cfgFunction.module)
 
