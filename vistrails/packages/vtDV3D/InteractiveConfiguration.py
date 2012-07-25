@@ -353,8 +353,8 @@ class ConfigurableFunction( QObject ):
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
         self.hasState = args.get( 'hasState', True )
         
-    def postInstructions( self, module ):
-        pass
+    def postInstructions( self, module, message ):
+        print "\n ----- %s -------\n" % message
 
     @staticmethod
     def getActiveFunctionList( active_irens = None ):
@@ -369,16 +369,17 @@ class ConfigurableFunction( QObject ):
     def clear():
         ConfigurableFunction.ConfigurableFunctions = {}
         print "clear"
-        
+         
     def updateActiveFunctionList( self ):
+        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 
         cfgFunctGlobalMap = ConfigurableFunction.ConfigurableFunctions
         cfgFunctionMap = cfgFunctGlobalMap.get( self.name, {} )
         self.activeFunctionList = []
-        active_irens = self.module.getActiveIrens() 
+        valid_irens =  PersistentVisualizationModule.getValidIrens() 
 #        print " ** N active_irens: %d " % len( active_irens )      
         for cfgFunction in cfgFunctionMap.values():
             if (cfgFunction <> self) and cfgFunction.module:
-                isActive = ( cfgFunction.module.iren in active_irens )
+                isActive = ( cfgFunction.module.iren in valid_irens )
                 if isActive and (cfgFunction.units == self.units):
                     self.activeFunctionList.append( cfgFunction )
              
@@ -480,8 +481,8 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.adjustRange = args.get( 'adjustRange', False )
         self.widget = args.get( 'gui', None )
 
-    def postInstructions( self, module ):
-        module.displayInstructions( "Left-click, mouse-move, left-click in this cell." )
+    def postInstructions( self, module, message ):
+        module.displayInstructions( message ) # "Left-click, mouse-move, left-click in this cell." )
     
     def applyParameter( self, module, **args ):
         try:
@@ -489,7 +490,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         except Exception, err:
             print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
         print "Apply %s Parameter[%s]: %s " % ( self.type, self.name, str( self.range ) )
-        if self.name == 'colorScale':
+        if self.name == 'zScale':
             print "x"
         
     def reset(self):
@@ -568,6 +569,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         for cfgFunction in self.activeFunctionList:
             if (active_module_list == None) or (cfgFunction.module in active_module_list):
                 cfgFunction.setLevelDataHandler( self.range )
+                cfgFunction.range[:] = self.range[:]
                 affected_renderers.add( cfgFunction.module.renderer)
 #               print "   -> module = %x " % id(cfgFunction.module)
 
@@ -907,7 +909,7 @@ class IVModuleConfigurationDialog( QWidget ):
         self.buttonLayout.addWidget(self.cancelButton)
         self.layout().addLayout(self.buttonLayout)
         self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
-        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close)
+        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.cancelTriggered)
                     
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None
@@ -916,6 +918,9 @@ class IVModuleConfigurationDialog( QWidget ):
         self.finalizeParameter()
         self.close()
 
+    def cancelTriggered(self, checked = False):
+        self.close()
+        
     def closeTriggered(self, checked = False):
         self.close()
 
@@ -1733,7 +1738,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 self.setValue( iTimestep )
                 sheetTabs = set()
                 relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
-                timeAxis = self.module.metadata['time']
+                timeAxis = self.module.getMetadata('time')
                 timeValues = np.array( object=timeAxis.getValue() )
                 relTimeRef = cdtime.reltime( relTimeValueRef, ReferenceTimeUnits )
                 relTime0 = relTimeRef.torel( timeAxis.units )
@@ -1758,6 +1763,10 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.running = False 
         for module in self.activeModuleList:
             module.stopAnimation()
+
+    def cancelTriggered(self, checked = False):
+        self.stop()
+        IVModuleConfigurationDialog.cancelTriggered( self, checked )
         
     def updateTimeRange(self):   
         newConfig = DV3DConfigurationWidget.saveConfigurations()

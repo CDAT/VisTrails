@@ -142,7 +142,7 @@ class DV3DRangeConfigWidget(QFrame):
         self.active_modules = set()
 
     def getInteractionState( self ):
-        return self.active_cfg_cmd.name         
+        return self.active_cfg_cmd.name if self.active_cfg_cmd else "None"      
         
     def processTextValueEntry( self, iSlider ):
         if self.active_cfg_cmd:
@@ -152,7 +152,7 @@ class DV3DRangeConfigWidget(QFrame):
             slider.setValue( fval ) 
             parm_range = list( self.active_cfg_cmd.range ) 
             parm_range[ iSlider ] = fval
-            self.active_cfg_cmd.broadcastLevelingData( parm_range, active_modules = DV3DPipelineHelper.getActivePlotList() ) 
+            self.active_cfg_cmd.broadcastLevelingData( parm_range,  active_modules = DV3DPipelineHelper.getActivePlotList() ) 
             if len( self.active_modules ):            
                 for module in self.active_modules: module.render()
                 HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'text-%d' % iSlider, fval ]  )
@@ -332,12 +332,15 @@ class DV3DConfigControlPanel(QWidget):
     
 
     def addActivePlot( self, module ):
+        active_irens = DV3DPipelineHelper.getActiveIrens()
+        isActive = ( module.iren in active_irens )
         plot_type = module.__class__.__name__
         cell_addr = module.getCellAddress()
         if plot_type[0:3] == "PM_": plot_type = plot_type[3:]
         label = "%s: %s" % ( cell_addr, plot_type )
         plot_list_item = PlotListItem( label, module, self.plot_list )
-        plot_list_item.setCheckState( Qt.Checked )
+        plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
+        DV3DPipelineHelper.setModuleActivation( module, isActive ) 
     
     def  processPlotListEvent( self, list_item ): 
         DV3DPipelineHelper.setModuleActivation( list_item.module, ( list_item.checkState() == Qt.Checked ) ) 
@@ -362,7 +365,7 @@ class ConnectionType:
     INPUT = 0
     OUTPUT = 1
     BOTH = 2
-     
+    
 class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     '''
     This will take care of pipeline manipulation for plots.
@@ -372,6 +375,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     cfg_cmds = {}
     actionMap = {}
     activationMap = {}
+    pipelineMap = {} 
     actionMenu = None
 
     def __init__(self):
@@ -380,7 +384,15 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         '''
         Constructor
         '''
-    
+
+    @staticmethod                         
+    def getValidModuleIdList( ):
+        module_id_list = []
+        for pipeline in DV3DPipelineHelper.pipelineMap.values():
+            for module in pipeline.module_list:
+                module_id_list.append( module.id )
+        return module_id_list
+           
     @staticmethod                         
     def addAction( module, action_key, config_key ):
         actionList = DV3DPipelineHelper.actionMap.setdefault( action_key, [] )
@@ -417,16 +429,26 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             DV3DPipelineHelper.config_widget.stopConfig( module )
               
     @staticmethod
-    def execAction( action_key ): 
+    def execAction( action_key ):
+        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 
         print " execAction: ", action_key
-        actionList  =  DV3DPipelineHelper.actionMap[ action_key ]
+        currentActionList  =  DV3DPipelineHelper.actionMap[ action_key ]
+        
+        actionList = [] 
+        validModuleIdList = DV3DPipelineHelper.getValidModuleIdList( )
+        for ( module, key ) in currentActionList:
+            if module.moduleID in validModuleIdList:
+                actionList.append( ( module, key ) )
+                 
+        DV3DPipelineHelper.actionMap[ action_key ] = actionList
+                        
         for ( module, key ) in actionList:
             module.processKeyEvent( key )
 
         if  (key in DV3DPipelineHelper.cfg_cmds): DV3DPipelineHelper.config_widget.startConfig( action_key, key )
         for ( module, key ) in actionList: 
-            DV3DPipelineHelper.config_widget.addActivePlot( module )
             DV3DPipelineHelper.activationMap[ module ] = True 
+            DV3DPipelineHelper.config_widget.addActivePlot( module )
 
     @staticmethod
     def endInteraction():
@@ -585,13 +607,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 
         #FIXME: this will always spread the cells in the same row
         cell_specs = []
+        cell_addresses = []
         for j in range(plot_obj.cellnum):
             cell = plot_obj.cells[j] 
             location = cell.address_name if cell.address_name else 'location%d' % (j+1)   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
-            cell_spec = "%s%s" % ( chr(ord('A') + col+j ), row+1)
+            cell_addr = "%s%s" % ( chr(ord('A') + col+j ), row+1)
 #            aliases[ location ] = cell_spec
-            cell_specs.append( '%s!%s' % ( location, cell_spec ) )
-#            cell_specs.append( cell_spec )
+            cell_specs.append( '%s!%s' % ( location, cell_addr ) )
+            cell_addresses.append( cell_addr )
 #            cell_specs.append( 'location%d!%s' % ( j, cell_spec ) )
 #            
 #        for a,w in plot_obj.alias_widgets.iteritems():
@@ -640,7 +663,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         except Exception, err:
             print " Error connecting CDMSVariable to workflow: ", str(err)
             traceback.print_exc()
+            
+        for cell_address in cell_addresses:
+            DV3DPipelineHelper.pipelineMap[cell_address] = controller.current_pipeline
         return action
+
+    @staticmethod
+    def getPipeline( cell_address ):    
+        return DV3DPipelineHelper.pipelineMap.get( cell_address, None )
 
     @staticmethod
     def addParameterChangesAction( pipeline, controller, vistrail, parent_version, aliases, cell_spec_iter ):

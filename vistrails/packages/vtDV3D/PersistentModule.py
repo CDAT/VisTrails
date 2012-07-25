@@ -131,6 +131,8 @@ class PersistentModule( QObject ):
              
     def __init__( self, mid, **args ):
         QObject.__init__(self)
+        self.metadata = None
+        self.fieldData = None
         self.moduleID = mid
         self.pipeline = args.get( 'pipeline', None )
         self.units = ''
@@ -139,7 +141,6 @@ class PersistentModule( QObject ):
         self.versionTags = {}
         self.initVersionMap()
         self.datasetId = None
-        self.fieldData = None
         role = get_hyperwall_role( )
         self.isClient = ( role == 'hw_client' )
         self.isServer = ( role == 'hw_server' )
@@ -441,49 +442,53 @@ class PersistentModule( QObject ):
     def getLayer( self ):
         return [ self.activeLayer, ]
     
+    def getMetadata( self, key = None ):
+        if not self.metadata: self.updateMetadata()
+        return self.metadata.get( key, None ) if key else self.metadata
+    
     def updateMetadata(self):
-        scalars = None
-        self.metadata = None
-        self.newDataset = False
-        if self.input <> None:
-            fd = self.input.GetFieldData() 
-            self.input.Update()
-            self.fieldData = self.input.GetFieldData()             
-        elif self.inputModule:
-            self.fieldData = self.inputModule.getFieldData() 
-
-        self.metadata = self.getMetadata()
-        
-        if self.metadata <> None:
-            self.rangeBounds = None 
-            self.setParameter( 'metadata', self.metadata )
-            self.roi = self.metadata.get( 'bounds', None )
+        if self.metadata == None:
+            scalars = None
+            self.newDataset = False
+            if self.input <> None:
+                fd = self.input.GetFieldData() 
+                self.input.Update()
+                self.fieldData = self.input.GetFieldData()             
+            elif self.inputModule:
+                self.fieldData = self.inputModule.getFieldData() 
+    
+            self.metadata = self.computeMetadata()
             
-            dsetId = self.metadata.get( 'datasetId', None )
-            self.datasetId = self.getAnnotation( "datasetId" )
-            if self.datasetId <> dsetId:
-                self.pipelineBuilt = False
-                self.newDataset = True
-                self.newLayerConfiguration = True
-                self.datasetId = dsetId
-                self.addAnnotation( "datasetId", self.datasetId )
-            
-            tval = self.metadata.get( 'timeValue', 0.0 )
-            self.timeValue = cdtime.reltime( float( tval ), ReferenceTimeUnits )               
-            dtype =  self.metadata.get( 'datatype', None )
-            scalars =  self.metadata.get( 'scalars', None )
-            self.rangeBounds = getRangeBounds( dtype )
-            title = self.metadata.get( 'title', None )
-            targs = title.split(':')
-            if len( targs ) == 1:
-                self.titleBuffer = "\n%s" % ( title )
-            elif len( targs ) > 1:
-                self.titleBuffer = "%s\n%s" % ( targs[1], targs[0] )
-#            self.persistParameterList( [ ( 'title' , [ self.titleBuffer ]  ), ] )
-
-            attributes = self.metadata.get( 'attributes' , None )
-            if attributes:
-                self.units = attributes.get( 'units' , '' )
+            if self.metadata <> None:
+                self.rangeBounds = None 
+                self.setParameter( 'metadata', self.metadata )
+                self.roi = self.metadata.get( 'bounds', None )
+                
+                dsetId = self.metadata.get( 'datasetId', None )
+                self.datasetId = self.getAnnotation( "datasetId" )
+                if self.datasetId <> dsetId:
+                    self.pipelineBuilt = False
+                    self.newDataset = True
+                    self.newLayerConfiguration = True
+                    self.datasetId = dsetId
+                    self.addAnnotation( "datasetId", self.datasetId )
+                
+                tval = self.metadata.get( 'timeValue', 0.0 )
+                self.timeValue = cdtime.reltime( float( tval ), ReferenceTimeUnits )               
+                dtype =  self.metadata.get( 'datatype', None )
+                scalars =  self.metadata.get( 'scalars', None )
+                self.rangeBounds = getRangeBounds( dtype )
+                title = self.metadata.get( 'title', None )
+                targs = title.split(':')
+                if len( targs ) == 1:
+                    self.titleBuffer = "\n%s" % ( title )
+                elif len( targs ) > 1:
+                    self.titleBuffer = "%s\n%s" % ( targs[1], targs[0] )
+    #            self.persistParameterList( [ ( 'title' , [ self.titleBuffer ]  ), ] )
+    
+                attributes = self.metadata.get( 'attributes' , None )
+                if attributes:
+                    self.units = attributes.get( 'units' , '' )
 #                        range = var_md.get( 'range', None )
 #                        if range: 
 #                            self.scalarRange = list( range )
@@ -727,7 +732,8 @@ class PersistentModule( QObject ):
             enc_mdata = encodeToString( metadata )
             dataVector.InsertNextValue( enc_mdata  )
 
-    def getMetadata( self, metadata = {}, port=None  ):
+    def computeMetadata( self, metadata = {}, port=None  ):
+        if not self.fieldData: self.initializeMetadata() 
         if self.fieldData:
             md = extractMetadata( self.fieldData )
             if md: metadata.update( md )
@@ -1726,7 +1732,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.configurableFunctions[ state ] = configFunct
             if configFunct:
                 configFunct.open( state, self.isAltMode )
-                configFunct.postInstructions( self )
+#                configFunct.postInstructions( self )
                 self.InteractionState = state                   
                 self.LastInteractionState = self.InteractionState
                 self.disableVisualizationInteraction()
@@ -1840,6 +1846,10 @@ class PersistentVisualizationModule( PersistentModule ):
             iren = PersistentVisualizationModule.renderMap.get( cell_spec, None )
             irens.append( iren )
         return irens
+   
+    @staticmethod
+    def getValidIrens():
+        return PersistentVisualizationModule.renderMap.values()
     
     def onAnyEvent(self, caller, event ):
         if self.iren:

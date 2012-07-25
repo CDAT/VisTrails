@@ -1050,8 +1050,8 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
     def dvUpdate( self, **args ):
         pass     
         
-    def getMetadata( self, metadata={}, port=None ):
-        PersistentVisualizationModule.getMetadata( metadata )
+    def computeMetadata( self, metadata={}, port=None ):
+        PersistentVisualizationModule.computeMetadata( metadata )
         metadata[ 'vars2d' ] =  self.datasetModule.getVariableList( 2 )
         metadata[ 'vars3d' ] =  self.datasetModule.getVariableList( 3)
         metadata[ 'datasetId' ] = self.datasetId
