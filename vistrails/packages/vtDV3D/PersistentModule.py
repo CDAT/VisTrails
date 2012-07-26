@@ -413,6 +413,8 @@ class PersistentModule( QObject ):
     def initializeScalarRange( self ): 
         metadata = self.getMetadata()  
         var_md = metadata.get( 'attributes' , None )
+        if self.moduleID == 3: 
+            print " ---> ScalarRange[%d:%x], md[%d], var_md[%d]:" % ( self.moduleID, id(self), id(metadata), id(var_md) )
         if var_md <> None:
             range = var_md.get( 'range', None )
             if range: 
@@ -425,7 +427,7 @@ class PersistentModule( QObject ):
                         self.seriesScalarRange[0] = range[0] 
                     if self.seriesScalarRange[1] < range[1]:
                         self.seriesScalarRange[1] = range[1] 
-#        print " --- Update scalar range = %s" % str( self.scalarRange  )
+                if self.moduleID == 3: print " ------- range = %s, md: %s " % ( str(self.scalarRange), str(var_md) )
 
     
     def getLayerList(self):
@@ -540,6 +542,7 @@ class PersistentModule( QObject ):
 
     def initializeInputs( self, **args ):
         isAnimation = args.get( 'animate', False )
+        self.metadata = None
         if self.allowMultipleInputs:
             try:
                 self.inputModuleList = self.getPrimaryInputList( **args )

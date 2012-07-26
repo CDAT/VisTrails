@@ -167,6 +167,7 @@ class DV3DRangeConfigWidget(QFrame):
             fval = rbnds[0] + (rbnds[1]-rbnds[0]) * ( iValue / 100.0 )
             parm_range[ iSlider ] = fval
             self.sliders[iSlider].setDisplayValue( fval )
+            print " sliderValueChanged[%d], bounds=%s, range=%s, fval=%f" % ( self.active_cfg_cmd.module.moduleID, str(rbnds), str(parm_range), fval )
             self.active_cfg_cmd.broadcastLevelingData( parm_range, active_modules = DV3DPipelineHelper.getActivePlotList( )  ) 
             if len( self.active_modules ):            
                 for module in self.active_modules: module.render()

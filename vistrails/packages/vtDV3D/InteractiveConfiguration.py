@@ -489,7 +489,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             self.setLevelDataHandler( self.range, **args )
         except Exception, err:
             print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
-        print "Apply %s Parameter[%s]: %s " % ( self.type, self.name, str( self.range ) )
+        print "Apply %s Parameter[%s:%d]: %s " % ( self.type, self.name, module.moduleID, str( self.range ) )
         if self.name == 'zScale':
             print "x"
         
@@ -555,6 +555,12 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.emit( SIGNAL('updateLeveling()') )
         return self.broadcastLevelingData()
 #        print "updateLeveling: %s " % str( self.range )
+
+    def setImageDataRange(  self, imageRange  ):
+        data_range = self.module.getDataValues( imageRange )
+        self.range[0:2] = data_range[0:2]
+        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
+        self.setLevelDataHandler( self.range )
         
     def broadcastLevelingData(  self, range = None, **args  ):
         if range: self.range = range
@@ -566,11 +572,11 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             affected_renderers.add( self.module.renderer )
             self.manuallyAdjusted = True
 #        print "   -> self = %x " % id(self.module)
+        imageRange = self.module.getImageValues( self.range[0:2] ) 
         for cfgFunction in self.activeFunctionList:
             if (active_module_list == None) or (cfgFunction.module in active_module_list):
-                cfgFunction.setLevelDataHandler( self.range )
-                cfgFunction.range[:] = self.range[:]
-                affected_renderers.add( cfgFunction.module.renderer)
+                cfgFunction.setImageDataRange( imageRange  )
+                affected_renderers.add( cfgFunction.module.renderer )
 #               print "   -> module = %x " % id(cfgFunction.module)
 
         for renderer in affected_renderers:
