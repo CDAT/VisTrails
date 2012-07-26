@@ -220,10 +220,14 @@ class DV3DRangeConfigWidget(QFrame):
         try:
             cmd_list = DV3DPipelineHelper.getConfigCmd ( cfg_key )
             if cmd_list:
+                self.deactivate_current_command()
+                active_irens = DV3DPipelineHelper.getActiveIrens()
                 for cmd_entry in cmd_list:
-                    self.deactivate_current_command()
-                    self.active_modules.add( cmd_entry[0] )
-                    self.active_cfg_cmd = cmd_entry[1] 
+                    module = cmd_entry[0]
+                    cfg_cmd = cmd_entry[1] 
+                    self.active_modules.add( module )
+                    if ( self.active_cfg_cmd == None ) or ( module.iren in active_irens ):
+                        self.active_cfg_cmd = cfg_cmd
                 self.updateSliderValues(True)
                 self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues ) 
                 self.active_cfg_cmd.updateActiveFunctionList()
