@@ -856,7 +856,7 @@ class QTaylorDiagramEditor(VCSGMs,QtGui.QScrollArea):
             gm.cticlabels1 = eval(str(self.corLabels.text()))
             gm.cmtics1 = eval(str(self.corTicks.text()))
 
-            markersTab.applyChanges(gm)
+            self.markersTab.applyChanges(gm)
         
 
 class QTaylorMarkers(QtGui.QScrollArea):

@@ -13,6 +13,7 @@ import os
 import ast
 import string
 import gui
+import pickle
 from info import identifier
 from widgets import GraphicsMethodConfigurationWidget
 from core.configuration import get_vistrails_configuration
@@ -843,10 +844,26 @@ class CDMSTDMarker(Module):
                                       ("size", "basic:List", True),
                                       ("xoffset", "basic:List", True),
                                       ("yoffset", "basic:List", True),
-                                      ("linecolor", "basic:List", True),
+                                      ("line_color", "basic:List", True),
                                       ("line_size", "basic:List", True),
                                       ("line_type", "basic:List", True)])
     _output_ports = expand_port_specs([("self", "CDMSTDMarker")])
+    
+    @staticmethod
+    def translate_to_string(v):
+        return pickle.dumps(v).encode('hex')
+
+    @staticmethod
+    def translate_to_python(x):
+        return pickle.loads(x.decode('hex'))
+
+    @staticmethod
+    def get_widget_class():
+        return None
+
+    def setValue(self, v):
+        self.setResult("value", v)
+        self.upToDate = True
 
 class CDMSColorMap(Module):
     _input_ports = expand_port_specs([("colorMapName", "basic:String"),
@@ -996,7 +1013,10 @@ Please delete unused CDAT Cells in the spreadsheet.")
                         else:
                             if getattr(plot,k)!=getattr(cgm,k):
                                 #print "Setting:",k,getattr(plot,k)
-                                setattr(cgm,k,getattr(plot,k))
+                                temp = None if getattr(plot,k)=='None' else getattr(plot,k)
+                                if k=='Marker':
+                                    temp = pickle.loads(temp.decode('hex'))
+                                setattr(cgm,k,temp)
                         #print k, " = ", getattr(cgm,k)
                             
             kwargs = plot.kwargs
