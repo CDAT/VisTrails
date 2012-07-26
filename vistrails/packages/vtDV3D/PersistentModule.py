@@ -413,11 +413,10 @@ class PersistentModule( QObject ):
     def initializeScalarRange( self ): 
         metadata = self.getMetadata()  
         var_md = metadata.get( 'attributes' , None )
-        if self.moduleID == 3: 
-            print " ---> ScalarRange[%d:%x], md[%d], var_md[%d]:" % ( self.moduleID, id(self), id(metadata), id(var_md) )
         if var_md <> None:
             range = var_md.get( 'range', None )
             if range: 
+                print "\n ***************** ScalarRange[%d:%x] = %s, md[%d], var_md[%d] *****************  \n" % ( self.moduleID, id(self), str(range), id(metadata), id(var_md) )
                 self.scalarRange = list( range )
                 self.scalarRange.append( 1 )
                 if not self.seriesScalarRange:
@@ -427,7 +426,6 @@ class PersistentModule( QObject ):
                         self.seriesScalarRange[0] = range[0] 
                     if self.seriesScalarRange[1] < range[1]:
                         self.seriesScalarRange[1] = range[1] 
-                if self.moduleID == 3: print " ------- range = %s, md: %s " % ( str(self.scalarRange), str(var_md) )
 
     
     def getLayerList(self):
@@ -653,6 +651,7 @@ class PersistentModule( QObject ):
             sval = ( data_value - valueRange[0] ) / ( valueRange[1] - valueRange[0] )
             imageValue = self.rangeBounds[0] + sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
             imageValues.append( imageValue )
+        print "\n *****************  GetImageValues[%d:%x]: data_values = %s, range = %s, imageValues = %s **************** \n" % ( self.moduleID, id(self), str(data_value_list), str(self.scalarRange), str(imageValues) )
         return imageValues
 
     def scaleToImage( self, data_value ):
@@ -1293,7 +1292,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return self.pipelineBuilt
 
     def execute(self, **args ):
-        print "Execute Module[ %s ]: %s " % ( str(self.moduleID), str( self.__class__.__name__ ) )
+#        print "Execute Module[ %s ]: %s " % ( str(self.moduleID), str( self.__class__.__name__ ) )
         initConfig = False
         isAnimation = args.get( 'animate', False )
         if not self.isBuilt():
@@ -1538,7 +1537,7 @@ class PersistentVisualizationModule( PersistentModule ):
         if ( istyle <> self.navigationInteractorStyle ) and ( istyle <> self.configurationInteractorStyle ):               
             self.navigationInteractorStyle =  istyle
             style_name = self.navigationInteractorStyle.__class__.__name__
-            print " ~~~~~~~~~ Update Navigation Interactor Style:  %s " % ( style_name )
+#            print " ~~~~~~~~~ Update Navigation Interactor Style:  %s " % ( style_name )
 #            if style_name == "vtkInteractorStyleUser":
 #                print "x"
                     

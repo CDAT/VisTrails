@@ -379,9 +379,9 @@ class ConfigurableFunction( QObject ):
 #        print " ** N active_irens: %d " % len( active_irens )      
         for cfgFunction in cfgFunctionMap.values():
             if (cfgFunction <> self) and cfgFunction.module:
-                isActive = ( cfgFunction.module.iren in valid_irens )
-                if isActive and (cfgFunction.units == self.units):
-                    self.activeFunctionList.append( cfgFunction )
+#                isActive = ( cfgFunction.module.iren in valid_irens )
+#                if isActive and (cfgFunction.units == self.units):
+                self.activeFunctionList.append( cfgFunction )
              
     def matches( self, key ):
         return self.active and ( self.key == key )
@@ -394,6 +394,10 @@ class ConfigurableFunction( QObject ):
 #            print "."
         self.moduleID = module.moduleID
         self.module = module
+        if module.metadata:
+            attributes = module.metadata.get('attributes', None)
+            if attributes:
+                if self.units == 'data': self.units = attributes.get('units','')               
         if ( self.initHandler != None ):
             self.initHandler( **self.kwargs ) 
         configFunctionMap = ConfigurableFunction.ConfigurableFunctions.setdefault( self.name, {} )
@@ -451,8 +455,8 @@ class ConfigurableFunction( QObject ):
         unwrappedData = []
         for data_elem in data:
             uw_val = data_elem.getResult()
-            wrappedData.append( uw_val )
-        return wrappedData
+            unwrappedData.append( uw_val )
+        return unwrappedData
             
 ################################################################################
 
@@ -524,7 +528,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             self.widget.initLeveling( self.range )
             self.connect( self.widget, SIGNAL('update(QString)'), self.broadcastLevelingData )
 
-        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
+#        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
         
     def startLeveling( self, x, y ):
         if self.altMode:    self.windowRefiner.initRefinement( [ x, y ], self.range[3:5] )   
@@ -558,9 +562,24 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
 
     def setImageDataRange(  self, imageRange  ):
         data_range = self.module.getDataValues( imageRange )
+        self.setDataRange( data_range )
+
+    def setDataRange(  self, data_range  ):
         self.range[0:2] = data_range[0:2]
-        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
+#        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
         self.setLevelDataHandler( self.range )
+
+    def setScaledDataRange(  self, scaled_data_range  ):
+        dr = (self.range_bounds[1]-self.range_bounds[0])
+        self.range[0] = self.range_bounds[0] + scaled_data_range[0] * dr
+        self.range[1] = self.range_bounds[0] + scaled_data_range[1] * dr
+#        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
+        self.setLevelDataHandler( self.range )
+
+    def getScaledDataRange(  self  ):
+        dr = (self.range_bounds[1]-self.range_bounds[0])
+        scaled_range = [ ( self.range[0] - self.range_bounds[0] ) / dr, ( self.range[1] - self.range_bounds[0] ) / dr ]
+        return scaled_range
         
     def broadcastLevelingData(  self, range = None, **args  ):
         if range: self.range = range
@@ -572,10 +591,12 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             affected_renderers.add( self.module.renderer )
             self.manuallyAdjusted = True
 #        print "   -> self = %x " % id(self.module)
-        imageRange = self.module.getImageValues( self.range[0:2] ) 
         for cfgFunction in self.activeFunctionList:
             if (active_module_list == None) or (cfgFunction.module in active_module_list):
-                cfgFunction.setImageDataRange( imageRange  )
+                if( cfgFunction.units == self. units ):
+                    cfgFunction.setDataRange( self.range )
+                else:
+                    cfgFunction.setScaledDataRange( self.getScaledDataRange() )
                 affected_renderers.add( cfgFunction.module.renderer )
 #               print "   -> module = %x " % id(cfgFunction.module)
 
