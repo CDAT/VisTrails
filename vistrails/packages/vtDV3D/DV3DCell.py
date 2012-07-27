@@ -64,9 +64,20 @@ class QVTKClientWidget(QVTKWidget):
 
     def event(self, e): 
         if ENABLE_JOYSTICK and ( e.type() == ControlEventType ):   
-            self.processControllerEvent( e, [ self.width(), self.height() ] )  
+            self.processControllerEvent( e, [ self.width(), self.height() ] )
+     
+        # send event to all the selected cell widgets.       
+        if e.type() in [QtCore.QEvent.MouseMove, 
+                        QtCore.QEvent.MouseButtonPress,
+                        QtCore.QEvent.MouseButtonRelease]:
+            for cell in self.getSelectedCellWidgets():
+                if cell is not self: cell.processEvent(e)
+        
         return qt_super(QVTKClientWidget, self).event(e) 
-    
+
+    def processEvent(self, event):
+        qt_super(QVTKClientWidget, self).event(event)
+        
     def processControllerEvent(self, event, size ):
         renWin = self.GetRenderWindow()
         iren = renWin.GetInteractor()
