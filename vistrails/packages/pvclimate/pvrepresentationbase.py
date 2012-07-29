@@ -16,16 +16,16 @@ class PVRepresentationBase(Module):
         # TODO:
         pass
 
-    def setView(self, view):
+    def set_view(self, view):
         self.view = view
 
-    def setReader(self, reader):
+    def set_reader(self, reader):
         self.reader = reader;
 
-    def setVariables(self, variables):
+    def set_variables(self, variables):
         self.variables = variables
 
-    def getProjectSphereFilter(self):
+    def get_project_sphere_filter(self):
         # Import paraview
         import paraview.simple as pvsp
 
@@ -36,7 +36,7 @@ class PVRepresentationBase(Module):
     def execute(self):
         pass
 
-def registerSelf():
+def register_self():
     registry = get_module_registry()
     registry.add_module(PVRepresentationBase)
     registry.add_output_port(PVRepresentationBase, "self", PVRepresentationBase)
