@@ -13,23 +13,23 @@ class PVContourRepresentation(PVRepresentationBase):
         PVRepresentationBase.__init__(self)
         self.contourByVarName = None
         self.contourByVarType = None
-        self.contourValues = []        
-            
+        self.contourValues = []
+
     def compute(self):
         # TODO:
         pass
-        
+
     def setView(self, view):
         self.view = view
-        
+
     def setContourValues(self, values):
         self.contourValues = values
-        
+
     def setControuBy(self, varName, varType):
         self.contourByVarName = varName
-        self.contourByVarType = varType        
-    
-    def execute(self):        
+        self.contourByVarType = varType
+
+    def execute(self):
         for var in self.variables:
             reader = var.get_reader()
             self.contourByVarName = var.get_variable_name()
@@ -41,33 +41,41 @@ class PVContourRepresentation(PVRepresentationBase):
 
             # Update pipeline
             reader.UpdatePipeline()
+            pvsp.SetActiveSource(reader)
+
+            # Unroll a sphere
+            # FIXME: Currently hard coded
+            if reader.__class__.__name__ == 'UnstructuredNetCDFPOPreader':
+                trans_filter = self.getProjectSphereFilter()
+                pvsp.SetActiveSource(trans_filter)
 
             # Create a contour representation
-            contour = pvsp.Contour(self.reader)
-            contour.ContourBy = [self.contourByVarType, self.contourByVarName]        
+            contour = pvsp.Contour()
+            pvsp.SetActiveSource(contour)
+            contour.ContourBy = [self.contourByVarType, self.contourByVarName]
             contour.Isosurfaces = self.contourValues
-            
+
             # FIXME:
             # Hard coded for now
             contour.ComputeScalars = 1
             contour.ComputeNormals = 0
             contourRep = pvsp.Show(view=self.view)
-            
+
             # FIXME:
-            # Hard coded for now        
+            # Hard coded for now
             contourRep.LookupTable = pvsp.GetLookupTableForArray(self.contourByVarName, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[0.0, 0.23, 0.299, 0.754, 30.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
-            
+
             # FIXME:
             # Hard coded for now
             contourRep.Scale = [1, 1, 0.01]
-        
+
             # FIXME:
             # Hard coded for now
-            contourRep.Representation = 'Surface'        
-            contourRep.ColorArrayName = self.contourByVarName       
-       
+            contourRep.Representation = 'Surface'
+            contourRep.ColorArrayName = self.contourByVarName
 
-def registerSelf():    
-    registry = get_module_registry()    
+
+def registerSelf():
+    registry = get_module_registry()
     registry.add_module(PVContourRepresentation)
     registry.add_output_port(PVContourRepresentation, "self", PVContourRepresentation)
