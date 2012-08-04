@@ -58,12 +58,6 @@ class PVGenericCell(SpreadsheetCell):
     def persistParameterList( self, parameter_list, **args ):
         print "Getting Something"
 
-    def setSliceOffset(self, value):
-        self.sliceOffset = value
-
-    def getSliceOffset(self):
-        return self.sliceOffset
-
 class QPVIsoSurfaceWidget(QVTKWidget):
 
     def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
@@ -88,9 +82,9 @@ class QPVIsoSurfaceWidget(QVTKWidget):
             reader = var.get_reader()
 
             for rep in representations:
-                rep.setReader(reader)
-                rep.setVariables(variables)
-                rep.setView(self.view)
+                rep.set_reader(reader)
+                rep.set_variables(variables)
+                rep.set_view(self.view)
                 rep.execute()
 
         # Set view specific properties
@@ -129,7 +123,7 @@ class QPVIsoSurfaceWidget(QVTKWidget):
         QCellWidget.deleteLater(self)
 
 
-def registerSelf():
+def register_self():
     registry = get_module_registry()
     # For now, we don't have configuration widget
     #registry.add_module(PVGenericCell, configureWidgetType=PVClimateCellConfigurationWidget)

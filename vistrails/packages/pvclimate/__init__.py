@@ -4,7 +4,7 @@ version = '0.1.3'
 
 def package_dependencies():
     import core.packagemanager
-    dependencies = []
+    dependencies = ["gov.llnl.uvcdat"]
     manager = core.packagemanager.get_package_manager()    
     if manager.has_package('edu.utah.sci.vistrails.spreadsheet'):
         dependencies.append('edu.utah.sci.vistrails.spreadsheet')    
