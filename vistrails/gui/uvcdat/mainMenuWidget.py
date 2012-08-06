@@ -22,7 +22,7 @@ import preFunctionPopUpWidget
 class QMenuWidget(QtGui.QWidget):
     def __init__(self, parent=None):
         QtGui.QWidget.__init__(self,parent)
-        
+
         ##FIXME: File menu already exists. It should not create another one
         #self.fileMenu = parent.menuBar().addMenu('&File')
         #self.savePlotsAction = QtGui.QAction('&Save Plots...', self)
@@ -30,7 +30,7 @@ class QMenuWidget(QtGui.QWidget):
         #self.fileMenu.addAction(self.savePlotsAction)
         ## self.connect(self.savePlotsAction,QtCore.SIGNAL('triggered ()'),
         ##              parent.root.tool_bar.savePlots)
-        
+
         self.editMenu = parent.menuBar().addMenu('&Edit')
         self.editPreferencesAction = QtGui.QAction('Preferences...', self)
         self.editPreferencesAction.setEnabled(True)
@@ -44,17 +44,17 @@ class QMenuWidget(QtGui.QWidget):
         self.pcmdiTools.setTearOffEnabled(True)
         self.help = parent.menuBar().addMenu('&Help')
         self.root=parent.root
-        
+
         recordTeachingAction = self.tools.addAction('Record Commands')
         recordTeachingAction.setCheckable(True)
         recordTeachingAction.setChecked(customizeUVCDAT.recordCommands)
-        
+
         viewTeachingAction = self.tools.addAction('View Teaching Commands')
 
         self.connect(viewTeachingAction, QtCore.SIGNAL('triggered ()'),
                      self.root.recorder.show)
         ## self.connect(closeTeachingAction, QtCore.SIGNAL('triggered ()'),
-        ##              self.closeTeachingCommands)        
+        ##              self.closeTeachingCommands)
 
 
         self.time = self.pcmdiTools.addMenu("Time Tools")
@@ -86,6 +86,35 @@ class QMenuWidget(QtGui.QWidget):
                       "OCT","NOV","DEC"]:
                 m.addAction(s)
             self.connect(m,QtCore.SIGNAL("triggered(QAction *)"),self.seasons)
+
+        # Regridding sub-menu of PCMDITools
+        regridMenu = self.pcmdiTools.addMenu("Regridding")
+        regridMenu.setTearOffEnabled(True)
+        esmf = regridMenu.addMenu("ESMF")
+        esmf.setToolTip("Earth System Modeling Framework")
+        a1 = esmf.addAction("Linear")
+        a2 = esmf.addAction("Conservative")
+        a3 = esmf.addAction("Patch")
+        a1.setToolTip("Earth System Modeling Framework")
+        a2.setToolTip("Earth System Modeling Framework")
+        a3.setToolTip("Earth System Modeling Framework")
+        a4 = regridMenu.addAction("LibCF")
+        a4.setToolTip("LibCF - Linear only")
+        a5 = regridMenu.addAction("Regrid2")
+        a5.setToolTip("CDMS2 Axial regridding tool")
+
+        a1.triggered.connect(self.regridESMFLinear)
+        a2.triggered.connect(self.regridESMFConserve)
+        a3.triggered.connect(self.regridESMFPatch)
+        a4.triggered.connect(self.regridLibCF)
+        a5.triggered.connect(self.regridRegrid2)
+
+#        self.regridPopup = QtGui.QAction("RGPU", self)
+#        self.regridPopup.setEnabled(True)
+#        self.regridPopup.setStatusTip("Set Regridding choices")
+#        pu = regridMenu.addAction(self.regridPopup), type(self.regridPopup)
+#        print pu, '= regridMenu.addAction(self.regridPopup)'
+#        pu.triggered.connect(self.regridPopup.show)
 
         stats = self.pcmdiTools.addMenu("Statistics")
         stats.setTearOffEnabled(True)
@@ -120,7 +149,7 @@ class QMenuWidget(QtGui.QWidget):
             a = vert.addAction(nm)
             a.setToolTip(self.vertFuncs[nm]["func"].__doc__)
         self.connect(vert,QtCore.SIGNAL("triggered(QAction *)"),self.vert)
-        
+
         filters = self.pcmdiTools.addMenu("Filters")
         filters.setTearOffEnabled(True)
         self.filterFuncs = {"Running Average" : {"func":genutil.filters.runningaverage,"nargsMin":1,"nargsMax":1,"choices":[("N",[len,]),],"multiAxes":False},
@@ -131,7 +160,7 @@ class QMenuWidget(QtGui.QWidget):
             a = filters.addAction(nm)
             a.setToolTip(self.filterFuncs[nm]["func"].__doc__)
         self.connect(filters,QtCore.SIGNAL("triggered(QAction *)"),self.filters)
-        
+
         nsdfiles = self.pcmdiTools.addMenu("Not Self Describing Files")
         nsdfiles.setTearOffEnabled(True)
         self.nsdfilesFuncs = {"Read ASCII File" : {"func":genutil.ASCII.readAscii,
@@ -169,8 +198,8 @@ class QMenuWidget(QtGui.QWidget):
     def nsdfiles(self,action):
         nm = str(action.text())
         self.pop = preFunctionPopUpWidget.preFuncPopUp(parent=self,defs=self.nsdfilesFuncs[nm])
-        
-        
+
+
     def seasons(self,action):
         menu = str(action.parentWidget().title())
         nm = str(action.text())
@@ -194,7 +223,7 @@ class QMenuWidget(QtGui.QWidget):
             func = func.climatology
             funcnm+=".climatology"
             rec = "climatological "
-            vtdesc = "climatological " + nm.lower() 
+            vtdesc = "climatological " + nm.lower()
         elif menu == "Departures":
             func=func.departures
             funcnm+=".departures"
@@ -217,8 +246,8 @@ class QMenuWidget(QtGui.QWidget):
             prj_controller = get_current_project_controller()
             vtfuncnm = "%s(%s)"%(funcnm,v.id)
             prj_controller.calculator_command([v.id], vtdesc, vtfuncnm, newid)
-            
-        
+
+
     def setBounds(self,action):
         nm = str(action.text())
         if nm == "Set Bounds For X-Daily Data":
@@ -262,6 +291,78 @@ class QMenuWidget(QtGui.QWidget):
             #send command to project controller to be stored as provenance
             from api import get_current_project_controller
             prj_controller = get_current_project_controller()
-            prj_controller.change_defined_variable_time_bounds(v.id, vtnm) 
+            prj_controller.change_defined_variable_time_bounds(v.id, vtnm)
 
-                
+
+    def regridESMFPatch(self):
+        self.regridFunc("'esmf'", "'Patch'")
+
+    def regridESMFConserve(self):
+        self.regridFunc("'esmf'", "'Conserve'")
+
+    def regridESMFLinear(self):
+        self.regridFunc("'esmf'", "'Linear'")
+
+    def regridLibCF(self):
+        self.regridFunc("'LibCF'", "'Linear'")
+
+    def regridRegrid2(self):
+        self.regridFunc("'Regrid2'", "''")
+
+    def regridFunc(self, regridTool, regridMethod):
+        """
+        Run the regrid method from selected variables and store on the 
+        command line
+        @param regridTool ESMF, LibCF, Regrid2
+        @param regridMethod Conserve, Linear, Patch
+        """
+        import systemCommands
+        import __main__
+        from gui.application import get_vistrails_application
+        from api import get_current_project_controller
+        _app = get_vistrails_application()
+
+        QText = QtGui.QTextEdit()
+        QLine = QtGui.QLineEdit()
+        prj_controller = get_current_project_controller()
+
+        useVars=self.root.dockVariable.widget().getSelectedDefinedVariables()
+        sV = self.root.dockVariable.widget().varList.selectedItems()
+
+        if len(useVars) > 2:
+            print "\nOnly two variables can be selected to regrid"
+            return
+
+        argsStr = "regridTool = %s, regridMethod = %s" % (regridTool, regridMethod)
+        # Get the variables
+        vSrc = sV[0]
+        vDst = sV[1]
+        vSrcName = vSrc.varName
+        vDstName = vDst.varName
+        useSrc = useVars.pop(0)
+        useDst = useVars.pop(0)
+        varname = "regrid_%s_%s" % (vSrcName, vDstName)
+#        varname = "regridVar"
+        rhsCommand = "%s.regrid(%s.getGrid(), %s)" % \
+                          (vSrcName, vDstName, argsStr)
+        pycommand = "%s = %s" % (varname, rhsCommand)
+        QLine.setText(QtCore.QString(pycommand.strip()))
+        QText.setTextColor(QtGui.QColor(0,0,0))
+        commandLine = ">>> " + pycommand + "\n"
+        QText.insertPlainText(commandLine)
+        systemCommands.commandHistory.append(pycommand)
+        systemCommands.command_num = 0
+
+        exec( "import MV2,genutil,cdms2,vcs,cdutil,numpy", __main__.__dict__ )
+        regridVar = eval(rhsCommand, __main__.__dict__)
+        res = self.root.stick_main_dict_into_defvar(None)
+        regridVar.id = varname
+
+        _app.uvcdatWindow.dockVariable.widget().addVariable(regridVar)
+
+        self.root.record("## Regrid command sent from PCMDITools->Regridding->%s>%s" % \
+                                (regridTool, regridMethod))
+        self.root.record(pycommand)
+        prj_controller.process_typed_calculator_command(varname, rhsCommand)
+        prj_controller.calculator_command(sV, "REGRID", varname, rhsCommand.strip())
+        QLine.setFocus()
