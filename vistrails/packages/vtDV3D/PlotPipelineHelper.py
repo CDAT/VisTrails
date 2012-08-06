@@ -328,6 +328,7 @@ class DV3DRangeConfigWidget(QFrame):
     def updateSliderValues( self, initialize=False ): 
         if self.active_cfg_cmd:
             print ' update Slider Values, widget = %x ' % id( self )
+            self.active_cfg_cmd.updateWindow()
             rbnds = self.active_cfg_cmd.range_bounds
             parm_range = list( self.active_cfg_cmd.range )
 #            print " Update Slider Values-> range: %s, bounds: %s " % ( str(parm_range), str(rbnds) )

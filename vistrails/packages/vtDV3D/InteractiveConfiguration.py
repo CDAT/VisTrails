@@ -386,7 +386,7 @@ class ConfigurableFunction( QObject ):
     def matches( self, key ):
         return self.active and ( self.key == key )
     
-    def applyParameter( self, module, **args ):
+    def applyParameter( self, **args ):
         pass
 
     def init( self, module ):
@@ -488,12 +488,12 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     def postInstructions( self, message ):
         self.module.displayInstructions( message ) # "Left-click, mouse-move, left-click in this cell." )
     
-    def applyParameter( self, module, **args ):
+    def applyParameter( self, **args ):
         try:
             self.setLevelDataHandler( self.range, **args )
         except Exception, err:
             print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
-        print "Apply %s Parameter[%s:%d]: %s " % ( self.type, self.name, module.moduleID, str( self.range ) )
+        print "Apply %s Parameter[%s:%d]: %s " % ( self.type, self.name, self.module.moduleID, str( self.range ) )
         if self.name == 'zScale':
             print "x"
         

@@ -768,7 +768,7 @@ class PersistentModule( QObject ):
             
     def applyConfiguration(self, **args ):
         for configFunct in self.configurableFunctions.values():
-            configFunct.applyParameter( self, **args  )
+            configFunct.applyParameter( **args  )
             
 #    def setParameterInputsEnabled( self, isEnabled ):
 #        for configFunct in self.configurableFunctions.values():
