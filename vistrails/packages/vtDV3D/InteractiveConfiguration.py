@@ -353,7 +353,7 @@ class ConfigurableFunction( QObject ):
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
         self.hasState = args.get( 'hasState', True )
         
-    def postInstructions( self, module, message ):
+    def postInstructions( self, message ):
         print "\n ----- %s -------\n" % message
 
     @staticmethod
@@ -485,8 +485,8 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.adjustRange = args.get( 'adjustRange', False )
         self.widget = args.get( 'gui', None )
 
-    def postInstructions( self, module, message ):
-        module.displayInstructions( message ) # "Left-click, mouse-move, left-click in this cell." )
+    def postInstructions( self, message ):
+        self.module.displayInstructions( message ) # "Left-click, mouse-move, left-click in this cell." )
     
     def applyParameter( self, module, **args ):
         try:

@@ -779,7 +779,8 @@ class PersistentModule( QObject ):
     
                   
     def startConfiguration( self, x, y, config_types ):
-        if (self.InteractionState <> None) and not self.configuring:
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
+        if (self.InteractionState <> None) and not self.configuring and DV3DPipelineHelper.isLevelingConfigMode():
             configFunct = self.configurableFunctions[ self.InteractionState ]
             if configFunct.type in config_types:
                 self.configuring = True
@@ -1254,7 +1255,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.getLabelActor().VisibilityOn()
                 
     def displayInstructions( self, text ):
-        if (self.renderer <> None) and (self.textBlinkThread == None): 
+        if (self.renderer <> None): 
             self.instructionBuffer = str(text)
             if (self.ndims == 3):                
                 actor = self.getInstructionActor()
@@ -1634,7 +1635,6 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.configurableFunctions[ state ] = configFunct
             if configFunct:
                 configFunct.open( state, self.isAltMode )
-#                configFunct.postInstructions( self )
                 self.InteractionState = state                   
                 self.LastInteractionState = self.InteractionState
                 self.disableVisualizationInteraction()
