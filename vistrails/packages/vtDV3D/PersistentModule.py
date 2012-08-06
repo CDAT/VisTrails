@@ -627,9 +627,10 @@ class PersistentModule( QObject ):
         if not self.scalarRange: 
             raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
+        dr = ( self.rangeBounds[1] - self.rangeBounds[0] )
         data_values = []
         for image_value in image_value_list:
-            sval = ( image_value - self.rangeBounds[0] ) / ( self.rangeBounds[1] - self.rangeBounds[0] )
+            sval = 0.0 if ( dr == 0.0 ) else ( image_value - self.rangeBounds[0] ) / dr
             dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
             data_values.append( dataValue )
         return data_values
@@ -638,7 +639,8 @@ class PersistentModule( QObject ):
         if not self.scalarRange: 
             raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
-        sval = ( data_value - valueRange[0] ) / ( valueRange[1] - valueRange[0] )
+        dv = ( valueRange[1] - valueRange[0] )
+        sval = 0.0 if ( dv == 0.0 ) else ( data_value - valueRange[0] ) / dv 
         imageValue = self.rangeBounds[0] + sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
         return imageValue
 
@@ -646,9 +648,10 @@ class PersistentModule( QObject ):
         if not self.scalarRange: 
             raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
+        dv = ( valueRange[1] - valueRange[0] )
         imageValues = []
         for data_value in data_value_list:
-            sval = ( data_value - valueRange[0] ) / ( valueRange[1] - valueRange[0] )
+            sval = 0.0 if ( dv == 0.0 ) else ( data_value - valueRange[0] ) / dv
             imageValue = self.rangeBounds[0] + sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
             imageValues.append( imageValue )
         print "\n *****************  GetImageValues[%d:%x]: data_values = %s, range = %s, imageValues = %s **************** \n" % ( self.moduleID, id(self), str(data_value_list), str(self.scalarRange), str(imageValues) )
@@ -657,7 +660,8 @@ class PersistentModule( QObject ):
     def scaleToImage( self, data_value ):
         if not self.scalarRange: 
             raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
-        sval = data_value / ( self.scalarRange[1] - self.scalarRange[0] )
+        dv = ( self.scalarRange[1] - self.scalarRange[0] )
+        sval = 0.0 if ( dv == 0.0 ) else data_value / dv
         imageScaledValue =  sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
         return imageScaledValue
 
