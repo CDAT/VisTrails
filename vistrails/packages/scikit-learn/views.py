@@ -37,8 +37,12 @@ class ProjectionWidget(QCellWidget):
         centralLayout.setMargin(0)
         centralLayout.setSpacing(0)
         
-        self.figManager = None
-        self.rectSelector = None
+        # Create a new Figure Manager and configure it
+        pylab.figure(str(self))
+        self.figManager = pylab.get_current_fig_manager()
+        self.figManager.toolbar.hide()
+        self.layout().addWidget(self.figManager.window)
+        
         self.showLabels = False
         self.inputPorts = None;
         
@@ -51,54 +55,23 @@ class ProjectionWidget(QCellWidget):
         if inputPorts is not None: self.inputPorts = inputPorts
         
         # draw in which canvas?
-#        self.inputPorts = inputPorts;
-        self.draw()
-        newFigManager = pylab.get_current_fig_manager()
-        
-        if self.figManager != None:
-            print 'removing widget'
-            # Remove the old figure manager
-            self.figManager.window.hide()
-            self.layout().removeWidget(self.figManager.window)
-            
-            # Destroy the old one if possible
-            if self.figManager:
-                try:                    
-                    pylab.close(self.figManager.canvas.figure)
-                # There is a bug in Matplotlib backend_qt4. It is a
-                # wrong command for Qt4. Just ignore it and continue
-                # to destroy the widget
-                except:
-                    pass
-                
-                self.figManager.window.deleteLater()
-                del self.figManager
-
-        # Add the new one in
-        self.layout().addWidget(newFigManager.window)
-
-        # Save back the manager
-        self.figManager = newFigManager
-        self.update()
-        
-    def draw(self):
         (_matrix, title, _colors, labels) = self.inputPorts
         matrix = _matrix.array
         colors = _colors.array if _colors is None else 'b'
         
-        # Update the new figure canvas
-        fig = pylab.figure()
+        # select our figure
+        fig = pylab.figure(str(self))
         
+        pylab.clf()
         pylab.setp(fig, facecolor='w')
         pylab.axis('off')
-        pylab.get_current_fig_manager().toolbar.hide()
         
         pylab.title(title)
         pylab.scatter( matrix[:,0], matrix[:,1], 
                        c=colors, cmap=pylab.cm.Spectral, 
                        marker='o')
   
-        print 'DRAWWWWW: ', self.showLabels
+        # draw labels
         if self.showLabels and labels is not None:
             for label, x, y in zip(labels, matrix[:, 0], matrix[:, 1]):
                 pylab.annotate(
@@ -109,13 +82,30 @@ class ProjectionWidget(QCellWidget):
                     bbox = dict(boxstyle = 'round,pad=0.2', fc = 'yellow', alpha = 0.5),
                 )
         
-        # selections
-        self.rectSelector = RectangleSelector(pylab.gca(), 
-                                              self.onselect, 
-                                              drawtype='box', 
-                                              rectprops=dict(alpha=0.4, facecolor='yellow')
-                                             )
+        self.rectSelector = RectangleSelector(pylab.gca(), self.onselect, drawtype='box', 
+                                              rectprops=dict(alpha=0.4, facecolor='yellow') )
         self.rectSelector.set_active(True)
+        
+        self.figManager.canvas.draw()
+        self.update()
+
+    def deleteLater(self):
+        """ deleteLater() -> None        
+        Overriding PyQt deleteLater to free up resources
+        
+        """
+        # Destroy the old one if possible
+        if self.figManager:
+            try:                    
+                pylab.close(self.figManager.canvas.figure)
+                # There is a bug in Matplotlib backend_qt4. It is a
+                # wrong command for Qt4. Just ignore it and continue
+                # to destroy the widget
+            except:
+                pass
+            
+            self.figManager.window.deleteLater()
+        QCellWidget.deleteLater(self)
 
     def onselect(self, eclick, erelease):
         'eclick and erelease are matplotlib events at press and release'
@@ -147,35 +137,6 @@ class ProjectionView(SpreadsheetCell):
         
         self.displayAndWait(ProjectionWidget, (matrix, title, colors, labels))
             
-#    def compute(self):
-#        matrix = self.getInputFromPort('matrix').array
-#        colors = self.getInputFromPort('colors').array if self.hasInputFromPort('colors') else 'b'
-#            
-#        
-#        fig = pylab.figure()
-#        pylab.setp(fig, facecolor='w')
-#        pylab.axis('off')
-#        pylab.get_current_fig_manager().toolbar.hide()
-#        
-#        pylab.title(self.forceGetInputFromPort('title', '2D - Projection'))
-#        pylab.scatter( matrix[:,0], matrix[:,1], 
-#                       c=colors, cmap=pylab.cm.Spectral, 
-#                       marker='o')
-#
-#        # draw labels
-#        if self.hasInputFromPort('labels'):
-#            labels = self.getInputFromPort('labels')
-#            for label, x, y in zip(labels, matrix[:, 0], matrix[:, 1]):
-#                pylab.annotate(
-#                    str(label), 
-#                    xy = (x, y), 
-#                    xytext = (5, 5),
-#                    textcoords = 'offset points',
-#                    bbox = dict(boxstyle = 'round,pad=0.2', fc = 'yellow', alpha = 0.5),
-#                )
-#        
-#        self.setResult('source', '')
-
 class parallelcoordinates(Module):
     """
     """
