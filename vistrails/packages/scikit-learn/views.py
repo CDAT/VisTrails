@@ -4,6 +4,7 @@ from packages.NumSciPy.Array import NDArray
 from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_cell import QCellWidget
 from PyQt4 import QtGui
+from matplotlib.widgets import  RectangleSelector
 
 from core.bundles import py_import
 try:
@@ -32,6 +33,7 @@ class ProjectionWidget(QCellWidget):
         centralLayout.setMargin(0)
         centralLayout.setSpacing(0)
         self.figManager = None
+        self.rectSelector = None
 
     def updateContents(self, inputPorts):
         """ updateContents(inputPorts: tuple) -> None
@@ -74,6 +76,7 @@ class ProjectionWidget(QCellWidget):
         
         # Update the new figure canvas
         fig = pylab.figure()
+        
         pylab.setp(fig, facecolor='w')
         pylab.axis('off')
         pylab.get_current_fig_manager().toolbar.hide()
@@ -82,7 +85,22 @@ class ProjectionWidget(QCellWidget):
         pylab.scatter( matrix[:,0], matrix[:,1], 
                        c=colors, cmap=pylab.cm.Spectral, 
                        marker='o')
+
         
+        self.rectSelector = RectangleSelector(pylab.gca(), 
+                                              self.onselect, 
+                                              drawtype='box', 
+                                              rectprops=dict(alpha=0.4, facecolor='yellow')
+                                             )
+        self.rectSelector.set_active(True)
+
+    def onselect(self, eclick, erelease):
+        'eclick and erelease are matplotlib events at press and release'
+        print ' startposition : (%f, %f)' % (eclick.xdata, eclick.ydata)
+        print ' endposition   : (%f, %f)' % (erelease.xdata, erelease.ydata)
+        print ' used button   : ', eclick.button
+  
+
 
 class ProjectionView(SpreadsheetCell):
     """
