@@ -9,7 +9,8 @@ name = 'Scikit-Learn'
 version = '0.0.1'
 
 def package_dependencies():
-    return ['edu.utah.sci.vistrails.numpyscipy']
+    return ['edu.utah.sci.vistrails.numpyscipy',
+            'edu.utah.sci.vistrails.spreadsheet']
 
 def package_requirements():
     import core.requirements
@@ -19,5 +20,5 @@ def package_requirements():
         raise core.requirements.MissingRequirement('scipy')
     if not core.requirements.python_module_exists('sklearn'):
         raise core.requirements.MissingRequirement('sklearn')
-#    if not core.requirements.python_module_exists('matplotlib'):
-#        raise core.requirements.MissingRequirement('matplotlib')
+    if not core.requirements.python_module_exists('matplotlib'):
+        raise core.requirements.MissingRequirement('matplotlib')
