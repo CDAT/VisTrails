@@ -26,6 +26,10 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from packages.vtDV3D import HyperwallManager
 
+class LevelingType:
+    GUI = 0
+    LEVELING = 1
+
 def getFormattedQString( value ):
     val = float( value )
     if val > 99999 or val < 0.001:  sval = "%.2g" % val
@@ -85,37 +89,66 @@ class DV3DParameterSliderWidget(QWidget):
 
     def enable(self, enabled ): 
         self.setVisible( enabled )
-                
-class DV3DRangeConfigWidget(QFrame):
+
+class DV3DParameterLabelWidget(QWidget):
+    
+    def __init__( self, label, parent=None):
+        QWidget.__init__(self,parent)
+        self.range = [ 0.0, 1.0, 1.0 ]
+        
+        main_layout = QVBoxLayout()  
+        
+        data_layout = QHBoxLayout()                     
+        self.label = QLabel( label, self )
+        self.label.setAlignment( Qt.AlignLeft )
+        self.label.setFont( QFont( "Arial", 12 ) )
+        data_layout.addWidget( self.label )        
+        data_layout.addStrut(2)
+        self.textbox = QLineEdit(self)
+        data_layout.addWidget( self.textbox )  
+        main_layout.addLayout( data_layout )
+              
+        self.setLayout(main_layout)
+        
+    def setLabel( self, text ):
+        self.label.setText( text )
+        
+    def setDisplayValue( self, fval ):
+        qsval = getFormattedQString( fval ) 
+        self.textbox.setText( qsval )
+        
+    def setRange( self, fmin, fmax ):
+        self.range = [ fmin, fmax, (fmax-fmin) ]
+
+    def setValue( self, value ):
+        qsval = getFormattedQString( value ) 
+        self.textbox.setText( qsval  )
+
+    def enable(self, enabled ): 
+        self.setVisible( enabled )
+
+class DV3DRangeConfigTab(QWidget):
     MIN_SLIDER = 0
     MAX_SLIDER = 1
     
-    def __init__( self, parent=None):
+    def __init__( self, controller, parent=None):
         QWidget.__init__( self, parent )
-        self.active_cfg_cmd = None
-#        print ' ----------------------------------------- create new widget: %x ----------------------------------------- ----------------------------------------- ----------------------------------------- ' % id( self )
-#        self.setStyleSheet("QWidget#RangeConfigWidget { border-style: outset; border-width: 2px; border-color: blue; }" )
-        self.setFrameStyle( QFrame.StyledPanel | QFrame.Raised )
-        self.setLineWidth(2)
-        self.setObjectName('RangeConfigWidget') 
-        self.initialRange = [ 0, 0, 0 ]
-        self.initialize()
-        
-        main_layout = QVBoxLayout()         
+        gui_layout = QVBoxLayout()         
         self.cfg_action_label = QLabel("Configuration:")
         self.cfg_action_label.setFont( QFont( "Arial", 14, QFont.Bold ) )
-        main_layout.addWidget( self.cfg_action_label )
+        gui_layout.addWidget( self.cfg_action_label )
+        self.controller = controller
         
         self.rangeMinEditor = DV3DParameterSliderWidget( 'Range Min:', self )
         self.rangeMaxEditor = DV3DParameterSliderWidget( 'Range Max:', self )
+        self.connect( self.rangeMinEditor.slider, SIGNAL("sliderMoved(int)"), lambda ival: self.controller.sliderValueChanged(self.MIN_SLIDER,ival) ) 
+        self.connect( self.rangeMaxEditor.slider, SIGNAL("sliderMoved(int)"), lambda ival: self.controller.sliderValueChanged(self.MAX_SLIDER,ival) ) 
+        self.connect( self.rangeMinEditor.textbox, SIGNAL("returnPressed()"),  lambda: self.controller.processTextValueEntry(self.MIN_SLIDER) ) 
+        self.connect( self.rangeMaxEditor.textbox, SIGNAL("returnPressed()"),  lambda: self.controller.processTextValueEntry(self.MAX_SLIDER) ) 
         self.sliders = [ self.rangeMinEditor, self.rangeMaxEditor ]
-        self.connect( self.rangeMinEditor.slider, SIGNAL("sliderMoved(int)"), lambda ival: self.sliderValueChanged(self.MIN_SLIDER,ival) ) 
-        self.connect( self.rangeMaxEditor.slider, SIGNAL("sliderMoved(int)"), lambda ival: self.sliderValueChanged(self.MAX_SLIDER,ival) ) 
-        self.connect( self.rangeMinEditor.textbox, SIGNAL("returnPressed()"),  lambda: self.processTextValueEntry(self.MIN_SLIDER) ) 
-        self.connect( self.rangeMaxEditor.textbox, SIGNAL("returnPressed()"),  lambda: self.processTextValueEntry(self.MAX_SLIDER) ) 
                
-        main_layout.addWidget( self.rangeMinEditor )
-        main_layout.addWidget( self.rangeMaxEditor )
+        gui_layout.addWidget( self.rangeMinEditor )
+        gui_layout.addWidget( self.rangeMaxEditor )
         self.rangeMinEditor.setValue( 0.5 )
         self.rangeMaxEditor.setValue( 0.5 )
         
@@ -126,13 +159,137 @@ class DV3DRangeConfigWidget(QFrame):
         button_layout.addWidget( save_button )
         revert_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
         save_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
-        self.connect( revert_button, SIGNAL("clicked()"), lambda: self.revertConfig() ) 
-        self.connect( save_button, SIGNAL("clicked()"), lambda: self.finalizeConfig() ) 
+        self.connect( revert_button, SIGNAL("clicked()"), lambda: self.controller.revertConfig() ) 
+        self.connect( save_button, SIGNAL("clicked()"), lambda: self.controller.finalizeConfig() ) 
         
-        main_layout.addLayout( button_layout )
-        main_layout.addStretch()             
+        gui_layout.addLayout( button_layout )
+        gui_layout.addStretch()  
+        self.setLayout(gui_layout) 
+
+    def enable(self, minEnabled, maxEnabled ): 
+        self.rangeMinEditor.enable( minEnabled )
+        self.rangeMinEditor.setLabel( 'Value: ' if not maxEnabled else 'Range Min: ' )
+        self.rangeMaxEditor.enable( maxEnabled )
+        self.rangeMaxEditor.setLabel( 'Value: ' if not minEnabled else 'Range Max: ' )
+
+    def setTitle(self, title ):
+        self.cfg_action_label.setText( title )
+
+    def setDataValue(self, parm_range, range_bounds ):
+        for iSlider in range(2):
+            dval = parm_range[iSlider]
+            slider = self.sliders[iSlider]
+            slider.setDisplayValue( dval )   
+            slider.setRange( range_bounds[0], range_bounds[1] )       
+            slider.setValue( dval ) 
+            
+    def processTextValueEntry( self, iSlider ):
+        slider = self.sliders[iSlider]
+        textbox = slider.textbox
+        fval = float( textbox.text() )            
+        slider.setValue( fval ) 
+        return fval
+
+    def setDisplayValue( self, fval, iSlider ):
+        self.sliders[iSlider].setDisplayValue( fval )
+
+class DV3DRangeDisplayTab(QWidget):
+    MIN_SLIDER = 0
+    MAX_SLIDER = 1
+    
+    def __init__( self, controller, parent=None):
+        QWidget.__init__( self, parent )
+        gui_layout = QVBoxLayout()         
+        self.cfg_action_label = QLabel("Configuration:")
+        self.cfg_action_label.setFont( QFont( "Arial", 14, QFont.Bold ) )
+        gui_layout.addWidget( self.cfg_action_label )
+        self.controller = controller
+        
+        self.rangeMinEditor = DV3DParameterLabelWidget( 'Range Min:', self )
+        self.rangeMaxEditor = DV3DParameterLabelWidget( 'Range Max:', self )
+        self.connect( self.rangeMinEditor.textbox, SIGNAL("returnPressed()"),  lambda: self.controller.processTextValueEntry(self.MIN_SLIDER) ) 
+        self.connect( self.rangeMaxEditor.textbox, SIGNAL("returnPressed()"),  lambda: self.controller.processTextValueEntry(self.MAX_SLIDER) ) 
+        self.widgets = [ self.rangeMinEditor, self.rangeMaxEditor ]
+               
+        gui_layout.addWidget( self.rangeMinEditor )
+        gui_layout.addWidget( self.rangeMaxEditor )
+        self.rangeMinEditor.setValue( 0.5 )
+        self.rangeMaxEditor.setValue( 0.5 )
+        
+        gui_layout.addStretch()  
+        self.setLayout(gui_layout) 
+
+    def enable(self, minEnabled, maxEnabled ): 
+        self.rangeMinEditor.enable( minEnabled )
+        self.rangeMinEditor.setLabel( 'Value: ' if not maxEnabled else 'Range Min: ' )
+        self.rangeMaxEditor.enable( maxEnabled )
+        self.rangeMaxEditor.setLabel( 'Value: ' if not minEnabled else 'Range Max: ' )
+
+    def setTitle(self, title ):
+        self.cfg_action_label.setText( title )
+ 
+    def setDataValue(self, parm_range, range_bounds ):
+        for iWidget in range(2):
+            dval = parm_range[iWidget]
+            widget = self.widgets[iWidget]
+            widget.setDisplayValue( dval )   
+            widget.setRange( range_bounds[0], range_bounds[1] )       
+            widget.setValue( dval ) 
+
+    def processTextValueEntry( self, iWidget ):
+        widget = self.sliders[iWidget]
+        textbox = widget.textbox
+        fval = float( textbox.text() )            
+        widget.setValue( fval ) 
+        return fval
+
+    def setDisplayValue( self, fval, iWidget ):
+        self.widgets[iWidget].setDisplayValue( fval )
+                                        
+class DV3DRangeConfigWidget(QFrame):
+    
+    def __init__( self, parent=None):
+        QFrame.__init__( self, parent )
+        self.active_cfg_cmd = None
+#        print ' ----------------------------------------- create new widget: %x ----------------------------------------- ----------------------------------------- ----------------------------------------- ' % id( self )
+#        self.setStyleSheet("QWidget#RangeConfigWidget { border-style: outset; border-width: 2px; border-color: blue; }" )
+        self.setFrameStyle( QFrame.StyledPanel | QFrame.Raised )
+        self.setLineWidth(2)
+        self.setObjectName('RangeConfigWidget') 
+        self.initialRange = [ 0, 0, 0 ]
+        self.initialize()
+        main_layout = QVBoxLayout()         
+       
+        self.tabView = QTabWidget()
+        self.tabView.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(self.tabView)
+        
+        self.guiWidget = DV3DRangeConfigTab( self )
+        self.tabView.insertTab( LevelingType.GUI, self.guiWidget, "GUI")
+        self.levelingConfigWidget = DV3DRangeDisplayTab(self)
+        self.tabView.insertTab( LevelingType.LEVELING, self.levelingConfigWidget, "Leveling" )
+        self.tabView.setCurrentIndex( DV3DPipelineHelper.getConfigMode() )
+        self.tabView.currentChanged.connect(self.switchTab)
+          
         self.setLayout(main_layout)
         self.disable()
+        
+    def getConfigTab(self): 
+        if DV3DPipelineHelper.isGuiConfigMode(): return self.guiWidget
+        if DV3DPipelineHelper.isLevelingConfigMode(): return self.levelingConfigWidget
+        return None
+
+    @pyqtSlot(int)    
+    def switchTab( self, index ):
+        DV3DPipelineHelper.setConfigMode( index )
+        print "Setting config_mode = %d" % index
+        self.updateSliderValues()
+        if DV3DPipelineHelper.isLevelingConfigMode():  
+            self.active_cfg_cmd.postInstructions( "Left-click, mouse-move, left-click in this cell." )
+
+    def setTab( self, index ):
+        DV3DPipelineHelper.setConfigMode( index )
+        self.tabView.setCurrentIndex( index )
         
     def __del__(self):
         self.deactivate_current_command()
@@ -146,10 +303,7 @@ class DV3DRangeConfigWidget(QFrame):
         
     def processTextValueEntry( self, iSlider ):
         if self.active_cfg_cmd:
-            textbox = self.sliders[iSlider].textbox
-            fval = float( textbox.text() )
-            slider = self.sliders[iSlider]
-            slider.setValue( fval ) 
+            fval = self.getConfigTab().processTextValueEntry( iSlider )
             parm_range = list( self.active_cfg_cmd.range ) 
             parm_range[ iSlider ] = fval
             self.active_cfg_cmd.broadcastLevelingData( parm_range,  active_modules = DV3DPipelineHelper.getActivePlotList() ) 
@@ -157,8 +311,6 @@ class DV3DRangeConfigWidget(QFrame):
                 for module in self.active_modules: module.render()
                 HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'text-%d' % iSlider, fval ]  )
         
-    def setTitle(self, title ):
-        self.cfg_action_label.setText( title )
         
     def sliderValueChanged( self, iSlider, iValue = None ):
         if self.active_cfg_cmd:
@@ -166,7 +318,7 @@ class DV3DRangeConfigWidget(QFrame):
             parm_range = list( self.active_cfg_cmd.range )
             fval = rbnds[0] + (rbnds[1]-rbnds[0]) * ( iValue / 100.0 )
             parm_range[ iSlider ] = fval
-            self.sliders[iSlider].setDisplayValue( fval )
+            self.getConfigTab().setDisplayValue( fval, iSlider )
             print " sliderValueChanged[%d], bounds=%s, range=%s, fval=%f" % ( self.active_cfg_cmd.module.moduleID, str(rbnds), str(parm_range), fval )
             self.active_cfg_cmd.broadcastLevelingData( parm_range, active_modules = DV3DPipelineHelper.getActivePlotList( )  ) 
             if len( self.active_modules ):            
@@ -176,16 +328,12 @@ class DV3DRangeConfigWidget(QFrame):
     def updateSliderValues( self, initialize=False ): 
         if self.active_cfg_cmd:
             print ' update Slider Values, widget = %x ' % id( self )
+            self.active_cfg_cmd.updateWindow()
             rbnds = self.active_cfg_cmd.range_bounds
             parm_range = list( self.active_cfg_cmd.range )
 #            print " Update Slider Values-> range: %s, bounds: %s " % ( str(parm_range), str(rbnds) )
-            for iSlider in range(2):
-                slider = self.sliders[iSlider]
-                fval = parm_range[ iSlider ]
-                slider.setDisplayValue( fval )   
-                slider.setRange( rbnds[0], rbnds[1] )       
-                slider.setValue( fval ) 
-                if initialize: self.initialRange[iSlider] = fval
+            self.getConfigTab().setDataValue( parm_range, rbnds )
+            if initialize: self.initialRange = parm_range[0:2]
                 
     def updateRange(self, min, max ): 
         pass     
@@ -194,10 +342,7 @@ class DV3DRangeConfigWidget(QFrame):
         self.setVisible(True)
         maxEnabled = self.active_cfg_cmd and self.active_cfg_cmd.activeBound in [ 'both', 'max' ]
         minEnabled = self.active_cfg_cmd and self.active_cfg_cmd.activeBound in [ 'both', 'min' ]
-        self.rangeMinEditor.enable( minEnabled )
-        self.rangeMinEditor.setLabel( 'Value: ' if not maxEnabled else 'Range Min: ' )
-        self.rangeMaxEditor.enable( maxEnabled )
-        self.rangeMaxEditor.setLabel( 'Value: ' if not minEnabled else 'Range Max: ' )
+        self.getConfigTab().enable( minEnabled, maxEnabled )
 
 
     def disable(self): 
@@ -216,7 +361,7 @@ class DV3DRangeConfigWidget(QFrame):
     def startConfig(self, qs_action_key, qs_cfg_key ):
         cfg_key = str(qs_cfg_key)
         action_key = str(qs_action_key)
-        self.setTitle( action_key )
+        self.getConfigTab().setTitle( action_key )
         try:
             cmd_list = DV3DPipelineHelper.getConfigCmd ( cfg_key )
             if cmd_list:
@@ -237,6 +382,8 @@ class DV3DRangeConfigWidget(QFrame):
             
     def endConfig( self ):
         self.disable()
+        if DV3DPipelineHelper.isLevelingConfigMode(): 
+            self.setTab( LevelingType.GUI )
         
     def finalizeConfig( self ):
         if len( self.active_modules ):
@@ -258,8 +405,6 @@ class DV3DRangeConfigWidget(QFrame):
         
 
 class DV3DConfigControlPanel(QWidget):
-    MIN_SLIDER = 0
-    MAX_SLIDER = 1
 
     def __init__( self, configMenu, optionsMenu, parent=None):
         QWidget.__init__(self,parent)
@@ -304,9 +449,9 @@ class DV3DConfigControlPanel(QWidget):
         button_layout.addWidget( self.opt_frame )
         main_layout.addLayout( button_layout )
         main_layout.addStrut(2)
-        
+
         self.rangeConfigWidget = DV3DRangeConfigWidget(self)
-        main_layout.addWidget( self.rangeConfigWidget ) 
+        main_layout.addWidget( self.rangeConfigWidget )        
 #        print "DV3DConfigControlPanel: %x %x " % ( id(self), id( self.rangeConfigWidget) )
 
         self.modules_frame = QFrame()
@@ -334,7 +479,6 @@ class DV3DConfigControlPanel(QWidget):
         
     def isEligibleCommand( self, cmd ):
         return self.rangeConfigWidget.isEligibleCommand( cmd )
-    
 
     def addActivePlot( self, module ):
         active_irens = DV3DPipelineHelper.getActiveIrens()
@@ -370,6 +514,7 @@ class ConnectionType:
     INPUT = 0
     OUTPUT = 1
     BOTH = 2
+
     
 class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     '''
@@ -382,6 +527,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     activationMap = {}
     pipelineMap = {} 
     actionMenu = None
+    _config_mode = LevelingType.GUI
 
     def __init__(self):
         QObject.__init__( self )
@@ -389,6 +535,22 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         '''
         Constructor
         '''
+
+    @staticmethod                         
+    def isLevelingConfigMode():
+        return DV3DPipelineHelper._config_mode == LevelingType.LEVELING
+
+    @staticmethod                         
+    def isGuiConfigMode():
+        return DV3DPipelineHelper._config_mode == LevelingType.GUI
+
+    @staticmethod                         
+    def setConfigMode( config_mode ):
+        DV3DPipelineHelper._config_mode = config_mode
+
+    @staticmethod                         
+    def getConfigMode():
+        return DV3DPipelineHelper._config_mode
 
     @staticmethod                         
     def getValidModuleIdList( ):

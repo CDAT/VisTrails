@@ -35,6 +35,7 @@ import gui.uvcdat.uvcdat_rc
 import customizeUVCDAT
 import commandsRecorderWidget
 import preferencesWidget
+#import regriddingWidget
 import mainMenuWidget
 import mainToolbarWidget
 from colormapEditorWidget import QColormapEditor
@@ -51,15 +52,17 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.root = self
         #self.tool_bar = mainToolbarWidget.QMainToolBarContainer(self)
         self.canvas=[]
-
+        
         self.canvas.append(vcs.init())
-        self.colormapEditor =QColormapEditor(self)
+        self.colormapEditor =QColormapEditor(self) 
         # Create the command recorder widget
         self.recorder = commandsRecorderWidget.QCommandsRecorderWidget(self)
         #Adds a shortcut to the record function
         self.record = self.recorder.record
         self.preferences = preferencesWidget.QPreferencesDialog(self)
         self.preferences.hide()
+#        self.regridding = regriddingWidget.QRegriddingDialog(self)
+#        self.regridding.hide()
         ###########################################################
         # Init Menu Widget
         ###########################################################
@@ -70,17 +73,17 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.embedSpreadsheet()
         self.connectSignals()
         self.resize(1150,800)
-
+        
     def initCustomize(self,customPath,styles):
         if customPath is None:
             customPath=os.path.join(os.environ["HOME"],"PCMDI_GRAPHICS","customizeUVCDAT.py")
-
+            
         if os.path.exists(customPath):
             execfile(customPath,customizeUVCDAT.__dict__,customizeUVCDAT.__dict__)
 
         if styles is None:
             styles=customizeUVCDAT.appStyles
-
+            
         icon = QtGui.QIcon(customizeUVCDAT.appIcon)
         self.setWindowIcon(icon)
 
@@ -92,7 +95,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         cdms2.setNetcdfShuffleFlag(customizeUVCDAT.ncShuffle)
         cdms2.setNetcdfDeflateFlag(customizeUVCDAT.ncDeflate)
         cdms2.setNetcdfDeflateLevelFlag(customizeUVCDAT.ncDeflateLevel)
-
+        
         ## StylesSheet
         st=""
         if isinstance(styles,str):
@@ -115,7 +118,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         ## self.resize(1100,800)
         #self.setMinimumWidth(1100)
         self.main_window_placement()
-
+     
     def main_window_placement(self):
         screen = QtGui.QDesktopWidget().screenGeometry()
         size = self.geometry()
@@ -165,7 +168,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         #About Message
         self.showAboutMessageAct = QtGui.QAction("About UV-CDAT...", self,
                                 triggered=self.showAboutMessageActTriggered)
-
+        
     def updateMenuActions(self):
         #menu File Actions
         self.ui.menuFile.addAction(self.workspace.btnNewProject)
@@ -189,16 +192,16 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.ui.menuVistrails.addAction(self.showVistrailsConsoleAct)
         #About message
         self.ui.menuHelp.addAction(self.showAboutMessageAct)
-
+        
     def showBuilderWindowActTriggered(self):
         from gui.vistrails_window import _app
         _app.show()
         _app.raise_()
-
+        
     def showVistrailsConsoleActTriggered(self):
         from gui.shell import QShellDialog
         QShellDialog.instance().set_visible(True)
-
+        
     def showAboutMessageActTriggered(self):
         import core.uvcdat
         import core.system
@@ -232,9 +235,9 @@ class UVCDATMainWindow(QtGui.QMainWindow):
                      QtCore.SLOT('accept()'))
         dlg.setSizeGripEnabled(False)
         dlg.exec_()
-
+        
     def connectSignals(self):
-
+        
         self.connect(self.spreadsheetWindow.tabControllerStack,
                      QtCore.SIGNAL("add_tab"),
                      self.workspace.add_sheet_tab)
@@ -244,7 +247,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.connect(self.spreadsheetWindow.tabControllerStack,
                      QtCore.SIGNAL("change_tab_text"),
                      self.workspace.change_tab_text)
-
+        
     def closeEvent(self, e):
         """ closeEvent(e: QCloseEvent) -> None
         Only hide the builder window
@@ -252,7 +255,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         """
         if not self.quit():
             e.ignore()
-
+        
     def quit(self):
         #FIXME
         #ask to save projects
@@ -273,21 +276,20 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         _app._is_quitting = False
         return False
         QtGui.QApplication.instance().quit()
-
+        
     def showVariableProperties(self):
         varProp = VariableProperties.instance()
-        varProp.setParent(self)
         varProp.show()
-
+        
     def showPlotProperties(self):
         plotProp = PlotProperties.instance()
         plotProp.show()
-
+        
     def embedSpreadsheet(self):
         self.spreadsheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
         self.setCentralWidget(self.spreadsheetWindow)
         self.spreadsheetWindow.setVisible(True)
-
+        
     def cleanup(self):
         self.setCentralWidget(QtGui.QWidget())
         self.spreadsheetWindow.setParent(None)
@@ -310,7 +312,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
             res = tmp.id
         elif tmp is not None:
             self.processList(tmp,added)
-
+            
         if results is not None:
             del(__main__.__dict__[results])
         for k in __main__.__dict__:
@@ -325,7 +327,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
 #                    # later. The best way is by emitting a signal to be processed by the
 #                    # main window. When this panel becomes a global panel, then we will do
 #                    # that. For now I will talk to the main window directly.
-#
+#        
 #                    from api import get_current_project_controller
 #                    from packages.uvcdat_cdms.init import CDMSVariable
 #                    controller = get_current_project_controller()
@@ -336,7 +338,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
             del(__main__.__dict__[r])
 
         return res
-
+    
     def processList(self,myList,added):
         for v in myList:
             if isinstance(v,cdms2.tvariable.TransientVariable):
@@ -350,9 +352,9 @@ class UVCDATMainWindow(QtGui.QMainWindow):
 
     def get_current_project_controller(self):
         return self.workspace.get_current_project_controller()
-
+    
     def get_project_controller_by_name(self, name):
         return self.workspace.get_project_controller_by_name(name)
-
+    
     def link_registry(self):
         self.dockPlot.link_registry()

@@ -842,6 +842,7 @@ class ProjectController(QtCore.QObject):
                 cell.current_parent_version = action.id
                 if get_vistrails_configuration().uvcdat.autoExecute:
                     self.execute_plot(cell.current_parent_version)
+                    self.update_plot_configure(sheetName, row, col)
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
                       None, None, cell.plots[0].package, cell.current_parent_version)     
    
