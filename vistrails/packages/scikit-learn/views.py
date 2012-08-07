@@ -5,7 +5,9 @@ from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
 from PyQt4 import QtGui
 from matplotlib.widgets import  RectangleSelector
-from packages.vtDV3D.DV3DCell import *
+from matplotlib.transforms import Bbox
+import numpy as np
+import os
 
 from core.bundles import py_import
 try:
@@ -45,19 +47,27 @@ class ProjectionWidget(QCellWidget):
         
         self.showLabels = False
         self.inputPorts = None;
+        self.selectedIds = []
         
         self.toolBarType = QProjectionToolBar
-
+        CoordinationManager.Instance().register(self)
+        
     def updateContents(self, inputPorts=None):
         """ updateContents(inputPorts: tuple) -> None
         Update the widget contents based on the input data
         """
         if inputPorts is not None: self.inputPorts = inputPorts
         
-        # draw in which canvas?
-        (_matrix, title, _colors, labels) = self.inputPorts
-        matrix = _matrix.array
-        colors = _colors.array if _colors is None else 'b'
+        (_matrix, _ids, labels, _colors, title) = self.inputPorts
+        self.matrix = _matrix.array
+        self.ids    = _ids.array if _ids is not None else np.linspace(1, self.matrix.shape[0], self.matrix.shape[0])
+        colors      = _colors.array if _colors is not None else 'b'
+        
+        # for faster access
+        id2pos = {id:pos for (pos, id) in enumerate(self.ids)}
+        circleSize = np.ones(self.ids.shape)
+        for selId in self.selectedIds:
+            circleSize[id2pos[selId]] = 4
         
         # select our figure
         fig = pylab.figure(str(self))
@@ -67,26 +77,31 @@ class ProjectionWidget(QCellWidget):
         pylab.axis('off')
         
         pylab.title(title)
-        pylab.scatter( matrix[:,0], matrix[:,1], 
-                       c=colors, cmap=pylab.cm.Spectral, 
+        pylab.scatter( self.matrix[:,0], self.matrix[:,1], 
+                       c=colors, cmap=pylab.cm.Spectral,
+                       s=40,
+                       linewidth=circleSize,
                        marker='o')
   
         # draw labels
         if self.showLabels and labels is not None:
-            for label, x, y in zip(labels, matrix[:, 0], matrix[:, 1]):
+            for label, xy in zip(labels, self.matrix):
                 pylab.annotate(
                     str(label), 
-                    xy = (x, y), 
+                    xy = xy, 
                     xytext = (5, 5),
                     textcoords = 'offset points',
                     bbox = dict(boxstyle = 'round,pad=0.2', fc = 'yellow', alpha = 0.5),
                 )
         
         self.rectSelector = RectangleSelector(pylab.gca(), self.onselect, drawtype='box', 
-                                              rectprops=dict(alpha=0.4, facecolor='yellow') )
+                                              rectprops=dict(alpha=0.4, facecolor='yellow'),
+                                              )
         self.rectSelector.set_active(True)
         
         self.figManager.canvas.draw()
+        
+        self.selectedIds = []
         self.update()
 
     def deleteLater(self):
@@ -108,12 +123,15 @@ class ProjectionWidget(QCellWidget):
         QCellWidget.deleteLater(self)
 
     def onselect(self, eclick, erelease):
-        'eclick and erelease are matplotlib events at press and release'
-        print ' startposition : (%f, %f)' % (eclick.xdata, eclick.ydata)
-        print ' endposition   : (%f, %f)' % (erelease.xdata, erelease.ydata)
-        print ' used button   : ', eclick.button
-  
-
+        left, bottom = min(eclick.xdata, erelease.xdata), min(eclick.ydata, erelease.ydata)
+        right, top = max(eclick.xdata, erelease.xdata), max(eclick.ydata, erelease.ydata)
+        region = Bbox.from_extents(left, bottom, right, top)
+        
+        selectedIds = []
+        for (xy, id) in zip(self.matrix, self.ids):
+            if region.contains(xy[0], xy[1]):
+                selectedIds.append(id)
+        CoordinationManager.Instance().notifyModules(selectedIds)
 
 class ProjectionView(SpreadsheetCell):
     """
@@ -122,20 +140,22 @@ class ProjectionView(SpreadsheetCell):
     name         = '2D Projection view'
     
     _input_ports = [('matrix',    NDArray, False),
-                    ('title',     String,  False),
-                    ('colors',    NDArray, False),
+                    ('ids',       NDArray, False),
                     ('labels',    List,    False),
+                    ('colors',    NDArray, False),
+                    ('title',     String,  False)
                    ]
 
     def compute(self):
         """ compute() -> None        
         """
         matrix = self.getInputFromPort('matrix')
-        title  = self.forceGetInputFromPort('title', '')
-        colors = self.forceGetInputFromPort('colors', None)
+        ids    = self.forceGetInputFromPort('ids', None)
         labels = self.forceGetInputFromPort('labels', None)
+        colors = self.forceGetInputFromPort('colors', None)
+        title  = self.forceGetInputFromPort('title', '')
         
-        self.displayAndWait(ProjectionWidget, (matrix, title, colors, labels))
+        self.displayAndWait(ProjectionWidget, (matrix, ids, labels, colors, title))
             
 class parallelcoordinates(Module):
     """
@@ -175,3 +195,65 @@ class QProjectionToolBar(QCellToolBar):
         QCellToolBar.createToolBar(self)
         self.appendAction(QCellToolBarShowLabels(self))
         
+###############################################################################
+
+class Singleton:
+    """
+    A non-thread-safe helper class to ease implementing singletons.
+    This should be used as a decorator -- not a metaclass -- to the
+    class that should be a singleton.
+
+    The decorated class can define one `__init__` function that
+    takes only the `self` argument. Other than that, there are
+    no restrictions that apply to the decorated class.
+
+    To get the singleton instance, use the `Instance` method. Trying
+    to use `__call__` will result in a `TypeError` being raised.
+
+    Limitations: The decorated class cannot be inherited from.
+
+    """
+
+    def __init__(self, decorated):
+        self._decorated = decorated
+
+    def Instance(self):
+        """
+        Returns the singleton instance. Upon its first call, it creates a
+        new instance of the decorated class and calls its `__init__` method.
+        On all subsequent calls, the already created instance is returned.
+
+        """
+        try:
+            return self._instance
+        except AttributeError:
+            self._instance = self._decorated()
+            return self._instance
+
+    def __call__(self):
+        raise TypeError('Singletons must be accessed through `Instance()`.')
+
+    def __instancecheck__(self, inst):
+        return isinstance(inst, self._decorated)
+
+@Singleton
+class CoordinationManager:
+    """
+    CoordinationManager is intended to receive selected element in a view, and
+    update all the views registered
+    """
+    def __init__(self):
+        self.modules = []
+    
+    def notifyModules(self, selectedIds):
+        for mod in self.modules:
+            mod.selectedIds = selectedIds;
+            mod.updateContents();
+        
+    def register(self, module):
+        self.modules.append(module)
+    
+    def unregister(self, module):
+        self.modules.remove(module)
+        
+
