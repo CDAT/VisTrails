@@ -4,7 +4,7 @@ This package ...
 
 """
 
-identifier = 'edu.poly.scikit-learn'
+identifier = 'edu.poly.scikit_learn'
 name = 'Scikit-Learn'
 version = '0.0.1'
 

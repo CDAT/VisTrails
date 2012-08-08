@@ -1,5 +1,5 @@
-from core.modules.vistrails_module import Module, NotCacheable
-from core.modules.basic_modules import Integer, Float, String, List
+from core.modules.vistrails_module import Module
+from core.modules.basic_modules import String, List
 from packages.NumSciPy.Array import NDArray
 from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
@@ -17,22 +17,21 @@ try:
     matplotlib.use('Qt4Agg', warn=False)
     pylab = py_import('pylab', mpl_dict)
 except Exception, e:
+    from core import debug
     debug.critical("Exception: %s" % e)
     
 packagePath = os.path.dirname( __file__ )
 
 ################################################################################
-
-class ProjectionWidget(QCellWidget):
-    """ ProjectionWidget is a widget to show 2D projections. It has some interactive
-    features like, show labels, selections, and synchronization.
+class LinkedWidget(QCellWidget):
+    """
     """
     
     def __init__(self, parent=None):
-        """ ProjectionWidget(parent: QWidget) -> ProjectionWidget
+        """ LinkedWidget(parent: QWidget) -> LinkedWidget
         Initialize the widget with its central layout
-        
         """
+        
         QCellWidget.__init__(self, parent)
         centralLayout = QtGui.QVBoxLayout()
         self.setLayout(centralLayout)
@@ -45,12 +44,41 @@ class ProjectionWidget(QCellWidget):
         self.figManager.toolbar.hide()
         self.layout().addWidget(self.figManager.window)
         
-        self.showLabels = False
         self.inputPorts = None;
         self.selectedIds = []
         
-        self.toolBarType = QProjectionToolBar
         CoordinationManager.Instance().register(self)
+    
+    def deleteLater(self):
+        """ deleteLater() -> None        
+        Overriding PyQt deleteLater to free up resources
+        
+        """
+        # Destroy the old one if possible
+        if self.figManager:
+            try:                    
+                pylab.close(self.figManager.canvas.figure)
+                # There is a bug in Matplotlib backend_qt4. It is a
+                # wrong command for Qt4. Just ignore it and continue
+                # to destroy the widget
+            except:
+                pass
+            
+            self.figManager.window.deleteLater()
+        QCellWidget.deleteLater(self)
+
+    def onselect(self, eclick, erelease):
+        raise NotImplementedError("Please Implement this method") 
+        
+class ProjectionWidget(LinkedWidget):
+    """ ProjectionWidget is a widget to show 2D projections. It has some interactive
+    features like, show labels, selections, and synchronization.
+    """
+    def __init__(self, parent=None):
+        LinkedWidget.__init__(self, parent)
+        
+        self.showLabels = False
+        self.toolBarType = QProjectionToolBar
         
     def updateContents(self, inputPorts=None):
         """ updateContents(inputPorts: tuple) -> None
@@ -104,24 +132,6 @@ class ProjectionWidget(QCellWidget):
         self.selectedIds = []
         self.update()
 
-    def deleteLater(self):
-        """ deleteLater() -> None        
-        Overriding PyQt deleteLater to free up resources
-        
-        """
-        # Destroy the old one if possible
-        if self.figManager:
-            try:                    
-                pylab.close(self.figManager.canvas.figure)
-                # There is a bug in Matplotlib backend_qt4. It is a
-                # wrong command for Qt4. Just ignore it and continue
-                # to destroy the widget
-            except:
-                pass
-            
-            self.figManager.window.deleteLater()
-        QCellWidget.deleteLater(self)
-
     def onselect(self, eclick, erelease):
         left, bottom = min(eclick.xdata, erelease.xdata), min(eclick.ydata, erelease.ydata)
         right, top = max(eclick.xdata, erelease.xdata), max(eclick.ydata, erelease.ydata)
@@ -154,7 +164,6 @@ class ProjectionView(SpreadsheetCell):
         labels = self.forceGetInputFromPort('labels', None)
         colors = self.forceGetInputFromPort('colors', None)
         title  = self.forceGetInputFromPort('title', '')
-        
         self.displayAndWait(ProjectionWidget, (matrix, ids, labels, colors, title))
             
 class parallelcoordinates(Module):
