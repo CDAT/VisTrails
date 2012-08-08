@@ -66,10 +66,37 @@ class LinkedWidget(QCellWidget):
             
             self.figManager.window.deleteLater()
         QCellWidget.deleteLater(self)
+        
+    def updateContents(self, inputPorts=None):
+        """ updateContents(inputPorts: tuple) -> None
+        Update the widget contents based on the input data
+        """
+        if inputPorts is not None: self.inputPorts = inputPorts
+        
+        # select our figure
+        fig = pylab.figure(str(self))
+        pylab.setp(fig, facecolor='w')
 
+        # matplotlib plot
+        self.draw(fig)
+        
+        # Set Selectors
+        self.rectSelector = RectangleSelector(pylab.gca(), self.onselect, drawtype='box', 
+                                              rectprops=dict(alpha=0.4, facecolor='yellow'),
+                                              )
+        self.rectSelector.set_active(True)
+        
+        
+        # reset selectedIds
+        self.selectedIds = []
+        self.update()
+        
     def onselect(self, eclick, erelease):
         raise NotImplementedError("Please Implement this method") 
-        
+    
+    def draw(self, fig):
+        raise NotImplementedError("Please Implement this method") 
+
 class ProjectionWidget(LinkedWidget):
     """ ProjectionWidget is a widget to show 2D projections. It has some interactive
     features like, show labels, selections, and synchronization.
@@ -80,11 +107,11 @@ class ProjectionWidget(LinkedWidget):
         self.showLabels = False
         self.toolBarType = QProjectionToolBar
         
-    def updateContents(self, inputPorts=None):
-        """ updateContents(inputPorts: tuple) -> None
-        Update the widget contents based on the input data
+    def draw(self, fig):
+        """draw(fig: Figure) ->None
+        code using matplotlib.
+        Use self.fig and self.figManager
         """
-        if inputPorts is not None: self.inputPorts = inputPorts
         
         (_matrix, _ids, labels, _colors, title) = self.inputPorts
         self.matrix = _matrix.array
@@ -92,16 +119,12 @@ class ProjectionWidget(LinkedWidget):
         colors      = _colors.array if _colors is not None else 'b'
         
         # for faster access
-        id2pos = {id:pos for (pos, id) in enumerate(self.ids)}
+        id2pos = {idd:pos for (pos, idd) in enumerate(self.ids)}
         circleSize = np.ones(self.ids.shape)
         for selId in self.selectedIds:
             circleSize[id2pos[selId]] = 4
         
-        # select our figure
-        fig = pylab.figure(str(self))
-        
         pylab.clf()
-        pylab.setp(fig, facecolor='w')
         pylab.axis('off')
         
         pylab.title(title)
@@ -122,25 +145,17 @@ class ProjectionWidget(LinkedWidget):
                     bbox = dict(boxstyle = 'round,pad=0.2', fc = 'yellow', alpha = 0.5),
                 )
         
-        self.rectSelector = RectangleSelector(pylab.gca(), self.onselect, drawtype='box', 
-                                              rectprops=dict(alpha=0.4, facecolor='yellow'),
-                                              )
-        self.rectSelector.set_active(True)
-        
         self.figManager.canvas.draw()
         
-        self.selectedIds = []
-        self.update()
-
     def onselect(self, eclick, erelease):
         left, bottom = min(eclick.xdata, erelease.xdata), min(eclick.ydata, erelease.ydata)
         right, top = max(eclick.xdata, erelease.xdata), max(eclick.ydata, erelease.ydata)
         region = Bbox.from_extents(left, bottom, right, top)
         
         selectedIds = []
-        for (xy, id) in zip(self.matrix, self.ids):
+        for (xy, idd) in zip(self.matrix, self.ids):
             if region.contains(xy[0], xy[1]):
-                selectedIds.append(id)
+                selectedIds.append(idd)
         CoordinationManager.Instance().notifyModules(selectedIds)
 
 class ProjectionView(SpreadsheetCell):
@@ -264,5 +279,5 @@ class CoordinationManager:
     
     def unregister(self, module):
         self.modules.remove(module)
-        
+
 
