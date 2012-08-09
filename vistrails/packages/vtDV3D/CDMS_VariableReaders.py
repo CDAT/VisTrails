@@ -576,10 +576,23 @@ class PM_CDMS_VectorReader( PM_CDMSDataReader ):
         self.outputType = CDMSDataType.Vector
         PM_CDMSDataReader.__init__( self, mid, **args)
 
+class PM_CDMS_VariableSpaceReader( PM_CDMSDataReader ):
+
+    def __init__(self, mid, **args):
+        self.outputType = CDMSDataType.VariableSpace
+        PM_CDMSDataReader.__init__( self, mid, **args)
+
 
 class CDMS_VectorReader(WorkflowModule):
     
     PersistentModuleClass = PM_CDMS_VectorReader
+    
+    def __init__( self, **args ):
+        WorkflowModule.__init__(self, **args) 
+
+class CDMS_VariableSpaceReader(WorkflowModule):
+    
+    PersistentModuleClass = PM_CDMS_VariableSpaceReader
     
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args) 

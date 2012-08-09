@@ -15,7 +15,7 @@ import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
-from packages.vtDV3D.DV3DCell import MapCell3D
+from packages.vtDV3D.DV3DCell import MapCell3D, CloudCell3D
 from packages.vtDV3D import ModuleStore
 from packages.vtDV3D.InteractiveConfiguration import *
 from packages.uvcdat_cdms.init import CDMSVariableOperation, CDMSVariable 
@@ -803,12 +803,13 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         if action: controller.change_selected_version( action.id )   
         
         reader_1v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader ] )
-        reader_2v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VectorReader ] )
-        reader_modules = reader_1v_modules + reader_2v_modules
+        reader_3v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VectorReader ] )
+        reader_modules = reader_1v_modules + reader_3v_modules
         iVarModule = 0
         ops = []           
         for module in reader_modules:
-            nInputs = 1 if module in reader_1v_modules else 2
+            pmod = ModuleStore.getModule( module.id )
+            nInputs = 1 if module in reader_1v_modules else 3
             for iInput in range( nInputs ):
                 try:
                     var_module = var_modules[ iVarModule ]
@@ -863,7 +864,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     else:
                         print>>sys.stderr, "CDAT Package: Change parameter %s was not generated"%(k)
                  
-        cell_modules = PlotPipelineHelper.find_modules_by_type( pipeline, [ MapCell3D ] )
+        cell_modules = PlotPipelineHelper.find_modules_by_type( pipeline, [ MapCell3D, CloudCell3D ] )
         for module in cell_modules:
             op = DV3DPipelineHelper.get_parameter_change_op( controller, module, 'title', 0, '' )
             if op: param_changes.append(op)
