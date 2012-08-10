@@ -68,6 +68,10 @@ class PVGenericCell(SpreadsheetCell):
     def getRepresentations(self):
         return self.forceGetInputListFromPort("representation")
 
+    def removeRepresentation(self, index):
+        del self.cellWidget.view.Representations[index]
+        self.cellWidget.view.StillRender()
+
 class QPVIsoSurfaceWidget(QVTKWidget):
 
     def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
@@ -132,7 +136,6 @@ class QPVIsoSurfaceWidget(QVTKWidget):
     def deleteLater(self):
         QCellWidget.deleteLater(self)
 
-
 def registerSelf():
     registry = get_module_registry()
     # For now, we don't have configuration widget
@@ -142,4 +145,4 @@ def registerSelf():
 #    registry.add_input_port(PVGenericCell, "representation", PVRepresentationBase)
     registry.add_input_port(PVGenericCell, "representation", [])
     registry.add_output_port(PVGenericCell, "self", PVGenericCell)
-    registry.add_input_port(PVGenericCell, "sliceOffset", basic_modules.String)
+

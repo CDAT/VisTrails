@@ -31,6 +31,9 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def show_configuration_widget(controller, version, plot_obj=None):
+        print 'Calling show_configuration_widget'
+        print 'version: ', version
+
         # Grab the pipeline
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
 
@@ -38,6 +41,8 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
         # Find the cell
         cell = CDMSPipelineHelper.find_modules_by_type(pipeline,[PVGenericCell])
+
+        PVClimatePipelineHelper.find_plot_representation(pipeline, PVClimatePipelineHelper.find_plot_modules(pipeline)[0])
 
         # FIXME: Remove this hack
         if len(cell) == 0:
@@ -199,6 +204,7 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
             res.append(pipeline.modules[plot])
         return res
 
+
     @staticmethod
     def load_pipeline_in_location(pipeline, controller, sheetName, row, col,plot_type, cell):
        print "Load pipeline is called"
@@ -276,6 +282,8 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         text += '    sys.exit(app.exec_())'
         return text
 
+
+
     @staticmethod
     def copy_pipeline_to_other_location(pipeline, controller, sheetName, row, col,plot_type, cell):
         print "copyt pipeline to other location"
@@ -329,3 +337,5 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         #ptype = CDMSPipelineHelper.get_plot_type_from_module(plot_modules[0])
         #cell.plot = get_plot_manager().get_plot(plot_type, ptype, gmName)
         return action
+
+

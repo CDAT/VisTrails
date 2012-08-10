@@ -64,8 +64,36 @@ class PVContourRepresentation(PVRepresentationBase):
             # FIXME:
             # Hard coded for now
             contourRep.Representation = 'Surface'        
-            contourRep.ColorArrayName = self.contourByVarName       
-       
+            contourRep.ColorArrayName = self.contourByVarName
+
+    @staticmethod
+    def name():
+        return 'PV Contour Representation'
+
+    @staticmethod
+    def configuration_widget(parent, rep_module):
+        return ContourRepresentationConfigurationWidget(parent, rep_module)
+
+class ContourRepresentationConfigurationWidget(RepresentationBaseConfigurationWidget):
+    def __init__(self, parent, rep_module):
+        RepresentationBaseConfigurationWidget.__init__(self, parent, rep_module)
+        self.representation_module = parent
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        sliceOffsetLayout = QHBoxLayout()
+        sliceOffsetLabel = QLabel("Some property:")
+        self.slice_offset_value =  QLineEdit (parent)
+        sliceOffsetLayout.addWidget( sliceOffsetLabel )
+        sliceOffsetLayout.addWidget( self.slice_offset_value )
+        layout.addLayout(sliceOffsetLayout)
+        parent.connect(self.slice_offset_value, SIGNAL("editingFinished()"), parent.stateChanged)
+
+    def okTriggered(self, checked = False):
+        """ okTriggered(checked: bool) -> None
+        Update vistrail controller (if necessary) then close the widget
+
+        """
 
 def registerSelf():    
     registry = get_module_registry()    
