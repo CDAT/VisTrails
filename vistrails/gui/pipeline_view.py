@@ -2463,6 +2463,10 @@ mutual connections."""
         controller = self.controller
         moves = []
         for (mId, item) in self.modules.iteritems():
+            
+            if mId not in controller.current_pipeline.modules:
+                continue
+            
             module = controller.current_pipeline.modules[mId]
             (dx,dy) = (item.scenePos().x(), -item.scenePos().y())
             if (dx != module.center.x or dy != module.center.y):
