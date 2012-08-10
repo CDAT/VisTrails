@@ -5,7 +5,7 @@ Created on Jan 24, 2011
 '''
 
 
-import vtk
+import vtk, random
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import core.modules.module_registry
@@ -22,49 +22,87 @@ from packages.vtDV3D.vtUtilities import *
 
 class VtkPointCloud:
 
-    def __init__( self, maxNumPoints=1e6 ):
+    def __init__( self, desiredPointSize=0.5, maxNumPoints=1e6 ):
         self.maxNumPoints = maxNumPoints
         self.vtkPolyData = vtk.vtkPolyData()
+        self.vtkTransformFilter = vtk.vtkTransformFilter()
+        self.vtkTransform = vtk.vtkTransform()
+        self.vtkTransformFilter.SetTransform( self.vtkTransform )
+        self.vtkTransformFilter.SetInput( self.vtkPolyData )
         self.clearPoints()
         mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInput(self.vtkPolyData)
-#        mapper.SetColorModeToDefault()
-#        mapper.SetScalarRange(zMin, zMax)
-#        mapper.SetScalarVisibility(1)
+        mapper. SetInput( self.vtkTransformFilter.GetOutput() )
+        mapper.SetColorModeToDefault()
+        mapper.SetScalarRange( 0.0, 1.0 )
+        mapper.SetScalarVisibility(1)
         self.vtkActor = vtk.vtkActor()
         self.vtkActor.SetMapper(mapper)
+        property = self.vtkActor.GetProperty()
+        property.SetPointSize(desiredPointSize)
+
+    def addPoint(self, point):
+        pointId = self.vtkPoints.InsertNextPoint(point[:])
+        self.vtkCells.InsertNextCell(1)
+        self.vtkColor.InsertNextValue(random.random())
+        self.vtkCells.InsertCellPoint(pointId)
+        self.vtkCells.Modified()
+        self.vtkPoints.Modified()
+        self.vtkColor.Modified()
+        print " addPoint[%d]: %s " % ( pointId, str(point) )
 
     def setPoints( self, point_data ):
         self.vtkPoints.SetData( point_data )
-        ncells = point_data.GetNumberOfTuples()
+        ncells = point_data.GetNumberOfTuples()               
         cells = vtk.vtkIdTypeArray()
         cell_data_array = np.empty( 2*ncells, dtype=np.int64 )  
         cell_data_array[1:2*ncells:2] = range( ncells )
         cell_data_array[0:2*ncells:2] = 1
+#        cell_data_array = np.array( range( ncells ), dtype=np.int64 )  
         cells.SetVoidArray( cell_data_array, 2*ncells, 1 )
-        print " Cell Data:\n %s " % str( [ cells.GetValue(iCell) for iCell in range(cells.GetNumberOfTuples())]  )
         self.vtkCells.SetCells ( ncells, cells )
+#        self.vtkCells.InsertNextCell( cell )
+#        for iCell in range( ncells ):
+#            self.vtkCells.InsertNextCell( 1 )
+#            self.vtkCells.InsertCellPoint( iCell )
+        cellData = self.vtkCells.GetData ()
+        print " Cell Data:\n %s " % str( [ cellData.GetValue(iCell) for iCell in range(cellData.GetNumberOfTuples())]  )
         self.vtkCells.Modified()
         self.vtkPoints.Modified()
 #        self.vtkDepth.Modified()
 
+    def setScaling(self, xbounds, ybounds, zbounds ):
+        t = [ -xbounds[0], -ybounds[0], -zbounds[0] ]
+        s = [ 1.0/(xbounds[1]-xbounds[0]), 1.0/(ybounds[1]-ybounds[0]), 1.0/(zbounds[1]-zbounds[0]) ]
+        self.vtkTransform.Identity() 
+        self.vtkTransform.Translate( t[0], t[1], t[2] )
+        self.vtkTransform.Scale( s[0], s[1], s[2] )
+        self.vtkTransform.Modified()
+        
     def clearPoints(self):
         self.vtkPoints = vtk.vtkPoints()
         self.vtkCells = vtk.vtkCellArray()
-#        self.vtkDepth = vtk.vtkDoubleArray()
-#        self.vtkDepth.SetName('DepthArray')
+        self.vtkColor = vtk.vtkFloatArray()
+        self.vtkColor.SetName('ColorArray')
         self.vtkPolyData.SetPoints(self.vtkPoints)
         self.vtkPolyData.SetVerts(self.vtkCells)
-#        self.vtkPolyData.GetPointData().SetScalars(self.vtkDepth)
-#        self.vtkPolyData.GetPointData().SetActiveScalars('DepthArray')
+        self.vtkPolyData.GetPointData().SetScalars(self.vtkColor)
+        self.vtkPolyData.GetPointData().SetActiveScalars('ColorArray')
 
     def dbgprint(self):
-        pts = [ self.vtkPoints.GetPoint(iPt) for iPt in range(10) ]
+        npts = self.vtkPoints.GetNumberOfPoints ()
+        pts = [ self.vtkPoints.GetPoint(iPt) for iPt in range( npts ) ]
         cellList = []
-        for iPt in range(10):
+        ncells = self.vtkCells.GetNumberOfCells()
+        self.vtkCells.InitTraversal() 
+        for iPt in range(npts):
             cellIds = vtk.vtkIdList()
-            self.vtkCells.GetCell( iPt, cellIds )
-            cellList.append( [ cellIds.GetId(iCell) for iCell in range(cellIds.GetNumberOfIds())] )
+            self.vtkCells.GetNextCell( cellIds )
+            nIds = cellIds.GetNumberOfIds()
+            id0 = cellIds.GetId(0)
+            idList = [ cellIds.GetId(iCell) for iCell in range(nIds) ]
+            print " Got cell[%d]: %s " % ( iPt, idList )
+            sys.stdout.flush()
+            cellList.append( idList )
         print "\n POINT CLOUD SAMPLE ----------------------------------------------------------------------------------------"
         print " Points: %s " % str(pts)
         print " Cells: %s \n  --------------------------------------------------------------------------------------------------" % str(cellList)
@@ -79,7 +117,7 @@ class PM_Voxelizer(PersistentVisualizationModule):
     """    
     def __init__( self, mid, **args ):
         PersistentVisualizationModule.__init__( self, mid, **args )
-        self.sampleRate = [ 10, 10, 10 ] 
+        self.sampleRate = [ 5, 5, 5 ] 
         self.primaryInputPort = 'volume'
         self.addConfigurableLevelingFunction( 'sampleRate', 's', label='Point Sample Rate', setLevel=self.setSampleRate, getLevel=self.getSampleRate, layerDependent=True, bound=False )
       
@@ -115,17 +153,14 @@ class PM_Voxelizer(PersistentVisualizationModule):
 
         self.rangeBounds = list( vectorsArray.GetRange(-1) )
         self.nComponents = vectorsArray.GetNumberOfComponents()
-        for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
-        for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
+#        for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
+#        for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
         
         self.initialOrigin = self.input.GetOrigin()
         self.initialExtent = self.input.GetExtent()
         self.initialSpacing = self.input.GetSpacing()
         self.dataBounds = self.getUnscaledWorldExtent( self.initialExtent, self.initialSpacing, self.initialOrigin ) 
-        dataExtents = ( (self.dataBounds[1]-self.dataBounds[0])/2.0, (self.dataBounds[3]-self.dataBounds[2])/2.0, (self.dataBounds[5]-self.dataBounds[4])/2.0 )
-        centroid = ( (self.dataBounds[0]+self.dataBounds[1])/2.0, (self.dataBounds[2]+self.dataBounds[3])/2.0, (self.dataBounds[4]+self.dataBounds[5])/2.0  )
-        self.pos = [ self.initialSpacing[i]*self.initialExtent[2*i] for i in range(3) ]
-        if ( (self.initialOrigin[0] + self.pos[0]) < 0.0): self.pos[0] = self.pos[0] + 360.0
+        metadata = self.getMetadata()  
 
         self.resample = vtk.vtkExtractVOI()
         self.resample.SetInput( self.input ) 
@@ -137,18 +172,25 @@ class PM_Voxelizer(PersistentVisualizationModule):
         self.resampled_data = self.resample.GetOutput()
         self.resampled_data.Update()        
         point_data = self.resampled_data.GetPointData() 
-        field_data = self.resampled_data.GetFieldData()
         input_variable_data = point_data.GetVectors()
         nComp = input_variable_data.GetNumberOfComponents()
         nTup = input_variable_data.GetNumberOfTuples()
         print "-- Got input data points: nComp=%d, nTup=%d" % ( nComp, nTup ) 
-#        for iComp in range(nComp):
-#            cName = vtkdata.GetComponentName( iComp )        
-#        variable_point_data = vtk.vtkFloatArray() 
+        for iComp in range(nComp):
+            cName = input_variable_data.GetComponentName( iComp )        
+            variable_point_data = vtk.vtkFloatArray() 
         variable_point_data = input_variable_data
 
-        self.pointCloud = VtkPointCloud()
-        self.pointCloud.setPoints( variable_point_data )
+        self.pointCloud = VtkPointCloud(1.0)
+        for iPt in range(nTup):           
+            point = variable_point_data.GetTuple( iPt )
+            self.pointCloud.addPoint( point )
+#        self.pointCloud.setPoints( variable_point_data )
+        vars = metadata['vars']
+        xbounds = metadata[ 'valueRange-'+vars[0] ]
+        ybounds = metadata[ 'valueRange-'+vars[1] ]
+        zbounds = metadata[ 'valueRange-'+vars[2] ]
+        self.pointCloud.setScaling( xbounds, ybounds, zbounds )
         self.pointCloud.dbgprint()
         self.renderer.AddActor( self.pointCloud.vtkActor )
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] ) 
