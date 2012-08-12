@@ -1,9 +1,10 @@
 from core.modules.vistrails_module import Module
 from core.modules.basic_modules import Integer, Float, String, Boolean
-from packages.NumSciPy.Array import NDArray
+from packages.scikit_learn.matrix import Matrix
 from sklearn import manifold, decomposition, lda
 from sklearn.utils.fixes import qr_economic
 import numpy as np
+import copy
 
 class RandomProjection(Module):
     """
@@ -12,22 +13,23 @@ class RandomProjection(Module):
     my_namespace = 'projections'
     name         = 'Random Projection'
     
-    _input_ports = [('X',                   NDArray, False),
+    _input_ports = [('matrix',              Matrix,  False),
                     ('n_components',        Integer, False),
                     ]
-    _output_ports = [('Y',                    NDArray, False)]
+    _output_ports = [('proj_matrix',        Matrix, False)]
     
     def compute(self):
-        X            = self.getInputFromPort('X')
+        matrix       = self.getInputFromPort('matrix')
         n_components = self.forceGetInputFromPort('n_components', 2)
-        n_features   = X.shape(1)
-        Y            = NDArray()
+        n_features   = matrix.values.shape[1]
         
         rng = np.random.RandomState(42)
         Q, _ = qr_economic(rng.normal(size=(n_features, n_components)))
-        Y.array = np.dot(Q.T, X.array.T).T
+        Y = np.dot(Q.T, matrix.values.T).T
         
-        self.setResult('Y', Y)
+        proj_matrix = copy.deepcopy(matrix)
+        proj_matrix.values = Y
+        self.setResult('proj_matrix', proj_matrix)
 
 class RandomizedPCA(Module):
     """
@@ -41,18 +43,17 @@ class RandomizedPCA(Module):
     my_namespace = 'projections'
     name         = 'Randomized PCA'
     
-    _input_ports = [('X',                   NDArray, False),
+    _input_ports = [('matrix',              Matrix, False),
                     ('n_components',        Integer, False),
                     ('copy',                Boolean, True),
                     ('iterated_power',      Integer, True),
                     ('whiten',              Boolean, True),
                     ('random_state',        Integer, True)
                     ]
-    _output_ports = [('Y',                    NDArray, False)]
+    _output_ports = [('proj_matrix',        Matrix, False)]
     
     def compute(self):
-        X = self.getInputFromPort('X')
-        Y = NDArray()
+        matrix = self.getInputFromPort('matrix')
          
         pca = decomposition.RandomizedPCA(
             n_components   = self.forceGetInputFromPort('n_components', 2),
@@ -61,36 +62,11 @@ class RandomizedPCA(Module):
             whiten         = self.forceGetInputFromPort('whiten', False),
             random_state   = self.forceGetInputFromPort('random_state', None)
             )
-        Y.array = pca.fit_transform(X.array)
+        Y = pca.fit_transform(matrix.values)
         
-        self.setResult('Y', Y)
-
-#class LDA(Module):
-#    """
-#    Linear Discriminant Analysis (LDA)
-#    """
-#    my_namespace = 'projections'
-#    name         = 'LDA'
-#    
-#    _input_ports = [('X',                   NDArray, False),
-#                    ('n_components',        Integer, False),
-#                    ('priors',              Boolean, True)
-#                    ]
-#    _output_ports = [('Y',                    NDArray, False)]
-#    
-#    def compute(self):
-#        X = self.getInputFromPort('X')
-#        Y = NDArray()
-#        
-#        X2 = X.array.copy()
-#        X2.flat[::X.array.shape[1] + 1] += 0.01  # Make X invertible
-#        ldaProj = lda.LDA(
-#            n_components = self.forceGetInputFromPort('n_components', 2),
-#            priors       = self.forceGetInputFromPort('priors', None),
-#            )
-#        Y.array = ldaProj.fit_transform(X2)
-#
-#        self.setResult('Y', Y)
+        proj_matrix = copy.deepcopy(matrix)
+        proj_matrix.values = Y
+        self.setResult('proj_matrix', proj_matrix)
 
 class Isomap(Module):
     """
@@ -103,7 +79,7 @@ class Isomap(Module):
     my_namespace = 'projections'
     name         = 'Isomap'
 
-    _input_ports = [('X',                   NDArray, False),
+    _input_ports = [('matrix',              Matrix,  False),
                     ('n_neighbors',         Integer, False),
                     ('n_components',        Integer, False),
                     ('eigen_solver',        String,  True),
@@ -113,11 +89,12 @@ class Isomap(Module):
                     ('neighbors_algorithm', String,  True),
                     ('out_dim',             Integer, False)
                     ]
-    _output_ports = [('Y',                    NDArray, False),
+    _output_ports = [('proj_matrix',          Matrix,  False),
                      ('reconstruction_error', Float,   False)]
 
 
     def compute(self):
+        matrix = self.getInputFromPort('matrix')
         isomap = manifold.Isomap(
             n_neighbors         = self.forceGetInputFromPort('n_neighbors', 5),
             n_components        = self.forceGetInputFromPort('n_components', 2),
@@ -129,13 +106,15 @@ class Isomap(Module):
             out_dim             = self.forceGetInputFromPort('out_dim', None)
         )
         
-        Y = NDArray()
-        Y.array = isomap.fit_transform(self.getInputFromPort('X').get_array())
+        Y = isomap.fit_transform(matrix.values)
         reconstruction_error = isomap.reconstruction_error()
              
-        self.setResult('Y', Y)
+        proj_matrix = copy.deepcopy(matrix)
+        proj_matrix.values = Y
+        self.setResult('proj_matrix', proj_matrix)
         self.setResult('reconstruction_error', reconstruction_error)
 
+        
     
 class AbstractLLE(object):
     """
@@ -143,7 +122,7 @@ class AbstractLLE(object):
     """
     my_namespace = 'projections'
 
-    _input_ports = [('X',            [(NDArray, 'Sample data, shape = (n_samples, n_features).')]),
+    _input_ports = [('matrix',       [(Matrix, 'Sample data, shape = (n_samples, n_features).')]),
                     ('n_neighbors',  [(Integer, 'number of neighbors to consider for each point.')]),
                     ('n_components', [(Integer, 'number of coordinates for the manifold.')]),
                     ('reg',          [(Float, 'regularization constant, multiplies the trace of the local covariance matrix of the distances.')]),
@@ -153,7 +132,7 @@ class AbstractLLE(object):
                     ('random_state', [(Integer, 'The generator used to initialize the centers.')]),
                     ]
     
-    _output_ports = [('Y',             [(NDArray, 'Embedding vectors. s shape [n_samples, n_components].')]),
+    _output_ports = [('proj_matrix',   [(Matrix, 'Embedding vectors. s shape [n_samples, n_components].')]),
                      ('squared_error', [(Float, 'Reconstruction error for the embedding vectors')])
                      ]
     
@@ -162,9 +141,9 @@ class AbstractLLE(object):
         self.modified_tol = 1e-12
 
     def compute(self):
-        Y = NDArray()
-        Y.array, squared_error = manifold.locally_linear_embedding(
-            X            = self.getInputFromPort('X').get_array(),
+        matrix = self.getInputFromPort('X')
+        Y, squared_error = manifold.locally_linear_embedding(
+            X            = matrix.values,
             n_neighbors  = self.forceGetInputFromPort('n_neighbors', 10),
             n_components = self.forceGetInputFromPort('n_components', 2),
             reg          = self.forceGetInputFromPort('reg', 0.001),
@@ -178,7 +157,10 @@ class AbstractLLE(object):
 #            out_dim      = self.forceGetInputFromPort('out_dim', None)
         )
         
-        self.setResult('Y', Y)
+        proj_matrix = copy.deepcopy(matrix)
+        proj_matrix.values = Y
+        
+        self.setResult('proj_matrix', proj_matrix)
         self.setResult('squared_error', squared_error)
 
 class LLE(Module, AbstractLLE):

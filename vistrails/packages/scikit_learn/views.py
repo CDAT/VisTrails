@@ -1,6 +1,5 @@
-from core.modules.vistrails_module import Module
-from core.modules.basic_modules import String, List
-from packages.NumSciPy.Array import NDArray
+from core.modules.basic_modules import String
+from packages.scikit_learn.matrix import Matrix
 from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
 from PyQt4 import QtGui
@@ -8,6 +7,8 @@ from matplotlib.widgets import  RectangleSelector
 from matplotlib.transforms import Bbox
 import numpy as np
 import os
+from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+import vtk
 
 from core.bundles import py_import
 try:
@@ -91,12 +92,17 @@ class LinkedWidget(QCellWidget):
         self.selectedIds = []
         self.update()
         
+        # Capture window into history for playback
+        # Call this at the end to capture the image after rendering
+        QCellWidget.updateContents(self, inputPorts)
+        
     def onselect(self, eclick, erelease):
         raise NotImplementedError("Please Implement this method") 
     
     def draw(self, fig):
         raise NotImplementedError("Please Implement this method") 
 
+################################################################################
 class ProjectionWidget(LinkedWidget):
     """ ProjectionWidget is a widget to show 2D projections. It has some interactive
     features like, show labels, selections, and synchronization.
@@ -113,14 +119,14 @@ class ProjectionWidget(LinkedWidget):
         Use self.fig and self.figManager
         """
         
-        (_matrix, _ids, labels, _colors, title) = self.inputPorts
-        self.matrix = _matrix.array
-        self.ids    = _ids.array if _ids is not None else np.linspace(1, self.matrix.shape[0], self.matrix.shape[0])
-        colors      = _colors.array if _colors is not None else 'b'
+        (self.matrix, title) = self.inputPorts
+#        self.matrix = _matrix.array
+#        self.ids    = _ids.array if _ids is not None else np.linspace(1, self.matrix.shape[0], self.matrix.shape[0])
+#        colors      = _colors.array if _colors is not None else 'b'
         
         # for faster access
-        id2pos = {idd:pos for (pos, idd) in enumerate(self.ids)}
-        circleSize = np.ones(self.ids.shape)
+        id2pos = {idd:pos for (pos, idd) in enumerate(self.matrix.ids)}
+        circleSize = np.ones(self.matrix.ids.shape)
         for selId in self.selectedIds:
             circleSize[id2pos[selId]] = 4
         
@@ -128,15 +134,15 @@ class ProjectionWidget(LinkedWidget):
         pylab.axis('off')
         
         pylab.title(title)
-        pylab.scatter( self.matrix[:,0], self.matrix[:,1], 
-                       c=colors, cmap=pylab.cm.Spectral,
+        pylab.scatter( self.matrix.values[:,0], self.matrix.values[:,1], 
+#                       c=colors, cmap=pylab.cm.Spectral,
                        s=40,
                        linewidth=circleSize,
                        marker='o')
   
         # draw labels
-        if self.showLabels and labels is not None:
-            for label, xy in zip(labels, self.matrix):
+        if self.showLabels and self.matrix.labels is not None:
+            for label, xy in zip(self.matrix.labels, self.matrix.values):
                 pylab.annotate(
                     str(label), 
                     xy = xy, 
@@ -153,7 +159,7 @@ class ProjectionWidget(LinkedWidget):
         region = Bbox.from_extents(left, bottom, right, top)
         
         selectedIds = []
-        for (xy, idd) in zip(self.matrix, self.ids):
+        for (xy, idd) in zip(self.matrix.values, self.matrix.ids):
             if region.contains(xy[0], xy[1]):
                 selectedIds.append(idd)
         CoordinationManager.Instance().notifyModules(selectedIds)
@@ -162,12 +168,9 @@ class ProjectionView(SpreadsheetCell):
     """
     """
     my_namespace = 'views'
-    name         = '2D Projection view'
+    name         = '2D Projection View'
     
-    _input_ports = [('matrix',    NDArray, False),
-                    ('ids',       NDArray, False),
-                    ('labels',    List,    False),
-                    ('colors',    NDArray, False),
+    _input_ports = [('matrix',    Matrix, False),
                     ('title',     String,  False)
                    ]
 
@@ -175,16 +178,134 @@ class ProjectionView(SpreadsheetCell):
         """ compute() -> None        
         """
         matrix = self.getInputFromPort('matrix')
-        ids    = self.forceGetInputFromPort('ids', None)
-        labels = self.forceGetInputFromPort('labels', None)
-        colors = self.forceGetInputFromPort('colors', None)
         title  = self.forceGetInputFromPort('title', '')
-        self.displayAndWait(ProjectionWidget, (matrix, ids, labels, colors, title))
-            
-class parallelcoordinates(Module):
+        self.displayAndWait(ProjectionWidget, (matrix, title))
+
+
+################################################################################
+class ParallelCoordinatesWidget(QCellWidget):
+    def __init__(self, parent=None):
+        QCellWidget.__init__(self, parent)
+        
+        centralLayout = QtGui.QVBoxLayout()
+        self.setLayout(centralLayout)
+        centralLayout.setMargin(0)
+        centralLayout.setSpacing(0)
+                
+        self.view = vtk.vtkContextView()
+        self.widget = QVTKRenderWindowInteractor(self, 
+                                                 rw=self.view.GetRenderWindow(),
+                                                 iren=self.view.GetInteractor()
+                                                )
+
+        chart = vtk.vtkChartParallelCoordinates()
+        self.view.GetScene().AddItem(chart)
+
+        # Create a table with some points in it
+        arrX = vtk.vtkFloatArray()
+        arrX.SetName("XAxis")
+        arrC = vtk.vtkFloatArray()
+        arrC.SetName("Cosine")
+        arrS = vtk.vtkFloatArray()
+        arrS.SetName("Sine")
+        arrS2 = vtk.vtkFloatArray()
+        arrS2.SetName("Tan")
+
+        numPoints = 200
+        inc = 7.5 / (numPoints-1)
+
+        import math
+        for i in range(numPoints):
+            arrX.InsertNextValue(i * inc)
+            arrC.InsertNextValue(math.cos(i * inc) + 0.0)
+            arrS.InsertNextValue(math.sin(i * inc) + 0.0)
+            arrS2.InsertNextValue(math.tan(i * inc) + 0.5)
+
+        table = vtk.vtkTable()
+        table.AddColumn(arrX)
+        table.AddColumn(arrC)
+        table.AddColumn(arrS)
+        table.AddColumn(arrS2)
+
+        # Create blue to gray to red lookup table
+        lut = vtk.vtkLookupTable()
+        lutNum = 256
+        lut.SetNumberOfTableValues(lutNum)
+        lut.Build()
+
+        ctf = vtk.vtkColorTransferFunction()
+        ctf.SetColorSpaceToDiverging()
+        cl = []
+        # Variant of Colorbrewer RdBu 5
+        cl.append([float(cc)/255.0 for cc in [202, 0, 32]])
+        cl.append([float(cc)/255.0 for cc in [244, 165, 130]])
+        cl.append([float(cc)/255.0 for cc in [140, 140, 140]])
+        cl.append([float(cc)/255.0 for cc in [146, 197, 222]])
+        cl.append([float(cc)/255.0 for cc in [5, 113, 176]])
+        vv = [float(xx)/float(len(cl)-1) for xx in range(len(cl))]
+        vv.reverse()
+        for pt,color in zip(vv,cl):
+            ctf.AddRGBPoint(pt, color[0], color[1], color[2])
+
+        for ii,ss in enumerate([float(xx)/float(lutNum) for xx in range(lutNum)]):
+            cc = ctf.GetColor(ss)
+            lut.SetTableValue(ii,cc[0],cc[1],cc[2],1.0)
+
+        lut.SetAlpha(0.25)
+        lut.SetRange(-1, 1)
+
+        chart.GetPlot(0).SetInput(table)
+        chart.GetPlot(0).SetScalarVisibility(1)
+        chart.GetPlot(0).SetLookupTable(lut)
+        chart.GetPlot(0).SelectColorArray("Cosine")
+
+        self.widget.Initialize()
+        
+        self.layout().addWidget(self.widget)
+
+        # Create a annotation link to access selection in parallel coordinates view
+        self.annotationLink = vtk.vtkAnnotationLink()
+        # If you don't set the FieldType explicitly it ends up as UNKNOWN (as of 21 Feb 2010)
+        # See vtkSelectionNode doc for field and content type enum values
+        self.annotationLink.GetCurrentSelection().GetNode(0).SetFieldType(1)     # Point
+        self.annotationLink.GetCurrentSelection().GetNode(0).SetContentType(4)   # Indices
+        # Connect the annotation link to the parallel coordinates representation
+        chart.SetAnnotationLink(self.annotationLink)
+        self.annotationLink.AddObserver("AnnotationChangedEvent", self.selectionCallback)
+
+#        self.inputPorts = None;
+#        self.selectedIds = []
+#        CoordinationManager.Instance().register(self)
+    
+    def updateContents(self, inputPorts):
+        
+
+        # Capture window into history for playback
+        # Call this at the end to capture the image after rendering
+        QCellWidget.updateContents(self, inputPorts)
+
+    def selectionCallback(self, caller, event):
+        import vtk.util.numpy_support as VN
+        annSel = self.annotationLink.GetCurrentSelection()
+        if annSel.GetNumberOfNodes() > 0:
+                idxArr = annSel.GetNode(0).GetSelectionList()
+                if idxArr.GetNumberOfTuples() > 0:
+                        print VN.vtk_to_numpy(idxArr)
+
+class ParallelCoordinates(SpreadsheetCell):
     """
     """
-    pass
+    my_namespace = 'views'
+    name         = 'Parallel Coordinates View'
+    
+    _input_ports = [('stats',      Matrix, False)
+                    ]
+    
+    def compute(self):
+        """ compute() -> None        
+        """
+        stats      = Matrix() #None #self.getInputFromPort('stats')
+        self.displayAndWait(ParallelCoordinatesWidget, (stats))
 
 ###############################################################################
 class QCellToolBarShowLabels(QtGui.QAction):
