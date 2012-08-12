@@ -120,9 +120,6 @@ class ProjectionWidget(LinkedWidget):
         """
         
         (self.matrix, title) = self.inputPorts
-#        self.matrix = _matrix.array
-#        self.ids    = _ids.array if _ids is not None else np.linspace(1, self.matrix.shape[0], self.matrix.shape[0])
-#        colors      = _colors.array if _colors is not None else 'b'
         
         # for faster access
         id2pos = {idd:pos for (pos, idd) in enumerate(self.matrix.ids)}
