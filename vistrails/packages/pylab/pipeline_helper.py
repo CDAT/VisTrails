@@ -58,10 +58,6 @@ class MatplotlibPipelineHelper(CDMSPipelineHelper):
             added_vars = []
             for i in range(len(var_modules)):
                 if issubclass(var_modules[i].module_descriptor.module, CDMSVariable):
-                    ops.append(('add', var_modules[i]))
-                    added_vars.append(var_modules[i]) 
-            
-                if issubclass(var_modules[i].module_descriptor.module, CDMSVariable):
                     conn = controller.create_connection(var_modules[i], 'self',
                                                 plot_module, 'variable')
                 else:
