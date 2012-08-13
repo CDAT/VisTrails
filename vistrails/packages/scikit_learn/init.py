@@ -1,7 +1,7 @@
 from matrix import Matrix
 from generators import SCurveGenerator, SwissRollGenerator
 from manifold import RandomProjection, RandomizedPCA, Isomap, LLE, MLLE, HLLE, LTSA
-from views import ProjectionView, ParallelCoordinates
+from views import ProjectionView
 
 _modules = [(Matrix,              {'namespace':Matrix.my_namespace}),
             (SCurveGenerator,     {'namespace':SCurveGenerator.my_namespace}),
@@ -14,6 +14,5 @@ _modules = [(Matrix,              {'namespace':Matrix.my_namespace}),
             (HLLE,                {'namespace':HLLE.my_namespace,                'name':HLLE.name}),
             (LTSA,                {'namespace':LTSA.my_namespace,                'name':LTSA.name}),
             (ProjectionView,      {'namespace':ProjectionView.my_namespace,      'name':ProjectionView.name}),
-            (ParallelCoordinates, {'namespace':ParallelCoordinates.my_namespace, 'name':ParallelCoordinates.name})
             ]
 

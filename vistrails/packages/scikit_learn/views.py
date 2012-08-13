@@ -7,8 +7,6 @@ from matplotlib.widgets import  RectangleSelector
 from matplotlib.transforms import Bbox
 import numpy as np
 import os
-from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-import vtk
 
 from core.bundles import py_import
 try:
@@ -179,130 +177,7 @@ class ProjectionView(SpreadsheetCell):
         self.displayAndWait(ProjectionWidget, (matrix, title))
 
 
-################################################################################
-class ParallelCoordinatesWidget(QCellWidget):
-    def __init__(self, parent=None):
-        QCellWidget.__init__(self, parent)
-        
-        centralLayout = QtGui.QVBoxLayout()
-        self.setLayout(centralLayout)
-        centralLayout.setMargin(0)
-        centralLayout.setSpacing(0)
-                
-        self.view = vtk.vtkContextView()
-        self.widget = QVTKRenderWindowInteractor(self, 
-                                                 rw=self.view.GetRenderWindow(),
-                                                 iren=self.view.GetInteractor()
-                                                )
 
-        chart = vtk.vtkChartParallelCoordinates()
-        self.view.GetScene().AddItem(chart)
-
-        # Create a table with some points in it
-        arrX = vtk.vtkFloatArray()
-        arrX.SetName("XAxis")
-        arrC = vtk.vtkFloatArray()
-        arrC.SetName("Cosine")
-        arrS = vtk.vtkFloatArray()
-        arrS.SetName("Sine")
-        arrS2 = vtk.vtkFloatArray()
-        arrS2.SetName("Tan")
-
-        numPoints = 200
-        inc = 7.5 / (numPoints-1)
-
-        import math
-        for i in range(numPoints):
-            arrX.InsertNextValue(i * inc)
-            arrC.InsertNextValue(math.cos(i * inc) + 0.0)
-            arrS.InsertNextValue(math.sin(i * inc) + 0.0)
-            arrS2.InsertNextValue(math.tan(i * inc) + 0.5)
-
-        table = vtk.vtkTable()
-        table.AddColumn(arrX)
-        table.AddColumn(arrC)
-        table.AddColumn(arrS)
-        table.AddColumn(arrS2)
-
-        # Create blue to gray to red lookup table
-        lut = vtk.vtkLookupTable()
-        lutNum = 256
-        lut.SetNumberOfTableValues(lutNum)
-        lut.Build()
-
-        ctf = vtk.vtkColorTransferFunction()
-        ctf.SetColorSpaceToDiverging()
-        cl = []
-        # Variant of Colorbrewer RdBu 5
-        cl.append([float(cc)/255.0 for cc in [202, 0, 32]])
-        cl.append([float(cc)/255.0 for cc in [244, 165, 130]])
-        cl.append([float(cc)/255.0 for cc in [140, 140, 140]])
-        cl.append([float(cc)/255.0 for cc in [146, 197, 222]])
-        cl.append([float(cc)/255.0 for cc in [5, 113, 176]])
-        vv = [float(xx)/float(len(cl)-1) for xx in range(len(cl))]
-        vv.reverse()
-        for pt,color in zip(vv,cl):
-            ctf.AddRGBPoint(pt, color[0], color[1], color[2])
-
-        for ii,ss in enumerate([float(xx)/float(lutNum) for xx in range(lutNum)]):
-            cc = ctf.GetColor(ss)
-            lut.SetTableValue(ii,cc[0],cc[1],cc[2],1.0)
-
-        lut.SetAlpha(0.25)
-        lut.SetRange(-1, 1)
-
-        chart.GetPlot(0).SetInput(table)
-        chart.GetPlot(0).SetScalarVisibility(1)
-        chart.GetPlot(0).SetLookupTable(lut)
-        chart.GetPlot(0).SelectColorArray("Cosine")
-
-        self.widget.Initialize()
-        
-        self.layout().addWidget(self.widget)
-
-        # Create a annotation link to access selection in parallel coordinates view
-        self.annotationLink = vtk.vtkAnnotationLink()
-        # If you don't set the FieldType explicitly it ends up as UNKNOWN (as of 21 Feb 2010)
-        # See vtkSelectionNode doc for field and content type enum values
-        self.annotationLink.GetCurrentSelection().GetNode(0).SetFieldType(1)     # Point
-        self.annotationLink.GetCurrentSelection().GetNode(0).SetContentType(4)   # Indices
-        # Connect the annotation link to the parallel coordinates representation
-        chart.SetAnnotationLink(self.annotationLink)
-        self.annotationLink.AddObserver("AnnotationChangedEvent", self.selectionCallback)
-
-#        self.inputPorts = None;
-#        self.selectedIds = []
-#        CoordinationManager.Instance().register(self)
-    
-    def updateContents(self, inputPorts):
-        
-
-        # Capture window into history for playback
-        # Call this at the end to capture the image after rendering
-        QCellWidget.updateContents(self, inputPorts)
-
-    def selectionCallback(self, caller, event):
-        import vtk.util.numpy_support as VN
-        annSel = self.annotationLink.GetCurrentSelection()
-        if annSel.GetNumberOfNodes() > 0:
-                idxArr = annSel.GetNode(0).GetSelectionList()
-                if idxArr.GetNumberOfTuples() > 0:
-                        print VN.vtk_to_numpy(idxArr)
-
-class ParallelCoordinates(SpreadsheetCell):
-    """
-    """
-    my_namespace = 'views'
-    name         = 'Parallel Coordinates View'
-    
-    _input_ports = [('stats',      Matrix, False)
-                    ]
-    
-    def compute(self):
-        """ compute() -> None        
-        """
-        stats      = Matrix() #None #self.getInputFromPort('stats')
-        self.displayAndWait(ParallelCoordinatesWidget, (stats))
 
 ###############################################################################
 class QCellToolBarShowLabels(QtGui.QAction):
@@ -338,7 +213,6 @@ class QProjectionToolBar(QCellToolBar):
         self.appendAction(QCellToolBarShowLabels(self))
         
 ###############################################################################
-
 class Singleton:
     """
     A non-thread-safe helper class to ease implementing singletons.
