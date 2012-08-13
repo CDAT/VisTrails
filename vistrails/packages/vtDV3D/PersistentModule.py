@@ -4,7 +4,7 @@ Created on Dec 17, 2010
 @author: tpmaxwel
 '''
 
-import vtk, sys, time, threading, inspect, gui
+import vtk, sys, time, threading, inspect, gui, traceback
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from core.modules.vistrails_module import Module, ModuleError
@@ -546,7 +546,9 @@ class PersistentModule( QObject ):
                 self.inputModuleList = self.getPrimaryInputList( **args )
                 self.inputModule = self.inputModuleList[0]
             except Exception, err:
-                raise ModuleError( self, 'Broken pipeline at input to module %s:\n (%s)' % ( self.__class__.__name__, str(err) ) )
+                print>>sys.stderr, 'Error: Broken pipeline at input to module %s:\n (%s)' % ( self.__class__.__name__, str(err) ) 
+                traceback.print_exc()
+                sys.exit(-1)
         else:
             inMod = self.getPrimaryInput( **args )
             if inMod: self.inputModule = inMod
@@ -1270,7 +1272,7 @@ class PersistentVisualizationModule( PersistentModule ):
             for ( moduleId, portName ) in connectedModuleIds:
                 module = ModuleStore.getModule( moduleId )
                 if module: 
-                    if module.__class__.__name__ == "PM_MapCell3D":
+                    if module.__class__.__name__ in [ "PM_MapCell3D", "PM_CloudCell3D" ]:
                         if (not selectedOnly) or module.isSelected(): rmodList.append( module )
                     else:
                         moduleIdList.append( moduleId )

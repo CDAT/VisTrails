@@ -369,8 +369,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 if (scalars == None) and (varName <> '__zeros__'):
                     scalars = varName
                     pointData.SetActiveScalars( varName  ) 
-                    md[ 'valueRange'] = var_md[ 'range' ] 
                     md[ 'scalars'] = varName 
+                md[ 'valueRange'] = var_md[ 'range' ] 
+                                   
         if (self.outputType == CDMSDataType.Vector ): 
             vtkdata = getNewVtkDataArray( scalar_dtype )
             vtkdata.SetNumberOfComponents( 3 )
@@ -391,18 +392,21 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             pointData.SetVectors(vtkdata)
             pointData.SetActiveVectors( 'vectors'  )         
         if len( vars )== 0: raise ModuleError( self, 'No dataset variables selected for output %s.' % orec.name) 
+        md = None
         for varDataId in varDataIds:
             varDataFields = varDataId.split(';')
             dsid = varDataFields[0] 
             varName = varDataFields[1] 
             if varName <> '__zeros__':
-                varDataSpecs = self.getCachedData( varDataId )   
-                md = varDataSpecs[ 'md' ]            
-                md[ 'vars' ] = vars               
-                md[ 'title' ] = getTitle( dsid, varName, var_md )
-                enc_mdata = encodeToString( md ) 
-                self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) ) 
-                break                       
+                varDataSpecs = self.getCachedData( varDataId )
+                vmd = varDataSpecs[ 'md' ]   
+                if (md == None):  
+                    md = vmd          
+                    md[ 'vars' ] = vars               
+                    md[ 'title' ] = getTitle( dsid, varName, var_md )
+                md[ 'valueRange-'+varName ] = vmd[ 'valueRange']                   
+        enc_mdata = encodeToString( md ) 
+        self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                       
         image_data.Modified()
         return cachedImageDataName
 
@@ -576,10 +580,23 @@ class PM_CDMS_VectorReader( PM_CDMSDataReader ):
         self.outputType = CDMSDataType.Vector
         PM_CDMSDataReader.__init__( self, mid, **args)
 
+class PM_CDMS_VariableSpaceReader( PM_CDMSDataReader ):
+
+    def __init__(self, mid, **args):
+        self.outputType = CDMSDataType.VariableSpace
+        PM_CDMSDataReader.__init__( self, mid, **args)
+
 
 class CDMS_VectorReader(WorkflowModule):
     
     PersistentModuleClass = PM_CDMS_VectorReader
+    
+    def __init__( self, **args ):
+        WorkflowModule.__init__(self, **args) 
+
+class CDMS_VariableSpaceReader(WorkflowModule):
+    
+    PersistentModuleClass = PM_CDMS_VariableSpaceReader
     
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args) 

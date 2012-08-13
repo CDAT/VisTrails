@@ -422,7 +422,7 @@ def getDesignatedConnections( controller,  mid, portName, isDestinationPort = Tr
     return desig_connections
 
 def isCellModule( module ):
-    return  module.name in [ "MapCell3D", "ChartCell", "SlicePlotCell" ]
+    return  module.name in [ "MapCell3D", "ChartCell", "SlicePlotCell", "CloudCell3D" ]
 
 def getSheetTabWidget( sheet_index = -1 ):
     from packages.spreadsheet.spreadsheet_controller import spreadsheetController

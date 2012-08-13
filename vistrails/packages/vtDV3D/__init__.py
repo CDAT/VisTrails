@@ -82,6 +82,7 @@ def initialize(*args, **keywords):
     from packages.vtDV3D.VolumeRenderModule import VolumeRenderer
     from packages.vtDV3D.ParallelCoordinatesModule import ParallelCoordinateViewer
     from packages.vtDV3D.WorldMapModule import WorldFrame
+    from packages.vtDV3D.VoxelizerModule import Voxelizer
 #    from DemoDataModule import DemoData, DemoDataConfigurationWidget
     from packages.vtDV3D.InteractiveConfiguration import LayerConfigurationWidget
     from packages.vtDV3D.LevelSurfaceModule import LevelSurface 
@@ -116,6 +117,11 @@ def initialize(*args, **keywords):
     reg.add_input_port( MapCell3D, "world_map", [ ( File, 'map_file' ), ( Integer, 'map_cut' ) ], optional=True  ) 
     reg.add_input_port( MapCell3D, "opacity", [ ( Float, 'value' ) ], optional=True  ) 
     reg.add_input_port( MapCell3D, "title", [ ( String, 'value' ) ], optional=True  ) 
+
+    reg.add_module( CloudCell3D, configureWidgetType=CloudCell3DConfigurationWidget, namespace='spreadsheet' ) 
+    reg.add_input_port( CloudCell3D, "pointcloud", AlgorithmOutputModule3D  )   
+    reg.add_input_port( CloudCell3D, "cell_location", [ ( String, 'cell_coordinates' ) ], True )
+    reg.add_input_port( CloudCell3D, "title", [ ( String, 'value' ) ], optional=True  ) 
 
     reg.add_module( ChartCell, configureWidgetType=ChartCellConfigurationWidget, namespace='spreadsheet' ) 
     reg.add_input_port( ChartCell, "chart", AlgorithmOutputModule2D  )   
@@ -196,8 +202,10 @@ def initialize(*args, **keywords):
 
     reg.add_module( CDMS_VectorReader, configureWidgetType=CDMS_VectorReaderConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_VectorReader, "dataset", CDMSDataset )        
-    reg.add_input_port( CDMS_VectorReader, "variable", CDMSVariable )      
+    reg.add_input_port( CDMS_VectorReader, "variable", CDMSVariable )          
     reg.add_input_port( CDMS_VectorReader, "variable2", CDMSVariable )      
+    reg.add_input_port( CDMS_VectorReader, "variable3", CDMSVariable )      
+    reg.add_input_port( CDMS_VectorReader, "variable4", CDMSVariable )      
     reg.add_input_port( CDMS_VectorReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( CDMS_VectorReader, "volume", AlgorithmOutputModule3D ) 
     CDMS_SliceReader.registerConfigurableFunctions( reg )
@@ -236,6 +244,12 @@ def initialize(*args, **keywords):
     reg.add_input_port( VectorVolume, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( VectorVolume, "volume", AlgorithmOutputModule3D ) 
     VectorVolume.registerConfigurableFunctions(  reg )
+    
+    reg.add_module( Voxelizer, namespace='vtk'  )
+    reg.add_input_port( Voxelizer, "volume", AlgorithmOutputModule3D  )
+    reg.add_output_port( Voxelizer, "pointcloud", AlgorithmOutputModule3D ) 
+    Voxelizer.registerConfigurableFunctions(  reg )
+
 #    reg.add_module( Resample )
 #    reg.add_input_port( Resample, "position", [ ( Float, 'x' ), ( Float, 'y' ), ( Float, 'z' ) ], True   )    
 #    reg.add_output_port( Resample, "position",  [ ( Float, 'x' ), ( Float, 'y' ), ( Float, 'z' ) ], True  )

@@ -628,6 +628,110 @@ class ChartCell(WorkflowModule):
     def syncCamera( self, cpos, cfol, cup ):
         if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
 
+class PM_CloudCell3D( PM_DV3DCell ):
+
+    def __init__( self, mid, **args ):
+        PM_DV3DCell.__init__( self, mid, **args)
+        self.primaryInputPort = "pointcloud"
+
+    def updateModule( self, **args ):
+        PM_DV3DCell.updateModule( self, **args )
+        if self.renWin: self.renWin.Render()
+        
+    def buildRendering(self):
+        PM_DV3DCell.buildRendering( self )
+        print " CloudCell3D.buildRendering  ****** "
+
+class CloudCell3DConfigurationWidget(DV3DConfigurationWidget):
+    """
+    CDMSDatasetConfigurationWidget ...
+    
+    """
+
+    def __init__(self, module, controller, parent=None):
+        """ DV3DCellConfigurationWidget(module: Module,
+                                       controller: VistrailController,
+                                       parent: QWidget)
+                                       -> DemoDataConfigurationWidget
+        Setup the dialog ...
+        
+        """
+        self.cellAddress = 'A1'
+        self.title = ""
+        DV3DConfigurationWidget.__init__(self, module, controller, 'DV3D Cloud Cell Configuration', parent)
+                
+    def getParameters( self, module ):
+        titleParms = getFunctionParmStrValues( module, "title" )
+        if titleParms: self.title = str( titleParms[0] )
+        if not self.title: self.title = self.pmod.getTitle()
+        celllocParams = getFunctionParmStrValues( module, "cell_location" )
+        if celllocParams:  self.cellAddress = str( celllocParams[0] )
+
+    def createLayout(self):
+        """ createEditor() -> None
+        Configure sections
+        """   
+             
+        basemapTab = QWidget()        
+        self.tabbedWidget.addTab( basemapTab, 'base map' )                 
+        self.tabbedWidget.setCurrentWidget(basemapTab)
+        layout = QVBoxLayout()
+        basemapTab.setLayout( layout ) 
+                
+        title_layout = QHBoxLayout()
+        title_label = QLabel( "Title:" )
+        title_layout.addWidget( title_label )
+        self.titleEdit =  QLineEdit ( self.parent() )
+        if self.title: self.titleEdit.setText( self.title )
+        self.connect( self.titleEdit, SIGNAL("editingFinished()"), self.stateChanged ) 
+        title_label.setBuddy( self.titleEdit )
+#        self.titleEdit.setFrameStyle( QFrame.Panel|QFrame.Raised )
+#        self.titleEdit.setLineWidth(2)
+        title_layout.addWidget( self.titleEdit  )        
+        layout.addLayout( title_layout )
+                
+        sheet_dims = HyperwallManager.getInstance().getDimensions()
+        locationTab = QWidget()        
+        self.tabbedWidget.addTab( locationTab, 'cell location' )                 
+        self.tabbedWidget.setCurrentWidget(locationTab)
+        location_layout = QVBoxLayout()
+        locationTab.setLayout( location_layout ) 
+
+        cell_coordinates = parse_cell_address( self.cellAddress )
+        cell_selection_layout = QHBoxLayout()
+        cell_selection_label = QLabel( "Cell Address:" )
+        cell_selection_layout.addWidget( cell_selection_label ) 
+
+        self.colCombo =  QComboBox ( self.parent() )
+        self.colCombo.setMaximumHeight( 30 )
+        cell_selection_layout.addWidget( self.colCombo  )        
+        for iCol in range( 5 ):  self.colCombo.addItem( chr( ord('A') + iCol ) )
+        self.colCombo.setCurrentIndex( cell_coordinates[0] )
+
+        self.rowCombo =  QComboBox ( self.parent() )
+        self.rowCombo.setMaximumHeight( 30 )
+        cell_selection_layout.addWidget( self.rowCombo  )        
+        for iRow in range( 5 ):  self.rowCombo.addItem( str(iRow+1) )
+        self.rowCombo.setCurrentIndex( cell_coordinates[1] )
+        location_layout.addLayout(cell_selection_layout)
+        
+    def updateController(self, controller=None):
+        parmRecList = []
+        parmRecList.append( ( 'cell_location' , [ self.cellAddress ]  ), )  
+        parmRecList.append( ( 'title' , [ self.title ]  ), )  
+        self.persistParameterList( parmRecList )
+        self.stateChanged(False)         
+           
+    def okTriggered(self, checked = False):
+        """ okTriggered(checked: bool) -> None
+        Update vistrail controller (if neccesssary) then close the widget       
+        """
+        self.cellAddress = "%s%s" % ( str( self.colCombo.currentText() ), str( self.rowCombo.currentText() ) )
+        self.title = str( self.titleEdit.text() ) 
+        self.updateController(self.controller)
+        self.emit(SIGNAL('doneConfigure()'))
+#        self.close()
+
 class PM_MapCell3D( PM_DV3DCell ):
 
     baseMapDirty = True
@@ -1015,6 +1119,16 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
 class MapCell3D(WorkflowModule):
     
     PersistentModuleClass = PM_MapCell3D
+    
+    def __init__( self, **args ):
+        WorkflowModule.__init__(self, **args) 
+        
+    def syncCamera( self, cpos, cfol, cup ):
+        if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
+              
+class CloudCell3D(WorkflowModule):
+    
+    PersistentModuleClass = PM_CloudCell3D
     
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args) 

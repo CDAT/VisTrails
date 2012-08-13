@@ -26,6 +26,7 @@ class CDMSDataType:
     Vector = 3
     Hoffmuller = 4
     ChartData = 5
+    VariableSpace = 6
     
 class ConfigPopupManager( QObject ):
     
