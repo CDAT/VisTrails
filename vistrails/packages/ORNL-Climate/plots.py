@@ -24,7 +24,9 @@ class SeriesWidget(LinkedWidget):
         (series, title, xlabel, ylabel, showLegend) = self.inputPorts
         
         ll = pylab.plot(series.values.T)
-        
+        pylab.xlabel(xlabel)
+        pylab.ylabel(ylabel)
+
         if showLegend:
             pylab.legend(pylab.gca().get_lines(), ll, 
                          numpoints=1, prop=dict(size='small'), loc='upper right')
@@ -65,6 +67,64 @@ class SeriesPlot(SpreadsheetCell):
         ylabel      = self.forceGetInputFromPort('ylabel', '')
         showLegend  = self.forceGetInputFromPort('showLegend', True)
         self.displayAndWait(SeriesWidget, (series, title, xlabel, ylabel, showLegend))
+
+################################################################################
+class DendrogramWidget(LinkedWidget):
+    def __init__(self, parent=None):
+        LinkedWidget.__init__(self, parent)
+        
+        self.cm = pylab.cm.Spectral
+        
+    def draw(self, fig):
+        (matrix, title, xlabel, ylabel, method) = self.inputPorts
+        
+        from scipy.spatial.distance import pdist
+        from scipy.cluster.hierarchy import linkage, dendrogram
+        
+        pylab.clf()
+#        fig.set_frameon(False)
+        
+        Y = pdist(matrix.values)
+        Z = linkage(Y, method=method)
+        dendrogram(Z, 
+                   labels=matrix.labels,
+                   leaf_rotation=45)
+        pylab.xlabel(xlabel)
+        pylab.ylabel(ylabel)
+
+        pylab.tight_layout(pad=0.4)
+
+        self.figManager.canvas.draw()
+    
+    def onselect(self, eclick, erelease):
+        left, bottom = min(eclick.xdata, erelease.xdata), min(eclick.ydata, erelease.ydata)
+        right, top = max(eclick.xdata, erelease.xdata), max(eclick.ydata, erelease.ydata)
+        region = Bbox.from_extents(left, bottom, right, top)
+        
+        # identify lines selected and generate a list of ids
+
+class Dendrogram(SpreadsheetCell):
+    """
+    """
+    my_namespace = 'views'
+    name         = 'Dendrogram'
+    
+    _input_ports = [('matrix',     Matrix,  False),
+                    ('title',      String,  False),
+                    ('xlabel',     String,  False),
+                    ('ylabel',     String,  False),
+                    ('method',     String,  False), # 'single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward'
+                    ]
+    
+    def compute(self):
+        """ compute() -> None        
+        """
+        matrix      = self.getInputFromPort('matrix')
+        title       = self.forceGetInputFromPort('title', '')
+        xlabel      = self.forceGetInputFromPort('xlabel', '')
+        ylabel      = self.forceGetInputFromPort('ylabel', '')
+        method      = self.forceGetInputFromPort('method', 'complete')
+        self.displayAndWait(DendrogramWidget, (matrix, title, xlabel, ylabel, method))
 
 ################################################################################
 class TaylorDiagramWidget(LinkedWidget):

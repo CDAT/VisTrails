@@ -1,5 +1,5 @@
 from config_reader import ConfigReader, WriteVarsIntoDataFile, ReadData
-from plots import SeriesPlot, TaylorDiagram, ParallelCoordinates
+from plots import SeriesPlot, Dendrogram, TaylorDiagram, ParallelCoordinates
 
 from core.bundles import py_import
 try:
@@ -18,6 +18,7 @@ _modules = [(ConfigReader,          {'namespace':ConfigReader.my_namespace,     
             (WriteVarsIntoDataFile, {'namespace':WriteVarsIntoDataFile.my_namespace, 'name':WriteVarsIntoDataFile.name}),
             (ReadData,              {'namespace':ReadData.my_namespace,              'name':ReadData.name}),
             (SeriesPlot,            {'namespace':SeriesPlot.my_namespace,            'name':SeriesPlot.name}),
+            (Dendrogram,            {'namespace':Dendrogram.my_namespace,            'name':Dendrogram.name}),
             (TaylorDiagram,         {'namespace':TaylorDiagram.my_namespace,         'name':TaylorDiagram.name}),
             (ParallelCoordinates,   {'namespace':ParallelCoordinates.my_namespace,   'name':ParallelCoordinates.name})
             ]
