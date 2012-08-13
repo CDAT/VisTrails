@@ -36,6 +36,7 @@ class SeriesWidget(LinkedWidget):
         right, top = max(eclick.xdata, erelease.xdata), max(eclick.ydata, erelease.ydata)
         region = Bbox.from_extents(left, bottom, right, top)
         
+        # identify lines selected and generate a list of ids
 #        selectedIds = []
 #        for (x, y, idd) in zip(self.Xs, self.Ys, self.stats.ids):
 #            if region.contains(x, y):
@@ -165,19 +166,19 @@ class ParallelCoordinatesWidget(QCellWidget):
 
         self.layout().addWidget(self.widget)
 
-#        # Create a annotation link to access selection in parallel coordinates view
-#        self.annotationLink = vtk.vtkAnnotationLink()
-#        # If you don't set the FieldType explicitly it ends up as UNKNOWN (as of 21 Feb 2010)
-#        # See vtkSelectionNode doc for field and content type enum values
-#        self.annotationLink.GetCurrentSelection().GetNode(0).SetFieldType(1)     # Point
-#        self.annotationLink.GetCurrentSelection().GetNode(0).SetContentType(4)   # Indices
-#        # Connect the annotation link to the parallel coordinates representation
-#        chart.SetAnnotationLink(self.annotationLink)
-#        self.annotationLink.AddObserver("AnnotationChangedEvent", self.selectionCallback)
+        # Create a annotation link to access selection in parallel coordinates view
+        self.annotationLink = vtk.vtkAnnotationLink()
+        # If you don't set the FieldType explicitly it ends up as UNKNOWN (as of 21 Feb 2010)
+        # See vtkSelectionNode doc for field and content type enum values
+        self.annotationLink.GetCurrentSelection().GetNode(0).SetFieldType(1)     # Point
+        self.annotationLink.GetCurrentSelection().GetNode(0).SetContentType(4)   # Indices
+        # Connect the annotation link to the parallel coordinates representation
+        self.chart.SetAnnotationLink(self.annotationLink)
+        self.annotationLink.AddObserver("AnnotationChangedEvent", self.selectionCallback)
 
-#        self.inputPorts = None;
-#        self.selectedIds = []
-#        CoordinationManager.Instance().register(self)
+        self.inputPorts = None;
+        self.selectedIds = []
+        CoordinationManager.Instance().register(self)
     
     def updateContents(self, inputPorts):
         (matrix,) = inputPorts 
@@ -188,6 +189,22 @@ class ParallelCoordinatesWidget(QCellWidget):
         # Capture window into history for playback
         # Call this at the end to capture the image after rendering
         QCellWidget.updateContents(self, inputPorts)
+        
+    def updateSelection(self, selectedIds):
+        if len(selectedIds)==0: return
+
+        Ids = VN.numpy_to_vtkIdTypeArray(np.array(selectedIds), deep=True)
+
+        node = vtk.vtkSelectionNode()
+        node.SetContentType(vtk.vtkSelectionNode.INDICES)
+        node.SetFieldType(vtk.vtkSelectionNode.POINT)
+        node.SetSelectionList(Ids)
+        
+        selection = vtk.vtkSelection()
+        selection.AddNode(node)
+        
+        self.annotationLink.SetCurrentSelection(selection)
+        self.widget.Render()
         
     def createTable(self, matrix):
         table = vtk.vtkTable()
@@ -200,19 +217,17 @@ class ParallelCoordinatesWidget(QCellWidget):
         min = matrix.values.min()-0.01
         max = matrix.values.max()+0.01
         for i in range(self.chart.GetNumberOfAxes()):
-            print 'axis', i
             self.chart.GetAxis(i).SetRange(min, max)
             self.chart.GetAxis(i).SetBehavior(vtk.vtkAxis.FIXED);
 #            self.chart.GetAxis(i).SetPosition(vtk.vtkAxis.LEFT)
 #            self.chart.GetAxis(i).GetTitleProperties().SetOrientation(30)
 
     def selectionCallback(self, caller, event):
-        import vtk.util.numpy_support as VN
         annSel = self.annotationLink.GetCurrentSelection()
         if annSel.GetNumberOfNodes() > 0:
-                idxArr = annSel.GetNode(0).GetSelectionList()
-                if idxArr.GetNumberOfTuples() > 0:
-                        print VN.vtk_to_numpy(idxArr)
+            idxArr = annSel.GetNode(0).GetSelectionList()
+            if idxArr.GetNumberOfTuples() > 0:
+                 CoordinationManager.Instance().notifyModules(self, VN.vtk_to_numpy(idxArr))
 
 class ParallelCoordinates(SpreadsheetCell):
     """

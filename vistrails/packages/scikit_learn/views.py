@@ -85,7 +85,6 @@ class LinkedWidget(QCellWidget):
                                               )
         self.rectSelector.set_active(True)
         
-        
         # reset selectedIds
         self.selectedIds = []
         self.update()
@@ -121,7 +120,7 @@ class ProjectionWidget(LinkedWidget):
         
         # for faster access
         id2pos = {idd:pos for (pos, idd) in enumerate(self.matrix.ids)}
-        circleSize = np.ones(self.matrix.ids.shape)
+        circleSize = np.ones(len(self.matrix.ids))
         for selId in self.selectedIds:
             circleSize[id2pos[selId]] = 4
         
@@ -147,6 +146,10 @@ class ProjectionWidget(LinkedWidget):
                 )
         
         self.figManager.canvas.draw()
+    
+    def updateSelection(self, selectedIds):
+        self.selectedIds = selectedIds
+        self.updateContents();
         
     def onselect(self, eclick, erelease):
         left, bottom = min(eclick.xdata, erelease.xdata), min(eclick.ydata, erelease.ydata)
@@ -157,7 +160,7 @@ class ProjectionWidget(LinkedWidget):
         for (xy, idd) in zip(self.matrix.values, self.matrix.ids):
             if region.contains(xy[0], xy[1]):
                 selectedIds.append(idd)
-        CoordinationManager.Instance().notifyModules(selectedIds)
+        CoordinationManager.Instance().notifyModules(self, selectedIds)
 
 class ProjectionView(SpreadsheetCell):
     """
@@ -175,9 +178,6 @@ class ProjectionView(SpreadsheetCell):
         matrix = self.getInputFromPort('matrix')
         title  = self.forceGetInputFromPort('title', '')
         self.displayAndWait(ProjectionWidget, (matrix, title))
-
-
-
 
 ###############################################################################
 class QCellToolBarShowLabels(QtGui.QAction):
@@ -256,15 +256,15 @@ class Singleton:
 class CoordinationManager:
     """
     CoordinationManager is intended to receive selected element in a view, and
-    update all the views registered
+    update all the registered views
     """
     def __init__(self):
         self.modules = []
     
-    def notifyModules(self, selectedIds):
+    def notifyModules(self, caller, selectedIds):
         for mod in self.modules:
-            mod.selectedIds = selectedIds;
-            mod.updateContents();
+            if mod is not caller:
+                mod.updateSelection(selectedIds);
         
     def register(self, module):
         self.modules.append(module)
