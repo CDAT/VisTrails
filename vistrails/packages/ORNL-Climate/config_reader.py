@@ -104,8 +104,8 @@ class ReadData(Module):
         labels = []
         for r in range(rows):
             line = f.readline().split(';')
-            ids.append(line[0])
-            labels.append(str(line[0]))
+            ids.append(r)
+            labels.append(line[0])
             values[r,] = np.array([float(val) for val in line[1:-1]])
             klass = float(line[-1])
     
