@@ -23,6 +23,7 @@ import api
 
 # Import PV Generic Cell
 from pvgenericcell import PVGenericCell
+import pvclimatecell
 
 import sys
 
@@ -43,12 +44,23 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
           print >> sys.stderr, 'cell is empty'
           return None
 
-        # FIXME: Implement this
-#        if len(cell) == 0:
-#            return pvclimatecell.PVClimateCellConfigurationWidget(None,controller)
-#        else:
-#            pvcell = cell[0].module_descriptor.module()
-#            return pvclimatecell.PVClimateCellConfigurationWidget(cell[0],controller)
+        if len(cell) == 0:
+            return pvclimatecell.PVClimateCellConfigurationWidget(None,
+                                                                  controller.vt_controller)
+        else:
+            pvcell = cell[0].module_descriptor.module()
+            # Create child widgets
+            # Attach it to the parent widget
+            return pvclimatecell.PVClimateCellConfigurationWidget(cell[0],
+                                                                  controller.vt_controller)
+            
+    @staticmethod
+    def find_plot_representation(pipeline, representation):
+        #print 'rep dir ', dir(representation)
+        print 'name ', representation.name
+#        print  'output port ', representation.forceGetOutputListFromPort('self')[0]
+#        print 'type of ', type(representation.forceGetOutputListFromPort('self')[0])
+        return pipeline.modules[pipeline.get_outputPort_modules(representation.id, 'self')[0]]
 
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plots,row, col, template=None):
@@ -182,7 +194,7 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         # Find plot modules in the order they appear in the Cell
         res = []
         cell = PlotPipelineHelper.find_module_by_name(pipeline, 'PVGenericCell')
-        plots = pipeline.get_inputPort_modules(cell.id, 'plot')
+        plots = pipeline.get_inputPort_modules(cell.id, 'representation')
         for plot in plots:
             res.append(pipeline.modules[plot])
         return res

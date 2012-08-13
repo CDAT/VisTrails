@@ -7,7 +7,7 @@ from packages.spreadsheet.spreadsheet_cell import QCellWidget
 import paraview.simple as pvsp
 import paraview.pvfilters
 import vtk
-
+from pvtransformation import Ui_pvtransformationeditor
 # We are using our own constant (though we are calling it a variable)
 import pvvariable
 
@@ -19,10 +19,20 @@ from gui.modules.module_configure import StandardModuleConfigurationWidget
 # Needed for port related stuff
 from core.vistrail.port import PortEndPoint
 import core.modules.basic_modules as basic_modules
+import core.db.action
+
 
 # Needed to parse csv string into a list
 import csv
 import StringIO
+
+class Transformation():
+    def __init__(self):
+        self.scale = [1.0, 1.0, 0.01]
+        self.position = [0.0, 0.0, 0.0]
+        self.origin = [0.0, 0.0, 0.0]
+        self.orientation = [0.0, 0.0, 0.0]
+
 
 class PVClimateCell(SpreadsheetCell):
     def __init__(self):
@@ -30,6 +40,7 @@ class PVClimateCell(SpreadsheetCell):
         self.cellWidget = None
         self.sliceOffset = 0.0
         self.isoSurfaces = "8"
+        self.tranformation = Transformation()
 
     def compute(self):
         """ compute() -> None
@@ -214,6 +225,7 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
         self.createTabs()
         self.createLayout()
         self.addPortConfigTab()
+        self.addTransformationTab()
         if ( PVClimateConfigurationWidget.newConfigurationWidget == None ): PVClimateConfigurationWidget.setupSaveConfigurations()
         PVClimateConfigurationWidget.newConfigurationWidget = self
 
@@ -236,6 +248,10 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
     def addPortConfigTab(self):
         portConfigPanel = self.getPortConfigPanel()
         self.tabbedWidget.addTab( portConfigPanel, 'ports' )
+
+    def addTransformationTab(self):
+        transformationPanel = self.getTransformationPanel()
+        self.tabbedWidget.addTab( transformationPanel, 'Transformation' )
 
     @staticmethod
     def setupSaveConfigurations():
@@ -302,6 +318,13 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
         listContainer.adjustSize()
         listContainer.setFixedHeight(listContainer.height())
         return listContainer
+
+    def getTransformationPanel(self):
+        container = QGroupBox()
+        pvtransformationeditor = Ui_pvtransformationeditor()
+        pvtransformationeditor.setupUi(container)
+        
+        return container
 
     def closeEvent(self, event):
         self.askToSaveChanges()
@@ -446,14 +469,12 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         pass
 
     def updateVistrail(self):
-        print 'updateVistrail'
         functions = []
-        # For now assume parameters changed everytime
-        if 1:
-            functions.append(("sliceOffset", [self.sliceOffset]))
-            #functions.append(("isoSurfaces", [self.isoSurfaces]))
-            self.controller.update_functions(self.module, functions)
-
+        action = None
+        functions.append(("sliceOffset", [self.sliceOffset]))
+        self.controller.update_functions(self.module, functions)
+        action = self.controller.update_functions(self.module, functions)
+        return action
     def createLayout(self):
         """ createEditor() -> None
         Configure sections
@@ -476,8 +497,8 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
 
     def setDefaults(self):
         moduleInstance = self.module.module_descriptor.module()
-        self.sliceOffset = moduleInstance.getSliceOffset();
-        self.sliceOffsetValue.setText(str(self.sliceOffset))
+        #self.sliceOffset = moduleInstance.getSliceOffset();
+        #self.sliceOffsetValue.setText(str(self.sliceOffset))
 
     def updateController(self, controller=None):
         parmRecList = []
@@ -492,9 +513,11 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         """
         self.sliceOffset = str(self.sliceOffsetValue.text().toLocal8Bit().data())
         print self.module
-        self.updateVistrail()
-        self.updateController(self.controller)
-        self.emit(SIGNAL('doneConfigure()'))
+        action = self.updateVistrail()
+        print self.module
+        if action is not None:
+          self.emit(SIGNAL('doneConfigure()'))
+          self.emit(QtCore.SIGNAL('plotDoneConfigure'), action)
 
     def startOver(self):
         self.setDefaults();
