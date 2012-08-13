@@ -10,7 +10,8 @@ version = '0.0.1'
 
 def package_dependencies():
     return ['edu.utah.sci.vistrails.spreadsheet',
-           'gov.llnl.uvcdat.cdms']
+            'edu.poly.scikit_learn',
+            'gov.llnl.uvcdat.cdms']
     
 def package_requirements():
     import core.requirements

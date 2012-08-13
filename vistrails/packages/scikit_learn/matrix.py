@@ -9,9 +9,10 @@ class Matrix(Module):
     name         = 'Matrix'
     
     def __init__(self):
-        self.values     = None  # numpy.array
-        self.ids        = None  # numpy.array
-        self.labels     = None  # list<string>
-        self.attributes = None  # list<string>
+        Module.__init__(self)
         
-    
+        self.values     = None      # numpy.array
+        self.ids        = None      # numpy.array
+        self.labels     = None      # list<string>
+        self.attributes = None      # list<string>
+        
