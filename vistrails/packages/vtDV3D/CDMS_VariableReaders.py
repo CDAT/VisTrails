@@ -406,7 +406,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     md[ 'title' ] = getTitle( dsid, varName, var_md )
                 md[ 'valueRange-'+varName ] = vmd[ 'valueRange']                   
         enc_mdata = encodeToString( md ) 
-        self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                       
+        if enc_mdata: self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                       
         image_data.Modified()
         return cachedImageDataName
 
