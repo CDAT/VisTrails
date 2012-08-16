@@ -489,6 +489,10 @@ class CDMSDataset(Module):
         self.gridBounds = None
         self.decimation = None
         self.zscale = 1.0
+        self.cells = []
+        
+    def setCells( self, cells ):
+        self.cells[:] = cells[:]
       
     def setVariableRecord( self, id, varName ):
         self.variableRecs[id] = varName
@@ -759,6 +763,7 @@ class SerializedInterfaceSpecs:
         
     def __init__( self, serializedConfiguration = None ):
         self.inputs = {}
+        self.cells = []
         self.configParms = None
         if serializedConfiguration and (serializedConfiguration <> 'None'):
             self.parseInputSpecs( serializedConfiguration )
@@ -792,7 +797,7 @@ class SerializedInterfaceSpecs:
                 print>>sys.stderr, " ERROR: Number of Files and number of Variables do not match."
         for iCell in range( len(cellInputSpecs) ):
             cellMetadata = cellInputSpecs[iCell].split('!')
-            if len( cellMetadata ) > 1: ModuleStore.addCell( cellMetadata[0], cellMetadata[1] )
+            if len( cellMetadata ) > 1: self.cells.append( ( cellMetadata[0], cellMetadata[1] ) )
                 
         
     def addInput(self, inputName, fileId, fileName, variableName, axes ):
@@ -1022,6 +1027,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 self.ref_var = self.getInputValue( "grid"  )
             
             self.datasetModule.setBounds( self.timeRange, self.roi, zscale, decimation ) 
+            self.datasetModule.setCells( inputSpecs.cells )
       
             if self.datasetMap:             
                 for datasetId in self.datasetMap:

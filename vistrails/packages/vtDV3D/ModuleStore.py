@@ -8,7 +8,7 @@ from packages.vtDV3D.vtUtilities import *
 from collections import OrderedDict 
 moduleStoreDatabase = {}
 cdmsStoreDatabase = {}
-cells = OrderedDict()
+#cells = OrderedDict()
 
 def getDatabase():
     import api
@@ -58,17 +58,17 @@ def refreshParameters(self):
     for module in moduleList:  module.persistParameters()          
     executeWorkflow()
 
-def popCell():
-    try:                return cells.popitem(False)
-    except KeyError:    return None
-
-def addCell( id, location ):
-    cells[id] = location
-
-def getNCells():
-    return len(cells) 
-
-def getCell(id):
-    return cells.get(id,None) 
+#def popCell():
+#    try:                return cells.popitem(False)
+#    except KeyError:    return None
+#
+#def addCell( id, location ):
+#    cells[id] = location
+#
+#def getNCells():
+#    return len(cells) 
+#
+#def getCell(id):
+#    return cells.get(id,None) 
      
     

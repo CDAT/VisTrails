@@ -841,6 +841,12 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return DV3DPipelineHelper.pipelineMap.get( cell_address, None )
 
     @staticmethod
+    def getCellAddress( pipeline ): 
+        for item in  DV3DPipelineHelper.pipelineMap.items():
+            if item[1] == pipeline: return item[0]
+        return None 
+
+    @staticmethod
     def addParameterChangesAction( pipeline, controller, vistrail, parent_version, aliases, cell_spec_iter ):
         param_changes = []
         newid = parent_version
