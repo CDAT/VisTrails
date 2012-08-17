@@ -12,6 +12,7 @@ from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 import vtk
 from PyQt4 import QtGui
 import vtk.util.numpy_support as VN
+# minot change
 
 ################################################################################
 class SeriesWidget(LinkedWidget):
