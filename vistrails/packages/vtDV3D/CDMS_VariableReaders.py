@@ -186,6 +186,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     def generateVariableOutput( self, cdms_var ): 
         print str(cdms_var.var)
         self.set3DOutput( name=cdms_var.name,  output=cdms_var.var )
+
+    def refreshVersion(self):
+        portData = self.getPortData()
+        if portData:
+            portDataVersion = portData[1] + 1
+            serializedPortData = portData[0]
+            self.persistParameter( 'portData', [ serializedPortData, portDataVersion ] )
         
     def getOutputRecord( self, ndim = -1 ):
         portData = self.getPortData()
@@ -376,7 +383,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             vtkdata = getNewVtkDataArray( scalar_dtype )
             vtkdata.SetNumberOfComponents( 3 )
             vtkdata.SetNumberOfTuples( nTup )
-            iComp = 0
+            iComp1
             for varName in vars:
                 fromArray =  pointData.GetArray( varName )
                 fromNTup = fromArray.GetNumberOfTuples()

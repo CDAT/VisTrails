@@ -800,7 +800,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        Disable File Reader, get Variable from UVCDAT
 #        plot_obj.addMergedAliases( aliases, controller.current_pipeline )
         action = DV3DPipelineHelper.addParameterChangesAction( controller.current_pipeline,  controller,  controller.vistrail, controller.current_version, aliases, iter(cell_specs) )        
-        if action: controller.change_selected_version( action.id )   
+#        if action: controller.change_selected_version( action.id )   
         
         reader_1v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader ] )
         reader_3v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VectorReader ] )
@@ -808,7 +808,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         iVarModule = 0
         ops = []           
         for module in reader_modules:
-            pmod = ModuleStore.getModule( module.id )
             nInputs = 1 if module in reader_1v_modules else 3
             for iInput in range( nInputs ):
                 try:

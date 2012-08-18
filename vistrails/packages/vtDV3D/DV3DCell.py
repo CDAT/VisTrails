@@ -603,7 +603,7 @@ class ChartCellConfigurationWidget(DV3DConfigurationWidget):
         self.emit(SIGNAL('doneConfigure()'))
 #        self.close()
  
-class ChartCell(WorkflowModule):
+class ChartCell( WorkflowModule ):
     
     PersistentModuleClass = PM_ChartCell
     
@@ -1101,7 +1101,7 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
         self.emit(SIGNAL('doneConfigure()'))
 #        self.close()
  
-class MapCell3D(WorkflowModule):
+class MapCell3D( WorkflowModule ):
     
     PersistentModuleClass = PM_MapCell3D
     
@@ -1111,7 +1111,7 @@ class MapCell3D(WorkflowModule):
     def syncCamera( self, cpos, cfol, cup ):
         if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
               
-class CloudCell3D(WorkflowModule):
+class CloudCell3D( WorkflowModule ):
     
     PersistentModuleClass = PM_CloudCell3D
     

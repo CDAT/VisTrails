@@ -994,6 +994,9 @@ class PersistentModule( QObject ):
 #            print " PM: Persist Parameter %s -> %s, tag = %s, taggedVersion=%d, new_id = %s, version => ( %d -> %d ), module = %s" % ( parameter_name, str(output), tag, taggedVersion, new_parameter_id, v0, v1, self.__class__.__name__ )
 #            DV3DConfigurationWidget.savingChanges = False
 
+    def refreshVersion(self):
+        pass
+
     def persistParameterList( self, parmRecList, **args ):
         if parmRecList and not self.isClient: 
             import api
