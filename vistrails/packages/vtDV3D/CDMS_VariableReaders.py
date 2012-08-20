@@ -383,7 +383,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             vtkdata = getNewVtkDataArray( scalar_dtype )
             vtkdata.SetNumberOfComponents( 3 )
             vtkdata.SetNumberOfTuples( nTup )
-            iComp1
+            iComp = 0
             for varName in vars:
                 fromArray =  pointData.GetArray( varName )
                 fromNTup = fromArray.GetNumberOfTuples()
