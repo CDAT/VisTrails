@@ -1,6 +1,7 @@
 """ORNL-Climate package for VisTrails.
 
-This package ...
+This package wraps the scikit-learn library  which has a lot
+of machine learning algorihms
 
 """
 
