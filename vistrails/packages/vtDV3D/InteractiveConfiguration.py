@@ -362,8 +362,8 @@ class ConfigurableFunction( QObject ):
         activeFunctionList = []
         for cfgFunctionMap in ConfigurableFunction.ConfigurableFunctions.values():
             for cfgFunction in cfgFunctionMap.values():
-                if cfgFunction.module and (  ( active_irens == None ) or ( cfgFunction.module.iren in active_irens ) ):
-                    activeFunctionList.append( cfgFunction )
+#                if cfgFunction.module and (  ( active_irens == None ) or ( cfgFunction.module.iren in active_irens ) ):
+                activeFunctionList.append( cfgFunction )
         return activeFunctionList
     
     @staticmethod

@@ -48,7 +48,7 @@ class DV3DParameterSliderWidget(QWidget):
     
     def __init__( self, label, parent=None):
         QWidget.__init__(self,parent)
-        self.range = [ 0.0, 1.0, 1.0 ]
+        self.range = [ 0.0, 1.0 ]
         
         main_layout = QVBoxLayout()  
         
@@ -79,10 +79,11 @@ class DV3DParameterSliderWidget(QWidget):
         self.textbox.setText( qsval )
         
     def setRange( self, fmin, fmax ):
-        self.range = [ fmin, fmax, (fmax-fmin) ]
+        print " Parameter Slider Widget: set Range= %s " % str( (fmin, fmax) )
+        self.range = [ fmin, fmax ]
 
     def setValue( self, value ):
-        sliderVal = int( 100 * ( value-self.range[0] ) / self.range[2] ) 
+        sliderVal = int( 100 * ( value-self.range[0] ) / ( self.range[1]-self.range[0] ) ) 
         self.slider.setValue( sliderVal )
         qsval = getFormattedQString( value ) 
         self.textbox.setText( qsval  )
@@ -800,7 +801,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        Disable File Reader, get Variable from UVCDAT
 #        plot_obj.addMergedAliases( aliases, controller.current_pipeline )
         action = DV3DPipelineHelper.addParameterChangesAction( controller.current_pipeline,  controller,  controller.vistrail, controller.current_version, aliases, iter(cell_specs) )        
-        if action: controller.change_selected_version( action.id )   
+#        if action: controller.change_selected_version( action.id )   
         
         reader_1v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader ] )
         reader_3v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VectorReader ] )
@@ -808,22 +809,22 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         iVarModule = 0
         ops = []           
         for module in reader_modules:
-            pmod = ModuleStore.getModule( module.id )
             nInputs = 1 if module in reader_1v_modules else 3
             for iInput in range( nInputs ):
-                try:
-                    var_module = var_modules[ iVarModule ]
-                    var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
-                    if var_module_in_pipeline == None: 
-                        ops.append( ( 'add', var_module ) )
-                    inputPort = 'variable' if (iInput == 0) else "variable%d" % ( iInput + 1)
-                    conn1 = controller.create_connection( var_module, 'self', module, inputPort )
-                    ops.append( ( 'add', conn1 ) )
-                    iVarModule = iVarModule+1
-                except Exception, err:
-                    print>>sys.stderr, "Exception adding CDMSVaraible input:", str( err)
-                    break
-                                   
+                if iInput < len( var_modules ):
+                    try:
+                        var_module = var_modules[ iVarModule ]
+                        var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
+                        if var_module_in_pipeline == None: 
+                            ops.append( ( 'add', var_module ) )
+                        inputPort = 'variable' if (iInput == 0) else "variable%d" % ( iInput + 1)
+                        conn1 = controller.create_connection( var_module, 'self', module, inputPort )
+                        ops.append( ( 'add', conn1 ) )
+                        iVarModule = iVarModule+1
+                    except Exception, err:
+                        print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                        break
+                                       
         try:
             action = core.db.action.create_action(ops)
             controller.add_new_action(action)
@@ -839,6 +840,12 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     @staticmethod
     def getPipeline( cell_address ):    
         return DV3DPipelineHelper.pipelineMap.get( cell_address, None )
+
+    @staticmethod
+    def getCellAddress( pipeline ): 
+        for item in  DV3DPipelineHelper.pipelineMap.items():
+            if item[1] == pipeline: return item[0]
+        return None 
 
     @staticmethod
     def addParameterChangesAction( pipeline, controller, vistrail, parent_version, aliases, cell_spec_iter ):

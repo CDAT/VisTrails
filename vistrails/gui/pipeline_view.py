@@ -2069,28 +2069,33 @@ mutual connections."""
     def delete_selected_items(self):
         selectedItems = self.selectedItems()
         if len(selectedItems)>0:
+#             modules = [m for m in selectedItems if isinstance(m, QGraphicsModuleItem)]
             modules = []
-            module_ids = []
-            connection_ids = []
-            for it in selectedItems:
-                if isinstance(it, QGraphicsModuleItem):
-                    modules.append(it)
-                    module_ids.append(it.id)
-                elif isinstance(it, QGraphicsConnectionItem):
-                    connection_ids.append(it.id)
+            for m in selectedItems:
+                if type(m)==QGraphicsModuleItem:
+                    modules.append(m)
             if len(modules)>0:
                 self.noUpdate = True
-                dep_connection_ids = set()
+                idList = [m.id for m in modules]
+                connection_ids = set()
                 for m in modules:
-                    dep_connection_ids.update(
+                    connection_ids.update(
                         m.dependingConnectionItems().iterkeys())
-                # remove_connection updates the dependency list on the
-                # other side of connections, cannot use removeItem
-                for c_id in dep_connection_ids:
-                    self.remove_connection(c_id)
-                for m_id in module_ids:
-                    self.remove_module(m_id)
-                self.controller.delete_module_list(module_ids)
+                #update the dependency list on the other side of connections
+                connections = []
+                for c_id in connection_ids:
+                    try:
+                        conn = self.connections[c_id]
+                        connections.append(conn)
+                        self._old_connection_ids.remove(c_id)
+                        del self.connections[c_id]
+                    except:
+                        print>>sys.stderr, "Missing connection in delete_selected_items: ", str(c_id)
+                self.controller.delete_module_list(idList)
+                self.removeItems(connections)
+                for (mId, item) in self.modules.items():
+                    if item in selectedItems:
+                        self.remove_module(mId)
                 self.updateSceneBoundingRect()
                 self.reset_module_colors()
                 self.update()
@@ -2103,16 +2108,20 @@ mutual connections."""
                 # module ids, and the for loop above takes care of
                 # connection ids. So we don't need to call anything.
             else:
-                for c_id in connection_ids:
-                    self.remove_connection(c_id)
+                self.removeItems([it for it in selectedItems
+                                  if isinstance(it, QGraphicsConnectionItem)])
                 self.controller.reset_pipeline_view = False
-                self.controller.delete_connection_list(connection_ids)
+                idList = [conn.id for conn in selectedItems]
+                self._old_connection_ids.difference_update(set(idList))
+                for cId in idList:
+                    del self.connections[cId]
+                self.controller.delete_connection_list(idList)
                 self.reset_module_colors()
                 self.controller.reset_pipeline_view = True
                 # Current pipeline changed, so we need to change the
-                # _old_connection_ids. However, remove_connection
+                # _old_connection_ids. However, the difference_update
                 # above takes care of connection ids, so we don't need
-                # to call anything. 
+                # to call anything.        
 
     def keyPressEvent(self, event):
         """ keyPressEvent(event: QKeyEvent) -> None

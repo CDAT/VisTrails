@@ -139,7 +139,7 @@ parameters from other instances")
                                                    'pvclimate',
                                                    'vtk',
                                                    'vtDV3D',
-                                                   'VisIt',
+#                                                   'VisIt',
                                                    ])
         self.vistrailsStartup.init()
         

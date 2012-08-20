@@ -314,8 +314,6 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 #            coord.SetCoordinateSystemToNormalizedViewport()
 #            coord.SetValue( 0.75, 0.9 ) 
             
-       
- 
     def onRender( self, caller, event ):
         self.addLogo()
         PersistentVisualizationModule.onRender( self, caller, event  )
@@ -362,22 +360,23 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                     dcam.SetViewUp(cup)
         
     def setCellLocation( self, moduleId ):
-        cell = ModuleStore.popCell()
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
         cellLocation = CellLocation()
         cellLocation.rowSpan = 1
         cellLocation.colSpan = 1
         cell_coordinates = None
-        address = "A1"   
+        address = DV3DPipelineHelper.getCellAddress( self.pipeline ) 
         if self.isClient:            
             cellLocation.sheetReference = StandardSheetReference()
             cellLocation.sheetReference.sheetName = HyperwallManager.getInstance().deviceName
-        else: 
+        elif not address: 
             address_input = self.getInputValue( "cell_location", None )
-            address = cell[1] if cell else getItem(  address_input )
+            address = getItem(  address_input )
             
         if address:
-            print "Setting Cell Address from Input: %s %s" % ( address, str(cell) )
+            print "Setting Cell Address from Input: %s " % ( address )
             address = address.replace(' ', '').upper()
+            address = address.split('!')[-1]
             cell_coordinates = parse_cell_address( address )
         else:
             cell_coordinates = HyperwallManager.getInstance().getCellCoordinatesForModule( moduleId )
@@ -618,7 +617,7 @@ class ChartCellConfigurationWidget(DV3DConfigurationWidget):
         self.emit(SIGNAL('doneConfigure()'))
 #        self.close()
  
-class ChartCell(WorkflowModule):
+class ChartCell( WorkflowModule ):
     
     PersistentModuleClass = PM_ChartCell
     
@@ -1116,7 +1115,7 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
         self.emit(SIGNAL('doneConfigure()'))
 #        self.close()
  
-class MapCell3D(WorkflowModule):
+class MapCell3D( WorkflowModule ):
     
     PersistentModuleClass = PM_MapCell3D
     
@@ -1126,7 +1125,7 @@ class MapCell3D(WorkflowModule):
     def syncCamera( self, cpos, cfol, cup ):
         if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
               
-class CloudCell3D(WorkflowModule):
+class CloudCell3D( WorkflowModule ):
     
     PersistentModuleClass = PM_CloudCell3D
     

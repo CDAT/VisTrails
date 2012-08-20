@@ -186,6 +186,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     def generateVariableOutput( self, cdms_var ): 
         print str(cdms_var.var)
         self.set3DOutput( name=cdms_var.name,  output=cdms_var.var )
+
+    def refreshVersion(self):
+        portData = self.getPortData()
+        if portData:
+            portDataVersion = portData[1] + 1
+            serializedPortData = portData[0]
+            self.persistParameter( 'portData', [ serializedPortData, portDataVersion ] )
         
     def getOutputRecord( self, ndim = -1 ):
         portData = self.getPortData()
@@ -406,7 +413,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     md[ 'title' ] = getTitle( dsid, varName, var_md )
                 md[ 'valueRange-'+varName ] = vmd[ 'valueRange']                   
         enc_mdata = encodeToString( md ) 
-        self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                       
+        if enc_mdata: self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                       
         image_data.Modified()
         return cachedImageDataName
 

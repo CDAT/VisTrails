@@ -421,4 +421,3 @@ class QMenuWidget(QtGui.QWidget):
             prj_controller = get_current_project_controller()
             vtfuncnm = "%s(%s, '%s')"%(funcnm,v.id, region)
             prj_controller.calculator_command([v.id], vtdesc, vtfuncnm, newid)
-            

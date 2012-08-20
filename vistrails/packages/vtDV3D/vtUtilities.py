@@ -350,7 +350,7 @@ def getFunctionFromList( function_name, functionList ):
 
 def getFunction( mid, function_name, controller = None ):
     functionList = getFunctionFromList( mid, controller )
-    return getFunction( function_name, functionList )
+    return getFunction( function_name, functionList ) if functionList else None
 
 def translateToPython( parmRec ):
     if parmRec.type == 'Float':    return float( parmRec.strValue ) if parmRec.strValue else 0.0

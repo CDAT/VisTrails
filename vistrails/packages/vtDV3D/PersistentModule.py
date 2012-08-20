@@ -299,8 +299,8 @@ class PersistentModule( QObject ):
         return str( self.__class__.__name__ )
         
     def dvCompute( self, **args ):
-        self.updateHyperwall()
         self.initializeInputs( **args )     
+        self.updateHyperwall()
         if self.input or self.inputModuleList or not self.requiresPrimaryInput:
             self.execute( **args )
             self.initializeConfiguration()
@@ -595,12 +595,12 @@ class PersistentModule( QObject ):
                 tval = timeAxis[ image_coords[2] ]
                 relTimeValue = cdtime.reltime( float( tval ), timeAxis.units ) 
                 timeValue = str( relTimeValue.tocomp() )          
-                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), timeValue ]
+                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), timeValue ]   
             else:         
                 lat = self.metadata[ 'lat' ]
                 lon = self.metadata[ 'lon' ]
                 lev = self.metadata[ 'lev' ]
-                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), getFloatStr(lev[ image_coords[2] ]) ]
+                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), getFloatStr(lev[ image_coords[2] ]) ]   
         except:
             gridSpacing = self.input.GetSpacing()
             gridOrigin = self.input.GetOrigin()
@@ -1025,6 +1025,9 @@ class PersistentModule( QObject ):
 #            print " PM: Persist Parameter %s -> %s, tag = %s, taggedVersion=%d, new_id = %s, version => ( %d -> %d ), module = %s" % ( parameter_name, str(output), tag, taggedVersion, new_parameter_id, v0, v1, self.__class__.__name__ )
 #            DV3DConfigurationWidget.savingChanges = False
 
+    def refreshVersion(self):
+        pass
+
     def persistParameterList( self, parmRecList, **args ):
         if parmRecList and not self.isClient: 
             import api
@@ -1174,7 +1177,8 @@ class PersistentVisualizationModule( PersistentModule ):
     LEFT_BUTTON = 0
     RIGHT_BUTTON = 1
     
-    renderMap = {}    
+    renderMap = {} 
+    captions = {}   
     moduleDocumentationDialog = None 
 
     def __init__( self, mid, **args ):
@@ -1208,6 +1212,36 @@ class PersistentVisualizationModule( PersistentModule ):
  
     def disableVisualizationInteraction(self): 
         pass
+
+    def addCaption( self, key, **args ):
+        existing_caption = self.captions.get(key,None)
+        if not existing_caption:
+            text = args.get('text', "Test caption" ) 
+            font_size= args.get('font_size', 100 )            
+            pos= args.get('pos',  [ 10, 10, 0 ] )
+            color= args.get( 'color',  [ 0, 0, 1 ] )
+            captionRep =  vtk.vtkCaptionRepresentation() 
+            captionWidget = vtk.vtkCaptionWidget()
+            captionWidget.SetInteractor(self.iren)
+            captionWidget.SetRepresentation(captionRep)
+            captionWidget.SelectableOn() 
+            captionWidget.ResizableOn() 
+            captionRep.SetAnchorPosition( pos )
+            actor = captionRep.GetCaptionActor2D() 
+            actor.SetCaption(text)
+            actor.SetThreeDimensionalLeader(0)
+            anchorRep = captionRep.GetAnchorRepresentation()
+            tprop = actor.GetTextActor().GetTextProperty()
+            tprop.SetFontSize(font_size) 
+            tprop.SetFontFamilyToArial()
+            tprop.SetJustificationToCentered()
+            tprop.SetColor( color[0], color[1], color[2] )            
+            bprop = captionRep.GetBorderProperty()
+            bprop.SetColor( 1.0, 0.0, 0.0 ) 
+            bprop.SetLineWidth( 3.0 )  
+            bprop.SetOpacity(  1.0  )     
+            self.captions[key] = captionWidget
+            captionWidget.On()
 
     def setInputZScale( self, zscale_data, **args  ):
         if self.input <> None:
@@ -1690,6 +1724,11 @@ class PersistentVisualizationModule( PersistentModule ):
                   self.colorBarActor.VisibilityOff()  
             else: self.colorBarActor.VisibilityOn() 
             self.render() 
+            
+        elif (  key == 'k'  ):
+            self.addCaption( 1 )
+            self.render() 
+            
         elif (  key == 'r'  ):
             self.resetCamera()              
             if  len(self.persistedParameters):
