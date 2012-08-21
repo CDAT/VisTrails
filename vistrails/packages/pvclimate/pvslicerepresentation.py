@@ -4,9 +4,13 @@ from pvrepresentationbase import *
 
 # Import registry
 from core.modules.module_registry import get_module_registry
+import core.modules.basic_modules as basic_modules
 
 # Import paraview
 import paraview.simple as pvsp
+
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
 
 class PVSliceRepresentation(PVRepresentationBase):
     def __init__(self):
@@ -65,7 +69,7 @@ class PVSliceRepresentation(PVRepresentationBase):
 
             slice.SliceType.Normal = self.sliceNormal
             slice.SliceType.Origin = origin
-            slice.SliceOffsetValues = self.sliceOffsets
+            slice.SliceOffsetValues = self.forceGetInputListFromPort("sliceOffset")
 
             slice_rep = pvsp.Show(view=self.view)
 
@@ -77,7 +81,56 @@ class PVSliceRepresentation(PVRepresentationBase):
             slice_rep.Scale  = [1,1,0.01]
             slice_rep.Representation = 'Surface'
 
+    @staticmethod
+    def name():
+        return 'PV Slice Representation'
+
+    @staticmethod
+    def configuration_widget(parent, rep_module):
+        return PVSliceRepresentationConfigurationWidget(parent, rep_module)
+
+class PVSliceRepresentationConfigurationWidget(RepresentationBaseConfigurationWidget):
+    def __init__(self, parent, rep_module):
+        RepresentationBaseConfigurationWidget.__init__(self, parent, rep_module)
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        sliceOffset = self.function_value('sliceOffset')
+
+        sliceOffsetLayout = QHBoxLayout()
+        sliceOffsetLabel = QLabel("Slice Offset:")
+        self.slice_offset_value =  QLineEdit (parent)
+
+        if sliceOffset != None:
+            self.slice_offset_value.setText(sliceOffset)
+
+        sliceOffsetLayout.addWidget( sliceOffsetLabel )
+        sliceOffsetLayout.addWidget( self.slice_offset_value )
+        layout.addLayout(sliceOffsetLayout)
+        parent.connect(self.slice_offset_value, SIGNAL("textEdited(const QString&)"), parent.stateChanged)
+
+    def okTriggered(self, checked = False):
+        """ okTriggered(checked: bool) -> None
+        Update vistrail controller (if necessary) then close the widget
+
+        """
+        slice_offset = str(self.slice_offset_value.text().toLocal8Bit().data())
+        functions = []
+        functions.append(("sliceOffset", [slice_offset]))
+        print self.rep_module
+        action = self.update_vistrails(self.rep_module, functions)
+        print self.rep_module
+
+        print 'okTriggered'
+
+        if action is not None:
+            self.emit(SIGNAL('doneConfigure()'))
+            self.emit(SIGNAL('plotDoneConfigure'), action)
+
+
+
 def register_self():
     registry = get_module_registry()
     registry.add_module(PVSliceRepresentation)
     registry.add_output_port(PVSliceRepresentation, "self", PVSliceRepresentation)
+    registry.add_input_port(PVSliceRepresentation, "sliceOffset", basic_modules.Float)
