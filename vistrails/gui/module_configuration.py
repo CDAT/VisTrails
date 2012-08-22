@@ -36,7 +36,8 @@ the user selects a module's "Edit Configuration"
 
 """
 from PyQt4 import QtCore, QtGui
-from core.modules.module_registry import get_module_registry
+from core.modules.module_registry import get_module_registry, \
+    ModuleRegistryException
 from gui.modules.module_configure import DefaultModuleConfigurationWidget
 from gui.vistrails_palette import QVistrailsPaletteInterface
 
@@ -106,6 +107,7 @@ class QModuleConfiguration(QtGui.QScrollArea, QVistrailsPaletteInterface):
 
     def updateModule(self, module):
         if self.updateLocked: return
+        self.check_need_save_changes()
         self.module = module
         self.confWidget.setUpdatesEnabled(False)    
         self.confWidget.setVisible(False)
@@ -120,7 +122,12 @@ class QModuleConfiguration(QtGui.QScrollArea, QVistrailsPaletteInterface):
             # self.setWindowTitle(title)
             registry = get_module_registry()
             getter = registry.get_configuration_widget
-            widgetType = getter(module.package, module.name, module.namespace)
+            widgetType = None
+            try:
+                widgetType = \
+                    getter(module.package, module.name, module.namespace)
+            except ModuleRegistryException:
+                pass
             if not widgetType:
                 widgetType = DefaultModuleConfigurationWidget
             widget = widgetType(module, self.controller)
@@ -177,3 +184,9 @@ class QModuleConfiguration(QtGui.QScrollArea, QVistrailsPaletteInterface):
             self.show()
         self.activateWindow()
         self.confWidget.activate()
+        
+    def check_need_save_changes(self):
+        if self.confWidget:
+            self.lockUpdate()
+            self.confWidget.askToSaveChanges()
+            self.unlockUpdate()

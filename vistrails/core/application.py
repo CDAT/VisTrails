@@ -123,7 +123,7 @@ class VistrailsApplicationInterface(object):
             "spreadsheet cells before exiting")
         add("-p", "--pdf", action="store_true",
             default = None,
-            help="dump files in pdf format (only valid in console mode)")
+            help="dump files in pdf format (non-interactive mode only)")
         add("-l", "--nologger", action="store_true",
             default = None,
             help="disable the logging")
@@ -172,6 +172,9 @@ The builder window can be accessed by a spreadsheet menu option.")
         add("--var",
             help="Load variable from selected file in add variable dock",
             action="store",dest="uvcdat_var")
+        add ("-g", "--noSingleInstance", action="store_true",
+             help=("Run VisTrails without the single instance restriction."))
+        
         command_line.CommandLineParser.parse_options()
 
     def printVersion(self):
@@ -262,8 +265,9 @@ The builder window can be accessed by a spreadsheet menu option.")
             self.temp_configuration.staticRegistry = str(get('quickstart'))
         if get('detachHistoryView')!= None:
             self.temp_configuration.detachHistoryView = bool(get('detachHistoryView'))
+        if get('noSingleInstance')!=None:
+            self.temp_configuration.singleInstance = not bool(get('noSingleInstance'))
         self.input = command_line.CommandLineParser().positional_arguments()
-    
     def init(self, optionsDict=None):
         """ VistrailsApplicationSingleton(optionDict: dict)
                                           -> VistrailsApplicationSingleton
