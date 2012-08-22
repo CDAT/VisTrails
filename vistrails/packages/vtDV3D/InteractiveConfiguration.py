@@ -1697,6 +1697,73 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         return checkBox
                
 ################################################################################
+ 
+class CaptionConfigurationDialog( IVModuleConfigurationDialog ):
+    """
+    CaptionConfigurationDialog ...   
+    """ 
+   
+    def __init__(self, name, **args):
+        self.datasetId = None
+        self.caption_data = ""
+        IVModuleConfigurationDialog.__init__( self, name, **args )
+                                  
+    @staticmethod   
+    def getSignature():
+        return [ ( String, 'captionData'), ]
+
+    def getValue(self):
+        return [ self.caption_data ]
+
+    def setValue( self, value ):
+        self.caption_data = str(value)
+
+    def createContent(self ):
+        """ createEditor() -> None
+        Configure sections       
+        """       
+        animMapTab = QWidget()        
+        self.tabbedWidget.addTab( animMapTab, 'Animation' )                                       
+        self.tabbedWidget.setCurrentWidget(animMapTab)
+        layout = QVBoxLayout()
+        animMapTab.setLayout( layout ) 
+        layout.setMargin(10)
+        layout.setSpacing(20)
+       
+        label_layout = QHBoxLayout()
+        label_layout.setMargin(5)
+        anim_label = QLabel( "Speed:"  )
+        label_layout.addWidget( anim_label  ) 
+        self.speedSlider = QSlider( Qt.Horizontal )
+        self.speedSlider.setRange( 0, self.maxSpeedIndex )
+        self.speedSlider.setSliderPosition( self.maxSpeedIndex )
+#        self.connect(self.speedSlider, SIGNAL('valueChanged()'), self.setDelay )
+        anim_label.setBuddy( self.speedSlider )
+        label_layout.addWidget( self.speedSlider  ) 
+        
+        layout.addLayout( label_layout )
+        
+        self.buttonLayout = QHBoxLayout()
+        self.buttonLayout.setMargin(5)
+        layout.addLayout(self.buttonLayout)
+        
+        self.runButton = QPushButton( 'Run', self )
+        self.runButton.setAutoDefault(False)
+        self.runButton.setFixedWidth(100)
+        self.buttonLayout.addWidget(self.runButton)
+        self.connect(self.runButton, SIGNAL('clicked(bool)'), self.run )
+
+        self.stepButton = QPushButton( 'Step', self )
+        self.stepButton.setAutoDefault(False)
+        self.stepButton.setFixedWidth(100)
+        self.buttonLayout.addWidget(self.stepButton)
+        self.connect(self.stepButton, SIGNAL('clicked(bool)'), self.step )
+
+        self.resetButton = QPushButton( 'Reset', self )
+        self.resetButton.setAutoDefault(False)
+        self.resetButton.setFixedWidth(100)
+        self.buttonLayout.addWidget(self.resetButton)
+        self.connect(self.resetButton, SIGNAL('clicked(bool)'), self.reset )
         
 class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     """

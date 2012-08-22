@@ -57,10 +57,17 @@ class QVTKClientWidget(QVTKWidget):
         QVTKWidget.__init__(self, parent, f )
         self.iRenderCount = 0
         self.iRenderPeriod = 10
+        self.current_button = QtCore.Qt.NoButton
+        self.current_pos = QtCore.QPoint( 50, 50 )
 
     def event(self, e): 
         if ENABLE_JOYSTICK and ( e.type() == ControlEventType ):   
-            self.processControllerEvent( e, [ self.width(), self.height() ] )  
+            self.processControllerEvent( e, [ self.width(), self.height() ] ) 
+        if e.type() == QtCore.QEvent.MouseButtonPress:     
+            self.current_button = e.button()  
+            self.current_pos = e.globalPos()   
+        elif e.type() == QtCore.QEvent.MouseButtonRelease: 
+            self.current_button = QtCore.Qt.NoButton
         return qt_super(QVTKClientWidget, self).event(e) 
     
     def processControllerEvent(self, event, size ):
@@ -230,6 +237,60 @@ class QVTKServerWidget( QVTKClientWidget ):
 #                            r.ResetCameraClippingRange()
 #                    cell.update()
 
+class CaptionEditor(QtGui.QDialog):
+    def __init__(self, caption, parent=None):
+        super(CaptionEditor, self).__init__(parent)
+        self.caption = caption
+        actor = self.getActor()
+        c = actor.GetProperty().GetColor()
+        a = actor.GetProperty().GetOpacity()
+        rgba = [ int(round(c[0]*255)), int(round(c[1]*255)), int(round(c[2]*255)), int(round(a*255)) ]
+        self.color = QColor ( rgba[0], rgba[1], rgba[2], rgba[3] )
+ 
+        captionLabel = QtGui.QLabel("Caption Text: ")
+        self.captionTextBox = QtGui.QLineEdit( actor.GetCaption(), self )
+
+        self.chooseColorButton = QtGui.QPushButton( 'Choose Color', self )
+        self.chooseColorButton.setAutoFillBackground(True) 
+        self.connect(self.chooseColorButton, SIGNAL('clicked(bool)'), self.chooseColor )
+                    
+        buttonBox = QtGui.QDialogButtonBox( QtGui.QDialogButtonBox.Ok | QtGui.QDialogButtonBox.Close )
+
+        grid = QGridLayout()
+        grid.addWidget(captionLabel, 0, 0)
+        grid.addWidget(self.captionTextBox, 0, 1)
+        grid.addWidget(self.chooseColorButton, 1, 0, 1, 2)
+        grid.addWidget(buttonBox, 2, 0, 1, 2)
+        self.setLayout(grid)
+
+        self.connect( buttonBox, QtCore.SIGNAL("accepted()"), self.accept )
+        self.connect( buttonBox, QtCore.SIGNAL("rejected()"), self.reject )
+        self.setWindowTitle("Caption Editor")
+        self.updateButtonColor()  
+        
+    def getActor(self):
+        return self.caption.GetRepresentation().GetCaptionActor2D() 
+    
+    def updateButtonColor(self):
+        pal =  QtGui.QPalette( self.color )
+#        self.chooseColorButton.setAutoFillBackground(True)
+        self.chooseColorButton.setPalette(pal)
+#        self.chooseColorButton.palette().setColor( QtGui.QPalette.ButtonText, self.color )
+           
+    def chooseColor(self):
+        self.color = QtGui.QColorDialog.getColor ( self.color, self, "Choose Caption Color", QtGui.QColorDialog.ShowAlphaChannel ) 
+        self.updateButtonColor()
+                
+    def accept( self ):
+        actor = self.getActor()
+        actor.SetCaption( str( self.captionTextBox.text() ) )
+        actor.GetProperty().SetColor ( self.color.redF(), self.color.greenF(), self.color.blueF() )
+        actor.GetProperty().SetOpacity ( self.color.alphaF() )
+        super(CaptionEditor, self).accept()   
+
+    def reject( self ):
+        super(CaptionEditor, self).reject()   
+
 class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 
     def __init__( self, mid, **args ):
@@ -251,17 +312,112 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.builtCellWidget = False
         self.logoActor = None
         self.logoVisible = True
+        self.captions = {}  
+        self.logoRepresentation = None 
+        self.captionKey = 0
+
+#        self.addConfigurableGuiFunction( 'caption', CaptionConfigurationDialog, 'k', label='Add/Remove Caption', setValue=self.editCaptions, getValue=self.getCaptions, layerDependent=True )
+
+    def addCaption( self, key, **args ):
+        existing_caption = self.captions.get(key,None)
+        if not existing_caption:
+            text = args.get('text', "Right-click to edit" )            
+            color= args.get( 'color',  [ 0, 0, 1 ] )
+#            pos = QtCore.QPointF( self.cellWidget.current_pos )
+
+            captionRep =  vtk.vtkCaptionRepresentation() 
+            captionWidget = vtk.vtkCaptionWidget()
+            captionWidget.SetInteractor(self.iren)
+            captionWidget.SetRepresentation(captionRep)
+            captionWidget.SelectableOn() 
+            captionWidget.ResizableOn() 
+            captionWidget.AddObserver( 'AnyEvent', self.captionObserver )
+            captionRep.SetPosition( 0.8, 0.8  )
+            captionRep.SetPosition2( 0.2, 0.05  )
+            captionRep.SetAnchorPosition( [ 20.0, 20.0, 0.0 ] )
+            captionActor = captionRep.GetCaptionActor2D() 
+            captionWidget.GetEventTranslator().SetTranslation( vtk.vtkCommand.RightButtonPressEvent, vtk.vtkWidgetEvent.Select )
+            captionWidget.GetEventTranslator().SetTranslation( vtk.vtkCommand.RightButtonReleaseEvent, vtk.vtkWidgetEvent.EndSelect )
+            
+            captionActor.SetCaption( text )
+            captionActor.BorderOn()
+#            captionActor.SetAttachmentPoint(  pos.x(), pos.y(), 0.0  ) 
+            captionActor.GetCaptionTextProperty().BoldOff()
+            captionActor.GetCaptionTextProperty().ItalicOff()
+            captionActor.GetCaptionTextProperty().ShadowOff()
+            captionActor.GetCaptionTextProperty().SetFontFamilyToArial()
+            captionActor.GetCaptionTextProperty().SetJustificationToCentered()
+            captionActor.ThreeDimensionalLeaderOff()
+            captionActor.LeaderOn()
+            captionActor.SetLeaderGlyphSize( 10.0 )
+            captionActor.GetProperty().SetColor ( color[0], color[1], color[2] )
+            captionActor.SetMaximumLeaderGlyphSize( 10.0 )
+            self.captions[key] = captionWidget
+            captionWidget.On()
+            return captionWidget
+        
+    def deleteCaption( self, caption ):
+        caption.Off()
+        self.render() 
+#        for item in self.captions.items():
+#            if item[1] == caption:
+#                self.captions[ item[0] ] = None
+        
+    def editCaption( self, caption ):
+        editor = CaptionEditor( caption )
+        editor.exec_()
+        self.render() 
+
+    def captionObserver (self, caller, event ):
+        if self.cellWidget:
+            if str(event) == "StartInteractionEvent":
+                if self.cellWidget.current_button == QtCore.Qt.RightButton:
+                    caller.GetRepresentation().MovingOff() 
+                    captionActionMenu = QtGui.QMenu()
+                    captionActionMenu.addAction("Edit")
+                    captionActionMenu.addAction("Delete")
+                    selectedItem = captionActionMenu.exec_( self.cellWidget.current_pos )
+                    if selectedItem:
+                        if   selectedItem.text() == "Edit":    self.editCaption( caller )           
+                        elif selectedItem.text() == "Delete":  self.deleteCaption( caller )           
+#            print " Caption Observer: event = %s, button = %s " % ( str( event ), str( self.cellWidget.current_button ) )
 
     def getSheetTabWidget( self ):   
         return self.cellWidget.findSheetTabWidget() if self.cellWidget else None
     
-    def toggleLogoVisibility( self ):
-        self.logoVisible = not self.logoVisible 
+    def toggleLogoVisibility1( self ):
+        self.logoVisible = not self.logoVisible
         self.logoActor.SetVisibility( self.logoVisible ) 
         self.logoActor.Modified()
         self.renWin.Render() 
-    
+
+    def toggleLogoVisibility( self ):
+        if self.logoRepresentation:
+            self.logoVisible = not self.logoVisible
+            if self.logoVisible: self.logoWidget.On()
+            else: self.logoWidget.Off()
+            self.renWin.Render() 
+
     def addLogo(self):
+        if self.logoRepresentation == None:
+            reader = vtk.vtkJPEGReader()
+            reader.SetFileName( defaultLogoFile )
+            logo_input = reader.GetOutput()
+            logo_input.Update()
+            self.logoRepresentation = vtk.vtkLogoRepresentation()
+            self.logoRepresentation.SetImage(logo_input)
+            self.logoRepresentation.ProportionalResizeOn ()
+            self.logoRepresentation.SetPosition( 0.82, 0.0 )
+            self.logoRepresentation.SetPosition2( 0.18, 0.08 )
+            self.logoRepresentation.GetImageProperty().SetOpacity( 0.9 )
+            self.logoRepresentation.GetImageProperty().SetDisplayLocationToBackground() 
+            self.logoWidget = vtk.vtkLogoWidget()
+            self.logoWidget.SetInteractor( self.iren )
+            self.logoWidget.SetRepresentation(self.logoRepresentation)
+            self.logoWidget.On()
+            self.render() 
+     
+    def addLogo1(self):
         upper_corner = False
         if len(self.renderers) and self.renWin:
             if self.logoActor == None:
@@ -303,7 +459,15 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def onRender( self, caller, event ):
         self.addLogo()
         PersistentVisualizationModule.onRender( self, caller, event  )
-            
+
+    def processKeyEvent( self, key, caller=None, event=None ):            
+        if (  key == 'k'  ):
+            self.addCaption( self.captionKey )
+            self.captionKey += 1
+            self.render() 
+        else:
+           PersistentVisualizationModule.processKeyEvent( self, key, caller, event ) 
+                        
     def adjustSheetDimensions(self, row, col ):
         sheetTabWidget = getSheetTabWidget()
         ( rc, cc ) = sheetTabWidget.getDimension()
