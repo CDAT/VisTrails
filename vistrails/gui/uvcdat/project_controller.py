@@ -491,7 +491,7 @@ class ProjectController(QtCore.QObject):
                 not_found = True
         if not_found:
             from packages.uvcdat.init import Variable
-            from packages.pvclimate.pvvariable.init import PVVariable
+            from packages.pvclimate.pvvariable import PVVariable
             from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
             helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
             pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
