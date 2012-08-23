@@ -315,8 +315,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.captions = {}  
         self.logoRepresentation = None 
         self.captionKey = 0
-
-#        self.addConfigurableGuiFunction( 'caption', CaptionConfigurationDialog, 'k', label='Add/Remove Caption', setValue=self.editCaptions, getValue=self.getCaptions, layerDependent=True )
+        self.addConfigurableMethod( 'addCaption', self.editCaption, 'k', label='Add Caption' )
 
     def addCaption( self, key, **args ):
         existing_caption = self.captions.get(key,None)
@@ -363,7 +362,9 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 #            if item[1] == caption:
 #                self.captions[ item[0] ] = None
         
-    def editCaption( self, caption ):
+    def editCaption( self, caption=None ):
+        if caption == None:
+            caption = self.captions[ self.captionKey ]
         editor = CaptionEditor( caption )
         editor.exec_()
         self.render() 
@@ -460,13 +461,17 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.addLogo()
         PersistentVisualizationModule.onRender( self, caller, event  )
 
-    def processKeyEvent( self, key, caller=None, event=None ):            
+    def processKeyEvent( self, key, caller=None, event=None ): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
         if (  key == 'k'  ):
-            self.addCaption( self.captionKey )
-            self.captionKey += 1
-            self.render() 
+            if self.iren in DV3DPipelineHelper.getActiveIrens() :
+                self.captionKey += 1
+                self.addCaption( self.captionKey )
+                state =  self.getInteractionState( key )
+                if state <> None: self.updateInteractionState( state, self.isAltMode  )                 
+                self.render() 
         else:
-           PersistentVisualizationModule.processKeyEvent( self, key, caller, event ) 
+            PersistentVisualizationModule.processKeyEvent( self, key, caller, event ) 
                         
     def adjustSheetDimensions(self, row, col ):
         sheetTabWidget = getSheetTabWidget()
