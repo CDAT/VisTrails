@@ -160,6 +160,7 @@ class ProjectionWidget(LinkedWidget):
         for (xy, idd) in zip(self.matrix.values, self.matrix.ids):
             if region.contains(xy[0], xy[1]):
                 selectedIds.append(idd)
+        self.updateSelection(selectedIds)
         CoordinationManager.Instance().notifyModules(self, selectedIds)
 
 class ProjectionView(SpreadsheetCell):

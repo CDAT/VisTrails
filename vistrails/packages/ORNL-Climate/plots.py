@@ -24,15 +24,27 @@ class SeriesWidget(LinkedWidget):
     def draw(self, fig):
         (series, title, xlabel, ylabel, showLegend) = self.inputPorts
         
-        ll = pylab.plot(series.values.T)
+        pylab.clf()
+        ll = pylab.plot(series.values.T, linewidth=1)
+        if any(self.selectedIds): 
+            for pos, _ids in enumerate(series.ids):
+                if _ids in self.selectedIds:
+                    ll[pos].set_linewidth(3)
+                else:
+                    ll[pos].set_linestyle('-.')
         pylab.xlabel(xlabel)
         pylab.ylabel(ylabel)
 
         if showLegend:
-            pylab.legend(pylab.gca().get_lines(), ll, 
+            pylab.legend(pylab.gca().get_lines(),
+                         series.labels,
                          numpoints=1, prop=dict(size='small'), loc='upper right')
                 
         self.figManager.canvas.draw()
+
+    def updateSelection(self, selectedIds):
+        self.selectedIds = selectedIds
+        self.updateContents();
     
     def onselect(self, eclick, erelease):
         left, bottom = min(eclick.xdata, erelease.xdata), min(eclick.ydata, erelease.ydata)
@@ -96,6 +108,10 @@ class DendrogramWidget(LinkedWidget):
         pylab.tight_layout(pad=0.4)
 
         self.figManager.canvas.draw()
+
+    def updateSelection(self, selectedIds):
+        self.selectedIds = selectedIds
+        self.updateContents();
     
     def onselect(self, eclick, erelease):
         left, bottom = min(eclick.xdata, erelease.xdata), min(eclick.ydata, erelease.ydata)
@@ -174,6 +190,10 @@ class TaylorDiagramWidget(LinkedWidget):
                        numpoints=1, prop=dict(size='small'), loc='upper right')
         fig.suptitle(title, size='x-large') # Figure title
         self.figManager.canvas.draw()
+
+    def updateSelection(self, selectedIds):
+        self.selectedIds = selectedIds
+        self.updateContents();
     
     def onselect(self, eclick, erelease):
         left, bottom = min(eclick.xdata, erelease.xdata), min(eclick.ydata, erelease.ydata)
@@ -184,7 +204,8 @@ class TaylorDiagramWidget(LinkedWidget):
         for (x, y, idd) in zip(self.Xs, self.Ys, self.stats.ids):
             if region.contains(x, y):
                 selectedIds.append(idd)
-        CoordinationManager.Instance().notifyModules(selectedIds)
+        self.updateSelection(selectedIds)
+        CoordinationManager.Instance().notifyModules(self, selectedIds)
 
 
 class TaylorDiagram(SpreadsheetCell):
