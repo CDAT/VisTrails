@@ -121,7 +121,7 @@ class ColorMapManager():
     def load_lut(self, value=None):
         if( value <> None ): self.cmap_name = str( value )
         hue_range = None
-#        print " Load LUT: %s " % self.cmap_name  
+#        print " --> Load LUT: %s " % self.cmap_name  
        
         if self.cmap_name == 'file':
             if self.file_name:

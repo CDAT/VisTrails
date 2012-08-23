@@ -15,7 +15,7 @@ from core.interpreter.default import get_default_interpreter as getDefaultInterp
 from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
 from packages.vtk.base_module import vtkBaseModule
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
-from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
+# from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
 from packages.vtDV3D.PersistentModule import * 
 from packages.vtDV3D.vtUtilities import *
         
@@ -32,8 +32,8 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         self.planeWidget = None
         self.glyphDecimationFactor = [ 1.0, 5.0 ] 
         self.primaryInputPort = 'volume'
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'glyphScale', 'T', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, units=self.units, bound=False  )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True )
+        self.addConfigurableLevelingFunction( 'glyphScale', 'T', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, bound=False  )
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False  )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
 
@@ -302,12 +302,12 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         PersistentVisualizationModule.__init__( self, mid, **args )
         self.glyphScale = 1.0 
         self.glyphRange = 1.0
-        self.glyphDecimationFactor = [ 10.0, 10.0 ] 
+        self.glyphDecimationFactor = [ 1.0, 10.0 ] 
         self.glyph = None
         self.useGlyphMapper = True 
         self.planeWidget = None    
         self.primaryInputPort = 'volume'
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units='data' )
         self.addConfigurableLevelingFunction( 'glyphScale', 'T', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, windowing=False, bound=False  )
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False  )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
@@ -650,7 +650,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.streamer = None
         self.planeWidget = None
         self.primaryInputPort = 'volume'
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units='data' )
         self.addConfigurableLevelingFunction( 'streamerScale', 'T', label='Streamer Scale', setLevel=self.setStreamerScale, getLevel=self.getStreamerScale, layerDependent=True, windowing=False, bound=False )
         self.addConfigurableLevelingFunction( 'streamerDensity', 'G', label='Streamer Density', setLevel=self.setStreamerDensity, getLevel=self.getStreamerDensity, layerDependent=True, windowing=False, bound=False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )

@@ -6,63 +6,116 @@ import pickle
 
 # Qt is required for widget
 from PyQt4 import QtCore, QtGui
+
+# Vistails import
+import core.modules.module_registry
 from gui.modules.constant_configuration import ConstantWidgetMixin
-from core.modules.basic_modules import new_constant, init_constant, Module
+from core.modules.basic_modules import new_constant, init_constant, Module, Constant
+from packages.uvcdat.init import Variable
+from core.utils import InstanceObject
+from packages.pvclimate import identifier
+from gui.uvcdat.pvreadermanager import PVReaderManager
 
 # Not sure why we need these
 import math
 
-class PVVariable(object):
-    def __init__(self):
-        self._reader = 0
-        self._variable = ''
-        self._variableType = ''
-        
-    def set_reader(self, reader):
-        self._reader = reader
-        
+# Import paraview
+import paraview.simple as pvsp
+
+def expand_port_specs(port_specs, pkg_identifier=None):
+    if pkg_identifier is None:
+        pkg_identifier = identifier
+    reg = core.modules.module_registry.get_module_registry()
+    out_specs = []
+    for port_spec in port_specs:
+        if len(port_spec) == 2:
+            out_specs.append((port_spec[0],
+                              reg.expand_port_spec_string(port_spec[1],
+                                                          pkg_identifier)))
+        elif len(port_spec) == 3:
+            out_specs.append((port_spec[0],
+                              reg.expand_port_spec_string(port_spec[1],
+                                                          pkg_identifier),
+                              port_spec[2]))
+    return out_specs
+
+class PVVariable(Variable):
+    _input_ports = expand_port_specs([
+         ("readerParameters", "basic:Dictionary"),
+         ("vartype", "basic:String")])
+
+    _output_ports = expand_port_specs([("self", "PVVariable")])
+
+    def __init__(self, filename=None, name=None, vartype=None, readerParameters=None):
+        Variable.__init__(self, filename, None, None, name, False)
+        self.varname = name
+        self.vartype = vartype
+        self.readerParameters = readerParameters
+
+    @staticmethod
+    def translate_to_python(self, x):
+      return pickle.loads(self.decode('hex'))
+
+    @staticmethod
+    def translate_to_string(v):
+      return pickle.dumps(self).encode('hex')
+
+    @staticmethod
+    def validate(x):
+      isinstance(self, PVVariable)
+
+    def compute(self):
+        self.filename = self.forceGetInputFromPort("filename")
+        self.name = self.forceGetInputFromPort("name")
+        self.readerParameters = self.forceGetInputFromPort("readerParameters")
+        self.varname = self.name
+        self.vartype = self.forceGetInputFromPort("vartype")
+        self.setResult("self", self)
+
+    def set_reader_parameters(self, readerParameters):
+        self.readerParameters = readerParameters
+
     def get_reader(self):
-        return self._reader
-    
+        return PVReaderManager.get_reader(self.readerParameters)
+
     def set_variable_name(self, variableName):
-        self._variableName = variableName
-        
+        self.varname = variableName
+        self.name = variableName
+
     def get_variable_name(self):
-        return self._variableName
-    
+        return self.varname
+
     def set_variable_type(self, type):
-        # @NOTE: Make a check here if the type is of
-        # CELL or POINTS type
-        self._variableType = type
-        
+        self.vartype = type
+
     def get_variable_type(self):
-        return self._variableType
+        return self.vartype
 
-default_pvv = PVVariable()    
-    
-class PVVariableWidget(QtGui.QWidget, ConstantWidgetMixin):
-    def __init__(self, param, parent=None):
-        QtGui.QWidget.__init__(self, parent)
-        ConstantWidgetMixin.__init__(self, param.strValue)
-        if not param.strValue:
-            self._tf = copy.copy(default_pvv)
-        else:
-            self._tf = pickle.loads(param.strValue.decode('hex'))
+    def to_module(self, controller):
+        module = Variable.to_module(self, controller, identifier)
+        functions = []
+        if self.vartype is not None:
+            functions.append(("vartype", [self.vartype]))
+        if self.readerParameters is not None:
+            functions.append(("readerParameters", [self.readerParameters]))
 
-    def contents(self):
-        return pickle.dumps(self).encode('hex')    
-    
-    
-string_conversion = staticmethod(lambda x: pickle.dumps(x).encode('hex'))
-conversion = staticmethod(lambda x: pickle.loads(x.decode('hex')))
-validation = staticmethod(lambda x: isinstance(x, PVVariableConstant))    
-PVVariableConstant = new_constant('PVVariable',
-                                  conversion,
-                                  default_pvv,
-                                  validation,
-                                  PVVariableWidget)
+        functions = controller.create_functions(module, functions)
+        for f in functions:
+            module.add_function(f)
+        return module
 
-PVVariableConstant.translate_to_string = string_conversion
-    
-def initialize():
-    init_constant(PVVariableConstant)
+    @staticmethod
+    def from_module(module):
+        from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
+        var = Variable.from_module(module)
+        readerParameters = PlotPipelineHelper.get_value_from_function_as_str(module,
+                                                                             'readerParameters')
+        var.set_reader_parameters(readerParameters)
+
+        return var
+
+def register_self():
+    registry = core.modules.module_registry.get_module_registry()
+    registry.add_module(PVVariable)
+
+

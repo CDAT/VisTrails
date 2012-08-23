@@ -38,6 +38,7 @@ from core import debug
 from core.modules.basic_modules import File, String, Boolean
 from core.modules.vistrails_module import Module, NotCacheable, InvalidOutput
 from plot import MplPlot, MplPlotConfigurationWidget
+from cdms_data import CDMSData
 import time
 import urllib
 
@@ -190,4 +191,4 @@ def initialize(*args, **keywords):
         reg.add_module(MplFigureCell)
         reg.add_input_port(MplFigureCell, 'FigureManager', MplFigureManager)
 
-_modules = [MplScatterplot, MplHistogram]
+_modules = [MplScatterplot, MplHistogram, CDMSData]

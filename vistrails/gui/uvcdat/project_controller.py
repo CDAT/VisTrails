@@ -31,7 +31,7 @@
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
 ###############################################################################
-import os, os.path
+import os, os.path, sys, traceback
 import copy
 import uuid
 from PyQt4 import QtCore
@@ -42,7 +42,7 @@ from core.db.io import load_vistrail
 from core.db.locator import FileLocator
 from core import debug
 from core.modules.module_registry import get_module_registry
-from core.utils import InstanceObject
+from core.utils import InstanceObject, UnimplementedException
 from core.uvcdat.variable import VariableWrapper
 from core.uvcdat.plot_registry import get_plot_registry
 from core.uvcdat.plotmanager import get_plot_manager
@@ -68,6 +68,7 @@ class ProjectController(QtCore.QObject):
         self.sheet_map = {}
         self.plot_registry = get_plot_registry()
         self.plot_manager = get_plot_manager()
+        self.current_cell_coords = [ -1, -1 ]
         
     def add_defined_variable(self, var):
         self.defined_variables[var.name] = var
@@ -280,7 +281,7 @@ class ProjectController(QtCore.QObject):
                 
     def emit_defined_variable(self, var):
         from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
-        from packages.uvcdat_pv.init import PVVariable
+        from packages.pvclimate.pvvariable import PVVariable
         from gui.application import get_vistrails_application
         _app = get_vistrails_application()
         if isinstance(var, CDMSVariable):
@@ -399,10 +400,9 @@ class ProjectController(QtCore.QObject):
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
-                if cell.is_ready():
-                    self.reset_workflow(cell)
-                cell.add_variable(varName)
-                self.check_update_cell(sheetName,row,col)
+                update = cell.is_ready()
+                replaced = cell.add_variable(varName)
+                self.check_update_cell(sheetName,row,col,update)
             else:
                 self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[varName],
                                                                       plots=[],
@@ -491,7 +491,7 @@ class ProjectController(QtCore.QObject):
                 not_found = True
         if not_found:
             from packages.uvcdat.init import Variable
-            from packages.uvcdat_pv.init import PVVariable
+            from packages.pvclimate.pvvariable.init import PVVariable
             from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
             helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
             pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
@@ -519,7 +519,7 @@ class ProjectController(QtCore.QObject):
                     for mv in mvars:
                         if mv in computed_ops:
                             #this means this operation uses another operation that
-                            #was already processed. We need ony to create a new variable
+                            #was already processed. We need only to create a new variable
                             # and associate the computed cdms variable
                             var =  CDMSVariable(filename=None,name=computed_ops[mv].varname) 
                             var.var = computed_ops[mv].to_python()
@@ -593,7 +593,10 @@ class ProjectController(QtCore.QObject):
         self.emit(QtCore.SIGNAL("sheet_size_changed"), sheet, dim)
 
     def current_cell_changed(self, sheetName, row, col):
-        self.update_plot_configure(sheetName, row, col)
+        if ( row <> self.current_cell_coords[0] ) or ( col <> self.current_cell_coords[1] ):
+            self.update_plot_configure(sheetName, row, col)
+            self.current_cell_coords = [ row, col ]
+        
 
     def plot_was_dropped(self, info):
         """plot_was_dropped(info: (plot, sheetName, row, col) """
@@ -601,10 +604,9 @@ class ProjectController(QtCore.QObject):
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
-                if cell.is_ready():
-                    self.reset_workflow(cell)
+                update = cell.is_ready()
                 self.sheet_map[sheetName][(row,col)].plots.append(plot)
-                self.check_update_cell(sheetName,row,col)
+                self.check_update_cell(sheetName,row,col, update)
             else:
                 self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
                                                                       plots=[plot],
@@ -623,8 +625,10 @@ class ProjectController(QtCore.QObject):
         ids = []
         for module in pipeline.module_list:
             ids.append(module.id)
-        action = self.vt_controller.delete_module_list(ids)
-        cell.current_parent_version = action.id
+        if len(ids) > 0:
+            action = self.vt_controller.delete_module_list(ids)
+            if action is not None:
+                cell.current_parent_version = action.id
         
     def request_plot_execution(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row,col)]
@@ -698,17 +702,27 @@ class ProjectController(QtCore.QObject):
                                                 cell.current_parent_version,
                                                 cell.plots)
         
-    def check_update_cell(self, sheetName, row, col):
-        cell = self.sheet_map[sheetName][(row,col)]
-        if cell.is_ready():
-            self.update_cell(sheetName, row, col)
+    def check_update_cell(self, sheetName, row, col, reuse_workflow=False):
+        try:
+            cell = self.sheet_map[sheetName][(row,col)]
+            if cell.is_ready():
+                self.update_cell(sheetName, row, col, reuse_workflow)
+        except KeyError, err:
+            traceback.print_exc( 100, sys.stderr )
         
-    def update_cell(self, sheetName, row, col):
+    def update_cell(self, sheetName, row, col, reuse_workflow=False):
         cell = self.sheet_map[sheetName][(row,col)]
+        helper = CDMSPipelineHelper
+        # helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
         def get_var_module(varname):
             if varname not in self.computed_variables:
                 var = self.defined_variables[varname]
-                return var.to_module(self.vt_controller)
+                module = var.to_module(self.vt_controller)
+                self.vt_controller.change_selected_version(
+                    cell.current_parent_version)
+                self.vt_controller.add_module_action(module)
+                cell.current_parent_version = self.vt_controller.current_version
+                return module
             else:
                 (_vars, txt, st, name) = self.computed_variables[varname] 
                 opvar = None
@@ -717,14 +731,15 @@ class ProjectController(QtCore.QObject):
                 varms = [] 
                 for v in _vars:
                     varms.append(get_var_module(v))
-                
-                res = CDMSPipelineHelper.build_variable_operation_pipeline(self.vt_controller,
-                                                                            cell.current_parent_version,
-                                                                            varms, 
-                                                                            txt, 
-                                                                            st,
-                                                                            varname,
-                                                                            opvar)
+
+                build_op_pipeline = helper.build_variable_operation_pipeline
+                res = build_op_pipeline(self.vt_controller,
+                                        cell.current_parent_version,
+                                        varms,
+                                        txt,
+                                        st,
+                                        varname,
+                                        opvar)
                 if type(res) == type((1,)):
                     actions = res[1]
                     action = actions[-1]
@@ -734,7 +749,14 @@ class ProjectController(QtCore.QObject):
                 else:
                     varm = res
                 return varm
-                        
+        if not reuse_workflow:
+            self.reset_workflow(cell)
+        else:
+            helper_remove = helper.remove_variables_from_pipeline_action
+            action = helper_remove(self.vt_controller,
+                                   cell.current_parent_version)
+            if action:
+                cell.current_parent_version = action.id
         vars = []
         for v in cell.variables:
             vars.append(v)
@@ -745,18 +767,34 @@ class ProjectController(QtCore.QObject):
                 res = get_var_module(var)
                 var_modules.append(res)
             
-            # plot_module = plot.to_module(self.vt_controller)
-            self.update_workflow(var_modules, cell, sheetName, row, col)
+            self.update_workflow(var_modules, cell, sheetName, row, col, 
+                                 reuse_workflow)
             self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, 
                       None, cell.plots[0].package, cell.current_parent_version)
             
-    def update_workflow(self, var_modules, cell, sheetName, row, column):
+    def update_workflow(self, var_modules, cell, sheetName, row, column, 
+                        reuse_workflow=False):
         #Assuming that all plots in a cell are from the same package
         helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
-        action = helper.build_plot_pipeline_action(self.vt_controller, 
-                                                   cell.current_parent_version, 
-                                                   var_modules, cell.plots,
-                                                   row, column, cell.templates)
+        if not reuse_workflow:
+            action = helper.build_plot_pipeline_action(self.vt_controller, 
+                                                       cell.current_parent_version, 
+                                                       var_modules, cell.plots,
+                                                       row, column, cell.templates)
+        else:
+            try:
+                action = helper.update_plot_pipeline_action(self.vt_controller, 
+                                                            cell.current_parent_version,
+                                                            var_modules, cell.plots,
+                                                            row, column, cell.templates)
+            except UnimplementedException:
+                # the pipeline helper does not support replacing variables.
+                # we will call build_plot_pipeline_action but need to reset the workflow first
+                self.reset_workflow(cell)
+                action = helper.build_plot_pipeline_action(self.vt_controller, 
+                                                       cell.current_parent_version, 
+                                                       var_modules, cell.plots,
+                                                       row, column, cell.templates)
         #print '### setting row/column:', row, column
         #notice that at this point the action was already performed by the helper
         # we need only to update the current parent version of the cell and 
@@ -779,6 +817,7 @@ class ProjectController(QtCore.QObject):
                 cell.current_parent_version = action.id
                 if get_vistrails_configuration().uvcdat.autoExecute:
                     self.execute_plot(cell.current_parent_version)
+                    self.update_plot_configure(sheetName, row, col)
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
                       None, None, cell.plots[0].package, cell.current_parent_version)     
    

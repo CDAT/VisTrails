@@ -1011,7 +1011,9 @@ Please delete unused CDAT Cells in the spreadsheet.")
             cmd+=")"
             from gui.application import get_vistrails_application
             _app = get_vistrails_application()
-            _app.uvcdatWindow.record(cmd)
+            interactive = conf.check('interactiveMode')
+            if interactive:
+                _app.uvcdatWindow.record(cmd)
             self.canvas.plot(cgm,*args,**kwargs)
             
         if len(inputPorts) > 1:

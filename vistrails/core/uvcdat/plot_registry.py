@@ -160,6 +160,7 @@ class Plot(object):
                     self.filenum = config.getint('global', 'filenum')
                 if config.has_option('global', 'varnum'):
                     self.varnum = config.getint('global', 'varnum')
+                    print "   ------ Loaded plot %s, varnum = %d ------ " % ( self.name, self.varnum )
                 if config.has_option('global', 'workflow_tag'):
                     self.workflow_tag = config.get('global', 'workflow_tag')
 #                else:

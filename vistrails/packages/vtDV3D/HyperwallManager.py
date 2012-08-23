@@ -35,6 +35,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
 
     def setInteractionState( self, levelingState, altMode=False ):
         if self.isServer:
+            print " HyperwallManager- setInteractionState "
             sheetTabWidget = getSheetTabWidget()
             selected_cells = sheetTabWidget.getSelectedLocations()
             self.server.processInteractionState( self.deviceName, selected_cells, levelingState, altMode ) 
@@ -212,12 +213,13 @@ class HyperwallManagerSingleton(QtCore.QObject):
         
     def processInteractionEvent( self, name, event, screen_pos, screen_dims, camera_pos  ):
         if self.isServer:
+            print " processInteractionEvent: ", str(name), str(event)
             isKeyPress = ( event.type() == QtCore.QEvent.KeyPress )
             sheetTabWidget = getSheetTabWidget()
             selected_cells = sheetTabWidget.getSelectedLocations()
 #            selected_cells = [ screen_pos, ]  else sheetTabWidget.getSelectedLocations()
-#            print " Server processInteractionEvent, type = %s, leveling = %s, selected_cells = %s" % ( name, str(self.levelingState <> None), str(selected_cells) )
             if not isKeyPress:
+#                print " Server processInteractionEvent, type = %s, event = %s, device = %s, leveling = %s, selected_cells = %s" % ( name, str(event), self.deviceName, str(self.levelingState <> None), str(selected_cells) )
                 self.server.processInteractionEvent( self.deviceName, event, screen_dims, selected_cells, camera_pos  ) 
 #            if (event.type() == QtCore.QEvent.MouseButtonPress):
 #                self.screen_dims = screen_dims
@@ -229,7 +231,9 @@ class HyperwallManagerSingleton(QtCore.QObject):
     def processGuiCommand( self, command, activeCellsOnly=True  ):
         sheetTabWidget = getSheetTabWidget()
         selected_cells = sheetTabWidget.getSelectedLocations() if activeCellsOnly else None
-        if self.isServer: self.server.processGuiCommand( self.deviceName, command, selected_cells )        
+        if self.isServer: 
+            print " HyperwallManager- processGuiCommand "
+            self.server.processGuiCommand( self.deviceName, command, selected_cells )        
 
 #    def clearLevelingState(self):
 #        self.levelingState = None
@@ -239,7 +243,12 @@ class HyperwallManagerSingleton(QtCore.QObject):
 #            self.server.processInteractionEvent( self.deviceName, closing_event, self.screen_dims, selected_cells, self.intial_camera_pos  )  
 #            self.opening_event = None      
     
-singleton = HyperwallManagerSingleton()
+_singleton = None
+
+def getInstance():
+    global _singleton
+    if _singleton == None: _singleton = HyperwallManagerSingleton()
+    return _singleton
     
 def onExecute( ):
     pass

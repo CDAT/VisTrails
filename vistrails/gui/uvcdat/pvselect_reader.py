@@ -1,6 +1,7 @@
 from PyQt4 import QtCore, QtGui
 from ui_pvselect_reader import Ui_PVSelectReaderDialog
 from paraview.simple import *
+from pvreadermanager import PVReaderFactory
 
 class PVSelectReaderDialog(QtGui.QDialog, Ui_PVSelectReaderDialog):
     def __init__(self, parent=None):
@@ -40,7 +41,7 @@ class PVSelectReaderDialog(QtGui.QDialog, Ui_PVSelectReaderDialog):
           group = stringList.GetString(i)
           name = stringList.GetString(i+1)
           desc = stringList.GetString(i+2)
-
+          print group, name, desc
           lwItem = QtGui.QListWidgetItem(desc, self.readersListWidget)
           lwItem.setData(QtCore.Qt.UserRole, group)
           lwItem.setData(QtCore.Qt.UserRole+1, name)
@@ -50,13 +51,8 @@ class PVSelectReaderDialog(QtGui.QDialog, Ui_PVSelectReaderDialog):
       group = str(item.data(QtCore.Qt.UserRole).toString())
       name = str(item.data(QtCore.Qt.UserRole+1).toString())
             
-      prototype = servermanager.ProxyManager().GetPrototypeProxy(group, name)
-      xml_name = paraview.make_name_valid(prototype.GetXMLLabel())
-      reader_func = paraview.simple._create_func(xml_name, servermanager.sources)
-      if prototype.GetProperty("FileNames"):
-        self._currentReader = reader_func(FileNames=self._filename)
-      else:
-        self._currentReader = reader_func(FileName=self._filename)
+      self._currentReader = PVReaderFactory.create_reader(group, name, 
+                                                          self._filename)
         
       return self._currentReader
         

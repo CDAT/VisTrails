@@ -12,7 +12,7 @@ from core.interpreter.default import get_default_interpreter as getDefaultInterp
 from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
 from core.modules.vistrails_module import Module, InvalidOutput, ModuleError
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
-from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
+# from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
 from packages.vtDV3D.PersistentModule import * 
 from packages.vtDV3D.WorkflowModule import WorkflowModule
 from packages.vtDV3D.vtUtilities import *
@@ -51,14 +51,14 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.iOrientation = 0
         self.mfm = None
         self.cellWidget = None 
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getScalarRange, adjustRange=True, units=self.units )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getScalarRange, adjustRange=True, units='data' )
         
     def SliceObserver( self, caller, event ):
 #        print " SliceObserver: %s " % event
         self.drawImageData()
 
     def updateHyperwall(self):
-        HyperwallManager.singleton.executeCurrentWorkflow( self.moduleID )
+        HyperwallManager.getInstance().executeCurrentWorkflow( self.moduleID )
 
     def formatCoord( self, x, y ):
         numrows, numcols  = self.image_data.shape

@@ -289,7 +289,7 @@ class SpreadsheetWindow(QtGui.QMainWindow):
         tabController = self.get_current_tab_controller()
         tabController.setEditingMode(editing)
     
-    def configShow(self):
+    def configShow(self, show=False):
         """ configShow() -> None
         Read VisTrails setting and show the spreadsheet window accordingly
         
@@ -318,6 +318,8 @@ class SpreadsheetWindow(QtGui.QMainWindow):
                         break
             if not self.visApp.temp_configuration.interactiveMode:
                 self.shownConfig = True
+                if show:
+                    self.show()
                 return
             ### Maximize
             if self.visApp.temp_configuration.maximizeWindows:
@@ -458,6 +460,9 @@ class SpreadsheetWindow(QtGui.QMainWindow):
             self.echoCellEvents.append(e)
             return None
         tabController = self.get_current_tab_controller() 
+        if tabController is None:
+            self.addTabController("UV-CDAT")
+            tabController = self.get_current_tab_controller() 
         tabController.addPipeline(e.vistrail)
         cid = tabController.increasePipelineCellId(e.vistrail)
         pid = tabController.getCurrentPipelineId(e.vistrail)

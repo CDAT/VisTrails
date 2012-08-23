@@ -350,7 +350,7 @@ def getFunctionFromList( function_name, functionList ):
 
 def getFunction( mid, function_name, controller = None ):
     functionList = getFunctionFromList( mid, controller )
-    return getFunction( function_name, functionList )
+    return getFunction( function_name, functionList ) if functionList else None
 
 def translateToPython( parmRec ):
     if parmRec.type == 'Float':    return float( parmRec.strValue ) if parmRec.strValue else 0.0
@@ -422,7 +422,7 @@ def getDesignatedConnections( controller,  mid, portName, isDestinationPort = Tr
     return desig_connections
 
 def isCellModule( module ):
-    return  module.name in [ "MapCell3D", "ChartCell", "SlicePlotCell" ]
+    return  module.name in [ "MapCell3D", "ChartCell", "SlicePlotCell", "CloudCell3D" ]
 
 def getSheetTabWidget( sheet_index = -1 ):
     from packages.spreadsheet.spreadsheet_controller import spreadsheetController

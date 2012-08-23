@@ -35,6 +35,7 @@ import gui.uvcdat.uvcdat_rc
 import customizeUVCDAT
 import commandsRecorderWidget
 import preferencesWidget
+#import regriddingWidget
 import mainMenuWidget
 import mainToolbarWidget
 from colormapEditorWidget import QColormapEditor
@@ -60,6 +61,8 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.record = self.recorder.record
         self.preferences = preferencesWidget.QPreferencesDialog(self)
         self.preferences.hide()
+#        self.regridding = regriddingWidget.QRegriddingDialog(self)
+#        self.regridding.hide()
         ###########################################################
         # Init Menu Widget
         ###########################################################

@@ -7,7 +7,7 @@ Created on Mar 10, 2011
 import sys, time, threading, inspect
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-from core.modules.vistrails_module import Module, ModuleError
+from core.modules.vistrails_module import Module, ModuleError, NotCacheable
 from core.modules.module_registry import get_module_registry, ModuleRegistryException   
 from packages.vtDV3D import ModuleStore
 from packages.vtDV3D.InteractiveConfiguration import DV3DConfigurationWidget
@@ -15,7 +15,7 @@ from packages.vtDV3D.vtUtilities import *
 
 ################################################################################
 
-class WorkflowModule( Module ):
+class WorkflowModule( NotCacheable,  Module ):
       
     def __init__( self, **args ):
         Module.__init__(self) 
@@ -32,7 +32,12 @@ class WorkflowModule( Module ):
         self.pmod.dvCompute( wmod=self )
         end_t = time.time() 
         print " +----------------------------------{ Computed Module %s: time = %.3f }----------------------------------+ " % ( self.__class__.__name__, ( end_t-start_t ) )
-    
+
+    def refreshVersion(self): 
+        self.updatePersistentModule()
+        self.pmod.refreshVersion()
+        return self.pmod
+               
     @classmethod    
     def forceGetPersistentModule( klass, mid, **args ):
         module = ModuleStore.getModule( mid ) 

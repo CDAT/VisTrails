@@ -4,24 +4,30 @@ Created on Dec 17, 2010
 @author: tpmaxwel
 '''
 
-import vtk, sys, time, threading, inspect, gui
+import vtk, sys, time, threading, inspect, gui, traceback
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from core.modules.vistrails_module import Module, ModuleError
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.vtDV3D.InteractiveConfiguration import *
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
+from packages.vtDV3D import ModuleStore
 from db.domain import DBModule, DBAnnotation
 from packages.vtDV3D import HyperwallManager
 from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
 ReferenceTimeUnits = "days since 1900-1-1"
+MIN_LINE_LEN = 50
 
 moduleInstances = {}
 
 def CheckAbort(obj, event):
    if obj.GetEventPending() != 0:
        obj.SetAbortRender(1)
+       
+def getFloatStr( val ):
+    if ( type(val) == type(' ') ): return val
+    return "%.1f" % val
        
 def IsListType( val ):
     valtype = type(val)
@@ -31,7 +37,25 @@ def ExtendClassDocumentation( klass ):
     instance = klass()
     default_doc = "" if ( klass.__doc__ == None ) else klass.__doc__ 
     klass.__doc__ = " %s\n %s " % ( default_doc, instance.getConfigurationHelpText() )
- 
+
+def massageText( text, target_line_len=60 ):
+    text_lines = text.split('\n')
+    linelen = 0
+    for iLine in range(len(text_lines)):
+        line = text_lines[iLine]
+        linelen = len( line )
+        if linelen > target_line_len: 
+            line_segs = line.split('/')
+            seg_len = 0
+            for iSeg in range(len( line_segs )):
+                seg_len += len( line_segs[iSeg] )
+                if seg_len > target_line_len: break
+            text_lines[iLine] = '/'.join(line_segs[0:iSeg]) + '/\n' + '/'.join( line_segs[iSeg:-1] )  
+                         
+    if linelen < target_line_len: text_lines[-1] += (' '*(target_line_len-linelen)) 
+    rv = '\n'.join( text_lines )
+    print "PROCESSED TEXT: { %s }" % rv
+    return rv 
 ################################################################################      
 
 class AlgorithmOutputModule( Module ):
@@ -107,14 +131,16 @@ class PersistentModule( QObject ):
              
     def __init__( self, mid, **args ):
         QObject.__init__(self)
+        self.metadata = None
+        self.fieldData = None
         self.moduleID = mid
         self.pipeline = args.get( 'pipeline', None )
         self.units = ''
         self.taggedVersionMap = {}
+        self.persistedParameters = []
         self.versionTags = {}
         self.initVersionMap()
         self.datasetId = None
-        self.fieldData = None
         role = get_hyperwall_role( )
         self.isClient = ( role == 'hw_client' )
         self.isServer = ( role == 'hw_server' )
@@ -156,6 +182,19 @@ class PersistentModule( QObject ):
 #            if dataArray: return dataArray.GetValue(0)
 #        return 0
 
+    def getConfigFunctions( self, types=None ):
+        cmdList = []
+        for items in self.configurableFunctions.items():
+            cmd = items[1]
+            if types == None:
+                cmdList.append( cmd ) 
+            else:
+                for type in types:
+                    if cmd.type == type:
+                        cmdList.append( cmd ) 
+        return cmdList
+                        
+
     def getRangeBounds(self): 
         return self.rangeBounds  
         
@@ -186,6 +225,9 @@ class PersistentModule( QObject ):
         try:
             controller.add_annotation( (id, str(note)), self.moduleID ) 
         except: pass
+        
+    def getOutputRecord( self, ndim  ):
+        return None
     
     def setLabel( self, label ):      
         if self.isClient: return
@@ -257,14 +299,15 @@ class PersistentModule( QObject ):
         return str( self.__class__.__name__ )
         
     def dvCompute( self, **args ):
-        self.updateHyperwall()
         self.initializeInputs( **args )     
+        self.updateHyperwall()
         if self.input or self.inputModuleList or not self.requiresPrimaryInput:
             self.execute( **args )
             self.initializeConfiguration()
         elif self.requiresPrimaryInput:
             print>>sys.stderr, " Error, no input to module %s " % ( self.__class__.__name__ )
         self.persistLayerDependentParameters()
+        self.resetNavigation()
         
     def updateHyperwall(self):
         pass
@@ -373,6 +416,7 @@ class PersistentModule( QObject ):
         if var_md <> None:
             range = var_md.get( 'range', None )
             if range: 
+                print "\n ***************** ScalarRange[%d:%x] = %s, md[%d], var_md[%d] *****************  \n" % ( self.moduleID, id(self), str(range), id(metadata), id(var_md) )
                 self.scalarRange = list( range )
                 self.scalarRange.append( 1 )
                 if not self.seriesScalarRange:
@@ -382,7 +426,6 @@ class PersistentModule( QObject ):
                         self.seriesScalarRange[0] = range[0] 
                     if self.seriesScalarRange[1] < range[1]:
                         self.seriesScalarRange[1] = range[1] 
-#        print " --- Update scalar range = %s" % str( self.scalarRange  )
 
     
     def getLayerList(self):
@@ -399,49 +442,53 @@ class PersistentModule( QObject ):
     def getLayer( self ):
         return [ self.activeLayer, ]
     
+    def getMetadata( self, key = None ):
+        if not self.metadata: self.updateMetadata()
+        return self.metadata.get( key, None ) if key else self.metadata
+    
     def updateMetadata(self):
-        scalars = None
-        self.metadata = None
-        self.newDataset = False
-        if self.input <> None:
-            fd = self.input.GetFieldData() 
-            self.input.Update()
-            self.fieldData = self.input.GetFieldData()             
-        elif self.inputModule:
-            self.fieldData = self.inputModule.getFieldData() 
-
-        self.metadata = self.getMetadata()
-        
-        if self.metadata <> None:
-            self.rangeBounds = None 
-            self.setParameter( 'metadata', self.metadata )
-            self.roi = self.metadata.get( 'bounds', None )
+        if self.metadata == None:
+            scalars = None
+            self.newDataset = False
+            if self.input <> None:
+                fd = self.input.GetFieldData() 
+                self.input.Update()
+                self.fieldData = self.input.GetFieldData()             
+            elif self.inputModule:
+                self.fieldData = self.inputModule.getFieldData() 
+    
+            self.metadata = self.computeMetadata()
             
-            dsetId = self.metadata.get( 'datasetId', None )
-            self.datasetId = self.getAnnotation( "datasetId" )
-            if self.datasetId <> dsetId:
-                self.pipelineBuilt = False
-                self.newDataset = True
-                self.newLayerConfiguration = True
-                self.datasetId = dsetId
-                self.addAnnotation( "datasetId", self.datasetId )
-            
-            tval = self.metadata.get( 'timeValue', 0.0 )
-            self.timeValue = cdtime.reltime( float( tval ), ReferenceTimeUnits )               
-            dtype =  self.metadata.get( 'datatype', None )
-            scalars =  self.metadata.get( 'scalars', None )
-            self.rangeBounds = getRangeBounds( dtype )
-            title = self.metadata.get( 'title', None )
-            targs = title.split(':')
-            if len( targs ) == 1:
-                self.titleBuffer = "\n%s" % ( title )
-            elif len( targs ) > 1:
-                self.titleBuffer = "%s\n%s" % ( targs[1], targs[0] )
-#            self.persistParameterList( [ ( 'title' , [ self.titleBuffer ]  ), ] )
-
-            attributes = self.metadata.get( 'attributes' , None )
-            if attributes:
-                self.units = attributes.get( 'units' , '' )
+            if self.metadata <> None:
+                self.rangeBounds = None 
+                self.setParameter( 'metadata', self.metadata )
+                self.roi = self.metadata.get( 'bounds', None )
+                
+                dsetId = self.metadata.get( 'datasetId', None )
+                self.datasetId = self.getAnnotation( "datasetId" )
+                if self.datasetId <> dsetId:
+                    self.pipelineBuilt = False
+                    self.newDataset = True
+                    self.newLayerConfiguration = True
+                    self.datasetId = dsetId
+                    self.addAnnotation( "datasetId", self.datasetId )
+                
+                tval = self.metadata.get( 'timeValue', 0.0 )
+                self.timeValue = cdtime.reltime( float( tval ), ReferenceTimeUnits )               
+                dtype =  self.metadata.get( 'datatype', None )
+                scalars =  self.metadata.get( 'scalars', None )
+                self.rangeBounds = getRangeBounds( dtype )
+                title = self.metadata.get( 'title', None )
+                targs = title.split(':')
+                if len( targs ) == 1:
+                    self.titleBuffer = "\n%s" % ( title )
+                elif len( targs ) > 1:
+                    self.titleBuffer = "%s\n%s" % ( targs[1], targs[0] )
+    #            self.persistParameterList( [ ( 'title' , [ self.titleBuffer ]  ), ] )
+    
+                attributes = self.metadata.get( 'attributes' , None )
+                if attributes:
+                    self.units = attributes.get( 'units' , '' )
 #                        range = var_md.get( 'range', None )
 #                        if range: 
 #                            self.scalarRange = list( range )
@@ -450,6 +497,9 @@ class PersistentModule( QObject ):
 #        return scalars
     def getUnits():
         return self.units
+    
+    def getCDMSDataset(self):
+        return ModuleStore.getCdmsDataset( self.datasetId )
            
     def setActiveScalars( self ):
         pass
@@ -490,12 +540,15 @@ class PersistentModule( QObject ):
 
     def initializeInputs( self, **args ):
         isAnimation = args.get( 'animate', False )
+        self.metadata = None
         if self.allowMultipleInputs:
             try:
                 self.inputModuleList = self.getPrimaryInputList( **args )
                 self.inputModule = self.inputModuleList[0]
             except Exception, err:
-                raise ModuleError( self, 'Broken pipeline at input to module %s:\n (%s)' % ( self.__class__.__name__, str(err) ) )
+                print>>sys.stderr, 'Error: Broken pipeline at input to module %s:\n (%s)' % ( self.__class__.__name__, str(err) ) 
+                traceback.print_exc()
+                sys.exit(-1)
         else:
             inMod = self.getPrimaryInput( **args )
             if inMod: self.inputModule = inMod
@@ -505,11 +558,12 @@ class PersistentModule( QObject ):
             self.input =  self.inputModule.getOutput() 
 #            print " --- %s:initializeInputs---> # Arrays = %d " % ( self.__class__.__name__,  ( self.input.GetFieldData().GetNumberOfArrays() if self.input else -1 ) )
             
+            self.updateMetadata()  
             if isAnimation:
-                self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ReferenceTimeUnits )
+                tval = args.get( 'timeValue', None )
+                if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ReferenceTimeUnits )
                 self.fieldData = self.inputModule.getFieldData() 
             else:
-                self.updateMetadata()  
                 self.initializeLayers()
                 
             self.initializeScalarRange()
@@ -531,34 +585,54 @@ class PersistentModule( QObject ):
         return dataValue
     
     def getWorldCoords( self, image_coords ):
+        plotType = self.metadata[ 'plotType' ]                   
         world_coords = None
         try:
-            lat = self.metadata[ 'lat' ]
-            lon = self.metadata[ 'lon' ]
-            lev = self.metadata[ 'lev' ]
-            world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], lev[ image_coords[2] ] ]            
+            if plotType == 'zyt':
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                timeAxis = self.metadata[ 'time' ]
+                tval = timeAxis[ image_coords[2] ]
+                relTimeValue = cdtime.reltime( float( tval ), timeAxis.units ) 
+                timeValue = str( relTimeValue.tocomp() )          
+                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), timeValue ]   
+            else:         
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                lev = self.metadata[ 'lev' ]
+                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), getFloatStr(lev[ image_coords[2] ]) ]   
         except:
             gridSpacing = self.input.GetSpacing()
             gridOrigin = self.input.GetOrigin()
-            world_coords = [ (gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
+            world_coords = [ getFloatStr(gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
         return world_coords
 
     def getWorldCoord( self, image_coord, iAxis ):
+        plotType = self.metadata[ 'plotType' ]                   
+        axisNames = [ 'Longitude', 'Latitude', 'Time' ] if plotType == 'zyt'  else [ 'Longitude', 'Latitude', 'Level' ]
         try:
-            axes = [ 'lon', 'lat', 'lev' ]
-            return self.metadata[ axes[iAxis] ][ image_coord ]
+            axes = [ 'lon', 'lat', 'time' ] if plotType == 'zyt'  else [ 'lon', 'lat', 'lev' ]
+            world_coord = self.metadata[ axes[iAxis] ][ image_coord ]
+            if ( plotType == 'zyt') and  ( iAxis == 2 ):
+                timeAxis = self.metadata[ 'time' ]     
+                timeValue = cdtime.reltime( float( world_coord ), timeAxis.units ) 
+                world_coord = str( timeValue.tocomp() )          
+            return axisNames[iAxis], getFloatStr( world_coord )
         except:
-            gridSpacing = self.input.GetSpacing()
-            gridOrigin = self.input.GetOrigin()
-            return (gridOrigin[iAxis] + image_coord*gridSpacing[iAxis]) 
+            if (plotType == 'zyx') or (iAxis < 2):
+                gridSpacing = self.input.GetSpacing()
+                gridOrigin = self.input.GetOrigin()
+                return axes[iAxis], getFloatStr( gridOrigin[iAxis] + image_coord*gridSpacing[iAxis] ) 
+            return axes[iAxis], ""
                 
     def getDataValues( self, image_value_list ):
         if not self.scalarRange: 
             raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
+        dr = ( self.rangeBounds[1] - self.rangeBounds[0] )
         data_values = []
         for image_value in image_value_list:
-            sval = ( image_value - self.rangeBounds[0] ) / ( self.rangeBounds[1] - self.rangeBounds[0] )
+            sval = 0.0 if ( dr == 0.0 ) else ( image_value - self.rangeBounds[0] ) / dr
             dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
             data_values.append( dataValue )
         return data_values
@@ -567,7 +641,8 @@ class PersistentModule( QObject ):
         if not self.scalarRange: 
             raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
-        sval = ( data_value - valueRange[0] ) / ( valueRange[1] - valueRange[0] )
+        dv = ( valueRange[1] - valueRange[0] )
+        sval = 0.0 if ( dv == 0.0 ) else ( data_value - valueRange[0] ) / dv 
         imageValue = self.rangeBounds[0] + sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
         return imageValue
 
@@ -575,17 +650,20 @@ class PersistentModule( QObject ):
         if not self.scalarRange: 
             raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
+        dv = ( valueRange[1] - valueRange[0] )
         imageValues = []
         for data_value in data_value_list:
-            sval = ( data_value - valueRange[0] ) / ( valueRange[1] - valueRange[0] )
+            sval = 0.0 if ( dv == 0.0 ) else ( data_value - valueRange[0] ) / dv
             imageValue = self.rangeBounds[0] + sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
             imageValues.append( imageValue )
+        print "\n *****************  GetImageValues[%d:%x]: data_values = %s, range = %s, imageValues = %s **************** \n" % ( self.moduleID, id(self), str(data_value_list), str(self.scalarRange), str(imageValues) )
         return imageValues
 
     def scaleToImage( self, data_value ):
         if not self.scalarRange: 
             raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
-        sval = data_value / ( self.scalarRange[1] - self.scalarRange[0] )
+        dv = ( self.scalarRange[1] - self.scalarRange[0] )
+        sval = 0.0 if ( dv == 0.0 ) else data_value / dv
         imageScaledValue =  sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
         return imageScaledValue
 
@@ -639,7 +717,8 @@ class PersistentModule( QObject ):
             enc_mdata = encodeToString( metadata )
             dataVector.InsertNextValue( enc_mdata  )
 
-    def getMetadata( self, metadata = {}, port=None  ):
+    def computeMetadata( self, metadata = {}, port=None  ):
+        if not self.fieldData: self.initializeMetadata() 
         if self.fieldData:
             md = extractMetadata( self.fieldData )
             if md: metadata.update( md )
@@ -668,7 +747,7 @@ class PersistentModule( QObject ):
         self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, pmod=self, **args )
                         
     def addConfigurableGuiFunction(self, name, guiClass, key, **args):
-        isActive = not HyperwallManager.singleton.isClient
+        isActive = not HyperwallManager.getInstance().isClient
         guiCF = GuiConfigurableFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
 
@@ -691,7 +770,7 @@ class PersistentModule( QObject ):
             
     def applyConfiguration(self, **args ):
         for configFunct in self.configurableFunctions.values():
-            configFunct.applyParameter( self, **args  )
+            configFunct.applyParameter( **args  )
             
 #    def setParameterInputsEnabled( self, isEnabled ):
 #        for configFunct in self.configurableFunctions.values():
@@ -702,7 +781,8 @@ class PersistentModule( QObject ):
     
                   
     def startConfiguration( self, x, y, config_types ):
-        if (self.InteractionState <> None) and not self.configuring:
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
+        if (self.InteractionState <> None) and not self.configuring and DV3DPipelineHelper.isLevelingConfigMode():
             configFunct = self.configurableFunctions[ self.InteractionState ]
             if configFunct.type in config_types:
                 self.configuring = True
@@ -712,13 +792,12 @@ class PersistentModule( QObject ):
                     print " ~~~~~~~~~ Set Interactor Style: Configuration  ~~~~~~~~~  "
                     if (configFunct.type == 'leveling'): self.getLabelActor().VisibilityOn()
     
-    def isActive( self ):
-        pipeline = self.getCurentPipeline()
-        return ( self.moduleID in pipeline.modules )
-
     def updateAnimation( self, relTimeValue, textDisplay=None ):
         self.dvUpdate( timeValue=relTimeValue, animate=True )
         if textDisplay <> None:  self.updateTextDisplay( textDisplay )
+        
+    def stopAnimation( self ):
+        self.resetNavigation()
                
     def updateConfigurationObserver( self, parameter_name, new_parameter_value, *args ):
         try:
@@ -791,16 +870,18 @@ class PersistentModule( QObject ):
         self.updateLeveling( x, y, wsize )
                 
     def updateLeveling( self, x, y, wsize, **args ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
         if self.configuring:
             configFunct = self.configurableFunctions[ self.InteractionState ]
             if configFunct.type == 'leveling':
-                configData = configFunct.update( self.InteractionState, x, y, wsize )
-                if configData <> None:
-#                    print>>sys.stderr, " Update %s Leveling, data = %s " % ( configFunct.name, str( configData ) )
-                    if self.wmod: self.wmod.setResult( configFunct.name, configData )
-                    self.setParameter( configFunct.name, configData ) 
-                    textDisplay = configFunct.getTextDisplay()
-                    if textDisplay <> None:  self.updateTextDisplay( textDisplay )
+                if DV3DPipelineHelper.isEligibleFunction( configFunct ): 
+                    configData = configFunct.update( self.InteractionState, x, y, wsize )
+                    if configData <> None:
+    #                    print>>sys.stderr, " Update %s Leveling, data = %s " % ( configFunct.name, str( configData ) )
+                        if self.wmod: self.wmod.setResult( configFunct.name, configData )
+                        self.setParameter( configFunct.name, configData ) 
+                        textDisplay = configFunct.getTextDisplay()
+                        if textDisplay <> None:  self.updateTextDisplay( textDisplay )
                                      
     def getInteractionState( self, key ):
         for configFunct in self.configurableFunctions.values():
@@ -819,17 +900,17 @@ class PersistentModule( QObject ):
                                     
     def finalizeLeveling( self ):
         if self.ndims == 3: self.getLabelActor().VisibilityOff()
-        isLeveling = self.isLeveling()
-        print " ~~~~~~ Finalize Leveling: isLeveling = %s, ndims = %d, interactionState = %s " % ( str( isLeveling ), self.ndims, self.InteractionState )
-        if isLeveling: 
-            HyperwallManager.singleton.setInteractionState( None )
+        if self.configuring: 
+            print " ~~~~~~ Finalize Leveling: ndims = %d, interactionState = %s " % ( self.ndims, self.InteractionState )
+            HyperwallManager.getInstance().setInteractionState( None )
             self.finalizeConfigurationObserver( self.InteractionState )            
             if (self.ndims == 3) and self.iren: 
                 self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-                print " ~~~~~~~~~ Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
+                print " ~~~~~~~~~ FL: Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
             self.configuring = False
             self.InteractionState = None
-        return isLeveling
+            return True
+        return False
      
     def isLeveling( self ):
         if self.InteractionState <> None: 
@@ -913,6 +994,9 @@ class PersistentModule( QObject ):
 #            print " PM: Persist Parameter %s -> %s, tag = %s, taggedVersion=%d, new_id = %s, version => ( %d -> %d ), module = %s" % ( parameter_name, str(output), tag, taggedVersion, new_parameter_id, v0, v1, self.__class__.__name__ )
 #            DV3DConfigurationWidget.savingChanges = False
 
+    def refreshVersion(self):
+        pass
+
     def persistParameterList( self, parmRecList, **args ):
         if parmRecList and not self.isClient: 
             import api
@@ -928,10 +1012,12 @@ class PersistentModule( QObject ):
             change_parameters( self.moduleID, strParmRecList, ctrl )           
             tag = self.getParameterId()
             taggedVersion = self.tagCurrentVersion( tag )
+            listParameterPersist = args.get( 'list', True )  
             for parmRec in parmRecList:
                 parameter_name = parmRec[0]
                 output = parmRec[1]
                 self.setParameter( parameter_name, output, tag ) 
+                if listParameterPersist: self.persistedParameters.append( parameter_name )
 #            print " %s.Persist-Parameter-List[%s] (v. %s): %s " % ( self.getName(), tag, str(taggedVersion), str(parmRecList) )
             self.persistVersionMap() 
             updatePipelineConfiguration = args.get( 'update', False ) # False )                  
@@ -939,7 +1025,7 @@ class PersistentModule( QObject ):
             DV3DConfigurationWidget.savingChanges = False
 #            self.wmod = None
                          
-    def finalizeParameter(self, parameter_name, *args ):
+    def finalizeParameter(self, parameter_name, **args ):
         try:
             output = self.getParameter( parameter_name )
             assert (output <> None), "Attempt to finalize parameter that has not been cached." 
@@ -947,16 +1033,19 @@ class PersistentModule( QObject ):
         except Exception, err:
             print "Error changing parameter %s for %s module: %s" % ( parameter_name, self.__class__.__name__, str(err) )
            
-    def finalizeConfigurationObserver( self, parameter_name, *args ):
-        self.finalizeParameter( parameter_name, *args )    
+    def finalizeConfigurationObserver( self, parameter_name, **args ):
+        self.finalizeParameter( parameter_name, **args )    
         for parameter_name in self.getModuleParameters(): self.finalizeParameter( parameter_name, *args ) 
-        self.endInteraction() 
+        self.endInteraction( **args ) 
         
-    def endInteraction(self):       
+    def endInteraction( self, **args ): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        notifyHelper =  args.get( 'notifyHelper', True )    
         if (self.ndims == 3) and self.iren: 
             self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-            print " ~~~~~~~~~ Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
+            print " ~~~~~~~~~ EI: Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
         self.configuring = False
+        if notifyHelper: DV3DPipelineHelper.endInteraction()
         self.InteractionState = None
         self.enableVisualizationInteraction()
 
@@ -1022,12 +1111,13 @@ class TextBlinkEvent( QEvent ):
          
 class TextBlinkThread( threading.Thread ):
 
-    def __init__( self, target, type, timestep = 0.5 ):
+    def __init__( self, target, type, **args ):
         threading.Thread.__init__( self )
         self.isActive = False 
         self.daemon = True
         self.target = target
-        self.timestep = timestep
+        self.timestep = args.get( 'timestep', 0.5 )
+        self.nblinks = args.get( 'nblinks', -1 )
         self.textType = type
            
     def stop(self):
@@ -1036,11 +1126,15 @@ class TextBlinkThread( threading.Thread ):
     def run(self):
         self.isActive = True
         textOn = True
+        blinkCount = 0
         while self.isActive:
             QApplication.postEvent( self.target, TextBlinkEvent( self.textType, textOn ) )
             delay_time = self.timestep*2 if textOn else self.timestep
             time.sleep( delay_time ) 
             textOn = not textOn 
+            if textOn:
+                blinkCount += 1
+                if self.nblinks > 0 and blinkCount >= self.nblinks: return
        
 class PersistentVisualizationModule( PersistentModule ):
 
@@ -1052,7 +1146,7 @@ class PersistentVisualizationModule( PersistentModule ):
     LEFT_BUTTON = 0
     RIGHT_BUTTON = 1
     
-    renderMap = {}    
+    renderMap = {} 
     moduleDocumentationDialog = None 
 
     def __init__( self, mid, **args ):
@@ -1063,6 +1157,7 @@ class PersistentVisualizationModule( PersistentModule ):
         self._max_scalar_value = None
         self.colormapManager = None
         self.colormapName = 'Spectral'
+        self.colorBarActor = None
         self.labelBuff = "NA                          "
         self.invertColormap = 1
         self.renderer = None
@@ -1084,8 +1179,8 @@ class PersistentVisualizationModule( PersistentModule ):
  
     def disableVisualizationInteraction(self): 
         pass
-
-    def setInputZScale( self, zscale_data ):
+                      
+    def setInputZScale( self, zscale_data, **args  ):
         if self.input <> None:
             spacing = self.input.GetSpacing()
             ix, iy, iz = spacing
@@ -1123,6 +1218,8 @@ class PersistentVisualizationModule( PersistentModule ):
                 port = self.inputModule.getOutputPort()
                 if port: args[ 'port' ] = port
                 else:    args[ 'output' ] = self.inputModule.getOutput()
+        if self.renderer == None: 
+            self.renderer = vtk.vtkRenderer()
         outputModule = AlgorithmOutputModule3D( self.renderer, fieldData=self.fieldData, **args )
         output =  outputModule.getOutput() 
 #        print "Setting 3D output for port %s" % ( portName ) 
@@ -1146,7 +1243,7 @@ class PersistentVisualizationModule( PersistentModule ):
             for ( moduleId, portName ) in connectedModuleIds:
                 module = ModuleStore.getModule( moduleId )
                 if module: 
-                    if module.__class__.__name__ == "PM_MapCell3D":
+                    if module.__class__.__name__ in [ "PM_MapCell3D", "PM_CloudCell3D" ]:
                         if (not selectedOnly) or module.isSelected(): rmodList.append( module )
                     else:
                         moduleIdList.append( moduleId )
@@ -1154,19 +1251,19 @@ class PersistentVisualizationModule( PersistentModule ):
 
     def updateTextDisplay( self, text = None ):
         if (text <> None) and (self.renderer <> None): 
-            self.labelBuff = text
+            self.labelBuff = str(text)
             if (self.ndims == 3):                
                 self.getLabelActor().VisibilityOn()
                 
     def displayInstructions( self, text ):
-        if (self.renderer <> None) and (self.textBlinkThread == None): 
-            self.instructionBuffer = text
+        if (self.renderer <> None): 
+            self.instructionBuffer = str(text)
             if (self.ndims == 3):                
                 actor = self.getInstructionActor()
                 if actor:
                     actor.VisibilityOn()
                     self.render()
-                    self.textBlinkThread = TextBlinkThread( self, 'instructions' )
+                    self.textBlinkThread = TextBlinkThread( self, 'instructions', nblinks=3 )
                     self.textBlinkThread.start()
                     return True
         return False
@@ -1201,6 +1298,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return self.pipelineBuilt
 
     def execute(self, **args ):
+#        print "Execute Module[ %s ]: %s " % ( str(self.moduleID), str( self.__class__.__name__ ) )
         initConfig = False
         isAnimation = args.get( 'animate', False )
         if not self.isBuilt():
@@ -1314,10 +1412,11 @@ class PersistentVisualizationModule( PersistentModule ):
       return None
   
     def createColorBarActor( self ):
-        self.colorBarActor = self.getProp( 'vtkScalarBarActor' )
+#        self.colorBarActor = self.getProp( 'vtkScalarBarActor' )
         if self.colorBarActor == None:
             self.lut = vtk.vtkLookupTable()
             self.colormapManager = ColorMapManager( self.lut ) 
+            print " Persistent Module %s (%x): SetLookupTable: %x " % ( self.__class__.__name__, id(self), id( self.lut ) )
             self.colorBarActor = vtk.vtkScalarBarActor()
             self.colorBarActor.SetMaximumWidthInPixels( 50 )
             self.colorBarActor.SetNumberOfLabels(9)
@@ -1339,6 +1438,7 @@ class PersistentVisualizationModule( PersistentModule ):
         else:
             if self.colormapManager == None:
                 self.lut = self.colorBarActor.GetLookupTable()
+                print " Persistent Module %s (%x): SetLookupTable: %x " % ( self.__class__.__name__, id(self), id( self.lut ) )
                 self.colormapManager = ColorMapManager( self.lut ) 
             else:
                 self.colorBarActor.SetLookupTable( self.colormapManager.getDisplayLookupTable() )
@@ -1348,26 +1448,33 @@ class PersistentVisualizationModule( PersistentModule ):
     def creatTitleActor( self ):
         pass
     
-    def createTextActor( self, id, pos, **args ):
-          textActor = vtk.vtkTextActor()  
-          textActor.SetTextScaleModeToNone()        
-          textprop = textActor.GetTextProperty()
-          textprop.SetColor( *args.get( 'color', ( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] ) ) )
-          textprop.SetFontFamilyToArial()
-          textprop.SetOpacity ( args.get( 'opacity', 1.0 ) )
-          textprop.SetFontSize( args.get( 'size', 12 ) )
-          if args.get( 'bold', False ): textprop.BoldOn()
-          else: textprop.BoldOff()
-          textprop.ItalicOff()
-          textprop.ShadowOff()
-          textprop.SetJustificationToLeft()
-          textprop.SetVerticalJustificationToBottom()        
-          coord = textActor.GetPositionCoordinate()
-          coord.SetCoordinateSystemToNormalizedViewport()
-          coord.SetValue( pos[0], pos[1] )        
-          textActor.VisibilityOff()
-          textActor.id = id
-          return textActor
+    def setTextPosition(self, textActor, pos, size=[400,30] ):
+        vpos = [ 2, 2 ]
+        if self.renderer: 
+            vp = self.renderer.GetSize()
+            vpos = [ pos[i]*vp[i] for i in [0,1] ]
+        textActor.GetPositionCoordinate().SetValue( vpos[0], vpos[1] )      
+        textActor.GetPosition2Coordinate().SetValue( vpos[0] + size[0], vpos[1] + size[1] )      
+    
+    def createTextActor( self, id, **args ):
+        textActor = vtk.vtkTextActor()  
+        textActor.SetTextScaleMode( vtk.vtkTextActor.TEXT_SCALE_MODE_PROP )  
+#        textActor.SetMaximumLineHeight( 0.4 )       
+        textprop = textActor.GetTextProperty()
+        textprop.SetColor( *args.get( 'color', ( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] ) ) )
+        textprop.SetOpacity ( args.get( 'opacity', 1.0 ) )
+        textprop.SetFontSize( args.get( 'size', 10 ) )
+        if args.get( 'bold', False ): textprop.BoldOn()
+        else: textprop.BoldOff()
+        textprop.ItalicOff()
+        textprop.ShadowOff()
+        textprop.SetJustificationToLeft()
+        textprop.SetVerticalJustificationToBottom()        
+        textActor.GetPositionCoordinate().SetCoordinateSystemToDisplay()
+        textActor.GetPosition2Coordinate().SetCoordinateSystemToDisplay() 
+        textActor.VisibilityOff()
+        textActor.id = id
+        return textActor
           
     def getLabelActor(self):
         return self.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
@@ -1379,14 +1486,18 @@ class PersistentVisualizationModule( PersistentModule ):
         return self.getTextActor( 'instruction', self.instructionBuffer,  (.1, .85 ), size = VTK_INSTRUCTION_SIZE, bold = True, color = ( 1.0, 0.1, 0.1 ), opacity=0.65  )
 
     def getTextActor( self, id, text, pos, **args ):
-      textActor = self.getProp( 'vtkTextActor', id  )
-      if textActor == None:
-          textActor = self.createTextActor( id, pos, **args  )
-          if self.renderer: 
-              self.renderer.AddViewProp( textActor )
-      textActor.SetInput( text )
-      textActor.Modified()
-      return textActor
+        textActor = self.getProp( 'vtkTextActor', id  )
+        if textActor == None:
+            textActor = self.createTextActor( id, **args  )
+            if self.renderer: self.renderer.AddViewProp( textActor )
+        self.setTextPosition( textActor, pos )
+        text_lines = text.split('\n')
+        linelen = len(text_lines[-1])
+        if linelen < MIN_LINE_LEN: text += (' '*(MIN_LINE_LEN-linelen)) 
+        text += '.'
+        textActor.SetInput( text )
+        textActor.Modified()
+        return textActor
 
     def finalizeRendering(self):
         pass
@@ -1411,7 +1522,7 @@ class PersistentVisualizationModule( PersistentModule ):
                         self.activateWidgets( self.iren )                                  
                         self.iren.AddObserver( 'CharEvent', self.setInteractionState )                   
                         self.iren.AddObserver( 'MouseMoveEvent', self.updateLevelingEvent )
-                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
+#                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
                         self.iren.AddObserver( 'AnyEvent', self.onAnyEvent )  
 #                        self.iren.AddObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
 #                        self.iren.AddObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
@@ -1427,11 +1538,14 @@ class PersistentVisualizationModule( PersistentModule ):
                             configurableFunction.activateWidget( iren )
                     self.updateInteractor()  
                     
-    def updateInteractor(self):                        
-        if ( self.iren.GetInteractorStyle() <> self.navigationInteractorStyle ): 
-            istyle = self.iren.GetInteractorStyle()               
+    def updateInteractor(self): 
+        istyle = self.iren.GetInteractorStyle()                       
+        if ( istyle <> self.navigationInteractorStyle ) and ( istyle <> self.configurationInteractorStyle ):               
             self.navigationInteractorStyle =  istyle
-            print " ~~~~~~~~~ Set Navigation Interactor Style:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
+            style_name = self.navigationInteractorStyle.__class__.__name__
+#            print " ~~~~~~~~~ Update Navigation Interactor Style:  %s " % ( style_name )
+#            if style_name == "vtkInteractorStyleUser":
+#                print "x"
                     
     def setInteractionState(self, caller, event):
         key = caller.GetKeyCode() 
@@ -1472,28 +1586,41 @@ class PersistentVisualizationModule( PersistentModule ):
                   self.colorBarActor.VisibilityOff()  
             else: self.colorBarActor.VisibilityOn() 
             self.render() 
-        elif (  key == 'r'  ): 
-            if self.LastInteractionState <> None: 
-                configFunct = self.configurableFunctions[ self.LastInteractionState ]
+                        
+        elif (  key == 'r'  ):
+            self.resetCamera()              
+            if  len(self.persistedParameters):
+                pname = self.persistedParameters.pop()
+                configFunct = self.configurableFunctions[pname]
                 param_value = configFunct.reset() 
-                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True )
-                if configFunct.type == 'leveling':
-                    self.finalizeConfigurationObserver( self.InteractionState )            
-                    if self.ndims == 3: 
-                        self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-                        print " ~~~~~~~~~ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)     
-                if self.InteractionState <> None: 
-                    configFunct.close()
-                    self.endInteraction() 
+                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )
+            
+                
+#            if self.LastInteractionState <> None: 
+#                configFunct = self.configurableFunctions[ self.LastInteractionState ]
+#                param_value = configFunct.reset() 
+#                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True )
+#                if configFunct.type == 'leveling':
+#                    self.finalizeConfigurationObserver( self.InteractionState )            
+#                    if self.ndims == 3: 
+#                        self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+#                        print " ~~~~~~~~~ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)     
+#                if self.InteractionState <> None: 
+#                    configFunct.close()
+#                    self.endInteraction() 
         else:
             state =  self.getInteractionState( key )
             print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
             if state <> None: 
                 self.updateInteractionState( state, self.isAltMode  )                 
-                HyperwallManager.singleton.setInteractionState( state, self.isAltMode )
+                HyperwallManager.getInstance().setInteractionState( state, self.isAltMode )
                 self.isAltMode = False 
                 
+    def resetCamera(self):
+        pass
+                
     def updateInteractionState( self, state, altMode ): 
+        rcf = None
         if state == None: 
             self.finalizeLeveling()
             self.endInteraction()   
@@ -1502,18 +1629,21 @@ class PersistentVisualizationModule( PersistentModule ):
                 configFunct = self.configurableFunctions[ self.InteractionState ]
                 configFunct.close()   
             configFunct = self.configurableFunctions.get( state, None )
+            if configFunct and ( configFunct.type <> 'generic' ): 
+                rcf = configFunct
+                print " UpdateInteractionState, state = %s, cf = %s " % ( state, str(configFunct) )
             if not configFunct and self.acceptsGenericConfigs:
                 configFunct = ConfigurableFunction( state, None, None, pmod=self )              
                 self.configurableFunctions[ state ] = configFunct
             if configFunct:
                 configFunct.open( state, self.isAltMode )
-                configFunct.postInstructions( self )
                 self.InteractionState = state                   
                 self.LastInteractionState = self.InteractionState
                 self.disableVisualizationInteraction()
+        return rcf
                    
-    def endInteraction( self ):
-        PersistentModule.endInteraction( self )
+    def endInteraction( self, **args ):
+        PersistentModule.endInteraction( self, **args  )
         if self.ndims == 3: self.getLabelActor().VisibilityOff()              
         
     def onLeftButtonRelease( self, caller, event ):
@@ -1568,12 +1698,13 @@ class PersistentVisualizationModule( PersistentModule ):
         return 0
     
     def onLeftButtonPress( self, caller, event ):
-        shift = caller.GetShiftKey()
-        self.currentButton = self.LEFT_BUTTON
-        self.clearInstructions()
-        self.UpdateCamera()   
-        x, y = caller.GetEventPosition()      
-        self.startConfiguration( x, y, [ 'leveling', 'generic' ] )  
+        if not self.finalizeLeveling(): 
+            shift = caller.GetShiftKey()
+            self.currentButton = self.LEFT_BUTTON
+            self.clearInstructions()
+            self.UpdateCamera()   
+            x, y = caller.GetEventPosition()      
+            self.startConfiguration( x, y, [ 'leveling', 'generic' ] )  
         return 0
 
     def onRightButtonPress( self, caller, event ):
@@ -1600,7 +1731,14 @@ class PersistentVisualizationModule( PersistentModule ):
              
     def onKeyPress( self, caller, event ):
         return 0
-    
+ 
+    def getCellAddress(self):  
+        cell_items = self.renderMap.items()
+        for cell_item in cell_items:
+            if id(cell_item[1]) == id(self.iren):
+                return cell_item[0]
+        return None
+        
     def getActiveIrens(self):
         sheetTabWidget = getSheetTabWidget()
         selected_cells = sheetTabWidget.getSelectedLocations() 
@@ -1610,6 +1748,10 @@ class PersistentVisualizationModule( PersistentModule ):
             iren = PersistentVisualizationModule.renderMap.get( cell_spec, None )
             irens.append( iren )
         return irens
+   
+    @staticmethod
+    def getValidIrens():
+        return PersistentVisualizationModule.renderMap.values()
     
     def onAnyEvent(self, caller, event ):
         if self.iren:

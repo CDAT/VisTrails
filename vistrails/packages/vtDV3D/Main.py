@@ -9,10 +9,9 @@ from PyQt4 import QtGui, QtCore
 from core.requirements import check_all_vistrails_requirements
 from gui.requirements import check_pyqt4, MissingRequirement
 from gui.application import VistrailsApplicationSingleton, get_vistrails_application, set_vistrails_application
-from packages.spreadsheet.spreadsheet_controller import spreadsheetController
-from packages.vtDV3D import HyperwallManager
 
 def maximizeSpreadsheet():
+    from packages.spreadsheet.spreadsheet_controller import spreadsheetController
     spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
 #    spreadsheetWindow.show()
 #    spreadsheetWindow.activateWindow()
@@ -21,7 +20,10 @@ def maximizeSpreadsheet():
     spreadsheetWindow.stackedCentralWidget.removeWidget ( tabControllerStack )
     tabControllerStack.showMaximized()
     
-    
+class HWRunType :
+     Client = 0
+     Server = 1
+     Desktop = 2 
     
 def disable_lion_restore():
     """ Prevent Mac OS 10.7 to restore windows state since it would
@@ -195,10 +197,11 @@ class vtDV3DApplicationSingleton( VistrailsApplicationSingleton ):
 #    sys.exit(v)
 
 def shutdown():
+    from packages.vtDV3D import HyperwallManager
     print " !! --shutdown-- !! "
-    HyperwallManager.singleton.shutdown()      
+    HyperwallManager.getInstance().shutdown()      
 
-def start_uvcdat_application(optionsDict=None):
+def start_uvcdat_application(optionsDict):
     """Initializes the application singleton."""
     VistrailsApplication = get_vistrails_application()
     if VistrailsApplication:
@@ -230,11 +233,16 @@ def start_uvcdat_application(optionsDict=None):
     showBuilder = optionsDict.get( 'showBuilder', False )
     VistrailsApplication.uvcdatWindow.setWindowTitle( title )
     if showBuilder: VistrailsApplication.uvcdatWindow.showBuilderWindowActTriggered() 
-    HyperwallManager.singleton.initialize( hw_role, spawn )      
     if x == True:
         return 0
     else:
         return 1
+    
+def init_hyperwall(optionsDict):
+    from packages.vtDV3D import HyperwallManager
+    hw_role = optionsDict.get( "hw_role", 'global')
+    spawn = optionsDict.get( "spawn", True )
+    HyperwallManager.getInstance().initialize( hw_role, spawn )      
      
 def executeVistrail( *args, **kwargs ):
     disable_lion_restore()
@@ -262,11 +270,19 @@ def executeVistrail( *args, **kwargs ):
         import traceback
         traceback.print_exc()
         sys.exit(255)
-    
+        
+    init_hyperwall( optionsDict )
     app.connect( app, QtCore.SIGNAL("aboutToQuit()"), shutdown ) 
     v = app.exec_()
     
 
-if __name__ == '__main__':  
-    optionsDict = { "hw_role" : 'global', "showBuilder": True, 'spawn': True }   #  'global'   'hw_client'  'hw_server'    
+if __name__ == '__main__': 
+    runType = HWRunType.Client 
+    if runType == HWRunType.Desktop: optionsDict = { "hw_role" : 'global', "showBuilder": True, 'spawn': True }   #  'global'   'hw_client'  'hw_server' 
+    if runType == HWRunType.Server:  optionsDict = {  'hw_role': 'hw_server', 'debug': 'False' } #, 'hw_nodes': 'localhost' }   
+    if runType == HWRunType.Client:  
+        node_index_str = os.environ.get('HW_NODE_INDEX',None)
+        if node_index_str == None: raise EnvironmentError( 0, "Must set the HW_NODE_INDEX environment variable on client nodes")
+        hw_node_index = int(node_index_str)
+        optionsDict = {   'hw_role': 'hw_client',  'hw_node_index': hw_node_index, 'fullScreen': 'False'  } #, 'hw_nodes': 'localhost' }   
     executeVistrail( options = optionsDict )

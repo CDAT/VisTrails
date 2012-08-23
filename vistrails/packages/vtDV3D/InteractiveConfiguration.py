@@ -3,7 +3,7 @@ Created on Dec 15, 2010
 
 @author: tpmaxwel
 '''
-import sys, threading
+import sys, threading, traceback
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from gui.modules.module_configure import StandardModuleConfigurationWidget
@@ -17,7 +17,7 @@ from packages.vtDV3D.CDATTask import deserializeTaskData
 from packages.vtDV3D import HyperwallManager
 from collections import OrderedDict
 from packages.vtDV3D.vtUtilities import *
-import cdms2
+import cdms2, cdtime
 
 
 class CDMSDataType:
@@ -26,6 +26,7 @@ class CDMSDataType:
     Vector = 3
     Hoffmuller = 4
     ChartData = 5
+    VariableSpace = 6
     
 class ConfigPopupManager( QObject ):
     
@@ -166,7 +167,7 @@ class QtWindowLeveler( QObject ):
               print str( [dx,dy,self.CurrentWindow,self.CurrentLevel] )
               result = [ self.CurrentWindow, self.CurrentLevel, 0 ]
               self.emit( self.update_range_signal, result )
-        print " --- Set Range: ( %f, %f ),   Initial Range = ( %f, %f ), P = ( %d, %d ) dP = ( %f, %f ) " % ( result[0], result[1], self.InitialRange[0], self.InitialRange[1], X, Y, dx, dy )      
+ #       print " --- Set Range: ( %f, %f ),   Initial Range = ( %f, %f ), P = ( %d, %d ) dP = ( %f, %f ) " % ( result[0], result[1], self.InitialRange[0], self.InitialRange[1], X, Y, dx, dy )      
         return result
       
     def startWindowLevel( self, X, Y ):   
@@ -196,6 +197,11 @@ class QtWindowLeveler( QObject ):
         self.emit( self.update_range_signal, result )
 
         return result
+
+    def setWindowLevelFromRange( self, range ):
+        self.CurrentWindow = ( range[1] - range[0] ) / self.scaling
+        self.CurrentLevel = ( range[1] + range[0] ) / ( 2 * self.scaling )
+        
 
 ###############################################################################   
 
@@ -320,9 +326,10 @@ class OutputRec:
 
 ###############################################################################   
 
-ConfigurableFunctions = {}    
   
 class ConfigurableFunction( QObject ):
+    
+    ConfigurableFunctions = {}    
     
     def __init__( self, name, function_args, key, **args ):
         QObject.__init__(self)
@@ -335,6 +342,7 @@ class ConfigurableFunction( QObject ):
         self.key = key
         self.functionID = -1 
         self.isLayerDependent = args.get( 'layerDependent', False )
+        self.activeBound = args.get( 'activeBound', 'both' )
         self.active = args.get( 'active', True )
         self.activeFunctionList = []
         self.module = None
@@ -345,34 +353,57 @@ class ConfigurableFunction( QObject ):
         self.startHandler = args.get( 'start', None )       #    left click
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
         self.hasState = args.get( 'hasState', True )
-        configFunctionList = ConfigurableFunctions.setdefault( self.name, [] )
-        configFunctionList.append( self )
         
-    def postInstructions( self, module ):
-        pass
-        
+    def postInstructions( self, message ):
+        print "\n ----- %s -------\n" % message
+
+    @staticmethod
+    def getActiveFunctionList( active_irens = None ):
+        activeFunctionList = []
+        for cfgFunctionMap in ConfigurableFunction.ConfigurableFunctions.values():
+            for cfgFunction in cfgFunctionMap.values():
+#                if cfgFunction.module and (  ( active_irens == None ) or ( cfgFunction.module.iren in active_irens ) ):
+                activeFunctionList.append( cfgFunction )
+        return activeFunctionList
+    
+    @staticmethod
+    def clear():
+        ConfigurableFunction.ConfigurableFunctions = {}
+        print "clear"
+         
     def updateActiveFunctionList( self ):
-        cfgFunctionList = ConfigurableFunctions.get( self.name, [] )
+        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 
+        cfgFunctGlobalMap = ConfigurableFunction.ConfigurableFunctions
+        cfgFunctionMap = cfgFunctGlobalMap.get( self.name, {} )
         self.activeFunctionList = []
-        active_irens = self.module.getActiveIrens() 
+        valid_irens =  PersistentVisualizationModule.getValidIrens() 
 #        print " ** N active_irens: %d " % len( active_irens )      
-        for cfgFunction in cfgFunctionList:
+        for cfgFunction in cfgFunctionMap.values():
             if (cfgFunction <> self) and cfgFunction.module:
-                isActive = ( cfgFunction.module.iren in active_irens )
-                if isActive and (cfgFunction.units == self.units):
-                    self.activeFunctionList.append( cfgFunction )
+#                isActive = ( cfgFunction.module.iren in valid_irens )
+#                if isActive and (cfgFunction.units == self.units):
+                self.activeFunctionList.append( cfgFunction )
              
     def matches( self, key ):
         return self.active and ( self.key == key )
     
-    def applyParameter( self, module, **args ):
+    def applyParameter( self, **args ):
         pass
 
     def init( self, module ):
+#        if self.name == 'colorScale':
+#            print "."
         self.moduleID = module.moduleID
         self.module = module
+        if module.metadata:
+            attributes = module.metadata.get('attributes', None)
+            if attributes:
+                if self.units == 'data': self.units = attributes.get('units','')               
         if ( self.initHandler != None ):
             self.initHandler( **self.kwargs ) 
+        configFunctionMap = ConfigurableFunction.ConfigurableFunctions.setdefault( self.name, {} )
+        configFunctionMap[self.module] = self
+
             
     def expandRange( self ):
         pass
@@ -425,8 +456,8 @@ class ConfigurableFunction( QObject ):
         unwrappedData = []
         for data_elem in data:
             uw_val = data_elem.getResult()
-            wrappedData.append( uw_val )
-        return wrappedData
+            unwrappedData.append( uw_val )
+        return unwrappedData
             
 ################################################################################
 
@@ -438,6 +469,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     def __init__( self, name, key, **args ):
         ConfigurableFunction.__init__( self, name, [ ( Float, 'min'), ( Float, 'max'),  ( Integer, 'ctrl'), ( Float, 'refine0'), ( Float, 'refine1') ], key, **args  )
         self.type = 'leveling'
+        self.manuallyAdjusted = False
         self.windowLeveler = QtWindowLeveler( **args )
         self.windowRefiner = WindowRefinementGenerator( range=[ 0.001, 0.999 ] )
         if( self.initHandler == None ): self.initHandler = self.initLeveling
@@ -454,14 +486,17 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.adjustRange = args.get( 'adjustRange', False )
         self.widget = args.get( 'gui', None )
 
-    def postInstructions( self, module ):
-        module.displayInstructions( "Left-click and drag in this cell." )
+    def postInstructions( self, message ):
+        self.module.displayInstructions( message ) # "Left-click, mouse-move, left-click in this cell." )
     
-    def applyParameter( self, module, **args ):
+    def applyParameter( self, **args ):
         try:
             self.setLevelDataHandler( self.range, **args )
-        except:
-            pass
+        except Exception, err:
+            print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
+        print "Apply %s Parameter[%s:%d]: %s " % ( self.type, self.name, self.module.moduleID, str( self.range ) )
+        if self.name == 'zScale':
+            print "x"
         
     def reset(self):
         self.setLevelDataHandler( self.initial_range )
@@ -472,8 +507,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         if self.adjustRange:
             if ( self.range_bounds[0] <> self.module.seriesScalarRange[0] ) or ( self.range_bounds[1] <> self.module.seriesScalarRange[1] ):
                 self.range_bounds[0:2] = self.module.seriesScalarRange[0:2]
-                self.range[0:2] = self.range_bounds[0:2]
-                self.initLeveling( initRange = False ) 
+                self.initial_range[:] = self.range_bounds[:]
+                if not self.manuallyAdjusted: 
+                    self.range[0:2] = self.range_bounds[0:2]
+                    self.initLeveling( initRange = False ) 
  
     def initLeveling( self, **args ):
         initRange = args.get( 'initRange', True )
@@ -500,6 +537,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.updateActiveFunctionList()
         self.adjustRange = False
         self.emit(SIGNAL('startLeveling()'))
+        print "startLeveling: %s " % str( self.range )
 
     def getTextDisplay(self, **args ):
         rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
@@ -507,7 +545,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         units = self.module.units if self.module else None
         if units: textDisplay = " Range: %.4G, %.4G %s . " % ( rmin, rmax, units )
         else: textDisplay = " Range: %.4G, %.4G . " % ( rmin, rmax )
-        return textDisplay 
+        return textDisplay
+    
+    def updateWindow( self ): 
+        self.windowLeveler.setWindowLevelFromRange( self.range )
             
     def updateLeveling( self, x, y, wsize ):
         if self.altMode:
@@ -516,16 +557,55 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         else:  
             leveling_range = self.windowLeveler.windowLevel( x, y, wsize )
             for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.range_bounds ) if self.boundByRange else leveling_range[iR]
+        self.emit( SIGNAL('updateLeveling()') )
         return self.broadcastLevelingData()
-        
-    def broadcastLevelingData(  self, range = None  ):
-        if range: self.range = range
+#        print "updateLeveling: %s " % str( self.range )
+
+    def setImageDataRange(  self, imageRange  ):
+        data_range = self.module.getDataValues( imageRange )
+        self.setDataRange( data_range )
+
+    def setDataRange(  self, data_range  ):
+        self.range[0:2] = data_range[0:2]
+#        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
         self.setLevelDataHandler( self.range )
-        self.module.render()
+
+    def setScaledDataRange(  self, scaled_data_range  ):
+        dr = (self.range_bounds[1]-self.range_bounds[0])
+        self.range[0] = self.range_bounds[0] + scaled_data_range[0] * dr
+        self.range[1] = self.range_bounds[0] + scaled_data_range[1] * dr
+#        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
+        self.setLevelDataHandler( self.range )
+
+    def getScaledDataRange(  self  ):
+        dr = (self.range_bounds[1]-self.range_bounds[0])
+        scaled_range = [ ( self.range[0] - self.range_bounds[0] ) / dr, ( self.range[1] - self.range_bounds[0] ) / dr ]
+        return scaled_range
+        
+    def broadcastLevelingData(  self, range = None, **args  ):
+        if range: self.range = range
+#        print " ** Broadcast Leveling: altMode = %s, range = %s, refine = %s, Modules: " % ( str( self.altMode ) , str( self.range[0:2] ), str( self.range[3:5] )  )
+        affected_renderers = set()
+        active_module_list = args.get( 'active_modules', None )
+        if (active_module_list == None) or (self.module in active_module_list):
+            self.setLevelDataHandler( self.range )
+            affected_renderers.add( self.module.renderer )
+            self.manuallyAdjusted = True
+#        print "   -> self = %x " % id(self.module)
         for cfgFunction in self.activeFunctionList:
-            cfgFunction.setLevelDataHandler( self.range )
-            cfgFunction.module.render()
-#        print " updateLeveling: altMode = %s, range = %s, refine = %s " % ( str( self.altMode ) , str( self.range[0:2] ), str( self.range[3:5] )  )
+            if (active_module_list == None) or (cfgFunction.module in active_module_list):
+                if( cfgFunction.units == self. units ):
+                    cfgFunction.setDataRange( self.range )
+                else:
+                    cfgFunction.setScaledDataRange( self.getScaledDataRange() )
+                affected_renderers.add( cfgFunction.module.renderer )
+#               print "   -> module = %x " % id(cfgFunction.module)
+
+        for renderer in affected_renderers:
+            if renderer <> None:
+                rw = renderer.GetRenderWindow()
+                if rw <> None: rw.Render()
+
         return self.range # self.wrapData( range )
 
 ################################################################################
@@ -566,9 +646,8 @@ class GuiConfigurableFunction( ConfigurableFunction ):
             self.module.setResult( self.name, value )
 
     def openGui( self ):
-        if self.getValueHandler <> None:
-             value = self.getValueHandler()  
-             self.gui.initWidgetFields( value )
+        value = self.getValueHandler() if (self.getValueHandler <> None) else None 
+        self.gui.initWidgetFields( value, self.module )
         self.gui.show()
         self.module.resetNavigation()
         
@@ -686,7 +765,7 @@ class ModuleDocumentationDialog( QDialog ):
 #        self.textEdit.setTextCursor( QTextCursor(self.textEdit.document()) )   
         
  ################################################################################
- 
+
 class IVModuleConfigurationDialog( QWidget ):
     """
     IVModuleConfigurationDialog ...   
@@ -699,6 +778,7 @@ class IVModuleConfigurationDialog( QWidget ):
         QWidget.__init__(self, None)
         self.modules = OrderedDict()
         self.module = None
+        self.initValue = None
         self.name = name
         title = ( '%s configuration' % name )
         self.setWindowTitle( title )        
@@ -797,8 +877,10 @@ class IVModuleConfigurationDialog( QWidget ):
     def activateWidget( self, iren ):
         pass
 
-    def initWidgetFields( self, value ):
-        pass
+    def initWidgetFields( self, value, module ):
+        if ( self.module == None ) or ( module.renderer <> None ): 
+            self.module = module
+        self.initValue = value
 
     def createActiveModulePanel(self ):
         """ createEditor() -> None
@@ -855,7 +937,7 @@ class IVModuleConfigurationDialog( QWidget ):
         self.buttonLayout.addWidget(self.cancelButton)
         self.layout().addLayout(self.buttonLayout)
         self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
-        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close)
+        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.cancelTriggered)
                     
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None
@@ -864,6 +946,9 @@ class IVModuleConfigurationDialog( QWidget ):
         self.finalizeParameter()
         self.close()
 
+    def cancelTriggered(self, checked = False):
+        self.close()
+        
     def closeTriggered(self, checked = False):
         self.close()
 
@@ -872,7 +957,7 @@ class IVModuleConfigurationDialog( QWidget ):
         command = [ self.name ]
         value = self.getValue()
         command.extend( value )
-        HyperwallManager.singleton.processGuiCommand( command  )
+        HyperwallManager.getInstance().processGuiCommand( command  )
 
     def startParameter( self, *args ):
         self.emit( GuiConfigurableFunction.start_parameter_signal, self.name, self.getValue() )
@@ -1071,7 +1156,8 @@ class LayerConfigurationDialog( IVModuleConfigurationDialog ):
             if len(layerList): return layerList
         return []
 
-    def initWidgetFields( self, value ):
+    def initWidgetFields( self, value, module ):
+        IVModuleConfigurationDialog.initWidgetFields( self, value, module )
         self.layerCombo.clear()
         layerlist = self.getLayerList()
         for layer in layerlist:
@@ -1611,6 +1697,73 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         return checkBox
                
 ################################################################################
+ 
+class CaptionConfigurationDialog( IVModuleConfigurationDialog ):
+    """
+    CaptionConfigurationDialog ...   
+    """ 
+   
+    def __init__(self, name, **args):
+        self.datasetId = None
+        self.caption_data = ""
+        IVModuleConfigurationDialog.__init__( self, name, **args )
+                                  
+    @staticmethod   
+    def getSignature():
+        return [ ( String, 'captionData'), ]
+
+    def getValue(self):
+        return [ self.caption_data ]
+
+    def setValue( self, value ):
+        self.caption_data = str(value)
+
+    def createContent(self ):
+        """ createEditor() -> None
+        Configure sections       
+        """       
+        animMapTab = QWidget()        
+        self.tabbedWidget.addTab( animMapTab, 'Animation' )                                       
+        self.tabbedWidget.setCurrentWidget(animMapTab)
+        layout = QVBoxLayout()
+        animMapTab.setLayout( layout ) 
+        layout.setMargin(10)
+        layout.setSpacing(20)
+       
+        label_layout = QHBoxLayout()
+        label_layout.setMargin(5)
+        anim_label = QLabel( "Speed:"  )
+        label_layout.addWidget( anim_label  ) 
+        self.speedSlider = QSlider( Qt.Horizontal )
+        self.speedSlider.setRange( 0, self.maxSpeedIndex )
+        self.speedSlider.setSliderPosition( self.maxSpeedIndex )
+#        self.connect(self.speedSlider, SIGNAL('valueChanged()'), self.setDelay )
+        anim_label.setBuddy( self.speedSlider )
+        label_layout.addWidget( self.speedSlider  ) 
+        
+        layout.addLayout( label_layout )
+        
+        self.buttonLayout = QHBoxLayout()
+        self.buttonLayout.setMargin(5)
+        layout.addLayout(self.buttonLayout)
+        
+        self.runButton = QPushButton( 'Run', self )
+        self.runButton.setAutoDefault(False)
+        self.runButton.setFixedWidth(100)
+        self.buttonLayout.addWidget(self.runButton)
+        self.connect(self.runButton, SIGNAL('clicked(bool)'), self.run )
+
+        self.stepButton = QPushButton( 'Step', self )
+        self.stepButton.setAutoDefault(False)
+        self.stepButton.setFixedWidth(100)
+        self.buttonLayout.addWidget(self.stepButton)
+        self.connect(self.stepButton, SIGNAL('clicked(bool)'), self.step )
+
+        self.resetButton = QPushButton( 'Reset', self )
+        self.resetButton.setAutoDefault(False)
+        self.resetButton.setFixedWidth(100)
+        self.buttonLayout.addWidget(self.resetButton)
+        self.connect(self.resetButton, SIGNAL('clicked(bool)'), self.reset )
         
 class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     """
@@ -1622,8 +1775,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.relTimeStart = None
         self.relTimeStep = 1.0
         self.maxSpeedIndex = 100
-        ss = args.get( "speedScale", 1.0 )
-        self.delayTimeScale = (2.0*ss)/self.maxSpeedIndex
+        self.maxDelaySec = args.get( "maxDelaySec", 1.0 )
         self.running = False
         self.timeRange = None
         self.datasetId = None
@@ -1673,22 +1825,43 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 return
 
     def setTimestep( self, iTimestep ):
+        from packages.vtDV3D.PersistentModule import ReferenceTimeUnits 
         if self.timeRange[0] == self.timeRange[1]:
             self.running = False
         else:
-            self.setValue( iTimestep )
-            sheetTabs = set()
-            relTimeValue = self.relTimeStart + self.iTimeStep * self.relTimeStep
-            print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValue, str( self.timeRange ) )
-            displayText = self.getTextDisplay()
-            HyperwallManager.singleton.processGuiCommand( ['reltimestep', relTimeValue, displayText ], False  )
-            for module in self.activeModuleList:
-                dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
-                module.updateAnimation( relTimeValue, displayText  )
+            try:
+                self.setValue( iTimestep )
+                sheetTabs = set()
+                relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
+                timeAxis = self.module.getMetadata('time')
+                timeValues = np.array( object=timeAxis.getValue() )
+                relTimeRef = cdtime.reltime( relTimeValueRef, ReferenceTimeUnits )
+                relTime0 = relTimeRef.torel( timeAxis.units )
+                timeIndex = timeValues.searchsorted( relTime0.value ) 
+                if ( timeIndex >= len( timeValues ) ): timeIndex = len( timeValues ) - 1
+                relTimeValue0 =  timeValues[ timeIndex ]
+                r0 = cdtime.reltime( relTimeValue0, timeAxis.units )
+                relTimeRef = r0.torel( ReferenceTimeUnits )
+                relTimeValueRefAdj = relTimeRef.value
+                print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
+                displayText = self.getTextDisplay()
+                HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, displayText ], False  )
+                for module in self.activeModuleList:
+                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
+                    module.updateAnimation( relTimeValueRefAdj, displayText  )
+            except Exception:
+                traceback.print_exc( 100, sys.stderr )
+#                print>>sys.stdout, "Error in setTimestep[%d]: %s " % ( iTimestep, str(err) )
 
     def stop(self):
         self.runButton.setText('Run')
         self.running = False 
+        for module in self.activeModuleList:
+            module.stopAnimation()
+
+    def cancelTriggered(self, checked = False):
+        self.stop()
+        IVModuleConfigurationDialog.cancelTriggered( self, checked )
         
     def updateTimeRange(self):   
         newConfig = DV3DConfigurationWidget.saveConfigurations()
@@ -1722,7 +1895,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     def animate(self):
         self.setTimestep( self.iTimeStep + 1 )  
         if self.running: 
-            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.delayTimeScale 
+            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
+            print " Animate step, delay time = %.2f msec" % delayTime
             self.timer.start( delayTime ) 
                 
 #    def run1(self):
@@ -1800,6 +1974,83 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.resetButton.setFixedWidth(100)
         self.buttonLayout.addWidget(self.resetButton)
         self.connect(self.resetButton, SIGNAL('clicked(bool)'), self.reset )
+
+class LevelConfigurationDialog( IVModuleConfigurationDialog ):
+    """
+    LevelConfigurationDialog ...   
+    """ 
+   
+    def __init__(self, name, **args):
+        self.datasetId = None
+        self.activeModule = None
+        self.levelsCombo  = None
+        IVModuleConfigurationDialog.__init__( self, name, **args )
+                                  
+    @staticmethod   
+    def getSignature():
+        return [ ( Float, 'levelValue'), ]
+    
+    def finalizeParameter(self):
+        self.setLevel()
+        IVModuleConfigurationDialog.finalizeParameter(self)
+        
+    def getValue( self ):
+        return str( self.levelsCombo.currentText() )
+                       
+    def setLevel( self ):
+        levValue = self.getValue()
+        self.module.setCurrentLevel( levValue )
+        textDisplay = "%s: %s" % ( self.name, levValue )
+        for module in self.activeModuleList:
+            module.dvUpdate( animate=True ) 
+            module.updateTextDisplay( textDisplay ) 
+        
+    def updateLayout(self):
+        if self.levelsCombo.count() == 0:
+            levels = self.module.lev.getValue()
+            for level in levels: self.levelsCombo.addItem( str(level) )
+            self.levelsCombo.update()
+        
+    def showEvent ( self, event ):
+        self.updateLayout()
+        IVModuleConfigurationDialog.showEvent( self, event )
+                                  
+    def createContent(self ):
+        """ createEditor() -> None
+        Configure sections       
+        """       
+        levelMapTab = QWidget()        
+        self.tabbedWidget.addTab( levelMapTab, 'Levels' )                                       
+        self.tabbedWidget.setCurrentWidget(levelMapTab)
+        layout = QVBoxLayout()
+        levelMapTab.setLayout( layout ) 
+        layout.setMargin(10)
+        layout.setSpacing(20)
+        
+        self.levelsCombo = QComboBox()
+        layout.addWidget( self.levelsCombo )
+        
+#        self.buttonLayout = QHBoxLayout()
+#        self.buttonLayout.setMargin(5)
+#        layout.addLayout(self.buttonLayout)
+#        
+#        self.setButton = QPushButton( 'Set Level', self )
+#        self.setButton.setAutoDefault(False)
+#        self.setButton.setFixedWidth(100)
+#        self.buttonLayout.addWidget(self.setButton)
+#        self.connect(self.setButton, SIGNAL('clicked(bool)'), self.setLevel )
+
+#        self.stepButton = QPushButton( 'Step Level', self )
+#        self.stepButton.setAutoDefault(False)
+#        self.stepButton.setFixedWidth(100)
+#        self.buttonLayout.addWidget(self.stepButton)
+#        self.connect(self.stepButton, SIGNAL('clicked(bool)'), self.step )
+
+#        self.cancelButton = QPushButton( 'Cancel', self )
+#        self.cancelButton.setAutoDefault(False)
+#        self.cancelButton.setFixedWidth(100)
+#        self.buttonLayout.addWidget(self.cancelButton)
+#        self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.cancelLevel )
 
 #class LayerConfigurationDialog( IVModuleConfigurationDialog ):
 #    """

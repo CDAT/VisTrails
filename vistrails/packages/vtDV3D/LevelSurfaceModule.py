@@ -35,19 +35,19 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.opacityRange =  [ 0.8, 0.8 ]
         self.imageRange = None
         self.numberOfLevels = 1
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, adjustRange=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', label='Level Range', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units, adjustRange=True )
-        self.addConfigurableLevelingFunction( 'opacity', 'O', label='Opacity', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
-        self.addConfigurableGuiFunction( 'nLevels', NLevelConfigurationWidget, 'n', label='# Levels', setValue=self.setNumberOfLevels, getValue=self.getNumberOfLevels, layerDependent=True )
-        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, adjustRange=True, units='data'  )
+        self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', label='Isosurface Level Range', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True, units='data', adjustRange=True )
+        self.addConfigurableLevelingFunction( 'opacity', 'p', label='Isosurface Opacity', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
+        self.addConfigurableGuiFunction( 'nLevels', NLevelConfigurationWidget, 'n', label='# Isosurface Levels', setValue=self.setNumberOfLevels, getValue=self.getNumberOfLevels, layerDependent=True )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
     
-    def setOpacityRange( self, opacity_range ):
+    def setOpacityRange( self, opacity_range, **args  ):
         print "Update Opacity, range = %s" %  str( opacity_range )
         self.opacityRange = opacity_range
         self.colormapManager.setAlphaRange ( opacity_range[0:2] ) 
 #        self.levelSetProperty.SetOpacity( opacity_range[1] )
         
-    def setColorScale( self, range ):
+    def setColorScale( self, range, **args  ):
         self.imageRange = self.getImageValues( range[0:2] ) 
         self.levelSetMapper.SetScalarRange( self.imageRange[0], self.imageRange[1] )
         self.colormapManager.setDisplayRange( range )
@@ -66,7 +66,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
 #        return level_data_values
 ##        return [ self.range[0], self.range[1], 0 ]
 
-    def setNumberOfLevels( self, nLevelsData  ):
+    def setNumberOfLevels( self, nLevelsData, **args   ):
         self.numberOfLevels = int( getItem( nLevelsData ) )
         if self.numberOfLevels < 1: self.numberOfLevels = 1
         self.updateLevels()

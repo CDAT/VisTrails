@@ -57,10 +57,17 @@ class QVTKClientWidget(QVTKWidget):
         QVTKWidget.__init__(self, parent, f )
         self.iRenderCount = 0
         self.iRenderPeriod = 10
+        self.current_button = QtCore.Qt.NoButton
+        self.current_pos = QtCore.QPoint( 50, 50 )
 
     def event(self, e): 
         if ENABLE_JOYSTICK and ( e.type() == ControlEventType ):   
-            self.processControllerEvent( e, [ self.width(), self.height() ] )  
+            self.processControllerEvent( e, [ self.width(), self.height() ] ) 
+        if e.type() == QtCore.QEvent.MouseButtonPress:     
+            self.current_button = e.button()  
+            self.current_pos = e.globalPos()   
+        elif e.type() == QtCore.QEvent.MouseButtonRelease: 
+            self.current_button = QtCore.Qt.NoButton
         return qt_super(QVTKClientWidget, self).event(e) 
     
     def processControllerEvent(self, event, size ):
@@ -197,7 +204,9 @@ class QVTKServerWidget( QVTKClientWidget ):
             cup = cam.GetViewUp()
             camera_pos = (cpos,cfol,cup)
         screen_pos = parse_cell_address( self.location )
-        HyperwallManager.singleton.processInteractionEvent( name, event, screen_pos, dims, camera_pos ) 
+        HyperwallManager.getInstance().processInteractionEvent( name, event, screen_pos, dims, camera_pos ) 
+        
+        
         
 #    def interactionEvent(self, istyle, name):
 #        """ interactionEvent(istyle: vtkInteractorStyle, name: str) -> None
@@ -228,6 +237,60 @@ class QVTKServerWidget( QVTKClientWidget ):
 #                            r.ResetCameraClippingRange()
 #                    cell.update()
 
+class CaptionEditor(QtGui.QDialog):
+    def __init__(self, caption, parent=None):
+        super(CaptionEditor, self).__init__(parent)
+        self.caption = caption
+        actor = self.getActor()
+        c = actor.GetProperty().GetColor()
+        a = actor.GetProperty().GetOpacity()
+        rgba = [ int(round(c[0]*255)), int(round(c[1]*255)), int(round(c[2]*255)), int(round(a*255)) ]
+        self.color = QColor ( rgba[0], rgba[1], rgba[2], rgba[3] )
+ 
+        captionLabel = QtGui.QLabel("Caption Text: ")
+        self.captionTextBox = QtGui.QLineEdit( actor.GetCaption(), self )
+
+        self.chooseColorButton = QtGui.QPushButton( 'Choose Color', self )
+        self.chooseColorButton.setAutoFillBackground(True) 
+        self.connect(self.chooseColorButton, SIGNAL('clicked(bool)'), self.chooseColor )
+                    
+        buttonBox = QtGui.QDialogButtonBox( QtGui.QDialogButtonBox.Ok | QtGui.QDialogButtonBox.Close )
+
+        grid = QGridLayout()
+        grid.addWidget(captionLabel, 0, 0)
+        grid.addWidget(self.captionTextBox, 0, 1)
+        grid.addWidget(self.chooseColorButton, 1, 0, 1, 2)
+        grid.addWidget(buttonBox, 2, 0, 1, 2)
+        self.setLayout(grid)
+
+        self.connect( buttonBox, QtCore.SIGNAL("accepted()"), self.accept )
+        self.connect( buttonBox, QtCore.SIGNAL("rejected()"), self.reject )
+        self.setWindowTitle("Caption Editor")
+        self.updateButtonColor()  
+        
+    def getActor(self):
+        return self.caption.GetRepresentation().GetCaptionActor2D() 
+    
+    def updateButtonColor(self):
+        pal =  QtGui.QPalette( self.color )
+#        self.chooseColorButton.setAutoFillBackground(True)
+        self.chooseColorButton.setPalette(pal)
+#        self.chooseColorButton.palette().setColor( QtGui.QPalette.ButtonText, self.color )
+           
+    def chooseColor(self):
+        self.color = QtGui.QColorDialog.getColor ( self.color, self, "Choose Caption Color", QtGui.QColorDialog.ShowAlphaChannel ) 
+        self.updateButtonColor()
+                
+    def accept( self ):
+        actor = self.getActor()
+        actor.SetCaption( str( self.captionTextBox.text() ) )
+        actor.GetProperty().SetColor ( self.color.redF(), self.color.greenF(), self.color.blueF() )
+        actor.GetProperty().SetOpacity ( self.color.alphaF() )
+        super(CaptionEditor, self).accept()   
+
+    def reject( self ):
+        super(CaptionEditor, self).reject()   
+
 class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 
     def __init__( self, mid, **args ):
@@ -249,17 +312,112 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.builtCellWidget = False
         self.logoActor = None
         self.logoVisible = True
+        self.captions = {}  
+        self.logoRepresentation = None 
+        self.captionKey = 0
+
+#        self.addConfigurableGuiFunction( 'caption', CaptionConfigurationDialog, 'k', label='Add/Remove Caption', setValue=self.editCaptions, getValue=self.getCaptions, layerDependent=True )
+
+    def addCaption( self, key, **args ):
+        existing_caption = self.captions.get(key,None)
+        if not existing_caption:
+            text = args.get('text', "Right-click to edit" )            
+            color= args.get( 'color',  [ 0, 0, 1 ] )
+#            pos = QtCore.QPointF( self.cellWidget.current_pos )
+
+            captionRep =  vtk.vtkCaptionRepresentation() 
+            captionWidget = vtk.vtkCaptionWidget()
+            captionWidget.SetInteractor(self.iren)
+            captionWidget.SetRepresentation(captionRep)
+            captionWidget.SelectableOn() 
+            captionWidget.ResizableOn() 
+            captionWidget.AddObserver( 'AnyEvent', self.captionObserver )
+            captionRep.SetPosition( 0.8, 0.8  )
+            captionRep.SetPosition2( 0.2, 0.05  )
+            captionRep.SetAnchorPosition( [ 20.0, 20.0, 0.0 ] )
+            captionActor = captionRep.GetCaptionActor2D() 
+            captionWidget.GetEventTranslator().SetTranslation( vtk.vtkCommand.RightButtonPressEvent, vtk.vtkWidgetEvent.Select )
+            captionWidget.GetEventTranslator().SetTranslation( vtk.vtkCommand.RightButtonReleaseEvent, vtk.vtkWidgetEvent.EndSelect )
+            
+            captionActor.SetCaption( text )
+            captionActor.BorderOn()
+#            captionActor.SetAttachmentPoint(  pos.x(), pos.y(), 0.0  ) 
+            captionActor.GetCaptionTextProperty().BoldOff()
+            captionActor.GetCaptionTextProperty().ItalicOff()
+            captionActor.GetCaptionTextProperty().ShadowOff()
+            captionActor.GetCaptionTextProperty().SetFontFamilyToArial()
+            captionActor.GetCaptionTextProperty().SetJustificationToCentered()
+            captionActor.ThreeDimensionalLeaderOff()
+            captionActor.LeaderOn()
+            captionActor.SetLeaderGlyphSize( 10.0 )
+            captionActor.GetProperty().SetColor ( color[0], color[1], color[2] )
+            captionActor.SetMaximumLeaderGlyphSize( 10.0 )
+            self.captions[key] = captionWidget
+            captionWidget.On()
+            return captionWidget
+        
+    def deleteCaption( self, caption ):
+        caption.Off()
+        self.render() 
+#        for item in self.captions.items():
+#            if item[1] == caption:
+#                self.captions[ item[0] ] = None
+        
+    def editCaption( self, caption ):
+        editor = CaptionEditor( caption )
+        editor.exec_()
+        self.render() 
+
+    def captionObserver (self, caller, event ):
+        if self.cellWidget:
+            if str(event) == "StartInteractionEvent":
+                if self.cellWidget.current_button == QtCore.Qt.RightButton:
+                    caller.GetRepresentation().MovingOff() 
+                    captionActionMenu = QtGui.QMenu()
+                    captionActionMenu.addAction("Edit")
+                    captionActionMenu.addAction("Delete")
+                    selectedItem = captionActionMenu.exec_( self.cellWidget.current_pos )
+                    if selectedItem:
+                        if   selectedItem.text() == "Edit":    self.editCaption( caller )           
+                        elif selectedItem.text() == "Delete":  self.deleteCaption( caller )           
+#            print " Caption Observer: event = %s, button = %s " % ( str( event ), str( self.cellWidget.current_button ) )
 
     def getSheetTabWidget( self ):   
         return self.cellWidget.findSheetTabWidget() if self.cellWidget else None
     
-    def toggleLogoVisibility( self ):
-        self.logoVisible = not self.logoVisible 
+    def toggleLogoVisibility1( self ):
+        self.logoVisible = not self.logoVisible
         self.logoActor.SetVisibility( self.logoVisible ) 
         self.logoActor.Modified()
         self.renWin.Render() 
-    
+
+    def toggleLogoVisibility( self ):
+        if self.logoRepresentation:
+            self.logoVisible = not self.logoVisible
+            if self.logoVisible: self.logoWidget.On()
+            else: self.logoWidget.Off()
+            self.renWin.Render() 
+
     def addLogo(self):
+        if self.logoRepresentation == None:
+            reader = vtk.vtkJPEGReader()
+            reader.SetFileName( defaultLogoFile )
+            logo_input = reader.GetOutput()
+            logo_input.Update()
+            self.logoRepresentation = vtk.vtkLogoRepresentation()
+            self.logoRepresentation.SetImage(logo_input)
+            self.logoRepresentation.ProportionalResizeOn ()
+            self.logoRepresentation.SetPosition( 0.82, 0.0 )
+            self.logoRepresentation.SetPosition2( 0.18, 0.08 )
+            self.logoRepresentation.GetImageProperty().SetOpacity( 0.9 )
+            self.logoRepresentation.GetImageProperty().SetDisplayLocationToBackground() 
+            self.logoWidget = vtk.vtkLogoWidget()
+            self.logoWidget.SetInteractor( self.iren )
+            self.logoWidget.SetRepresentation(self.logoRepresentation)
+            self.logoWidget.On()
+            self.render() 
+     
+    def addLogo1(self):
         upper_corner = False
         if len(self.renderers) and self.renWin:
             if self.logoActor == None:
@@ -297,12 +455,19 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 #            coord.SetCoordinateSystemToNormalizedViewport()
 #            coord.SetValue( 0.75, 0.9 ) 
             
-       
- 
+        
     def onRender( self, caller, event ):
         self.addLogo()
         PersistentVisualizationModule.onRender( self, caller, event  )
-            
+
+    def processKeyEvent( self, key, caller=None, event=None ):            
+        if (  key == 'k'  ):
+            self.addCaption( self.captionKey )
+            self.captionKey += 1
+            self.render() 
+        else:
+           PersistentVisualizationModule.processKeyEvent( self, key, caller, event ) 
+                        
     def adjustSheetDimensions(self, row, col ):
         sheetTabWidget = getSheetTabWidget()
         ( rc, cc ) = sheetTabWidget.getDimension()
@@ -345,25 +510,26 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                     dcam.SetViewUp(cup)
         
     def setCellLocation( self, moduleId ):
-        cell = ModuleStore.popCell()
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
         cellLocation = CellLocation()
         cellLocation.rowSpan = 1
         cellLocation.colSpan = 1
         cell_coordinates = None
-        address = "A1"   
+        address = DV3DPipelineHelper.getCellAddress( self.pipeline ) 
         if self.isClient:            
             cellLocation.sheetReference = StandardSheetReference()
-            cellLocation.sheetReference.sheetName = HyperwallManager.singleton.deviceName
-        else: 
+            cellLocation.sheetReference.sheetName = HyperwallManager.getInstance().deviceName
+        elif not address: 
             address_input = self.getInputValue( "cell_location", None )
-            address = cell[1] if cell else getItem(  address_input )
+            address = getItem(  address_input )
             
         if address:
-            print "Setting Cell Address from Input: %s %s" % ( address, str(cell) )
+            print "Setting Cell Address from Input: %s " % ( address )
             address = address.replace(' ', '').upper()
+            address = address.split('!')[-1]
             cell_coordinates = parse_cell_address( address )
         else:
-            cell_coordinates = HyperwallManager.singleton.getCellCoordinatesForModule( moduleId )
+            cell_coordinates = HyperwallManager.getInstance().getCellCoordinatesForModule( moduleId )
             if cell_coordinates == None: return None
         cellLocation.col = cell_coordinates[0]
         cellLocation.row = cell_coordinates[1]
@@ -376,8 +542,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def updateHyperwall(self):
         dimensions = self.setCellLocation( self.moduleID )  
         if dimensions:      
-            HyperwallManager.singleton.addCell( self.moduleID, self.datasetId, str(0), dimensions )
-            HyperwallManager.singleton.executeCurrentWorkflow( self.moduleID )
+            HyperwallManager.getInstance().addCell( self.moduleID, self.datasetId, str(0), dimensions )
+            HyperwallManager.getInstance().executeCurrentWorkflow( self.moduleID )
 
     def isBuilt(self):
         return ( self.cellWidget <> None )
@@ -395,6 +561,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def execute(self, **args ):
         if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
         PersistentVisualizationModule.execute(self, **args)
+        self.recordCameraPosition()
         
     def addTitle(self):    
         title = getItem( self.getInputValue( "title", None ) )
@@ -402,15 +569,20 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if self.titleBuffer and self.renderer:
             self.getTitleActor().VisibilityOn() 
                       
-
-
+    def recordCameraPosition(self):
+        aCamera = self.renderer.GetActiveCamera()
+        self.cameraPosition = aCamera.GetPosition()
+        self.cameraFocalPoint = aCamera.GetFocalPoint()
+        self.cameraViewUp = aCamera.GetViewUp()
+         
     def resetCamera(self):
-            aCamera = self.renderer.GetActiveCamera()
-            aCamera.SetViewUp( 0, 0, 1 )
-            aCamera.SetPosition( 0.0, 0.0, ( self.mapCenter[0] + self.mapCenter[1] ) / 4.0 )
-            aCamera.SetFocalPoint( self.mapCenter[0], self.mapCenter[1], 0.0 )
-            aCamera.ComputeViewPlaneNormal()
-            self.renderer.ResetCamera()                
+        aCamera = self.renderer.GetActiveCamera()
+        aCamera.SetViewUp( *self.cameraViewUp )
+        aCamera.SetPosition( *self.cameraPosition )
+        aCamera.SetFocalPoint( *self.cameraFocalPoint )
+        aCamera.ComputeViewPlaneNormal()
+        self.renderer.ResetCamera() 
+        self.render()                            
         
     def buildWidget(self):                        
         if self.renderers:
@@ -549,7 +721,7 @@ class ChartCellConfigurationWidget(DV3DConfigurationWidget):
         opacity_layout.addWidget( self.opacitySlider )
         layout.addLayout( opacity_layout )
         
-        sheet_dims = HyperwallManager.singleton.getDimensions()
+        sheet_dims = HyperwallManager.getInstance().getDimensions()
 
         locationTab = QWidget()        
         self.tabbedWidget.addTab( locationTab, 'cell location' )                 
@@ -595,7 +767,7 @@ class ChartCellConfigurationWidget(DV3DConfigurationWidget):
         self.emit(SIGNAL('doneConfigure()'))
 #        self.close()
  
-class ChartCell(WorkflowModule):
+class ChartCell( WorkflowModule ):
     
     PersistentModuleClass = PM_ChartCell
     
@@ -604,6 +776,110 @@ class ChartCell(WorkflowModule):
         
     def syncCamera( self, cpos, cfol, cup ):
         if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
+
+class PM_CloudCell3D( PM_DV3DCell ):
+
+    def __init__( self, mid, **args ):
+        PM_DV3DCell.__init__( self, mid, **args)
+        self.primaryInputPort = "pointcloud"
+
+    def updateModule( self, **args ):
+        PM_DV3DCell.updateModule( self, **args )
+        if self.renWin: self.renWin.Render()
+        
+    def buildRendering(self):
+        PM_DV3DCell.buildRendering( self )
+        print " CloudCell3D.buildRendering  ****** "
+
+class CloudCell3DConfigurationWidget(DV3DConfigurationWidget):
+    """
+    CDMSDatasetConfigurationWidget ...
+    
+    """
+
+    def __init__(self, module, controller, parent=None):
+        """ DV3DCellConfigurationWidget(module: Module,
+                                       controller: VistrailController,
+                                       parent: QWidget)
+                                       -> DemoDataConfigurationWidget
+        Setup the dialog ...
+        
+        """
+        self.cellAddress = 'A1'
+        self.title = ""
+        DV3DConfigurationWidget.__init__(self, module, controller, 'DV3D Cloud Cell Configuration', parent)
+                
+    def getParameters( self, module ):
+        titleParms = getFunctionParmStrValues( module, "title" )
+        if titleParms: self.title = str( titleParms[0] )
+        if not self.title: self.title = self.pmod.getTitle()
+        celllocParams = getFunctionParmStrValues( module, "cell_location" )
+        if celllocParams:  self.cellAddress = str( celllocParams[0] )
+
+    def createLayout(self):
+        """ createEditor() -> None
+        Configure sections
+        """   
+             
+        basemapTab = QWidget()        
+        self.tabbedWidget.addTab( basemapTab, 'base map' )                 
+        self.tabbedWidget.setCurrentWidget(basemapTab)
+        layout = QVBoxLayout()
+        basemapTab.setLayout( layout ) 
+                
+        title_layout = QHBoxLayout()
+        title_label = QLabel( "Title:" )
+        title_layout.addWidget( title_label )
+        self.titleEdit =  QLineEdit ( self.parent() )
+        if self.title: self.titleEdit.setText( self.title )
+        self.connect( self.titleEdit, SIGNAL("editingFinished()"), self.stateChanged ) 
+        title_label.setBuddy( self.titleEdit )
+#        self.titleEdit.setFrameStyle( QFrame.Panel|QFrame.Raised )
+#        self.titleEdit.setLineWidth(2)
+        title_layout.addWidget( self.titleEdit  )        
+        layout.addLayout( title_layout )
+                
+        sheet_dims = HyperwallManager.getInstance().getDimensions()
+        locationTab = QWidget()        
+        self.tabbedWidget.addTab( locationTab, 'cell location' )                 
+        self.tabbedWidget.setCurrentWidget(locationTab)
+        location_layout = QVBoxLayout()
+        locationTab.setLayout( location_layout ) 
+
+        cell_coordinates = parse_cell_address( self.cellAddress )
+        cell_selection_layout = QHBoxLayout()
+        cell_selection_label = QLabel( "Cell Address:" )
+        cell_selection_layout.addWidget( cell_selection_label ) 
+
+        self.colCombo =  QComboBox ( self.parent() )
+        self.colCombo.setMaximumHeight( 30 )
+        cell_selection_layout.addWidget( self.colCombo  )        
+        for iCol in range( 5 ):  self.colCombo.addItem( chr( ord('A') + iCol ) )
+        self.colCombo.setCurrentIndex( cell_coordinates[0] )
+
+        self.rowCombo =  QComboBox ( self.parent() )
+        self.rowCombo.setMaximumHeight( 30 )
+        cell_selection_layout.addWidget( self.rowCombo  )        
+        for iRow in range( 5 ):  self.rowCombo.addItem( str(iRow+1) )
+        self.rowCombo.setCurrentIndex( cell_coordinates[1] )
+        location_layout.addLayout(cell_selection_layout)
+        
+    def updateController(self, controller=None):
+        parmRecList = []
+        parmRecList.append( ( 'cell_location' , [ self.cellAddress ]  ), )  
+        parmRecList.append( ( 'title' , [ self.title ]  ), )  
+        self.persistParameterList( parmRecList )
+        self.stateChanged(False)         
+           
+    def okTriggered(self, checked = False):
+        """ okTriggered(checked: bool) -> None
+        Update vistrail controller (if neccesssary) then close the widget       
+        """
+        self.cellAddress = "%s%s" % ( str( self.colCombo.currentText() ), str( self.rowCombo.currentText() ) )
+        self.title = str( self.titleEdit.text() ) 
+        self.updateController(self.controller)
+        self.emit(SIGNAL('doneConfigure()'))
+#        self.close()
 
 class PM_MapCell3D( PM_DV3DCell ):
 
@@ -936,7 +1212,7 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
         opacity_layout.addWidget( self.opacitySlider )
         layout.addLayout( opacity_layout )
         
-        sheet_dims = HyperwallManager.singleton.getDimensions()
+        sheet_dims = HyperwallManager.getInstance().getDimensions()
 
         locationTab = QWidget()        
         self.tabbedWidget.addTab( locationTab, 'cell location' )                 
@@ -989,9 +1265,19 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
         self.emit(SIGNAL('doneConfigure()'))
 #        self.close()
  
-class MapCell3D(WorkflowModule):
+class MapCell3D( WorkflowModule ):
     
     PersistentModuleClass = PM_MapCell3D
+    
+    def __init__( self, **args ):
+        WorkflowModule.__init__(self, **args) 
+        
+    def syncCamera( self, cpos, cfol, cup ):
+        if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
+              
+class CloudCell3D( WorkflowModule ):
+    
+    PersistentModuleClass = PM_CloudCell3D
     
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args) 

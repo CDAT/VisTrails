@@ -39,9 +39,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def __init__( self, mid, **args ):
         self.imageRange = None
         PersistentVisualizationModule.__init__( self, mid, **args )
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'opacity', 'O', label='Opacity',    setLevel=self.setOpacity,    getLevel=self.getOpacity, isDataValue=False, layerDependent=True, bound = False )
-        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True )
+        self.addConfigurableLevelingFunction( 'opacity', 'O', label='Slice Plane Opacity',    setLevel=self.setOpacity, activeBound='min',  getLevel=self.getOpacity, isDataValue=False, layerDependent=True, bound = False )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
         self.opacity = [ 0.75, 1.0 ]
         self.iOrientation = 0
@@ -52,8 +52,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ = None
         self.opacityUpdateCount = 0
 #        self.imageRescale = None
+        print " Volume Slicer init, id = %x " % id(self)
         VolumeSlicerModules[mid] = self
-#        print " Volume Slicer init, id = %s " % str( id(self) )
 
     def __del__(self):
         self.planeWidgetX.RemoveAllObservers()
@@ -61,7 +61,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ.RemoveAllObservers()
         del VolumeSlicerModules[ self.moduleID ]
     
-    def setZScale( self, zscale_data ):
+    def setZScale( self, zscale_data, **args ):
         if self.setInputZScale( zscale_data ):
             if self.planeWidgetX <> None:
                 bounds = list( self.input.GetBounds() ) 
@@ -71,7 +71,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def getOpacity(self):
         return self.opacity
     
-    def setOpacity(self, range ):
+    def setOpacity(self, range, **args ):
         self.opacity = range
 #        printArgs( " Leveling: ", opacity=self.opacity, range=range ) 
         self.updateOpacity() 
@@ -335,34 +335,37 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #            self.UpdateWidgetPlacement()
            
     def TestObserver( self, caller=None, event = None ):
-        print " TestObserver: event = %s, " % ( event )
+        print " Volume Slicer TestObserver: event = %s, " % ( event )
+        
+    def getAxes(self):
+        pass
 
     def ProcessIPWAction( self, caller, event, **args ):
         action = caller.State
         iAxis = caller.PlaneIndex
+
         if event == ImagePlaneWidget.InteractionUpdateEvent:
             
             if action == ImagePlaneWidget.Cursoring:   
                 if not self.isSlicing:
-                    HyperwallManager.singleton.setInteractionState( 'VolumeSlicer.Slicing' )
+                    HyperwallManager.getInstance().setInteractionState( 'VolumeSlicer.Slicing' )
                     self.isSlicing = True
                 image_value = caller.GetCurrentImageValue() 
                 cpos = caller.GetCurrentCursorPosition()     
                 dataValue = self.getDataValue( image_value )
                 wpos = self.getWorldCoords( cpos )
-                textDisplay = " Position: (%.1f, %.1f, %.1f), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, self.units )
+                textDisplay = " Position: (%s, %s, %s), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, self.units )
                 sliceIndex = caller.GetSliceIndex() 
                 self.slicePosition[iAxis] = sliceIndex
                 self.updateTextDisplay( textDisplay )
                 
             if action == ImagePlaneWidget.Pushing:  
                 if not self.isSlicing:
-                    HyperwallManager.singleton.setInteractionState( 'VolumeSlicer.Slicing' )
-                    self.isSlicing = True                        
-                axes = [ 'Longitude', 'Latitude', 'Level' ]
+                    HyperwallManager.getInstance().setInteractionState( 'VolumeSlicer.Slicing' )
+                    self.isSlicing = True 
                 sliceIndex = caller.GetSliceIndex() 
-                wpos = self.getWorldCoord( sliceIndex, iAxis )
-                textDisplay = " %s = %.1f ." % ( axes[ iAxis ], wpos )
+                axisName, spos = self.getWorldCoord( sliceIndex, iAxis )
+                textDisplay = " %s = %s ." % ( axisName, spos )
                 if iAxis == 0:
                     p1 = caller.GetPoint1()
 #                    print " >++++++++++++++++++> Slicing: Set Slice[%d], index=%d, pos=%.2f, " % ( iAxis, sliceIndex, p1[0] ), textDisplay
@@ -387,7 +390,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.imageRescale.SetInput( resliceOutput )
 #        self.updateSliceOutput()
 #        self.endInteraction()
-#        HyperwallManager.singleton.setInteractionState( None )
+#        HyperwallManager.getInstance().setInteractionState( None )
 #        self.isSlicing = False
 #        
 #        active_irens = self.getActiveIrens()        
@@ -444,12 +447,20 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         x, y = caller.GetEventPosition()
         self.ColorLeveler.startWindowLevel( x, y )
 
-    def scaleColormap( self, ctf_data ):
+    def scaleColormap( self, ctf_data, **args ):
         self.imageRange = self.getImageValues( ctf_data[0:2] ) 
         self.lut.SetTableRange( self.imageRange[0], self.imageRange[1] ) 
         self.colormapManager.setDisplayRange( ctf_data )
         self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
-#        print " Volume Slicer: Scale Colormap: [ %.2f, %.2f ] " % ( self.imageRange[0], self.imageRange[1] )
+        print " Volume Slicer[%d]: Scale Colormap: [ %d, %d ] ( %.2g, %.2g ) " % ( self.moduleID, int(self.imageRange[0]), int(self.imageRange[1]), ctf_data[0], ctf_data[1] )
+        
+    def scaleColormapRelative( self, image_data, **args ):
+        self.imageRange = image_data 
+        self.lut.SetTableRange( self.imageRange[0], self.imageRange[1] ) 
+        self.range[0:2] = self.getDataValues( image_data[0:2] )
+        self.colormapManager.setDisplayRange( self.range )
+        self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
+        print " Volume Slicer: Scale Colormap: [ %.2f, %.2f ] " % ( self.imageRange[0], self.imageRange[1] )       
         
     def finalizeLeveling( self ):
         isLeveling =  PersistentVisualizationModule.finalizeLeveling( self )

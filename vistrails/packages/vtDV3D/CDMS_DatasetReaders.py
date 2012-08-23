@@ -214,7 +214,7 @@ class CDMSDatasetRecord():
         args1 = {} 
         gridMaker = None
         decimationFactor = 1
-        if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.singleton.isServer else decimation[0]+1
+        if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.getInstance().isServer else decimation[0]+1
 #        try:
         args1['time'] = timeValue
         if gridBounds[0] < LonMin and gridBounds[0]+360.0<LonMax: gridBounds[0] = gridBounds[0] + 360.0
@@ -335,7 +335,7 @@ class CDMSDatasetRecord():
         gridMaker = None
         decimationFactor = 1
         order = 'xyt' if ( timeBounds == None) else 'xyz'
-        if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.singleton.isServer else decimation[0]+1
+        if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.getInstance().isServer else decimation[0]+1
         try:
             nts = self.dataset['time'].shape[0]
             if timeValue and (nts>1): args1['time'] = timeValue
@@ -489,6 +489,10 @@ class CDMSDataset(Module):
         self.gridBounds = None
         self.decimation = None
         self.zscale = 1.0
+        self.cells = []
+        
+    def setCells( self, cells ):
+        self.cells[:] = cells[:]
       
     def setVariableRecord( self, id, varName ):
         self.variableRecs[id] = varName
@@ -620,7 +624,7 @@ class CDMSDataset(Module):
                     rv = dsetRec.getFileVarDataCube( varName, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]], refVar=self.referenceVariable, refLev=self.referenceLev )  
             elif varName in self.getTransientVariableNames():
                 tvar = self.getTransientVariable( varName ) 
-                rv = self.getTransVarDataCube( varName, tvar, self.decimation, time=timeValues )  
+                rv = self.getTransVarDataCube( varName, tvar, self.decimation, time=timeValues, lev=levelValues )  
         if (rv.id == "NULL") and (varName in self.outputVariables):
             rv = self.outputVariables[ varName ]
         if rv.id <> "NULL": 
@@ -630,7 +634,7 @@ class CDMSDataset(Module):
 #            else:       
 #                vc = cdutil.VariableConditioner( source=rv, weightedGridMaker=gridMaker )
 #                return vc.get( returnTuple=0 )
-        print>>sys.stderr, "Error: can't find time slice variable %s in dataset" % varName
+        print>>sys.stderr, "Error: can't find time slice data cube for variable %s in dataset" % varName
         return rv
 
 
@@ -640,6 +644,8 @@ class CDMSDataset(Module):
         """ 
         invert_z = False
         levaxis = transVar.getLevel() 
+        timeaxis = transVar.getTime() 
+        level = args.get( 'lev', None )
         if levaxis:
             values = levaxis.getValue()
             ascending_values = ( values[-1] > values[0] )
@@ -668,7 +674,9 @@ class CDMSDataset(Module):
         except: pass
         
         args1['order'] = order
-        if invert_z:  args1['lev'] = slice( None, None, -1 )
+        if levaxis:
+            if level: args1['lev'] = float( level )
+            elif invert_z:  args1['lev'] = slice( None, None, -1 )
         try: 
             rv = transVar( **args1 )
         except Exception, err: 
@@ -755,6 +763,7 @@ class SerializedInterfaceSpecs:
         
     def __init__( self, serializedConfiguration = None ):
         self.inputs = {}
+        self.cells = []
         self.configParms = None
         if serializedConfiguration and (serializedConfiguration <> 'None'):
             self.parseInputSpecs( serializedConfiguration )
@@ -788,7 +797,7 @@ class SerializedInterfaceSpecs:
                 print>>sys.stderr, " ERROR: Number of Files and number of Variables do not match."
         for iCell in range( len(cellInputSpecs) ):
             cellMetadata = cellInputSpecs[iCell].split('!')
-            if len( cellMetadata ) > 1: ModuleStore.addCell( cellMetadata[0], cellMetadata[1] )
+            if len( cellMetadata ) > 1: self.cells.append( ( cellMetadata[0], cellMetadata[1] ) )
                 
         
     def addInput(self, inputName, fileId, fileName, variableName, axes ):
@@ -907,11 +916,9 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         self.datasetModule = CDMSDataset()
         
     def clearDataCache(self):
-        from packages.vtDV3D.DV3DCell import PM_MapCell3D
         from packages.vtDV3D.CDMS_VariableReaders import PM_CDMSDataReader
         self.datasetModule.clearDataCache()
-        PM_CDMSDataReader.clearCache()
-#        PM_MapCell3D.clearCache()    
+        PM_CDMSDataReader.clearCache() 
         
     def computeGridFromSpecs(self):
         start_time, end_time, min_dt  = -float('inf'), float('inf'), float('inf')
@@ -1020,6 +1027,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 self.ref_var = self.getInputValue( "grid"  )
             
             self.datasetModule.setBounds( self.timeRange, self.roi, zscale, decimation ) 
+            self.datasetModule.setCells( inputSpecs.cells )
       
             if self.datasetMap:             
                 for datasetId in self.datasetMap:
@@ -1046,8 +1054,8 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
     def dvUpdate( self, **args ):
         pass     
         
-    def getMetadata( self, metadata={}, port=None ):
-        PersistentVisualizationModule.getMetadata( metadata )
+    def computeMetadata( self, metadata={}, port=None ):
+        PersistentVisualizationModule.computeMetadata( metadata )
         metadata[ 'vars2d' ] =  self.datasetModule.getVariableList( 2 )
         metadata[ 'vars3d' ] =  self.datasetModule.getVariableList( 3)
         metadata[ 'datasetId' ] = self.datasetId
