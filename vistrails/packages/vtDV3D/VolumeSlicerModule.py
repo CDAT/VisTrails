@@ -231,7 +231,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         # create the final map using the ROI
         odims = [ (self.roi[3]-self.roi[2])/reso[0] , (self.roi[1]-self.roi[0])/reso[1] ]
         ogrid = cdms2.createUniformGrid(self.roi[2], odims[0], reso[0], self.roi[0], odims[1], reso[1])
-        ovar = var.regrid(ogrid)
+        ovar = var.regrid(ogrid, regridTool='regrid2')
         
         # replace outlier numbers
         d = ovar.data
