@@ -47,8 +47,11 @@ class RegionExtractor:
                          ones(regions_data.shape),
                          grid = cdms2.createUniformGrid(89.75, 360, -0.5, -180, 720, 0.5),
                          mask = where(equal(regions_data, val), 0, 1))
+        lats = cdms2.createUniformLatitudeAxis(89.75, 360, -0.5)
+        lons = cdms2.createUniformLongitudeAxis(-180, 720, 0.5)
+        regions_var.setAxisList((lats,lons))
         
-        new_mask_var = regions_var.regrid(var.getGrid())
+        new_mask_var = regions_var.regrid(var.getGrid(), regridTool='regrid2', regridMethod='linear')
         new_mask = getmask(new_mask_var)
  
         if var.mask <> None:
