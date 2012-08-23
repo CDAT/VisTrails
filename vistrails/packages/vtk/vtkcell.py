@@ -500,6 +500,7 @@ class QVTKWidget(QCellWidget):
         
         if e.button() in invoke:
             iren.InvokeEvent(invoke[e.button()])
+            
 
     def mouseMoveEvent(self,e):
         """ mouseMoveEvent(e: QMouseEvent) -> None

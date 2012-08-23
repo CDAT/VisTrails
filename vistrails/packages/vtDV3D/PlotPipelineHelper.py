@@ -29,6 +29,7 @@ from packages.vtDV3D import HyperwallManager
 class LevelingType:
     GUI = 0
     LEVELING = 1
+    NONE = 2
 
 def getFormattedQString( value ):
     val = float( value )

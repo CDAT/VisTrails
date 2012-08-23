@@ -34,7 +34,14 @@ import __main__
 import systemCommands
 import customizeUVCDAT
 import uvcdatCommons
+import re
+import keyword
 
+def isidentifier(s):
+    if s in keyword.kwlist:
+        return False
+    return re.match(r'^[a-z_][a-z0-9_]*$', s, re.I) is not None
+        
 class QCommandLineType(QtGui.QLineEdit):
     """ Command line events to trap the up, down, left, right arrow button 
     events for the Qt Line Edit. """
@@ -568,8 +575,8 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             self.root.record(command)
         else:
             self.root.record("%s = %s" % (res,command))
-        clist = command.split("=")
-        if not processed and len(clist) > 1:
+        clist = command.split("=", maxsplit=1)
+        if not processed and len(clist) > 1 and isidentifier(clist[0]):
             varname = clist[0].strip()
             pycommand = clist[1].strip()
             # project controller will only capture the results that return 
