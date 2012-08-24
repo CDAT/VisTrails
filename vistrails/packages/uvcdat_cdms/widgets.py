@@ -149,8 +149,9 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         
         for attr in self.attributes:
             if getattr(gm,attr) != self.attributes[attr]:
-                changed = True
-                break
+                if str(getattr(gm,attr)) != str(self.attributes[attr]):
+                    changed = True
+                    break
         return changed
     
     def saveTriggered(self, checked = False):
