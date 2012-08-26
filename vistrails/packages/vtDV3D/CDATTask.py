@@ -24,6 +24,7 @@ class CDATTask(QtCore.QObject):
     outputs = [ 'output', ]
     
     def __init__( self, cdmsDataset, **args ):
+        QtCore.QObject.__init__( self )
         self.cdmsDataset = cdmsDataset
         self.inputMap = None
         self.outputMap = None

@@ -491,7 +491,6 @@ class ProjectController(QtCore.QObject):
                 not_found = True
         if not_found:
             from packages.uvcdat.init import Variable
-            from packages.pvclimate.pvvariable.init import PVVariable
             from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
             helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
             pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
@@ -549,6 +548,7 @@ class ProjectController(QtCore.QObject):
                 #they will be included in the case above. For now we need to 
                 #construct the variables based on the alias values (Emanuele)
                 if cell.plots[0].package == "PVClimate":
+                    from packages.pvclimate.pvvariable.init import PVVariable
                     for i in range(len(cell.variables)):
                         filename = pipeline.get_alias_str_value(cell.plots[0].files[i])
                         varname = pipeline.get_alias_str_value(cell.plots[0].vars[i])

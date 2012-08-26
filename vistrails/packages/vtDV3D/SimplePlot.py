@@ -102,6 +102,7 @@ class NodeData( QtCore.QObject ):
     GRAY = 5
     
     def __init__(self, **args ):
+        QtCore.QObject.__init__( self )
         self.ix0 = args.get( "ix0", None )
         self.y0 = args.get( "y0", None )
         self.ix1 = args.get( "ix1", None )
