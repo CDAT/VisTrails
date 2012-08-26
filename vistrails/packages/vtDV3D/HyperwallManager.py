@@ -13,6 +13,7 @@ HYPERWALL_SRC_PATH = os.path.join( os.path.dirname(__file__),  'hyperwall')
 class HyperwallManagerSingleton(QtCore.QObject):
 
     def __init__( self, **args ):
+        QtCore.QObject.__init__( self )
         self.connected = False
         self.cells = {}
         self.cellIds = {}

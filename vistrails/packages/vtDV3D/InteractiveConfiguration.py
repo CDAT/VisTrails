@@ -31,6 +31,7 @@ class CDMSDataType:
 class ConfigPopupManager( QObject ):
     
     def __init__( self, **args ):
+        QObject.__init__( self )
         self.menu = QMenu()
         self.resetActions = True
         self.connect ( self.menu, SIGNAL("aboutToHide()"), lambda: self.reset() )
@@ -64,6 +65,7 @@ class ConfigPopupManager( QObject ):
 class WindowRefinementGenerator( QObject ):
 
     def __init__( self, **args ):
+        QObject.__init__( self )
         self.initialPosition = None
         self.initialRefinement = None
         self.range = args.get( 'range', [ 0.0, 1.0 ] )
