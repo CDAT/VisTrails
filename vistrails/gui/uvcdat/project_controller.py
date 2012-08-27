@@ -548,7 +548,7 @@ class ProjectController(QtCore.QObject):
                 #they will be included in the case above. For now we need to 
                 #construct the variables based on the alias values (Emanuele)
                 if cell.plots[0].package == "PVClimate":
-                    from packages.pvclimate.pvvariable.init import PVVariable
+                    from packages.pvclimate.pvvariable import PVVariable
                     for i in range(len(cell.variables)):
                         filename = pipeline.get_alias_str_value(cell.plots[0].files[i])
                         varname = pipeline.get_alias_str_value(cell.plots[0].vars[i])
