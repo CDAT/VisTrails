@@ -978,11 +978,16 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             cell.plots = [plot_obj]
             #FIXME: this will always spread the cells in the same row
             cell_specs = []
+            cell_addresses = []
             for j in range(plot_obj.cellnum):
                 ccell = plot_obj.cells[j] 
                 location = ccell.address_name if ccell.address_name else 'location%d' % (j+1)   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
                 cell_spec = "%s%s" % ( chr(ord('A') + col+j ), row+1)
                 cell_specs.append( '%s!%s' % ( location, cell_spec ) )
+                cell_addresses.append( cell_spec )
+
+            for cell_address in cell_addresses:
+                DV3DPipelineHelper.pipelineMap[cell_address] = pipeline
             
             # Update project controller cell information    
             cell.variables = []

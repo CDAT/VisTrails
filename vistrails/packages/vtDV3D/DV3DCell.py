@@ -497,7 +497,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             if self.cellWidget:
                 self.renWin = self.cellWidget.GetRenderWindow() 
                 self.iren = self.renWin.GetInteractor()
-                caption_data = self.wmod.forceGetInputFromPort( CaptionManager.config_name, None )
+                caption_data = self.getInputValue( CaptionManager.config_name, None )
                 self.captionManager = CaptionManager( self.cellWidget, self.iren, data=caption_data )
                 self.connect(self.captionManager, CaptionManager.persist_captions_signal, self.persistCaptions )  
                 
