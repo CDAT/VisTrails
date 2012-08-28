@@ -815,6 +815,17 @@ class ProjectController(QtCore.QObject):
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
                 cell.current_parent_version = action.id
+
+                # FIXME: kludge since CDMSPipelineHelper is the only
+                # helper that supports these right now
+                plot_type = cell.plots[0].package
+                helper = self.plot_manager.get_plot_helper(plot_type)
+                if hasattr(helper, 'create_plot_objs_from_pipeline'):
+                    pipeline = self.vt_controller.vistrail.getPipeline(
+                        cell.current_parent_version)
+                    cell.plots = \
+                        helper.create_plot_objs_from_pipeline(pipeline,
+                                                              plot_type)
                 if get_vistrails_configuration().uvcdat.autoExecute:
                     self.execute_plot(cell.current_parent_version)
                     self.update_plot_configure(sheetName, row, col)
