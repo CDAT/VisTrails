@@ -390,8 +390,11 @@ class DV3DRangeConfigWidget(QFrame):
     def finalizeConfig( self ):
         if len( self.active_modules ):
             interactionState = self.active_cfg_cmd.name
-            for module in self.active_modules: 
-                module.finalizeConfigurationObserver( interactionState ) 
+            parm_range = list( self.active_cfg_cmd.range )
+            for module in self.active_modules:
+                config_data = module.getParameter( interactionState  ) 
+                config_data[0:2] = parm_range[0:2]
+                module.writeConfigurationResult( interactionState, config_data ) 
             HyperwallManager.getInstance().setInteractionState( None )               
         self.endConfig()
 

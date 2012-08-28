@@ -1032,6 +1032,11 @@ class PersistentModule( QObject ):
             self.persistParameterList( [ (parameter_name, output) ] )             
         except Exception, err:
             print "Error changing parameter %s for %s module: %s" % ( parameter_name, self.__class__.__name__, str(err) )
+     
+    def writeConfigurationResult( self, config_name, config_data, **args ):       
+        if self.wmod: self.wmod.setResult( config_name, config_data )
+        self.setParameter( config_name, config_data )
+        self.finalizeConfigurationObserver( config_name, **args )
            
     def finalizeConfigurationObserver( self, parameter_name, **args ):
         self.finalizeParameter( parameter_name, **args )    
