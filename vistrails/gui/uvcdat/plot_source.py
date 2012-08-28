@@ -24,6 +24,7 @@ class PlotSource(QtGui.QDockWidget):
         self.setWidget(self.main_widget)
         self.btn_copy_to_clipboard.clicked.connect(self.copyToClipboard)
         self.btn_save_to_file.clicked.connect(self.saveToFile)
+        self.tabWidget.tabCloseRequested.connect(self.closeTab)
         
         
     @classmethod
@@ -70,5 +71,7 @@ class PlotSource(QtGui.QDockWidget):
             f = open(str(fileName), "w")
             f.write(contents)
             f.close()
-                                                     
+
+    def closeTab(self, index):
+        self.tabWidget.removeTab(index)
             
