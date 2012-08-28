@@ -97,11 +97,12 @@ def vt_action(f):
     return new_f
 
 class VistrailController(object):
-    def __init__(self, vistrail=None, id_scope=None):
+    def __init__(self, vistrail=None, id_scope=None, auto_save=True):
         self.vistrail = vistrail
         self.id_scope = id_scope
         self.current_session = -1
         self.log = Log()
+        self._auto_save = auto_save
         if vistrail is not None:
             self.id_scope = vistrail.idScope
             self.current_session = vistrail.idScope.getNewId('session')
@@ -137,6 +138,10 @@ class VistrailController(object):
         # This will just store the mashups in memory and send them to SaveBundle
         # when writing the vistrail
         self._mashups = []
+
+        # the redo stack stores the undone action ids 
+        # (undo is automatic with us, through the version tree)
+        self.redo_stack = []
         
     # allow gui.vistrail_controller to reference individual views
     def _get_current_version(self):
@@ -167,13 +172,14 @@ class VistrailController(object):
         return self.locator
     
     def set_vistrail(self, vistrail, locator, abstractions=None, 
-                     thumbnails=None, mashups=None):
+                     thumbnails=None, mashups=None, set_log_on_vt=True):
         self.vistrail = vistrail
         if self.vistrail is not None:
             self.id_scope = self.vistrail.idScope
             self.current_session = self.vistrail.idScope.getNewId("session")
             self.vistrail.current_session = self.current_session
-            self.vistrail.log = self.log
+            if set_log_on_vt:
+                self.vistrail.log = self.log
             if abstractions is not None:
                 self.ensure_abstractions_loaded(self.vistrail, abstractions)
             if thumbnails is not None:
@@ -236,7 +242,8 @@ class VistrailController(object):
         Returns True if vistrail variable was changed """
         if self.vistrail:
             changed = self.vistrail.set_vistrail_var(name, value)
-            self.set_changed(changed)
+            if changed:
+                self.set_changed(changed)
             return changed
         return False
     
@@ -633,26 +640,29 @@ class VistrailController(object):
         # shouldn't be replaced
         if should_replace and old_id >= 0:
             function = module.function_idx[old_id]
-            for i, new_param_value in enumerate(param_values):
-                old_param = function.params[i]
-                if ((len(aliases) > i and old_param.alias != aliases[i]) or
-                    (len(query_methods) > i and 
-                     old_param.queryMethod != query_methods[i]) or
-                    (old_param.strValue != new_param_value)):
-                    if len(aliases) > i:
-                        alias = aliases[i]
-                    else:
-                        alias = ''
-                    if len(query_methods) > i:
-                        query_method = query_methods[i]
-                    else:
-                        query_method = None
-                    new_param = self.create_param(port_spec, i, 
-                                                  new_param_value, alias,
-                                                  query_method)
-                    op_list.append(('change', old_param, new_param,
-                                    function.vtType, function.real_id))
-        else:
+            if param_values is None:
+                op_list.append(('delete', function, module.vtType, module.id))
+            else:
+                for i, new_param_value in enumerate(param_values):
+                    old_param = function.params[i]
+                    if ((len(aliases) > i and old_param.alias != aliases[i]) or
+                        (len(query_methods) > i and 
+                         old_param.queryMethod != query_methods[i]) or
+                        (old_param.strValue != new_param_value)):
+                        if len(aliases) > i:
+                            alias = aliases[i]
+                        else:
+                            alias = ''
+                        if len(query_methods) > i:
+                            query_method = query_methods[i]
+                        else:
+                            query_method = None
+                        new_param = self.create_param(port_spec, i, 
+                                                      new_param_value, alias,
+                                                      query_method)
+                        op_list.append(('change', old_param, new_param,
+                                        function.vtType, function.real_id))
+        elif param_values is not None:
             new_function = self.create_function(module, function_name,
                                                 param_values, aliases,
                                                 query_methods)
@@ -945,7 +955,10 @@ class VistrailController(object):
     @vt_action
     def update_functions(self, module, functions):
         op_list = self.update_functions_ops(module, functions)
-        action = core.db.action.create_action(op_list)
+        if len(op_list) > 0:
+            action = core.db.action.create_action(op_list)
+        else:
+            action = None
         return action
 
     @vt_action
@@ -2338,7 +2351,8 @@ class VistrailController(object):
             locator = self.get_locator()
             if locator:
                 locator.clean_temporaries()
-                locator.save_temporary(self.vistrail)
+                if self._auto_save:
+                    locator.save_temporary(self.vistrail)
             view = DummyView()
             return self.execute_workflow_list([(self.locator,
                                                 self.current_version,
@@ -2481,7 +2495,7 @@ class VistrailController(object):
         pm = get_package_manager()
         pkg = pm.identifier_is_available(identifier)
         if not pkg and identifier.startswith('SUDS#'):
-            self.handleMissingSUDSWebServicePackage(identifier)
+            return self.handleMissingSUDSWebServicePackage(identifier)
         if not pm.has_package(identifier) and pkg:
             deps = pm.all_dependencies(identifier, dep_graph)[:-1]
             if identifier in self._asked_packages:
@@ -2802,9 +2816,9 @@ class VistrailController(object):
 
         left_exceptions = check_exceptions(root_exceptions)
         if len(left_exceptions) > 0 or len(new_exceptions) > 0:
-            details = '\n'.join(str(e) for e in left_exceptions + \
-                                    new_exceptions)
-            debug.critical("Some exceptions could not be handled", details)
+            details = '\n'.join(set(str(e) for e in left_exceptions + \
+                                    new_exceptions))
+            # debug.critical("Some exceptions could not be handled", details)
             raise InvalidPipeline(left_exceptions + new_exceptions, 
                                   cur_pipeline, new_version)
         return (new_version, cur_pipeline)
@@ -2846,7 +2860,7 @@ class VistrailController(object):
             if self.current_version != -1 and not self.current_pipeline:
                 debug.warning("current_version is not -1 and "
                               "current_pipeline is None")
-            if version != self.current_pipeline:
+            if version != self.current_version:
                 # clear delayed actions
                 # FIXME: invert the delayed actions and integrate them into
                 # the general_action_chain?
@@ -3110,10 +3124,11 @@ class VistrailController(object):
                                                                namespace)
                 save_bundle.abstractions.append(abs_unique_name)
                                 
-    def write_vistrail(self, locator, version=None):
+    def write_vistrail(self, locator, version=None, export=False):
         """write_vistrail(locator,version) -> Boolean
         It will return a boolean that tells if the tree needs to be 
-        invalidated"""
+        invalidated
+        export=True means you should not update the current controller"""
         result = False 
         if self.vistrail and (self.changed or self.locator != locator):
             # FIXME create this on-demand?
@@ -3126,7 +3141,12 @@ class VistrailController(object):
                 annotation_key = get_next_abs_annotation_key(self.vistrail)
                 self.vistrail.set_annotation(annotation_key, new_namespace)
             save_bundle = SaveBundle(self.vistrail.vtType)
-            save_bundle.vistrail = self.vistrail
+            if export:
+                save_bundle.vistrail = self.vistrail.do_copy()
+                if type(locator) == core.db.locator.DBLocator:
+                    save_bundle.vistrail.db_log_filename = None
+            else:
+                save_bundle.vistrail = self.vistrail
             if self.log and len(self.log.workflow_execs) > 0:
                 save_bundle.log = self.log
             abstractions = self.find_abstractions(self.vistrail, True)
@@ -3164,26 +3184,28 @@ class VistrailController(object):
                 if len(log.workflow_execs) > 0:
                     save_bundle.log = log
                 old_locator = self.get_locator()
-                self.locator = locator
-                save_bundle = self.locator.save_as(save_bundle, version)
+                if not export:
+                    self.locator = locator
+                save_bundle = locator.save_as(save_bundle, version)
                 new_vistrail = save_bundle.vistrail
-
-                # DAK don't think is necessary since we have a new
-                # namespace for an abstraction on each save
-                # Unload abstractions from old namespace
-                # self.unload_abstractions() 
-                # Load all abstractions from new namespaces
-                self.ensure_abstractions_loaded(new_vistrail, 
-                                                save_bundle.abstractions) 
-                if type(self.locator) == core.db.locator.DBLocator:
+                if type(locator) == core.db.locator.DBLocator:
                     new_vistrail.db_log_filename = None
-                self.set_file_name(locator.name)
-                if old_locator:
-                    old_locator.clean_temporaries()
-                    old_locator.close()
-                self.flush_pipeline_cache()
-                self.change_selected_version(new_vistrail.db_currentVersion, 
-                                             from_root=True)
+                    locator.kwargs['obj_id'] = new_vistrail.db_id
+                if not export:
+                    # DAK don't think is necessary since we have a new
+                    # namespace for an abstraction on each save
+                    # Unload abstractions from old namespace
+                    # self.unload_abstractions() 
+                    # Load all abstractions from new namespaces
+                    self.ensure_abstractions_loaded(new_vistrail, 
+                                                    save_bundle.abstractions) 
+                    self.set_file_name(locator.name)
+                    if old_locator and not export:
+                        old_locator.clean_temporaries()
+                        old_locator.close()
+                    self.flush_pipeline_cache()
+                    self.change_selected_version(new_vistrail.db_currentVersion, 
+                                                 from_root=True)
             else:
                 save_bundle = self.locator.save(save_bundle)
                 new_vistrail = save_bundle.vistrail
@@ -3207,26 +3229,26 @@ class VistrailController(object):
                     # reg = core.modules.module_registry.get_module_registry()
                     # for desc in reg.get_package_by_name('local.abstractions').descriptor_list:
                     #     print desc.name, desc.namespace, desc.version
-                        
-            if id(self.vistrail) != id(new_vistrail):
-                new_version = new_vistrail.db_currentVersion
-                self.set_vistrail(new_vistrail, locator)
-                self.change_selected_version(new_version)
-                result = True
-            if self.log:
-                self.log.delete_all_workflow_execs()
-            self.set_changed(False)
-            locator.clean_temporaries()
+            if not export:
+                if id(self.vistrail) != id(new_vistrail):
+                    new_version = new_vistrail.db_currentVersion
+                    self.set_vistrail(new_vistrail, locator)
+                    self.change_selected_version(new_version)
+                    result = True
+                if self.log:
+                    self.log.delete_all_workflow_execs()
+                self.set_changed(False)
+                locator.clean_temporaries()
 
             # delete any temporary subworkflows
-            try:
-                for root, _, files in os.walk(abs_save_dir, topdown=False):
-                    for name in files:
-                        os.remove(os.path.join(root, name))
-                os.rmdir(abs_save_dir)
-            except OSError, e:
-                raise VistrailsDBException("Can't remove %s: %s" % \
-                                               (abs_save_dir, str(e)))
+                try:
+                    for root, _, files in os.walk(abs_save_dir, topdown=False):
+                        for name in files:
+                            os.remove(os.path.join(root, name))
+                    os.rmdir(abs_save_dir)
+                except OSError, e:
+                    raise VistrailsDBException("Can't remove %s: %s" % \
+                                                   (abs_save_dir, str(e)))
             return result
 
 
@@ -3260,7 +3282,7 @@ class VistrailController(object):
         """ Returns the saved log from zip or DB
         
         """
-        return self.vistrail.get_log()
+        return self.vistrail.get_persisted_log()
  
     def write_registry(self, locator):
         registry = core.modules.module_registry.get_module_registry()
@@ -3269,3 +3291,38 @@ class VistrailController(object):
 
     def update_checkout_version(self, app=''):
         self.vistrail.update_checkout_version(app)
+
+    def reset_redo_stack(self):
+        self.redo_stack = []
+
+    def undo(self):
+        """Performs one undo step, moving up the version tree."""
+        action_map = self.vistrail.actionMap
+        old_action = action_map.get(self.current_version, None)
+        self.redo_stack.append(self.current_version)
+        self.show_parent_version()
+        new_action = action_map.get(self.current_version, None)
+        return (old_action, new_action)
+        # self.set_pipeline_selection(old_action, new_action, 'undo')
+        # return self.current_version
+
+    def redo(self):
+        """Performs one redo step if possible, moving down the version tree."""
+        action_map = self.vistrail.actionMap
+        old_action = action_map.get(self.current_version, None)
+        if len(self.redo_stack) < 1:
+            debug.critical("Redo on an empty redo stack. Ignoring.")
+            return
+        next_version = self.redo_stack[-1]
+        self.redo_stack = self.redo_stack[:-1]
+        self.show_child_version(next_version)
+        new_action = action_map[self.current_version]
+        return (old_action, new_action)
+        # self.set_pipeline_selection(old_action, new_action, 'redo')
+        # return next_version
+
+    def can_redo(self):
+        return (len(self.redo_stack) > 0)
+
+    def can_undo(self):
+        return self.current_version > 0

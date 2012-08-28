@@ -197,6 +197,10 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         from gui.vistrails_window import _app
         _app.show()
         _app.raise_()
+        _app.qactions['history'].trigger()
+        _app.get_current_tab().zoomToFit()
+        _app.qactions['pipeline'].trigger()
+        _app.get_current_tab().zoomToFit()
         
     def showVistrailsConsoleActTriggered(self):
         from gui.shell import QShellDialog

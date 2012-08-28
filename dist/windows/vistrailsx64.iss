@@ -33,7 +33,7 @@
 ;###############################################################################
 [Setup]
 AppName=VisTrails x64
-AppVerName=VisTrails x64 2.0 alpha
+AppVerName=VisTrails x64 2.0
 WizardImageFile=resources\images\vistrails_icon.bmp
 WizardImageStretch=false
 WizardImageBackColor=$009D5942
@@ -46,12 +46,13 @@ RestartIfNeededByRun=false
 ChangesAssociations=true
 LicenseFile=Input\license.txt
 ArchitecturesInstallIn64BitMode=x64
+OutputBaseFilename=vistrails-x64-setup
 
 [Files]
 Source: C:\Python27_64\LICENSE.txt; DestDir: {app}\vistrails\Python27_64
 Source: C:\Python27_64\python.exe; DestDir: {app}\vistrails\Python27_64
 Source: C:\Python27_64\pythonw.exe; DestDir: {app}\vistrails\Python27_64
-Source: C:\Python27_64\qt.conf; DestDir: {app}\vistrails\Python27_64
+;Source: C:\Python27_64\qt.conf; DestDir: {app}\vistrails\Python27_64
 Source: C:\Python27_64\README.txt; DestDir: {app}\vistrails\Python27_64
 Source: C:\Python27_64\DLLs\*; DestDir: {app}\vistrails\Python27_64\DLLs
 Source: C:\Python27_64\include\*; DestDir: {app}\vistrails\Python27_64\include
@@ -108,6 +109,7 @@ Source: Input\*.dll; DestDir: {app}\vistrails
 Source: Input\license.txt; DestDir: {app}
 Source: Input\vcredist_x64.exe; DestDir: {tmp}; Flags: deleteafterinstall
 Source: Input\VisTrails.pdf; DestDir: {app}\doc; Components: usersguide
+Source: Input\qt.conf; DestDir: {app}\vistrails\Python27_64
 ;;;; ------- QT LIBS ------- ;;;;
 ;Source: D:\Qt\4.6.2\bin\*.dll; DestDir: {app}\vistrails
 ;Source: D:\Qt\4.6.3\bin\phonon4.dll; DestDir: {app}\vistrails
@@ -135,13 +137,13 @@ Source: Input\VisTrails.pdf; DestDir: {app}\doc; Components: usersguide
 ;Source: Input\qt.conf; DestDir: {app}\vistrails\Python26
 Source: Input\x64\python27.dll; DestDir: {app}\vistrails
 Source: Input\x64\python27.dll; DestDir: {app}\vistrails\Python27_64
-Source: I:\emanuele\src\vtk\vtk-5.6.1\build64\bin\Release\*.dll; DestDir: {app}\vistrails
-Source: I:\emanuele\src\vtk\vtk-5.6.1\build64\bin\Release\*.pyd; DestDir: {app}\vistrails
+Source: I:\emanuele\src\vtk\vtk-5.8.0\build64\bin\Release\*.dll; DestDir: {app}\vistrails
+Source: I:\emanuele\src\vtk\vtk-5.8.0\build64\bin\Release\*.pyd; DestDir: {app}\vistrails
 ;Source: E:\src\VTKbuild\bin\release\*.pyd; DestDir: {app}\vistrails
 ;Source: D:\src\VTKbuild\Wrapping\Python\vtk\*; DestDir: {app}\vistrails\vtk; Flags: recursesubdirs
 Source: I:\emanuele\src\netcdf-3.6.1\src\lib\*.dll; DestDir: {app}\vistrails
 ;;;; --------    ALPS FILES    ----------;;;;
-;Source: Input\alps_libs\vistrails\*; DestDir: {app}\vistrails; Flags: recursesubdirs
+Source: Input\x64\alps_libs\vistrails\*; DestDir: {app}\vistrails; Flags: recursesubdirs
 ;;;; --------    ITK FILES    ----------;;;;
 ;Source: E:\src\itk\Wrapping\WrapITK\Python\Release\*; DestDir: {app}\vistrails; Flags: recursesubdirs
 ;Source: E:\src\itk\Wrapping\WrapITK\Python\Release\itkExtras\*; DestDir: {app}\itkExtras; Flags: recursesubdirs

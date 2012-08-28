@@ -1083,7 +1083,7 @@ class Vistrail(DBVistrail):
 
         raise Exception("not finished")
     
-    def get_log(self):
+    def get_persisted_log(self):
         """
         Returns the log object for this vistrail if available
         """
@@ -1096,6 +1096,18 @@ class Vistrail(DBVistrail):
             log = open_vt_log_from_db(connection, self.db_id)
         Log.convert(log)
         return log
+    
+    def get_used_packages(self):
+        package_list = {}
+        for action in self.actions:
+            for op in action.operations:
+                try:
+                    if type(op) == AddOp and op.what == 'module':
+                        package_list[op.data.package] = op.data.package
+                except:
+                    pass
+        return package_list
+                    
 
 ##############################################################################
 

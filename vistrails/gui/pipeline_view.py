@@ -49,6 +49,8 @@ from PyQt4 import QtCore, QtGui
 from core.configuration import get_vistrails_configuration
 from core import debug
 from core.db.action import create_action
+from core.layout.workflow_layout import WorkflowLayout, \
+    Pipeline as LayoutPipeline
 from core.system import systemType
 from core.utils import profile
 from core.vistrail.annotation import Annotation
@@ -787,7 +789,12 @@ else:
 
             displacement = QtCore.QPointF(0.0, v)
             self._control_1 = startPos + displacement
-            self._control_2 = endPos - displacement
+            # !!! MAC OS X BUG !!!
+            # the difference between startPos.y and control_1.y cannot be
+            # equal to the difference between control_2.y and endPos.y
+            self._control_2 = self.endPos - displacement + \
+                QtCore.QPointF(0.0, 1e-10)
+            # self._control_2 = endPos - displacement
 
             path = QtGui.QPainterPath(self.startPos)
             path.cubicTo(self._control_1, self._control_2, self.endPos)
@@ -944,6 +951,7 @@ class QGraphicsModuleItem(QGraphicsItemInterface, QtGui.QGraphicsItem):
         self.progress = 0.0
         self.progressBrush = CurrentTheme.SUCCESS_MODULE_BRUSH
         self.connectionItems = {}
+        self.handlePositionChanges = True
 
     def moduleHasChanged(self, core_module):
         def module_text_has_changed(m1, m2):
@@ -1064,7 +1072,9 @@ class QGraphicsModuleItem(QGraphicsItemInterface, QtGui.QGraphicsItem):
             else:
                 self.modulePen = CurrentTheme.MODULE_PEN
 
-        if self.customBrush:
+        if self.statusBrush:
+            self.moduleBrush = self.statusBrush
+        elif self.customBrush:
             self.moduleBrush = self.customBrush
         elif self.is_breakpoint:
             self.moduleBrush = CurrentTheme.BREAKPOINT_MODULE_BRUSH
@@ -1072,8 +1082,6 @@ class QGraphicsModuleItem(QGraphicsItemInterface, QtGui.QGraphicsItem):
             self.moduleBrush = CurrentTheme.GHOSTED_MODULE_BRUSH
         elif self.invalid:
             self.moduleBrush = CurrentTheme.INVALID_MODULE_BRUSH
-        elif self.statusBrush:
-            self.moduleBrush = self.statusBrush
         else:
             self.moduleBrush = CurrentTheme.MODULE_BRUSH
 
@@ -1203,8 +1211,7 @@ class QGraphicsModuleItem(QGraphicsItemInterface, QtGui.QGraphicsItem):
             self.description = ''
         self.setToolTip(self.description)
         self.computeBoundingRect()
-        self.resetMatrix()
-        self.translate(module.center.x, -module.center.y)
+        self.setPos(module.center.x, -module.center.y)
 
         # Check to see which ports will be shown on the screen
         # setupModule is in a hotpath, performance-wise, which is the
@@ -1373,11 +1380,12 @@ class QGraphicsModuleItem(QGraphicsItemInterface, QtGui.QGraphicsItem):
             return configureShape
         return None
 
-    def getPortPosition(self, port, port_dict, optional_ports, next_pos,
-                        next_op, default_sig):
+    def getPortPosition(self, port, port_dict, optional_ports, visible_ports,
+                        next_pos, next_op, default_sig):
         """ getPortPosition(port: Port,
                             port_dict: {PortSpec: QGraphicsPortItem},
                             optional_ports: [PortSpec],
+                            visible_ports: set(string),
                             next_pos: [float, float],
                             next_op: operator (operator.add, operator.sub),
                             default_sig: str
@@ -1399,6 +1407,7 @@ class QGraphicsModuleItem(QGraphicsItemInterface, QtGui.QGraphicsItem):
             for p in optional_ports:
                 if registry.port_and_port_spec_match(port, p):
                     item = self.createPortItem(p, *next_pos)
+                    visible_ports.add(port.name)
                     port_dict[p] = item
                     next_pos[0] = next_op(next_pos[0],
                                           (CurrentTheme.PORT_WIDTH +
@@ -1458,6 +1467,7 @@ class QGraphicsModuleItem(QGraphicsItemInterface, QtGui.QGraphicsItem):
         """
         return self.getPortPosition(port, self.inputPorts,
                                     self.optionalInputPorts,
+                                    self.module.visible_input_ports,
                                     self.nextInputPortPos,
                                     operator.add,
                                     '(edu.utah.sci.vistrails.basic:Variant)')
@@ -1469,6 +1479,7 @@ class QGraphicsModuleItem(QGraphicsItemInterface, QtGui.QGraphicsItem):
         """
         return self.getPortPosition(port, self.outputPorts,
                                     self.optionalOutputPorts,
+                                    self.module.visible_output_ports,
                                     self.nextOutputPortPos,
                                     operator.sub,
                                     '(edu.utah.sci.vistrails.basic:Module)')
@@ -1498,7 +1509,8 @@ class QGraphicsModuleItem(QGraphicsItemInterface, QtGui.QGraphicsItem):
 
         """
         # Move connections with modules
-        if change==QtGui.QGraphicsItem.ItemPositionChange:
+        if change==QtGui.QGraphicsItem.ItemPositionChange and \
+                self.handlePositionChanges:
             oldPos = self.pos()
             newPos = value.toPointF()
             dis = newPos - oldPos
@@ -1709,7 +1721,9 @@ class QPipelineScene(QInteractiveGraphicsScene):
 
     def selected_subgraph(self):
         """Returns the subgraph containing the selected modules and its
-mutual connections."""
+        mutual connections.
+        
+        """
         items = self.selectedItems()
         modules = [x.id
                    for x in items
@@ -1750,7 +1764,9 @@ mutual connections."""
         Removes module from scene, updating appropriate data structures.
 
         """
-        self.removeItem(self.modules[m_id])
+        core_module = self.modules[m_id].module
+        if not core_module.has_annotation_with_key('__vistrail_var__'):
+            self.removeItem(self.modules[m_id])
         del self.modules[m_id]
         self._old_module_ids.remove(m_id)
 
@@ -1765,7 +1781,8 @@ mutual connections."""
         (srcModule, dstModule) = connItem.connectingModules
         srcModule.removeConnectionItem(connItem)
         dstModule.removeConnectionItem(connItem)
-        self.removeItem(self.connections[c_id])
+        if not srcModule.module.has_annotation_with_key('__vistrail_var__'):
+            self.removeItem(self.connections[c_id])
         del self.connections[c_id]
         self._old_connection_ids.remove(c_id)
 
@@ -1841,16 +1858,11 @@ mutual connections."""
                     dmm.portVisible.add((PortEndPoint.Destination,d.name))
 
             # remove old connection shapes
-            #print 'connections to be deleted:', connections_to_be_deleted
             for c_id in connections_to_be_deleted:
                 self.remove_connection(c_id)
-                # self.removeItem(self.connections[c_id])
-                # del self.connections[c_id]
-
             # remove old module shapes
             for m_id in modules_to_be_deleted:
-                self.removeItem(self.modules[m_id])
-                del self.modules[m_id]
+                self.remove_module(m_id)
 
             selected_modules = []
             # create new module shapes
@@ -1960,6 +1972,15 @@ mutual connections."""
             # Workaround: On a Mac, dropEvent isn't called if dragMoveEvent is ignored
             event.ignore()
 
+    def dragLeaveEvent(self, event):
+        if type(event.source()) == QDragVariableLabel:
+            data = event.mimeData()
+            if hasattr(data, 'variableData'):
+                if self._var_selected_port is not None:
+                    self._var_selected_port.setPen(CurrentTheme.PORT_PEN)
+                    self._var_selected_port = None
+                event.accept()
+
     def unselect_all(self):
         self.clearSelection()
         if self.pipeline_tab:
@@ -2061,6 +2082,7 @@ mutual connections."""
                     # Update the version view node to fit text properly
                     version_item = self.controller.vistrail_view.version_view.scene().versions[self.controller.current_version]
                     version_item.updateWidthFromLabel()
+                    self._var_selected_port = None
                     event.accept()
                     return
         # Ignore if not accepted and returned by this point
@@ -2069,33 +2091,28 @@ mutual connections."""
     def delete_selected_items(self):
         selectedItems = self.selectedItems()
         if len(selectedItems)>0:
-#             modules = [m for m in selectedItems if isinstance(m, QGraphicsModuleItem)]
             modules = []
-            for m in selectedItems:
-                if type(m)==QGraphicsModuleItem:
-                    modules.append(m)
+            module_ids = []
+            connection_ids = []
+            for it in selectedItems:
+                if isinstance(it, QGraphicsModuleItem):
+                    modules.append(it)
+                    module_ids.append(it.id)
+                elif isinstance(it, QGraphicsConnectionItem):
+                    connection_ids.append(it.id)
             if len(modules)>0:
                 self.noUpdate = True
-                idList = [m.id for m in modules]
-                connection_ids = set()
+                dep_connection_ids = set()
                 for m in modules:
-                    connection_ids.update(
+                    dep_connection_ids.update(
                         m.dependingConnectionItems().iterkeys())
-                #update the dependency list on the other side of connections
-                connections = []
-                for c_id in connection_ids:
-                    try:
-                        conn = self.connections[c_id]
-                        connections.append(conn)
-                        self._old_connection_ids.remove(c_id)
-                        del self.connections[c_id]
-                    except:
-                        print>>sys.stderr, "Missing connection in delete_selected_items: ", str(c_id)
-                self.controller.delete_module_list(idList)
-                self.removeItems(connections)
-                for (mId, item) in self.modules.items():
-                    if item in selectedItems:
-                        self.remove_module(mId)
+                # remove_connection updates the dependency list on the
+                # other side of connections, cannot use removeItem
+                for c_id in dep_connection_ids:
+                    self.remove_connection(c_id)
+                for m_id in module_ids:
+                    self.remove_module(m_id)
+                self.controller.delete_module_list(module_ids)
                 self.updateSceneBoundingRect()
                 self.reset_module_colors()
                 self.update()
@@ -2108,18 +2125,14 @@ mutual connections."""
                 # module ids, and the for loop above takes care of
                 # connection ids. So we don't need to call anything.
             else:
-                self.removeItems([it for it in selectedItems
-                                  if isinstance(it, QGraphicsConnectionItem)])
+                for c_id in connection_ids:
+                    self.remove_connection(c_id)
                 self.controller.reset_pipeline_view = False
-                idList = [conn.id for conn in selectedItems]
-                self._old_connection_ids.difference_update(set(idList))
-                for cId in idList:
-                    del self.connections[cId]
-                self.controller.delete_connection_list(idList)
+                self.controller.delete_connection_list(connection_ids)
                 self.reset_module_colors()
                 self.controller.reset_pipeline_view = True
                 # Current pipeline changed, so we need to change the
-                # _old_connection_ids. However, the difference_update
+                # _old_connection_ids. However, remove_connection
                 # above takes care of connection ids, so we don't need
                 # to call anything.
 
@@ -2188,6 +2201,115 @@ mutual connections."""
             # self.clear()
             self.controller.ungroup_set(items[0])
             self.setupScene(self.controller.current_pipeline)
+        
+    def layout(self):
+        if len(self.items()) <= 0:
+            return
+
+        def get_visible_ports(port_list, visible_ports):
+            output_list = []
+            visible_list = []
+            for p in port_list:
+                if not p.optional:
+                    output_list.append(p)
+                elif p.name in visible_ports:
+                    visible_list.append(p)
+            output_list.extend(visible_list)
+            return output_list
+        
+        module_ids = self.get_selected_module_ids()
+        if len(module_ids) == 0:
+            self.selectAll()
+            module_ids = self.modules
+
+        wf = LayoutPipeline()
+        wf_module_map = {}
+        wf_iport_map = {}
+        wf_oport_map = {}
+
+        center = [0.0, 0.0]
+        # print "module_ids:", module_ids
+            
+        for module_id in module_ids:
+            module_item = self.modules[module_id]
+            module = module_item.module
+
+            center[0] += module_item.scenePos().x()
+            center[1] += module_item.scenePos().y()
+            m = wf.createModule(module_id, 
+                                module.name,
+                                len(module_item.inputPorts),
+                                len(module_item.outputPorts))
+            m._module_item = module_item
+            wf_module_map[module_id] = m
+
+            input_ports = get_visible_ports(module.destinationPorts(), 
+                                            module.visible_input_ports)
+            output_ports = get_visible_ports(module.sourcePorts(),
+                                             module.visible_output_ports)
+            for i, p in enumerate(input_ports):
+                if module_id not in wf_iport_map:
+                    wf_iport_map[module_id] = {}
+                wf_iport_map[module_id][p.name] = m.input_ports[i]
+            for i, p in enumerate(output_ports):
+                if module_id not in wf_oport_map:
+                    wf_oport_map[module_id] = {}
+                wf_oport_map[module_id][p.name] = m.output_ports[i]
+
+        for conn_item in self.connections.itervalues():
+            c = conn_item.connection
+            if c.sourceId in module_ids and c.destinationId in module_ids:
+                src = wf_oport_map[c.sourceId][c.source.name]
+                dst = wf_iport_map[c.destinationId][c.destination.name]
+                wf.createConnection(src.module, src.index, 
+                                    dst.module, dst.index)
+        
+        def get_module_size(m):
+            rect = m._module_item.boundingRect()
+            return (rect.width(), rect.height())
+        
+        layout = WorkflowLayout(wf, get_module_size, 
+                                CurrentTheme.MODULE_PORT_MARGIN, 
+                                (CurrentTheme.PORT_WIDTH, 
+                                 CurrentTheme.PORT_HEIGHT), 
+                                CurrentTheme.MODULE_PORT_SPACE)
+        layout.compute_module_sizes()
+        layout.assign_modules_to_layers()
+        layout.assign_module_permutation_to_each_layer()
+        layer_x_separation = layer_y_separation = 50
+        layout.compute_layout(layer_x_separation, layer_y_separation)
+
+        move_list = []
+        center[0] /= float(len(module_ids))
+        center[1] /= float(len(module_ids))
+        center_out = [0.0, 0.0]
+        for module in wf.modules:
+            center_out[0] += module.layout_pos.x
+            center_out[1] += module.layout_pos.y
+        center_out[0] /= float(len(module_ids))
+        center_out[1] /= float(len(module_ids))
+        self.handlePositionChanges = False
+        try:
+            for module in wf.modules:
+                m_item = self.modules[module.shortname]
+                m_item.setPos(
+                    module.layout_pos.x - center_out[0] + center[0],
+                    module.layout_pos.y - center_out[1] + center[1])
+
+            for conn_item in self.connections.itervalues():
+                c = conn_item.connection
+                if c.sourceId in module_ids or c.destinationId in module_ids:
+                    srcModule = self.modules[c.sourceId]
+                    dstModule = self.modules[c.destinationId]
+                    srcPortPos = srcModule.getOutputPortPosition(c.source)
+                    dstPortPos = dstModule.getInputPortPosition(c.destination)
+                    conn_item.prepareGeometryChange()
+                    conn_item.setupConnection(srcPortPos, dstPortPos)
+        finally:
+            self.handlePositionChanges = True
+        # trigger the moves to be persisted
+        self.controller.flush_delayed_actions()
+        self.setupScene(self.controller.current_pipeline)
 
     def makeAbstraction(self):
         items = self.get_selected_item_ids(True)
@@ -2262,9 +2384,13 @@ mutual connections."""
                     3: CurrentTheme.ACTIVE_MODULE_BRUSH,
                     4: CurrentTheme.COMPUTING_MODULE_BRUSH,
                     6: CurrentTheme.PERSISTENT_MODULE_BRUSH,
+                    7: CurrentTheme.SUSPENDED_MODULE_BRUSH,
                     }
                 item.setProgress(e.progress)
-                if e.status in statusMap:
+                if item.statusBrush is not None and e.status == 3:
+                    # do not update, already in cache
+                    pass
+                elif e.status in statusMap:
                     item.statusBrush = statusMap[e.status]
                 else:
                     item.statusBrush = None
@@ -2279,7 +2405,9 @@ mutual connections."""
 
         """
         for item in self.items():
-            item.setSelected(True)
+            if isinstance(item, QGraphicsModuleItem) or \
+                    isinstance(item, QGraphicsConnectionItem):
+                item.setSelected(True)
 
     def open_configure_window(self, id):
         """ open_configure_window(int) -> None
@@ -2348,10 +2476,9 @@ mutual connections."""
         Opens the modal annotations window for module with given id
         """
         if self.controller:
-            module = self.controller.current_pipeline.modules[id]
-            widget = QModuleAnnotation(module, self.controller, None)
-            widget.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-            widget.exec_()
+            from gui.module_info import QModuleInfo
+            module_info = QModuleInfo.instance()
+            module_info.show_annotations()
 
     def open_module_label_window(self, id):
         """ open_module_label_window(int) -> None
@@ -2440,6 +2567,17 @@ mutual connections."""
         QtGui.QApplication.postEvent(self,
                                      QModuleStatusEvent(moduleId, 6, ''))
         QtCore.QCoreApplication.processEvents()
+
+    def set_module_suspended(self, moduleId, error):
+        """ set_module_suspended(moduleId: int, error: str) -> None
+        Post an event to the scene (self) for updating the module color
+        
+        """
+        text = "Module is suspended, reason: %s" % error
+        QtGui.QApplication.postEvent(self,
+                                     QModuleStatusEvent(moduleId, 7, text))
+        QtCore.QCoreApplication.processEvents()
+
 
     def reset_module_colors(self):
         for module in self.modules.itervalues():
@@ -2538,6 +2676,7 @@ class QPipelineView(QInteractiveGraphicsView, BaseView):
         self.action_links = \
             {'copy': ('module_changed', self.has_selected_modules),
              'paste': ('clipboard_changed', self.clipboard_non_empty),
+             'layout': ('pipeline_changed', self.pipeline_non_empty),
              'group': ('module_changed', self.has_selected_modules),
              'ungroup': ('module_changed', self.has_selected_groups),
              'showGroup': ('module_changed', self.has_selected_group),
@@ -2554,8 +2693,16 @@ class QPipelineView(QInteractiveGraphicsView, BaseView):
              'publishWeb' : ('pipeline_changed', self.check_publish_db),
              'publishPaper' : ('pipeline_changed', self.pipeline_non_empty),
              'controlFlowAssist': ('pipeline_changed', self.pipeline_non_empty),
+             'redo': ('version_changed', self.can_redo),
+             'undo': ('version_changed', self.can_undo),
              }
 
+    def can_redo(self, versionId):
+        return self.controller and self.controller.can_redo()
+
+    def can_undo(self, versionId):
+        return self.controller and self.controller.can_undo()
+    
     def set_action_defaults(self):
         self.action_defaults.update(
         { 'execute': [('setEnabled', True, self.set_execute_action),

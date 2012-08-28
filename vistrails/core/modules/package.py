@@ -54,10 +54,9 @@ class Package(DBPackage):
     Base, User, Other = 0, 1, 2
 
     class InitializationFailed(Exception):
-        def __init__(self, package, exception, traceback):
+        def __init__(self, package, tracebacks):
             self.package = package
-            self.exception = exception
-            self.traceback = traceback
+            self.tracebacks = tracebacks
         def __str__(self):
             try:
                 name = self.package.name
@@ -65,11 +64,9 @@ class Package(DBPackage):
                     name = 'codepath <%s>' % self.package.codepath
             except AttributeError:
                 name = 'codepath <%s>' % self.package.codepath
-            return ("Package '%s' failed to initialize, raising '%s: %s'. Traceback:\n%s" %
-                    (name,
-                     self.exception.__class__.__name__,
-                     self.exception,
-                     self.traceback))
+            return ("Package '%s' failed to initialize because of the "
+                    "following exceptions:\n%s" % \
+                        (name, "\n".join(self.tracebacks)))
 
     class LoadFailed(Exception):
         def __init__(self, package, exception, traceback):
@@ -317,7 +314,7 @@ class Package(DBPackage):
                 self._package_type = self.Base
                 self.prefix = p_path
             except ImportError, e:
-                errors.append((e, traceback.format_exc()))
+                errors.append(traceback.format_exc())
                 return False
             return True
 
@@ -339,13 +336,7 @@ class Package(DBPackage):
             self.py_dependencies.update(self._reset_import())
             
         if r:
-            debug.critical("Could not enable package %s" % self.codepath)
-            for e in errors:
-                debug.critical("Exceptions/tracebacks raised:")
-                debug.critical(str(e[0]))
-                debug.critical(str(e[1]))
-            raise self.InitializationFailed(self,
-                                            errors[-1][0], errors[-1][1])
+            raise self.InitializationFailed(self, errors)
 
         # Sometimes we don't want to change startup.xml, for example
         # when peeking at a package that's on the available package list
@@ -379,7 +370,11 @@ class Package(DBPackage):
                 self._init_module = sys.modules[name]
                 self._imported_paths.add(name)
                 # Copy attributes (shallow) from _module into _init_module's namespace and point _module to _init_module
-                module_attributes = ['identifier', 'name', 'version', 'configuration', 'package_dependencies', 'package_requirements']
+                module_attributes = ['identifier', 'name', 'version',
+                                     'configuration', 'package_dependencies',
+                                     'package_requirements',
+                                     'can_handle_identifier',
+                                     'can_handle_vt_file']
                 for attr in module_attributes:
                     if hasattr(self._module, attr):
                         setattr(self._init_module, attr, getattr(self._module, attr))
@@ -420,7 +415,6 @@ class Package(DBPackage):
                 v = self._module.__file__
             except AttributeError:
                 v = self._module
-            debug.critical("Package %s is missing necessary attribute" % v)
             raise e
         if hasattr(self._module, '__doc__') and self._module.__doc__:
             self.description = self._module.__doc__
@@ -435,6 +429,18 @@ class Package(DBPackage):
         if self.package.startswith("SUDS#"):
             return True
         return hasattr(self._init_module, 'handle_module_upgrade_request')
+
+    def can_handle_identifier(self, identifier):
+        """ Asks package if it can handle this package
+        """
+        return hasattr(self.init_module, 'can_handle_identifier') and \
+            self.init_module.can_handle_identifier(identifier)
+
+    def can_handle_vt_file(self, name):
+        """ Asks package if it can handle a file inside a zipped vt file
+        """
+        return hasattr(self.init_module, 'can_handle_vt_file') and \
+            self.init_module.can_handle_vt_file(name)
     
     def can_handle_missing_modules(self):
         # redirect webservices to SUDSWebServices
@@ -524,6 +530,14 @@ class Package(DBPackage):
             package = pm.get_package_by_identifier('edu.utah.sci.vistrails.sudswebservices')
             return package._init_module.callContextMenu(signature)
         return self._init_module.callContextMenu(signature)
+
+    def loadVistrailFileHook(self, vistrail, tmp_dir):
+        if hasattr(self._init_module, 'loadVistrailFileHook'):
+            self._init_module.loadVistrailFileHook(vistrail, tmp_dir)
+
+    def saveVistrailFileHook(self, vistrail, tmp_dir):
+        if hasattr(self._init_module, 'saveVistrailFileHook'):
+            self._init_module.saveVistrailFileHook(vistrail, tmp_dir)
 
     def check_requirements(self):
         try:
