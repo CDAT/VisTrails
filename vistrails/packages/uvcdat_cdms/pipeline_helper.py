@@ -100,12 +100,8 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         helper = CDMSPipelineHelper
         # get to from cell?
         for pl_module in helper.find_plot_modules(pipeline):
-            print "pl_module:", pl_module.id, pl_module.name
             gmName = helper.get_graphics_method_name_from_module(pl_module)
             ptype = helper.get_plot_type_from_module(pl_module)
-            print "PLOT TYPE:", plot_type, ptype, gmName, \
-                get_plot_manager().get_plot(plot_type, ptype, 
-                                           gmName)
             plot_objs.append(get_plot_manager().get_plot(plot_type, ptype, 
                                                           gmName))
         return plot_objs
@@ -410,6 +406,10 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         
         #now start adding modules and connections
         ops = []
+
+        # FIXME [DK]: potential issue here because we are adding
+        # modules that already existed back with the same ids---
+        # this seems strange
         for p in plot_modules:
             ops.append(('add', p))
             conn = controller.create_connection(p, 'self', cell, 'plot')
@@ -1096,25 +1096,47 @@ class CDMSPlotWidget(QtGui.QWidget):
         self.update_btn_del_var_state()
         
     def update_pipeline(self, action):
-        #at this point, the plots should have already be added
-        #plot_modules = self.plot_table.get_plots()
         var_modules = self.var_table.get_vars()
         connections = self.plot_table.get_connections()
         if action is not None:
             version = action.id
         else:
             version = self.version
-        pipeline = self.controller.vistrail.getPipeline(version)
-        pip_plots = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+
         plot_modules = []
-        for plot in pip_plots:
+
+        # BUGFIX [DK]: previous code did not take order into account
+        # it only examined the pipeline instead of the plot_table
+        #
+        # pipeline = self.controller.vistrail.getPipeline(version)
+        # for plot in CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot]):
+        for plot in self.plot_table.get_plots():
             if plot.id not in self.to_be_removed:
                 plot_modules.append(plot)
+
         action = CDMSPipelineHelper.rebuild_pipeline_action(self.controller, 
                                                             version, 
                                                             plot_modules, 
                                                             var_modules, 
-                                                            connections)    
+                                                            connections)
+
+        ops = []
+        for i, plot in enumerate(plot_modules):
+            if (i+1) != PlotPipelineHelper.get_value_from_function(plot,
+                                                                   "plotOrder"):
+                ops.extend(self.controller.update_function_ops(plot,
+                                                               'plotOrder',
+                                                               [str(i+1)]))
+        if len(ops) > 0:
+            if action is not None:
+                version = action.id
+            else:
+                version = self.version
+            action = core.db.action.create_action(ops)
+            self.controller.change_selected_version(version)
+            self.controller.add_new_action(action)
+            self.controller.perform_action(action)
+        
         return action
     
     def update_templates(self, ori_action):

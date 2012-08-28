@@ -722,6 +722,7 @@ class CDMSNaryVariableOperation(CDMSVariableOperation):
 class CDMSPlot(Plot, NotCacheable):
     _input_ports = expand_port_specs([("variable", "CDMSVariable"),
                                       ("variable2", "CDMSVariable", True),
+                                      ("plotOrder", "basic:Integer", True),
                                       ("graphicsMethodName", "basic:String"),
                                       ("template", "basic:String"),
                                       ('datawc_calendar', 'basic:Integer', True),
@@ -753,6 +754,7 @@ class CDMSPlot(Plot, NotCacheable):
         NotCacheable.__init__(self)
         self.template = "starter"
         self.graphics_method_name = "default"
+        self.plot_order = -1
         self.kwargs = {}
         self.default_values = {}
         
@@ -770,6 +772,9 @@ class CDMSPlot(Plot, NotCacheable):
         self.var2 = None
         if self.hasInputFromPort('variable2'):
             self.var2 = self.getInputFromPort('variable2')
+
+        if self.hasInputFromPort("plotOrder"):
+            self.plot_order = self.getInputFromPort("plotOrder")
             
         for attr in self.gm_attributes:
             if self.hasInputFromPort(attr):
@@ -882,7 +887,8 @@ class CDMSCell(SpreadsheetCell):
     def compute(self):
         input_ports = []
         plots = []
-        for plot in self.getInputListFromPort('plot'):
+        for plot in sorted(self.getInputListFromPort('plot'), 
+                           key=lambda obj: obj.plot_order):
             plots.append(plot)
         input_ports.append(plots)
         if self.hasInputFromPort('colorMap'):
