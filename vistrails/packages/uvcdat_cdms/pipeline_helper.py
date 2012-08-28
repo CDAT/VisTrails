@@ -93,6 +93,22 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         for conn in conns:
             vars.append(pipeline.modules[conn.source.moduleId])
         return vars
+
+    @staticmethod
+    def create_plot_objs_from_pipeline(pipeline, plot_type):
+        plot_objs = []
+        helper = CDMSPipelineHelper
+        # get to from cell?
+        for pl_module in helper.find_plot_modules(pipeline):
+            print "pl_module:", pl_module.id, pl_module.name
+            gmName = helper.get_graphics_method_name_from_module(pl_module)
+            ptype = helper.get_plot_type_from_module(pl_module)
+            print "PLOT TYPE:", plot_type, ptype, gmName, \
+                get_plot_manager().get_plot(plot_type, ptype, 
+                                           gmName)
+            plot_objs.append(get_plot_manager().get_plot(plot_type, ptype, 
+                                                          gmName))
+        return plot_objs
     
     @staticmethod
     def create_plot_module(controller, plot_type, plot_gm):

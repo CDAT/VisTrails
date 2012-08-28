@@ -37,7 +37,7 @@ import core.configuration
 import core.system
 from db.services import io
 from db.services.io import SaveBundle
-from db.domain import DBVistrail
+from db.domain import DBVistrail, DBWorkflow
 import urllib
 import urlparse
 import cgi
@@ -595,6 +595,7 @@ class DBLocator(BaseLocator):
             #debug.log("cached time: %s, db time: %s"%(DBLocator.cache_timestamps[self._hash],ts))
             if DBLocator.cache_timestamps[self._hash] == ts:
                 #debug.log("using cached vistrail")
+                self._name = obj.db_name
                 # If thumbnail cache was cleared, get thumbs from db
                 if tmp_dir is not None:
                     for absfname in save_bundle.thumbnails:
@@ -604,6 +605,8 @@ class DBLocator(BaseLocator):
                 return save_bundle
         #debug.log("loading vistrail from db")
         connection = self.get_connection()
+        if type == DBWorkflow.vtType:
+            return io.open_from_db(connection, type, self.obj_id)
         save_bundle = io.open_bundle_from_db(type, connection, self.obj_id, tmp_dir)
         primary_obj = save_bundle.get_primary_obj()
         self._name = primary_obj.db_name

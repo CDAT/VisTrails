@@ -265,6 +265,7 @@ class QVistrailView(QtGui.QWidget):
             window = self.window()
         else:
             window = _app
+
         #print "VERSION"
         self.stack.setCurrentIndex(self.stack.indexOf(self.version_view))
         self.tabs.setTabText(self.tabs.currentIndex(), "History")
@@ -787,7 +788,7 @@ class QVistrailView(QtGui.QWidget):
         def module_selected(module_id, selection = []):
             from gui.vistrails_window import _app
             pipeline = view.scene().current_pipeline
-            if module_id in pipeline.modules:
+            if pipeline is not None and module_id in pipeline.modules:
                 module = pipeline.modules[module_id]
                 _app.notify('module_changed', module)
             else:
@@ -811,7 +812,7 @@ class QVistrailView(QtGui.QWidget):
             view = self.stack.widget(
                             self.tab_to_stack_idx[self.tabs.currentIndex()])
         if view and by_click:
-            self.controller.change_selected_version(version_id, by_click, 
+            self.controller.change_selected_version(version_id, True, 
                                                     do_validate, from_root)
 
             view.scene().fitToView(view, True)
@@ -821,7 +822,7 @@ class QVistrailView(QtGui.QWidget):
                 # view.set_to_current()
                 # self.tabs.setCurrentWidget(view.parent())
                 window.qactions['pipeline'].trigger()
-            self.version_view.redo_stack = []
+            self.controller.reset_redo_stack()
         if view and not isinstance(view, QDiffView):
             if view not in self.detached_views:
                 view.set_title(self.controller.get_pipeline_name())
@@ -862,13 +863,14 @@ class QVistrailView(QtGui.QWidget):
         view.scene().fitToView(view, True)
         self.view_changed()
 
-    def save_vistrail(self, locator_class, force_choose_locator=False):
+    def save_vistrail(self, locator_class, force_choose_locator=False, export=False):
         """
         force_choose_locator=True triggers 'save as' behavior
+        export=True does not update the current controller
 
         """
         locator = self.controller.locator
-        if locator is not None:
+        if locator_class is None and locator is not None:
             locator_class = type(locator)
 
         #print "CALLED SAVE VISTRAIL", locator_class
@@ -890,11 +892,15 @@ class QVistrailView(QtGui.QWidget):
         if not locator:
             return False
         try:
-            self.controller.write_vistrail(locator)
+            self.controller.write_vistrail(locator, export=export)
         except Exception, e:
-            debug.critical('Failed to save vistrail: %s' % str(e))
+            import traceback
+            debug.critical('Failed to save vistrail: %s' % str(e),
+                           traceback.format_exc())
             raise
             return False
+        if export:
+            return self.controller.locator
         # update collection
         try:
             thumb_cache = ThumbnailCache.getInstance()
@@ -914,7 +920,7 @@ class QVistrailView(QtGui.QWidget):
             collection.commit()
         except Exception, e:
             import traceback
-            debug.critical('Failed to index vistrail', traceback.print_exc())
+            debug.critical('Failed to index vistrail', traceback.format_exc())
 
         from gui.vistrails_window import _app
         # update recent files menu items
@@ -934,6 +940,31 @@ class QVistrailView(QtGui.QWidget):
     def save_vistrail_as(self, locator_class):
         #print "CALLED SAVE AS VISTRAIL", locator_class
         self.save_vistrail(locator_class, force_choose_locator=True)
+
+    def export_vistrail(self, locator_class):
+        """ Exports vistrail without updating the current vistrail """
+        self.save_vistrail(locator_class, force_choose_locator=True, export=True)
+
+    def export_stable(self, locator_class=XMLFileLocator,
+                      force_choose_locator=True):
+        """ save vistrail to previous stable version """
+        self.flush_changes()
+        gui_get = locator_class.save_from_gui
+        if force_choose_locator:
+            locator = gui_get(self, Vistrail.vtType,
+                              self.controller.locator)
+        else:
+            locator = (self.controller.locator or
+                      gui_get(self, Vistrail.vtType, self.controller.locator))
+        if locator == untitled_locator():
+            locator = gui_get(self, Vistrail.vtType,
+                              self.controller.locator)
+        if not locator:
+            return False
+        self.controller.write_vistrail(locator, '1.0.2', True)
+        return True
+
+
 
     # FIXME normalize workflow/log/registry!!!
     def save_workflow(self, locator_class, force_choose_locator=True):
@@ -1024,11 +1055,12 @@ class QVistrailView(QtGui.QWidget):
         self.is_executing = True
 
         view = self.get_current_tab()
-        if hasattr(view, 'execute'):
-            view.setFocus(QtCore.Qt.MouseFocusReason)
-            view.execute()
-
-        self.is_executing = False
+        try:
+            if hasattr(view, 'execute'):
+                view.setFocus(QtCore.Qt.MouseFocusReason)
+                view.execute()
+        finally:
+            self.is_executing = False
 
     def publish_to_web(self):
         view = self.get_current_tab()
@@ -1080,7 +1112,7 @@ class QVistrailView(QtGui.QWidget):
     ##########################################################################
     # Undo/redo
         
-    def set_pipeline_selection(self, old_action, new_action, optype):
+    def set_pipeline_selection(self, old_action, new_action):
         # need to check if anything on module changed or
         # any connections changed
         module_types = set(['module', 'group', 'abstraction'])
@@ -1152,29 +1184,16 @@ class QVistrailView(QtGui.QWidget):
         connection_change()
         
     def undo(self):
-        """Performs one undo step, moving up the version tree."""
-        action_map = self.controller.vistrail.actionMap
-        old_action = action_map.get(self.controller.current_version, None)
-        self.version_view.redo_stack.append(self.controller.current_version)
-        self.controller.show_parent_version()
-        new_action = action_map.get(self.controller.current_version, None)
-        self.set_pipeline_selection(old_action, new_action, 'undo')
-        return self.controller.current_version
-        
+        (old_action, new_action) = self.controller.undo()
+        self.set_pipeline_selection(old_action, new_action)
+        if new_action is not None:
+            return new_action.id
+        return 0
+    
     def redo(self):
-        """Performs one redo step if possible, moving down the version tree."""
-        action_map = self.controller.vistrail.actionMap
-        old_action = action_map.get(self.controller.current_version, None)
-        if not self.version_view.can_redo(None):
-            critical("Redo on an empty redo stack. Ignoring.")
-            return
-        next_version = self.version_view.redo_stack[-1]
-        self.version_view.redo_stack = self.version_view.redo_stack[:-1]
-        self.controller.show_child_version(next_version)
-        new_action = action_map[self.controller.current_version]
-        self.set_pipeline_selection(old_action, new_action, 'redo')
-        return next_version
-
+        (old_action, new_action) = self.controller.redo()
+        self.set_pipeline_selection(old_action, new_action)
+        return new_action.id
 
     # def updateCursorState(self, mode):
     #     """ updateCursorState(mode: Int) -> None 

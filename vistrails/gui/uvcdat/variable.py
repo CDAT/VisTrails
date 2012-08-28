@@ -96,6 +96,7 @@ class VariableProperties(QtGui.QDockWidget):
         sp.setStretchFactor(0,2)
         self._paraviewConnectionDialog = ParaViewConnectionDialog(self)
         self._pvProcessFile = PVProcessFile()
+        self.cdmsFile = None
 
     ## @classmethod
     ## def instance(klass):

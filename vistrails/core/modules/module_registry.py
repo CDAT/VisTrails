@@ -416,6 +416,22 @@ class DuplicateIdentifier(ModuleRegistryException):
         return "There is already a module %s in package %s" % \
             (self._module_name, self._package_name)
 
+class InvalidPortSpec(ModuleRegistryException):
+    def __init__(self, descriptor, port_name, port_type, exc):
+        ModuleRegistryException.__init__(self,
+                                         descriptor.identifier,
+                                         descriptor.name,
+                                         descriptor.namespace)
+        self._port_name = port_name
+        self._port_type = port_type[0].capitalize() + port_type[1:]
+        self._exc = exc
+        
+    def __str__(self):
+        return ('%s port "%s" from module %s in package %s '
+                'has bad specification\n  %s' % \
+            (self._port_type, self._port_name, self._module_name,
+             self._package_name, str(self._exc)))
+
 class MissingBaseClass(Exception):
     def __init__(self, base):
         Exception.__init__(self)
@@ -912,44 +928,25 @@ class ModuleRegistry(DBRegistry):
         input/output ports to registry. Don't call this directly - it is
         meant to be used by the packagemanager, when inspecting the package
         contents."""
-        if hasattr(module, '_input_ports'):
-            for port_info in module._input_ports:
-                added = False
-                if len(port_info) >= 2:
-                    port_name, port_sig = port_info[:2]
-                    if len(port_info) > 2 and type(port_info[2]) == dict:
-                        kwargs = port_info[2]
-                        self.add_input_port(module, port_name, port_sig, 
-                                            **kwargs)
-                        added = True
-                    else:
-                        args = port_info[2:]
-                        self.add_input_port(module, port_name, port_sig, 
-                                            *args)
-                        added = True
-                if not added:
-                    raise TypeError("Expected (port_name, port_signature, "
-                                    "kwargs_dict) or (port_name, "
-                                    "port_signature, *args)")
-        if hasattr(module, '_output_ports'):
-            for port_info in module._output_ports:
-                added = False
-                if len(port_info) >= 2:
-                    port_name, port_sig = port_info[:2]
-                    if len(port_info) > 2 and type(port_info[2]) == dict:
-                        kwargs = port_info[2]
-                        self.add_output_port(module, port_name, port_sig, 
-                                             **kwargs)
-                        added = True
-                    else:
-                        args = port_info[2:]
-                        self.add_output_port(module, port_name, port_sig, 
-                                             *args)
-                        added = True
-                if not added:
-                    raise TypeError("Expected (port_name, port_signature, "
-                                    "kwargs_dict) or (port_name, "
-                                    "port_signature, *args)")
+        for (port_key, adder_f) in [('_input_ports', self.add_input_port),
+                                    ('_output_ports', self.add_output_port)]:
+            if port_key in module.__dict__:
+                for port_info in module.__dict__[port_key]:
+                    added = False
+                    if len(port_info) >= 2:
+                        port_name, port_sig = port_info[:2]
+                        if len(port_info) > 2 and type(port_info[2]) == dict:
+                            kwargs = port_info[2]
+                            adder_f(module, port_name, port_sig, **kwargs)
+                            added = True
+                        else:
+                            args = port_info[2:]
+                            adder_f(module, port_name, port_sig, *args)
+                            added = True
+                    if not added:
+                        raise TypeError("Expected (port_name, port_signature, "
+                                        "kwargs_dict) or (port_name, "
+                                        "port_signature, *args)")
 
     def auto_add_module(self, module):
         """auto_add_module(module or (module, kwargs)): add module
@@ -1334,14 +1331,9 @@ class ModuleRegistry(DBRegistry):
 
     def get_port_spec(self, package, module_name, namespace, 
                       port_name, port_type):
-        try:
-            desc = self.get_descriptor_by_name(package, module_name, namespace)
-            return self.get_port_spec_from_descriptor(desc, port_name, 
-                                                      port_type)
-        except ModuleRegistryException, e:
-            debug.critical(str(e))
-            raise
-        return None
+        desc = self.get_descriptor_by_name(package, module_name, namespace)
+        return self.get_port_spec_from_descriptor(desc, port_name, 
+                                                  port_type)
 
     def has_port_spec_from_descriptor(self, desc, port_name, port_type):
         for d in self.get_module_hierarchy(desc):
@@ -1351,14 +1343,9 @@ class ModuleRegistry(DBRegistry):
 
     def has_port_spec(self, package, module_name, namespace,
                       port_name, port_type):
-        try:
-            desc = self.get_descriptor_by_name(package, module_name, namespace)
-            return self.has_port_spec_from_descriptor(desc, port_name, 
-                                                      port_type)
-        except ModuleRegistryException, e:
-            debug.critical(str(e))
-            raise
-        return None        
+        desc = self.get_descriptor_by_name(package, module_name, namespace)
+        return self.has_port_spec_from_descriptor(desc, port_name, 
+                                                  port_type)
 
     def add_port(self, descriptor, port_name, port_type, port_sig=None, 
                  port_sigstring=None, optional=False, sort_key=-1,
@@ -1369,7 +1356,10 @@ class ModuleRegistry(DBRegistry):
 
         # need to check if the spec is valid
         if spec._entries is None:
-            spec.create_entries_and_descriptors()
+            try:
+                spec.create_entries_and_descriptors()
+            except ModuleRegistryException, e:
+                raise InvalidPortSpec(descriptor, port_name, port_type, e)
 
         descriptor.add_port_spec(spec)
         if port_type == 'input':
@@ -1481,8 +1471,8 @@ class ModuleRegistry(DBRegistry):
                         self.auto_add_ports(descriptor.module)
                         added_descriptors.add(descriptor)
         except Exception, e:
-            raise package.InitializationFailed(package, e, 
-                                               traceback.format_exc())
+            raise package.InitializationFailed(package, 
+                                               [traceback.format_exc()])
 
         # The package might have decided to rename itself, let's store that
         self.set_current_package(None)

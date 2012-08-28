@@ -39,6 +39,7 @@ import core.db.action
 import core.db.locator
 import core.modules.vistrails_module
 from core.utils import VistrailsInternalError, InvalidPipeline
+from core.layout.version_tree_layout import VistrailsTreeLayoutLW
 from core.log.opm_graph import OpmGraph
 from core.modules.abstraction import identifier as abstraction_pkg
 from core.modules.module_registry import get_module_registry, MissingPort
@@ -58,8 +59,8 @@ from core.vistrail.module_param import ModuleParam
 from core.vistrail.pipeline import Pipeline
 from core.vistrail.port_spec import PortSpec
 from core.vistrail.vistrail import Vistrail, TagExists
+from gui.theme import CurrentTheme
 from gui.utils import show_warning, show_question, YES_BUTTON, NO_BUTTON
-from gui.vistrails_tree_layout_lw import VistrailsTreeLayoutLW
 
 import core.analogy
 import copy
@@ -102,7 +103,7 @@ class VistrailController(QtCore.QObject, BaseController):
 
         """
         QtCore.QObject.__init__(self)
-        BaseController.__init__(self, vistrail)
+        BaseController.__init__(self, vistrail, auto_save=auto_save)
         self.set_file_name(name)
         # FIXME: self.current_pipeline_view currently stores the SCENE, not the VIEW
         self.current_pipeline_view = None
@@ -115,12 +116,19 @@ class VistrailController(QtCore.QObject, BaseController):
         # if self._auto_save is True, an auto_saving timer will save a temporary
         # file every 2 minutes
         self._auto_save = auto_save
-        self.timer = QtCore.QTimer(self)
-        self.connect(self.timer, QtCore.SIGNAL("timeout()"), self.write_temporary)
-        self.timer.start(1000 * 60 * 2) # Save every two minutes
+        self.timer = None
+        if self._auto_save:
+            self.setup_timer()
         
         self._previous_graph_layout = None
-        self._current_graph_layout = VistrailsTreeLayoutLW()
+
+        def width_f(text):
+            return CurrentTheme.VERSION_FONT_METRIC.width(text)
+        self._current_graph_layout = \
+            VistrailsTreeLayoutLW(width_f, 
+                                  CurrentTheme.VERSION_FONT_METRIC.height(), 
+                                  CurrentTheme.VERSION_LABEL_MARGIN[0], 
+                                  CurrentTheme.VERSION_LABEL_MARGIN[1])
         self.animate_layout = False
         #this was moved to BaseController
         #self.num_versions_always_shown = 1
@@ -140,6 +148,16 @@ class VistrailController(QtCore.QObject, BaseController):
         self.current_pipeline_view.current_pipeline = pipeline
     current_pipeline = property(_get_current_pipeline, _set_current_pipeline)
 
+    def setup_timer(self):
+        self.timer = QtCore.QTimer(self)
+        self.connect(self.timer, QtCore.SIGNAL("timeout()"), self.write_temporary)
+        self.timer.start(1000 * 60 * 2) # Save every two minutes
+        
+    def stop_timer(self):
+        if self.timer:
+            self.disconnect(self.timer, QtCore.SIGNAL("timeout()"), self.write_temporary)
+            self.timer.stop()
+            
     ##########################################################################
     # Signal vistrail relayout / redraw
 
@@ -192,18 +210,19 @@ class VistrailController(QtCore.QObject, BaseController):
         locator = self.get_locator()
         if locator:
             locator.clean_temporaries()
-        self.disconnect(self.timer, QtCore.SIGNAL("timeout()"), self.write_temporary)
-        self.timer.stop()
+        if self._auto_save or self.timer:
+            self.stop_timer()
 
     def set_vistrail(self, vistrail, locator, abstractions=None, 
-                     thumbnails=None, mashups=None):
+                     thumbnails=None, mashups=None, set_log_on_vt=True):
         """ set_vistrail(vistrail: Vistrail, locator: VistrailLocator) -> None
         Start controlling a vistrail
         
         """
         # self.vistrail = vistrail
         BaseController.set_vistrail(self, vistrail, locator, abstractions,
-                                    thumbnails, mashups)
+                                    thumbnails, mashups, 
+                                    set_log_on_vt=set_log_on_vt)
         if locator != None:
             self.set_file_name(locator.name)
         else:
@@ -287,6 +306,8 @@ class VistrailController(QtCore.QObject, BaseController):
     def execute_workflow_list(self, vistrails):
         old_quiet = self.quiet
         self.quiet = True
+        self.current_pipeline_view.reset_module_colors()
+        self.current_pipeline_view.update()
         (results, changed) = BaseController.execute_workflow_list(self, 
                                                                   vistrails)        
         self.quiet = old_quiet
@@ -421,8 +442,9 @@ class VistrailController(QtCore.QObject, BaseController):
 #                msg_box.setDefaultButton(QtGui.QMessageBox.Ok)
 #                msg_box.setDetailedText(str(e))
 #                msg_box.exec_()
-                text = "The current workflow could not be validated."
-                debug.critical('%s\n%s' % (text, str(e)))
+                # text = "The current workflow could not be validated."
+                # debug.critical('%s\n%s' % (text, str(e)))
+                debug.critical(str(e))
 
 #                 print 'got to exception set'
 #                 # Process all errors as usual
@@ -1200,8 +1222,9 @@ class VistrailController(QtCore.QObject, BaseController):
         
         """
         BaseController.set_changed(self, changed)
-        # FIXME: emit different signal in the future
-        self.emit(QtCore.SIGNAL('stateChanged'))
+        if changed:
+            # FIXME: emit different signal in the future
+            self.emit(QtCore.SIGNAL('stateChanged'))
 
     def set_file_name(self, file_name):
         """ set_file_name(file_name: str) -> None
@@ -1213,9 +1236,10 @@ class VistrailController(QtCore.QObject, BaseController):
         if old_name!=file_name:
             self.emit(QtCore.SIGNAL('stateChanged'))
 
-    def write_vistrail(self, locator, version=None):
-        need_invalidate = BaseController.write_vistrail(self, locator, version)
-        if need_invalidate:
+    def write_vistrail(self, locator, version=None, export=False):
+        need_invalidate = BaseController.write_vistrail(self, locator,
+                                                        version, export)
+        if need_invalidate and not export:
             self.invalidate_version_tree(False)
             self.set_changed(False)
 
@@ -1277,6 +1301,8 @@ class VistrailController(QtCore.QObject, BaseController):
 
         (a, b) = self.analogy[analogy_name]
         c = analogy_target
+        if self.current_version != c:
+            self.change_selected_version(c)
 
         try:
             pipeline_a = self.vistrail.getPipeline(a)
@@ -1284,11 +1310,13 @@ class VistrailController(QtCore.QObject, BaseController):
         except InvalidPipeline, e:
             (_, pipeline_a) = \
                 self.handle_invalid_pipeline(e, a, Vistrail())
+            self._delayed_actions = []
         try:
             pipeline_c = self.vistrail.getPipeline(c)
             self.validate(pipeline_c)
         except InvalidPipeline, e:
             (_, pipeline_c) = self.handle_invalid_pipeline(e, a, Vistrail())
+            self._delayed_actions = []
                                                      
         action = core.analogy.perform_analogy_on_vistrail(self.vistrail,
                                                           a, b, c, 
@@ -1298,9 +1326,12 @@ class VistrailController(QtCore.QObject, BaseController):
         self.vistrail.change_description("Analogy", action.id)
         self.vistrail.change_analogy_info("(%s -> %s)(%s)" % (a, b, c), 
                                           action.id)
-        self.perform_action(action)
-        self.validate(self.current_pipeline, False)
-        self.current_pipeline_view.setupScene(self.current_pipeline)
+        
+        # make sure that the output from the analogy is as up-to-date
+        # as we can make it
+        self.change_selected_version(action.id, from_root=True)
+        self.flush_delayed_actions()
+        self.invalidate_version_tree()
     
 ################################################################################
 # Testing
@@ -1374,8 +1405,10 @@ class TestVistrailController(gui.utils.TestVisTrailsGUI):
         # module_ids = [1, 2, 3]
         # connection_ids = [1, 2, 3]
         module_ids = [4, 5, 6]
-        connection_ids = [6, 8, 9]
-        
-        controller.create_abstraction(module_ids, connection_ids, 
+        #connection_ids = [6, 8, 9]
+        # TE: changed again because upgrades produced different id:s
+        # also saved upgrade in test_abstraction.xml
+        connection_ids = [6, 7, 9]
+        controller.create_abstraction(module_ids, connection_ids,
                                       '__TestFloatList')
         self.assert_(os.path.exists(filename))
