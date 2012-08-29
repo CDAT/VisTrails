@@ -81,6 +81,9 @@ class DV3DParameterSliderWidget(QWidget):
         
     def setRange( self, fmin, fmax ):
         print " Parameter Slider Widget: set Range= %s " % str( (fmin, fmax) )
+        if fmin >= fmax:
+            if fmax > 0.0: fmin = fmax * 0.99
+            else: fmax = 1.0
         self.range = [ fmin, fmax ]
 
     def setValue( self, value ):
@@ -393,7 +396,10 @@ class DV3DRangeConfigWidget(QFrame):
             parm_range = list( self.active_cfg_cmd.range )
             for module in self.active_modules:
                 config_data = module.getParameter( interactionState  ) 
-                config_data[0:2] = parm_range[0:2]
+                if config_data: 
+                    config_data[0:2] = parm_range[0:2]
+                else:
+                    config_data = parm_range
                 module.writeConfigurationResult( interactionState, config_data ) 
             HyperwallManager.getInstance().setInteractionState( None )               
         self.endConfig()
@@ -566,10 +572,13 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return module_id_list
            
     @staticmethod                         
-    def addAction( module, action_key, config_key ):
+    def addAction( module, action_key, config_key, isActive=True ):
         actionList = DV3DPipelineHelper.actionMap.setdefault( action_key, [] )
         actionList.append( ( module, config_key ) ) 
-        if len( actionList ) == 1:
+        if isActive:
+            actionList = DV3DPipelineHelper.actionMenu.actions() 
+            for action in actionList:
+                if str(action.text()) == str(action_key): return
             menuItem = DV3DPipelineHelper.actionMenu.addAction( action_key )
             menuItem.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key: DV3DPipelineHelper.execAction( akey ) )
     
@@ -1063,12 +1072,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         pmods = set()
         DV3DPipelineHelper.reset()
         menu = DV3DPipelineHelper.startNewMenu()
-        configFuncs = ConfigurableFunction.getActiveFunctionList( DV3DPipelineHelper.getActiveIrens() )
+        configFuncs = ConfigurableFunction.getActiveFunctionList( ) # DV3DPipelineHelper.getActiveIrens() )
+        active_irens = DV3DPipelineHelper.getActiveIrens()
         for configFunc in configFuncs:
             action_key = str( configFunc.label )
             config_key = configFunc.key 
-            pmod = configFunc.module              
-            DV3DPipelineHelper.addAction( pmod, action_key, config_key ) 
+            pmod = configFunc.module
+            isActive = ( pmod.iren in active_irens )
+            DV3DPipelineHelper.addAction( pmod, action_key, config_key, isActive ) 
             pmods.add(pmod)
                     
 #        for module in pipeline.module_list:

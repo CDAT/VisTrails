@@ -364,8 +364,8 @@ class ConfigurableFunction( QObject ):
         activeFunctionList = []
         for cfgFunctionMap in ConfigurableFunction.ConfigurableFunctions.values():
             for cfgFunction in cfgFunctionMap.values():
-#                if cfgFunction.module and (  ( active_irens == None ) or ( cfgFunction.module.iren in active_irens ) ):
-                activeFunctionList.append( cfgFunction )
+                if cfgFunction.module and (  ( active_irens == None ) or ( cfgFunction.module.iren in active_irens ) ):
+                    activeFunctionList.append( cfgFunction )
         return activeFunctionList
     
     @staticmethod
@@ -1203,7 +1203,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         StandardModuleConfigurationWidget.__init__(self, module, controller, parent)
         self.setWindowTitle( title )
         self.moduleId = module.id
-        self.pmod = self.module_descriptor.module.forceGetPersistentModule( module.id )
+#        self.pmod = module.forceGetPersistentModule( module.id ) # self.module_descriptor.module.forceGetPersistentModule( module.id )
         self.getParameters( module )
         self.createTabs()
         self.createLayout()
