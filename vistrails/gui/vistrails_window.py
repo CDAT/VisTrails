@@ -73,6 +73,7 @@ from gui.vistrails_palette import QVistrailsPaletteInterface
 from gui.mashups.mashup_app import QMashupAppMainWindow
 from db.services.io import SaveBundle
 import db.services.vistrail
+from db import VistrailsDBException
 
 class QBaseViewWindow(QtGui.QMainWindow):
     def __init__(self, view=None, parent=None, f=QtCore.Qt.WindowFlags()):
@@ -231,6 +232,13 @@ class QBaseViewWindow(QtGui.QMainWindow):
                       {'enabled': True,
                        'callback': _app.flush_cache}),
                      "---",
+                     ("layout", "Re-Layout",
+                      {'statusTip': "Move all modules to create a clean " \
+                           "layout for the workflow",
+                       'shortcut': 'Ctrl+L',
+                       'enabled': False,
+                       'callback': _app.pass_through(self.get_current_scene,
+                                                     'layout')}),
                      ("group", "Group",
                       {'statusTip': "Group the selected modules in the " \
                            "current pipeline view",
@@ -513,12 +521,16 @@ class QVistrailViewWindow(QBaseViewWindow):
                        ('importWorkflow', "Workflow...",
                         {'statusTip': "Import a workflow from an XML file",
                          'enabled': True,
-                         'callback': _app.import_workflow_default})]),
+                         'callback': _app.import_workflow_default}),
+                       ('importWorkflowDB', "Workflow from DB...",
+                        {'statusTip': "Import a workflow from a database",
+                         'enabled': True,
+                         'callback': _app.import_workflow_from_db})]),
                      ("export", "Export",
                       [('exportFile', "To DB...",
                         {'statusTip': "Export the current vistrail to a " \
                              "database",
-                         'enabled': False,
+                         'enabled': True,
                          'callback': \
                              _app.pass_through_locator(self.get_current_view,
                                                        'export_vistrail', 
@@ -842,6 +854,8 @@ class QVistrailsWindow(QVistrailViewWindow):
         self.connect(QtGui.QApplication.instance(), 
                      QtCore.SIGNAL("focusChanged(QWidget*,QWidget*)"),
                      self.applicationFocusChanged)
+
+        self.preferencesDialog = QPreferencesDialog(self)
 
         if get_vistrails_configuration().detachHistoryView:
             self.history_view = QBaseViewWindow(parent=None)
@@ -1525,6 +1539,10 @@ class QVistrailsWindow(QVistrailViewWindow):
         # except ModuleRegistryException, e:
         #     debug.critical("Module registry error for %s" %
         #                    str(e.__class__.__name__), str(e))
+        except VistrailsDBException, e:
+            import traceback
+            debug.critical(str(e), traceback.format_exc())
+            return
         except Exception, e:
             # debug.critical('An error has occurred', str(e))
             #print "An error has occurred", str(e)
@@ -1671,6 +1689,13 @@ class QVistrailsWindow(QVistrailViewWindow):
     def import_workflow_default(self):
         self.import_workflow(XMLFileLocator)
 
+    def import_workflow_from_db(self):
+        """ import_workflow_from_db() -> None
+        Imports a workflow from the db
+
+        """
+        self.import_workflow(DBLocator)
+
     def open_workflow(self, locator, version=None):
         self.close_first_vistrail_if_necessary()
 
@@ -1786,6 +1811,7 @@ class QVistrailsWindow(QVistrailViewWindow):
        
     def get_current_view(self):
         from packages.spreadsheet.spreadsheet_window import SpreadsheetWindow
+        from gui.common_widgets import QToolWindow
         if self.isActiveWindow():
             return self.stack.currentWidget()
         else:
@@ -1802,7 +1828,11 @@ class QVistrailsWindow(QVistrailViewWindow):
                 return window.view
             elif (window is None or isinstance(window,SpreadsheetWindow)
                   or isinstance(window, QtGui.QMessageBox)
-                  or isinstance(window, QtGui.QMenu)):
+                  or isinstance(window, QtGui.QMenu)
+                  or isinstance(window, QToolWindow)):
+                #in this case we should return the current view (if valid)
+                #or the immediate previous view. If both are invalid we return
+                #the first valid view we find
                 if self.current_view is not None:
                     return self.current_view
                 elif self._previous_vt_view is not None:
@@ -1830,6 +1860,12 @@ class QVistrailsWindow(QVistrailViewWindow):
             #what type of window is causing the get_current_view to return
             # a wrong value -- Emanuele.
             debug.debug("[invalid view] get_current_view() -> %s"%window)
+            #instead of returning the current widget lets try to return any 
+            #previous view
+            if self.current_view is not None:
+                return self.current_view
+            elif self._previous_vt_view is not None:
+                return self._previous_vt_view
             return self.stack.currentWidget()
 
         
@@ -1868,7 +1904,7 @@ class QVistrailsWindow(QVistrailViewWindow):
             if locator_klass is not None:
                 obj_method(locator_klass)
             elif self.dbDefault ^ reverse:
-                obj_method(DBLocator())
+                obj_method(DBLocator)
             else:
                 obj_method(FileLocator())
         return method
@@ -2098,21 +2134,7 @@ class QVistrailsWindow(QVistrailViewWindow):
         Display Preferences dialog
 
         """
-        dialog = QPreferencesDialog(self)
-        retval = dialog.exec_()
-        if retval != 0:
-            self.flush_cache()
-            currentView = self.get_current_view()
-            if currentView:
-                current_pipeline = currentView.controller.current_pipeline
-                if current_pipeline:
-                    current_pipeline.validate()
-            
-        # Update the state of the icons if changing between db and file
-        # support
-        dbState = getattr(get_vistrails_configuration(), 'dbDefault')
-        if self.dbDefault != dbState:
-            self.setDBDefault(dbState)
+        self.preferencesDialog.show()
 
     def new_diff(self):
         selected_items = \
@@ -2345,11 +2367,12 @@ class QVistrailsWindow(QVistrailViewWindow):
                         filename = desc.module.vt_fname
                         self.openAbstraction(filename)
                     else:
-                        show_info('Package SubWorkflow is Read-Only',
-                                  "This SubWorkflow is from a package and "
-                                  "cannot be modified.  You can create an "
-                                  "editable copy in 'My SubWorkflows' using "
-                                  "'Edit->Import SubWorkflow'")
+                        debug.critical('Subworkflow is from a package and is '
+                                       'read-only',
+                                       "This subworkflow is from a package and "
+                                       "cannot be modified.  You can create an "
+                                       "editable copy in 'My Subworkflows' "
+                                       "using 'Edit->Import Subworkflow'")
     def merge_vistrail(self):
         action = self.sender()
         if action:
@@ -2431,7 +2454,9 @@ class QVistrailsWindow(QVistrailViewWindow):
     def applicationFocusChanged(self, old, current):
         from gui.modules.constant_configuration import ConstantWidgetMixin
         from gui.paramexplore.pe_view import QParamExploreView
-        
+        from gui.mashups.alias_inspector import QAliasInspector
+        from gui.mashups.mashup_view import QMashupViewTab
+        from packages.spreadsheet.spreadsheet_cell import QCellWidget
         def is_or_has_parent_of_types(widget, types):
             while widget is not None:
                 for _type in types:
@@ -2442,13 +2467,18 @@ class QVistrailsWindow(QVistrailViewWindow):
                 
         if current is not None:
             owner = current.window()
-#            print "\n\n\n >>>>>> applicationfocuschanged"
-#            print "focus_owner: ", self._focus_owner," previous_vt_view ", self._previous_vt_view, " previous_view ", self._previous_view
-#            print "owner: ", owner, " current: ", current
+            #print "\n\n\n >>>>>> applicationfocuschanged"
+            #print "focus_owner: ", self._focus_owner," previous_vt_view ", self._previous_vt_view, " previous_view ", self._previous_view
+            #print "owner: ", owner, " current: ", current
+            allowed_widgets = [ConstantWidgetMixin,
+                               QParamExploreView,
+                               QAliasInspector,
+                               QCellWidget,
+                               QMashupViewTab]
             if (self.isAncestorOf(current) or 
                 owner in self.windows.values()):
                 view = self.get_current_view()
-#                print "view: ", view
+                #print "view: ", view
                 if view and (view == current or view.isAncestorOf(current)):
                     # when a widget spans another control, for example, a Color
                     # wheel, VisTrails will lose focus to that widget and it 
@@ -2459,8 +2489,7 @@ class QVistrailsWindow(QVistrailViewWindow):
                     # constant widget or a parameter exploration widget or has
                     # any of these types as a parent in the hierarchy.  
                     if (owner != self._focus_owner and 
-                        not is_or_has_parent_of_types(current, [ConstantWidgetMixin,
-                                                                QParamExploreView])):
+                        not is_or_has_parent_of_types(current, allowed_widgets)):
                         #print "generating view_changed"
                         self._previous_vt_view = view
                         self._focus_owner = owner
@@ -2474,8 +2503,7 @@ class QVistrailsWindow(QVistrailViewWindow):
                 view = owner.get_current_view()
                 #print "QBaseViewWindow view: ", view
                 if (view and owner != self._focus_owner and 
-                    not is_or_has_parent_of_types(current, [ConstantWidgetMixin,
-                                                            QParamExploreView])):
+                    not is_or_has_parent_of_types(current, allowed_widgets)):
                     #print "generating view changed"
                     self._previous_vt_view = view
                     self._focus_owner = owner

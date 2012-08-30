@@ -98,10 +98,12 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
         """clean_non_cacheable_modules() -> None
 
         Removes all modules that are not cacheable from the persistent
-        pipeline, and the modules that depend on them."""
+        pipeline, and the modules that depend on them, and 
+        previously suspended modules """
         non_cacheable_modules = [i for
                                  (i, mod) in self._objects.iteritems()
-                                 if not mod.is_cacheable()]
+                                 if not mod.is_cacheable() or \
+                                 mod.suspended]
         self.clean_modules(non_cacheable_modules)
         
 
@@ -278,6 +280,7 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
         reason = fetch('reason', None)
         actions = fetch('actions', None)
         module_executed_hook = fetch('module_executed_hook', [])
+        module_suspended_hook = fetch('module_suspended_hook', [])
         done_summon_hooks = fetch('done_summon_hooks', [])
         clean_pipeline = fetch('clean_pipeline', False)
         # parent_exec = fetch('parent_exec', None)
@@ -288,6 +291,7 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
 
         errors = {}
         executed = {}
+        suspended = {}
         cached = {}
 
         # LOGGING SETUP
@@ -298,6 +302,12 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
         def add_to_executed(obj):
             executed[obj.id] = True
             for callable_ in module_executed_hook:
+                callable_(obj.id)
+
+        # the suspended dict works on persistent ids
+        def add_to_suspended(obj):
+            suspended[obj.id] = obj.suspended
+            for callable_ in module_suspended_hook:
                 callable_(obj.id)
 
         # views work on local ids
@@ -328,18 +338,22 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
             logger.start_execution(obj, i, module_name,
                                    parent_execs=self.parent_execs,
                                    cached=1)
+            view.set_module_not_executed(i)
             num_pops = logger.finish_execution(obj,'', self.parent_execs)
 
         # views and loggers work on local ids
-        def end_update(obj, error='', errorTrace=None):
+        def end_update(obj, error='', errorTrace=None, was_suspended = False):
             i = get_remapped_id(obj.id)
-            if not error:
+            if was_suspended:
+                view.set_module_suspended(i, error)
+            elif not error:
                 view.set_module_success(i)
             else:
                 view.set_module_error(i, error)
 
             # !!!self.parent_execs is mutated!!!
-            logger.finish_execution(obj, error, self.parent_execs, errorTrace)
+            logger.finish_execution(obj, error, self.parent_execs, errorTrace,
+                                    was_suspended)
 
         # views and loggers work on local ids
         def annotate(obj, d):
@@ -352,6 +366,7 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
             view.set_module_progress(i, percentage)
             
         logging_obj = InstanceObject(signalSuccess=add_to_executed,
+                                     signalSuspended=add_to_suspended,
                                      begin_update=begin_update,
                                      begin_compute=begin_compute,
                                      update_progress=update_progress,
@@ -424,6 +439,7 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
         #              for i in tmp_to_persistent_module_map.keys()])
         errs = {}
         execs = {}
+        suspends = {}
         caches = {}
 
         to_delete = []
@@ -437,16 +453,18 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
                     to_delete.append(obj.id)
             if obj.id in executed:
                 execs[tmp_id] = executed[obj.id]
+            elif obj.id in suspended:
+                suspends[tmp_id] = suspended[obj.id]
             elif obj.id in cached:
                 caches[tmp_id] = cached[obj.id]
             else:
                 # these modules didn't execute
                 execs[tmp_id] = False
 
-        return (to_delete, objs, errs, execs, caches, parameter_changes)
+        return (to_delete, objs, errs, execs, suspends, caches, parameter_changes)
 
-    def finalize_pipeline(self, pipeline, to_delete, objs, errs, execs, cached,
-                          **kwargs):
+    def finalize_pipeline(self, pipeline, to_delete, objs, errs, execs,
+                          suspended, cached, **kwargs):
         def fetch(name, default):
             r = kwargs.get(name, default)
             try:
@@ -462,6 +480,8 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
         for i in objs:
             if i in errs:
                 view.set_module_error(i, errs[i].msg, errs[i].errorTrace)
+            elif i in suspended and suspended[i]:
+                view.set_module_suspended(i, suspended[i])
             elif i in execs and execs[i]:
                 view.set_module_success(i)
             elif i in cached and cached[i]:
@@ -487,13 +507,14 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
         if len(errors) == 0:
             res = self.execute_pipeline(pipeline, *(res[:2]), **kwargs)
         else:
-            res = (to_delete, res[0], errors, {}, {}, [])
+            res = (to_delete, res[0], errors, {}, {}, {}, [])
         self.finalize_pipeline(pipeline, *(res[:-1]), **kwargs)
         
         return InstanceObject(objects=res[1],
                               errors=res[2],
                               executed=res[3],
-                              parameter_changes=res[5],
+                              suspended=res[4],
+                              parameter_changes=res[6],
                               modules_added=modules_added,
                               conns_added=conns_added)
 
@@ -583,7 +604,7 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
         logger.start_workflow_execution(vistrail, pipeline, current_version)
         self.annotate_workflow_execution(logger, reason, aliases, params)
         result = self.unlocked_execute(pipeline, **new_kwargs)
-        logger.finish_workflow_execution(result.errors)
+        logger.finish_workflow_execution(result.errors, suspended=result.suspended)
         self.parent_execs = [None]
 
         return result

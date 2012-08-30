@@ -11,6 +11,7 @@ from packages.spreadsheet.spreadsheet_base import StandardSheetReference, Standa
 from packages.vtk.vtkcell import QVTKWidget, QVTKWidgetToolBar
 from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
 from packages.vtDV3D.InteractiveConfiguration import *
+from packages.vtDV3D.CaptionManager import *
 from packages.vtDV3D.WorkflowModule import WorkflowModule
 from packages.vtDV3D.VolumeSlicerModule import PM_VolumeSlicer
 if ENABLE_JOYSTICK: from packages.vtDV3D.JoystickInterface import *
@@ -61,11 +62,20 @@ class QVTKClientWidget(QVTKWidget):
         self.iRenderPeriod = 10
         
         self.toolBarType = QVTKWidgetToolBar2
+        
+        self.current_button = QtCore.Qt.NoButton
+        self.current_pos = QtCore.QPoint( 50, 50 )
 
     def event(self, e): 
         if ENABLE_JOYSTICK and ( e.type() == ControlEventType ):   
             self.processControllerEvent( e, [ self.width(), self.height() ] )
      
+        if e.type() == QtCore.QEvent.MouseButtonPress:     
+            self.current_button = e.button()  
+            self.current_pos = e.globalPos()   
+        elif e.type() == QtCore.QEvent.MouseButtonRelease: 
+            self.current_button = QtCore.Qt.NoButton
+        
         # send event to all the selected cell widgets.       
         if e.type() in [QtCore.QEvent.MouseMove, 
                         QtCore.QEvent.MouseButtonPress,
@@ -245,6 +255,7 @@ class QVTKServerWidget( QVTKClientWidget ):
 #                            r.ResetCameraClippingRange()
 #                    cell.update()
 
+
 class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 
     def __init__( self, mid, **args ):
@@ -266,17 +277,50 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.builtCellWidget = False
         self.logoActor = None
         self.logoVisible = True
+        self.logoRepresentation = None 
+        self.captionManager = None 
+        self.addConfigurableFunction( CaptionManager.config_name, [ ( String, 'data') ], 'k', label='Add Caption', open=self.editCaption )
+        
+    def editCaption( self, caption=None ): 
+        if self.captionManager:  
+            self.captionManager.editCaption( caption )
 
     def getSheetTabWidget( self ):   
         return self.cellWidget.findSheetTabWidget() if self.cellWidget else None
     
-    def toggleLogoVisibility( self ):
-        self.logoVisible = not self.logoVisible 
+    def toggleLogoVisibility1( self ):
+        self.logoVisible = not self.logoVisible
         self.logoActor.SetVisibility( self.logoVisible ) 
         self.logoActor.Modified()
         self.renWin.Render() 
-    
+
+    def toggleLogoVisibility( self ):
+        if self.logoRepresentation:
+            self.logoVisible = not self.logoVisible
+            if self.logoVisible: self.logoWidget.On()
+            else: self.logoWidget.Off()
+            self.renWin.Render() 
+
     def addLogo(self):
+        if self.logoRepresentation == None:
+            reader = vtk.vtkJPEGReader()
+            reader.SetFileName( defaultLogoFile )
+            logo_input = reader.GetOutput()
+            logo_input.Update()
+            self.logoRepresentation = vtk.vtkLogoRepresentation()
+            self.logoRepresentation.SetImage(logo_input)
+            self.logoRepresentation.ProportionalResizeOn ()
+            self.logoRepresentation.SetPosition( 0.82, 0.0 )
+            self.logoRepresentation.SetPosition2( 0.18, 0.08 )
+            self.logoRepresentation.GetImageProperty().SetOpacity( 0.9 )
+            self.logoRepresentation.GetImageProperty().SetDisplayLocationToBackground() 
+            self.logoWidget = vtk.vtkLogoWidget()
+            self.logoWidget.SetInteractor( self.iren )
+            self.logoWidget.SetRepresentation(self.logoRepresentation)
+            self.logoWidget.On()
+            self.render() 
+     
+    def addLogo1(self):
         upper_corner = False
         if len(self.renderers) and self.renWin:
             if self.logoActor == None:
@@ -317,7 +361,18 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def onRender( self, caller, event ):
         self.addLogo()
         PersistentVisualizationModule.onRender( self, caller, event  )
-            
+
+    def processKeyEvent( self, key, caller=None, event=None ): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
+        if (  key == 'k'  ):
+            if self.iren in DV3DPipelineHelper.getActiveIrens() :
+                self.captionManager.addCaption()
+                state =  self.getInteractionState( key )
+                if state <> None: self.updateInteractionState( state, self.isAltMode  )                 
+                self.render() 
+        else:
+            PersistentVisualizationModule.processKeyEvent( self, key, caller, event ) 
+                        
     def adjustSheetDimensions(self, row, col ):
         sheetTabWidget = getSheetTabWidget()
         ( rc, cc ) = sheetTabWidget.getDimension()
@@ -458,6 +513,10 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             if self.cellWidget:
                 self.renWin = self.cellWidget.GetRenderWindow() 
                 self.iren = self.renWin.GetInteractor()
+                caption_data = self.getInputValue( CaptionManager.config_name, None )
+                self.captionManager = CaptionManager( self.cellWidget, self.iren, data=caption_data )
+                self.connect(self.captionManager, CaptionManager.persist_captions_signal, self.persistCaptions )  
+                
                 if ENABLE_JOYSTICK: 
                     if joystick.enabled():
                         joystick.addTarget( self.cellWidget )   
@@ -470,7 +529,13 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             self.builtCellWidget = True
         else:               
             print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
-            
+     
+    def persistCaptions( self, serializedCaptions ): 
+        parmList = []
+        parmList.append( ( CaptionManager.config_name, [ serializedCaptions ] ) )
+        print " ---> Persisting captions: ", serializedCaptions
+        self.persistParameterList( parmList ) 
+                   
     def updateStereo( self, enableStereo ):  
         if enableStereo <> self.stereoEnabled:  
             self.toggleStereo()   

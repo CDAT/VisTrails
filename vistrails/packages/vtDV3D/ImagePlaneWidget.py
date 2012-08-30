@@ -510,7 +510,7 @@ class ImagePlaneWidget:
         found = 0;
         if path:
             path.InitTraversal()
-            for i in range( path.GetNumberOfItems() ):
+            for _ in range( path.GetNumberOfItems() ):
                 node = path.GetNextNode()
                 if node.GetViewProp() == self.TexturePlaneActor:
                     found = 1

@@ -6,6 +6,7 @@ from gui.uvcdat.graphicsMethodsWidgets import QBoxfillEditor, QIsofillEditor,\
    QIsolineEditor, QMeshfillEditor, QOutfillEditor, QOutlineEditor, \
    QScatterEditor, QTaylorDiagramEditor, QVectorEditor, Q1DPlotEditor
 from gui.common_widgets import QDockPushButton
+from gui.utils import show_question, SAVE_BUTTON, DISCARD_BUTTON
 class GraphicsMethodConfigurationWidget(QtGui.QWidget):
     def __init__(self, module, controller, parent=None, show_buttons=True):
         QtGui.QWidget.__init__(self, parent)
@@ -148,8 +149,9 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         
         for attr in self.attributes:
             if getattr(gm,attr) != self.attributes[attr]:
-                changed = True
-                break
+                if str(getattr(gm,attr)) != str(self.attributes[attr]):
+                    changed = True
+                    break
         return changed
     
     def saveTriggered(self, checked = False):
@@ -166,4 +168,18 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         self.setupEditors()
         self.state_changed = False
         self.emit(QtCore.SIGNAL("stateChanged"))
+        
+    def askToSaveChanges(self):
+        if self.checkForChanges():
+            message = ('Configuration panel contains unsaved changes. '
+                      'Do you want to save changes before proceeding?' )
+            res = show_question('VisTrails',
+                                message,
+                                buttons = [SAVE_BUTTON, DISCARD_BUTTON])
+            if res == SAVE_BUTTON:
+                self.saveTriggered()
+                return True
+            else:
+                self.resetTriggered()
+                return False
         

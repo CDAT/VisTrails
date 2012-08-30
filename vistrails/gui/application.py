@@ -54,6 +54,7 @@ import getpass
 import sys
 
 ################################################################################
+
 class VistrailsApplicationSingleton(VistrailsApplicationInterface,
                                     QtGui.QApplication):
     """
@@ -84,13 +85,19 @@ class VistrailsApplicationSingleton(VistrailsApplicationInterface,
             raise core.requirements.MissingRequirement("Qt version >= 4.2")
         self._is_running = False
         self.terminating = False
+        self.shared_memory = None
+        self.local_server = None
         self.setAttribute(QtCore.Qt.AA_DontShowIconsInMenus)
+        qt.allowQObjects()
+
+    def run_single_instance(self):
         # code for single instance of the application
         # based on the C++ solution availabe at
         # http://wiki.qtcentre.org/index.php?title=SingleApplication
         if QtCore.QT_VERSION >= 0x60400:
             self.timeout = 10000
-            self._unique_key = "vistrails-single-instance-check-%s"%getpass.getuser()
+            self._unique_key = os.path.join(system.home_directory(),
+                                            "vistrails-single-instance-check-%s"%getpass.getuser())
             self.shared_memory = QtCore.QSharedMemory(self._unique_key)
             self.local_server = None
             if self.shared_memory.attach():
@@ -109,9 +116,17 @@ class VistrailsApplicationSingleton(VistrailsApplicationInterface,
                 else:
                     debug.warning("Server is not listening. This means it will not accept \
 parameters from other instances")
-                                  
-        qt.allowQObjects()
-
+            
+    def found_another_instance_running(self):
+        debug.critical("Found another instance of VisTrails running")
+        msg = str(sys.argv[1:])
+        debug.critical("Will send parameters to main instance %s" % msg)
+        res = self.send_message(msg)
+        if res:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+            
     def init(self, optionsDict=None):
         """ VistrailsApplicationSingleton(optionDict: dict)
                                           -> VistrailsApplicationSingleton
@@ -127,6 +142,14 @@ parameters from other instances")
 
         # the uvcdat theme needs to be initialized after the configuration is loaded
         gui.uvcdat.theme.initializeUVCDATTheme()
+        
+        #singleInstance configuration
+        singleInstance = self.temp_configuration.check('singleInstance')
+        if singleInstance:
+            self.run_single_instance()
+            if self._is_running:
+                self.found_another_instance_running()
+                
         interactive = self.temp_configuration.check('interactiveMode')
         if interactive:
             self.setIcon()
@@ -175,6 +198,14 @@ parameters from other instances")
 
     def is_running_gui(self):
         return True
+
+    def get_controller(self):
+        return self.builderWindow.get_current_controller()
+
+    def get_vistrail(self):
+        if self.get_controller():
+            return self.get_controller().vistrail
+        return None
 
     def create_notification(self, notification_id, window=None, view=None):
         if view is not None:
@@ -478,7 +509,7 @@ parameters from other instances")
  
     def finishSession(self):
         self.terminating = True
-        if QtCore.QT_VERSION >= 0x60400:
+        if QtCore.QT_VERSION >= 0x60400 and self.shared_memory is not None:
             self.shared_memory.detach()
             if self.local_server:
                 self.local_server.close()
@@ -608,15 +639,7 @@ def start_application(optionsDict=None):
         return
     VistrailsApplication = VistrailsApplicationSingleton()
     set_vistrails_application(VistrailsApplication)
-    if VistrailsApplication.is_running():
-        debug.critical("Found another instance of VisTrails running")
-        msg = str(sys.argv[1:])
-        debug.critical("Will send parameters to main instance %s" % msg)
-        res = VistrailsApplication.send_message(msg)
-        if res:
-            sys.exit(0)
-        else:
-            sys.exit(1)
+    
     try:
         core.requirements.check_all_vistrails_requirements()
     except core.requirements.MissingRequirement, e:

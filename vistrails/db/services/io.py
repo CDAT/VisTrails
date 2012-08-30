@@ -37,7 +37,7 @@ from datetime import datetime
 from core import debug
 from core.bundles import py_import
 from core.system import get_elementtree_library, temporary_directory,\
-     execute_cmdline, systemType
+     execute_cmdline, systemType, get_executable_path
 from core.utils import Chdir
 from core.log.log import Log
 from core.mashup.mashup_trail import Mashuptrail
@@ -352,7 +352,7 @@ def get_db_id_from_name(db_connection, obj_type, name):
     except get_db_lib().Error, e:
         c.close()
         msg = "Connection error when trying to get db id from name"
-        raise VisrailsDBException(msg)
+        raise VistrailsDBException(msg)
 
 def get_matching_abstraction_id(db_connection, abstraction):
     last_action_id = -1
@@ -654,7 +654,15 @@ def open_vistrail_bundle_from_zip_xml(filename):
                     mashup = open_mashuptrail_from_xml(mashup_file)
                     mashups.append(mashup)
                 else:
-                    unknown_files.append(os.path.join(root, fname))
+                    handled = False
+                    from core.packagemanager import get_package_manager
+                    pm = get_package_manager()
+                    for package in pm.enabled_package_list():
+                        if package.can_handle_vt_file(fname):
+                            handled = True
+                            continue
+                    if not handled:
+                        unknown_files.append(os.path.join(root, fname))
     except OSError, e:
         raise VistrailsDBException("Error when reading vt file")
     if len(unknown_files) > 0:
@@ -663,6 +671,12 @@ def open_vistrail_bundle_from_zip_xml(filename):
     if vistrail is None:
         raise VistrailsDBException("vt file does not contain vistrail")
     vistrail.db_log_filename = log_fname
+
+    # call package hooks
+    from core.packagemanager import get_package_manager
+    pm = get_package_manager()
+    for package in pm.enabled_package_list():
+        package.loadVistrailFileHook(vistrail, vt_save_dir)
 
     save_bundle = SaveBundle(DBVistrail.vtType, vistrail, log, 
                              abstractions=abstraction_files, 
@@ -831,15 +845,22 @@ def save_vistrail_bundle_to_zip_xml(save_bundle, filename, vt_save_dir=None, ver
             raise VistrailsDBException('save_vistrail_bundle_to_zip_xml failed, '
                                        'when saving mashup: %s'%str(e))
 
+    # call package hooks
+    from core.packagemanager import get_package_manager
+    pm = get_package_manager()
+    for package in pm.enabled_package_list():
+        package.saveVistrailFileHook(save_bundle.vistrail, vt_save_dir)
+
     tmp_zip_dir = tempfile.mkdtemp(prefix='vt_zip')
     tmp_zip_file = os.path.join(tmp_zip_dir, "vt.zip")
     output = []
     rel_vt_save_dir = os.path.split(vt_save_dir)[1]
+
     # on windows, we assume zip.exe is in the current directory when
     # running from the binary install
     zipcmd = 'zip'
     if systemType in ['Windows', 'Microsoft']:
-        zipcmd = os.path.join(os.getcwd(),'zip.exe')
+        zipcmd = get_executable_path('zip.exe')
         if not os.path.exists(zipcmd):
             zipcmd = 'zip.exe' #assume zip is in path
     cmdline = [zipcmd, '-r', '-q', tmp_zip_file, '.']
@@ -929,8 +950,12 @@ def save_vistrail_to_db(vistrail, db_connection, do_copy=False, version=None):
     vistrail.db_currentVersion = current_action
 
     # update all missing tagged workflows
+    tagMap = {}
+    for annotation in vistrail.db_actionAnnotations:
+        if annotation.db_key == '__tag__':
+            tagMap[annotation.db_action_id] = annotation.db_value
     wfToSave = []
-    for id, name in vistrail.get_tagMap().iteritems():
+    for id, name in tagMap.iteritems():
         if id not in workflowIds:
             #print "creating workflow", vistrail.db_id, id, name,
             workflow = vistrail.getPipeline(id)

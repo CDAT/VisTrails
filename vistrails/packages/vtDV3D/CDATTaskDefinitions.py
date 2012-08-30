@@ -33,6 +33,7 @@ class TaskManager(QtCore.QObject):
     TaskMap = {}
     
     def __init__( self, **args ):
+        QtCore.QObject.__init__( self )
         pass
     
     @staticmethod
