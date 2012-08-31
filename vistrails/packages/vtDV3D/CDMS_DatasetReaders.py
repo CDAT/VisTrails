@@ -781,18 +781,20 @@ class SerializedInterfaceSpecs:
                 fileName = fileMetadata[2] if fileMetadata[2] else fileId
                 for iVar in range( len(varInputSpecs) ):
                     varSpecs = varInputSpecs[iVar].split('!')
-                    varName = varSpecs[2] if varSpecs[2] else varSpecs[1]
-                    axes = gridInputSpecs[iVar].split('!')[1]
-                    self.addInput( ("Input%d" % iVar), fileId, fileName, varName, axes )
+                    if len( varSpecs ) > 2:
+                        varName = varSpecs[2] if varSpecs[2] else varSpecs[1]
+                        axes = gridInputSpecs[iVar].split('!')[1]
+                        self.addInput( ("Input%d" % iVar), fileId, fileName, varName, axes )
             elif len( fileInputSpecs ) == len( varInputSpecs ):
                 for iVar in range( len(varInputSpecs) ):
                     fileMetadata = fileInputSpecs[iVar].split('!')
                     fileId = fileMetadata[1]
                     fileName = fileMetadata[2] if fileMetadata[2] else fileId
                     varSpecs = varInputSpecs[iVar].split('!')
-                    varName = varSpecs[2] if varSpecs[2] else varSpecs[1]
-                    axes = gridInputSpecs[iVar].split('!')[1]
-                    self.addInput( ("Input%d" % iVar), fileId, fileName, varName, axes )
+                    if len( varSpecs ) > 2:
+                        varName = varSpecs[2] if varSpecs[2] else varSpecs[1]
+                        axes = gridInputSpecs[iVar].split('!')[1]
+                        self.addInput( ("Input%d" % iVar), fileId, fileName, varName, axes )
             else:
                 print>>sys.stderr, " ERROR: Number of Files and number of Variables do not match."
         for iCell in range( len(cellInputSpecs) ):
@@ -987,9 +989,8 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             print " ** serializedInputSpecs: ", str( serializedInputSpecs ) 
             print " ** InputSpecs: ", str( inputSpecs ) 
             self.idSpecs, self.fileSpecs, self.varSpecs, self.gridSpecs = [], [], [], []
-            if inputSpecs:
-                nInputs = inputSpecs.getNInputs()
-                if not nInputs: return
+            nInputs = inputSpecs.getNInputs() if inputSpecs else 0
+            if nInputs: 
                 print " _____________________ File Reader _____________________ "    
                 for iInput in range( nInputs  ):
                     inputSpec = inputSpecs.getInput(  index=iInput )
@@ -1046,9 +1047,9 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
     def persistDatasetParameters( self ):
         parmRecList = []
         parmRecList.append( ( 'datasets', [ serializeStrMap(self.datasetMap), ] ), )
-        parmRecList.append( ( 'grid', [ self.ref_var, ] ), )
-        parmRecList.append( ( 'timeRange' , [ self.timeRange[0], self.timeRange[1], self.timeRange[2], self.timeRange[3] ]  ), )      
-        parmRecList.append( ( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  ), )                  
+        if self.ref_var:    parmRecList.append( ( 'grid', [ self.ref_var, ] ), )
+        if self.timeRange:  parmRecList.append( ( 'timeRange' , [ self.timeRange[0], self.timeRange[1], self.timeRange[2], self.timeRange[3] ]  ), )      
+        if self.roi:        parmRecList.append( ( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  ), )                  
         self.persistParameterList( parmRecList ) 
 
     def dvUpdate( self, **args ):
@@ -1709,7 +1710,12 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         parmRecList.append( ( 'roi' , [ self.roi[0], self.roi[1], self.roi[2], self.roi[3] ]  ), )          
         parmRecList.append( ( 'zscale' , [ self.zscale ]  ), )  
         parmRecList.append( ( 'decimation' , self.decimation  ), )  
-        parmRecList.append( ( 'executionSpecs' , ''  ), )         
+        fileInputSpecs = '' # '!'.join( [self.currentDatasetId, self.currentDatasetId, self.datasets[ self.currentDatasetId ] ] )       
+        varInputSpecs = ''
+        gridInputSpecs = ''
+        cellInputSpecs = '' 
+        executionSpecs = ';'.join( [ fileInputSpecs, varInputSpecs, gridInputSpecs, cellInputSpecs ] )
+        parmRecList.append( ( 'executionSpecs' , [ executionSpecs, ]  ), )         
         self.persistParameterList( parmRecList ) 
         self.pmod.clearDataCache()
         self.stateChanged(False)

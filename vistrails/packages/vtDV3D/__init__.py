@@ -289,7 +289,7 @@ def initialize(*args, **keywords):
     reg.add_input_port( LevelSurface, "texture", AlgorithmOutputModule3D  )
     reg.add_input_port( LevelSurface, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( LevelSurface, "volume", AlgorithmOutputModule3D ) 
-    reg.add_input_port( LevelSurface, "layer",   [ ( String, 'activeLayerName' ) ]   ) 
+#    reg.add_input_port( LevelSurface, "layer",   [ ( String, 'activeLayerName' ) ]   ) 
     LevelSurface.registerConfigurableFunctions( reg )
 
     if hasMatplotlib:

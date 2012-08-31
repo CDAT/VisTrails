@@ -1203,7 +1203,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         StandardModuleConfigurationWidget.__init__(self, module, controller, parent)
         self.setWindowTitle( title )
         self.moduleId = module.id
-#        self.pmod = module.forceGetPersistentModule( module.id ) # self.module_descriptor.module.forceGetPersistentModule( module.id )
+        self.pmod = module.module_descriptor.module.forceGetPersistentModule( module.id ) # self.module_descriptor.module.forceGetPersistentModule( module.id )
         self.getParameters( module )
         self.createTabs()
         self.createLayout()
