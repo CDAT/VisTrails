@@ -40,7 +40,17 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'opacity', 'p', label='Isosurface Opacity', activeBound='min', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addConfigurableGuiFunction( 'nLevels', NLevelConfigurationWidget, 'n', label='# Isosurface Levels', setValue=self.setNumberOfLevels, getValue=self.getNumberOfLevels, layerDependent=True )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
-    
+
+    def setInputZScale( self, zscale_data, **args  ):       
+        textureModule = self.wmod.forceGetInputFromPort( "texture", None )
+        if textureModule <> None:
+            textureInput = textureModule.getOutput() 
+            ix, iy, iz = textureInput.GetSpacing()
+            sz = zscale_data[1]
+            textureInput.SetSpacing( ix, iy, sz )  
+            textureInput.Modified() 
+        return PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args )
+        
     def setOpacityRange( self, opacity_range, **args  ):
         print "Update Opacity, range = %s" %  str( opacity_range )
         self.opacityRange = opacity_range
