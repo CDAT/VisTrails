@@ -220,6 +220,7 @@ def initialize(*args, **keywords):
 
     reg.add_module( VolumeSlicer, namespace='vtk' )
     reg.add_output_port( VolumeSlicer, "slice",  AlgorithmOutputModule  )
+    reg.add_input_port( VolumeSlicer, "contours", AlgorithmOutputModule3D  )
     reg.add_input_port( VolumeSlicer, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( VolumeSlicer, "volume", AlgorithmOutputModule3D ) 
     VolumeSlicer.registerConfigurableFunctions( reg )

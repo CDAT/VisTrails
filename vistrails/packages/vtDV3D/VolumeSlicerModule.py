@@ -52,6 +52,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ = None
         self.opacityUpdateCount = 0
         self.generateContours = False
+        self.contourLineActors = {}
+        self.contourInput = None
+        self.contourMetadata = None
+        self.contour_units = ""
 #        self.imageRescale = None
         print " Volume Slicer init, id = %x " % id(self)
         VolumeSlicerModules[mid] = self
@@ -68,6 +72,16 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 bounds = list( self.input.GetBounds() ) 
                 self.planeWidgetX.PlaceWidget( bounds )        
                 self.planeWidgetY.PlaceWidget( bounds )                
+
+    def setInputZScale( self, zscale_data, **args  ):       
+        contourModule = self.wmod.forceGetInputFromPort( "contours", None )
+        if contourModule <> None:
+            contourInput = contourModule.getOutput() 
+            ix, iy, iz = contourInput.GetSpacing()
+            sz = zscale_data[1]
+            contourInput.SetSpacing( ix, iy, sz )  
+            contourInput.Modified() 
+        return PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args )
                 
     def getOpacity(self):
         return self.opacity
@@ -105,11 +119,31 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetX.DisableInteraction()                                                
         self.planeWidgetY.DisableInteraction()                                                
         self.planeWidgetZ.DisableInteraction()  
+
+    def updateContourMetadata(self):
+        if self.contourMetadata == None:
+            scalars = None
+            self.newDataset = False
+            self.contourInput.Update()
+            contourFieldData = self.contourInput.GetFieldData()                 
+            self.contourMetadata = extractMetadata( contourFieldData )            
+            if self.contourMetadata <> None:    
+                attributes = self.contourMetadata.get( 'attributes' , None )
+                if attributes:
+                    self.contour_units = attributes.get( 'units' , '' )
                                                             
     def buildPipeline(self):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
-        """           
+        """     
+        contourModule = self.wmod.forceGetInputFromPort( "contours", None )
+        if self.input == None:
+            if contourModule <> None:
+                self.input = contourModule.getOutput() 
+            else:
+                print>>sys.stderr, "Error, must provide an input to the Volume Slicer module!"
+      
+        self.contourInput = None if contourModule == None else contourModule.getOutput() 
         # The 3 image plane widgets are used to probe the dataset.    
         print " Volume Slicer buildPipeline, id = %s " % str( id(self) )
         self.sliceOutput = vtk.vtkImageData()  
@@ -131,7 +165,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetX = ImagePlaneWidget( self, 0 )
 #        self.planeWidgetX.DisplayTextOff()
         self.planeWidgetX.SetRenderer( self.renderer )
-        self.planeWidgetX.SetInput( self.input )
+        self.planeWidgetX.SetInput( self.input, self.contourInput )
         self.planeWidgetX.SetPlaneOrientationToXAxes()
         self.planeWidgetX.SetSliceIndex( self.slicePosition[0] )
         self.planeWidgetX.SetPicker(picker)
@@ -151,7 +185,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetY = ImagePlaneWidget( self, 1)
 #        self.planeWidgetY.DisplayTextOff()
         self.planeWidgetY.SetRenderer( self.renderer )
-        self.planeWidgetY.SetInput( self.input )
+        self.planeWidgetY.SetInput( self.input, self.contourInput )
         self.planeWidgetY.SetPlaneOrientationToYAxes()
         self.planeWidgetY.SetUserControlledLookupTable(1)
         self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
@@ -170,7 +204,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ = ImagePlaneWidget( self, 2 )
 #        self.planeWidgetZ.DisplayTextOff()
         self.planeWidgetZ.SetRenderer( self.renderer )
-        self.planeWidgetZ.SetInput( self.input )
+        self.planeWidgetZ.SetInput( self.input, self.contourInput )
         self.planeWidgetZ.SetPlaneOrientationToZAxes()
         self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
         self.planeWidgetZ.SetPicker(picker)
@@ -191,21 +225,17 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.updateOpacity() 
         
-        if self.generateContours:
+        if contourModule <>None:
+            self.generateContours = True
+            self.updateContourMetadata()
             scalarRange =  self.getDataRangeBounds()
             numberOfContours = 10         
             self.contours = vtk.vtkContourFilter()
-            self.contours.SetInputConnection( self.planeWidgetX.GetResliceOutputPort() )
             self.contours.GenerateValues( numberOfContours, self.rangeBounds[0], self.rangeBounds[1] )
      
             self.contourLineMapperer = vtk.vtkPolyDataMapper()
             self.contourLineMapperer.SetInputConnection( self.contours.GetOutputPort() )
             self.contourLineMapperer.SetScalarRange( self.rangeBounds[0], self.rangeBounds[1] )
-     
-            self.contourLineActor = vtk.vtkActor()
-            self.contourLineActor.SetMapper(self.contourLineMapperer)
-            self.contourLineActor.GetProperty().SetLineWidth(2)     
-            self.renderer.AddActor(self.contourLineActor) 
 
 #        self.imageRescale = vtk.vtkImageReslice() 
 #        self.imageRescale.SetOutputDimensionality(2) 
@@ -331,9 +361,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
                 
     def updateModule(self, **args ):
-        self.planeWidgetX.SetInput( self.input )         
-        self.planeWidgetY.SetInput( self.input )         
-        self.planeWidgetZ.SetInput( self.input ) 
+        self.planeWidgetX.SetInput( self.input, self.contourInput )         
+        self.planeWidgetY.SetInput( self.input, self.contourInput )         
+        self.planeWidgetZ.SetInput( self.input, self.contourInput ) 
         self.planeWidgetX.SetSliceIndex( self.slicePosition[0] ) 
         self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
         self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
@@ -372,7 +402,12 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 cpos = caller.GetCurrentCursorPosition()     
                 dataValue = self.getDataValue( image_value )
                 wpos = self.getWorldCoords( cpos )
-                textDisplay = " Position: (%s, %s, %s), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, self.units )
+                if self.generateContours:
+                    contour_image_value = caller.GetCurrentImageValue2() 
+                    contour_value = self.getDataValue( contour_image_value )
+                    textDisplay = " Position: (%s, %s, %s), Value: %.3G %s, Contour Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, self.units, contour_value, self.contour_units )
+                else:
+                    textDisplay = " Position: (%s, %s, %s), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, self.units )
                 sliceIndex = caller.GetSliceIndex() 
                 self.slicePosition[iAxis] = sliceIndex
                 self.updateTextDisplay( textDisplay )
@@ -391,22 +426,39 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 self.updateTextDisplay( textDisplay ) 
             
             if self.generateContours:
-                slice_data = caller.GetResliceOutput()
+                slice_data = caller.GetReslice2Output()
                 slice_data.Update()                
                 self.contours.SetInput( slice_data )
                 self.contours.Modified()
                 pos1 = caller.GetPoint1()
                 pos2 = caller.GetPoint2()
                 origin = caller.GetOrigin()
-                self.contourLineActor.SetPosition( origin[0], origin[1], origin[2] + 0.1 )
-                self.contourLineActor.SetOrigin( origin[0], origin[1], origin[2] )
-#                if iAxis == 1: 
-#                    self.contourLineActor.RotateX(90)
-#                elif iAxis == 2: 
-#                    self.contourLineActor.RotateY(90)
+                contourLineActor = self.getContourActor( iAxis )
+                contourLineActor.SetPosition( origin[0], origin[1], origin[2] )
+#                contourLineActor.SetOrigin( origin[0] + 0.1, origin[1] + 0.1, origin[2] + 0.1 )
+                self.setVisibleContour( iAxis )
+#                print " Generate Contours, data dims = %s, pos = %s %s %s " % ( str( slice_data.GetDimensions() ), str(pos1), str(pos2), str(origin) )
 
-                print " Generate Contours, data dims = %s, pos = %s %s %s " % ( str( slice_data.GetDimensions() ), str(pos1), str(pos2), str(origin) )
-                
+    def getContourActor( self, iAxis, **args ):
+        contourLineActor = self.contourLineActors.get( iAxis, None )
+        if contourLineActor == None:
+            contourLineActor = vtk.vtkActor()
+            contourLineActor.SetMapper(self.contourLineMapperer)
+            contourLineActor.GetProperty().SetLineWidth(2)     
+            self.renderer.AddActor( contourLineActor ) 
+            self.contourLineActors[iAxis] = contourLineActor
+            print " GetContourActor %d, origin = %s, position = %s " % ( iAxis, str( contourLineActor.GetOrigin() ), str( contourLineActor.GetPosition() ) )
+            if iAxis == 1: 
+                contourLineActor.SetOrientation(90,0,0)
+            elif iAxis == 0: 
+                contourLineActor.SetOrientation(90,0,90)                              
+        return contourLineActor
+    
+    def setVisibleContour( self, iAxis ):
+        for contourLineActorItem in self.contourLineActors.items():
+            if iAxis == contourLineActorItem[0]:    contourLineActorItem[1].VisibilityOn( )
+            else:                                   contourLineActorItem[1].VisibilityOff( )
+
                     
 #    def getSlice( self, iAxis ):
 #        import api
