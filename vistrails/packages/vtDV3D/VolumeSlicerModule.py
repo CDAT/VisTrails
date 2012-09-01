@@ -51,6 +51,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetY = None
         self.planeWidgetZ = None
         self.opacityUpdateCount = 0
+        self.generateContours = False
 #        self.imageRescale = None
         print " Volume Slicer init, id = %x " % id(self)
         VolumeSlicerModules[mid] = self
@@ -189,6 +190,23 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ.SetLookupTable( self.lut )
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.updateOpacity() 
+        
+        if self.generateContours:
+            scalarRange =  self.getDataRangeBounds()
+            numberOfContours = 10         
+            self.contours = vtk.vtkContourFilter()
+            self.contours.SetInputConnection( self.planeWidgetX.GetResliceOutputPort() )
+            self.contours.GenerateValues( numberOfContours, self.rangeBounds[0], self.rangeBounds[1] )
+     
+            self.contourLineMapperer = vtk.vtkPolyDataMapper()
+            self.contourLineMapperer.SetInputConnection( self.contours.GetOutputPort() )
+            self.contourLineMapperer.SetScalarRange( self.rangeBounds[0], self.rangeBounds[1] )
+     
+            self.contourLineActor = vtk.vtkActor()
+            self.contourLineActor.SetMapper(self.contourLineMapperer)
+            self.contourLineActor.GetProperty().SetLineWidth(2)     
+            self.renderer.AddActor(self.contourLineActor) 
+
 #        self.imageRescale = vtk.vtkImageReslice() 
 #        self.imageRescale.SetOutputDimensionality(2) 
 #        self.imageRescale.SetInterpolationModeToLinear() 
@@ -198,7 +216,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.set3DOutput() 
 
 #    def buildPipeline0(self):
-#        """ execute() -> None
+#        """ execute()  None
 #        Dispatch the vtkRenderer to the actual rendering widget
 #        """           
 #        # The 3 image plane widgets are used to probe the dataset.    
@@ -371,6 +389,24 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #                    print " >++++++++++++++++++> Slicing: Set Slice[%d], index=%d, pos=%.2f, " % ( iAxis, sliceIndex, p1[0] ), textDisplay
                 self.slicePosition[ iAxis ] = sliceIndex                  
                 self.updateTextDisplay( textDisplay ) 
+            
+            if self.generateContours:
+                slice_data = caller.GetResliceOutput()
+                slice_data.Update()                
+                self.contours.SetInput( slice_data )
+                self.contours.Modified()
+                pos1 = caller.GetPoint1()
+                pos2 = caller.GetPoint2()
+                origin = caller.GetOrigin()
+                self.contourLineActor.SetPosition( origin[0], origin[1], origin[2] + 0.1 )
+                self.contourLineActor.SetOrigin( origin[0], origin[1], origin[2] )
+#                if iAxis == 1: 
+#                    self.contourLineActor.RotateX(90)
+#                elif iAxis == 2: 
+#                    self.contourLineActor.RotateY(90)
+
+                print " Generate Contours, data dims = %s, pos = %s %s %s " % ( str( slice_data.GetDimensions() ), str(pos1), str(pos2), str(origin) )
+                
                     
 #    def getSlice( self, iAxis ):
 #        import api

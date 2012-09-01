@@ -220,7 +220,6 @@ class ImagePlaneWidget:
         self.Enabled = True
         if self.CurrentRenderer == None:
             self.RenderWindow = self.Interactor.GetRenderWindow()
-#            self.CurrentRenderer = self.RenderWindow
     
         self.CurrentRenderer.AddViewProp(self.PlaneOutlineActor)
         self.PlaneOutlineActor.SetProperty(self.PlaneProperty)
@@ -1111,7 +1110,14 @@ class ImagePlaneWidget:
         v2 = [  p2[0] - o[0], p2[1] - o[1], p2[2] - o[2] ]
         return v2
 
+#----------------------------------------------------------------------------
+    
+    def GetResliceOutputPort(self):       
+        return self.Reslice.GetOutputPort()
 
+    def GetResliceOutput(self):       
+        return self.Reslice.GetOutput()
+    
 #----------------------------------------------------------------------------
 
     def GeneratePlaneOutline(self):
