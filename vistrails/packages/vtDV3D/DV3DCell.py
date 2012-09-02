@@ -61,10 +61,10 @@ class QVTKClientWidget(QVTKWidget):
         self.iRenderCount = 0
         self.iRenderPeriod = 10
         
+        self.toolBarType = QVTKWidgetToolBar2
+        
         self.current_button = QtCore.Qt.NoButton
         self.current_pos = QtCore.QPoint( 50, 50 )
-        
-        self.toolBarType = QVTKWidgetToolBar2
 
     def event(self, e): 
         if ENABLE_JOYSTICK and ( e.type() == ControlEventType ):   
