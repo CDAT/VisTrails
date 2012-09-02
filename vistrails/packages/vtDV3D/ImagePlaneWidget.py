@@ -43,6 +43,7 @@ class ImagePlaneWidget:
         self.CurrentCursorPosition = [ 0, 0, 0 ]
         self.CurrentScreenPosition = [ 0, 0 ]
         self.CurrentImageValue   = vtk.VTK_DOUBLE_MAX
+        self.CurrentImageValue2 = vtk.VTK_DOUBLE_MAX
                         
         # Represent the plane's outline
         #
@@ -60,11 +61,14 @@ class ImagePlaneWidget:
 #        self.ContourFilter = vtk.vtkContourFilter
         self.Reslice = vtk.vtkImageReslice()
         self.Reslice.TransformInputSamplingOff()
+        self.Reslice2 = vtk.vtkImageReslice()
+        self.Reslice2.TransformInputSamplingOff()
         self.ResliceAxes   = vtk.vtkMatrix4x4()
         self.Texture = vtk.vtkTexture()
         self.TexturePlaneActor   = vtk.vtkActor()
         self.Transform     = vtk.vtkTransform()
         self.ImageData    = 0
+        self.ImageData2   = 0
         self.LookupTable  = 0
             
         # Represent the cross hair cursor
@@ -111,6 +115,9 @@ class ImagePlaneWidget:
 
     def GetCurrentImageValue(self): 
         return self.CurrentImageValue
+
+    def GetCurrentImageValue2(self): 
+        return self.CurrentImageValue2
 
     def GetCurrentCursorPosition(self): 
         return self.CurrentCursorPosition
@@ -224,7 +231,6 @@ class ImagePlaneWidget:
         self.Enabled = True
         if self.CurrentRenderer == None:
             self.RenderWindow = self.Interactor.GetRenderWindow()
-#            self.CurrentRenderer = self.RenderWindow
     
         self.CurrentRenderer.AddViewProp(self.PlaneOutlineActor)
         self.PlaneOutlineActor.SetProperty(self.PlaneProperty)
@@ -510,7 +516,7 @@ class ImagePlaneWidget:
         found = 0;
         if path:
             path.InitTraversal()
-            for i in range( path.GetNumberOfItems() ):
+            for _ in range( path.GetNumberOfItems() ):
                 node = path.GetNextNode()
                 if node.GetViewProp() == self.TexturePlaneActor:
                     found = 1
@@ -521,7 +527,7 @@ class ImagePlaneWidget:
 
     def GetCursorData(self):
         if ( self.State <> ImagePlaneWidget.Cursoring  or  self.CurrentImageValue == vtk.VTK_DOUBLE_MAX ): return None                  
-        return [ self.CurrentCursorPosition[0], self.CurrentCursorPosition[1], self.CurrentCursorPosition[2], self.CurrentImageValue ]        
+        return [ self.CurrentCursorPosition[0], self.CurrentCursorPosition[1], self.CurrentCursorPosition[2], self.CurrentImageValue, self.CurrentImageValue2 ]        
 
 #----------------------------------------------------------------------------
     def GetCursorDataStatus(self):
@@ -679,9 +685,10 @@ class ImagePlaneWidget:
 
 #----------------------------------------------------------------------------
 
-    def SetInput(self, inputData ):
+    def SetInput(self, inputData, inputData2=None ):
     
         self.ImageData = inputData
+        self.ImageData2 = inputData2
         
         if(  not self.ImageData ):       
             # If None is passed, remove any reference that Reslice had
@@ -696,6 +703,7 @@ class ImagePlaneWidget:
             self.LookupTable.Build()
             
         self.Reslice.SetInput(self.ImageData)
+        self.Reslice2.SetInput(self.ImageData2)
         interpolate = self.ResliceInterpolate
         self.ResliceInterpolate = -1 # Force change
         self.SetResliceInterpolate(interpolate)
@@ -782,6 +790,7 @@ class ImagePlaneWidget:
         self.ResliceAxes.SetElement(2,3,neworiginXYZW[2])
         
         self.Reslice.SetResliceAxes(self.ResliceAxes)
+        self.Reslice2.SetResliceAxes(self.ResliceAxes)
         
         spacingX = abs(planeAxis1[0]*spacing[0]) + abs(planeAxis1[1]*spacing[1]) + abs(planeAxis1[2]*spacing[2])   
         spacingY = abs(planeAxis2[0]*spacing[0]) + abs(planeAxis2[1]*spacing[1]) + abs(planeAxis2[2]*spacing[2])
@@ -801,12 +810,19 @@ class ImagePlaneWidget:
         self.Reslice.SetOutputSpacing(outputSpacingX, outputSpacingY, 1)
         self.Reslice.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
         self.Reslice.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
+        self.Reslice2.SetOutputSpacing(outputSpacingX, outputSpacingY, 1)
+        self.Reslice2.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
+        self.Reslice2.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
     
 #----------------------------------------------------------------------------
 
     def GetResliceOutput(self):      
         if (  not  self.Reslice ): return 0           
         return self.Reslice.GetOutput()
+
+    def GetReslice2Output(self):      
+        if (  not  self.Reslice2 ): return 0           
+        return self.Reslice2.GetOutput()
 
 #----------------------------------------------------------------------------
     def SetResliceInterpolate( self, i ):
@@ -818,9 +834,12 @@ class ImagePlaneWidget:
         
         if (  not self.Reslice ): return
                   
-        if ( i == VTK_NEAREST_RESLICE ):    self.Reslice.SetInterpolationModeToNearestNeighbor()          
-        elif ( i == VTK_LINEAR_RESLICE): self.Reslice.SetInterpolationModeToLinear()          
-        else:                               self.Reslice.SetInterpolationModeToCubic()
+        if ( i == VTK_NEAREST_RESLICE ):    
+            self.Reslice.SetInterpolationModeToNearestNeighbor()          
+        elif ( i == VTK_LINEAR_RESLICE): 
+            self.Reslice.SetInterpolationModeToLinear()          
+        else:                               
+            self.Reslice.SetInterpolationModeToCubic()
           
         self.Texture.SetInterpolate(self.TextureInterpolate)
 
@@ -1003,6 +1022,7 @@ class ImagePlaneWidget:
         
         self.PlanePicker.Pick(X,Y,0.0,self.CurrentRenderer)
         self.CurrentImageValue = vtk.VTK_DOUBLE_MAX
+        self.CurrentImageValue2 = vtk.VTK_DOUBLE_MAX
         
         if self.DoPick( X, Y ):    
             self.CursorActor.VisibilityOn()
@@ -1067,6 +1087,7 @@ class ImagePlaneWidget:
             self.CurrentCursorPosition[i] = int(iq)
                   
         self.CurrentImageValue = self.ImageData.GetScalarComponentAsDouble( self.CurrentCursorPosition[0], self.CurrentCursorPosition[1], self.CurrentCursorPosition[2], 0 )
+        if self.ImageData2: self.CurrentImageValue2 = self.ImageData2.GetScalarComponentAsDouble( self.CurrentCursorPosition[0], self.CurrentCursorPosition[1], self.CurrentCursorPosition[2], 0 )
         return rq
 
 #----------------------------------------------------------------------------
@@ -1150,7 +1171,14 @@ class ImagePlaneWidget:
         v2 = [  p2[0] - o[0], p2[1] - o[1], p2[2] - o[2] ]
         return v2
 
+#----------------------------------------------------------------------------
+    
+    def GetResliceOutputPort(self):       
+        return self.Reslice.GetOutputPort()
 
+    def GetResliceOutput(self):       
+        return self.Reslice.GetOutput()
+    
 #----------------------------------------------------------------------------
 
     def GeneratePlaneOutline(self):

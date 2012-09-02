@@ -23,6 +23,7 @@ import api
 
 # Import PV Generic Cell
 from pvgenericcell import PVGenericCell
+import pvclimatecell
 
 import sys
 
@@ -30,6 +31,9 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def show_configuration_widget(controller, version, plot_obj=None):
+        print 'Calling show_configuration_widget'
+        print 'version: ', version
+
         # Grab the pipeline
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
 
@@ -38,17 +42,30 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         # Find the cell
         cell = CDMSPipelineHelper.find_modules_by_type(pipeline,[PVGenericCell])
 
+        PVClimatePipelineHelper.find_plot_representation(pipeline, PVClimatePipelineHelper.find_plot_modules(pipeline)[0])
+
         # FIXME: Remove this hack
         if len(cell) == 0:
           print >> sys.stderr, 'cell is empty'
           return None
 
-        # FIXME: Implement this
-#        if len(cell) == 0:
-#            return pvclimatecell.PVClimateCellConfigurationWidget(None,controller)
-#        else:
-#            pvcell = cell[0].module_descriptor.module()
-#            return pvclimatecell.PVClimateCellConfigurationWidget(cell[0],controller)
+        if len(cell) == 0:
+            return pvclimatecell.PVClimateCellConfigurationWidget(None,
+                                                                  controller.vt_controller)
+        else:
+            pvcell = cell[0].module_descriptor.module()
+            # Create child widgets
+            # Attach it to the parent widget
+            return pvclimatecell.PVClimateCellConfigurationWidget(cell[0],
+                                                                  controller.vt_controller)
+
+    @staticmethod
+    def find_plot_representation(pipeline, representation):
+        #print 'rep dir ', dir(representation)
+        print 'name ', representation.name
+#        print  'output port ', representation.forceGetOutputListFromPort('self')[0]
+#        print 'type of ', type(representation.forceGetOutputListFromPort('self')[0])
+        return pipeline.modules[pipeline.get_outputPort_modules(representation.id, 'self')[0]]
 
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plots,row, col, template=None):
@@ -182,10 +199,11 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         # Find plot modules in the order they appear in the Cell
         res = []
         cell = PlotPipelineHelper.find_module_by_name(pipeline, 'PVGenericCell')
-        plots = pipeline.get_inputPort_modules(cell.id, 'plot')
+        plots = pipeline.get_inputPort_modules(cell.id, 'representation')
         for plot in plots:
             res.append(pipeline.modules[plot])
         return res
+
 
     @staticmethod
     def load_pipeline_in_location(pipeline, controller, sheetName, row, col,plot_type, cell):
@@ -264,6 +282,8 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         text += '    sys.exit(app.exec_())'
         return text
 
+
+
     @staticmethod
     def copy_pipeline_to_other_location(pipeline, controller, sheetName, row, col,plot_type, cell):
         print "copyt pipeline to other location"
@@ -317,3 +337,5 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         #ptype = CDMSPipelineHelper.get_plot_type_from_module(plot_modules[0])
         #cell.plot = get_plot_manager().get_plot(plot_type, ptype, gmName)
         return action
+
+

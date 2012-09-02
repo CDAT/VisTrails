@@ -1063,6 +1063,11 @@ class PersistentModule( QObject ):
             self.persistParameterList( [ (parameter_name, output) ] )             
         except Exception, err:
             print "Error changing parameter %s for %s module: %s" % ( parameter_name, self.__class__.__name__, str(err) )
+     
+    def writeConfigurationResult( self, config_name, config_data, **args ):       
+        if self.wmod: self.wmod.setResult( config_name, config_data )
+        self.setParameter( config_name, config_data )
+        self.finalizeConfigurationObserver( config_name, **args )
            
     def finalizeConfigurationObserver( self, parameter_name, **args ):
         self.finalizeParameter( parameter_name, **args )    
@@ -1178,7 +1183,6 @@ class PersistentVisualizationModule( PersistentModule ):
     RIGHT_BUTTON = 1
     
     renderMap = {} 
-    captions = {}   
     moduleDocumentationDialog = None 
 
     def __init__( self, mid, **args ):
@@ -1212,37 +1216,7 @@ class PersistentVisualizationModule( PersistentModule ):
  
     def disableVisualizationInteraction(self): 
         pass
-
-    def addCaption( self, key, **args ):
-        existing_caption = self.captions.get(key,None)
-        if not existing_caption:
-            text = args.get('text', "Test caption" ) 
-            font_size= args.get('font_size', 100 )            
-            pos= args.get('pos',  [ 10, 10, 0 ] )
-            color= args.get( 'color',  [ 0, 0, 1 ] )
-            captionRep =  vtk.vtkCaptionRepresentation() 
-            captionWidget = vtk.vtkCaptionWidget()
-            captionWidget.SetInteractor(self.iren)
-            captionWidget.SetRepresentation(captionRep)
-            captionWidget.SelectableOn() 
-            captionWidget.ResizableOn() 
-            captionRep.SetAnchorPosition( pos )
-            actor = captionRep.GetCaptionActor2D() 
-            actor.SetCaption(text)
-            actor.SetThreeDimensionalLeader(0)
-            anchorRep = captionRep.GetAnchorRepresentation()
-            tprop = actor.GetTextActor().GetTextProperty()
-            tprop.SetFontSize(font_size) 
-            tprop.SetFontFamilyToArial()
-            tprop.SetJustificationToCentered()
-            tprop.SetColor( color[0], color[1], color[2] )            
-            bprop = captionRep.GetBorderProperty()
-            bprop.SetColor( 1.0, 0.0, 0.0 ) 
-            bprop.SetLineWidth( 3.0 )  
-            bprop.SetOpacity(  1.0  )     
-            self.captions[key] = captionWidget
-            captionWidget.On()
-
+                      
     def setInputZScale( self, zscale_data, **args  ):
         if self.input <> None:
             spacing = self.input.GetSpacing()
@@ -1724,11 +1698,7 @@ class PersistentVisualizationModule( PersistentModule ):
                   self.colorBarActor.VisibilityOff()  
             else: self.colorBarActor.VisibilityOn() 
             self.render() 
-            
-        elif (  key == 'k'  ):
-            self.addCaption( 1 )
-            self.render() 
-            
+                        
         elif (  key == 'r'  ):
             self.resetCamera()              
             if  len(self.persistedParameters):

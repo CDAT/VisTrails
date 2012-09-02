@@ -32,25 +32,35 @@ class PM_LevelSurface(PersistentVisualizationModule):
            
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__(self,  mid, **args)
-        self.opacityRange =  [ 0.8, 0.8 ]
+        self.opacityRange =  [ 0.2, 0.99 ]
         self.imageRange = None
         self.numberOfLevels = 1
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, adjustRange=True, units='data'  )
         self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', label='Isosurface Level Range', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True, units='data', adjustRange=True )
-        self.addConfigurableLevelingFunction( 'opacity', 'p', label='Isosurface Opacity', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
+        self.addConfigurableLevelingFunction( 'opacity', 'p', label='Isosurface Opacity', activeBound='min', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addConfigurableGuiFunction( 'nLevels', NLevelConfigurationWidget, 'n', label='# Isosurface Levels', setValue=self.setNumberOfLevels, getValue=self.getNumberOfLevels, layerDependent=True )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
-    
+
+    def setInputZScale( self, zscale_data, **args  ):       
+        textureModule = self.wmod.forceGetInputFromPort( "texture", None )
+        if textureModule <> None:
+            textureInput = textureModule.getOutput() 
+            ix, iy, iz = textureInput.GetSpacing()
+            sz = zscale_data[1]
+            textureInput.SetSpacing( ix, iy, sz )  
+            textureInput.Modified() 
+        return PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args )
+        
     def setOpacityRange( self, opacity_range, **args  ):
         print "Update Opacity, range = %s" %  str( opacity_range )
         self.opacityRange = opacity_range
-        self.colormapManager.setAlphaRange ( opacity_range[0:2] ) 
+        self.colormapManager.setAlphaRange ( [ opacity_range[0], opacity_range[0] ]  ) 
 #        self.levelSetProperty.SetOpacity( opacity_range[1] )
         
     def setColorScale( self, range, **args  ):
         self.imageRange = self.getImageValues( range[0:2] ) 
         self.levelSetMapper.SetScalarRange( self.imageRange[0], self.imageRange[1] )
-        self.colormapManager.setDisplayRange( range )
+        self.colormapManager.setDisplayRange( self.imageRange )
 
     def getColorScale( self ):
         sr = self.getDataRangeBounds()
@@ -186,7 +196,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.levelSetMapper = vtk.vtkPolyDataMapper()
         if ( self.probeFilter == None ):
             self.levelSetMapper.SetInputConnection( self.levelSetFilter.GetOutputPort() ) 
-            self.levelSetMapper.SetScalarRange( self.range )
+            self.levelSetMapper.SetScalarRange( self.imageRange[0], self.imageRange[1] )
         else: 
             self.probeFilter.SetInputConnection( self.levelSetFilter.GetOutputPort() )
             self.levelSetMapper.SetInputConnection( self.probeFilter.GetOutputPort() ) 

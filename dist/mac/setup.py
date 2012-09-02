@@ -41,7 +41,7 @@ Usage:
 from setuptools import setup
 import sys
 
-VERSION = '2.0-alpha'
+VERSION = '2.0'
 
 plist = dict(
     CFBundleName='VisTrails',
@@ -62,8 +62,8 @@ OPTIONS = {'argv_emulation': True,
 			libxml2,libxslt, Cookie, BaseHTTPServer, multifile, \
                         shelve, uuid, gridfield, gridfield.core, \
                         gridfield.algebra, gridfield.gfvis, gridfield.selfe, \
-                        sine,st,Numeric,pexpect,psycopg2,sqlite3,suds,shapelib, dbflib,mpl_toolkits.mplot3d',
-           'packages': 'PyQt4,vtk,MySQLdb,matplotlib,tables,packages,core,gui,db,numpy,scipy,ZSI,api,twisted,Scientific,distutils,h5py',
+                        sine,st,Numeric,pexpect,psycopg2,sqlite3,suds,shapelib, dbflib,mpl_toolkits.mplot3d,_mysql_exceptions',
+           'packages': 'PyQt4,vtk,MySQLdb,matplotlib,tables,packages,core,gui,db,numpy,scipy,ZSI,api,twisted,Scientific,distutils,h5py,batchq',
            'excludes': 'mpl_toolkits.basemap',
            'plist': plist,
            }

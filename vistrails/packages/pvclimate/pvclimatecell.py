@@ -3,11 +3,13 @@ from core.modules.module_registry import get_module_registry
 from packages.vtk.vtkcell import QVTKWidget
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.spreadsheet.spreadsheet_cell import QCellWidget
+from core.interpreter.default import get_default_interpreter
+
 #from PVBase import PVModule
 import paraview.simple as pvsp
 import paraview.pvfilters
 import vtk
-
+from pvtransformation import Ui_pvtransformationeditor
 # We are using our own constant (though we are calling it a variable)
 import pvvariable
 
@@ -15,14 +17,25 @@ import pvvariable
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from gui.modules.module_configure import StandardModuleConfigurationWidget
+from gui.common_widgets import QDockPushButton
 
 # Needed for port related stuff
 from core.vistrail.port import PortEndPoint
 import core.modules.basic_modules as basic_modules
+import core.db.action
+
 
 # Needed to parse csv string into a list
 import csv
 import StringIO
+
+class Transformation():
+    def __init__(self):
+        self.scale = [1.0, 1.0, 0.01]
+        self.position = [0.0, 0.0, 0.0]
+        self.origin = [0.0, 0.0, 0.0]
+        self.orientation = [0.0, 0.0, 0.0]
+
 
 class PVClimateCell(SpreadsheetCell):
     def __init__(self):
@@ -30,6 +43,7 @@ class PVClimateCell(SpreadsheetCell):
         self.cellWidget = None
         self.sliceOffset = 0.0
         self.isoSurfaces = "8"
+        self.tranformation = Transformation()
 
     def compute(self):
         """ compute() -> None
@@ -184,6 +198,10 @@ class QParaViewWidget(QVTKWidget):
     def deleteLater(self):
         QCellWidget.deleteLater(self)
 
+    def test(self):
+        print 'test'
+
+
 def registerSelf():
     registry = get_module_registry()
     registry.add_module(PVClimateCell, configureWidgetType=PVClimateCellConfigurationWidget)
@@ -192,6 +210,7 @@ def registerSelf():
     registry.add_input_port(PVClimateCell, "sliceOffset", basic_modules.String)
     registry.add_input_port(PVClimateCell, "isoSurfaces", basic_modules.String)
     registry.add_output_port(PVClimateCell, "self", PVClimateCell)
+
 
 class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
 
@@ -211,9 +230,8 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
         self.setWindowTitle( title )
         self.moduleId = module.id
         self.getParameters( module )
-        self.createTabs()
         self.createLayout()
-        self.addPortConfigTab()
+        self.createButtonLayout()
         if ( PVClimateConfigurationWidget.newConfigurationWidget == None ): PVClimateConfigurationWidget.setupSaveConfigurations()
         PVClimateConfigurationWidget.newConfigurationWidget = self
 
@@ -224,18 +242,11 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
     def sizeHint(self):
         return QSize(400,200)
 
-    def createTabs( self ):
-        self.setLayout( QVBoxLayout() )
-        self.layout().setMargin(0)
-        self.layout().setSpacing(0)
-
-        self.tabbedWidget = QTabWidget()
-        self.layout().addWidget( self.tabbedWidget )
         self.createButtonLayout()
 
-    def addPortConfigTab(self):
-        portConfigPanel = self.getPortConfigPanel()
-        self.tabbedWidget.addTab( portConfigPanel, 'ports' )
+    def addTransformationTab(self):
+        transformationPanel = self.getTransformationPanel()
+        self.tabbedWidget.addTab( transformationPanel, 'Transformation' )
 
     @staticmethod
     def setupSaveConfigurations():
@@ -303,6 +314,12 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
         listContainer.setFixedHeight(listContainer.height())
         return listContainer
 
+    def getTransformationPanel(self):
+        container = QGroupBox()
+        pvtransformationeditor = Ui_pvtransformationeditor()
+        pvtransformationeditor.setupUi(container)
+        return container
+
     def closeEvent(self, event):
         self.askToSaveChanges()
         event.accept()
@@ -317,19 +334,19 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
 
     def saveTriggered(self, checked = False):
         self.okTriggered()
-        for port in self.inputPorts:
-            if (port.optional and
-                self.inputDict[port.name].checkState()==Qt.Checked):
-                self.module.visible_input_ports.add(port.name)
-            else:
-                self.module.visible_input_ports.discard(port.name)
+        #for port in self.inputPorts:
+        #    if (port.optional and
+        #        self.inputDict[port.name].checkState()==Qt.Checked):
+        #        self.module.visible_input_ports.add(port.name)
+        #    else:
+        #        self.module.visible_input_ports.discard(port.name)
 
-        for port in self.outputPorts:
-            if (port.optional and
-                self.outputDict[port.name].checkState()==Qt.Checked):
-                self.module.visible_output_ports.add(port.name)
-            else:
-                self.module.visible_output_ports.discard(port.name)
+        #for port in self.outputPorts:
+        #    if (port.optional and
+        #        self.outputDict[port.name].checkState()==Qt.Checked):
+        #        self.module.visible_output_ports.add(port.name)
+        #    else:
+        #        self.module.visible_output_ports.discard(port.name)
         self.saveButton.setEnabled(False)
         #self.resetButton.setEnabled(False)
         self.state_changed = False
@@ -378,7 +395,10 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
         pass
 
     def createLayout( self ):
-        pass
+        self.setLayout( QVBoxLayout() )
+        self.layout().setMargin(0)
+        self.layout().setSpacing(0)
+
 
     def createButtonLayout(self):
         """ createButtonLayout() -> None
@@ -440,44 +460,115 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         """
         self.cellAddress = 'A1'
         self.sliceOffset = 0
+        self.representation_modules = []
+        self.controller = controller
+        self.moduleId = module.id
+        self.init_representations()
         PVClimateConfigurationWidget.__init__(self, module, controller, 'PVClimate Cell Configuration', parent)
 
     def getParameters( self, module ):
         pass
 
     def updateVistrail(self):
-        print 'updateVistrail'
+        print 'controller.current_version', self.controller.current_version
+
         functions = []
-        # For now assume parameters changed everytime
-        if 1:
-            functions.append(("sliceOffset", [self.sliceOffset]))
-            #functions.append(("isoSurfaces", [self.isoSurfaces]))
-            self.controller.update_functions(self.module, functions)
+        action = None
+        functions.append(("sliceOffset", [self.sliceOffset]))
+        action = self.controller.update_functions(self.module, functions)
+        return action
+
+    def init_representations(self):
+        pipeline = self.controller.current_pipeline
+        representation_ids = pipeline.get_inputPort_modules(self.moduleId, 'representation')
+        for i, rep_id in enumerate(representation_ids):
+            rep_module = pipeline.get_module_by_id(rep_id)
+            self.representation_modules.append(rep_module)
+
+    def create_remove_button(self):
+        widget = QWidget()
+        self.btn_del_var = QDockPushButton("Remove")
+        self.btn_del_var.setEnabled(False)
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(3)
+        btn_layout.setMargin(0)
+        btn_layout.addWidget(self.btn_del_var)
+        btn_layout.addStretch()
+        widget.setLayout(btn_layout)
+
+        self.connect(self.btn_del_var, SIGNAL('clicked(bool)'), self.delete_clicked)
+
+        return widget
+
+    def delete_clicked(self):
+        if self.representations_table.selectedItems():
+            item = self.representations_table.selectedItems()[0]
+            row = item.row()
+            self.representations_table.removeRow(row)
+            pv_generic_cell = self.get_workflow_module(self.moduleId)
+            pv_generic_cell.removeRepresentation(row)
+#            self.controller.execute_current_workflow()
+
+    def create_representation_table(self):
+        self.representations_table = PVRepresentationPlotTableWidget(self)
+        self.representations_table.setRowCount(len(self.representation_modules))
+        self.connect(self.representations_table, SIGNAL('itemSelectionChanged()'),
+                     self.itemSelectionChanged)
+
+        for i, rep_module in enumerate(self.representation_modules):
+            # call static method to name to display
+            display_name = rep_module.module_descriptor.module.name()
+            item = PVRepresentationTableWidgetItem(rep_module,
+                                                   display_name)
+            item.setText(display_name)
+            self.representations_table.setItem(i, 0, item)
+
+            rep_config_widget = rep_module.module_descriptor.module.configuration_widget(self,
+                                                                                         rep_module)
+            self.connect(self, SIGNAL('okTriggered()'), rep_config_widget.okTriggered)
+            self.config_panel_layout.addWidget(rep_config_widget)
+
+        return self.representations_table
+
+    def create_config_panel(self):
+        self.config_panel = QWidget()
+        self.config_panel_layout = QStackedLayout()
+        self.config_panel.setLayout( self.config_panel_layout )
+
+        return self.config_panel
 
     def createLayout(self):
-        """ createEditor() -> None
+        """ createlayout() -> None
         Configure sections
         """
-        print "Creating layout"
-        sliceWidget = QWidget()
-        self.tabbedWidget.addTab( sliceWidget, 'Slice' )
+        super(PVClimateCellConfigurationWidget, self).createLayout()
+        representations_panel = QWidget()
+        self.layout().addWidget( representations_panel )
         layout = QVBoxLayout()
-        sliceWidget.setLayout( layout )
+        representations_panel.setLayout( layout )
 
-        sliceOffsetLayout = QHBoxLayout()
-        self.sliceOffsetLabel = QLabel( "Slice Offset:" )
-        self.sliceOffsetValue =  QLineEdit ( self.parent() )
-        sliceOffsetLayout.addWidget( self.sliceOffsetLabel )
-        sliceOffsetLayout.addWidget( self.sliceOffsetValue )
-        layout.addLayout(sliceOffsetLayout)
-        self.connect( self.sliceOffsetValue, SIGNAL("editingFinished()"), self.stateChanged )
+
+        self.create_config_panel()
+        self.create_representation_table()
+
+        layout.addWidget(self.representations_table)
+        layout.addWidget(self.create_remove_button())
+        layout.addWidget(self.config_panel);
+
         self.setDefaults()
 
+    def itemSelectionChanged(self):
+        if self.representations_table.selectedItems():
+            self.btn_del_var.setEnabled(True)
+            item = self.representations_table.selectedItems()[0]
+            self.config_panel.layout().setCurrentIndex(item.row())
+        else:
+            self.btn_del_var.setEnabled(False)
 
     def setDefaults(self):
         moduleInstance = self.module.module_descriptor.module()
-        self.sliceOffset = moduleInstance.getSliceOffset();
-        self.sliceOffsetValue.setText(str(self.sliceOffset))
+        #self.sliceOffset = moduleInstance.getSliceOffset();
+        #self.slice_offset_value.setText(str(self.sliceOffset))
 
     def updateController(self, controller=None):
         parmRecList = []
@@ -490,11 +581,34 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         Update vistrail controller (if neccesssary) then close the widget
 
         """
-        self.sliceOffset = str(self.sliceOffsetValue.text().toLocal8Bit().data())
-        print self.module
-        self.updateVistrail()
-        self.updateController(self.controller)
-        self.emit(SIGNAL('doneConfigure()'))
+        self.emit(SIGNAL('okTriggered()'))
+        self.controller.execute_current_workflow()
 
     def startOver(self):
         self.setDefaults();
+
+    def get_workflow_module(self, module_id):
+        vistrails_interpreter = get_default_interpreter()
+        object_map = vistrails_interpreter.find_persistent_entities(
+                         self.controller.current_pipeline )[0]
+        module_instance = object_map.get(module_id)
+
+        return module_instance
+
+
+class PVRepresentationTableWidgetItem(QTableWidgetItem):
+    def __init__(self, module, plot_type):
+        QTableWidgetItem.__init__(self)
+        self.module = module
+        self.plot_type = plot_type
+
+class PVRepresentationPlotTableWidget(QTableWidget):
+    def __init__(self, parent=None):
+        QTableWidget.__init__(self, parent)
+        self.setColumnCount(1)
+        self.setSizePolicy(QSizePolicy.Expanding,
+                           QSizePolicy.Expanding)
+        self.horizontalHeader().setStretchLastSection(True)
+        self.setHorizontalHeaderLabels(QStringList() << "Representation Type")
+        self.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.setSelectionBehavior(QAbstractItemView.SelectRows)

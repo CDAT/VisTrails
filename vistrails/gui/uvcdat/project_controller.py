@@ -491,7 +491,6 @@ class ProjectController(QtCore.QObject):
                 not_found = True
         if not_found:
             from packages.uvcdat.init import Variable
-            from packages.pvclimate.pvvariable import PVVariable
             from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
             helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
             pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
@@ -549,6 +548,7 @@ class ProjectController(QtCore.QObject):
                 #they will be included in the case above. For now we need to 
                 #construct the variables based on the alias values (Emanuele)
                 if cell.plots[0].package == "PVClimate":
+                    from packages.pvclimate.pvvariable import PVVariable
                     for i in range(len(cell.variables)):
                         filename = pipeline.get_alias_str_value(cell.plots[0].files[i])
                         varname = pipeline.get_alias_str_value(cell.plots[0].vars[i])
@@ -815,6 +815,17 @@ class ProjectController(QtCore.QObject):
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
                 cell.current_parent_version = action.id
+
+                # FIXME: kludge since CDMSPipelineHelper is the only
+                # helper that supports these right now
+                plot_type = cell.plots[0].package
+                helper = self.plot_manager.get_plot_helper(plot_type)
+                if hasattr(helper, 'create_plot_objs_from_pipeline'):
+                    pipeline = self.vt_controller.vistrail.getPipeline(
+                        cell.current_parent_version)
+                    cell.plots = \
+                        helper.create_plot_objs_from_pipeline(pipeline,
+                                                              plot_type)
                 if get_vistrails_configuration().uvcdat.autoExecute:
                     self.execute_plot(cell.current_parent_version)
                     self.update_plot_configure(sheetName, row, col)

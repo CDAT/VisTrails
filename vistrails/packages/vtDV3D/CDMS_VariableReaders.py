@@ -326,8 +326,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 
                 self.setCachedData( varDataId, varDataSpecs )  
         
+        if not varDataSpecs: return None            
         cachedImageDataName = '-'.join( varDataIds )
-        imageDataCache = self.getImageDataCache()              
+        imageDataCache = self.getImageDataCache() 
         if not ( cachedImageDataName in imageDataCache ):
             image_data = vtk.vtkImageData() 
             outputOrigin = varDataSpecs[ 'outputOrigin' ]
@@ -356,7 +357,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         self.fieldData.RemoveArray('metadata')
         extent = image_data.GetExtent()    
         scalars, nTup = None, 0
-        vars = []       
+        vars = []      
         for varDataId in varDataIds: 
             varDataSpecs = self.getCachedData( varDataId )   
             newDataArray = varDataSpecs.get( 'newDataArray', None )

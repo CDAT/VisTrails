@@ -117,17 +117,20 @@ def initialize(*args, **keywords):
     reg.add_input_port( MapCell3D, "world_map", [ ( File, 'map_file' ), ( Integer, 'map_cut' ) ], optional=True  ) 
     reg.add_input_port( MapCell3D, "opacity", [ ( Float, 'value' ) ], optional=True  ) 
     reg.add_input_port( MapCell3D, "title", [ ( String, 'value' ) ], optional=True  ) 
+    MapCell3D.registerConfigurableFunctions( reg )
 
     reg.add_module( CloudCell3D, configureWidgetType=CloudCell3DConfigurationWidget, namespace='spreadsheet' ) 
     reg.add_input_port( CloudCell3D, "pointcloud", AlgorithmOutputModule3D  )   
     reg.add_input_port( CloudCell3D, "cell_location", [ ( String, 'cell_coordinates' ) ], True )
     reg.add_input_port( CloudCell3D, "title", [ ( String, 'value' ) ], optional=True  ) 
-
+    CloudCell3D.registerConfigurableFunctions( reg )
+    
     reg.add_module( ChartCell, configureWidgetType=ChartCellConfigurationWidget, namespace='spreadsheet' ) 
     reg.add_input_port( ChartCell, "chart", AlgorithmOutputModule2D  )   
     reg.add_input_port( ChartCell, "cell_location", [ ( String, 'cell_coordinates' ) ], True )
     reg.add_input_port( ChartCell, "opacity", [ ( Float, 'value' ) ], optional=True  ) 
     reg.add_input_port( ChartCell, "title", [ ( String, 'value' ) ], optional=True  ) 
+    ChartCell.registerConfigurableFunctions( reg )
 
 #    reg.add_module( WorldFrame )
 #    reg.add_input_port( WorldFrame, "world_cut", Integer, optional=True  )
@@ -217,6 +220,7 @@ def initialize(*args, **keywords):
 
     reg.add_module( VolumeSlicer, namespace='vtk' )
     reg.add_output_port( VolumeSlicer, "slice",  AlgorithmOutputModule  )
+    reg.add_input_port( VolumeSlicer, "contours", AlgorithmOutputModule3D  )
     reg.add_input_port( VolumeSlicer, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( VolumeSlicer, "volume", AlgorithmOutputModule3D ) 
     VolumeSlicer.registerConfigurableFunctions( reg )
@@ -286,7 +290,7 @@ def initialize(*args, **keywords):
     reg.add_input_port( LevelSurface, "texture", AlgorithmOutputModule3D  )
     reg.add_input_port( LevelSurface, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( LevelSurface, "volume", AlgorithmOutputModule3D ) 
-    reg.add_input_port( LevelSurface, "layer",   [ ( String, 'activeLayerName' ) ]   ) 
+#    reg.add_input_port( LevelSurface, "layer",   [ ( String, 'activeLayerName' ) ]   ) 
     LevelSurface.registerConfigurableFunctions( reg )
 
     if hasMatplotlib:

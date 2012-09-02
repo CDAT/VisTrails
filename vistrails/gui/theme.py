@@ -179,6 +179,8 @@ class DefaultTheme(object):
             QtGui.QColor(*(ColorByName.get_int('light_goldenrod'))))
         self.PERSISTENT_MODULE_BRUSH = QtGui.QBrush(
             QtGui.QColor(*(ColorByName.get_int('slate_blue'))))
+        self.SUSPENDED_MODULE_BRUSH = QtGui.QBrush(
+            QtGui.QColor(*(ColorByName.get_int('aureoline_yellow'))))
 
         self.INVALID_MODULE_PEN = QtGui.QPen(QtGui.QBrush(
                 QtGui.QColor(51, 51, 51, 255)), 2)
@@ -269,13 +271,10 @@ class DefaultTheme(object):
         self.VERSION_SELECTED_PEN = QtGui.QPen(QtGui.QBrush(
             QtGui.QColor(*(ColorByName.get_int('goldenrod_medium')))), 4)
 
-        # Brush and pen to draw a version label
-        self.VERSION_LABEL_PEN = QtGui.QPen(QtGui.QBrush(
-            QtGui.QColor(*(ColorByName.get_int('black')))), 2)
-        self.GHOSTED_VERSION_LABEL_PEN = QtGui.QPen(QtGui.QBrush(
-            QtGui.QColor(*(ColorByName.get_int('light_grey')))), 2)
-        self.VERSION_LABEL_SELECTED_PEN = QtGui.QPen(QtGui.QBrush(
-            QtGui.QColor(*(ColorByName.get_int('black')))), 2)
+        self.VERSION_LABEL_COLOR = \
+            QtGui.QColor(*(ColorByName.get_int('black')))
+        self.GHOSTED_VERSION_LABEL_COLOR = \
+            QtGui.QColor(*(ColorByName.get_int('light_grey')))
 
         # Brush to draw version belongs to the current user
         self.VERSION_USER_BRUSH = QtGui.QBrush(

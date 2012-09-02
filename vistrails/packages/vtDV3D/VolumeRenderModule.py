@@ -39,6 +39,7 @@ def interp_zero( x0, y0, x1, y1 ):
 class TransferFunction( QObject ):
     
     def __init__(self, tf_type, **args ):
+        QObject.__init__( self )
         self.type = tf_type
         self.data = args.get( 'data', None )
                 
