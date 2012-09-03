@@ -358,7 +358,7 @@ class CDMSVariableOperation(Module):
         op.axesOperations = CDMSPipelineHelper.get_value_from_function(module, 'axesOperations')
         attrs = CDMSPipelineHelper.get_value_from_function(module, 'attributes')
         if attrs is not None:
-            op.attributes = ast.literal_eval(attrs)
+            op.attributes = ast.literal_eval(str(attrs))
         else:
             op.attributes = attrs
             
