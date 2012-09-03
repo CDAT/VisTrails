@@ -1080,6 +1080,10 @@ class QVersionTreeScene(QInteractiveGraphicsScene):
         if not self.emit_selection:
             return
 
+        import sip
+        if sip.isdeleted(self):
+            return
+        
         selected_items = self.selectedItems()
         if len(selected_items) == 1:
             # emit versionSelected selected_id
