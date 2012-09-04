@@ -336,7 +336,7 @@ class VariableProperties(QtGui.QDockWidget):
                             # File can't be open using CDAT. 
                             # So, we'll try downloading the file to a temporal location
                             from packages.HTTP.init import HTTPFile
-                            (downloaded, file, localname) = HTTPFile().download(str(fnm))
+                            (_, _, localname) = HTTPFile().download(str(fnm))
                             self.updateCDMSFile(str(localname))
                             self.historyList.takeItem(0)
                             self.historyList.insertItem(0,QtCore.QString(fnm))

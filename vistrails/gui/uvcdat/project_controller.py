@@ -722,6 +722,30 @@ class ProjectController(QtCore.QObject):
                     cell.current_parent_version)
                 self.vt_controller.add_module_action(module)
                 cell.current_parent_version = self.vt_controller.current_version
+                
+                # Check if we need to download the file first
+                if hasattr(var, "httpUrl"):
+                    # create http_module
+                    reg = get_module_registry()
+                    http_module = self.vt_controller.create_module_from_descriptor(
+                        reg.get_descriptor_by_name('edu.utah.sci.vistrails.http','HTTPFile'))
+                    f = self.vt_controller.create_function(http_module,
+                                                           'url', [var.httpUrl])
+                    http_module.add_function(f)
+                    
+                    # add http_module to provenance
+                    self.vt_controller.change_selected_version(cell.current_parent_version)
+                    self.vt_controller.add_module_action(http_module)
+                    cell.current_parent_version = self.vt_controller.current_version
+                
+                    # connect http_module to variable
+                    self.vt_controller.change_selected_version(cell.current_parent_version)
+                    conn = self.vt_controller.create_connection(http_module, 'file', 
+                                                                module, 'file')
+                    self.vt_controller.add_module_action(conn)
+                    cell.current_parent_version = self.vt_controller.current_version
+
+
                 return module
             else:
                 (_vars, txt, st, name) = self.computed_variables[varname] 
