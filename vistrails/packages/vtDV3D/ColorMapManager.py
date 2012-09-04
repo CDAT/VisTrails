@@ -7,6 +7,7 @@ Hacked from the Enthought MayaVi2 lut_manager
 import os.path
 import sys, vtk
 import cPickle
+from packages.vtDV3D.vtUtilities import *
 
 pkl_path = os.path.join( os.path.dirname( __file__ ), 'colormaps.pkl' )
 colormap_file = open( pkl_path, 'rb' )
@@ -18,11 +19,42 @@ class ColorMapManager():
     def __init__(self, lut, display_lut = None, **args ): 
         self.lut = lut   
         self.display_lut = vtk.vtkLookupTable() 
-        self.reverse_lut = False
         self.number_of_colors =  args.get('ncolors',256)
         self.alpha_range = [ 1.0, 1.0 ]
-        self.cmap_name = 'blue-red'
-        
+        self.colormapName = 'Spectral'
+        self.colorBarActor = None
+        self.invertColormap = 1
+        self.units = args.get('units', '' )
+
+    def toggleColormapVisibility(self):
+        if  self.colorBarActor.GetVisibility():      self.colorBarActor.VisibilityOff()  
+        else:                                        self.colorBarActor.VisibilityOn() 
+
+    def createActor( self, **args ):
+        if self.colorBarActor == None:
+            pos = args.get( 'pos', [ 0.9, 0.2 ] )
+            self.colorBarActor = vtk.vtkScalarBarActor()
+            self.colorBarActor.SetMaximumWidthInPixels( 50 )
+            self.colorBarActor.SetNumberOfLabels(9)
+            labelFormat = vtk.vtkTextProperty()
+            labelFormat.SetFontSize( 160 )
+            labelFormat.SetColor(  VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] ) 
+            titleFormat = vtk.vtkTextProperty()
+            titleFormat.SetFontSize( 160 )
+            titleFormat.SetColor(  VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2]  ) 
+#            titleFormat.SetVerticalJustificationToTop ()
+#            titleFormat.BoldOn()
+            self.colorBarActor.SetPosition( pos[0], pos[1] )    
+            self.colorBarActor.SetLabelTextProperty( labelFormat )
+            self.colorBarActor.SetTitleTextProperty( titleFormat )
+            self.colorBarActor.SetTitle( self.units )
+            self.colorBarActor.SetLookupTable( self.getDisplayLookupTable() )
+            self.colorBarActor.SetVisibility(0)
+        else:
+            self.colorBarActor.SetLookupTable( self.getDisplayLookupTable() )
+            self.colorBarActor.Modified() 
+        return self.colorBarActor
+           
     def setAlphaRange( self, range ):
         self.alpha_range = range
         self.load_lut()
@@ -33,6 +65,10 @@ class ColorMapManager():
     
     def getDisplayLookupTable(self):
         return self.display_lut
+    
+    def setScale( self, imageRange, displayRange  ):
+        self.lut.SetTableRange( imageRange[0], imageRange[1] ) 
+        self.setDisplayRange( displayRange )
   
     def setDisplayRange( self, dataRange ):
         self.display_lut.SetTableRange( dataRange[0], dataRange[1] )
@@ -111,7 +147,7 @@ class ColorMapManager():
                     msg += str( err_msg )
                     raise IOError, msg
                 else:
-                    if self.reverse_lut:
+                    if self.invertColormap:
                         lut_list.reverse()
                     self.lut = self.set_lut(self.lut, lut_list)
                     
@@ -119,19 +155,19 @@ class ColorMapManager():
         self.set_lut(self.lut, list)                    
 
     def load_lut(self, value=None):
-        if( value <> None ): self.cmap_name = str( value )
+        if( value <> None ): self.colormapName = str( value )
         hue_range = None
-#        print " --> Load LUT: %s " % self.cmap_name  
+#        print " --> Load LUT: %s " % self.colormapName  
        
-        if self.cmap_name == 'file':
+        if self.colormapName == 'file':
             if self.file_name:
                 self.load_lut_from_file(self.file_name)
             #self.lut.force_build()
             return
         
-        reverse = self.reverse_lut
-        if self.cmap_name in colormaps:
-            lut = colormaps[self.cmap_name]
+        reverse = self.invertColormap
+        if self.colormapName in colormaps:
+            lut = colormaps[self.colormapName]
             if reverse:
                 lut = lut[::-1, :]
             n_total = len(lut)
@@ -139,7 +175,7 @@ class ColorMapManager():
             if not n_color >= n_total:
                 lut = lut[::round(n_total/float(n_color))]
             self.load_lut_from_list(lut.tolist())
-        elif self.cmap_name == 'blue-red':
+        elif self.colormapName == 'blue-red':
             if reverse:
                 hue_range = 0.0, 0.6667
                 saturation_range = 1.0, 1.0
@@ -148,7 +184,7 @@ class ColorMapManager():
                 hue_range = 0.6667, 0.0
                 saturation_range = 1.0, 1.0
                 value_range = 1.0, 1.0
-        elif self.cmap_name == 'black-white':
+        elif self.colormapName == 'black-white':
             if reverse:
                 hue_range = 0.0, 0.0
                 saturation_range = 0.0, 0.0
@@ -158,7 +194,7 @@ class ColorMapManager():
                 saturation_range = 0.0, 0.0
                 value_range = 0.0, 1.0
         else:
-            print>>sys.stderr, "Error-- Unrecognized colormap: %s" % self.cmap_name
+            print>>sys.stderr, "Error-- Unrecognized colormap: %s" % self.colormapName
         
         if hue_range:        
             self.lut.SetHueRange( hue_range )
@@ -179,9 +215,9 @@ if __name__ == '__main__':
     from PyQt4.QtGui import *
     
 #    new_colormaps = {}
-#    for cmap_name in colormaps:
-#        cmap = colormaps[ cmap_name ]
-#        new_colormaps[cmap_name] = cmap
+#    for colormapName in colormaps:
+#        cmap = colormaps[ colormapName ]
+#        new_colormaps[colormapName] = cmap
 #
 #    pkl_path = os.path.join( os.path.dirname( __file__ ), 'colormaps1.pkl' )
 #    colormap_file = open( pkl_path, 'wb' )

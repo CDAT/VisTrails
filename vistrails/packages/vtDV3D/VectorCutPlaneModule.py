@@ -44,11 +44,11 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
                 self.planeWidget.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
                 self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
                 
-    def scaleColormap( self, ctf_data ):
-        self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
-        self.colormapManager.setDisplayRange( ctf_data )
+    def scaleColormap( self, ctf_data, cmap_index=0 ):
+        colormapManager = self.getColormapManager( index=cmap_index )
+        colormapManager.setScale( ctf_data, ctf_data )
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
-        self.glyph.SetLookupTable( self.lut )
+        self.glyph.SetLookupTable( colormapManager.lut )
 #        self.glyph.Modified()
 #        self.glyph.Update()
         self.render()
@@ -120,7 +120,8 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         self.resample = vtk.vtkExtractVOI()
         self.resample.SetInput( self.input ) 
         self.resample.SetVOI( self.initialExtent )
-        
+        lut = self.getLut()
+       
         if self.colorInputModule <> None:
             colorInput = self.colorInputModule.getOutput()
             self.color_resample = vtk.vtkExtractVOI()
@@ -143,7 +144,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
             colorInput_pointData = colorFloatInput.GetPointData()     
             self.colorScalars = colorInput_pointData.GetScalars()
             self.colorScalars.SetName('color')
-            self.lut.SetTableRange( valueRange ) 
+            lut.SetTableRange( valueRange ) 
          
         self.cutterInput = self.resample.GetOutput() 
         self.planeWidget = vtk.vtkImplicitPlaneWidget()
@@ -178,7 +179,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         self.arrow.SetTipResolution(3)
         self.arrow.SetShaftResolution(3)
         self.glyph.SetSourceConnection( self.arrow.GetOutputPort() )
-        self.glyph.SetLookupTable( self.lut )
+        self.glyph.SetLookupTable( lut )
         self.glyphActor = vtk.vtkActor() 
         self.glyphActor.SetMapper( self.glyph )
         self.renderer.AddActor( self.glyphActor )
@@ -323,11 +324,11 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
                 self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
 #                print "PlaceWidget: Data bounds = %s, data extents = %s " % ( str( self.dataBounds ), str( dataExtents ) )  
                                                 
-    def scaleColormap( self, ctf_data ):
-        self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
-        self.colormapManager.setDisplayRange( ctf_data )
+    def scaleColormap( self, ctf_data, cmap_index=0 ):
+        colormapManager = self.getColormapManager( index=cmap_index )
+        colormapManager.setScale( ctf_data, ctf_data )
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
-        self.glyphMapper.SetLookupTable( self.lut )
+        self.glyphMapper.SetLookupTable( colormapManager.lut )
         self.render()
 
     def setGlyphScale( self, ctf_data ):
@@ -408,6 +409,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.resample = vtk.vtkExtractVOI()
         self.resample.SetInput( self.input ) 
         self.resample.SetVOI( self.initialExtent )
+        lut = self.getLut()
         
         if self.colorInputModule <> None:
             colorInput = self.colorInputModule.getOutput()
@@ -431,7 +433,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
             colorInput_pointData = colorFloatInput.GetPointData()     
             self.colorScalars = colorInput_pointData.GetScalars()
             self.colorScalars.SetName('color')
-            self.lut.SetTableRange( valueRange ) 
+            lut.SetTableRange( valueRange ) 
          
         self.glyphRange = max( abs(self.scalarRange[0]), abs(self.scalarRange[1]) )
         self.cutterInput = self.resample.GetOutput() 
@@ -449,9 +451,9 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.cutter.SetInput( self.cutterInput )        
         self.cutter.SetGenerateCutScalars(0)
         sliceOutputPort = self.cutter.GetOutputPort()
-        self.lut.SetVectorModeToMagnitude()
-        self.lut.SetVectorSize(2)
-        self.lut.SetVectorComponent(0)
+        lut.SetVectorModeToMagnitude()
+        lut.SetVectorSize(2)
+        lut.SetVectorComponent(0)
         
         if self.useGlyphMapper:
             self.glyphMapper = vtk.vtkGlyph3DMapper() 
@@ -463,7 +465,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
             self.glyphMapper.ClampingOff()
             self.glyphMapper.SourceIndexingOn()
             self.glyphMapper.SetInputConnection( sliceOutputPort )
-            self.glyphMapper.SetLookupTable( self.lut )
+            self.glyphMapper.SetLookupTable( lut )
             self.glyphMapper.ScalarVisibilityOn()            
             self.glyphMapper.SetScalarModeToUsePointFieldData()
             self.glyphMapper.SelectColorArray( vectorsArray.GetName() )
@@ -478,7 +480,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
 
             self.glyphMapper = vtk.vtkPolyDataMapper()
             self.glyphMapper.SetInputConnection( self.glyph.GetOutputPort() )
-            self.glyphMapper.SetLookupTable( self.lut )
+            self.glyphMapper.SetLookupTable( lut )
             self.glyphMapper.SetColorModeToMapScalars()     
             self.glyphMapper.SetUseLookupTableScalarRange(1)    
                     
@@ -665,11 +667,11 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
                 self.planeWidget.SetOrigin( centroid[0], centroid[1], centroid[2]  )
                 self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
       
-    def scaleColormap( self, ctf_data ):
-        self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
-        self.colormapManager.setDisplayRange( ctf_data )
+    def scaleColormap( self, ctf_data, cmap_index=0 ):
+        colormapManager = self.getColormapManager( index=cmap_index )
+        colormapManager.setScale( ctf_data, ctf_data )
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
-        self.streamMapper.SetLookupTable( self.lut )
+        self.streamMapper.SetLookupTable( colormapManager.lut )
         self.render()
 
     def setStreamerScale( self, ctf_data ):
@@ -739,6 +741,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         centroid = ( (self.dataBounds[0]+self.dataBounds[1])/2.0, (self.dataBounds[2]+self.dataBounds[3])/2.0, (self.dataBounds[4]+self.dataBounds[5])/2.0  )
         self.pos = [ self.initialSpacing[i]*self.initialExtent[2*i] for i in range(3) ]
         if ( (self.initialOrigin[0] + self.pos[0]) < 0.0): self.pos[0] = self.pos[0] + 360.0
+        lut = self.getLut()
 
 #        self.plane.SetOrigin( centroid[0], centroid[1], centroid[2]   )
 #        self.plane.SetNormal( 0.0, 0.0, 1.0 )
@@ -765,7 +768,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
             colorInput_pointData = colorFloatInput.GetPointData()     
             self.colorScalars = colorInput_pointData.GetScalars()
             self.colorScalars.SetName('color')
-            self.lut.SetTableRange( valueRange ) 
+            lut.SetTableRange( valueRange ) 
          
         self.planeWidget = vtk.vtkImplicitPlaneWidget()
         self.planeWidget.SetInput( self.input  )
@@ -793,7 +796,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.streamActor = vtk.vtkActor()         
         self.streamMapper = vtk.vtkPolyDataMapper()
         self.streamMapper.SetInputConnection( self.streamer.GetOutputPort() )
-        self.streamMapper.SetLookupTable( self.lut )
+        self.streamMapper.SetLookupTable( lut )
         self.streamMapper.SetColorModeToMapScalars()     
         self.streamMapper.SetUseLookupTableScalarRange(1)
         self.streamActor.SetMapper( self.streamMapper )

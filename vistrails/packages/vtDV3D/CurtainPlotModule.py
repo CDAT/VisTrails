@@ -157,6 +157,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         zMax = 20
         spacing = ( 1.0, 1.0, 2.0 )
         origin = ( 0, -90, 0 )
+        lut = self.getLut()
                      
         self.probeFilter = None
         if self.input <> None:
@@ -185,7 +186,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         self.curtainMapper = vtk.vtkPolyDataMapper()
         self.curtainMapper.SetInputConnection( self.probeFilter.GetOutputPort() ) 
         self.curtainMapper.SetScalarRange( textureRange )
-        self.curtainMapper.SetLookupTable( self.lut ) 
+        self.curtainMapper.SetLookupTable( lut ) 
               
         self.colormapManager.setAlphaRange ( self.opacityRange )           
 #        curtainMapper.SetColorModeToMapScalars()  

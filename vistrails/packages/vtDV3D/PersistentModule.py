@@ -1191,14 +1191,10 @@ class PersistentVisualizationModule( PersistentModule ):
         self.modifier = self.NoModifier
         self.acceptsGenericConfigs = False
         self._max_scalar_value = None
-        self.colormapManager = None
-        self.colormapName = 'Spectral'
-        self.colorBarActor = None
+        self.colormapManagers = {}
         self.labelBuff = "NA                          "
-        self.invertColormap = 1
         self.renderer = None
         self.iren = None 
-        self.lut = None
         self.gui = None
         self.titleBuffer = None
         self.instructionBuffer = " "
@@ -1364,28 +1360,37 @@ class PersistentVisualizationModule( PersistentModule ):
         
     def buildPipeline(self): 
         pass 
+
+    def getLut( self, cmap_index=0  ):
+        colormapManager = self.getColormapManager( index=cmap_index )
+        return colormapManager.lut
+    
+    def getColormapManager( self, **args ):
+        cmap_index = args.get('index',0)
+        name = args.get('name',None)
+        invert = args.get('invert',None)
+        cmap_mgr = self.colormapManagers.get( cmap_index, None )
+        if cmap_mgr == None:
+            lut = vtk.vtkLookupTable()
+            cmap_mgr = ColorMapManager( lut ) 
+            self.colormapManagers[cmap_index] = cmap_mgr
+        if invert: cmap_mgr.invertColormap = invert
+        if name:   cmap_mgr.load_lut( name )
+        return cmap_mgr
         
-    def buildColormap(self):
-        if self.colormapManager <> None:
-            self.colormapManager.reverse_lut = self.invertColormap
-            self.colormapManager.load_lut( self.colormapName )
-            if self.createColormap: self.createColorBarActor()
-#            print " >>> LoadColormap:  %s " % self.colormapName
-            return True
-        else:
-            print " >>> LoadColormap:  Colormap Manager not defined"
-            return False
-        
-    def setColormap( self, data ):
-        self.colormapName = str(data[0])
-        self.invertColormap = int( data[1] )
+    def setColormap( self, data, cmap_index=0 ):
+        colormapName = str(data[0])
+        invertColormap = int( data[1] )
         enableStereo = int( data[2] )
-        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
+#        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
 #        print ' ~~~~~~~ SET COLORMAP:  --%s--  ' % self.colormapName
         self.updateStereo( enableStereo )
-        if self.buildColormap(): 
-            self.rebuildColorTransferFunction()
-            self.render() 
+        colormapManager = self.getColormapManager( name=colormapName, invert=invertColormap, index=cmap_index )
+        if self.createColormap and ( colormapManager.colorBarActor == None ): 
+            cmap_pos = [ 0.9, 0.2 ] if (cmap_index==0) else [ 0.02, 0.2 ]
+            self.renderer.AddActor( colormapManager.createActor( pos=cmap_pos ) )
+        self.rebuildColorTransferFunction( cmap_index )
+        self.render() 
 
     def updateStereo( self, enableStereo ):   
         if self.iren:
@@ -1401,12 +1406,12 @@ class PersistentVisualizationModule( PersistentModule ):
 #            self.iren.SetKeyEventInformation( 0, 0, keycode, 0, "3" )     
 #            self.iren.InvokeEvent( vtk.vtkCommand.KeyPressEvent )
             
-    def rebuildColorTransferFunction( self ):
+    def rebuildColorTransferFunction( self, cmap_index = 0 ):
         pass 
             
-    def getColormap(self):
-        reverse = 0 if ( self.colormapManager <> None ) and self.colormapManager.reverse_lut else 1
-        return [ self.colormapName, reverse, self.stereoEnabled ]
+    def getColormap(self, cmap_index = 0 ):
+        colormapManager = self.getColormapManager( index=cmap_index )
+        return [ colormapManager.colormapName, colormapManager.invertColormap, self.stereoEnabled ]
 
     def render( self ):
         if self.renderer:   
@@ -1425,17 +1430,18 @@ class PersistentVisualizationModule( PersistentModule ):
         self.renderer = vtk.vtkRenderer() if renderer_import == None else renderer_import
         self.renderer.AddObserver( 'ModifiedEvent', self.activateEvent )
         self.labelBuff = "NA                          "
-        if self.createColormap: 
-            self.createColorBarActor()
+#        if self.createColormap: 
+#            colormapManager = self.getColormapManager( )
+#            self.renderer.AddActor( colormapManager.createActor() )
 
-    def getColormapSpec(self): 
+    def getColormapSpec(self, cmap_index=0): 
+        colormapManager = self.getColormapManager( index=cmap_index )
         spec = []
-        spec.append( self.colormapName )
-        spec.append( str( self.invertColormap ) )
-        if self.lut:
-            value_range = self.lut.GetTableRange() 
-            spec.append( str( value_range[0] ) )
-            spec.append( str( value_range[1] ) ) 
+        spec.append( colormapManager.colormapName )
+        spec.append( str( colormapManager.invertColormap ) )
+        value_range = colormapManager.lut.GetTableRange() 
+        spec.append( str( value_range[0] ) )
+        spec.append( str( value_range[1] ) ) 
 #        print " %s -- getColormapSpec: %s " % ( self.getName(), str( spec ) )
         return ','.join( spec )
         
@@ -1452,40 +1458,6 @@ class PersistentVisualizationModule( PersistentModule ):
           pass
       return None
   
-    def createColorBarActor( self ):
-#        self.colorBarActor = self.getProp( 'vtkScalarBarActor' )
-        if self.colorBarActor == None:
-            self.lut = vtk.vtkLookupTable()
-            self.colormapManager = ColorMapManager( self.lut ) 
-            print " Persistent Module %s (%x): SetLookupTable: %x " % ( self.__class__.__name__, id(self), id( self.lut ) )
-            self.colorBarActor = vtk.vtkScalarBarActor()
-            self.colorBarActor.SetMaximumWidthInPixels( 50 )
-            self.colorBarActor.SetNumberOfLabels(9)
-            labelFormat = vtk.vtkTextProperty()
-            labelFormat.SetFontSize( 160 )
-            labelFormat.SetColor(  VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] ) 
-            titleFormat = vtk.vtkTextProperty()
-            titleFormat.SetFontSize( 160 )
-            titleFormat.SetColor(  VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2]  ) 
-#            titleFormat.SetVerticalJustificationToTop ()
-#            titleFormat.BoldOn()
-            self.colorBarActor.SetPosition( 0.9, 0.2 )    
-            self.colorBarActor.SetLabelTextProperty( labelFormat )
-            self.colorBarActor.SetTitleTextProperty( titleFormat )
-            if self.units: self.colorBarActor.SetTitle( self.units )
-            self.colorBarActor.SetLookupTable( self.colormapManager.getDisplayLookupTable() )
-            self.colorBarActor.SetVisibility(0)
-            self.renderer.AddActor( self.colorBarActor )
-        else:
-            if self.colormapManager == None:
-                self.lut = self.colorBarActor.GetLookupTable()
-                print " Persistent Module %s (%x): SetLookupTable: %x " % ( self.__class__.__name__, id(self), id( self.lut ) )
-                self.colormapManager = ColorMapManager( self.lut ) 
-            else:
-                self.colorBarActor.SetLookupTable( self.colormapManager.getDisplayLookupTable() )
-                self.colorBarActor.Modified()
-        
-
     def creatTitleActor( self ):
         pass
     
@@ -1680,7 +1652,10 @@ class PersistentVisualizationModule( PersistentModule ):
     def refineLevelingEvent( self, caller, event ):
         print " refineLevelingEvent: { %s } " % ( str( event ) )      
 
-
+    def toggleColormapVisibility(self):
+        for colormapManager in self.colormapManagers.values():
+            colormapManager.toggleColormapVisibility()
+            
     def processKeyEvent( self, key, caller=None, event=None ):
         print "process Key Event, key = %s" % ( key )
         if key == 'h': 
@@ -1694,11 +1669,8 @@ class PersistentVisualizationModule( PersistentModule ):
                 PersistentVisualizationModule.moduleDocumentationDialog.addCloseObserver( self.clearDocumenation )
             PersistentVisualizationModule.moduleDocumentationDialog.show()
         elif ( self.createColormap and ( key == 'l' ) ): 
-            if  self.colorBarActor.GetVisibility(): 
-                  self.colorBarActor.VisibilityOff()  
-            else: self.colorBarActor.VisibilityOn() 
+            self.toggleColormapVisibility()                         
             self.render() 
-                        
         elif (  key == 'r'  ):
             self.resetCamera()              
             if  len(self.persistedParameters):

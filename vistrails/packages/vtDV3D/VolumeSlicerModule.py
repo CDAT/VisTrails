@@ -48,6 +48,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True )
         self.addConfigurableLevelingFunction( 'opacity', 'O', label='Slice Plane Opacity',    setLevel=self.setOpacity, activeBound='min',  getLevel=self.getOpacity, isDataValue=False, layerDependent=True, bound = False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
+        self.addConfigurableLevelingFunction( 'contourDensity', 'g', label='Contour Density', activeBound='max', setLevel=self.setContourDensity, getLevel=self.getContourDensity, layerDependent=True, windowing=False, rangeBounds=[ 3.0, 30.0, 1 ], bound=False, isValid=self.hasContours )
+        self.addConfigurableLevelingFunction( 'contourColorScale', 'S', label='Contour Colormap Scale', units='data', setLevel=lambda data: self.scaleColormap(data,1), getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, isValid=self.hasContours )
+        self.addConfigurableGuiFunction( 'contourColormap', ColormapConfigurationDialog, 'K', label='Choose Contour Colormap', setValue=lambda data: self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasContours )
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
         self.opacity = [ 0.75, 1.0 ]
         self.iOrientation = 0
@@ -62,6 +65,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.contourInput = None
         self.contourMetadata = None
         self.contour_units = ""
+        self.NumContours = 10.0
 #        self.imageRescale = None
         print " Volume Slicer init, id = %x " % id(self)
         VolumeSlicerModules[mid] = self
@@ -71,6 +75,16 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetY.RemoveAllObservers()
         self.planeWidgetZ.RemoveAllObservers()
         del VolumeSlicerModules[ self.moduleID ]
+        
+    def hasContours(self):
+        return self.generateContours
+        
+    def setContourDensity( self, ctf_data ):
+        self.NumContours = ctf_data[1]
+        self.updateContourDensity()
+
+    def getContourDensity( self ):
+        return [ 3.0, self.NumContours, 1 ]
     
     def setZScale( self, zscale_data, **args ):
         if self.setInputZScale( zscale_data ):
@@ -97,8 +111,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        printArgs( " Leveling: ", opacity=self.opacity, range=range ) 
         self.updateOpacity() 
 
-    def updateOpacity(self):
-        self.colormapManager.setAlphaRange( [ bound( self.opacity[i], [ 0.0, 1.0 ] ) for i in (0,1) ] )
+    def updateOpacity(self, cmap_index=0 ):
+        colormapManager = self.getColormapManager( index=cmap_index )
+        colormapManager.setAlphaRange( [ bound( self.opacity[i], [ 0.0, 1.0 ] ) for i in (0,1) ] )
         if (self.opacityUpdateCount % 5) == 0: self.render()
         self.opacityUpdateCount = self.opacityUpdateCount + 1  
 #        self.lut.SetAlpha( self.opacity[1] )
@@ -166,6 +181,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         # and gets the picking order right
         picker = vtk.vtkCellPicker()
         picker.SetTolerance(0.005) 
+        lut = self.getLut()
         useVtkImagePlaneWidget = False
         
         self.planeWidgetX = ImagePlaneWidget( self, 0 )
@@ -178,7 +194,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         prop1 = self.planeWidgetX.GetPlaneProperty()
         prop1.SetColor(1, 0, 0)
         self.planeWidgetX.SetUserControlledLookupTable(1)
-        self.planeWidgetX.SetLookupTable( self.lut )
+        self.planeWidgetX.SetLookupTable( lut )
 #        self.planeWidgetX.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 0 ) )
 #            self.planeWidgetX.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
 #            self.planeWidgetX.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
@@ -205,7 +221,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        if bounds[0] < 0.0: self.planeWidgetY.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
         self.planeWidgetY.PlaceWidget(  bounds  )        
         self.planeWidgetY.SetUserControlledLookupTable(1)
-        self.planeWidgetY.SetLookupTable( self.lut )
+        self.planeWidgetY.SetLookupTable( lut )
         
         self.planeWidgetZ = ImagePlaneWidget( self, 2 )
 #        self.planeWidgetZ.DisplayTextOff()
@@ -227,22 +243,22 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ.PlaceWidget( bounds )
 
         self.planeWidgetZ.SetUserControlledLookupTable(1)
-        self.planeWidgetZ.SetLookupTable( self.lut )
+        self.planeWidgetZ.SetLookupTable( lut )
         self.planeWidgetZ.SetOutlineMap(self.buildOutlineMap())
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.updateOpacity() 
         
         if contourModule <>None:
             self.generateContours = True
-            self.updateContourMetadata()
-            scalarRange =  self.getDataRangeBounds()
-            numberOfContours = 10         
+            self.updateContourMetadata()     
             self.contours = vtk.vtkContourFilter()
-            self.contours.GenerateValues( numberOfContours, self.rangeBounds[0], self.rangeBounds[1] )
+            self.contours.GenerateValues( self.NumContours, self.rangeBounds[0], self.rangeBounds[1] )
      
             self.contourLineMapperer = vtk.vtkPolyDataMapper()
             self.contourLineMapperer.SetInputConnection( self.contours.GetOutputPort() )
             self.contourLineMapperer.SetScalarRange( self.rangeBounds[0], self.rangeBounds[1] )
+            self.contourLineMapperer.SetColorModeToMapScalars()
+            self.contourLineMapperer.SetLookupTable( self.getLut( 1 ) )
 
 #        self.imageRescale = vtk.vtkImageReslice() 
 #        self.imageRescale.SetOutputDimensionality(2) 
@@ -389,6 +405,12 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.slicePosition[index] = iS
 #        print "Volume Slicer[%d], set slice index = %d" % ( index, iS )
 
+    def updateContourDensity(self):
+        if self.generateContours:
+            self.contours.GenerateValues( self.NumContours, self.rangeBounds[0], self.rangeBounds[1] )
+            self.contours.Modified()
+            self.render()
+        
     def onSlicerLeftButtonPress( self, caller, event ):
         self.currentButton = self.LEFT_BUTTON   
         return 0
@@ -505,7 +527,38 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             elif iAxis == 0: 
                 contourLineActor.SetOrientation(90,0,90)                              
         return contourLineActor
-    
+
+#    def createColorBarActor(self):
+#        PersistentVisualizationModule.createColorBarActor( self )
+#        self.createContourColorBarActor()
+#
+#    def createContourColorBarActor( self ):
+#        if self.contourColorBarActor == None:
+#            self.contourColormapManager = ColorMapManager( self.contour_lut ) 
+#            self.contourColorBarActor = vtk.vtkScalarBarActor()
+#            self.contourColorBarActor.SetMaximumWidthInPixels( 50 )
+#            self.contourColorBarActor.SetNumberOfLabels(9)
+#            labelFormat = vtk.vtkTextProperty()
+#            labelFormat.SetFontSize( 160 )
+#            labelFormat.SetColor(  VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] ) 
+#            titleFormat = vtk.vtkTextProperty()
+#            titleFormat.SetFontSize( 160 )
+#            titleFormat.SetColor(  VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2]  ) 
+#            self.contourColorBarActor.SetPosition( 0.02, 0.2 )    
+#            self.contourColorBarActor.SetLabelTextProperty( labelFormat )
+#            self.contourColorBarActor.SetTitleTextProperty( titleFormat )
+#            self.contourColorBarActor.SetTitle( self.contour_units )
+#            self.contourColorBarActor.SetLookupTable( self.contourColormapManager.getDisplayLookupTable() )
+#            self.contourColorBarActor.SetVisibility(0)
+#            self.renderer.AddActor( self.contourColorBarActor )
+#        else:
+#            if self.contourColorBarActor == None:
+#                self.contour_lut = self.contourColorBarActor.GetLookupTable()
+#                self.contourColorBarActor = ColorMapManager( self.contour_lut ) 
+#            else:
+#                self.contourColorBarActor.SetLookupTable( self.contourColormapManager.getDisplayLookupTable() )
+#                self.contourColorBarActor.Modified()
+            
     def setVisibleContour( self, iAxis ):
         for contourLineActorItem in self.contourLineActors.items():
             if iAxis == contourLineActorItem[0]:    contourLineActorItem[1].VisibilityOn( )
@@ -587,21 +640,13 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         x, y = caller.GetEventPosition()
         self.ColorLeveler.startWindowLevel( x, y )
 
-    def scaleColormap( self, ctf_data, **args ):
+    def scaleColormap( self, ctf_data, cmap_index=0, **args ):
         self.imageRange = self.getImageValues( ctf_data[0:2] ) 
-        self.lut.SetTableRange( self.imageRange[0], self.imageRange[1] ) 
-        self.colormapManager.setDisplayRange( ctf_data )
+        colormapManager = self.getColormapManager( index=cmap_index )
+        colormapManager.setScale( self.imageRange, ctf_data )
         self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
         print " Volume Slicer[%d]: Scale Colormap: [ %d, %d ] ( %.2g, %.2g ) " % ( self.moduleID, int(self.imageRange[0]), int(self.imageRange[1]), ctf_data[0], ctf_data[1] )
-        
-    def scaleColormapRelative( self, image_data, **args ):
-        self.imageRange = image_data 
-        self.lut.SetTableRange( self.imageRange[0], self.imageRange[1] ) 
-        self.range[0:2] = self.getDataValues( image_data[0:2] )
-        self.colormapManager.setDisplayRange( self.range )
-        self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
-        print " Volume Slicer: Scale Colormap: [ %.2f, %.2f ] " % ( self.imageRange[0], self.imageRange[1] )       
-        
+                
     def finalizeLeveling( self ):
         isLeveling =  PersistentVisualizationModule.finalizeLeveling( self )
         if isLeveling:
@@ -611,10 +656,6 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def initializeConfiguration(self):
         PersistentModule.initializeConfiguration(self)
         self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
-#        self.updateSliceOutput()
-
-    def setColormap( self, data ):
-        PersistentVisualizationModule.setColormap( self, data )
 #        self.updateSliceOutput()
 
     def updateColorScale( self, caller, event ):

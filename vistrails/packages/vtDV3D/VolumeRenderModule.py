@@ -413,15 +413,15 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         keysym = caller.GetKeySym()
 #        print " -- Key Press: %c ( %d: %s ), event = %s " % ( key, ord(key), str(keysym), str( event ) )
                
-    def generateCTF( self, ctf_data= None, **args  ):
+    def generateCTF( self, ctf_data= None, cmap_index=0, **args  ):
         if ctf_data: self.ctf_data = ctf_data
         else: ctf_data = self.ctf_data
         if ctf_data:
             self.imageRange = self.getImageValues( ctf_data[0:2] ) 
-            self.lut.SetTableRange( self.imageRange[0], self.imageRange[1] )
-            self.colormapManager.setDisplayRange( ctf_data )
+            colormapManager = self.getColormapManager( index=cmap_index )
+            colormapManager.setScale( self.imageRange, ctf_data )
             self.invert = ctf_data[2]
-            self.rebuildColorTransferFunction()
+            self.rebuildColorTransferFunction( cmap_index )
             
     def printOTF( self ):
         nPts = 20
@@ -430,18 +430,17 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         sValues = [ "%.2f" % self.opacityTransferFunction.GetValue( tf_range[0] + iP * dr ) for iP in range( nPts ) ] 
         print "OTF values: ", ' '.join(sValues)
         
-    def rebuildColorTransferFunction( self ):
-        if self.imageRange <> None:
+    def rebuildColorTransferFunction( self, cmap_index=0 ):
+        if (self.imageRange <> None) and ( cmap_index == 0 ):
+            lut = self.getLut()
             self.colorTransferFunction.RemoveAllPoints ()
-            nc = self.lut.GetNumberOfTableValues()
-            dr = (self.imageRange[1] - self.imageRange[0]) 
-#000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000            print "Generate CTF: range = %s, invert = %s" % ( str( self.imageRange ), str(self.invert) )
-            
+            nc = lut.GetNumberOfTableValues()
+            dr = (self.imageRange[1] - self.imageRange[0])             
             for i in range(nc):
                 interval_position = float(i)/nc
                 data_value = self.imageRange[0] + dr * interval_position
 #                lut_index = (nc-i-1) if self.invert else i
-                color = self.lut.GetTableValue( i )
+                color = lut.GetTableValue( i )
                 self.colorTransferFunction.AddRGBPoint( data_value, color[0], color[1], color[2] )
 #                if i % 50 == 0:  print "   --- ctf[%d:%d:%d] --  %.2e: ( %.2f %.2f %.2f ) " % ( i, lut_index, self.invert, data_value, color[0], color[1], color[2] )
             

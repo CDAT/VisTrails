@@ -1075,12 +1075,13 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         configFuncs = ConfigurableFunction.getActiveFunctionList( ) # DV3DPipelineHelper.getActiveIrens() )
         active_irens = DV3DPipelineHelper.getActiveIrens()
         for configFunc in configFuncs:
-            action_key = str( configFunc.label )
-            config_key = configFunc.key 
-            pmod = configFunc.module
-            isActive = ( pmod.iren in active_irens )
-            DV3DPipelineHelper.addAction( pmod, action_key, config_key, isActive ) 
-            pmods.add(pmod)
+            if configFunc.isValid():
+                action_key = str( configFunc.label )
+                config_key = configFunc.key 
+                pmod = configFunc.module
+                isActive = ( pmod.iren in active_irens ) 
+                DV3DPipelineHelper.addAction( pmod, action_key, config_key, isActive ) 
+                pmods.add(pmod)
                     
 #        for module in pipeline.module_list:
 #            pmod = ModuleStore.getModule(  module.id ) 
