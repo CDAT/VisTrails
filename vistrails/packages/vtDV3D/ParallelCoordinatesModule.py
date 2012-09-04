@@ -201,10 +201,10 @@ class PM_ParallelCoordinateViewer(PersistentVisualizationModule):
         x, y = caller.GetEventPosition()
         self.ColorLeveler.startWindowLevel( x, y )
 
-    def scaleColormap( self, ctf_data ):
+    def scaleColormap( self, ctf_data, cmap_index=0 ):
         self.imageRange = self.getImageValues( ctf_data[0:2] ) 
-        self.lut.SetTableRange( self.imageRange[0], self.imageRange[1] ) 
-        self.colormapManager.setDisplayRange( ctf_data )
+        colormapManager = self.getColormapManager( index=cmap_index )
+        colormapManager.setScale( self.imageRange, ctf_data )
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
         
     def finalizeLeveling( self ):
@@ -217,9 +217,6 @@ class PM_ParallelCoordinateViewer(PersistentVisualizationModule):
         PersistentModule.initializeConfiguration(self)
         self.addMetadata( { 'colormap' : self.getColormapSpec() } ) 
 #        self.updateSliceOutput()
-
-    def setColormap( self, data ):
-        PersistentVisualizationModule.setColormap( self, data )
 
     def updateColorScale( self, caller, event ):
         x, y = caller.GetEventPosition()
@@ -236,7 +233,7 @@ class PM_ParallelCoordinateViewer(PersistentVisualizationModule):
               
     def onKeyRelease( self, caller, event ):
         pass
- 
+
 
 class ParallelCoordinateViewer(WorkflowModule):
     

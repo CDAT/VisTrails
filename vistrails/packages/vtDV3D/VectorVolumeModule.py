@@ -37,11 +37,11 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
       
-    def scaleColormap( self, ctf_data ):
-        self.lut.SetTableRange( ctf_data[0], ctf_data[1] ) 
-        self.colormapManager.setDisplayRange( ctf_data )
+    def scaleColormap( self, ctf_data, cmap_index=0 ):
+        colormapManager = self.getColormapManager( index=cmap_index )
+        colormapManager.setScale( ctf_data, ctf_data )
         self.addMetadata( { 'colormap' : self.getColormapSpec() } )
-        self.glyph.SetLookupTable( self.lut )
+        self.glyph.SetLookupTable( colormapManager.lut )
 #        self.glyph.Modified()
 #        self.glyph.Update()
         self.render()
@@ -104,6 +104,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.resample.SetInput( self.input ) 
         self.resample.SetVOI( self.initialExtent )
         self.ApplyGlyphDecimationFactor()
+        lut = self.getLut()
         
         if self.colorInputModule <> None:
             colorInput = self.colorInputModule.getOutput()
@@ -127,7 +128,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
             colorInput_pointData = colorFloatInput.GetPointData()     
             self.colorScalars = colorInput_pointData.GetScalars()
             self.colorScalars.SetName('color')
-            self.lut.SetTableRange( valueRange ) 
+            lut.SetTableRange( valueRange ) 
         
         self.glyph = vtk.vtkGlyph3DMapper() 
 #        if self.colorInputModule <> None:   self.glyph.SetColorModeToColorByScalar()            
@@ -142,7 +143,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.glyph.SetInputConnection( self.resample.GetOutputPort()  )
         self.arrow = vtk.vtkArrowSource()
         self.glyph.SetSourceConnection( self.arrow.GetOutputPort() )
-        self.glyph.SetLookupTable( self.lut )
+        self.glyph.SetLookupTable( lut )
         self.glyphActor = vtk.vtkActor() 
         self.glyphActor.SetMapper( self.glyph )
         self.renderer.AddActor( self.glyphActor )

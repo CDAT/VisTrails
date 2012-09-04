@@ -356,6 +356,9 @@ class ConfigurableFunction( QObject ):
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
         self.hasState = args.get( 'hasState', True )
         
+    def isValid(self):
+        return True
+        
     def postInstructions( self, message ):
         print "\n ----- %s -------\n" % message
 
@@ -483,6 +486,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.isDataValue = args.get( 'isDataValue', True )
         self.initial_range = args.get( 'initRange', None )
         self.initRefinement = args.get( 'initRefinement', [ 0.0, 1.0 ] )
+        self.isValid = args.get( 'isValid', lambda: True )
         self.range_bounds = None
         self.boundByRange = args.get( 'bound', True )
         self.adjustRange = args.get( 'adjustRange', False )
@@ -516,12 +520,14 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
  
     def initLeveling( self, **args ):
         initRange = args.get( 'initRange', True )
+        if self.range_bounds == None:
+            self.range_bounds =   args.get( 'rangeBounds', None )
         if initRange:
             if self.initial_range == None:
                 self.initial_range =  [ 0.0, 1.0, 1 ] if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
             if self.range_bounds == None:
                 self.range_bounds = self.initial_range if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
-            self.range = list( self.module.getInputValue( self.name, self.initial_range ) if not self.module.newDataset else self.initial_range )
+            self.range = list( self.module.getInputValue( self.name, self.initial_range )  ) # if not self.module.newDataset else self.initial_range
             if len( self.range ) == 3: 
                 for iR in range(2): self.range.append( self.initRefinement[iR] )
         self.windowLeveler.setDataRange( self.range )

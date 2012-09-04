@@ -51,16 +51,18 @@ class PM_LevelSurface(PersistentVisualizationModule):
             textureInput.Modified() 
         return PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args )
         
-    def setOpacityRange( self, opacity_range, **args  ):
+    def setOpacityRange( self, opacity_range, cmap_index=0, **args  ):
         print "Update Opacity, range = %s" %  str( opacity_range )
         self.opacityRange = opacity_range
-        self.colormapManager.setAlphaRange ( [ opacity_range[0], opacity_range[0] ]  ) 
+        colormapManager = self.getColormapManager( index=cmap_index )
+        colormapManager.setAlphaRange ( [ opacity_range[0], opacity_range[0] ]  ) 
 #        self.levelSetProperty.SetOpacity( opacity_range[1] )
         
-    def setColorScale( self, range, **args  ):
+    def setColorScale( self, range, cmap_index=0, **args  ):
         self.imageRange = self.getImageValues( range[0:2] ) 
         self.levelSetMapper.SetScalarRange( self.imageRange[0], self.imageRange[1] )
-        self.colormapManager.setDisplayRange( self.imageRange )
+        colormapManager = self.getColormapManager( index=cmap_index )
+        colormapManager.setDisplayRange( self.imageRange )
 
     def getColorScale( self ):
         sr = self.getDataRangeBounds()
@@ -153,6 +155,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         dr = self.rangeBounds[1] - self.rangeBounds[0]
         range_offset = .2*dr
         self.range = [ self.rangeBounds[0] + range_offset, self.rangeBounds[1] - range_offset ]
+        lut = self.getLut()
 
         self.probeFilter = None
         textureRange = self.range
@@ -201,9 +204,10 @@ class PM_LevelSurface(PersistentVisualizationModule):
             self.probeFilter.SetInputConnection( self.levelSetFilter.GetOutputPort() )
             self.levelSetMapper.SetInputConnection( self.probeFilter.GetOutputPort() ) 
             self.levelSetMapper.SetScalarRange( textureRange )
-        self.levelSetMapper.SetLookupTable( self.lut ) 
-              
-        self.colormapManager.setAlphaRange ( self.opacityRange ) 
+        self.levelSetMapper.SetLookupTable( lut ) 
+         
+        colormapManager = self.getColormapManager( )     
+        colormapManager.setAlphaRange ( self.opacityRange ) 
         self.updateLevels()
           
 #        levelSetMapper.SetColorModeToMapScalars()  
