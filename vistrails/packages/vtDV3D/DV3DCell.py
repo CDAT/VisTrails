@@ -244,6 +244,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def __init__( self, mid, **args ):
         SpreadsheetCell.__init__(self)
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, **args )
+        self.fieldData = []
 #        self.addConfigurableMethod( 'resetCamera', self.resetCamera, 'A' )
 #        self.addConfigurableMethod( 'showLogo', self.toggleLogoVisibility, 'L' )
         if self.isClient:  
@@ -251,9 +252,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             self.location.row = 0
             self.location.col = 0
             self.acceptsGenericConfigs = True
-        self.allowMultipleInputs = True
+        self.allowMultipleInputs[0] = True
         self.renderers = []
-        self.fieldData = []
         self.cellWidget = None
         self.imageInfo = None
         self.renWin = None
@@ -430,8 +430,9 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     
     def updateHyperwall(self):
         dimensions = self.setCellLocation( self.moduleID )  
-        if dimensions:      
-            HyperwallManager.getInstance().addCell( self.moduleID, self.datasetId, str(0), dimensions )
+        if dimensions:  
+            ispec = self.inputSpecs[ 0 ]    
+            HyperwallManager.getInstance().addCell( self.moduleID, ispec.datasetId, str(0), dimensions )
             HyperwallManager.getInstance().executeCurrentWorkflow( self.moduleID )
 
     def isBuilt(self):
@@ -542,9 +543,11 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         module = self.getRegisteredModule()
 
         self.renderers = []
-        self.fieldData = []
         self.renderer = None
-        moduleList = self.inputModuleList if self.inputModuleList else [ self.inputModule ]
+        self.fieldData = []
+        moduleList = self.inputModuleList() 
+        if not moduleList: 
+            moduleList = [ self.inputModule() ]
         for inputModule in moduleList:
             if inputModule <> None:
                 renderer1 = inputModule.getRenderer() 
@@ -558,7 +561,7 @@ class PM_ChartCell( PM_DV3DCell ):
 
     def __init__( self, mid, **args ):
         PM_DV3DCell.__init__( self, mid, **args)
-        self.primaryInputPort = "chart"
+        self.primaryInputPorts = [ "chart" ]
         
 class ChartCellConfigurationWidget(DV3DConfigurationWidget):
     """
@@ -680,7 +683,7 @@ class PM_CloudCell3D( PM_DV3DCell ):
 
     def __init__( self, mid, **args ):
         PM_DV3DCell.__init__( self, mid, **args)
-        self.primaryInputPort = "pointcloud"
+        self.primaryInputPorts = [ "pointcloud" ]
 
     def updateModule( self, **args ):
         PM_DV3DCell.updateModule( self, **args )
@@ -836,7 +839,7 @@ class PM_MapCell3D( PM_DV3DCell ):
             map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
             if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
             if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
-            data_origin = self.input.GetOrigin() if self.input else [ 0, 0, 0 ]
+            data_origin = self.input().GetOrigin() if self.input() else [ 0, 0, 0 ]
                       
             if self.world_cut == -1: 
                 if  (self.roi <> None): 

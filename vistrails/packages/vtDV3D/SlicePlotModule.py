@@ -50,6 +50,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.axisBounds = None
         self.iOrientation = 0
         self.mfm = None
+        self.units = None
         self.cellWidget = None 
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getScalarRange, adjustRange=True, units='data' )
         
@@ -211,7 +212,8 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         return False
  
     def scaleColormap( self, ctf_data ):
-        value_range = [ bound( ctf_data[i], self.scalarRange ) for i in [0,1] ]
+        scalarRange = self.getScalarRange()
+        value_range = [ bound( ctf_data[i], scalarRange ) for i in [0,1] ]
         if self.contour_plot:
             self.contour_value_range = [ value_range[0], value_range[1] ] 
             self.contour_plot.set_clim( value_range[0], value_range[1] )            
@@ -231,15 +233,16 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
        
     def getPylabColormap( self, internal = True ):
         cmap_data, value_range = None, None
+        scalarRange = self.getScalarRange()
         if internal:
             cmap_data = self.getColormap()
-            if not self.contour_value_range: self.contour_value_range = self.scalarRange
+            if not self.contour_value_range: self.contour_value_range = scalarRange
         else:    
             md = self.getMetadata()
             cmap_data = md.get('colormap','Spectral,0')
             if type(cmap_data) == type(""): cmap_data = cmap_data.split(',')
             if ( len( cmap_data ) < 4 ):
-                value_range = self.fill_value_range if self.fill_value_range else self.scalarRange
+                value_range = self.fill_value_range if self.fill_value_range else scalarRange
             else:
                 value_range = self.getDataValues( ( float( cmap_data[2] ), float( cmap_data[3] ) ) )
             self.fill_value_range = value_range

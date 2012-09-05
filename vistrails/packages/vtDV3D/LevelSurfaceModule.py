@@ -32,6 +32,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
            
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__(self,  mid, **args)
+        self.primaryInputPorts = [ 'volume', 'texture' ]
         self.opacityRange =  [ 0.2, 0.99 ]
         self.imageRange = None
         self.numberOfLevels = 1
@@ -122,7 +123,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
             self.levelSetFilter.ComputeGradientsOff()
 
     def updateModule(self, **args ):
-        self.inputModule.inputToAlgorithm( self.levelSetFilter ) 
+        self.inputModule().inputToAlgorithm( self.levelSetFilter ) 
 #        self.levelSetFilter.Modified()
         self.set3DOutput()
         print "Update Level Surface Module with %d Level(s), range = [ %f, %f ], levels = %s" %  ( self.numberOfLevels, self.range[0], self.range[1], str(self.getLevelValues()) )  
@@ -132,29 +133,30 @@ class PM_LevelSurface(PersistentVisualizationModule):
         Dispatch the vtkRenderer to the actual rendering widget
         """ 
         textureModule = self.wmod.forceGetInputFromPort( "texture", None )
-        if self.input == None:
-            if textureModule <> None:
-                self.input = textureModule.getOutput() 
-            else:
-                print>>sys.stderr, "Error, must provide an input to the LevelSurface module!"
+#        if self.input == None:
+#            if textureModule <> None:
+#                self.input = textureModule.getOutput() 
+#            else:
+#                print>>sys.stderr, "Error, must provide an input to the LevelSurface module!"
 
 #        mod, d = self.getRegisteredDescriptor()
         testTexture = True
          
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
         self.sliceCenter = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
-        spacing = self.input.GetSpacing()
+        spacing = self.input().GetSpacing()
         sx, sy, sz = spacing       
-        origin = self.input.GetOrigin()
+        origin = self.input().GetOrigin()
         ox, oy, oz = origin
-        dataType = self.input.GetScalarTypeAsString()
-        self.setMaxScalarValue( self.input.GetScalarType() )
+        dataType = self.input().GetScalarTypeAsString()
+        self.setMaxScalarValue( self.input().GetScalarType() )
         self.colorByMappedScalars = False
-        print "Data Type = %s, range = (%f,%f), max_scalar = %s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], self._max_scalar_value )
+        rangeBounds = self.getRangeBounds()
+        print "Data Type = %s, range = (%f,%f), max_scalar = %s" % ( dataType, rangeBounds[0], rangeBounds[1], self._max_scalar_value )
 
-        dr = self.rangeBounds[1] - self.rangeBounds[0]
+        dr = rangeBounds[1] - rangeBounds[0]
         range_offset = .2*dr
-        self.range = [ self.rangeBounds[0] + range_offset, self.rangeBounds[1] - range_offset ]
+        self.range = [ rangeBounds[0] + range_offset, rangeBounds[1] - range_offset ]
         lut = self.getLut()
 
         self.probeFilter = None
@@ -195,7 +197,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
 #        self.levelSetFilter = vtk.vtkImageMarchingCubes()
         
         self.levelSetFilter = vtk.vtkContourFilter()
-        self.inputModule.inputToAlgorithm( self.levelSetFilter )
+        self.inputModule().inputToAlgorithm( self.levelSetFilter )
         self.levelSetMapper = vtk.vtkPolyDataMapper()
         if ( self.probeFilter == None ):
             self.levelSetMapper.SetInputConnection( self.levelSetFilter.GetOutputPort() ) 

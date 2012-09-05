@@ -201,8 +201,8 @@ class PM_Resample(PersistentVisualizationModule):
 #        if self.currentScaledBounds <> None:
 #            spacing = self.getSpacing()
 #            newImageExtent = []
-#            scaling = self.getFieldData( 'scale' )
-#            position = self.getFieldData( 'position' )
+#            scaling = self.getFieldDataArray( 'scale' )
+#            position = self.getFieldDataArray( 'position' )
 #            new_position = []
 #            for iAxis in range(3):
 #                low = 2*iAxis
@@ -235,11 +235,11 @@ class PM_Resample(PersistentVisualizationModule):
 #        self.currentScaledBounds = None
 #
 #    def getPosition( self ):
-#        return self.getFieldData( 'position' )
+#        return self.getFieldDataArray( 'position' )
 #        
 #    def setPosition( self, position ):
 #        wmod.setResult( 'position', position )
-#        self.setFieldData( 'position', position )
+#        self.setFieldDataArray( 'position', position )
 #        self.resample.Modified()
 #        
 #    def AoiToBounds( self, aoi ):
@@ -255,10 +255,10 @@ class PM_Resample(PersistentVisualizationModule):
 #        self.setExtent( extent )
 #    
 #    def getScaling(self):
-#        return self.getFieldData( 'scale' )
+#        return self.getFieldDataArray( 'scale' )
 #
 #    def setScaling( self, scaling ):
-#        self.setFieldData( 'scale', scaling )
+#        self.setFieldDataArray( 'scale', scaling )
 #        self.resample.Modified()
 #                        
 #    def startResample(self, object, event):
@@ -297,13 +297,13 @@ class PM_Resample(PersistentVisualizationModule):
 #         return [ ( ( imageCoords[ iAxis ] * self.currentSpacing[ iAxis ] ) + self.initialOrigin[iAxis]  ) for iAxis in range(3) ]
 #
 ##    def unscaleWorldExtent( self, scaledWorldExtent ):
-##        scaling = self.getFieldData( 'scale' )
-##        position = self.getFieldData( 'position' )
+##        scaling = self.getFieldDataArray( 'scale' )
+##        position = self.getFieldDataArray( 'position' )
 ##        return [ ( scaledWorldExtent[i] - position[i/2] ) / scaling[i/2] for i in range(6) ]
 #
 #    def scaleWorldExtent( self, unscaledWorldExtent ):
-#        scaling = self.getFieldData( 'scale' )
-#        position = self.getFieldData( 'position' )
+#        scaling = self.getFieldDataArray( 'scale' )
+#        position = self.getFieldDataArray( 'position' )
 #        scaledWorldExtent = []
 #        for i in range(3):
 #            low = 2*i
@@ -334,7 +334,7 @@ class PM_Resample(PersistentVisualizationModule):
 #        return [ 'position' ]
 #
 #    def boundsToScaling( self, scaledBounds ):
-#        scaling = self.getFieldData( 'scale' )
+#        scaling = self.getFieldDataArray( 'scale' )
 #        if self.currentScaledBounds <> None:
 #            for i in range(3):
 #                low = 2*i
@@ -348,7 +348,7 @@ class PM_Resample(PersistentVisualizationModule):
 # 
 #    def scalingToBounds( self, scaling ):
 #        unscaledWorldExtent = self.getUnscaledWorldExtent( self.currentExtent )
-#        position = self.getFieldData( 'position' )
+#        position = self.getFieldDataArray( 'position' )
 #        bounds = self.scaleWorldExtent( unscaledWorldExtent )
 #        print "-------------- scalingToBounds: \n\t unscaledWorldExtent: (%.1f, %.1f), bounds: (%.1f, %.1f)\n\t currentExtent: (%.1f, %.1f), position: %.2f, scaling: %.2f" % \
 #            ( unscaledWorldExtent[0], unscaledWorldExtent[1], bounds[0], bounds[1], self.currentExtent[0], self.currentExtent[1], position[0], scaling[0] )

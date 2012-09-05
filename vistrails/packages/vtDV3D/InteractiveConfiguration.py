@@ -400,10 +400,7 @@ class ConfigurableFunction( QObject ):
 #            print "."
         self.moduleID = module.moduleID
         self.module = module
-        if module.metadata:
-            attributes = module.metadata.get('attributes', None)
-            if attributes:
-                if self.units == 'data': self.units = attributes.get('units','')               
+        if self.units == 'data': self.units = module.getUnits()              
         if ( self.initHandler != None ):
             self.initHandler( **self.kwargs ) 
         configFunctionMap = ConfigurableFunction.ConfigurableFunctions.setdefault( self.name, {} )

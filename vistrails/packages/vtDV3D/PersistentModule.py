@@ -107,7 +107,215 @@ class AlgorithmOutputModule2D( AlgorithmOutputModule ):
 
     def getRenderer(self): 
         return self.view.GetRenderer()
-   
+
+class InputSpecs:
+    
+    def __init__( self, **args ):
+        self.units = ''
+        self.scalarRange = None
+        self.seriesScalarRange = None
+        self.rangeBounds = None
+        self.metadata = None
+        self.input = None
+        self.fieldData = None
+        self.inputModule = None
+        self.inputModuleList = None
+        self.datasetId = None
+
+    def initializeScalarRange( self ): 
+        metadata = self.getMetadata()  
+        var_md = metadata.get( 'attributes' , None )
+        if var_md <> None:
+            range = var_md.get( 'range', None )
+            if range: 
+#                print "\n ***************** ScalarRange = %s, md[%d], var_md[%d] *****************  \n" % ( str(range), id(metadata), id(var_md) )
+                self.scalarRange = list( range )
+                self.scalarRange.append( 1 )
+                if not self.seriesScalarRange:
+                    self.seriesScalarRange = list(range)
+                else:
+                    if self.seriesScalarRange[0] > range[0]:
+                        self.seriesScalarRange[0] = range[0] 
+                    if self.seriesScalarRange[1] < range[1]:
+                        self.seriesScalarRange[1] = range[1] 
+
+    def getWorldCoords( self, image_coords ):
+        plotType = self.metadata[ 'plotType' ]                   
+        world_coords = None
+        try:
+            if plotType == 'zyt':
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                timeAxis = self.metadata[ 'time' ]
+                tval = timeAxis[ image_coords[2] ]
+                relTimeValue = cdtime.reltime( float( tval ), timeAxis.units ) 
+                timeValue = str( relTimeValue.tocomp() )          
+                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), timeValue ]   
+            else:         
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                lev = self.metadata[ 'lev' ]
+                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), getFloatStr(lev[ image_coords[2] ]) ]   
+        except:
+            gridSpacing = self.input.GetSpacing()
+            gridOrigin = self.input.GetOrigin()
+            world_coords = [ getFloatStr(gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
+        return world_coords
+
+    def getWorldCoord( self, image_coord, iAxis ):
+        plotType = self.metadata[ 'plotType' ]                   
+        axisNames = [ 'Longitude', 'Latitude', 'Time' ] if plotType == 'zyt'  else [ 'Longitude', 'Latitude', 'Level' ]
+        try:
+            axes = [ 'lon', 'lat', 'time' ] if plotType == 'zyt'  else [ 'lon', 'lat', 'lev' ]
+            world_coord = self.metadata[ axes[iAxis] ][ image_coord ]
+            if ( plotType == 'zyt') and  ( iAxis == 2 ):
+                timeAxis = self.metadata[ 'time' ]     
+                timeValue = cdtime.reltime( float( world_coord ), timeAxis.units ) 
+                world_coord = str( timeValue.tocomp() )          
+            return axisNames[iAxis], getFloatStr( world_coord )
+        except:
+            if (plotType == 'zyx') or (iAxis < 2):
+                gridSpacing = self.input.GetSpacing()
+                gridOrigin = self.input.GetOrigin()
+                return axes[iAxis], getFloatStr( gridOrigin[iAxis] + image_coord*gridSpacing[iAxis] ) 
+            return axes[iAxis], ""
+
+    def getRangeBounds( self ):
+        return self.rangeBounds  
+        
+    def getDataRangeBounds(self):
+        range = self.getDataValues( self.rangeBounds[0:2] ) 
+        if ( len( self.rangeBounds ) > 2 ): range.append( self.rangeBounds[2] ) 
+        else:                               range.append( 0 )
+        return range
+    
+    def getScalarRange(self): 
+        return self.scalarRange
+
+    def getDataValue( self, image_value):
+        if not self.scalarRange: 
+            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+        valueRange = self.scalarRange
+        sval = ( image_value - self.rangeBounds[0] ) / ( self.rangeBounds[1] - self.rangeBounds[0] )
+        dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
+        return dataValue
+                
+    def getDataValues( self, image_value_list ):
+        if not self.scalarRange: 
+            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+        valueRange = self.scalarRange
+        dr = ( self.rangeBounds[1] - self.rangeBounds[0] )
+        data_values = []
+        for image_value in image_value_list:
+            sval = 0.0 if ( dr == 0.0 ) else ( image_value - self.rangeBounds[0] ) / dr
+            dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
+            data_values.append( dataValue )
+        return data_values
+
+    def getImageValue( self, data_value ):
+        if not self.scalarRange: 
+            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+        valueRange = self.scalarRange
+        dv = ( valueRange[1] - valueRange[0] )
+        sval = 0.0 if ( dv == 0.0 ) else ( data_value - valueRange[0] ) / dv 
+        imageValue = self.rangeBounds[0] + sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
+        return imageValue
+
+    def getImageValues( self, data_value_list ):
+        if not self.scalarRange: 
+            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+        valueRange = self.scalarRange
+        dv = ( valueRange[1] - valueRange[0] )
+        imageValues = []
+        for data_value in data_value_list:
+            sval = 0.0 if ( dv == 0.0 ) else ( data_value - valueRange[0] ) / dv
+            imageValue = self.rangeBounds[0] + sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
+            imageValues.append( imageValue )
+#        print "\n *****************  GetImageValues[%d:%x]: data_values = %s, range = %s, imageValues = %s **************** \n" % ( self.moduleID, id(self), str(data_value_list), str(self.scalarRange), str(imageValues) )
+        return imageValues
+
+    def scaleToImage( self, data_value ):
+        if not self.scalarRange: 
+            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+        dv = ( self.scalarRange[1] - self.scalarRange[0] )
+        sval = 0.0 if ( dv == 0.0 ) else data_value / dv
+        imageScaledValue =  sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
+        return imageScaledValue
+
+    def getMetadata( self, key = None ):
+        if not self.metadata: self.updateMetadata()
+        return self.metadata.get( key, None ) if key else self.metadata
+    
+    def getFieldData( self ):
+        return self.fieldData  
+    
+    def updateMetadata( self ):
+        if self.metadata == None:
+            scalars = None
+            if self.input <> None:
+                fd = self.input.GetFieldData() 
+                self.input.Update()
+                self.fieldData = self.input.GetFieldData()             
+            elif self.inputModule:
+                self.fieldData = self.inputModule.getFieldData() 
+    
+            self.metadata = self.computeMetadata()
+            
+            if self.metadata <> None:
+                self.rangeBounds = None              
+                self.datasetId = self.metadata.get( 'datasetId', None )                
+                tval = self.metadata.get( 'timeValue', 0.0 )
+                self.timeValue = cdtime.reltime( float( tval ), ReferenceTimeUnits )               
+                dtype =  self.metadata.get( 'datatype', None )
+                scalars =  self.metadata.get( 'scalars', None )
+                self.rangeBounds = getRangeBounds( dtype )
+                title = self.metadata.get( 'title', None )
+                targs = title.split(':')
+                if len( targs ) == 1:
+                    self.titleBuffer = "\n%s" % ( title )
+                elif len( targs ) > 1:
+                    self.titleBuffer = "%s\n%s" % ( targs[1], targs[0] )
+    #            self.persistParameterList( [ ( 'title' , [ self.titleBuffer ]  ), ] )    
+                attributes = self.metadata.get( 'attributes' , None )
+                if attributes:
+                    self.units = attributes.get( 'units' , '' )
+
+    def getUnits(self):
+        return self.units
+    
+    def getLayerList(self):
+        layerList = []
+        pointData = self.input.GetPointData()
+        for iA in range( pointData.GetNumberOfArrays() ):
+            array_name = pointData.GetArrayName(iA)
+            if array_name: layerList.append( array_name )
+        return layerList
+    
+    def computeMetadata( self, metadata = {}, port=None  ):
+        if not self.fieldData: self.initializeMetadata() 
+        if self.fieldData:
+            md = extractMetadata( self.fieldData )
+            if md: metadata.update( md )
+        return metadata
+        
+    def addMetadataObserver( self, caller, event ):
+        fd = caller.GetOutput().GetFieldData()
+        fd.ShallowCopy( self.fieldData )
+        pass
+
+    def initializeMetadata( self ):
+        self.fieldData = vtk.vtkDataSetAttributes()
+        mdarray = getStringDataArray( 'metadata' )
+        self.fieldData.AddArray( mdarray )
+
+    def addMetadata( self, metadata ):
+        dataVector = self.fieldData.GetAbstractArray( 'metadata' ) 
+        if dataVector == None:   
+            print " Can't get Metadata for class %s " % ( self.__class__.__name__ )
+        else:
+            enc_mdata = encodeToString( metadata )
+            dataVector.InsertNextValue( enc_mdata  )
+       
 class PersistentModule( QObject ):
     '''
     <H2> Interactive Configuration</H2>
@@ -131,43 +339,35 @@ class PersistentModule( QObject ):
              
     def __init__( self, mid, **args ):
         QObject.__init__(self)
-        self.metadata = None
-        self.fieldData = None
+        self.pipelineBuilt = False
+        self.newLayerConfiguration = False
+        self.activeLayer = None
+        self.newDataset = False
         self.moduleID = mid
+        self.inputSpecs = {}
         self.pipeline = args.get( 'pipeline', None )
-        self.units = ''
         self.taggedVersionMap = {}
         self.persistedParameters = []
         self.versionTags = {}
         self.initVersionMap()
-        self.datasetId = None
         role = get_hyperwall_role( )
         self.isClient = ( role == 'hw_client' )
         self.isServer = ( role == 'hw_server' )
-        self.rangeBounds = None
         self.timeStepName = 'timestep'
-        self.newDataset = False
-        self.scalarRange = None
-        self.seriesScalarRange = None
         self.wmod = None
-        self.inputModule = None
-        self.allowMultipleInputs = False
-        self.newLayerConfiguration = False
-        self.inputModuleList = None
         self.nonFunctionLayerDepParms = args.get( 'layerDepParms', [] )
-        self.input =  None
         self.roi = None 
-        self.activeLayer = None
         self.configurableFunctions = {}
         self.configuring = False
+        self.allowMultipleInputs = {}
         self.InteractionState = None
         self.LastInteractionState = None
         self.requiresPrimaryInput = args.get( 'requiresPrimaryInput', True )
         self.createColormap = args.get( 'createColormap', True )
         self.parmUpdating = {}
         self.ndims = args.get( 'ndims', 3 ) 
-        self.primaryInputPort = 'slice' if (self.ndims == 2) else 'volume' 
-        self.primaryMetaDataPort = self.primaryInputPort
+        self.primaryInputPorts = [ 'slice' ] if (self.ndims == 2) else [ 'volume' ]
+        self.primaryMetaDataPort = self.primaryInputPorts[0]
         self.documentation = None
         self.parameterCache = {}
         self.timeValue = cdtime.reltime( 0.0, ReferenceTimeUnits ) 
@@ -182,6 +382,28 @@ class PersistentModule( QObject ):
 #            if dataArray: return dataArray.GetValue(0)
 #        return 0
 
+    def setLayer( self, layer ):
+        self.activeLayer = getItem( layer )
+
+    def getLayer( self ):
+        return [ self.activeLayer, ]
+
+    def input( self, input_index=0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.input
+    
+    def getUnits(self, input_index=0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.getUnits()
+
+    def inputModule( self, input_index=0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.inputModule
+
+    def inputModuleList( self, input_index=0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.inputModuleList
+
     def getConfigFunctions( self, types=None ):
         cmdList = []
         for items in self.configurableFunctions.items():
@@ -195,14 +417,33 @@ class PersistentModule( QObject ):
         return cmdList
                         
 
-    def getRangeBounds(self): 
-        return self.rangeBounds  
+    def getDatasetId( self, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.datasetId  
+
+    def getFieldData( self, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.getFieldData()  
+
+    def getRangeBounds( self, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.getRangeBounds()  
+
+    def setRangeBounds( self, rbounds, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        ispec.rangeBounds[:] = rbounds[:] 
         
-    def getDataRangeBounds(self): 
-        range = self.getDataValues( self.rangeBounds[0:2] ) 
-        if ( len( self.rangeBounds ) > 2 ): range.append( self.rangeBounds[2] ) 
-        else:                               range.append( 0 )
-        return range
+    def getScalarRange( self, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.scalarRange  
+
+    def getScalarRange( self, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.getScalarRange()  
+            
+    def getDataRangeBounds(self, input_index = 0):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.getDataRangeBounds() 
     
     def invalidateWorkflowModule( self, workflowModule ):
         if (self.wmod == workflowModule): self.wmod = None
@@ -301,7 +542,7 @@ class PersistentModule( QObject ):
     def dvCompute( self, **args ):
         self.initializeInputs( **args )     
         self.updateHyperwall()
-        if self.input or self.inputModuleList or not self.requiresPrimaryInput:
+        if self.input() or self.inputModuleList() or not self.requiresPrimaryInput:
             self.execute( **args )
             self.initializeConfiguration()
         elif self.requiresPrimaryInput:
@@ -317,11 +558,6 @@ class PersistentModule( QObject ):
         self.initializeInputs( **args )     
         self.execute( **args )
  
-    def getRangeBounds(self): 
-        return self.rangeBounds
-    
-    def getScalarRange(self): 
-        return self.scalarRange
 
     def getParameterDisplay( self, parmName, parmValue ):
         if parmName == self.timeStepName:
@@ -329,10 +565,12 @@ class PersistentModule( QObject ):
         return None, 1
           
     def getPrimaryInput( self, **args ):
-        return self.getInputValue( self.primaryInputPort, **args )
+        port = args.get('port', self.primaryInputPorts[0] )
+        return self.getInputValue( port, **args )
     
     def getPrimaryInputList(self, **args ):
-        return self.getInputList( self.primaryInputPort, **args  )
+        port = args.get('port', self.primaryInputPorts[0] )
+        return self.getInputList( port, **args  )
     
     def isLayerDependentParameter( self, parmName ):
         cf = self.configurableFunctions.get( parmName, None )
@@ -390,142 +628,13 @@ class PersistentModule( QObject ):
           
     def setResult( self, outputName, value ): 
         if self.wmod <> None:       self.wmod.setResult( outputName, value )
-        self.setParameter( outputName, value )
-                    
-    def initializeLayers( self ):
-        metadata = self.getMetadata()
-        scalars =  metadata.get( 'scalars', None )
-        if self.activeLayer == None: 
-            self.activeLayer =self.getAnnotation( 'activeLayer' )
-        if self.input and not scalars:
-            scalarsArray = self.input.GetPointData().GetScalars()
-            if scalarsArray <> None:
-                scalars = scalarsArray.GetName() 
-            else:
-                layerList = self.getLayerList()
-                if len( layerList ): scalars = layerList[0] 
-        if self.activeLayer <> scalars:
-            self.updateLayerDependentParameters( self.activeLayer, scalars )
-            self.activeLayer = scalars 
-            self.addAnnotation( 'activeLayer', self.activeLayer  ) 
-            self.seriesScalarRange = None
-            
-    def initializeScalarRange( self ): 
-        metadata = self.getMetadata()  
-        var_md = metadata.get( 'attributes' , None )
-        if var_md <> None:
-            range = var_md.get( 'range', None )
-            if range: 
-                print "\n ***************** ScalarRange[%d:%x] = %s, md[%d], var_md[%d] *****************  \n" % ( self.moduleID, id(self), str(range), id(metadata), id(var_md) )
-                self.scalarRange = list( range )
-                self.scalarRange.append( 1 )
-                if not self.seriesScalarRange:
-                    self.seriesScalarRange = list(range)
-                else:
-                    if self.seriesScalarRange[0] > range[0]:
-                        self.seriesScalarRange[0] = range[0] 
-                    if self.seriesScalarRange[1] < range[1]:
-                        self.seriesScalarRange[1] = range[1] 
-
-    
-    def getLayerList(self):
-        layerList = []
-        pointData = self.input.GetPointData()
-        for iA in range( pointData.GetNumberOfArrays() ):
-            array_name = pointData.GetArrayName(iA)
-            if array_name: layerList.append( array_name )
-        return layerList
-    
-    def setLayer( self, layer ):
-        self.activeLayer = getItem( layer )
-
-    def getLayer( self ):
-        return [ self.activeLayer, ]
-    
-    def getMetadata( self, key = None ):
-        if not self.metadata: self.updateMetadata()
-        return self.metadata.get( key, None ) if key else self.metadata
-    
-    def updateMetadata(self):
-        if self.metadata == None:
-            scalars = None
-            self.newDataset = False
-            if self.input <> None:
-                fd = self.input.GetFieldData() 
-                self.input.Update()
-                self.fieldData = self.input.GetFieldData()             
-            elif self.inputModule:
-                self.fieldData = self.inputModule.getFieldData() 
-    
-            self.metadata = self.computeMetadata()
-            
-            if self.metadata <> None:
-                self.rangeBounds = None 
-                self.setParameter( 'metadata', self.metadata )
-                self.roi = self.metadata.get( 'bounds', None )
-                
-                dsetId = self.metadata.get( 'datasetId', None )
-                self.datasetId = self.getAnnotation( "datasetId" )
-                if self.datasetId <> dsetId:
-                    self.pipelineBuilt = False
-                    self.newDataset = True
-                    self.newLayerConfiguration = True
-                    self.datasetId = dsetId
-                    self.addAnnotation( "datasetId", self.datasetId )
-                
-                tval = self.metadata.get( 'timeValue', 0.0 )
-                self.timeValue = cdtime.reltime( float( tval ), ReferenceTimeUnits )               
-                dtype =  self.metadata.get( 'datatype', None )
-                scalars =  self.metadata.get( 'scalars', None )
-                self.rangeBounds = getRangeBounds( dtype )
-                title = self.metadata.get( 'title', None )
-                targs = title.split(':')
-                if len( targs ) == 1:
-                    self.titleBuffer = "\n%s" % ( title )
-                elif len( targs ) > 1:
-                    self.titleBuffer = "%s\n%s" % ( targs[1], targs[0] )
-    #            self.persistParameterList( [ ( 'title' , [ self.titleBuffer ]  ), ] )
-    
-                attributes = self.metadata.get( 'attributes' , None )
-                if attributes:
-                    self.units = attributes.get( 'units' , '' )
-#                        range = var_md.get( 'range', None )
-#                        if range: 
-#                            self.scalarRange = list( range )
-#                            self.scalarRange.append( 1 )
-#            print " --- updateMetadata: scalar range = %s" % str( self.scalarRange  )
-#        return scalars
-    def getUnits():
-        return self.units
+        self.setParameter( outputName, value )    
     
     def getCDMSDataset(self):
         return ModuleStore.getCdmsDataset( self.datasetId )
            
     def setActiveScalars( self ):
         pass
-#        pointData = self.input.GetPointData()
-#        if self.activeLayer:  
-#            pointData.SetActiveScalars( self.activeLayer )
-#            print " SetActiveScalars on pointData %d: %s" % ( id(pointData), self.activeLayer )
-           
-                                   
-#    def transferInputLayer( self, imageData ):
-#        oldPointData = imageData.GetPointData() 
-#        array_names = [ oldPointData.GetArrayName(iP) for iP in range( oldPointData.GetNumberOfArrays() ) ]
-#        for array_name in array_names: oldPointData.RemoveArray( array_name )
-#        pointData = self.input.GetPointData()
-#        activeArray = None
-#        if self.activeLayer <> None:  activeArray = pointData.GetArray( self.activeLayer )
-#        else:                         activeArray = pointData.GetArray( 0 )
-#        if activeArray <> None:       imageData.GetPointData().SetScalars( activeArray )
-                               
-
-#        if self.input <> None:
-#            pointData = self.input.GetPointData() 
-#            scalars = pointData.GetScalars() 
-#            i0 = scalars.GetNumberOfTuples()/2
-#            datavalues = [ scalars.GetTuple1(i0+100*i) for i in range(3) ]      
-#            print "%s.updateMetadata: scalars= %s, i0=%d, sample values= %s" % ( self.__class__.__name__, str(id(scalars)), i0, str(datavalues) )
 
     def getInputCopy(self):
         image_data = vtk.vtkImageData() 
@@ -540,202 +649,112 @@ class PersistentModule( QObject ):
 
     def initializeInputs( self, **args ):
         isAnimation = args.get( 'animate', False )
-        self.metadata = None
-        if self.allowMultipleInputs:
-            try:
-                self.inputModuleList = self.getPrimaryInputList( **args )
-                self.inputModule = self.inputModuleList[0]
-            except Exception, err:
-                print>>sys.stderr, 'Error: Broken pipeline at input to module %s:\n (%s)' % ( self.__class__.__name__, str(err) ) 
-                traceback.print_exc()
-                sys.exit(-1)
-        else:
-            inMod = self.getPrimaryInput( **args )
-            if inMod: self.inputModule = inMod
-#            if self.inputModule == None: print " ---- No input to module %s ---- " % ( self.__class__.__name__ )
-#        print " %s.initializeInputs: input Module= %s " % ( self.__class__.__name__, str( input_id ) )
-        if  self.inputModule <> None: 
-            self.input =  self.inputModule.getOutput() 
-#            print " --- %s:initializeInputs---> # Arrays = %d " % ( self.__class__.__name__,  ( self.input.GetFieldData().GetNumberOfArrays() if self.input else -1 ) )
-            
-            self.updateMetadata()  
-            if isAnimation:
-                tval = args.get( 'timeValue', None )
-                if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ReferenceTimeUnits )
-                self.fieldData = self.inputModule.getFieldData() 
+        self.newDataset = False
+        for inputIndex, inputPort in enumerate( self.primaryInputPorts ):
+            ispec = InputSpecs()
+            self.inputSpecs[ inputIndex ] = ispec
+            if self.allowMultipleInputs.get( inputIndex, False ):
+                try:
+                    ispec.inputModuleList = self.getPrimaryInputList( port=inputPort, **args )
+                    ispec.inputModule = ispec.inputModuleList[0]
+                except Exception, err:
+                    print>>sys.stderr, 'Error: Broken pipeline at input to module %s:\n (%s)' % ( self.__class__.__name__, str(err) ) 
+                    traceback.print_exc()
+                    sys.exit(-1)
             else:
-                self.initializeLayers()
+                inMod = self.getPrimaryInput( port=inputPort, **args )
+                if inMod: ispec.inputModule = inMod
                 
-            self.initializeScalarRange()
-            
-            if isAnimation:
-                for configFunct in self.configurableFunctions.values(): configFunct.expandRange()
+            if  ispec.inputModule <> None: 
+                ispec.input =  ispec.inputModule.getOutput()                 
+                ispec.updateMetadata()
+                
+                if inputIndex == 0:     
+                    self.setParameter( 'metadata', ispec.metadata ) 
+                    datasetId = self.getAnnotation( "datasetId" )
+                    if datasetId <> ispec.datasetId:
+                        self.pipelineBuilt = False
+                        self.newDataset = True
+                        self.newLayerConfiguration = True
+                        self.addAnnotation( "datasetId", datasetId )
+                else:                   
+                    self.setParameter( 'metadata-%d' % inputIndex, ispec.metadata )
+ 
+                if self.roi == None:  
+                    self.roi = ispec.metadata.get( 'bounds', None )  
+                if isAnimation:
+                    tval = args.get( 'timeValue', None )
+                    if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ReferenceTimeUnits )
+                    ispec.fieldData = ispec.inputModule.getFieldData() 
+                else:
+                    if inputIndex == 0: 
+                        scalars = ispec.metadata.get( 'scalars', None )
+                        self.initializeLayers( scalars )
+                    
+                ispec.initializeScalarRange()
+                
+                if isAnimation:
+                    for configFunct in self.configurableFunctions.values(): configFunct.expandRange()
+                
+            elif ( ispec.fieldData == None ): 
+                ispec.initializeMetadata()
+   
+    def initializeLayers( self, scalars ):
+        if self.activeLayer == None: 
+            self.activeLayer =self.getAnnotation( 'activeLayer' )
+        if self.input and not scalars:
+            scalarsArray = self.input.GetPointData().GetScalars()
+            if scalarsArray <> None:
+                scalars = scalarsArray.GetName() 
+            else:
+                layerList = self.getLayerList()
+                if len( layerList ): scalars = layerList[0] 
+        if self.activeLayer <> scalars:
+            self.updateLayerDependentParameters( self.activeLayer, scalars )
+            self.activeLayer = scalars 
+            self.addAnnotation( 'activeLayer', self.activeLayer  ) 
+            self.seriesScalarRange = None
 
-#            self.setActiveScalars()
-            
-        elif ( self.fieldData == None ): 
-            self.initializeMetadata()
-            
-    def getDataValue( self, image_value):
-        if not self.scalarRange: 
-            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
-        valueRange = self.scalarRange
-        sval = ( image_value - self.rangeBounds[0] ) / ( self.rangeBounds[1] - self.rangeBounds[0] )
-        dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
-        return dataValue
+    def getDataValue( self, image_value, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.getDataValue( image_value )  
+                
+    def getDataValues( self, image_value_list, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.getDataValues( image_value_list )  
+        
+    def getImageValue( self, data_value, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.getImageValue( data_value )  
     
-    def getWorldCoords( self, image_coords ):
-        plotType = self.metadata[ 'plotType' ]                   
-        world_coords = None
-        try:
-            if plotType == 'zyt':
-                lat = self.metadata[ 'lat' ]
-                lon = self.metadata[ 'lon' ]
-                timeAxis = self.metadata[ 'time' ]
-                tval = timeAxis[ image_coords[2] ]
-                relTimeValue = cdtime.reltime( float( tval ), timeAxis.units ) 
-                timeValue = str( relTimeValue.tocomp() )          
-                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), timeValue ]   
-            else:         
-                lat = self.metadata[ 'lat' ]
-                lon = self.metadata[ 'lon' ]
-                lev = self.metadata[ 'lev' ]
-                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), getFloatStr(lev[ image_coords[2] ]) ]   
-        except:
-            gridSpacing = self.input.GetSpacing()
-            gridOrigin = self.input.GetOrigin()
-            world_coords = [ getFloatStr(gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
-        return world_coords
+    def getImageValues( self, data_value_list, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.getImageValues( data_value_list )  
 
-    def getWorldCoord( self, image_coord, iAxis ):
-        plotType = self.metadata[ 'plotType' ]                   
-        axisNames = [ 'Longitude', 'Latitude', 'Time' ] if plotType == 'zyt'  else [ 'Longitude', 'Latitude', 'Level' ]
-        try:
-            axes = [ 'lon', 'lat', 'time' ] if plotType == 'zyt'  else [ 'lon', 'lat', 'lev' ]
-            world_coord = self.metadata[ axes[iAxis] ][ image_coord ]
-            if ( plotType == 'zyt') and  ( iAxis == 2 ):
-                timeAxis = self.metadata[ 'time' ]     
-                timeValue = cdtime.reltime( float( world_coord ), timeAxis.units ) 
-                world_coord = str( timeValue.tocomp() )          
-            return axisNames[iAxis], getFloatStr( world_coord )
-        except:
-            if (plotType == 'zyx') or (iAxis < 2):
-                gridSpacing = self.input.GetSpacing()
-                gridOrigin = self.input.GetOrigin()
-                return axes[iAxis], getFloatStr( gridOrigin[iAxis] + image_coord*gridSpacing[iAxis] ) 
-            return axes[iAxis], ""
-                
-    def getDataValues( self, image_value_list ):
-        if not self.scalarRange: 
-            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
-        valueRange = self.scalarRange
-        dr = ( self.rangeBounds[1] - self.rangeBounds[0] )
-        data_values = []
-        for image_value in image_value_list:
-            sval = 0.0 if ( dr == 0.0 ) else ( image_value - self.rangeBounds[0] ) / dr
-            dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
-            data_values.append( dataValue )
-        return data_values
-
-    def getImageValue( self, data_value ):
-        if not self.scalarRange: 
-            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
-        valueRange = self.scalarRange
-        dv = ( valueRange[1] - valueRange[0] )
-        sval = 0.0 if ( dv == 0.0 ) else ( data_value - valueRange[0] ) / dv 
-        imageValue = self.rangeBounds[0] + sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
-        return imageValue
-
-    def getImageValues( self, data_value_list ):
-        if not self.scalarRange: 
-            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
-        valueRange = self.scalarRange
-        dv = ( valueRange[1] - valueRange[0] )
-        imageValues = []
-        for data_value in data_value_list:
-            sval = 0.0 if ( dv == 0.0 ) else ( data_value - valueRange[0] ) / dv
-            imageValue = self.rangeBounds[0] + sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
-            imageValues.append( imageValue )
-        print "\n *****************  GetImageValues[%d:%x]: data_values = %s, range = %s, imageValues = %s **************** \n" % ( self.moduleID, id(self), str(data_value_list), str(self.scalarRange), str(imageValues) )
-        return imageValues
-
-    def scaleToImage( self, data_value ):
-        if not self.scalarRange: 
-            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
-        dv = ( self.scalarRange[1] - self.scalarRange[0] )
-        sval = 0.0 if ( dv == 0.0 ) else data_value / dv
-        imageScaledValue =  sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
-        return imageScaledValue
+    def scaleToImage( self, data_value, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.scaleToImage( data_value )  
 
     def set2DOutput( self, **args ):
         if self.wmod:
+            fieldData = self.getFieldData()
             portName = args.get( 'name', 'slice' )
-            outputModule = AlgorithmOutputModule( fieldData=self.fieldData, **args )
+            outputModule = AlgorithmOutputModule( fieldData=fieldData, **args )
             output =  outputModule.getOutput() 
             fd = output.GetFieldData() 
-            fd.PassData( self.fieldData )                      
+            fd.PassData( fieldData )                      
             self.wmod.setResult( portName, outputModule ) 
         else: print " Missing wmod in %s.set2DOutput" % self.__class__.__name__
 
     def setOutputModule( self, outputModule, portName = 'volume', **args ): 
         if self.wmod:  
+            fieldData = self.getFieldData()
             output =  outputModule.getOutput() 
             fd = output.GetFieldData()  
-            fd.PassData( self.fieldData )                
+            fd.PassData( fieldData )                
             self.wmod.setResult( portName, outputModule ) 
         else: print " Missing wmod in %s.set2DOutput" % self.__class__.__name__
-        
-    def getFieldData( self, id, fd=None ): 
-        fdata = self.fieldData if fd==None else fd
-        dataVector = fdata.GetAbstractArray( id ) 
-        if dataVector == None: return None
-        nd = dataVector.GetNumberOfTuples()
-        return [ dataVector.GetValue(id) for id in range( nd ) ]         
-
-    def setFieldData( self, id, data ): 
-        dataVector = self.fieldData.GetAbstractArray( id ) 
-        if dataVector == None: return False
-        for id in range(len(data)): dataVector.SetValue( id, data[id] )         
- 
-    def applyFieldData( self, props ): 
-        pass
-#        position = self.getFieldData( 'position' ) 
-#        if position <> None:  
-#            for prop in props: 
-#                prop.SetPosition( position )
-#        scale = self.getFieldData( 'scale' ) 
-#        if scale <> None: 
-#            for prop in props: 
-#                prop.SetScale( scale )
-#        print " applyFieldData, pos = %s" % ( str(position) )
-
-    def addMetadata( self, metadata ):
-        dataVector = self.fieldData.GetAbstractArray( 'metadata' ) 
-        if dataVector == None:   
-            print " Can't get Metadata for class %s " % ( self.__class__.__name__ )
-        else:
-            enc_mdata = encodeToString( metadata )
-            dataVector.InsertNextValue( enc_mdata  )
-
-    def computeMetadata( self, metadata = {}, port=None  ):
-        if not self.fieldData: self.initializeMetadata() 
-        if self.fieldData:
-            md = extractMetadata( self.fieldData )
-            if md: metadata.update( md )
-        return metadata
-        
-    def addMetadataObserver( self, caller, event ):
-        fd = caller.GetOutput().GetFieldData()
-        fd.ShallowCopy( self.fieldData )
-        pass
-
-    def initializeMetadata( self ):
-        self.fieldData = vtk.vtkDataSetAttributes()
-        mdarray = getStringDataArray( 'metadata' )
-        self.fieldData.AddArray( mdarray )
-#        print " %s:initializeMetadata---> # FieldData Arrays = %d " % ( self.__class__.__name__, self.fieldData.GetNumberOfArrays() )
-#        self.fieldData.AddArray( getFloatDataArray( 'position', [  0.0, 0.0, 0.0 ] ) )
-#        self.fieldData.AddArray( getFloatDataArray( 'scale',    [  1.0, 1.0, 1.0 ] ) ) 
+         
            
     def addConfigurableMethod( self, name, method, key, **args ):
         self.configurableFunctions[name] = ConfigurableFunction( name, None, key, pmod=self, hasState=False, open=method, **args )
@@ -931,10 +950,10 @@ class PersistentModule( QObject ):
 #            pass 
 #        return controller
         
-    def getParameterId( self, parmName = None ):
+    def getParameterId( self, parmName = None, input_index=0 ):
         parmIdList = []
-        if not self.datasetId: self.datasetId = self.getAnnotation( 'datasetId' )
-        if self.datasetId: parmIdList.append( self.datasetId )
+        ispec = self.inputSpecs[ input_index ] 
+        if ispec.datasetId: parmIdList.append( ispec.datasetId )
         if self.activeLayer: parmIdList.append( self.activeLayer )
         if parmName: parmIdList.append( parmName )
         if parmIdList: return '.'.join( parmIdList )
@@ -1168,7 +1187,6 @@ class PersistentVisualizationModule( PersistentModule ):
         self.titleBuffer = None
         self.instructionBuffer = " "
         self.textBlinkThread = None 
-        self.pipelineBuilt = False
         self.activation = {}
         self.isAltMode = False
         self.navigationInteractorStyle = None
@@ -1180,15 +1198,17 @@ class PersistentVisualizationModule( PersistentModule ):
  
     def disableVisualizationInteraction(self): 
         pass
+    
                       
-    def setInputZScale( self, zscale_data, **args  ):
-        if self.input <> None:
-            spacing = self.input.GetSpacing()
+    def setInputZScale( self, zscale_data, input_index=0, **args  ):
+        ispec = self.inputSpecs[ input_index ] 
+        if ispec.input <> None:
+            spacing = ispec.input.GetSpacing()
             ix, iy, iz = spacing
             sz = zscale_data[1]
 #            print " PVM >---------------> Set input zscale: %.2f" % sz
-            self.input.SetSpacing( ix, iy, sz )  
-            self.input.Modified() 
+            ispec.input.SetSpacing( ix, iy, sz )  
+            ispec.input.Modified() 
             return True
         return False
                     
@@ -1210,23 +1230,25 @@ class PersistentVisualizationModule( PersistentModule ):
             self.wmod.setResult( portName, outputModule )
             print "setChartDataOutput for class %s" % ( self.__class__.__name__ ) 
     
-    def set3DOutput( self, **args ):  
+    def set3DOutput( self, input_index=0, **args ):  
         portName = args.get( 'name', 'volume' )
+        ispec = self.inputSpecs[ input_index ] 
+        fieldData = ispec.getFieldData()
         if not ( ('output' in args) or ('port' in args) ):
-            if self.input <> None: 
-                args[ 'output' ] = self.input
-            elif self.inputModule <> None: 
-                port = self.inputModule.getOutputPort()
+            if ispec.input <> None: 
+                args[ 'output' ] = ispec.input
+            elif ispec.inputModule <> None: 
+                port = ispec.inputModule.getOutputPort()
                 if port: args[ 'port' ] = port
-                else:    args[ 'output' ] = self.inputModule.getOutput()
+                else:    args[ 'output' ] = ispec.inputModule.getOutput()
         if self.renderer == None: 
             self.renderer = vtk.vtkRenderer()
-        outputModule = AlgorithmOutputModule3D( self.renderer, fieldData=self.fieldData, **args )
+        outputModule = AlgorithmOutputModule3D( self.renderer, fieldData=fieldData, **args )
         output =  outputModule.getOutput() 
 #        print "Setting 3D output for port %s" % ( portName ) 
         if output <> None:
             fd = output.GetFieldData() 
-            fd.PassData( self.fieldData ) 
+            fd.PassData( fieldData ) 
         if self.wmod == None:
             print>>sys.stderr, "Missing wmod in set3DOutput for class %s" % ( self.__class__.__name__ )
         else:
@@ -1386,7 +1408,7 @@ class PersistentVisualizationModule( PersistentModule ):
         if iDType   == vtk.VTK_UNSIGNED_CHAR:   self._max_scalar_value = 255
         elif iDType == vtk.VTK_UNSIGNED_SHORT:  self._max_scalar_value = 256*256-1
         elif iDType == vtk.VTK_SHORT:           self._max_scalar_value = 256*128-1
-        else:                                   self._max_scalar_value = self.rangeBounds[1]  
+        else:                                   self._max_scalar_value = self.getRangeBounds()[1]  
                 
     def initializeRendering(self):
         inputModule = self.getPrimaryInput()

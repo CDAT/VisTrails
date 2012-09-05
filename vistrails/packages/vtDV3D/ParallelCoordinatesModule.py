@@ -24,8 +24,8 @@ class PM_ParallelCoordinateViewer(PersistentVisualizationModule):
     """
     def __init__( self, mid, **args ):
         PersistentVisualizationModule.__init__( self, mid, **args )
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
-        self.addConfigurableLevelingFunction( 'range', 'R',    setLevel=self.setRange,    getLevel=self.getDataRangeBounds, layerDependent=True, units=self.units )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True )
+        self.addConfigurableLevelingFunction( 'range', 'R',    setLevel=self.setRange,    getLevel=self.getDataRangeBounds, layerDependent=True )
 
 #        print " Volume Slicer init, id = %s " % str( id(self) )
 
@@ -39,23 +39,23 @@ class PM_ParallelCoordinateViewer(PersistentVisualizationModule):
         """           
         # The 3 image plane widgets are used to probe the dataset.    
         print " Parallel Coordinates buildPipeline, id = %s " % str( id(self) ) 
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
         self.centerPosition = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
-        dataType = self.input.GetScalarTypeAsString()
-        bounds = list(self.input.GetBounds()) 
-        origin = self.input.GetOrigin()
+        dataType = self.input().GetScalarTypeAsString()
+        bounds = list(self.input().GetBounds()) 
+        origin = self.input().GetOrigin()
         if (dataType <> 'float') and (dataType <> 'double'):
-             self.setMaxScalarValue( self.input.GetScalarType() )
-        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input.GetWholeExtent()), str(origin), str(bounds) )         
+             self.setMaxScalarValue( self.input().GetScalarType() )
+        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input().GetWholeExtent()), str(origin), str(bounds) )         
 
 
     def updateModule(self, **args ):
-        if self.inputModule:
+        if self.inputModule():
             view = self.generateParallelCoordinatesChart()
             self.setChartDataOutput( view )
             
     def generateParallelCoordinatesChart( self ):
-        input = self.inputModule.getOutput() 
+        input = self.inputModule().getOutput() 
         ptData = input.GetPointData()
         narrays = ptData.GetNumberOfArrays()
         arrays = []
@@ -108,7 +108,7 @@ class PM_ParallelCoordinateViewer(PersistentVisualizationModule):
         return view 
 
     def generateParallelCoordinatesPlot( self ):
-        input = self.inputModule.getOutput() 
+        input = self.inputModule().getOutput() 
         ptData = input.GetPointData()
         narrays = ptData.GetNumberOfArrays()
         arrays = []
@@ -135,7 +135,7 @@ class PM_ParallelCoordinateViewer(PersistentVisualizationModule):
         view.GetInteractor().Start()
 
     def generateParallelCoordinatesRepresentation( self ):
-        input_data = self.inputModule.getOutput() 
+        input_data = self.inputModule().getOutput() 
         ptData = input_data.GetPointData()
         narrays = ptData.GetNumberOfArrays()                         
  
@@ -205,17 +205,20 @@ class PM_ParallelCoordinateViewer(PersistentVisualizationModule):
         self.imageRange = self.getImageValues( ctf_data[0:2] ) 
         colormapManager = self.getColormapManager( index=cmap_index )
         colormapManager.setScale( self.imageRange, ctf_data )
-        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
+        ispec = self.inputSpecs[ cmap_index ] 
+        ispec.addMetadata( { 'colormap' : self.getColormapSpec() } )
         
-    def finalizeLeveling( self ):
+    def finalizeLeveling( self, cmap_index = 0 ):
         isLeveling =  PersistentVisualizationModule.finalizeLeveling( self )
         if isLeveling:
-            self.addMetadata( { 'colormap' : self.getColormapSpec() } ) 
+            ispec = self.inputSpecs[ cmap_index ] 
+            ispec.addMetadata( { 'colormap' : self.getColormapSpec() } ) 
 #            self.updateSliceOutput()
 
-    def initializeConfiguration(self):
+    def initializeConfiguration(self, cmap_index=0):
         PersistentModule.initializeConfiguration(self)
-        self.addMetadata( { 'colormap' : self.getColormapSpec() } ) 
+        ispec = self.inputSpecs[ cmap_index ] 
+        ispec.addMetadata( { 'colormap' : self.getColormapSpec() } ) 
 #        self.updateSliceOutput()
 
     def updateColorScale( self, caller, event ):
@@ -247,9 +250,9 @@ if __name__ == '__main__':
     
     
     
-#        self.spacing = self.input.GetSpacing()
+#        self.spacing = self.input().GetSpacing()
 #        sx, sy, sz = self.spacing       
-#        origin = self.input.GetOrigin()
+#        origin = self.input().GetOrigin()
 #        ox, oy, oz = origin
 #        center = [ origin[0] + self.spacing[0] * 0.5 * (xMin + xMax), origin[1] + self.spacing[1] * 0.5 * (yMin + yMax), origin[2] + self.spacing[2] * 0.5 * (zMin + zMax)]
 #        self.sliceMatrix = [ vtk.vtkMatrix4x4(), vtk.vtkMatrix4x4(), vtk.vtkMatrix4x4() ]

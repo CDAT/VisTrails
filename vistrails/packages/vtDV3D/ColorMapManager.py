@@ -68,6 +68,7 @@ class ColorMapManager():
     
     def setScale( self, imageRange, displayRange  ):
         self.lut.SetTableRange( imageRange[0], imageRange[1] ) 
+        self.lut.Modified()
         self.setDisplayRange( displayRange )
   
     def setDisplayRange( self, dataRange ):

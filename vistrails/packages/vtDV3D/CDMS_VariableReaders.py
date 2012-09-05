@@ -46,6 +46,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['portData'], **args)
+        self.datasetId = None
         self.fileSpecs = None
         self.varSpecs = None
         self.gridSpecs = None
@@ -354,7 +355,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         pointData = image_data.GetPointData()
         for aname in range( pointData.GetNumberOfArrays() ): 
             pointData.RemoveArray( pointData.GetArrayName(aname) )
-        self.fieldData.RemoveArray('metadata')
+        fieldData = self.getFieldData()
+        fieldData.RemoveArray('metadata')
         extent = image_data.GetExtent()    
         scalars, nTup = None, 0
         vars = []      
@@ -414,7 +416,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     md[ 'title' ] = getTitle( dsid, varName, var_md )
                 md[ 'valueRange-'+varName ] = vmd[ 'valueRange']                   
         enc_mdata = encodeToString( md ) 
-        if enc_mdata: self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                       
+        if enc_mdata: fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                       
         image_data.Modified()
         return cachedImageDataName
 
