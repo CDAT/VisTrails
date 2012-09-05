@@ -36,37 +36,45 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.opacityRange =  [ 0.2, 0.99 ]
         self.imageRange = None
         self.numberOfLevels = 1
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, adjustRange=True, units='data'  )
+        self.generateTexture = False
+        self.removeConfigurableFunction( 'colormap' )
+#        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, adjustRange=True, units='data'  )
         self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', label='Isosurface Level Range', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True, units='data', adjustRange=True )
         self.addConfigurableLevelingFunction( 'opacity', 'p', label='Isosurface Opacity', activeBound='min', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addConfigurableGuiFunction( 'nLevels', NLevelConfigurationWidget, 'n', label='# Isosurface Levels', setValue=self.setNumberOfLevels, getValue=self.getNumberOfLevels, layerDependent=True )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
+        self.addConfigurableLevelingFunction( 'textureColorScale', 'C', label='Texture Colormap Scale', units='data', setLevel=lambda data:self.setColorScale(data,1), getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRange=True, isValid=self.hasTexture )
+        self.addConfigurableGuiFunction( 'textureColormap', ColormapConfigurationDialog, 'c', label='Choose Texture Colormap', setValue=lambda data:self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasTexture )
+
+    def hasTexture(self):
+        return self.generateTexture
 
     def setInputZScale( self, zscale_data, **args  ):       
-        textureModule = self.wmod.forceGetInputFromPort( "texture", None )
-        if textureModule <> None:
-            textureInput = textureModule.getOutput() 
+        texture_ispec = self.getInputSpec(  1 )                
+        if texture_ispec <> None:
+            textureInput = texture_ispec.input 
             ix, iy, iz = textureInput.GetSpacing()
             sz = zscale_data[1]
             textureInput.SetSpacing( ix, iy, sz )  
             textureInput.Modified() 
         return PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args )
         
-    def setOpacityRange( self, opacity_range, cmap_index=0, **args  ):
+    def setOpacityRange( self, opacity_range, **args  ):
         print "Update Opacity, range = %s" %  str( opacity_range )
         self.opacityRange = opacity_range
+        cmap_index = 1 if self.generateTexture else 0
         colormapManager = self.getColormapManager( index=cmap_index )
         colormapManager.setAlphaRange ( [ opacity_range[0], opacity_range[0] ]  ) 
 #        self.levelSetProperty.SetOpacity( opacity_range[1] )
         
     def setColorScale( self, range, cmap_index=0, **args  ):
         self.imageRange = self.getImageValues( range[0:2] ) 
-        self.levelSetMapper.SetScalarRange( self.imageRange[0], self.imageRange[1] )
         colormapManager = self.getColormapManager( index=cmap_index )
-        colormapManager.setDisplayRange( self.imageRange )
+        ispec = self.getInputSpec( cmap_index )
+        colormapManager.setScale( self.imageRange, range )
 
-    def getColorScale( self ):
-        sr = self.getDataRangeBounds()
+    def getColorScale( self, cmap_index=0 ):
+        sr = self.getDataRangeBounds( cmap_index )
         return [ sr[0], sr[1], 0 ]
 
     def getOpacityRange( self ):
@@ -97,12 +105,12 @@ class PM_LevelSurface(PersistentVisualizationModule):
         nL1 = self.numberOfLevels + 1
         dL = ( self.range[1] - self.range[0] ) / nL1
         for i in range( 1, nL1 ): self.levelSetFilter.SetValue ( i, self.range[0] + dL * i )    
-        self.updateColorMapping()
+#        self.updateColorMapping()
         print "Update %d Level(s), range = [ %f, %f ], levels = %s" %  ( self.numberOfLevels, self.range[0], self.range[1], str(self.getLevelValues()) )  
         
-    def updateColorMapping(self):
-        if self.colorByMappedScalars: 
-            pass
+#    def updateColorMapping(self):
+#        if self.colorByMappedScalars: 
+#            pass
 #        else:
 #            color = self.lut.
 #            self.levelSetProperty.SetColor( color )        
@@ -132,16 +140,8 @@ class PM_LevelSurface(PersistentVisualizationModule):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """ 
-        textureModule = self.wmod.forceGetInputFromPort( "texture", None )
-#        if self.input == None:
-#            if textureModule <> None:
-#                self.input = textureModule.getOutput() 
-#            else:
-#                print>>sys.stderr, "Error, must provide an input to the LevelSurface module!"
-
-#        mod, d = self.getRegisteredDescriptor()
-        testTexture = True
-         
+        
+        texture_ispec = self.getInputSpec(  1 )                
         xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
         self.sliceCenter = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
         spacing = self.input().GetSpacing()
@@ -157,35 +157,34 @@ class PM_LevelSurface(PersistentVisualizationModule):
         dr = rangeBounds[1] - rangeBounds[0]
         range_offset = .2*dr
         self.range = [ rangeBounds[0] + range_offset, rangeBounds[1] - range_offset ]
-        lut = self.getLut()
-
         self.probeFilter = None
         textureRange = self.range
-        if textureModule <> None:
+        if texture_ispec <> None:
+            textureInput = texture_ispec.input if texture_ispec <> None else None
             self.probeFilter = vtk.vtkProbeFilter()
-            textureInput = textureModule.getOutput() 
             textureRange = textureInput.GetScalarRange()
             self.probeFilter.SetSource( textureInput )
-        elif testTexture:
-            self.probeFilter = vtk.vtkProbeFilter()
-            textureGenerator = vtk.vtkImageSinusoidSource()
-            textureGenerator.SetWholeExtent ( xMin, xMax, yMin, yMax, zMin, zMax )
-            textureGenerator.SetDirection( 0.0, 0.0, 1.0 )
-            textureGenerator.SetPeriod( xMax-xMin )
-            textureGenerator.SetAmplitude( 125.0 )
-            textureGenerator.Update()
-                        
-            imageInfo = vtk.vtkImageChangeInformation()
-            imageInfo.SetInputConnection( textureGenerator.GetOutputPort() ) 
-            imageInfo.SetOutputOrigin( 0.0, 0.0, 0.0 )
-            imageInfo.SetOutputExtentStart( xMin, yMin, zMin )
-            imageInfo.SetOutputSpacing( spacing[0], spacing[1], spacing[2] )
-        
-            result = imageInfo.GetOutput() 
-            textureRange = result.GetScalarRange()           
-            self.probeFilter.SetSource( result )
+            self.generateTexture = True
+#        elif testTexture:
+#            self.probeFilter = vtk.vtkProbeFilter()
+#            textureGenerator = vtk.vtkImageSinusoidSource()
+#            textureGenerator.SetWholeExtent ( xMin, xMax, yMin, yMax, zMin, zMax )
+#            textureGenerator.SetDirection( 0.0, 0.0, 1.0 )
+#            textureGenerator.SetPeriod( xMax-xMin )
+#            textureGenerator.SetAmplitude( 125.0 )
+#            textureGenerator.Update()
+#                        
+#            imageInfo = vtk.vtkImageChangeInformation()
+#            imageInfo.SetInputConnection( textureGenerator.GetOutputPort() ) 
+#            imageInfo.SetOutputOrigin( 0.0, 0.0, 0.0 )
+#            imageInfo.SetOutputExtentStart( xMin, yMin, zMin )
+#            imageInfo.SetOutputSpacing( spacing[0], spacing[1], spacing[2] )
+#        
+#            result = imageInfo.GetOutput() 
+#            textureRange = result.GetScalarRange()           
+#            self.probeFilter.SetSource( result )
             
-        if  textureRange <> None: print " Texture Range = %s " % str( textureRange )
+#        if  textureRange <> None: print " Texture Range = %s " % str( textureRange )
         
 #        vtkImageResample
 #        shrinkFactor = 4
@@ -206,10 +205,15 @@ class PM_LevelSurface(PersistentVisualizationModule):
             self.probeFilter.SetInputConnection( self.levelSetFilter.GetOutputPort() )
             self.levelSetMapper.SetInputConnection( self.probeFilter.GetOutputPort() ) 
             self.levelSetMapper.SetScalarRange( textureRange )
-        self.levelSetMapper.SetLookupTable( lut ) 
-         
-        colormapManager = self.getColormapManager( )     
-        colormapManager.setAlphaRange ( self.opacityRange ) 
+            
+        if texture_ispec <> None:
+            colormapManager = self.getColormapManager( index=1 )     
+            colormapManager.setAlphaRange ( self.opacityRange ) 
+            self.levelSetMapper.SetLookupTable( colormapManager.lut ) 
+        else:
+            colormapManager = self.getColormapManager()     
+            colormapManager.setAlphaRange ( self.opacityRange ) 
+        
         self.updateLevels()
           
 #        levelSetMapper.SetColorModeToMapScalars()  

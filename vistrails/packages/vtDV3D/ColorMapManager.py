@@ -24,7 +24,6 @@ class ColorMapManager():
         self.colormapName = 'Spectral'
         self.colorBarActor = None
         self.invertColormap = 1
-        self.units = args.get('units', '' )
 
     def toggleColormapVisibility(self):
         if  self.colorBarActor.GetVisibility():      self.colorBarActor.VisibilityOff()  
@@ -33,6 +32,7 @@ class ColorMapManager():
     def createActor( self, **args ):
         if self.colorBarActor == None:
             pos = args.get( 'pos', [ 0.9, 0.2 ] )
+            title = args.get( 'title', '' )
             self.colorBarActor = vtk.vtkScalarBarActor()
             self.colorBarActor.SetMaximumWidthInPixels( 50 )
             self.colorBarActor.SetNumberOfLabels(9)
@@ -47,7 +47,7 @@ class ColorMapManager():
             self.colorBarActor.SetPosition( pos[0], pos[1] )    
             self.colorBarActor.SetLabelTextProperty( labelFormat )
             self.colorBarActor.SetTitleTextProperty( titleFormat )
-            self.colorBarActor.SetTitle( self.units )
+            self.colorBarActor.SetTitle( title )
             self.colorBarActor.SetLookupTable( self.getDisplayLookupTable() )
             self.colorBarActor.SetVisibility(0)
         else:

@@ -717,7 +717,10 @@ class PersistentModule( QObject ):
 
     def getDataValue( self, image_value, input_index = 0 ):
         ispec = self.inputSpecs[ input_index ] 
-        return ispec.getDataValue( image_value )  
+        return ispec.getDataValue( image_value )
+    
+    def getInputSpec( self, input_index=0 ):
+        return self.inputSpecs.get( input_index, None )
                 
     def getDataValues( self, image_value_list, input_index = 0 ):
         ispec = self.inputSpecs[ input_index ] 
@@ -769,6 +772,9 @@ class PersistentModule( QObject ):
         isActive = not HyperwallManager.getInstance().isClient
         guiCF = GuiConfigurableFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
+
+    def removeConfigurableFunction(self, name ):
+        del self.configurableFunctions[name]
 
     def addConfigurableWidgetFunction(self, name, signature, widgetWrapper, key, **args):
         wCF = WidgetConfigurableFunction( name, signature, widgetWrapper, key, pmod=self, **args )
@@ -1371,10 +1377,11 @@ class PersistentVisualizationModule( PersistentModule ):
 #        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
 #        print ' ~~~~~~~ SET COLORMAP:  --%s--  ' % self.colormapName
         self.updateStereo( enableStereo )
-        colormapManager = self.getColormapManager( name=colormapName, invert=invertColormap, index=cmap_index )
+        colormapManager = self.getColormapManager( name=colormapName, invert=invertColormap, index=cmap_index, units=self.getUnits(cmap_index) )
         if self.createColormap and ( colormapManager.colorBarActor == None ): 
             cmap_pos = [ 0.9, 0.2 ] if (cmap_index==0) else [ 0.02, 0.2 ]
-            self.renderer.AddActor( colormapManager.createActor( pos=cmap_pos ) )
+            units = self.getUnits( cmap_index )
+            self.renderer.AddActor( colormapManager.createActor( pos=cmap_pos, title=units ) )
         self.rebuildColorTransferFunction( cmap_index )
         self.render() 
 
