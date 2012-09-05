@@ -72,6 +72,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         colormapManager = self.getColormapManager( index=cmap_index )
         ispec = self.getInputSpec( cmap_index )
         colormapManager.setScale( self.imageRange, range )
+        self.levelSetMapper.Modified()
 
     def getColorScale( self, cmap_index=0 ):
         sr = self.getDataRangeBounds( cmap_index )
@@ -210,6 +211,8 @@ class PM_LevelSurface(PersistentVisualizationModule):
             colormapManager = self.getColormapManager( index=1 )     
             colormapManager.setAlphaRange ( self.opacityRange ) 
             self.levelSetMapper.SetLookupTable( colormapManager.lut ) 
+            self.levelSetMapper.SetColorModeToMapScalars()
+            self.levelSetMapper.UseLookupTableScalarRangeOn()
         else:
             colormapManager = self.getColormapManager()     
             colormapManager.setAlphaRange ( self.opacityRange ) 
