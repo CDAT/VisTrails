@@ -573,14 +573,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
            
     @staticmethod                         
     def addAction( module, action_key, config_key, isActive=True ):
-        actionList = DV3DPipelineHelper.actionMap.setdefault( action_key, [] )
+        actionList = DV3DPipelineHelper.actionMap.setdefault( action_key[1], [] )
         actionList.append( ( module, config_key ) ) 
         if isActive:
             actionList = DV3DPipelineHelper.actionMenu.actions() 
             for action in actionList:
-                if str(action.text()) == str(action_key): return
-            menuItem = DV3DPipelineHelper.actionMenu.addAction( action_key )
-            menuItem.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key: DV3DPipelineHelper.execAction( akey ) )
+                if str(action.text()) == str(action_key[0]): return
+            menuItem = DV3DPipelineHelper.actionMenu.addAction( action_key[0] )
+            menuItem.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key[1]: DV3DPipelineHelper.execAction( akey ) )
     
     @staticmethod
     def getConfigCmd( cfg_key ):   
@@ -1076,7 +1076,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         active_irens = DV3DPipelineHelper.getActiveIrens()
         for configFunc in configFuncs:
             if configFunc.isValid():
-                action_key = str( configFunc.label )
+                action_key = ( str( configFunc.label ), str( configFunc.name ) )
                 config_key = configFunc.key 
                 pmod = configFunc.module
                 isActive = ( pmod.iren in active_irens ) 
@@ -1095,9 +1095,9 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     
         menu1 = DV3DPipelineHelper.startNewMenu() 
         for pmod in pmods:
-            DV3DPipelineHelper.addAction( pmod, 'Help', 'h' )
-            DV3DPipelineHelper.addAction( pmod, 'Colorbar', 'l' )
-            DV3DPipelineHelper.addAction( pmod, 'Reset', 'r' )
+            DV3DPipelineHelper.addAction( pmod, [ 'Help', 'help' ], 'h' )
+            DV3DPipelineHelper.addAction( pmod, [ 'Show Colorbar', 'colorbar' ], 'l' )
+            DV3DPipelineHelper.addAction( pmod, [ 'Reset', 'reset' ], 'r' )
         
         DV3DPipelineHelper.config_widget = DV3DConfigControlPanel( menu, menu1 )
         for pmod in pmods:

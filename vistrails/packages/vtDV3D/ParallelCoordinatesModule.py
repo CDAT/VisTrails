@@ -202,7 +202,7 @@ class PM_ParallelCoordinateViewer(PersistentVisualizationModule):
         self.ColorLeveler.startWindowLevel( x, y )
 
     def scaleColormap( self, ctf_data, cmap_index=0 ):
-        self.imageRange = self.getImageValues( ctf_data[0:2] ) 
+        self.imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
         colormapManager = self.getColormapManager( index=cmap_index )
         colormapManager.setScale( self.imageRange, ctf_data )
         ispec = self.inputSpecs[ cmap_index ] 

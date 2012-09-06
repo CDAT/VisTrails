@@ -40,11 +40,11 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.removeConfigurableFunction( 'colormap' )
 #        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, adjustRange=True, units='data'  )
         self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', label='Isosurface Level Range', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True, units='data', adjustRange=True )
-        self.addConfigurableLevelingFunction( 'opacity', 'p', label='Isosurface Opacity', activeBound='min', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
+        self.addConfigurableLevelingFunction( 'isoOpacity', 'p', label='Isosurface Opacity', activeBound='min', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addConfigurableGuiFunction( 'nLevels', NLevelConfigurationWidget, 'n', label='# Isosurface Levels', setValue=self.setNumberOfLevels, getValue=self.getNumberOfLevels, layerDependent=True )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
-        self.addConfigurableLevelingFunction( 'textureColorScale', 'C', label='Texture Colormap Scale', units='data', setLevel=lambda data:self.setColorScale(data,1), getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRange=True, isValid=self.hasTexture )
-        self.addConfigurableGuiFunction( 'textureColormap', ColormapConfigurationDialog, 'c', label='Choose Texture Colormap', setValue=lambda data:self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasTexture )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Texture Colormap Scale', units='data', setLevel=lambda data:self.setColorScale(data,1), getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRange=True, isValid=self.hasTexture )
+        self.addConfigurableGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Texture Colormap', setValue=lambda data:self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasTexture )
 
     def hasTexture(self):
         return self.generateTexture
@@ -68,7 +68,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
 #        self.levelSetProperty.SetOpacity( opacity_range[1] )
         
     def setColorScale( self, range, cmap_index=0, **args  ):
-        self.imageRange = self.getImageValues( range[0:2] ) 
+        self.imageRange = self.getImageValues( range[0:2], cmap_index ) 
         colormapManager = self.getColormapManager( index=cmap_index )
         ispec = self.getInputSpec( cmap_index )
         colormapManager.setScale( self.imageRange, range )

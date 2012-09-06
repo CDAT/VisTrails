@@ -26,8 +26,9 @@ class ColorMapManager():
         self.invertColormap = 1
 
     def toggleColormapVisibility(self):
-        if  self.colorBarActor.GetVisibility():      self.colorBarActor.VisibilityOff()  
-        else:                                        self.colorBarActor.VisibilityOn() 
+        if self.colorBarActor:
+            if  self.colorBarActor.GetVisibility():      self.colorBarActor.VisibilityOff()  
+            else:                                        self.colorBarActor.VisibilityOn() 
 
     def createActor( self, **args ):
         if self.colorBarActor == None:

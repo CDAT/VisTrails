@@ -419,7 +419,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         if ctf_data: self.ctf_data = ctf_data
         else: ctf_data = self.ctf_data
         if ctf_data:
-            self.imageRange = self.getImageValues( ctf_data[0:2] ) 
+            self.imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
             colormapManager = self.getColormapManager( index=cmap_index )
             colormapManager.setScale( self.imageRange, ctf_data )
             self.invert = ctf_data[2]
