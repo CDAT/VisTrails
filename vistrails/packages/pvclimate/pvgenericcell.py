@@ -16,7 +16,7 @@ from gui.modules.module_configure import StandardModuleConfigurationWidget
 # Needed for port related stuff
 from core.vistrail.port import PortEndPoint
 import core.modules.basic_modules as basic_modules
-from pvclimatecell import PVClimateCellConfigurationWidget
+from pvclimate_widget import PVClimateCellConfigurationWidget
 
 # Needed to parse csv string into a list
 import csv

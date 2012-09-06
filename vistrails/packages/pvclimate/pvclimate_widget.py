@@ -36,45 +36,6 @@ class Transformation():
         self.origin = [0.0, 0.0, 0.0]
         self.orientation = [0.0, 0.0, 0.0]
 
-
-class PVClimateCell(SpreadsheetCell):
-    def __init__(self):
-        SpreadsheetCell.__init__(self)
-        self.cellWidget = None
-        self.sliceOffset = 0.0
-        self.isoSurfaces = "8"
-        self.tranformation = Transformation()
-
-    def compute(self):
-        """ compute() -> None
-        Dispatch the vtkRenderer to the actual rendering widget
-        """
-        # Fetch input variable
-        proxies = self.forceGetInputListFromPort('variable')
-
-        # Fetch slice offset from input port
-        if self.hasInputFromPort("sliceOffset"):
-            self.sliceOffset = self.getInputFromPort("sliceOffset")
-        else:
-            pass
-
-        # Fetch iso surfaces from input port
-        if self.hasInputFromPort("isoSurfaces"):
-            self.isoSurfaces = self.getInputFromPort("isoSurfaces")
-        else:
-            pass
-
-        self.cellWidget = self.displayAndWait(QParaViewWidget, (proxies, self.sliceOffset, self.isoSurfaces))
-
-    def persistParameterList( self, parameter_list, **args ):
-        print "Getting Something"
-
-    def setSliceOffset(self, value):
-        self.sliceOffset = value
-
-    def getSliceOffset(self):
-        return self.sliceOffset
-
 class QParaViewWidget(QVTKWidget):
 
     def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):

@@ -23,7 +23,7 @@ import api
 
 # Import PV Generic Cell
 from pvgenericcell import PVGenericCell
-import pvclimatecell
+import pvclimate_widget
 
 import sys
 
@@ -50,13 +50,13 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
           return None
 
         if len(cell) == 0:
-            return pvclimatecell.PVClimateCellConfigurationWidget(None,
+            return pvclimate_widget.PVClimateCellConfigurationWidget(None,
                                                                   controller.vt_controller)
         else:
             pvcell = cell[0].module_descriptor.module()
             # Create child widgets
             # Attach it to the parent widget
-            return pvclimatecell.PVClimateCellConfigurationWidget(cell[0],
+            return pvclimate_widget.PVClimateCellConfigurationWidget(cell[0],
                                                                   controller.vt_controller)
 
     @staticmethod
