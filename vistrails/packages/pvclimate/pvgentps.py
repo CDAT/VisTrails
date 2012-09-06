@@ -8,6 +8,10 @@ timeSteps = inspect.getmodule(stk[0]).timeSteps
 # sys is required
 import sys
 
+# For debugging
+import sys
+sys.stdout = open('/home/aashish/Desktop/log.txt', 'w')
+
 # re is required
 import re
 
@@ -26,6 +30,10 @@ source_map = {}
 source = pv.GetActiveSource()
 proxy = source.SMProxy.GetXMLLabel()
 proxy = re.sub(r'\s', '', proxy)
+
+print 'proxy is ', proxy
+print 'source is ', source
+print 'dir(source) ', dir(source)
 filename = source.FileName
 source_map[proxy] = filename
 sources_str = str(proxy) + ':' + str(filename)

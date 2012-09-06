@@ -62,10 +62,6 @@ class QParaViewWidget(QVTKWidget):
             variableName = var.get_variable_name()
             variableType = var.get_variable_type()
 
-            print 'reader is ', reader
-            print 'variableName is ', variableName
-            print 'variableType is ', variableType
-
             # Update pipeline
             reader.UpdatePipeline()
 
@@ -448,18 +444,25 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
 
     def create_remove_button(self):
         widget = QWidget()
-        self.btn_del_var = QDockPushButton("Remove")
-        self.btn_del_var.setEnabled(False)
+        self.remove_rep_button = QDockPushButton("Remove")
+        self.remove_rep_button.setEnabled(False)
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(3)
         btn_layout.setMargin(0)
-        btn_layout.addWidget(self.btn_del_var)
+        btn_layout.addWidget(self.remove_rep_button)
         btn_layout.addStretch()
         widget.setLayout(btn_layout)
 
-        self.connect(self.btn_del_var, SIGNAL('clicked(bool)'), self.delete_clicked)
+        self.connect(self.remove_rep_button, SIGNAL('clicked(bool)'), self.delete_clicked)
 
         return widget
+
+    def create_submit_job_button(self):
+        self.submit_job_button = QDockPushButton("Submit Job")
+        #TODO: Enable only when we have a view populated with data
+        self.submit_job_button.setEnabled(True)
+        self.connect(self.submit_job_button, SIGNAL('clicked(bool)'), self.submit_job)
+        return self.submit_job_button
 
     def delete_clicked(self):
         if self.representations_table.selectedItems():
@@ -469,6 +472,12 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
             pv_generic_cell = self.get_workflow_module(self.moduleId)
             pv_generic_cell.removeRepresentation(row)
 #            self.controller.execute_current_workflow()
+
+    def submit_job(self):
+        #TODO Hard coded timesteps for now
+        global timeSteps
+        timeSteps = [0.0, 1.0]
+        __import__("pvgentps")
 
     def create_representation_table(self):
         self.representations_table = PVRepresentationPlotTableWidget(self)
@@ -508,23 +517,29 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         layout = QVBoxLayout()
         representations_panel.setLayout( layout )
 
-
         self.create_config_panel()
         self.create_representation_table()
 
         layout.addWidget(self.representations_table)
-        layout.addWidget(self.create_remove_button())
         layout.addWidget(self.config_panel);
+
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(3)
+        btn_layout.setMargin(0)
+        btn_layout.addWidget(self.create_remove_button())
+        btn_layout.addWidget(self.create_submit_job_button())
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
 
         self.setDefaults()
 
     def itemSelectionChanged(self):
         if self.representations_table.selectedItems():
-            self.btn_del_var.setEnabled(True)
+            self.remove_rep_button.setEnabled(True)
             item = self.representations_table.selectedItems()[0]
             self.config_panel.layout().setCurrentIndex(item.row())
         else:
-            self.btn_del_var.setEnabled(False)
+            self.remove_rep_button.setEnabled(False)
 
     def setDefaults(self):
         moduleInstance = self.module.module_descriptor.module()
