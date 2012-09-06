@@ -1,16 +1,17 @@
 #!/usr/bin/env python
 
+# Import required modules
+import os
+import re
+import sys
+
 # Get passed in variables
 import inspect
 stk = inspect.stack()[1]
 timeSteps = inspect.getmodule(stk[0]).timeSteps
 
-# sys is required
-import sys
-
 # For debugging
-import sys
-sys.stdout = open('/home/aashish/Desktop/log.txt', 'w')
+#sys.stdout = open('/home/aashish/Desktop/log.txt', 'w')
 
 # re is required
 import re
@@ -19,28 +20,40 @@ import re
 import paraview.simple as pv
 
 # Hard coded for now
-file_string = open('tp_exportp_tmpl.py', 'r').read()
+current_path = os.path.dirname(os.path.abspath(__file__))
+template_script_path = current_path + '/tp_exportp_tmpl.py'
+file_string = open(template_script_path, 'r').read()
 from string import Template
 s = Template(file_string)
 
-# TODO: Fill out sources
-
 # Query active source
 source_map = {}
-source = pv.GetActiveSource()
-proxy = source.SMProxy.GetXMLLabel()
-proxy = re.sub(r'\s', '', proxy)
+sources = pv.GetSources()
 
-print 'proxy is ', proxy
-print 'source is ', source
-print 'dir(source) ', dir(source)
-filename = source.FileName
+# TODO: Check if dict is not empty
+source = None
+filename = None
+
+# Find a source that has a input file
+for key in sources.keys():
+  source = sources[key]
+  if hasattr(source, 'FileName'):
+    proxy = source.SMProxy.GetXMLLabel()
+    proxy = re.sub(r'\s', '', proxy)
+    filename = source.FileName
+    break
+
+if filename is None:
+  sys.exit("ERROR: Could not find a valid source")
+
 source_map[proxy] = filename
 sources_str = str(proxy) + ':' + str(filename)
 
-out_file = open('tp_exportp.py', 'w')
+script_path=current_path + '/tp_exportp.py'
+out_file = open(script_path, 'w')
 out_file.write(s.substitute(export_rendering='True', sources=sources_str, params="'my_view0' : ['image_%t.png', '1', '600', '600']", tp_size='1', out_file='batch.py'))
 out_file.close()
 
 # Execute script to generate batch script
+sys.path.append(current_path)
 __import__("tp_exportp")

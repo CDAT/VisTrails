@@ -476,8 +476,12 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
     def submit_job(self):
         #TODO Hard coded timesteps for now
         global timeSteps
-        timeSteps = [0.0, 1.0]
-        __import__("pvgentps")
+        timeSteps = [0.0]
+        import sys
+        import os
+        path = os.path.dirname(os.path.abspath(__file__))
+        sys.path.append(path)
+        __import__('pvgentps')
 
     def create_representation_table(self):
         self.representations_table = PVRepresentationPlotTableWidget(self)
