@@ -41,6 +41,12 @@ for key in sources.keys():
     proxy = source.SMProxy.GetXMLLabel()
     proxy = re.sub(r'\s', '', proxy)
     filename = source.FileName
+
+    ## Load available arrays (specific to some readers for now)
+    if hasattr(source, 'VariableArrayStatus') and hasattr(source, 'PointData'):
+      source.VariableArrayStatus = source.PointData.keys()
+
+    # Done
     break
 
 if filename is None:
