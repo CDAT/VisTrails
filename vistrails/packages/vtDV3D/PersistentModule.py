@@ -291,12 +291,11 @@ class InputSpecs:
             if array_name: layerList.append( array_name )
         return layerList
     
-    def computeMetadata( self, metadata = {}, port=None  ):
+    def computeMetadata( self  ):
         if not self.fieldData: self.initializeMetadata() 
         if self.fieldData:
-            md = extractMetadata( self.fieldData )
-            if md: metadata.update( md )
-        return metadata
+            return extractMetadata( self.fieldData )
+        return {}
         
     def addMetadataObserver( self, caller, event ):
         fd = caller.GetOutput().GetFieldData()
@@ -1051,6 +1050,8 @@ class PersistentModule( QObject ):
 #            self.wmod = None
                          
     def finalizeParameter(self, parameter_name, **args ):
+        if parameter_name == None:
+            return
         try:
             output = self.getParameter( parameter_name )
             assert (output <> None), "Attempt to finalize parameter that has not been cached." 
@@ -1381,7 +1382,9 @@ class PersistentVisualizationModule( PersistentModule ):
         if self.createColormap and ( colormapManager.colorBarActor == None ): 
             cmap_pos = [ 0.9, 0.2 ] if (cmap_index==0) else [ 0.02, 0.2 ]
             units = self.getUnits( cmap_index )
-            self.renderer.AddActor( colormapManager.createActor( pos=cmap_pos, title=units ) )
+            ispec = self.getInputSpec( cmap_index )            
+            cm_title = "%s\n(%s)" % ( ispec.metadata.get('scalars',''), units ) if ispec else units 
+            self.renderer.AddActor( colormapManager.createActor( pos=cmap_pos, title=cm_title ) )
         self.rebuildColorTransferFunction( cmap_index )
         self.render() 
 

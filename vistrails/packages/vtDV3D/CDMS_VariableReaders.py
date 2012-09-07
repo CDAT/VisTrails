@@ -521,8 +521,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         if dset:  gridSpecs['attributes'] = dset.dataset.attributes
         return gridSpecs   
                  
-    def computeMetadata( self, metadata={}, port=None ):
-        PersistentVisualizationModule.computeMetadata( self, metadata )
+    def computeMetadata( self ):
+        metadata = PersistentVisualizationModule.computeMetadata( self )
         if self.cdmsDataset:
             metadata[ 'vars2d' ] = self.cdmsDataset.getVariableList( 2 )
             metadata[ 'vars3d' ] = self.cdmsDataset.getVariableList( 3 )

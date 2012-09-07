@@ -435,8 +435,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 wpos = ispec.getWorldCoords( cpos )
                 if self.generateContours:
                     contour_image_value = caller.GetCurrentImageValue2() 
-                    contour_value = self.getDataValue( contour_image_value )
-                    textDisplay = " Position: (%s, %s, %s), Value: %.3G %s, Contour Value: %.3G" % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units, contour_value )
+                    contour_value = self.getDataValue( contour_image_value, 1 )
+                    contour_units = self.getUnits(1)
+                    textDisplay = " Position: (%s, %s, %s), Value: %.3G %s, Contour Value: %.3G %s" % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units, contour_value, contour_units )
                 else:
                     textDisplay = " Position: (%s, %s, %s), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units )
                 sliceIndex = caller.GetSliceIndex() 
