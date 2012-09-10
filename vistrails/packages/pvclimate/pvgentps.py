@@ -58,7 +58,6 @@ sources_str = str(proxy) + ':' + str(filename)
 ## Generate spatio-temporal parallel script file (temporary)
 import tempfile
 spt_temp_file = tempfile.NamedTemporaryFile(mode='w', prefix='tp_exportp', suffix='.py')
-
 spt_temp_file.write(s.substitute(export_rendering='True', sources=sources_str, params="'my_view0' : ['image_%t.png', '1', '600', '600']", tp_size='1', out_file='batch.py'))
 spt_temp_file.flush()
 
