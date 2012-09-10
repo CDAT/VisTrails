@@ -25,7 +25,6 @@ scriptFileName = "$out_file"
 # this method replaces construction of proxies with methods
 # that will work on the remote machine
 def tp_hook(info, ctorMethod, ctorArgs, extraCtorCommands):
-    print 'hey there'
     global reader_input_map, export_rendering
     if info.ProxyName in reader_input_map.keys():
         print 'has proxy'
@@ -48,7 +47,6 @@ def tp_hook(info, ctorMethod, ctorArgs, extraCtorCommands):
     proxy = info.Proxy
 
     # handle views
-    print 'handle views'
     if proxy.GetXMLGroup() == 'views' and export_rendering:
         proxyName = servermanager.ProxyManager().GetProxyName("views", proxy)
         ctorArgs = [ ctorMethod, "\"%s\"" % screenshot_info[proxyName][0], \
