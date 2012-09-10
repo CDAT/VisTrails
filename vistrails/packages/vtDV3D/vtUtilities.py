@@ -147,6 +147,8 @@ def change_parameters( module_id, parmRecList, controller=None ):
         action = core.db.action.create_action( op_list ) 
         controller.add_new_action(action)
         controller.perform_action(action)
+        if hasattr(controller, 'uvcdat_controller'):
+            controller.uvcdat_controller.cell_was_changed(action)
     except Exception, err:
         print "Error changing parameter in module %d: parm: %s, error: %s" % ( module_id, str(parmRecList), str(err) )
     
