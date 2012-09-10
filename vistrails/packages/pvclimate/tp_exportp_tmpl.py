@@ -1,9 +1,5 @@
 from paraview.simple import *
 
-# For debugging
-import sys
-sys.stdout = open('/home/aashish/Desktop/log.txt', 'w')
-
 # Read gloabal vairables
 # Get passed in variables
 import inspect

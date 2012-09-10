@@ -461,7 +461,7 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         self.submit_job_button = QDockPushButton("Submit Job")
         #TODO: Enable only when we have a view populated with data
         self.submit_job_button.setEnabled(True)
-        self.connect(self.submit_job_button, SIGNAL('clicked(bool)'), self.submit_job)
+        self.connect(self.submit_job_button, SIGNAL('pressed()'), self.submit_job)
         return self.submit_job_button
 
     def delete_clicked(self):
@@ -479,9 +479,15 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         timeSteps = [0.0]
         import sys
         import os
-        path = os.path.dirname(os.path.abspath(__file__))
-        sys.path.append(path)
-        __import__('pvgentps')
+
+        if sys.modules.has_key('pvgentps'):
+          reload(sys.modules['pvgentps'])
+        else:
+          path = os.path.dirname(os.path.abspath(__file__))
+          sys.path.append(path)
+          __import__('pvgentps')
+
+        return
 
     def create_representation_table(self):
         self.representations_table = PVRepresentationPlotTableWidget(self)
