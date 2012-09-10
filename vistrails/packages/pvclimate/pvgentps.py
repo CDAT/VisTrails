@@ -5,36 +5,36 @@ import os
 import re
 import sys
 
-# Get passed in variables
+## Get passed in variables
 import inspect
 stk = inspect.stack()[1]
 timeSteps = inspect.getmodule(stk[0]).timeSteps
 
-# For debugging
+## For debugging
 #sys.stdout = open('/home/aashish/Desktop/log.txt', 'w')
 
-# re is required
+## re is required
 import re
 
-# paraview is required
+## paraview is required
 import paraview.simple as pv
 
-# Hard coded for now
+## Hard coded for now
 current_path = os.path.dirname(os.path.abspath(__file__))
 template_script_path = current_path + '/tp_exportp_tmpl.py'
 file_string = open(template_script_path, 'r').read()
 from string import Template
 s = Template(file_string)
 
-# Query active source
+## Query active source
 source_map = {}
 sources = pv.GetSources()
 
-# TODO: Check if dict is not empty
+## TODO: Check if dict is not empty
 source = None
 filename = None
 
-# Find a source that has a input file
+## Find a source that has a input file
 for key in sources.keys():
   source = sources[key]
   if hasattr(source, 'FileName'):
@@ -55,11 +55,21 @@ if filename is None:
 source_map[proxy] = filename
 sources_str = str(proxy) + ':' + str(filename)
 
-script_path=current_path + '/tp_exportp.py'
-out_file = open(script_path, 'w')
-out_file.write(s.substitute(export_rendering='True', sources=sources_str, params="'my_view0' : ['image_%t.png', '1', '600', '600']", tp_size='1', out_file='batch.py'))
-out_file.close()
+## Generate spatio-temporal parallel script file (temporary)
+import tempfile
+spt_temp_file = tempfile.NamedTemporaryFile(mode='w', prefix='tp_exportp', suffix='.py')
 
-# Execute script to generate batch script
-sys.path.append(current_path)
-__import__("tp_exportp")
+spt_temp_file.write(s.substitute(export_rendering='True', sources=sources_str, params="'my_view0' : ['image_%t.png', '1', '600', '600']", tp_size='1', out_file='batch.py'))
+spt_temp_file.flush()
+
+## Execute script to generate batch script
+sys.path.append(tempfile.gettempdir())
+spt_temp_module = os.path.basename(spt_temp_file.name).rsplit('.')[0]
+
+if len(spt_temp_module) == 0:
+  sys.exit("ERROR: Failed to locate spatio-temporal parallel script file")
+
+__import__(spt_temp_module)
+
+## Now since done executing delete temporary files
+spt_temp_file.close()
