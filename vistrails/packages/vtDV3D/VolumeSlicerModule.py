@@ -43,7 +43,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'opacity', 'O', label='Slice Plane Opacity',    setLevel=self.setOpacity, activeBound='min',  getLevel=self.getOpacity, isDataValue=False, layerDependent=True, bound = False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
         self.addConfigurableLevelingFunction( 'contourDensity', 'g', label='Contour Density', activeBound='max', setLevel=self.setContourDensity, getLevel=self.getContourDensity, layerDependent=True, windowing=False, rangeBounds=[ 3.0, 30.0, 1 ], bound=False, isValid=self.hasContours )
-        self.addConfigurableLevelingFunction( 'contourColorScale', 'S', label='Contour Colormap Scale', units='data', setLevel=lambda data: self.scaleColormap(data,1), getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRange=True, isValid=self.hasContours )
+        self.addConfigurableLevelingFunction( 'contourColorScale', 'S', label='Contour Colormap Scale', units='data', setLevel=self.scaleContourColormap, getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRange=True, isValid=self.hasContours )
         self.addConfigurableGuiFunction( 'contourColormap', ColormapConfigurationDialog, 'K', label='Choose Contour Colormap', setValue=lambda data: self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasContours )
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
         self.opacity = [ 0.75, 1.0 ]
@@ -71,12 +71,16 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ.RemoveAllObservers()
         del VolumeSlicerModules[ self.moduleID ]
         
+    def scaleContourColormap(self, data, **args ):
+        return self.scaleColormap( data, 1, **args )
+        
     def hasContours(self):
         return self.generateContours
         
-    def setContourDensity( self, ctf_data ):
-        self.NumContours = ctf_data[1]
-        self.updateContourDensity()
+    def setContourDensity( self, ctf_data, **args ):
+        if self.NumContours <> ctf_data[1]:
+            self.NumContours = ctf_data[1]
+            self.updateContourDensity()
 
     def getContourDensity( self ):
         return [ 3.0, self.NumContours, 1 ]
@@ -604,12 +608,13 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def scaleColormap( self, ctf_data, cmap_index=0, **args ):
         ispec = self.inputSpecs[ cmap_index ]
         if ispec and ispec.input: 
-            imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
             colormapManager = self.getColormapManager( index=cmap_index )
-            colormapManager.setScale( imageRange, ctf_data )
-            if self.contourLineMapperer: 
-                self.contourLineMapperer.Modified()
-            ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
+            if not colormapManager.matchDisplayRange( ctf_data ):
+                imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
+                colormapManager.setScale( imageRange, ctf_data )
+                if self.contourLineMapperer: 
+                    self.contourLineMapperer.Modified()
+                ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
     #        print " Volume Slicer[%d]: Scale Colormap: [ %d, %d ] ( %.2g, %.2g ) " % ( self.moduleID, int(self.imageRange[0]), int(self.imageRange[1]), ctf_data[0], ctf_data[1] )
                 
     def finalizeLeveling( self, cmap_index=0 ):

@@ -78,7 +78,14 @@ class ColorMapManager():
     def setDisplayRange( self, dataRange ):
         self.display_lut.SetTableRange( dataRange[0], dataRange[1] )
         self.display_lut.Modified()
-    
+
+    def getDisplayRange( self ):
+        return self.display_lut.GetTableRange()
+
+    def matchDisplayRange( self, range ):
+        trange = self.display_lut.GetTableRange()
+        return ( trange[0] == range[0] ) and ( trange[1] == range[1] )
+   
     def set_lut(self, vtk_lut, lut_lst):
         """Setup the vtkLookupTable (`vtk_lut`) using the passed list of
         lut values."""
