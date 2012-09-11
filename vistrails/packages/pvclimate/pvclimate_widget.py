@@ -476,7 +476,12 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
     def submit_job(self):
         #TODO Hard coded timesteps for now
         global timeSteps
+        global fileNames
         timeSteps = [0.0]
+
+        # Sample string to replace FileName
+        fileNames = "FileName=['foo.nc', 'bar.nc']"
+
         import sys
         import os
 

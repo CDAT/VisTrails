@@ -9,6 +9,7 @@ import sys
 import inspect
 stk = inspect.stack()[1]
 timeSteps = inspect.getmodule(stk[0]).timeSteps
+fileNames = inspect.getmodule(stk[0]).fileNames
 
 ## For debugging
 #sys.stdout = open('/home/aashish/Desktop/log.txt', 'w')
@@ -58,7 +59,11 @@ sources_str = str(proxy) + ':' + str(filename)
 ## Generate spatio-temporal parallel script file (temporary)
 import tempfile
 spt_temp_file = tempfile.NamedTemporaryFile(mode='w', prefix='tp_exportp', suffix='.py')
-spt_temp_file.write(s.substitute(export_rendering='True', sources=sources_str, params="'my_view0' : ['image_%t.png', '1', '600', '600']", tp_size='1', out_file='batch.py'))
+
+# Generate placeholder batch file
+batch_file = tempfile.NamedTemporaryFile(mode='w', prefix='batch', suffix='.py')
+
+spt_temp_file.write(s.substitute(export_rendering='True', sources=sources_str, params="'my_view0' : ['image_%t.png', '1', '600', '600']", tp_size='1', out_file=batch_file.name))
 spt_temp_file.flush()
 
 ## Execute script to generate batch script
@@ -72,3 +77,11 @@ __import__(spt_temp_module)
 
 ## Now since done executing delete temporary files
 spt_temp_file.close()
+
+# Read batch.py and replace file names here
+import re
+batch_content = open(batch_file.name, 'r').read()
+new_batch_content = re.sub("FileName=[\'[A-Za-z0-9\.\/\_]*\']", fileNames, batch_content)
+batch_file.write(new_batch_content)
+batch_file.flush()
+# Do not close batch file
