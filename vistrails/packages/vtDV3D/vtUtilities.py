@@ -132,6 +132,7 @@ def delete_module( module,pipeline ):
     pipeline.perform_action(action)
         
 def change_parameters( module_id, parmRecList, controller=None ):
+    from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
     """change_parameters(module_id: long,
                         parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
                         controller: VistrailController,
@@ -149,6 +150,9 @@ def change_parameters( module_id, parmRecList, controller=None ):
         controller.perform_action(action)
         if hasattr(controller, 'uvcdat_controller'):
             controller.uvcdat_controller.cell_was_changed(action)
+
+#        DV3DPipelineHelper.updateCell( action )
+        
     except Exception, err:
         print "Error changing parameter in module %d: parm: %s, error: %s" % ( module_id, str(parmRecList), str(err) )
     

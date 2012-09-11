@@ -547,6 +547,13 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         Constructor
         '''
 
+#    @staticmethod                         
+#    def updateCell( action, key=0 ):
+#        current_cell = DV3DPipelineHelper.cellMap.get( key, None )
+#        if current_cell:
+#            print " ^^^^^^^ Updating cell version from %d to %d."  % ( current_cell.current_parent_version, action.id )
+#            current_cell.current_parent_version = action.id
+
     @staticmethod                         
     def isLevelingConfigMode():
         return DV3DPipelineHelper._config_mode == LevelingType.LEVELING
@@ -747,14 +754,22 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         controller.add_new_action(action2)
         controller.perform_action(action2)
         return action2
-                
-                        
+    
+    @staticmethod
+    def get_project_controller():
+        from gui.application import get_vistrails_application
+        VistrailsApplication = get_vistrails_application()
+        return VistrailsApplication.uvcdatWindow.current_controller
+                                        
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col, templates=[]):
+#        project_controller =  DV3DPipelineHelper.get_project_controller()
+#        current_cell = project_controller.sheet_map[sheetName][(row,col)]
+        
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
 #        ConfigurableFunction.clear()
         controller.change_selected_version(version)
-#        print "build_plot_pipeline_action[%d,%d], version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
+        print "[%d,%d] ~~~~~~~~~~~~~~~>> build_plot_pipeline_action, version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
 #        print " --> plot_modules = ",  str( controller.current_pipeline.modules.keys() )
 #        print " --> var_modules = ",  str( [ var.id for var in var_modules ] )
         plots = list( plot_objs )
@@ -770,21 +785,24 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 aliases[plot_obj.vars[i]] = varname
                 aliases[ "%s.cmd" % plot_obj.vars[i] ] = python_command
             else:
-                filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'filename')
-                if filename is None:
-                    filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'file')
-                if isinstance( filename, core.modules.basic_modules.File ):
-                    filename = filename.name
-                url = PlotPipelineHelper.get_value_from_function( var_modules[i], 'url')            
-                varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'name')
-                file_varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varNameInFile')
-                axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
-                aliases[plot_obj.files[i]] = filename
-                aliases[ ".".join( [plot_obj.files[i],"url"] )  ] = url if url else ""
-                aliases[plot_obj.vars[i]] = varname
-                aliases[ "%s.file" % plot_obj.vars[i] ] = file_varname if file_varname else ""
-                if len(plot_obj.axes) > i:
-                    aliases[plot_obj.axes[i]] = axes
+                try:
+                    filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'filename')
+                    if filename is None:
+                        filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'file')
+                    if isinstance( filename, core.modules.basic_modules.File ):
+                        filename = filename.name
+                    url = PlotPipelineHelper.get_value_from_function( var_modules[i], 'url')            
+                    varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'name')
+                    file_varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varNameInFile')
+                    axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
+                    aliases[ ".".join( [plot_obj.files[i],"url"] )  ] = url if url else ""
+                    aliases[plot_obj.vars[i]] = varname
+                    aliases[ "%s.file" % plot_obj.vars[i] ] = file_varname if file_varname else ""
+                    if len(plot_obj.axes) > i:
+                        aliases[plot_obj.axes[i]] = axes
+                    aliases[plot_obj.files[i]] = filename
+                except Exception, err:
+                    print>>sys.stderr,  "Error setting aliases: %s" % ( str(err) )
 
         #FIXME: this will always spread the cells in the same row
         cell_specs = []
@@ -848,6 +866,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             
         for cell_address in cell_addresses:
             DV3DPipelineHelper.pipelineMap[cell_address] = controller.current_pipeline
+   
         return action
 
     @staticmethod
@@ -973,7 +992,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                                         plot_type, cell):
         #for now this helper will change the location in place
         #based on the alias dictionary
-        
+
         var_modules = DV3DPipelineHelper.find_modules_by_type(pipeline, 
                                                               [CDMSVariable,
                                                                CDMSVariableOperation])

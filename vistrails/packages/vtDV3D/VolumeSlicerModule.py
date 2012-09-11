@@ -57,6 +57,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.opacityUpdateCount = 0
         self.generateContours = False
         self.contourLineActors = {}
+        self.contourLineMapperer = None
 #        self.contourInput = None
 #        self.contourMetadata = None
 #        self.contour_units = ""
@@ -90,7 +91,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
     def setInputZScale( self, zscale_data, **args  ): 
         ispec = self.getInputSpec(  1 )       
-        if ispec <> None:
+        if (ispec <> None) and (ispec.input <> None):
             contourInput = ispec.input 
             ix, iy, iz = contourInput.GetSpacing()
             sz = zscale_data[1]
@@ -244,7 +245,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.updateOpacity() 
         
-        if contour_ispec <> None:
+        if (contour_ispec <> None) and (contour_ispec.input <> None):
             rangeBounds = self.getRangeBounds(1)
             colormapManager = self.getColormapManager( index=1 )
             self.generateContours = True   
@@ -482,7 +483,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             contourLineActor.GetProperty().SetLineWidth(2)     
             self.renderer.AddActor( contourLineActor ) 
             self.contourLineActors[iAxis] = contourLineActor
-            print " GetContourActor %d, origin = %s, position = %s " % ( iAxis, str( contourLineActor.GetOrigin() ), str( contourLineActor.GetPosition() ) )
+#            print " GetContourActor %d, origin = %s, position = %s " % ( iAxis, str( contourLineActor.GetOrigin() ), str( contourLineActor.GetPosition() ) )
             if iAxis == 1: 
                 contourLineActor.SetOrientation(90,0,0)
             elif iAxis == 0: 
@@ -605,7 +606,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
         colormapManager = self.getColormapManager( index=cmap_index )
         colormapManager.setScale( self.imageRange, ctf_data )
-        self.contourLineMapperer.Modified()
+        if self.contourLineMapperer: 
+            self.contourLineMapperer.Modified()
         ispec = self.inputSpecs[ cmap_index ] 
         ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
 #        print " Volume Slicer[%d]: Scale Colormap: [ %d, %d ] ( %.2g, %.2g ) " % ( self.moduleID, int(self.imageRange[0]), int(self.imageRange[1]), ctf_data[0], ctf_data[1] )

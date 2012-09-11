@@ -184,9 +184,11 @@ class InputSpecs:
         return self.rangeBounds  
         
     def getDataRangeBounds(self):
-        range = self.getDataValues( self.rangeBounds[0:2] ) 
-        if ( len( self.rangeBounds ) > 2 ): range.append( self.rangeBounds[2] ) 
-        else:                               range.append( 0 )
+        if self.rangeBounds:
+            range = self.getDataValues( self.rangeBounds[0:2] ) 
+            if ( len( self.rangeBounds ) > 2 ): range.append( self.rangeBounds[2] ) 
+            else:                               range.append( 0 )
+        else: range = [ 0, 0, 0 ]
         return range
     
     def getScalarRange(self): 
@@ -1050,7 +1052,7 @@ class PersistentModule( QObject ):
 #            self.wmod = None
                          
     def finalizeParameter(self, parameter_name, **args ):
-        if parameter_name == None:
+        if ( parameter_name == None ) or ( parameter_name == 'None' ):
             return
         try:
             output = self.getParameter( parameter_name )
@@ -1375,18 +1377,19 @@ class PersistentVisualizationModule( PersistentModule ):
         colormapName = str(data[0])
         invertColormap = int( data[1] )
         enableStereo = int( data[2] )
-#        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
-#        print ' ~~~~~~~ SET COLORMAP:  --%s--  ' % self.colormapName
-        self.updateStereo( enableStereo )
-        colormapManager = self.getColormapManager( name=colormapName, invert=invertColormap, index=cmap_index, units=self.getUnits(cmap_index) )
-        if self.createColormap and ( colormapManager.colorBarActor == None ): 
-            cmap_pos = [ 0.9, 0.2 ] if (cmap_index==0) else [ 0.02, 0.2 ]
-            units = self.getUnits( cmap_index )
-            ispec = self.getInputSpec( cmap_index )            
-            cm_title = "%s\n(%s)" % ( ispec.metadata.get('scalars',''), units ) if ispec else units 
-            self.renderer.AddActor( colormapManager.createActor( pos=cmap_pos, title=cm_title ) )
-        self.rebuildColorTransferFunction( cmap_index )
-        self.render() 
+        ispec = self.getInputSpec( cmap_index )  
+        if  (ispec <> None) and (ispec.input <> None):         
+    #        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
+    #        print ' ~~~~~~~ SET COLORMAP:  --%s--  ' % self.colormapName
+            self.updateStereo( enableStereo )
+            colormapManager = self.getColormapManager( name=colormapName, invert=invertColormap, index=cmap_index, units=self.getUnits(cmap_index) )
+            if self.createColormap and ( colormapManager.colorBarActor == None ): 
+                cmap_pos = [ 0.9, 0.2 ] if (cmap_index==0) else [ 0.02, 0.2 ]
+                units = self.getUnits( cmap_index )
+                cm_title = "%s\n(%s)" % ( ispec.metadata.get('scalars',''), units ) if ispec.metadata else units 
+                self.renderer.AddActor( colormapManager.createActor( pos=cmap_pos, title=cm_title ) )
+            self.rebuildColorTransferFunction( cmap_index )
+            self.render() 
 
     def updateStereo( self, enableStereo ):   
         if self.iren:

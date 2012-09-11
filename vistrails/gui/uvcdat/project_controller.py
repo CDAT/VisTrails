@@ -778,6 +778,7 @@ class ProjectController(QtCore.QObject):
                         reuse_workflow=False):
         #Assuming that all plots in a cell are from the same package
         helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
+        
         if not reuse_workflow:
             action = helper.build_plot_pipeline_action(self.vt_controller, 
                                                        cell.current_parent_version, 

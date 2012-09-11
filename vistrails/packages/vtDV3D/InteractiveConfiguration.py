@@ -508,8 +508,9 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
 
     def expandRange( self ):
         if self.adjustRange:
-            if ( self.range_bounds[0] <> self.module.seriesScalarRange[0] ) or ( self.range_bounds[1] <> self.module.seriesScalarRange[1] ):
-                self.range_bounds[0:2] = self.module.seriesScalarRange[0:2]
+            ispec = self.module.getInputSpec()
+            if ( self.range_bounds[0] <> ispec.seriesScalarRange[0] ) or ( self.range_bounds[1] <> ispec.seriesScalarRange[1] ):
+                self.range_bounds[0:2] = ispec.seriesScalarRange[0:2]
                 self.initial_range[:] = self.range_bounds[:]
                 if not self.manuallyAdjusted: 
                     self.range[0:2] = self.range_bounds[0:2]
@@ -1838,7 +1839,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 self.setValue( iTimestep )
                 sheetTabs = set()
                 relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
-                timeAxis = self.module.getMetadata('time')
+                ispec = self.module.getInputSpec()     
+                timeAxis = ispec.getMetadata('time')
                 timeValues = np.array( object=timeAxis.getValue() )
                 relTimeRef = cdtime.reltime( relTimeValueRef, ReferenceTimeUnits )
                 relTime0 = relTimeRef.torel( timeAxis.units )

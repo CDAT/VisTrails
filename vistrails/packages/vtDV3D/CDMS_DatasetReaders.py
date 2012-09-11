@@ -531,8 +531,9 @@ class CDMSDataset(Module):
         return None
 
     def setReferenceVariable( self, selected_grid_id ):
-        if selected_grid_id:
-            refVarData = selected_grid_id.split('*')
+        if (selected_grid_id == None) or (selected_grid_id == 'None'): return
+        refVarData = selected_grid_id.split('*')
+        if len( refVarData ) > 1:
             dsid = refVarData[0]
             varName = refVarData[1].split('(')[0].strip()
             dsetRec = self.datasetRecs.get( dsid, None )

@@ -169,7 +169,7 @@ class ImagePlaneWidget:
         istyle =  self.Interactor.GetInteractorStyle()                     
         if ( self.Interactor and ( istyle <> self.navigationInteractorStyle ) and ( istyle <> self.configurationInteractorStyle ) ):             
             self.navigationInteractorStyle =  self.Interactor.GetInteractorStyle() 
-            print " ~~~~~~~~~ IPW Init Navigation Interactor Style:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
+#            print " ~~~~~~~~~ IPW Init Navigation Interactor Style:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
 
 #----------------------------------------------------------------------------
 
@@ -352,7 +352,7 @@ class ImagePlaneWidget:
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.updateInteractor()
         self.Interactor.SetInteractorStyle( self.configurationInteractorStyle ) 
-        print " ~~~~~~~~~SS SetInteractorStyle: configurationInteractorStyle: ", str(self.Interactor.GetInteractorStyle().__class__.__name__)        
+#        print " ~~~~~~~~~SS SetInteractorStyle: configurationInteractorStyle: ", str(self.Interactor.GetInteractorStyle().__class__.__name__)        
               
 #----------------------------------------------------------------------------
 
@@ -360,7 +360,7 @@ class ImagePlaneWidget:
         update_rate = self.Interactor.GetStillUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.Interactor.SetInteractorStyle( self.navigationInteractorStyle )
-        print " ~~~~~~~~~ES SetInteractorStyle: navigationInteractorStyle: ", str(self.Interactor.GetInteractorStyle().__class__.__name__)     
+#        print " ~~~~~~~~~ES SetInteractorStyle: navigationInteractorStyle: ", str(self.Interactor.GetInteractorStyle().__class__.__name__)     
 
 #----------------------------------------------------------------------------
 
