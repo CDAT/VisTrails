@@ -67,6 +67,9 @@ class ColorMapManager():
     def getDisplayLookupTable(self):
         return self.display_lut
     
+    def getImageScale(self):
+        return self.lut.GetTableRange()
+    
     def setScale( self, imageRange, displayRange  ):
         self.lut.SetTableRange( imageRange[0], imageRange[1] ) 
         self.lut.Modified()

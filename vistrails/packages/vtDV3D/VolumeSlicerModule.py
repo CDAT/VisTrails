@@ -37,7 +37,6 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         </table>
     """
     def __init__( self, mid, **args ):
-        self.imageRange = None
         PersistentVisualizationModule.__init__( self, mid, **args )
         self.primaryInputPorts = [ 'volume', 'contours' ]
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True )
@@ -603,14 +602,15 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.ColorLeveler.startWindowLevel( x, y )
 
     def scaleColormap( self, ctf_data, cmap_index=0, **args ):
-        self.imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
-        colormapManager = self.getColormapManager( index=cmap_index )
-        colormapManager.setScale( self.imageRange, ctf_data )
-        if self.contourLineMapperer: 
-            self.contourLineMapperer.Modified()
-        ispec = self.inputSpecs[ cmap_index ] 
-        ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
-#        print " Volume Slicer[%d]: Scale Colormap: [ %d, %d ] ( %.2g, %.2g ) " % ( self.moduleID, int(self.imageRange[0]), int(self.imageRange[1]), ctf_data[0], ctf_data[1] )
+        ispec = self.inputSpecs[ cmap_index ]
+        if ispec and ispec.input: 
+            imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
+            colormapManager = self.getColormapManager( index=cmap_index )
+            colormapManager.setScale( imageRange, ctf_data )
+            if self.contourLineMapperer: 
+                self.contourLineMapperer.Modified()
+            ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
+    #        print " Volume Slicer[%d]: Scale Colormap: [ %d, %d ] ( %.2g, %.2g ) " % ( self.moduleID, int(self.imageRange[0]), int(self.imageRange[1]), ctf_data[0], ctf_data[1] )
                 
     def finalizeLeveling( self, cmap_index=0 ):
         isLeveling =  PersistentVisualizationModule.finalizeLeveling( self )

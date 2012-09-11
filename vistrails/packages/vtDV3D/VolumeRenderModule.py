@@ -141,7 +141,6 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.vthresh = None
         self.filterOutliers = False
         self.refinement = [ 0.0, 0.5 ]
-        self.imageRange = None
         self.otf_data = None
         self.ctf_data = None
         self.updatingOTF = False
@@ -418,12 +417,18 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
     def generateCTF( self, ctf_data= None, cmap_index=0, **args  ):
         if ctf_data: self.ctf_data = ctf_data
         else: ctf_data = self.ctf_data
-        if ctf_data:
-            self.imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
+        if ctf_data and (cmap_index==0):
+            imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
             colormapManager = self.getColormapManager( index=cmap_index )
-            colormapManager.setScale( self.imageRange, ctf_data )
+            colormapManager.setScale( imageRange, ctf_data )
             self.invert = ctf_data[2]
-            self.rebuildColorTransferFunction( cmap_index )
+            self.rebuildColorTransferFunction( imageRange )
+
+    def setColormap( self, data, cmap_index=0 ):
+        if PersistentVisualizationModule.setColormap( self, data, cmap_index ):
+            colormapManager = self.getColormapManager( index=cmap_index ) 
+            self.rebuildColorTransferFunction( colormapManager.getImageScale() )
+            self.render() 
             
     def printOTF( self ):
         nPts = 20
@@ -432,20 +437,19 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         sValues = [ "%.2f" % self.opacityTransferFunction.GetValue( tf_range[0] + iP * dr ) for iP in range( nPts ) ] 
         print "OTF values: ", ' '.join(sValues)
         
-    def rebuildColorTransferFunction( self, cmap_index=0 ):
-        if (self.imageRange <> None) and ( cmap_index == 0 ):
-            lut = self.getLut()
-            self.colorTransferFunction.RemoveAllPoints ()
-            nc = lut.GetNumberOfTableValues()
-            dr = (self.imageRange[1] - self.imageRange[0])             
-            for i in range(nc):
-                interval_position = float(i)/nc
-                data_value = self.imageRange[0] + dr * interval_position
+    def rebuildColorTransferFunction( self, imageRange ):
+        lut = self.getLut()
+        self.colorTransferFunction.RemoveAllPoints ()
+        nc = lut.GetNumberOfTableValues()
+        dr = (imageRange[1] - imageRange[0])             
+        for i in range(nc):
+            interval_position = float(i)/nc
+            data_value = imageRange[0] + dr * interval_position
 #                lut_index = (nc-i-1) if self.invert else i
-                color = lut.GetTableValue( i )
-                self.colorTransferFunction.AddRGBPoint( data_value, color[0], color[1], color[2] )
+            color = lut.GetTableValue( i )
+            self.colorTransferFunction.AddRGBPoint( data_value, color[0], color[1], color[2] )
 #                if i % 50 == 0:  print "   --- ctf[%d:%d:%d] --  %.2e: ( %.2f %.2f %.2f ) " % ( i, lut_index, self.invert, data_value, color[0], color[1], color[2] )
-            
+        
           
     def PrintStats(self):
         print_docs( self.volume.mapper )

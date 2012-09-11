@@ -193,10 +193,14 @@ class InputSpecs:
     
     def getScalarRange(self): 
         return self.scalarRange
+    
+    def raiseModuleError( self, msg ):
+        print>>sys.stderr, msg
+        raise ModuleError( self, msg )
 
     def getDataValue( self, image_value):
         if not self.scalarRange: 
-            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
         sval = ( image_value - self.rangeBounds[0] ) / ( self.rangeBounds[1] - self.rangeBounds[0] )
         dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
@@ -204,7 +208,7 @@ class InputSpecs:
                 
     def getDataValues( self, image_value_list ):
         if not self.scalarRange: 
-            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
         dr = ( self.rangeBounds[1] - self.rangeBounds[0] )
         data_values = []
@@ -216,7 +220,7 @@ class InputSpecs:
 
     def getImageValue( self, data_value ):
         if not self.scalarRange: 
-            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
         dv = ( valueRange[1] - valueRange[0] )
         sval = 0.0 if ( dv == 0.0 ) else ( data_value - valueRange[0] ) / dv 
@@ -225,7 +229,7 @@ class InputSpecs:
 
     def getImageValues( self, data_value_list ):
         if not self.scalarRange: 
-            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
         dv = ( valueRange[1] - valueRange[0] )
         imageValues = []
@@ -238,7 +242,7 @@ class InputSpecs:
 
     def scaleToImage( self, data_value ):
         if not self.scalarRange: 
-            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         dv = ( self.scalarRange[1] - self.scalarRange[0] )
         sval = 0.0 if ( dv == 0.0 ) else data_value / dv
         imageScaledValue =  sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
@@ -437,10 +441,6 @@ class PersistentModule( QObject ):
     def getScalarRange( self, input_index = 0 ):
         ispec = self.inputSpecs[ input_index ] 
         return ispec.scalarRange  
-
-    def getScalarRange( self, input_index = 0 ):
-        ispec = self.inputSpecs[ input_index ] 
-        return ispec.getScalarRange()  
             
     def getDataRangeBounds(self, input_index = 0):
         ispec = self.inputSpecs[ input_index ] 
@@ -1372,6 +1372,7 @@ class PersistentVisualizationModule( PersistentModule ):
         if invert: cmap_mgr.invertColormap = invert
         if name:   cmap_mgr.load_lut( name )
         return cmap_mgr
+
         
     def setColormap( self, data, cmap_index=0 ):
         colormapName = str(data[0])
@@ -1388,8 +1389,9 @@ class PersistentVisualizationModule( PersistentModule ):
                 units = self.getUnits( cmap_index )
                 cm_title = "%s\n(%s)" % ( ispec.metadata.get('scalars',''), units ) if ispec.metadata else units 
                 self.renderer.AddActor( colormapManager.createActor( pos=cmap_pos, title=cm_title ) )
-            self.rebuildColorTransferFunction( cmap_index )
             self.render() 
+            return True
+        return False
 
     def updateStereo( self, enableStereo ):   
         if self.iren:
@@ -1405,8 +1407,6 @@ class PersistentVisualizationModule( PersistentModule ):
 #            self.iren.SetKeyEventInformation( 0, 0, keycode, 0, "3" )     
 #            self.iren.InvokeEvent( vtk.vtkCommand.KeyPressEvent )
             
-    def rebuildColorTransferFunction( self, cmap_index = 0 ):
-        pass 
             
     def getColormap(self, cmap_index = 0 ):
         colormapManager = self.getColormapManager( index=cmap_index )
