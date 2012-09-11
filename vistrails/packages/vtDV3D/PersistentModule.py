@@ -677,7 +677,7 @@ class PersistentModule( QObject ):
                         self.pipelineBuilt = False
                         self.newDataset = True
                         self.newLayerConfiguration = True
-                        self.addAnnotation( "datasetId", datasetId )
+                        self.addAnnotation( "datasetId", ispec.datasetId )
                 else:                   
                     self.setParameter( 'metadata-%d' % inputIndex, ispec.metadata )
  
