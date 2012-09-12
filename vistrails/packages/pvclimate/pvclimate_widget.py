@@ -507,7 +507,7 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
          import molequeue
          import tempfile
          temp_dir = tempfile.gettempdir()
-         batch_file = temp_dir + "/batch.py"
+         batch_file_name = temp_dir + "/batch.py"
 
          try:
            client = molequeue.Client()
@@ -516,7 +516,10 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
            job_request = molequeue.JobRequest()
            job_request.queue = 'paraview'
            job_request.program = 'pvbatch'
-           job_request.input_as_path = batch_file
+
+           input_file = molequeue.FilePath()
+           input_file.path = batch_file_name
+           job_request.input_file = input_file
 
            molequeue_id = client.submit_job_request(job_request)
 
