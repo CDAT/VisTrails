@@ -676,6 +676,7 @@ class PersistentModule( QObject ):
                     self.setParameter( 'metadata', ispec.metadata ) 
                     datasetId = self.getAnnotation( "datasetId" )
                     if datasetId <> ispec.datasetId:
+#                        print>>sys.stderr, "\n ----------------------- Dataset changed, rebuild pipeline: %s -> %s ----------------------- \n" % ( datasetId, ispec.datasetId )
                         self.pipelineBuilt = False
                         self.newDataset = True
                         self.newLayerConfiguration = True
@@ -696,11 +697,12 @@ class PersistentModule( QObject ):
                     
                 ispec.initializeScalarRange()
                 
-                if isAnimation:
-                    for configFunct in self.configurableFunctions.values(): configFunct.expandRange()
                 
             elif ( ispec.fieldData == None ): 
                 ispec.initializeMetadata()
+
+        if isAnimation:
+            for configFunct in self.configurableFunctions.values(): configFunct.expandRange()
    
     def initializeLayers( self, scalars ):
         if self.activeLayer == None: 
@@ -816,7 +818,7 @@ class PersistentModule( QObject ):
                 self.configuring = True
                 configFunct.start( self.InteractionState, x, y )
                 if self.ndims == 3: 
-                    self.iren.SetInteractorStyle( self.configurationInteractorStyle )
+                    self.iren.SetInteractorStyle( PersistentVisualizationModule.configurationInteractorStyle )
 #                    print " ~~~~~~~~~ Set Interactor Style: Configuration  ~~~~~~~~~  "
                     if (configFunct.type == 'leveling'): self.getLabelActor().VisibilityOn()
     
@@ -933,7 +935,7 @@ class PersistentModule( QObject ):
             HyperwallManager.getInstance().setInteractionState( None )
             self.finalizeConfigurationObserver( self.InteractionState )            
             if (self.ndims == 3) and self.iren: 
-                self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+                self.iren.SetInteractorStyle( PersistentVisualizationModule.navigationInteractorStyle )
 #                print " ~~~~~~~~~ FL: Set Interactor Style: Navigation:  %s %x " % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )
             self.configuring = False
             self.InteractionState = None
@@ -1077,8 +1079,8 @@ class PersistentModule( QObject ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         notifyHelper =  args.get( 'notifyHelper', True )    
         if (self.ndims == 3) and self.iren: 
-            self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-#            print " ~~~~~~~~~ EI: Set Interactor Style: Navigation:  %s %x " % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )
+            self.iren.SetInteractorStyle( PersistentVisualizationModule.navigationInteractorStyle )
+#            print " ~~~~~~~~~ EI: Set Interactor Style: Navigation:  %s %x " % ( PersistentVisualizationModule.navigationInteractorStyle.__class__.__name__, id(self.iren) )
         self.configuring = False
         if notifyHelper: DV3DPipelineHelper.endInteraction()
         self.InteractionState = None
@@ -1183,6 +1185,8 @@ class PersistentVisualizationModule( PersistentModule ):
     
     renderMap = {} 
     moduleDocumentationDialog = None 
+    navigationInteractorStyle = None
+    configurationInteractorStyle = None
 
     def __init__( self, mid, **args ):
         self.currentButton = None
@@ -1200,8 +1204,6 @@ class PersistentVisualizationModule( PersistentModule ):
         self.textBlinkThread = None 
         self.activation = {}
         self.isAltMode = False
-        self.navigationInteractorStyle = vtk.vtkInteractorStyleTrackballCamera()
-        self.configurationInteractorStyle = None
         self.stereoEnabled = 0
 
     def enableVisualizationInteraction(self): 
@@ -1217,10 +1219,11 @@ class PersistentVisualizationModule( PersistentModule ):
             spacing = ispec.input.GetSpacing()
             ix, iy, iz = spacing
             sz = zscale_data[1]
-#            print " PVM >---------------> Set input zscale: %.2f" % sz
-            ispec.input.SetSpacing( ix, iy, sz )  
-            ispec.input.Modified() 
-            return True
+            if iz <> sz:
+#                print " PVM >---------------> Change input zscale: %.4f -> %.4f" % ( iz, sz )
+                ispec.input.SetSpacing( ix, iy, sz )  
+                ispec.input.Modified() 
+                return True
         return False
                     
     def getScaleBounds(self):
@@ -1527,11 +1530,11 @@ class PersistentVisualizationModule( PersistentModule ):
             self.renwin = self.renderer.GetRenderWindow( )
             if self.renwin <> None:
                 iren = self.renwin.GetInteractor() 
-                if ( iren <> None ) and ( iren.GetInteractorStyle() <> self.configurationInteractorStyle ):
+                if ( iren <> None ) and ( iren.GetInteractorStyle() <> PersistentVisualizationModule.configurationInteractorStyle ):
                     if ( iren <> self.iren ):
                         if self.iren == None: 
                             self.renwin.AddObserver("AbortCheckEvent", CheckAbort)
-                            self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
+                            PersistentVisualizationModule.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
                         self.iren = iren
                         self.activateWidgets( self.iren )                                  
                         self.iren.AddObserver( 'CharEvent', self.setInteractionState )                   
@@ -1601,21 +1604,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 pname = self.persistedParameters.pop()
                 configFunct = self.configurableFunctions[pname]
                 param_value = configFunct.reset() 
-                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )
-            
-                
-#            if self.LastInteractionState <> None: 
-#                configFunct = self.configurableFunctions[ self.LastInteractionState ]
-#                param_value = configFunct.reset() 
-#                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True )
-#                if configFunct.type == 'leveling':
-#                    self.finalizeConfigurationObserver( self.InteractionState )            
-#                    if self.ndims == 3: 
-#                        self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-#                        print " ~~~~~~~~~ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)     
-#                if self.InteractionState <> None: 
-#                    configFunct.close()
-#                    self.endInteraction() 
+                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                
         else:
             state =  self.getInteractionState( key )
             print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
@@ -1655,11 +1644,11 @@ class PersistentVisualizationModule( PersistentModule ):
         if self.ndims == 3: self.getLabelActor().VisibilityOff()              
         
     def onLeftButtonRelease( self, caller, event ):
-        print " --- Persistent Module: LeftButtonRelease --- "
+#        print " --- Persistent Module: LeftButtonRelease --- "
         self.currentButton = None 
         istyle = self.iren.GetInteractorStyle()                       
         style_name = istyle.__class__.__name__
-        print " ~~~~~~~~~ Current Interactor Style:  %s " % ( style_name )
+#        print " ~~~~~~~~~ Current Interactor Style:  %s " % ( style_name )
     
     def onRightButtonRelease( self, caller, event ):
         self.currentButton = None 
@@ -1726,13 +1715,13 @@ class PersistentVisualizationModule( PersistentModule ):
         x, y = caller.GetEventPosition()
         if self.InteractionState <> None:
             self.startConfiguration( x, y,  [ 'generic' ] )
-#            print " ~~~~~~~~~ RBP: Set Interactor Style: Navigation:  %s %x" % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )          
+#            print " ~~~~~~~~~ RBP: Set Interactor Style: Navigation:  %s %x" % ( PersistentVisualizationModule.navigationInteractorStyle.__class__.__name__, id(self.iren) )          
         return 0
     
     def resetNavigation(self):
         if self.iren: 
-            self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-#            print " ---------------------- resetNavigation: %s %x---------------------- " % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )        
+            self.iren.SetInteractorStyle( PersistentVisualizationModule.navigationInteractorStyle )
+#            print " ---------------------- resetNavigation: %s %x---------------------- " % ( PersistentVisualizationModule.navigationInteractorStyle.__class__.__name__, id(self.iren) )        
         self.enableVisualizationInteraction()
 
     def onModified( self, caller, event ):

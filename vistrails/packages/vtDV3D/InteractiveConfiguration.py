@@ -486,7 +486,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.isValid = args.get( 'isValid', lambda: True )
         self.range_bounds = None
         self.boundByRange = args.get( 'bound', True )
-        self.adjustRange = args.get( 'adjustRange', False )
+        self.adjustRangeInput = args.get( 'adjustRangeInput', -1 )
         self.widget = args.get( 'gui', None )
 
     def postInstructions( self, message ):
@@ -498,8 +498,6 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         except Exception, err:
             print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
         print "Apply %s Parameter[%s:%d]: %s " % ( self.type, self.name, self.module.moduleID, str( self.range ) )
-        if self.name == 'zScale':
-            print "x"
         
     def reset(self):
         self.setLevelDataHandler( self.initial_range )
@@ -507,14 +505,15 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         return self.initial_range
 
     def expandRange( self ):
-        if self.adjustRange:
-            ispec = self.module.getInputSpec()
-            if ( self.range_bounds[0] <> ispec.seriesScalarRange[0] ) or ( self.range_bounds[1] <> ispec.seriesScalarRange[1] ):
-                self.range_bounds[0:2] = ispec.seriesScalarRange[0:2]
-                self.initial_range[:] = self.range_bounds[:]
-                if not self.manuallyAdjusted: 
-                    self.range[0:2] = self.range_bounds[0:2]
-                    self.initLeveling( initRange = False ) 
+        if self.adjustRangeInput >= 0:
+            ispec = self.module.getInputSpec( self.adjustRangeInput )
+            if ispec and ispec.input:
+                if ( self.range_bounds[0] <> ispec.seriesScalarRange[0] ) or ( self.range_bounds[1] <> ispec.seriesScalarRange[1] ):
+                    self.range_bounds[0:2] = ispec.seriesScalarRange[0:2]
+                    self.initial_range[:] = self.range_bounds[:]
+                    if not self.manuallyAdjusted: 
+                        self.range[0:2] = self.range_bounds[0:2]
+                        self.initLeveling( initRange = False ) 
  
     def initLeveling( self, **args ):
         initRange = args.get( 'initRange', True )
@@ -541,7 +540,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         if self.altMode:    self.windowRefiner.initRefinement( [ x, y ], self.range[3:5] )   
         else:               self.windowLeveler.startWindowLevel( x, y )
         self.updateActiveFunctionList()
-        self.adjustRange = False
+        self.adjustRangeInput = -1
         self.emit(SIGNAL('startLeveling()'))
         print "startLeveling: %s " % str( self.range )
 

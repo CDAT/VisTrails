@@ -51,8 +51,6 @@ class ImagePlaneWidget:
         self.PlaneSource.SetYResolution(1)
         self.PlaneOutlinePolyData  = vtk.vtkPolyData()
         self.PlaneOutlineActor     = vtk.vtkActor()
-        self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
-        self.navigationInteractorStyle = vtk.vtkInteractorStyleTrackballCamera()
             
         # Represent the resliced image plane
         #
@@ -69,6 +67,7 @@ class ImagePlaneWidget:
         self.ImageData    = 0
         self.ImageData2   = 0
         self.LookupTable  = 0
+        self.InputBounds = None
             
         # Represent the cross hair cursor
         #
@@ -163,6 +162,13 @@ class ImagePlaneWidget:
     def SetPlaneOrientationToZAxes(self):
         self.SetPlaneOrientation(2)
 
+    def MatchesBounds( self, bnds ):
+        if self.InputBounds:
+            for index, bval in enumerate(bnds):
+                if self.InputBounds[index] <> bval:
+                    return False
+        return True
+    
 #----------------------------------------------------------------------------
 
     def updateInteractor(self): 
@@ -345,19 +351,21 @@ class ImagePlaneWidget:
 #----------------------------------------------------------------------------
 
     def StartInteraction(self): 
+        from PersistentModule import PersistentVisualizationModule
         update_rate = self.Interactor.GetDesiredUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.updateInteractor()
-        self.Interactor.SetInteractorStyle( self.configurationInteractorStyle ) 
-        print " ~~~~~~~~~SS SetInteractorStyle: configurationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )        
+        self.Interactor.SetInteractorStyle( PersistentVisualizationModule.configurationInteractorStyle ) 
+#        print " ~~~~~~~~~SS SetInteractorStyle: configurationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )        
               
 #----------------------------------------------------------------------------
 
     def EndInteraction(self): 
+        from PersistentModule import PersistentVisualizationModule
         update_rate = self.Interactor.GetStillUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
-        self.Interactor.SetInteractorStyle( self.navigationInteractorStyle )
-        print " ~~~~~~~~~ES SetInteractorStyle: navigationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )         
+        self.Interactor.SetInteractorStyle( PersistentVisualizationModule.navigationInteractorStyle )
+#        print " ~~~~~~~~~ES SetInteractorStyle: navigationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )         
 
 #----------------------------------------------------------------------------
 
@@ -413,7 +421,7 @@ class ImagePlaneWidget:
             self.ProcessEvent( self.InteractionStartEvent )
             self.Interactor.Render() 
         else:
-            print "No image plane found: %s " % str( (X,Y) )
+#            print "No image plane found: %s " % str( (X,Y) )
             self.State  = ImagePlaneWidget.Outside
             self.HighlightPlane(0)                 
     
@@ -536,6 +544,7 @@ class ImagePlaneWidget:
 #----------------------------------------------------------------------------
     def PlaceWidget( self, bnds ):
         
+        self.InputBounds = bnds
         placeFactor = self.PlaceFactor
         center = [ (bnds[0] + bnds[1])/2.0, (bnds[2] + bnds[3])/2.0,  (bnds[4] + bnds[5])/2.0 ] 
         bounds = []
@@ -665,13 +674,13 @@ class ImagePlaneWidget:
             self.LookupTable.Build()
             
         self.Reslice.SetInput(self.ImageData)
+        self.Reslice.Modified()
         self.Reslice2.SetInput(self.ImageData2)
+        self.Reslice2.Modified()
         interpolate = self.ResliceInterpolate
         self.ResliceInterpolate = -1 # Force change
         self.SetResliceInterpolate(interpolate)
-        
-        
-        
+                
         self.ColorMap.SetInput(self.Reslice.GetOutput())
         
         self.Texture.SetInput(self.ColorMap.GetOutput())
