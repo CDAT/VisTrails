@@ -413,6 +413,7 @@ class ImagePlaneWidget:
             self.ProcessEvent( self.InteractionStartEvent )
             self.Interactor.Render() 
         else:
+            print "No image plane found: %s " % str( (X,Y) )
             self.State  = ImagePlaneWidget.Outside
             self.HighlightPlane(0)                 
     
@@ -479,7 +480,7 @@ class ImagePlaneWidget:
             path.InitTraversal()
             for _ in range( path.GetNumberOfItems() ):
                 node = path.GetNextNode()
-                if node.GetViewProp() == self.TexturePlaneActor:
+                if node and (node.GetViewProp() == self.TexturePlaneActor):
                     found = 1
                     break
         return found
@@ -676,7 +677,7 @@ class ImagePlaneWidget:
         self.Texture.SetInput(self.ColorMap.GetOutput())
         self.Texture.SetInterpolate(self.TextureInterpolate)
         
-        self.SetPlaneOrientation(self.PlaneOrientation)
+#        self.SetPlaneOrientation(self.PlaneOrientation)
         
 #----------------------------------------------------------------------------
 

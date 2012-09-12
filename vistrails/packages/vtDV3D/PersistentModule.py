@@ -1726,8 +1726,6 @@ class PersistentVisualizationModule( PersistentModule ):
         x, y = caller.GetEventPosition()
         if self.InteractionState <> None:
             self.startConfiguration( x, y,  [ 'generic' ] )
-        else:
-            self.iren.SetInteractorStyle( self.navigationInteractorStyle )
 #            print " ~~~~~~~~~ RBP: Set Interactor Style: Navigation:  %s %x" % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )          
         return 0
     
