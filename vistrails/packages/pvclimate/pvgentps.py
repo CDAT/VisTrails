@@ -61,9 +61,12 @@ import tempfile
 spt_temp_file = tempfile.NamedTemporaryFile(mode='w', prefix='tp_exportp', suffix='.py')
 
 # Generate placeholder batch file
-batch_file = tempfile.NamedTemporaryFile(mode='w', prefix='batch', suffix='.py')
+temp_dir = tempfile.gettempdir()
+#batch_file = tempfile.NamedTemporaryFile(mode='w', prefix='batch', suffix='.py')
+batch_file_fullpath = temp_dir + "/batch.py"
+batch_file = open(batch_file_fullpath, 'w')
 
-spt_temp_file.write(s.substitute(export_rendering='True', sources=sources_str, params="'my_view0' : ['image_%t.png', '1', '600', '600']", tp_size='1', out_file=batch_file.name))
+spt_temp_file.write(s.substitute(export_rendering='True', sources=sources_str, params="'my_view0' : ['image_%t.png', '1', '600', '600']", tp_size='1', out_file=batch_file_fullpath))
 spt_temp_file.flush()
 
 ## Execute script to generate batch script
@@ -80,7 +83,7 @@ spt_temp_file.close()
 
 # Read batch.py and replace file names here
 import re
-batch_content = open(batch_file.name, 'r').read()
+batch_content = open(batch_file_fullpath, 'r').read()
 new_batch_content = re.sub("FileName=[\'[A-Za-z0-9\.\/\_]*\']", fileNames, batch_content)
 batch_file.write(new_batch_content)
 batch_file.flush()

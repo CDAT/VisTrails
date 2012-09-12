@@ -474,24 +474,62 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
 #            self.controller.execute_current_workflow()
 
     def submit_job(self):
-        #TODO Hard coded timesteps for now
-        global timeSteps
-        global fileNames
-        timeSteps = [0.0]
+        fileNames = "FileName=['"
+        # Create config GUI here
+        # Once executed, fetch file names
+        import pvsubmit_dialog as pvsd
+        submit_dialog = pvsd.PVSubmitFileDialog(self)
 
-        # Sample string to replace FileName
-        fileNames = "FileName=['foo.nc', 'bar.nc']"
+        print 'Running submit_dialog'
+        if submit_dialog.exec_():
+         #TODO Hard coded timesteps for now
+         global timeSteps
+         global fileNames
+         timeSteps = []
+         remote_files = submit_dialog.get_remote_files()
+         for i in range(0, len(remote_files)):
+           timeSteps.append(i)
 
-        import sys
-        import os
+         # Sample string to replace FileName
+         fileNames = fileNames + "','".join(remote_files) + "']"
 
-        if sys.modules.has_key('pvgentps'):
-          reload(sys.modules['pvgentps'])
-        else:
-          path = os.path.dirname(os.path.abspath(__file__))
-          sys.path.append(path)
-          __import__('pvgentps')
+         import sys
+         import os
 
+         if sys.modules.has_key('pvgentps'):
+           reload(sys.modules['pvgentps'])
+         else:
+           path = os.path.dirname(os.path.abspath(__file__))
+           sys.path.append(path)
+           __import__('pvgentps')
+
+         # Now call molequeue
+         import molequeue
+         import tempfile
+         temp_dir = tempfile.gettempdir()
+         batch_file = temp_dir + "/batch.py"
+
+         try:
+           client = molequeue.Client()
+           client.connect_to_server('MoleQueue')
+
+           job_request = molequeue.JobRequest()
+           job_request.queue = 'paraview'
+           job_request.program = 'pvbatch'
+           job_request.input_as_path = batch_file
+
+           molequeue_id = client.submit_job_request(job_request)
+
+           print "MoleQueue ID: ", molequeue_id
+
+           client.disconnect()
+         except KeyboardInterrupt:
+           print "exp"
+
+          # remove temp file
+          # Show message to the user
+
+        print 'done'
         return
 
     def create_representation_table(self):
