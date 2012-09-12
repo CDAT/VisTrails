@@ -52,7 +52,7 @@ class ImagePlaneWidget:
         self.PlaneOutlinePolyData  = vtk.vtkPolyData()
         self.PlaneOutlineActor     = vtk.vtkActor()
         self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
-        self.navigationInteractorStyle = None
+        self.navigationInteractorStyle = vtk.vtkInteractorStyleTrackballCamera()
             
         # Represent the resliced image plane
         #
@@ -166,13 +166,8 @@ class ImagePlaneWidget:
 #----------------------------------------------------------------------------
 
     def updateInteractor(self): 
-        if self.Interactor: 
-            istyle =  self.Interactor.GetInteractorStyle()                     
-            style_name = self.navigationInteractorStyle.__class__.__name__
-            if ( style_name <> "vtkInteractorStyleUser" ) and  (  istyle <> self.navigationInteractorStyle   ):             
-                self.navigationInteractorStyle =  self.Interactor.GetInteractorStyle() 
-                print " ~~~~~~~~~ IPW Init Navigation Interactor Style:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
-
+        pass
+    
 #----------------------------------------------------------------------------
 
     def SetRenderer( self, value ):
@@ -354,7 +349,7 @@ class ImagePlaneWidget:
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.updateInteractor()
         self.Interactor.SetInteractorStyle( self.configurationInteractorStyle ) 
-        print " ~~~~~~~~~SS SetInteractorStyle: configurationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.iren) )        
+        print " ~~~~~~~~~SS SetInteractorStyle: configurationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )        
               
 #----------------------------------------------------------------------------
 
@@ -362,7 +357,7 @@ class ImagePlaneWidget:
         update_rate = self.Interactor.GetStillUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.Interactor.SetInteractorStyle( self.navigationInteractorStyle )
-        print " ~~~~~~~~~ES SetInteractorStyle: navigationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.iren) )         
+        print " ~~~~~~~~~ES SetInteractorStyle: navigationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )         
 
 #----------------------------------------------------------------------------
 
