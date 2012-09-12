@@ -136,13 +136,14 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     t0 = comp_time_values[0].torel(ReferenceTimeUnits).value
                     dt = 0.0
                     if self.nTimesteps > 1:
-                        t1 = comp_time_values[1].torel(ReferenceTimeUnits).value
-                        dt = t1-t0
+                        t1 = comp_time_values[-1].torel(ReferenceTimeUnits).value
+                        dt = (t1-t0)/(self.nTimesteps-1)
                         self.timeRange = [ 0, self.nTimesteps, t0, dt ]
                 except:
                     values = self.timeAxis.getValue()
                     t0 = values[0] if len(values) > 0 else 0
-                    dt = ( values[1] - values[0] ) if len(values) > 1 else 0
+                    t1 = values[-1] if len(values) > 1 else t0
+                    dt = ( values[1] - values[0] )/( len(values) - 1 ) if len(values) > 1 else 0
                     self.timeRange = [ 0, self.nTimesteps, t0, dt ]
             self.setParameter( "timeRange" , self.timeRange )
             self.cdmsDataset.timeRange = self.timeRange

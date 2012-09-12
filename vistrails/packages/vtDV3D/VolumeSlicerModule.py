@@ -131,11 +131,13 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.updatingPlacement = False
 
     def enableVisualizationInteraction(self): 
+#        print>>sys.stderr, "enable Visualization Interaction"
         self.planeWidgetX.EnableInteraction()                                                
         self.planeWidgetY.EnableInteraction()                                                
         self.planeWidgetZ.EnableInteraction()  
 
-    def disableVisualizationInteraction(self): 
+    def disableVisualizationInteraction(self):
+#        print>>sys.stderr, "disable Visualization Interaction" 
         self.planeWidgetX.DisableInteraction()                                                
         self.planeWidgetY.DisableInteraction()                                                
         self.planeWidgetZ.DisableInteraction()  
@@ -401,6 +403,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetX.SetSliceIndex( self.slicePosition[0] ) 
         self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
         self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
+        self.updateContourActorOrientations()
         self.set3DOutput()
 
 #        print " Volume Slicer: updateModule, cachable: %s " % str( self.is_cacheable() )
@@ -478,6 +481,20 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             self.render()
 #                print " Generate Contours, data dims = %s, pos = %s %s %s " % ( str( slice_data.GetDimensions() ), str(pos1), str(pos2), str(origin) )
 
+    def setContourActorOrientation( self, iAxis, contourLineActor ):
+        if iAxis == 1: 
+            contourLineActor.SetOrientation(90,0,0)
+        elif iAxis == 0: 
+            contourLineActor.SetOrientation(90,0,90)   
+
+    def updateContourActorOrientations( self ):
+        for contourLineActorItem in self.contourLineActors.items():
+            if contourLineActorItem[1].GetVisibility( ): 
+                self.setContourActorOrientation( contourLineActorItem[0], contourLineActorItem[1] )
+        self.render()
+        pass
+
+                                     
     def getContourActor( self, iAxis, **args ):
         contourLineActor = self.contourLineActors.get( iAxis, None )
         if contourLineActor == None:
@@ -486,11 +503,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             contourLineActor.GetProperty().SetLineWidth(2)     
             self.renderer.AddActor( contourLineActor ) 
             self.contourLineActors[iAxis] = contourLineActor
+            self.setContourActorOrientation( iAxis, contourLineActor )
 #            print " GetContourActor %d, origin = %s, position = %s " % ( iAxis, str( contourLineActor.GetOrigin() ), str( contourLineActor.GetPosition() ) )
-            if iAxis == 1: 
-                contourLineActor.SetOrientation(90,0,0)
-            elif iAxis == 0: 
-                contourLineActor.SetOrientation(90,0,90)                              
         return contourLineActor
 
 #    def createColorBarActor(self):

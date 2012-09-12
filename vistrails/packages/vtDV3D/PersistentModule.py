@@ -932,7 +932,7 @@ class PersistentModule( QObject ):
             self.finalizeConfigurationObserver( self.InteractionState )            
             if (self.ndims == 3) and self.iren: 
                 self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-                print " ~~~~~~~~~ FL: Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
+                print " ~~~~~~~~~ FL: Set Interactor Style: Navigation:  %s %x " % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )
             self.configuring = False
             self.InteractionState = None
             return True
@@ -1076,7 +1076,7 @@ class PersistentModule( QObject ):
         notifyHelper =  args.get( 'notifyHelper', True )    
         if (self.ndims == 3) and self.iren: 
             self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-            print " ~~~~~~~~~ EI: Set Interactor Style: Navigation:  %s " % ( self.navigationInteractorStyle.__class__.__name__ )
+            print " ~~~~~~~~~ EI: Set Interactor Style: Navigation:  %s %x " % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )
         self.configuring = False
         if notifyHelper: DV3DPipelineHelper.endInteraction()
         self.InteractionState = None
@@ -1552,12 +1552,11 @@ class PersistentVisualizationModule( PersistentModule ):
                     
     def updateInteractor(self): 
         istyle = self.iren.GetInteractorStyle()                       
-        if ( istyle <> self.navigationInteractorStyle ) and ( istyle <> self.configurationInteractorStyle ):               
-            self.navigationInteractorStyle =  istyle
-            style_name = self.navigationInteractorStyle.__class__.__name__
-#            print " ~~~~~~~~~ Update Navigation Interactor Style:  %s " % ( style_name )
-#            if style_name == "vtkInteractorStyleUser":
-#                print "x"
+        style_name = self.navigationInteractorStyle.__class__.__name__
+        if style_name <> "vtkInteractorStyleUser": 
+            if ( istyle <> self.navigationInteractorStyle ):               
+                self.navigationInteractorStyle =  istyle
+                print " ~~~~~~~~~ Update Navigation Interactor Style:  %s " % ( style_name )
                     
     def setInteractionState(self, caller, event):
         key = caller.GetKeyCode() 
@@ -1661,6 +1660,9 @@ class PersistentVisualizationModule( PersistentModule ):
     def onLeftButtonRelease( self, caller, event ):
         print " --- Persistent Module: LeftButtonRelease --- "
         self.currentButton = None 
+        istyle = self.iren.GetInteractorStyle()                       
+        style_name = istyle.__class__.__name__
+        print " ~~~~~~~~~ Current Interactor Style:  %s " % ( style_name )
     
     def onRightButtonRelease( self, caller, event ):
         self.currentButton = None 
@@ -1728,11 +1730,14 @@ class PersistentVisualizationModule( PersistentModule ):
         if self.InteractionState <> None:
             self.startConfiguration( x, y,  [ 'generic' ] )
         else:
-            self.iren.SetInteractorStyle( self.navigationInteractorStyle )          
+            self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+            print " ~~~~~~~~~ RBP: Set Interactor Style: Navigation:  %s %x" % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )          
         return 0
     
     def resetNavigation(self):
-        if self.iren: self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+        if self.iren: 
+            self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+            print " ---------------------- resetNavigation: %s %x---------------------- " % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )        
         self.enableVisualizationInteraction()
 
     def onModified( self, caller, event ):
