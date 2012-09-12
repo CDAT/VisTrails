@@ -54,6 +54,7 @@ class PVFileDialog(QtGui.QDialog, Ui_pvFileDialog):
    #--------------------------------------------------------------------------
    @pyqtSlot(QtCore.QModelIndex)
    def onDoubleClickFile(self, index):
+     print 'double clicked'
      self.accept()
 
    #--------------------------------------------------------------------------
@@ -155,6 +156,7 @@ class PVFileDialog(QtGui.QDialog, Ui_pvFileDialog):
    #--------------------------------------------------------------------------
    @pyqtSlot()
    def onModelReset(self):
+
      self.Parents.clear()
 
      currentPath = self.wrapper.getCurrentPath()
