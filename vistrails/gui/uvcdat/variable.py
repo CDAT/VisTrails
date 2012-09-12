@@ -634,7 +634,8 @@ class VariableProperties(QtGui.QDockWidget):
         dir(fd)
         fileDialog = fd.PVFileDialog(self)
         if fileDialog.exec_():
-          return fileDialog.getAllSelectedFiles()[0][0]
+          files = fileDialog.getAllSelectedFiles()
+          return files[0]
         return ''
 
     def populateVariables(self, variables):
