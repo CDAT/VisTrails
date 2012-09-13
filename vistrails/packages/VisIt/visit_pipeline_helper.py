@@ -42,11 +42,11 @@ class VisItPipelineHelper(PlotPipelineHelper):
             return visitcell.VisItCellConfigurationWidget(cell[0],controller)
 
     @staticmethod
-    def build_plot_pipeline_action(controller, version, var_modules, plot_obj,row, col, template=None):
+    def build_plot_pipeline_action(controller, version, var_modules, plots,row, col, template=None):
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
-        plot_type = plot_obj[0].parent
-        plot_gm = plot_obj[0].name
+        #plot_type = plots[0].parent
+        #plot_gm = plots[0].name
 
         if controller is None:
             controller = api.get_current_controller()
@@ -54,50 +54,141 @@ class VisItPipelineHelper(PlotPipelineHelper):
 
         reg = get_module_registry()
         ops = []
-        #print row,col, plot_obj[0].name, plot_type, plot_obj[0], var_modules
-        plot_descriptor = reg.get_descriptor_by_name('gov.lbl.visit','VisItCell')
-        plot_module = controller.create_module_from_descriptor(plot_descriptor)
+        cell_module = None
+
+        pipeline = controller.vistrail.getPipeline(version)
+
+        var_module = var_modules[0]
+
+        try:
+            temp_var_module = pipeline.get_module_by_id(var_module.id)
+        except KeyError:
+            temp_var_module = None
+
+        if temp_var_module is not None:
+            var_module = temp_var_module
+        else:
+            ops.append(('add',var_module))
+
+        for plot in plots:
+
+            plot_type = plot.parent
+            plot_gm = plot.name
+
+            import re
+            plotname = re.sub(r'\s', '', plot_gm)
+
+            plot_module = PlotPipelineHelper.find_module_by_name(pipeline, plotname)
+            if plot_module is not None:
+                continue
+
+            plot_descriptor = reg.get_descriptor_by_name('gov.lbl.visit', 'VisItCell')
+            plot_module = controller.create_module_from_descriptor(plot_descriptor)
+
+            ops.append(('add',plot_module))
+
+            #if cell_module is None:
+            #    cell_module = PlotPipelineHelper.find_module_by_name(pipeline, "VisItCell")
+
+            if cell_module is None:
+                #cell_desc = reg.get_descriptor_by_name('gov.lbl.visit', "VisItCell")
+                #cell_module = controller.create_module_from_descriptor(cell_desc)
+                #ops.append(('add', cell_module))
+                cell_module = plot_module
+
+                if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
+                    conn = controller.create_connection(var_module, 'self',
+                                                        plot_module, 'variable')
+                else:
+                    conn = controller.create_connection(var_module, 'self',
+                                                        cell_module, 'variable')
+                ops.append(('add', conn))
+                #print 'connection source id is ', conn.sourceId
+                #print 'connection dest id is ', conn.destinationId
+
+                loc_module = controller.create_module_from_descriptor(
+                    reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet',
+                                               'CellLocation'))
+                functions = controller.create_functions(loc_module,
+                    [('Row', [str(row+1)]), ('Column', [str(col+1)])])
+                for f in functions:
+                    loc_module.add_function(f)
+
+                loc_conn = controller.create_connection(loc_module, 'self',
+                                                        cell_module, 'Location')
+                ops.extend([('add', loc_module),
+                            ('add', loc_conn)])
+
+                type_of_plot = str(plot_gm)
+                param_module = controller.create_module_from_descriptor(
+                    reg.get_descriptor_by_name('gov.lbl.visit', 'VisItParams'))
+
+                functions = controller.create_functions(param_module,
+                    [('renderType', [type_of_plot])])
+                for f in functions:
+                    param_module.add_function(f)
+
+                param_conn = controller.create_connection(param_module, 'self',
+                                                        plot_module, 'visitparams')
+                ops.extend([('add', param_module),
+                            ('add', param_conn)])
+
+            # Create connection between the cell and the representation
+            #conn = controller.create_connection(plot_module, 'self',
+            #                                    cell_module, 'representation')
+
+            # Add the connection to the pipeline operations
+            #ops.append(('add', conn))
+
+        action = core.db.action.create_action(ops)
+        controller.change_selected_version(version)
+        controller.add_new_action(action)
+        controller.perform_action(action)
+        return action
+
+        ##plot_descriptor = reg.get_descriptor_by_name('gov.lbl.visit','VisItCell')
+        ##plot_module = controller.create_module_from_descriptor(plot_descriptor)
 
         #for var_mods in var_modules:
         #    print "mods: ",var_mods
 
-        if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
-            ops.append(('add', var_modules[0]))
-        ops.append(('add', plot_module))
+        ##if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
+        ##    ops.append(('add', var_modules[0]))
+        ##ops.append(('add', plot_module))
 
-        if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
-            conn = controller.create_connection(var_modules[0], 'self',
-                                                plot_module, 'variable')
-        else:
-            conn = controller.create_connection(var_modules[0], 'output_var',
-                                                plot_module, 'variable')
-        ops.append(('add', conn))
+        ##if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
+        ##    conn = controller.create_connection(var_modules[0], 'self',
+        ##                                        plot_module, 'variable')
+        ##else:
+        ##    conn = controller.create_connection(var_modules[0], 'output_var',
+        ##                                        plot_module, 'variable')
+        ##ops.append(('add', conn))
 
-        type_of_plot = str(plot_gm)
-        param_module = controller.create_module_from_descriptor(
-            reg.get_descriptor_by_name('gov.lbl.visit',
-                                       'VisItParams'))
+        ##type_of_plot = str(plot_gm)
+        ##param_module = controller.create_module_from_descriptor(
+        ##    reg.get_descriptor_by_name('gov.lbl.visit',
+        ##                               'VisItParams'))
 
-        functions = controller.create_functions(param_module,
-            [('renderType', [type_of_plot])])
-        for f in functions:
-            param_module.add_function(f)
-        param_conn = controller.create_connection(param_module, 'self',
-                                                        plot_module, 'visitparams')
-        ops.extend([('add', param_module),
-                    ('add', param_conn)])
+        ##functions = controller.create_functions(param_module,
+        ##    [('renderType', [type_of_plot])])
+        ##for f in functions:
+        ##    param_module.add_function(f)
+        ##param_conn = controller.create_connection(param_module, 'self',
+        ##                                                plot_module, 'visitparams')
+        ##ops.extend([('add', param_module),
+        ##            ('add', param_conn)])
 
-        loc_module = controller.create_module_from_descriptor(
-            reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet',
-                                       'CellLocation'))
-        functions = controller.create_functions(loc_module,
-            [('Row', [str(row+1)]), ('Column', [str(col+1)])])
-        for f in functions:
-            loc_module.add_function(f)
-        loc_conn = controller.create_connection(loc_module, 'self',
-                                                        plot_module, 'Location')
-        ops.extend([('add', loc_module),
-                    ('add', loc_conn)])
+        ##loc_module = controller.create_module_from_descriptor(
+        ##    reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet',
+        ##                               'CellLocation'))
+        ##functions = controller.create_functions(loc_module,
+        ##    [('Row', [str(row+1)]), ('Column', [str(col+1)])])
+        ##for f in functions:
+        ##    loc_module.add_function(f)
+        ##loc_conn = controller.create_connection(loc_module, 'self',
+        ##                                                plot_module, 'Location')
+        ##ops.extend([('add', loc_module),
+        ##            ('add', loc_conn)])
 
         #type_of_plot = plot_gm
         #param_module = controller.create_module_from_descriptor(
@@ -113,11 +204,11 @@ class VisItPipelineHelper(PlotPipelineHelper):
         #ops.extend([('add', param_module),
         #            ('add', param_conn)])
 
-        action = core.db.action.create_action(ops)
-        controller.change_selected_version(version)
-        controller.add_new_action(action)
-        controller.perform_action(action)
-        return action
+        ##action = core.db.action.create_action(ops)
+        ##controller.change_selected_version(version)
+        ##controller.add_new_action(action)
+        ##controller.perform_action(action)
+        ##return action
 
     @staticmethod
     def find_plot_modules(pipeline):
