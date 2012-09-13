@@ -812,12 +812,20 @@ class IVModuleConfigurationDialog( QWidget ):
         Creates the content of this widget       
         """
         pass
+
+    def initActivation( self, curr_module ):
+        for module in self.modules:
+            isActive = ( curr_module.renderer == module.renderer )
+            module.setActivation( self.name, isActive )
+            activateCheckBox = self.modules[ module ] 
+            activateCheckBox.setChecked( isActive )
     
     def addActiveModule( self, module ):
         if not module in self.modules:
+            if self.name == "colormap":
+                print "c"
             row = len( self.modules )
             activateCheckBox = QCheckBox( 'Activate' )
-            activateCheckBox.setChecked( True )
             module_label = QLabel( module.getName()  )
             self.moduleTabLayout.addWidget( module_label, row, 0 )
             self.moduleTabLayout.addWidget( activateCheckBox, row, 1 )
@@ -826,7 +834,8 @@ class IVModuleConfigurationDialog( QWidget ):
                     self.activeModuleList.append( module )
                     self.connect( self, self.update_animation_signal, module.updateAnimation )
             self.modules[ module ] = activateCheckBox
-            self.connect( activateCheckBox, SIGNAL( "stateChanged(int)" ), callbackWrapper( module.setActivation, self.name ) )  
+            self.connect( activateCheckBox, SIGNAL( "stateChanged(int)" ), callbackWrapper( module.setActivation, self.name ) ) 
+            self.initActivation( module )
             self.moduleTabLayout.update()
 #            self.registerModule( module )
 #            print "Add active module %s to dialog %s[%s], modules: %s" % ( module.getName(), self.name, str(id(self)), str(self.modules.keys() ) )
@@ -885,6 +894,7 @@ class IVModuleConfigurationDialog( QWidget ):
     def initWidgetFields( self, value, module ):
         if ( self.module == None ) or ( module.renderer <> None ): 
             self.module = module
+        self.initActivation( module )
         self.initValue = value
 
     def createActiveModulePanel(self ):

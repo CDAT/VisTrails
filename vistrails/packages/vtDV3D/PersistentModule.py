@@ -1374,7 +1374,7 @@ class PersistentVisualizationModule( PersistentModule ):
             lut = vtk.vtkLookupTable()
             cmap_mgr = ColorMapManager( lut ) 
             self.colormapManagers[cmap_index] = cmap_mgr
-        if invert: cmap_mgr.invertColormap = invert
+        if (invert <> None): cmap_mgr.invertColormap = invert
         if name:   cmap_mgr.load_lut( name )
         return cmap_mgr
 

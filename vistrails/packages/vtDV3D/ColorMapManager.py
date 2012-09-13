@@ -164,7 +164,8 @@ class ColorMapManager():
                     self.lut = self.set_lut(self.lut, lut_list)
                     
     def load_lut_from_list(self, list):
-        self.set_lut(self.lut, list)                    
+        self.set_lut(self.lut, list) 
+        self.lut.Modified()                   
 
     def load_lut(self, value=None):
         if( value <> None ): self.colormapName = str( value )
