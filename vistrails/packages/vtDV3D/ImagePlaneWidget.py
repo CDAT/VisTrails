@@ -43,6 +43,8 @@ class ImagePlaneWidget:
         self.CurrentCursorPosition = [ 0, 0, 0 ]
         self.CurrentImageValue   = vtk.VTK_DOUBLE_MAX
         self.CurrentImageValue2 = vtk.VTK_DOUBLE_MAX
+        self.NavigationInteractorStyle = None
+        self.ConfigurationInteractorStyle = vtk.vtkInteractorStyleUser()
                         
         # Represent the plane's outline
         #
@@ -355,7 +357,8 @@ class ImagePlaneWidget:
         update_rate = self.Interactor.GetDesiredUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.updateInteractor()
-        self.Interactor.SetInteractorStyle( PersistentVisualizationModule.configurationInteractorStyle ) 
+        self.NavigationInteractorStyle = self.Interactor.GetInteractorStyle()
+        self.Interactor.SetInteractorStyle( self.ConfigurationInteractorStyle ) 
 #        print " ~~~~~~~~~SS SetInteractorStyle: configurationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )        
               
 #----------------------------------------------------------------------------
@@ -364,7 +367,7 @@ class ImagePlaneWidget:
         from PersistentModule import PersistentVisualizationModule
         update_rate = self.Interactor.GetStillUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
-        self.Interactor.SetInteractorStyle( PersistentVisualizationModule.navigationInteractorStyle )
+        self.Interactor.SetInteractorStyle( self.NavigationInteractorStyle )
 #        print " ~~~~~~~~~ES SetInteractorStyle: navigationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )         
 
 #----------------------------------------------------------------------------

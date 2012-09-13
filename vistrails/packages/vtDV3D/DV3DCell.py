@@ -483,9 +483,11 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             picker = None
             renwin = self.renderer.GetRenderWindow()
             if renwin:
+                style = vtk.vtkInteractorStyleTrackballCamera()
                 iren = renwin.GetInteractor()
-                iren_name = iren.GetInteractorStyle().__class__.__name__
-                iStyle = wrapVTKModule( iren_name, iren.GetInteractorStyle() )   
+                iren.SetInteractorStyle(style)
+                style_name = style.__class__.__name__
+                iStyle = wrapVTKModule( style_name, style )   
             
             if self.isServer:
                 self.cellWidget = self.displayAndWait( QVTKServerWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
@@ -498,7 +500,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             if self.cellWidget:
                 self.renWin = self.cellWidget.GetRenderWindow() 
                 self.iren = self.renWin.GetInteractor()
-                PersistentVisualizationModule.navigationInteractorStyle = self.iren.GetInteractorStyle()
+                self.navigationInteractorStyle = self.iren.GetInteractorStyle()
                 caption_data = self.getInputValue( CaptionManager.config_name, None )
                 self.captionManager = CaptionManager( self.cellWidget, self.iren, data=caption_data )
                 self.connect(self.captionManager, CaptionManager.persist_captions_signal, self.persistCaptions )  
