@@ -83,13 +83,13 @@ class ContourRepresentationConfigurationWidget(RepresentationBaseConfigurationWi
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        sliceOffsetLayout = QHBoxLayout()
-        sliceOffsetLabel = QLabel("Some property:")
-        self.slice_offset_value =  QLineEdit (parent)
-        sliceOffsetLayout.addWidget( sliceOffsetLabel )
-        sliceOffsetLayout.addWidget( self.slice_offset_value )
-        layout.addLayout(sliceOffsetLayout)
-        parent.connect(self.slice_offset_value, SIGNAL("editingFinished()"), parent.stateChanged)
+        #sliceOffsetLayout = QHBoxLayout()
+        #sliceOffsetLabel = QLabel("Some property:")
+        #self.slice_offset_value =  QLineEdit (parent)
+        #sliceOffsetLayout.addWidget( sliceOffsetLabel )
+        #sliceOffsetLayout.addWidget( self.slice_offset_value )
+        #layout.addLayout(sliceOffsetLayout)
+        #parent.connect(self.slice_offset_value, SIGNAL("editingFinished()"), parent.stateChanged)
 
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None
