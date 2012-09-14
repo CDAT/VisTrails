@@ -586,8 +586,8 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         self.horizontalLayout.addWidget(self.removeRepButton)
         self.gridLayout_2.addLayout(self.horizontalLayout, 1, 0, 1, 1)
         spacerItem2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.gridLayout_2.addItem(spacerItem2, 0, 0, 1, 1)
         layout.addWidget(self.frame, 1)
+        layout.addItem(spacerItem2)
 
         self.connect(self.removeRepButton, SIGNAL('clicked(bool)'), self.delete_clicked)
         self.connect(self.submitJobButton, SIGNAL('pressed()'), self.submit_job)
