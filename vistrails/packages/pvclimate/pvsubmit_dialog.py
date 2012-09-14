@@ -1,4 +1,3 @@
-
 # Qt modules
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import QObject, pyqtSlot
@@ -22,10 +21,6 @@ class PVSubmitFileDialog(QtGui.QDialog, Ui_Dialog):
          self.open_local_browser)
 
    def accept(self):
-      print 'I am clicked'
-      print 'input path is ', self.inputPath.text()
-      print 'output path is ', self.outputPath.text()
-      print 'queue is ', self.queueLineEdit.text()
       self.done(QtGui.QDialog.Accepted)
 
    def open_remote_browser(self):
