@@ -29,6 +29,11 @@ import core.db.action
 import csv
 import StringIO
 
+try:
+    _fromUtf8 = QtCore.QString.fromUtf8
+except AttributeError:
+    _fromUtf8 = lambda s: s
+
 class Transformation():
     def __init__(self):
         self.scale = [1.0, 1.0, 0.01]
@@ -442,28 +447,6 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
             rep_module = pipeline.get_module_by_id(rep_id)
             self.representation_modules.append(rep_module)
 
-    def create_remove_button(self):
-        widget = QWidget()
-        self.remove_rep_button = QDockPushButton("Remove")
-        self.remove_rep_button.setEnabled(False)
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(3)
-        btn_layout.setMargin(0)
-        btn_layout.addWidget(self.remove_rep_button)
-        btn_layout.addStretch()
-        widget.setLayout(btn_layout)
-
-        self.connect(self.remove_rep_button, SIGNAL('clicked(bool)'), self.delete_clicked)
-
-        return widget
-
-    def create_submit_job_button(self):
-        self.submit_job_button = QDockPushButton("Submit Job")
-        #TODO: Enable only when we have a view populated with data
-        self.submit_job_button.setEnabled(True)
-        self.connect(self.submit_job_button, SIGNAL('pressed()'), self.submit_job)
-        return self.submit_job_button
-
     def delete_clicked(self):
         if self.representations_table.selectedItems():
             item = self.representations_table.selectedItems()[0]
@@ -579,23 +562,44 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
         layout.addWidget(self.representations_table)
         layout.addWidget(self.config_panel);
 
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(3)
-        btn_layout.setMargin(0)
-        btn_layout.addWidget(self.create_remove_button())
-        btn_layout.addWidget(self.create_submit_job_button())
-        btn_layout.addStretch()
-        layout.addLayout(btn_layout)
+        spacerItem = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.frame = QFrame()
+        self.frame.setFrameShape(QFrame.StyledPanel)
+        self.frame.setFrameShadow(QFrame.Raised)
+        self.frame.setObjectName(_fromUtf8("frame"))
+        self.gridLayout_2 = QGridLayout(self.frame)
+        self.gridLayout_2.setObjectName(_fromUtf8("gridLayout_2"))
+        self.horizontalLayout = QHBoxLayout()
+        self.horizontalLayout.setObjectName(_fromUtf8("horizontalLayout"))
+        spacerItem1 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalLayout.addItem(spacerItem1)
+        self.submitJobButton = QPushButton("Submit Job", self.frame)
+        sizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.submitJobButton.sizePolicy().hasHeightForWidth())
+        self.submitJobButton.setSizePolicy(sizePolicy)
+        self.submitJobButton.setObjectName(_fromUtf8("submitJobButton"))
+        self.horizontalLayout.addWidget(self.submitJobButton)
+        self.removeRepButton = QPushButton("Remove Representation", self.frame)
+        self.removeRepButton.setObjectName(_fromUtf8("removeRepButton"))
+        self.horizontalLayout.addWidget(self.removeRepButton)
+        self.gridLayout_2.addLayout(self.horizontalLayout, 1, 0, 1, 1)
+        spacerItem2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.gridLayout_2.addItem(spacerItem2, 0, 0, 1, 1)
+        layout.addWidget(self.frame, 1)
 
+        self.connect(self.removeRepButton, SIGNAL('clicked(bool)'), self.delete_clicked)
+        self.connect(self.submitJobButton, SIGNAL('pressed()'), self.submit_job)
         self.setDefaults()
 
     def itemSelectionChanged(self):
         if self.representations_table.selectedItems():
-            self.remove_rep_button.setEnabled(True)
+            self.removeRepButton.setEnabled(True)
             item = self.representations_table.selectedItems()[0]
             self.config_panel.layout().setCurrentIndex(item.row())
         else:
-            self.remove_rep_button.setEnabled(False)
+            self.removeRepButton.setEnabled(False)
 
     def setDefaults(self):
         moduleInstance = self.module.module_descriptor.module()
