@@ -818,7 +818,7 @@ class PersistentModule( QObject ):
                 self.configuring = True
                 configFunct.start( self.InteractionState, x, y )
                 if self.ndims == 3: 
-                    self.iren.SetInteractorStyle( PersistentVisualizationModule.configurationInteractorStyle )
+                    self.iren.SetInteractorStyle( self.configurationInteractorStyle )
 #                    print " ~~~~~~~~~ Set Interactor Style: Configuration  ~~~~~~~~~  "
                     if (configFunct.type == 'leveling'): self.getLabelActor().VisibilityOn()
     
@@ -935,7 +935,7 @@ class PersistentModule( QObject ):
             HyperwallManager.getInstance().setInteractionState( None )
             self.finalizeConfigurationObserver( self.InteractionState )            
             if (self.ndims == 3) and self.iren: 
-                self.iren.SetInteractorStyle( PersistentVisualizationModule.navigationInteractorStyle )
+                self.iren.SetInteractorStyle( self.navigationInteractorStyle )
 #                print " ~~~~~~~~~ FL: Set Interactor Style: Navigation:  %s %x " % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )
             self.configuring = False
             self.InteractionState = None
@@ -1079,8 +1079,8 @@ class PersistentModule( QObject ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         notifyHelper =  args.get( 'notifyHelper', True )    
         if (self.ndims == 3) and self.iren: 
-            self.iren.SetInteractorStyle( PersistentVisualizationModule.navigationInteractorStyle )
-#            print " ~~~~~~~~~ EI: Set Interactor Style: Navigation:  %s %x " % ( PersistentVisualizationModule.navigationInteractorStyle.__class__.__name__, id(self.iren) )
+            self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+#            print " ~~~~~~~~~ EI: Set Interactor Style: Navigation:  %s %x " % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )
         self.configuring = False
         if notifyHelper: DV3DPipelineHelper.endInteraction()
         self.InteractionState = None
@@ -1185,8 +1185,6 @@ class PersistentVisualizationModule( PersistentModule ):
     
     renderMap = {} 
     moduleDocumentationDialog = None 
-    navigationInteractorStyle = None
-    configurationInteractorStyle = None
 
     def __init__( self, mid, **args ):
         self.currentButton = None
@@ -1205,6 +1203,8 @@ class PersistentVisualizationModule( PersistentModule ):
         self.activation = {}
         self.isAltMode = False
         self.stereoEnabled = 0
+        self.navigationInteractorStyle = None
+        self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
 
     def enableVisualizationInteraction(self): 
         pass
@@ -1522,6 +1522,10 @@ class PersistentVisualizationModule( PersistentModule ):
     def refreshCells(self):
         spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         spreadsheetWindow.repaint()
+        
+    def isConfigStyle( self, iren ):
+        if not iren: return False
+        return iren.GetInteractorStyle().__class__.__name__ == self.configurationInteractorStyle.__class__.__name__
       
     def activateEvent( self, caller, event ):
         if self.renderer == None:
@@ -1530,12 +1534,12 @@ class PersistentVisualizationModule( PersistentModule ):
             self.renwin = self.renderer.GetRenderWindow( )
             if self.renwin <> None:
                 iren = self.renwin.GetInteractor() 
-                if ( iren <> None ) and ( iren.GetInteractorStyle() <> PersistentVisualizationModule.configurationInteractorStyle ):
+                if ( iren <> None ) and not self.isConfigStyle( iren ):
                     if ( iren <> self.iren ):
                         if self.iren == None: 
                             self.renwin.AddObserver("AbortCheckEvent", CheckAbort)
-                            PersistentVisualizationModule.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
                         self.iren = iren
+                        self.navigationInteractorStyle = iren.GetInteractorStyle()
                         self.activateWidgets( self.iren )                                  
                         self.iren.AddObserver( 'CharEvent', self.setInteractionState )                   
                         self.iren.AddObserver( 'MouseMoveEvent', self.updateLevelingEvent )
@@ -1646,8 +1650,8 @@ class PersistentVisualizationModule( PersistentModule ):
     def onLeftButtonRelease( self, caller, event ):
 #        print " --- Persistent Module: LeftButtonRelease --- "
         self.currentButton = None 
-        istyle = self.iren.GetInteractorStyle()                       
-        style_name = istyle.__class__.__name__
+#        istyle = self.iren.GetInteractorStyle()                       
+#        style_name = istyle.__class__.__name__
 #        print " ~~~~~~~~~ Current Interactor Style:  %s " % ( style_name )
     
     def onRightButtonRelease( self, caller, event ):
@@ -1715,13 +1719,13 @@ class PersistentVisualizationModule( PersistentModule ):
         x, y = caller.GetEventPosition()
         if self.InteractionState <> None:
             self.startConfiguration( x, y,  [ 'generic' ] )
-#            print " ~~~~~~~~~ RBP: Set Interactor Style: Navigation:  %s %x" % ( PersistentVisualizationModule.navigationInteractorStyle.__class__.__name__, id(self.iren) )          
+#            print " ~~~~~~~~~ RBP: Set Interactor Style: Navigation:  %s %x" % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )          
         return 0
     
     def resetNavigation(self):
         if self.iren: 
-            self.iren.SetInteractorStyle( PersistentVisualizationModule.navigationInteractorStyle )
-#            print " ---------------------- resetNavigation: %s %x---------------------- " % ( PersistentVisualizationModule.navigationInteractorStyle.__class__.__name__, id(self.iren) )        
+            self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+#            print " ---------------------- resetNavigation: %s %x---------------------- " % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )        
         self.enableVisualizationInteraction()
 
     def onModified( self, caller, event ):
