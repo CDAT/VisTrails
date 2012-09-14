@@ -202,7 +202,7 @@ class InputSpecs:
         if not self.scalarRange: 
             self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
         valueRange = self.scalarRange
-        sval = ( image_value - self.rangeBounds[0] ) / ( self.rangeBounds[1] - self.rangeBounds[0] )
+        sval = ( float(image_value) - self.rangeBounds[0] ) / ( self.rangeBounds[1] - self.rangeBounds[0] )
         dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
         return dataValue
                 
