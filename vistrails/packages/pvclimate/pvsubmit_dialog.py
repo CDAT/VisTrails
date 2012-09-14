@@ -29,7 +29,7 @@ class PVSubmitFileDialog(QtGui.QDialog, Ui_Dialog):
      if fileDialog.exec_():
        for file in fileDialog.getAllSelectedFiles():
          self.files.append(str(file))
-       self.inputPath.setText(self.files[0])
+       self.inputPath.setText(os.path.dirname(self.files[0]))
 
    def open_local_browser(self):
      directory = os.path.expanduser(unicode(self.outputPath.text()))
@@ -41,4 +41,10 @@ class PVSubmitFileDialog(QtGui.QDialog, Ui_Dialog):
 
    def get_remote_files(self):
      return self.files
+
+   def get_output_directory(self):
+     return self.outputPath.text()
+
+   def get_queue_name(self):
+     return self.queueLineEdit.text()
 
