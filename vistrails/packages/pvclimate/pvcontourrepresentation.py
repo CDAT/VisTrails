@@ -38,9 +38,9 @@ class PVContourRepresentation(PVRepresentationBase):
 
             # Unroll a sphere
             # FIXME: Currently hard coded
-            if reader.__class__.__name__ == 'UnstructuredNetCDFPOPreader':
-                trans_filter = self.get_project_sphere_filter()
-                pvsp.SetActiveSource(trans_filter)
+            #if reader.__class__.__name__ == 'UnstructuredNetCDFPOPreader':
+            #    trans_filter = self.get_project_sphere_filter()
+            #    pvsp.SetActiveSource(trans_filter)
 
             # Create a contour representation
             contour = pvsp.Contour()
@@ -60,7 +60,10 @@ class PVContourRepresentation(PVRepresentationBase):
 
             # FIXME:
             # Hard coded for now
-            contour_rep.Scale = [1, 1, 0.01]
+            if reader.__class__.__name__ == 'UnstructuredNetCDFPOPreader':
+              pass
+            else:
+              contour_rep.Scale = [1, 1, 0.01]
 
             # FIXME:
             # Hard coded for now
