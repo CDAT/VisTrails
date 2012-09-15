@@ -21,6 +21,9 @@ MIN_LINE_LEN = 50
 
 moduleInstances = {}
 
+def getClassName( instance ):
+    return instance.__class__.__name__ if ( instance <> None ) else "None" 
+
 def CheckAbort(obj, event):
    if obj.GetEventPending() != 0:
        obj.SetAbortRender(1)
@@ -200,7 +203,7 @@ class InputSpecs:
 
     def getDataValue( self, image_value):
         if not self.scalarRange: 
-            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % getClassName( self ) )
         valueRange = self.scalarRange
         sval = ( float(image_value) - self.rangeBounds[0] ) / ( self.rangeBounds[1] - self.rangeBounds[0] )
         dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
@@ -208,7 +211,7 @@ class InputSpecs:
                 
     def getDataValues( self, image_value_list ):
         if not self.scalarRange: 
-            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % getClassName( self ) )
         valueRange = self.scalarRange
         dr = ( self.rangeBounds[1] - self.rangeBounds[0] )
         data_values = []
@@ -220,7 +223,7 @@ class InputSpecs:
 
     def getImageValue( self, data_value ):
         if not self.scalarRange: 
-            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % getClassName( self ) )
         valueRange = self.scalarRange
         dv = ( valueRange[1] - valueRange[0] )
         sval = 0.0 if ( dv == 0.0 ) else ( data_value - valueRange[0] ) / dv 
@@ -229,7 +232,7 @@ class InputSpecs:
 
     def getImageValues( self, data_value_list ):
         if not self.scalarRange: 
-            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % getClassName( self ) )
         valueRange = self.scalarRange
         dv = ( valueRange[1] - valueRange[0] )
         imageValues = []
@@ -242,7 +245,7 @@ class InputSpecs:
 
     def scaleToImage( self, data_value ):
         if not self.scalarRange: 
-            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % getClassName( self ) )
         dv = ( self.scalarRange[1] - self.scalarRange[0] )
         sval = 0.0 if ( dv == 0.0 ) else data_value / dv
         imageScaledValue =  sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
@@ -318,7 +321,7 @@ class InputSpecs:
     def addMetadata( self, metadata ):
         dataVector = self.fieldData.GetAbstractArray( 'metadata' ) 
         if dataVector == None:   
-            print " Can't get Metadata for class %s " % ( self.__class__.__name__ )
+            print " Can't get Metadata for class %s " % getClassName( self )
         else:
             enc_mdata = encodeToString( metadata )
             dataVector.InsertNextValue( enc_mdata  )
@@ -492,7 +495,7 @@ class PersistentModule( QObject ):
         self.setResult( "executionSpecs", "" )
     
     def generateDocumentation(self):
-        self.documentation = "\n <h2>Module %s</h2> \n" % ( self.__class__.__name__ )
+        self.documentation = "\n <h2>Module %s</h2> \n" % getClassName( self )
         if self.__class__.__doc__ <> None: self.documentation += self.__class__.__doc__
         self.documentation += self.getConfigurationHelpText()
 
@@ -540,7 +543,7 @@ class PersistentModule( QObject ):
         pass
             
     def getName(self):
-        return str( self.__class__.__name__ )
+        return str( getClassName( self ) )
         
     def dvCompute( self, **args ):
         self.initializeInputs( **args )     
@@ -549,7 +552,7 @@ class PersistentModule( QObject ):
             self.execute( **args )
             self.initializeConfiguration()
         elif self.requiresPrimaryInput:
-            print>>sys.stderr, " Error, no input to module %s " % ( self.__class__.__name__ )
+            print>>sys.stderr, " Error, no input to module %s " % getClassName( self )
         self.persistLayerDependentParameters()
         self.resetNavigation()
         
@@ -557,7 +560,7 @@ class PersistentModule( QObject ):
         pass
 
     def dvUpdate(self, **args):
-#        self.markTime( ' Update %s' % self.__class__.__name__ ) 
+#        self.markTime( ' Update %s' % getClassName( self ) ) 
         self.initializeInputs( **args )     
         self.execute( **args )
  
@@ -661,7 +664,7 @@ class PersistentModule( QObject ):
                     ispec.inputModuleList = self.getPrimaryInputList( port=inputPort, **args )
                     ispec.inputModule = ispec.inputModuleList[0]
                 except Exception, err:
-                    print>>sys.stderr, 'Error: Broken pipeline at input to module %s:\n (%s)' % ( self.__class__.__name__, str(err) ) 
+                    print>>sys.stderr, 'Error: Broken pipeline at input to module %s:\n (%s)' % ( getClassName(self), str(err) ) 
                     traceback.print_exc()
                     sys.exit(-1)
             else:
@@ -752,7 +755,7 @@ class PersistentModule( QObject ):
             fd = output.GetFieldData() 
             fd.PassData( fieldData )                      
             self.wmod.setResult( portName, outputModule ) 
-        else: print " Missing wmod in %s.set2DOutput" % self.__class__.__name__
+        else: print " Missing wmod in %s.set2DOutput" % getClassName( self )
 
     def setOutputModule( self, outputModule, portName = 'volume', **args ): 
         if self.wmod:  
@@ -761,7 +764,7 @@ class PersistentModule( QObject ):
             fd = output.GetFieldData()  
             fd.PassData( fieldData )                
             self.wmod.setResult( portName, outputModule ) 
-        else: print " Missing wmod in %s.set2DOutput" % self.__class__.__name__
+        else: print " Missing wmod in %s.set2DOutput" % getClassName( self )
          
            
     def addConfigurableMethod( self, name, method, key, **args ):
@@ -809,7 +812,7 @@ class PersistentModule( QObject ):
     def startConfigurationObserver( self, parameter_name, *args ):
         self.getLabelActor().VisibilityOn() 
     
-                  
+                        
     def startConfiguration( self, x, y, config_types ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
         if (self.InteractionState <> None) and not self.configuring and DV3DPipelineHelper.isLevelingConfigMode():
@@ -818,8 +821,7 @@ class PersistentModule( QObject ):
                 self.configuring = True
                 configFunct.start( self.InteractionState, x, y )
                 if self.ndims == 3: 
-                    self.iren.SetInteractorStyle( self.configurationInteractorStyle )
-#                    print " ~~~~~~~~~ Set Interactor Style: Configuration  ~~~~~~~~~  "
+                    self.haltNavigationInteraction()
                     if (configFunct.type == 'leveling'): self.getLabelActor().VisibilityOn()
     
     def updateAnimation( self, relTimeValue, textDisplay=None ):
@@ -861,7 +863,7 @@ class PersistentModule( QObject ):
                     if value: 
                         self.setParameter( configFunct.name, value )
                         print "%s--> Refresh Parameter Value: %s = %s " % ( self.getName(), configFunct.name, str(value) )
-            else: print " Missing wmod in %s.refreshParameters" % self.__class__.__name__
+            else: print " Missing wmod in %s.refreshParameters" % getClassName( self )
                     
 #            for configFunct in self.configurableFunctions.values():
 #                    
@@ -891,7 +893,7 @@ class PersistentModule( QObject ):
                                     
     def parameterUpdating( self, parmName ):
         parm_update = self.parmUpdating [parmName] 
-#        print "%s- check parameter updating: %s " % ( self.__class__.__name__, str(parm_update) )
+#        print "%s- check parameter updating: %s " % ( getClassName( self ), str(parm_update) )
         return parm_update
    
     def updateLevelingEvent( self, caller, event ):
@@ -927,6 +929,8 @@ class PersistentModule( QObject ):
 
     def finalizeLevelingEvent( self, caller, event ):
         return self.finalizeLeveling()  
+    
+    
                                     
     def finalizeLeveling( self ):
         if self.ndims == 3: self.getLabelActor().VisibilityOff()
@@ -934,9 +938,7 @@ class PersistentModule( QObject ):
             print " ~~~~~~ Finalize Leveling: ndims = %d, interactionState = %s " % ( self.ndims, self.InteractionState )
             HyperwallManager.getInstance().setInteractionState( None )
             self.finalizeConfigurationObserver( self.InteractionState )            
-            if (self.ndims == 3) and self.iren: 
-                self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-#                print " ~~~~~~~~~ FL: Set Interactor Style: Navigation:  %s %x " % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )
+            if (self.ndims == 3) and self.iren: self.resetNavigation()
             self.configuring = False
             self.InteractionState = None
             return True
@@ -957,7 +959,7 @@ class PersistentModule( QObject ):
 #        try:
 #            controller.update_function( module, parameter_name, param_values_str, -1L, []  )
 #        except IndexError, err:
-#            print "Error updating parameter %s on module %s: %s" % ( parameter_name, self.__class__.__name__, str(err) )
+#            print "Error updating parameter %s on module %s: %s" % ( parameter_name, getClassName( self ), str(err) )
 #            pass 
 #        return controller
         
@@ -1021,7 +1023,7 @@ class PersistentModule( QObject ):
 #            taggedVersion = self.tagCurrentVersion( tag )
 #            new_parameter_id = args.get( 'parameter_id', tag )
 #            self.setParameter( parameter_name, output, new_parameter_id )
-#            print " PM: Persist Parameter %s -> %s, tag = %s, taggedVersion=%d, new_id = %s, version => ( %d -> %d ), module = %s" % ( parameter_name, str(output), tag, taggedVersion, new_parameter_id, v0, v1, self.__class__.__name__ )
+#            print " PM: Persist Parameter %s -> %s, tag = %s, taggedVersion=%d, new_id = %s, version => ( %d -> %d ), module = %s" % ( parameter_name, str(output), tag, taggedVersion, new_parameter_id, v0, v1, getClassName( self ) )
 #            DV3DConfigurationWidget.savingChanges = False
 
     def refreshVersion(self):
@@ -1063,7 +1065,7 @@ class PersistentModule( QObject ):
             assert (output <> None), "Attempt to finalize parameter that has not been cached." 
             self.persistParameterList( [ (parameter_name, output) ] )             
         except Exception, err:
-            print "Error changing parameter %s for %s module: %s" % ( parameter_name, self.__class__.__name__, str(err) )
+            print "Error changing parameter %s for %s module: %s" % ( parameter_name, getClassName( self ), str(err) )
      
     def writeConfigurationResult( self, config_name, config_data, **args ):       
         if self.wmod: self.wmod.setResult( config_name, config_data )
@@ -1078,9 +1080,7 @@ class PersistentModule( QObject ):
     def endInteraction( self, **args ): 
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         notifyHelper =  args.get( 'notifyHelper', True )    
-        if (self.ndims == 3) and self.iren: 
-            self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-#            print " ~~~~~~~~~ EI: Set Interactor Style: Navigation:  %s %x " % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )
+        if (self.ndims == 3) and self.iren: self.resetNavigation() 
         self.configuring = False
         if notifyHelper: DV3DPipelineHelper.endInteraction()
         self.InteractionState = None
@@ -1089,7 +1089,7 @@ class PersistentModule( QObject ):
     def setActivation( self, name, value ):
         bval = bool(value)  
         self.activation[ name ] = bval
-        print "Set activation for %s[%s] to %s "% ( self.getName(), name, bval ) 
+#        print "Set activation for %s[%s] to %s "% ( self.getName(), name, bval ) 
         
     def getActivation( self, name ): 
         return self.activation.get( name, True )
@@ -1239,10 +1239,10 @@ class PersistentVisualizationModule( PersistentModule ):
         portName = args.get( 'name', 'chart' )
         outputModule = AlgorithmOutputModule2D( view, **args )
         if self.wmod == None:
-            print>>sys.stderr, "Missing wmod in setChartDataOutput for class %s" % ( self.__class__.__name__ )
+            print>>sys.stderr, "Missing wmod in setChartDataOutput for class %s" % ( getClassName( self ) )
         else:
             self.wmod.setResult( portName, outputModule )
-            print "setChartDataOutput for class %s" % ( self.__class__.__name__ ) 
+            print "setChartDataOutput for class %s" % ( getClassName( self ) ) 
     
     def set3DOutput( self, input_index=0, **args ):  
         portName = args.get( 'name', 'volume' )
@@ -1264,10 +1264,10 @@ class PersistentVisualizationModule( PersistentModule ):
             fd = output.GetFieldData() 
             fd.PassData( fieldData ) 
         if self.wmod == None:
-            print>>sys.stderr, "Missing wmod in set3DOutput for class %s" % ( self.__class__.__name__ )
+            print>>sys.stderr, "Missing wmod in set3DOutput for class %s" % ( getClassName( self ) )
         else:
             self.wmod.setResult( portName, outputModule )
-#            print "set3DOutput for class %s" % ( self.__class__.__name__ ) 
+#            print "set3DOutput for class %s" % ( getClassName( self ) ) 
              
     def getDownstreamCellModules( self, selectedOnly=False ): 
         from packages.vtDV3D import ModuleStore
@@ -1280,7 +1280,7 @@ class PersistentVisualizationModule( PersistentModule ):
             for ( moduleId, portName ) in connectedModuleIds:
                 module = ModuleStore.getModule( moduleId )
                 if module: 
-                    if module.__class__.__name__ in [ "PM_MapCell3D", "PM_CloudCell3D" ]:
+                    if getClassName(module) in [ "PM_MapCell3D", "PM_CloudCell3D" ]:
                         if (not selectedOnly) or module.isSelected(): rmodList.append( module )
                     else:
                         moduleIdList.append( moduleId )
@@ -1335,7 +1335,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return self.pipelineBuilt
 
     def execute(self, **args ):
-#        print "Execute Module[ %s ]: %s " % ( str(self.moduleID), str( self.__class__.__name__ ) )
+#        print "Execute Module[ %s ]: %s " % ( str(self.moduleID), str( getClassName( self ) ) )
         initConfig = False
         isAnimation = args.get( 'animate', False )
         if not self.isBuilt():
@@ -1525,7 +1525,7 @@ class PersistentVisualizationModule( PersistentModule ):
         
     def isConfigStyle( self, iren ):
         if not iren: return False
-        return iren.GetInteractorStyle().__class__.__name__ == self.configurationInteractorStyle.__class__.__name__
+        return getClassName( iren.GetInteractorStyle() ) == getClassName( self.configurationInteractorStyle )
       
     def activateEvent( self, caller, event ):
         if self.renderer == None:
@@ -1539,7 +1539,6 @@ class PersistentVisualizationModule( PersistentModule ):
                         if self.iren == None: 
                             self.renwin.AddObserver("AbortCheckEvent", CheckAbort)
                         self.iren = iren
-                        self.navigationInteractorStyle = iren.GetInteractorStyle()
                         self.activateWidgets( self.iren )                                  
                         self.iren.AddObserver( 'CharEvent', self.setInteractionState )                   
                         self.iren.AddObserver( 'MouseMoveEvent', self.updateLevelingEvent )
@@ -1702,6 +1701,8 @@ class PersistentVisualizationModule( PersistentModule ):
         return 0
     
     def onLeftButtonPress( self, caller, event ):
+        istyle = self.iren.GetInteractorStyle()
+#        print "(%s)-LBP: s = %s, nis = %s " % ( getClassName( self ), getClassName(istyle), getClassName(self.navigationInteractorStyle) )
         if not self.finalizeLeveling(): 
             shift = caller.GetShiftKey()
             self.currentButton = self.LEFT_BUTTON
@@ -1721,12 +1722,22 @@ class PersistentVisualizationModule( PersistentModule ):
             self.startConfiguration( x, y,  [ 'generic' ] )
 #            print " ~~~~~~~~~ RBP: Set Interactor Style: Navigation:  %s %x" % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )          
         return 0
+
+    def haltNavigationInteraction(self):
+        if self.iren:
+            istyle = self.iren.GetInteractorStyle()  
+            if self.navigationInteractorStyle == None:
+                self.navigationInteractorStyle = istyle    
+            self.iren.SetInteractorStyle( self.configurationInteractorStyle )  
+#            print "\n ---------------------- [%s] halt Navigation: nis = %s, is = %s  ----------------------  \n" % ( getClassName(self), getClassName(self.navigationInteractorStyle), getClassName(istyle)  ) 
     
     def resetNavigation(self):
-        if self.iren: 
-            self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-#            print " ---------------------- resetNavigation: %s %x---------------------- " % ( self.navigationInteractorStyle.__class__.__name__, id(self.iren) )        
-        self.enableVisualizationInteraction()
+        if self.iren:
+            if self.navigationInteractorStyle <> None: 
+                self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+            istyle = self.iren.GetInteractorStyle()  
+#            print "\n ---------------------- [%s] reset Navigation: nis = %s, is = %s  ---------------------- \n" % ( getClassName(self), getClassName(self.navigationInteractorStyle), getClassName(istyle) )        
+            self.enableVisualizationInteraction()
 
     def onModified( self, caller, event ):
         return 0

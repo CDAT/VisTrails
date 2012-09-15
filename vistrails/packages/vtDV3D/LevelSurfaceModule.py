@@ -171,7 +171,6 @@ class PM_LevelSurface(PersistentVisualizationModule):
                 scalarsArray = point_data.GetScalars()
                 image_data_value = scalarsArray.GetTuple1( pointId )
                 data_value = level_ispec.getDataValue( image_data_value )
-                print "Mapper Pos: ", str( self.surfacePicker.GetMapperPosition() )
                 textDisplay = " Position: (%.2f, %.2f, %.2f), Level Value: %.3G %s" % ( pos[0], pos[1], pos[2], data_value, level_ispec.units )  
                 texture_ispec = self.getInputSpec(  1 )                
                 if texture_ispec and texture_ispec.input:
@@ -187,15 +186,14 @@ class PM_LevelSurface(PersistentVisualizationModule):
         update_rate = self.iren.GetDesiredUpdateRate()
         self.iren.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.updateInteractor()
-        self.iren.SetInteractorStyle( self.configurationInteractorStyle ) 
-#        print " ~~~~~~~~~SS SetInteractorStyle: configurationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )        
+        self.haltNavigationInteraction()
               
 #----------------------------------------------------------------------------
 
     def endInteraction(self): 
         update_rate = self.iren.GetStillUpdateRate()
         self.iren.GetRenderWindow().SetDesiredUpdateRate( update_rate )
-        self.iren.SetInteractorStyle( self.navigationInteractorStyle )
+        self.resetNavigation()
      
 #            o = self.PlaneSource.GetOrigin()
 #            

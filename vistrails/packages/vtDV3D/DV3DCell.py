@@ -475,19 +475,15 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.render()                            
         
     def buildWidget(self):                        
-        if self.renderers:
+        if self.renderers and not self.isBuilt():
             renderViews = []
             renderView = None
             iStyle = None
             iHandlers = []
             picker = None
-            renwin = self.renderer.GetRenderWindow()
-            if renwin:
-                style = vtk.vtkInteractorStyleTrackballCamera()
-                iren = renwin.GetInteractor()
-                iren.SetInteractorStyle(style)
-                style_name = style.__class__.__name__
-                iStyle = wrapVTKModule( style_name, style )   
+            style = vtk.vtkInteractorStyleTrackballCamera()
+            style_name = style.__class__.__name__
+            iStyle = wrapVTKModule( style_name, style )   
             
             if self.isServer:
                 self.cellWidget = self.displayAndWait( QVTKServerWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
@@ -877,7 +873,7 @@ class PM_MapCell3D( PM_DV3DCell ):
 #            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
             mapCorner = [ self.x0, self.y0 ]
 #            if ( ( self.roi[0]-map_border_size ) < 0.0 ): mapCorner[0] = mapCorner[0] - 360.0
-            print " DV3DCell, mapCorner = %s, dataPosition = %s, cell_location = %s " % ( str(mapCorner), str(dataPosition), cell_location )
+#            print " DV3DCell, mapCorner = %s, dataPosition = %s, cell_location = %s " % ( str(mapCorner), str(dataPosition), cell_location )
                     
             self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
             self.baseMapActor.SetInput( baseImage )
@@ -911,7 +907,7 @@ class PM_MapCell3D( PM_DV3DCell ):
         x1 = baseExtent[1]
         newCut = self.NormalizeMapLon( self.world_cut )
         delCut = newCut - self.map_cut
-        print "  %%%%%% Roll Map %%%%%%: world_cut=%.1f, map_cut=%.1f, newCut=%.1f " % ( float(self.world_cut), float(self.map_cut), float(newCut) )
+#        print "  %%%%%% Roll Map %%%%%%: world_cut=%.1f, map_cut=%.1f, newCut=%.1f " % ( float(self.world_cut), float(self.map_cut), float(newCut) )
         imageLen = x1 - x0 + 1
         sliceSize =  imageLen * ( delCut / 360.0 )
         sliceCoord = int( round( x0 + sliceSize) )        

@@ -352,14 +352,25 @@ class ImagePlaneWidget:
         
 #----------------------------------------------------------------------------
 
+    def HaltNavigationInteraction(self):
+        if self.NavigationInteractorStyle == None:
+            self.NavigationInteractorStyle = self.Interactor.GetInteractorStyle()       
+        self.Interactor.SetInteractorStyle( self.ConfigurationInteractorStyle )  
+#        print " ~~~~~~~~~SS SetInteractorStyle: configurationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )        
+
+    def ResetNavigationInteraction(self):
+        if self.NavigationInteractorStyle <> None:    
+            self.Interactor.SetInteractorStyle( self.NavigationInteractorStyle )  
+#        print " ~~~~~~~~~ES SetInteractorStyle: navigationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )         
+
+#----------------------------------------------------------------------------
+
     def StartInteraction(self): 
         from PersistentModule import PersistentVisualizationModule
         update_rate = self.Interactor.GetDesiredUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.updateInteractor()
-        self.NavigationInteractorStyle = self.Interactor.GetInteractorStyle()
-        self.Interactor.SetInteractorStyle( self.ConfigurationInteractorStyle ) 
-#        print " ~~~~~~~~~SS SetInteractorStyle: configurationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )        
+        self.HaltNavigationInteraction()
               
 #----------------------------------------------------------------------------
 
@@ -367,8 +378,7 @@ class ImagePlaneWidget:
         from PersistentModule import PersistentVisualizationModule
         update_rate = self.Interactor.GetStillUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
-        self.Interactor.SetInteractorStyle( self.NavigationInteractorStyle )
-#        print " ~~~~~~~~~ES SetInteractorStyle: navigationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )         
+        self.ResetNavigationInteraction()
 
 #----------------------------------------------------------------------------
 
