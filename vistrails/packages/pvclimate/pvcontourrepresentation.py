@@ -46,7 +46,9 @@ class PVContourRepresentation(PVRepresentationBase):
             contour = pvsp.Contour()
             pvsp.SetActiveSource(contour)
             contour.ContourBy = [self.contour_var_type, self.contour_var_name]
-            contour.Isosurfaces = self.contour_values
+
+            # Hard coded for the demo
+            contour.Isosurfaces = [-20.0, -10.0, 0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0]
 
             # FIXME:
             # Hard coded for now
@@ -67,6 +69,16 @@ class PVContourRepresentation(PVRepresentationBase):
 
             # FIXME:
             # Hard coded for now
+
+            # FIMXE:
+            # For demo only
+            try:
+              bar = pvsp.servermanager.rendering.ScalarBarWidgetRepresentation()
+              bar.LookupTable = contour_rep.LookupTable
+              bar.Title = self.contour_var_name
+              self.view.Representations.append(bar)
+            except:
+              pass
 
             contour_rep.Representation = 'Surface'
             contour_rep.ColorArrayName = self.contour_var_name
