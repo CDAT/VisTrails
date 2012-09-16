@@ -497,7 +497,7 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
            client.connect_to_server('MoleQueue')
 
            job_request = molequeue.JobRequest()
-           job_request.queue = submit_dialog.get_queue_name()
+           job_request.queue = str(submit_dialog.get_queue_name())
            job_request.program = 'pvbatch'
 
            input_file = molequeue.FilePath()
