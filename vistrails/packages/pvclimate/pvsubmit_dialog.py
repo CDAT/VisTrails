@@ -33,10 +33,9 @@ class PVSubmitFileDialog(QtGui.QDialog, Ui_Dialog):
 
    def open_local_browser(self):
      directory = os.path.expanduser(unicode(self.outputPath.text()))
-     fd = QtGui.QFileDialog(self, 'Select: Output Directory', directory)
-     fd.setFileMode(QtGui.QFileDialog.DirectoryOnly)
-     if fd.exec_() == 1:
-       dir = str(fd.selectedFiles().first())
+     path = QtGui.QFileDialog.getExistingDirectory(self, 'Select: Output Directory', directory)
+     if path is not None:
+       dir = str(path)
        self.outputPath.setText(dir)
 
    def get_remote_files(self):
