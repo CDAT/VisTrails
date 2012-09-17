@@ -456,6 +456,10 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
             pv_generic_cell.removeRepresentation(row)
 #            self.controller.execute_current_workflow()
 
+    def job_callback(molq_output_dir, instance_output_dir, msg):
+   	if msg['params']['newState'] == 'Finished':
+    		print 'Done', output_dir, instance_output_dir
+
     def submit_job(self):
         fileNames = "FileName=['"
         # Create config GUI here
@@ -504,9 +508,16 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
            input_file.path = batch_file_name
            job_request.input_file = input_file
 
+	   print "About to submit a job"	
+
            molequeue_id = client.submit_job_request(job_request)
 
+		
            print "MoleQueue ID: ", molequeue_id
+	   jobrequest = client.lookup_job(molequeue_id)
+
+	   call = partial(job_callback, jobrequest.output_directory, submit_dialog.get_ouput_directory())
+	   client.register_notification_callback(call)
 
            client.disconnect()
          except KeyboardInterrupt:
