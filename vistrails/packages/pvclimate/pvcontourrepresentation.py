@@ -48,7 +48,7 @@ class PVContourRepresentation(PVRepresentationBase):
             contour.ContourBy = [self.contour_var_type, self.contour_var_name]
 
             # Hard coded for the demo
-            contour.Isosurfaces = [-20.0, -10.0, 0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0]
+            contour.Isosurfaces = [-20.0, -10.0, 0.0, 5.0, 10.0, 15.0, 20.0, 23.0, 25.0, 27.0, 30.0]
 
             # FIXME:
             # Hard coded for now

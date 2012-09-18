@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'pvsubmit_job.ui'
 #
-# Created: Tue Sep 18 14:05:17 2012
+# Created: Tue Sep 18 15:01:24 2012
 #      by: PyQt4 UI code generator 4.9.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -58,7 +58,7 @@ class Ui_Dialog(object):
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 
     def retranslateUi(self, Dialog):
-        Dialog.setWindowTitle(QtGui.QApplication.translate("Dialog", "Dialog", None, QtGui.QApplication.UnicodeUTF8))
+        Dialog.setWindowTitle(QtGui.QApplication.translate("Dialog", "Submit Job", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("Dialog", "Input Directory", None, QtGui.QApplication.UnicodeUTF8))
         self.localBrowserButton.setText(QtGui.QApplication.translate("Dialog", "...", None, QtGui.QApplication.UnicodeUTF8))
         self.remoteBrowserButton.setText(QtGui.QApplication.translate("Dialog", "...", None, QtGui.QApplication.UnicodeUTF8))
