@@ -34,6 +34,17 @@ try:
 except AttributeError:
     _fromUtf8 = lambda s: s
 
+
+def job_callback(molq_output_dir, instance_output_dir, msg):
+    import sys
+    sys.stdout = open('/Users/aashish/log.txt', 'w')
+    print 'calling callback'
+    if msg['params']['newState'] == 'Finished':
+        import subprocess
+	subprocess.Popen('ffmpeg', '-r 8 -i image_%d.png -f mp4', molq_output_dir+'/out.avi')
+	subprocess.Popen('mv', molq_output_dir+'/out.avi', instance_output_dir+'/out.avi')
+
+
 class Transformation():
     def __init__(self):
         self.scale = [1.0, 1.0, 0.01]
@@ -457,8 +468,13 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
 #            self.controller.execute_current_workflow()
 
     def job_callback(molq_output_dir, instance_output_dir, msg):
+	import sys
+	sys.stdout = open('/Users/aashish/log.txt', 'w')
+	print sys.stderr, 'calling callback'
    	if msg['params']['newState'] == 'Finished':
-    		print 'Done', output_dir, instance_output_dir
+    	    import subprocess
+	    subprocess.Popen('ffmpeg', '-r 8 -i image_%d.png -f mp4', molq_output_dir+'/out.avi')
+	    subprocess.Popen('mv', molq_output_dir+'/out.avi', instance_output_dir+'/out.avi')
 
     def submit_job(self):
         fileNames = "FileName=['"
@@ -497,6 +513,9 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
          batch_file_name = temp_dir + "/batch.py"
 
          try:
+	   import sys
+           sys.stdout = open('/Users/aashish/log.txt', 'w')
+
            client = molequeue.Client()
            client.connect_to_server('MoleQueue')
 
@@ -508,18 +527,18 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
            input_file.path = batch_file_name
            job_request.input_file = input_file
 
-	   print "About to submit a job"	
-
+	   print >> sys.stderr, "About to submit a job"	
            molequeue_id = client.submit_job_request(job_request)
 
 		
-           print "MoleQueue ID: ", molequeue_id
+           print >> sys.stderr, "MoleQueue ID: ", molequeue_id
 	   jobrequest = client.lookup_job(molequeue_id)
-
-	   call = partial(job_callback, jobrequest.output_directory, submit_dialog.get_ouput_directory())
+	
+	   from functools import partial
+	   call = partial(job_callback, jobrequest.output_directory, submit_dialog.get_output_directory())
 	   client.register_notification_callback(call)
-
            client.disconnect()
+
          except KeyboardInterrupt:
            print "exp"
 
