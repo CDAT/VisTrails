@@ -71,15 +71,15 @@
      </property>
     </spacer>
    </item>
-   <item row="2" column="1">
-    <widget class="QLineEdit" name="queueLineEdit"/>
-   </item>
    <item row="2" column="0">
     <widget class="QLabel" name="label_3">
      <property name="text">
       <string>Submit Queue</string>
      </property>
     </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QComboBox" name="queueNames"/>
    </item>
   </layout>
  </widget>

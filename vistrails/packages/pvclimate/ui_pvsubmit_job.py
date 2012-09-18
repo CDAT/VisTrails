@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'pvsubmit_job.ui'
 #
-# Created: Wed Sep 12 13:28:49 2012
+# Created: Tue Sep 18 14:05:17 2012
 #      by: PyQt4 UI code generator 4.9.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -45,12 +45,12 @@ class Ui_Dialog(object):
         self.gridLayout.addWidget(self.label_2, 1, 0, 1, 1)
         spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
         self.gridLayout.addItem(spacerItem, 3, 1, 1, 1)
-        self.queueLineEdit = QtGui.QLineEdit(Dialog)
-        self.queueLineEdit.setObjectName(_fromUtf8("queueLineEdit"))
-        self.gridLayout.addWidget(self.queueLineEdit, 2, 1, 1, 1)
         self.label_3 = QtGui.QLabel(Dialog)
         self.label_3.setObjectName(_fromUtf8("label_3"))
         self.gridLayout.addWidget(self.label_3, 2, 0, 1, 1)
+        self.queueNames = QtGui.QComboBox(Dialog)
+        self.queueNames.setObjectName(_fromUtf8("queueNames"))
+        self.gridLayout.addWidget(self.queueNames, 2, 1, 1, 1)
 
         self.retranslateUi(Dialog)
         QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL(_fromUtf8("accepted()")), Dialog.accept)

@@ -45,5 +45,5 @@ class PVSubmitFileDialog(QtGui.QDialog, Ui_Dialog):
      return self.outputPath.text()
 
    def get_queue_name(self):
-     return self.queueLineEdit.text()
+     return self.queueNames.text()
 
