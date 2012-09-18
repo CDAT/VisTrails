@@ -35,14 +35,17 @@ except AttributeError:
     _fromUtf8 = lambda s: s
 
 
-def job_callback(molq_output_dir, instance_output_dir, msg):
+def job_callback(client, molq_output_dir, instance_output_dir, msg):
     import sys
-    sys.stdout = open('/Users/aashish/log.txt', 'w')
-    print 'calling callback'
+    print >> sys.stderr, "callback is called"	
     if msg['params']['newState'] == 'Finished':
+        client.disconnect()
         import subprocess
-	subprocess.Popen('ffmpeg', '-r 8 -i image_%d.png -f mp4', molq_output_dir+'/out.avi')
-	subprocess.Popen('mv', molq_output_dir+'/out.avi', instance_output_dir+'/out.avi')
+	print >> sys.stderr, "creating movie"
+	import time
+	timestamp = time.strftime('%Y_%m_%d_%H_%M_%S')
+	movie_filename = 'out' +  timestamp + '.avi' 
+	subprocess.Popen(['/usr/local/bin/ffmpeg', '-r', '8', '-i', molq_output_dir+'/image_%d.png', '-f', 'mp4', instance_output_dir+'/'+movie_filename])
 
 
 class Transformation():
@@ -467,15 +470,6 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
             pv_generic_cell.removeRepresentation(row)
 #            self.controller.execute_current_workflow()
 
-    def job_callback(molq_output_dir, instance_output_dir, msg):
-	import sys
-	sys.stdout = open('/Users/aashish/log.txt', 'w')
-	print sys.stderr, 'calling callback'
-   	if msg['params']['newState'] == 'Finished':
-    	    import subprocess
-	    subprocess.Popen('ffmpeg', '-r 8 -i image_%d.png -f mp4', molq_output_dir+'/out.avi')
-	    subprocess.Popen('mv', molq_output_dir+'/out.avi', instance_output_dir+'/out.avi')
-
     def submit_job(self):
         fileNames = "FileName=['"
         # Create config GUI here
@@ -533,14 +527,16 @@ class PVClimateCellConfigurationWidget(PVClimateConfigurationWidget):
 		
            print >> sys.stderr, "MoleQueue ID: ", molequeue_id
 	   jobrequest = client.lookup_job(molequeue_id)
-	
-	   from functools import partial
-	   call = partial(job_callback, jobrequest.output_directory, submit_dialog.get_output_directory())
-	   client.register_notification_callback(call)
-           client.disconnect()
 
-         except KeyboardInterrupt:
-           print "exp"
+           print >> sys.stderr, "Job sumitted" 			
+	   from functools import partial
+	   call = partial(job_callback, client, jobrequest.output_directory, submit_dialog.get_output_directory())
+	   client.register_notification_callback(call)
+           #client.disconnect()
+
+         except:
+           client.disconnect()
+           raise;
 
           # remove temp file
           # Show message to the user
