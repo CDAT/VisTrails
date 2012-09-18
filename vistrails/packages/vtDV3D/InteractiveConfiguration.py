@@ -971,7 +971,7 @@ class IVModuleConfigurationDialog( QWidget ):
         self.emit( GuiConfigurableFunction.finalize_parameter_signal, self.name, self.getValue() )
         command = [ self.name ]
         value = self.getValue()
-        command.extend( value )
+        command.extend( value ) if isList( value ) else command.append( value )
         HyperwallManager.getInstance().processGuiCommand( command  )
 
     def startParameter( self, *args ):
