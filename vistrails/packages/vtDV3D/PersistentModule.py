@@ -382,8 +382,10 @@ class PersistentModule( QObject ):
         self.parameterCache = {}
         self.timeValue = cdtime.reltime( 0.0, ReferenceTimeUnits ) 
         if self.createColormap:
-            self.addConfigurableGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Colormap', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
-        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
+            self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Colormap', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
+#        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
+        self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
+
 #        self.addConfigurableGuiFunction( 'layer', LayerConfigurationDialog, 'l', setValue=self.setLayer, getValue=self.getLayer )
 
 #    def getSelectionStatus( self ):
@@ -779,6 +781,11 @@ class PersistentModule( QObject ):
     def addConfigurableGuiFunction(self, name, guiClass, key, **args):
         isActive = not HyperwallManager.getInstance().isClient
         guiCF = GuiConfigurableFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
+        self.configurableFunctions[name] = guiCF
+
+    def addUVCDATConfigGuiFunction(self, name, guiClass, key, **args):
+        isActive = not HyperwallManager.getInstance().isClient
+        guiCF = UVCDATGuiConfigFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
 
     def removeConfigurableFunction(self, name ):

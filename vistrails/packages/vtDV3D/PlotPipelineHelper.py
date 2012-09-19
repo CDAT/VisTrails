@@ -420,6 +420,7 @@ class DV3DConfigControlPanel(QWidget):
     def __init__( self, configMenu, optionsMenu, parent=None):
         QWidget.__init__(self,parent)
         self.active_module = None
+        self.configWidget = None
            
         main_layout = QVBoxLayout()        
         button_layout = QHBoxLayout()
@@ -461,9 +462,9 @@ class DV3DConfigControlPanel(QWidget):
         main_layout.addLayout( button_layout )
         main_layout.addStrut(2)
 
-        self.rangeConfigWidget = DV3DRangeConfigWidget(self)
-        main_layout.addWidget( self.rangeConfigWidget )        
-#        print "DV3DConfigControlPanel: %x %x " % ( id(self), id( self.rangeConfigWidget) )
+        self.config_layout = QVBoxLayout() 
+        main_layout.addLayout( self.config_layout )        
+#        print "DV3DConfigControlPanel: %x %x " % ( id(self), id( self.configWidget) )
 
         self.modules_frame = QFrame()
         modules_layout = QVBoxLayout() 
@@ -488,8 +489,24 @@ class DV3DConfigControlPanel(QWidget):
         main_layout.addStretch()                       
         self.setLayout(main_layout)
         
+    def getConfigWidget( self, configFunctionList ):
+        if configFunctionList:
+            if configFunctionList[0].type == "leveling":
+                return DV3DRangeConfigWidget(self) 
+            if configFunctionList[0].type == "uvcdat-gui":
+                return configFunctionList[0].getWidget() 
+        return None
+        
+    def init( self, configFunctionList ):
+        cfgWidget = self.getConfigWidget( configFunctionList )
+        if cfgWidget:
+            if self.configWidget: 
+                self.config_layout.removeWidget( self.configWidget )
+            self.configWidget = cfgWidget      
+            self.config_layout.addWidget( cfgWidget )            
+        
     def isEligibleCommand( self, cmd ):
-        return self.rangeConfigWidget.isEligibleCommand( cmd )
+        return self.configWidget.isEligibleCommand( cmd )
 
     def addActivePlot( self, module ):
         active_irens = DV3DPipelineHelper.getActiveIrens()
@@ -508,18 +525,18 @@ class DV3DConfigControlPanel(QWidget):
     def startConfig(self, qs_action_key, qs_cfg_key ):
         self.plot_list.clear()
         self.modules_frame.setVisible(True)
-        if self.rangeConfigWidget:
-            self.rangeConfigWidget.startConfig( qs_action_key, qs_cfg_key )
+        if self.configWidget:
+            self.configWidget.startConfig( qs_action_key, qs_cfg_key )
 
     def stopConfig( self, module ):          
-        interactionState = self.rangeConfigWidget.getInteractionState()
+        interactionState = self.configWidget.getInteractionState()
         module.finalizeConfigurationObserver( interactionState, notifyHelper=False ) 
         module.render()
 
     def endConfig( self ):
         self.modules_frame.setVisible(False)
-        if self.rangeConfigWidget:
-            self.rangeConfigWidget.endConfig()
+        if self.configWidget:
+            self.configWidget.endConfig()
             
 class ConnectionType:
     INPUT = 0
@@ -623,12 +640,16 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         currentActionList  =  DV3DPipelineHelper.actionMap[ action_key ]
         
         actionList = [] 
+        configFunctionList = []
         validModuleIdList = DV3DPipelineHelper.getValidModuleIdList( )
         for ( module, key ) in currentActionList:
             if module.moduleID in validModuleIdList:
                 actionList.append( ( module, key ) )
+                f = module.configurableFunctions.get( action_key, None )
+                if f <> None: configFunctionList.append( f )
                  
         DV3DPipelineHelper.actionMap[ action_key ] = actionList
+        DV3DPipelineHelper.config_widget.init( configFunctionList )
                         
         for ( module, key ) in actionList:
             module.processKeyEvent( key )
@@ -1120,7 +1141,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         
         DV3DPipelineHelper.config_widget = DV3DConfigControlPanel( menu, menu1 )
         for pmod in pmods:
-            cmdList = pmod.getConfigFunctions( [ 'leveling' ] )
+            cmdList = pmod.getConfigFunctions( [ 'leveling', 'uvcdat-gui' ] )
             for cmd in cmdList:
                 DV3DPipelineHelper.addConfigCommand( pmod, cmd )
         return DV3DPipelineHelper.config_widget

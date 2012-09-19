@@ -42,7 +42,7 @@ class PM_Resample(PersistentVisualizationModule):
         PersistentVisualizationModule.__init__(self, mid, createColormap=False, **args)
         aoi_sig = [ (Float, 'xmin'), (Float, 'xmax'), (Float, 'ymin'), (Float, 'ymax'), (Float, 'zmin'), (Float, 'zmax')  ]
         self.addConfigurableWidgetFunction( 'aoi',     aoi_sig,   BoxWidgetWrapper, 'b', getValue=self.getAoi, setValue=self.setAoi )
-        self.addConfigurableGuiFunction( 'decimation', DecimationConfigurationWidget, 'd', setValue=self.setDecimation, getValue=self.getDecimation )
+        self.addUVCDATConfigGuiFunction( 'decimation', DecimationConfigurationWidget, 'd', setValue=self.setDecimation, getValue=self.getDecimation )
         self.currentExtent = None
         
     def startConfigurationObserver( self, parameter_name, *args ):
@@ -180,7 +180,7 @@ class PM_Resample(PersistentVisualizationModule):
 #        scale_sig = [ (Float, 'sx'), (Float, 'sy'), (Float, 'sz') ] 
 #        self.addConfigurableWidgetFunction( 'aoi',     aoi_sig,   BoxWidgetWrapper, 'b', configToParameter=self.boundsToAoi, parameterToConfig=self.AoiToBounds, getValue=self.getAoi, setValue=self.setAoi )
 ##        self.addConfigurableWidgetFunction( 'scaling', scale_sig, BoxWidgetWrapper, 's', configToParameter=self.boundsToScaling, parameterToConfig=self.scalingToBounds, getValue=self.getScaling, setValue=self.setScaling  )
-#        self.addConfigurableGuiFunction( 'resolution', DecimationConfigurationWidget, 'r', setValue=self.setSpacing, getValue=self.getSpacing, getAoi=self.getAoi )
+#        self.addUVCDATConfigGuiFunction( 'resolution', DecimationConfigurationWidget, 'r', setValue=self.setSpacing, getValue=self.getSpacing, getAoi=self.getAoi )
 #        self.currentOrigin = None
 #        self.currentExtent = None
 #        self.currentSpacing = None

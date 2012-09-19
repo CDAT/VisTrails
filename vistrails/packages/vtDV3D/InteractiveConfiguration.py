@@ -615,6 +615,60 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
 
 ################################################################################
 
+class UVCDATGuiConfigFunction( ConfigurableFunction ):
+    
+    start_parameter_signal = SIGNAL('start_parameter')
+    update_parameter_signal = SIGNAL('update_parameter')
+    finalize_parameter_signal = SIGNAL('finalize_parameter')
+    
+    def __init__( self, name, guiClass, key, **args ):
+        ConfigurableFunction.__init__( self, name, guiClass.getSignature(), key, **args  )
+        self.type = 'uvcdat-gui'
+        self.guiClass = guiClass
+        if( self.initHandler == None ): self.initHandler = self.initGui
+        if( self.openHandler == None ): self.openHandler = self.openGui
+        self.setValueHandler = args.get( 'setValue', None )
+        self.getValueHandler = args.get( 'getValue', None )
+        self.startConfigurationObserver = args.get( 'start', None )
+        self.updateConfigurationObserver = args.get( 'update', None )
+        self.finalizeConfigurationObserver = args.get( 'finalize', None )
+        self.gui = None
+        
+    def initGui( self, **args ):
+        if self.gui == None: 
+            self.gui = self.guiClass.getInstance( self.guiClass, self.name, self.module, **args  )
+            if self.startConfigurationObserver <> None:
+                self.gui.connect( self.gui, self.start_parameter_signal, self.startConfigurationObserver )
+            if self.updateConfigurationObserver <> None:
+                self.gui.connect( self.gui, self.update_parameter_signal, self.updateConfigurationObserver )
+            if self.finalizeConfigurationObserver <> None:
+                self.gui.connect( self.gui, self.finalize_parameter_signal, self.finalizeConfigurationObserver )
+        initial_value = None if ( self.getValueHandler == None ) else self.getValueHandler()          
+        value = self.module.getInputValue( self.name, initial_value )  # if self.parameterInputEnabled else initial_value
+        if value <> None: 
+            self.gui.setValue( value )
+            self.setValue( value )
+            self.module.setResult( self.name, value )
+            
+    def getWidget(self):
+        return self.gui
+
+    def openGui( self ):
+        value = self.getValueHandler() if (self.getValueHandler <> None) else None 
+        self.gui.initWidgetFields( value, self.module )
+        parent = self.gui.parent()
+        if parent == None:  self.gui.createDialogPanels()
+        else:               self.gui.createGuiPanels()
+        self.gui.show()
+        self.module.resetNavigation()
+        
+    def getTextDisplay(self, **args ):
+        return self.gui.getTextDisplay( **args )
+       
+    def setValue( self, value ):
+        if self.setValueHandler <> None: 
+            self.setValueHandler( value )
+
 class GuiConfigurableFunction( ConfigurableFunction ):
     
     start_parameter_signal = SIGNAL('start_parameter')
@@ -781,10 +835,15 @@ class IVModuleConfigurationDialog( QWidget ):
          
     def __init__(self, name, **args ):
         QWidget.__init__(self, None)
+        self.active_cfg_cmd = None
+        self.moduleTabLayout = None
+        self.dialogButtonLayout = None
+        self.guiButtonLayout = None
         self.modules = OrderedDict()
         self.module = None
         self.initValue = None
         self.name = name
+        self.initialize()
         title = ( '%s configuration' % name )
         self.setWindowTitle( title )        
         self.setLayout(QVBoxLayout())
@@ -793,10 +852,43 @@ class IVModuleConfigurationDialog( QWidget ):
         self.layout().setMargin(5)
         self.layout().setSpacing(5)
         self.createContent()
-        self.createButtonLayout()
-        self.createActiveModulePanel()
-        self.setWindowFlags( self.windowFlags() | Qt.WindowStaysOnTopHint )
         self.tabbedWidget.setCurrentIndex(0)
+        self.disable()
+
+    def createGuiButtonLayout(self):
+        if self.dialogButtonLayout <> None:
+            self.layout().removeItem( self.dialogButtonLayout )
+            self.dialogButtonLayout = None
+        if self.guiButtonLayout == None:
+            self.guiButtonLayout = QHBoxLayout() 
+            revert_button = QPushButton("Revert", self)
+            save_button = QPushButton("Save", self)
+            self.guiButtonLayout.addWidget( revert_button )
+            self.guiButtonLayout.addStretch() 
+            self.guiButtonLayout.addWidget( save_button )
+            revert_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
+            save_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
+            self.connect( revert_button, SIGNAL("clicked()"), lambda: self.revertConfig() ) 
+            self.connect( save_button, SIGNAL("clicked()"), lambda: self.finalizeConfig() )         
+            self.layout().addLayout( self.guiButtonLayout ) 
+        
+    def createDialogPanels(self):
+        if self.guiButtonLayout <> None:
+            self.layout().removeItem( self.guiButtonLayout )
+            self.guiButtonLayout = None
+        if self.moduleTabLayout == None:
+            self.createActiveModulePanel()
+            self.registerActiveModules()
+            self.createDialogButtonLayout()
+            self.setWindowFlags( self.windowFlags() | Qt.WindowStaysOnTopHint )
+
+    def createGuiPanels(self):            
+        self.createGuiButtonLayout()
+
+#    def getConfigTab(self): 
+#        if DV3DPipelineHelper.isGuiConfigMode(): return self.guiWidget
+#        if DV3DPipelineHelper.isLevelingConfigMode(): return self.levelingConfigWidget
+#        return None
     
     @staticmethod    
     def getInstance( klass, name, caller, **args  ):
@@ -806,6 +898,33 @@ class IVModuleConfigurationDialog( QWidget ):
         instance = IVModuleConfigurationDialog.instances.setdefault( name, klass( name, **args )  )
         instance.addActiveModule( caller )
         return instance 
+        
+        
+    def __del__(self):
+        self.deactivate_current_command()
+        
+    def initialize(self):
+        self.active_cfg_cmd = None
+        self.active_modules = set()
+
+    def getInteractionState( self ):
+        return self.active_cfg_cmd.name if self.active_cfg_cmd else "None"      
+        
+     
+    def enable(self): 
+        self.setVisible(True)
+
+    def disable(self): 
+        self.setVisible(False)
+        self.deactivate_current_command()
+        
+    def isEligibleCommand( self, cmd ):
+        return (self.active_cfg_cmd == None) or ( cmd == self.active_cfg_cmd )
+       
+    def deactivate_current_command(self):
+        if self.active_cfg_cmd:
+            self.active_cfg_cmd.updateWindow()
+            self.active_cfg_cmd = None
                               
     def createContent(self ):
         """ createContent() 
@@ -822,18 +941,18 @@ class IVModuleConfigurationDialog( QWidget ):
     
     def addActiveModule( self, module ):
         if not module in self.modules:
-            if self.name == "colormap":
-                print "c"
-            row = len( self.modules )
-            activateCheckBox = QCheckBox( 'Activate' )
+            self.modules[ module ] = QCheckBox( 'Activate' )
+            if not ( self.activeModuleList and self.activeModuleList[-1] == module ):
+                self.activeModuleList.append( module )
+                self.connect( self, self.update_animation_signal, module.updateAnimation )
+            
+    def registerActiveModules(self):
+        for row, item in enumerate( self.modules.items() ):
+            activateCheckBox = item[1]
+            module = item[0]
             module_label = QLabel( module.getName()  )
             self.moduleTabLayout.addWidget( module_label, row, 0 )
-            self.moduleTabLayout.addWidget( activateCheckBox, row, 1 )
-            if not module in self.modules:
-                if not ( self.activeModuleList and self.activeModuleList[-1] == module ):
-                    self.activeModuleList.append( module )
-                    self.connect( self, self.update_animation_signal, module.updateAnimation )
-            self.modules[ module ] = activateCheckBox
+            self.moduleTabLayout.addWidget( activateCheckBox, row, 1 )            
             self.connect( activateCheckBox, SIGNAL( "stateChanged(int)" ), callbackWrapper( module.setActivation, self.name ) ) 
             self.initActivation( module )
             self.moduleTabLayout.update()
@@ -903,7 +1022,6 @@ class IVModuleConfigurationDialog( QWidget ):
         """       
         activeModuleTab = QWidget()        
         self.tabbedWidget.addTab( activeModuleTab, 'Active Modules' )
-        self.tabbedWidget.setCurrentWidget(activeModuleTab)
         self.moduleTabLayout = QGridLayout()
         self.moduleTabLayout.setMargin( 5 )
         self.moduleTabLayout.setSpacing( 5 )
@@ -934,23 +1052,23 @@ class IVModuleConfigurationDialog( QWidget ):
 #            active = item[1]
 #            module = item[0]
 
-    def createButtonLayout(self):
+    def createDialogButtonLayout(self):
         """ createButtonLayout() -> None
         Construct Ok & Cancel button
         
         """
-        self.buttonLayout = QHBoxLayout()
-        self.buttonLayout.setMargin(5)
+        self.dialogButtonLayout = QHBoxLayout()
+        self.dialogButtonLayout.setMargin(5)
         self.okButton = QPushButton('&OK', self)
         self.okButton.setAutoDefault(False)
         self.okButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.okButton)
+        self.dialogButtonLayout.addWidget(self.okButton)
         self.cancelButton = QPushButton('&Cancel', self)
         self.cancelButton.setAutoDefault(False)
         self.cancelButton.setShortcut('Esc')
         self.cancelButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.cancelButton)
-        self.layout().addLayout(self.buttonLayout)
+        self.dialogButtonLayout.addWidget(self.cancelButton)
+        self.layout().addLayout(self.dialogButtonLayout)
         self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
         self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.cancelTriggered)
                     
@@ -971,7 +1089,7 @@ class IVModuleConfigurationDialog( QWidget ):
         self.emit( GuiConfigurableFunction.finalize_parameter_signal, self.name, self.getValue() )
         command = [ self.name ]
         value = self.getValue()
-        command.extend( value ) if isList( value ) else command.append( value )
+        command.extend( value ) if isList( value ) else command.append( value )   
         HyperwallManager.getInstance().processGuiCommand( command  )
 
     def startParameter( self, *args ):
@@ -989,6 +1107,55 @@ class IVModuleConfigurationDialog( QWidget ):
 
     def setValue( self, value ):
         pass
+
+          
+    def startConfig(self, qs_action_key, qs_cfg_key ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
+        cfg_key = str(qs_cfg_key)
+        action_key = str(qs_action_key)
+#        self.getConfigTab().setTitle( action_key )
+        try:
+            cmd_list = DV3DPipelineHelper.getConfigCmd ( cfg_key )
+            if cmd_list:
+                self.deactivate_current_command()
+                active_irens = DV3DPipelineHelper.getActiveIrens()
+                for cmd_entry in cmd_list:
+                    module = cmd_entry[0]
+                    cfg_cmd = cmd_entry[1] 
+                    self.active_modules.add( module )
+                    if ( self.active_cfg_cmd == None ) or ( module.iren in active_irens ):
+                        self.active_cfg_cmd = cfg_cmd
+                self.active_cfg_cmd.updateActiveFunctionList()
+                self.enable()
+        except RuntimeError:
+            print "RuntimeError"
+            
+    def endConfig( self ):
+        self.disable()
+        
+    def finalizeConfig( self ):
+        if len( self.active_modules ):
+            interactionState = self.active_cfg_cmd.name
+#            parm_range = list( self.active_cfg_cmd.range )
+#            for module in self.active_modules:
+#                config_data = module.getParameter( interactionState  ) 
+#                if config_data: 
+#                    config_data[0:2] = parm_range[0:2]
+#                else:
+#                    config_data = parm_range
+#                module.writeConfigurationResult( interactionState, config_data ) 
+            HyperwallManager.getInstance().setInteractionState( None )               
+        self.endConfig()
+
+    def revertConfig(self):
+        if len( self.active_modules ):
+#            self.initialRange[2] = self.active_cfg_cmd.range[2]
+#            self.active_cfg_cmd.broadcastLevelingData( self.initialRange )  
+#            interactionState = self.active_cfg_cmd.name
+#            for module in self.active_modules: 
+#                module.finalizeConfigurationObserver( interactionState ) 
+            HyperwallManager.getInstance().setInteractionState( None )  
+        self.endConfig()
 
 ################################################################################
  
