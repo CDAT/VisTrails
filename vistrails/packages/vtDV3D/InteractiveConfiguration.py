@@ -625,6 +625,7 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
     def __init__( self, name, guiClass, key, **args ):
         ConfigurableFunction.__init__( self, name, guiClass.getSignature(), key, **args  )
         self.type = 'uvcdat-gui'
+        self.useDialog = True
         self.guiClass = guiClass
         if( self.initHandler == None ): self.initHandler = self.initGui
         if( self.openHandler == None ): self.openHandler = self.openGui
@@ -634,8 +635,14 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         self.updateConfigurationObserver = args.get( 'update', None )
         self.finalizeConfigurationObserver = args.get( 'finalize', None )
         self.gui = None
+        print "create UVCDATGuiConfigFunction: %x, startConfigurationObserver: %s" % ( id(self), str( self.startConfigurationObserver ) )
+        
+    def __del__(self):
+        print "delete UVCDATGuiConfigFunction: %x" % ( id(self) )
+        ConfigurableFunction.__del__(self)
         
     def initGui( self, **args ):
+        print "init UVCDATGuiConfigFunction: %x" % ( id(self) )
         if self.gui == None: 
             self.gui = self.guiClass.getInstance( self.guiClass, self.name, self.module, **args  )
             if self.startConfigurationObserver <> None:
@@ -651,7 +658,11 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
             self.setValue( value )
             self.module.setResult( self.name, value )
             
-    def getWidget(self):
+    def getWidget( self, reset = True ):
+        if self.useDialog: return None
+        if reset:
+            self.gui = None
+            self.initGui( **self.kwargs )
         return self.gui
     
     def updateWindow(self):
@@ -835,7 +846,7 @@ class IVModuleConfigurationDialog( QWidget ):
     """ 
     instances = {}
     activeModuleList = []
-    update_animation_signal = SIGNAL('update_animation')      
+    update_animation_signal = SIGNAL('update_animation')     
          
     def __init__(self, name, **args ):
         QWidget.__init__(self, None)
@@ -858,6 +869,16 @@ class IVModuleConfigurationDialog( QWidget ):
         self.createContent()
         self.tabbedWidget.setCurrentIndex(0)
         self.disable()
+        print "  -AAXX- Creating %s[%s]: id = %d " % ( self.__class__.__name__, self.name, id( self ) )
+
+    @staticmethod 
+    def reset():
+        IVModuleConfigurationDialog.instances = {}
+        IVModuleConfigurationDialog.activeModuleList = []
+        
+    def __del__(self):
+        print "  -AAXX- Deleting %s[%s]: id = %d " % ( self.__class__.__name__, self.name, id( self ) )
+        self.deactivate_current_command()
 
     def createGuiButtonLayout(self):
         if self.dialogButtonLayout <> None:
@@ -899,14 +920,13 @@ class IVModuleConfigurationDialog( QWidget ):
 #        stack = inspect.stack()
 #        frame = stack[0][0]
 #        print " ---> %s: %s" % ( frame.__class__, dir( frame ) )
-        instance = IVModuleConfigurationDialog.instances.setdefault( name, klass( name, **args )  )
+        instance = IVModuleConfigurationDialog.instances.get( str(name), None )
+        if instance == None:
+            instance = klass( str(name), **args )
+            IVModuleConfigurationDialog.instances[ str(name) ] = instance
         instance.addActiveModule( caller )
         return instance 
-        
-        
-    def __del__(self):
-        self.deactivate_current_command()
-        
+                
     def initialize(self):
         self.active_cfg_cmd = None
         self.active_modules = set()
@@ -936,6 +956,14 @@ class IVModuleConfigurationDialog( QWidget ):
         """
         pass
 
+    def updateActivation(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper      
+        for module in self.modules:
+            isActive = DV3DPipelineHelper.getPlotActivation( module )
+            module.setActivation( self.name, isActive )
+            activateCheckBox = self.modules[ module ] 
+            activateCheckBox.setChecked( isActive )   
+
     def initActivation( self, curr_module ):
         for module in self.modules:
             isActive = ( curr_module.renderer == module.renderer )
@@ -949,6 +977,15 @@ class IVModuleConfigurationDialog( QWidget ):
             if not ( self.activeModuleList and self.activeModuleList[-1] == module ):
                 self.activeModuleList.append( module )
                 self.connect( self, self.update_animation_signal, module.updateAnimation )
+              
+    @staticmethod              
+    def getActiveModules():
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
+        active_mods = []
+        for module in IVModuleConfigurationDialog.activeModuleList:
+            isActive = DV3DPipelineHelper.getPlotActivation( module )
+            if isActive: active_mods.append( module )
+        return active_mods
             
     def registerActiveModules(self):
         for row, item in enumerate( self.modules.items() ):
@@ -1122,12 +1159,12 @@ class IVModuleConfigurationDialog( QWidget ):
             cmd_list = DV3DPipelineHelper.getConfigCmd ( cfg_key )
             if cmd_list:
                 self.deactivate_current_command()
-                active_irens = DV3DPipelineHelper.getActiveIrens()
+                active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
                 for cmd_entry in cmd_list:
                     module = cmd_entry[0]
                     cfg_cmd = cmd_entry[1] 
                     self.active_modules.add( module )
-                    if ( self.active_cfg_cmd == None ) or ( module.iren in active_irens ):
+                    if ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ):
                         self.active_cfg_cmd = cfg_cmd
                 self.active_cfg_cmd.updateActiveFunctionList()
                 self.enable()
@@ -2021,7 +2058,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
                 displayText = self.getTextDisplay()
                 HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, displayText ], False  )
-                for module in self.activeModuleList:
+                for module in IVModuleConfigurationDialog.getActiveModules():
                     dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
                     module.updateAnimation( relTimeValueRefAdj, displayText  )
             except Exception:
@@ -2031,7 +2068,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     def stop(self):
         self.runButton.setText('Run')
         self.running = False 
-        for module in self.activeModuleList:
+        for module in IVModuleConfigurationDialog.getActiveModules():
             module.stopAnimation()
 
     def cancelTriggered(self, checked = False):
@@ -2048,7 +2085,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.running = True
         self.timer.start()       
         
-    def run( self ): 
+    def run( self ):
         if self.running: self.stop()           
         else: self.start()
         
@@ -2176,7 +2213,7 @@ class LevelConfigurationDialog( IVModuleConfigurationDialog ):
         levValue = self.getValue()
         self.module.setCurrentLevel( levValue )
         textDisplay = "%s: %s" % ( self.name, levValue )
-        for module in self.activeModuleList:
+        for module in IVModuleConfigurationDialog.getActiveModules():
             module.dvUpdate( animate=True ) 
             module.updateTextDisplay( textDisplay ) 
         

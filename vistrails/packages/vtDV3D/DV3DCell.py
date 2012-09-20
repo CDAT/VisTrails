@@ -349,7 +349,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def processKeyEvent( self, key, caller=None, event=None ): 
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
         if (  key == 'k'  ):
-            if self.iren in DV3DPipelineHelper.getActiveIrens() :
+            if self.GetRenWinID() in DV3DPipelineHelper.getActiveRenWinIds():
                 self.captionManager.addCaption()
                 state =  self.getInteractionState( key )
                 if state <> None: self.updateInteractionState( state, self.isAltMode  )                 

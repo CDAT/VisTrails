@@ -394,9 +394,12 @@ class PersistentModule( QObject ):
 #            if dataArray: return dataArray.GetValue(0)
 #        return 0
 
-    def __del__(self):
-        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
-        IVModuleConfigurationDialog.instances = {}
+#    def __del__(self):
+#        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
+#        IVModuleConfigurationDialog.reset()
+        
+    def GetRenWinID(self):
+        return -1
         
     def setLayer( self, layer ):
         self.activeLayer = getItem( layer )
@@ -1216,6 +1219,9 @@ class PersistentVisualizationModule( PersistentModule ):
         self.stereoEnabled = 0
         self.navigationInteractorStyle = None
         self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
+
+    def GetRenWinID(self):
+        return id( self.renderer.GetRenderWindow() ) if self.renderer else -1
 
     def enableVisualizationInteraction(self): 
         pass

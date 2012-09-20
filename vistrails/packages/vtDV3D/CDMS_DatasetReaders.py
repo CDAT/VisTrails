@@ -552,6 +552,7 @@ class CDMSDataset(Module):
 
     def __del__( self ):
         for dsetRec in self.datasetRecs.values(): dsetRec.dataset.close()
+        Module.__del__( self )
          
     def addTransientVariable( self, varName, variable, ndim = None ):
         self.transientVariables[ varName ] = variable

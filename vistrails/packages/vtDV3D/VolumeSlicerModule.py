@@ -71,6 +71,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetY.RemoveAllObservers()
         self.planeWidgetZ.RemoveAllObservers()
         del VolumeSlicerModules[ self.moduleID ]
+        PersistentVisualizationModule.__del__(self)
         
     def scaleContourColormap(self, data, **args ):
         return self.scaleColormap( data, 1, **args )

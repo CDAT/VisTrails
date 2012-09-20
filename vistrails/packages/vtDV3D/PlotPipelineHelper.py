@@ -302,6 +302,7 @@ class DV3DRangeConfigWidget(QFrame):
         
     def __del__(self):
         self.deactivate_current_command()
+        QFrame.__del__(self)
         
     def initialize(self):
         self.active_cfg_cmd = None
@@ -375,12 +376,12 @@ class DV3DRangeConfigWidget(QFrame):
             cmd_list = DV3DPipelineHelper.getConfigCmd ( cfg_key )
             if cmd_list:
                 self.deactivate_current_command()
-                active_irens = DV3DPipelineHelper.getActiveIrens()
+                active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
                 for cmd_entry in cmd_list:
                     module = cmd_entry[0]
                     cfg_cmd = cmd_entry[1] 
                     self.active_modules.add( module )
-                    if ( self.active_cfg_cmd == None ) or ( module.iren in active_irens ):
+                    if ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ):
                         self.active_cfg_cmd = cfg_cmd
                 self.updateSliderValues(True)
                 self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues ) 
@@ -423,8 +424,10 @@ class DV3DConfigControlPanel(QWidget):
 
     def __init__( self, configMenu, optionsMenu, parent=None):
         QWidget.__init__(self,parent)
+        self.showActivePlotsPanel = False
         self.active_module = None
         self.configWidget = None
+        print "Creating DV3DConfigControlPanel: id = %x " % id( self )
            
         main_layout = QVBoxLayout()        
         button_layout = QHBoxLayout()
@@ -492,6 +495,9 @@ class DV3DConfigControlPanel(QWidget):
                     
         main_layout.addStretch()                       
         self.setLayout(main_layout)
+
+    def __del__(self):
+        print "Deleting DV3DConfigControlPanel: id = %x " % id( self )
         
     def getConfigWidget( self, configFunctionList ):
         if configFunctionList:
@@ -502,40 +508,42 @@ class DV3DConfigControlPanel(QWidget):
         return None
         
     def init( self, configFunctionList ):
+        print "Init DV3DConfigControlPanel: id = %x " % id( self )
         cfgWidget = self.getConfigWidget( configFunctionList )
         if cfgWidget:
             if self.configWidget: 
                 self.config_layout.removeWidget( self.configWidget )
-            self.configWidget = cfgWidget      
+            self.configWidget = cfgWidget    
             self.config_layout.addWidget( cfgWidget )            
         
     def isEligibleCommand( self, cmd ):
         return self.configWidget.isEligibleCommand( cmd )
 
     def addActivePlot( self, module ):
-        active_irens = DV3DPipelineHelper.getActiveIrens()
-        cellsOnly = self.configWidget.active_cfg_cmd.activateByCellsOnly
-        isActive = ( module.iren in active_irens )
-        cell_addr = module.getCellAddress()
-        if cell_addr:
-            if cellsOnly:
-                label = cell_addr     
-                existing_items = self.plot_list.findItems ( label, Qt.MatchFixedString )  
-            else:
-                plot_type = module.__class__.__name__
-                if plot_type[0:3] == "PM_": plot_type = plot_type[3:]
-                label = "%s: %s" % ( cell_addr, plot_type )   
-                existing_items = []
-            if len( existing_items ):
-                plot_list_item = existing_items[0]
-                plot_list_item.addModule( module )
-            else:
-                plot_list_item = PlotListItem( label, module, self.plot_list )
-                plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
-                DV3DPipelineHelper.setModuleActivation( module, isActive ) 
+        if self.showActivePlotsPanel:
+            active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
+            cellsOnly = self.configWidget.active_cfg_cmd.activateByCellsOnly
+            isActive = ( module.GetRenWinID() in active_renwin_ids )
+            cell_addr = module.getCellAddress()
+            if cell_addr:
+                if cellsOnly:
+                    label = cell_addr     
+                    existing_items = self.plot_list.findItems ( label, Qt.MatchFixedString )  
+                else:
+                    plot_type = module.__class__.__name__
+                    if plot_type[0:3] == "PM_": plot_type = plot_type[3:]
+                    label = "%s: %s" % ( cell_addr, plot_type )   
+                    existing_items = []
+                if len( existing_items ):
+                    plot_list_item = existing_items[0]
+                    plot_list_item.addModule( module )
+                else:
+                    plot_list_item = PlotListItem( label, module, self.plot_list )
+                    plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
+                    DV3DPipelineHelper.setModulesActivation( [ module ] , isActive ) 
     
     def  processPlotListEvent( self, list_item ): 
-        DV3DPipelineHelper.setModuleActivation( list_item.module, ( list_item.checkState() == Qt.Checked ) ) 
+        DV3DPipelineHelper.setModulesActivation( list_item.modules, ( list_item.checkState() == Qt.Checked ) ) 
                            
     def startConfig(self, qs_action_key, qs_cfg_key ):
         self.plot_list.clear()
@@ -632,7 +640,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     
     @staticmethod    
     def getPlotActivation( module ):
-        return DV3DPipelineHelper.activationMap[ module ]
+        return DV3DPipelineHelper.activationMap.get( module, False )
 
     @staticmethod    
     def getActivePlotList( ):
@@ -643,10 +651,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return active_plots
  
     @staticmethod
-    def setModuleActivation( module, isActive ):
-        DV3DPipelineHelper.activationMap[ module ] = isActive 
-        if not isActive: 
-            DV3DPipelineHelper.config_widget.stopConfig( module )
+    def setModulesActivation( modules, isActive ):
+        for module in modules:
+            DV3DPipelineHelper.activationMap[ module ] = isActive 
+            if not isActive: 
+                DV3DPipelineHelper.config_widget.stopConfig( module )
               
     @staticmethod
     def execAction( action_key ):
@@ -1109,36 +1118,47 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return False
 
     @staticmethod
-    def getActiveIrens():
-        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule
+    def getActiveCells():
         sheetTabWidget = getSheetTabWidget()
         selected_cells = sheetTabWidget.getSelectedLocations() 
+        return selected_cells
+
+    @staticmethod
+    def getActiveIrens():
+        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule
         irens = []
-        for cell in selected_cells:
+        for cell in DV3DPipelineHelper.getActiveCells():
             cell_spec = "%s%s" % ( chr(ord('A') + cell[1] ), cell[0]+1 )
             iren = PersistentVisualizationModule.renderMap.get( cell_spec, None )
             irens.append( iren )
         return irens
 
     @staticmethod
+    def getActiveRenWinIds():
+        rwins = []
+        for iren in DV3DPipelineHelper.getActiveIrens():
+            rw = iren.GetRenderWindow() if iren else None
+            if rw: rwins.append( id(rw) )
+        return rwins
+    
+    @staticmethod
     def show_configuration_widget( controller, version, plot_objs=[] ):
         from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper, CDMSPlotWidget
-        pipeline = controller.vt_controller.vistrail.getPipeline(version)
-#        print " ------------ show_configuration_widget ----------------------------------"
-        
+        pipeline = controller.vt_controller.vistrail.getPipeline(version)        
         pmods = set()
         DV3DPipelineHelper.reset()
         menu = DV3DPipelineHelper.startNewMenu()
         configFuncs = ConfigurableFunction.getActiveFunctionList( ) # DV3DPipelineHelper.getActiveIrens() )
-        active_irens = DV3DPipelineHelper.getActiveIrens()
+        active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
         for configFunc in configFuncs:
             if configFunc.isValid():
                 action_key = ( str( configFunc.label ), str( configFunc.name ) )
                 config_key = configFunc.key 
                 pmod = configFunc.module
-                isActive = ( pmod.iren in active_irens ) 
-                DV3DPipelineHelper.addAction( pmod, action_key, config_key, isActive ) 
-                pmods.add(pmod)
+                if pmod.renderer:
+                    isActive = ( id( pmod.renderer.GetRenderWindow() ) in active_renwin_ids ) 
+                    DV3DPipelineHelper.addAction( pmod, action_key, config_key, isActive ) 
+                    pmods.add(pmod)
                     
 #        for module in pipeline.module_list:
 #            pmod = ModuleStore.getModule(  module.id ) 
