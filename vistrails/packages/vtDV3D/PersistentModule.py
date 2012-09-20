@@ -384,7 +384,7 @@ class PersistentModule( QObject ):
         if self.createColormap:
             self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Colormap', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
 #        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
-        self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
+        self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue, cellsOnly=True )
 
 #        self.addConfigurableGuiFunction( 'layer', LayerConfigurationDialog, 'l', setValue=self.setLayer, getValue=self.getLayer )
 
@@ -394,6 +394,10 @@ class PersistentModule( QObject ):
 #            if dataArray: return dataArray.GetValue(0)
 #        return 0
 
+    def __del__(self):
+        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
+        IVModuleConfigurationDialog.instances = {}
+        
     def setLayer( self, layer ):
         self.activeLayer = getItem( layer )
 
@@ -1757,9 +1761,12 @@ class PersistentVisualizationModule( PersistentModule ):
  
     def getCellAddress(self):  
         cell_items = self.renderMap.items()
-        for cell_item in cell_items:
-            if id(cell_item[1]) == id(self.iren):
-                return cell_item[0]
+        rw = self.renderer.GetRenderWindow() if self.renderer else None
+        if rw:
+            for cell_item in cell_items:
+                crw = cell_item[1].GetRenderWindow()
+                if id( crw ) == id( rw ):
+                    return cell_item[0]
         return None
         
     def getActiveIrens(self):

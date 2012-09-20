@@ -336,6 +336,7 @@ class ConfigurableFunction( QObject ):
     def __init__( self, name, function_args, key, **args ):
         QObject.__init__(self)
         self.name = name
+        self.activateByCellsOnly = args.get( 'cellsOnly', False )
         self.type = 'generic'
         self.args = function_args
         self.kwargs = args
@@ -652,6 +653,9 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
             
     def getWidget(self):
         return self.gui
+    
+    def updateWindow(self):
+        pass
 
     def openGui( self ):
         value = self.getValueHandler() if (self.getValueHandler <> None) else None 
@@ -1136,26 +1140,14 @@ class IVModuleConfigurationDialog( QWidget ):
     def finalizeConfig( self ):
         if len( self.active_modules ):
             interactionState = self.active_cfg_cmd.name
-#            parm_range = list( self.active_cfg_cmd.range )
-#            for module in self.active_modules:
-#                config_data = module.getParameter( interactionState  ) 
-#                if config_data: 
-#                    config_data[0:2] = parm_range[0:2]
-#                else:
-#                    config_data = parm_range
-#                module.writeConfigurationResult( interactionState, config_data ) 
+            cfg_value = self.active_cfg_cmd.gui.getValue()
+            for module in self.active_modules:
+                module.writeConfigurationResult( interactionState, cfg_value ) 
             HyperwallManager.getInstance().setInteractionState( None )               
         self.endConfig()
 
     def revertConfig(self):
-        if len( self.active_modules ):
-#            self.initialRange[2] = self.active_cfg_cmd.range[2]
-#            self.active_cfg_cmd.broadcastLevelingData( self.initialRange )  
-#            interactionState = self.active_cfg_cmd.name
-#            for module in self.active_modules: 
-#                module.finalizeConfigurationObserver( interactionState ) 
-            HyperwallManager.getInstance().setInteractionState( None )  
-        self.endConfig()
+        self.finalizeConfig()
 
 ################################################################################
  

@@ -43,7 +43,11 @@ class PlotListItem( QListWidgetItem ):
 
     def __init__( self, label, module, parent=None):
         QListWidgetItem.__init__(self, label, parent)
-        self.module = module
+        self.modules = [ module ]
+        
+    def addModule( self, module ):
+        self.modules.append( module )
+        
 
 class DV3DParameterSliderWidget(QWidget):
     
@@ -510,14 +514,25 @@ class DV3DConfigControlPanel(QWidget):
 
     def addActivePlot( self, module ):
         active_irens = DV3DPipelineHelper.getActiveIrens()
+        cellsOnly = self.configWidget.active_cfg_cmd.activateByCellsOnly
         isActive = ( module.iren in active_irens )
-        plot_type = module.__class__.__name__
         cell_addr = module.getCellAddress()
-        if plot_type[0:3] == "PM_": plot_type = plot_type[3:]
-        label = "%s: %s" % ( cell_addr, plot_type )
-        plot_list_item = PlotListItem( label, module, self.plot_list )
-        plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
-        DV3DPipelineHelper.setModuleActivation( module, isActive ) 
+        if cell_addr:
+            if cellsOnly:
+                label = cell_addr     
+                existing_items = self.plot_list.findItems ( label, Qt.MatchFixedString )  
+            else:
+                plot_type = module.__class__.__name__
+                if plot_type[0:3] == "PM_": plot_type = plot_type[3:]
+                label = "%s: %s" % ( cell_addr, plot_type )   
+                existing_items = []
+            if len( existing_items ):
+                plot_list_item = existing_items[0]
+                plot_list_item.addModule( module )
+            else:
+                plot_list_item = PlotListItem( label, module, self.plot_list )
+                plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
+                DV3DPipelineHelper.setModuleActivation( module, isActive ) 
     
     def  processPlotListEvent( self, list_item ): 
         DV3DPipelineHelper.setModuleActivation( list_item.module, ( list_item.checkState() == Qt.Checked ) ) 
@@ -654,7 +669,9 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         for ( module, key ) in actionList:
             module.processKeyEvent( key )
 
-        if  (key in DV3DPipelineHelper.cfg_cmds): DV3DPipelineHelper.config_widget.startConfig( action_key, key )
+        if  (key in DV3DPipelineHelper.cfg_cmds): 
+            DV3DPipelineHelper.config_widget.startConfig( action_key, key )
+        
         for ( module, key ) in actionList: 
             DV3DPipelineHelper.activationMap[ module ] = True 
             DV3DPipelineHelper.config_widget.addActivePlot( module )
