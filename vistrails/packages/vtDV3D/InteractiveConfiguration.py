@@ -627,7 +627,7 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
     def __init__( self, name, guiClass, key, **args ):
         ConfigurableFunction.__init__( self, name, guiClass.getSignature(), key, **args  )
         self.type = 'uvcdat-gui'
-        self.useDialog = True
+        self.useDialog = False
         self.guiClass = guiClass
         if( self.initHandler == None ): self.initHandler = self.initGui
         if( self.openHandler == None ): self.openHandler = self.openGui
@@ -637,7 +637,7 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         self.updateConfigurationObserver = args.get( 'update', None )
         self.finalizeConfigurationObserver = args.get( 'finalize', None )
         self.gui = None
-#        print "create UVCDATGuiConfigFunction: %x, startConfigurationObserver: %s" % ( id(self), str( self.startConfigurationObserver ) )
+#        print "create UVCDATGuiConfigFunction: %x" % ( id(self) )
         
     def __del__(self):
 #        print "delete UVCDATGuiConfigFunction: %x" % ( id(self) )
@@ -648,13 +648,18 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         moduleList.add( self.module )
         
     def reset(self):
+        self.updateWindow()
         self.gui = None
         
-    def getWidget( self ):
+    def getValue(self):
+        return self.gui.getValue() if self.gui else None
+        
+    def getWidget( self, manager ):
 #        print "init UVCDATGuiConfigFunction: %x" % ( id(self) )
         moduleList = UVCDATGuiConfigFunction.connectedModules.get( self.name, [] )
+        self.kwargs['manager'] = manager
         self.gui = self.guiClass( str(self.name), **self.kwargs )
-        self.gui.connect(self.gui, SIGNAL('delete()'), self.reset )
+#        self.gui.connect(self.gui, SIGNAL('delete()'), self.reset )
         for module in moduleList:
             self.gui.addActiveModule( module )
 #        if self.startConfigurationObserver <> None:
@@ -677,15 +682,14 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
     def openGui( self ):
         if self.gui:
             value = self.getValueHandler() if (self.getValueHandler <> None) else None 
+#            print " -AAXX- Accessing gui: %s[%s:%s], id = %x " % ( self.__class__.__name__, self.module.__class__.__name__, self.name, id( self ) )
             self.gui.initWidgetFields( value, self.module )
-            parent = self.gui.parent()
-            if parent == None:  self.gui.createDialogPanels()
-            else:               self.gui.createGuiPanels()
+            self.gui.createGuiPanels()
             self.gui.show()
             self.module.resetNavigation()
         
     def getTextDisplay(self, **args ):
-        return self.gui.getTextDisplay( **args )
+        return self.gui.getTextDisplay( **args )  if self.gui else None
        
     def setValue( self, value ):
         if self.setValueHandler <> None: 
@@ -857,11 +861,13 @@ class IVModuleConfigurationDialog( QWidget ):
          
     def __init__(self, name, **args ):
         QWidget.__init__(self, None)
+        self.manager = args.get( 'manager', None )
         self.active_cfg_cmd = None
+        self.gui_cmds = []
         self.moduleTabLayout = None
         self.dialogButtonLayout = None
         self.guiButtonLayout = None
-        self.modules = OrderedDict()
+        self.modules = Set()
         self.module = None
         self.initValue = None
         self.name = name
@@ -876,17 +882,16 @@ class IVModuleConfigurationDialog( QWidget ):
         self.createContent()
         self.tabbedWidget.setCurrentIndex(0)
         self.disable()
-#        print "  -AAXX- Creating %s[%s]: id = %d " % ( self.__class__.__name__, self.name, id( self ) )
+#        print "  -AAXX- Creating %s[%s]: id = %x " % ( self.__class__.__name__, self.name, id( self ) )
 
     @staticmethod 
     def reset():
         IVModuleConfigurationDialog.instances = {}
         IVModuleConfigurationDialog.activeModuleList = []
         
-    def __del__(self):
-#        print "  -AAXX- Deleting %s[%s]: id = %d " % ( self.__class__.__name__, self.name, id( self ) )
-        self.deactivate_current_command()
-        self.emit(SIGNAL('delete()'))
+#    def __del__(self):
+#        print "  -AAXX- Deleting %s[%s]: id = %x " % ( self.__class__.__name__, self.name, id( self ) )
+#        self.emit( SIGNAL('delete()') )
 
     def createGuiButtonLayout(self):
         if self.dialogButtonLayout <> None:
@@ -905,15 +910,15 @@ class IVModuleConfigurationDialog( QWidget ):
             self.connect( save_button, SIGNAL("clicked()"), lambda: self.finalizeConfig() )         
             self.layout().addLayout( self.guiButtonLayout ) 
         
-    def createDialogPanels(self):
-        if self.guiButtonLayout <> None:
-            self.layout().removeItem( self.guiButtonLayout )
-            self.guiButtonLayout = None
-        if self.moduleTabLayout == None:
-            self.createActiveModulePanel()
-            self.registerActiveModules()
-            self.createDialogButtonLayout()
-            self.setWindowFlags( self.windowFlags() | Qt.WindowStaysOnTopHint )
+#    def createDialogPanels(self):
+#        if self.guiButtonLayout <> None:
+#            self.layout().removeItem( self.guiButtonLayout )
+#            self.guiButtonLayout = None
+#        if self.moduleTabLayout == None:
+#            self.createActiveModulePanel()
+#            self.registerActiveModules()
+#            self.createDialogButtonLayout()
+#            self.setWindowFlags( self.windowFlags() | Qt.WindowStaysOnTopHint )
 
     def createGuiPanels(self):            
         self.createGuiButtonLayout()
@@ -923,21 +928,21 @@ class IVModuleConfigurationDialog( QWidget ):
 #        if DV3DPipelineHelper.isLevelingConfigMode(): return self.levelingConfigWidget
 #        return None
     
-    @staticmethod    
-    def getExistingInstance( klass, name, caller, **args  ):
-#        stack = inspect.stack()
-#        frame = stack[0][0]
-#        print " ---> %s: %s" % ( frame.__class__, dir( frame ) )
-        instance = IVModuleConfigurationDialog.instances.get( str(name), None )
-        if instance == None:
-            instance = klass( str(name), **args )
-            IVModuleConfigurationDialog.instances[ str(name) ] = instance
-        instance.addActiveModule( caller )
-        return instance 
+#    @staticmethod    
+#    def getExistingInstance( klass, name, caller, **args  ):
+##        stack = inspect.stack()
+##        frame = stack[0][0]
+##        print " ---> %s: %s" % ( frame.__class__, dir( frame ) )
+#        instance = IVModuleConfigurationDialog.instances.get( str(name), None )
+#        if instance == None:
+#            instance = klass( str(name), **args )
+#            IVModuleConfigurationDialog.instances[ str(name) ] = instance
+#        instance.addActiveModule( caller )
+#        return instance 
                 
     def initialize(self):
         self.active_cfg_cmd = None
-        self.active_modules = set()
+        self.active_modules = Set()
 
     def getInteractionState( self ):
         return self.active_cfg_cmd.name if self.active_cfg_cmd else "None"      
@@ -949,39 +954,31 @@ class IVModuleConfigurationDialog( QWidget ):
     def disable(self): 
         self.setVisible(False)
         self.deactivate_current_command()
-        
-    def isEligibleCommand( self, cmd ):
-        return (self.active_cfg_cmd == None) or ( cmd == self.active_cfg_cmd )
-       
+
     def deactivate_current_command(self):
         if self.active_cfg_cmd:
             self.active_cfg_cmd.updateWindow()
             self.active_cfg_cmd = None
-                              
+        
+    def isEligibleCommand( self, cmd ):
+        return (self.active_cfg_cmd == None) or ( cmd == self.active_cfg_cmd )
+                                     
     def createContent(self ):
         """ createContent() 
         Creates the content of this widget       
         """
         pass
-
-    def updateActivation(self):
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper      
-        for module in self.modules:
-            isActive = DV3DPipelineHelper.getPlotActivation( module )
-            module.setActivation( self.name, isActive )
-            activateCheckBox = self.modules[ module ] 
-            activateCheckBox.setChecked( isActive )   
-
-    def initActivation( self, curr_module ):
-        for module in self.modules:
-            isActive = ( curr_module.renderer == module.renderer )
-            module.setActivation( self.name, isActive )
-            activateCheckBox = self.modules[ module ] 
-            activateCheckBox.setChecked( isActive )
+    
+#    def initActivation( self, curr_module ):
+#        for module in self.modules:
+#            isActive = ( curr_module.renderer == module.renderer )
+#            module.setActivation( self.name, isActive )
+#            activateCheckBox = self.modules[ module ] 
+#            activateCheckBox.setChecked( isActive )
     
     def addActiveModule( self, module ):
         if not module in self.modules:
-            self.modules[ module ] = QCheckBox( 'Activate' )
+            self.modules.add(  module )
             if not ( self.activeModuleList and self.activeModuleList[-1] == module ):
                 self.activeModuleList.append( module )
                 self.connect( self, self.update_animation_signal, module.updateAnimation )
@@ -995,44 +992,53 @@ class IVModuleConfigurationDialog( QWidget ):
             if isActive: active_mods.append( module )
         return active_mods
             
-    def registerActiveModules(self):
-        for row, item in enumerate( self.modules.items() ):
-            activateCheckBox = item[1]
-            module = item[0]
-            module_label = QLabel( module.getName()  )
-            self.moduleTabLayout.addWidget( module_label, row, 0 )
-            self.moduleTabLayout.addWidget( activateCheckBox, row, 1 )            
-            self.connect( activateCheckBox, SIGNAL( "stateChanged(int)" ), callbackWrapper( module.setActivation, self.name ) ) 
-            self.initActivation( module )
-            self.moduleTabLayout.update()
-#            self.registerModule( module )
-#            print "Add active module %s to dialog %s[%s], modules: %s" % ( module.getName(), self.name, str(id(self)), str(self.modules.keys() ) )
+#    def registerActiveModules(self):
+#        for row, item in enumerate( self.modules.items() ):
+#            isActive = item[1]
+#            activateCheckBox = QCheckBox( 'Activate' ) 
+#            activateCheckBox.setChecked( isActive )   
+#            module = item[0]
+#            module_label = QLabel( module.getName()  )
+#            self.moduleTabLayout.addWidget( module_label, row, 0 )
+#            self.moduleTabLayout.addWidget( activateCheckBox, row, 1 )            
+#            self.connect( activateCheckBox, SIGNAL( "stateChanged(int)" ), callbackWrapper( module.setActivation, self.name ) ) 
+#            module.setActivation( self.name, isActive )
+##            self.initActivation( module )
+#            self.moduleTabLayout.update()
+##            self.registerModule( module )
+##            print "Add active module %s to dialog %s[%s], modules: %s" % ( module.getName(), self.name, str(id(self)), str(self.modules.keys() ) )
          
     def parameterUpdating(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         for module in self.modules:
-            if self.modules[ module ].isChecked():
+            if DV3DPipelineHelper.getPlotActivation( module ):
                 if module.parameterUpdating( self.name ):
                     return True
         return False
 
     def updateConfiguration(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         for module in self.modules:
-            if self.modules[ module ].isChecked() :
+            if DV3DPipelineHelper.getPlotActivation( module ) :
+                self.active_modules.add( module )
                 module.updateConfigurationObserver( self.name, self.getValue() )        
 
     def startConfiguration(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         for module in self.modules:
-            if self.modules[ module ].isChecked() :
+            if DV3DPipelineHelper.getPlotActivation( module ) :
                 module.startConfigurationObserver( self.name, self.getValue() )        
 
     def finalizeConfiguration(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         for module in self.modules:
-            if self.modules[ module ].isChecked() :
+            if DV3DPipelineHelper.getPlotActivation( module ) :
                 module.finalizeConfigurationObserver( self.name, self.getValue() )        
 
     def initiateParameterUpdate(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         for module in self.modules:
-            if self.modules[ module ].isChecked() :
+            if DV3DPipelineHelper.getPlotActivation( module ) :
                 module.initiateParameterUpdate( self.name )
  
     def refreshPipeline(self):
@@ -1056,10 +1062,11 @@ class IVModuleConfigurationDialog( QWidget ):
         return "%s: %s" % ( self.name, value ) if value else None
        
     def getTextValue( self, value, **args ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
         text_value = None
         text_value_priority = 0
         for module in self.modules:
-            if self.modules[ module ].isChecked() :
+            if DV3DPipelineHelper.getPlotActivation( module ):
                 tval, priority = module.getParameterDisplay( self.name, value )
                 if tval and ( priority > text_value_priority ): 
                     text_value = tval
@@ -1072,7 +1079,7 @@ class IVModuleConfigurationDialog( QWidget ):
     def initWidgetFields( self, value, module ):
         if ( self.module == None ) or ( module.renderer <> None ): 
             self.module = module
-        self.initActivation( module )
+#        self.initActivation( module )
         self.initValue = value
 
     def createActiveModulePanel(self ):
@@ -1175,6 +1182,7 @@ class IVModuleConfigurationDialog( QWidget ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
         cfg_key = str(qs_cfg_key)
         action_key = str(qs_action_key)
+        self.active_cfg_cmd = None
 #        self.getConfigTab().setTitle( action_key )
         try:
             cmd_list = DV3DPipelineHelper.getConfigCmd ( cfg_key )
@@ -1184,29 +1192,35 @@ class IVModuleConfigurationDialog( QWidget ):
                 for cmd_entry in cmd_list:
                     module = cmd_entry[0]
                     cfg_cmd = cmd_entry[1] 
-                    self.active_modules.add( module )
-                    if ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ):
-                        self.active_cfg_cmd = cfg_cmd
+                    if cfg_cmd and cfg_cmd.gui:
+                        self.gui_cmds.append( cfg_cmd )
+                        if ( ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ) ):
+                            self.active_cfg_cmd = cfg_cmd                   
                 self.active_cfg_cmd.updateActiveFunctionList()
                 self.enable()
         except RuntimeError:
             print "RuntimeError"
             
     def endConfig( self ):
+        HyperwallManager.getInstance().setInteractionState( None )
+        self.resetGuiCmds()
         self.disable()
         
     def finalizeConfig( self ):
-        if len( self.active_modules ):
-            interactionState = self.active_cfg_cmd.name
-            if self.active_cfg_cmd.gui:
-                cfg_value = self.active_cfg_cmd.gui.getValue()
-                for module in self.active_modules:
-                    module.writeConfigurationResult( interactionState, cfg_value ) 
-                HyperwallManager.getInstance().setInteractionState( None )               
-        self.endConfig()
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
+        for module in self.modules:
+            if DV3DPipelineHelper.getPlotActivation( module ):
+                module.finalizeConfigurationObserver( self.name ) 
+        if self.manager:    self.manager.endConfig()
+        else:               self.endConfig()
 
     def revertConfig(self):
         self.finalizeConfig()
+        
+    def resetGuiCmds(self):
+        for cfg_cmd in self.gui_cmds:
+            cfg_cmd.reset() 
+        self.gui_cmds = []             
 
 ################################################################################
  

@@ -498,13 +498,16 @@ class DV3DConfigControlPanel(QWidget):
 
     def __del__(self):
         print "Deleting DV3DConfigControlPanel: id = %x " % id( self )
+        if self.configWidget: 
+            self.config_layout.removeWidget( self.configWidget )
+            self.configWidget = None
         
     def getConfigWidget( self, configFunctionList ):
         if configFunctionList:
             if configFunctionList[0].type == "leveling":
                 return DV3DRangeConfigWidget(self) 
             if configFunctionList[0].type == "uvcdat-gui":
-                return configFunctionList[0].getWidget() 
+                return configFunctionList[0].getWidget(self) 
         return None
         
     def init( self, configFunctionList ):
@@ -539,8 +542,8 @@ class DV3DConfigControlPanel(QWidget):
                     plot_list_item.addModule( module )
                 else:
                     plot_list_item = PlotListItem( label, module, self.plot_list )
-                    plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
-                    DV3DPipelineHelper.setModulesActivation( [ module ] , isActive ) 
+                plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
+                DV3DPipelineHelper.setModulesActivation( [ module ] , isActive ) 
     
     def  processPlotListEvent( self, list_item ): 
         DV3DPipelineHelper.setModulesActivation( list_item.modules, ( list_item.checkState() == Qt.Checked ) ) 
@@ -578,6 +581,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     activationMap = {}
     pipelineMap = {} 
     actionMenu = None
+    controllers = []
     _config_mode = LevelingType.GUI
 
     def __init__(self):
@@ -766,6 +770,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def add_additional_plot_to_pipeline( controller, version, plot ):
         workflow = plot.workflow
         pipeline = controller.current_pipeline
+        DV3DPipelineHelper.controllers.append( controller )
         cell_module = None
         reader_module = None
         for module in pipeline.module_list:
@@ -816,6 +821,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
 #        ConfigurableFunction.clear()
         controller.change_selected_version(version)
+        DV3DPipelineHelper.controllers.append( controller )
         print "[%d,%d] ~~~~~~~~~~~~~~~>> build_plot_pipeline_action, version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
 #        print " --> plot_modules = ",  str( controller.current_pipeline.modules.keys() )
 #        print " --> var_modules = ",  str( [ var.id for var in var_modules ] )

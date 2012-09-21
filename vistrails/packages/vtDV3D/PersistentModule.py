@@ -794,6 +794,9 @@ class PersistentModule( QObject ):
         isActive = not HyperwallManager.getInstance().isClient
         guiCF = UVCDATGuiConfigFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
+        
+    def getConfigFunction( self, name ):
+        return self.configurableFunctions.get(name,None)
 
     def removeConfigurableFunction(self, name ):
         del self.configurableFunctions[name]

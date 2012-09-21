@@ -140,21 +140,24 @@ def change_parameters( module_id, parmRecList, controller=None ):
     Note: param_list is a list of strings no matter what the parameter type!
     """
     try:
-        if controller is None: controller = get_current_controller()
-        module = controller.current_pipeline.modules[module_id]
-    #    controller.update_functions( module, parmRecList )
-        op_list = []
-        for parmRec in parmRecList:  op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
-        action = core.db.action.create_action( op_list ) 
-        controller.add_new_action(action)
-        controller.perform_action(action)
-        if hasattr(controller, 'uvcdat_controller'):
-            controller.uvcdat_controller.cell_was_changed(action)
-
-#        DV3DPipelineHelper.updateCell( action )
-        
+        controllers = [controller ] if controller else DV3DPipelineHelper.controllers
+        for controller in controllers:
+            module = controller.current_pipeline.modules.get( module_id, None )
+            if module:
+            #    controller.update_functions( module, parmRecList )
+                op_list = []
+                print "Module[%d]: Persist Parameter: %s " % ( module_id, str(parmRecList) )
+                for parmRec in parmRecList:  op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+                action = core.db.action.create_action( op_list ) 
+                controller.add_new_action(action)
+                controller.perform_action(action)
+                if hasattr(controller, 'uvcdat_controller'):
+                    controller.uvcdat_controller.cell_was_changed(action)
+                return
+#        DV3DPipelineHelper.updateCell( action ) 
+        print>>sys.stderr, "Error changing parameter in module %d: parm: %s, Can't find controller!" % ( module_id, str(parmRecList) )       
     except Exception, err:
-        print "Error changing parameter in module %d: parm: %s, error: %s" % ( module_id, str(parmRecList), str(err) )
+        print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( module_id, str(parmRecList), str(err) )
     
 def isList( val ):
     valtype = type(val)
