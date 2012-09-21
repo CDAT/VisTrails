@@ -424,7 +424,7 @@ class DV3DConfigControlPanel(QWidget):
 
     def __init__( self, configMenu, optionsMenu, parent=None):
         QWidget.__init__(self,parent)
-        self.showActivePlotsPanel = False
+        self.showActivePlotsPanel = True
         self.active_module = None
         self.configWidget = None
         print "Creating DV3DConfigControlPanel: id = %x " % id( self )

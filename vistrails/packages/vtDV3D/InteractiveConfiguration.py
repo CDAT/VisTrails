@@ -18,6 +18,7 @@ from packages.vtDV3D import HyperwallManager
 from collections import OrderedDict
 from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
+from sets import *
 
 
 class CDMSDataType:
@@ -621,6 +622,7 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
     start_parameter_signal = SIGNAL('start_parameter')
     update_parameter_signal = SIGNAL('update_parameter')
     finalize_parameter_signal = SIGNAL('finalize_parameter')
+    connectedModules = {}
     
     def __init__( self, name, guiClass, key, **args ):
         ConfigurableFunction.__init__( self, name, guiClass.getSignature(), key, **args  )
@@ -635,47 +637,52 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         self.updateConfigurationObserver = args.get( 'update', None )
         self.finalizeConfigurationObserver = args.get( 'finalize', None )
         self.gui = None
-        print "create UVCDATGuiConfigFunction: %x, startConfigurationObserver: %s" % ( id(self), str( self.startConfigurationObserver ) )
+#        print "create UVCDATGuiConfigFunction: %x, startConfigurationObserver: %s" % ( id(self), str( self.startConfigurationObserver ) )
         
     def __del__(self):
-        print "delete UVCDATGuiConfigFunction: %x" % ( id(self) )
+#        print "delete UVCDATGuiConfigFunction: %x" % ( id(self) )
         ConfigurableFunction.__del__(self)
         
     def initGui( self, **args ):
-        print "init UVCDATGuiConfigFunction: %x" % ( id(self) )
-        if self.gui == None: 
-            self.gui = self.guiClass.getInstance( self.guiClass, self.name, self.module, **args  )
-            if self.startConfigurationObserver <> None:
-                self.gui.connect( self.gui, self.start_parameter_signal, self.startConfigurationObserver )
-            if self.updateConfigurationObserver <> None:
-                self.gui.connect( self.gui, self.update_parameter_signal, self.updateConfigurationObserver )
-            if self.finalizeConfigurationObserver <> None:
-                self.gui.connect( self.gui, self.finalize_parameter_signal, self.finalizeConfigurationObserver )
+        moduleList = UVCDATGuiConfigFunction.connectedModules.setdefault( self.name, Set() )
+        moduleList.add( self.module )
+        
+    def reset(self):
+        self.gui = None
+        
+    def getWidget( self ):
+#        print "init UVCDATGuiConfigFunction: %x" % ( id(self) )
+        moduleList = UVCDATGuiConfigFunction.connectedModules.get( self.name, [] )
+        self.gui = self.guiClass( str(self.name), **self.kwargs )
+        self.gui.connect(self.gui, SIGNAL('delete()'), self.reset )
+        for module in moduleList:
+            self.gui.addActiveModule( module )
+#        if self.startConfigurationObserver <> None:
+#            self.gui.connect( self.gui, self.start_parameter_signal, self.startConfigurationObserver )
+#        if self.updateConfigurationObserver <> None:
+#            self.gui.connect( self.gui, self.update_parameter_signal, self.updateConfigurationObserver )
+#        if self.finalizeConfigurationObserver <> None:
+#            self.gui.connect( self.gui, self.finalize_parameter_signal, self.finalizeConfigurationObserver )
         initial_value = None if ( self.getValueHandler == None ) else self.getValueHandler()          
         value = self.module.getInputValue( self.name, initial_value )  # if self.parameterInputEnabled else initial_value
         if value <> None: 
             self.gui.setValue( value )
             self.setValue( value )
             self.module.setResult( self.name, value )
-            
-    def getWidget( self, reset = True ):
-        if self.useDialog: return None
-        if reset:
-            self.gui = None
-            self.initGui( **self.kwargs )
         return self.gui
-    
+               
     def updateWindow(self):
         pass
 
     def openGui( self ):
-        value = self.getValueHandler() if (self.getValueHandler <> None) else None 
-        self.gui.initWidgetFields( value, self.module )
-        parent = self.gui.parent()
-        if parent == None:  self.gui.createDialogPanels()
-        else:               self.gui.createGuiPanels()
-        self.gui.show()
-        self.module.resetNavigation()
+        if self.gui:
+            value = self.getValueHandler() if (self.getValueHandler <> None) else None 
+            self.gui.initWidgetFields( value, self.module )
+            parent = self.gui.parent()
+            if parent == None:  self.gui.createDialogPanels()
+            else:               self.gui.createGuiPanels()
+            self.gui.show()
+            self.module.resetNavigation()
         
     def getTextDisplay(self, **args ):
         return self.gui.getTextDisplay( **args )
@@ -869,7 +876,7 @@ class IVModuleConfigurationDialog( QWidget ):
         self.createContent()
         self.tabbedWidget.setCurrentIndex(0)
         self.disable()
-        print "  -AAXX- Creating %s[%s]: id = %d " % ( self.__class__.__name__, self.name, id( self ) )
+#        print "  -AAXX- Creating %s[%s]: id = %d " % ( self.__class__.__name__, self.name, id( self ) )
 
     @staticmethod 
     def reset():
@@ -877,8 +884,9 @@ class IVModuleConfigurationDialog( QWidget ):
         IVModuleConfigurationDialog.activeModuleList = []
         
     def __del__(self):
-        print "  -AAXX- Deleting %s[%s]: id = %d " % ( self.__class__.__name__, self.name, id( self ) )
+#        print "  -AAXX- Deleting %s[%s]: id = %d " % ( self.__class__.__name__, self.name, id( self ) )
         self.deactivate_current_command()
+        self.emit(SIGNAL('delete()'))
 
     def createGuiButtonLayout(self):
         if self.dialogButtonLayout <> None:
@@ -916,7 +924,7 @@ class IVModuleConfigurationDialog( QWidget ):
 #        return None
     
     @staticmethod    
-    def getInstance( klass, name, caller, **args  ):
+    def getExistingInstance( klass, name, caller, **args  ):
 #        stack = inspect.stack()
 #        frame = stack[0][0]
 #        print " ---> %s: %s" % ( frame.__class__, dir( frame ) )
@@ -1011,6 +1019,16 @@ class IVModuleConfigurationDialog( QWidget ):
         for module in self.modules:
             if self.modules[ module ].isChecked() :
                 module.updateConfigurationObserver( self.name, self.getValue() )        
+
+    def startConfiguration(self):
+        for module in self.modules:
+            if self.modules[ module ].isChecked() :
+                module.startConfigurationObserver( self.name, self.getValue() )        
+
+    def finalizeConfiguration(self):
+        for module in self.modules:
+            if self.modules[ module ].isChecked() :
+                module.finalizeConfigurationObserver( self.name, self.getValue() )        
 
     def initiateParameterUpdate(self):
         for module in self.modules:
@@ -1127,6 +1145,7 @@ class IVModuleConfigurationDialog( QWidget ):
         self.close()
 
     def finalizeParameter( self, *args ):
+        self.finalizeConfiguration()
         self.emit( GuiConfigurableFunction.finalize_parameter_signal, self.name, self.getValue() )
         command = [ self.name ]
         value = self.getValue()
@@ -1134,9 +1153,11 @@ class IVModuleConfigurationDialog( QWidget ):
         HyperwallManager.getInstance().processGuiCommand( command  )
 
     def startParameter( self, *args ):
+        self.startConfiguration()
         self.emit( GuiConfigurableFunction.start_parameter_signal, self.name, self.getValue() )
 
     def updateParameter( self, *args ):
+        self.updateConfiguration()
         self.emit( GuiConfigurableFunction.update_parameter_signal, self.name, self.getValue() )
 
     @staticmethod   
@@ -1177,10 +1198,11 @@ class IVModuleConfigurationDialog( QWidget ):
     def finalizeConfig( self ):
         if len( self.active_modules ):
             interactionState = self.active_cfg_cmd.name
-            cfg_value = self.active_cfg_cmd.gui.getValue()
-            for module in self.active_modules:
-                module.writeConfigurationResult( interactionState, cfg_value ) 
-            HyperwallManager.getInstance().setInteractionState( None )               
+            if self.active_cfg_cmd.gui:
+                cfg_value = self.active_cfg_cmd.gui.getValue()
+                for module in self.active_modules:
+                    module.writeConfigurationResult( interactionState, cfg_value ) 
+                HyperwallManager.getInstance().setInteractionState( None )               
         self.endConfig()
 
     def revertConfig(self):
