@@ -1211,7 +1211,7 @@ class IVModuleConfigurationDialog( QWidget ):
                     self.active_cfg_cmd.updateActiveFunctionList()
                     self.enable()
                 else:
-                    self.disable()
+                    self.finalizeConfig()
         except RuntimeError:
             print "RuntimeError"
             
