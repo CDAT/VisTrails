@@ -1206,9 +1206,12 @@ class IVModuleConfigurationDialog( QWidget ):
                     if cfg_cmd and cfg_cmd.gui:
                         self.gui_cmds.append( cfg_cmd )
                         if ( ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ) ):
-                            self.active_cfg_cmd = cfg_cmd                   
-                self.active_cfg_cmd.updateActiveFunctionList()
-                self.enable()
+                            self.active_cfg_cmd = cfg_cmd  
+                if self.active_cfg_cmd:                 
+                    self.active_cfg_cmd.updateActiveFunctionList()
+                    self.enable()
+                else:
+                    self.disable()
         except RuntimeError:
             print "RuntimeError"
             

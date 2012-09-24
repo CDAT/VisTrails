@@ -535,27 +535,28 @@ class DV3DConfigControlPanel(QWidget):
         return self.configWidget.isEligibleCommand( cmd )
 
     def addActivePlot( self, module ):
-        if self.showActivePlotsPanel:
+        if self.showActivePlotsPanel and self.configWidget:
             active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
-            cellsOnly = self.configWidget.active_cfg_cmd.activateByCellsOnly
-            isActive = ( module.GetRenWinID() in active_renwin_ids )
-            cell_addr = module.getCellAddress()
-            if cell_addr:
-                if cellsOnly:
-                    label = cell_addr     
-                    existing_items = self.plot_list.findItems ( label, Qt.MatchFixedString )  
-                else:
-                    plot_type = module.__class__.__name__
-                    if plot_type[0:3] == "PM_": plot_type = plot_type[3:]
-                    label = "%s: %s" % ( cell_addr, plot_type )   
-                    existing_items = []
-                if len( existing_items ):
-                    plot_list_item = existing_items[0]
-                    plot_list_item.addModule( module )
-                else:
-                    plot_list_item = PlotListItem( label, module, self.plot_list )
-                plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
-                DV3DPipelineHelper.setModulesActivation( [ module ] , isActive ) 
+            if self.configWidget.active_cfg_cmd <> None:
+                cellsOnly = self.configWidget.active_cfg_cmd.activateByCellsOnly
+                isActive = ( module.GetRenWinID() in active_renwin_ids )
+                cell_addr = module.getCellAddress()
+                if cell_addr:
+                    if cellsOnly:
+                        label = cell_addr     
+                        existing_items = self.plot_list.findItems ( label, Qt.MatchFixedString )  
+                    else:
+                        plot_type = module.__class__.__name__
+                        if plot_type[0:3] == "PM_": plot_type = plot_type[3:]
+                        label = "%s: %s" % ( cell_addr, plot_type )   
+                        existing_items = []
+                    if len( existing_items ):
+                        plot_list_item = existing_items[0]
+                        plot_list_item.addModule( module )
+                    else:
+                        plot_list_item = PlotListItem( label, module, self.plot_list )
+                    plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
+                    DV3DPipelineHelper.setModulesActivation( [ module ] , isActive ) 
     
     def  processPlotListEvent( self, list_item ): 
         DV3DPipelineHelper.setModulesActivation( list_item.modules, ( list_item.checkState() == Qt.Checked ) ) 
