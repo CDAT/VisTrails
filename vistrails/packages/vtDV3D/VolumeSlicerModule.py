@@ -37,6 +37,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         </table>
     """
     def __init__( self, mid, **args ):
+        import api
         PersistentVisualizationModule.__init__( self, mid, **args )
         self.primaryInputPorts = [ 'volume', 'contours' ]
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0 )
@@ -58,13 +59,13 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.contourLineActors = {}
         self.contourLineMapperer = None
         self.contours = None
-#        self.contourInput = None
-#        self.contourMetadata = None
-#        self.contour_units = ""
         self.NumContours = 10.0
-#        self.imageRescale = None
-        print " Volume Slicer init, id = %x " % id(self)
-        VolumeSlicerModules[mid] = self
+        try:
+            controller = api.get_current_controller()
+            print " Volume Slicer init, id = %x " % id(self)
+            VolumeSlicerModules[mid] = self
+        except api.NoVistrail:
+            pass
 
     def __del__(self):
         self.planeWidgetX.RemoveAllObservers()

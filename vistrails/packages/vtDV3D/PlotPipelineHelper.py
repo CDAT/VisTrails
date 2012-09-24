@@ -427,7 +427,7 @@ class DV3DConfigControlPanel(QWidget):
         self.showActivePlotsPanel = True
         self.active_module = None
         self.configWidget = None
-        print "Creating DV3DConfigControlPanel: id = %x " % id( self )
+#        print "Creating DV3DConfigControlPanel: id = %x " % id( self )
            
         main_layout = QVBoxLayout()        
         button_layout = QHBoxLayout()
@@ -496,11 +496,11 @@ class DV3DConfigControlPanel(QWidget):
         main_layout.addStretch()                       
         self.setLayout(main_layout)
 
-    def __del__(self):
-        print "Deleting DV3DConfigControlPanel: id = %x " % id( self )
-        if self.configWidget: 
-            self.config_layout.removeWidget( self.configWidget )
-            self.configWidget = None
+#    def __del__(self):
+##        print "Deleting DV3DConfigControlPanel: id = %x " % id( self )
+#        if self.configWidget: 
+#            self.config_layout.removeWidget( self.configWidget )
+#            self.configWidget = None
         
     def getConfigWidget( self, configFunctionList ):
         if configFunctionList:
@@ -554,7 +554,7 @@ class DV3DConfigControlPanel(QWidget):
         if self.configWidget:
             self.configWidget.startConfig( qs_action_key, qs_cfg_key )
 
-    def stopConfig( self, module ):          
+    def stopConfig( self, module ):       
         interactionState = self.configWidget.getInteractionState()
         module.finalizeConfigurationObserver( interactionState, notifyHelper=False ) 
         module.render()
@@ -581,7 +581,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     activationMap = {}
     pipelineMap = {} 
     actionMenu = None
-    controllers = []
     _config_mode = LevelingType.GUI
 
     def __init__(self):
@@ -658,8 +657,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def setModulesActivation( modules, isActive ):
         for module in modules:
             DV3DPipelineHelper.activationMap[ module ] = isActive 
-            if not isActive: 
-                DV3DPipelineHelper.config_widget.stopConfig( module )
+#            if not isActive: 
+#                DV3DPipelineHelper.config_widget.stopConfig( module )
               
     @staticmethod
     def execAction( action_key ):
@@ -675,17 +674,17 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 actionList.append( ( module, key ) )
                 f = module.configurableFunctions.get( action_key, None )
                 if f <> None: configFunctionList.append( f )
-                 
+
         DV3DPipelineHelper.actionMap[ action_key ] = actionList
         DV3DPipelineHelper.config_widget.init( configFunctionList )
-                        
+                                         
         for ( module, key ) in actionList:
             module.processKeyEvent( key )
 
         if  (key in DV3DPipelineHelper.cfg_cmds): 
             DV3DPipelineHelper.config_widget.startConfig( action_key, key )
         
-        for ( module, key ) in actionList: 
+        for ( module, key ) in actionList:
             DV3DPipelineHelper.activationMap[ module ] = True 
             DV3DPipelineHelper.config_widget.addActivePlot( module )
 
@@ -770,7 +769,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def add_additional_plot_to_pipeline( controller, version, plot ):
         workflow = plot.workflow
         pipeline = controller.current_pipeline
-        DV3DPipelineHelper.controllers.append( controller )
         cell_module = None
         reader_module = None
         for module in pipeline.module_list:
@@ -821,7 +819,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
 #        ConfigurableFunction.clear()
         controller.change_selected_version(version)
-        DV3DPipelineHelper.controllers.append( controller )
         print "[%d,%d] ~~~~~~~~~~~~~~~>> build_plot_pipeline_action, version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
 #        print " --> plot_modules = ",  str( controller.current_pipeline.modules.keys() )
 #        print " --> var_modules = ",  str( [ var.id for var in var_modules ] )

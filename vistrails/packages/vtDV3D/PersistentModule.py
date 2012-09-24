@@ -385,6 +385,10 @@ class PersistentModule( QObject ):
             self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Colormap', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
 #        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
         self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue, cellsOnly=True )
+        
+        print "**********************************************************************"
+        print "Create Module [%d] : %s " % ( self.moduleID, self.__class__.__name__ )
+        print "**********************************************************************"
 
 #        self.addConfigurableGuiFunction( 'layer', LayerConfigurationDialog, 'l', setValue=self.setLayer, getValue=self.getLayer )
 
@@ -815,6 +819,7 @@ class PersistentModule( QObject ):
         return ''.join( lines ) 
           
     def initializeConfiguration(self):
+        pass
         for configFunct in self.configurableFunctions.values():
             configFunct.init( self )
             
@@ -1046,6 +1051,28 @@ class PersistentModule( QObject ):
     def refreshVersion(self):
         pass
 
+    def change_parameters( self, parmRecList, controller ):      
+        """change_parameters(
+                            parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
+                            controller: VistrailController,
+                            ) -> None
+        Note: param_list is a list of strings no matter what the parameter type!
+        """
+        try:
+#            controller.current_pipeline = self.pipeline # DV3DPipelineHelper.getPipeline( cell_address )
+#            module = self.pipeline.modules[self.moduleID]            #    controller.update_functions( module, parmRecList )
+            module = controller.current_pipeline.modules[self.moduleID]            #    controller.update_functions( module, parmRecList )
+            op_list = []
+            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
+            for parmRec in parmRecList:  op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+            action = create_action( op_list ) 
+            controller.add_new_action(action)
+            controller.perform_action(action)
+            if hasattr(controller, 'uvcdat_controller'):
+                controller.uvcdat_controller.cell_was_changed(action)
+        except Exception, err:
+            print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
+            
     def persistParameterList( self, parmRecList, **args ):
         if parmRecList and not self.isClient: 
             import api
@@ -1058,7 +1085,7 @@ class PersistentModule( QObject ):
                 output = parmRec[1]
                 param_values_str = [ str(x) for x in output ] if isList(output) else str( output )  
                 strParmRecList.append( ( parameter_name, param_values_str ) )
-            change_parameters( self.moduleID, strParmRecList, ctrl )           
+            self.change_parameters( strParmRecList, ctrl )           
             tag = self.getParameterId()
             taggedVersion = self.tagCurrentVersion( tag )
             listParameterPersist = args.get( 'list', True )  
@@ -1084,7 +1111,8 @@ class PersistentModule( QObject ):
         except Exception, err:
             print "Error changing parameter %s for %s module: %s" % ( parameter_name, getClassName( self ), str(err) )
      
-    def writeConfigurationResult( self, config_name, config_data, **args ):       
+    def writeConfigurationResult( self, config_name, config_data, **args ):
+        print "MODULE[%d]: Persist Config Parameter %s -> %s "  % ( self.moduleID, config_name, str(config_data) )     
         if self.wmod: self.wmod.setResult( config_name, config_data )
         self.setParameter( config_name, config_data )
         self.finalizeConfigurationObserver( config_name, **args )
@@ -1607,7 +1635,7 @@ class PersistentVisualizationModule( PersistentModule ):
             colormapManager.toggleColormapVisibility()
             
     def processKeyEvent( self, key, caller=None, event=None ):
-        print "process Key Event, key = %s" % ( key )
+#        print "process Key Event, key = %s" % ( key )
         if key == 'h': 
             if  PersistentVisualizationModule.moduleDocumentationDialog == None:
                 modDoc = ModuleDocumentationDialog()
@@ -1630,7 +1658,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                
         else:
             state =  self.getInteractionState( key )
-            print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
+#            print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
             if state <> None: 
                 self.updateInteractionState( state, self.isAltMode  )                 
                 HyperwallManager.getInstance().setInteractionState( state, self.isAltMode )
@@ -1651,7 +1679,7 @@ class PersistentVisualizationModule( PersistentModule ):
             configFunct = self.configurableFunctions.get( state, None )
             if configFunct and ( configFunct.type <> 'generic' ): 
                 rcf = configFunct
-                print " UpdateInteractionState, state = %s, cf = %s " % ( state, str(configFunct) )
+#                print " UpdateInteractionState, state = %s, cf = %s " % ( state, str(configFunct) )
             if not configFunct and self.acceptsGenericConfigs:
                 configFunct = ConfigurableFunction( state, None, None, pmod=self )              
                 self.configurableFunctions[ state ] = configFunct

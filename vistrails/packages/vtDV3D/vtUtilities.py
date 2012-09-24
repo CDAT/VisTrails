@@ -131,33 +131,6 @@ def delete_module( module,pipeline ):
     action = create_action(action_list)
     pipeline.perform_action(action)
         
-def change_parameters( module_id, parmRecList, controller=None ):
-    from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
-    """change_parameters(module_id: long,
-                        parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
-                        controller: VistrailController,
-                        ) -> None
-    Note: param_list is a list of strings no matter what the parameter type!
-    """
-    try:
-        controllers = [controller ] if controller else DV3DPipelineHelper.controllers
-        for controller in controllers:
-            module = controller.current_pipeline.modules.get( module_id, None )
-            if module:
-            #    controller.update_functions( module, parmRecList )
-                op_list = []
-                print "Module[%d]: Persist Parameter: %s " % ( module_id, str(parmRecList) )
-                for parmRec in parmRecList:  op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
-                action = core.db.action.create_action( op_list ) 
-                controller.add_new_action(action)
-                controller.perform_action(action)
-                if hasattr(controller, 'uvcdat_controller'):
-                    controller.uvcdat_controller.cell_was_changed(action)
-                return
-#        DV3DPipelineHelper.updateCell( action ) 
-        print>>sys.stderr, "Error changing parameter in module %d: parm: %s, Can't find controller!" % ( module_id, str(parmRecList) )       
-    except Exception, err:
-        print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( module_id, str(parmRecList), str(err) )
     
 def isList( val ):
     valtype = type(val)

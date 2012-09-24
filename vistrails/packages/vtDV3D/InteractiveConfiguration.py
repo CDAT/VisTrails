@@ -643,9 +643,28 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
 #        print "delete UVCDATGuiConfigFunction: %x" % ( id(self) )
         ConfigurableFunction.__del__(self)
         
-    def initGui( self, **args ):
+    def initGui( self, **args ):   # init value from moudle input port
         moduleList = UVCDATGuiConfigFunction.connectedModules.setdefault( self.name, Set() )
         moduleList.add( self.module )
+
+#        initRange = args.get( 'initRange', True )
+#        if self.range_bounds == None:
+#            self.range_bounds =   args.get( 'rangeBounds', None )
+#        if initRange:
+#            if self.initial_range == None:
+#                self.initial_range =  [ 0.0, 1.0, 1 ] if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
+#            if self.range_bounds == None:
+#                self.range_bounds = self.initial_range if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
+#            self.range = list( self.module.getInputValue( self.name, self.initial_range )  ) # if not self.module.newDataset else self.initial_range
+#            if len( self.range ) == 3: 
+#                for iR in range(2): self.range.append( self.initRefinement[iR] )
+#        self.windowLeveler.setDataRange( self.range )
+#        self.setLevelDataHandler( self.range )
+#        self.module.setParameter( self.name, self.range )
+#        if self.widget: 
+#            self.widget.initLeveling( self.range )
+#            self.connect( self.widget, SIGNAL('update(QString)'), self.broadcastLevelingData )
+
         
     def reset(self):
         self.updateWindow()
@@ -1205,12 +1224,16 @@ class IVModuleConfigurationDialog( QWidget ):
         HyperwallManager.getInstance().setInteractionState( None )
         self.resetGuiCmds()
         self.disable()
-        
+
     def finalizeConfig( self ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
+        interactionState = self.name
         for module in self.modules:
             if DV3DPipelineHelper.getPlotActivation( module ):
-                module.finalizeConfigurationObserver( self.name ) 
+                config_data = module.getParameter( interactionState  ) 
+                if config_data: 
+                    module.writeConfigurationResult( interactionState, config_data ) 
+        HyperwallManager.getInstance().setInteractionState( None )               
         if self.manager:    self.manager.endConfig()
         else:               self.endConfig()
 
