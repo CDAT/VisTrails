@@ -168,12 +168,18 @@ class DV3DRangeConfigTab(QWidget):
         button_layout.addWidget( save_button )
         revert_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
         save_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
-        self.connect( revert_button, SIGNAL("clicked()"), lambda: self.controller.revertConfig() ) 
-        self.connect( save_button, SIGNAL("clicked()"), lambda: self.controller.finalizeConfig() ) 
+        self.connect( revert_button, SIGNAL("clicked()"), lambda: self.revertConfig() ) 
+        self.connect( save_button, SIGNAL("clicked()"), lambda: self.finalizeConfig() ) 
         
         gui_layout.addLayout( button_layout )
         gui_layout.addStretch()  
         self.setLayout(gui_layout) 
+        
+    def finalizeConfig(self):
+        self.controller.finalizeConfig()
+
+    def revertConfig(self):
+        self.controller.revertConfig()
 
     def enable(self, minEnabled, maxEnabled ): 
         self.rangeMinEditor.enable( minEnabled )
@@ -396,7 +402,7 @@ class DV3DRangeConfigWidget(QFrame):
             self.setTab( LevelingType.GUI )
         
     def finalizeConfig( self ):
-        if len( self.active_modules ):
+        if len( self.active_modules ) and self.active_cfg_cmd:
             interactionState = self.active_cfg_cmd.name
             parm_range = list( self.active_cfg_cmd.range )
             for module in self.active_modules:
@@ -501,13 +507,17 @@ class DV3DConfigControlPanel(QWidget):
 #        if self.configWidget: 
 #            self.config_layout.removeWidget( self.configWidget )
 #            self.configWidget = None
-        
+                        
     def getConfigWidget( self, configFunctionList ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper    
         if configFunctionList:
-            if configFunctionList[0].type == "leveling":
-                return DV3DRangeConfigWidget(self) 
-            if configFunctionList[0].type == "uvcdat-gui":
-                return configFunctionList[0].getWidget(self) 
+            for configFunction in configFunctionList:
+                if configFunction.module.GetRenWinID() in DV3DPipelineHelper.getActiveRenWinIds():
+                    print " Got Config Widget: using cfg fn %s from module %d " % ( configFunction.name, configFunction.module.moduleID )
+                    if configFunction.type == "leveling":
+                        return DV3DRangeConfigWidget(self) 
+                    if configFunction.type == "uvcdat-gui":
+                        return configFunction.getWidget(self) 
         return None
         
     def init( self, configFunctionList ):
@@ -515,6 +525,8 @@ class DV3DConfigControlPanel(QWidget):
         cfgWidget = self.getConfigWidget( configFunctionList )
         if cfgWidget:
             if self.configWidget: 
+                self.configWidget.finalizeConfig( )
+                self.configWidget.setVisible ( False )
                 self.config_layout.removeWidget( self.configWidget )
             self.configWidget = cfgWidget    
             self.config_layout.addWidget( cfgWidget )            
@@ -657,6 +669,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def setModulesActivation( modules, isActive ):
         for module in modules:
             DV3DPipelineHelper.activationMap[ module ] = isActive 
+            print " ** Set module activation: module[%d] -> %s " % ( module.moduleID, str(isActive) )
 #            if not isActive: 
 #                DV3DPipelineHelper.config_widget.stopConfig( module )
               

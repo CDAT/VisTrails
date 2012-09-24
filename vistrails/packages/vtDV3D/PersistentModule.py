@@ -387,7 +387,7 @@ class PersistentModule( QObject ):
         self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue, cellsOnly=True )
         
         print "**********************************************************************"
-        print "Create Module [%d] : %s " % ( self.moduleID, self.__class__.__name__ )
+        print "Create Module [%d] : %s (%x)" % ( self.moduleID, self.__class__.__name__, id(self) )
         print "**********************************************************************"
 
 #        self.addConfigurableGuiFunction( 'layer', LayerConfigurationDialog, 'l', setValue=self.setLayer, getValue=self.getLayer )
@@ -1051,7 +1051,8 @@ class PersistentModule( QObject ):
     def refreshVersion(self):
         pass
 
-    def change_parameters( self, parmRecList, controller ):      
+    def change_parameters( self, parmRecList, controller ): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper         
         """change_parameters(
                             parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
                             controller: VistrailController,
@@ -1061,18 +1062,35 @@ class PersistentModule( QObject ):
         try:
 #            controller.current_pipeline = self.pipeline # DV3DPipelineHelper.getPipeline( cell_address )
 #            module = self.pipeline.modules[self.moduleID]            #    controller.update_functions( module, parmRecList )
-            module = controller.current_pipeline.modules[self.moduleID]            #    controller.update_functions( module, parmRecList )
+ #    controller.update_functions( module, parmRecList )
+            cur_version = None
+            try:
+                module = controller.current_pipeline.modules[self.moduleID] 
+            except KeyError:
+                if hasattr(controller, 'uvcdat_controller'):
+                    sheetTabWidget = getSheetTabWidget()
+                    cur_version = controller.current_version
+                    cell_addr = DV3DPipelineHelper.getCellAddress( self.pipeline )
+                    sheetName = sheetTabWidget.getSheetName()
+                    cell = controller.uvcdat_controller.sheet_map[ sheetName ][ ( ord(cell_addr[0])-ord('A'), int( cell_addr[1] ) - 1 )  ]
+                    controller.change_selected_version( cell.current_parent_version )
+                    module = controller.current_pipeline.modules[ self.moduleID ] 
+                else:
+                    print>>sys.stderr, "Error changing parameter in module %d, parm: %s: Wrong controller version." % ( self.moduleID, str(parmRecList) )                          
             op_list = []
             print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
             for parmRec in parmRecList:  op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
             action = create_action( op_list ) 
             controller.add_new_action(action)
             controller.perform_action(action)
+            if cur_version: controller.change_selected_version(cur_version) 
             if hasattr(controller, 'uvcdat_controller'):
                 controller.uvcdat_controller.cell_was_changed(action)
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
-            
+
+
+               
     def persistParameterList( self, parmRecList, **args ):
         if parmRecList and not self.isClient: 
             import api
