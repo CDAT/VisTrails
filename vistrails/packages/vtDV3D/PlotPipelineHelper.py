@@ -582,7 +582,7 @@ class ConnectionType:
     OUTPUT = 1
     BOTH = 2
 
-    
+   
 class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     '''
     This will take care of pipeline manipulation for plots.
@@ -671,6 +671,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         for module in modules:
             DV3DPipelineHelper.activationMap[ module ] = isActive 
             print " ** Set module activation: module[%d] -> %s " % ( module.moduleID, str(isActive) )
+            if not isActive and DV3DPipelineHelper.config_widget:
+                DV3DPipelineHelper.config_widget.stopConfig( module )
 #            if not isActive: 
 #                DV3DPipelineHelper.config_widget.stopConfig( module )
               
@@ -1199,6 +1201,10 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             for cmd in cmdList:
                 DV3DPipelineHelper.addConfigCommand( pmod, cmd )
         return DV3DPipelineHelper.config_widget
+
+    @staticmethod
+    def getGuiKernel( ):
+        return DV3DPipelineHelper.config_widget.configWidget if DV3DPipelineHelper.config_widget else None
     
     @staticmethod
     def isEligibleFunction( configFn ):

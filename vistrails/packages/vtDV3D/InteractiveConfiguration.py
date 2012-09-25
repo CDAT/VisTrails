@@ -636,7 +636,7 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         self.startConfigurationObserver = args.get( 'start', None )
         self.updateConfigurationObserver = args.get( 'update', None )
         self.finalizeConfigurationObserver = args.get( 'finalize', None )
-        self.gui = None
+        self.guiEnabled = False
 #        print "create UVCDATGuiConfigFunction: %x" % ( id(self) )
         
     def __del__(self):
@@ -660,19 +660,21 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         
     def reset(self):
         self.updateWindow()
-        self.gui = None
+        self.guiEnabled = False
         
     def getValue(self):
-        return self.gui.getValue() if self.gui else None
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
+        gui = DV3DPipelineHelper.getGuiKernel() 
+        return gui.getValue() if gui else None
         
     def getWidget( self, manager ):
 #        print "init UVCDATGuiConfigFunction: %x" % ( id(self) )
         moduleList = UVCDATGuiConfigFunction.connectedModules.get( self.name, [] )
         self.kwargs['manager'] = manager
-        self.gui = self.guiClass( str(self.name), **self.kwargs )
+        gui = self.guiClass( str(self.name), **self.kwargs )
 #        self.gui.connect(self.gui, SIGNAL('delete()'), self.reset )
         for module in moduleList:
-            self.gui.addActiveModule( module )
+            gui.addActiveModule( module )
 #        if self.startConfigurationObserver <> None:
 #            self.gui.connect( self.gui, self.start_parameter_signal, self.startConfigurationObserver )
 #        if self.updateConfigurationObserver <> None:
@@ -681,26 +683,30 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
 #            self.gui.connect( self.gui, self.finalize_parameter_signal, self.finalizeConfigurationObserver )
         initial_value = None if ( self.getValueHandler == None ) else self.getValueHandler()          
         value = self.module.getInputValue( self.name, initial_value )  # if self.parameterInputEnabled else initial_value
-        if value <> None: 
-            self.gui.setValue( value )
+        if value <> None: gui.setValue( value )
+        self.guiEnabled = True
 #            self.setValue( value )
 #            self.module.setResult( self.name, value )
-        return self.gui
+        return gui
                
     def updateWindow(self):
         pass
 
     def openGui( self ):
-        if self.gui:
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
+        gui = DV3DPipelineHelper.getGuiKernel() 
+        if gui:
             value = self.getValueHandler() if (self.getValueHandler <> None) else None 
 #            print " -AAXX- Accessing gui: %s[%s:%s], id = %x " % ( self.__class__.__name__, self.module.__class__.__name__, self.name, id( self ) )
-            self.gui.initWidgetFields( value, self.module )
-            self.gui.createGuiPanels()
-            self.gui.show()
+            gui.initWidgetFields( value, self.module )
+            gui.createGuiPanels()
+            gui.show()
             self.module.resetNavigation()
         
     def getTextDisplay(self, **args ):
-        return self.gui.getTextDisplay( **args )  if self.gui else None
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
+        gui = DV3DPipelineHelper.getGuiKernel() 
+        return gui.getTextDisplay( **args )  if gui else None
        
     def setValue( self, value ):
         if self.setValueHandler <> None: 
@@ -872,6 +878,7 @@ class IVModuleConfigurationDialog( QWidget ):
          
     def __init__(self, name, **args ):
         QWidget.__init__(self, None)
+        self.isConfiguring = False
         self.manager = args.get( 'manager', None )
         self.active_cfg_cmd = None
         self.gui_cmds = []
@@ -961,10 +968,12 @@ class IVModuleConfigurationDialog( QWidget ):
      
     def enable(self): 
         self.setVisible(True)
+        self.isConfiguring = True
 
     def disable(self): 
         self.setVisible(False)
         self.deactivate_current_command()
+        self.isConfiguring = False
 
     def deactivate_current_command(self):
         if self.active_cfg_cmd:
@@ -1173,10 +1182,14 @@ class IVModuleConfigurationDialog( QWidget ):
     def startParameter( self, *args ):
         self.startConfiguration()
         self.emit( GuiConfigurableFunction.start_parameter_signal, self.name, self.getValue() )
+        
+    def enableConfiguration(self, enable = True ):
+        self.isConfiguring = enable
 
     def updateParameter( self, *args ):
-        self.updateConfiguration()
-        self.emit( GuiConfigurableFunction.update_parameter_signal, self.name, self.getValue() )
+        if self.isConfiguring:
+            self.updateConfiguration()
+            self.emit( GuiConfigurableFunction.update_parameter_signal, self.name, self.getValue() )
 
     @staticmethod   
     def getSignature( self ):
@@ -1203,7 +1216,7 @@ class IVModuleConfigurationDialog( QWidget ):
                 for cmd_entry in cmd_list:
                     module = cmd_entry[0]
                     cfg_cmd = cmd_entry[1] 
-                    if cfg_cmd and cfg_cmd.gui:
+                    if cfg_cmd and cfg_cmd.guiEnabled:
                         self.gui_cmds.append( cfg_cmd )
                         if ( ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ) ):
                             self.active_cfg_cmd = cfg_cmd  
