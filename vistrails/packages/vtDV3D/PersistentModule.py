@@ -614,7 +614,7 @@ class PersistentModule( QObject ):
             self.datasetId = dsid 
             self.addAnnotation( 'datasetId', self.datasetId  ) 
     
-    def getInputValue( self, inputName, default_value = None, **args ):
+    def getInputValue1( self, inputName, default_value = None, **args ):
         import api
         if inputName == 'task':
             pass
@@ -643,6 +643,17 @@ class PersistentModule( QObject ):
         if pval == None:         
             pval = self.getParameter( inputName, default_value )
 #            print ' ***** GetInputValue[%s] = %s ' % ( inputName, str(pval) )
+        return pval
+
+    def getInputValue( self, inputName, default_value = None, **args ):
+        import api
+        self.getDatasetId( **args )
+        pval = self.getParameter( inputName, None )
+        if pval == None:
+            pval = self.wmod.forceGetInputFromPort( inputName, default_value )             
+        if inputName == 'colormap':
+            controller = api.get_current_controller()
+            print ' Input colormap value, MID[%d], ctrl_version=%d, value = %s (defval=%s)'  % ( self.moduleID, controller.current_version, str(pval), str(default_value) )            
         return pval
           
     def setResult( self, outputName, value ): 
@@ -1085,9 +1096,9 @@ class PersistentModule( QObject ):
             action = create_action( op_list ) 
             controller.add_new_action(action)
             controller.perform_action(action)
+            if cur_version: controller.change_selected_version(cur_version) 
             if hasattr(controller, 'uvcdat_controller'):
                 controller.uvcdat_controller.cell_was_changed(action)
-            if cur_version: controller.change_selected_version(cur_version) 
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
 
