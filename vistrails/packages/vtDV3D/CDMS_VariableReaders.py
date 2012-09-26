@@ -52,6 +52,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         self.gridSpecs = None
         self.currentTime = 0
         self.currentLevel = None
+        self.timeIndex = 0
+        self.useTimeIndex = False
         self.timeAxis = None
         if self.outputType == CDMSDataType.Hoffmuller:
             self.addUVCDATConfigGuiFunction( 'chooseLevel', LevelConfigurationDialog, 'L', label='Choose Level' ) 
@@ -148,9 +150,11 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.setParameter( "timeRange" , self.timeRange )
             self.cdmsDataset.timeRange = self.timeRange
             self.timeLabels = self.cdmsDataset.getTimeValues()
-            timeValue = args.get( 'timeValue', self.cdmsDataset.timeRange[2] )
-            self.timeValue = cdtime.reltime( float(timeValue), ReferenceTimeUnits )
-            print "Set Time: %s, %s, NTS: %d, Range: %s" % ( str(timeValue), str(self.timeValue), self.nTimesteps, str(self.timeRange) )
+            timeData = args.get( 'timeData', [ self.cdmsDataset.timeRange[2], 0, False ] )
+            self.timeValue = cdtime.reltime( float(timeData[0]), ReferenceTimeUnits )
+            self.timeIndex = timeData[1]
+            self.useTimeIndex = timeData[2]
+            print "Set Time: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
 #            print "Time Step Labels: %s" % str( self.timeLabels )
             for iVar in range( 2,5 ):
                 cdms_var2 = self.getInputValue( "variable%d" % iVar  ) 
@@ -169,11 +173,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 self.datasetId = dsetId
                 ModuleStore.archiveCdmsDataset( self.datasetId, self.cdmsDataset )
                 self.timeRange = self.cdmsDataset.timeRange
-                timeValue = args.get( 'timeValue', self.timeRange[2] )
-                self.timeValue = cdtime.reltime( float(timeValue), ReferenceTimeUnits )
+                timeData = args.get( 'timeData', [ self.cdmsDataset.timeRange[2], 0, False ] )
+                self.timeValue = cdtime.reltime( float(timeData[0]), ReferenceTimeUnits )
+                self.timeIndex = timeData[1]
+                self.useTimeIndex = timeData[2]
                 self.timeLabels = self.cdmsDataset.getTimeValues()
                 self.nTimesteps = self.timeRange[1]
-                print "Set Time: %s, %s, NTS: %d, Range: %s" % ( str(timeValue), str(self.timeValue), self.nTimesteps, str(self.timeRange) )
+                print "Set Time: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
 #                print "Time Step Labels: %s" % str( self.timeLabels ) 
                 self.generateOutput()
                 if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
@@ -272,7 +278,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self._max_scalar_value = getMaxScalarValue( scalar_dtype )
             self._range = [ 0.0, self._max_scalar_value ]  
             datatype = getDatatypeString( scalar_dtype )
-            iTimestep = 0 if varName == '__zeros__' else self.getTimestep()
+            iTimestep = 0 if varName == '__zeros__' else self.timeIndex if self.useTimeIndex else self.getTimestep()
             varDataIdIndex = iTimestep
             if (self.outputType == CDMSDataType.Hoffmuller):
                 if ( selectedLevel == None ):
@@ -291,7 +297,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     varDataSpecs = copy.deepcopy( exampleVarDataSpecs )
                     varDataSpecs['newDataArray'] = newDataArray.ravel('F')  
                 else: 
-                    tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue ] 
+                    tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue, iTimestep, self.useTimeIndex ] 
                     varData = self.cdmsDataset.getVarDataCube( dsid, varName, tval, selectedLevel )
                     if varData.id <> 'NULL':
                         varDataSpecs = self.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale, self.outputType, ds )

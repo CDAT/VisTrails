@@ -280,10 +280,7 @@ class CDMSDatasetRecord():
         timeBounds = args.get( 'time', None )
         referenceVar = args.get( 'refVar', None )
         referenceLev = args.get( 'refLev', None )
-
-        timeValue = None
-        if timeBounds <> None:
-            timeValue = timeBounds[0] if ( len( timeBounds ) == 1 ) else timeBounds
+        timeValue, timeIndex, useTimeIndex = timeBounds if timeBounds else None, None, None
 
 #        nSliceDims = 0
 #        for bounds in (lonBounds, latBounds, levBounds, timeBounds):
@@ -338,7 +335,10 @@ class CDMSDatasetRecord():
         if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.getInstance().isServer else decimation[0]+1
         try:
             nts = self.dataset['time'].shape[0]
-            if timeValue and (nts>1): args1['time'] = timeValue
+            if ( timeIndex <> None ) and  useTimeIndex: 
+                args1['time'] = slice( timeIndex, timeIndex+1, 1 )
+            elif timeValue and (nts>1): 
+                args1['time'] = timeValue
         except: pass
         
         if lonBounds <> None:
@@ -654,9 +654,7 @@ class CDMSDataset(Module):
             invert_z = ( (levaxis.attributes.get( 'positive', '' ) == 'down') and ascending_values ) or ( (levaxis.attributes.get( 'positive', '' ) == 'up') and not ascending_values )
                
         timeBounds = args.get( 'time', None )
-        timeValue = None
-        if timeBounds <> None:
-            timeValue = timeBounds[0] if ( len( timeBounds ) == 1 ) else timeBounds
+        [ timeValue, timeIndex, useTimeIndex ] = timeBounds if timeBounds else [ None, None, None ]
 
         cachedTransVariableRec = self.cachedTransVariables.get( varName )
         if cachedTransVariableRec:
@@ -672,7 +670,10 @@ class CDMSDataset(Module):
         order = 'xyt' if ( timeBounds == None) else 'xyz'
         try:
             nts = self.timeRange[1]
-            if timeValue and (nts>1): args1['time'] = timeValue
+            if ( timeIndex <> None ) and  useTimeIndex: 
+                args1['time'] = slice( timeIndex, timeIndex+1 )
+            elif timeValue and (nts>1): 
+                args1['time'] = timeValue
         except: pass
         
         args1['order'] = order

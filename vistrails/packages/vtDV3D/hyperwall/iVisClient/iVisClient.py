@@ -150,7 +150,7 @@ class QiVisClient(QtCore.QObject):
             if self.current_pipeline:
                 for module in self.current_pipeline.module_list:
                     persistentCellModule = ModuleStore.getModule( module.id ) 
-                    if persistentCellModule: persistentCellModule.updateAnimation( relTimeValue, displayText  )
+                    if persistentCellModule: persistentCellModule.updateAnimation( [ relTimeValue, 0, False ], displayText  )
         elif terms[0] == "pipelineHelper":
             if self.current_config_function:
                 if self.current_config_function.type == 'leveling':

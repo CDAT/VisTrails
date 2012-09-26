@@ -2052,6 +2052,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.iTimeStep = 0
         self.relTimeStart = None
         self.relTimeStep = 1.0
+        self.uniformTimeRange = True
         self.maxSpeedIndex = 100
         self.maxDelaySec = args.get( "maxDelaySec", 1.0 )
         self.running = False
@@ -2070,7 +2071,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         return [ self.iTimeStep ]
 
     def setValue( self, value ):
-        iTS = getItem( value )
+        iTS = int( round( getItem( value ) ) )
         if self.timeRange and ( ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
         self.iTimeStep = iTS
                 
@@ -2084,7 +2085,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     def step( self ):
         if not self.running:
             self.updateTimeRange()
-            self.setTimestep( self.iTimeStep + 1 )
+            iTS =  int( self.iTimeStep ) + 1
+            if self.timeRange and ( ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
+            self.setTimestep( iTS )
 
     def reset( self ):
         if self.running:
@@ -2092,7 +2095,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             self.running = False
         self.setTimestep(0)
 
-    def getTimeRange( self ): 
+    def getTimeRange1( self ): 
 #        wmods = getWorkflowObjectMap()
         for module in self.modules: 
             timeRangeInput =  module.getCachedParameter( "timeRange" )
@@ -2101,6 +2104,31 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 self.relTimeStart = float( timeRangeInput[2] )
                 self.relTimeStep = float( timeRangeInput[3] )
                 return
+            
+    def getTimeRange( self ):
+        from packages.vtDV3D.CDMS_VariableReaders import PM_CDMSDataReader 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        timeRange = None
+        self.uniformTimeRange = True
+        for module in self.modules:
+            if DV3DPipelineHelper.getPlotActivation( module ): 
+                if  isinstance( module, PM_CDMSDataReader ):                  
+                    timeRangeInput =  module.getCachedParameter( "timeRange" )
+                    if timeRangeInput:
+                        if timeRange == None:
+                            timeRange = timeRangeInput 
+                        else:
+                            if (timeRange[0]<>timeRangeInput[0]) or (timeRange[1]<>timeRangeInput[1]) or (timeRange[2]<>timeRangeInput[2]) or (timeRange[3]<>timeRangeInput[3]):
+                                self.uniformTimeRange = False
+                                if timeRange[3] > timeRangeInput[3]:
+                                    timeRange = timeRangeInput 
+        if timeRange:                
+            self.timeRange = [ int(timeRange[0]), int(timeRange[1]) ]
+            self.relTimeStart = float( timeRange[2] )
+            self.relTimeStep = float( timeRange[3] )
+        else:
+            print>>sys.stderr, "Error: Can't find time range metadata."
+
 
     def setTimestep( self, iTimestep ):
         from packages.vtDV3D.PersistentModule import ReferenceTimeUnits 
@@ -2127,7 +2155,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, displayText ], False  )
                 for module in IVModuleConfigurationDialog.getActiveModules():
                     dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
-                    module.updateAnimation( relTimeValueRefAdj, displayText  )
+                    module.updateAnimation( [ relTimeValueRefAdj, iTimestep, self.uniformTimeRange ], displayText  )
             except Exception:
                 traceback.print_exc( 100, sys.stderr )
 #                print>>sys.stdout, "Error in setTimestep[%d]: %s " % ( iTimestep, str(err) )

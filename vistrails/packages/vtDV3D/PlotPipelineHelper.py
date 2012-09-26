@@ -675,7 +675,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 DV3DPipelineHelper.config_widget.stopConfig( module )
 #            if not isActive: 
 #                DV3DPipelineHelper.config_widget.stopConfig( module )
-              
+             
     @staticmethod
     def execAction( action_key ):
         from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 

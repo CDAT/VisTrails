@@ -857,8 +857,8 @@ class PersistentModule( QObject ):
                     self.haltNavigationInteraction()
                     if (configFunct.type == 'leveling'): self.getLabelActor().VisibilityOn()
     
-    def updateAnimation( self, relTimeValue, textDisplay=None ):
-        self.dvUpdate( timeValue=relTimeValue, animate=True )
+    def updateAnimation( self, animTimeData, textDisplay=None ):
+        self.dvUpdate( timeData=animTimeData, animate=True )
         if textDisplay <> None:  self.updateTextDisplay( textDisplay )
         
     def stopAnimation( self ):
