@@ -109,6 +109,7 @@ class QtWindowLeveler( QObject ):
             self.setWindowLevel( data_range[0], data_range[1] )
         else:
             self.scaling = 0.5 * ( abs(data_range[0]) + abs(data_range[1]) )
+            if self.scaling == 0.0: self.scaling = 1.0
             self.OriginalWindow = ( data_range[1] - data_range[0] ) / self.scaling if ( self.scaling > 0.0 ) else 1.0
             self.OriginalLevel = 1.0
           

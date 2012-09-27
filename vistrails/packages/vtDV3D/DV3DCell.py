@@ -1130,7 +1130,8 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
         self.colCombo.setMaximumHeight( 30 )
         cell_selection_layout.addWidget( self.colCombo  )        
         for iCol in range( 5 ):  self.colCombo.addItem( chr( ord('A') + iCol ) )
-        self.colCombo.setCurrentIndex( cell_coordinates[0] )
+        if cell_coordinates: 
+            self.colCombo.setCurrentIndex( cell_coordinates[0] )
 
         self.rowCombo =  QComboBox ( self.parent() )
         self.rowCombo.setMaximumHeight( 30 )

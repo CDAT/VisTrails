@@ -649,7 +649,7 @@ class PersistentModule( QObject ):
         import api
         self.getDatasetId( **args )
         pval = self.getParameter( inputName, None )
-        if pval == None:
+        if (pval == None) and (self.wmod <> None):
             pval = self.wmod.forceGetInputFromPort( inputName, default_value )             
         if inputName == 'colormap':
             controller = api.get_current_controller()
@@ -998,8 +998,8 @@ class PersistentModule( QObject ):
         
     def getParameterId( self, parmName = None, input_index=0 ):
         parmIdList = []
-        ispec = self.inputSpecs[ input_index ] 
-        if ispec.datasetId: parmIdList.append( ispec.datasetId )
+        ispec = self.inputSpecs.get( input_index, None )
+        if ispec and ispec.datasetId: parmIdList.append( ispec.datasetId )
         if self.activeLayer: parmIdList.append( self.activeLayer )
         if parmName: parmIdList.append( parmName )
         if parmIdList: return '.'.join( parmIdList )
@@ -1124,7 +1124,6 @@ class PersistentModule( QObject ):
                             ) -> None
         Note: param_list is a list of strings no matter what the parameter type!
         """
-        cur_version = None #  self.adjustControllerVersion( controller ) 
         try:
             module = controller.current_pipeline.modules[self.moduleID] 
         except KeyError:
@@ -1135,13 +1134,13 @@ class PersistentModule( QObject ):
             print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
             for parmRec in parmRecList:  
                 op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
-                if parmRec[0] == 'functionScale':
+                if parmRec[0] == 'colorScale':
                     print 'x'
             action = create_action( op_list ) 
             controller.add_new_action(action)
             controller.perform_action(action)
-            if hasattr(controller, 'uvcdat_controller'):
-                controller.uvcdat_controller.cell_was_changed(action)
+#            if hasattr(controller, 'uvcdat_controller'):
+#                controller.uvcdat_controller.cell_was_changed(action)
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
 

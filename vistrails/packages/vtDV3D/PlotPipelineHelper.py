@@ -324,7 +324,8 @@ class DV3DRangeConfigWidget(QFrame):
             parm_range[ iSlider ] = fval
             self.active_cfg_cmd.broadcastLevelingData( parm_range,  active_modules = DV3DPipelineHelper.getActivePlotList() ) 
             if len( self.active_modules ):            
-                for module in self.active_modules: module.render()
+                for module in self.active_modules: 
+                    if DV3DPipelineHelper.getPlotActivation( module ): module.render()
                 HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'text-%d' % iSlider, fval ]  )
         
         
@@ -338,7 +339,8 @@ class DV3DRangeConfigWidget(QFrame):
 #            print " sliderValueChanged[%d], bounds=%s, range=%s, fval=%f" % ( self.active_cfg_cmd.module.moduleID, str(rbnds), str(parm_range), fval )
             self.active_cfg_cmd.broadcastLevelingData( parm_range, active_modules = DV3DPipelineHelper.getActivePlotList( )  ) 
             if len( self.active_modules ):            
-                for module in self.active_modules: module.render()
+                for module in self.active_modules:
+                    if DV3DPipelineHelper.getPlotActivation( module ): module.render()
                 HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'slider-%d' % iSlider, fval ]  )
         
     def updateSliderValues( self, initialize=False ): 
@@ -378,6 +380,7 @@ class DV3DRangeConfigWidget(QFrame):
         cfg_key = str(qs_cfg_key)
         action_key = str(qs_action_key)
         self.getConfigTab().setTitle( action_key )
+        self.active_modules = set()
         try:
             cmd_list = DV3DPipelineHelper.getConfigCmd ( cfg_key )
             if cmd_list:
@@ -406,12 +409,13 @@ class DV3DRangeConfigWidget(QFrame):
             interactionState = self.active_cfg_cmd.name
             parm_range = list( self.active_cfg_cmd.range )
             for module in self.active_modules:
-                config_data = module.getParameter( interactionState  ) 
-                if config_data: 
-                    config_data[0:2] = parm_range[0:2]
-                else:
-                    config_data = parm_range
-                module.writeConfigurationResult( interactionState, config_data ) 
+                if DV3DPipelineHelper.getPlotActivation( module ):
+                    config_data = module.getParameter( interactionState  ) 
+                    if config_data: 
+                        config_data[0:2] = parm_range[0:2]
+                    else:
+                        config_data = parm_range
+                    module.writeConfigurationResult( interactionState, config_data ) 
             HyperwallManager.getInstance().setInteractionState( None )               
         self.endConfig()
 
@@ -420,8 +424,9 @@ class DV3DRangeConfigWidget(QFrame):
             self.initialRange[2] = self.active_cfg_cmd.range[2]
             self.active_cfg_cmd.broadcastLevelingData( self.initialRange )  
             interactionState = self.active_cfg_cmd.name
-            for module in self.active_modules: 
-                module.finalizeConfigurationObserver( interactionState ) 
+            for module in self.active_modules:
+                if DV3DPipelineHelper.getPlotActivation( module ): 
+                    module.finalizeConfigurationObserver( interactionState ) 
             HyperwallManager.getInstance().setInteractionState( None )  
         self.endConfig()
         
@@ -431,7 +436,7 @@ class DV3DConfigControlPanel(QWidget):
     def __init__( self, configMenu, optionsMenu, parent=None):
         QWidget.__init__(self,parent)
         self.showActivePlotsPanel = True
-        self.active_module = None
+#        self.active_module = None
         self.configWidget = None
 #        print "Creating DV3DConfigControlPanel: id = %x " % id( self )
            
@@ -670,10 +675,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def setModulesActivation( modules, isActive ):
         for module in modules:
             DV3DPipelineHelper.activationMap[ module ] = isActive 
-            print " ** Set module activation: module[%d] -> %s " % ( module.moduleID, str(isActive) )
-            if not isActive and DV3DPipelineHelper.config_widget:
-                DV3DPipelineHelper.config_widget.stopConfig( module )
-#            if not isActive: 
+            print " ** Set module activation: module[%d] -> %s (** persist parameters? **)" % ( module.moduleID, str(isActive) )
+#            if not isActive and DV3DPipelineHelper.config_widget:
 #                DV3DPipelineHelper.config_widget.stopConfig( module )
              
     @staticmethod
@@ -789,7 +792,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         reader_module = None
         for module in pipeline.module_list:
             pmod = module.module_descriptor.module
-            if issubclass( pmod.PersistentModuleClass, SpreadsheetCell ):
+            if hasattr( pmod, "PersistentModuleClass" ) and issubclass( pmod.PersistentModuleClass, SpreadsheetCell ):
                 cell_module = module
             elif issubclass( pmod, ( CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader ) ):
                 reader_module = module
