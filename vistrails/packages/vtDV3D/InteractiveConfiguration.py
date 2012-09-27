@@ -526,6 +526,8 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
                 self.initial_range =  [ 0.0, 1.0, 1 ] if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
             if self.range_bounds == None:
                 self.range_bounds = self.initial_range if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
+            if self.name == 'functionScale':
+                print 'x'
             self.range = list( self.module.getInputValue( self.name, self.initial_range )  ) # if not self.module.newDataset else self.initial_range
             if len( self.range ) == 3: 
                 for iR in range(2): self.range.append( self.initRefinement[iR] )
@@ -2087,6 +2089,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             self.updateTimeRange()
             iTS =  int( self.iTimeStep ) + 1
             if self.timeRange and ( ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
+            print " ############################################ set Time index = %d ############################################" % iTS
             self.setTimestep( iTS )
 
     def reset( self ):
@@ -2200,7 +2203,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 #            self.runThread.start()
              
     def animate(self):
-        self.setTimestep( self.iTimeStep + 1 )  
+        iTS =  int( self.iTimeStep ) + 1
+        if self.timeRange and ( ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
+        self.setTimestep( iTS )  
         if self.running: 
             delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
             print " Animate step, delay time = %.2f msec" % delayTime

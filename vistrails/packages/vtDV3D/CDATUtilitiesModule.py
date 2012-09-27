@@ -71,7 +71,7 @@ class PM_CDMS_CDATUtilities( PersistentModule ):
         self.initializeInputs( **args )
         self.executeTask( False, **args)     
         self.initializeConfiguration()            
-        self.persistLayerDependentParameters()
+#        self.persistLayerDependentParameters()
         
     def dvUpdate(self, **args ):
         self.executeTask( True, **args)     

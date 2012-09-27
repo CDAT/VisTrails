@@ -566,7 +566,7 @@ class PersistentModule( QObject ):
             self.initializeConfiguration()
         elif self.requiresPrimaryInput:
             print>>sys.stderr, " Error, no input to module %s " % getClassName( self )
-        self.persistLayerDependentParameters()
+#        self.persistLayerDependentParameters()
         self.resetNavigation()
         
     def updateHyperwall(self):
@@ -1062,7 +1062,7 @@ class PersistentModule( QObject ):
     def refreshVersion(self):
         pass
 
-    def change_parameters( self, parmRecList, controller ): 
+    def change_parameters1( self, parmRecList, controller ): 
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper         
         """change_parameters(
                             parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
@@ -1117,14 +1117,14 @@ class PersistentModule( QObject ):
         return cur_version
             
 
-    def change_parameters1( self, parmRecList, controller ): 
+    def change_parameters( self, parmRecList, controller ): 
         """change_parameters(
                             parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
                             controller: VistrailController,
                             ) -> None
         Note: param_list is a list of strings no matter what the parameter type!
         """
-        cur_version = self.adjustControllerVersion( controller ) 
+        cur_version = None #  self.adjustControllerVersion( controller ) 
         try:
             module = controller.current_pipeline.modules[self.moduleID] 
         except KeyError:
@@ -1133,11 +1133,13 @@ class PersistentModule( QObject ):
         try:
             op_list = []
             print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
-            for parmRec in parmRecList:  op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+            for parmRec in parmRecList:  
+                op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+                if parmRec[0] == 'functionScale':
+                    print 'x'
             action = create_action( op_list ) 
             controller.add_new_action(action)
             controller.perform_action(action)
-            if cur_version: controller.change_selected_version(cur_version) 
             if hasattr(controller, 'uvcdat_controller'):
                 controller.uvcdat_controller.cell_was_changed(action)
         except Exception, err:
