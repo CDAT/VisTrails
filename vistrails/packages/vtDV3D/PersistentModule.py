@@ -1117,15 +1117,33 @@ class PersistentModule( QObject ):
         return cur_version
             
 
-    def change_parameters( self, parmRecList, controller ): 
+    def change_parameters( self, parmRecList ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
         """change_parameters(
                             parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
                             controller: VistrailController,
                             ) -> None
         Note: param_list is a list of strings no matter what the parameter type!
         """
+        cw = DV3DPipelineHelper.config_widget
+        proj_controller = cw.getProjectController()
         try:
-            module = controller.current_pipeline.modules[self.moduleID] 
+            sheetName = proj_controller.current_sheetName
+            coords = tuple( proj_controller.current_cell_coords )
+            cell = proj_controller.sheet_map[ sheetName ][ coords ]
+            current_version = cell.current_parent_version 
+        except Exception, err:
+            print>>sys.stderr, "Error getting current cell: %s " % str( err )
+            current_version = None
+        pipeline = cw.getPipeline(current_version)
+        controller = cw.getController(current_version)
+
+        print '-'*50      
+        print 'Persist parameter: version=%d,  controller version=%d, pid=%d, modules=%s' % ( current_version, controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
+        print '-'*50      
+
+        try:
+            module = pipeline.modules[self.moduleID] 
         except KeyError:
             print>>sys.stderr, "Error changing parameter in module %d, parm: %s: Module not in current controller pipeline." % ( self.moduleID, str(parmRecList) )  
             return
@@ -1139,8 +1157,8 @@ class PersistentModule( QObject ):
             action = create_action( op_list ) 
             controller.add_new_action(action)
             controller.perform_action(action)
-#            if hasattr(controller, 'uvcdat_controller'):
-#                controller.uvcdat_controller.cell_was_changed(action)
+            proj_controller.cell_was_changed(action)
+                
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
 
@@ -1148,9 +1166,7 @@ class PersistentModule( QObject ):
                
     def persistParameterList( self, parmRecList, **args ):
         if parmRecList and not self.isClient: 
-            import api
             DV3DConfigurationWidget.savingChanges = True
-            ctrl = api.get_current_controller()
             strParmRecList = []
             self.getDatasetId( **args )
             for parmRec in parmRecList:
@@ -1158,9 +1174,9 @@ class PersistentModule( QObject ):
                 output = parmRec[1]
                 param_values_str = [ str(x) for x in output ] if isList(output) else str( output )  
                 strParmRecList.append( ( parameter_name, param_values_str ) )
-            self.change_parameters( strParmRecList, ctrl )           
+            self.change_parameters( strParmRecList )           
             tag = self.getParameterId()
-            taggedVersion = self.tagCurrentVersion( tag )
+#            taggedVersion = self.tagCurrentVersion( tag )
             listParameterPersist = args.get( 'list', True )  
             for parmRec in parmRecList:
                 parameter_name = parmRec[0]
@@ -1168,9 +1184,9 @@ class PersistentModule( QObject ):
                 self.setParameter( parameter_name, output, tag ) 
                 if listParameterPersist: self.persistedParameters.append( parameter_name )
 #            print " %s.Persist-Parameter-List[%s] (v. %s): %s " % ( self.getName(), tag, str(taggedVersion), str(parmRecList) )
-            self.persistVersionMap() 
-            updatePipelineConfiguration = args.get( 'update', False ) # False )                  
-            if updatePipelineConfiguration: ctrl.select_latest_version() 
+#            self.persistVersionMap() 
+#            updatePipelineConfiguration = args.get( 'update', False ) # False )                  
+#            if updatePipelineConfiguration: ctrl.select_latest_version() 
             DV3DConfigurationWidget.savingChanges = False
 #            self.wmod = None
                          

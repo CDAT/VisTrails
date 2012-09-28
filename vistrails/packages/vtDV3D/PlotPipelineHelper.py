@@ -432,10 +432,15 @@ class DV3DRangeConfigWidget(QFrame):
         
 
 class DV3DConfigControlPanel(QWidget):
-
-    def __init__( self, configMenu, optionsMenu, parent=None):
+    
+    def __init__( self, configMenu, optionsMenu, controller, version, plot_obj, parent=None):
         QWidget.__init__(self,parent)
         self.showActivePlotsPanel = True
+        self.proj_controller = controller
+        self.controller = controller.vt_controller
+        self.version = version
+        self.plot = plot_obj
+
 #        self.active_module = None
         self.configWidget = None
 #        print "Creating DV3DConfigControlPanel: id = %x " % id( self )
@@ -512,13 +517,30 @@ class DV3DConfigControlPanel(QWidget):
 #        if self.configWidget: 
 #            self.config_layout.removeWidget( self.configWidget )
 #            self.configWidget = None
+
+    def getPlot(self):
+        return self.plot
+
+    def getPipeline( self, pipeline_version=None ):
+        if pipeline_version == None: pipeline_version = self.version
+        return self.controller.vistrail.getPipeline( pipeline_version )
+
+    def getProjectController(self):
+        return self.proj_controller
+
+    def getController(self, controller_version=None):
+        if controller_version <> None: self.controller.change_selected_version( controller_version )
+        return self.controller
+
+    def getVersion(self):
+        return self.version
                         
     def getConfigWidget( self, configFunctionList ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper    
         if configFunctionList:
             for configFunction in configFunctionList:
                 if configFunction.module.GetRenWinID() in DV3DPipelineHelper.getActiveRenWinIds():
-                    print " Got Config Widget: using cfg fn %s from module %d " % ( configFunction.name, configFunction.module.moduleID )
+#                   print " Got Config Widget: using cfg fn %s from module %d " % ( configFunction.name, configFunction.module.moduleID )
                     if configFunction.type == "leveling":
                         return DV3DRangeConfigWidget(self) 
                     if configFunction.type == "uvcdat-gui":
@@ -526,7 +548,7 @@ class DV3DConfigControlPanel(QWidget):
         return None
         
     def init( self, configFunctionList ):
-        print "Init DV3DConfigControlPanel: id = %x " % id( self )
+#        print "Init DV3DConfigControlPanel: id = %x " % id( self )
         cfgWidget = self.getConfigWidget( configFunctionList )
         if cfgWidget:
             if self.configWidget: 
@@ -1164,9 +1186,13 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return rwins
     
     @staticmethod
-    def show_configuration_widget( controller, version, plot_objs=[] ):
+    def show_configuration_widget( controller, version, plot_objs=[ None ] ):
         from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper, CDMSPlotWidget
-        pipeline = controller.vt_controller.vistrail.getPipeline(version)        
+        current_controller = api.get_current_controller()
+        pipeline = controller.vt_controller.vistrail.getPipeline(version) 
+        print '-'*50      
+        print 'New Configuration panel: version=%d, current_version=%d, pid=%d, modules=%s' % ( version, current_controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
+        print '-'*50      
         pmods = set()
         DV3DPipelineHelper.reset()
         menu = DV3DPipelineHelper.startNewMenu()
@@ -1198,7 +1224,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             DV3DPipelineHelper.addAction( pmod, [ 'Show Colorbar', 'colorbar' ], 'l' )
             DV3DPipelineHelper.addAction( pmod, [ 'Reset', 'reset' ], 'r' )
         
-        DV3DPipelineHelper.config_widget = DV3DConfigControlPanel( menu, menu1 )
+        DV3DPipelineHelper.config_widget = DV3DConfigControlPanel( menu, menu1, controller, version, plot_objs[0] )
         for pmod in pmods:
             cmdList = pmod.getConfigFunctions( [ 'leveling', 'uvcdat-gui' ] )
             for cmd in cmdList:
