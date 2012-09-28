@@ -739,7 +739,9 @@ class CDMSPlot(Plot, NotCacheable):
                                       ('xmtics2', 'basic:String', True),
                                       ('ymtics1', 'basic:String', True),
                                       ('ymtics2', 'basic:String', True),
-                                      ('projection', 'basic:String', True)])
+                                      ('projection', 'basic:String', True),
+                                      ("colorMap1", "CDMSColorMap", True),
+                                      ("colorMap2", "CDMSColorMap", True)])
     _output_ports = expand_port_specs([("self", "CDMSPlot")])
 
     gm_attributes = [ 'datawc_calendar', 'datawc_timeunits',
@@ -779,6 +781,14 @@ class CDMSPlot(Plot, NotCacheable):
         for attr in self.gm_attributes:
             if self.hasInputFromPort(attr):
                 setattr(self,attr,self.getInputFromPort(attr))
+            
+        self.colorMap1 = None
+        if self.hasInputFromPort('colorMap1'):
+            self.colorMap1 = self.getInputFromPort('colorMap1')
+            
+        self.colorMap2 = None
+        if self.hasInputFromPort('colorMap2'):
+            self.colorMap2 = self.getInputFromPort('colorMap2')
 
     def to_module(self, controller):
         module = Plot.to_module(self, controller, identifier)
@@ -881,8 +891,7 @@ class CDMSColorMap(Module):
         return module
      
 class CDMSCell(SpreadsheetCell):
-    _input_ports = expand_port_specs([("plot", "CDMSPlot"),
-                                      ("colorMap", "CDMSColorMap", True)])
+    _input_ports = expand_port_specs([("plot", "CDMSPlot")])
 
     def compute(self):
         input_ports = []
@@ -891,8 +900,6 @@ class CDMSCell(SpreadsheetCell):
                            key=lambda obj: obj.plot_order):
             plots.append(plot)
         input_ports.append(plots)
-        if self.hasInputFromPort('colorMap'):
-            input_ports.append(self.getInputFromPort('colorMap'))
         self.cellWidget = self.displayAndWait(QCDATWidget, input_ports)
 
 class QCDATWidget(QCellWidget):
@@ -1022,13 +1029,19 @@ Please delete unused CDAT Cells in the spreadsheet.")
                 _app.uvcdatWindow.record(cmd)
             self.canvas.plot(cgm,*args,**kwargs)
             
-        if len(inputPorts) > 1:
-            #setiing colormap
-            colormap = inputPorts[1].colorMapName
-            colorCells = inputPorts[1].colorCells
-            for (n,r,g,b) in colorCells:
-                self.canvas.setcolorcell(n,r,g,b)
-            self.canvas.setcolormap(str(colormap))
+            #TODO: apply this to canvas.plot when colormap is decoupled
+            #  from the canvas
+            # set up colormap
+            if plot.colorMap1 is not None:
+                if plot.colorMap1.colorMapName is not None:
+                    self.canvas.setcolormap(str(plot.colorMap1.colorMapName))
+                    
+            if plot.colorMap1.colorCells is not None:
+                for (n,r,g,b) in plot.colorMap1.colorCells:
+                    self.canvas.canvas.setcolorcell(n,r,g,b);
+                #see vcs.Canvas.setcolorcell
+                self.canvas.canvas.updateVCSsegments(self.canvas.mode) # pass down self and mode to _vcs module
+                self.canvas.flush() # update the canvas by processing all the X events
             
         spreadsheetWindow.setUpdatesEnabled(True)
         self.update()
