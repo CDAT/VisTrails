@@ -352,6 +352,7 @@ class ConfigurableFunction( QObject ):
         self.activeFunctionList = []
         self.module = None
         self.altMode = False
+        self.persisted = False
 #        self.parameterInputEnabled = True                                      # Handlers executed at:
         self.initHandler = args.get( 'init', None )         #    end of compute()
         self.openHandler = args.get( 'open', None )         #    key press
@@ -498,12 +499,14 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     def applyParameter( self, **args ):
         try:
             self.setLevelDataHandler( self.range, **args )
+            self.persisted = False
         except Exception, err:
             print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
         print "Apply %s Parameter[%s:%d]: %s " % ( self.type, self.name, self.module.moduleID, str( self.range ) )
         
     def reset(self):
         self.setLevelDataHandler( self.initial_range )
+        self.persisted = False
         self.module.render() 
         return self.initial_range
 
@@ -534,6 +537,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
                 for iR in range(2): self.range.append( self.initRefinement[iR] )
         self.windowLeveler.setDataRange( self.range )
         self.setLevelDataHandler( self.range )
+        self.persisted = False
         self.module.setParameter( self.name, self.range )
         if self.widget: 
             self.widget.initLeveling( self.range )
@@ -579,6 +583,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.range[0:2] = data_range[0:2]
 #        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
         self.setLevelDataHandler( self.range )
+        self.persisted = False
 
     def setScaledDataRange(  self, scaled_data_range  ):
         dr = (self.range_bounds[1]-self.range_bounds[0])
@@ -586,6 +591,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.range[1] = self.range_bounds[0] + scaled_data_range[1] * dr
 #        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
         self.setLevelDataHandler( self.range )
+        self.persisted = False
 
     def getScaledDataRange(  self  ):
         dr = (self.range_bounds[1]-self.range_bounds[0])
@@ -599,6 +605,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         active_module_list = args.get( 'active_modules', None )
         if (active_module_list == None) or (self.module in active_module_list):
             self.setLevelDataHandler( self.range )
+            self.persisted = False
             affected_renderers.add( self.module.renderer )
             self.manuallyAdjusted = True
 #        print "   -> self = %x " % id(self.module)
@@ -714,6 +721,7 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
     def setValue( self, value ):
         if self.setValueHandler <> None: 
             self.setValueHandler( value )
+            self.persisted = False
 
 class GuiConfigurableFunction( ConfigurableFunction ):
     
@@ -806,6 +814,7 @@ class WidgetConfigurableFunction( ConfigurableFunction ):
     def setValue( self, value ):
         if self.setValueHandler <> None: 
             self.setValueHandler( value )
+            self.persisted = False
        
     def getValue( self ):
         if self.getValueHandler <> None: 
@@ -966,9 +975,13 @@ class IVModuleConfigurationDialog( QWidget ):
         self.active_modules = Set()
 
     def getInteractionState( self ):
-        return self.active_cfg_cmd.name if self.active_cfg_cmd else "None"      
+        return ( self.active_cfg_cmd.name, self.active_cfg_cmd.persisted ) if self.active_cfg_cmd else ( "None", True )     
+
+    def clearInteractionState( self ):
+        if self.active_cfg_cmd:
+            self.active_cfg_cmd.persisted = True
         
-     
+    
     def enable(self): 
         self.setVisible(True)
         self.isConfiguring = True

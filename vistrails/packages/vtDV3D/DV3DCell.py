@@ -351,7 +351,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if (  key == 'k'  ):
             if self.GetRenWinID() in DV3DPipelineHelper.getActiveRenWinIds():
                 self.captionManager.addCaption()
-                state =  self.getInteractionState( key )
+                ( interactionState, persisted ) =  self.getInteractionState( key )
                 if state <> None: self.updateInteractionState( state, self.isAltMode  )                 
                 self.render() 
         else:
@@ -404,7 +404,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         cellLocation.rowSpan = 1
         cellLocation.colSpan = 1
         cell_coordinates = None
-        address = DV3DPipelineHelper.getCellAddress( self.pipeline ) 
+        ( sheetName, address ) = DV3DPipelineHelper.getCellAddress( self.pipeline ) 
         if self.isClient:            
             cellLocation.sheetReference = StandardSheetReference()
             cellLocation.sheetReference.sheetName = HyperwallManager.getInstance().deviceName

@@ -288,6 +288,10 @@ class DV3DRangeConfigWidget(QFrame):
           
         self.setLayout(main_layout)
         self.disable()
+
+    def clearInteractionState( self ):
+        if self.active_cfg_cmd:
+            self.active_cfg_cmd.persisted = True
         
     def getConfigTab(self): 
         if DV3DPipelineHelper.isGuiConfigMode(): return self.guiWidget
@@ -314,8 +318,8 @@ class DV3DRangeConfigWidget(QFrame):
         self.active_cfg_cmd = None
         self.active_modules = set()
 
-    def getInteractionState( self ):
-        return self.active_cfg_cmd.name if self.active_cfg_cmd else "None"      
+    def getInteractionState( self ):   
+        return ( self.active_cfg_cmd.name, self.active_cfg_cmd.persisted ) if self.active_cfg_cmd else ( "None", True )     
         
     def processTextValueEntry( self, iSlider ):
         if self.active_cfg_cmd:
@@ -596,9 +600,17 @@ class DV3DConfigControlPanel(QWidget):
             self.configWidget.startConfig( qs_action_key, qs_cfg_key )
 
     def stopConfig( self, module ):       
-        interactionState = self.configWidget.getInteractionState()
-        module.finalizeConfigurationObserver( interactionState, notifyHelper=False ) 
-        module.render()
+        ( interactionState, persisted ) = self.configWidget.getInteractionState()
+        if not persisted:
+            module.finalizeConfigurationObserver( interactionState, notifyHelper=False ) 
+            module.render()
+            self.configWidget.clearInteractionState()
+        
+    def persistParameter(self, module):
+        ( interactionState, persisted ) = self.configWidget.getInteractionState()
+#        if not persisted:
+        module.finalizeParameter( interactionState, notifyHelper=False )
+        self.configWidget.clearInteractionState()
 
     def endConfig( self ):
         self.modules_frame.setVisible(False)
@@ -621,6 +633,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     actionMap = {}
     activationMap = {}
     pipelineMap = {} 
+    moduleMap = {} 
     actionMenu = None
     _config_mode = LevelingType.GUI
 
@@ -700,7 +713,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             DV3DPipelineHelper.activationMap[ module ] = isActive 
             print " ** Set module activation: module[%d] -> %s (** persist parameters? **)" % ( module.moduleID, str(isActive) )
 #            if not isActive and DV3DPipelineHelper.config_widget:
-#                DV3DPipelineHelper.config_widget.stopConfig( module )
+#                DV3DPipelineHelper.config_widget.persistParameter( module )
              
     @staticmethod
     def execAction( action_key ):
@@ -845,6 +858,16 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         action2 = core.db.action.create_action(ops)
         controller.add_new_action(action2)
         controller.perform_action(action2)
+
+        sheetTabWidget = getSheetTabWidget()
+        sheetName = sheetTabWidget.getSheetName()          
+        for cell_address in cell_addresses:
+            DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline
+        
+        for mid in controller.current_pipeline.modules:
+            module = ModuleStore.getModule( mid ) 
+            module.setCellLocation( sheetName, cell_address )
+
         return action2
     
     @staticmethod
@@ -955,15 +978,23 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         except Exception, err:
             print " Error connecting CDMSVariable to workflow: ", str(err)
             traceback.print_exc()
-            
+        
+        sheetTabWidget = getSheetTabWidget()
+        sheetName = sheetTabWidget.getSheetName()          
         for cell_address in cell_addresses:
-            DV3DPipelineHelper.pipelineMap[cell_address] = controller.current_pipeline
-   
+            DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline
+        
+        for mid in controller.current_pipeline.modules:   
+            DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
+                
         return action
 
     @staticmethod
-    def getPipeline( cell_address ):    
-        return DV3DPipelineHelper.pipelineMap.get( cell_address, None )
+    def getPipeline( cell_address, sheetName = None ):
+        if sheetName == None:    
+            sheetTabWidget = getSheetTabWidget()
+            sheetName = sheetTabWidget.getSheetName()          
+        return DV3DPipelineHelper.pipelineMap.get( ( sheetName, cell_address ), None )
 
     @staticmethod
     def getCellAddress( pipeline ): 
@@ -972,10 +1003,19 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return None 
 
     @staticmethod
-    def getCellAddressForModuleID( mid ):
-        for item in  DV3DPipelineHelper.pipelineMap.items():
-            if mid in item[1].modules: return item[0]
-        return None 
+    def getCellCoordinates( mid ):
+        ( sheetName, cell_addr ) = DV3DPipelineHelper.moduleMap.get( mid, ( None, None ) )
+        coords = ( int( cell_addr[1] ) - 1, ord(cell_addr[0])-ord('A') ) if cell_addr else None
+        if sheetName == None:
+            sheetTabWidget = getSheetTabWidget()
+            sheetName = sheetTabWidget.getSheetName()          
+        return ( sheetName, coords )
+
+#        for item in  DV3DPipelineHelper.pipelineMap.items():
+#            if mid in item[1].modules: return item[0]
+#        sheetTabWidget = getSheetTabWidget()
+#        sheetName = sheetTabWidget.getSheetName()          
+#        return ( sheetName, None )
 
     @staticmethod
     def addParameterChangesAction( pipeline, controller, vistrail, parent_version, aliases, cell_spec_iter ):
@@ -1115,8 +1155,13 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 cell_specs.append( '%s!%s' % ( location, cell_spec ) )
                 cell_addresses.append( cell_spec )
 
+            sheetTabWidget = getSheetTabWidget()
+            sheetName = sheetTabWidget.getSheetName()          
             for cell_address in cell_addresses:
-                DV3DPipelineHelper.pipelineMap[cell_address] = pipeline
+                DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = pipeline
+
+            for mid in pipeline.modules:   
+                DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
             
             # Update project controller cell information    
             cell.variables = []

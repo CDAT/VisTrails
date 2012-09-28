@@ -353,6 +353,8 @@ class PersistentModule( QObject ):
         self.newLayerConfiguration = False
         self.activeLayer = None
         self.newDataset = False
+        self.sheetName = None 
+        self.cell_address = None
         self.moduleID = mid
         self.inputSpecs = {}
         self.pipeline = args.get( 'pipeline', None )
@@ -401,6 +403,10 @@ class PersistentModule( QObject ):
 #    def __del__(self):
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
+
+    def setCellLocation( self, sheetName, cell_address ):
+        self.sheetName = sheetName 
+        self.cell_address = cell_address
         
     def GetRenWinID(self):
         return -1
@@ -950,8 +956,8 @@ class PersistentModule( QObject ):
                                      
     def getInteractionState( self, key ):
         for configFunct in self.configurableFunctions.values():
-            if configFunct.matches( key ): return configFunct.name
-        return None    
+            if configFunct.matches( key ): return ( configFunct.name, configFunct.persisted )
+        return ( None, None )    
     
 #    def finalizeConfigurations( self ):
 #        parameter_changes = []
@@ -1062,60 +1068,57 @@ class PersistentModule( QObject ):
     def refreshVersion(self):
         pass
 
-    def change_parameters1( self, parmRecList, controller ): 
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper         
-        """change_parameters(
-                            parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
-                            controller: VistrailController,
-                            ) -> None
-        Note: param_list is a list of strings no matter what the parameter type!
-        """
-        try:
-#            controller.current_pipeline = self.pipeline # DV3DPipelineHelper.getPipeline( cell_address )
-#            module = self.pipeline.modules[self.moduleID]            #    controller.update_functions( module, parmRecList )
- #    controller.update_functions( module, parmRecList )
-            cur_version = None
-            try:
-                module = controller.current_pipeline.modules[self.moduleID] 
-            except KeyError:
-                if hasattr(controller, 'uvcdat_controller'):
-                    sheetTabWidget = getSheetTabWidget()
-                    cur_version = controller.current_version
-                    cell_addr = DV3DPipelineHelper.getCellAddress( self.pipeline )
-                    sheetName = sheetTabWidget.getSheetName()
-                    coords = ( ord(cell_addr[0])-ord('A'), int( cell_addr[1] ) - 1 )
-                    cell = controller.uvcdat_controller.sheet_map[ sheetName ][ coords ]
-                    controller.change_selected_version( cell.current_parent_version )
-                    print " _________________________________ Changing controller version: %d -> %d based on cell [%s]%s  _________________________________ " % ( cur_version, cell.current_parent_version, sheetName, str(coords) )
-                    module = controller.current_pipeline.modules[ self.moduleID ] 
-                else:
-                    print>>sys.stderr, "Error changing parameter in module %d, parm: %s: Wrong controller version." % ( self.moduleID, str(parmRecList) )                          
-            op_list = []
-            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
-            for parmRec in parmRecList:  op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
-            action = create_action( op_list ) 
-            controller.add_new_action(action)
-            controller.perform_action(action)
-            if cur_version: controller.change_selected_version(cur_version) 
-            if hasattr(controller, 'uvcdat_controller'):
-                controller.uvcdat_controller.cell_was_changed(action)
-        except Exception, err:
-            print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
+#    def change_parameters1( self, parmRecList, controller ): 
+#        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper         
+#        """change_parameters(
+#                            parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
+#                            controller: VistrailController,
+#                            ) -> None
+#        Note: param_list is a list of strings no matter what the parameter type!
+#        """
+#        try:
+##            controller.current_pipeline = self.pipeline # DV3DPipelineHelper.getPipeline( cell_address )
+##            module = self.pipeline.modules[self.moduleID]            #    controller.update_functions( module, parmRecList )
+# #    controller.update_functions( module, parmRecList )
+#            cur_version = None
+#            try:
+#                module = controller.current_pipeline.modules[self.moduleID] 
+#            except KeyError:
+#                if hasattr(controller, 'uvcdat_controller'):
+#                    cur_version = controller.current_version
+#                    ( sheetName, cell_addr ) = DV3DPipelineHelper.getCellAddress( self.pipeline )
+#                    coords = ( ord(cell_addr[0])-ord('A'), int( cell_addr[1] ) - 1 )
+#                    cell = controller.uvcdat_controller.sheet_map[ sheetName ][ coords ]
+#                    controller.change_selected_version( cell.current_parent_version )
+#                    print " _________________________________ Changing controller version: %d -> %d based on cell [%s]%s  _________________________________ " % ( cur_version, cell.current_parent_version, sheetName, str(coords) )
+#                    module = controller.current_pipeline.modules[ self.moduleID ] 
+#                else:
+#                    print>>sys.stderr, "Error changing parameter in module %d, parm: %s: Wrong controller version." % ( self.moduleID, str(parmRecList) )                          
+#            op_list = []
+#            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
+#            for parmRec in parmRecList:  op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+#            action = create_action( op_list ) 
+#            controller.add_new_action(action)
+#            controller.perform_action(action)
+#            if cur_version: controller.change_selected_version(cur_version) 
+#            if hasattr(controller, 'uvcdat_controller'):
+#                controller.uvcdat_controller.cell_was_changed(action)
+#        except Exception, err:
+#            print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
 
-    def adjustControllerVersion( self, controller ):
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper         
-        cur_version = None
-        if hasattr(controller, 'uvcdat_controller') and not self.moduleID in controller.current_pipeline.modules :
-            sheetTabWidget = getSheetTabWidget()
-            cur_version = controller.current_version
-            cell_addr = DV3DPipelineHelper.getCellAddress( self.pipeline )
-            sheetName = sheetTabWidget.getSheetName()
-            coords = ( ord(cell_addr[0])-ord('A'), int( cell_addr[1] ) - 1 )
-            cell = controller.uvcdat_controller.sheet_map[ sheetName ][ coords ]
-            controller.change_selected_version( cell.current_parent_version )
-            print " _________________________________ Changing controller version: %d -> %d based on cell [%s]%s  _________________________________ " % ( cur_version, cell.current_parent_version, sheetName, str(coords) )
-        return cur_version
-            
+#    def adjustControllerVersion( self, controller ):
+#        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper         
+#        cur_version = None
+#        if hasattr(controller, 'uvcdat_controller') and not self.moduleID in controller.current_pipeline.modules :
+#            cur_version = controller.current_version
+#            ( sheetName, address ) = DV3DPipelineHelper.getCellAddress( self.pipeline )
+#            sheetName = sheetTabWidget.getSheetName()
+#            coords = ( ord(cell_addr[0])-ord('A'), int( cell_addr[1] ) - 1 )
+#            cell = controller.uvcdat_controller.sheet_map[ sheetName ][ coords ]
+#            controller.change_selected_version( cell.current_parent_version )
+#            print " _________________________________ Changing controller version: %d -> %d based on cell [%s]%s  _________________________________ " % ( cur_version, cell.current_parent_version, sheetName, str(coords) )
+#        return cur_version
+#            
 
     def change_parameters( self, parmRecList ):
         import api
@@ -1126,32 +1129,29 @@ class PersistentModule( QObject ):
                             ) -> None
         Note: param_list is a list of strings no matter what the parameter type!
         """
-        cw = DV3DPipelineHelper.config_widget
-        if cw:
-            proj_controller = cw.getProjectController()
-            try:
-                sheetName = proj_controller.current_sheetName
-                cell_addr = None # DV3DPipelineHelper.getCellAddressForModuleID( self.moduleID )
-                if cell_addr:
-                    coords = ( int( cell_addr[1] ) - 1, ord(cell_addr[0])-ord('A')  )
-                else:
-                    coords = tuple( proj_controller.current_cell_coords )
-                cell = proj_controller.sheet_map[ sheetName ][ coords ]
-                current_version = cell.current_parent_version 
-            except Exception, err:
-                print>>sys.stderr, "Error getting current cell: %s " % str( err )
-                current_version = -1
-            pipeline = cw.getPipeline(current_version)
-            controller = cw.getController(current_version)
-        else:
-            controller = api.get_current_controller() 
+        
+        
+        controller = api.get_current_controller() 
+        try:
+            ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
+            proj_controller = controller.uvcdat_controller
+            pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
+            if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
+                proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+            else: pcoords = None 
+            cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
+            current_version = cell.current_parent_version 
+            controller.change_selected_version( current_version )
+            pipeline = controller.vistrail.getPipeline( current_version )
+        except Exception, err:
+            print>>sys.stderr, "Error getting current pipeline: %s " % str( err )
             pipeline = controller.current_pipeline
             proj_controller = None
             current_version = controller.current_version
-            coords = "(-)"
+            cell_address = ( None, None )
             
         print '-'*50      
-        print 'Persist parameter: coords=%s, version=%d,  controller version=%d, pid=%d, modules=%s' % ( str(coords), current_version, controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
+        print 'Persist parameter: coords=%s, version=%d, controller=%x, proj_controller=%x, controller version=%d, pid=%d, modules=%s' % ( str(cell_address), current_version, id(controller), id(proj_controller), controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
         print '-'*50      
 
         try:
@@ -1171,6 +1171,8 @@ class PersistentModule( QObject ):
             controller.perform_action(action)
             if proj_controller:
                 proj_controller.cell_was_changed(action)
+            if pcoords: 
+                proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
                 
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
@@ -1759,7 +1761,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 param_value = configFunct.reset() 
                 if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                
         else:
-            state =  self.getInteractionState( key )
+            ( state, persisted ) =  self.getInteractionState( key )
 #            print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
             if state <> None: 
                 self.updateInteractionState( state, self.isAltMode  )                 
