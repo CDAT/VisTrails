@@ -1118,6 +1118,7 @@ class PersistentModule( QObject ):
             
 
     def change_parameters( self, parmRecList ):
+        import api
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
         """change_parameters(
                             parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
@@ -1126,22 +1127,29 @@ class PersistentModule( QObject ):
         Note: param_list is a list of strings no matter what the parameter type!
         """
         cw = DV3DPipelineHelper.config_widget
-        proj_controller = cw.getProjectController()
-        try:
-            sheetName = proj_controller.current_sheetName
-            cell_addr = DV3DPipelineHelper.getCellAddressForModuleID( self.moduleID )
-            if cell_addr:
-                coords = ( ord(cell_addr[0])-ord('A'), int( cell_addr[1] ) - 1 )
-            else:
-                coords = tuple( proj_controller.current_cell_coords )
-            cell = proj_controller.sheet_map[ sheetName ][ coords ]
-            current_version = cell.current_parent_version 
-        except Exception, err:
-            print>>sys.stderr, "Error getting current cell: %s " % str( err )
-            current_version = -1
-        pipeline = cw.getPipeline(current_version)
-        controller = cw.getController(current_version)
-
+        if cw:
+            proj_controller = cw.getProjectController()
+            try:
+                sheetName = proj_controller.current_sheetName
+                cell_addr = None # DV3DPipelineHelper.getCellAddressForModuleID( self.moduleID )
+                if cell_addr:
+                    coords = ( int( cell_addr[1] ) - 1, ord(cell_addr[0])-ord('A')  )
+                else:
+                    coords = tuple( proj_controller.current_cell_coords )
+                cell = proj_controller.sheet_map[ sheetName ][ coords ]
+                current_version = cell.current_parent_version 
+            except Exception, err:
+                print>>sys.stderr, "Error getting current cell: %s " % str( err )
+                current_version = -1
+            pipeline = cw.getPipeline(current_version)
+            controller = cw.getController(current_version)
+        else:
+            controller = api.get_current_controller() 
+            pipeline = controller.current_pipeline
+            proj_controller = None
+            current_version = controller.current_version
+            coords = "(-)"
+            
         print '-'*50      
         print 'Persist parameter: coords=%s, version=%d,  controller version=%d, pid=%d, modules=%s' % ( str(coords), current_version, controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
         print '-'*50      
@@ -1161,7 +1169,8 @@ class PersistentModule( QObject ):
             action = create_action( op_list ) 
             controller.add_new_action(action)
             controller.perform_action(action)
-            proj_controller.cell_was_changed(action)
+            if proj_controller:
+                proj_controller.cell_was_changed(action)
                 
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
