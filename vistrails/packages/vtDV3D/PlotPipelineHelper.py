@@ -522,14 +522,15 @@ class DV3DConfigControlPanel(QWidget):
         return self.plot
 
     def getPipeline( self, pipeline_version=None ):
-        if pipeline_version == None: pipeline_version = self.version
+        if (pipeline_version == None) or (pipeline_version < 0): pipeline_version = self.version
         return self.controller.vistrail.getPipeline( pipeline_version )
 
     def getProjectController(self):
         return self.proj_controller
 
     def getController(self, controller_version=None):
-        if controller_version <> None: self.controller.change_selected_version( controller_version )
+        if (controller_version <> None) and (controller_version >= 0): 
+            self.controller.change_selected_version( controller_version )
         return self.controller
 
     def getVersion(self):
@@ -968,6 +969,12 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def getCellAddress( pipeline ): 
         for item in  DV3DPipelineHelper.pipelineMap.items():
             if item[1] == pipeline: return item[0]
+        return None 
+
+    @staticmethod
+    def getCellAddressForModuleID( mid ):
+        for item in  DV3DPipelineHelper.pipelineMap.items():
+            if mid in item[1].modules: return item[0]
         return None 
 
     @staticmethod

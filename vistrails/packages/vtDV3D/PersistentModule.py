@@ -1129,17 +1129,21 @@ class PersistentModule( QObject ):
         proj_controller = cw.getProjectController()
         try:
             sheetName = proj_controller.current_sheetName
-            coords = tuple( proj_controller.current_cell_coords )
+            cell_addr = DV3DPipelineHelper.getCellAddressForModuleID( self.moduleID )
+            if cell_addr:
+                coords = ( ord(cell_addr[0])-ord('A'), int( cell_addr[1] ) - 1 )
+            else:
+                coords = tuple( proj_controller.current_cell_coords )
             cell = proj_controller.sheet_map[ sheetName ][ coords ]
             current_version = cell.current_parent_version 
         except Exception, err:
             print>>sys.stderr, "Error getting current cell: %s " % str( err )
-            current_version = None
+            current_version = -1
         pipeline = cw.getPipeline(current_version)
         controller = cw.getController(current_version)
 
         print '-'*50      
-        print 'Persist parameter: version=%d,  controller version=%d, pid=%d, modules=%s' % ( current_version, controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
+        print 'Persist parameter: coords=%s, version=%d,  controller version=%d, pid=%d, modules=%s' % ( str(coords), current_version, controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
         print '-'*50      
 
         try:
