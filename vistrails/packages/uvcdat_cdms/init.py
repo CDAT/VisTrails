@@ -875,6 +875,7 @@ class CDMSColorMap(Module):
     def compute(self):
         self.colorMapName = self.forceGetInputFromPort('colorMapName')
         self.colorCells = self.forceGetInputFromPort("colorCells")
+        self.setResult("self", self)
     
     def to_module(self, controller): 
         reg = get_module_registry()   
@@ -1036,12 +1037,12 @@ Please delete unused CDAT Cells in the spreadsheet.")
                 if plot.colorMap1.colorMapName is not None:
                     self.canvas.setcolormap(str(plot.colorMap1.colorMapName))
                     
-            if plot.colorMap1.colorCells is not None:
-                for (n,r,g,b) in plot.colorMap1.colorCells:
-                    self.canvas.canvas.setcolorcell(n,r,g,b);
-                #see vcs.Canvas.setcolorcell
-                self.canvas.canvas.updateVCSsegments(self.canvas.mode) # pass down self and mode to _vcs module
-                self.canvas.flush() # update the canvas by processing all the X events
+                if plot.colorMap1.colorCells is not None:
+                    for (n,r,g,b) in plot.colorMap1.colorCells:
+                        self.canvas.canvas.setcolorcell(n,r,g,b);
+                    #see vcs.Canvas.setcolorcell
+                    self.canvas.canvas.updateVCSsegments(self.canvas.mode) # pass down self and mode to _vcs module
+                    self.canvas.flush() # update the canvas by processing all the X events
             
         spreadsheetWindow.setUpdatesEnabled(True)
         self.update()

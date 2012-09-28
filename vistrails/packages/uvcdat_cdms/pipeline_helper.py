@@ -43,10 +43,10 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     def find_variables_connected_to_plot_module(controller, pipeline, plot_id):
         conns = controller.get_connections_to(pipeline, [plot_id], 
                                               port_name="variable")
-        vars = []
+        varlist = []
         for conn in conns:
-            vars.append(pipeline.modules[conn.source.moduleId])
-        return vars
+            varlist.append(pipeline.modules[conn.source.moduleId])
+        return varlist
     
     @staticmethod
     def find_variables_connected_to_operation_module(controller, pipeline, op_id):
@@ -617,6 +617,21 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 #                    #operation
 #                    op = desc.module.from_module(varm)
 #                    text += ident + "args.append(%s)\n"%op.varname 
+
+            #set colormap for this plot
+            #TODO: support unique colormaps for both variables
+            conns = controller.get_connectoins_to(pipeline, [mplot.id], port_name="colorMap1")
+            conns += controller.get_connectoins_to(pipeline, [mplot.id], port_name="colorMap2")
+            if len(conns) > 0:
+                varc = pipeline.modules[conns[0].source.moduleId] 
+                if varc.colorMapName is not None:
+                    text += ident + "canvas.setcolormap(\"%s\")\n" % varc.colorMapName
+                    
+                    if varc.colorCells is not None and len(varc.colorCells) > 0:
+                        for (n,r,g,b) in varc.colorCells:
+                            text += ident + "canvas.canvas.setcolorcell(%i,%i,%i,%i)\n"%(n,r,g,b)
+                        text += ident + "canvas.canvas.updateVCSsegments(canvas.mode)\n" 
+                        text += ident + "canvas.flush()\n"
                 
             if plot.graphics_method_name != 'default':
                 for k in plot.gm_attributes:
@@ -638,6 +653,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 #                        else:
 #                            text += ident + "gm%s.%s = '%s'\n"%(plot.plot_type,
 #                                                            k, getattr(plot,k))
+            
             text += ident + "kwargs = %s\n"%plot.kwargs
             text += ident + "canvas.plot(gm%s,*args, **kwargs)\n"%(plot.plot_type) 
         text += '    sys.exit(app.exec_())'           
