@@ -712,8 +712,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         for module in modules:
             DV3DPipelineHelper.activationMap[ module ] = isActive 
             print " ** Set module activation: module[%d] -> %s (** persist parameters? **)" % ( module.moduleID, str(isActive) )
-#            if not isActive and DV3DPipelineHelper.config_widget:
-#                DV3DPipelineHelper.config_widget.persistParameter( module )
+            if not isActive:
+                config_fn = module.getCurrentConfigFunction()
+                if config_fn and not config_fn.persisted:
+                    module.finalizeParameter( config_fn.name )
+                    config_fn.persisted = True
              
     @staticmethod
     def execAction( action_key ):

@@ -352,7 +352,7 @@ class ConfigurableFunction( QObject ):
         self.activeFunctionList = []
         self.module = None
         self.altMode = False
-        self.persisted = False
+        self.persisted = True
 #        self.parameterInputEnabled = True                                      # Handlers executed at:
         self.initHandler = args.get( 'init', None )         #    end of compute()
         self.openHandler = args.get( 'open', None )         #    key press

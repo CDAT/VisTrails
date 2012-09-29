@@ -850,8 +850,10 @@ class PersistentModule( QObject ):
 # TBD: integrate
     def startConfigurationObserver( self, parameter_name, *args ):
         self.getLabelActor().VisibilityOn() 
-    
-                        
+        
+    def getCurrentConfigFunction(self):
+        return self.configurableFunctions.get( self.InteractionState, None )
+                            
     def startConfiguration( self, x, y, config_types ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
         if (self.InteractionState <> None) and not self.configuring and DV3DPipelineHelper.isLevelingConfigMode():
