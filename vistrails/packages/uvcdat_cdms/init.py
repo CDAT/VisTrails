@@ -995,8 +995,7 @@ Please delete unused CDAT Cells in the spreadsheet.")
             if hasattr(self.parent(),"toolBar"):
                 t = self.parent().toolBar
                 if hasattr(t,"dimSelector"):
-                    while (t.dimSelector.count()>0):
-                        t.dimSelector.removeItem(0)
+                    t.dimSelector.clear()
                     t.dimSelector.addItems(self.extraDimsNames)
         # Plot
         for plot in inputPorts[0]:
@@ -1044,7 +1043,7 @@ Please delete unused CDAT Cells in the spreadsheet.")
             self.canvas.plot(cgm,*args,**kwargs)
             
         if len(inputPorts) > 1:
-            #setiing colormap
+            #setting colormap
             colormap = inputPorts[1].colorMapName
             colorCells = inputPorts[1].colorCells
             for (n,r,g,b) in colorCells:
@@ -1125,16 +1124,21 @@ class QCDATWidgetToolBar(QCellToolBar):
         This will get call initially to add customizable widgets
         
         """
-        cell = self.parent().getCell(self.parent().parentRow,self.parent().parentCol)
-        if cell.inputPorts[0][0].var.var.rank()>2:
-            self.prevAction=QCDATWidgetPrev(self)
-            self.prevAction.setEnabled(False)
-            self.appendAction(self.prevAction)
-            self.dimSelector = QCDATDimSelector(self,cell)
-            self.addWidget(self.dimSelector)
-            self.nextAction=QCDATWidgetNext(self)
-            self.appendAction(self.nextAction)
-            
+        
+        
+        # we can't assume that the widget will have called updateContents
+        # before the creation of the toolbar so we will always create the 
+        # all the toolbar elements and update them in the updateContents call 
+        # (which seems that this was being done anyway)
+        
+        self.prevAction=QCDATWidgetPrev(self)
+        self.prevAction.setEnabled(False)
+        self.appendAction(self.prevAction)
+        self.dimSelector = QCDATDimSelector(self)
+    
+        self.addWidget(self.dimSelector)
+        self.nextAction=QCDATWidgetNext(self)
+        self.appendAction(self.nextAction)    
 
         self.appendAction(QCDATWidgetPrint(self))
         self.appendAction(QCDATWidgetExport(self))
@@ -1143,12 +1147,12 @@ class QCDATWidgetToolBar(QCellToolBar):
 
 class QCDATDimSelector(QtGui.QComboBox):
     """ list of dims to put here"""
-    def __init__(self,parent=None,cell=None):
+    def __init__(self,parent=None):
         QtGui.QComboBox.__init__(self,parent)
-        self.addItems(cell.extraDimsNames)
+        
     def valueChanged(self, *args):
         print "You changed the dims name",args
-        
+            
 class QCDATWidgetPrev(QtGui.QAction):
     """
     QCDATWidgetColormap is the action to export the plot 
@@ -1201,6 +1205,7 @@ class QCDATWidgetPrev(QtGui.QAction):
                 self.setVisible(True)
         else:
             self.setVisible(False)
+        
 class QCDATWidgetNext(QtGui.QAction):
     """
     QCDATWidgetColormap is the action to export the plot 

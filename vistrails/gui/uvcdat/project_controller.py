@@ -34,7 +34,7 @@
 import os, os.path, sys, traceback
 import copy
 import uuid
-from PyQt4 import QtCore
+from PyQt4 import QtCore, QtGui
 
 import api
 import core.db.action
@@ -52,6 +52,8 @@ from core.configuration import get_vistrails_configuration
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
 from gui.uvcdat.project_controller_cell import ControllerCell
+from gui.application import get_vistrails_application
+import cdms2
 
 class ProjectController(QtCore.QObject):
     """ProjecController is the class that interfaces between GUI actions in
@@ -282,7 +284,6 @@ class ProjectController(QtCore.QObject):
     def emit_defined_variable(self, var):
         from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
         from packages.pvclimate.pvvariable import PVVariable
-        from gui.application import get_vistrails_application
         _app = get_vistrails_application()
         if isinstance(var, CDMSVariable):
             _app.uvcdatWindow.dockVariable.widget().addVariable(var.to_python())
@@ -291,13 +292,40 @@ class ProjectController(QtCore.QObject):
         elif isinstance(var, CDMSVariableOperation):
             _app.uvcdatWindow.dockVariable.widget().addVariable(var.to_python())
             
-    def load_variables_from_modules(self, var_modules, helper):
+    def load_variables_from_modules(self, var_modules, helper, cell):
         for varm in var_modules:
             varname = helper.get_value_from_function(varm, 'name')
             if varname not in self.defined_variables:
-                var = varm.module_descriptor.module.from_module(varm)
-                self.defined_variables[varname] = var
-                self.emit_defined_variable(var)
+                try:
+                    var = varm.module_descriptor.module.from_module(varm)
+                    self.defined_variables[varname] = var
+                    self.emit_defined_variable(var)
+                except cdms2.error.CDMSError:
+                    oldFilename = helper.get_value_from_function(varm, 'file').name
+                    _app = get_vistrails_application()
+                    filename = QtGui.QFileDialog.getOpenFileName(_app.uvcdatWindow, 
+                                                                 'Filename not found: '+oldFilename,
+                                                                  oldFilename)
+                
+                    self.vt_controller.change_selected_version(cell.current_parent_version)
+                    self.vt_controller.update_function(varm, 'file', [str(filename)])
+                    cell.current_parent_version = self.vt_controller.current_version
+                    
+                    # get the new modified variable and emit
+                    pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
+                    varm = PlotPipelineHelper.find_module_by_id(pipeline, varm.id)
+                    var = varm.module_descriptor.module.from_module(varm)
+                    self.defined_variables[varname] = var
+                    self.emit_defined_variable(var)
+            else:
+                # if the variable exist, make sure we are pointing to the same file location
+                oldFilename = helper.get_value_from_function(varm, 'file').name
+                newFilename = self.defined_variables[varname].filename
+                if oldFilename != newFilename:
+                    self.vt_controller.change_selected_version(cell.current_parent_version)
+                    self.vt_controller.update_function(varm, 'file', [str(newFilename)])
+                    cell.current_parent_version = self.vt_controller.current_version
+                    
                 
     def load_computed_variables_from_modules(self, op_modules, info, op_info, helper):
         for (opm,op) in op_modules:
@@ -468,10 +496,14 @@ class ProjectController(QtCore.QObject):
                                                             sheetName, row, col, 
                                                             plot_type, cell)
             #cell.current_parent_version was updated in copy_pipeline_to_other_location
+    
+        pipeline = controller.vistrail.getPipeline(cell.current_parent_version)
+
             
         #check if a new var was added:
         self.search_and_emit_new_variables(cell)
-                    
+        pipeline = controller.vistrail.getPipeline(cell.current_parent_version)
+
         if controller == self.vt_controller:
             self.execute_plot_pipeline(pipeline, cell)
         else:
@@ -485,17 +517,23 @@ class ProjectController(QtCore.QObject):
         It will go through the variables in the cell and define them if they are 
         not defined. Sometimes it is necessary to reconstruct the variable 
         because some workflows are not using the Variable modules yet. """
-        not_found = False
-        for var in cell.variables:
-            if var not in self.defined_variables:
-                not_found = True
+        
+        # FIXMEME, we need to avoid loading again the files. I force here to read 
+        # multiples times because some CMDSVariables are not updated properly
+        not_found = True
+#        for var in cell.variables:
+#            if var not in self.defined_variables:
+#                not_found = True
         if not_found:
             from packages.uvcdat.init import Variable
             from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
             helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
             pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
-            var_modules = helper.find_modules_by_type(pipeline, 
-                                                      [Variable])
+            var_modules = helper.find_modules_by_type(pipeline, [Variable])
+            if len(var_modules) > 0:
+                self.load_variables_from_modules(var_modules, helper, cell)
+            
+            pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
             #this will give me the modules in topological order
             #so when I try to reconstruct the operations they will be on the
             #right order
@@ -503,8 +541,6 @@ class ProjectController(QtCore.QObject):
                                                      [CDMSVariableOperation])
             op_tuples = []
             computed_ops = {}
-            if len(var_modules) > 0:
-                self.load_variables_from_modules(var_modules, helper)
             if len(op_modules) > 0:
                 info = {}
                 op_info = {}
