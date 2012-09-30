@@ -24,15 +24,16 @@ class ColorMapManager():
         self.colormapName = 'Spectral'
         self.colorBarActor = None
         self.invertColormap = 1
-        self.units = args.get('units', '' )
 
     def toggleColormapVisibility(self):
-        if  self.colorBarActor.GetVisibility():      self.colorBarActor.VisibilityOff()  
-        else:                                        self.colorBarActor.VisibilityOn() 
+        if self.colorBarActor:
+            if  self.colorBarActor.GetVisibility():      self.colorBarActor.VisibilityOff()  
+            else:                                        self.colorBarActor.VisibilityOn() 
 
     def createActor( self, **args ):
         if self.colorBarActor == None:
             pos = args.get( 'pos', [ 0.9, 0.2 ] )
+            title = args.get( 'title', '' )
             self.colorBarActor = vtk.vtkScalarBarActor()
             self.colorBarActor.SetMaximumWidthInPixels( 50 )
             self.colorBarActor.SetNumberOfLabels(9)
@@ -47,7 +48,7 @@ class ColorMapManager():
             self.colorBarActor.SetPosition( pos[0], pos[1] )    
             self.colorBarActor.SetLabelTextProperty( labelFormat )
             self.colorBarActor.SetTitleTextProperty( titleFormat )
-            self.colorBarActor.SetTitle( self.units )
+            self.colorBarActor.SetTitle( title )
             self.colorBarActor.SetLookupTable( self.getDisplayLookupTable() )
             self.colorBarActor.SetVisibility(0)
         else:
@@ -66,14 +67,25 @@ class ColorMapManager():
     def getDisplayLookupTable(self):
         return self.display_lut
     
+    def getImageScale(self):
+        return self.lut.GetTableRange()
+    
     def setScale( self, imageRange, displayRange  ):
         self.lut.SetTableRange( imageRange[0], imageRange[1] ) 
+        self.lut.Modified()
         self.setDisplayRange( displayRange )
   
     def setDisplayRange( self, dataRange ):
         self.display_lut.SetTableRange( dataRange[0], dataRange[1] )
         self.display_lut.Modified()
-    
+
+    def getDisplayRange( self ):
+        return self.display_lut.GetTableRange()
+
+    def matchDisplayRange( self, range ):
+        trange = self.display_lut.GetTableRange()
+        return ( trange[0] == range[0] ) and ( trange[1] == range[1] )
+   
     def set_lut(self, vtk_lut, lut_lst):
         """Setup the vtkLookupTable (`vtk_lut`) using the passed list of
         lut values."""
@@ -152,7 +164,8 @@ class ColorMapManager():
                     self.lut = self.set_lut(self.lut, lut_list)
                     
     def load_lut_from_list(self, list):
-        self.set_lut(self.lut, list)                    
+        self.set_lut(self.lut, list) 
+        self.lut.Modified()                   
 
     def load_lut(self, value=None):
         if( value <> None ): self.colormapName = str( value )

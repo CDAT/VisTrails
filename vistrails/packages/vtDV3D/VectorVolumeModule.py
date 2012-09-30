@@ -30,9 +30,9 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.glyphScale = [ 0.0, 0.5 ] 
         self.glyphRange = None
         self.glyphDecimationFactor = [ 20.0, 2.0 ] 
-        self.primaryInputPort = 'volume'
+        self.primaryInputPorts = [ 'volume' ]
         self.resample = None
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0 )
         self.addConfigurableLevelingFunction( 'glyphScale', 'Z', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, bound=False )
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
@@ -40,7 +40,8 @@ class PM_VectorVolume(PersistentVisualizationModule):
     def scaleColormap( self, ctf_data, cmap_index=0 ):
         colormapManager = self.getColormapManager( index=cmap_index )
         colormapManager.setScale( ctf_data, ctf_data )
-        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
+        ispec = self.inputSpecs[ cmap_index ] 
+        ispec.addMetadata( { 'colormap' : self.getColormapSpec() } )
         self.glyph.SetLookupTable( colormapManager.lut )
 #        self.glyph.Modified()
 #        self.glyph.Update()
@@ -68,32 +69,32 @@ class PM_VectorVolume(PersistentVisualizationModule):
         """       
         self.colorInputModule = self.wmod.forceGetInputFromPort( "colors", None )
         
-        if self.input == None: 
+        if self.input() == None: 
             print>>sys.stderr, "Must supply 'volume' port input to VectorCutPlane"
             return
               
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
-        spacing = self.input.GetSpacing()
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
+        spacing = self.input().GetSpacing()
         sx, sy, sz = spacing       
-        origin = self.input.GetOrigin()
+        origin = self.input().GetOrigin()
         ox, oy, oz = origin
         
-        cellData = self.input.GetCellData()  
-        pointData = self.input.GetPointData()     
+        cellData = self.input().GetCellData()  
+        pointData = self.input().GetPointData()     
         vectorsArray = pointData.GetVectors()
         
         if vectorsArray == None: 
             print>>sys.stderr, "Must supply point vector data for 'volume' port input to VectorVolume"
             return
 
-        self.rangeBounds = list( vectorsArray.GetRange(-1) )
+        self.setRangeBounds( list( vectorsArray.GetRange(-1) ) )
         self.nComponents = vectorsArray.GetNumberOfComponents()
         for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
         for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
         
-        self.initialOrigin = self.input.GetOrigin()
-        self.initialExtent = self.input.GetExtent()
-        self.initialSpacing = self.input.GetSpacing()
+        self.initialOrigin = self.input().GetOrigin()
+        self.initialExtent = self.input().GetExtent()
+        self.initialSpacing = self.input().GetSpacing()
         self.dataBounds = self.getUnscaledWorldExtent( self.initialExtent, self.initialSpacing, self.initialOrigin ) 
         dataExtents = ( (self.dataBounds[1]-self.dataBounds[0])/2.0, (self.dataBounds[3]-self.dataBounds[2])/2.0, (self.dataBounds[5]-self.dataBounds[4])/2.0 )
         centroid = ( (self.dataBounds[0]+self.dataBounds[1])/2.0, (self.dataBounds[2]+self.dataBounds[3])/2.0, (self.dataBounds[4]+self.dataBounds[5])/2.0  )
@@ -101,7 +102,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
         if ( (self.initialOrigin[0] + self.pos[0]) < 0.0): self.pos[0] = self.pos[0] + 360.0
 
         self.resample = vtk.vtkExtractVOI()
-        self.resample.SetInput( self.input ) 
+        self.resample.SetInput( self.input() ) 
         self.resample.SetVOI( self.initialExtent )
         self.ApplyGlyphDecimationFactor()
         lut = self.getLut()
@@ -120,7 +121,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
             shiftScale = vtk.vtkImageShiftScale()
             shiftScale.SetOutputScalarTypeToFloat ()           
             shiftScale.SetInput( resampledColorInput ) 
-            valueRange = self.scalarRange
+            valueRange = self.getScalarRange()
             shiftScale.SetShift( valueRange[0] )
             shiftScale.SetScale ( (valueRange[1] - valueRange[0]) / 65535 )
             colorFloatInput = shiftScale.GetOutput() 
@@ -133,13 +134,13 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.glyph = vtk.vtkGlyph3DMapper() 
 #        if self.colorInputModule <> None:   self.glyph.SetColorModeToColorByScalar()            
 #        else:                               self.glyph.SetColorModeToColorByVector()          
-
+        scalarRange = self.getScalarRange(1)
         self.glyph.SetScaleModeToScaleByMagnitude()
         self.glyph.SetColorModeToMapScalars()     
         self.glyph.SetUseLookupTableScalarRange(1)
         self.glyph.SetOrient( 1 ) 
 #        self.glyph.ClampingOn()
-        self.glyph.SetRange( self.scalarRange[0:2] )
+        self.glyph.SetRange( scalarRange[0:2] )
         self.glyph.SetInputConnection( self.resample.GetOutputPort()  )
         self.arrow = vtk.vtkArrowSource()
         self.glyph.SetSourceConnection( self.arrow.GetOutputPort() )
@@ -151,7 +152,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.set3DOutput(wmod=self.wmod) 
 
     def updateModule(self, **args ):
-        self.resample.SetInput( self.input ) 
+        self.resample.SetInput( self.input() ) 
         self.glyph.Modified()
         self.glyph.Update()
         self.set3DOutput(wmod=self.wmod)
@@ -203,7 +204,7 @@ if __name__ == '__main__':
         # The 3 image plane widgets are used to probe the dataset.
 #        self.planeWidgetX = vtk.vtkImagePlaneWidget()
 #        self.planeWidgetX.DisplayTextOn()
-#        self.planeWidgetX.SetInput( self.input )
+#        self.planeWidgetX.SetInput( self.input() )
 #        self.planeWidgetX.SetPlaneOrientationToXAxes()
 #        self.planeWidgetX.SetSliceIndex( self.sliceCenter[0] )
 #        self.planeWidgetX.SetPicker(picker)
@@ -215,7 +216,7 @@ if __name__ == '__main__':
 #                
 #        self.planeWidgetY = vtk.vtkImagePlaneWidget()
 #        self.planeWidgetY.DisplayTextOn()
-#        self.planeWidgetY.SetInput( self.input )
+#        self.planeWidgetY.SetInput( self.input() )
 #        self.planeWidgetY.SetPlaneOrientationToYAxes()
 #        self.planeWidgetY.SetSliceIndex( self.sliceCenter[1] )
 #        self.planeWidgetY.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )
@@ -227,7 +228,7 @@ if __name__ == '__main__':
 #        
 #        self.planeWidgetZ = vtk.vtkImagePlaneWidget()
 #        self.planeWidgetZ.DisplayTextOn()
-#        self.planeWidgetZ.SetInput( self.input )
+#        self.planeWidgetZ.SetInput( self.input() )
 #        self.planeWidgetZ.SetPlaneOrientationToZAxes()
 #        self.planeWidgetZ.SetSliceIndex( self.sliceCenter[2] )
 #        self.planeWidgetZ.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )

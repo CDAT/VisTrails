@@ -261,6 +261,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def __init__( self, mid, **args ):
         SpreadsheetCell.__init__(self)
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, **args )
+        self.fieldData = []
 #        self.addConfigurableMethod( 'resetCamera', self.resetCamera, 'A' )
 #        self.addConfigurableMethod( 'showLogo', self.toggleLogoVisibility, 'L' )
         if self.isClient:  
@@ -268,9 +269,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             self.location.row = 0
             self.location.col = 0
             self.acceptsGenericConfigs = True
-        self.allowMultipleInputs = True
+        self.allowMultipleInputs[0] = True
         self.renderers = []
-        self.fieldData = []
         self.cellWidget = None
         self.imageInfo = None
         self.renWin = None
@@ -365,9 +365,9 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def processKeyEvent( self, key, caller=None, event=None ): 
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
         if (  key == 'k'  ):
-            if self.iren in DV3DPipelineHelper.getActiveIrens() :
+            if self.GetRenWinID() in DV3DPipelineHelper.getActiveRenWinIds():
                 self.captionManager.addCaption()
-                state =  self.getInteractionState( key )
+                ( interactionState, persisted ) =  self.getInteractionState( key )
                 if state <> None: self.updateInteractionState( state, self.isAltMode  )                 
                 self.render() 
         else:
@@ -420,7 +420,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         cellLocation.rowSpan = 1
         cellLocation.colSpan = 1
         cell_coordinates = None
-        address = DV3DPipelineHelper.getCellAddress( self.pipeline ) 
+        ( sheetName, address ) = DV3DPipelineHelper.getCellAddress( self.pipeline ) 
         if self.isClient:            
             cellLocation.sheetReference = StandardSheetReference()
             cellLocation.sheetReference.sheetName = HyperwallManager.getInstance().deviceName
@@ -446,8 +446,9 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     
     def updateHyperwall(self):
         dimensions = self.setCellLocation( self.moduleID )  
-        if dimensions:      
-            HyperwallManager.getInstance().addCell( self.moduleID, self.datasetId, str(0), dimensions )
+        if dimensions:  
+            ispec = self.inputSpecs[ 0 ]    
+            HyperwallManager.getInstance().addCell( self.moduleID, ispec.datasetId, str(0), dimensions )
             HyperwallManager.getInstance().executeCurrentWorkflow( self.moduleID )
 
     def isBuilt(self):
@@ -490,17 +491,15 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.render()                            
         
     def buildWidget(self):                        
-        if self.renderers:
+        if self.renderers and not self.isBuilt():
             renderViews = []
             renderView = None
             iStyle = None
             iHandlers = []
             picker = None
-            renwin = self.renderer.GetRenderWindow()
-            if renwin:
-                iren = renwin.GetInteractor()
-                iren_name = iren.GetInteractorStyle().__class__.__name__
-                iStyle = wrapVTKModule( iren_name, iren.GetInteractorStyle() )   
+            style = vtk.vtkInteractorStyleTrackballCamera()
+            style_name = style.__class__.__name__
+            iStyle = wrapVTKModule( style_name, style )   
             
             if self.isServer:
                 self.cellWidget = self.displayAndWait( QVTKServerWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
@@ -513,6 +512,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             if self.cellWidget:
                 self.renWin = self.cellWidget.GetRenderWindow() 
                 self.iren = self.renWin.GetInteractor()
+                self.navigationInteractorStyle = self.iren.GetInteractorStyle()
                 caption_data = self.getInputValue( CaptionManager.config_name, None )
                 self.captionManager = CaptionManager( self.cellWidget, self.iren, data=caption_data )
                 self.connect(self.captionManager, CaptionManager.persist_captions_signal, self.persistCaptions )  
@@ -558,9 +558,11 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         module = self.getRegisteredModule()
 
         self.renderers = []
-        self.fieldData = []
         self.renderer = None
-        moduleList = self.inputModuleList if self.inputModuleList else [ self.inputModule ]
+        self.fieldData = []
+        moduleList = self.inputModuleList() 
+        if not moduleList: 
+            moduleList = [ self.inputModule() ]
         for inputModule in moduleList:
             if inputModule <> None:
                 renderer1 = inputModule.getRenderer() 
@@ -574,7 +576,7 @@ class PM_ChartCell( PM_DV3DCell ):
 
     def __init__( self, mid, **args ):
         PM_DV3DCell.__init__( self, mid, **args)
-        self.primaryInputPort = "chart"
+        self.primaryInputPorts = [ "chart" ]
         
 class ChartCellConfigurationWidget(DV3DConfigurationWidget):
     """
@@ -696,7 +698,7 @@ class PM_CloudCell3D( PM_DV3DCell ):
 
     def __init__( self, mid, **args ):
         PM_DV3DCell.__init__( self, mid, **args)
-        self.primaryInputPort = "pointcloud"
+        self.primaryInputPorts = [ "pointcloud" ]
 
     def updateModule( self, **args ):
         PM_DV3DCell.updateModule( self, **args )
@@ -852,7 +854,7 @@ class PM_MapCell3D( PM_DV3DCell ):
             map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
             if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
             if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
-            data_origin = self.input.GetOrigin() if self.input else [ 0, 0, 0 ]
+            data_origin = self.input().GetOrigin() if self.input() else [ 0, 0, 0 ]
                       
             if self.world_cut == -1: 
                 if  (self.roi <> None): 
@@ -887,7 +889,7 @@ class PM_MapCell3D( PM_DV3DCell ):
 #            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
             mapCorner = [ self.x0, self.y0 ]
 #            if ( ( self.roi[0]-map_border_size ) < 0.0 ): mapCorner[0] = mapCorner[0] - 360.0
-            print " DV3DCell, mapCorner = %s, dataPosition = %s, cell_location = %s " % ( str(mapCorner), str(dataPosition), cell_location )
+#            print " DV3DCell, mapCorner = %s, dataPosition = %s, cell_location = %s " % ( str(mapCorner), str(dataPosition), cell_location )
                     
             self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
             self.baseMapActor.SetInput( baseImage )
@@ -921,7 +923,7 @@ class PM_MapCell3D( PM_DV3DCell ):
         x1 = baseExtent[1]
         newCut = self.NormalizeMapLon( self.world_cut )
         delCut = newCut - self.map_cut
-        print "  %%%%%% Roll Map %%%%%%: world_cut=%.1f, map_cut=%.1f, newCut=%.1f " % ( float(self.world_cut), float(self.map_cut), float(newCut) )
+#        print "  %%%%%% Roll Map %%%%%%: world_cut=%.1f, map_cut=%.1f, newCut=%.1f " % ( float(self.world_cut), float(self.map_cut), float(newCut) )
         imageLen = x1 - x0 + 1
         sliceSize =  imageLen * ( delCut / 360.0 )
         sliceCoord = int( round( x0 + sliceSize) )        
@@ -1144,7 +1146,8 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
         self.colCombo.setMaximumHeight( 30 )
         cell_selection_layout.addWidget( self.colCombo  )        
         for iCol in range( 5 ):  self.colCombo.addItem( chr( ord('A') + iCol ) )
-        self.colCombo.setCurrentIndex( cell_coordinates[0] )
+        if cell_coordinates: 
+            self.colCombo.setCurrentIndex( cell_coordinates[0] )
 
         self.rowCombo =  QComboBox ( self.parent() )
         self.rowCombo.setMaximumHeight( 30 )

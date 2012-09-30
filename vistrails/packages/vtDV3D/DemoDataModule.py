@@ -218,7 +218,6 @@ class DemoDataConfigurationWidget(DV3DConfigurationWidget):
         self.close()
 
 
-
 from packages.vtDV3D.WorkflowModule import WorkflowModule
 
 class DemoData(WorkflowModule):

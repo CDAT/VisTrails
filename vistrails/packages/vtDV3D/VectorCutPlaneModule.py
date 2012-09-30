@@ -31,8 +31,8 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         self.glyphRange = None
         self.planeWidget = None
         self.glyphDecimationFactor = [ 1.0, 5.0 ] 
-        self.primaryInputPort = 'volume'
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True )
+        self.primaryInputPorts = [ 'volume' ]
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0 )
         self.addConfigurableLevelingFunction( 'glyphScale', 'ZS', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, bound=False  )
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False  )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
@@ -40,14 +40,15 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
     def setZScale( self, zscale_data ):
         if self.setInputZScale( zscale_data ):
             if self.planeWidget <> None:
-                bounds = list( self.input.GetBounds() ) 
+                bounds = list( self.input().GetBounds() ) 
                 self.planeWidget.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
                 self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
                 
     def scaleColormap( self, ctf_data, cmap_index=0 ):
         colormapManager = self.getColormapManager( index=cmap_index )
         colormapManager.setScale( ctf_data, ctf_data )
-        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
+        ispec = self.inputSpecs[ cmap_index ] 
+        ispec.addMetadata( { 'colormap' : self.getColormapSpec() } )
         self.glyph.SetLookupTable( colormapManager.lut )
 #        self.glyph.Modified()
 #        self.glyph.Update()
@@ -76,26 +77,26 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         self.sliceOutput = vtk.vtkImageData()
         self.colorInputModule = self.wmod.forceGetInputFromPort( "colors", None )
         
-        if self.input == None: 
+        if self.input() == None: 
             print>>sys.stderr, "Must supply 'volume' port input to VectorCutPlane"
             return
               
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
         self.sliceCenter = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
-        spacing = self.input.GetSpacing()
+        spacing = self.input().GetSpacing()
         sx, sy, sz = spacing       
-        origin = self.input.GetOrigin()
+        origin = self.input().GetOrigin()
         ox, oy, oz = origin
         
-        cellData = self.input.GetCellData()  
-        pointData = self.input.GetPointData()     
+        cellData = self.input().GetCellData()  
+        pointData = self.input().GetPointData()     
         vectorsArray = pointData.GetVectors()
         
         if vectorsArray == None: 
             print>>sys.stderr, "Must supply point vector data for 'volume' port input to VectorCutPlane"
             return
 
-        self.rangeBounds = list( vectorsArray.GetRange(-1) )
+        self.setRangeBounds(  list( vectorsArray.GetRange(-1) ) )
         self.nComponents = vectorsArray.GetNumberOfComponents()
         for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
         for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
@@ -105,9 +106,9 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         
         self.plane = vtk.vtkPlane()      
 
-        self.initialOrigin = self.input.GetOrigin()
-        self.initialExtent = self.input.GetExtent()
-        self.initialSpacing = self.input.GetSpacing()
+        self.initialOrigin = self.input().GetOrigin()
+        self.initialExtent = self.input().GetExtent()
+        self.initialSpacing = self.input().GetSpacing()
         self.dataBounds = self.getUnscaledWorldExtent( self.initialExtent, self.initialSpacing, self.initialOrigin ) 
         dataExtents = ( (self.dataBounds[1]-self.dataBounds[0])/2.0, (self.dataBounds[3]-self.dataBounds[2])/2.0, (self.dataBounds[5]-self.dataBounds[4])/2.0 )
         centroid = ( (self.dataBounds[0]+self.dataBounds[1])/2.0, (self.dataBounds[2]+self.dataBounds[3])/2.0, (self.dataBounds[4]+self.dataBounds[5])/2.0  )
@@ -118,7 +119,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
 #        self.plane.SetNormal( 0.0, 0.0, 1.0 )
 
         self.resample = vtk.vtkExtractVOI()
-        self.resample.SetInput( self.input ) 
+        self.resample.SetInput( self.input() ) 
         self.resample.SetVOI( self.initialExtent )
         lut = self.getLut()
        
@@ -136,7 +137,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
             shiftScale = vtk.vtkImageShiftScale()
             shiftScale.SetOutputScalarTypeToFloat ()           
             shiftScale.SetInput( resampledColorInput ) 
-            valueRange = self.scalarRange
+            valueRange = self.getScalarRange()
             shiftScale.SetShift( valueRange[0] )
             shiftScale.SetScale ( (valueRange[1] - valueRange[0]) / 65535 )
             colorFloatInput = shiftScale.GetOutput() 
@@ -149,7 +150,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         self.cutterInput = self.resample.GetOutput() 
         self.planeWidget = vtk.vtkImplicitPlaneWidget()
         self.planeWidget.SetInput( self.cutterInput  )
-#        self.planeWidget.SetInput( self.input  )
+#        self.planeWidget.SetInput( self.input()  )
         self.planeWidget.DrawPlaneOff()
         self.planeWidget.ScaleEnabledOff()
         self.planeWidget.PlaceWidget( self.dataBounds[0]-dataExtents[0], self.dataBounds[1]+dataExtents[0], self.dataBounds[2]-dataExtents[1], self.dataBounds[3]+dataExtents[1], self.dataBounds[4]-dataExtents[2], self.dataBounds[5]+dataExtents[2] )
@@ -307,8 +308,8 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.glyph = None
         self.useGlyphMapper = True 
         self.planeWidget = None    
-        self.primaryInputPort = 'volume'
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units='data' )
+        self.primaryInputPorts = [ 'volume' ]
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0, units='data' )
         self.addConfigurableLevelingFunction( 'glyphScale', 'Z', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, windowing=False, bound=False  )
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False  )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
@@ -316,7 +317,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
     def setZScale( self, zscale_data ):
         if self.setInputZScale( zscale_data ):
             if self.planeWidget <> None:
-                self.dataBounds = list( self.input.GetBounds() )
+                self.dataBounds = list( self.input().GetBounds() )
                 dataExtents = ( (self.dataBounds[1]-self.dataBounds[0])/2.0, (self.dataBounds[3]-self.dataBounds[2])/2.0, (self.dataBounds[5]-self.dataBounds[4])/2.0 )
                 self.planeWidget.PlaceWidget( self.dataBounds[0]-dataExtents[0], self.dataBounds[1]+dataExtents[0], self.dataBounds[2]-dataExtents[1], self.dataBounds[3]+dataExtents[1], self.dataBounds[4]-dataExtents[2], self.dataBounds[5]+dataExtents[2] )
                 centroid = ( (self.dataBounds[0]+self.dataBounds[1])/2.0, (self.dataBounds[2]+self.dataBounds[3])/2.0, (self.dataBounds[4]+self.dataBounds[5])/2.0  )
@@ -327,7 +328,8 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
     def scaleColormap( self, ctf_data, cmap_index=0 ):
         colormapManager = self.getColormapManager( index=cmap_index )
         colormapManager.setScale( ctf_data, ctf_data )
-        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
+        ispec = self.inputSpecs[ cmap_index ] 
+        ispec.addMetadata( { 'colormap' : self.getColormapSpec() } )
         self.glyphMapper.SetLookupTable( colormapManager.lut )
         self.render()
 
@@ -365,26 +367,26 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.sliceOutput = vtk.vtkImageData()
         self.colorInputModule = self.wmod.forceGetInputFromPort( "colors", None )
         
-        if self.input == None: 
+        if self.input() == None: 
             print>>sys.stderr, "Must supply 'volume' port input to VectorCutPlane"
             return
               
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
         self.sliceCenter = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
-        spacing = self.input.GetSpacing()
+        spacing = self.input().GetSpacing()
         sx, sy, sz = spacing       
-        origin = self.input.GetOrigin()
+        origin = self.input().GetOrigin()
         ox, oy, oz = origin
         
-        cellData = self.input.GetCellData()  
-        pointData = self.input.GetPointData()     
+        cellData = self.input().GetCellData()  
+        pointData = self.input().GetPointData()     
         vectorsArray = pointData.GetVectors()
         
         if vectorsArray == None: 
             print>>sys.stderr, "Must supply point vector data for 'volume' port input to VectorCutPlane"
             return
 
-        self.rangeBounds = list( vectorsArray.GetRange(-1) )
+        self.setRangeBounds( list( vectorsArray.GetRange(-1) ) )
         self.nComponents = vectorsArray.GetNumberOfComponents()
         for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
         for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
@@ -394,9 +396,9 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         
         self.plane = vtk.vtkPlane()      
 
-        self.initialOrigin = self.input.GetOrigin()
-        self.initialExtent = self.input.GetExtent()
-        self.initialSpacing = self.input.GetSpacing()
+        self.initialOrigin = self.input().GetOrigin()
+        self.initialExtent = self.input().GetExtent()
+        self.initialSpacing = self.input().GetSpacing()
         self.dataBounds = self.getUnscaledWorldExtent( self.initialExtent, self.initialSpacing, self.initialOrigin ) 
         dataExtents = ( (self.dataBounds[1]-self.dataBounds[0])/2.0, (self.dataBounds[3]-self.dataBounds[2])/2.0, (self.dataBounds[5]-self.dataBounds[4])/2.0 )
         centroid = ( (self.dataBounds[0]+self.dataBounds[1])/2.0, (self.dataBounds[2]+self.dataBounds[3])/2.0, (self.dataBounds[4]+self.dataBounds[5])/2.0  )
@@ -407,7 +409,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
 #        self.plane.SetNormal( 0.0, 0.0, 1.0 )
 
         self.resample = vtk.vtkExtractVOI()
-        self.resample.SetInput( self.input ) 
+        self.resample.SetInput( self.input() ) 
         self.resample.SetVOI( self.initialExtent )
         lut = self.getLut()
         
@@ -425,7 +427,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
             shiftScale = vtk.vtkImageShiftScale()
             shiftScale.SetOutputScalarTypeToFloat ()           
             shiftScale.SetInput( resampledColorInput ) 
-            valueRange = self.scalarRange
+            valueRange = self.getScalarRange()
             shiftScale.SetShift( valueRange[0] )
             shiftScale.SetScale ( (valueRange[1] - valueRange[0]) / 65535 )
             colorFloatInput = shiftScale.GetOutput() 
@@ -434,12 +436,13 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
             self.colorScalars = colorInput_pointData.GetScalars()
             self.colorScalars.SetName('color')
             lut.SetTableRange( valueRange ) 
-         
-        self.glyphRange = max( abs(self.scalarRange[0]), abs(self.scalarRange[1]) )
+        
+        scalarRange = self.getScalarRange() 
+        self.glyphRange = max( abs(scalarRange[0]), abs(scalarRange[1]) )
         self.cutterInput = self.resample.GetOutput() 
         self.planeWidget = vtk.vtkImplicitPlaneWidget()
         self.planeWidget.SetInput( self.cutterInput  )
-#        self.planeWidget.SetInput( self.input  )
+#        self.planeWidget.SetInput( self.input()  )
         self.planeWidget.DrawPlaneOff()
         self.planeWidget.ScaleEnabledOff()
         self.planeWidget.PlaceWidget( self.dataBounds[0]-dataExtents[0], self.dataBounds[1]+dataExtents[0], self.dataBounds[2]-dataExtents[1], self.dataBounds[3]+dataExtents[1], self.dataBounds[4]-dataExtents[2], self.dataBounds[5]+dataExtents[2] )
@@ -498,7 +501,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
 #        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
 
     def updateModule(self, **args ):
-        self.resample.SetInput( self.input ) 
+        self.resample.SetInput( self.input() ) 
         self.cutterInput = self.resample.GetOutput() 
         self.planeWidget.SetInput( self.cutterInput  )
         self.cutter.SetInput( self.cutterInput ) 
@@ -651,8 +654,8 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.minStreamerSeedGridSpacing = [ 5.0, 6.0 ] 
         self.streamer = None
         self.planeWidget = None
-        self.primaryInputPort = 'volume'
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, units='data' )
+        self.primaryInputPorts = [ 'volume' ]
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0, units='data' )
         self.addConfigurableLevelingFunction( 'streamerScale', 'Z', label='Streamer Scale', setLevel=self.setStreamerScale, getLevel=self.getStreamerScale, layerDependent=True, windowing=False, bound=False )
         self.addConfigurableLevelingFunction( 'streamerDensity', 'G', label='Streamer Density', activeBound='max', setLevel=self.setStreamerDensity, getLevel=self.getStreamerDensity, layerDependent=True, windowing=False, bound=False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', activeBound='max', setLevel=self.setZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
@@ -660,7 +663,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
     def setZScale( self, zscale_data ):
         if self.setInputZScale( zscale_data ):
             if self.planeWidget <> None:
-                self.dataBounds = list( self.input.GetBounds() )
+                self.dataBounds = list( self.input().GetBounds() )
                 dataExtents = ( (self.dataBounds[1]-self.dataBounds[0])/2.0, (self.dataBounds[3]-self.dataBounds[2])/2.0, (self.dataBounds[5]-self.dataBounds[4])/2.0 )
                 self.planeWidget.PlaceWidget( self.dataBounds[0]-dataExtents[0], self.dataBounds[1]+dataExtents[0], self.dataBounds[2]-dataExtents[1], self.dataBounds[3]+dataExtents[1], self.dataBounds[4]-dataExtents[2], self.dataBounds[5]+dataExtents[2] )
                 centroid = ( (self.dataBounds[0]+self.dataBounds[1])/2.0, (self.dataBounds[2]+self.dataBounds[3])/2.0, (self.dataBounds[4]+self.dataBounds[5])/2.0  )
@@ -670,7 +673,8 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
     def scaleColormap( self, ctf_data, cmap_index=0 ):
         colormapManager = self.getColormapManager( index=cmap_index )
         colormapManager.setScale( ctf_data, ctf_data )
-        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
+        ispec = self.inputSpecs[ cmap_index ] 
+        ispec.addMetadata( { 'colormap' : self.getColormapSpec() } )
         self.streamMapper.SetLookupTable( colormapManager.lut )
         self.render()
 
@@ -704,26 +708,26 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.sliceOutput = vtk.vtkImageData()
         self.colorInputModule = self.wmod.forceGetInputFromPort( "colors", None )
         
-        if self.input == None: 
+        if self.input() == None: 
             print>>sys.stderr, "Must supply 'volume' port input to VectorCutPlane"
             return
               
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
         self.sliceCenter = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
-        spacing = self.input.GetSpacing()
+        spacing = self.input().GetSpacing()
         sx, sy, sz = spacing       
-        origin = self.input.GetOrigin()
+        origin = self.input().GetOrigin()
         ox, oy, oz = origin
         
-        cellData = self.input.GetCellData()  
-        pointData = self.input.GetPointData()     
+        cellData = self.input().GetCellData()  
+        pointData = self.input().GetPointData()     
         vectorsArray = pointData.GetVectors()
         
         if vectorsArray == None: 
             print>>sys.stderr, "Must supply point vector data for 'volume' port input to VectorCutPlane"
             return
 
-        self.rangeBounds = list( vectorsArray.GetRange(-1) )
+        self.setRangeBounds( list( vectorsArray.GetRange(-1) ) )
         self.nComponents = vectorsArray.GetNumberOfComponents()
         for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
         for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
@@ -733,9 +737,9 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         
         self.plane = vtk.vtkPlane()      
 
-        self.initialOrigin = self.input.GetOrigin()
-        self.initialExtent = self.input.GetExtent()
-        self.initialSpacing = self.input.GetSpacing()
+        self.initialOrigin = self.input().GetOrigin()
+        self.initialExtent = self.input().GetExtent()
+        self.initialSpacing = self.input().GetSpacing()
         self.dataBounds = self.getUnscaledWorldExtent( self.initialExtent, self.initialSpacing, self.initialOrigin ) 
         dataExtents = ( (self.dataBounds[1]-self.dataBounds[0])/2.0, (self.dataBounds[3]-self.dataBounds[2])/2.0, (self.dataBounds[5]-self.dataBounds[4])/2.0 )
         centroid = ( (self.dataBounds[0]+self.dataBounds[1])/2.0, (self.dataBounds[2]+self.dataBounds[3])/2.0, (self.dataBounds[4]+self.dataBounds[5])/2.0  )
@@ -760,7 +764,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
             shiftScale = vtk.vtkImageShiftScale()
             shiftScale.SetOutputScalarTypeToFloat ()           
             shiftScale.SetInput( resampledColorInput ) 
-            valueRange = self.scalarRange
+            valueRange = self.getScalarRange()
             shiftScale.SetShift( valueRange[0] )
             shiftScale.SetScale ( (valueRange[1] - valueRange[0]) / 65535 )
             colorFloatInput = shiftScale.GetOutput() 
@@ -771,7 +775,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
             lut.SetTableRange( valueRange ) 
          
         self.planeWidget = vtk.vtkImplicitPlaneWidget()
-        self.planeWidget.SetInput( self.input  )
+        self.planeWidget.SetInput( self.input()  )
         self.planeWidget.DrawPlaneOff()
         self.planeWidget.ScaleEnabledOff()
         self.planeWidgetBounds = ( self.dataBounds[0]-dataExtents[0], self.dataBounds[1]+dataExtents[0], self.dataBounds[2]-dataExtents[1], self.dataBounds[3]+dataExtents[1], self.dataBounds[4]-dataExtents[2], self.dataBounds[5]+dataExtents[2] ) 
@@ -785,7 +789,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         
         self.streamer = vtk.vtkStreamLine()
 #        self.streamer.SetInputConnection( sliceOutputPort )
-        self.streamer.SetInput( self.input )
+        self.streamer.SetInput( self.input() )
         self.streamer.SetIntegrationDirectionToForward ()
         self.streamer.SetEpsilon(1.0e-10)   # Increase this value if integrations go unstable (app hangs)  
         self.streamer.SpeedScalarsOff()
@@ -806,18 +810,18 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.UpdateStreamerSeedGrid()
         self.updateScaling()
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
-        self.set3DOutput( wmod=self.wmod, output=self.input ) 
+        self.set3DOutput( wmod=self.wmod, output=self.input() ) 
  
     def updateModule(self, **args ):
-        self.planeWidget.SetInput( self.input  )        
-        self.streamer.SetInput( self.input )
+        self.planeWidget.SetInput( self.input()  )        
+        self.streamer.SetInput( self.input() )
         self.streamer.Modified()
         self.streamer.Update()
         self.set3DOutput()
        
     def getCurentLevel(self):
         planeOrigin = self.plane.GetOrigin()
-        gridExtent = self.input.GetExtent()
+        gridExtent = self.input().GetExtent()
         height = planeOrigin[2]
         dataBoundsMin = min(self.dataBounds[5],self.dataBounds[4])
         level = ((height-dataBoundsMin)/(self.dataBounds[5]-self.dataBounds[4]))*(gridExtent[5]-gridExtent[4])
@@ -830,9 +834,9 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         currentLevel = self.getCurentLevel()
 #        print " ---- ApplyStreamerSeedGridSpacing:  Sample rate: %s, current Level: %d " % ( str( sampleRate ), currentLevel )
         sample_source = vtk.vtkImageData()        
-        gridSpacing = self.input.GetSpacing()
-        gridOrigin = self.input.GetOrigin()
-        gridExtent = self.input.GetExtent()
+        gridSpacing = self.input().GetSpacing()
+        gridOrigin = self.input().GetOrigin()
+        gridExtent = self.input().GetExtent()
         sourceSpacing = ( gridSpacing[0]*sampleRate[0], gridSpacing[1]*sampleRate[1], gridSpacing[2] )
         sourceExtent = ( int(gridExtent[0]/sampleRate[0])+1, int(gridExtent[1]/sampleRate[0])-1, int(gridExtent[2]/sampleRate[1])+1, int(gridExtent[3]/sampleRate[1])-1, currentLevel, currentLevel )
         sample_source.SetOrigin( gridOrigin[0], gridOrigin[1], gridOrigin[2] )
@@ -901,7 +905,7 @@ if __name__ == '__main__':
         # The 3 image plane widgets are used to probe the dataset.
 #        self.planeWidgetX = vtk.vtkImagePlaneWidget()
 #        self.planeWidgetX.DisplayTextOn()
-#        self.planeWidgetX.SetInput( self.input )
+#        self.planeWidgetX.SetInput( self.input() )
 #        self.planeWidgetX.SetPlaneOrientationToXAxes()
 #        self.planeWidgetX.SetSliceIndex( self.sliceCenter[0] )
 #        self.planeWidgetX.SetPicker(picker)
@@ -913,7 +917,7 @@ if __name__ == '__main__':
 #                
 #        self.planeWidgetY = vtk.vtkImagePlaneWidget()
 #        self.planeWidgetY.DisplayTextOn()
-#        self.planeWidgetY.SetInput( self.input )
+#        self.planeWidgetY.SetInput( self.input() )
 #        self.planeWidgetY.SetPlaneOrientationToYAxes()
 #        self.planeWidgetY.SetSliceIndex( self.sliceCenter[1] )
 #        self.planeWidgetY.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )
@@ -925,7 +929,7 @@ if __name__ == '__main__':
 #        
 #        self.planeWidgetZ = vtk.vtkImagePlaneWidget()
 #        self.planeWidgetZ.DisplayTextOn()
-#        self.planeWidgetZ.SetInput( self.input )
+#        self.planeWidgetZ.SetInput( self.input() )
 #        self.planeWidgetZ.SetPlaneOrientationToZAxes()
 #        self.planeWidgetZ.SetSliceIndex( self.sliceCenter[2] )
 #        self.planeWidgetZ.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )

@@ -62,7 +62,7 @@ class PM_WorldFrame(PersistentVisualizationModule):
         self.world_cut = wmod.forceGetInputFromPort( "world_cut", -1 )  if wmod else getFunctionParmStrValues( module, "world_cut", -1 )
         roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
         map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
-        data_origin = self.input.GetOrigin() if self.input else [ 0, 0, 0 ]
+        data_origin = self.input().GetOrigin() if self.input() else [ 0, 0, 0 ]
       
         if self.world_cut == -1: 
             if  (self.roi <> None): 
@@ -102,10 +102,10 @@ class PM_WorldFrame(PersistentVisualizationModule):
             
     def updateModule( self, **args ):     
         zscale = self.getInputValue( "zscale",   1.0  )  
-        extent= self.input.GetExtent()
-        input_spacing = self.input.GetSpacing()            
-#        printArgs( "World Map input: ", extent= extent, spacing= self.input.GetSpacing(), origin= self.input.GetOrigin() )
-        self.imageInfo.SetInput( self.input ) 
+        extent= self.input().GetExtent()
+        input_spacing = self.input().GetSpacing()            
+#        printArgs( "World Map input: ", extent= extent, spacing= self.input().GetSpacing(), origin= self.input().GetOrigin() )
+        self.imageInfo.SetInput( self.input() ) 
         self.imageInfo.SetOutputExtentStart( extent[0], extent[2], extent[4] )
         self.imageInfo.SetOutputSpacing( input_spacing[0], input_spacing[1], input_spacing[2]*zscale )       
         self.imageInfo.Modified()

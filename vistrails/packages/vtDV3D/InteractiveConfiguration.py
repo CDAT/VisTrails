@@ -18,6 +18,7 @@ from packages.vtDV3D import HyperwallManager
 from collections import OrderedDict
 from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
+from sets import *
 
 
 class CDMSDataType:
@@ -108,6 +109,7 @@ class QtWindowLeveler( QObject ):
             self.setWindowLevel( data_range[0], data_range[1] )
         else:
             self.scaling = 0.5 * ( abs(data_range[0]) + abs(data_range[1]) )
+            if self.scaling == 0.0: self.scaling = 1.0
             self.OriginalWindow = ( data_range[1] - data_range[0] ) / self.scaling if ( self.scaling > 0.0 ) else 1.0
             self.OriginalLevel = 1.0
           
@@ -336,6 +338,7 @@ class ConfigurableFunction( QObject ):
     def __init__( self, name, function_args, key, **args ):
         QObject.__init__(self)
         self.name = name
+        self.activateByCellsOnly = args.get( 'cellsOnly', False )
         self.type = 'generic'
         self.args = function_args
         self.kwargs = args
@@ -349,6 +352,7 @@ class ConfigurableFunction( QObject ):
         self.activeFunctionList = []
         self.module = None
         self.altMode = False
+        self.persisted = True
 #        self.parameterInputEnabled = True                                      # Handlers executed at:
         self.initHandler = args.get( 'init', None )         #    end of compute()
         self.openHandler = args.get( 'open', None )         #    key press
@@ -400,10 +404,7 @@ class ConfigurableFunction( QObject ):
 #            print "."
         self.moduleID = module.moduleID
         self.module = module
-        if module.metadata:
-            attributes = module.metadata.get('attributes', None)
-            if attributes:
-                if self.units == 'data': self.units = attributes.get('units','')               
+        if self.units == 'data': self.units = module.getUnits()              
         if ( self.initHandler != None ):
             self.initHandler( **self.kwargs ) 
         configFunctionMap = ConfigurableFunction.ConfigurableFunctions.setdefault( self.name, {} )
@@ -489,7 +490,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.isValid = args.get( 'isValid', lambda: True )
         self.range_bounds = None
         self.boundByRange = args.get( 'bound', True )
-        self.adjustRange = args.get( 'adjustRange', False )
+        self.adjustRangeInput = args.get( 'adjustRangeInput', -1 )
         self.widget = args.get( 'gui', None )
 
     def postInstructions( self, message ):
@@ -498,25 +499,27 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     def applyParameter( self, **args ):
         try:
             self.setLevelDataHandler( self.range, **args )
+            self.persisted = False
         except Exception, err:
             print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
         print "Apply %s Parameter[%s:%d]: %s " % ( self.type, self.name, self.module.moduleID, str( self.range ) )
-        if self.name == 'zScale':
-            print "x"
         
     def reset(self):
         self.setLevelDataHandler( self.initial_range )
+        self.persisted = False
         self.module.render() 
         return self.initial_range
 
     def expandRange( self ):
-        if self.adjustRange:
-            if ( self.range_bounds[0] <> self.module.seriesScalarRange[0] ) or ( self.range_bounds[1] <> self.module.seriesScalarRange[1] ):
-                self.range_bounds[0:2] = self.module.seriesScalarRange[0:2]
-                self.initial_range[:] = self.range_bounds[:]
-                if not self.manuallyAdjusted: 
-                    self.range[0:2] = self.range_bounds[0:2]
-                    self.initLeveling( initRange = False ) 
+        if self.adjustRangeInput >= 0:
+            ispec = self.module.getInputSpec( self.adjustRangeInput )
+            if ispec and ispec.input:
+                if ( self.range_bounds[0] <> ispec.seriesScalarRange[0] ) or ( self.range_bounds[1] <> ispec.seriesScalarRange[1] ):
+                    self.range_bounds[0:2] = ispec.seriesScalarRange[0:2]
+                    self.initial_range[:] = self.range_bounds[:]
+                    if not self.manuallyAdjusted: 
+                        self.range[0:2] = self.range_bounds[0:2]
+                        self.initLeveling( initRange = False ) 
  
     def initLeveling( self, **args ):
         initRange = args.get( 'initRange', True )
@@ -527,11 +530,14 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
                 self.initial_range =  [ 0.0, 1.0, 1 ] if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
             if self.range_bounds == None:
                 self.range_bounds = self.initial_range if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
+            if self.name == 'functionScale':
+                print 'x'
             self.range = list( self.module.getInputValue( self.name, self.initial_range )  ) # if not self.module.newDataset else self.initial_range
             if len( self.range ) == 3: 
                 for iR in range(2): self.range.append( self.initRefinement[iR] )
         self.windowLeveler.setDataRange( self.range )
         self.setLevelDataHandler( self.range )
+        self.persisted = False
         self.module.setParameter( self.name, self.range )
         if self.widget: 
             self.widget.initLeveling( self.range )
@@ -543,7 +549,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         if self.altMode:    self.windowRefiner.initRefinement( [ x, y ], self.range[3:5] )   
         else:               self.windowLeveler.startWindowLevel( x, y )
         self.updateActiveFunctionList()
-        self.adjustRange = False
+        self.adjustRangeInput = -1
         self.emit(SIGNAL('startLeveling()'))
         print "startLeveling: %s " % str( self.range )
 
@@ -577,6 +583,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.range[0:2] = data_range[0:2]
 #        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
         self.setLevelDataHandler( self.range )
+        self.persisted = False
 
     def setScaledDataRange(  self, scaled_data_range  ):
         dr = (self.range_bounds[1]-self.range_bounds[0])
@@ -584,6 +591,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.range[1] = self.range_bounds[0] + scaled_data_range[1] * dr
 #        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
         self.setLevelDataHandler( self.range )
+        self.persisted = False
 
     def getScaledDataRange(  self  ):
         dr = (self.range_bounds[1]-self.range_bounds[0])
@@ -597,6 +605,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         active_module_list = args.get( 'active_modules', None )
         if (active_module_list == None) or (self.module in active_module_list):
             self.setLevelDataHandler( self.range )
+            self.persisted = False
             affected_renderers.add( self.module.renderer )
             self.manuallyAdjusted = True
 #        print "   -> self = %x " % id(self.module)
@@ -617,6 +626,102 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         return self.range # self.wrapData( range )
 
 ################################################################################
+
+class UVCDATGuiConfigFunction( ConfigurableFunction ):
+    
+    start_parameter_signal = SIGNAL('start_parameter')
+    update_parameter_signal = SIGNAL('update_parameter')
+    finalize_parameter_signal = SIGNAL('finalize_parameter')
+    connectedModules = {}
+    
+    def __init__( self, name, guiClass, key, **args ):
+        ConfigurableFunction.__init__( self, name, guiClass.getSignature(), key, **args  )
+        self.type = 'uvcdat-gui'
+        self.useDialog = False
+        self.guiClass = guiClass
+        if( self.initHandler == None ): self.initHandler = self.initGui
+        if( self.openHandler == None ): self.openHandler = self.openGui
+        self.setValueHandler = args.get( 'setValue', None )
+        self.getValueHandler = args.get( 'getValue', None )
+        self.startConfigurationObserver = args.get( 'start', None )
+        self.updateConfigurationObserver = args.get( 'update', None )
+        self.finalizeConfigurationObserver = args.get( 'finalize', None )
+        self.guiEnabled = False
+#        print "create UVCDATGuiConfigFunction: %x" % ( id(self) )
+        
+    def __del__(self):
+#        print "delete UVCDATGuiConfigFunction: %x" % ( id(self) )
+        ConfigurableFunction.__del__(self)
+        
+    def initGui( self, **args ):   # init value from moudle input port
+        moduleList = UVCDATGuiConfigFunction.connectedModules.setdefault( self.name, Set() )
+        moduleList.add( self.module )
+        initValue = args.get( 'initValue', True ) 
+        if initValue:
+            initial_value = None if ( self.getValueHandler == None ) else self.getValueHandler()         
+            value = self.module.getInputValue( self.name, initial_value )  
+            if value: self.setValue( value ) 
+#        self.setLevelDataHandler( self.range )
+#        self.module.setParameter( self.name, self.range )
+#        if self.widget: 
+#            self.widget.initLeveling( self.range )
+#            self.connect( self.widget, SIGNAL('update(QString)'), self.broadcastLevelingData )
+
+        
+    def reset(self):
+        self.updateWindow()
+        self.guiEnabled = False
+        
+    def getValue(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
+        gui = DV3DPipelineHelper.getGuiKernel() 
+        return gui.getValue() if gui else None
+        
+    def getWidget( self, manager ):
+#        print "init UVCDATGuiConfigFunction: %x" % ( id(self) )
+        moduleList = UVCDATGuiConfigFunction.connectedModules.get( self.name, [] )
+        self.kwargs['manager'] = manager
+        gui = self.guiClass( str(self.name), **self.kwargs )
+#        self.gui.connect(self.gui, SIGNAL('delete()'), self.reset )
+        for module in moduleList:
+            gui.addActiveModule( module )
+#        if self.startConfigurationObserver <> None:
+#            self.gui.connect( self.gui, self.start_parameter_signal, self.startConfigurationObserver )
+#        if self.updateConfigurationObserver <> None:
+#            self.gui.connect( self.gui, self.update_parameter_signal, self.updateConfigurationObserver )
+#        if self.finalizeConfigurationObserver <> None:
+#            self.gui.connect( self.gui, self.finalize_parameter_signal, self.finalizeConfigurationObserver )
+        initial_value = None if ( self.getValueHandler == None ) else self.getValueHandler()          
+        value = self.module.getInputValue( self.name, initial_value )  # if self.parameterInputEnabled else initial_value
+        if value <> None: gui.setValue( value )
+        self.guiEnabled = True
+#            self.setValue( value )
+#            self.module.setResult( self.name, value )
+        return gui
+               
+    def updateWindow(self):
+        pass
+
+    def openGui( self ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
+        gui = DV3DPipelineHelper.getGuiKernel() 
+        if gui:
+            value = self.getValueHandler() if (self.getValueHandler <> None) else None 
+#            print " -AAXX- Accessing gui: %s[%s:%s], id = %x " % ( self.__class__.__name__, self.module.__class__.__name__, self.name, id( self ) )
+            gui.initWidgetFields( value, self.module )
+            gui.createGuiPanels()
+            gui.show()
+            self.module.resetNavigation()
+        
+    def getTextDisplay(self, **args ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
+        gui = DV3DPipelineHelper.getGuiKernel() 
+        return gui.getTextDisplay( **args )  if gui else None
+       
+    def setValue( self, value ):
+        if self.setValueHandler <> None: 
+            self.setValueHandler( value )
+            self.persisted = False
 
 class GuiConfigurableFunction( ConfigurableFunction ):
     
@@ -709,6 +814,7 @@ class WidgetConfigurableFunction( ConfigurableFunction ):
     def setValue( self, value ):
         if self.setValueHandler <> None: 
             self.setValueHandler( value )
+            self.persisted = False
        
     def getValue( self ):
         if self.getValueHandler <> None: 
@@ -780,14 +886,22 @@ class IVModuleConfigurationDialog( QWidget ):
     """ 
     instances = {}
     activeModuleList = []
-    update_animation_signal = SIGNAL('update_animation')      
+    update_animation_signal = SIGNAL('update_animation')     
          
     def __init__(self, name, **args ):
         QWidget.__init__(self, None)
-        self.modules = OrderedDict()
+        self.isConfiguring = False
+        self.manager = args.get( 'manager', None )
+        self.active_cfg_cmd = None
+        self.gui_cmds = []
+        self.moduleTabLayout = None
+        self.dialogButtonLayout = None
+        self.guiButtonLayout = None
+        self.modules = Set()
         self.module = None
         self.initValue = None
         self.name = name
+        self.initialize()
         title = ( '%s configuration' % name )
         self.setWindowTitle( title )        
         self.setLayout(QVBoxLayout())
@@ -796,59 +910,171 @@ class IVModuleConfigurationDialog( QWidget ):
         self.layout().setMargin(5)
         self.layout().setSpacing(5)
         self.createContent()
-        self.createButtonLayout()
-        self.createActiveModulePanel()
-        self.setWindowFlags( self.windowFlags() | Qt.WindowStaysOnTopHint )
         self.tabbedWidget.setCurrentIndex(0)
+        self.disable()
+#        print "  -AAXX- Creating %s[%s]: id = %x " % ( self.__class__.__name__, self.name, id( self ) )
+
+    @staticmethod 
+    def reset():
+        IVModuleConfigurationDialog.instances = {}
+        IVModuleConfigurationDialog.activeModuleList = []
+        
+#    def __del__(self):
+#        print "  -AAXX- Deleting %s[%s]: id = %x " % ( self.__class__.__name__, self.name, id( self ) )
+#        self.emit( SIGNAL('delete()') )
+
+    def createGuiButtonLayout(self):
+        if self.dialogButtonLayout <> None:
+            self.layout().removeItem( self.dialogButtonLayout )
+            self.dialogButtonLayout = None
+        if self.guiButtonLayout == None:
+            self.guiButtonLayout = QHBoxLayout() 
+            revert_button = QPushButton("Revert", self)
+            save_button = QPushButton("Save", self)
+            self.guiButtonLayout.addWidget( revert_button )
+            self.guiButtonLayout.addStretch() 
+            self.guiButtonLayout.addWidget( save_button )
+            revert_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
+            save_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
+            self.connect( revert_button, SIGNAL("clicked()"), lambda: self.revertConfig() ) 
+            self.connect( save_button, SIGNAL("clicked()"), lambda: self.finalizeConfig() )         
+            self.layout().addLayout( self.guiButtonLayout ) 
+        
+#    def createDialogPanels(self):
+#        if self.guiButtonLayout <> None:
+#            self.layout().removeItem( self.guiButtonLayout )
+#            self.guiButtonLayout = None
+#        if self.moduleTabLayout == None:
+#            self.createActiveModulePanel()
+#            self.registerActiveModules()
+#            self.createDialogButtonLayout()
+#            self.setWindowFlags( self.windowFlags() | Qt.WindowStaysOnTopHint )
+
+    def createGuiPanels(self):            
+        self.createGuiButtonLayout()
+
+#    def getConfigTab(self): 
+#        if DV3DPipelineHelper.isGuiConfigMode(): return self.guiWidget
+#        if DV3DPipelineHelper.isLevelingConfigMode(): return self.levelingConfigWidget
+#        return None
     
-    @staticmethod    
-    def getInstance( klass, name, caller, **args  ):
-#        stack = inspect.stack()
-#        frame = stack[0][0]
-#        print " ---> %s: %s" % ( frame.__class__, dir( frame ) )
-        instance = IVModuleConfigurationDialog.instances.setdefault( name, klass( name, **args )  )
-        instance.addActiveModule( caller )
-        return instance 
-                              
+#    @staticmethod    
+#    def getExistingInstance( klass, name, caller, **args  ):
+##        stack = inspect.stack()
+##        frame = stack[0][0]
+##        print " ---> %s: %s" % ( frame.__class__, dir( frame ) )
+#        instance = IVModuleConfigurationDialog.instances.get( str(name), None )
+#        if instance == None:
+#            instance = klass( str(name), **args )
+#            IVModuleConfigurationDialog.instances[ str(name) ] = instance
+#        instance.addActiveModule( caller )
+#        return instance 
+                
+    def initialize(self):
+        self.active_cfg_cmd = None
+        self.active_modules = Set()
+
+    def getInteractionState( self ):
+        return ( self.active_cfg_cmd.name, self.active_cfg_cmd.persisted ) if self.active_cfg_cmd else ( "None", True )     
+
+    def clearInteractionState( self ):
+        if self.active_cfg_cmd:
+            self.active_cfg_cmd.persisted = True
+        
+    
+    def enable(self): 
+        self.setVisible(True)
+        self.isConfiguring = True
+
+    def disable(self): 
+        self.setVisible(False)
+        self.deactivate_current_command()
+        self.isConfiguring = False
+
+    def deactivate_current_command(self):
+        if self.active_cfg_cmd:
+            self.active_cfg_cmd.updateWindow()
+            self.active_cfg_cmd = None
+        
+    def isEligibleCommand( self, cmd ):
+        return (self.active_cfg_cmd == None) or ( cmd == self.active_cfg_cmd )
+                                     
     def createContent(self ):
         """ createContent() 
         Creates the content of this widget       
         """
         pass
     
+#    def initActivation( self, curr_module ):
+#        for module in self.modules:
+#            isActive = ( curr_module.renderer == module.renderer )
+#            module.setActivation( self.name, isActive )
+#            activateCheckBox = self.modules[ module ] 
+#            activateCheckBox.setChecked( isActive )
+    
     def addActiveModule( self, module ):
         if not module in self.modules:
-            row = len( self.modules )
-            activateCheckBox = QCheckBox( 'Activate' )
-            activateCheckBox.setChecked( True )
-            module_label = QLabel( module.getName()  )
-            self.moduleTabLayout.addWidget( module_label, row, 0 )
-            self.moduleTabLayout.addWidget( activateCheckBox, row, 1 )
-            if not module in self.modules:
-                if not ( self.activeModuleList and self.activeModuleList[-1] == module ):
-                    self.activeModuleList.append( module )
-                    self.connect( self, self.update_animation_signal, module.updateAnimation )
-            self.modules[ module ] = activateCheckBox
-            self.connect( activateCheckBox, SIGNAL( "stateChanged(int)" ), callbackWrapper( module.setActivation, self.name ) )  
-            self.moduleTabLayout.update()
-#            self.registerModule( module )
-#            print "Add active module %s to dialog %s[%s], modules: %s" % ( module.getName(), self.name, str(id(self)), str(self.modules.keys() ) )
+            self.modules.add(  module )
+            if not ( self.activeModuleList and self.activeModuleList[-1] == module ):
+                self.activeModuleList.append( module )
+                self.connect( self, self.update_animation_signal, module.updateAnimation )
+              
+    @staticmethod              
+    def getActiveModules():
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
+        active_mods = []
+        for module in IVModuleConfigurationDialog.activeModuleList:
+            isActive = DV3DPipelineHelper.getPlotActivation( module )
+            if isActive: active_mods.append( module )
+        return active_mods
+            
+#    def registerActiveModules(self):
+#        for row, item in enumerate( self.modules.items() ):
+#            isActive = item[1]
+#            activateCheckBox = QCheckBox( 'Activate' ) 
+#            activateCheckBox.setChecked( isActive )   
+#            module = item[0]
+#            module_label = QLabel( module.getName()  )
+#            self.moduleTabLayout.addWidget( module_label, row, 0 )
+#            self.moduleTabLayout.addWidget( activateCheckBox, row, 1 )            
+#            self.connect( activateCheckBox, SIGNAL( "stateChanged(int)" ), callbackWrapper( module.setActivation, self.name ) ) 
+#            module.setActivation( self.name, isActive )
+##            self.initActivation( module )
+#            self.moduleTabLayout.update()
+##            self.registerModule( module )
+##            print "Add active module %s to dialog %s[%s], modules: %s" % ( module.getName(), self.name, str(id(self)), str(self.modules.keys() ) )
          
     def parameterUpdating(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         for module in self.modules:
-            if self.modules[ module ].isChecked():
+            if DV3DPipelineHelper.getPlotActivation( module ):
                 if module.parameterUpdating( self.name ):
                     return True
         return False
 
     def updateConfiguration(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         for module in self.modules:
-            if self.modules[ module ].isChecked() :
+            if DV3DPipelineHelper.getPlotActivation( module ) :
+                self.active_modules.add( module )
                 module.updateConfigurationObserver( self.name, self.getValue() )        
 
-    def initiateParameterUpdate(self):
+    def startConfiguration(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         for module in self.modules:
-            if self.modules[ module ].isChecked() :
+            if DV3DPipelineHelper.getPlotActivation( module ) :
+                module.startConfigurationObserver( self.name, self.getValue() )        
+
+    def finalizeConfiguration(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        for module in self.modules:
+            if DV3DPipelineHelper.getPlotActivation( module ) :
+                module.finalizeConfigurationObserver( self.name, self.getValue() )        
+
+    def initiateParameterUpdate(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        for module in self.modules:
+            if DV3DPipelineHelper.getPlotActivation( module ) :
                 module.initiateParameterUpdate( self.name )
  
     def refreshPipeline(self):
@@ -872,10 +1098,11 @@ class IVModuleConfigurationDialog( QWidget ):
         return "%s: %s" % ( self.name, value ) if value else None
        
     def getTextValue( self, value, **args ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
         text_value = None
         text_value_priority = 0
         for module in self.modules:
-            if self.modules[ module ].isChecked() :
+            if DV3DPipelineHelper.getPlotActivation( module ):
                 tval, priority = module.getParameterDisplay( self.name, value )
                 if tval and ( priority > text_value_priority ): 
                     text_value = tval
@@ -888,6 +1115,7 @@ class IVModuleConfigurationDialog( QWidget ):
     def initWidgetFields( self, value, module ):
         if ( self.module == None ) or ( module.renderer <> None ): 
             self.module = module
+#        self.initActivation( module )
         self.initValue = value
 
     def createActiveModulePanel(self ):
@@ -896,7 +1124,6 @@ class IVModuleConfigurationDialog( QWidget ):
         """       
         activeModuleTab = QWidget()        
         self.tabbedWidget.addTab( activeModuleTab, 'Active Modules' )
-        self.tabbedWidget.setCurrentWidget(activeModuleTab)
         self.moduleTabLayout = QGridLayout()
         self.moduleTabLayout.setMargin( 5 )
         self.moduleTabLayout.setSpacing( 5 )
@@ -927,23 +1154,23 @@ class IVModuleConfigurationDialog( QWidget ):
 #            active = item[1]
 #            module = item[0]
 
-    def createButtonLayout(self):
+    def createDialogButtonLayout(self):
         """ createButtonLayout() -> None
         Construct Ok & Cancel button
         
         """
-        self.buttonLayout = QHBoxLayout()
-        self.buttonLayout.setMargin(5)
+        self.dialogButtonLayout = QHBoxLayout()
+        self.dialogButtonLayout.setMargin(5)
         self.okButton = QPushButton('&OK', self)
         self.okButton.setAutoDefault(False)
         self.okButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.okButton)
+        self.dialogButtonLayout.addWidget(self.okButton)
         self.cancelButton = QPushButton('&Cancel', self)
         self.cancelButton.setAutoDefault(False)
         self.cancelButton.setShortcut('Esc')
         self.cancelButton.setFixedWidth(100)
-        self.buttonLayout.addWidget(self.cancelButton)
-        self.layout().addLayout(self.buttonLayout)
+        self.dialogButtonLayout.addWidget(self.cancelButton)
+        self.layout().addLayout(self.dialogButtonLayout)
         self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
         self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.cancelTriggered)
                     
@@ -961,17 +1188,24 @@ class IVModuleConfigurationDialog( QWidget ):
         self.close()
 
     def finalizeParameter( self, *args ):
+        self.finalizeConfiguration()
         self.emit( GuiConfigurableFunction.finalize_parameter_signal, self.name, self.getValue() )
         command = [ self.name ]
         value = self.getValue()
-        command.extend( value )
+        command.extend( value ) if isList( value ) else command.append( value )   
         HyperwallManager.getInstance().processGuiCommand( command  )
 
     def startParameter( self, *args ):
+        self.startConfiguration()
         self.emit( GuiConfigurableFunction.start_parameter_signal, self.name, self.getValue() )
+        
+    def enableConfiguration(self, enable = True ):
+        self.isConfiguring = enable
 
     def updateParameter( self, *args ):
-        self.emit( GuiConfigurableFunction.update_parameter_signal, self.name, self.getValue() )
+        if self.isConfiguring:
+            self.updateConfiguration()
+            self.emit( GuiConfigurableFunction.update_parameter_signal, self.name, self.getValue() )
 
     @staticmethod   
     def getSignature( self ):
@@ -982,6 +1216,58 @@ class IVModuleConfigurationDialog( QWidget ):
 
     def setValue( self, value ):
         pass
+
+          
+    def startConfig(self, qs_action_key, qs_cfg_key ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
+        cfg_key = str(qs_cfg_key)
+        action_key = str(qs_action_key)
+        self.active_cfg_cmd = None
+#        self.getConfigTab().setTitle( action_key )
+        try:
+            cmd_list = DV3DPipelineHelper.getConfigCmd ( cfg_key )
+            if cmd_list:
+                self.deactivate_current_command()
+                active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
+                for cmd_entry in cmd_list:
+                    module = cmd_entry[0]
+                    cfg_cmd = cmd_entry[1] 
+                    if cfg_cmd and cfg_cmd.guiEnabled:
+                        self.gui_cmds.append( cfg_cmd )
+                        if ( ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ) ):
+                            self.active_cfg_cmd = cfg_cmd  
+                if self.active_cfg_cmd:                 
+                    self.active_cfg_cmd.updateActiveFunctionList()
+                    self.enable()
+                else:
+                    self.finalizeConfig()
+        except RuntimeError:
+            print "RuntimeError"
+            
+    def endConfig( self ):
+        HyperwallManager.getInstance().setInteractionState( None )
+        self.resetGuiCmds()
+        self.disable()
+
+    def finalizeConfig( self ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
+        interactionState = self.name
+        for module in self.modules:
+            if DV3DPipelineHelper.getPlotActivation( module ):
+                config_data = module.getParameter( interactionState  ) 
+                if config_data: 
+                    module.writeConfigurationResult( interactionState, config_data ) 
+        HyperwallManager.getInstance().setInteractionState( None )               
+        if self.manager:    self.manager.endConfig()
+        else:               self.endConfig()
+
+    def revertConfig(self):
+        self.finalizeConfig()
+        
+    def resetGuiCmds(self):
+        for cfg_cmd in self.gui_cmds:
+            cfg_cmd.reset() 
+        self.gui_cmds = []             
 
 ################################################################################
  
@@ -1782,6 +2068,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.iTimeStep = 0
         self.relTimeStart = None
         self.relTimeStep = 1.0
+        self.uniformTimeRange = True
         self.maxSpeedIndex = 100
         self.maxDelaySec = args.get( "maxDelaySec", 1.0 )
         self.running = False
@@ -1800,7 +2087,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         return [ self.iTimeStep ]
 
     def setValue( self, value ):
-        iTS = getItem( value )
+        iTS = int( round( getItem( value ) ) )
         if self.timeRange and ( ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
         self.iTimeStep = iTS
                 
@@ -1814,7 +2101,10 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     def step( self ):
         if not self.running:
             self.updateTimeRange()
-            self.setTimestep( self.iTimeStep + 1 )
+            iTS =  int( self.iTimeStep ) + 1
+            if self.timeRange and ( ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
+            print " ############################################ set Time index = %d ############################################" % iTS
+            self.setTimestep( iTS )
 
     def reset( self ):
         if self.running:
@@ -1822,7 +2112,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             self.running = False
         self.setTimestep(0)
 
-    def getTimeRange( self ): 
+    def getTimeRange1( self ): 
 #        wmods = getWorkflowObjectMap()
         for module in self.modules: 
             timeRangeInput =  module.getCachedParameter( "timeRange" )
@@ -1831,6 +2121,31 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 self.relTimeStart = float( timeRangeInput[2] )
                 self.relTimeStep = float( timeRangeInput[3] )
                 return
+            
+    def getTimeRange( self ):
+        from packages.vtDV3D.CDMS_VariableReaders import PM_CDMSDataReader 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        timeRange = None
+        self.uniformTimeRange = True
+        for module in self.modules:
+            if DV3DPipelineHelper.getPlotActivation( module ): 
+                if  isinstance( module, PM_CDMSDataReader ):                  
+                    timeRangeInput =  module.getCachedParameter( "timeRange" )
+                    if timeRangeInput:
+                        if timeRange == None:
+                            timeRange = timeRangeInput 
+                        else:
+                            if (timeRange[0]<>timeRangeInput[0]) or (timeRange[1]<>timeRangeInput[1]) or (timeRange[2]<>timeRangeInput[2]) or (timeRange[3]<>timeRangeInput[3]):
+                                self.uniformTimeRange = False
+                                if timeRange[3] > timeRangeInput[3]:
+                                    timeRange = timeRangeInput 
+        if timeRange:                
+            self.timeRange = [ int(timeRange[0]), int(timeRange[1]) ]
+            self.relTimeStart = float( timeRange[2] )
+            self.relTimeStep = float( timeRange[3] )
+        else:
+            print>>sys.stderr, "Error: Can't find time range metadata."
+
 
     def setTimestep( self, iTimestep ):
         from packages.vtDV3D.PersistentModule import ReferenceTimeUnits 
@@ -1841,7 +2156,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 self.setValue( iTimestep )
                 sheetTabs = set()
                 relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
-                timeAxis = self.module.getMetadata('time')
+                ispec = self.module.getInputSpec()     
+                timeAxis = ispec.getMetadata('time')
                 timeValues = np.array( object=timeAxis.getValue() )
                 relTimeRef = cdtime.reltime( relTimeValueRef, ReferenceTimeUnits )
                 relTime0 = relTimeRef.torel( timeAxis.units )
@@ -1854,9 +2170,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
                 displayText = self.getTextDisplay()
                 HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, displayText ], False  )
-                for module in self.activeModuleList:
+                for module in IVModuleConfigurationDialog.getActiveModules():
                     dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
-                    module.updateAnimation( relTimeValueRefAdj, displayText  )
+                    module.updateAnimation( [ relTimeValueRefAdj, iTimestep, self.uniformTimeRange ], displayText  )
             except Exception:
                 traceback.print_exc( 100, sys.stderr )
 #                print>>sys.stdout, "Error in setTimestep[%d]: %s " % ( iTimestep, str(err) )
@@ -1864,7 +2180,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     def stop(self):
         self.runButton.setText('Run')
         self.running = False 
-        for module in self.activeModuleList:
+        for module in IVModuleConfigurationDialog.getActiveModules():
             module.stopAnimation()
 
     def cancelTriggered(self, checked = False):
@@ -1881,7 +2197,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.running = True
         self.timer.start()       
         
-    def run( self ): 
+    def run( self ):
         if self.running: self.stop()           
         else: self.start()
         
@@ -1901,7 +2217,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 #            self.runThread.start()
              
     def animate(self):
-        self.setTimestep( self.iTimeStep + 1 )  
+        iTS =  int( self.iTimeStep ) + 1
+        if self.timeRange and ( ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
+        self.setTimestep( iTS )  
         if self.running: 
             delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
             print " Animate step, delay time = %.2f msec" % delayTime
@@ -2009,7 +2327,7 @@ class LevelConfigurationDialog( IVModuleConfigurationDialog ):
         levValue = self.getValue()
         self.module.setCurrentLevel( levValue )
         textDisplay = "%s: %s" % ( self.name, levValue )
-        for module in self.activeModuleList:
+        for module in IVModuleConfigurationDialog.getActiveModules():
             module.dvUpdate( animate=True ) 
             module.updateTextDisplay( textDisplay ) 
         

@@ -21,7 +21,7 @@ from packages.uvcdat.init import expand_port_specs as _expand_port_specs
 
 import sys
 import visit
-import visit.pyqt_pyqtviewer
+import visit.pyqt_gui
 
 
 from core.modules.vistrails_module import Module, NotCacheable, ModuleError
@@ -30,15 +30,16 @@ from packages.spreadsheet.spreadsheet_base import (StandardSheetReference,
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_event import DisplayCellEvent
 
+sys.argv.append("-embedded")
+viswin = visit.pyqt_gui.PyQtGUI(sys.argv)
+visit.Launch()
 
-#viswin = visit.pyqt_pyqtviewer.PyQtViewer(sys.argv)
-#visit.Launch()
-#visit.HideToolbars()
-#viswin.GetRenderWindow(1).hide()
-#
-#viswinmapper = {}
-#availWindows = []
-#availWindows.append((viswin.GetRenderWindow(1),1))
+viswin.GetUIWindow().hide()
+viswin.GetRenderWindow(1).hide()
+
+viswinmapper = {}
+availWindows = []
+availWindows.append((viswin.GetRenderWindow(1),1))
 
 
 

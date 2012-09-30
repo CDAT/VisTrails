@@ -118,7 +118,7 @@ class PM_Voxelizer(PersistentVisualizationModule):
     def __init__( self, mid, **args ):
         PersistentVisualizationModule.__init__( self, mid, **args )
         self.sampleRate = [ 5, 5, 5 ] 
-        self.primaryInputPort = 'volume'
+        self.primaryInputPorts = [ 'volume' ]
         self.addConfigurableLevelingFunction( 'sampleRate', 's', label='Point Sample Rate', setLevel=self.setSampleRate, getLevel=self.getSampleRate, layerDependent=True, bound=False )
       
     def setSampleRate( self, ctf_data ):
@@ -133,37 +133,37 @@ class PM_Voxelizer(PersistentVisualizationModule):
         Dispatch the vtkRenderer to the actual rendering widget
         """       
         
-        if self.input == None: 
+        if self.input() == None: 
             print>>sys.stderr, "Must supply 'volume' port input to Voxelizer"
             return
               
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
-        spacing = self.input.GetSpacing()
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
+        spacing = self.input().GetSpacing()
         sx, sy, sz = spacing       
-        origin = self.input.GetOrigin()
+        origin = self.input().GetOrigin()
         ox, oy, oz = origin
         
-        cellData = self.input.GetCellData()  
-        pointData = self.input.GetPointData()     
+        cellData = self.input().GetCellData()  
+        pointData = self.input().GetPointData()     
         vectorsArray = pointData.GetVectors()
         
         if vectorsArray == None: 
             print>>sys.stderr, "Must supply point vector data for 'volume' port input to Voxelizer"
             return
 
-        self.rangeBounds = list( vectorsArray.GetRange(-1) )
+        self.setRangeBounds( list( vectorsArray.GetRange(-1) ) )
         self.nComponents = vectorsArray.GetNumberOfComponents()
 #        for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
 #        for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
         
-        self.initialOrigin = self.input.GetOrigin()
-        self.initialExtent = self.input.GetExtent()
-        self.initialSpacing = self.input.GetSpacing()
+        self.initialOrigin = self.input().GetOrigin()
+        self.initialExtent = self.input().GetExtent()
+        self.initialSpacing = self.input().GetSpacing()
         self.dataBounds = self.getUnscaledWorldExtent( self.initialExtent, self.initialSpacing, self.initialOrigin ) 
         metadata = self.getMetadata()  
 
         self.resample = vtk.vtkExtractVOI()
-        self.resample.SetInput( self.input ) 
+        self.resample.SetInput( self.input() ) 
         self.resample.SetVOI( self.initialExtent )
         sRate = [ int( round( self.sampleRate[0] )  ), int( round( self.sampleRate[1] ) ), int( round( self.sampleRate[2] ) )  ]
         print "Sample rate: %s " % str( sRate )
@@ -197,7 +197,7 @@ class PM_Voxelizer(PersistentVisualizationModule):
         self.set3DOutput ( wmod=self.wmod, name="pointcloud" )
         
     def updateModule(self, **args ):
-        self.resample.SetInput( self.input ) 
+        self.resample.SetInput( self.input() ) 
         self.resample.Modified()
         self.resampled_data.Update()
         self.set3DOutput( wmod=self.wmod, name="pointcloud" )

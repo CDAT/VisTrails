@@ -43,14 +43,15 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     global_coords = [-1, -1, -1]
 
     def __init__( self, mid, **args ):
-        self.imageRange = None
+        import api
         PersistentVisualizationModule.__init__( self, mid, **args )
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True )
+        self.primaryInputPorts = [ 'volume', 'contours' ]
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0 )
         self.addConfigurableLevelingFunction( 'opacity', 'O', label='Slice Plane Opacity',    setLevel=self.setOpacity, activeBound='min',  getLevel=self.getOpacity, isDataValue=False, layerDependent=True, bound = False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
         self.addConfigurableLevelingFunction( 'contourDensity', 'g', label='Contour Density', activeBound='max', setLevel=self.setContourDensity, getLevel=self.getContourDensity, layerDependent=True, windowing=False, rangeBounds=[ 3.0, 30.0, 1 ], bound=False, isValid=self.hasContours )
-        self.addConfigurableLevelingFunction( 'contourColorScale', 'S', label='Contour Colormap Scale', units='data', setLevel=lambda data: self.scaleColormap(data,1), getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, isValid=self.hasContours )
-        self.addConfigurableGuiFunction( 'contourColormap', ColormapConfigurationDialog, 'K', label='Choose Contour Colormap', setValue=lambda data: self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasContours )
+        self.addConfigurableLevelingFunction( 'contourColorScale', 'S', label='Contour Colormap Scale', units='data', setLevel=self.scaleContourColormap, getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRangeInput=1, isValid=self.hasContours )
+        self.addUVCDATConfigGuiFunction( 'contourColormap', ColormapConfigurationDialog, 'K', label='Choose Contour Colormap', setValue=lambda data: self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasContours )
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
         self.opacity = [ 0.75, 1.0 ]
         self.iOrientation = 0
@@ -62,26 +63,33 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.opacityUpdateCount = 0
         self.generateContours = False
         self.contourLineActors = {}
-        self.contourInput = None
-        self.contourMetadata = None
-        self.contour_units = ""
+        self.contourLineMapperer = None
+        self.contours = None
         self.NumContours = 10.0
-#        self.imageRescale = None
-        print " Volume Slicer init, id = %x " % id(self)
-        VolumeSlicerModules[mid] = self
+        try:
+            controller = api.get_current_controller()
+            print " Volume Slicer init, id = %x " % id(self)
+            VolumeSlicerModules[mid] = self
+        except api.NoVistrail:
+            pass
 
     def __del__(self):
         self.planeWidgetX.RemoveAllObservers()
         self.planeWidgetY.RemoveAllObservers()
         self.planeWidgetZ.RemoveAllObservers()
         del VolumeSlicerModules[ self.moduleID ]
+        PersistentVisualizationModule.__del__(self)
+        
+    def scaleContourColormap(self, data, **args ):
+        return self.scaleColormap( data, 1, **args )
         
     def hasContours(self):
         return self.generateContours
         
-    def setContourDensity( self, ctf_data ):
-        self.NumContours = ctf_data[1]
-        self.updateContourDensity()
+    def setContourDensity( self, ctf_data, **args ):
+        if self.NumContours <> ctf_data[1]:
+            self.NumContours = ctf_data[1]
+            self.updateContourDensity()
 
     def getContourDensity( self ):
         return [ 3.0, self.NumContours, 1 ]
@@ -89,19 +97,23 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def setZScale( self, zscale_data, **args ):
         if self.setInputZScale( zscale_data ):
             if self.planeWidgetX <> None:
-                bounds = list( self.input.GetBounds() ) 
-                self.planeWidgetX.PlaceWidget( bounds )        
-                self.planeWidgetY.PlaceWidget( bounds )                
+                bounds = list( self.input().GetBounds() ) 
+                if not self.planeWidgetX.MatchesBounds( bounds ):
+                    self.planeWidgetX.PlaceWidget( bounds )        
+                    self.planeWidgetY.PlaceWidget( bounds ) 
+                    self.render()               
 
-    def setInputZScale( self, zscale_data, **args  ):       
-        contourModule = self.wmod.forceGetInputFromPort( "contours", None )
-        if contourModule <> None:
-            contourInput = contourModule.getOutput() 
-            ix, iy, iz = contourInput.GetSpacing()
-            sz = zscale_data[1]
-            contourInput.SetSpacing( ix, iy, sz )  
-            contourInput.Modified() 
-        return PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args )
+    def setInputZScale( self, zscale_data, **args  ):
+        rv = PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args ) 
+        if rv:
+            ispec = self.getInputSpec(  1 )       
+            if (ispec <> None) and (ispec.input <> None):
+                contourInput = ispec.input 
+                ix, iy, iz = contourInput.GetSpacing()
+                sz = zscale_data[1]
+                contourInput.SetSpacing( ix, iy, sz )  
+                contourInput.Modified() 
+        return rv
                 
     def getOpacity(self):
         return self.opacity
@@ -132,133 +144,129 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.updatingPlacement = False
 
     def enableVisualizationInteraction(self): 
+#        print>>sys.stderr, "enable Visualization Interaction"
         self.planeWidgetX.EnableInteraction()                                                
         self.planeWidgetY.EnableInteraction()                                                
         self.planeWidgetZ.EnableInteraction()  
 
-    def disableVisualizationInteraction(self): 
+    def disableVisualizationInteraction(self):
+#        print>>sys.stderr, "disable Visualization Interaction" 
         self.planeWidgetX.DisableInteraction()                                                
         self.planeWidgetY.DisableInteraction()                                                
         self.planeWidgetZ.DisableInteraction()  
 
-    def updateContourMetadata(self):
-        if self.contourMetadata == None:
-            scalars = None
-            self.newDataset = False
-            self.contourInput.Update()
-            contourFieldData = self.contourInput.GetFieldData()                 
-            self.contourMetadata = extractMetadata( contourFieldData )            
-            if self.contourMetadata <> None:    
-                attributes = self.contourMetadata.get( 'attributes' , None )
-                if attributes:
-                    self.contour_units = attributes.get( 'units' , '' )
+#    def updateContourMetadata(self):
+#        if self.contourMetadata == None:
+#            scalars = None
+#            self.newDataset = False
+#            self.contourInput.Update()
+#            contourFieldData = self.contourInput.GetFieldData()                 
+#            self.contourMetadata = extractMetadata( contourFieldData )            
+#            if self.contourMetadata <> None:    
+#                attributes = self.contourMetadata.get( 'attributes' , None )
+#                if attributes:
+#                    self.contour_units = attributes.get( 'units' , '' )
                                                             
     def buildPipeline(self):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """     
-        contourModule = self.wmod.forceGetInputFromPort( "contours", None )
-        if self.input == None:
-            if contourModule <> None:
-                self.input = contourModule.getOutput() 
-            else:
-                print>>sys.stderr, "Error, must provide an input to the Volume Slicer module!"
-      
-        self.contourInput = None if contourModule == None else contourModule.getOutput() 
+#        contourModule = self.wmod.forceGetInputFromPort( "contours", None )
+#        if self.input() == None:
+#            if contourModule <> None:
+#                self.input() = contourModule.getOutput() 
+#            else:
+#                print>>sys.stderr, "Error, must provide an input to the Volume Slicer module!"
+        contour_ispec = self.getInputSpec(  1 )       
+        contourInput = contour_ispec.input if contour_ispec <> None else None
+
+#        self.contourInput = None if contourModule == None else contourModule.getOutput() 
         # The 3 image plane widgets are used to probe the dataset.    
         print " Volume Slicer buildPipeline, id = %s " % str( id(self) )
         self.sliceOutput = vtk.vtkImageData()  
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
         self.slicePosition = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
-        dataType = self.input.GetScalarTypeAsString()
-        bounds = list(self.input.GetBounds()) 
-        origin = self.input.GetOrigin()
+        dataType = self.input().GetScalarTypeAsString()
+        bounds = list(self.input().GetBounds()) 
+        origin = self.input().GetOrigin()
         if (dataType <> 'float') and (dataType <> 'double'):
-             self.setMaxScalarValue( self.input.GetScalarType() )
-        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s, slicePosition=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input.GetWholeExtent()), str(origin), str(bounds), str(self.slicePosition)  )
+             self.setMaxScalarValue( self.input().GetScalarType() )
+#        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s, slicePosition=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input().GetWholeExtent()), str(origin), str(bounds), str(self.slicePosition)  )
       
         # The shared picker enables us to use 3 planes at one time
         # and gets the picking order right
-        picker = vtk.vtkCellPicker()
-        picker.SetTolerance(0.005) 
         lut = self.getLut()
+        picker = None
         useVtkImagePlaneWidget = False
         
-        self.planeWidgetX = ImagePlaneWidget( self, 0 )
-#        self.planeWidgetX.DisplayTextOff()
-        self.planeWidgetX.SetRenderer( self.renderer )
-        self.planeWidgetX.SetInput( self.input, self.contourInput )
+        if self.planeWidgetX == None: 
+            picker = vtk.vtkCellPicker()
+            picker.SetTolerance(0.005) 
+            self.planeWidgetX = ImagePlaneWidget( self, 0 )
+            self.planeWidgetX.SetPicker(picker)
+            self.planeWidgetX.SetRenderer( self.renderer )
+            prop1 = self.planeWidgetX.GetPlaneProperty()
+            prop1.SetColor(1, 0, 0)
+            self.planeWidgetX.SetUserControlledLookupTable(1)
+            self.planeWidgetX.SetLookupTable( lut )
+            
+#            self.planeWidgetX.SetSliceIndex( self.slicePosition[0] )
+        self.planeWidgetX.SetInput( self.input(), contourInput )
         self.planeWidgetX.SetPlaneOrientationToXAxes()
-        self.planeWidgetX.SetSliceIndex( self.slicePosition[0] )
-        self.planeWidgetX.SetPicker(picker)
-        prop1 = self.planeWidgetX.GetPlaneProperty()
-        prop1.SetColor(1, 0, 0)
-        self.planeWidgetX.SetUserControlledLookupTable(1)
-        self.planeWidgetX.SetLookupTable( lut )
 #        self.planeWidgetX.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 0 ) )
 #            self.planeWidgetX.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
 #            self.planeWidgetX.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
         self.planeWidgetX.PlaceWidget( bounds )       
 
 #        if bounds[0] < 0.0: self.planeWidgetX.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
-#        self.planeWidgetX.SetOrigin( self.input.GetOrigin() )
+#        self.planeWidgetX.SetOrigin( self.input().GetOrigin() )
 #        self.planeWidgetX.AddObserver( 'AnyEvent', self.TestObserver )
                 
-        self.planeWidgetY = ImagePlaneWidget( self, 1)
-#        self.planeWidgetY.DisplayTextOff()
-        self.planeWidgetY.SetRenderer( self.renderer )
-        self.planeWidgetY.SetInput( self.input, self.contourInput )
-        self.planeWidgetY.SetPlaneOrientationToYAxes()
-        self.planeWidgetY.SetUserControlledLookupTable(1)
-        self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
-        self.planeWidgetY.SetPicker(picker)
-#        self.planeWidgetY.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 1 ) )
-#        self.planeWidgetY.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
-#        self.planeWidgetY.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
-#        self.planeWidgetY.AddObserver( 'AnyEvent', self.TestObserver )
-        prop2 = self.planeWidgetY.GetPlaneProperty()
-        prop2.SetColor(1, 1, 0)
-#        if bounds[0] < 0.0: self.planeWidgetY.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
-        self.planeWidgetY.PlaceWidget(  bounds  )        
-        self.planeWidgetY.SetUserControlledLookupTable(1)
-        self.planeWidgetY.SetLookupTable( lut )
+        if self.planeWidgetY == None: 
+            self.planeWidgetY = ImagePlaneWidget( self, 1)
+            self.planeWidgetY.SetPicker(picker)
+            self.planeWidgetY.SetRenderer( self.renderer )
+            self.planeWidgetY.SetUserControlledLookupTable(1)
+#            self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
+            prop2 = self.planeWidgetY.GetPlaneProperty()
+            prop2.SetColor(1, 1, 0)
+            self.planeWidgetY.SetUserControlledLookupTable(1)
+            self.planeWidgetY.SetLookupTable( lut )
         
-        self.planeWidgetZ = ImagePlaneWidget( self, 2 )
-#        self.planeWidgetZ.DisplayTextOff()
-        self.planeWidgetZ.SetRenderer( self.renderer )
-        self.planeWidgetZ.SetInput( self.input, self.contourInput )
+        self.planeWidgetY.SetInput( self.input(), contourInput )
+        self.planeWidgetY.SetPlaneOrientationToYAxes()       
+        self.planeWidgetY.PlaceWidget(  bounds  ) 
+        
+        if self.planeWidgetZ == None:
+            self.planeWidgetZ = ImagePlaneWidget( self, 2 )
+            self.planeWidgetZ.SetPicker(picker)
+            self.planeWidgetZ.SetRenderer( self.renderer )
+#            self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
+            prop3 = self.planeWidgetZ.GetPlaneProperty()
+            prop3.SetColor(0, 0, 1)
+            self.planeWidgetZ.SetUserControlledLookupTable(1)
+            self.planeWidgetZ.SetLookupTable( lut )
+       
+        self.planeWidgetZ.SetInput( self.input(), contourInput )
         self.planeWidgetZ.SetPlaneOrientationToZAxes()
-        self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
-        self.planeWidgetZ.SetPicker(picker)
-#        self.planeWidgetZ.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 2 ) )
-#        self.planeWidgetZ.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
-#        self.planeWidgetZ.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
-#        self.planeWidgetZ.AddObserver( 'AnyEvent', self.TestObserver )
-#        self.planeWidgetZ.AddObserver( 'LeftButtonPressEvent', self.onSlicerLeftButtonPress )
-#        self.planeWidgetZ.AddObserver( 'RightButtonPressEvent', self.onSlicerRightButtonPress )
-                
-        prop3 = self.planeWidgetZ.GetPlaneProperty()
-        prop3.SetColor(0, 0, 1)
-#        if bounds[0] < 0.0: self.planeWidgetZ.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
         self.planeWidgetZ.PlaceWidget( bounds )
-
-        self.planeWidgetZ.SetUserControlledLookupTable(1)
-        self.planeWidgetZ.SetLookupTable( lut )
         self.planeWidgetZ.SetOutlineMap(self.buildOutlineMap())
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.updateOpacity() 
         
-        if contourModule <>None:
-            self.generateContours = True
-            self.updateContourMetadata()     
+        if (contour_ispec <> None) and (contour_ispec.input <> None) and (self.contours == None):
+            rangeBounds = self.getRangeBounds(1)
+            colormapManager = self.getColormapManager( index=1 )
+            self.generateContours = True   
             self.contours = vtk.vtkContourFilter()
-            self.contours.GenerateValues( self.NumContours, self.rangeBounds[0], self.rangeBounds[1] )
+            self.contours.GenerateValues( self.NumContours, rangeBounds[0], rangeBounds[1] )
      
             self.contourLineMapperer = vtk.vtkPolyDataMapper()
             self.contourLineMapperer.SetInputConnection( self.contours.GetOutputPort() )
-            self.contourLineMapperer.SetScalarRange( self.rangeBounds[0], self.rangeBounds[1] )
+            self.contourLineMapperer.SetScalarRange( rangeBounds[0], rangeBounds[1] )
             self.contourLineMapperer.SetColorModeToMapScalars()
-            self.contourLineMapperer.SetLookupTable( self.getLut( 1 ) )
+            self.contourLineMapperer.SetLookupTable( colormapManager.lut )
+            self.contourLineMapperer.UseLookupTableScalarRangeOn()
 
 #        self.imageRescale = vtk.vtkImageReslice() 
 #        self.imageRescale.SetOutputDimensionality(2) 
@@ -308,106 +316,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         
         return img.GetOutput()
     
-#    def buildPipeline0(self):
-#        """ execute()  None
-#        Dispatch the vtkRenderer to the actual rendering widget
-#        """           
-#        # The 3 image plane widgets are used to probe the dataset.    
-#        print " Volume Slicer buildPipeline, id = %s " % str( id(self) )
-#        self.sliceOutput = vtk.vtkImageData()  
-#        xMin, xMax, yMin, yMax, zMin, zMax = self.input.GetWholeExtent()       
-#        self.slicePosition = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
-#        dataType = self.input.GetScalarTypeAsString()
-#        bounds = list(self.input.GetBounds()) 
-#        origin = self.input.GetOrigin()
-#        if (dataType <> 'float') and (dataType <> 'double'):
-#             self.setMaxScalarValue( self.input.GetScalarType() )
-#        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input.GetWholeExtent()), str(origin), str(bounds) )
-#      
-#        # The shared picker enables us to use 3 planes at one time
-#        # and gets the picking order right
-#        picker = vtk.vtkCellPicker()
-#        picker.SetTolerance(0.005) 
-#
-#        self.planeWidgetX = vtk.vtkImagePlaneWidget()
-#        self.planeWidgetX.DisplayTextOff()
-#        self.planeWidgetX.SetInput( self.input )
-#        self.planeWidgetX.SetPlaneOrientationToXAxes()
-#        self.planeWidgetX.SetSliceIndex( self.slicePosition[0] )
-#        self.planeWidgetX.SetPicker(picker)
-#        self.planeWidgetX.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )
-#        prop1 = self.planeWidgetX.GetPlaneProperty()
-#        prop1.SetColor(1, 0, 0)
-#        self.planeWidgetX.SetUserControlledLookupTable(1)
-#        self.planeWidgetX.SetLookupTable( self.lut )
-#        self.planeWidgetX.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 0 ) )
-#        self.planeWidgetX.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
-#        self.planeWidgetX.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
-#        self.planeWidgetX.PlaceWidget(  bounds  )
-#   
-#
-##        if bounds[0] < 0.0: self.planeWidgetX.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
-##        self.planeWidgetX.SetOrigin( self.input.GetOrigin() )
-##        self.planeWidgetX.AddObserver( 'AnyEvent', self.TestObserver )
-#                
-#        self.planeWidgetY = vtk.vtkImagePlaneWidget()
-#        self.planeWidgetY.DisplayTextOff()
-#        self.planeWidgetY.SetInput( self.input )
-#        self.planeWidgetY.SetPlaneOrientationToYAxes()
-#        self.planeWidgetY.SetUserControlledLookupTable(1)
-#        self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
-#        self.planeWidgetY.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )
-#        self.planeWidgetY.SetPicker(picker)
-#        self.planeWidgetY.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 1 ) )
-#        self.planeWidgetY.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
-#        self.planeWidgetY.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 1 ) )
-##        self.planeWidgetY.AddObserver( 'AnyEvent', self.TestObserver )
-#        prop2 = self.planeWidgetY.GetPlaneProperty()
-#        prop2.SetColor(1, 1, 0)
-##        if bounds[0] < 0.0: self.planeWidgetY.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
-#        self.planeWidgetY.PlaceWidget(  bounds  )        
-#        self.planeWidgetY.SetUserControlledLookupTable(1)
-#        self.planeWidgetY.SetLookupTable( self.lut )
-#        
-#        self.planeWidgetZ = vtk.vtkImagePlaneWidget()
-#        self.planeWidgetZ.DisplayTextOff()
-#        self.planeWidgetZ.SetInput( self.input )
-#        self.planeWidgetZ.SetPlaneOrientationToZAxes()
-#        self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
-#        self.planeWidgetZ.SetRightButtonAction( VTK_SLICE_MOTION_ACTION )
-#        self.planeWidgetZ.SetPicker(picker)
-#        self.planeWidgetZ.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 2 ) )
-#        self.planeWidgetZ.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
-#        self.planeWidgetZ.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 2 ) )
-##        self.planeWidgetZ.AddObserver( 'AnyEvent', self.TestObserver )
-#        self.planeWidgetZ.AddObserver( 'LeftButtonPressEvent', self.onSlicerLeftButtonPress )
-#        self.planeWidgetZ.AddObserver( 'RightButtonPressEvent', self.onSlicerRightButtonPress )
-#                
-#        prop3 = self.planeWidgetZ.GetPlaneProperty()
-#        prop3.SetColor(0, 0, 1)
-##        if bounds[0] < 0.0: self.planeWidgetZ.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
-#        self.planeWidgetZ.PlaceWidget( bounds )
-#
-#        self.planeWidgetZ.SetUserControlledLookupTable(1)
-#        self.planeWidgetZ.SetLookupTable( self.lut )
-#        self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
-#        self.updateOpacity() 
-##        self.imageRescale = vtk.vtkImageReslice() 
-##        self.imageRescale.SetOutputDimensionality(2) 
-##        self.imageRescale.SetInterpolationModeToLinear() 
-##        self.imageRescale.SetResliceAxesDirectionCosines( [-1, 0, 0], [0, -1, 0], [0, 0, -1] )
-#
-##        self.set2DOutput( port=self.imageRescale.GetOutputPort(), name='slice' ) 
-#        self.set3DOutput() 
-
-#    def SliceObserver(self, index, caller, event ):
-#        iS = caller.GetSliceIndex()
-#        self.slicePosition[index] = iS
-#        print "Volume Slicer[%d], set slice index = %d" % ( index, iS )
-
     def updateContourDensity(self):
         if self.generateContours:
-            self.contours.GenerateValues( self.NumContours, self.rangeBounds[0], self.rangeBounds[1] )
+            rangeBounds = self.getRangeBounds(1)
+            self.contours.GenerateValues( self.NumContours, rangeBounds[0], rangeBounds[1] )
             self.contours.Modified()
             self.render()
         
@@ -418,38 +330,14 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def onSlicerRightButtonPress( self, caller, event ):
         self.currentButton = self.RIGHT_BUTTON
         return 0
-         
-#    def updateModule1(self):
-#        self.transferInputLayer( self.sliceInput ) 
-#        self.SliceObserver( self.planeWidgetZ ) 
-
-#    def applyConfiguration( self ):
-#        PersistentVisualizationModule.applyConfiguration( self )
-#        self.planeWidgetX.SetSliceIndex( self.slicePosition[0] ) 
-#        self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
-#        self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
                 
     def updateModule(self, **args ):
-        self.planeWidgetX.SetInput( self.input, self.contourInput )         
-        self.planeWidgetY.SetInput( self.input, self.contourInput )         
-        self.planeWidgetZ.SetInput( self.input, self.contourInput ) 
-        self.planeWidgetX.SetSliceIndex( self.slicePosition[0] ) 
-        self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
-        self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
+        contour_ispec = self.getInputSpec(  1 )       
+        contourInput = contour_ispec.input if contour_ispec <> None else None
+        self.planeWidgetX.SetInput( self.input(), contourInput )         
+        self.planeWidgetY.SetInput( self.input(), contourInput )         
+        self.planeWidgetZ.SetInput( self.input(), contourInput ) 
         self.set3DOutput()
-
-#        print " Volume Slicer: updateModule, cachable: %s " % str( self.is_cacheable() )
-#        print " ******** Input extent: %s, origin: %s, spacing: %s " % ( self.input.GetExtent(), self.input.GetOrigin(), self.input.GetSpacing() )
-        p1 = self.planeWidgetX.GetPoint1()
-#        print " >++++++++++++++++++> UpdateModule: sliceIndex0 = %d, xpos = %.2f " % ( self.slicePosition[0], p1[0] )
-
-#        na1 = self.input.GetPointData().GetNumberOfArrays()
-#        self.setActiveScalars()
-#        na2 = self.input.GetPointData().GetNumberOfArrays()
-#        self.SliceObserver( 2, self.planeWidgetZ )
-        
-#        if not self.updatingPlacement:
-#            self.UpdateWidgetPlacement()
            
     def TestObserver( self, caller=None, event = None ):
         print " Volume Slicer TestObserver: event = %s, " % ( event )
@@ -467,16 +355,18 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 if not self.isSlicing:
                     HyperwallManager.getInstance().setInteractionState( 'VolumeSlicer.Slicing' )
                     self.isSlicing = True
+                ispec = self.inputSpecs[ 0 ] 
                 image_value = caller.GetCurrentImageValue() 
                 cpos = caller.GetCurrentCursorPosition()     
                 dataValue = self.getDataValue( image_value )
-                wpos = self.getWorldCoords( cpos )
+                wpos = ispec.getWorldCoords( cpos )
                 if self.generateContours:
                     contour_image_value = caller.GetCurrentImageValue2() 
-                    contour_value = self.getDataValue( contour_image_value )
-                    textDisplay = " Position: (%s, %s, %s), Value: %.3G %s, Contour Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, self.units, contour_value, self.contour_units )
+                    contour_value = self.getDataValue( contour_image_value, 1 )
+                    contour_units = self.getUnits(1)
+                    textDisplay = " Position: (%s, %s, %s), Value: %.3G %s, Contour Value: %.3G %s" % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units, contour_value, contour_units )
                 else:
-                    textDisplay = " Position: (%s, %s, %s), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, self.units )
+                    textDisplay = " Position: (%s, %s, %s), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units )
                 sliceIndex = caller.GetSliceIndex() 
                 self.slicePosition[iAxis] = sliceIndex
                 self.updateTextDisplay( textDisplay )
@@ -485,13 +375,14 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 PM_VolumeSlicer.global_coords = coord
                 screenPos = caller.GetCurrentScreenPosition()
                 self.updateLensDisplay(screenPos, coord)
-                
-            if action == ImagePlaneWidget.Pushing:  
+
+            if action == ImagePlaneWidget.Pushing: 
+                ispec = self.inputSpecs[ 0 ]  
                 if not self.isSlicing:
                     HyperwallManager.getInstance().setInteractionState( 'VolumeSlicer.Slicing' )
                     self.isSlicing = True 
                 sliceIndex = caller.GetSliceIndex() 
-                axisName, spos = self.getWorldCoord( sliceIndex, iAxis )
+                axisName, spos = ispec.getWorldCoord( sliceIndex, iAxis )
                 textDisplay = " %s = %s ." % ( axisName, spos )
                 if iAxis == 0:
                     p1 = caller.GetPoint1()
@@ -511,8 +402,24 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 contourLineActor.SetPosition( origin[0], origin[1], origin[2] )
 #                contourLineActor.SetOrigin( origin[0] + 0.1, origin[1] + 0.1, origin[2] + 0.1 )
                 self.setVisibleContour( iAxis )
+                
+            self.render()
 #                print " Generate Contours, data dims = %s, pos = %s %s %s " % ( str( slice_data.GetDimensions() ), str(pos1), str(pos2), str(origin) )
 
+    def setContourActorOrientation( self, iAxis, contourLineActor ):
+        if iAxis == 1: 
+            contourLineActor.SetOrientation(90,0,0)
+        elif iAxis == 0: 
+            contourLineActor.SetOrientation(90,0,90)   
+
+    def updateContourActorOrientations( self ):
+        for contourLineActorItem in self.contourLineActors.items():
+            if contourLineActorItem[1].GetVisibility( ): 
+                self.setContourActorOrientation( contourLineActorItem[0], contourLineActorItem[1] )
+        self.render()
+        pass
+
+                                     
     def getContourActor( self, iAxis, **args ):
         contourLineActor = self.contourLineActors.get( iAxis, None )
         if contourLineActor == None:
@@ -521,11 +428,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             contourLineActor.GetProperty().SetLineWidth(2)     
             self.renderer.AddActor( contourLineActor ) 
             self.contourLineActors[iAxis] = contourLineActor
-            print " GetContourActor %d, origin = %s, position = %s " % ( iAxis, str( contourLineActor.GetOrigin() ), str( contourLineActor.GetPosition() ) )
-            if iAxis == 1: 
-                contourLineActor.SetOrientation(90,0,0)
-            elif iAxis == 0: 
-                contourLineActor.SetOrientation(90,0,90)                              
+            self.setContourActorOrientation( iAxis, contourLineActor )
+#            print " GetContourActor %d, origin = %s, position = %s " % ( iAxis, str( contourLineActor.GetOrigin() ), str( contourLineActor.GetPosition() ) )
         return contourLineActor
 
 #    def createColorBarActor(self):
@@ -641,21 +545,28 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.ColorLeveler.startWindowLevel( x, y )
 
     def scaleColormap( self, ctf_data, cmap_index=0, **args ):
-        self.imageRange = self.getImageValues( ctf_data[0:2] ) 
-        colormapManager = self.getColormapManager( index=cmap_index )
-        colormapManager.setScale( self.imageRange, ctf_data )
-        self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
-        print " Volume Slicer[%d]: Scale Colormap: [ %d, %d ] ( %.2g, %.2g ) " % ( self.moduleID, int(self.imageRange[0]), int(self.imageRange[1]), ctf_data[0], ctf_data[1] )
+        ispec = self.inputSpecs[ cmap_index ]
+        if ispec and ispec.input: 
+            colormapManager = self.getColormapManager( index=cmap_index )
+            if not colormapManager.matchDisplayRange( ctf_data ):
+                imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
+                colormapManager.setScale( imageRange, ctf_data )
+                if self.contourLineMapperer: 
+                    self.contourLineMapperer.Modified()
+                ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
+    #        print " Volume Slicer[%d]: Scale Colormap: [ %d, %d ] ( %.2g, %.2g ) " % ( self.moduleID, int(self.imageRange[0]), int(self.imageRange[1]), ctf_data[0], ctf_data[1] )
                 
-    def finalizeLeveling( self ):
+    def finalizeLeveling( self, cmap_index=0 ):
         isLeveling =  PersistentVisualizationModule.finalizeLeveling( self )
         if isLeveling:
-            self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
+            ispec = self.inputSpecs[ cmap_index ] 
+            ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
 #            self.updateSliceOutput()
 
-    def initializeConfiguration(self):
+    def initializeConfiguration( self, cmap_index=0 ):
         PersistentModule.initializeConfiguration(self)
-        self.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
+        ispec = self.inputSpecs[ cmap_index ] 
+        ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
 #        self.updateSliceOutput()
 
     def updateColorScale( self, caller, event ):
@@ -671,18 +582,18 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         ctrl = caller.GetControlKey() 
         shift = caller.GetShiftKey() 
 #        print " -- Key Press: %c ( %d: %s ), ctrl: %s, shift: %s, alt: %s, event = %s " % ( key, ord(key), str(keysym), bool(ctrl), bool(shift), bool(alt), str( event ) )
-        if ( key == 'x' ): 
-            self.planeWidgetX.SetPlaneOrientationToXAxes() 
-            self.planeWidgetX.SetSliceIndex( 0 ) #self.slicePosition[0] )
-            self.render()      
-        elif ( key == 'y' ):  
-            self.planeWidgetY.SetPlaneOrientationToYAxes()
-            self.planeWidgetY.SetSliceIndex( 0 ) #self.slicePosition[1] )
-            self.render()       
-        elif ( key == 'z' ):  
-            self.planeWidgetZ.SetPlaneOrientationToZAxes()
-            self.planeWidgetZ.SetSliceIndex( 0 ) #self.slicePosition[2] )
-            self.render() 
+#        if ( key == 'x' ): 
+#            self.planeWidgetX.SetPlaneOrientationToXAxes() 
+#            self.planeWidgetX.SetSliceIndex( 0 ) #self.slicePosition[0] )
+#            self.render()      
+#        elif ( key == 'y' ):  
+#            self.planeWidgetY.SetPlaneOrientationToYAxes()
+#            self.planeWidgetY.SetSliceIndex( 0 ) #self.slicePosition[1] )
+#            self.render()       
+#        elif ( key == 'z' ):  
+#            self.planeWidgetZ.SetPlaneOrientationToZAxes()
+#            self.planeWidgetZ.SetSliceIndex( 0 ) #self.slicePosition[2] )
+#            self.render() 
              
               
     def onKeyRelease( self, caller, event ):
@@ -700,9 +611,9 @@ if __name__ == '__main__':
     
     
     
-#        self.spacing = self.input.GetSpacing()
+#        self.spacing = self.input().GetSpacing()
 #        sx, sy, sz = self.spacing       
-#        origin = self.input.GetOrigin()
+#        origin = self.input().GetOrigin()
 #        ox, oy, oz = origin
 #        center = [ origin[0] + self.spacing[0] * 0.5 * (xMin + xMax), origin[1] + self.spacing[1] * 0.5 * (yMin + yMax), origin[2] + self.spacing[2] * 0.5 * (zMin + zMax)]
 #        self.sliceMatrix = [ vtk.vtkMatrix4x4(), vtk.vtkMatrix4x4(), vtk.vtkMatrix4x4() ]

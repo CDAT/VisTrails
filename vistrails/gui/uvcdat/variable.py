@@ -27,6 +27,16 @@ from packages.uvcdat_cdms.init import CDMSVariable
 from packages.pvclimate.pvvariable import PVVariable
 from gui.uvcdat.pvreadermanager import PVReaderManager
 
+class QBookMarksListWidget(uvcdatCommons.QDragListWidget):
+    def keyReleaseEvent(self,event):
+        if event.key() in [QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
+            item = self.takeItem(self.currentRow())
+            if item is not None:
+                txt=str(item.text())
+                customizeUVCDAT.fileBookmarks.pop(customizeUVCDAT.fileBookmarks.index(txt))
+            
+            
+        #event.accept()
 
 class VariableProperties(QtGui.QDockWidget):
 
@@ -207,7 +217,7 @@ class VariableProperties(QtGui.QDockWidget):
         h=QtGui.QHBoxLayout()
         l=QtGui.QLabel("Bookmarks:")
         l.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Preferred)
-        self.bookmarksList=uvcdatCommons.QDragListWidget(type="bookmarks",dropTypes=["history"])
+        self.bookmarksList=QBookMarksListWidget(type="bookmarks",dropTypes=["history"])
         #self.bookmarksList.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Minimum)
         self.bookmarksList.setAlternatingRowColors(True)
         self.bookmarksList.setSortingEnabled(True)
@@ -277,10 +287,10 @@ class VariableProperties(QtGui.QDockWidget):
         self.updateAxesFromRoi()
 
     def updateAxesFromRoi(self):
-        print "Selected roi: %s " % str( self.roi )
+        #print "Selected roi: %s " % str( self.roi )
         # Add code here to update Lat Lon sliders.
         n = self.axisListHolder.gridLayout.rowCount()
-        print "ok in roi self is: ",n
+        #print "ok in roi self is: ",n
         for i in range(len(self.axisListHolder.axisWidgets)):
             axis = self.axisListHolder.axisWidgets[i]
             if axis.axis.isLatitude() or axis.virtual==1:

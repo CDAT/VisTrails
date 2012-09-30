@@ -46,14 +46,17 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__( self, mid, createColormap=False, requiresPrimaryInput=False, layerDepParms=['portData'], **args)
+        self.datasetId = None
         self.fileSpecs = None
         self.varSpecs = None
         self.gridSpecs = None
         self.currentTime = 0
         self.currentLevel = None
+        self.timeIndex = 0
+        self.useTimeIndex = False
         self.timeAxis = None
         if self.outputType == CDMSDataType.Hoffmuller:
-            self.addConfigurableGuiFunction( 'chooseLevel', LevelConfigurationDialog, 'L', label='Choose Level' ) 
+            self.addUVCDATConfigGuiFunction( 'chooseLevel', LevelConfigurationDialog, 'L', label='Choose Level' ) 
        
     def getImageDataCache(self):
         return self.imageDataCache.setdefault( self.moduleID, {} )
@@ -135,20 +138,23 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     t0 = comp_time_values[0].torel(ReferenceTimeUnits).value
                     dt = 0.0
                     if self.nTimesteps > 1:
-                        t1 = comp_time_values[1].torel(ReferenceTimeUnits).value
-                        dt = t1-t0
+                        t1 = comp_time_values[-1].torel(ReferenceTimeUnits).value
+                        dt = (t1-t0)/(self.nTimesteps-1)
                         self.timeRange = [ 0, self.nTimesteps, t0, dt ]
                 except:
                     values = self.timeAxis.getValue()
                     t0 = values[0] if len(values) > 0 else 0
-                    dt = ( values[1] - values[0] ) if len(values) > 1 else 0
+                    t1 = values[-1] if len(values) > 1 else t0
+                    dt = ( values[1] - values[0] )/( len(values) - 1 ) if len(values) > 1 else 0
                     self.timeRange = [ 0, self.nTimesteps, t0, dt ]
             self.setParameter( "timeRange" , self.timeRange )
             self.cdmsDataset.timeRange = self.timeRange
             self.timeLabels = self.cdmsDataset.getTimeValues()
-            timeValue = args.get( 'timeValue', self.cdmsDataset.timeRange[2] )
-            self.timeValue = cdtime.reltime( float(timeValue), ReferenceTimeUnits )
-            print "Set Time: %s, %s, NTS: %d, Range: %s" % ( str(timeValue), str(self.timeValue), self.nTimesteps, str(self.timeRange) )
+            timeData = args.get( 'timeData', [ self.cdmsDataset.timeRange[2], 0, False ] )
+            self.timeValue = cdtime.reltime( float(timeData[0]), ReferenceTimeUnits )
+            self.timeIndex = timeData[1]
+            self.useTimeIndex = timeData[2]
+            print "Set Time: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
 #            print "Time Step Labels: %s" % str( self.timeLabels )
             for iVar in range( 2,5 ):
                 cdms_var2 = self.getInputValue( "variable%d" % iVar  ) 
@@ -167,11 +173,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 self.datasetId = dsetId
                 ModuleStore.archiveCdmsDataset( self.datasetId, self.cdmsDataset )
                 self.timeRange = self.cdmsDataset.timeRange
-                timeValue = args.get( 'timeValue', self.timeRange[2] )
-                self.timeValue = cdtime.reltime( float(timeValue), ReferenceTimeUnits )
+                timeData = args.get( 'timeData', [ self.cdmsDataset.timeRange[2], 0, False ] )
+                self.timeValue = cdtime.reltime( float(timeData[0]), ReferenceTimeUnits )
+                self.timeIndex = timeData[1]
+                self.useTimeIndex = timeData[2]
                 self.timeLabels = self.cdmsDataset.getTimeValues()
                 self.nTimesteps = self.timeRange[1]
-                print "Set Time: %s, %s, NTS: %d, Range: %s" % ( str(timeValue), str(self.timeValue), self.nTimesteps, str(self.timeRange) )
+                print "Set Time: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
 #                print "Time Step Labels: %s" % str( self.timeLabels ) 
                 self.generateOutput()
                 if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
@@ -270,7 +278,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self._max_scalar_value = getMaxScalarValue( scalar_dtype )
             self._range = [ 0.0, self._max_scalar_value ]  
             datatype = getDatatypeString( scalar_dtype )
-            iTimestep = 0 if varName == '__zeros__' else self.getTimestep()
+            iTimestep = 0 if varName == '__zeros__' else self.timeIndex if self.useTimeIndex else self.getTimestep()
             varDataIdIndex = iTimestep
             if (self.outputType == CDMSDataType.Hoffmuller):
                 if ( selectedLevel == None ):
@@ -289,7 +297,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     varDataSpecs = copy.deepcopy( exampleVarDataSpecs )
                     varDataSpecs['newDataArray'] = newDataArray.ravel('F')  
                 else: 
-                    tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue ] 
+                    tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue, iTimestep, self.useTimeIndex ] 
                     varData = self.cdmsDataset.getVarDataCube( dsid, varName, tval, selectedLevel )
                     if varData.id <> 'NULL':
                         varDataSpecs = self.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale, self.outputType, ds )
@@ -354,7 +362,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         pointData = image_data.GetPointData()
         for aname in range( pointData.GetNumberOfArrays() ): 
             pointData.RemoveArray( pointData.GetArrayName(aname) )
-        self.fieldData.RemoveArray('metadata')
+        fieldData = self.getFieldData()
+        fieldData.RemoveArray('metadata')
         extent = image_data.GetExtent()    
         scalars, nTup = None, 0
         vars = []      
@@ -414,7 +423,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     md[ 'title' ] = getTitle( dsid, varName, var_md )
                 md[ 'valueRange-'+varName ] = vmd[ 'valueRange']                   
         enc_mdata = encodeToString( md ) 
-        if enc_mdata: self.fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                       
+        if enc_mdata: fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                       
         image_data.Modified()
         return cachedImageDataName
 
@@ -519,8 +528,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         if dset:  gridSpecs['attributes'] = dset.dataset.attributes
         return gridSpecs   
                  
-    def computeMetadata( self, metadata={}, port=None ):
-        PersistentVisualizationModule.computeMetadata( self, metadata )
+    def computeMetadata( self ):
+        metadata = PersistentVisualizationModule.computeMetadata( self )
         if self.cdmsDataset:
             metadata[ 'vars2d' ] = self.cdmsDataset.getVariableList( 2 )
             metadata[ 'vars3d' ] = self.cdmsDataset.getVariableList( 3 )

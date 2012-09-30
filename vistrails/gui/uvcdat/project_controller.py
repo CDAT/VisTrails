@@ -63,6 +63,7 @@ class ProjectController(QtCore.QObject):
     def __init__(self, vt_controller, name=''):
         QtCore.QObject.__init__(self)
         self.vt_controller = vt_controller
+        self.vt_controller.uvcdat_controller = self
         self.name = name
         self.defined_variables = {}
         self.computed_variables = {}
@@ -71,6 +72,7 @@ class ProjectController(QtCore.QObject):
         self.plot_registry = get_plot_registry()
         self.plot_manager = get_plot_manager()
         self.current_cell_coords = [ -1, -1 ]
+        self.current_sheetName = None
         
     def add_defined_variable(self, var):
         self.defined_variables[var.name] = var
@@ -632,7 +634,7 @@ class ProjectController(QtCore.QObject):
         if ( row <> self.current_cell_coords[0] ) or ( col <> self.current_cell_coords[1] ):
             self.update_plot_configure(sheetName, row, col)
             self.current_cell_coords = [ row, col ]
-        
+            self.current_sheetName = sheetName
 
     def plot_was_dropped(self, info):
         """plot_was_dropped(info: (plot, sheetName, row, col) """
@@ -836,6 +838,7 @@ class ProjectController(QtCore.QObject):
                         reuse_workflow=False):
         #Assuming that all plots in a cell are from the same package
         helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
+        
         if not reuse_workflow:
             action = helper.build_plot_pipeline_action(self.vt_controller, 
                                                        cell.current_parent_version, 
@@ -890,6 +893,17 @@ class ProjectController(QtCore.QObject):
                     self.execute_plot(cell.current_parent_version)
                     self.update_plot_configure(sheetName, row, col)
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
-                      None, None, cell.plots[0].package, cell.current_parent_version)     
-   
-    
+                          None, None, cell.plots[0].package, 
+                          cell.current_parent_version)
+
+    def cell_was_changed(self, action):
+        if not action:
+            return
+        sheetName = self.current_sheetName
+        (row, col) = self.current_cell_coords
+        if sheetName in self.sheet_map:
+            cell = self.sheet_map[sheetName][(row, col)]
+            cell.current_parent_version = action.id
+            self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
+                      None, None, cell.plots[0].package, 
+                      cell.current_parent_version)

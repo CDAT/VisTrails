@@ -141,7 +141,6 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.vthresh = None
         self.filterOutliers = False
         self.refinement = [ 0.0, 0.5 ]
-        self.imageRange = None
         self.otf_data = None
         self.ctf_data = None
         self.updatingOTF = False
@@ -149,9 +148,9 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.transFunctGraphVisible = False
         self.transferFunctionConfig = None
         self.setupTransferFunctionConfigDialog()
-        self.addConfigurableLevelingFunction( 'colorScale',    'C', label='Colormap Scale', units='data', setLevel=self.generateCTF, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True )
-        self.addConfigurableLevelingFunction( 'functionScale', 'T', label='VR Transfer Function Scale', units='data', setLevel=self.generateOTF, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRange=True, initRefinement=[ self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
-        self.addConfigurableLevelingFunction( 'opacityScale',  'o', label='VR Transfer Function Opacity', setLevel=self.adjustOpacity, layerDependent=True, adjustRange=False  )
+        self.addConfigurableLevelingFunction( 'colorScale',    'C', label='Colormap Scale', units='data', setLevel=self.generateCTF, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0 )
+        self.addConfigurableLevelingFunction( 'functionScale', 'T', label='VR Transfer Function Scale', units='data', setLevel=self.generateOTF, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0, initRefinement=[ self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
+        self.addConfigurableLevelingFunction( 'opacityScale',  'o', label='VR Transfer Function Opacity', setLevel=self.adjustOpacity, layerDependent=True, adjustRangeInput=0  )
         self.addConfigurableMethod( 'showTransFunctGraph', self.showTransFunctGraph, 'g', label='VR Transfer Function Graph' )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
     
@@ -160,7 +159,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #            sz = ( zscale_data[0] + zscale_data[1] ) / 0.5
 #            self.volume.SetScale( 1.0, 1.0, sz )
 #            self.volume.Modified()
-#            print " VR >---------------> Set zscale: %.2f, scale: %s, spacing: %s " % ( sz, str(self.volume.GetScale()), str(self.input.GetSpacing()) )
+#            print " VR >---------------> Set zscale: %.2f, scale: %s, spacing: %s " % ( sz, str(self.volume.GetScale()), str(self.input().GetSpacing()) )
 
     def getZScale( self ):
         if self.volume <> None:
@@ -180,27 +179,28 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         if self.transFunctGraphVisible: self.transferFunctionConfig.show()
     
     def configTransferFunction(self, nodeIndex, value0, value1, value2 ):
+        rangeBounds = self.getRangeBounds()
         if nodeIndex == self.NI_RANGE_POSITION:                   
             self.max_opacity = value1
-            range_size = ( self.rangeBounds[1] - self.rangeBounds[0])  
-            new_peak = bound( self.getImageValue( value0 ), [ self.rangeBounds[0] + 0.01*range_size, self.rangeBounds[0] + 0.99*range_size ] )
+            range_size = ( rangeBounds[1] - rangeBounds[0])  
+            new_peak = bound( self.getImageValue( value0 ), [ rangeBounds[0] + 0.01*range_size, rangeBounds[0] + 0.99*range_size ] )
             w = ( self._range[1] - self._range[0]  ) / 2.0
             self._range[0] = new_peak - w
             self._range[1] = new_peak + w
-            if self._range[0] < self.rangeBounds[0]:
-                self._range[0] = self.rangeBounds[0]
+            if self._range[0] < rangeBounds[0]:
+                self._range[0] = rangeBounds[0]
                 if 2.0*new_peak < range_size: 
-                    self._range[1] = self.rangeBounds[0] + 2.0*new_peak
+                    self._range[1] = rangeBounds[0] + 2.0*new_peak
                 else: 
-                    self._range[1] = self.rangeBounds[1]
-            if self._range[1] > self.rangeBounds[1]:
-                self._range[1] = self.rangeBounds[1]              
-                self._range[0] = self.rangeBounds[1] - 2.0*( self.rangeBounds[1] - new_peak )
-                if self._range[0] < self.rangeBounds[0]:  self._range[0] = self.rangeBounds[0]
+                    self._range[1] = rangeBounds[1]
+            if self._range[1] > rangeBounds[1]:
+                self._range[1] = rangeBounds[1]              
+                self._range[0] = rangeBounds[1] - 2.0*( rangeBounds[1] - new_peak )
+                if self._range[0] < rangeBounds[0]:  self._range[0] = rangeBounds[0]
 #            print " config RANGE_POSITION: ", nodeIndex, self.max_opacity, new_peak, str( self._range ) 
         elif nodeIndex == self.NI_RANGE_WIDTH:
             self._range[1] = self.getImageValue( value0 )
-            if self._range[1] > self.rangeBounds[1]: self._range[1] = self.rangeBounds[1] 
+            if self._range[1] > rangeBounds[1]: self._range[1] = rangeBounds[1] 
 #            print " config RANGE_WIDTH: ", nodeIndex, value0, self._range[1] 
         elif nodeIndex == self.NI_SHAPE_ADJ_0:
             self.refinement[0] = value2
@@ -262,25 +262,26 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """  
-        extent = self.input.GetExtent()  
+        extent = self.input().GetExtent() 
+        rangeBounds = self.getRangeBounds() 
         self.sliceCenter = [ (extent[2*i+1]-extent[2*i])/2 for i in range(3) ]       
-        spacing = self.input.GetSpacing()
+        spacing = self.input().GetSpacing()
         sx, sy, sz = spacing       
-        origin = self.input.GetOrigin()
+        origin = self.input().GetOrigin()
         ox, oy, oz = origin
-        self._range = [ self.rangeBounds[0], self.rangeBounds[1], self.rangeBounds[0], 0 ]
-        dataType = self.input.GetScalarTypeAsString()
-        self.setMaxScalarValue( self.input.GetScalarType() )
+        self._range = [ rangeBounds[0], rangeBounds[1], rangeBounds[0], 0 ]
+        dataType = self.input().GetScalarTypeAsString()
+        self.setMaxScalarValue( self.input().GetScalarType() )
         self.pos = [ spacing[i]*extent[2*i] for i in range(3) ]
 #        if ( (origin[0] + self.pos[0]) < 0.0): self.pos[0] = self.pos[0] + 360.0
         bounds = [ ( origin[i/2] + spacing[i/2]*extent[i] ) for i in range(6) ]
-        print " @@@VolumeRenderer@@@   Data Type = %s, range = (%f,%f), max_scalar = %s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], self._max_scalar_value )
-        print "Extent: %s " % str( self.input.GetWholeExtent() )
+        print " @@@VolumeRenderer@@@   Data Type = %s, range = (%f,%f), max_scalar = %s" % ( dataType, rangeBounds[0], rangeBounds[1], self._max_scalar_value )
+        print "Extent: %s " % str( self.input().GetWholeExtent() )
         print "Spacing: %s " % str( spacing )
         print "Origin: %s " % str( origin )
-        print "Dimensions: %s " % str( self.input.GetDimensions() )
+        print "Dimensions: %s " % str( self.input().GetDimensions() )
         print "Bounds: %s " % str( bounds )
-        print "Input Bounds: %s " % str( self.input.GetBounds() )
+        print "Input Bounds: %s " % str( self.input().GetBounds() )
         print "VolumePosition: %s " % str( self.pos )
         
 #        self.inputInfo = self.inputPort.GetInformation() 
@@ -310,7 +311,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.volume.SetMapper(self.volumeMapper)
         self.volume.SetProperty(self.volumeProperty)
 #        self.volume.AddObserver( 'AnyEvent', self.EventWatcher )
-        self.input.AddObserver( 'AnyEvent', self.EventWatcher )
+        self.input().AddObserver( 'AnyEvent', self.EventWatcher )
         
         self.volume.SetPosition( self.pos )
 
@@ -327,7 +328,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.renderer.AddVolume( self.volume )
 
     def setActiveScalars( self ):
-        pointData = self.input.GetPointData()
+        pointData = self.input().GetPointData()
         if self.activeLayer:  
             pointData.SetActiveScalars( self.activeLayer )
             print " SetActiveScalars on pointData(%s): %s" % ( addr(pointData), self.activeLayer )
@@ -338,8 +339,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #            self.volumeMapper.SelectScalarArray(  self.activeLayer  )  
                                       
     def updateModule( self, **args  ):
-        if self.inputModule:
-            self.inputModule.inputToAlgorithm( self.volumeMapper )
+        if self.inputModule():
+            self.inputModule().inputToAlgorithm( self.volumeMapper )
             self.set3DOutput()
 
 #            center = self.volume.GetCenter() 
@@ -393,7 +394,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #          range - avg_spacing * 3.0, range + avg_spacing * 3.0);       
 #        self.setActiveScalars()
 #        if self.scalarRange == None:
-#            pointData = self.input.GetPointData()
+#            pointData = self.input().GetPointData()
 #            scalars = pointData.GetScalars()
 #            self.scalarRange = scalars.GetRange()
 #            self.scalarRange.append( 1 )
@@ -405,7 +406,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         
     def EventWatcher( self, caller, event ): 
 #        print "Event %s on class %s "  % ( event, caller.__class__.__name__ ) 
-#        print "  --- Volume Input Extent: %s " % str( self.input.GetWholeExtent() )
+#        print "  --- Volume Input Extent: %s " % str( self.input().GetWholeExtent() )
         pass          
                                                                                                
     def onKeyPress( self, caller, event ):
@@ -416,12 +417,18 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
     def generateCTF( self, ctf_data= None, cmap_index=0, **args  ):
         if ctf_data: self.ctf_data = ctf_data
         else: ctf_data = self.ctf_data
-        if ctf_data:
-            self.imageRange = self.getImageValues( ctf_data[0:2] ) 
+        if ctf_data and (cmap_index==0):
+            imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
             colormapManager = self.getColormapManager( index=cmap_index )
-            colormapManager.setScale( self.imageRange, ctf_data )
+            colormapManager.setScale( imageRange, ctf_data )
             self.invert = ctf_data[2]
-            self.rebuildColorTransferFunction( cmap_index )
+            self.rebuildColorTransferFunction( imageRange )
+
+    def setColormap( self, data, cmap_index=0 ):
+        if PersistentVisualizationModule.setColormap( self, data, cmap_index ):
+            colormapManager = self.getColormapManager( index=cmap_index ) 
+            self.rebuildColorTransferFunction( colormapManager.getImageScale() )
+            self.render() 
             
     def printOTF( self ):
         nPts = 20
@@ -430,20 +437,19 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         sValues = [ "%.2f" % self.opacityTransferFunction.GetValue( tf_range[0] + iP * dr ) for iP in range( nPts ) ] 
         print "OTF values: ", ' '.join(sValues)
         
-    def rebuildColorTransferFunction( self, cmap_index=0 ):
-        if (self.imageRange <> None) and ( cmap_index == 0 ):
-            lut = self.getLut()
-            self.colorTransferFunction.RemoveAllPoints ()
-            nc = lut.GetNumberOfTableValues()
-            dr = (self.imageRange[1] - self.imageRange[0])             
-            for i in range(nc):
-                interval_position = float(i)/nc
-                data_value = self.imageRange[0] + dr * interval_position
+    def rebuildColorTransferFunction( self, imageRange ):
+        lut = self.getLut()
+        self.colorTransferFunction.RemoveAllPoints ()
+        nc = lut.GetNumberOfTableValues()
+        dr = (imageRange[1] - imageRange[0])             
+        for i in range(nc):
+            interval_position = float(i)/nc
+            data_value = imageRange[0] + dr * interval_position
 #                lut_index = (nc-i-1) if self.invert else i
-                color = lut.GetTableValue( i )
-                self.colorTransferFunction.AddRGBPoint( data_value, color[0], color[1], color[2] )
+            color = lut.GetTableValue( i )
+            self.colorTransferFunction.AddRGBPoint( data_value, color[0], color[1], color[2] )
 #                if i % 50 == 0:  print "   --- ctf[%d:%d:%d] --  %.2e: ( %.2f %.2f %.2f ) " % ( i, lut_index, self.invert, data_value, color[0], color[1], color[2] )
-            
+        
           
     def PrintStats(self):
         print_docs( self.volume.mapper )
@@ -451,9 +457,10 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         print "Volume: bounds=%s, scale=%s, mapper=%s" % ( str(self.volume.bounds), str(self.volume.scale), str(self.volume_mapper_type) )
 
     def adjustOpacity( self, opacity_data, **args ):
+        rangeBounds = self.getRangeBounds()
         maxop = abs( opacity_data[1] ) 
         self.max_opacity = maxop if maxop < 1.0 else 1.0
-        range_min, range_max = self.rangeBounds[0], self.rangeBounds[1]
+        range_min, range_max = rangeBounds[0], rangeBounds[1]
 #        self.vthresh = opacity_data[0]*(self.seriesScalarRange[1]-self.seriesScalarRange[0])*0.02
         self.updateOTF()
 #        printArgs( "adjustOpacity", irange=self._range,  max_opacity=self.max_opacity, opacity_data=opacity_data, vthresh=vthresh, ithresh=self._range[3] )   
@@ -557,6 +564,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         print " Update Volume OTF, self._range = %s, max opacity = %s, refinement = %s  " % ( str( self._range ), str( self.max_opacity ), str( self.refinement ) )
         self.opacityTransferFunction.RemoveAllPoints()  
         transferFunctionType = self.transferFunctionConfig.getTransferFunctionType()
+        scalarRange = self.getScalarRange()
 #        dthresh = self._range[3]
         if (transferFunctionType == PosValueTransferFunction) or (transferFunctionType == NegValueTransferFunction):
             pointType = PositiveValues if (self.TransferFunction == PosValueTransferFunction) else NegativeValues
@@ -564,7 +572,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             for nodeData in nodeDataList: 
                 pos = nodeData.getImagePosition()
                 self.opacityTransferFunction.AddPoint( pos[0], pos[1] ) 
-            if self.otf_data: self.transferFunctionConfig.updateGraph( self.scalarRange, [ 0.0, 1.0 ], nodeDataList )       
+            if self.otf_data: self.transferFunctionConfig.updateGraph( scalarRange, [ 0.0, 1.0 ], nodeDataList )       
         elif transferFunctionType == AbsValueTransferFunction:
             graphData = []
             nodeDataList = self.getTransferFunctionPoints( self._range, NegativeValues )
@@ -583,14 +591,14 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
                 graphData.append( nodeData  )  
 #                points.append( "\n [%d]--- p(+)[%d]: %s " % ( pcount, nodeData.index, str( nodeData.getDataPosition() ) ) )
                 pcount += 1
-            if self.otf_data: self.transferFunctionConfig.updateGraph( self.scalarRange, [ 0.0, 1.0 ], graphData )
+            if self.otf_data: self.transferFunctionConfig.updateGraph( scalarRange, [ 0.0, 1.0 ], graphData )
 #            print "OTF: [ %s ] " % " ".join( points ) 
         elif transferFunctionType == FullValueTransferFunction:
             nodeDataList = self.getTransferFunctionPoints( self._range, AllValues )
             for nodeData in nodeDataList: 
                 pos = nodeData.getImagePosition()
                 self.opacityTransferFunction.AddPoint( pos[0], pos[1] ) 
-            if self.otf_data: self.transferFunctionConfig.updateGraph( self.scalarRange, [ 0.0, 1.0 ], nodeDataList ) 
+            if self.otf_data: self.transferFunctionConfig.updateGraph( scalarRange, [ 0.0, 1.0 ], nodeDataList ) 
         self.updatingOTF = False
         
 from packages.vtDV3D.WorkflowModule import WorkflowModule

@@ -71,7 +71,7 @@ class PM_CDMS_CDATUtilities( PersistentModule ):
         self.initializeInputs( **args )
         self.executeTask( False, **args)     
         self.initializeConfiguration()            
-        self.persistLayerDependentParameters()
+#        self.persistLayerDependentParameters()
         
     def dvUpdate(self, **args ):
         self.executeTask( True, **args)     
@@ -110,9 +110,6 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         else:
             title = '%s Module Configuration'%module.name
         self.setWindowTitle(title)
-        
-    def __del__(self):
-        pass
 
     def getParameters( self, module ):
         ( self.variableList, self.datasetId, self.timeRange, self.refVar, self.levelsAxis ) = DV3DConfigurationWidget.getVariableList( module.id )

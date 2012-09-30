@@ -62,6 +62,7 @@ if __name__ == '__main__':
         #var.show()
     if (app.temp_configuration.interactiveMode and
         not app.temp_configuration.check('spreadsheetDumpCells')): 
+
         v = app.exec_()
         
     gui.application.stop_application()
