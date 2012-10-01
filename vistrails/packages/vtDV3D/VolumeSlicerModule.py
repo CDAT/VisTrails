@@ -276,10 +276,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.set2DOutput( port=self.imageRescale.GetOutputPort(), name='slice' ) 
         self.set3DOutput() 
         
-        # Fixme. Forcing to show Time series on VolumeSlicer with VolumeReader
-#        print "que mierda es eto :::::::::", getClassName(self)
-#        if self.getMetadata()['plotType']=='xyz':
-#            self.addConfigurableFunction('Show Time Series', None, 't' )
+        if self.getInputSpec().getMetadata()['plotType']=='xyz':
+            self.addConfigurableFunction('Show Time Series', None, 't' )
 
     def buildOutlineMap(self):
         from pylab import imread
