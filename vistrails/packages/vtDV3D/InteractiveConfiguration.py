@@ -360,14 +360,15 @@ class ConfigurableFunction( QObject ):
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
         self.hasState = args.get( 'hasState', True )
 
-        def get_persisted(self):
-            return self._persisted
-         
-        def set_persisted(self, value):
-            print " Set persisted=%s for config function %s, module = %d" % ( str(value), self.name, (self.module.id if self.module else -1) )
-            self._persisted = value
-            
-        persisted = property(get_persisted, set_persisted) 
+    def get_persisted(self):
+        return self._persisted
+     
+    def set_persisted(self, value):
+        if (self.name == 'colorScale') or (self.name == 'colormap'):
+            print>>sys.stderr, " Set persisted=%s for config function %s, module = %d" % ( str(value), self.name, (self.module.moduleID if self.module else -1) )
+        self._persisted = value
+        
+    persisted = property(get_persisted, set_persisted) 
 
     def isValid(self):
         return True
@@ -556,7 +557,6 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
                 for iR in range(2): self.range.append( self.initRefinement[iR] )
         self.windowLeveler.setDataRange( self.range )
         self.setLevelDataHandler( self.range )
-        self.persisted = False
         self.module.setParameter( self.name, self.range )
         if self.widget: 
             self.widget.initLeveling( self.range )
