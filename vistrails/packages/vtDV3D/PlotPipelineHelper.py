@@ -566,10 +566,10 @@ class DV3DConfigControlPanel(QWidget):
     def isEligibleCommand( self, cmd ):
         return self.configWidget.isEligibleCommand( cmd )
 
-    def addActivePlot( self, module ):
+    def addActivePlot( self, module, config_fn ):
         if self.showActivePlotsPanel and self.configWidget:
             active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
-            if self.configWidget.active_cfg_cmd <> None:
+            if self.configWidget.active_cfg_cmd <> None and self.configWidget.active_cfg_cmd.isCompatible( config_fn ):
                 cellsOnly = self.configWidget.active_cfg_cmd.activateByCellsOnly
                 isActive = ( module.GetRenWinID() in active_renwin_ids )
                 cell_addr = module.getCellAddress()
@@ -678,10 +678,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     @staticmethod                         
     def addAction( module, action_key, config_key, isActive=True ):
         actionList = DV3DPipelineHelper.actionMap.setdefault( action_key[1], [] )
-        actionList.append( ( module, config_key ) ) 
+        fn = module.configurableFunctions.get( action_key[1], None )
+        actionList.append( ( module, config_key, fn ) ) 
         if isActive:
-            actionList = DV3DPipelineHelper.actionMenu.actions() 
-            for action in actionList:
+            actions = DV3DPipelineHelper.actionMenu.actions() 
+            for action in actions:
                 if str(action.text()) == str(action_key[0]): return
             menuItem = DV3DPipelineHelper.actionMenu.addAction( action_key[0] )
             menuItem.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key[1]: DV3DPipelineHelper.execAction( akey ) )
@@ -727,24 +728,23 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         actionList = [] 
         configFunctionList = []
         validModuleIdList = DV3DPipelineHelper.getValidModuleIdList( )
-        for ( module, key ) in currentActionList:
+        for ( module, key, fn ) in currentActionList:
             if module.moduleID in validModuleIdList:
-                actionList.append( ( module, key ) )
-                f = module.configurableFunctions.get( action_key, None )
-                if f <> None: configFunctionList.append( f )
+                actionList.append( ( module, key, fn ) )
+                if fn <> None: configFunctionList.append( fn )
 
-        DV3DPipelineHelper.actionMap[ action_key ] = actionList
+#        DV3DPipelineHelper.actionMap[ action_key ] = actionList
         DV3DPipelineHelper.config_widget.init( configFunctionList )
                                          
-        for ( module, key ) in actionList:
+        for ( module, key, f ) in actionList:
             module.processKeyEvent( key )
 
         if  (key in DV3DPipelineHelper.cfg_cmds): 
             DV3DPipelineHelper.config_widget.startConfig( action_key, key )
         
-        for ( module, key ) in actionList:
+        for ( module, key, f ) in actionList:
             DV3DPipelineHelper.activationMap[ module ] = True 
-            DV3DPipelineHelper.config_widget.addActivePlot( module )
+            DV3DPipelineHelper.config_widget.addActivePlot( module, f )
 
     @staticmethod
     def endInteraction():

@@ -352,15 +352,34 @@ class ConfigurableFunction( QObject ):
         self.activeFunctionList = []
         self.module = None
         self.altMode = False
-        self.persisted = True
+        self._persisted = True
 #        self.parameterInputEnabled = True                                      # Handlers executed at:
         self.initHandler = args.get( 'init', None )         #    end of compute()
         self.openHandler = args.get( 'open', None )         #    key press
         self.startHandler = args.get( 'start', None )       #    left click
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
         self.hasState = args.get( 'hasState', True )
-        
+
+        def get_persisted(self):
+            return self._persisted
+         
+        def set_persisted(self, value):
+            print " Set persisted=%s for config function %s, module = %d" % ( str(value), self.name, (self.module.id if self.module else -1) )
+            self._persisted = value
+            
+        persisted = property(get_persisted, set_persisted) 
+
     def isValid(self):
+        return True
+    
+    def hasDataUnits(self):
+        return ( self.units == 'data' )
+    
+    def isCompatible( self, config_fn ):
+        if ( self.units == 'data' ):
+            if self.module and config_fn.module:
+                if self.module.getUnits() <> config_fn.module.getUnits():
+                    return False           
         return True
         
     def postInstructions( self, message ):
