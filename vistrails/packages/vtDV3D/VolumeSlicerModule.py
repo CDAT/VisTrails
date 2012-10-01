@@ -276,8 +276,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.set2DOutput( port=self.imageRescale.GetOutputPort(), name='slice' ) 
         self.set3DOutput() 
         
-        # Fixme. Forcing to show Time series on VolumeSlicer with VolumeReader
-        if self.getMetadata()['plotType']=='xyz':
+        if getClassName(self)=='PM_VolumeSlicer':
             self.addConfigurableFunction('Show Time Series', None, 't' )
 
     def buildOutlineMap(self):
@@ -371,7 +370,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 self.slicePosition[iAxis] = sliceIndex
                 self.updateTextDisplay( textDisplay )
                 
-                coord = self.getWorldCoordsAsFloat(cpos)
+                coord = ispec.getWorldCoordsAsFloat(cpos)
                 PM_VolumeSlicer.global_coords = coord
                 screenPos = caller.GetCurrentScreenPosition()
                 self.updateLensDisplay(screenPos, coord)

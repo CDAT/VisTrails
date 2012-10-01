@@ -164,6 +164,29 @@ class InputSpecs:
             gridOrigin = self.input.GetOrigin()
             world_coords = [ getFloatStr(gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
         return world_coords
+    
+    def getWorldCoordsAsFloat( self, image_coords ):
+        plotType = self.metadata[ 'plotType' ]                   
+        world_coords = None
+        try:
+            if plotType == 'zyt':
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                timeAxis = self.metadata[ 'time' ]
+                tval = timeAxis[ image_coords[2] ]
+                relTimeValue = cdtime.reltime( float( tval ), timeAxis.units ) 
+                timeValue = str( relTimeValue.tocomp() )          
+                world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], timeValue ]   
+            else:         
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                lev = self.metadata[ 'lev' ]
+                world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], lev[ image_coords[2] ] ]   
+        except:
+            gridSpacing = self.input.GetSpacing()
+            gridOrigin = self.input.GetOrigin()
+            world_coords = [ gridOrigin[i] + image_coords[i]*gridSpacing[i] for i in range(3) ]
+        return world_coords
 
     def getWorldCoord( self, image_coord, iAxis ):
         plotType = self.metadata[ 'plotType' ]                   
@@ -701,93 +724,9 @@ class PersistentModule( QObject ):
                 inMod = self.getPrimaryInput( port=inputPort, **args )
                 if inMod: ispec.inputModule = inMod
                 
-<<<<<<< HEAD
-            self.initializeScalarRange()
-            
-            if isAnimation:
-                for configFunct in self.configurableFunctions.values(): configFunct.expandRange()
-
-#            self.setActiveScalars()
-            
-        elif ( self.fieldData == None ): 
-            self.initializeMetadata()
-            
-    def getDataValue( self, image_value):
-        if not self.scalarRange: 
-            raise ModuleError( self, "ERROR: no variable selected in dataset input to module %s" % str( self.__class__.__name__ ) )
-        valueRange = self.scalarRange
-        sval = ( image_value - self.rangeBounds[0] ) / ( self.rangeBounds[1] - self.rangeBounds[0] )
-        dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
-        return dataValue
-    
-    def getWorldCoords( self, image_coords ):
-        plotType = self.metadata[ 'plotType' ]                   
-        world_coords = None
-        try:
-            if plotType == 'zyt':
-                lat = self.metadata[ 'lat' ]
-                lon = self.metadata[ 'lon' ]
-                timeAxis = self.metadata[ 'time' ]
-                tval = timeAxis[ image_coords[2] ]
-                relTimeValue = cdtime.reltime( float( tval ), timeAxis.units ) 
-                timeValue = str( relTimeValue.tocomp() )          
-                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), timeValue ]   
-            else:         
-                lat = self.metadata[ 'lat' ]
-                lon = self.metadata[ 'lon' ]
-                lev = self.metadata[ 'lev' ]
-                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), getFloatStr(lev[ image_coords[2] ]) ]   
-        except:
-            gridSpacing = self.input.GetSpacing()
-            gridOrigin = self.input.GetOrigin()
-            world_coords = [ getFloatStr(gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
-        return world_coords
-
-    def getWorldCoordsAsFloat( self, image_coords ):
-        plotType = self.metadata[ 'plotType' ]                   
-        world_coords = None
-        try:
-            if plotType == 'zyt':
-                lat = self.metadata[ 'lat' ]
-                lon = self.metadata[ 'lon' ]
-                timeAxis = self.metadata[ 'time' ]
-                tval = timeAxis[ image_coords[2] ]
-                relTimeValue = cdtime.reltime( float( tval ), timeAxis.units ) 
-                timeValue = str( relTimeValue.tocomp() )          
-                world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], timeValue ]   
-            else:         
-                lat = self.metadata[ 'lat' ]
-                lon = self.metadata[ 'lon' ]
-                lev = self.metadata[ 'lev' ]
-                world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], lev[ image_coords[2] ] ]   
-        except:
-            gridSpacing = self.input.GetSpacing()
-            gridOrigin = self.input.GetOrigin()
-            world_coords = [ gridOrigin[i] + image_coords[i]*gridSpacing[i] for i in range(3) ]
-        return world_coords
-    
-    def getWorldCoord( self, image_coord, iAxis ):
-        plotType = self.metadata[ 'plotType' ]                   
-        axisNames = [ 'Longitude', 'Latitude', 'Time' ] if plotType == 'zyt'  else [ 'Longitude', 'Latitude', 'Level' ]
-        try:
-            axes = [ 'lon', 'lat', 'time' ] if plotType == 'zyt'  else [ 'lon', 'lat', 'lev' ]
-            world_coord = self.metadata[ axes[iAxis] ][ image_coord ]
-            if ( plotType == 'zyt') and  ( iAxis == 2 ):
-                timeAxis = self.metadata[ 'time' ]     
-                timeValue = cdtime.reltime( float( world_coord ), timeAxis.units ) 
-                world_coord = str( timeValue.tocomp() )          
-            return axisNames[iAxis], getFloatStr( world_coord )
-        except:
-            if (plotType == 'zyx') or (iAxis < 2):
-                gridSpacing = self.input.GetSpacing()
-                gridOrigin = self.input.GetOrigin()
-                return axes[iAxis], getFloatStr( gridOrigin[iAxis] + image_coord*gridSpacing[iAxis] ) 
-            return axes[iAxis], ""
-=======
             if  ispec.inputModule <> None: 
                 ispec.input =  ispec.inputModule.getOutput()                 
                 ispec.updateMetadata()
->>>>>>> 71d262be849f72271167fc628d91b05b1e6824d2
                 
                 if inputIndex == 0:     
                     self.setParameter( 'metadata', ispec.metadata ) 
@@ -878,66 +817,7 @@ class PersistentModule( QObject ):
             fd = output.GetFieldData()  
             fd.PassData( fieldData )                
             self.wmod.setResult( portName, outputModule ) 
-<<<<<<< HEAD
-        else: print " Missing wmod in %s.set2DOutput" % self.__class__.__name__
-        
-    def getFieldData( self, id, fd=None ): 
-        fdata = self.fieldData if fd==None else fd
-        dataVector = fdata.GetAbstractArray( id ) 
-        if dataVector == None: return None
-        nd = dataVector.GetNumberOfTuples()
-        return [ dataVector.GetValue(id) for id in range( nd ) ]         
-
-    def setFieldData( self, id, data ): 
-        dataVector = self.fieldData.GetAbstractArray( id ) 
-        if dataVector == None: return False
-        for id in range(len(data)): dataVector.SetValue( id, data[id] )         
- 
-    def applyFieldData( self, props ): 
-        pass
-#        position = self.getFieldData( 'position' ) 
-#        if position <> None:  
-#            for prop in props: 
-#                prop.SetPosition( position )
-#        scale = self.getFieldData( 'scale' ) 
-#        if scale <> None: 
-#            for prop in props: 
-#                prop.SetScale( scale )
-#        print " applyFieldData, pos = %s" % ( str(position) )
-
-    def addMetadata( self, metadata ):
-        dataVector = self.fieldData.GetAbstractArray( 'metadata' ) 
-        if dataVector == None:   
-            print " Can't get Metadata for class %s " % ( self.__class__.__name__ )
-        else:
-            enc_mdata = encodeToString( metadata )
-            dataVector.InsertNextValue( enc_mdata  )
-
-    def computeMetadata( self, metadata = None, port=None  ):
-        if metadata is None: metadata = {} 
-
-        if not self.fieldData: self.initializeMetadata() 
-        if self.fieldData:
-            md = extractMetadata( self.fieldData )
-            if md: metadata.update( md )
-        return metadata
-        
-    def addMetadataObserver( self, caller, event ):
-        fd = caller.GetOutput().GetFieldData()
-        fd.ShallowCopy( self.fieldData )
-        pass
-
-    def initializeMetadata( self ):
-        self.fieldData = vtk.vtkDataSetAttributes()
-        mdarray = getStringDataArray( 'metadata' )
-        self.fieldData.AddArray( mdarray )
-#        print " %s:initializeMetadata---> # FieldData Arrays = %d " % ( self.__class__.__name__, self.fieldData.GetNumberOfArrays() )
-#        self.fieldData.AddArray( getFloatDataArray( 'position', [  0.0, 0.0, 0.0 ] ) )
-#        self.fieldData.AddArray( getFloatDataArray( 'scale',    [  1.0, 1.0, 1.0 ] ) ) 
-=======
         else: print " Missing wmod in %s.set2DOutput" % getClassName( self )
-         
->>>>>>> 71d262be849f72271167fc628d91b05b1e6824d2
            
     def addConfigurableMethod( self, name, method, key, **args ):
         self.configurableFunctions[name] = ConfigurableFunction( name, None, key, pmod=self, hasState=False, open=method, **args )
@@ -992,14 +872,10 @@ class PersistentModule( QObject ):
 # TBD: integrate
     def startConfigurationObserver( self, parameter_name, *args ):
         self.getLabelActor().VisibilityOn() 
-<<<<<<< HEAD
-                  
-=======
         
     def getCurrentConfigFunction(self):
         return self.configurableFunctions.get( self.InteractionState, None )
                             
->>>>>>> 71d262be849f72271167fc628d91b05b1e6824d2
     def startConfiguration( self, x, y, config_types ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
         if (self.InteractionState <> None) and not self.configuring and DV3DPipelineHelper.isLevelingConfigMode():
@@ -1011,17 +887,8 @@ class PersistentModule( QObject ):
                     self.haltNavigationInteraction()
                     if (configFunct.type == 'leveling'): self.getLabelActor().VisibilityOn()
     
-<<<<<<< HEAD
-    def isActive( self ):
-        pipeline = self.getCurentPipeline()
-        return ( self.moduleID in pipeline.modules )
-
-    def updateAnimation( self, relTimeValue, textDisplay=None ):
-        self.dvUpdate( timeValue=relTimeValue, animate=True )
-=======
     def updateAnimation( self, animTimeData, textDisplay=None ):
         self.dvUpdate( timeData=animTimeData, animate=True )
->>>>>>> 71d262be849f72271167fc628d91b05b1e6824d2
         if textDisplay <> None:  self.updateTextDisplay( textDisplay )
         
     def stopAnimation( self ):
@@ -1042,7 +909,7 @@ class PersistentModule( QObject ):
                 
     def updateLayerDependentParameters( self, old_layer, new_layer ):
 #       print "updateLayerDependentParameters"
-       self.newLayerConfiguration = True
+        self.newLayerConfiguration = True
 #       for configFunct in self.configurableFunctions.values():
 #            if configFunct.isLayerDependent:  
 #                self.persistParameter( configFunct.name, None )     
@@ -1512,15 +1379,12 @@ class PersistentVisualizationModule( PersistentModule ):
         self.activation = {}
         self.isAltMode = False
         self.stereoEnabled = 0
-<<<<<<< HEAD
         self.showInteractiveLens = False
-=======
         self.navigationInteractorStyle = None
         self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
 
     def GetRenWinID(self):
         return id( self.renderer.GetRenderWindow() ) if self.renderer else -1
->>>>>>> 71d262be849f72271167fc628d91b05b1e6824d2
 
     def enableVisualizationInteraction(self): 
         pass
@@ -1814,10 +1678,12 @@ class PersistentVisualizationModule( PersistentModule ):
         return textActor
     
     def createData(self, coord):
-        import cdms2, random
         from paraview.vtk.dataset_adapter import numpyTovtkDataArray
 
-        ds = self.getCDMSDataset()
+#        ds = self.getCDMSDataset()
+        ispec = self.inputSpecs[ 0 ] 
+        ds= ModuleStore.getCdmsDataset( ispec.datasetId )
+        
         if len(ds.transientVariables)<>1:
             print 'ERROR: this module has many variables'
         var = ds.transientVariables.values()[0]
@@ -1834,7 +1700,7 @@ class PersistentVisualizationModule( PersistentModule ):
 
         return dataobject
     
-    def createLensActor(self, id, pos):
+    def createLensActor(self, id_, pos):
         lensActor = vtk.vtkXYPlotActor();
         lensActor.SetTitle("Time vs. VAR")
         lensActor.SetXTitle("Time")
@@ -1842,7 +1708,10 @@ class PersistentVisualizationModule( PersistentModule ):
         lensActor.SetBorder(1)
         lensActor.PlotPointsOn()
 
-        ds = self.getCDMSDataset()
+#        ds = self.getCDMSDataset()
+        ispec = self.inputSpecs[ 0 ] 
+        ds= ModuleStore.getCdmsDataset( ispec.datasetId )
+        
         if len(ds.transientVariables)<>1:
             print 'ERROR: this module has many', 
         var = ds.transientVariables.values()[0]
@@ -1854,7 +1723,7 @@ class PersistentVisualizationModule( PersistentModule ):
         prop.SetPointSize(4)
     
         lensActor.VisibilityOff()
-        lensActor.id = id
+        lensActor.id = id_
 
         return lensActor
 
@@ -1882,11 +1751,11 @@ class PersistentVisualizationModule( PersistentModule ):
         return textActor
     
     def getLensActor(self, pos=None, coord=None):
-        id = 'lens'
+        id_ = 'lens'
       
-        lensActor = self.getProp( 'vtkXYPlotActor', id)
+        lensActor = self.getProp( 'vtkXYPlotActor', id_)
         if lensActor == None:
-            lensActor = self.createLensActor(id, pos)
+            lensActor = self.createLensActor(id_, pos)
             if self.renderer: 
                 self.renderer.AddViewProp( lensActor )
           
@@ -1998,28 +1867,10 @@ class PersistentVisualizationModule( PersistentModule ):
                 pname = self.persistedParameters.pop()
                 configFunct = self.configurableFunctions[pname]
                 param_value = configFunct.reset() 
-<<<<<<< HEAD
-                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )
-            
-                
-#            if self.LastInteractionState <> None: 
-#                configFunct = self.configurableFunctions[ self.LastInteractionState ]
-#                param_value = configFunct.reset() 
-#                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True )
-#                if configFunct.type == 'leveling':
-#                    self.finalizeConfigurationObserver( self.InteractionState )            
-#                    if self.ndims == 3: 
-#                        self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-#                        print " ~~~~~~~~~ SetInteractorStyle: navigationInteractorStyle: ", str(self.iren.GetInteractorStyle().__class__.__name__)     
-#                if self.InteractionState <> None: 
-#                    configFunct.close()
-#                    self.endInteraction()
+                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                
         elif ( self.createColormap and ( key == 't' ) ):
             self.showInteractiveLens = not self.showInteractiveLens 
             self.render() 
-=======
-                if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                
->>>>>>> 71d262be849f72271167fc628d91b05b1e6824d2
         else:
             ( state, persisted ) =  self.getInteractionState( key )
 #            print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
