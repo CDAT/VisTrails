@@ -1166,8 +1166,8 @@ class PersistentModule( QObject ):
             print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
             for parmRec in parmRecList:  
                 op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
-                if parmRec[0] == 'colorScale':
-                    print 'x'
+#                if parmRec[0] == 'colorScale':
+#                    print 'x'
             action = create_action( op_list ) 
             controller.add_new_action(action)
             controller.perform_action(action)

@@ -590,8 +590,8 @@ class DV3DConfigControlPanel(QWidget):
                     plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
                     DV3DPipelineHelper.setModulesActivation( [ module ] , isActive ) 
             else:
-                DV3DPipelineHelper.activationMap[ module ] = False             
-    
+                DV3DPipelineHelper.activationMap[ module ] = False
+                    
     def  processPlotListEvent( self, list_item ): 
         DV3DPipelineHelper.setModulesActivation( list_item.modules, ( list_item.checkState() == Qt.Checked ) ) 
                            
@@ -610,9 +610,9 @@ class DV3DConfigControlPanel(QWidget):
         
     def persistParameter(self, module):
         ( interactionState, persisted ) = self.configWidget.getInteractionState()
-#        if not persisted:
-        module.finalizeParameter( interactionState, notifyHelper=False )
-        self.configWidget.clearInteractionState()
+        if not persisted:
+            module.finalizeParameter( interactionState, notifyHelper=False )
+            self.configWidget.clearInteractionState()
 
     def endConfig( self ):
         self.modules_frame.setVisible(False)
@@ -754,6 +754,15 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
      
     @staticmethod           
     def reset():
+        if False:
+            if DV3DPipelineHelper.config_widget and DV3DPipelineHelper.config_widget.configWidget:
+                ( interactionState, persisted ) = DV3DPipelineHelper.config_widget.configWidget.getInteractionState()
+                if not persisted:
+                    for item in DV3DPipelineHelper.activationMap.items():
+                        if item[1]: 
+                            module =  item[0]          
+                            module.finalizeParameter( interactionState, notifyHelper=False )
+                    DV3DPipelineHelper.config_widget.configWidget.clearInteractionState()
         DV3DPipelineHelper.actionMap = {}
         DV3DPipelineHelper.cfg_cmds = {}
      
