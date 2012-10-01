@@ -1027,12 +1027,9 @@ Please delete unused CDAT Cells in the spreadsheet.")
             _app = get_vistrails_application()
             interactive = conf.check('interactiveMode')
             if interactive:
-                _app.uvcdatWindow.record(cmd)
-            self.canvas.plot(cgm,*args,**kwargs)
+                _app.uvcdatWindow.record(cmd)                
             
-            #TODO: apply this to canvas.plot when colormap is decoupled
-            #  from the canvas
-            # set up colormap
+            #apply colormap
             if plot.colorMap1 is not None:
                 if plot.colorMap1.colorMapName is not None:
                     self.canvas.setcolormap(str(plot.colorMap1.colorMapName))
@@ -1043,6 +1040,8 @@ Please delete unused CDAT Cells in the spreadsheet.")
                     #see vcs.Canvas.setcolorcell
                     self.canvas.canvas.updateVCSsegments(self.canvas.mode) # pass down self and mode to _vcs module
                     self.canvas.flush() # update the canvas by processing all the X events
+                
+            self.canvas.plot(cgm,*args,**kwargs)
             
         spreadsheetWindow.setUpdatesEnabled(True)
         self.update()
