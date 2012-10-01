@@ -1152,9 +1152,9 @@ class PersistentModule( QObject ):
             current_version = controller.current_version
             cell_address = ( None, None )
             
-        print '-'*50      
-        print 'Persist parameter: coords=%s, version=%d, controller=%x, proj_controller=%x, controller version=%d, pid=%d, modules=%s' % ( str(cell_address), current_version, id(controller), id(proj_controller), controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
-        print '-'*50      
+#        print '-'*50      
+#        print 'Persist parameter: coords=%s, version=%d, controller=%x, proj_controller=%x, controller version=%d, pid=%d, modules=%s' % ( str(cell_address), current_version, id(controller), id(proj_controller), controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
+#        print '-'*50      
 
         try:
             module = pipeline.modules[self.moduleID] 

@@ -589,6 +589,8 @@ class DV3DConfigControlPanel(QWidget):
                         plot_list_item = PlotListItem( label, module, self.plot_list )
                     plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
                     DV3DPipelineHelper.setModulesActivation( [ module ] , isActive ) 
+            else:
+                DV3DPipelineHelper.activationMap[ module ] = False             
     
     def  processPlotListEvent( self, list_item ): 
         DV3DPipelineHelper.setModulesActivation( list_item.modules, ( list_item.checkState() == Qt.Checked ) ) 

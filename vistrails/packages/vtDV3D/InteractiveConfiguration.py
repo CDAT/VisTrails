@@ -340,6 +340,7 @@ class ConfigurableFunction( QObject ):
         self.name = name
         self.activateByCellsOnly = args.get( 'cellsOnly', False )
         self.type = 'generic'
+        self.matchUnits = False
         self.args = function_args
         self.kwargs = args
         self.label = args.get( 'label', self.name )
@@ -364,8 +365,8 @@ class ConfigurableFunction( QObject ):
         return self._persisted
      
     def set_persisted(self, value):
-        if (self.name == 'colorScale') or (self.name == 'colormap'):
-            print>>sys.stderr, " Set persisted=%s for config function %s, module = %d" % ( str(value), self.name, (self.module.moduleID if self.module else -1) )
+#        if (self.name == 'colorScale') or (self.name == 'colormap'):
+#            print " Set persisted=%s for config function %s, module = %d" % ( str(value), self.name, (self.module.moduleID if self.module else -1) )
         self._persisted = value
         
     persisted = property(get_persisted, set_persisted) 
@@ -377,10 +378,9 @@ class ConfigurableFunction( QObject ):
         return ( self.units == 'data' )
     
     def isCompatible( self, config_fn ):
-        if ( self.units == 'data' ):
-            if self.module and config_fn.module:
-                if self.module.getUnits() <> config_fn.module.getUnits():
-                    return False           
+        if self.matchUnits:
+            if self.units <> config_fn.units:
+                return False           
         return True
         
     def postInstructions( self, message ):
@@ -424,7 +424,9 @@ class ConfigurableFunction( QObject ):
 #            print "."
         self.moduleID = module.moduleID
         self.module = module
-        if self.units == 'data': self.units = module.getUnits()              
+        if self.units == 'data': 
+            self.units = module.getUnits() 
+            self.matchUnits = True             
         if ( self.initHandler != None ):
             self.initHandler( **self.kwargs ) 
         configFunctionMap = ConfigurableFunction.ConfigurableFunctions.setdefault( self.name, {} )

@@ -423,6 +423,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             colormapManager.setScale( imageRange, ctf_data )
             self.invert = ctf_data[2]
             self.rebuildColorTransferFunction( imageRange )
+            print " Volume Renderer[%d]: Scale Colormap: ( %.4g, %.4g ) " % ( self.moduleID, ctf_data[0], ctf_data[1] )
 
     def setColormap( self, data, cmap_index=0 ):
         if PersistentVisualizationModule.setColormap( self, data, cmap_index ):
