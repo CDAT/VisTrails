@@ -276,14 +276,14 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.set2DOutput( port=self.imageRescale.GetOutputPort(), name='slice' ) 
         self.set3DOutput() 
         
-        if getClassName(self)=='PM_VolumeSlicer':
-            self.addConfigurableFunction('Show Time Series', None, 't' )
+        # Fixme. Forcing to show Time series on VolumeSlicer with VolumeReader
+#        print "que mierda es eto :::::::::", getClassName(self)
+#        if self.getMetadata()['plotType']=='xyz':
+#            self.addConfigurableFunction('Show Time Series', None, 't' )
 
     def buildOutlineMap(self):
-        from pylab import imread, normalize
-        from vtk.util import numpy_support
-        from vtk.util.vtkImageImportFromArray import vtkImageImportFromArray
-        import cdms2
+        from pylab import imread
+        import vtk.util.vtkImageImportFromArray as vtkUtil
 
         # read outline image and convert to gray scale
         data = imread(defaultOutlineMapFile)
@@ -292,7 +292,6 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        # create a variable using the data loaded in the image and an uniform grid
         dims = data.shape
         reso = [180.0/dims[0], 360.0/dims[1]]
-        igrid = cdms2.createUniformGrid(90, dims[0], -reso[0], -180, dims[1], reso[1])
         var = cdms2.createVariable(data)
         lat = cdms2.createUniformLatitudeAxis(90, dims[0], -reso[0])
         lon = cdms2.createUniformLongitudeAxis(-180, dims[1], reso[1])
@@ -309,7 +308,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         d[d==1e+20] = d[d<>1e+20].max()
         
         # convert to vtkImageData
-        img = vtkImageImportFromArray()
+        img = vtkUtil.vtkImageImportFromArray()
         img.SetArray(ovar.data)
         img.Update()
         
