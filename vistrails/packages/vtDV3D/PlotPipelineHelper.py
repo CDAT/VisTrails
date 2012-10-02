@@ -753,16 +753,15 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         DV3DPipelineHelper.config_widget.endConfig()
      
     @staticmethod           
-    def reset():
-        if False:
-            if DV3DPipelineHelper.config_widget and DV3DPipelineHelper.config_widget.configWidget:
-                ( interactionState, persisted ) = DV3DPipelineHelper.config_widget.configWidget.getInteractionState()
-                if not persisted:
-                    for item in DV3DPipelineHelper.activationMap.items():
-                        if item[1]: 
-                            module =  item[0]          
-                            module.finalizeParameter( interactionState, notifyHelper=False )
-                    DV3DPipelineHelper.config_widget.configWidget.clearInteractionState()
+    def reset( ):
+        if DV3DPipelineHelper.config_widget and DV3DPipelineHelper.config_widget.configWidget:
+            ( interactionState, persisted ) = DV3DPipelineHelper.config_widget.configWidget.getInteractionState()
+            if not persisted:
+                DV3DPipelineHelper.config_widget.configWidget.clearInteractionState()
+                for item in DV3DPipelineHelper.activationMap.items():
+                    if item[1]: 
+                        module =  item[0]          
+                        module.finalizeParameter( interactionState, notifyHelper=False )
         DV3DPipelineHelper.actionMap = {}
         DV3DPipelineHelper.cfg_cmds = {}
      

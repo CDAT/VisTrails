@@ -626,6 +626,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         active_module_list = args.get( 'active_modules', None )
         if (active_module_list == None) or (self.module in active_module_list):
             self.setLevelDataHandler( self.range )
+            self.module.setParameter( self.name, range )
             self.persisted = False
             affected_renderers.add( self.module.renderer )
             self.manuallyAdjusted = True
