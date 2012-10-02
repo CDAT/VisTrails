@@ -19,12 +19,7 @@ def maximizeSpreadsheet():
     tabControllerStack = spreadsheetWindow.tabControllerStack
     spreadsheetWindow.stackedCentralWidget.removeWidget ( tabControllerStack )
     tabControllerStack.showMaximized()
-    
-class HWRunType :
-     Client = 0
-     Server = 1
-     Desktop = 2 
-    
+        
 def disable_lion_restore():
     """ Prevent Mac OS 10.7 to restore windows state since it would
     make Qt 4.7.3 unstable due to its lack of handling Cocoa's Main
@@ -274,9 +269,20 @@ def executeVistrail( *args, **kwargs ):
     init_hyperwall( optionsDict )
     app.connect( app, QtCore.SIGNAL("aboutToQuit()"), shutdown ) 
     v = app.exec_()
-    
 
-if __name__ == '__main__': 
+class HWRunType :
+    Client = 0
+    Server = 1
+    Desktop = 2 
+
+    def getValue():
+        env_run_type = os.environ.get('HW_RUNTYPE',None)
+        run_type =                                     HWRunType.Desktop
+        if   env_run_type == 'server':      run_type = HWRunType.Server
+        elif env_run_type == 'client':      run_type = HWRunType.Client
+        return run_type
+
+if __name__ == '__main__':
     runType = HWRunType.Client 
     if runType == HWRunType.Desktop: optionsDict = { "hw_role" : 'global', "showBuilder": True, 'spawn': True }   #  'global'   'hw_client'  'hw_server' 
     if runType == HWRunType.Server:  optionsDict = {  'hw_role': 'hw_server', 'debug': 'False' } #, 'hw_nodes': 'localhost' }   

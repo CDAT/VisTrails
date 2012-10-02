@@ -5,6 +5,10 @@ Created on Jul 20, 2011
 '''
 
 import sys, os, traceback
+print "PYTHONPATH: "
+envmap = os.environ
+#for path in envmap['PYTHONPATH'].split(":"):
+#    print "   -- ", path
 from PyQt4 import QtGui, QtCore
 from core.requirements import check_all_vistrails_requirements
 from gui.requirements import check_pyqt4, MissingRequirement
@@ -19,11 +23,6 @@ def maximizeSpreadsheet():
     tabControllerStack = spreadsheetWindow.tabControllerStack
     spreadsheetWindow.stackedCentralWidget.removeWidget ( tabControllerStack )
     tabControllerStack.showMaximized()
-    
-class HWRunType :
-     Client = 0
-     Server = 1
-     Desktop = 2 
     
 def disable_lion_restore():
     """ Prevent Mac OS 10.7 to restore windows state since it would
@@ -274,10 +273,73 @@ def executeVistrail( *args, **kwargs ):
     init_hyperwall( optionsDict )
     app.connect( app, QtCore.SIGNAL("aboutToQuit()"), shutdown ) 
     v = app.exec_()
-    
 
-if __name__ == '__main__': 
-    runType = HWRunType.Client 
+#    disable_lion_restore()
+#
+#    import gui.requirements
+#    gui.requirements.check_pyqt4()
+#
+#    from PyQt4 import QtGui
+#    import gui.application
+#    import sys
+#    import os
+#    try:
+#        v = gui.application.start_application()
+#        if v != 0:
+#            app = gui.application.get_vistrails_application()
+#            if app:
+#                app.finishSession()
+#            sys.exit(v)
+#        app = gui.application.get_vistrails_application()
+#    except SystemExit, e:
+#        app = gui.application.get_vistrails_application()
+#        if app:
+#            app.finishSession()
+#        sys.exit(e)
+#    except Exception, e:
+#        app = gui.application.get_vistrails_application()
+#        if app:
+#            app.finishSession()
+#        print "Uncaught exception on initialization: %s" % e
+#        import traceback
+#        traceback.print_exc()
+#        sys.exit(255)
+#    ## trying to load up file/var
+#    print app.uvcdatLoadFileStart,app.uvcdatLoadVariableStart
+#    if app.uvcdatLoadFileStart is not None:
+#        w = app.uvcdatWindow.dockVariable.widget()
+#        var= w.newVariable()
+#        var.setFileName(app.uvcdatLoadFileStart)
+#        var.updateFile()
+#        if app.uvcdatLoadVariableStart is not None:
+#            for i in range(var.varCombo.count()):
+#                if str(var.varCombo.itemText(i)).split()[0]==app.uvcdatLoadVariableStart:
+#                    var.varCombo.setCurrentIndex(i)
+#        #var.show()
+#    if (app.temp_configuration.interactiveMode and
+#        not app.temp_configuration.check('spreadsheetDumpCells')): 
+#
+#        v = app.exec_()
+#        
+#    gui.application.stop_application()
+#    sys.exit(v)
+
+    
+class HWRunType :
+    Client = 0
+    Server = 1
+    Desktop = 2 
+
+    @staticmethod
+    def getValue():
+        env_run_type = os.environ.get('HW_RUNTYPE',None)
+        run_type =                                     HWRunType.Desktop
+        if   env_run_type == 'server':      run_type = HWRunType.Server
+        elif env_run_type == 'client':      run_type = HWRunType.Client
+        return run_type
+
+if __name__ == '__main__':
+    runType = HWRunType.getValue() 
     if runType == HWRunType.Desktop: optionsDict = { "hw_role" : 'global', "showBuilder": True, 'spawn': True }   #  'global'   'hw_client'  'hw_server' 
     if runType == HWRunType.Server:  optionsDict = {  'hw_role': 'hw_server', 'debug': 'False' } #, 'hw_nodes': 'localhost' }   
     if runType == HWRunType.Client:  

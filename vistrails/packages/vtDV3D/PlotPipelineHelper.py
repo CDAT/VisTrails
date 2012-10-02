@@ -750,7 +750,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 
     @staticmethod
     def endInteraction():
-        DV3DPipelineHelper.config_widget.endConfig()
+        if DV3DPipelineHelper.config_widget:
+            DV3DPipelineHelper.config_widget.endConfig()
      
     @staticmethod           
     def reset( ):
@@ -1013,7 +1014,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def getCellAddress( pipeline ): 
         for item in  DV3DPipelineHelper.pipelineMap.items():
             if item[1] == pipeline: return item[0]
-        return None 
+        return ( None, None ) 
 
     @staticmethod
     def getCellCoordinates( mid ):
