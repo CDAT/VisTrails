@@ -1134,6 +1134,7 @@ class PersistentModule( QObject ):
         
         
         controller = api.get_current_controller() 
+        config_list = []
         try:
             ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
             proj_controller = controller.uvcdat_controller
@@ -1166,11 +1167,16 @@ class PersistentModule( QObject ):
             print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
             for parmRec in parmRecList:  
                 op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+                config_list.append( self.getConfigFunction( parmRec[0] ) )
 #                if parmRec[0] == 'colorScale':
 #                    print 'x'
             action = create_action( op_list ) 
             controller.add_new_action(action)
             controller.perform_action(action)
+            
+            for config_fn in config_list:
+                config_fn.persisted = True
+                
             if proj_controller:
                 proj_controller.cell_was_changed(action)
             if pcoords: 

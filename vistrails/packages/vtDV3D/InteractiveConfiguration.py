@@ -365,9 +365,9 @@ class ConfigurableFunction( QObject ):
         return self._persisted
      
     def set_persisted(self, value):
-#        if (self.name == 'colorScale') or (self.name == 'colormap'):
-#            print " Set persisted=%s for config function %s, module = %d" % ( str(value), self.name, (self.module.moduleID if self.module else -1) )
         self._persisted = value
+#        if (self.name == 'colorScale') or (self.name == 'colormap') or (self.name == 'zScale'):
+#            print " Set persisted=%s for config function %s, module = %d" % ( str(value), self.name, (self.module.moduleID if self.module else -1) )
         
     persisted = property(get_persisted, set_persisted) 
 
