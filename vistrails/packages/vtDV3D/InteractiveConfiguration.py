@@ -354,6 +354,7 @@ class ConfigurableFunction( QObject ):
         self.module = None
         self.altMode = False
         self._persisted = True
+        self.guiEnabled = False
 #        self.parameterInputEnabled = True                                      # Handlers executed at:
         self.initHandler = args.get( 'init', None )         #    end of compute()
         self.openHandler = args.get( 'open', None )         #    key press
@@ -382,6 +383,9 @@ class ConfigurableFunction( QObject ):
             if self.units <> config_fn.units:
                 return False           
         return True
+
+    def setValue( self, new_parameter_value ):
+        pass
         
     def postInstructions( self, message ):
         print "\n ----- %s -------\n" % message
@@ -668,7 +672,6 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         self.startConfigurationObserver = args.get( 'start', None )
         self.updateConfigurationObserver = args.get( 'update', None )
         self.finalizeConfigurationObserver = args.get( 'finalize', None )
-        self.guiEnabled = False
 #        print "create UVCDATGuiConfigFunction: %x" % ( id(self) )
         
     def __del__(self):
@@ -1076,10 +1079,14 @@ class IVModuleConfigurationDialog( QWidget ):
 
     def updateConfiguration(self):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        command = [ self.name ]
+        value = self.getValue()
+        command.extend( value ) if isList( value ) else command.append( value )   
         for module in self.modules:
             if DV3DPipelineHelper.getPlotActivation( module ) :
                 self.active_modules.add( module )
-                module.updateConfigurationObserver( self.name, self.getValue() )        
+                module.updateConfigurationObserver( self.name, value )        
+        HyperwallManager.getInstance().processGuiCommand( command  )
 
     def startConfiguration(self):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
@@ -1279,6 +1286,7 @@ class IVModuleConfigurationDialog( QWidget ):
                 config_data = module.getParameter( interactionState  ) 
                 if config_data: 
                     module.writeConfigurationResult( interactionState, config_data ) 
+                            
         HyperwallManager.getInstance().setInteractionState( None )               
         if self.manager:    self.manager.endConfig()
         else:               self.endConfig()
@@ -2191,7 +2199,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 relTimeValueRefAdj = relTimeRef.value
                 print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
                 displayText = self.getTextDisplay()
-                HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, displayText ], False  )
+                HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, iTimestep, self.uniformTimeRange, displayText ], False  )
                 for module in IVModuleConfigurationDialog.getActiveModules():
                     dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
                     module.updateAnimation( [ relTimeValueRefAdj, iTimestep, self.uniformTimeRange ], displayText  )

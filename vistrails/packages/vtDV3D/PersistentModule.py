@@ -1745,6 +1745,7 @@ class PersistentVisualizationModule( PersistentModule ):
     def toggleColormapVisibility(self):
         for colormapManager in self.colormapManagers.values():
             colormapManager.toggleColormapVisibility()
+        self.render()
             
     def processKeyEvent( self, key, caller=None, event=None ):
 #        print "process Key Event, key = %s" % ( key )
@@ -1759,7 +1760,8 @@ class PersistentVisualizationModule( PersistentModule ):
                 PersistentVisualizationModule.moduleDocumentationDialog.addCloseObserver( self.clearDocumenation )
             PersistentVisualizationModule.moduleDocumentationDialog.show()
         elif ( self.createColormap and ( key == 'l' ) ): 
-            self.toggleColormapVisibility()                         
+            self.toggleColormapVisibility() 
+            HyperwallManager.getInstance().setInteractionState( 'colorbar', False )                        
             self.render() 
         elif (  key == 'r'  ):
             self.resetCamera()              
@@ -1800,6 +1802,17 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.InteractionState = state                   
                 self.LastInteractionState = self.InteractionState
                 self.disableVisualizationInteraction()
+            elif state == 'colorbar':
+                self.toggleColormapVisibility() 
+                HyperwallManager.getInstance().setInteractionState( state, False )                        
+            elif state == 'reset':
+                self.resetCamera()              
+                if  len(self.persistedParameters):
+                    pname = self.persistedParameters.pop()
+                    configFunct = self.configurableFunctions[pname]
+                    param_value = configFunct.reset() 
+                    if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                
+                HyperwallManager.getInstance().setInteractionState( state, False )                        
         return rcf
                    
     def endInteraction( self, **args ):

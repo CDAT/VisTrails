@@ -681,7 +681,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def addAction( module, action_key, config_key, isActive=True ):
         actionList = DV3DPipelineHelper.actionMap.setdefault( action_key[1], [] )
         fn = module.configurableFunctions.get( action_key[1], None )
-        actionList.append( ( module, config_key, fn ) ) 
+        actionList.append( ( module, config_key, fn ) )
+        DV3DPipelineHelper.addConfigCommand( module, fn, config_key ) 
         if isActive:
             actions = DV3DPipelineHelper.actionMenu.actions() 
             for action in actions:
@@ -694,8 +695,9 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return DV3DPipelineHelper.cfg_cmds.get( cfg_key, None )
 
     @staticmethod
-    def addConfigCommand( pmod, cmd ):
-        cmd_list = DV3DPipelineHelper.cfg_cmds.setdefault( cmd.key, [] )
+    def addConfigCommand( pmod, cmd, key = None ):
+        if not key: key = cmd.key
+        cmd_list = DV3DPipelineHelper.cfg_cmds.setdefault( key, [] )
         cmd_list.append( ( pmod, cmd ) )
     
     @staticmethod    

@@ -352,7 +352,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             if self.GetRenWinID() in DV3DPipelineHelper.getActiveRenWinIds():
                 self.captionManager.addCaption()
                 ( interactionState, persisted ) =  self.getInteractionState( key )
-                if state <> None: self.updateInteractionState( state, self.isAltMode  )                 
+                if interactionState <> None: self.updateInteractionState( interactionState, self.isAltMode  )                 
                 self.render() 
         else:
             PersistentVisualizationModule.processKeyEvent( self, key, caller, event ) 

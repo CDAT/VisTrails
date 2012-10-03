@@ -143,14 +143,16 @@ class QiVisClient(QtCore.QObject):
 
 
     def processCommand(self, terms):
-#        print " processCommand: %s " % str( terms )
+        print " -- processCommand: %s " % str( terms )
         if terms[0] == "reltimestep":
             relTimeValue = float( terms[1] )  
-            displayText =  terms[2] 
+            relTimeIndex = float( terms[2] )  
+            useTimeIndex = bool(terms[3]) 
+            displayText =  terms[4] 
             if self.current_pipeline:
                 for module in self.current_pipeline.module_list:
                     persistentCellModule = ModuleStore.getModule( module.id ) 
-                    if persistentCellModule: persistentCellModule.updateAnimation( [ relTimeValue, 0, False ], displayText  )
+                    if persistentCellModule: persistentCellModule.updateAnimation( [ relTimeValue, relTimeIndex, useTimeIndex ], displayText  )
         elif terms[0] == "pipelineHelper":
             if self.current_config_function:
                 if self.current_config_function.type == 'leveling':
@@ -329,7 +331,7 @@ class QiVisClient(QtCore.QObject):
         (sender, tokens) = message
 #        print " ********* CLIENT--> processMessage: %s ********* " % str( tokens )
         tokens = tokens.split( MessageTokenSep )
-#        print " ********* CLIENT--> splitMessage: %s ********* " % str( tokens )
+        if ( len(tokens) < 4 ) or ( tokens[3] <> 'mouseMove' ): print " ********* CLIENT--> splitMessage: %s ********* " % str( tokens )
         if len(tokens) == 0: return
         
         if tokens[0] == "exit":
