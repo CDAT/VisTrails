@@ -37,6 +37,7 @@ class QColormapEditor(QtGui.QColorDialog):
         self.activeCanvas = self.root.canvas[0]
 
         self.vcscolor=[0,0,0]
+        self.ignoreColorMapComboChange = False
         ## l = QtGui.QVBoxLayout()
 
         l = self.layout()
@@ -102,7 +103,7 @@ class QColormapEditor(QtGui.QColorDialog):
 
         # Ok/Cancel Buttons
         self.connect(buttons.widget(),QtCore.SIGNAL("accepted()"),self.applyChanges)
-        self.connect(buttons.widget(),QtCore.SIGNAL("rejected()"),self.resetChanges)
+        #self.connect(buttons.widget(),QtCore.SIGNAL("rejected()"),self.resetChanges)
         l.addItem(buttons)
         
         ## select the colormap before connecting
@@ -173,7 +174,7 @@ class QColormapEditor(QtGui.QColorDialog):
         self.setColorsFromPlot(self.currentPlot())
             
     def currentPlot(self):
-        return self.plots[0]
+        return self.plots[0] # remove this when switch to multi-colormap cells
         if self.plotCb.count() > 0:
             (localPlotIndex, success) = self.plotCb.itemData(self.plotCb.currentIndex()).toInt()
             if success:
@@ -184,13 +185,14 @@ class QColormapEditor(QtGui.QColorDialog):
             return None
         
     def colorMapComboChanged(self):
-        self.mapNameChanged = True
-        self.setColorsFromMapName()
+        if not self.ignoreColorMapComboChange:
+            self.mapNameChanged = True
+            self.setColorsFromMapName()
         
     def setColorsFromMapName(self):
         #n = self.layout().count()
         self.cellsDirty = False
-        self.cmap = self.activeCanvas.getcolormap(str(self.colormap.currentText()))
+        cmap = self.activeCanvas.getcolormap(str(self.colormap.currentText()))
         #self.colors=QtGui.QFrame()
         #rec= "##Changing colormap\nvcs_canvas[%i].setcolormap('%s')" % (self.activeCanvas.canvasid()-1,str(self.colormap.currentText()))
         #self.activeCanvas.setcolormap(str(self.colormap.currentText()))
@@ -198,7 +200,7 @@ class QColormapEditor(QtGui.QColorDialog):
         n = 0
         for i in range(15):
             for j in range(16):
-                r,g,b = self.cmap.index[n]
+                r,g,b = cmap.index[n]
                 r=int(r*2.55)
                 g=int(g*2.55)
                 b=int(b*2.55)
@@ -207,6 +209,12 @@ class QColormapEditor(QtGui.QColorDialog):
         self.update()
         
     def setColorsFromCanvas(self):
+        # get current colormapname from canvas
+        self.ignoreColorMapComboChange = True
+        newIdx = self.colormap.findText(self.activeCanvas.getcolormapname())
+        self.colormap.setCurrentIndex(newIdx)
+        self.ignoreColorMapComboChange = False
+        
         n = 0
         for i in range(15):
             for j in range(16):
@@ -219,39 +227,43 @@ class QColormapEditor(QtGui.QColorDialog):
         
         
     def setColorsFromPlot(self, plot):
-        mapName = None
-        cells = None
-        loadedBaseColorMap = False
-        colorMapModule = self.colorMapModuleFromPlot(plot)
-        if colorMapModule is not None:
-            mapName = colorMapModule.colorMapName            
-            if mapName is not None:
-                currentIdx = self.colormap.currentIndex()
-                newIdx = self.colormap.findText(mapName)
-                if newIdx != currentIdx:
-                    self.colormap.setCurrentIndex(newIdx)
-                    loadedBaseColorMap = True
-                cells = colorMapModule.colorCells
-        
-        if not loadedBaseColorMap:
-            self.setColorsFromMapName()
-                
-        #set custom user defined colors
-        if cells is not None:
-            for (n,r,g,b) in cells:
-                j = n % 16
-                i = (n-j) / 16
-                r=int(r*2.55)
-                g=int(g*2.55)
-                b=int(b*2.55)
-                self.setButton(i,j,n,r,g,b)
-                
-        self.update()
+        pass
+#        mapName = None
+#        cells = None
+#        loadedBaseColorMap = False
+#        colorMapModule = self.colorMapModuleFromPlot(plot)
+#        if colorMapModule is not None:
+#            mapName = colorMapModule.colorMapName            
+#            if mapName is not None:
+#                currentIdx = self.colormap.currentIndex()
+#                newIdx = self.colormap.findText(mapName)
+#                if newIdx != currentIdx:
+#                    self.colormap.setCurrentIndex(newIdx)
+#                    loadedBaseColorMap = True
+#                cells = colorMapModule.colorCells
+#        
+#        if not loadedBaseColorMap:
+#            self.setColorsFromMapName()
+#                
+#        #set custom user defined colors
+#        if cells is not None:
+#            for (n,r,g,b) in cells:
+#                j = n % 16
+#                i = (n-j) / 16
+#                r=int(r*2.55)
+#                g=int(g*2.55)
+#                b=int(b*2.55)
+#                self.setButton(i,j,n,r,g,b)
+#                
+#        self.update()
         
     def colorMapModuleFromPlot(self, plot):
-        for var in CDMSPipelineHelper.find_variables_connected_to_plot_module(self.controller, self.pipeline, plot.id):
-            if var.name == "CDMSColorMap":
-                return var
+        conns = self.controller.get_connections_to(self.pipeline, [plot.id], 
+                                                   port_name="colorMap")
+        if len(conns) > 0:
+            if len(conns) > 1:
+                print "WARNING: Multiple colormaps for a single plot"
+            return self.pipeline.modules[conns[0].source.moduleId]
         return None
         
     def applyChanges(self):
@@ -265,30 +277,13 @@ class QColormapEditor(QtGui.QColorDialog):
         if not self.mapNameChanged and not self.cellsDirty:
             return;
         
-        functions = []
-        cells = []
-        
-        colorMapModule = self.colorMapModuleFromPlot(plot)
-        if colorMapModule is None:
-            functions.append(("colorMapName",[str(self.colormap.currentText())]))
-                
-        if self.mapNameChanged:
-            rec="vcs_canvas[%i].setcolormap(\"%s\")" \
-                % (self.activeCanvas.canvasid()-1,self.colormap.currentText())
-            self.root.record(rec)
-            self.activeCanvas.setcolormap(str(self.colormap.currentText()))
-            if len(functions) == 0:
-                functions.append(("colorMapName",[str(self.colormap.currentText())]))
+        rec="vcs_canvas[%i].setcolormap(\"%s\")" \
+            % (self.activeCanvas.canvasid()-1,self.colormap.currentText())
+        self.root.record(rec)
+        self.activeCanvas.setcolormap(str(self.colormap.currentText()))
             
+        cells = []
         if self.cellsDirty:
-            #only persist existing cells if the mapname hasn't changed
-#            if len(functions) == 0:
-#                try:
-#                    cells = colorMapModule.colorCells
-#                    print 'got cells from colorMap module'
-#                except AttributeError:
-#                    pass
-
             n=0
             for i in range(15):
                 for j in range(16):
@@ -302,32 +297,36 @@ class QColormapEditor(QtGui.QColorDialog):
                         self.activeCanvas.canvas.setcolorcell(n,r,g,b);
                         cells.append((n,r,g,b))
                     n+=1
-            functions.append(("colorCells",[str(cells)]))
             #see vcs.Canvas.setcolorcell
             self.activeCanvas.canvas.updateVCSsegments(self.activeCanvas.mode) # pass down self and mode to _vcs module
             self.activeCanvas.flush() # update the canvas by processing all the X events
+        
+        version = self.controller.current_version
+        
+        action = None        
+        colorMapModule = self.colorMapModuleFromPlot(plot)
+        if colorMapModule is not None: #delete module
+            action = self.controller.delete_module(colorMapModule.id)
+            version = action.id
             
-        action = None
-        if colorMapModule is None: #create module
-            reg = get_module_registry()
-            color_descriptor = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
-                                           'CDMSColorMap')
-            colorMapModule = self.controller.create_module_from_descriptor(color_descriptor)
-            if len(functions) < 2:
-                functions.append("colorCells",[str(cells)])
-            module_functions = self.controller.create_functions(colorMapModule, functions)
-            for f in module_functions:
-                colorMapModule.add_function(f)
+        reg = get_module_registry()
+        color_descriptor = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
+                                       'CDMSColorMap')
+        colorMapModule = self.controller.create_module_from_descriptor(color_descriptor)
+        
+        functions = []
+        functions.append(("colorMapName",[str(self.colormap.currentText())]))
+        functions.append(("colorCells",[cells]))
+        module_functions = self.controller.create_functions(colorMapModule, functions)
+        for f in module_functions:
+            colorMapModule.add_function(f)
+        conn = self.controller.create_connection(colorMapModule, 'self', plot, 'colorMap')
 
-            ops = [('add', colorMapModule)]
-            conn = self.controller.create_connection(colorMapModule, 'self', plot, 'colorMap1')
-            ops.append(('add', conn))
-            action = core.db.action.create_action(ops)
-        else:            
-            action = self.controller.update_functions(colorMapModule, functions)
+        ops = [('add', colorMapModule), ('add', conn)]
+        action = core.db.action.create_action(ops)
             
         if action is not None:
-            self.controller.change_selected_version(self.controller.current_version)
+            self.controller.change_selected_version(version)
             self.controller.add_new_action(action)
             self.controller.perform_action(action)
             
@@ -336,7 +335,8 @@ class QColormapEditor(QtGui.QColorDialog):
             #self.controller.change_selected_version(action.id)
         
     def resetChanges(self):
-        self.setColorsFromPlot(self.currentPlot())
+        #self.setColorsFromPlot(self.currentPlot())
+        self.activateFromCell(self.activeCanvas)
                 
     def colorChanged(self):
         current = self.currentColor()
