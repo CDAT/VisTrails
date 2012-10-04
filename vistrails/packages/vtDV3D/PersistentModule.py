@@ -1133,11 +1133,11 @@ class PersistentModule( QObject ):
         """
         
         
-        controller = api.get_current_controller() 
         config_list = []
         try:
             ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
-            proj_controller = controller.uvcdat_controller
+            proj_controller = api.get_current_project_controller()
+            controller =  proj_controller.vt_controller 
             pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
             if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
                 proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )

@@ -213,12 +213,10 @@ class HyperwallManagerSingleton(QtCore.QObject):
            print "  *** ExecuteWorkflow--> cell: %s" % str( moduleId )
            sheetTabWidget = getSheetTabWidget()
            sheetName = sheetTabWidget.getSheetName()          
-           controller = api.get_current_controller()
-           proj_controller = controller.uvcdat_controller
+           proj_controller = api.get_current_project_controller()
            cell = proj_controller.sheet_map[ sheetName ][ ( dimensions[0], dimensions[1] ) ]
-           current_version = cell.current_parent_version 
-           controller.change_selected_version( current_version )
-           self.server.executePipeline( self.deviceName, vistrailName, versionName, moduleId, dimensions )
+           pipeline = proj_controller.vt_controller.vistrail.getPipeline( cell.current_parent_version ) 
+           self.server.executePipeline( pipeline, self.deviceName, vistrailName, versionName, moduleId, dimensions )
         
     def processInteractionEvent( self, name, event, screen_pos, screen_dims, camera_pos  ):
         if self.isServer:

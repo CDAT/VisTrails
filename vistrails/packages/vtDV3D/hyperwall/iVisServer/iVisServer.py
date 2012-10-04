@@ -125,10 +125,8 @@ class QiVisServer(QObject):
 
             incoming = str(socket.readAll().data())
 
-    def executePipeline( self, deviceName, vistrailName, versionName, moduleId, dimensions ):
-        import api
-        ctrl = api.get_current_controller()
-        cellID = self.devices[deviceName].dispatchPipeline( ctrl.current_pipeline, vistrailName, versionName, moduleId, dimensions)
+    def executePipeline( self, pipeline, deviceName, vistrailName, versionName, moduleId, dimensions ):
+        cellID = self.devices[deviceName].dispatchPipeline( pipeline, vistrailName, versionName, moduleId, dimensions)
         
 #        replyTokens = "localID,"+deviceName+","+str(cellID)+","+tokens[5]+","+tokens[6]+","+tokens[7]+","+tokens[8]
 
