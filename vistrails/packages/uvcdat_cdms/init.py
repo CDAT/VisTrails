@@ -740,8 +740,7 @@ class CDMSPlot(Plot, NotCacheable):
                                       ('ymtics1', 'basic:String', True),
                                       ('ymtics2', 'basic:String', True),
                                       ('projection', 'basic:String', True),
-                                      ("colorMap1", "CDMSColorMap", True),
-                                      ("colorMap2", "CDMSColorMap", True)])
+                                      ("colorMap", "CDMSColorMap", True)])
     _output_ports = expand_port_specs([("self", "CDMSPlot")])
 
     gm_attributes = [ 'datawc_calendar', 'datawc_timeunits',
@@ -782,13 +781,9 @@ class CDMSPlot(Plot, NotCacheable):
             if self.hasInputFromPort(attr):
                 setattr(self,attr,self.getInputFromPort(attr))
             
-        self.colorMap1 = None
-        if self.hasInputFromPort('colorMap1'):
-            self.colorMap1 = self.getInputFromPort('colorMap1')
-            
-        self.colorMap2 = None
-        if self.hasInputFromPort('colorMap2'):
-            self.colorMap2 = self.getInputFromPort('colorMap2')
+        self.colorMap = None
+        if self.hasInputFromPort('colorMap'):
+            self.colorMap = self.getInputFromPort('colorMap')
 
     def to_module(self, controller):
         module = Plot.to_module(self, controller, identifier)
@@ -1030,12 +1025,12 @@ Please delete unused CDAT Cells in the spreadsheet.")
                 _app.uvcdatWindow.record(cmd)                
             
             #apply colormap
-            if plot.colorMap1 is not None:
-                if plot.colorMap1.colorMapName is not None:
-                    self.canvas.setcolormap(str(plot.colorMap1.colorMapName))
+            if plot.colorMap is not None:
+                if plot.colorMap.colorMapName is not None:
+                    self.canvas.setcolormap(str(plot.colorMap.colorMapName))
                     
-                if plot.colorMap1.colorCells is not None:
-                    for (n,r,g,b) in plot.colorMap1.colorCells:
+                if plot.colorMap.colorCells is not None:
+                    for (n,r,g,b) in plot.colorMap.colorCells:
                         self.canvas.canvas.setcolorcell(n,r,g,b);
                     #see vcs.Canvas.setcolorcell
                     self.canvas.canvas.updateVCSsegments(self.canvas.mode) # pass down self and mode to _vcs module

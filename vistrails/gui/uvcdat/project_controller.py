@@ -416,7 +416,6 @@ class ProjectController(QtCore.QObject):
                                                                   plots=[],
                                                                   templates=[],
                                                                   current_parent_version=0L)
-        self.current_cell_changed(sheetName, row, col)
         
     def template_was_dropped(self, info):
         """template_was_dropped(info: (varName, sheetName, row, col) """
@@ -439,7 +438,6 @@ class ProjectController(QtCore.QObject):
                                                                   plots=[],
                                                                   templates=[template],
                                                                   current_parent_version=0L)
-        self.current_cell_changed(sheetName, row, col)
         
     def vis_was_dropped(self, info):
         """vis_was_dropped(info: (controller, version, sheetName, row, col) """
@@ -485,8 +483,6 @@ class ProjectController(QtCore.QObject):
 
         self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, None,
                   plot_type, cell.current_parent_version)
-        
-        self.current_cell_changed(sheetName, row, col)
         
     def search_and_emit_new_variables(self, cell):
         """search_and_emit_new_variables(cell) -> None
@@ -626,7 +622,6 @@ class ProjectController(QtCore.QObject):
                                                                   plots=[plot],
                                                                   templates=[],
                                                                   current_parent_version=0L)
-        self.current_cell_changed(sheetName, row, col)
     
     def reset_workflow(self, cell):
         pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
@@ -716,6 +711,8 @@ class ProjectController(QtCore.QObject):
             cell = self.sheet_map[sheetName][(row,col)]
             if cell.is_ready():
                 self.update_cell(sheetName, row, col, reuse_workflow)
+                if sheetName != self.current_sheetName or [row,col] != self.current_cell_coords:
+                    self.current_cell_changed(sheetName, row, col)
         except KeyError, err:
             traceback.print_exc( 100, sys.stderr )
         
