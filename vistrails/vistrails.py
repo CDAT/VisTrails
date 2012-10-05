@@ -97,6 +97,7 @@ if __name__ == '__main__':
         sys.exit(255)
     if (app.temp_configuration.interactiveMode and
         not app.temp_configuration.check('spreadsheetDumpCells')): 
+        app.uvcdatWindow.showBuilderWindowActTriggered() 
         v = app.exec_()
         
     gui.application.stop_application()

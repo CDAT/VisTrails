@@ -239,7 +239,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
         sheetTabWidget = getSheetTabWidget()
         selected_cells = sheetTabWidget.getSelectedLocations() if activeCellsOnly else None
         if self.isServer: 
-            print " HyperwallManager- processGuiCommand "
+            print " HyperwallManager- processGuiCommand: %s, selected_cells: %s " % ( str(command), str(selected_cells) )
             self.server.processGuiCommand( self.deviceName, command, selected_cells )        
 
 #    def clearLevelingState(self):

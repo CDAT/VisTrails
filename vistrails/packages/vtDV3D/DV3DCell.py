@@ -42,6 +42,7 @@ def get_coords_from_cell_address( row, col):
 def parse_cell_address( address ):
     try:
         if len(address)>1:
+            if '!' in address: address = address.split('!')[1]
             if address[0] >= 'A' and address[0] <= 'Z':
                 return get_coords_from_cell_address( address[1:], address[0] )
             else:

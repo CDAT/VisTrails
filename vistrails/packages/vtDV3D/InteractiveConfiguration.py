@@ -903,7 +903,7 @@ class ModuleDocumentationDialog( QDialog ):
         
 #        self.textEdit.setTextCursor( QTextCursor(self.textEdit.document()) )   
         
- ################################################################################
+################################################################################
 
 class IVModuleConfigurationDialog( QWidget ):
     """
@@ -1216,7 +1216,7 @@ class IVModuleConfigurationDialog( QWidget ):
     def closeTriggered(self, checked = False):
         self.close()
 
-    def finalizeParameter( self, *args ):
+    def finalizeParameter( self ):
         self.finalizeConfiguration()
         self.emit( GuiConfigurableFunction.finalize_parameter_signal, self.name, self.getValue() )
         command = [ self.name ]
@@ -1286,7 +1286,6 @@ class IVModuleConfigurationDialog( QWidget ):
                 config_data = module.getParameter( interactionState  ) 
                 if config_data: 
                     module.writeConfigurationResult( interactionState, config_data ) 
-                            
         HyperwallManager.getInstance().setInteractionState( None )               
         if self.manager:    self.manager.endConfig()
         else:               self.endConfig()
