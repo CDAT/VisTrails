@@ -301,35 +301,33 @@ class QColormapEditor(QtGui.QColorDialog):
             self.activeCanvas.canvas.updateVCSsegments(self.activeCanvas.mode) # pass down self and mode to _vcs module
             self.activeCanvas.flush() # update the canvas by processing all the X events
         
-        version = self.controller.current_version
+        self.controller.change_selected_version(self.controller.current_version)
+        
+        functions = [("colorMapName",[str(self.colormap.currentText())])]
+        functions.append(("colorCells",[str(cells)]))
         
         action = None        
         colorMapModule = self.colorMapModuleFromPlot(plot)
-        if colorMapModule is not None: #delete module
-            action = self.controller.delete_module(colorMapModule.id)
-            version = action.id
+        if colorMapModule is not None: #update module
+            action = self.controller.update_functions(colorMapModule, functions)
+        else: #create module
+            reg = get_module_registry()
+            color_descriptor = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
+                                           'CDMSColorMap')
+            colorMapModule = self.controller.create_module_from_descriptor(color_descriptor)
+            module_functions = self.controller.create_functions(colorMapModule, functions)
+            for f in module_functions:
+                colorMapModule.add_function(f)
+            conn = self.controller.create_connection(colorMapModule, 'self', plot, 'colorMap')
+    
+            ops = [('add', colorMapModule), ('add', conn)]
+            action = core.db.action.create_action(ops)
             
-        reg = get_module_registry()
-        color_descriptor = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
-                                       'CDMSColorMap')
-        colorMapModule = self.controller.create_module_from_descriptor(color_descriptor)
-        
-        functions = []
-        functions.append(("colorMapName",[str(self.colormap.currentText())]))
-        functions.append(("colorCells",[cells]))
-        module_functions = self.controller.create_functions(colorMapModule, functions)
-        for f in module_functions:
-            colorMapModule.add_function(f)
-        conn = self.controller.create_connection(colorMapModule, 'self', plot, 'colorMap')
-
-        ops = [('add', colorMapModule), ('add', conn)]
-        action = core.db.action.create_action(ops)
+            if action is not None:             
+                self.controller.add_new_action(action)
+                self.controller.perform_action(action)
             
         if action is not None:
-            self.controller.change_selected_version(version)
-            self.controller.add_new_action(action)
-            self.controller.perform_action(action)
-            
             if hasattr(self.controller, 'uvcdat_controller'):
                 self.controller.uvcdat_controller.cell_was_changed(action)
             #self.controller.change_selected_version(action.id)
