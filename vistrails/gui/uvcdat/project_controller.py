@@ -416,6 +416,7 @@ class ProjectController(QtCore.QObject):
                                                                   plots=[],
                                                                   templates=[],
                                                                   current_parent_version=0L)
+        
     def template_was_dropped(self, info):
         """template_was_dropped(info: (varName, sheetName, row, col) """
         (template, sheetName, row, col) = info
@@ -436,7 +437,8 @@ class ProjectController(QtCore.QObject):
             self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
                                                                   plots=[],
                                                                   templates=[template],
-                                                                  current_parent_version=0L)        
+                                                                  current_parent_version=0L)
+        
     def vis_was_dropped(self, info):
         """vis_was_dropped(info: (controller, version, sheetName, row, col) """
         (controller, version, sheetName, row, col, plot_type) = info
@@ -709,6 +711,8 @@ class ProjectController(QtCore.QObject):
             cell = self.sheet_map[sheetName][(row,col)]
             if cell.is_ready():
                 self.update_cell(sheetName, row, col, reuse_workflow)
+                if sheetName != self.current_sheetName or [row,col] != self.current_cell_coords:
+                    self.current_cell_changed(sheetName, row, col)
         except KeyError, err:
             traceback.print_exc( 100, sys.stderr )
         
