@@ -1286,16 +1286,6 @@ class IVModuleConfigurationDialog( QWidget ):
                 config_data = module.getParameter( interactionState  ) 
                 if config_data: 
                     module.writeConfigurationResult( interactionState, config_data ) 
-<<<<<<< HEAD
-                    
-        command = [ interactionState ]
-        value = self.getValue()
-        command.extend( value ) if isList( value ) else command.append( value )   
-        HyperwallManager.getInstance().processGuiCommand( command  )
-        
-=======
-                            
->>>>>>> 25931c3e39800df704350d712c64a9598c76a628
         HyperwallManager.getInstance().setInteractionState( None )               
         if self.manager:    self.manager.endConfig()
         else:               self.endConfig()
