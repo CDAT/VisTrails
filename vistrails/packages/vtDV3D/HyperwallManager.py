@@ -207,14 +207,20 @@ class HyperwallManagerSingleton(QtCore.QObject):
                 self.executeCurrentWorkflow( moduleId )
 
     def executeCurrentWorkflow( self, moduleId ):
+        import api
         if self.isServer: 
            ( vistrailName, versionName, dimensions ) = self.cells[ moduleId ] 
            print "  *** ExecuteWorkflow--> cell: %s" % str( moduleId )
-           self.server.executePipeline( self.deviceName, vistrailName, versionName, moduleId, dimensions )
+           sheetTabWidget = getSheetTabWidget()
+           sheetName = sheetTabWidget.getSheetName()          
+           proj_controller = api.get_current_project_controller()
+           cell = proj_controller.sheet_map[ sheetName ][ ( dimensions[0], dimensions[1] ) ]
+           pipeline = proj_controller.vt_controller.vistrail.getPipeline( cell.current_parent_version ) 
+           self.server.executePipeline( pipeline, self.deviceName, vistrailName, versionName, moduleId, dimensions )
         
     def processInteractionEvent( self, name, event, screen_pos, screen_dims, camera_pos  ):
         if self.isServer:
-            print " processInteractionEvent: ", str(name), str(event)
+            if name <> 'mouseMove': print " processInteractionEvent: ", str(name), str(event)
             isKeyPress = ( event.type() == QtCore.QEvent.KeyPress )
             sheetTabWidget = getSheetTabWidget()
             selected_cells = sheetTabWidget.getSelectedLocations()
