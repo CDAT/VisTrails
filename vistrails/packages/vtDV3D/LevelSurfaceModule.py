@@ -342,11 +342,11 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.setMaxScalarValue( self.input().GetScalarType() )
         self.colorByMappedScalars = False
         rangeBounds = self.getRangeBounds()
-        print "Data Type = %s, range = (%f,%f), max_scalar = %s" % ( dataType, rangeBounds[0], rangeBounds[1], self._max_scalar_value )
 
         dr = rangeBounds[1] - rangeBounds[0]
         range_offset = .2*dr
         self.range = [ rangeBounds[0] + range_offset, rangeBounds[1] - range_offset ]
+        print "Data Type = %s, range = (%f,%f), range bounds = (%f,%f), max_scalar = %s" % ( dataType, self.range[0], self.range[1], rangeBounds[0], rangeBounds[1], self._max_scalar_value )
         self.probeFilter = None
         textureRange = self.range
         if texture_ispec and texture_ispec.input:

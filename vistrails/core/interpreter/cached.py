@@ -219,6 +219,8 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
                 else:
                     tupleModule = core.interpreter.base.InternalTuple()
                     tupleModule.length = len(f.params)
+                    if f.name == 'levelRangeScale':
+                        pass
                     for (j,p) in enumerate(f.params):
                         try:
                             constant = create_constant(p, module)

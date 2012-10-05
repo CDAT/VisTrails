@@ -655,11 +655,13 @@ class PersistentModule( QObject ):
         import api
         self.getDatasetId( **args )
         pval = self.getParameter( inputName, None )
+        if inputName == 'levelRangeScale':
+            controller = api.get_current_controller()
+            print ' Input levelRangeScale value, MID[%d], ctrl_version=%d, parameter value = %s, (defval=%s)'  % ( self.moduleID, controller.current_version, str(pval), str(default_value) )            
         if (pval == None) and (self.wmod <> None):
             pval = self.wmod.forceGetInputFromPort( inputName, default_value )             
-        if inputName == 'colormap':
-            controller = api.get_current_controller()
-            print ' Input colormap value, MID[%d], ctrl_version=%d, value = %s (defval=%s)'  % ( self.moduleID, controller.current_version, str(pval), str(default_value) )            
+        if inputName == 'levelRangeScale':
+            print ' Actual Input value = %s'  % str(pval)           
         return pval
           
     def setResult( self, outputName, value ): 
