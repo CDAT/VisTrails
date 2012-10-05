@@ -900,7 +900,7 @@ class ModuleDocumentationDialog( QDialog ):
         
 #        self.textEdit.setTextCursor( QTextCursor(self.textEdit.document()) )   
         
- ################################################################################
+################################################################################
 
 class IVModuleConfigurationDialog( QWidget ):
     """
@@ -1079,7 +1079,9 @@ class IVModuleConfigurationDialog( QWidget ):
         for module in self.modules:
             if DV3DPipelineHelper.getPlotActivation( module ) :
                 self.active_modules.add( module )
-                module.updateConfigurationObserver( self.name, self.getValue() )        
+                fval = self.getValue()
+                module.updateConfigurationObserver( self.name,  )  
+#                HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", self.name, fval ]  )      
 
     def startConfiguration(self):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
@@ -1209,7 +1211,7 @@ class IVModuleConfigurationDialog( QWidget ):
     def closeTriggered(self, checked = False):
         self.close()
 
-    def finalizeParameter( self, *args ):
+    def finalizeParameter( self ):
         self.finalizeConfiguration()
         self.emit( GuiConfigurableFunction.finalize_parameter_signal, self.name, self.getValue() )
         command = [ self.name ]
@@ -1279,6 +1281,12 @@ class IVModuleConfigurationDialog( QWidget ):
                 config_data = module.getParameter( interactionState  ) 
                 if config_data: 
                     module.writeConfigurationResult( interactionState, config_data ) 
+                    
+        command = [ interactionState ]
+        value = self.getValue()
+        command.extend( value ) if isList( value ) else command.append( value )   
+        HyperwallManager.getInstance().processGuiCommand( command  )
+        
         HyperwallManager.getInstance().setInteractionState( None )               
         if self.manager:    self.manager.endConfig()
         else:               self.endConfig()
