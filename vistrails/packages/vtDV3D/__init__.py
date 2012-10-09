@@ -84,7 +84,7 @@ def initialize(*args, **keywords):
     from packages.vtDV3D.WorldMapModule import WorldFrame
     from packages.vtDV3D.VoxelizerModule import Voxelizer
 #    from DemoDataModule import DemoData, DemoDataConfigurationWidget
-    from packages.vtDV3D.InteractiveConfiguration import LayerConfigurationWidget
+#    from packages.vtDV3D.InteractiveConfiguration import LayerConfigurationWidget
     from packages.vtDV3D.LevelSurfaceModule import LevelSurface 
     from packages.vtDV3D.CurtainPlotModule import CurtainPlot 
     from packages.uvcdat_cdms.init import CDMSVariable

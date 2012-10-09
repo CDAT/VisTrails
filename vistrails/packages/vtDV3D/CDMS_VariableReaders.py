@@ -160,16 +160,16 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 cdms_var2 = self.getInputValue( "variable%d" % iVar  ) 
                 if cdms_var2: self.addCDMSVariable( cdms_var2, iVar )
             self.generateOutput()
-            if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
+#            if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
         else:
             dset = self.getInputValue( "dataset"  ) 
             if dset: 
                 self.cdmsDataset = dset
-                dsetid = self.getAnnotation( "datasetId" )
-                if dsetid: self.datasetId = dsetid 
+#                dsetid = self.getAnnotation( "datasetId" )
+#                if dsetid: self.datasetId = dsetid 
                 dsetId = self.cdmsDataset.getDsetId()
-                self.newDataset = ( self.datasetId <> dsetId )
-                self.newLayerConfiguration = self.newDataset
+#                self.newDataset = ( self.datasetId <> dsetId )
+                self.newLayerConfiguration = True # self.newDataset
                 self.datasetId = dsetId
                 ModuleStore.archiveCdmsDataset( self.datasetId, self.cdmsDataset )
                 self.timeRange = self.cdmsDataset.timeRange
@@ -182,7 +182,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 print "Set Time: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
 #                print "Time Step Labels: %s" % str( self.timeLabels ) 
                 self.generateOutput()
-                if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
+#                if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
  
             
     def getParameterId(self):

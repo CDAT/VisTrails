@@ -361,7 +361,7 @@ class PersistentModule( QObject ):
         self.taggedVersionMap = {}
         self.persistedParameters = []
         self.versionTags = {}
-        self.initVersionMap()
+#        self.initVersionMap()
         role = get_hyperwall_role( )
         self.isClient = ( role == 'hw_client' )
         self.isServer = ( role == 'hw_server' )
@@ -484,13 +484,13 @@ class PersistentModule( QObject ):
     def initiateParameterUpdate( self, parmName ):
         self.parmUpdating[parmName] = True     
      
-    def addAnnotation( self, id, note ): 
-        if self.isClient: return 
-        import api
-        controller = api.get_current_controller()
-        try:
-            controller.add_annotation( (id, str(note)), self.moduleID ) 
-        except: pass
+#    def addAnnotation( self, id, note ): 
+#        if self.isClient: return 
+#        import api
+#        controller = api.get_current_controller()
+#        try:
+#            controller.add_annotation( (id, str(note)), self.moduleID ) 
+#        except: pass
         
     def getOutputRecord( self, ndim  ):
         return None
@@ -618,7 +618,7 @@ class PersistentModule( QObject ):
         dsid = args.get( 'datasetId', None )
         if dsid:
             self.datasetId = dsid 
-            self.addAnnotation( 'datasetId', self.datasetId  ) 
+#            self.addAnnotation( 'datasetId', self.datasetId  ) 
     
     def getInputValue1( self, inputName, default_value = None, **args ):
         import api
@@ -709,15 +709,16 @@ class PersistentModule( QObject ):
                 
                 if inputIndex == 0:     
                     self.setParameter( 'metadata', ispec.metadata ) 
-                    datasetId = self.getAnnotation( "datasetId" )
-                    if datasetId <> ispec.datasetId:
-#                        print>>sys.stderr, "\n ----------------------- Dataset changed, rebuild pipeline: %s -> %s ----------------------- \n" % ( datasetId, ispec.datasetId )
-                        self.pipelineBuilt = False
-                        self.newDataset = True
-                        self.newLayerConfiguration = True
-                        self.addAnnotation( "datasetId", ispec.datasetId )
+#                    datasetId = self.getAnnotation( "datasetId" )
                 else:                   
                     self.setParameter( 'metadata-%d' % inputIndex, ispec.metadata )
+
+                if not isAnimation:
+#                        print>>sys.stderr, "\n ----------------------- Dataset changed, rebuild pipeline: %s -> %s ----------------------- \n" % ( datasetId, ispec.datasetId )
+                    self.pipelineBuilt = False
+                    self.newDataset = True
+                    self.newLayerConfiguration = True
+#                        self.addAnnotation( "datasetId", ispec.datasetId )
  
                 if self.roi == None:  
                     self.roi = ispec.metadata.get( 'bounds', None )  
@@ -725,10 +726,10 @@ class PersistentModule( QObject ):
                     tval = args.get( 'timeValue', None )
                     if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ReferenceTimeUnits )
                     ispec.fieldData = ispec.inputModule.getFieldData() 
-                else:
-                    if inputIndex == 0: 
-                        scalars = ispec.metadata.get( 'scalars', None )
-                        self.initializeLayers( scalars )
+#                else:
+#                    if inputIndex == 0: 
+#                        scalars = ispec.metadata.get( 'scalars', None )
+#                        self.initializeLayers( scalars )
                     
                 ispec.initializeScalarRange()
                 
@@ -739,21 +740,21 @@ class PersistentModule( QObject ):
         if isAnimation:
             for configFunct in self.configurableFunctions.values(): configFunct.expandRange()
    
-    def initializeLayers( self, scalars ):
-        if self.activeLayer == None: 
-            self.activeLayer =self.getAnnotation( 'activeLayer' )
-        if self.input and not scalars:
-            scalarsArray = self.input.GetPointData().GetScalars()
-            if scalarsArray <> None:
-                scalars = scalarsArray.GetName() 
-            else:
-                layerList = self.getLayerList()
-                if len( layerList ): scalars = layerList[0] 
-        if self.activeLayer <> scalars:
-            self.updateLayerDependentParameters( self.activeLayer, scalars )
-            self.activeLayer = scalars 
-            self.addAnnotation( 'activeLayer', self.activeLayer  ) 
-            self.seriesScalarRange = None
+#    def initializeLayers( self, scalars ):
+#        if self.activeLayer == None: 
+#            self.activeLayer =self.getAnnotation( 'activeLayer' )
+#        if self.input and not scalars:
+#            scalarsArray = self.input.GetPointData().GetScalars()
+#            if scalarsArray <> None:
+#                scalars = scalarsArray.GetName() 
+#            else:
+#                layerList = self.getLayerList()
+#                if len( layerList ): scalars = layerList[0] 
+#        if self.activeLayer <> scalars:
+#            self.updateLayerDependentParameters( self.activeLayer, scalars )
+#            self.activeLayer = scalars 
+##            self.addAnnotation( 'activeLayer', self.activeLayer  ) 
+#            self.seriesScalarRange = None
 
     def getDataValue( self, image_value, input_index = 0 ):
         ispec = self.inputSpecs[ input_index ] 
@@ -1027,27 +1028,27 @@ class PersistentModule( QObject ):
     def getTaggedVersionList( self, tag ):
         return self.taggedVersionMap.get( tag, None )
     
-    def persistVersionMap( self ): 
-        serializedVersionMap = encodeToString( self.taggedVersionMap ) 
-        self.addAnnotation( 'taggedVersionMap', serializedVersionMap )
+#    def persistVersionMap( self ): 
+#        serializedVersionMap = encodeToString( self.taggedVersionMap ) 
+#        self.addAnnotation( 'taggedVersionMap', serializedVersionMap )
         
-    def getAnnotation( self, key, default_value = None ):
-        module = self.getRegisteredModule()
-        if (module and module.has_annotation_with_key(key)): return module.get_annotation_by_key(key).value
-        return default_value
+#    def getAnnotation( self, key, default_value = None ):
+#        module = self.getRegisteredModule()
+#        if (module and module.has_annotation_with_key(key)): return module.get_annotation_by_key(key).value
+#        return default_value
 
-    def initVersionMap( self ): 
-        if (self.moduleID >= 0):
-            serializedVersionMap = self.getAnnotation('taggedVersionMap')
-            if serializedVersionMap: 
-                try:
-                    self.taggedVersionMap = decodeFromString( serializedVersionMap.strip(), {} ) 
-                    for tagItem in self.taggedVersionMap.items():
-                        for version in tagItem[1]:
-                            self.versionTags[ version ] = tagItem[0]
-                except Exception, err:
-                    print "Error unpacking taggedVersionMap, serialized data: %s, err: %s" % ( serializedVersionMap, str(err) )
-                    self.taggedVersionMap = {}
+#    def initVersionMap( self ): 
+#        if (self.moduleID >= 0):
+#            serializedVersionMap = self.getAnnotation('taggedVersionMap')
+#            if serializedVersionMap: 
+#                try:
+#                    self.taggedVersionMap = decodeFromString( serializedVersionMap.strip(), {} ) 
+#                    for tagItem in self.taggedVersionMap.items():
+#                        for version in tagItem[1]:
+#                            self.versionTags[ version ] = tagItem[0]
+#                except Exception, err:
+#                    print "Error unpacking taggedVersionMap, serialized data: %s, err: %s" % ( serializedVersionMap, str(err) )
+#                    self.taggedVersionMap = {}
                 
     def getTaggedVersion( self, tag ):
         versionList = self.taggedVersionMap.get( tag, None )

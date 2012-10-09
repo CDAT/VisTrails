@@ -1456,22 +1456,22 @@ class LayerConfigurationDialog( IVModuleConfigurationDialog ):
             if itemIndex >= 0: self.layerCombo.setCurrentIndex( itemIndex )
             else: print>>sys.stderr, " Can't find colormap: %s " % layer_name
 
-    def queryLayerList( self, ndims=3 ):
-        portName = 'volume' if ( ndims == 3 ) else 'slice'
-        mid = self.module.id
-        while mid <> None:
-            connectedModuleIds = getConnectedModuleIds( self.controller, mid, portName ) 
-            for ( mid, mport ) in connectedModuleIds:
-                module = self.controller.current_pipeline.modules[ mid ]
-                dsetId = module.getAnnotation( "datasetId" )
-                if dsetId:
-                    portData = getFunctionParmStrValues( module, "portData" )
-                    if portData:
-                        serializedPortData = portData[0]
-                        oRecMgr = OutputRecManager( serializedPortData )
-                        orec = oRecMgr.getOutputRec( dsetId, portName )
-                        return orec.getVarList()
-        return []      
+#    def queryLayerList( self, ndims=3 ):
+#        portName = 'volume' if ( ndims == 3 ) else 'slice'
+#        mid = self.module.id
+#        while mid <> None:
+#            connectedModuleIds = getConnectedModuleIds( self.controller, mid, portName ) 
+#            for ( mid, mport ) in connectedModuleIds:
+#                module = self.controller.current_pipeline.modules[ mid ]
+#                dsetId = module.getAnnotation( "datasetId" )
+#                if dsetId:
+#                    portData = getFunctionParmStrValues( module, "portData" )
+#                    if portData:
+#                        serializedPortData = portData[0]
+#                        oRecMgr = OutputRecManager( serializedPortData )
+#                        orec = oRecMgr.getOutputRec( dsetId, portName )
+#                        return orec.getVarList()
+#        return []      
             
     def getLayerList( self ):
         for module in self.modules:
@@ -1987,23 +1987,23 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
     def persistParameterList( self, parameter_list, **args ):
         self.pmod.persistParameterList( parameter_list, **args )
                         
-    def queryLayerList( self, ndims=3 ):
-        portName = 'volume' if ( ndims == 3 ) else 'slice'
-        mid = self.module.id
-        while mid <> None:
-            connectedModuleIds = getConnectedModuleIds( self.controller, mid, portName ) 
-            for ( mid, mport ) in connectedModuleIds:
-                module = self.controller.current_pipeline.modules[ mid ]
-                dsetIdData = getFunctionParmStrValues( module, "datasetId" )
-                if dsetIdData:
-                    dsetId = dsetIdData[0]
-                    portData = getFunctionParmStrValues( module, "portData" )
-                    if portData:
-                        serializedPortData = portData[0]
-                        oRecMgr = OutputRecManager( serializedPortData )
-                        orec = oRecMgr.getOutputRec( dsetId, portName )
-                        return orec.getVarList()
-        return []        
+#    def queryLayerList( self, ndims=3 ):
+#        portName = 'volume' if ( ndims == 3 ) else 'slice'
+#        mid = self.module.id
+#        while mid <> None:
+#            connectedModuleIds = getConnectedModuleIds( self.controller, mid, portName ) 
+#            for ( mid, mport ) in connectedModuleIds:
+#                module = self.controller.current_pipeline.modules[ mid ]
+#                dsetIdData = getFunctionParmStrValues( module, "datasetId" )
+#                if dsetIdData:
+#                    dsetId = dsetIdData[0]
+#                    portData = getFunctionParmStrValues( module, "portData" )
+#                    if portData:
+#                        serializedPortData = portData[0]
+#                        oRecMgr = OutputRecManager( serializedPortData )
+#                        orec = oRecMgr.getOutputRec( dsetId, portName )
+#                        return orec.getVarList()
+#        return []        
         
     def checkBoxFromPort(self, port, input_=False):
         checkBox = QCheckBox(port.name)
@@ -2454,71 +2454,71 @@ class LevelConfigurationDialog( IVModuleConfigurationDialog ):
 #        layersLayout.addLayout( layer_selection_Layout )
 
                 
-class LayerConfigurationWidget(DV3DConfigurationWidget):
-    """
-    LayerConfigurationWidget ...
-    
-    """
-    def __init__(self, module, controller, parent=None):
-        """ LayerConfigurationWidget(module: Module,
-                                       controller: VistrailController,
-                                       parent: QWidget)
-                                       -> LayerConfigurationWidget
-        Setup the dialog ...
-        
-        """
-        self.layer = None
-        DV3DConfigurationWidget.__init__(self, module, controller, 'Layer Configuration', parent) 
-        
-    def getParameters( self, module ):
-        self.layerList = self.queryLayerList()
-        layerData = getFunctionParmStrValues( module, "layer" )
-        if layerData: self.layer = layerData[0]
-                               
-    def createLayout(self):
-        """ createEditor() -> None
-        Configure sections
-        
-        """
-        layersTab = QWidget()        
-        self.tabbedWidget.addTab( layersTab, 'Layers' ) 
-        self.tabbedWidget.setCurrentWidget(layersTab)
-        layersLayout = QVBoxLayout()                
-        layersTab.setLayout( layersLayout )
-                               
-        layer_selection_Layout = QHBoxLayout()      
-        layer_selection_label = QLabel( "Select Layer:"  )
-        layer_selection_Layout.addWidget( layer_selection_label ) 
-        self.layersCombo =  QComboBox ( self )
-        layer_selection_label.setBuddy( self.layersCombo )
-#        layersCombo.setMaximumHeight( 30 )
-        layer_selection_Layout.addWidget( self.layersCombo ) 
-        
-        for layer in self.layerList:               
-            self.layersCombo.addItem( str(layer) ) 
-        
-        if self.layer:
-            currentLayerIndex = self.layersCombo.findText ( self.layer )   
-            if currentLayerIndex >= 0: self.layersCombo.setCurrentIndex( currentLayerIndex ) 
- 
-        layersLayout.addLayout( layer_selection_Layout )
-
-    def updateController(self, controller):
-        new_layer_value = str( self.layersCombo.currentText() )
-        if new_layer_value <> self.layer: 
-#            if self.pmod: self.pmod.changeVersion( self.layer, new_layer_value )
-            self.persistParameterList( [ ('layer', [ new_layer_value, ]) ] )  
-            self.layer = new_layer_value
-        self.stateChanged(False)
-          
-    def okTriggered(self, checked = False):
-        """ okTriggered(checked: bool) -> None
-        Update vistrail controller (if neccesssary) then close the widget
-        
-        """
-        self.updateController(self.controller)
-        self.emit(SIGNAL('doneConfigure()'))
-        self.close() 
+#class LayerConfigurationWidget(DV3DConfigurationWidget):
+#    """
+#    LayerConfigurationWidget ...
+#    
+#    """
+#    def __init__(self, module, controller, parent=None):
+#        """ LayerConfigurationWidget(module: Module,
+#                                       controller: VistrailController,
+#                                       parent: QWidget)
+#                                       -> LayerConfigurationWidget
+#        Setup the dialog ...
+#        
+#        """
+#        self.layer = None
+#        DV3DConfigurationWidget.__init__(self, module, controller, 'Layer Configuration', parent) 
+#        
+#    def getParameters( self, module ):
+#        self.layerList = self.queryLayerList()
+#        layerData = getFunctionParmStrValues( module, "layer" )
+#        if layerData: self.layer = layerData[0]
+#                               
+#    def createLayout(self):
+#        """ createEditor() -> None
+#        Configure sections
+#        
+#        """
+#        layersTab = QWidget()        
+#        self.tabbedWidget.addTab( layersTab, 'Layers' ) 
+#        self.tabbedWidget.setCurrentWidget(layersTab)
+#        layersLayout = QVBoxLayout()                
+#        layersTab.setLayout( layersLayout )
+#                               
+#        layer_selection_Layout = QHBoxLayout()      
+#        layer_selection_label = QLabel( "Select Layer:"  )
+#        layer_selection_Layout.addWidget( layer_selection_label ) 
+#        self.layersCombo =  QComboBox ( self )
+#        layer_selection_label.setBuddy( self.layersCombo )
+##        layersCombo.setMaximumHeight( 30 )
+#        layer_selection_Layout.addWidget( self.layersCombo ) 
+#        
+#        for layer in self.layerList:               
+#            self.layersCombo.addItem( str(layer) ) 
+#        
+#        if self.layer:
+#            currentLayerIndex = self.layersCombo.findText ( self.layer )   
+#            if currentLayerIndex >= 0: self.layersCombo.setCurrentIndex( currentLayerIndex ) 
+# 
+#        layersLayout.addLayout( layer_selection_Layout )
+#
+#    def updateController(self, controller):
+#        new_layer_value = str( self.layersCombo.currentText() )
+#        if new_layer_value <> self.layer: 
+##            if self.pmod: self.pmod.changeVersion( self.layer, new_layer_value )
+#            self.persistParameterList( [ ('layer', [ new_layer_value, ]) ] )  
+#            self.layer = new_layer_value
+#        self.stateChanged(False)
+#          
+#    def okTriggered(self, checked = False):
+#        """ okTriggered(checked: bool) -> None
+#        Update vistrail controller (if neccesssary) then close the widget
+#        
+#        """
+#        self.updateController(self.controller)
+#        self.emit(SIGNAL('doneConfigure()'))
+#        self.close() 
         
 ConfigCommandPopupManager = ConfigPopupManager()   
 
