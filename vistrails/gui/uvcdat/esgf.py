@@ -149,9 +149,9 @@ class QEsgfCredentials(QtGui.QDialog):
         vbox.addWidget(lbl)
         self.host = uvcdatCommons.QLabeledWidgetContainer(QtGui.QLineEdit(),label="OpenID URL:",widgetSizePolicy=pol,labelSizePolicy=pol)
         self.parent=parent
-        self.host.widget.setText("pcmdi3.llnl.gov")
+        self.host.widget.setText("pcmdi9.llnl.gov")
         self.port = uvcdatCommons.QLabeledWidgetContainer(QtGui.QLineEdit(),label="Port:",widgetSizePolicy=pol,labelSizePolicy=pol)
-        self.port.widget.setText("2119")
+        self.port.widget.setText("7512")
         self.user = uvcdatCommons.QLabeledWidgetContainer(QtGui.QLineEdit(),label="User:",widgetSizePolicy=pol,labelSizePolicy=pol)
         self.user.widget.setText(os.environ.get("USER",""))
         self.password = uvcdatCommons.QLabeledWidgetContainer(QtGui.QLineEdit(),label="Password:",widgetSizePolicy=pol,labelSizePolicy=pol)
@@ -196,9 +196,21 @@ class QEsgfCredentials(QtGui.QDialog):
             port = int(str(self.port.widget.text()))
             passphrase=str(self.password.widget.text())
             lifetime=int(str(self.lifetime.widget.text()))
-            
+ 	    cert_path=os.path.dirname(self.cert_file)
+            if not os.path.exists(cert_path):
+		try:
+		    os.makedirs(cert_path)
+ 		except:
+		    pass
+ 
             myproxy_logon.myproxy_logon(host,username,passphrase,self.cert_file,lifetime=lifetime,port=port)
             if self.key_file!=self.cert_file:
+                key_path=os.path.dirname(self.key_file)
+                if not os.path.exists(key_path):
+		    try:
+		        os.makedirs(key_path)
+ 		    except:
+		        pass
                 myproxy_logon.myproxy_logon(host,username,passphrase,self.key_file,lifetime=lifetime,port=port)
             self.hide()
         except Exception,err:
@@ -342,7 +354,7 @@ class QEsgfBrowser(QtGui.QDialog):
             url = txt[1].split()[0].strip()
             if service=="OPENDAP":
                 try:
-                    f=cdms2.open(url)
+                    f=cdms2.open(url[:-5])
                     fvars = f.variables.keys()
                     for v in f.variables.keys():
                         V=f[v]
@@ -359,19 +371,21 @@ class QEsgfBrowser(QtGui.QDialog):
                     f.close()
                     index=-1
                     if self.root is not None:
-                        self.root.tabView.widget(0).fileWidget.widget.fileNameEdit.setText(url)
-                        self.root.tabView.widget(0).fileWidget.widget.fileNameEdit.emit(QtCore.SIGNAL('returnPressed()'))
-                        for i in range(self.root.tabView.widget(0).fileWidget.widget.varCombo.count()):
-                            t = self.root.tabView.widget(0).fileWidget.widget.varCombo.itemText(i)
-                            if str(t).split()[0] == fvars[0]:
-                                index = i
-                                break
-                        if index!=-1:
-                            self.root.tabView.widget(0).fileWidget.widget.varCombo.setCurrentIndex(index)
-                        self.hide()
+                        self.root.varProp.fileEdit.setText(url[:-5])
+			self.root.varProp.fileEdit.emit(QtCore.SIGNAL('returnPressed()'))
+                        self.root.varProp.originTabWidget.setCurrentIndex(0)
+                        #self.root.tabView.widget(0).fileWidget.widget.fileNameEdit.emit(QtCore.SIGNAL('returnPressed()'))
+                        #for i in range(self.root.tabView.widget(0).fileWidget.widget.varCombo.count()):
+                        #    t = self.root.tabView.widget(0).fileWidget.widget.varCombo.itemText(i)
+                        #    if str(t).split()[0] == fvars[0]:
+                        #        index = i
+                        #        break
+                        #if index!=-1:
+                        #    self.root.tabView.widget(0).fileWidget.widget.varCombo.setCurrentIndex(index)
+                        #self.hide()
                 except Exception,err:
                     m=QtGui.QMessageBox()
-                    m.setText("Couldn't open URL: %s (error: %s).Check credentials"%(url,err))
+                    m.setText("Couldn't open URL: %s (error: %s).Check credentials"%(url[:-5],err))
                     m.exec_()
             elif service == "HTTPServer":
                 fnm = QtGui.QFileDialog.getSaveFileName(self,"NetCDF File",filter="NetCDF Files (*.nc *.cdg *.NC *.CDF *.nc4 *.NC4) ;; All Files (*.*)",options=QtGui.QFileDialog.DontConfirmOverwrite)
