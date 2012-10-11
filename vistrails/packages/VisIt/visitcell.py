@@ -30,12 +30,14 @@ from packages.spreadsheet.spreadsheet_base import (StandardSheetReference,
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_event import DisplayCellEvent
 
-sys.argv.append("-embedded")
-viswin = visit.pyqt_gui.PyQtGUI(sys.argv)
-visit.Launch()
+import visit.pyqt_support
+#sys.argv.append("-embedded")
+#viswin = visit.pyqt_gui.PyQtGUI(sys.argv)
+visit.LaunchPyQt()
+viswin = visit.pyqt_support.GetPyQtViewerInstance()
 
-viswin.GetUIWindow().hide()
-viswin.GetRenderWindow(1).hide()
+#viswin.GetUIWindow().hide()
+#viswin.GetRenderWindow(1).hide()
 
 viswinmapper = {}
 availWindows = []
