@@ -4,19 +4,19 @@ import uvcdatCommons
 
 ## default values
 ICONPATH = os.path.join(cdms2.__path__[0], '..', '..', '..', '..', 'share','icons')
-appIcon = os.path.join(ICONPATH, "UV-CDAT_logo_sites.gif")
-esgfOpenDapIcon = os.path.join(ICONPATH,"file_document_paper_blue_g38942.ico")
-esgfGridFtpIcon = os.path.join(ICONPATH,"file_document_paper_blue_g13494.ico")
-esgfHttpIcon = os.path.join(ICONPATH,"file_document_paper_blue_g13247.ico")
-esgfLasIcon = os.path.join(ICONPATH,"file_document_paper_blue_g9845.ico")
-esgfUnknownIcon = os.path.join(ICONPATH,"file_document_paper_blue_g9432.ico")
-esgfFolderIcon = os.path.join(ICONPATH,"generic_folder_stripe.ico")
-esgfFileIcon = os.path.join(ICONPATH,"file_document_paper_blue_g21510.ico")
-esgfSearchIcon = os.path.join(ICONPATH,"toolbar_find.ico")
-esgfLoginIcon = os.path.join(ICONPATH,"login.ico")
+appIcon = ":/icons/resources/icons/UV-CDAT_logo_sites.gif"
+esgfOpenDapIcon = ":/icons/resources/icons/file_document_paper_blue_g38942.ico"
+esgfGridFtpIcon = ":/icons/resources/icons/file_document_paper_blue_g13494.ico"
+esgfHttpIcon = ":/icons/resources/icons/file_document_paper_blue_g13247.ico"
+esgfLasIcon = ":/icons/resources/icons/file_document_paper_blue_g9845.ico"
+esgfUnknownIcon = ":/icons/resources/icons/file_document_paper_blue_g9432.ico"
+esgfFolderIcon = ":/icons/resources/icons/generic_folder_stripe.ico"
+esgfFileIcon = ":/icons/resources/icons/file_document_paper_blue_g21510.ico"
+esgfSearchIcon = ":/icons/resources/icons/toolbar_find.ico"
+esgfLoginIcon = ":/icons/resources/icons/login.ico"
 esgfTreeIconSize = 22
-saveMovie = os.path.join(ICONPATH,"save_movie.ico")
-loadMovie = os.path.join(ICONPATH,"load_movie.ico")
+saveMovie = ":/icons/resources/icons/save_movie.ico"
+loadMovie = ":/icons/resources/icons/load_movie.ico"
 
 iconsize=24
 defaultTextColor = uvcdatCommons.blackColor

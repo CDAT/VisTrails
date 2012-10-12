@@ -245,14 +245,14 @@ class QEsgfBrowser(QtGui.QDialog):
         self.toolBar.setIconSize(QtCore.QSize(customizeUVCDAT.iconsize, customizeUVCDAT.iconsize))
         actionInfo = [
             (self.searchIcon, 'Run Search',self.clickedSearch,True),
-            ('db_add_256.ico', 'Add Gateway',self.userAddsGateway,True),
-            ('binary-tree-icon.png', 'Edit Mapping',self.editMapping,True),
-            ('floppy_disk_blue.ico', 'Save cache',self.userSaveCache,True),
+            (':/icons/resources/icons/db_add_256.ico', 'Add Gateway',self.userAddsGateway,True),
+            (':/icons/resources/icons/binary-tree-icon.png', 'Edit Mapping',self.editMapping,True),
+            (':/icons/resources/icons/floppy_disk_blue.ico', 'Save cache',self.userSaveCache,True),
             (self.loginIcon, 'Get Credentials',self.clickedCredentials,True),
             ]
         for info in actionInfo:
             if isinstance(info[0],str):
-                icon = QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, info[0]))
+                icon = QtGui.QIcon(info[0])
             else:
                 icon=info[0]
             action = self.toolBar.addAction(icon, 'help')
