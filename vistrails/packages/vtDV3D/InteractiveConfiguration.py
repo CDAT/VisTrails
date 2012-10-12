@@ -1950,13 +1950,17 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
                             if gridInput: 
                                 selected_var = getItem( gridInput ) 
                                 if selected_var:
+                                    selected_var = selected_var.strip("'[]")
                                     referenceData = selected_var.split('*')
                                     refDsid = referenceData[0]
                                     refVar  = referenceData[1].split(' ')[0]                                
-                                    relFilePath = datasets[ refDsid ]
-                                    cdmsFile = getFullPath( relFilePath )
-                                    dataset = cdms2.open( cdmsFile ) 
-                                    levelsAxis=dataset[refVar].getLevel()
+                                    relFilePath = datasets.get( refDsid, None )
+                                    if relFilePath == None:
+                                        print>>sys.stderr, " Can't find dataset %s in datasets: %s" % ( refDsid, str( datasets.keys() ) )
+                                    else:
+                                        cdmsFile = getFullPath( relFilePath )
+                                        dataset = cdms2.open( cdmsFile ) 
+                                        levelsAxis=dataset[refVar].getLevel()
                             datasetIds.add( datasetId )
         moduleIdList.append( mid )
         datasetId = '-'.join( datasetIds )

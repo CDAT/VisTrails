@@ -1297,6 +1297,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             cmdList = pmod.getConfigFunctions( [ 'leveling', 'uvcdat-gui' ] )
             for cmd in cmdList:
                 DV3DPipelineHelper.addConfigCommand( pmod, cmd )
+            pmod.resetNavigation()
         return DV3DPipelineHelper.config_widget
 
     @staticmethod

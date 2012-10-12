@@ -1170,7 +1170,9 @@ class PersistentModule( QObject ):
             print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
             for parmRec in parmRecList:  
                 op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
-                config_list.append( self.getConfigFunction( parmRec[0] ) )
+                config_fn = self.getConfigFunction( parmRec[0] )
+                if config_fn: config_list.append( config_fn )
+                else: print>>sys.stderr, "Unrecognized config function %s in module %d" % ( parmRec[0], self.moduleID )
 #                if parmRec[0] == 'colorScale':
 #                    print 'x'
             action = create_action( op_list ) 
@@ -1182,8 +1184,7 @@ class PersistentModule( QObject ):
                 
             if proj_controller:
                 proj_controller.cell_was_changed(action)
-            if pcoords: 
-                proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
+                if pcoords:  proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
                 
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )

@@ -278,9 +278,9 @@ class CDMSDatasetRecord():
         latBounds = args.get( 'lat', None )
         levBounds = args.get( 'lev', None )
         timeBounds = args.get( 'time', None )
+        [ timeValue, timeIndex, useTimeIndex ] = timeBounds if timeBounds else [ None, None, None ]
         referenceVar = args.get( 'refVar', None )
         referenceLev = args.get( 'refLev', None )
-        timeValue, timeIndex, useTimeIndex = timeBounds if timeBounds else None, None, None
 
 #        nSliceDims = 0
 #        for bounds in (lonBounds, latBounds, levBounds, timeBounds):
@@ -342,8 +342,9 @@ class CDMSDatasetRecord():
         except: pass
         
         if lonBounds <> None:
-            if lonBounds[0] < LonMin: lonBounds[0] = LonMin
-            if lonBounds[1] > LonMax: lonBounds[1] = LonMax
+            if (lonBounds[1] - lonBounds[0]) < 355.0:
+                if lonBounds[0] < LonMin: lonBounds[0] = LonMin
+                if lonBounds[1] > LonMax: lonBounds[1] = LonMax
 #            if lonBounds[0] < LonMin and lonBounds[0]+360.0 < LonMax: lonBounds[0] = lonBounds[0] + 360.0
 #            if lonBounds[0] > LonMax and lonBounds[0]-360.0 > LonMin: lonBounds[0] = lonBounds[0] - 360.0
 #            if len( lonBounds ) > 1:
@@ -531,17 +532,21 @@ class CDMSDataset(Module):
         return None
 
     def setReferenceVariable( self, selected_grid_id ):
-        if (selected_grid_id == None) or (selected_grid_id == 'None'): return
-        refVarData = selected_grid_id.split('*')
-        if len( refVarData ) > 1:
-            dsid = refVarData[0]
-            varName = refVarData[1].split('(')[0].strip()
-            dsetRec = self.datasetRecs.get( dsid, None )
-            if dsetRec:
-                variable = dsetRec.dataset.variables.get( varName, None )
-                if variable: 
-                    self.referenceVariable = "*".join( [ dsid, dsetRec.cdmsFile, varName ] )
-                    self.referenceLev = variable.getLevel()
+        try:
+            if (selected_grid_id == None) or (selected_grid_id == 'None'): return
+            grid_id = getItem( selected_grid_id )
+            refVarData = grid_id.split('*')
+            if len( refVarData ) > 1:
+                dsid = refVarData[0]
+                varName = refVarData[1].split('(')[0].strip()
+                dsetRec = self.datasetRecs.get( dsid, None )
+                if dsetRec:
+                    variable = dsetRec.dataset.variables.get( varName, None )
+                    if variable: 
+                        self.referenceVariable = "*".join( [ dsid, dsetRec.cdmsFile, varName ] )
+                        self.referenceLev = variable.getLevel()
+        except Exception, err:
+            print>>sys.stderr, " Error in setReferenceVariable: ", str(err)
             
     def getReferenceDsetId(self):
         if self.referenceVariable == None: return self.datasetRecs.keys()[0]
