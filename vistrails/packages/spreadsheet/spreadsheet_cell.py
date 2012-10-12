@@ -428,12 +428,14 @@ class QCellToolBarConfigurePlot(QtGui.QAction):
 
         # Will not show up if there is no cell selected  
         proj_controller = _app.uvcdatWindow.get_current_project_controller()
-        sheetName = sheet.getSheetName()        
-        if (len(selectedCells)==1 and 
-            proj_controller.is_cell_ready(sheetName,row,col)):
+        sheetName = sheet.getSheetName() 
+        if cellWidget and hasattr( cellWidget, 'dv3dRenderCount' ):
+            self.setVisible(True)
+        else:              
+            if (len(selectedCells)==1 and proj_controller.is_cell_ready(sheetName,row,col)):
                 self.setVisible(True)
-        else:
-            self.setVisible(False)
+            else:
+                self.setVisible(False)
             
 class QCellToolBarViewSource(QtGui.QAction):
     """

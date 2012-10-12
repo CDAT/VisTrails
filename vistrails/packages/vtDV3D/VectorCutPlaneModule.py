@@ -44,7 +44,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
                 self.planeWidget.PlaceWidget(  bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]   )        
                 self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
                 
-    def scaleColormap( self, ctf_data, cmap_index=0 ):
+    def scaleColormap( self, ctf_data, cmap_index=0, **args ):
         colormapManager = self.getColormapManager( index=cmap_index )
         colormapManager.setScale( ctf_data, ctf_data )
         ispec = self.inputSpecs[ cmap_index ] 
@@ -325,7 +325,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
                 self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
 #                print "PlaceWidget: Data bounds = %s, data extents = %s " % ( str( self.dataBounds ), str( dataExtents ) )  
                                                 
-    def scaleColormap( self, ctf_data, cmap_index=0 ):
+    def scaleColormap( self, ctf_data, cmap_index=0, **args ):
         colormapManager = self.getColormapManager( index=cmap_index )
         colormapManager.setScale( ctf_data, ctf_data )
         ispec = self.inputSpecs[ cmap_index ] 
@@ -670,7 +670,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
                 self.planeWidget.SetOrigin( centroid[0], centroid[1], centroid[2]  )
                 self.planeWidget.SetNormal( ( 0.0, 0.0, 1.0 ) )
       
-    def scaleColormap( self, ctf_data, cmap_index=0 ):
+    def scaleColormap( self, ctf_data, cmap_index=0, **args ):
         colormapManager = self.getColormapManager( index=cmap_index )
         colormapManager.setScale( ctf_data, ctf_data )
         ispec = self.inputSpecs[ cmap_index ] 

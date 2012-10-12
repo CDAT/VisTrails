@@ -57,8 +57,8 @@ class QVTKClientWidget(QVTKWidget):
     """
     def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
         QVTKWidget.__init__(self, parent, f )
-        self.iRenderCount = 0
-        self.iRenderPeriod = 10
+        self.dv3dRenderCount = 0         # Do not rename -> used to id a dv3d widget.
+        self.dv3dRenderPeriod = 10
         self.current_button = QtCore.Qt.NoButton
         self.current_pos = QtCore.QPoint( 50, 50 )
 
@@ -78,8 +78,8 @@ class QVTKClientWidget(QVTKWidget):
         renderers = renWin.GetRenderers()
         renderer = renderers.GetFirstRenderer()
         if event.controlEventType == 'J':
-            doRender = ( self.iRenderCount == self.iRenderPeriod )
-            self.iRenderCount = 0 if doRender else self.iRenderCount + 1
+            doRender = ( self.dv3dRenderCount == self.dv3dRenderPeriod )
+            self.dv3dRenderCount = 0 if doRender else self.dv3dRenderCount + 1
             dx = event.jx
             dy = event.jy
             while renderer <> None:
@@ -101,8 +101,8 @@ class QVTKClientWidget(QVTKWidget):
               renderer = renderers.GetNextItem()
               
         elif event.controlEventType == 'j':
-            doRender = ( self.iRenderCount == self.iRenderPeriod )
-            self.iRenderCount = 0 if doRender else self.iRenderCount + 1
+            doRender = ( self.dv3dRenderCount == self.dv3dRenderPeriod )
+            self.dv3dRenderCount = 0 if doRender else self.dv3dRenderCount + 1
             dx = event.jx
             dy = event.jy
             if dy <> 0.0: 
@@ -398,6 +398,21 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                     dcam.SetPosition(cpos)
                     dcam.SetFocalPoint(cfol)
                     dcam.SetViewUp(cup)
+                    
+    def updateProject(self): 
+        return 
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
+        proj_controller = _app.uvcdatWindow.get_current_project_controller()
+        sheetTabWidget = self.getSheetTabWidget()
+        self.sheetName = sheetTabWidget.getSheetName() 
+        isReady = proj_controller.is_cell_ready( self.sheetName, self.location.row, self.location.col )
+        if not isReady:
+            if not sheetName in self.sheet_map: proj_controller.sheet_map[sheetName] = {}
+            ispec = self.inputSpecs[ 0 ]           
+            vars = ispec.metadata['vars']
+            plot = None
+            proj_controller.sheet_map[sheetName][(row,col)] = ControllerCell( variables=vars, plots=[plot], templates=[], current_parent_version=0L )            
         
     def setCellLocation( self, moduleId ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
@@ -453,6 +468,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
         PersistentVisualizationModule.execute(self, **args)
         self.recordCameraPosition()
+        self.updateProject()
         
     def addTitle(self):    
         title = getItem( self.getInputValue( "title", None ) )

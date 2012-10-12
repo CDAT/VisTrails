@@ -37,7 +37,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
       
-    def scaleColormap( self, ctf_data, cmap_index=0 ):
+    def scaleColormap( self, ctf_data, cmap_index=0, **args ):
         colormapManager = self.getColormapManager( index=cmap_index )
         colormapManager.setScale( ctf_data, ctf_data )
         ispec = self.inputSpecs[ cmap_index ] 

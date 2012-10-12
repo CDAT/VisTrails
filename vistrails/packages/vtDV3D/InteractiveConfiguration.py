@@ -558,7 +558,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
                 self.range_bounds = self.initial_range if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
 #            if self.name == 'functionScale':
 #                print 'x'
-            self.range = list( self.module.getInputValue( self.name, self.initial_range )  ) # if not self.module.newDataset else self.initial_range
+            input_range = self.module.getInputValue( self.name )
+            if input_range == None:     input_range = self.initial_range
+            else:                       self.manuallyAdjusted = True
+            self.range = list( input_range  ) # if not self.module.newDataset else self.initial_range
             if len( self.range ) == 3: 
                 for iR in range(2): self.range.append( self.initRefinement[iR] )
         self.windowLeveler.setDataRange( self.range )
