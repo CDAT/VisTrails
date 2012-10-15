@@ -13,6 +13,8 @@ from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, Persistent
 from packages.vtDV3D.InteractiveConfiguration import *
 from packages.vtDV3D.CaptionManager import *
 from packages.vtDV3D.WorkflowModule import WorkflowModule
+from core.uvcdat.plot_registry import Plot
+from gui.uvcdat.project_controller_cell import ControllerCell
 if ENABLE_JOYSTICK: from packages.vtDV3D.JoystickInterface import *
 else:               ControlEventType = None
 from packages.vtDV3D import ModuleStore
@@ -400,19 +402,25 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                     dcam.SetViewUp(cup)
                     
     def updateProject(self): 
-        return 
         from gui.application import get_vistrails_application
         _app = get_vistrails_application()
         proj_controller = _app.uvcdatWindow.get_current_project_controller()
         sheetTabWidget = self.getSheetTabWidget()
         self.sheetName = sheetTabWidget.getSheetName() 
-        isReady = proj_controller.is_cell_ready( self.sheetName, self.location.row, self.location.col )
-        if not isReady:
-            if not sheetName in self.sheet_map: proj_controller.sheet_map[sheetName] = {}
-            ispec = self.inputSpecs[ 0 ]           
-            vars = ispec.metadata['vars']
-            plot = None
-            proj_controller.sheet_map[sheetName][(row,col)] = ControllerCell( variables=vars, plots=[plot], templates=[], current_parent_version=0L )            
+        if not self.sheetName in proj_controller.sheet_map: proj_controller.sheet_map[self.sheetName] = {}
+#        isReady = proj_controller.is_cell_ready( self.sheetName, self.location.row, self.location.col )
+        ispec = self.inputSpecs[ 0 ]           
+        vars = ispec.metadata['vars']
+        vt_file = proj_controller.vt_controller.file_name
+        plot_name = os.path.basename( vt_file )
+        if plot_name: plot_name = os.path.splitext( plot_name )[0]
+        plot = Plot( plot_name, 'vtDV3D', None, vt_file )
+        cell_coords = ( self.location.row, self.location.col )
+        if cell_coords in proj_controller.sheet_map[ self.sheetName ]:
+            proj_controller.sheet_map[ self.sheetName ][ cell_coords ].plots.append(plot)
+        else:
+            proj_controller.sheet_map[ sheetName ][ cell_coords ] = ControllerCell( variables=vars, plots=[plot], templates=[], current_parent_version=0L )  
+                      
         
     def setCellLocation( self, moduleId ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
