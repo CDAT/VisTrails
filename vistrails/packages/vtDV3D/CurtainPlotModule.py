@@ -82,7 +82,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         pass
     
     def setOpacityRange( self, opacity_range ):
-        print "Update Opacity, range = %s" %  str( opacity_range )
+#        print "Update Opacity, range = %s" %  str( opacity_range )
         self.opacityRange = opacity_range
         self.colormapManager.setAlphaRange ( opacity_range[0:2] ) 
         self.render()

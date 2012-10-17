@@ -55,7 +55,7 @@ class ConfigPopupManager( QObject ):
             self.menu.updateGeometry()
     
     def execAction( self, action_key ): 
-        print " execAction: ", action_key
+#        print " execAction: ", action_key
         actionList  =  self.actionMap[ action_key ]
         for ( module, key ) in actionList:
             module.processKeyEvent( key )
@@ -584,7 +584,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     def getTextDisplay(self, **args ):
         rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
         rmax = self.range[1] # if not self.isDataValue else self.module.getDataValue( self.range[1] )
-        units = self.module.units if self.module else None
+        units = self.module.units if ( self.module and hasattr(self.module,'units') )  else None
         if units: textDisplay = " Range: %.4G, %.4G %s . " % ( rmin, rmax, units )
         else: textDisplay = " Range: %.4G, %.4G . " % ( rmin, rmax )
         return textDisplay
@@ -2260,6 +2260,10 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
             print " Animate step, delay time = %.2f msec" % delayTime
             self.timer.start( delayTime ) 
+
+    def finalizeConfig( self ):
+        self.stop()
+        IVModuleConfigurationDialog.finalizeConfig( self )
                 
 #    def run1(self):
 #        if self.running:

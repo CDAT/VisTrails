@@ -419,7 +419,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if cell_coords in proj_controller.sheet_map[ self.sheetName ]:
             proj_controller.sheet_map[ self.sheetName ][ cell_coords ].plots.append(plot)
         else:
-            proj_controller.sheet_map[ sheetName ][ cell_coords ] = ControllerCell( variables=vars, plots=[plot], templates=[], current_parent_version=0L )  
+            proj_controller.sheet_map[ self.sheetName ][ cell_coords ] = ControllerCell( variables=vars, plots=[plot], templates=[], current_parent_version=0L )  
                       
         
     def setCellLocation( self, moduleId ):
@@ -476,7 +476,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
         PersistentVisualizationModule.execute(self, **args)
         self.recordCameraPosition()
-        self.updateProject()
+#        self.updateProject()
         
     def addTitle(self):    
         title = getItem( self.getInputValue( "title", None ) )

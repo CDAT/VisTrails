@@ -248,7 +248,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         return PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args )
         
     def setOpacityRange( self, opacity_range, **args  ):
-        print "Update Opacity, range = %s" %  str( opacity_range )
+#        print "Update Opacity, range = %s" %  str( opacity_range )
         self.opacityRange = opacity_range
         cmap_index = 1 if self.generateTexture else 0
         colormapManager = self.getColormapManager( index=cmap_index )
@@ -286,7 +286,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         return [ self.numberOfLevels, ]
     
     def setLevelRange( self, range, **args ):
-        print "  ---> setLevelRange, data range = %s" % str( range ) 
+#        print "  ---> setLevelRange, data range = %s" % str( range ) 
         self.range = self.getImageValues( range )
         self.updateLevels()
     
@@ -296,7 +296,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         dL = ( self.range[1] - self.range[0] ) / nL1
         for i in range( 1, nL1 ): self.levelSetFilter.SetValue ( i, self.range[0] + dL * i )    
 #        self.updateColorMapping()
-        print "Update %d Level(s), range = [ %f, %f ], levels = %s" %  ( self.numberOfLevels, self.range[0], self.range[1], str(self.getLevelValues()) )  
+#        print "Update %d Level(s), range = [ %f, %f ], levels = %s" %  ( self.numberOfLevels, self.range[0], self.range[1], str(self.getLevelValues()) )  
         
 #    def updateColorMapping(self):
 #        if self.colorByMappedScalars: 

@@ -388,9 +388,9 @@ class PersistentModule( QObject ):
 #        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
         self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue, cellsOnly=True )
         
-        print "**********************************************************************"
-        print "Create Module [%d] : %s (%x)" % ( self.moduleID, self.__class__.__name__, id(self) )
-        print "**********************************************************************"
+#        print "**********************************************************************"
+#        print "Create Module [%d] : %s (%x)" % ( self.moduleID, self.__class__.__name__, id(self) )
+#        print "**********************************************************************"
 
 #        self.addConfigurableGuiFunction( 'layer', LayerConfigurationDialog, 'l', setValue=self.setLayer, getValue=self.getLayer )
 
@@ -1228,7 +1228,7 @@ class PersistentModule( QObject ):
             print "Error changing parameter %s for %s module: %s" % ( parameter_name, getClassName( self ), str(err) )
      
     def writeConfigurationResult( self, config_name, config_data, **args ):
-        print "MODULE[%d]: Persist Config Parameter %s -> %s "  % ( self.moduleID, config_name, str(config_data) )     
+#        print "MODULE[%d]: Persist Config Parameter %s -> %s "  % ( self.moduleID, config_name, str(config_data) )     
         if self.wmod: self.wmod.setResult( config_name, config_data )
         self.setParameter( config_name, config_data )
         self.finalizeConfigurationObserver( config_name, **args )
@@ -1786,6 +1786,7 @@ class PersistentVisualizationModule( PersistentModule ):
         pass
                 
     def updateInteractionState( self, state, altMode ): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper    
         rcf = None
         if state == None: 
             self.finalizeLeveling()
@@ -1805,7 +1806,8 @@ class PersistentVisualizationModule( PersistentModule ):
                 configFunct.open( state, self.isAltMode )
                 self.InteractionState = state                   
                 self.LastInteractionState = self.InteractionState
-                self.disableVisualizationInteraction()
+                if DV3DPipelineHelper.isLevelingConfigMode():
+                    self.disableVisualizationInteraction()
             elif state == 'colorbar':
                 self.toggleColormapVisibility() 
                 HyperwallManager.getInstance().setInteractionState( state, False )                        

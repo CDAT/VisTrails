@@ -84,7 +84,7 @@ class DV3DParameterSliderWidget(QWidget):
         self.textbox.setText( qsval )
         
     def setRange( self, fmin, fmax ):
-        print " Parameter Slider Widget: set Range= %s " % str( (fmin, fmax) )
+#        print " Parameter Slider Widget: set Range= %s " % str( (fmin, fmax) )
         if fmin >= fmax:
             if fmax > 0.0: fmin = fmax * 0.99
             else: fmax = 1.0
@@ -716,7 +716,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def setModulesActivation( modules, isActive ):
         for module in modules:
             DV3DPipelineHelper.activationMap[ module ] = isActive 
-            print " ** Set module activation: module[%d] -> %s (** persist parameters? **)" % ( module.moduleID, str(isActive) )
+#            print " ** Set module activation: module[%d] -> %s (** persist parameters? **)" % ( module.moduleID, str(isActive) )
             if not isActive:
                 config_fn = module.getCurrentConfigFunction()
                 if config_fn and not config_fn.persisted:
@@ -726,7 +726,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     @staticmethod
     def execAction( action_key ):
         from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 
-        print " execAction: ", action_key
+#        print " execAction: ", action_key
         currentActionList  =  DV3DPipelineHelper.actionMap[ action_key ]
         
         actionList = [] 
@@ -1258,9 +1258,9 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper, CDMSPlotWidget
         current_controller = api.get_current_controller()
         pipeline = controller.vt_controller.vistrail.getPipeline(version) 
-        print '-'*50      
-        print 'New Configuration panel: version=%d, current_version=%d, pid=%d, modules=%s' % ( version, current_controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
-        print '-'*50      
+#        print '-'*50      
+#        print 'New Configuration panel: version=%d, current_version=%d, pid=%d, modules=%s' % ( version, current_controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
+#        print '-'*50      
         pmods = set()
         DV3DPipelineHelper.reset()
         menu = DV3DPipelineHelper.startNewMenu()
