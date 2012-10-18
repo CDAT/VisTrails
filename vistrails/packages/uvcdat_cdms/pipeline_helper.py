@@ -212,7 +212,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             var_num = int(gmInfos[plot_type]["nSlabs"])
             for j in xrange(var_num):
                 if var_idx < len(var_modules):
-                    idx = i
+                    idx = j
                 else:
                     # this is not quite right, but this what was done before
                     # it is not clear what to do when two variables
