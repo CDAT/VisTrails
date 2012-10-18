@@ -417,11 +417,18 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         plot = Plot( plot_name, 'DV3D', None, vt_file )
         cell_coords = ( self.location.row, self.location.col )
         if cell_coords in proj_controller.sheet_map[ self.sheetName ]:
-            proj_controller.sheet_map[ self.sheetName ][ cell_coords ].plots.append(plot)
+            if self.getPlot( proj_controller, cell_coords, plot_name, vt_file ) == None:
+                proj_controller.sheet_map[ self.sheetName ][ cell_coords ].plots.append(plot)
         else:
             proj_controller.sheet_map[ self.sheetName ][ cell_coords ] = ControllerCell( variables=vars, plots=[plot], templates=[], current_parent_version=0L )  
                       
-        
+    def getPlot( self, proj_controller, cell_coords, plot_name, vt_file ): 
+        plots =  proj_controller.sheet_map[ self.sheetName ][ cell_coords ].plots
+        for plot in plots:
+            if ( plot.name == plot_name ) and ( plot.package == 'DV3D' ) and ( plot.vt_file == vt_file ):
+                return plot
+        return None
+                  
     def setCellLocation( self, moduleId ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
         cellLocation = CellLocation()
