@@ -38,6 +38,7 @@ import re
 import keyword
 
 def isidentifier(s):
+    s = s.strip()
     if s in keyword.kwlist:
         return False
     return re.match(r'^[a-z_][a-z0-9_]*$', s, re.I) is not None
