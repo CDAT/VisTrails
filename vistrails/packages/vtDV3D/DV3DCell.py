@@ -414,7 +414,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         vt_file = proj_controller.vt_controller.file_name
         plot_name = os.path.basename( vt_file )
         if plot_name: plot_name = os.path.splitext( plot_name )[0]
-        plot = Plot( plot_name, 'vtDV3D', None, vt_file )
+        plot = Plot( plot_name, 'DV3D', None, vt_file )
         cell_coords = ( self.location.row, self.location.col )
         if cell_coords in proj_controller.sheet_map[ self.sheetName ]:
             proj_controller.sheet_map[ self.sheetName ][ cell_coords ].plots.append(plot)
@@ -476,7 +476,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
         PersistentVisualizationModule.execute(self, **args)
         self.recordCameraPosition()
-#        self.updateProject()
+        self.updateProject()
         
     def addTitle(self):    
         title = getItem( self.getInputValue( "title", None ) )
