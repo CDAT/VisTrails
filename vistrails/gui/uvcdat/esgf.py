@@ -15,9 +15,14 @@ import myproxy_logon
 import subprocess
 import time
 
+"""
 class QEsgfGateway(cdms2.esgfConnection):
     def __init__(self,gateway = customizeUVCDAT.defaultEsgfNode,port=80,limit=10,offset=0,mapping=None,datasetids=None,fileids=None):
         cdms2.esgfConnection.__init__(self,gateway,port,limit,offset,mapping,datasetids,fileids)                
+"""
+class QEsgfGateway(cdms2.esgfDataset):
+    def __init__(self,gateway = customizeUVCDAT.defaultEsgfNode,port=80,limit=10,offset=0,mapping=None,datasetids=None,fileids=None):
+        cdms2.esgfDataset.__init__(self,gateway,port,limit,offset,mapping,datasetids,fileids)                
 
 class QEsgfIndex(QtGui.QListWidget):
     def __init__(self,parent=None):
@@ -182,7 +187,35 @@ class QEsgfCredentials(QtGui.QDialog):
                     self.key_file == l.split("=")[1].strip()
             f.close()
         except:
-            pass
+            try:
+                dodsrc_cache_root=os.path.join(os.environ["HOME"],".dods_cache")
+                dodsrc_curl_ssl_certificate=os.path.join(os.environ["HOME"],".esg","credentials.pem")
+                dodsrc_curl_ssl_key=os.path.join(os.environ["HOME"],".esg","credentials.pem")
+                dodsrc_curl_ssl_capath=os.path.join(os.environ["HOME"],".esg","certificates")
+                dodsrc_text=""
+                dodsrc_text+="USE_CACHE=0\n"
+                dodsrc_text+="MAX_CACHE_SIZE=20\n"
+                dodsrc_text+="MAX_CACHED_OBJ=5\n"
+                dodsrc_text+="IGNORE_EXPIRES=0\n"
+                dodsrc_text+="CACHE_ROOT=%s/\n"%dodsrc_cache_root
+                dodsrc_text+="DEFAULT_EXPIRES=86400\n"
+                dodsrc_text+="ALWAYS_VALIDATE=0\n"
+                dodsrc_text+="DEFLATE=0\n"
+                dodsrc_text+="VALIDATE_SSL=1\n"
+                dodsrc_text+="CURL.COOKIEJAR=.dods_cookies\n"
+                dodsrc_text+="CURL.SSL.VALIDATE=1\n"
+                dodsrc_text+="CURL.SSL.CERTIFICATE=%s\n"%dodsrc_curl_ssl_certificate
+                dodsrc_text+="CURL.SSL.KEY=%s\n"%dodsrc_curl_ssl_key
+                dodsrc_text+="CURL.SSL.CAPATH=%s\n"%dodsrc_curl_ssl_capath
+                
+                f=open(os.path.join(os.environ["HOME"],".dodsrc"),'w')
+                f.write(dodsrc_text)
+                f.close()
+            except Exception, err:
+                m = QtGui.QMessageBox()
+                m.setText(str(err))
+                m.exec_()
+
         if self.cert_file is None:
             self.cert_file=os.path.join(os.environ["HOME"],".esg","credentials.pem")
         if self.key_file is None:
@@ -267,7 +300,7 @@ class QEsgfBrowser(QtGui.QDialog):
         vbox.addWidget(self.toolBar)
 
         self.searchLine = uvcdatCommons.QLabeledWidgetContainer(QtGui.QLineEdit(),label="Search:",widgetSizePolicy=pol,labelSizePolicy=pol)
-        self.searchLine.widget.setText("variable=ta")
+        self.searchLine.widget.setText("project=CMIP5&limit=100&experiment=historical")
         self.connect(self.searchLine.widget,QtCore.SIGNAL("returnPressed()"),self.clickedSearch)
         self.searchLine.widget.setToolTip("search fields must be separated by ; or &\nkeyword/value are separated by =\nexample: variable=ta&project=cmip5")
         vbox.addWidget(self.searchLine)
@@ -416,11 +449,13 @@ class QEsgfBrowser(QtGui.QDialog):
                 item.setExpanded(True)
 
     def addTreeItems(self,Item,dict,mapping,textColor):
+        print "Adding item",dict
         keys = dict.keys()
         if "files" in keys:
             keys.remove("files")
             keys.append("files")
         for k in keys:
+            print "key:",k
             if k == "files":
                 for f in dict["files"]:
                     item=QtGui.QTreeWidgetItem(Item,2)
@@ -459,6 +494,7 @@ class QEsgfBrowser(QtGui.QDialog):
                     else:
                         Item.addChild(item)
             else:
+                print 'in else',mapping
                 found = False
                 for i in range(Item.childCount()):
                     item = Item.child(i)
@@ -478,12 +514,12 @@ class QEsgfBrowser(QtGui.QDialog):
         return
             
             
-    def addGateway(self,gateway = customizeUVCDAT.defaultEsgfNode,port=80,limit=1000,timeout=15,offset=0,mapping=None,datasetids=None,fileids=None,restPath=None):
+    def addGateway(self,gateway = customizeUVCDAT.defaultEsgfNode,port=80,limit=1000,offset=0,mapping=None,datasetids=None,fileids=None,restPath=None):
         if mapping is None:
             mapping=self.mapping
         try:
             #print "Actual mapping:",self.mapping
-            self.index.append(cdms2.esgfConnection(gateway,port=port,timeout=timeout,limit=limit,offset=offset,mapping=mapping,datasetids=datasetids,fileids=fileids,restPath=restPath))
+            self.index.append(cdms2.esgfDataset(gateway,port=port,limit=limit,offset=offset,mapping=mapping,datasetids=datasetids,fileids=fileids,restPath=restPath))
             self.QIndex.addIndex("%s:%i" % (gateway,port))
         except Exception,err:
             m = QtGui.QMessageBox()
@@ -512,10 +548,13 @@ class QEsgfBrowser(QtGui.QDialog):
         
     def clickedSearch(self):
         query = str(self.searchLine.widget.text())
+        print query
         keys = self.parseQuery(query)
+        print keys
         self.search(**keys)
         
     def search(self,**keys):
+        print 'in search keys are:',keys
         if len(self.index)==0:
             m = QtGui.QMessageBox()
             m.setText("You need to add at least one gateway before you can search")
@@ -536,12 +575,14 @@ class QEsgfBrowser(QtGui.QDialog):
                     if not k in keys.keys():
                         keys[k]=subkeys[k]
                 
-        datasets = []
+        files = []
         try:
             for i in self.index:
-                d = i.searchDatasets(**keys)
+                #d = i.searchDatasets(**keys)
+                f = i.search(**keys)
+                print "f is:",f,keys
                 #print "i mapping is:",i.mapping.template
-                datasets+=d
+                files.append(f)
         except Exception,err:
             m = QtGui.QDialog()
             l=QtGui.QVBoxLayout()
@@ -558,7 +599,8 @@ class QEsgfBrowser(QtGui.QDialog):
             query="?"+query[1:]
         
         self.nsearches+=1
-        self.createTreeSearchItem(datasets,"Search %i %s" % (self.nsearches,query))
+        print "Sending:",files
+        self.createTreeSearchItem(files,"Search %i %s" % (self.nsearches,query))
         
     def createTreeSearchItem(self,searchResults,name):
         ## First the top Item
@@ -578,11 +620,13 @@ class QEsgfBrowser(QtGui.QDialog):
         p.setRange(0,n)
         failed=[]
         for i in range(n):
-            d = searchResults[i]
+            files = searchResults[i]
+            print "i,f:",i,files
             p.setValue(i)
             ## first we figure where this comes from
-            nm = "%s:%i" % (d.host,d.port)
-            if d.id in self.cache.keys():
+            #nm = "%s:%i" % (d.host,d.port)
+            #commenting cache part for now
+	    """if d.id in self.cache.keys():
                 d.resp=xml.etree.ElementTree.fromstring(self.cache[d.id][1])
                 ts = self.cache[d.id][0]
             else:
@@ -600,6 +644,9 @@ class QEsgfBrowser(QtGui.QDialog):
                 textColor="red"
             else:
                 textColor="black"
+            """
+            textColor='black'
+            print "MAPPING IS:",files.mapping.template
             self.addTreeItems(Item,files.mapped,files.mapping.keys(),textColor)
             if p.wasCanceled():
                 return
