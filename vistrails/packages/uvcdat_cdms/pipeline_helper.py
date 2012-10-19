@@ -41,10 +41,12 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                 
     @staticmethod
     def find_variables_connected_to_plot_module(controller, pipeline, plot_id):
-        conns = controller.get_connections_to(pipeline, [plot_id], 
+        conns1 = controller.get_connections_to(pipeline, [plot_id], 
                                               port_name="variable")
+        conns2 = controller.get_connections_to(pipeline, [plot_id], 
+                                              port_name="variable2")
         varlist = []
-        for conn in conns:
+        for conn in conns1 + conns2:
             varlist.append(pipeline.modules[conn.source.moduleId])
         return varlist
     
