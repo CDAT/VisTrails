@@ -444,7 +444,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             address = getItem(  address_input )
             
         if address:
-            print "Setting Cell Address from Input: %s " % ( address )
+#            print "Setting Cell Address from Input: %s " % ( address )
             address = address.replace(' ', '').upper()
             address = address.split('!')[-1]
             cell_coordinates = parse_cell_address( address )
@@ -454,7 +454,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         cellLocation.col = cell_coordinates[0]
         cellLocation.row = cell_coordinates[1]
          
-        print " --- Set cell location[%s]: %s, address: %s "  % ( str(moduleId), str( [ cellLocation.col, cellLocation.row ] ), str(address) )
+#        print " --- Set cell location[%s]: %s, address: %s "  % ( str(moduleId), str( [ cellLocation.col, cellLocation.row ] ), str(address) )
         self.overrideLocation( cellLocation )
         self.adjustSheetDimensions( cellLocation.row, cellLocation.col )
         return [ cellLocation.col, cellLocation.row, 1, 1 ]

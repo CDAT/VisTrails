@@ -20,9 +20,11 @@ class QEsgfGateway(cdms2.esgfConnection):
     def __init__(self,gateway = customizeUVCDAT.defaultEsgfNode,port=80,limit=10,offset=0,mapping=None,datasetids=None,fileids=None):
         cdms2.esgfConnection.__init__(self,gateway,port,limit,offset,mapping,datasetids,fileids)                
 """
-class QEsgfGateway(cdms2.esgfDataset):
-    def __init__(self,gateway = customizeUVCDAT.defaultEsgfNode,port=80,limit=10,offset=0,mapping=None,datasetids=None,fileids=None):
-        cdms2.esgfDataset.__init__(self,gateway,port,limit,offset,mapping,datasetids,fileids)                
+
+if hasattr( cdms2, "esgfDataset" ):
+    class QEsgfGateway(cdms2.esgfDataset):
+        def __init__(self,gateway = customizeUVCDAT.defaultEsgfNode,port=80,limit=10,offset=0,mapping=None,datasetids=None,fileids=None):
+            cdms2.esgfDataset.__init__(self,gateway,port,limit,offset,mapping,datasetids,fileids)                
 
 class QEsgfIndex(QtGui.QListWidget):
     def __init__(self,parent=None):

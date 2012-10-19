@@ -349,7 +349,7 @@ class DV3DRangeConfigWidget(QFrame):
         
     def updateSliderValues( self, initialize=False ): 
         if self.active_cfg_cmd:
-            print ' update Slider Values, widget = %x ' % id( self )
+#            print ' update Slider Values, widget = %x ' % id( self )
             self.active_cfg_cmd.updateWindow()
             rbnds = self.active_cfg_cmd.range_bounds
             parm_range = list( self.active_cfg_cmd.range )
@@ -425,7 +425,9 @@ class DV3DRangeConfigWidget(QFrame):
 
     def revertConfig(self):
         if len( self.active_modules ):
-            self.initialRange[2] = self.active_cfg_cmd.range[2]
+            try:
+                self.initialRange[2] = self.active_cfg_cmd.range[2]
+            except: pass
             self.active_cfg_cmd.broadcastLevelingData( self.initialRange )  
             interactionState = self.active_cfg_cmd.name
             for module in self.active_modules:
@@ -653,6 +655,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #            print " ^^^^^^^ Updating cell version from %d to %d."  % ( current_cell.current_parent_version, action.id )
 #            current_cell.current_parent_version = action.id
 
+    @staticmethod
+    def find_variables_connected_to_operation_module(controller, pipeline, op_id):
+        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
+        return CDMSPipelineHelper.find_variables_connected_to_operation_module(controller, pipeline, op_id)
+    
     @staticmethod                         
     def isLevelingConfigMode():
         return DV3DPipelineHelper._config_mode == LevelingType.LEVELING

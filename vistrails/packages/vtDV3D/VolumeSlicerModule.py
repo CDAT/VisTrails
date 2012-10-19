@@ -62,7 +62,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.NumContours = 10.0
         try:
             controller = api.get_current_controller()
-            print " Volume Slicer init, id = %x " % id(self)
+#            print " Volume Slicer init, id = %x " % id(self)
             VolumeSlicerModules[mid] = self
         except api.NoVistrail:
             pass
@@ -124,7 +124,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.opacityUpdateCount = self.opacityUpdateCount + 1  
 #        self.lut.SetAlpha( self.opacity[1] )
 #        self.lut.SetAlphaRange ( self.opacity[0], self.opacity[1] )
-        print "  ---> Set Opacity = %s " % str( self.opacity )
+#        print "  ---> Set Opacity = %s " % str( self.opacity )
 #        self.UpdateWidgetPlacement()
         
 #    def UpdateWidgetPlacement(self):
@@ -176,7 +176,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
 #        self.contourInput = None if contourModule == None else contourModule.getOutput() 
         # The 3 image plane widgets are used to probe the dataset.    
-        print " Volume Slicer buildPipeline, id = %s " % str( id(self) )
+#        print " Volume Slicer buildPipeline, id = %s " % str( id(self) )
         self.sliceOutput = vtk.vtkImageData()  
         xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
         self.slicePosition = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       

@@ -452,10 +452,10 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #                if i % 50 == 0:  print "   --- ctf[%d:%d:%d] --  %.2e: ( %.2f %.2f %.2f ) " % ( i, lut_index, self.invert, data_value, color[0], color[1], color[2] )
         
           
-    def PrintStats(self):
-        print_docs( self.volume.mapper )
-        self.print_traits()
-        print "Volume: bounds=%s, scale=%s, mapper=%s" % ( str(self.volume.bounds), str(self.volume.scale), str(self.volume_mapper_type) )
+#    def PrintStats(self):
+#        print_docs( self.volume.mapper )
+#        self.print_traits()
+#        print "Volume: bounds=%s, scale=%s, mapper=%s" % ( str(self.volume.bounds), str(self.volume.scale), str(self.volume_mapper_type) )
 
     def adjustOpacity( self, opacity_data, **args ):
         rangeBounds = self.getRangeBounds()

@@ -530,6 +530,8 @@ class PersistentModule( QObject ):
         return paramVal if paramVal else default_value
                 
     def setParameter(self, parameter_name, value, parameter_id = None ):
+#        if parameter_name == 'colorScale':
+#            print 'x'
         if parameter_id == None: parameter_id = self.getParameterId()
         layerCache = self.parameterCache.setdefault( parameter_id, {} )
         layerCache[parameter_name] = value 
