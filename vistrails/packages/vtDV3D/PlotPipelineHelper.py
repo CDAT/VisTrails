@@ -546,7 +546,9 @@ class DV3DConfigControlPanel(QWidget):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper    
         if configFunctionList:
             for configFunction in configFunctionList:
-                if configFunction.module.GetRenWinID() in DV3DPipelineHelper.getActiveRenWinIds():
+                renWinID = configFunction.module.GetRenWinID()
+                activeRenWinIds = DV3DPipelineHelper.getActiveRenWinIds()
+                if renWinID in activeRenWinIds:
 #                   print " Got Config Widget: using cfg fn %s from module %d " % ( configFunction.name, configFunction.module.moduleID )
                     if configFunction.type == "leveling":
                         return DV3DRangeConfigWidget(self) 

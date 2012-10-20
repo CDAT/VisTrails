@@ -154,7 +154,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.timeValue = cdtime.reltime( float(timeData[0]), ReferenceTimeUnits )
             self.timeIndex = timeData[1]
             self.useTimeIndex = timeData[2]
-            print "Set Time: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
+            print "Set Time [mid = %d]: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( self.moduleID, str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
 #            print "Time Step Labels: %s" % str( self.timeLabels )
             for iVar in range( 2,5 ):
                 cdms_var2 = self.getInputValue( "variable%d" % iVar  ) 

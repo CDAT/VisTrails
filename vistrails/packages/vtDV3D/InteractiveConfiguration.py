@@ -680,7 +680,12 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
     def __del__(self):
 #        print "delete UVCDATGuiConfigFunction: %x" % ( id(self) )
         ConfigurableFunction.__del__(self)
-        
+
+    @staticmethod
+    def clearModules(): 
+        UVCDATGuiConfigFunction.connectedModules = {} 
+        ConfigurableFunction.clear()
+              
     def initGui( self, **args ):   # init value from moudle input port
         moduleList = UVCDATGuiConfigFunction.connectedModules.setdefault( self.name, Set() )
         moduleList.add( self.module )
@@ -1043,8 +1048,8 @@ class IVModuleConfigurationDialog( QWidget ):
     def addActiveModule( self, module ):
         if not module in self.modules:
             self.modules.add(  module )
-            if not ( self.activeModuleList and self.activeModuleList[-1] == module ):
-                self.activeModuleList.append( module )
+            if not ( IVModuleConfigurationDialog.activeModuleList and IVModuleConfigurationDialog.activeModuleList[-1] == module ):
+                IVModuleConfigurationDialog.activeModuleList.append( module )
                 self.connect( self, self.update_animation_signal, module.updateAnimation )
               
     @staticmethod              
