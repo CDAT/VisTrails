@@ -93,32 +93,38 @@ class PlotManager(QtCore.QObject):
         pkg_parser = ConfigParser.ConfigParser()
         if pkg_parser.read(os.path.join(PLOT_FILES_PATH, 'registry.cfg')):
             for p in pkg_parser.sections():
-                plot_package_folder = os.path.join(PLOT_FILES_PATH,
-                                                   pkg_parser.get(p,'codepath'))
-                plot_package_config_file = os.path.join(plot_package_folder, 
-                                           pkg_parser.get(p,'config_file'))
-                
-                helper = PlotPipelineHelper
-                if pkg_parser.has_option(p, 'helper') :
-                    helper = self.parse_helper_type_str(pkg_parser.get(p, 'helper'))
-                self._plot_helpers[p] = helper
-                    
-                pl_parser = ConfigParser.ConfigParser()
-                if pl_parser.read(plot_package_config_file):
-                    for pl in pl_parser.sections():
-                        config_file = os.path.join(plot_package_folder, 
-                                                   pl_parser.get(pl,'config_file'))
-                        vt_file = os.path.join(plot_package_folder, 
-                                               pl_parser.get(pl, 'vt_file'))
-                        if p not in self._plot_list:
-                            self._plot_list[p] = {}
-                        self._plot_list[p][pl] = self._registry.add_plot(pl,p,
-                                                                    config_file, 
-                                                                    vt_file)
                 try:
-                    self._registry.load_plot_package(p)
+                    plot_package_folder = os.path.join(PLOT_FILES_PATH,
+                                                       pkg_parser.get(p,'codepath'))
+                    plot_package_config_file = os.path.join(plot_package_folder, 
+                                               pkg_parser.get(p,'config_file'))
+                    
+                    helper = PlotPipelineHelper
+                    if pkg_parser.has_option(p, 'helper') :
+                        helper = self.parse_helper_type_str(pkg_parser.get(p, 'helper'))
+                    self._plot_helpers[p] = helper
+                        
+                    pl_parser = ConfigParser.ConfigParser()
+                    if pl_parser.read(plot_package_config_file):
+                        for pl in pl_parser.sections():
+                            config_file = os.path.join(plot_package_folder, 
+                                                       pl_parser.get(pl,'config_file'))
+                            vt_file = os.path.join(plot_package_folder, 
+                                                   pl_parser.get(pl, 'vt_file'))
+                            if p not in self._plot_list:
+                                self._plot_list[p] = {}
+                            self._plot_list[p][pl] = self._registry.add_plot(pl,p,
+                                                                        config_file, 
+                                                                        vt_file)
+                    try:
+                        self._registry.load_plot_package(p)
+                    except Exception, e:
+                        print "Error when loading %s plot --> "%p, str(e)
+                        import traceback
+                        traceback.print_exc()
+                        
                 except Exception, e:
-                    print "Error when loading %s plot"%p, str(e)
+                    print "Error when loading package_config_file: %s" % plot_package_config_file, str(e)
                     import traceback
                     traceback.print_exc()
                     

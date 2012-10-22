@@ -504,9 +504,17 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         aCamera.SetFocalPoint( *self.cameraFocalPoint )
         aCamera.ComputeViewPlaneNormal()
         self.renderer.ResetCamera() 
-        self.render()                            
+        self.render()  
         
-    def buildWidget(self):                        
+    def clearWidget(self): 
+        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog, UVCDATGuiConfigFunction
+        IVModuleConfigurationDialog.reset()
+        UVCDATGuiConfigFunction.clearModules()
+        self.cellWidget = None 
+        self.builtCellWidget = False                        
+        
+    def buildWidget(self): 
+        from packages.spreadsheet.spreadsheet_controller import spreadsheetController                       
         if self.renderers and not self.isBuilt():
             renderViews = []
             renderView = None
@@ -543,6 +551,10 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             cell_location = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )   
             PersistentVisualizationModule.renderMap[ cell_location ] = self.iren
             self.builtCellWidget = True
+            
+            ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+            tabController = ssheetWindow.get_current_tab_controller()
+            self.connect( tabController, QtCore.SIGNAL("cell_deleted"), self.clearWidget )
         else:               
             print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
      

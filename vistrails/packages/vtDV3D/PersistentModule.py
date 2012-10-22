@@ -699,6 +699,7 @@ class PersistentModule( QObject ):
                     ispec.inputModule = ispec.inputModuleList[0]
                 except Exception, err:
                     print>>sys.stderr, 'Error: Broken pipeline at input to module %s:\n (%s)' % ( getClassName(self), str(err) ) 
+                    self.getPrimaryInputList( port=inputPort, **args )
                     traceback.print_exc()
                     sys.exit(-1)
             else:
