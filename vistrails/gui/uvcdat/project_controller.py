@@ -282,6 +282,7 @@ class ProjectController(QtCore.QObject):
             self.add_defined_variable(new_var)
                 
     def emit_defined_variable(self, var):
+        import cdms2
         from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
         from packages.pvclimate.pvvariable import PVVariable
         from gui.application import get_vistrails_application
@@ -291,7 +292,9 @@ class ProjectController(QtCore.QObject):
         elif isinstance(var, PVVariable):
             _app.uvcdatWindow.dockVariable.widget().addVariable(var.name, type_='PARAVIEW')
         elif isinstance(var, CDMSVariableOperation):
-            _app.uvcdatWindow.dockVariable.widget().addVariable(var.to_python())
+            varObj = var.to_python()
+            if isinstance(varObj, cdms2.tvariable.TransientVariable):
+                _app.uvcdatWindow.dockVariable.widget().addVariable(varObj)
             
     def load_variables_from_modules(self, var_modules, helper):
         for varm in var_modules:
