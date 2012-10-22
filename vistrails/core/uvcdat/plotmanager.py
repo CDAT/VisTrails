@@ -119,7 +119,7 @@ class PlotManager(QtCore.QObject):
                     try:
                         self._registry.load_plot_package(p)
                     except Exception, e:
-                        print "Error when loading %s plot"%p, str(e)
+                        print "Error when loading %s plot --> "%p, str(e)
                         import traceback
                         traceback.print_exc()
                         
