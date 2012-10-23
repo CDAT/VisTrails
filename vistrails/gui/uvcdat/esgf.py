@@ -503,8 +503,9 @@ class QEsgfBrowser(QtGui.QDialog):
                     item=QtGui.QTreeWidgetItem(Item,1)
                     item.setIcon(0,self.foldersIcon)
                     item.setText(0,str(k))
-                    item.setToolTip(0,mapping[0])
-                    item.setWhatsThis(0,mapping[0])
+                    if len(mapping)>0:
+                      item.setToolTip(0,mapping[0])
+                      item.setWhatsThis(0,mapping[0])
                     Item.addChild(item)
                 self.addTreeItems(item,dict[k],mapping[1:],textColor)
         ## for i in range(Item.columnCount()):
