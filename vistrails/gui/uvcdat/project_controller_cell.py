@@ -43,7 +43,7 @@ class ControllerCell(object):
         return self._current_version    
     def _set_current_parent_version( self, version ):
         self._current_version = version
-        print "\n ****************** Set Cell current_parent_version: %d ****************** \n" % version    
+#        print "\n ****************** Set Cell current_parent_version: %d ****************** \n" % version    
     current_parent_version = property( _get_current_parent_version, _set_current_parent_version ) 
         
     def get_plots_varnum(self):

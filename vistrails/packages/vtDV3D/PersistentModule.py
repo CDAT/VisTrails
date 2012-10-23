@@ -530,6 +530,8 @@ class PersistentModule( QObject ):
         return paramVal if paramVal else default_value
                 
     def setParameter(self, parameter_name, value, parameter_id = None ):
+#        if parameter_name == 'colorScale':
+#            print 'x'
         if parameter_id == None: parameter_id = self.getParameterId()
         layerCache = self.parameterCache.setdefault( parameter_id, {} )
         layerCache[parameter_name] = value 
@@ -697,6 +699,7 @@ class PersistentModule( QObject ):
                     ispec.inputModule = ispec.inputModuleList[0]
                 except Exception, err:
                     print>>sys.stderr, 'Error: Broken pipeline at input to module %s:\n (%s)' % ( getClassName(self), str(err) ) 
+                    self.getPrimaryInputList( port=inputPort, **args )
                     traceback.print_exc()
                     sys.exit(-1)
             else:

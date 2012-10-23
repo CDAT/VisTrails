@@ -528,7 +528,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             self.persisted = False
         except Exception, err:
             print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
-        print "Apply %s Parameter[%s:%d]: %s " % ( self.type, self.name, self.module.moduleID, str( self.range ) )
+#        print "Apply %s Parameter[%s:%d]: %s " % ( self.type, self.name, self.module.moduleID, str( self.range ) )
         
     def reset(self):
         self.setLevelDataHandler( self.initial_range )
@@ -556,7 +556,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
                 self.initial_range =  [ 0.0, 1.0, 1 ] if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
             if self.range_bounds == None:
                 self.range_bounds = self.initial_range if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
-#            if self.name == 'functionScale':
+#            if self.name == 'colorScale':
 #                print 'x'
             input_range = self.module.getInputValue( self.name )
             if input_range == None:     input_range = self.initial_range
@@ -566,7 +566,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
                 for iR in range(2): self.range.append( self.initRefinement[iR] )
         self.windowLeveler.setDataRange( self.range )
         self.setLevelDataHandler( self.range )
-        self.module.setParameter( self.name, self.range )
+#        self.module.setParameter( self.name, self.range )
         if self.widget: 
             self.widget.initLeveling( self.range )
             self.connect( self.widget, SIGNAL('update(QString)'), self.broadcastLevelingData )
@@ -680,7 +680,12 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
     def __del__(self):
 #        print "delete UVCDATGuiConfigFunction: %x" % ( id(self) )
         ConfigurableFunction.__del__(self)
-        
+
+    @staticmethod
+    def clearModules(): 
+        UVCDATGuiConfigFunction.connectedModules = {} 
+        ConfigurableFunction.clear()
+              
     def initGui( self, **args ):   # init value from moudle input port
         moduleList = UVCDATGuiConfigFunction.connectedModules.setdefault( self.name, Set() )
         moduleList.add( self.module )
@@ -1043,8 +1048,8 @@ class IVModuleConfigurationDialog( QWidget ):
     def addActiveModule( self, module ):
         if not module in self.modules:
             self.modules.add(  module )
-            if not ( self.activeModuleList and self.activeModuleList[-1] == module ):
-                self.activeModuleList.append( module )
+            if not ( IVModuleConfigurationDialog.activeModuleList and IVModuleConfigurationDialog.activeModuleList[-1] == module ):
+                IVModuleConfigurationDialog.activeModuleList.append( module )
                 self.connect( self, self.update_animation_signal, module.updateAnimation )
               
     @staticmethod              

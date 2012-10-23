@@ -349,7 +349,7 @@ class DV3DRangeConfigWidget(QFrame):
         
     def updateSliderValues( self, initialize=False ): 
         if self.active_cfg_cmd:
-            print ' update Slider Values, widget = %x ' % id( self )
+#            print ' update Slider Values, widget = %x ' % id( self )
             self.active_cfg_cmd.updateWindow()
             rbnds = self.active_cfg_cmd.range_bounds
             parm_range = list( self.active_cfg_cmd.range )
@@ -425,7 +425,9 @@ class DV3DRangeConfigWidget(QFrame):
 
     def revertConfig(self):
         if len( self.active_modules ):
-            self.initialRange[2] = self.active_cfg_cmd.range[2]
+            try:
+                self.initialRange[2] = self.active_cfg_cmd.range[2]
+            except: pass
             self.active_cfg_cmd.broadcastLevelingData( self.initialRange )  
             interactionState = self.active_cfg_cmd.name
             for module in self.active_modules:
@@ -544,7 +546,9 @@ class DV3DConfigControlPanel(QWidget):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper    
         if configFunctionList:
             for configFunction in configFunctionList:
-                if configFunction.module.GetRenWinID() in DV3DPipelineHelper.getActiveRenWinIds():
+                renWinID = configFunction.module.GetRenWinID()
+                activeRenWinIds = DV3DPipelineHelper.getActiveRenWinIds()
+                if renWinID in activeRenWinIds:
 #                   print " Got Config Widget: using cfg fn %s from module %d " % ( configFunction.name, configFunction.module.moduleID )
                     if configFunction.type == "leveling":
                         return DV3DRangeConfigWidget(self) 
@@ -653,6 +657,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #            print " ^^^^^^^ Updating cell version from %d to %d."  % ( current_cell.current_parent_version, action.id )
 #            current_cell.current_parent_version = action.id
 
+    @staticmethod
+    def find_variables_connected_to_operation_module(controller, pipeline, op_id):
+        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
+        return CDMSPipelineHelper.find_variables_connected_to_operation_module(controller, pipeline, op_id)
+    
     @staticmethod                         
     def isLevelingConfigMode():
         return DV3DPipelineHelper._config_mode == LevelingType.LEVELING
