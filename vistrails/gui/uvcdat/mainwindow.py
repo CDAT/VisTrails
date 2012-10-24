@@ -188,8 +188,8 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.ui.menuView.addAction(self.dockCalculator.toggleViewAction())
         self.ui.menuView.addAction(self.plotProp.toggleViewAction())
         #VisTrails Menu
-        self.ui.menuVistrails.addAction(self.showBuilderWindowAct)
-        self.ui.menuVistrails.addAction(self.showVistrailsConsoleAct)
+        self.ui.menuVisTrails.addAction(self.showBuilderWindowAct)
+        self.ui.menuVisTrails.addAction(self.showVistrailsConsoleAct)
         #About message
         self.ui.menuHelp.addAction(self.showAboutMessageAct)
         

@@ -31,7 +31,7 @@ class QMenuWidget(QtGui.QWidget):
         ## self.connect(self.savePlotsAction,QtCore.SIGNAL('triggered ()'),
         ##              parent.root.tool_bar.savePlots)
 
-        self.editMenu = parent.menuBar().addMenu('&Edit')
+        self.editMenu = parent.ui.menuEdit
         self.editPreferencesAction = QtGui.QAction('Preferences...', self)
         self.editPreferencesAction.setEnabled(True)
         self.editPreferencesAction.setStatusTip('Edit system preferences')
@@ -39,10 +39,10 @@ class QMenuWidget(QtGui.QWidget):
         self.connect(self.editPreferencesAction, QtCore.SIGNAL('triggered ()'),
                      parent.root.preferences.show)
 
-        self.tools = parent.menuBar().addMenu('&Tools')
-        self.pcmdiTools = parent.menuBar().addMenu('&PCMDITools')
+        self.tools = parent.ui.menuTools
+        self.pcmdiTools = parent.ui.menuPCMDITools
         self.pcmdiTools.setTearOffEnabled(True)
-        self.help = parent.menuBar().addMenu('&Help')
+        self.help = parent.ui.menuHelp
         self.root=parent.root
 
         recordTeachingAction = self.tools.addAction('Record Commands')
@@ -184,6 +184,7 @@ class QMenuWidget(QtGui.QWidget):
 
         self.errorMsg=QtGui.QErrorMessage()
         self.errorMsg.hide()
+        self.hide()
 
     def stats(self,action):
         nm = str(action.text())

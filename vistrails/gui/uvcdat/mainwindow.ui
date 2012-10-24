@@ -29,33 +29,50 @@
      <x>0</x>
      <y>0</y>
      <width>978</width>
-     <height>22</height>
+     <height>27</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
-     <string>File</string>
+     <string>&amp;File</string>
     </property>
-    <addaction name="separator"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>&amp;Edit</string>
+    </property>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
-     <string>View</string>
+     <string>&amp;View</string>
     </property>
    </widget>
-   <widget class="QMenu" name="menuVistrails">
+   <widget class="QMenu" name="menuVisTrails">
     <property name="title">
-     <string>VisTrails</string>
+     <string>Vi&amp;sTrails</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>&amp;Tools</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuPCMDITools">
+    <property name="title">
+     <string>&amp;PCMDITools</string>
     </property>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
-     <string>Help</string>
+     <string>&amp;Help</string>
     </property>
    </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
    <addaction name="menuView"/>
-   <addaction name="menuVistrails"/>
+   <addaction name="menuVisTrails"/>
+   <addaction name="menuTools"/>
+   <addaction name="menuPCMDITools"/>
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
