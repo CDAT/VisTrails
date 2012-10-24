@@ -9,6 +9,7 @@ import core.db.action
 import core.db.io
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import pyqtSlot, pyqtSignal
+from PyQt4.QtGui import QApplication
 from init import CDMSPlot, CDMSVariable, CDMSCell, CDMSVariableOperation, \
        CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, \
        CDMSNaryVariableOperation
@@ -17,6 +18,7 @@ from gui.theme import CurrentTheme
 from gui.common_widgets import QDockPushButton
 from gui.uvcdat.dockplot import PlotTreeWidgetItem
 from gui.uvcdat.uvcdatCommons import plotTypes, gmInfos
+from gui.uvcdat.definedVariableWidget import QDefinedVariableWidget
 import api
 
 class CDMSPipelineHelper(PlotPipelineHelper):
@@ -701,7 +703,25 @@ class CDMSPlotWidget(QtGui.QWidget):
         self.controller = controller.vt_controller
         self.version = version
         self.plots = plot_list
-        self.vars = var_list
+        
+        #only add vars that are in the main variable widget
+        mainVarList = []
+        count = 0
+        for wid in QApplication.topLevelWidgets():
+            varWidget = wid.findChild(QDefinedVariableWidget)
+            if varWidget is not None:
+                mainVarList = varWidget.varList
+                count = mainVarList.count()
+                break
+                    
+        self.vars = []
+        for v in var_list:
+            varname = str(CDMSPipelineHelper.get_variable_name_from_module(v))
+            for i in range(count):
+                if varname == str(mainVarList.item(i).getVarName()):
+                    self.vars.append(v)
+                    break
+        
         self.to_be_added = []
         self.to_be_removed = []
         self.var_to_be_added = []
