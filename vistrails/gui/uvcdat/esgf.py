@@ -365,7 +365,6 @@ class QEsgfBrowser(QtGui.QDialog):
         url,ok = QtGui.QInputDialog.getText(self,"Adding A Gateway","URL",text=customizeUVCDAT.defaultEsgfNode)
         if ok is False:
             return
-        print "Adding:",url
         self.addGateway(gateway=url,mapping=self.mapping)#,datasetids="%(project).%(product).%(valid_institute).%(model).%(experiment).%(time_frequency)s.%(realm).%(cmor_table).%(ensemble)")
 
     def editMapping(self):
@@ -451,13 +450,11 @@ class QEsgfBrowser(QtGui.QDialog):
                 item.setExpanded(True)
 
     def addTreeItems(self,Item,dict,mapping,textColor):
-        print "Adding item",dict
         keys = dict.keys()
         if "files" in keys:
             keys.remove("files")
             keys.append("files")
         for k in keys:
-            print "key:",k
             if k == "files":
                 for f in dict["files"]:
                     item=QtGui.QTreeWidgetItem(Item,2)
@@ -496,7 +493,6 @@ class QEsgfBrowser(QtGui.QDialog):
                     else:
                         Item.addChild(item)
             else:
-                print 'in else',mapping
                 found = False
                 for i in range(Item.childCount()):
                     item = Item.child(i)
@@ -507,8 +503,9 @@ class QEsgfBrowser(QtGui.QDialog):
                     item=QtGui.QTreeWidgetItem(Item,1)
                     item.setIcon(0,self.foldersIcon)
                     item.setText(0,str(k))
-                    item.setToolTip(0,mapping[0])
-                    item.setWhatsThis(0,mapping[0])
+                    if len(mapping)>0:
+                      item.setToolTip(0,mapping[0])
+                      item.setWhatsThis(0,mapping[0])
                     Item.addChild(item)
                 self.addTreeItems(item,dict[k],mapping[1:],textColor)
         ## for i in range(Item.columnCount()):
@@ -550,13 +547,10 @@ class QEsgfBrowser(QtGui.QDialog):
         
     def clickedSearch(self):
         query = str(self.searchLine.widget.text())
-        print query
         keys = self.parseQuery(query)
-        print keys
         self.search(**keys)
         
     def search(self,**keys):
-        print 'in search keys are:',keys
         if len(self.index)==0:
             m = QtGui.QMessageBox()
             m.setText("You need to add at least one gateway before you can search")
@@ -582,7 +576,6 @@ class QEsgfBrowser(QtGui.QDialog):
             for i in self.index:
                 #d = i.searchDatasets(**keys)
                 f = i.search(**keys)
-                print "f is:",f,keys
                 #print "i mapping is:",i.mapping.template
                 files.append(f)
         except Exception,err:
@@ -601,7 +594,6 @@ class QEsgfBrowser(QtGui.QDialog):
             query="?"+query[1:]
         
         self.nsearches+=1
-        print "Sending:",files
         self.createTreeSearchItem(files,"Search %i %s" % (self.nsearches,query))
         
     def createTreeSearchItem(self,searchResults,name):
@@ -623,7 +615,6 @@ class QEsgfBrowser(QtGui.QDialog):
         failed=[]
         for i in range(n):
             files = searchResults[i]
-            print "i,f:",i,files
             p.setValue(i)
             ## first we figure where this comes from
             #nm = "%s:%i" % (d.host,d.port)
@@ -648,7 +639,6 @@ class QEsgfBrowser(QtGui.QDialog):
                 textColor="black"
             """
             textColor='black'
-            print "MAPPING IS:",files.mapping.template
             self.addTreeItems(Item,files.mapped,files.mapping.keys(),textColor)
             if p.wasCanceled():
                 return
