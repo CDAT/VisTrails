@@ -195,7 +195,8 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
     def setColormap( self, data, cmap_index=0 ):
         colormapManager = self.getColormapManager( index=cmap_index )
         colormapManager.colormapName = str(data[0])
-        colormapManager.invertColormap = data[1]
+        colormapManager.invertColormap = int ( data[1] )
+        if len( data ) > 3: colormapManager.smoothColormap = int( data[3] )
         self.buildColormap()
 
     def buildColormap(self):

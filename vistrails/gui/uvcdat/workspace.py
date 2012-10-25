@@ -6,7 +6,7 @@ from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from core.vistrail.action_annotation import ActionAnnotation
 from core.thumbnails import ThumbnailCache
 from packages.spreadsheet.spreadsheet_tab import StandardWidgetSheetTab
-import customizeUVCDAT
+import customizeUVCDAT, traceback
 
 def toAnnotation(sheet, x, y, w=None, h=None):
     """ toAnnotation(sheet: str, x: int/str, y: int/str,
@@ -437,74 +437,79 @@ class Workspace(QtGui.QDockWidget):
         vistrails calls this when a project is opened/created/saved
         Items and spreadsheets are updated
         """
-        if id(view) not in self.viewToItem:
-            if self.currentProject:
-                self.setBold(self.currentProject, False)
-            p_name = "Project %i" % self.numProjects
-            item = QProjectItem(view, p_name)
-            self.currentProject = item
-            self.current_controller = item.controller
-            self.viewToItem[id(view)] = item
-            self.treeProjects.addTopLevelItem(item)
-            item.setExpanded(True)
-            item.namedPipelines.setExpanded(True)
-            self.numProjects += 1
-            self.emit(QtCore.SIGNAL("project_added"), item.controller.name)
-            self.state_changed(view)
-            # add sheets from vistrail actionAnnotations
-            tc = self.spreadsheetWindow.get_current_tab_controller()
-            for annotation in view.controller.vistrail.action_annotations:
-                if annotation.db_key != 'uvcdatCell':
-                    continue
-                cell = fromAnnotation(annotation.db_value)
-                plot_type = view.controller.vistrail.get_action_annotation(
-                                annotation.db_action_id, "uvcdatType")
-                if cell[0] not in item.sheet_to_item:
-                    rows, cols = self.currentProject.sheetSize(cell[0])
-                    tc.setCurrentIndex(tc.addTabWidget(
-                                         StandardWidgetSheetTab(tc), cell[0]))
-                    tab = tc.currentWidget()
-                    tab.sheet.stretchCells()
-                    tab.setDimension(rows, cols)
-                    tab.sheet.setRowCount(rows)
-                    tab.sheet.setColumnCount(cols)
-                    tab.sheet.stretchCells()
-                    tab.displayPrompt()
-                    tab.setEditingMode(tab.tabWidget.editingMode)
-                else:
-                    tab = item.sheet_to_tab[cell[0]]
-                    self.spreadsheetWindow.get_current_tab_controller(
-                                                       ).setCurrentWidget(tab)
-                # Add cell
-               
-                if len(cell)<5:
-                    item.controller.vis_was_dropped((view.controller, 
-                                 annotation.db_action_id, cell[0],
-                                 int(cell[1]), int(cell[2]), plot_type.value))
-                    item.update_cell(cell[0], int(cell[1]), int(cell[2]),
-                                     None, None, plot_type.value,
-                                     annotation.db_action_id, False)
-                else:
-                    item.controller.vis_was_dropped((view.controller,
-                                 annotation.db_action_id, cell[0],
-                                 int(cell[1]), int(cell[2]), plot_type.value))
-                    item.update_cell(cell[0], int(cell[1]), int(cell[2]),
-                                     int(cell[3]), int(cell[4]),
-                                     plot_type.value,
-                                     annotation.db_action_id, False)
-            if not len(item.sheet_to_item):
-                tc.create_first_sheet()
-            self.connect(item.controller, QtCore.SIGNAL("update_cell"),
-                     item.update_cell)
-            self.connect(item.controller, QtCore.SIGNAL("sheet_size_changed"),
-                     item.sheetSizeChanged)
-            self.connect(item.controller, QtCore.SIGNAL("show_provenance"),
-                         item.show_provenance)
- 
-        if view.controller.locator:
-            name = view.controller.locator.short_name
-            self.viewToItem[id(view)].setText(0, name)
-        self.treeProjects.setCurrentItem(self.viewToItem[id(view)])
+        try:
+            if id(view) not in self.viewToItem:
+                if self.currentProject:
+                    self.setBold(self.currentProject, False)
+                p_name = "Project %i" % self.numProjects
+                item = QProjectItem(view, p_name)
+                self.currentProject = item
+                self.current_controller = item.controller
+                self.viewToItem[id(view)] = item
+                self.treeProjects.addTopLevelItem(item)
+                item.setExpanded(True)
+                item.namedPipelines.setExpanded(True)
+                self.numProjects += 1
+                self.emit(QtCore.SIGNAL("project_added"), item.controller.name)
+                self.state_changed(view)
+                # add sheets from vistrail actionAnnotations
+                tc = self.spreadsheetWindow.get_current_tab_controller()
+                for annotation in view.controller.vistrail.action_annotations:
+                    if annotation.db_key != 'uvcdatCell':
+                        continue
+                    cell = fromAnnotation(annotation.db_value)
+                    plot_type = view.controller.vistrail.get_action_annotation(
+                                    annotation.db_action_id, "uvcdatType")
+                    if cell[0] not in item.sheet_to_item:
+                        rows, cols = self.currentProject.sheetSize(cell[0])
+                        tc.setCurrentIndex(tc.addTabWidget(
+                                             StandardWidgetSheetTab(tc), cell[0]))
+                        tab = tc.currentWidget()
+                        tab.sheet.stretchCells()
+                        tab.setDimension(rows, cols)
+                        tab.sheet.setRowCount(rows)
+                        tab.sheet.setColumnCount(cols)
+                        tab.sheet.stretchCells()
+                        tab.displayPrompt()
+                        tab.setEditingMode(tab.tabWidget.editingMode)
+                    else:
+                        tab = item.sheet_to_tab[cell[0]]
+                        self.spreadsheetWindow.get_current_tab_controller(
+                                                           ).setCurrentWidget(tab)
+                    # Add cell
+                   
+                    if len(cell)<5:
+                        item.controller.vis_was_dropped((view.controller, 
+                                     annotation.db_action_id, cell[0],
+                                     int(cell[1]), int(cell[2]), plot_type.value))
+                        item.update_cell(cell[0], int(cell[1]), int(cell[2]),
+                                         None, None, plot_type.value,
+                                         annotation.db_action_id, False)
+                    else:
+                        item.controller.vis_was_dropped((view.controller,
+                                     annotation.db_action_id, cell[0],
+                                     int(cell[1]), int(cell[2]), plot_type.value))
+                        item.update_cell(cell[0], int(cell[1]), int(cell[2]),
+                                         int(cell[3]), int(cell[4]),
+                                         plot_type.value,
+                                         annotation.db_action_id, False)
+                if not len(item.sheet_to_item):
+                    tc.create_first_sheet()
+                self.connect(item.controller, QtCore.SIGNAL("update_cell"),
+                         item.update_cell)
+                self.connect(item.controller, QtCore.SIGNAL("sheet_size_changed"),
+                         item.sheetSizeChanged)
+                self.connect(item.controller, QtCore.SIGNAL("show_provenance"),
+                             item.show_provenance)
+     
+            if view.controller.locator:
+                name = view.controller.locator.short_name
+                self.viewToItem[id(view)].setText(0, name)
+            self.treeProjects.setCurrentItem(self.viewToItem[id(view)])
+            
+        except Exception, err:
+            print "Error adding project: ", str(err)
+            traceback.print_exc( 100, sys.stderr )
 
     def remove_project(self, view):
         """ remove_project(view: QVistrailView) -> None

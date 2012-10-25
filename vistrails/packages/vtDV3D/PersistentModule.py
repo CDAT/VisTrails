@@ -314,9 +314,12 @@ class InputSpecs:
         pass
 
     def initializeMetadata( self ):
-        self.fieldData = vtk.vtkDataSetAttributes()
-        mdarray = getStringDataArray( 'metadata' )
-        self.fieldData.AddArray( mdarray )
+        try:
+            self.fieldData = vtk.vtkDataSetAttributes()
+            mdarray = getStringDataArray( 'metadata' )
+            self.fieldData.AddArray( mdarray )
+        except Exception, err:
+            print>>sys.stderr, "Error initializing metadata"
 
     def addMetadata( self, metadata ):
         dataVector = self.fieldData.GetAbstractArray( 'metadata' ) 
@@ -1536,12 +1539,14 @@ class PersistentVisualizationModule( PersistentModule ):
         cmap_index = args.get('index',0)
         name = args.get('name',None)
         invert = args.get('invert',None)
+        smooth = args.get('smooth',None)
         cmap_mgr = self.colormapManagers.get( cmap_index, None )
         if cmap_mgr == None:
             lut = vtk.vtkLookupTable()
             cmap_mgr = ColorMapManager( lut ) 
             self.colormapManagers[cmap_index] = cmap_mgr
         if (invert <> None): cmap_mgr.invertColormap = invert
+        if (smooth <> None): cmap_mgr.smoothColormap = smooth
         if name:   cmap_mgr.load_lut( name )
         return cmap_mgr
 
@@ -1550,20 +1555,25 @@ class PersistentVisualizationModule( PersistentModule ):
         colormapName = str(data[0])
         invertColormap = int( data[1] )
         enableStereo = int( data[2] )
+        smoothColormap = int( data[3] ) if ( len( data ) > 3 ) else 1 
         ispec = self.getInputSpec( cmap_index )  
         if  (ispec <> None) and (ispec.input <> None):         
     #        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
     #        print ' ~~~~~~~ SET COLORMAP:  --%s--  ' % self.colormapName
             self.updateStereo( enableStereo )
-            colormapManager = self.getColormapManager( name=colormapName, invert=invertColormap, index=cmap_index, units=self.getUnits(cmap_index) )
+            colormapManager = self.getColormapManager( name=colormapName, invert=invertColormap, smooth=smoothColormap, index=cmap_index, units=self.getUnits(cmap_index) )
             if self.createColormap and ( colormapManager.colorBarActor == None ): 
                 cmap_pos = [ 0.9, 0.2 ] if (cmap_index==0) else [ 0.02, 0.2 ]
                 units = self.getUnits( cmap_index )
                 cm_title = "%s\n(%s)" % ( ispec.metadata.get('scalars',''), units ) if ispec.metadata else units 
                 self.renderer.AddActor( colormapManager.createActor( pos=cmap_pos, title=cm_title ) )
+            self.updatingColormap( cmap_index, colormapManager )
             self.render() 
             return True
         return False
+    
+    def updatingColormap( self, cmap_index, colormapManager ):
+        pass
 
     def updateStereo( self, enableStereo ):   
         if self.iren:

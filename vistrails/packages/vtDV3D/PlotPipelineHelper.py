@@ -397,8 +397,9 @@ class DV3DRangeConfigWidget(QFrame):
                     if ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ):
                         self.active_cfg_cmd = cfg_cmd
                 self.updateSliderValues(True)
-                self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues ) 
-                self.active_cfg_cmd.updateActiveFunctionList()
+                if self.active_cfg_cmd:
+                    self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues ) 
+                    self.active_cfg_cmd.updateActiveFunctionList()
                 self.enable()
         except RuntimeError:
             print "RuntimeError"

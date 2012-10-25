@@ -160,6 +160,12 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #                attributes = self.contourMetadata.get( 'attributes' , None )
 #                if attributes:
 #                    self.contour_units = attributes.get( 'units' , '' )
+
+    def updatingColormap( self, cmap_index, colormapManager ):
+        if cmap_index == 0:
+            self.planeWidgetX.SetTextureInterpolate( colormapManager.smoothColormap )
+            self.planeWidgetY.SetTextureInterpolate( colormapManager.smoothColormap )
+            self.planeWidgetZ.SetTextureInterpolate( colormapManager.smoothColormap )
                                                             
     def buildPipeline(self):
         """ execute() -> None
@@ -192,6 +198,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         lut = self.getLut()
         picker = None
         useVtkImagePlaneWidget = False
+        textureColormapManager = self.getColormapManager( index=0 )
         
         if self.planeWidgetX == None: 
             picker = vtk.vtkCellPicker()
@@ -322,6 +329,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                     textDisplay = " Position: (%s, %s, %s), Value: %.3G %s, Contour Value: %.3G %s" % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units, contour_value, contour_units )
                 else:
                     textDisplay = " Position: (%s, %s, %s), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units )
+                    print " >>>>> Current Image Value: %d, data value: %.3G " % ( image_value, dataValue )
                 sliceIndex = caller.GetSliceIndex() 
                 self.slicePosition[iAxis] = sliceIndex
                 self.updateTextDisplay( textDisplay )
@@ -504,7 +512,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 if self.contourLineMapperer: 
                     self.contourLineMapperer.Modified()
                 ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
-#                print " Volume Slicer[%d]: Scale Colormap: ( %.4g, %.4g ) " % ( self.moduleID, ctf_data[0], ctf_data[1] )
+                print '-'*50
+                print " Volume Slicer[%d]: Scale Colormap: ( %.4g, %.4g ) " % ( self.moduleID, ctf_data[0], ctf_data[1] )
+                print '-'*50
                 
     def finalizeLeveling( self, cmap_index=0 ):
         isLeveling =  PersistentVisualizationModule.finalizeLeveling( self )

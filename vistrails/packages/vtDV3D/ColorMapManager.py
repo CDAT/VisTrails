@@ -24,6 +24,7 @@ class ColorMapManager():
         self.colormapName = 'Spectral'
         self.colorBarActor = None
         self.invertColormap = 1
+        self.smoothColormap = 1
 
     def toggleColormapVisibility(self):
         if self.colorBarActor:

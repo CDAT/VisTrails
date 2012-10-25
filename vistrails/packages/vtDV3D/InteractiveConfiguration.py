@@ -1398,17 +1398,21 @@ class ColormapConfigurationDialog( IVModuleConfigurationDialog ):
     def getValue(self):
         checkState = 1 if ( self.invertCheckBox.checkState() == Qt.Checked ) else 0
         stereoState = 1 if ( self.stereoCheckBox.checkState() == Qt.Checked ) else 0
-        return [ str( self.colormapCombo.currentText() ), checkState, stereoState ]
+        smoothState = 1 if ( self.smoothCheckBox.checkState() == Qt.Checked ) else 0
+        return [ str( self.colormapCombo.currentText() ), checkState, stereoState, smoothState ]
 
     def setValue( self, value ):
         colormap_name = str( value[0] )
         check_state = Qt.Checked if int(float(value[1])) else Qt.Unchecked
         stereo_state = Qt.Checked if int(float(value[2])) else Qt.Unchecked
+        smooth_state = Qt.Unchecked if ( len(value) > 3 ) and ( int(float(value[3])) == 0 ) else Qt.Checked
         itemIndex = self.colormapCombo.findText( colormap_name, Qt.MatchFixedString )
         if itemIndex >= 0: self.colormapCombo.setCurrentIndex( itemIndex )
         else: print>>sys.stderr, " Can't find colormap: %s " % colormap_name
         self.invertCheckBox.setCheckState( check_state )
         self.stereoCheckBox.setCheckState( stereo_state )
+        self.smoothCheckBox.setCheckState( smooth_state )
+        
         
     def createContent(self ):
         """ createEditor() -> None
@@ -1428,7 +1432,7 @@ class ColormapConfigurationDialog( IVModuleConfigurationDialog ):
         self.colormapCombo =  QComboBox ( self.parent() )
         colormap_label.setBuddy( self.colormapCombo )
         self.colormapCombo.setMaximumHeight( 30 )
-        layout.addWidget( self.colormapCombo, 0,1 )
+        layout.addWidget( self.colormapCombo, 0, 1, 1, 2 )
         for cmap in ColorMapManager.getColormaps(): self.colormapCombo.addItem( cmap )   
         self.connect( self.colormapCombo, SIGNAL("currentIndexChanged(QString)"), self.updateParameter )  
         
@@ -1439,6 +1443,10 @@ class ColormapConfigurationDialog( IVModuleConfigurationDialog ):
         self.stereoCheckBox = QCheckBox('Stereo')
         layout.addWidget( self.stereoCheckBox, 1, 1 )
         self.connect( self.stereoCheckBox, SIGNAL("stateChanged(int)"), self.updateParameter )  
+
+        self.smoothCheckBox = QCheckBox('Smooth')
+        layout.addWidget( self.smoothCheckBox, 1, 2 )
+        self.connect( self.smoothCheckBox, SIGNAL("stateChanged(int)"), self.updateParameter )  
 
 ################################################################################
         
