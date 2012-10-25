@@ -552,8 +552,10 @@ class CDMSUnaryVariableOperation(CDMSVariableOperation):
                     break
         else:
             var = res 
-        var.id = self.varname
-        var = self.applyOperations(var)
+        
+        if isinstance(var, cdms2.tvariable.TransientVariable):
+            var.id = self.varname
+            var = self.applyOperations(var)
         return var
     
     def to_python_script(self, ident=""):
@@ -634,8 +636,10 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
                     break
         else:
             var = res
-        var.id = self.varname
-        var = self.applyOperations(var)
+        
+        if isinstance(var, cdms2.tvariable.TransientVariable):
+            var.id = self.varname
+            var = self.applyOperations(var)
         return var
         
     def to_python_script(self, ident=""):
@@ -698,8 +702,10 @@ class CDMSNaryVariableOperation(CDMSVariableOperation):
                     break
         else:
             var = res
-        var.id = self.varname
-        var = self.applyOperations(var)
+        
+        if isinstance(var, cdms2.tvariable.TransientVariable):
+            var.id = self.varname
+            var = self.applyOperations(var)
         return var
         
     def to_python_script(self, ident=""):

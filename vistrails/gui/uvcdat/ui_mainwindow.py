@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'mainwindow.ui'
 #
-# Created: Wed Feb  8 10:42:34 2012
-#      by: PyQt4 UI code generator 4.8.3
+# Created: Wed Oct 24 16:59:20 2012
+#      by: PyQt4 UI code generator 4.9.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -26,14 +26,20 @@ class Ui_MainWindow(object):
         self.verticalLayout_2.setObjectName(_fromUtf8("verticalLayout_2"))
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 978, 22))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 978, 27))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         self.menuFile = QtGui.QMenu(self.menubar)
         self.menuFile.setObjectName(_fromUtf8("menuFile"))
+        self.menuEdit = QtGui.QMenu(self.menubar)
+        self.menuEdit.setObjectName(_fromUtf8("menuEdit"))
         self.menuView = QtGui.QMenu(self.menubar)
         self.menuView.setObjectName(_fromUtf8("menuView"))
-        self.menuVistrails = QtGui.QMenu(self.menubar)
-        self.menuVistrails.setObjectName(_fromUtf8("menuVistrails"))
+        self.menuVisTrails = QtGui.QMenu(self.menubar)
+        self.menuVisTrails.setObjectName(_fromUtf8("menuVisTrails"))
+        self.menuTools = QtGui.QMenu(self.menubar)
+        self.menuTools.setObjectName(_fromUtf8("menuTools"))
+        self.menuPCMDITools = QtGui.QMenu(self.menubar)
+        self.menuPCMDITools.setObjectName(_fromUtf8("menuPCMDITools"))
         self.menuHelp = QtGui.QMenu(self.menubar)
         self.menuHelp.setObjectName(_fromUtf8("menuHelp"))
         MainWindow.setMenuBar(self.menubar)
@@ -66,10 +72,12 @@ class Ui_MainWindow(object):
         icon2.addPixmap(QtGui.QPixmap(_fromUtf8(":/icons/resources/icons/pipeline.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionWorkflow.setIcon(icon2)
         self.actionWorkflow.setObjectName(_fromUtf8("actionWorkflow"))
-        self.menuFile.addSeparator()
         self.menubar.addAction(self.menuFile.menuAction())
+        self.menubar.addAction(self.menuEdit.menuAction())
         self.menubar.addAction(self.menuView.menuAction())
-        self.menubar.addAction(self.menuVistrails.menuAction())
+        self.menubar.addAction(self.menuVisTrails.menuAction())
+        self.menubar.addAction(self.menuTools.menuAction())
+        self.menubar.addAction(self.menuPCMDITools.menuAction())
         self.menubar.addAction(self.menuHelp.menuAction())
 
         self.retranslateUi(MainWindow)
@@ -77,10 +85,13 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "UV-CDAT", None, QtGui.QApplication.UnicodeUTF8))
-        self.menuFile.setTitle(QtGui.QApplication.translate("MainWindow", "File", None, QtGui.QApplication.UnicodeUTF8))
-        self.menuView.setTitle(QtGui.QApplication.translate("MainWindow", "View", None, QtGui.QApplication.UnicodeUTF8))
-        self.menuVistrails.setTitle(QtGui.QApplication.translate("MainWindow", "VisTrails", None, QtGui.QApplication.UnicodeUTF8))
-        self.menuHelp.setTitle(QtGui.QApplication.translate("MainWindow", "Help", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuFile.setTitle(QtGui.QApplication.translate("MainWindow", "&File", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuEdit.setTitle(QtGui.QApplication.translate("MainWindow", "&Edit", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuView.setTitle(QtGui.QApplication.translate("MainWindow", "&View", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuVisTrails.setTitle(QtGui.QApplication.translate("MainWindow", "Vi&sTrails", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuTools.setTitle(QtGui.QApplication.translate("MainWindow", "&Tools", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuPCMDITools.setTitle(QtGui.QApplication.translate("MainWindow", "&PCMDITools", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuHelp.setTitle(QtGui.QApplication.translate("MainWindow", "&Help", None, QtGui.QApplication.UnicodeUTF8))
         self.actionNew.setText(QtGui.QApplication.translate("MainWindow", "New", None, QtGui.QApplication.UnicodeUTF8))
         self.actionOpen.setText(QtGui.QApplication.translate("MainWindow", "Open", None, QtGui.QApplication.UnicodeUTF8))
         self.actionQuit.setText(QtGui.QApplication.translate("MainWindow", "Quit", None, QtGui.QApplication.UnicodeUTF8))
