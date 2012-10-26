@@ -156,14 +156,23 @@ parameters from other instances")
             self.createWindows()
             self.processEvents()
             
-        self.vistrailsStartup.set_needed_packages(['uvcdat',
-                                                   'uvcdat_cdms',
-                                                   'ParaView',
-                                                   'pvclimate',
-                                                   'vtk',
-                                                   'vtDV3D',
-                                                   'VisIt',
-                                                   ])
+        # BAB only load visit if it's requirements are met
+        pkgs = [
+            'uvcdat',
+            'uvcdat_cdms',
+            'ParaView',
+            'pvclimate',
+            'vtk',
+            'vtDV3D'
+        ]
+        from packages.VisIt.info import package_requirements as visit_requirements
+        try:
+            visit_requirements()
+            pkgs.append('VisIt')
+        except Exception:
+            pass    
+            
+        self.vistrailsStartup.set_needed_packages(pkgs)
         self.vistrailsStartup.init()
         
         #uv-cdat plots initialization

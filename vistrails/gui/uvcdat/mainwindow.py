@@ -151,7 +151,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.dockAnimate.hide()
 
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockVariable)
-        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.varProp)
+        #self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.varProp)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockCalculator)
         self.tabifyDockWidget(self.dockCalculator, self.plotProp)
 

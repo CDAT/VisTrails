@@ -38,7 +38,7 @@ class QBookMarksListWidget(uvcdatCommons.QDragListWidget):
             
         #event.accept()
 
-class VariableProperties(QtGui.QDockWidget):
+class VariableProperties(QtGui.QDialog):
 
     FILTER = "CDAT data (*.cdms *.ctl *.dic *.hdf *.nc *.xml)"
 
@@ -54,7 +54,7 @@ class VariableProperties(QtGui.QDockWidget):
         self.ask.setLabelText("This variable already exist!\nPlease change its name bellow or press ok to replace it\n")
         self.mode=mode
         self.axisListHolder = None
-        self.setFloating(True)
+        #self.setFloating(True)
         v=QtGui.QVBoxLayout()
         if mode=="add":
             self.label=QtGui.QLabel("Load From")
@@ -86,9 +86,10 @@ class VariableProperties(QtGui.QDockWidget):
         h.addWidget(self.btnCancel)
         v.addLayout(h)
         self.layout=v
-        f=QtGui.QFrame()
-        f.setLayout(v)
-        self.setWidget(f)
+        #f=QtGui.QFrame()
+        #f.setLayout(v)
+        #self.setWidget(f)
+        self.setLayout(v)
         self.parent=parent
         self.root = parent.root
         self.varNameInFile = None #store the name of the variable when loaded from file
@@ -701,12 +702,12 @@ class VariableProperties(QtGui.QDockWidget):
         self._pvTabWidget = PVTabWidget(self)
         self.originTabWidget.addTab(self._pvTabWidget,"ParaView")
 
-    def show(self):
-        # May be useful for other modes
-        #if self.isFloating():
-        #    offset = 50
-        #    self.move(self.parent.x() + offset, self.parent.y() + offset)
-        QtGui.QDockWidget.show(self)
-
-    def exec_(self):
-        QtGui.QDockWidget.exec_(self)
+#    def show(self):
+#        # May be useful for other modes
+#        #if self.isFloating():
+#        #    offset = 50
+#        #    self.move(self.parent.x() + offset, self.parent.y() + offset)
+#        QtGui.QDockWidget.show(self)
+#
+#    def exec_(self):
+#        QtGui.QDockWidget.exec_(self)

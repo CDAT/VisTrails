@@ -6,13 +6,13 @@ from core.modules.basic_modules import Integer, Float, String, File, \
 from core.modules.module_registry import get_module_registry
 from core.modules.vistrails_module import new_module, ModuleError
 
-import visitcell
 
 def initialize():
     registry = get_module_registry()
 
     if registry.has_module('edu.utah.sci.vistrails.spreadsheet',
-                           'SpreadsheetCell'):                
+                           'SpreadsheetCell'):        
+        import visitcell        
         visitcell.registerSelf()
     else:
         print 'Spreadsheet not found!'
