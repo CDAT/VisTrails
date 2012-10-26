@@ -3,7 +3,7 @@ Created on Nov 21, 2011
 
 @author: tpmaxwel
 '''
-import vtk, sys, os, copy, time
+import vtk, sys, os, copy, time, traceback
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from packages.vtDV3D.InteractiveConfiguration import *
@@ -367,64 +367,72 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         extent = image_data.GetExtent()    
         scalars, nTup = None, 0
         vars = []      
-        for varDataId in varDataIds: 
-            varDataSpecs = self.getCachedData( varDataId )   
-            newDataArray = varDataSpecs.get( 'newDataArray', None )
-            md = varDataSpecs[ 'md' ] 
-            varName = varDataId.split(';')[1]
-            var_md = md[ 'attributes' ]            
-            if newDataArray <> None:
-                vars.append( varName ) 
-                vtkdata = getNewVtkDataArray( scalar_dtype )
-                nTup = newDataArray.size
-                vtkdata.SetNumberOfTuples( nTup )
-                vtkdata.SetNumberOfComponents( 1 )
-                vtkdata.SetVoidArray( newDataArray, newDataArray.size, 1 )
-                vtkdata.SetName( varName )
-                vtkdata.Modified()
-                pointData.AddArray( vtkdata )
-                if (scalars == None) and (varName <> '__zeros__'):
-                    scalars = varName
-                    pointData.SetActiveScalars( varName  ) 
-                    md[ 'scalars'] = varName 
-                md[ 'valueRange'] = var_md[ 'range' ] 
-                                   
-        if (self.outputType == CDMSDataType.Vector ): 
-            vtkdata = getNewVtkDataArray( scalar_dtype )
-            vtkdata.SetNumberOfComponents( 3 )
-            vtkdata.SetNumberOfTuples( nTup )
-            iComp = 0
-            for varName in vars:
-                fromArray =  pointData.GetArray( varName )
-                fromNTup = fromArray.GetNumberOfTuples()
-                tup0 = fromArray.GetValue(0)
-                toNTup = vtkdata.GetNumberOfTuples()
-                vtkdata.CopyComponent( iComp, fromArray, 0 )
-                if iComp == 0: 
-                    md[ 'scalars'] = varName 
-                iComp = iComp + 1
-            vtkdata.SetName( 'vectors' )
-            md[ 'vectors'] = ','.join( vars ) 
-            vtkdata.Modified()
-            pointData.SetVectors(vtkdata)
-            pointData.SetActiveVectors( 'vectors'  )         
-        if len( vars )== 0: raise ModuleError( self, 'No dataset variables selected for output %s.' % orec.name) 
-        md = None
         for varDataId in varDataIds:
-            varDataFields = varDataId.split(';')
-            dsid = varDataFields[0] 
-            varName = varDataFields[1] 
-            if varName <> '__zeros__':
-                varDataSpecs = self.getCachedData( varDataId )
-                vmd = varDataSpecs[ 'md' ]   
-                if (md == None):  
-                    md = vmd          
-                    md[ 'vars' ] = vars               
-                    md[ 'title' ] = getTitle( dsid, varName, var_md )
-                md[ 'valueRange-'+varName ] = vmd[ 'valueRange']                   
-        enc_mdata = encodeToString( md ) 
-        if enc_mdata: fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                       
-        image_data.Modified()
+            try: 
+                varDataSpecs = self.getCachedData( varDataId )   
+                newDataArray = varDataSpecs.get( 'newDataArray', None )
+                md = varDataSpecs[ 'md' ] 
+                varName = varDataId.split(';')[1]
+                var_md = md[ 'attributes' ]            
+                if newDataArray <> None:
+                    vars.append( varName ) 
+                    md[ 'valueRange'] = var_md[ 'range' ] 
+                    vtkdata = getNewVtkDataArray( scalar_dtype )
+                    nTup = newDataArray.size
+                    vtkdata.SetNumberOfTuples( nTup )
+                    vtkdata.SetNumberOfComponents( 1 )
+                    vtkdata.SetVoidArray( newDataArray, newDataArray.size, 1 )
+                    vtkdata.SetName( varName )
+                    vtkdata.Modified()
+                    pointData.AddArray( vtkdata )
+                    if (scalars == None) and (varName <> '__zeros__'):
+                        scalars = varName
+                        pointData.SetActiveScalars( varName  ) 
+                        md[ 'scalars'] = varName 
+            except Exception, err:
+                print>>sys.stderr, "Error creating variable metadata: %s " % str(err)
+                traceback.print_exc()
+         
+        try:                           
+            if (self.outputType == CDMSDataType.Vector ): 
+                vtkdata = getNewVtkDataArray( scalar_dtype )
+                vtkdata.SetNumberOfComponents( 3 )
+                vtkdata.SetNumberOfTuples( nTup )
+                iComp = 0
+                for varName in vars:
+                    fromArray =  pointData.GetArray( varName )
+                    fromNTup = fromArray.GetNumberOfTuples()
+                    tup0 = fromArray.GetValue(0)
+                    toNTup = vtkdata.GetNumberOfTuples()
+                    vtkdata.CopyComponent( iComp, fromArray, 0 )
+                    if iComp == 0: 
+                        md[ 'scalars'] = varName 
+                    iComp = iComp + 1
+                vtkdata.SetName( 'vectors' )
+                md[ 'vectors'] = ','.join( vars ) 
+                vtkdata.Modified()
+                pointData.SetVectors(vtkdata)
+                pointData.SetActiveVectors( 'vectors'  )         
+            if len( vars )== 0: raise ModuleError( self, 'No dataset variables selected for output %s.' % orec.name) 
+            md = None
+            for varDataId in varDataIds:
+                varDataFields = varDataId.split(';')
+                dsid = varDataFields[0] 
+                varName = varDataFields[1] 
+                if varName <> '__zeros__':
+                    varDataSpecs = self.getCachedData( varDataId )
+                    vmd = varDataSpecs[ 'md' ]   
+                    if (md == None):  
+                        md = vmd          
+                        md[ 'vars' ] = vars               
+                        md[ 'title' ] = getTitle( dsid, varName, var_md )
+                    md[ 'valueRange-'+varName ] = vmd[ 'valueRange']                   
+            enc_mdata = encodeToString( md ) 
+            if enc_mdata: fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                       
+            image_data.Modified()
+        except Exception, err:
+            print>>sys.stderr, "Error encoding variable metadata: %s " % str(err)
+            traceback.print_exc()
         return cachedImageDataName
 
 

@@ -166,6 +166,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             self.planeWidgetX.SetTextureInterpolate( colormapManager.smoothColormap )
             self.planeWidgetY.SetTextureInterpolate( colormapManager.smoothColormap )
             self.planeWidgetZ.SetTextureInterpolate( colormapManager.smoothColormap )
+            self.updateModule()
                                                             
     def buildPipeline(self):
         """ execute() -> None
