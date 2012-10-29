@@ -329,10 +329,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                     contour_value = self.getDataValue( contour_image_value, 1 )
                     contour_units = self.getUnits(1)
                     textDisplay = " Position: (%s, %s, %s), Value: %.3G %s, Contour Value: %.3G %s" % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units, contour_value, contour_units )
-                    print " >>>>> Current Image Value: %d %d, data value: %.3G, contour value: %.3G, pos = %s, (%s) " % ( image_value, contour_image_value, dataValue, contour_value, str(cpos), str(wpos) )
+#                    print " >>>>> Current Image Value: %d %d, data value: %.3G, contour value: %.3G, pos = %s, (%s) " % ( image_value, contour_image_value, dataValue, contour_value, str(cpos), str(wpos) )
                 else:
                     textDisplay = " Position: (%s, %s, %s), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units )
-                    print " >>>>> Current Image Value: %d, data value: %.3G, pos = %s, (%s) " % ( image_value, dataValue, str(cpos), str(wpos) )
+#                    print " >>>>> Current Image Value: %d, data value: %.3G, pos = %s, (%s) " % ( image_value, dataValue, str(cpos), str(wpos) )
                 sliceIndex = caller.GetSliceIndex() 
                 self.slicePosition[iAxis] = sliceIndex
                 self.updateTextDisplay( textDisplay )
@@ -509,15 +509,15 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         ispec = self.inputSpecs[ cmap_index ]
         if ispec and ispec.input: 
             colormapManager = self.getColormapManager( index=cmap_index )
-            if not colormapManager.matchDisplayRange( ctf_data ):
-                imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
-                colormapManager.setScale( imageRange, ctf_data )
-                if self.contourLineMapperer: 
-                    self.contourLineMapperer.Modified()
-                ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
-                print '-'*50
-                print " Volume Slicer[%d]: Scale Colormap: ( %.4g, %.4g ) " % ( self.moduleID, ctf_data[0], ctf_data[1] )
-                print '-'*50
+#            if not colormapManager.matchDisplayRange( ctf_data ):
+            imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
+            colormapManager.setScale( imageRange, ctf_data )
+            if self.contourLineMapperer: 
+                self.contourLineMapperer.Modified()
+            ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
+#            print '-'*50
+#            print " Volume Slicer[%d]: Scale Colormap: ( %.4g, %.4g ) " % ( self.moduleID, ctf_data[0], ctf_data[1] )
+#            print '-'*50
                 
     def finalizeLeveling( self, cmap_index=0 ):
         isLeveling =  PersistentVisualizationModule.finalizeLeveling( self )
