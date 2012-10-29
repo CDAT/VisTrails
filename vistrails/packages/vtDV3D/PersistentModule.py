@@ -207,6 +207,7 @@ class InputSpecs:
         valueRange = self.scalarRange
         sval = ( float(image_value) - self.rangeBounds[0] ) / ( self.rangeBounds[1] - self.rangeBounds[0] )
         dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
+        print " GetDataValue(%.3G): valueRange = %s " % ( sval, str( valueRange ) )
         return dataValue
                 
     def getDataValues( self, image_value_list ):
@@ -240,7 +241,7 @@ class InputSpecs:
             sval = 0.0 if ( dv == 0.0 ) else ( data_value - valueRange[0] ) / dv
             imageValue = self.rangeBounds[0] + sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
             imageValues.append( imageValue )
-#        print "\n *****************  GetImageValues[%d:%x]: data_values = %s, range = %s, imageValues = %s **************** \n" % ( self.moduleID, id(self), str(data_value_list), str(self.scalarRange), str(imageValues) )
+        print "\n *****************  GetImageValues[%d:%x]: data_values = %s, range = %s, imageValues = %s **************** \n" % ( self.moduleID, id(self), str(data_value_list), str(self.scalarRange), str(imageValues) )
         return imageValues
 
     def scaleToImage( self, data_value ):

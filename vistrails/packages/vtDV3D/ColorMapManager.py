@@ -28,8 +28,11 @@ class ColorMapManager():
 
     def toggleColormapVisibility(self):
         if self.colorBarActor:
-            if  self.colorBarActor.GetVisibility():      self.colorBarActor.VisibilityOff()  
-            else:                                        self.colorBarActor.VisibilityOn() 
+            if  self.colorBarActor.GetVisibility():      
+                self.colorBarActor.VisibilityOff()  
+            else:                                        
+                self.colorBarActor.VisibilityOn() 
+                print " Show colorBar, display range = %s, image scale = %s " % ( str( self.getDisplayRange() ), str( self.getImageScale() ) )
 
     def createActor( self, **args ):
         if self.colorBarActor == None:

@@ -319,18 +319,20 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                     HyperwallManager.getInstance().setInteractionState( 'VolumeSlicer.Slicing' )
                     self.isSlicing = True
                 ispec = self.inputSpecs[ 0 ] 
-                image_value = caller.GetCurrentImageValue() 
-                cpos = caller.GetCurrentCursorPosition()     
+                cursor_data = caller.GetCursorData()
+                image_value = cursor_data[3] 
+                cpos = cursor_data[0:3]     
                 dataValue = self.getDataValue( image_value )
                 wpos = ispec.getWorldCoords( cpos )
                 if self.generateContours:
-                    contour_image_value = caller.GetCurrentImageValue2() 
+                    contour_image_value = cursor_data[4] 
                     contour_value = self.getDataValue( contour_image_value, 1 )
                     contour_units = self.getUnits(1)
                     textDisplay = " Position: (%s, %s, %s), Value: %.3G %s, Contour Value: %.3G %s" % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units, contour_value, contour_units )
+                    print " >>>>> Current Image Value: %d %d, data value: %.3G, contour value: %.3G, pos = %s, (%s) " % ( image_value, contour_image_value, dataValue, contour_value, str(cpos), str(wpos) )
                 else:
                     textDisplay = " Position: (%s, %s, %s), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units )
-                    print " >>>>> Current Image Value: %d, data value: %.3G " % ( image_value, dataValue )
+                    print " >>>>> Current Image Value: %d, data value: %.3G, pos = %s, (%s) " % ( image_value, dataValue, str(cpos), str(wpos) )
                 sliceIndex = caller.GetSliceIndex() 
                 self.slicePosition[iAxis] = sliceIndex
                 self.updateTextDisplay( textDisplay )
