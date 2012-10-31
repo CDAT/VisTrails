@@ -144,6 +144,96 @@ class QMultiDownloadProgressBar(QtGui.QDialog):
             self.lbl.setText("Downloading: %i Files (%i left)" % (N,count))
         #self.hide()
 
+class QEsgfEzPub(QtGui.QDialog):
+    def __init__(self,parent=None):
+        QtGui.QDialog.__init__(self,parent)
+        pol = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Fixed)
+        vbox=QtGui.QVBoxLayout()
+        self.setLayout(vbox)
+        
+        lbl = QtGui.QLabel("Please enter your information for EzPub")
+        vbox.addWidget(lbl)
+        self.script_filename = uvcdatCommons.QLabeledWidgetContainer(QtGui.QLineEdit(),label="EzPub Script Filename:",widgetSizePolicy=pol,labelSizePolicy=pol)
+        self.script_filename.widget.setText("")
+        self.tbOpenFile=QtGui.QToolButton()
+        self.tbOpenFile.clicked.connect(self.openSelectFileDialog)
+        self.openid = uvcdatCommons.QLabeledWidgetContainer(QtGui.QLineEdit(),label="ESGF OpenID:",widgetSizePolicy=pol,labelSizePolicy=pol)
+        self.parent=parent
+        self.openid.widget.setText("")
+        self.password = uvcdatCommons.QLabeledWidgetContainer(QtGui.QLineEdit(),label="Password:",widgetSizePolicy=pol,labelSizePolicy=pol)
+        self.password.widget.setEchoMode(QtGui.QLineEdit.Password)
+        self.globus_username = uvcdatCommons.QLabeledWidgetContainer(QtGui.QLineEdit(),label="Globus Online Username:",widgetSizePolicy=pol,labelSizePolicy=pol)
+        self.globus_username.widget.setText("")
+        self.local_datapath = uvcdatCommons.QLabeledWidgetContainer(QtGui.QLineEdit(),label="Local Path to Data:",widgetSizePolicy=pol,labelSizePolicy=pol)
+        self.local_datapath.widget.setText("")
+        self.tbOpenDir=QtGui.QToolButton()
+        self.tbOpenDir.clicked.connect(self.openExistingDirDialog)
+        self.institution = uvcdatCommons.QLabeledWidgetContainer(QtGui.QLineEdit(),label="Institution:",widgetSizePolicy=pol,labelSizePolicy=pol)
+        self.institution.widget.setText("")
+        
+        h1=QtGui.QHBoxLayout()
+        vbox.addLayout(h1)
+        h1.addWidget(self.script_filename)
+        h1.addWidget(self.tbOpenFile)
+        h2=QtGui.QHBoxLayout()
+        vbox.addLayout(h2)
+        h2.addWidget(self.local_datapath)
+        h2.addWidget(self.tbOpenDir)
+
+        #vbox.addWidget(self.script_filename)
+        #vbox.addWidget(self.tbOpenFile)
+        vbox.addWidget(self.openid)
+        vbox.addWidget(self.password)
+        vbox.addWidget(self.globus_username)
+        #vbox.addWidget(self.local_datapath)
+        vbox.addWidget(self.institution)
+
+        h=QtGui.QHBoxLayout()
+        vbox.addLayout(h)
+        ok = QtGui.QPushButton("Ok")
+        h.addWidget(ok)
+        cancel = QtGui.QPushButton("Cancel")
+        h.addWidget(cancel)
+        self.connect(cancel,QtCore.SIGNAL("clicked()"),self.hide)
+        self.connect(ok,QtCore.SIGNAL("clicked()"),self.acquireCredentials)
+
+    def openSelectFileDialog(self):
+        file = QtGui.QFileDialog.getOpenFileName(self,'Open EzPub Script','/usr/local','All files (*.*)') 
+        if not file.isNull():
+            self.script_filename.widget.setText(file)
+
+    def openExistingDirDialog(self):
+        dir = QtGui.QFileDialog.getExistingDirectory(self,'Open path to data','/usr/local') 
+        if not dir.isNull():
+            self.local_datapath.widget.setText(dir)
+
+    def acquireCredentials(self):
+        try:
+            globus_username= str(self.globus_username.widget.text())
+            openid= str(self.openid.widget.text())
+            password = str(self.password.widget.text())
+            local_datapath=str(self.local_datapath.widget.text())
+            institution=str(self.institution.widget.text())
+            import subprocess
+            p=subprocess.Popen(str(self.script_filename.widget.text()),shell=False,stdin=subprocess.PIPE,stdout=subprocess.PIPE)
+            p.stdin.write("%s\n"%openid)
+            p.stdin.write("%s\n"%password)
+            p.stdin.write("%s\n"%globus_username)
+            p.stdin.write("%s\n"%local_datapath)
+            p.stdin.write("%s\n"%institution)
+            output=[]
+            out=p.stdout.readline()
+            while out:
+               output.append(out)
+               out=p.stdout.readline()
+            self.hide()
+            m = QtGui.QMessageBox()
+            m.setText(''.join(output))
+            m.exec_()
+        except Exception,err:
+            m = QtGui.QMessageBox()
+            m.setText(str(err))
+            m.exec_()
         
 class QEsgfCredentials(QtGui.QDialog):
     def __init__(self,parent=None):
@@ -284,6 +374,7 @@ class QEsgfBrowser(QtGui.QDialog):
             (':/icons/resources/icons/binary-tree-icon.png', 'Edit Mapping',self.editMapping,True),
             (':/icons/resources/icons/floppy_disk_blue.ico', 'Save cache',self.userSaveCache,True),
             (self.loginIcon, 'Get Credentials',self.clickedCredentials,True),
+            (':/icons/resources/icons/binary-tree-icon.png', 'EzPub',self.clickedEzPubCredentials,True),
             ]
         for info in actionInfo:
             if isinstance(info[0],str):
@@ -298,6 +389,8 @@ class QEsgfBrowser(QtGui.QDialog):
         
         self.credentials=QEsgfCredentials(parent=self)
         self.credentials.hide()
+        self.ezpub_credentials=QEsgfEzPub(parent=self)
+        self.ezpub_credentials.hide()
         
         vbox.addWidget(self.toolBar)
 
@@ -544,6 +637,9 @@ class QEsgfBrowser(QtGui.QDialog):
 
     def clickedCredentials(self):
         self.credentials.show()
+
+    def clickedEzPubCredentials(self):
+        self.ezpub_credentials.show()
         
     def clickedSearch(self):
         query = str(self.searchLine.widget.text())
