@@ -520,12 +520,13 @@ class QEsgfBrowser(QtGui.QDialog):
             #print "Actual mapping:",self.mapping
             self.index.append(cdms2.esgfDataset(gateway,port=port,limit=limit,offset=offset,mapping=mapping,datasetids=datasetids,fileids=fileids,restPath=restPath))
             self.QIndex.addIndex("%s:%i" % (gateway,port))
+        except AttributeError:
+            return;
         except Exception,err:
             m = QtGui.QMessageBox()
             m.setText(str(err))
             m.exec_()
-            return
-            
+            return            
 
     def parseQuery(self,query):
         query=query.replace(";","---^^^---")
