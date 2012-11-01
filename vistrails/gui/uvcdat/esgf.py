@@ -514,18 +514,18 @@ class QEsgfBrowser(QtGui.QDialog):
             
             
     def addGateway(self,gateway = customizeUVCDAT.defaultEsgfNode,port=80,limit=1000,offset=0,mapping=None,datasetids=None,fileids=None,restPath=None):
-        if mapping is None:
-            mapping=self.mapping
-        try:
-            #print "Actual mapping:",self.mapping
-            self.index.append(cdms2.esgfDataset(gateway,port=port,limit=limit,offset=offset,mapping=mapping,datasetids=datasetids,fileids=fileids,restPath=restPath))
-            self.QIndex.addIndex("%s:%i" % (gateway,port))
-        except Exception,err:
-            m = QtGui.QMessageBox()
-            m.setText(str(err))
-            m.exec_()
-            return
-            
+        if hasattr(cdms2, "esgfDataset"):
+            if mapping is None:
+                mapping=self.mapping
+            try:
+                #print "Actual mapping:",self.mapping
+                self.index.append(cdms2.esgfDataset(gateway,port=port,limit=limit,offset=offset,mapping=mapping,datasetids=datasetids,fileids=fileids,restPath=restPath))
+                self.QIndex.addIndex("%s:%i" % (gateway,port))
+            except Exception,err:
+                m = QtGui.QMessageBox()
+                m.setText(str(err))
+                m.exec_()
+                return            
 
     def parseQuery(self,query):
         query=query.replace(";","---^^^---")
