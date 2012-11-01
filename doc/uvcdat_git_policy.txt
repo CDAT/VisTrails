@@ -1,0 +1,13 @@
+UV-CDAT Git development policy v0.1
+
+When working on a new feature or bug, first create a new branch off of the uvcdat-master branch. If it's a bug fix, include the bug number in the name of the topic branch. e.g.
+
+> git checkout --track uvcdat-master
+> git checkout -b bug_156_colormap_issues
+
+Upon completing the bug fix or new feature and after local testing, merge the topic branch into uvcdat-next. e.g.
+
+> git checkout uvcdat-next
+> git merge bug_156_colormap_issues
+
+After next has been fully tested and confirmed to be stable, it will be merged into uvcdat-master.
