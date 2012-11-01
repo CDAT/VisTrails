@@ -214,7 +214,8 @@ class HyperwallManagerSingleton(QtCore.QObject):
            sheetTabWidget = getSheetTabWidget()
            sheetName = sheetTabWidget.getSheetName()          
            proj_controller = api.get_current_project_controller()
-           cell = proj_controller.sheet_map[ sheetName ][ ( dimensions[0], dimensions[1] ) ]
+           ( col, row ) = ( dimensions[0], dimensions[1] )
+           cell = proj_controller.sheet_map[ sheetName ][ ( row, col ) ]
            pipeline = proj_controller.vt_controller.vistrail.getPipeline( cell.current_parent_version ) 
            self.server.executePipeline( pipeline, self.deviceName, vistrailName, versionName, moduleId, dimensions )
         
