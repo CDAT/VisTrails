@@ -436,6 +436,8 @@ class ConfigurableFunction( QObject ):
         configFunctionMap = ConfigurableFunction.ConfigurableFunctions.setdefault( self.name, {} )
         configFunctionMap[self.module] = self
 
+    def fixRange(self):
+        pass
             
     def expandRange( self ):
         pass
@@ -535,6 +537,11 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.persisted = False
         self.module.render() 
         return self.initial_range
+    
+    def fixRange(self):
+        self.adjustRangeInput = 0
+        self.manuallyAdjusted = True
+        self.module.finalizeParameter( self.name )
 
     def expandRange( self ):
         if self.adjustRangeInput >= 0:
@@ -2151,9 +2158,13 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         if not self.running:
             self.updateTimeRange()
             iTS =  int( self.iTimeStep ) + 1
-            if self.timeRange and ( ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
+            restart = False
+            if self.timeRange:
+                if ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ): 
+                    restart = ( iTS >= self.timeRange[1] ) 
+                    iTS = self.timeRange[0]
             print " ############################################ set Time index = %d ############################################" % iTS
-            self.setTimestep( iTS )
+            self.setTimestep( iTS, restart )
 
     def reset( self ):
         if self.running:
@@ -2196,7 +2207,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             print>>sys.stderr, "Error: Can't find time range metadata."
 
 
-    def setTimestep( self, iTimestep ):
+    def setTimestep( self, iTimestep, restart = False ):
         from packages.vtDV3D.PersistentModule import ReferenceTimeUnits 
         if self.timeRange[0] == self.timeRange[1]:
             self.running = False
@@ -2221,7 +2232,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, iTimestep, self.uniformTimeRange, displayText ], False  )
                 for module in IVModuleConfigurationDialog.getActiveModules():
                     dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
-                    module.updateAnimation( [ relTimeValueRefAdj, iTimestep, self.uniformTimeRange ], displayText  )
+                    module.updateAnimation( [ relTimeValueRefAdj, iTimestep, self.uniformTimeRange ], displayText, restart  )
             except Exception:
                 traceback.print_exc( 100, sys.stderr )
 #                print>>sys.stdout, "Error in setTimestep[%d]: %s " % ( iTimestep, str(err) )
@@ -2267,8 +2278,12 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
              
     def animate(self):
         iTS =  int( self.iTimeStep ) + 1
-        if self.timeRange and ( ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
-        self.setTimestep( iTS )  
+        restart = False
+        if self.timeRange:
+            if ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ): 
+                restart = ( iTS >= self.timeRange[1] ) 
+                iTS = self.timeRange[0]
+        self.setTimestep( iTS, restart )  
         if self.running: 
             delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
             print " Animate step, delay time = %.2f msec" % delayTime

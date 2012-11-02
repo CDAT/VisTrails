@@ -247,7 +247,6 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         self.currentLevel = level
        
     def getImageData( self, orec, **args ):
-        from packages.vtDV3D import HyperwallManager
         """
         This method converts cdat data into vtkImageData objects. The ds object is a CDMSDataset instance which wraps a CDAT CDMS Dataset object. 
         The ds.getVarDataCube method execution extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).   
@@ -273,7 +272,6 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 varName = varNameComponents[1]
             ds = self.cdmsDataset[ dsid ]
             self.timeRange = self.cdmsDataset.timeRange
-            self.cdmsDataset.decimation = self.decimation[1]+1 if HyperwallManager.getInstance().isServer else self.decimation[0]+1
             portName = orec.name
             selectedLevel = orec.getSelectedLevel() if ( self.currentLevel == None ) else self.currentLevel
             ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
