@@ -156,7 +156,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.timeValue = cdtime.reltime( float(timeData[0]), ReferenceTimeUnits )
             self.timeIndex = timeData[1]
             self.useTimeIndex = timeData[2]
-            print "Set Time [mid = %d]: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( self.moduleID, str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
+#            print "Set Time [mid = %d]: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( self.moduleID, str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
 #            print "Time Step Labels: %s" % str( self.timeLabels )
             for iVar in range( 2,5 ):
                 cdms_var2 = self.getInputValue( "variable%d" % iVar  ) 
@@ -181,7 +181,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 self.useTimeIndex = timeData[2]
                 self.timeLabels = self.cdmsDataset.getTimeValues()
                 self.nTimesteps = self.timeRange[1]
-                print "Set Time: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
+#                print "Set Time: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
 #                print "Time Step Labels: %s" % str( self.timeLabels ) 
                 self.generateOutput()
 #                if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
@@ -354,7 +354,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             image_data.SetExtent( extent )
             image_data.SetWholeExtent( extent )
             image_data.SetSpacing(  gridSpacing[0], gridSpacing[1], gridSpacing[2] )
-            print " ********************* Create Image Data, extent = %s, spacing = %s ********************* " % ( str(extent), str(gridSpacing) )
+#            print " ********************* Create Image Data, extent = %s, spacing = %s ********************* " % ( str(extent), str(gridSpacing) )
 #            offset = ( -gridSpacing[0]*gridExtent[0], -gridSpacing[1]*gridExtent[2], -gridSpacing[2]*gridExtent[4] )
             imageDataCache[ cachedImageDataName ] = image_data
                 

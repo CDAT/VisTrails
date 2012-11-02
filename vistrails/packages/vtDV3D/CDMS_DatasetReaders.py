@@ -182,7 +182,7 @@ class CDMSDatasetRecord():
         
         rv = CDMSDataset.NullVariable
         varData = self.dataset[ varName ] 
-        print "Reading Variable %s, attributes: %s" % ( varName, str(varData.attributes) )
+#        print "Reading Variable %s, attributes: %s" % ( varName, str(varData.attributes) )
 
         refFile = self.cdmsFile
         refVar = varName
@@ -299,7 +299,7 @@ class CDMSDatasetRecord():
         rv = CDMSDataset.NullVariable
         varData = self.dataset[ varName ] 
         currentLevel = varData.getLevel()
-        print "Reading Variable %s, attributes: %s" % ( varName, str(varData.attributes) )
+#        print "Reading Variable %s, attributes: %s" % ( varName, str(varData.attributes) )
 
         refFile = self.cdmsFile
         refVar = varName
@@ -670,7 +670,7 @@ class CDMSDataset(Module):
         
         rv = CDMSDataset.NullVariable 
         currentLevel = transVar.getLevel()
-        print "Reading Variable %s, attributes: %s" % ( varName, str(transVar.attributes) )
+#        print "Reading Variable %s, attributes: %s" % ( varName, str(transVar.attributes) )
 
         decimationFactor = 1
         if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.getInstance().isServer else decimation[0]+1

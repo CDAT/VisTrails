@@ -402,7 +402,6 @@ class ConfigurableFunction( QObject ):
     @staticmethod
     def clear():
         ConfigurableFunction.ConfigurableFunctions = {}
-        print "clear"
          
     def updateActiveFunctionList( self ):
         from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 
@@ -539,9 +538,11 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         return self.initial_range
     
     def fixRange(self):
-        self.adjustRangeInput = 0
-        self.manuallyAdjusted = True
-        self.module.finalizeParameter( self.name )
+        if self.adjustRangeInput >= 0:
+            self.adjustRangeInput = -1
+            if not self.manuallyAdjusted:
+                self.manuallyAdjusted = True
+                self.module.finalizeParameter( self.name )
 
     def expandRange( self ):
         if self.adjustRangeInput >= 0:
@@ -2163,7 +2164,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 if ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ): 
                     restart = ( iTS >= self.timeRange[1] ) 
                     iTS = self.timeRange[0]
-            print " ############################################ set Time index = %d ############################################" % iTS
+#            print " ############################################ set Time index = %d ############################################" % iTS
             self.setTimestep( iTS, restart )
 
     def reset( self ):
@@ -2286,7 +2287,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.setTimestep( iTS, restart )  
         if self.running: 
             delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
-            print " Animate step, delay time = %.2f msec" % delayTime
+#            print " Animate step, delay time = %.2f msec" % delayTime
             self.timer.start( delayTime ) 
 
     def finalizeConfig( self ):
