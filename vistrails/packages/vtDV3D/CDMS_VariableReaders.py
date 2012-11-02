@@ -14,7 +14,6 @@ from packages.vtDV3D.WorkflowModule import WorkflowModule
 from packages.vtDV3D import ModuleStore
 from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.PersistentModule import *
-from packages.vtDV3D.CDMS_DatasetReaders import DefaultDecimation
 import cdms2, cdtime, cdutil, MV2 
 PortDataVersion = 0
 
@@ -56,7 +55,6 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         self.timeIndex = 0
         self.useTimeIndex = False
         self.timeAxis = None
-        self.decimation = DefaultDecimation
         if self.outputType == CDMSDataType.Hoffmuller:
             self.addUVCDATConfigGuiFunction( 'chooseLevel', LevelConfigurationDialog, 'L', label='Choose Level' ) 
        

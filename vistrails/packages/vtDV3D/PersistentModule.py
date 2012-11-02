@@ -1177,7 +1177,7 @@ class PersistentModule( QObject ):
             return
         try:
             op_list = []
-            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
+#            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
             for parmRec in parmRecList:  
                 op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
                 config_fn = self.getConfigFunction( parmRec[0] )

@@ -2202,6 +2202,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                                     timeRange = timeRangeInput 
         if timeRange:                
             self.timeRange = [ int(timeRange[0]), int(timeRange[1]) ]
+            if ( self.iTimeStep >= self.timeRange[1] ) or  ( self.iTimeStep < self.timeRange[0] ): self.iTimeStep = self.timeRange[0]
             self.relTimeStart = float( timeRange[2] )
             self.relTimeStep = float( timeRange[3] )
         else:

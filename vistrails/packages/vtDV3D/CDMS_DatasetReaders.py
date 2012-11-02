@@ -28,6 +28,14 @@ cdms2.axis.level_aliases.append('isobaric')
 messageDialog = QErrorMessage()
 messageDialog.hide()
 
+def setDecimation( decimation_factor, isServer=False ):
+    index = 1 if isServer else 0
+    DefaultDecimation[ index ] = decimation_factor
+
+def getDecimation( isServer=False ):
+    index = 1 if isServer else 0
+    return DefaultDecimation[ index ] 
+
 def normalize_lon( lon ):
     return lon if lon <= 180.0 else (lon - 360.0)
 
