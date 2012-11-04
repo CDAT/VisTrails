@@ -400,8 +400,10 @@ class ConfigurableFunction( QObject ):
         return activeFunctionList
     
     @staticmethod
-    def clear():
-        ConfigurableFunction.ConfigurableFunctions = {}
+    def clear( module ):
+        for configFunctionMap in ConfigurableFunction.ConfigurableFunctions.values():
+            if module in configFunctionMap: 
+                del configFunctionMap[module]
          
     def updateActiveFunctionList( self ):
         from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 
@@ -690,9 +692,12 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         ConfigurableFunction.__del__(self)
 
     @staticmethod
-    def clearModules(): 
-        UVCDATGuiConfigFunction.connectedModules = {} 
-        ConfigurableFunction.clear()
+    def clearModules( iren ): 
+        for module in IVModuleConfigurationDialog.activeModuleList: 
+            if module.iren == iren: 
+                ConfigurableFunction.clear( module )
+                for moduleList in UVCDATGuiConfigFunction.connectedModules.values():
+                    if module in moduleList: moduleList.remove( module )
               
     def initGui( self, **args ):   # init value from moudle input port
         moduleList = UVCDATGuiConfigFunction.connectedModules.setdefault( self.name, Set() )
