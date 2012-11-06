@@ -55,7 +55,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'isoOpacity', 'p', label='Isosurface Opacity', activeBound='min', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addUVCDATConfigGuiFunction( 'nLevels', NLevelConfigurationWidget, 'n', label='# Isosurface Levels', setValue=self.setNumberOfLevels, getValue=self.getNumberOfLevels, layerDependent=True )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Texture Colormap Scale', units='data', setLevel=lambda data:self.setColorScale(data,1), getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRangeInput=1, isValid=self.hasTexture )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Texture Colormap Scale', units='data', setLevel=lambda data, **args:self.setColorScale(data,1,**args), getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRangeInput=1, isValid=self.hasTexture )
         self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Texture Colormap', setValue=lambda data:self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasTexture )
 
     def createDefaultProperties(self):                       
