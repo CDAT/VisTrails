@@ -322,16 +322,17 @@ class DebugView(QtGui.QWidget, QVistrailsPaletteInterface):
         elif msgs[0] == "CRITICAL":
             item.setForeground(QtGui.QBrush(CurrentTheme.DEBUG_CRITICAL_COLOR))
             self.list.setItemHidden(item, not self.criticalFilter.isChecked())
-        if self.isVisible() and not \
-          getattr(get_vistrails_configuration(),'alwaysShowDebugPopup',False):
-            self.raise_()
-            self.activateWindow()
-            modal = get_vistrails_application().activeModalWidget()
-            if modal:
-                # need to beat modal window
+        if not get_vistrails_configuration().noDebugPopups:
+            if self.isVisible() and not \
+              getattr(get_vistrails_configuration(),'alwaysShowDebugPopup',False):
+                self.raise_()
+                self.activateWindow()
+                modal = get_vistrails_application().activeModalWidget()
+                if modal:
+                    # need to beat modal window
+                    self.showMessageBox(item)
+            else:
                 self.showMessageBox(item)
-        else:
-            self.showMessageBox(item)
 
     def closeEvent(self, e):
         """closeEvent(e) -> None
