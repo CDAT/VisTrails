@@ -603,6 +603,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.windowLeveler.setWindowLevelFromRange( self.range )
             
     def updateLeveling( self, x, y, wsize ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
         if self.altMode:
             refinement_range = self.windowRefiner.updateRefinement( [ x, y ], wsize )
             for iR in [ 0, 1 ]: self.range[3+iR] = refinement_range[iR]
@@ -610,7 +611,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             leveling_range = self.windowLeveler.windowLevel( x, y, wsize )
             for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.range_bounds ) if self.boundByRange else leveling_range[iR]
         self.emit( SIGNAL('updateLeveling()') )
-        return self.broadcastLevelingData()
+        return self.broadcastLevelingData( active_modules = DV3DPipelineHelper.getActivePlotList() )
 #        print "updateLeveling: %s " % str( self.range )
 
     def setImageDataRange(  self, imageRange  ):
