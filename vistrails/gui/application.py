@@ -195,6 +195,11 @@ parameters from other instances")
         else:
             r = self.noninteractiveMode()
             return r
+        
+        if self.temp_configuration.time > 0:
+            QtCore.QTimer().singleShot(self.temp_configuration.time*1000, 
+                                       self.uvcdatWindow.quit)
+        
         return True
 
     def showWindow(self, window):

@@ -176,6 +176,8 @@ The builder window can be accessed by a spreadsheet menu option.")
              help=("Run VisTrails without the single instance restriction."))
         add ("-P", "--noDebugPopups", action="store_false",
              help=("Prevent debug messages from popping up in the GUI."))
+        add ("-T", "--time", action="store", type="int", dest="time", default=0,
+             help=("Run UVCDAT for a set amount of seconds and then quit."))
         
         command_line.CommandLineParser.parse_options()
 
@@ -271,6 +273,8 @@ The builder window can be accessed by a spreadsheet menu option.")
             self.temp_configuration.singleInstance = not bool(get('noSingleInstance'))
         if get('noDebugPopups')!=None:
             self.temp_configuration.noDebugPopups = not bool(get('noDebugPopups'))
+        if get('time')!=None:
+            self.temp_configuration.time = get("time")
         self.input = command_line.CommandLineParser().positional_arguments()
     def init(self, optionsDict=None):
         """ VistrailsApplicationSingleton(optionDict: dict)
