@@ -4,6 +4,7 @@ from core.vistrail.module_param import ModuleParam
 from core.vistrail.module_function import ModuleFunction
 from core.modules.module_registry import registry
 from core.db.action import create_action
+from core.utils import getHomeRelativePath, getFullPath
 
 from core.db.io import serialize, unserialize
 from core.vistrail.pipeline import Pipeline
@@ -400,15 +401,18 @@ class Device:
         result = []
         for row in range(dimensions[3]):
             for column in range(dimensions[2]):
-                localPipeline = copy.copy(pipeline)
+                localPipeline = copy.copy(pipeline)                    
                 currentModule = localPipeline.get_module_by_id(module_id)
-
                 for module in localPipeline.module_list:
+#                    for function in module.functions:
+#                        if function.name == 'file' or function.name == 'url':                       
+#                            function.parameters[0].strValue = getHomeRelativePath( function.parameters[0].strValue )
                     if ( module.name in self.cellModuleNames ):
                         if ( module.id <> module_id ):
                             delete_module( module, localPipeline )
                       
                 serializedPipeline = serialize(localPipeline)
+                serializedPipeline = serializedPipeline.replace( os.path.expanduser('~'), '~' )
                 print " HW-DeviceServer: Serialized pipeline:\n %s " % str( serializedPipeline )
                 result.append( ((dimensions[0]+column, dimensions[1]+row), serializedPipeline) )
         
