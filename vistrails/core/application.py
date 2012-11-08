@@ -174,6 +174,8 @@ The builder window can be accessed by a spreadsheet menu option.")
             action="store",dest="uvcdat_var")
         add ("-g", "--noSingleInstance", action="store_true",
              help=("Run VisTrails without the single instance restriction."))
+        add ("-T", "--time", action="store", type="int", dest="time", default=0,
+             help=("Run UVCDAT for a set amount of seconds and then quit."))
         
         command_line.CommandLineParser.parse_options()
 
@@ -267,6 +269,8 @@ The builder window can be accessed by a spreadsheet menu option.")
             self.temp_configuration.detachHistoryView = bool(get('detachHistoryView'))
         if get('noSingleInstance')!=None:
             self.temp_configuration.singleInstance = not bool(get('noSingleInstance'))
+        if get('time')!=None:
+            self.temp_configuration.time = get("time")
         self.input = command_line.CommandLineParser().positional_arguments()
     def init(self, optionsDict=None):
         """ VistrailsApplicationSingleton(optionDict: dict)
