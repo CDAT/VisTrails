@@ -592,12 +592,15 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         print "startLeveling: %s " % str( self.range )
 
     def getTextDisplay(self, **args ):
-        rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
-        rmax = self.range[1] # if not self.isDataValue else self.module.getDataValue( self.range[1] )
-        units = self.module.units if ( self.module and hasattr(self.module,'units') )  else None
-        if units: textDisplay = " Range: %.4G, %.4G %s . " % ( rmin, rmax, units )
-        else: textDisplay = " Range: %.4G, %.4G . " % ( rmin, rmax )
-        return textDisplay
+        try:
+            rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
+            rmax = self.range[1] # if not self.isDataValue else self.module.getDataValue( self.range[1] )
+            units = self.module.units if ( self.module and hasattr(self.module,'units') )  else None
+            if units: textDisplay = " Range: %.4G, %.4G %s . " % ( rmin, rmax, units )
+            else: textDisplay = " Range: %.4G, %.4G . " % ( rmin, rmax )
+            return textDisplay
+        except:
+            return None
     
     def updateWindow( self ): 
         self.windowLeveler.setWindowLevelFromRange( self.range )
@@ -761,9 +764,12 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
             self.module.resetNavigation()
         
     def getTextDisplay(self, **args ):
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
-        gui = DV3DPipelineHelper.getGuiKernel() 
-        return gui.getTextDisplay( **args )  if gui else None
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        try:  
+            gui = DV3DPipelineHelper.getGuiKernel() 
+            return gui.getTextDisplay( **args ) 
+        except:
+            return None
        
     def setValue( self, value ):
         if self.setValueHandler <> None: 
@@ -812,7 +818,10 @@ class GuiConfigurableFunction( ConfigurableFunction ):
         self.module.resetNavigation()
         
     def getTextDisplay(self, **args ):
-        return self.gui.getTextDisplay( **args )
+        try:
+            return self.gui.getTextDisplay( **args )
+        except:
+            return None
        
     def setValue( self, value ):
         if self.setValueHandler <> None: 
@@ -856,7 +865,10 @@ class WidgetConfigurableFunction( ConfigurableFunction ):
         self.module.resetNavigation()
         
     def getTextDisplay(self, **args ):
-        return self.widget.getTextDisplay(**args)
+        try:
+            return self.widget.getTextDisplay(**args)
+        except:
+            return None
 
     def setValue( self, value ):
         if self.setValueHandler <> None: 
@@ -1145,8 +1157,11 @@ class IVModuleConfigurationDialog( QWidget ):
         QWidget.close( self ) 
  
     def getTextDisplay( self, **args  ):
-        value = self.getTextValue( self.getValue() )
-        return "%s: %s" % ( self.name, value ) if value else None
+        try:
+            value = self.getTextValue( self.getValue() )
+            return "%s: %s" % ( self.name, value ) if value else None
+        except:
+            return None
        
     def getTextValue( self, value, **args ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
