@@ -2126,6 +2126,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     """
     AnimationConfigurationDialog ...   
     """ 
+    
    
     def __init__(self, name, **args):
         self.iTimeStep = 0
@@ -2153,6 +2154,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         iTS = int( round( getItem( value ) ) )
         if self.timeRange and ( ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
         self.iTimeStep = iTS
+        self.updateConfiguration()
                 
 #    def loadAnimation(self):
 #        self.getTimeRange(  )
@@ -2300,6 +2302,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     def finalizeConfig( self ):
         self.stop()
         IVModuleConfigurationDialog.finalizeConfig( self )
+#        AnimationConfigurationDialog.iCurrentTimeStep = self.iTimeStep
                 
 #    def run1(self):
 #        if self.running:

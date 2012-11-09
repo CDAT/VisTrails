@@ -360,6 +360,7 @@ class PersistentModule( QObject ):
         self.sheetName = None 
         self.cell_address = None
         self.moduleID = mid
+        self.timeIndex = 0 
         self.inputSpecs = {}
         self.pipeline = args.get( 'pipeline', None )
         self.taggedVersionMap = {}
@@ -1298,12 +1299,17 @@ class PersistentModule( QObject ):
     def getModuleParameters( self ):
         return []
 
-    def setTimeValue( self, relTimeValue ):
-        self.timeValue = cdtime.reltime( relTimeValue, ReferenceTimeUnits )
+    def setTimeValue( self, iTimeIndex ):
+        self.timeIndex = iTimeIndex
+        try:
+            relTimeValue = self.timeRange[ 2 ] + iTimeIndex* self.timeRange[ 3 ]
+            self.timeValue = cdtime.reltime( relTimeValue, ReferenceTimeUnits )
+        except:
+            pass
         self.onNewTimestep()
             
     def getTimeValue( self ):
-        return self.timeValue.value
+        return self.timeIndex
 
     def onNewTimestep(self):
         pass                                              
