@@ -272,7 +272,11 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         from gui.vistrails_window import _app
         _app._is_quitting = True
         if _app.close_all_vistrails():
-            _app.deleteLater()
+
+            # DAK: removing this call as it seems to cause a
+            # RuntimeError with QVersionTreeScene.selectionChanged;
+            # it also does not appear in the VisTrails code
+            # _app.deleteLater()
             QtCore.QCoreApplication.quit()
             # In case the quit() failed (when Qt doesn't have the main
             # event loop), we have to return True still
