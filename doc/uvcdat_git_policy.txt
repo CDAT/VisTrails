@@ -11,3 +11,4 @@ Upon completing the bug fix or new feature and after local testing, merge the to
 > git merge bug_156_colormap_issues
 
 After next has been fully tested and confirmed to be stable, it will be merged into uvcdat-master.
+

@@ -80,7 +80,6 @@ class QDefinedVariableWidget(QtGui.QWidget):
             varProp.varNameInFile = cdmsVar.varNameInFile
         else:
             varProp.varNameInFile = None
-        varProp.setFloating(True)
         varProp.show()
 
     def defineQuickplot(self, file, var):

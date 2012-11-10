@@ -624,7 +624,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 
             #set colormap for this plot
             #TODO: support unique colormaps for both variables
-            conns = controller.get_connectoins_to(pipeline, [mplot.id], port_name="colorMap")
+            conns = controller.get_connections_to(pipeline, [mplot.id], port_name="colorMap")
             if len(conns) > 0:
                 varc = pipeline.modules[conns[0].source.moduleId] 
                 if varc.colorMapName is not None:

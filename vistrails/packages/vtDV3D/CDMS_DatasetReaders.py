@@ -16,6 +16,7 @@ from packages.vtDV3D import HyperwallManager, ModuleStore
 from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.PersistentModule import * 
 from packages.vtDV3D.ROISelection import ROISelectionDialog
+
 import numpy.ma as ma
 # from vtk.util.misc import vtkGetDataRoot
 # packagePath = os.path.dirname( __file__ ) 
@@ -26,6 +27,14 @@ cdms2.axis.level_aliases.append('isobaric')
 
 messageDialog = QErrorMessage()
 messageDialog.hide()
+
+def setDecimation( decimation_factor, isServer=False ):
+    index = 1 if isServer else 0
+    DefaultDecimation[ index ] = decimation_factor
+
+def getDecimation( isServer=False ):
+    index = 1 if isServer else 0
+    return DefaultDecimation[ index ] 
 
 def normalize_lon( lon ):
     return lon if lon <= 180.0 else (lon - 360.0)
@@ -181,7 +190,7 @@ class CDMSDatasetRecord():
         
         rv = CDMSDataset.NullVariable
         varData = self.dataset[ varName ] 
-        print "Reading Variable %s, attributes: %s" % ( varName, str(varData.attributes) )
+#        print "Reading Variable %s, attributes: %s" % ( varName, str(varData.attributes) )
 
         refFile = self.cdmsFile
         refVar = varName
@@ -298,7 +307,7 @@ class CDMSDatasetRecord():
         rv = CDMSDataset.NullVariable
         varData = self.dataset[ varName ] 
         currentLevel = varData.getLevel()
-        print "Reading Variable %s, attributes: %s" % ( varName, str(varData.attributes) )
+#        print "Reading Variable %s, attributes: %s" % ( varName, str(varData.attributes) )
 
         refFile = self.cdmsFile
         refVar = varName
@@ -488,7 +497,7 @@ class CDMSDataset(Module):
         self.referenceVariable = None
         self.timeRange = None
         self.gridBounds = None
-        self.decimation = None
+        self.decimation = DefaultDecimation
         self.zscale = 1.0
         self.cells = []
         
@@ -669,7 +678,10 @@ class CDMSDataset(Module):
         
         rv = CDMSDataset.NullVariable 
         currentLevel = transVar.getLevel()
-        print "Reading Variable %s, attributes: %s" % ( varName, str(transVar.attributes) )
+#        print "Reading Variable %s, attributes: %s" % ( varName, str(transVar.attributes) )
+
+        decimationFactor = 1
+        if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.getInstance().isServer else decimation[0]+1
         
         args1 = {} 
         order = 'xyt' if ( timeBounds == None) else 'xyz'
@@ -680,6 +692,18 @@ class CDMSDataset(Module):
             elif timeValue and (nts>1): 
                 args1['time'] = timeValue
         except: pass
+
+        if decimationFactor > 1:
+            lonAxis = transVar.getLongitude() 
+            lonVals = lonAxis.getValue()
+            varLonInt = lonAxis.mapIntervalExt( [ lonVals[0], lonVals[-1] ], 'ccn' )
+            args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
+           
+            latAxis = transVar.getLatitude() 
+            latVals = latAxis.getValue()
+            latRange = [ latVals[0], latVals[-1] ] if (latVals[-1] > latVals[0]) else [ latVals[-1], latVals[0] ]
+            varLatInt = latAxis.mapIntervalExt( latRange, 'ccn' )
+            args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
         
         args1['order'] = order
         if levaxis:

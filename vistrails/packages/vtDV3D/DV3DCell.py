@@ -508,8 +508,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         
     def clearWidget(self): 
         from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog, UVCDATGuiConfigFunction
+        UVCDATGuiConfigFunction.clearModules( self.iren )
         IVModuleConfigurationDialog.reset()
-        UVCDATGuiConfigFunction.clearModules()
         self.cellWidget = None 
         self.builtCellWidget = False                        
         

@@ -693,6 +693,7 @@ class PersistentModule( QObject ):
 
     def initializeInputs( self, **args ):
         isAnimation = args.get( 'animate', False )
+        restarting = args.get( 'restarting', False )
         self.newDataset = False
         for inputIndex, inputPort in enumerate( self.primaryInputPorts ):
             ispec = InputSpecs()
@@ -745,7 +746,9 @@ class PersistentModule( QObject ):
                 ispec.initializeMetadata()
 
         if isAnimation:
-            for configFunct in self.configurableFunctions.values(): configFunct.expandRange()
+            for configFunct in self.configurableFunctions.values(): 
+                if restarting:  configFunct.fixRange()
+                else:           configFunct.expandRange()
    
 #    def initializeLayers( self, scalars ):
 #        if self.activeLayer == None: 
@@ -875,8 +878,8 @@ class PersistentModule( QObject ):
                     self.haltNavigationInteraction()
                     if (configFunct.type == 'leveling'): self.getLabelActor().VisibilityOn()
     
-    def updateAnimation( self, animTimeData, textDisplay=None ):
-        self.dvUpdate( timeData=animTimeData, animate=True )
+    def updateAnimation( self, animTimeData, textDisplay=None, restartingAnimation=False ):
+        self.dvUpdate( timeData=animTimeData, animate=True, restarting=restartingAnimation )
         if textDisplay <> None:  self.updateTextDisplay( textDisplay )
         
     def stopAnimation( self ):
@@ -1174,7 +1177,7 @@ class PersistentModule( QObject ):
             return
         try:
             op_list = []
-            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
+#            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
             for parmRec in parmRecList:  
                 op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
                 config_fn = self.getConfigFunction( parmRec[0] )

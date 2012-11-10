@@ -85,6 +85,8 @@ def start_uvcdat_application(optionsDict):
     hw_role = optionsDict.get( "hw_role", 'global')
     spawn = optionsDict.get( "spawn", True )
     isClient = ( hw_role == 'hw_client' )
+    isServer = ( hw_role == 'hw_server' )
+    decimation = optionsDict.get( "decimation", None )
     VistrailsApplication = vtDV3DApplicationSingleton( isClient )
     set_vistrails_application( VistrailsApplication )
     if VistrailsApplication.is_running():
@@ -108,6 +110,9 @@ def start_uvcdat_application(optionsDict):
     showBuilder = optionsDict.get( 'showBuilder', False )
     VistrailsApplication.uvcdatWindow.setWindowTitle( title )
     if showBuilder: VistrailsApplication.uvcdatWindow.showBuilderWindowActTriggered() 
+    if decimation: 
+        from packages.vtDV3D.CDMS_DatasetReaders import setDecimation
+        setDecimation( decimation, isServer )
     if x == True:
         return 0
     else:
@@ -167,7 +172,7 @@ class HWRunType :
 
 if __name__ == '__main__':
     runType = HWRunType.getValue() 
-    if runType == HWRunType.Desktop: optionsDict = { "hw_role" : 'global', "showBuilder": True, 'spawn': True }   #  'global'   'hw_client'  'hw_server' 
+    if runType == HWRunType.Desktop: optionsDict = { "hw_role" : 'global', "showBuilder": True, 'spawn': True, 'decimation' : 7 }   #  'global'   'hw_client'  'hw_server' 
     if runType == HWRunType.Server:  optionsDict = {  'hw_role': 'hw_server', 'debug': 'False' } #, 'hw_nodes': 'localhost' }   
     if runType == HWRunType.Client:  
         node_index_str = os.environ.get('HW_NODE_INDEX',None)

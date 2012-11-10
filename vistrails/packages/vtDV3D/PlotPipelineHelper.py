@@ -910,7 +910,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
 #        ConfigurableFunction.clear()
         controller.change_selected_version(version)
-        print "[%d,%d] ~~~~~~~~~~~~~~~>> build_plot_pipeline_action, version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
+#        print "[%d,%d] ~~~~~~~~~~~~~~~>> build_plot_pipeline_action, version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
 #        print " --> plot_modules = ",  str( controller.current_pipeline.modules.keys() )
 #        print " --> var_modules = ",  str( [ var.id for var in var_modules ] )
         plots = list( plot_objs )
@@ -1047,9 +1047,9 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def addParameterChangesAction( pipeline, controller, vistrail, parent_version, aliases, cell_spec_iter ):
         param_changes = []
         newid = parent_version
-        print "addParameterChangesAction()"
-        print "Aliases: %s " % str( aliases )
-        print "Pipeline Aliases: %s " % str( pipeline.aliases )
+#        print "addParameterChangesAction()"
+#        print "Aliases: %s " % str( aliases )
+#        print "Pipeline Aliases: %s " % str( pipeline.aliases )
         aliasList = aliases.iteritems()
         for k,value in aliasList:
             alias = pipeline.aliases.get(k,None) # alias = (type, oId, parentType, parentId, mId)

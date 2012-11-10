@@ -400,9 +400,10 @@ class ConfigurableFunction( QObject ):
         return activeFunctionList
     
     @staticmethod
-    def clear():
-        ConfigurableFunction.ConfigurableFunctions = {}
-        print "clear"
+    def clear( module ):
+        for configFunctionMap in ConfigurableFunction.ConfigurableFunctions.values():
+            if module in configFunctionMap: 
+                del configFunctionMap[module]
          
     def updateActiveFunctionList( self ):
         from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 
@@ -436,6 +437,8 @@ class ConfigurableFunction( QObject ):
         configFunctionMap = ConfigurableFunction.ConfigurableFunctions.setdefault( self.name, {} )
         configFunctionMap[self.module] = self
 
+    def fixRange(self):
+        pass
             
     def expandRange( self ):
         pass
@@ -535,6 +538,13 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.persisted = False
         self.module.render() 
         return self.initial_range
+    
+    def fixRange(self):
+        if self.adjustRangeInput >= 0:
+            self.adjustRangeInput = -1
+            if not self.manuallyAdjusted:
+                self.manuallyAdjusted = True
+                self.module.finalizeParameter( self.name )
 
     def expandRange( self ):
         if self.adjustRangeInput >= 0:
@@ -593,6 +603,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.windowLeveler.setWindowLevelFromRange( self.range )
             
     def updateLeveling( self, x, y, wsize ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
         if self.altMode:
             refinement_range = self.windowRefiner.updateRefinement( [ x, y ], wsize )
             for iR in [ 0, 1 ]: self.range[3+iR] = refinement_range[iR]
@@ -600,7 +611,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             leveling_range = self.windowLeveler.windowLevel( x, y, wsize )
             for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.range_bounds ) if self.boundByRange else leveling_range[iR]
         self.emit( SIGNAL('updateLeveling()') )
-        return self.broadcastLevelingData()
+        return self.broadcastLevelingData( active_modules = DV3DPipelineHelper.getActivePlotList() )
 #        print "updateLeveling: %s " % str( self.range )
 
     def setImageDataRange(  self, imageRange  ):
@@ -682,9 +693,12 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         ConfigurableFunction.__del__(self)
 
     @staticmethod
-    def clearModules(): 
-        UVCDATGuiConfigFunction.connectedModules = {} 
-        ConfigurableFunction.clear()
+    def clearModules( iren ): 
+        for module in IVModuleConfigurationDialog.activeModuleList: 
+            if module.iren == iren: 
+                ConfigurableFunction.clear( module )
+                for moduleList in UVCDATGuiConfigFunction.connectedModules.values():
+                    if module in moduleList: moduleList.remove( module )
               
     def initGui( self, **args ):   # init value from moudle input port
         moduleList = UVCDATGuiConfigFunction.connectedModules.setdefault( self.name, Set() )
@@ -2151,9 +2165,13 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         if not self.running:
             self.updateTimeRange()
             iTS =  int( self.iTimeStep ) + 1
-            if self.timeRange and ( ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
-            print " ############################################ set Time index = %d ############################################" % iTS
-            self.setTimestep( iTS )
+            restart = False
+            if self.timeRange:
+                if ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ): 
+                    restart = ( iTS >= self.timeRange[1] ) 
+                    iTS = self.timeRange[0]
+#            print " ############################################ set Time index = %d ############################################" % iTS
+            self.setTimestep( iTS, restart )
 
     def reset( self ):
         if self.running:
@@ -2190,13 +2208,14 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                                     timeRange = timeRangeInput 
         if timeRange:                
             self.timeRange = [ int(timeRange[0]), int(timeRange[1]) ]
+            if ( self.iTimeStep >= self.timeRange[1] ) or  ( self.iTimeStep < self.timeRange[0] ): self.iTimeStep = self.timeRange[0]
             self.relTimeStart = float( timeRange[2] )
             self.relTimeStep = float( timeRange[3] )
         else:
             print>>sys.stderr, "Error: Can't find time range metadata."
 
 
-    def setTimestep( self, iTimestep ):
+    def setTimestep( self, iTimestep, restart = False ):
         from packages.vtDV3D.PersistentModule import ReferenceTimeUnits 
         if self.timeRange[0] == self.timeRange[1]:
             self.running = False
@@ -2221,7 +2240,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, iTimestep, self.uniformTimeRange, displayText ], False  )
                 for module in IVModuleConfigurationDialog.getActiveModules():
                     dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
-                    module.updateAnimation( [ relTimeValueRefAdj, iTimestep, self.uniformTimeRange ], displayText  )
+                    module.updateAnimation( [ relTimeValueRefAdj, iTimestep, self.uniformTimeRange ], displayText, restart  )
             except Exception:
                 traceback.print_exc( 100, sys.stderr )
 #                print>>sys.stdout, "Error in setTimestep[%d]: %s " % ( iTimestep, str(err) )
@@ -2267,11 +2286,15 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
              
     def animate(self):
         iTS =  int( self.iTimeStep ) + 1
-        if self.timeRange and ( ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ) ): iTS = self.timeRange[0]
-        self.setTimestep( iTS )  
+        restart = False
+        if self.timeRange:
+            if ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ): 
+                restart = ( iTS >= self.timeRange[1] ) 
+                iTS = self.timeRange[0]
+        self.setTimestep( iTS, restart )  
         if self.running: 
             delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
-            print " Animate step, delay time = %.2f msec" % delayTime
+#            print " Animate step, delay time = %.2f msec" % delayTime
             self.timer.start( delayTime ) 
 
     def finalizeConfig( self ):
