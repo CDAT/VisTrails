@@ -887,8 +887,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 
         sheetTabWidget = getSheetTabWidget()
         sheetName = sheetTabWidget.getSheetName()          
-        for cell_address in cell_addresses:
-            DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline
+#        for cell_address in cell_addresses:
+#            DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline
         
         for mid in controller.current_pipeline.modules:
             module = ModuleStore.getModule( mid ) 
