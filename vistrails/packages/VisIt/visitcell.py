@@ -37,9 +37,11 @@ VisItLaunched = False
 
 def LaunchVisIt():
     global viswin, availWindows
+    print "Starting VisIt, Please Wait(One time operation).."
     visit.LaunchPyQt()
     viswin = visit.pyqt_support.GetPyQtViewerInstance()
     availWindows.append((viswin.GetRenderWindow(1),1))
+    print "End Loading VisIt.."
 
 
 
