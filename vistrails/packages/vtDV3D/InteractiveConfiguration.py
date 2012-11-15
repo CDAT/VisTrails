@@ -12,6 +12,7 @@ from core.modules.vistrails_module import Module, ModuleError
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, Boolean, Variant
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
+from packages.vtDV3D import ModuleStore
 from core.utils import getHomeRelativePath, getFullPath
 from packages.vtDV3D.CDATTask import deserializeTaskData
 from packages.vtDV3D import HyperwallManager
@@ -696,16 +697,21 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         ConfigurableFunction.__del__(self)
 
     @staticmethod
-    def clearModules( iren ): 
-        for module in IVModuleConfigurationDialog.activeModuleList: 
-            if module.iren == iren: 
-                ConfigurableFunction.clear( module )
-                for moduleList in UVCDATGuiConfigFunction.connectedModules.values():
-                    if module in moduleList: moduleList.remove( module )
+    def clearModules( pipeline ): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
+        for moduleId in pipeline.modules: 
+            module = ModuleStore.getModule( moduleId ) 
+            DV3DPipelineHelper.removeModuleFromActivationMap( module ) 
+            ConfigurableFunction.clear( module )
+            for (key, moduleList) in UVCDATGuiConfigFunction.connectedModules.items():
+                if moduleId in moduleList: 
+                    moduleList.remove( moduleId )
+                    print "Removing module %s (%d) from connectedModules for key %s" % ( module.__class__.__name__, moduleId, key )
               
     def initGui( self, **args ):   # init value from moudle input port
         moduleList = UVCDATGuiConfigFunction.connectedModules.setdefault( self.name, Set() )
-        moduleList.add( self.module )
+        moduleList.add( self.module.moduleID )
+        print "Adding module %s (%d) to connectedModules for key %s" % ( self.module.__class__.__name__, self.module.moduleID, self.name )
         initValue = args.get( 'initValue', True ) 
         if initValue:
             initial_value = None if ( self.getValueHandler == None ) else self.getValueHandler()         
@@ -733,8 +739,11 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         self.kwargs['manager'] = manager
         gui = self.guiClass( str(self.name), **self.kwargs )
 #        self.gui.connect(self.gui, SIGNAL('delete()'), self.reset )
-        for module in moduleList:
+        print "Getting moduleList for key ", self.name
+        for moduleId in moduleList:
+            module = ModuleStore.getModule( moduleId ) 
             gui.addActiveModule( module )
+            print " --> module %s (%d) " % ( module.__class__.__name__, module.moduleID )
 #        if self.startConfigurationObserver <> None:
 #            self.gui.connect( self.gui, self.start_parameter_signal, self.startConfigurationObserver )
 #        if self.updateConfigurationObserver <> None:

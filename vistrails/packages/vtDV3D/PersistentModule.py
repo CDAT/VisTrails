@@ -1180,7 +1180,10 @@ class PersistentModule( QObject ):
             op_list = []
 #            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
             for parmRec in parmRecList:  
-                op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+                try:
+                    op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+                except: 
+                    print>>sys.stderr, " Unrecognized input port %d in module %d " % ( parmRec[0], self.moduleID )
                 config_fn = self.getConfigFunction( parmRec[0] )
                 if config_fn: config_list.append( config_fn )
                 else: print>>sys.stderr, "Unrecognized config function %s in module %d" % ( parmRec[0], self.moduleID )
@@ -1199,6 +1202,7 @@ class PersistentModule( QObject ):
                 
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
+            traceback.print_exc()
 
 
                

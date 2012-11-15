@@ -715,6 +715,12 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return DV3DPipelineHelper.activationMap.get( module, False )
 
     @staticmethod    
+    def removeModuleFromActivationMap( module ):
+        if module in DV3DPipelineHelper.activationMap:
+            del DV3DPipelineHelper.activationMap[module]
+            print "Removing Module %s (%d) from activation map" % ( module.__class__.__name__, module.moduleID )
+
+    @staticmethod    
     def getActivePlotList( ):
         active_plots = []
         for module in DV3DPipelineHelper.activationMap.keys():
