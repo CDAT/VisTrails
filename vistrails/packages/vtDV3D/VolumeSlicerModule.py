@@ -36,6 +36,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         <tr> <td> m </td> <td> Enable margins. Right-clicking and dragging the slice margins enables rotations and translations of the planes </td>
         </table>
     """
+    # used to export the interactive time series
+    global_coords = [-1, -1, -1]
+
     def __init__( self, mid, **args ):
         import api
         PersistentVisualizationModule.__init__( self, mid, **args )
