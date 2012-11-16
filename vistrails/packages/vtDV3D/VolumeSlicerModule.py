@@ -19,7 +19,11 @@ from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.ImagePlaneWidget import *
 from packages.vtDV3D import HyperwallManager
 VolumeSlicerModules = {}
-        
+
+packagePath = os.path.dirname( __file__ )  
+defaultMapDir = os.path.join( packagePath, 'data' )
+defaultOutlineMapFile = os.path.join( defaultMapDir,  'political_map.png' )
+
 class PM_VolumeSlicer(PersistentVisualizationModule):
     """
         This module generates dragable slices through 3D volumetric (<i>vtkImagedata</i>) data.  Three slice planes are provided 
@@ -48,6 +52,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
         self.addConfigurableLevelingFunction( 'contourDensity', 'g', label='Contour Density', activeBound='max', setLevel=self.setContourDensity, getLevel=self.getContourDensity, layerDependent=True, windowing=False, rangeBounds=[ 3.0, 30.0, 1 ], bound=False, isValid=self.hasContours )
         self.addConfigurableLevelingFunction( 'contourColorScale', 'S', label='Contour Colormap Scale', units='data', setLevel=self.scaleContourColormap, getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRangeInput=1, isValid=self.hasContours )
+        self.addConfigurableMethod('Show Outline Map', self.toogleOutlineMap, 'm' )
+        #DV3DPipelineHelper.addAction( self, [ 'Test', 'test' ], 'n' )
+
         self.addUVCDATConfigGuiFunction( 'contourColormap', ColormapConfigurationDialog, 'K', label='Choose Contour Colormap', setValue=lambda data: self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasContours )
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
         self.opacity = [ 0.75, 1.0 ]
@@ -63,6 +70,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.contourLineMapperer = None
         self.contours = None
         self.NumContours = 10.0
+        self.showOutlineMap = False
         try:
             controller = api.get_current_controller()
 #            print " Volume Slicer init, id = %x " % id(self)
@@ -76,6 +84,11 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ.RemoveAllObservers()
         del VolumeSlicerModules[ self.moduleID ]
         PersistentVisualizationModule.__del__(self)
+        
+    def toogleOutlineMap(self):
+        self.showOutlineMap = not self.showOutlineMap
+        self.planeWidgetZ.planeActor.SetVisibility(self.showOutlineMap)
+        self.render()
         
     def scaleContourColormap(self, data, **args ):
         return self.scaleColormap( data, 1, **args )
@@ -255,6 +268,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ.SetInput( self.input(), contourInput )
         self.planeWidgetZ.SetPlaneOrientationToZAxes()
         self.planeWidgetZ.PlaceWidget( bounds )
+        self.planeWidgetZ.SetOutlineMap( self.buildOutlineMap() )
 
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.updateOpacity() 
@@ -285,6 +299,42 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         if self.getInputSpec().getMetadata()['plotType']=='xyz':
             self.addConfigurableFunction('Show Time Series', None, 't' )
 
+    def buildOutlineMap(self):
+        # This function load a binary image (black and white)
+        # and create a default grid for it. Then it uses re-gridding algorithms 
+        # to scale in the correct domain.
+        from pylab import imread
+        import vtk.util.vtkImageImportFromArray as vtkUtil
+
+        # read outline image and convert to gray scale
+        data = imread(defaultOutlineMapFile)
+        data = data.mean(axis=2)
+
+#        # create a variable using the data loaded in the image and an uniform grid
+        dims = data.shape
+        reso = [180.0/dims[0], 360.0/dims[1]]
+        var = cdms2.createVariable(data)
+        lat = cdms2.createUniformLatitudeAxis(90, dims[0], -reso[0])
+        lon = cdms2.createUniformLongitudeAxis(-180, dims[1], reso[1])
+        var.setAxis(0, lat)
+        var.setAxis(1, lon)
+
+        # create the final map using the ROI
+        odims = [ (self.roi[3]-self.roi[2])/reso[0] , (self.roi[1]-self.roi[0])/reso[1] ]
+        ogrid = cdms2.createUniformGrid(self.roi[2], odims[0], reso[0], self.roi[0], odims[1], reso[1])
+        ovar = var.regrid(ogrid, regridTool='regrid2')
+        
+        # replace outlier numbers
+        d = ovar.data
+        d[d==1e+20] = d[d<>1e+20].max()
+        
+        # convert to vtkImageData
+        img = vtkUtil.vtkImageImportFromArray()
+        img.SetArray(ovar.data)
+        img.Update()
+        
+        return img.GetOutput()
+    
     def updateContourDensity(self):
         if self.generateContours:
             rangeBounds = self.getRangeBounds(1)

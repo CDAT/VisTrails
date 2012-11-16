@@ -250,7 +250,39 @@ class ImagePlaneWidget:
         self.CurrentRenderer.AddViewProp(self.CursorActor)
         self.CursorActor.SetProperty(self.CursorProperty)
         
-        self.TexturePlaneActor.PickableOn()                  
+        self.TexturePlaneActor.PickableOn()
+        
+        # draw the outline map only in the XY plane
+        if self.PlaneIndex==2:
+            _range = self.outlineMap.GetPointData().GetScalars('scalars').GetRange()
+            
+            bwLut = vtk.vtkLookupTable()
+            bwLut.SetTableRange (_range[0], _range[1])
+            bwLut.SetSaturationRange (0, 0) # no color saturation
+            bwLut.SetValueRange (0, 1)      # from black to white
+            bwLut.SetAlphaRange(1, 0)
+            bwLut.Build()
+            
+            map2rgb = vtk.vtkImageMapToColors()
+            map2rgb.SetInput(self.outlineMap)
+            map2rgb.SetOutputFormatToRGBA()
+            map2rgb.SetLookupTable(bwLut)
+            map2rgb.Update()
+            
+            atext = vtk.vtkTexture()
+            atext.SetInput(self.outlineMap)
+            atext.SetLookupTable(bwLut)
+#            atext.SetBlendingMode(vtk.vtkTexture.VTK_TEXTURE_BLENDING_MODE_ADD)
+      
+            planeMapper = vtk.vtkPolyDataMapper()
+            planeMapper.SetInputConnection(self.PlaneSource.GetOutputPort())
+            
+            self.planeActor = vtk.vtkActor()
+            self.planeActor.SetMapper(planeMapper)
+            self.planeActor.SetTexture(atext)
+            self.planeActor.VisibilityOff()
+            self.CurrentRenderer.AddViewProp(self.planeActor)
+
         self.Interactor.Render()
         
     def EnablePicking( self ):
@@ -708,6 +740,9 @@ class ImagePlaneWidget:
 #        self.SetPlaneOrientation(self.PlaneOrientation)
         
 #----------------------------------------------------------------------------
+
+    def SetOutlineMap(self, outlineMap):
+        self.outlineMap = outlineMap
 
     def UpdatePlane(self):
         
