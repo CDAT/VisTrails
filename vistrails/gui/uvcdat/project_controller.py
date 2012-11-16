@@ -718,46 +718,48 @@ class ProjectController(QtCore.QObject):
                     self.current_cell_changed(sheetName, row, col)
         except KeyError, err:
             traceback.print_exc( 100, sys.stderr )
+            
+    def get_var_module(self, varname, cell, helper):
+        if varname not in self.computed_variables:
+            var = self.defined_variables[varname]
+            module = var.to_module(self.vt_controller)
+            self.vt_controller.change_selected_version(
+                cell.current_parent_version)
+            self.vt_controller.add_module_action(module)
+            cell.current_parent_version = self.vt_controller.current_version
+            return module
+        else:
+            (_vars, txt, st, name) = self.computed_variables[varname] 
+            opvar = None
+            if varname in self.computed_variables_ops:
+                opvar = self.computed_variables_ops[varname]   
+            varms = [] 
+            for v in _vars:
+                varms.append(self.get_var_module(v, cell, helper))
+
+            build_op_pipeline = helper.build_variable_operation_pipeline
+            res = build_op_pipeline(self.vt_controller,
+                                    cell.current_parent_version,
+                                    varms,
+                                    txt,
+                                    st,
+                                    varname,
+                                    opvar)
+            if type(res) == type((1,)):
+                actions = res[1]
+                action = actions[-1]
+                if action:
+                    cell.current_parent_version = action.id 
+                varm = res[0]
+            else:
+                varm = res
+            return varm
         
     def update_cell(self, sheetName, row, col, reuse_workflow=False):
         cell = self.sheet_map[sheetName][(row,col)]
         helper = CDMSPipelineHelper
         # helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
-        def get_var_module(varname):
-            if varname not in self.computed_variables:
-                var = self.defined_variables[varname]
-                module = var.to_module(self.vt_controller)
-                self.vt_controller.change_selected_version(
-                    cell.current_parent_version)
-                self.vt_controller.add_module_action(module)
-                cell.current_parent_version = self.vt_controller.current_version
-                return module
-            else:
-                (_vars, txt, st, name) = self.computed_variables[varname] 
-                opvar = None
-                if varname in self.computed_variables_ops:
-                    opvar = self.computed_variables_ops[varname]   
-                varms = [] 
-                for v in _vars:
-                    varms.append(get_var_module(v))
-
-                build_op_pipeline = helper.build_variable_operation_pipeline
-                res = build_op_pipeline(self.vt_controller,
-                                        cell.current_parent_version,
-                                        varms,
-                                        txt,
-                                        st,
-                                        varname,
-                                        opvar)
-                if type(res) == type((1,)):
-                    actions = res[1]
-                    action = actions[-1]
-                    if action:
-                        cell.current_parent_version = action.id 
-                    varm = res[0]
-                else:
-                    varm = res
-                return varm
+        
         if not reuse_workflow:
             self.reset_workflow(cell)
         else:
@@ -773,7 +775,7 @@ class ProjectController(QtCore.QObject):
         if len(cell.plots) > 0 and cell.has_enough_variables():
             var_modules = []
             for var in vars:
-                res = get_var_module(var)
+                res = self.get_var_module(var, cell, helper)
                 var_modules.append(res)
             
             self.update_workflow(var_modules, cell, sheetName, row, col, 

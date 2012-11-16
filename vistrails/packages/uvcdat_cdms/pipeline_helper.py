@@ -1138,7 +1138,7 @@ class CDMSPlotWidget(QtGui.QWidget):
         if action is not None:
             version = action.id
         else:
-            version = self.version
+            version = self.version        
 
         plot_modules = []
 
@@ -1543,10 +1543,28 @@ class AddCDMSVarDialog(QtGui.QDialog):
                 var = self.proj_controller.defined_variables[varName]
                 var_module = var.to_module(self.proj_controller.vt_controller)
                 item = CDMSVarListWidgetItem(var_module, varName, CDMSVariable, self.var_list)
+                
+        sheetName = self.proj_controller.current_sheetName
+        (row, col) = self.proj_controller.current_cell_coords
+        cell = self.proj_controller.sheet_map[sheetName][(row,col)]
+        helper = CDMSPipelineHelper
+            
+        #only add computed vars that are in the main variable widget
+        mainVarList = []
+        count = 0
+        for wid in QApplication.topLevelWidgets():
+            varWidget = wid.findChild(QDefinedVariableWidget)
+            if varWidget is not None:
+                mainVarList = varWidget.varList
+                count = mainVarList.count()
+                break
+            
         for varName in sorted(self.proj_controller.computed_variables):
-            if varName not in self._var_list:
-                var = self.proj_controller.computed_variables[varName]
-                item = CDMSVarListWidgetItem(None, varName, CDMSVariableOperation, self.var_list)
+            if varName not in self._var_list:                
+                for i in range(count):
+                    if varName == str(mainVarList.item(i).getVarName()):
+                        var_module = self.proj_controller.get_var_module(varName, cell, helper)
+                        item = CDMSVarListWidgetItem(var_module, varName, CDMSVariableOperation, self.var_list)
             
         
 class CDMSVarListWidgetItem(QtGui.QListWidgetItem):
