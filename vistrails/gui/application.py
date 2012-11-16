@@ -163,7 +163,8 @@ parameters from other instances")
             'ParaView',
             'pvclimate',
             'vtk',
-            'vtDV3D'
+            'vtDV3D',
+            'scikit_learn'
         ]
         from packages.VisIt.info import package_requirements as visit_requirements
         try:
