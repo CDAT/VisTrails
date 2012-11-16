@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'mainwindow.ui'
 #
-# Created: Wed Oct 24 16:59:20 2012
+# Created: Thu Nov 15 17:25:28 2012
 #      by: PyQt4 UI code generator 4.9.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -76,7 +76,6 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuEdit.menuAction())
         self.menubar.addAction(self.menuView.menuAction())
         self.menubar.addAction(self.menuVisTrails.menuAction())
-        self.menubar.addAction(self.menuTools.menuAction())
         self.menubar.addAction(self.menuPCMDITools.menuAction())
         self.menubar.addAction(self.menuHelp.menuAction())
 
