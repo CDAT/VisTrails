@@ -36,6 +36,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         <tr> <td> m </td> <td> Enable margins. Right-clicking and dragging the slice margins enables rotations and translations of the planes </td>
         </table>
     """
+    # used to export the interactive time series
+    global_coords = [-1, -1, -1]
+
     def __init__( self, mid, **args ):
         import api
         PersistentVisualizationModule.__init__( self, mid, **args )
@@ -278,6 +281,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.set2DOutput( port=self.imageRescale.GetOutputPort(), name='slice' ) 
         self.set3DOutput() 
 
+        # Add the times series only in regular volume slicer and not in Hovmoller Slicer
+        if self.getInputSpec().getMetadata()['plotType']=='xyz':
+            self.addConfigurableFunction('Show Time Series', None, 't' )
 
     def updateContourDensity(self):
         if self.generateContours:
@@ -336,6 +342,11 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 sliceIndex = caller.GetSliceIndex() 
                 self.slicePosition[iAxis] = sliceIndex
                 self.updateTextDisplay( textDisplay )
+                
+                coord = ispec.getWorldCoordsAsFloat(cpos)
+                PM_VolumeSlicer.global_coords = coord
+                screenPos = caller.GetCurrentScreenPosition()
+                self.updateLensDisplay(screenPos, coord)
                 
             if action == ImagePlaneWidget.Pushing: 
                 ispec = self.inputSpecs[ 0 ]  

@@ -39,20 +39,20 @@ class QMenuWidget(QtGui.QWidget):
         self.connect(self.editPreferencesAction, QtCore.SIGNAL('triggered ()'),
                      parent.root.preferences.show)
 
-        self.tools = parent.ui.menuTools
+        #self.tools = parent.ui.menuTools
         self.pcmdiTools = parent.ui.menuPCMDITools
         self.pcmdiTools.setTearOffEnabled(True)
         self.help = parent.ui.menuHelp
         self.root=parent.root
 
-        recordTeachingAction = self.tools.addAction('Record Commands')
-        recordTeachingAction.setCheckable(True)
-        recordTeachingAction.setChecked(customizeUVCDAT.recordCommands)
+        #recordTeachingAction = self.tools.addAction('Record Commands')
+        #recordTeachingAction.setCheckable(True)
+        #recordTeachingAction.setChecked(customizeUVCDAT.recordCommands)
 
-        viewTeachingAction = self.tools.addAction('View Teaching Commands')
+        #viewTeachingAction = self.tools.addAction('View Teaching Commands')
 
-        self.connect(viewTeachingAction, QtCore.SIGNAL('triggered ()'),
-                     self.root.recorder.show)
+        #self.connect(viewTeachingAction, QtCore.SIGNAL('triggered ()'),
+        #             self.root.recorder.show)
         ## self.connect(closeTeachingAction, QtCore.SIGNAL('triggered ()'),
         ##              self.closeTeachingCommands)
 
