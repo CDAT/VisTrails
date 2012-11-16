@@ -1749,10 +1749,11 @@ class PersistentVisualizationModule( PersistentModule ):
         ispec = self.inputSpecs[ 0 ] 
         ds= ModuleStore.getCdmsDataset( ispec.datasetId )
         
-        if len(ds.transientVariables)<>1:
-            print 'ERROR: this module has many', 
-        var = ds.transientVariables.values()[0]
-        lensActor.SetYRange(var.min(), var.max())
+        if ds <> None:
+            if len(ds.transientVariables)<>1:
+                print 'ERROR: this module has many', 
+            var = ds.transientVariables.values()[0]
+            lensActor.SetYRange(var.min(), var.max())
 
         prop = lensActor.GetProperty()
         prop.SetColor( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] )
