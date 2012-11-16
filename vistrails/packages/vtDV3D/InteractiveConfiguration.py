@@ -707,6 +707,7 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
                 if moduleId in moduleList: 
                     moduleList.remove( moduleId )
                     print "Removing module %s (%d) from connectedModules for key %s" % ( module.__class__.__name__, moduleId, key )
+            ModuleStore.removeModule( moduleId ) 
               
     def initGui( self, **args ):   # init value from moudle input port
         moduleList = UVCDATGuiConfigFunction.connectedModules.setdefault( self.name, Set() )
@@ -742,8 +743,9 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         print "Getting moduleList for key ", self.name
         for moduleId in moduleList:
             module = ModuleStore.getModule( moduleId ) 
-            gui.addActiveModule( module )
-            print " --> module %s (%d) " % ( module.__class__.__name__, module.moduleID )
+            if module:
+                gui.addActiveModule( module )
+                print " --> module %s (%d) " % ( module.__class__.__name__, module.moduleID )
 #        if self.startConfigurationObserver <> None:
 #            self.gui.connect( self.gui, self.start_parameter_signal, self.startConfigurationObserver )
 #        if self.updateConfigurationObserver <> None:

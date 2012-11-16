@@ -1183,10 +1183,10 @@ class PersistentModule( QObject ):
                 try:
                     op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
                 except: 
-                    print>>sys.stderr, " Unrecognized input port %d in module %d " % ( parmRec[0], self.moduleID )
+                    print>>sys.stderr, " Unrecognized input port %s in module %s " % ( str(parmRec[0]), str(self.moduleID) )
                 config_fn = self.getConfigFunction( parmRec[0] )
                 if config_fn: config_list.append( config_fn )
-                else: print>>sys.stderr, "Unrecognized config function %s in module %d" % ( parmRec[0], self.moduleID )
+                else: print>>sys.stderr, "Unrecognized config function %s in module %s" % ( parmRec[0], str(self.moduleID) )
 #                if parmRec[0] == 'colorScale':
 #                    print 'x'
             action = create_action( op_list ) 
