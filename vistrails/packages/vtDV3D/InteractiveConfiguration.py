@@ -1092,10 +1092,10 @@ class IVModuleConfigurationDialog( QWidget ):
     @staticmethod              
     def getActiveModules():
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
-        active_mods = []
+        active_mods = Set()
         for module in IVModuleConfigurationDialog.activeModuleList:
             isActive = DV3DPipelineHelper.getPlotActivation( module )
-            if isActive: active_mods.append( module )
+            if isActive: active_mods.add( module )
         return active_mods
             
 #    def registerActiveModules(self):
@@ -2321,7 +2321,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 iTS = self.timeRange[0]
         self.setTimestep( iTS, restart )  
         if self.running: 
-            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
+            delayTime = 0
+#            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
 #            print " Animate step, delay time = %.2f msec" % delayTime
             self.timer.start( delayTime ) 
 

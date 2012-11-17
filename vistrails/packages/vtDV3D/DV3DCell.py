@@ -508,8 +508,15 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.renderer.ResetCamera() 
         self.render()  
         
-    def clearWidget(self): 
+    def clearWidget(self, sheetName, row, col ): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper      
         from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog, UVCDATGuiConfigFunction
+        if not sheetName: print>>sys.stderr, " ---> Vistrails error, no sheetName supplied in 'cell_deleted' signal"
+        elif ( sheetName <> self.sheetName ): return
+        if ( self.location.col <> col ) or  ( self.location.row <> row ): return
+        cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )  
+        print " --- Clearing Cell %s ---" % cell_address
+        self.pipeline = DV3DPipelineHelper.getPipeline( cell_address )
         UVCDATGuiConfigFunction.clearModules( self.pipeline )
         IVModuleConfigurationDialog.reset()
         self.cellWidget = None 

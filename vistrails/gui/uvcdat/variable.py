@@ -116,16 +116,19 @@ class VariableProperties(QtGui.QDialog):
     ##     if not hasattr(klass, '_instance'):
     ##         klass._instance = klass()
     ##     return klass._instance
-    def tabHasChanged(self,index):
-        if index==1:
-            self.root.varProp.btnDefine.setEnabled(False)
-            self.root.varProp.btnDefineClose.setEnabled(False)
-            self.root.varProp.btnDefineAs.setEnabled(False)
-        else:
-            self.root.varProp.btnDefine.setEnabled(True)
-            self.root.varProp.btnDefineClose.setEnabled(True)
-            self.root.varProp.btnDefineAs.setEnabled(True)
 
+    def tabHasChangedVoila(self,index):
+        try:
+            if index==1:
+                self.root.varProp.btnDefine.setEnabled(False)
+                self.root.varProp.btnDefineClose.setEnabled(False)
+                self.root.varProp.btnDefineAs.setEnabled(False)
+            else:
+                self.root.varProp.btnDefine.setEnabled(True)
+                self.root.varProp.btnDefineClose.setEnabled(True)
+                self.root.varProp.btnDefineAs.setEnabled(True)
+        except Exception, err:
+            print>>sys.stderr, "Error in tabHasChangedVoila: ", str( err )
 
     def connectSignals(self):
         self.btnCancel.clicked.connect(self.close)
