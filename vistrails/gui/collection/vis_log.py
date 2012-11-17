@@ -44,7 +44,7 @@ from gui.vistrails_palette import QVistrailsPaletteInterface
 from gui.collection.workspace import QWorkspaceWindow
 from core import system, debug
 import core.db.io
-
+import sys
 
 ##############################################################################
 
@@ -271,14 +271,17 @@ class QLogDetails(QtGui.QWidget, QVistrailsPaletteInterface):
         _app.qactions['pipeline'].trigger()
 
     def execution_updated(self):
-        for e in self.controller.log.workflow_execs:
-            if e not in self.log:
-                self.log[e] = e
-                wf_id = e.parent_version
-                tagMap = self.controller.vistrail.get_tagMap()
-                if wf_id in tagMap:
-                    e.db_name = tagMap[wf_id]
-                self.executionList.add_workflow_exec(e)
+        try:
+            for e in self.controller.log.workflow_execs:
+                if e not in self.log:
+                    self.log[e] = e
+                    wf_id = e.parent_version
+                    tagMap = self.controller.vistrail.get_tagMap()
+                    if wf_id in tagMap:
+                        e.db_name = tagMap[wf_id]
+                    self.executionList.add_workflow_exec(e)
+        except Exception, err:
+            print>>sys.stderr, "Error updating execution: %s " % str(err)
                        
     def set_execution(self):
         item = self.executionList.selectedItems()
