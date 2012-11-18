@@ -165,7 +165,7 @@ parameters from other instances")
             'vtk',
             'vtDV3D',
             'vis_analytics',
-#            'scikit_learn'
+            'scikit_learn'
         ]
         from packages.VisIt.info import package_requirements as visit_requirements
         try:
