@@ -316,100 +316,100 @@ class Dendrogram(SpreadsheetCell):
 #        self.displayAndWait(TaylorDiagramWidget, (stats, title, showLegend))
 
 ################################################################################
-#class ParallelCoordinatesWidget(QCellWidget):
-#    def __init__(self, parent=None):
-#        QCellWidget.__init__(self, parent)
-#        
-#        centralLayout = QtGui.QVBoxLayout()
-#        self.setLayout(centralLayout)
-#        centralLayout.setMargin(0)
-#        centralLayout.setSpacing(0)
-#                
-#        self.view = vtk.vtkContextView()
-#        self.widget = QVTKRenderWindowInteractor(self, 
-#                                                 rw=self.view.GetRenderWindow(),
-#                                                 iren=self.view.GetInteractor()
-#                                                )
-#
-#        self.chart = vtk.vtkChartParallelCoordinates()
-#        self.view.GetScene().AddItem(self.chart)
-#
-#        self.layout().addWidget(self.widget)
-#
-#        # Create a annotation link to access selection in parallel coordinates view
-#        self.annotationLink = vtk.vtkAnnotationLink()
-#        # If you don't set the FieldType explicitly it ends up as UNKNOWN (as of 21 Feb 2010)
-#        # See vtkSelectionNode doc for field and content type enum values
-#        self.annotationLink.GetCurrentSelection().GetNode(0).SetFieldType(1)     # Point
-#        self.annotationLink.GetCurrentSelection().GetNode(0).SetContentType(4)   # Indices
-#        # Connect the annotation link to the parallel coordinates representation
-#        self.chart.SetAnnotationLink(self.annotationLink)
-#        self.annotationLink.AddObserver("AnnotationChangedEvent", self.selectionCallback)
-#
-#        self.inputPorts = None;
-#        self.selectedIds = []
-#        CoordinationManager.Instance().register(self)
-#    
-#    def updateContents(self, inputPorts):
-#        (matrix,) = inputPorts 
-#        
-#        self.createTable(matrix)
-#        self.widget.Initialize()
-#        
-#        # Capture window into history for playback
-#        # Call this at the end to capture the image after rendering
-#        QCellWidget.updateContents(self, inputPorts)
-#        
-#    def updateSelection(self, selectedIds):
-#        if len(selectedIds)==0: return
-#
-#        Ids = VN.numpy_to_vtkIdTypeArray(np.array(selectedIds), deep=True)
-#
-#        node = vtk.vtkSelectionNode()
-#        node.SetContentType(vtk.vtkSelectionNode.INDICES)
-#        node.SetFieldType(vtk.vtkSelectionNode.POINT)
-#        node.SetSelectionList(Ids)
-#        
-#        selection = vtk.vtkSelection()
-#        selection.AddNode(node)
-#        
-#        self.annotationLink.SetCurrentSelection(selection)
-#        self.widget.Render()
-#        
-#    def createTable(self, matrix):
-#        table = vtk.vtkTable()
-#        for col, attr in zip(matrix.values.T, matrix.attributes):
-#            column = VN.numpy_to_vtk(col.copy(), deep=True)
-#            column.SetName(attr)
-#            table.AddColumn(column)
-#        self.chart.GetPlot(0).SetInput(table)
-#
-#        min_ = matrix.values.min()-0.01
-#        max_ = matrix.values.max()+0.01
-#        for i in range(self.chart.GetNumberOfAxes()):
-#            self.chart.GetAxis(i).SetRange(min_, max_)
-#            self.chart.GetAxis(i).SetBehavior(vtk.vtkAxis.FIXED);
-##            self.chart.GetAxis(i).SetPosition(vtk.vtkAxis.LEFT)
-##            self.chart.GetAxis(i).GetTitleProperties().SetOrientation(30)
-#
-#    def selectionCallback(self, caller, event):
-#        annSel = self.annotationLink.GetCurrentSelection()
-#        if annSel.GetNumberOfNodes() > 0:
-#            idxArr = annSel.GetNode(0).GetSelectionList()
-#            if idxArr.GetNumberOfTuples() > 0:
-#                 CoordinationManager.Instance().notifyModules(self, VN.vtk_to_numpy(idxArr))
-#
-#class ParallelCoordinates(SpreadsheetCell):
-#    """
-#    """
-#    my_namespace = 'views'
-#    name         = 'Parallel Coordinates'
-#    
-#    _input_ports = [('matrix',      Matrix, False)
-#                    ]
-#    
-#    def compute(self):
-#        """ compute() -> None        
-#        """
-#        matrix      = self.getInputFromPort('matrix')
-#        self.displayAndWait(ParallelCoordinatesWidget, (matrix,))
+class ParallelCoordinatesWidget(QCellWidget):
+    def __init__(self, parent=None):
+        QCellWidget.__init__(self, parent)
+        
+        centralLayout = QtGui.QVBoxLayout()
+        self.setLayout(centralLayout)
+        centralLayout.setMargin(0)
+        centralLayout.setSpacing(0)
+                
+        self.view = vtk.vtkContextView()
+        self.widget = QVTKRenderWindowInteractor(self, 
+                                                 rw=self.view.GetRenderWindow(),
+                                                 iren=self.view.GetInteractor()
+                                                )
+
+        self.chart = vtk.vtkChartParallelCoordinates()
+        self.view.GetScene().AddItem(self.chart)
+
+        self.layout().addWidget(self.widget)
+
+        # Create a annotation link to access selection in parallel coordinates view
+        self.annotationLink = vtk.vtkAnnotationLink()
+        # If you don't set the FieldType explicitly it ends up as UNKNOWN (as of 21 Feb 2010)
+        # See vtkSelectionNode doc for field and content type enum values
+        self.annotationLink.GetCurrentSelection().GetNode(0).SetFieldType(1)     # Point
+        self.annotationLink.GetCurrentSelection().GetNode(0).SetContentType(4)   # Indices
+        # Connect the annotation link to the parallel coordinates representation
+        self.chart.SetAnnotationLink(self.annotationLink)
+        self.annotationLink.AddObserver("AnnotationChangedEvent", self.selectionCallback)
+
+    def updateContents(self, inputPorts):
+        (self.coord, matrix) = inputPorts 
+        if self.coord is not None: self.coord.register(self)
+    
+        self.createTable(matrix)
+        self.widget.Initialize()
+        
+        # Capture window into history for playback
+        # Call this at the end to capture the image after rendering
+        QCellWidget.updateContents(self, inputPorts)
+        
+    def updateSelection(self, selectedIds):
+        if len(selectedIds)==0: return
+
+        Ids = VN.numpy_to_vtkIdTypeArray(np.array(selectedIds), deep=True)
+
+        node = vtk.vtkSelectionNode()
+        node.SetContentType(vtk.vtkSelectionNode.INDICES)
+        node.SetFieldType(vtk.vtkSelectionNode.POINT)
+        node.SetSelectionList(Ids)
+        
+        selection = vtk.vtkSelection()
+        selection.AddNode(node)
+        
+        self.annotationLink.SetCurrentSelection(selection)
+        self.widget.Render()
+        
+    def createTable(self, matrix):
+        table = vtk.vtkTable()
+        for col, attr in zip(matrix.values.T, matrix.attributes):
+            column = VN.numpy_to_vtk(col.copy(), deep=True)
+            column.SetName(attr)
+            table.AddColumn(column)
+        self.chart.GetPlot(0).SetInput(table)
+
+        min_ = matrix.values.min()-0.01
+        max_ = matrix.values.max()+0.01
+        for i in range(self.chart.GetNumberOfAxes()):
+            self.chart.GetAxis(i).SetRange(min_, max_)
+            self.chart.GetAxis(i).SetBehavior(vtk.vtkAxis.FIXED);
+#            self.chart.GetAxis(i).SetPosition(vtk.vtkAxis.LEFT)
+#            self.chart.GetAxis(i).GetTitleProperties().SetOrientation(30)
+
+    def selectionCallback(self, caller, event):
+        if self.coord is None: return
+        
+        annSel = self.annotationLink.GetCurrentSelection()
+        if annSel.GetNumberOfNodes() > 0:
+            idxArr = annSel.GetNode(0).GetSelectionList()
+            if idxArr.GetNumberOfTuples() > 0:
+                self.coord.notifyModules(self, VN.vtk_to_numpy(idxArr))
+
+class ParallelCoordinates(SpreadsheetCell):
+    """
+    """
+    my_namespace = 'views'
+    name         = 'Parallel Coordinates'
+    
+    _input_ports = [('matrix',      Matrix, False)
+                    ]
+    
+    def compute(self):
+        """ compute() -> None        
+        """
+        coord       = self.forceGetInputFromPort('coord', None)
+        matrix      = self.getInputFromPort('matrix')
+        self.displayAndWait(ParallelCoordinatesWidget, (coord, matrix,))
