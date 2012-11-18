@@ -1,4 +1,5 @@
 from core.modules.basic_modules import String
+from core.modules.vistrails_module import Module, NotCacheable
 from packages.scikit_learn.matrix import Matrix
 from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
@@ -22,12 +23,38 @@ except Exception, e:
 packagePath = os.path.dirname( __file__ )
 
 ################################################################################
-class LinkedWidget(QCellWidget):
+class Coordinator(NotCacheable, Module):
+    """
+    Coordinator is intended to receive selected element in a view, and
+    update all the registered views
+    """
+    my_namespace = 'views'
+    name         = 'Coordinator'
+
+    def __init__(self):
+        Module.__init__(self)
+        
+    def compute(self):
+        self.modules = []
+        
+    def notifyModules(self, selectedIds):
+        for mod in self.modules:
+            mod.updateSelection(selectedIds);
+        
+    def register(self, module):
+        if not module in self.modules:
+            self.modules.append(module)
+    
+    def unregister(self, module):
+        self.modules.remove(module)
+
+################################################################################
+class MplWidget(QCellWidget):
     """
     """
     
     def __init__(self, parent=None):
-        """ LinkedWidget(parent: QWidget) -> LinkedWidget
+        """ MplWidget(parent: QWidget) -> MplWidget
         Initialize the widget with its central layout
         """
         
@@ -45,9 +72,7 @@ class LinkedWidget(QCellWidget):
         
         self.inputPorts = None;
         self.selectedIds = []
-        
-        CoordinationManager.Instance().register(self)
-    
+
     def deleteLater(self):
         """ deleteLater() -> None        
         Overriding PyQt deleteLater to free up resources
@@ -70,42 +95,42 @@ class LinkedWidget(QCellWidget):
         """ updateContents(inputPorts: tuple) -> None
         Update the widget contents based on the input data
         """
-        if inputPorts is not None: self.inputPorts = inputPorts
+        if inputPorts is not None: 
+            self.inputPorts = inputPorts
+            self.coord = self.inputPorts[0]
+            if self.coord is not None: self.coord.register(self)
         
         # select our figure
         fig = pylab.figure(str(self))
         pylab.setp(fig, facecolor='w')
 
+        
         # matplotlib plot
         self.draw(fig)
         
         # Set Selectors
         self.rectSelector = RectangleSelector(pylab.gca(), self.onselect, drawtype='box', 
-                                              rectprops=dict(alpha=0.4, facecolor='yellow'),
-                                              )
+                                              rectprops=dict(alpha=0.4, facecolor='yellow'))
         self.rectSelector.set_active(True)
-        
-        # reset selectedIds
-        self.selectedIds = []
-        self.update()
-        
+
         # Capture window into history for playback
         # Call this at the end to capture the image after rendering
         QCellWidget.updateContents(self, inputPorts)
-        
-    def onselect(self, eclick, erelease):
-        raise NotImplementedError("Please Implement this method") 
-    
+
     def draw(self, fig):
         raise NotImplementedError("Please Implement this method") 
+    
+    def onselect(self, eclick, erelease):
+        raise NotImplementedError("Please Implement this method") 
+
 
 ################################################################################
-class ProjectionWidget(LinkedWidget):
+class ProjectionWidget(MplWidget):
     """ ProjectionWidget is a widget to show 2D projections. It has some interactive
     features like, show labels, selections, and synchronization.
     """
     def __init__(self, parent=None):
-        LinkedWidget.__init__(self, parent)
+        MplWidget.__init__(self, parent)
         
         self.showLabels = False
         self.toolBarType = QProjectionToolBar
@@ -116,7 +141,7 @@ class ProjectionWidget(LinkedWidget):
         Use self.fig and self.figManager
         """
         
-        (self.matrix, title) = self.inputPorts
+        (self.coord, self.matrix, title) = self.inputPorts
         
         # for faster access
         id2pos = {idd:pos for (pos, idd) in enumerate(self.matrix.ids)}
@@ -144,7 +169,7 @@ class ProjectionWidget(LinkedWidget):
                     textcoords = 'offset points',
                     bbox = dict(boxstyle = 'round,pad=0.2', fc = 'yellow', alpha = 0.5),
                 )
-        
+
         self.figManager.canvas.draw()
     
     def updateSelection(self, selectedIds):
@@ -152,6 +177,7 @@ class ProjectionWidget(LinkedWidget):
         self.updateContents();
         
     def onselect(self, eclick, erelease):
+        if (self.coord is None): return
         left, bottom = min(eclick.xdata, erelease.xdata), min(eclick.ydata, erelease.ydata)
         right, top = max(eclick.xdata, erelease.xdata), max(eclick.ydata, erelease.ydata)
         region = Bbox.from_extents(left, bottom, right, top)
@@ -160,8 +186,7 @@ class ProjectionWidget(LinkedWidget):
         for (xy, idd) in zip(self.matrix.values, self.matrix.ids):
             if region.contains(xy[0], xy[1]):
                 selectedIds.append(idd)
-        self.updateSelection(selectedIds)
-        CoordinationManager.Instance().notifyModules(self, selectedIds)
+        self.coord.notifyModules(selectedIds)
 
 class ProjectionView(SpreadsheetCell):
     """
@@ -169,16 +194,18 @@ class ProjectionView(SpreadsheetCell):
     my_namespace = 'views'
     name         = '2D Projection View'
     
-    _input_ports = [('matrix',    Matrix, False),
+    _input_ports = [('coord',     Coordinator, False),
+                    ('matrix',    Matrix, False),
                     ('title',     String,  False)
                    ]
 
     def compute(self):
         """ compute() -> None        
         """
+        coord  = self.forceGetInputFromPort('coord', None)
         matrix = self.getInputFromPort('matrix')
         title  = self.forceGetInputFromPort('title', '')
-        self.displayAndWait(ProjectionWidget, (matrix, title))
+        self.displayAndWait(ProjectionWidget, (coord, matrix, title))
 
 ###############################################################################
 class QCellToolBarShowLabels(QtGui.QAction):
@@ -212,65 +239,3 @@ class QProjectionToolBar(QCellToolBar):
         """
         QCellToolBar.createToolBar(self)
         self.appendAction(QCellToolBarShowLabels(self))
-        
-###############################################################################
-class Singleton:
-    """
-    A non-thread-safe helper class to ease implementing singletons.
-    This should be used as a decorator -- not a metaclass -- to the
-    class that should be a singleton.
-
-    The decorated class can define one `__init__` function that
-    takes only the `self` argument. Other than that, there are
-    no restrictions that apply to the decorated class.
-
-    To get the singleton instance, use the `Instance` method. Trying
-    to use `__call__` will result in a `TypeError` being raised.
-
-    Limitations: The decorated class cannot be inherited from.
-
-    """
-
-    def __init__(self, decorated):
-        self._decorated = decorated
-
-    def Instance(self):
-        """
-        Returns the singleton instance. Upon its first call, it creates a
-        new instance of the decorated class and calls its `__init__` method.
-        On all subsequent calls, the already created instance is returned.
-
-        """
-        try:
-            return self._instance
-        except AttributeError:
-            self._instance = self._decorated()
-            return self._instance
-
-    def __call__(self):
-        raise TypeError('Singletons must be accessed through `Instance()`.')
-
-    def __instancecheck__(self, inst):
-        return isinstance(inst, self._decorated)
-
-@Singleton
-class CoordinationManager:
-    """
-    CoordinationManager is intended to receive selected element in a view, and
-    update all the registered views
-    """
-    def __init__(self):
-        self.modules = []
-    
-    def notifyModules(self, caller, selectedIds):
-        for mod in self.modules:
-            if mod is not caller:
-                mod.updateSelection(selectedIds);
-        
-    def register(self, module):
-        self.modules.append(module)
-    
-    def unregister(self, module):
-        self.modules.remove(module)
-
-
