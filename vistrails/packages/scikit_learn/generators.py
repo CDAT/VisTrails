@@ -2,7 +2,7 @@ from core.modules.vistrails_module import Module
 from core.modules.basic_modules import Integer, Float
 from packages.scikit_learn.matrix import Matrix
 
-from sklearn import manifold, datasets
+from sklearn import datasets
 
 
 ################################################################################

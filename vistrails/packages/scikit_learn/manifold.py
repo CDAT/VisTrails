@@ -1,7 +1,7 @@
 from core.modules.vistrails_module import Module
 from core.modules.basic_modules import Integer, Float, String, Boolean
 from packages.scikit_learn.matrix import Matrix
-from sklearn import manifold, decomposition, lda
+from sklearn import manifold, decomposition
 from sklearn.utils.fixes import qr_economic
 import numpy as np
 import copy
@@ -235,6 +235,4 @@ class LTSA(Module, AbstractLLE):
     def __init__(self):
         Module.__init__(self)
         self.method = 'ltsa'
-
-
 
