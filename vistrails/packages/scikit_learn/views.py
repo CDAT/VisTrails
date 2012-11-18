@@ -1,10 +1,9 @@
 from core.modules.basic_modules import String
-from core.modules.vistrails_module import Module, NotCacheable
 from packages.scikit_learn.matrix import Matrix
 from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
+from packages.vis_analyti.plots import Coordinator, MplWidget
 from PyQt4 import QtGui
-from matplotlib.widgets import  RectangleSelector
 from matplotlib.transforms import Bbox
 import numpy as np
 import os
@@ -21,107 +20,6 @@ except Exception, e:
     debug.critical("Exception: %s" % e)
     
 packagePath = os.path.dirname( __file__ )
-
-################################################################################
-class Coordinator(NotCacheable, Module):
-    """
-    Coordinator is intended to receive selected element in a view, and
-    update all the registered views
-    """
-    my_namespace = 'views'
-    name         = 'Coordinator'
-
-    def __init__(self):
-        Module.__init__(self)
-        
-    def compute(self):
-        self.modules = []
-        
-    def notifyModules(self, selectedIds):
-        for mod in self.modules:
-            mod.updateSelection(selectedIds);
-        
-    def register(self, module):
-        if not module in self.modules:
-            self.modules.append(module)
-    
-    def unregister(self, module):
-        self.modules.remove(module)
-
-################################################################################
-class MplWidget(QCellWidget):
-    """
-    """
-    
-    def __init__(self, parent=None):
-        """ MplWidget(parent: QWidget) -> MplWidget
-        Initialize the widget with its central layout
-        """
-        
-        QCellWidget.__init__(self, parent)
-        centralLayout = QtGui.QVBoxLayout()
-        self.setLayout(centralLayout)
-        centralLayout.setMargin(0)
-        centralLayout.setSpacing(0)
-        
-        # Create a new Figure Manager and configure it
-        pylab.figure(str(self))
-        self.figManager = pylab.get_current_fig_manager()
-        self.figManager.toolbar.hide()
-        self.layout().addWidget(self.figManager.window)
-        
-        self.inputPorts = None;
-        self.selectedIds = []
-
-    def deleteLater(self):
-        """ deleteLater() -> None        
-        Overriding PyQt deleteLater to free up resources
-        
-        """
-        # Destroy the old one if possible
-        if self.figManager:
-            try:                    
-                pylab.close(self.figManager.canvas.figure)
-                # There is a bug in Matplotlib backend_qt4. It is a
-                # wrong command for Qt4. Just ignore it and continue
-                # to destroy the widget
-            except:
-                pass
-            
-            self.figManager.window.deleteLater()
-        QCellWidget.deleteLater(self)
-        
-    def updateContents(self, inputPorts=None):
-        """ updateContents(inputPorts: tuple) -> None
-        Update the widget contents based on the input data
-        """
-        if inputPorts is not None: 
-            self.inputPorts = inputPorts
-            self.coord = self.inputPorts[0]
-            if self.coord is not None: self.coord.register(self)
-        
-        # select our figure
-        fig = pylab.figure(str(self))
-        pylab.setp(fig, facecolor='w')
-
-        
-        # matplotlib plot
-        self.draw(fig)
-        
-        # Set Selectors
-        self.rectSelector = RectangleSelector(pylab.gca(), self.onselect, drawtype='box', 
-                                              rectprops=dict(alpha=0.4, facecolor='yellow'))
-        self.rectSelector.set_active(True)
-
-        # Capture window into history for playback
-        # Call this at the end to capture the image after rendering
-        QCellWidget.updateContents(self, inputPorts)
-
-    def draw(self, fig):
-        raise NotImplementedError("Please Implement this method") 
-    
-    def onselect(self, eclick, erelease):
-        raise NotImplementedError("Please Implement this method") 
 
 
 ################################################################################

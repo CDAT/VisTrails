@@ -1,8 +1,7 @@
-from core.modules.module_registry import get_module_registry
 from matrix import Matrix
 from generators import SCurveGenerator, SwissRollGenerator
 from manifold import RandomProjection, RandomizedPCA, Isomap, LLE, MLLE, HLLE, LTSA
-from views import ProjectionView, Coordinator
+from views import ProjectionView
 
 _modules = [(Matrix,              {'namespace':Matrix.my_namespace}),
             (SCurveGenerator,     {'namespace':SCurveGenerator.my_namespace}),
@@ -17,6 +16,3 @@ _modules = [(Matrix,              {'namespace':Matrix.my_namespace}),
             (ProjectionView,      {'namespace':ProjectionView.my_namespace,      'name':ProjectionView.name}),
             ]
 
-reg = get_module_registry()
-reg.add_module(Coordinator)
-reg.add_output_port(Coordinator, "self", Coordinator)

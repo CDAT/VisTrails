@@ -10,7 +10,8 @@ name = 'Scikit-Learn'
 version = '0.0.1'
 
 def package_dependencies():
-    return ['edu.utah.sci.vistrails.spreadsheet']
+    return ['edu.utah.sci.vistrails.spreadsheet',
+            'edu.poly.vis_analytics']
 
 def package_requirements():
     import core.requirements
