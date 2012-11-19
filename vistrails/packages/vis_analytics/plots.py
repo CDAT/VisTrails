@@ -5,6 +5,7 @@ from packages.spreadsheet.spreadsheet_cell import QCellWidget
 from matrix import Matrix
 from matplotlib.transforms import Bbox
 from matplotlib.widgets import  RectangleSelector
+import matplotlib.cm as cm
 import taylor_diagram
 import numpy as np
 import pylab
@@ -116,17 +117,16 @@ class SeriesWidget(MplWidget):
         MplWidget.__init__(self, parent)
         
     def draw(self):
-        (series, title, xlabel, ylabel, showLegend) = self.inputPorts
+        (self.coord, series, title, xlabel, ylabel, showLegend) = self.inputPorts
+        colors = pylab.cm.jet(np.linspace(0,1, series.values.shape[0]))
         
         pylab.clf()
         pylab.title(title)
         ll = pylab.plot(series.values.T, linewidth=1)
-        if any(self.selectedIds): 
-            for pos, _ids in enumerate(series.ids):
-                if _ids in self.selectedIds:
-                    ll[pos].set_linewidth(3)
-                else:
-                    ll[pos].set_linestyle('-.')
+        for pos, _ids in enumerate(series.ids):
+            ll[pos].set_color(colors[pos])
+            if _ids in self.selectedIds:
+                ll[pos].set_linewidth(3)
         pylab.xlabel(xlabel)
         pylab.ylabel(ylabel)
 
@@ -237,7 +237,7 @@ class TaylorDiagramWidget(MplWidget):
         
         self.markers = ['o','x','*',',','+','.','s','v','<','>','^','D','h','H','_','8',
                         'd',3,0,1,2,7,4,5,6,'1','3','4','2','|','x']
-        
+
     def draw(self):
         (self.coord, self.stats, title, showLegend) = self.inputPorts
                 
@@ -245,10 +245,12 @@ class TaylorDiagramWidget(MplWidget):
         self.Xs = stds*corrs
         self.Ys = stds*np.sin(np.arccos(corrs))
         
+        colors = pylab.cm.jet(np.linspace(0,1,len(self.stats.ids)))
+
         pylab.clf()
         fig = pylab.figure(str(self))
         dia = taylor_diagram.TaylorDiagram(stds[0], corrs[0], fig=fig, label=self.stats.labels[0])
-        dia.samplePoints[0].set_color('r')  # Mark reference point as a red star
+        dia.samplePoints[0].set_color(colors[0])  # Mark reference point as a red star
         if self.stats.ids[0] in self.selectedIds: dia.samplePoints[0].set_markeredgewidth(3)
         
         # add models to Taylor diagram
@@ -258,7 +260,7 @@ class TaylorDiagramWidget(MplWidget):
             dia.add_sample(stddev, corrcoef,
                            marker='o', #self.markers[i],
                            ls='',
-#                           mfc=self.cm(colors[i]),
+                           mfc=colors[i+1],
                            mew = size,
                            label=label
                            )
