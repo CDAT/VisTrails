@@ -111,63 +111,66 @@ class MplWidget(QCellWidget):
         raise NotImplementedError("Please Implement this method") 
 
 ################################################################################
-#class SeriesWidget(MplWidget):
-#    def __init__(self, parent=None):
-#        MplWidget.__init__(self, parent)
-#        
-#        self.cm = pylab.cm.Spectral
-#        
-#    def draw(self, fig):
-#        (series, title, xlabel, ylabel, showLegend) = self.inputPorts
-#        
-#        pylab.clf()
-#        pylab.title(title)
-#        ll = pylab.plot(series.values.T, linewidth=1)
-#        if any(self.selectedIds): 
-#            for pos, _ids in enumerate(series.ids):
-#                if _ids in self.selectedIds:
-#                    ll[pos].set_linewidth(3)
-#                else:
-#                    ll[pos].set_linestyle('-.')
-#        pylab.xlabel(xlabel)
-#        pylab.ylabel(ylabel)
-#
-#        if showLegend:
-#            pylab.legend(pylab.gca().get_lines(),
-#                         series.labels,
-#                         numpoints=1, prop=dict(size='small'), loc='upper right')
-#                
-#        self.figManager.canvas.draw()
-#
-#    def updateSelection(self, selectedIds):
-#        self.selectedIds = selectedIds
-#        self.updateContents();
-#    
-#    def onselect(self, eclick, erelease):
-#        pass
-#    
-#class SeriesPlot(SpreadsheetCell):
-#    """
-#    """
-#    my_namespace = 'views'
-#    name         = 'Series Plot'
-#    
-#    _input_ports = [('series',     Matrix,  False),
-#                    ('title',      String,  False),
-#                    ('xlabel',     String,  False),
-#                    ('ylabel',     String,  False),
-#                    ('showLegend', Boolean, False),
-#                    ]
-#    
-#    def compute(self):
-#        """ compute() -> None        
-#        """
-#        series      = self.getInputFromPort('series')
-#        title       = self.forceGetInputFromPort('title', '')
-#        xlabel      = self.forceGetInputFromPort('xlabel', '')
-#        ylabel      = self.forceGetInputFromPort('ylabel', '')
-#        showLegend  = self.forceGetInputFromPort('showLegend', True)
-#        self.displayAndWait(SeriesWidget, (series, title, xlabel, ylabel, showLegend))
+class SeriesWidget(MplWidget):
+    def __init__(self, parent=None):
+        MplWidget.__init__(self, parent)
+        
+    def draw(self):
+        (series, title, xlabel, ylabel, showLegend) = self.inputPorts
+        
+        pylab.clf()
+        pylab.title(title)
+        ll = pylab.plot(series.values.T, linewidth=1)
+        if any(self.selectedIds): 
+            for pos, _ids in enumerate(series.ids):
+                if _ids in self.selectedIds:
+                    ll[pos].set_linewidth(3)
+                else:
+                    ll[pos].set_linestyle('-.')
+        pylab.xlabel(xlabel)
+        pylab.ylabel(ylabel)
+
+        if showLegend:
+            pylab.legend(pylab.gca().get_lines(),
+                         series.labels,
+                         numpoints=1, prop=dict(size='small'), loc='upper right')
+                
+        self.figManager.canvas.draw()
+        self.rectSelector = RectangleSelector(pylab.gca(), self.onselect, drawtype='box', 
+                                              rectprops=dict(alpha=0.4, facecolor='yellow'))
+        self.rectSelector.set_active(True)
+
+    def updateSelection(self, selectedIds):
+        self.selectedIds = selectedIds
+        self.updateContents();
+    
+    def onselect(self, eclick, erelease):
+        pass
+    
+class SeriesPlot(SpreadsheetCell):
+    """
+    """
+    my_namespace = 'views'
+    name         = 'Series Plot'
+    
+    _input_ports = [('coord',      Coordinator,  False),
+                    ('series',     Matrix,  False),
+                    ('title',      String,  False),
+                    ('xlabel',     String,  False),
+                    ('ylabel',     String,  False),
+                    ('showLegend', Boolean, False),
+                    ]
+    
+    def compute(self):
+        """ compute() -> None        
+        """
+        coord       = self.forceGetInputFromPort('coord', None)
+        series      = self.getInputFromPort('series')
+        title       = self.forceGetInputFromPort('title', '')
+        xlabel      = self.forceGetInputFromPort('xlabel', '')
+        ylabel      = self.forceGetInputFromPort('ylabel', '')
+        showLegend  = self.forceGetInputFromPort('showLegend', True)
+        self.displayAndWait(SeriesWidget, (coord, series, title, xlabel, ylabel, showLegend))
 
 ################################################################################
 class DendrogramWidget(MplWidget):
@@ -234,7 +237,6 @@ class TaylorDiagramWidget(MplWidget):
         
         self.markers = ['o','x','*',',','+','.','s','v','<','>','^','D','h','H','_','8',
                         'd',3,0,1,2,7,4,5,6,'1','3','4','2','|','x']
-        self.cm = pylab.cm.Spectral
         
     def draw(self):
         (self.coord, self.stats, title, showLegend) = self.inputPorts
