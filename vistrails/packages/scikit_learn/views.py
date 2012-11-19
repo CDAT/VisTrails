@@ -1,8 +1,9 @@
 from core.modules.basic_modules import String
-from packages.scikit_learn.matrix import Matrix
 from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
-from packages.vis_analyti.plots import Coordinator, MplWidget
+from packages.vis_analytics.plots import Coordinator, MplWidget
+from packages.vis_analytics.matrix import Matrix
+from matplotlib.widgets import  RectangleSelector
 from PyQt4 import QtGui
 from matplotlib.transforms import Bbox
 import numpy as np
@@ -33,7 +34,7 @@ class ProjectionWidget(MplWidget):
         self.showLabels = False
         self.toolBarType = QProjectionToolBar
         
-    def draw(self, fig):
+    def draw(self):
         """draw(fig: Figure) ->None
         code using matplotlib.
         Use self.fig and self.figManager
@@ -69,6 +70,11 @@ class ProjectionWidget(MplWidget):
                 )
 
         self.figManager.canvas.draw()
+        
+        # Set Selectors
+        self.rectSelector = RectangleSelector(pylab.gca(), self.onselect, drawtype='box', 
+                                              rectprops=dict(alpha=0.4, facecolor='yellow'))
+        self.rectSelector.set_active(True)
     
     def updateSelection(self, selectedIds):
         self.selectedIds = selectedIds

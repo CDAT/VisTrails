@@ -4,7 +4,6 @@ from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_cell import QCellWidget
 from matrix import Matrix
 from matplotlib.transforms import Bbox
-from matplotlib.widgets import  RectangleSelector
 import taylor_diagram
 import numpy as np
 import pylab
@@ -100,11 +99,6 @@ class MplWidget(QCellWidget):
         # matplotlib plot
         self.draw()
         
-        # Set Selectors
-        self.rectSelector = RectangleSelector(pylab.gca(), self.onselect, drawtype='box', 
-                                              rectprops=dict(alpha=0.4, facecolor='yellow'))
-        self.rectSelector.set_active(False)
-
         # Capture window into history for playback
         # Call this at the end to capture the image after rendering
         QCellWidget.updateContents(self, inputPorts)

@@ -1,6 +1,6 @@
 from core.modules.vistrails_module import Module
 from core.modules.basic_modules import Integer, Float, String, Boolean
-from packages.scikit_learn.matrix import Matrix
+from packages.vis_analytics.matrix import Matrix
 from sklearn import manifold, decomposition
 from sklearn.utils.fixes import qr_economic
 import numpy as np
