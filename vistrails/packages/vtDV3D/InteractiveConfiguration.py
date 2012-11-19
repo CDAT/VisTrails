@@ -12,6 +12,7 @@ from core.modules.vistrails_module import Module, ModuleError
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, Boolean, Variant
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
+from packages.vtDV3D import ModuleStore
 from core.utils import getHomeRelativePath, getFullPath
 from packages.vtDV3D.CDATTask import deserializeTaskData
 from packages.vtDV3D import HyperwallManager
@@ -592,12 +593,15 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         print "startLeveling: %s " % str( self.range )
 
     def getTextDisplay(self, **args ):
-        rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
-        rmax = self.range[1] # if not self.isDataValue else self.module.getDataValue( self.range[1] )
-        units = self.module.units if ( self.module and hasattr(self.module,'units') )  else None
-        if units: textDisplay = " Range: %.4G, %.4G %s . " % ( rmin, rmax, units )
-        else: textDisplay = " Range: %.4G, %.4G . " % ( rmin, rmax )
-        return textDisplay
+        try:
+            rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
+            rmax = self.range[1] # if not self.isDataValue else self.module.getDataValue( self.range[1] )
+            units = self.module.units if ( self.module and hasattr(self.module,'units') )  else None
+            if units: textDisplay = " Range: %.4G, %.4G %s . " % ( rmin, rmax, units )
+            else: textDisplay = " Range: %.4G, %.4G . " % ( rmin, rmax )
+            return textDisplay
+        except:
+            return None
     
     def updateWindow( self ): 
         self.windowLeveler.setWindowLevelFromRange( self.range )
@@ -693,16 +697,22 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         ConfigurableFunction.__del__(self)
 
     @staticmethod
-    def clearModules( iren ): 
-        for module in IVModuleConfigurationDialog.activeModuleList: 
-            if module.iren == iren: 
-                ConfigurableFunction.clear( module )
-                for moduleList in UVCDATGuiConfigFunction.connectedModules.values():
-                    if module in moduleList: moduleList.remove( module )
+    def clearModules( pipeline ): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
+        for moduleId in pipeline.modules: 
+            module = ModuleStore.getModule( moduleId ) 
+            DV3DPipelineHelper.removeModuleFromActivationMap( module ) 
+            ConfigurableFunction.clear( module )
+            for (key, moduleList) in UVCDATGuiConfigFunction.connectedModules.items():
+                if moduleId in moduleList: 
+                    moduleList.remove( moduleId )
+#                    print "Removing module %s (%d) from connectedModules for key %s" % ( module.__class__.__name__, moduleId, key )
+            ModuleStore.removeModule( moduleId ) 
               
     def initGui( self, **args ):   # init value from moudle input port
         moduleList = UVCDATGuiConfigFunction.connectedModules.setdefault( self.name, Set() )
-        moduleList.add( self.module )
+        moduleList.add( self.module.moduleID )
+#        print "Adding module %s (%d) to connectedModules for key %s" % ( self.module.__class__.__name__, self.module.moduleID, self.name )
         initValue = args.get( 'initValue', True ) 
         if initValue:
             initial_value = None if ( self.getValueHandler == None ) else self.getValueHandler()         
@@ -730,8 +740,12 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         self.kwargs['manager'] = manager
         gui = self.guiClass( str(self.name), **self.kwargs )
 #        self.gui.connect(self.gui, SIGNAL('delete()'), self.reset )
-        for module in moduleList:
-            gui.addActiveModule( module )
+        print "Getting moduleList for key ", self.name
+        for moduleId in moduleList:
+            module = ModuleStore.getModule( moduleId ) 
+            if module:
+                gui.addActiveModule( module )
+                print " --> module %s (%d) " % ( module.__class__.__name__, module.moduleID )
 #        if self.startConfigurationObserver <> None:
 #            self.gui.connect( self.gui, self.start_parameter_signal, self.startConfigurationObserver )
 #        if self.updateConfigurationObserver <> None:
@@ -761,9 +775,12 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
             self.module.resetNavigation()
         
     def getTextDisplay(self, **args ):
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
-        gui = DV3DPipelineHelper.getGuiKernel() 
-        return gui.getTextDisplay( **args )  if gui else None
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        try:  
+            gui = DV3DPipelineHelper.getGuiKernel() 
+            return gui.getTextDisplay( **args ) 
+        except:
+            return None
        
     def setValue( self, value ):
         if self.setValueHandler <> None: 
@@ -812,7 +829,10 @@ class GuiConfigurableFunction( ConfigurableFunction ):
         self.module.resetNavigation()
         
     def getTextDisplay(self, **args ):
-        return self.gui.getTextDisplay( **args )
+        try:
+            return self.gui.getTextDisplay( **args )
+        except:
+            return None
        
     def setValue( self, value ):
         if self.setValueHandler <> None: 
@@ -856,7 +876,10 @@ class WidgetConfigurableFunction( ConfigurableFunction ):
         self.module.resetNavigation()
         
     def getTextDisplay(self, **args ):
-        return self.widget.getTextDisplay(**args)
+        try:
+            return self.widget.getTextDisplay(**args)
+        except:
+            return None
 
     def setValue( self, value ):
         if self.setValueHandler <> None: 
@@ -1069,10 +1092,10 @@ class IVModuleConfigurationDialog( QWidget ):
     @staticmethod              
     def getActiveModules():
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
-        active_mods = []
+        active_mods = Set()
         for module in IVModuleConfigurationDialog.activeModuleList:
             isActive = DV3DPipelineHelper.getPlotActivation( module )
-            if isActive: active_mods.append( module )
+            if isActive: active_mods.add( module )
         return active_mods
             
 #    def registerActiveModules(self):
@@ -1145,8 +1168,11 @@ class IVModuleConfigurationDialog( QWidget ):
         QWidget.close( self ) 
  
     def getTextDisplay( self, **args  ):
-        value = self.getTextValue( self.getValue() )
-        return "%s: %s" % ( self.name, value ) if value else None
+        try:
+            value = self.getTextValue( self.getValue() )
+            return "%s: %s" % ( self.name, value ) if value else None
+        except:
+            return None
        
     def getTextValue( self, value, **args ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
@@ -2295,7 +2321,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 iTS = self.timeRange[0]
         self.setTimestep( iTS, restart )  
         if self.running: 
-            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
+            delayTime = 0
+#            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
 #            print " Animate step, delay time = %.2f msec" % delayTime
             self.timer.start( delayTime ) 
 

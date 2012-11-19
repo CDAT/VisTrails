@@ -31,17 +31,17 @@ from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_event import DisplayCellEvent
 
 import visit.pyqt_support
-#sys.argv.append("-embedded")
-#viswin = visit.pyqt_gui.PyQtGUI(sys.argv)
-visit.LaunchPyQt()
-viswin = visit.pyqt_support.GetPyQtViewerInstance()
-
-#viswin.GetUIWindow().hide()
-#viswin.GetRenderWindow(1).hide()
-
 viswinmapper = {}
 availWindows = []
-availWindows.append((viswin.GetRenderWindow(1),1))
+VisItLaunched = False
+
+def LaunchVisIt():
+    global viswin, availWindows
+    print "Starting VisIt, Please Wait(One time operation).."
+    visit.LaunchPyQt()
+    viswin = visit.pyqt_support.GetPyQtViewerInstance()
+    availWindows.append((viswin.GetRenderWindow(1),1))
+    print "End Loading VisIt.."
 
 
 
@@ -91,18 +91,19 @@ class QVisItWidget(QCellWidget):
         self.params = None
 
     def showEvent(self,event):
-        print "show event"
+        #print "show event"
         if self.view is not None:
             self.view.setParent(self)
             self.view.show()
             self.layout.addWidget(self.view)
 
     def closeEvent(self,event):
-        print "closing called"
+        #print "closing called"
         #QMainWidget.setCentralWidget(self.view)
+        pass
 
     def hideEvent(self,event):
-        print "hiding event"
+        #print "hiding event"
         if self.view is not None:
             self.view.setParent(None)
             self.view.hide()
@@ -157,6 +158,11 @@ class QVisItWidget(QCellWidget):
         global viswin
         global viswinmapper
         global availWindows
+        global VisItLaunched
+
+        if VisItLaunched == False:
+            LaunchVisIt()
+            VisItLaunched = True
 
         (self.cdms_var,self.location,self.params) = inputPorts
 
@@ -192,14 +198,16 @@ class QVisItWidget(QCellWidget):
         QCellWidget.updateContents(self, inputPorts)
 
     def saveToPNG(self, filename):
-        print "save VisIt file to PNG"
+        #print "save VisIt file to PNG"
+        pass
 
     def dumpToFile(self,filename):
-        print "writing to file."
+        #print "writing to file."
+        pass
 
     def deleteLater(self):
         global viswinmapper
-        print "deleting" 
+        #print "deleting" 
         if self.view is not None:
             self.view.setParent(None)
             windowKey = self.getKey()
@@ -337,7 +345,7 @@ class VisItConfigurationWidget(StandardModuleConfigurationWidget):
         return listContainer
 
     def closeEvent(self, event):
-        print "close event set"
+        #print "close event set"
         self.askToSaveChanges()
         event.accept()
 
@@ -482,13 +490,14 @@ class VisItCellConfigurationWidget(VisItConfigurationWidget):
         pass
 
     def updateVistrail(self):
-        print 'updateVistrail'
+        #print 'updateVistrail'
         #functions = []
         # For now assume parameters changed everytime
         #if 1:
         #    functions.append(("sliceOffset", [self.sliceOffset]))
         #    #functions.append(("isoSurfaces", [self.isoSurfaces]))
         #    self.controller.update_functions(self.module, functions)
+        pass
 
     def createLayout(self):
         """ createLayout() -> None
@@ -542,7 +551,7 @@ class VisItCellConfigurationWidget(VisItConfigurationWidget):
 
         """
         #self.sliceOffset = str(self.sliceOffsetValue.text().toLocal8Bit().data())
-        print "self module = ", self.module
+        #print "self module = ", self.module
         self.updateVistrail()
         self.updateController(self.controller)
         self.emit(SIGNAL('doneConfigure()'))

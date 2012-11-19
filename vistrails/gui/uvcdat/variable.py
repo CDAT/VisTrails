@@ -65,6 +65,7 @@ class VariableProperties(QtGui.QDialog):
         self.resize(QtCore.QSize(P.width()*.8,P.height()*.9))
         self.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
         self.originTabWidget=QtGui.QTabWidget(self)
+        self.connect(self.originTabWidget,QtCore.SIGNAL("currentChanged(int)"),self.tabHasChangedVoila)
         sp = QtGui.QSplitter(QtCore.Qt.Vertical)
         sc=QtGui.QScrollArea()
         sc.setWidget(self.originTabWidget)
@@ -114,6 +115,19 @@ class VariableProperties(QtGui.QDialog):
     ##     if not hasattr(klass, '_instance'):
     ##         klass._instance = klass()
     ##     return klass._instance
+    def tabHasChangedVoila(self,index):
+        try:
+            if index==1:
+                self.root.varProp.btnDefine.setEnabled(False)
+                self.root.varProp.btnDefineClose.setEnabled(False)
+                self.root.varProp.btnDefineAs.setEnabled(False)
+            else:
+                self.root.varProp.btnDefine.setEnabled(True)
+                self.root.varProp.btnDefineClose.setEnabled(True)
+                self.root.varProp.btnDefineAs.setEnabled(True)
+        except Exception, err:
+            print>>sys.stderr, "Error in tabHasChangedVoila: ", str( err )
+
 
     def connectSignals(self):
         self.btnCancel.clicked.connect(self.close)

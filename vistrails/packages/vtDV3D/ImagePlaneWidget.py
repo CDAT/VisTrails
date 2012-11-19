@@ -41,6 +41,7 @@ class ImagePlaneWidget:
         self.ResliceInterpolate = VTK_LINEAR_RESLICE
         self.UserControlledLookupTable= 0
         self.CurrentCursorPosition = [ 0, 0, 0 ]
+        self.CurrentScreenPosition = [ 0, 0 ]
         self.CurrentImageValue   = vtk.VTK_DOUBLE_MAX
         self.CurrentImageValue2 = vtk.VTK_DOUBLE_MAX
         self.NavigationInteractorStyle = None
@@ -121,7 +122,10 @@ class ImagePlaneWidget:
 
     def GetCurrentCursorPosition(self): 
         return self.CurrentCursorPosition
-                
+        
+    def GetCurrentScreenPosition(self): 
+        return self.CurrentScreenPosition
+        
     def SetResliceInterpolateToNearestNeighbour(self):
         self.SetResliceInterpolate(VTK_NEAREST_RESLICE)
         
@@ -246,7 +250,39 @@ class ImagePlaneWidget:
         self.CurrentRenderer.AddViewProp(self.CursorActor)
         self.CursorActor.SetProperty(self.CursorProperty)
         
-        self.TexturePlaneActor.PickableOn()                  
+        self.TexturePlaneActor.PickableOn()
+        
+        # draw the outline map only in the XY plane
+        if self.PlaneIndex==2:
+            _range = self.outlineMap.GetPointData().GetScalars('scalars').GetRange()
+            
+            bwLut = vtk.vtkLookupTable()
+            bwLut.SetTableRange (_range[0], _range[1])
+            bwLut.SetSaturationRange (0, 0) # no color saturation
+            bwLut.SetValueRange (0, 1)      # from black to white
+            bwLut.SetAlphaRange(1, 0)
+            bwLut.Build()
+            
+            map2rgb = vtk.vtkImageMapToColors()
+            map2rgb.SetInput(self.outlineMap)
+            map2rgb.SetOutputFormatToRGBA()
+            map2rgb.SetLookupTable(bwLut)
+            map2rgb.Update()
+            
+            atext = vtk.vtkTexture()
+            atext.SetInput(self.outlineMap)
+            atext.SetLookupTable(bwLut)
+#            atext.SetBlendingMode(vtk.vtkTexture.VTK_TEXTURE_BLENDING_MODE_ADD)
+      
+            planeMapper = vtk.vtkPolyDataMapper()
+            planeMapper.SetInputConnection(self.PlaneSource.GetOutputPort())
+            
+            self.planeActor = vtk.vtkActor()
+            self.planeActor.SetMapper(planeMapper)
+            self.planeActor.SetTexture(atext)
+            self.planeActor.VisibilityOff()
+            self.CurrentRenderer.AddViewProp(self.planeActor)
+
         self.Interactor.Render()
         
     def EnablePicking( self ):
@@ -326,7 +362,8 @@ class ImagePlaneWidget:
     
         X = self.Interactor.GetEventPosition()[0]
         Y = self.Interactor.GetEventPosition()[1]
-        
+        self.CurrentScreenPosition = [ X, Y ]
+
         # Okay, make sure that the pick is in the current renderer
         if ( not self.CurrentRenderer or  not self.CurrentRenderer.IsInViewport(X, Y)):        
             self.State  = ImagePlaneWidget.Outside
@@ -409,7 +446,7 @@ class ImagePlaneWidget:
         self.ProcessEvent( self.InteractionEndEvent )
         self.State  = ImagePlaneWidget.Start
         self.HighlightPlane(0)
-        self.ActivateCursor(0)        
+        if not self.ActionHandler.showInteractiveLens: self.ActivateCursor(0)
         self.EndInteraction()
         self.Interactor.Render()
 
@@ -469,7 +506,8 @@ class ImagePlaneWidget:
         if ( self.State == ImagePlaneWidget.Outside or self.State == ImagePlaneWidget.Start ): return        
         X = self.Interactor.GetEventPosition()[0]
         Y = self.Interactor.GetEventPosition()[1]
-                
+        self.CurrentScreenPosition = [ X, Y ]
+
         camera = self.CurrentRenderer.GetActiveCamera()
         if (  not camera ): return
                           
@@ -702,6 +740,9 @@ class ImagePlaneWidget:
 #        self.SetPlaneOrientation(self.PlaneOrientation)
         
 #----------------------------------------------------------------------------
+
+    def SetOutlineMap(self, outlineMap):
+        self.outlineMap = outlineMap
 
     def UpdatePlane(self):
         

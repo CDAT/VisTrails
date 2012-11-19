@@ -165,6 +165,28 @@ class InputSpecs:
             world_coords = [ getFloatStr(gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
         return world_coords
 
+    def getWorldCoordsAsFloat( self, image_coords ):
+        plotType = self.metadata[ 'plotType' ]                   
+        world_coords = None
+        try:
+            if plotType == 'zyt':
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                timeAxis = self.metadata[ 'time' ]
+                tval = timeAxis[ image_coords[2] ]
+                relTimeValue = cdtime.reltime( float( tval ), timeAxis.units ) 
+                timeValue = str( relTimeValue.tocomp() )          
+                world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], timeValue ]   
+            else:         
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                lev = self.metadata[ 'lev' ]
+                world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], lev[ image_coords[2] ] ]   
+        except:
+            gridSpacing = self.input.GetSpacing()
+            gridOrigin = self.input.GetOrigin()
+            world_coords = [ gridOrigin[i] + image_coords[i]*gridSpacing[i] for i in range(3) ]
+        return world_coords
     def getWorldCoord( self, image_coord, iAxis ):
         plotType = self.metadata[ 'plotType' ]                   
         axisNames = [ 'Longitude', 'Latitude', 'Time' ] if plotType == 'zyt'  else [ 'Longitude', 'Latitude', 'Level' ]
@@ -988,7 +1010,10 @@ class PersistentModule( QObject ):
     
                                     
     def finalizeLeveling( self ):
-        if self.ndims == 3: self.getLabelActor().VisibilityOff()
+        if self.ndims == 3:
+            self.getLabelActor().VisibilityOff()
+            self.getLensActor().VisibilityOff()
+
         if self.configuring: 
             print " ~~~~~~ Finalize Leveling: ndims = %d, interactionState = %s " % ( self.ndims, self.InteractionState )
             HyperwallManager.getInstance().setInteractionState( None )
@@ -1180,10 +1205,13 @@ class PersistentModule( QObject ):
             op_list = []
 #            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
             for parmRec in parmRecList:  
-                op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+                try:
+                    op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+                except: 
+                    print>>sys.stderr, " Unrecognized input port %s in module %s " % ( str(parmRec[0]), str(self.moduleID) )
                 config_fn = self.getConfigFunction( parmRec[0] )
                 if config_fn: config_list.append( config_fn )
-                else: print>>sys.stderr, "Unrecognized config function %s in module %d" % ( parmRec[0], self.moduleID )
+                else: print>>sys.stderr, "Unrecognized config function %s in module %s" % ( parmRec[0], str(self.moduleID) )
 #                if parmRec[0] == 'colorScale':
 #                    print 'x'
             action = create_action( op_list ) 
@@ -1199,6 +1227,7 @@ class PersistentModule( QObject ):
                 
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
+            traceback.print_exc()
 
 
                
@@ -1380,6 +1409,7 @@ class PersistentVisualizationModule( PersistentModule ):
         self.activation = {}
         self.isAltMode = False
         self.stereoEnabled = 0
+        self.showInteractiveLens = False
         self.navigationInteractorStyle = None
         self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
 
@@ -1472,6 +1502,10 @@ class PersistentVisualizationModule( PersistentModule ):
             if (self.ndims == 3):                
                 self.getLabelActor().VisibilityOn()
                 
+    def updateLensDisplay(self, screenPos, coord):
+        if (screenPos <> None) and (self.renderer <> None) and self.showInteractiveLens: 
+            self.getLensActor(screenPos, coord).VisibilityOn()
+    
     def displayInstructions( self, text ):
         if (self.renderer <> None): 
             self.instructionBuffer = str(text)
@@ -1680,6 +1714,57 @@ class PersistentVisualizationModule( PersistentModule ):
         textActor.id = id
         return textActor
           
+    def createData(self, coord):
+        from paraview.vtk.dataset_adapter import numpyTovtkDataArray
+
+#        ds = self.getCDMSDataset()
+        ispec = self.inputSpecs[ 0 ] 
+        ds= ModuleStore.getCdmsDataset( ispec.datasetId )
+        
+        if len(ds.transientVariables)<>1:
+            print 'ERROR: this module has many variables'
+        var = ds.transientVariables.values()[0]
+        
+        newvar = var(lat=coord[1], lon=coord[0], lev=coord[2], squeeze=1)
+        
+        fieldData = vtk.vtkFieldData()
+        fieldData.AllocateArrays(2)
+        fieldData.AddArray(numpyTovtkDataArray(newvar.getTime()[:], name='x'))
+        fieldData.AddArray(numpyTovtkDataArray(newvar.filled(), name='y'))
+
+        dataobject = vtk.vtkDataObject()
+        dataobject.SetFieldData(fieldData)
+
+        return dataobject
+
+    def createLensActor(self, id_, pos):
+        lensActor = vtk.vtkXYPlotActor();
+        lensActor.SetTitle("Time vs. VAR")
+        lensActor.SetXTitle("Time")
+        lensActor.SetYTitle("VAR")
+        lensActor.SetBorder(1)
+        lensActor.PlotPointsOn()
+
+#        ds = self.getCDMSDataset()
+        ispec = self.inputSpecs[ 0 ] 
+        ds= ModuleStore.getCdmsDataset( ispec.datasetId )
+        
+        if ds <> None:
+            if len(ds.transientVariables)<>1:
+                print 'ERROR: this module has many', 
+            var = ds.transientVariables.values()[0]
+            lensActor.SetYRange(var.min(), var.max())
+
+        prop = lensActor.GetProperty()
+        prop.SetColor( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] )
+        prop.SetLineWidth(2)
+        prop.SetPointSize(4)
+    
+        lensActor.VisibilityOff()
+        lensActor.id = id_
+
+        return lensActor
+    
     def getLabelActor(self):
         return self.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
 
@@ -1702,6 +1787,33 @@ class PersistentVisualizationModule( PersistentModule ):
         textActor.SetInput( text )
         textActor.Modified()
         return textActor
+    
+    def getLensActor(self, pos=None, coord=None):
+        id_ = 'lens'
+      
+        lensActor = self.getProp( 'vtkXYPlotActor', id_)
+        if lensActor == None:
+            lensActor = self.createLensActor(id_, pos)
+            if self.renderer: 
+                self.renderer.AddViewProp( lensActor )
+          
+        # update data
+        if (coord<>None):
+            lensActor.GetDataObjectInputList().RemoveAllItems()
+            lensActor.AddDataObjectInput(self.createData(coord))
+
+        lensActor.SetXValuesToValue()
+        lensActor.SetDataObjectXComponent(0, 0)
+        lensActor.SetDataObjectYComponent(0, 1)
+      
+        # update position      
+        if pos<>None:
+            coord = lensActor.GetPositionCoordinate()
+            coord.SetCoordinateSystemToDisplay()
+            coord.SetValue( pos[0], pos[1])
+      
+        return lensActor
+
 
     def finalizeRendering(self):
         pass
@@ -1797,6 +1909,9 @@ class PersistentVisualizationModule( PersistentModule ):
                 configFunct = self.configurableFunctions[pname]
                 param_value = configFunct.reset() 
                 if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                
+        elif ( self.getInputSpec().getMetadata()['plotType']=='xyz' and key == 't'  ):
+            self.showInteractiveLens = not self.showInteractiveLens 
+            self.render() 
         else:
             ( state, persisted ) =  self.getInteractionState( key )
 #            print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
@@ -1846,8 +1961,10 @@ class PersistentVisualizationModule( PersistentModule ):
                    
     def endInteraction( self, **args ):
         PersistentModule.endInteraction( self, **args  )
-        if self.ndims == 3: self.getLabelActor().VisibilityOff()              
-        
+        if self.ndims == 3: 
+            self.getLabelActor().VisibilityOff()              
+            self.getLensActor().VisibilityOff()
+
     def onLeftButtonRelease( self, caller, event ):
 #        print " --- Persistent Module: LeftButtonRelease --- "
         self.currentButton = None 

@@ -715,6 +715,12 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return DV3DPipelineHelper.activationMap.get( module, False )
 
     @staticmethod    
+    def removeModuleFromActivationMap( module ):
+        if module in DV3DPipelineHelper.activationMap:
+            del DV3DPipelineHelper.activationMap[module]
+            print "Removing Module %s (%d) from activation map" % ( module.__class__.__name__, module.moduleID )
+
+    @staticmethod    
     def getActivePlotList( ):
         active_plots = []
         for module in DV3DPipelineHelper.activationMap.keys():
@@ -847,8 +853,9 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        return action
      
     @staticmethod
-    def add_additional_plot_to_pipeline( controller, version, plot ):
+    def add_additional_plot_to_pipeline( controller, version, plot, cell_addresses ):
         workflow = plot.workflow
+        if not workflow: return
         pipeline = controller.current_pipeline
         cell_module = None
         reader_module = None
@@ -890,9 +897,10 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         for cell_address in cell_addresses:
             DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline
         
-        for mid in controller.current_pipeline.modules:
-            module = ModuleStore.getModule( mid ) 
-            module.setCellLocation( sheetName, cell_address )
+            for mid in controller.current_pipeline.modules:
+                module = ModuleStore.getModule( mid ) 
+                if module:
+                    module.setCellLocation( sheetName, cell_address )
 
         return action2
     
@@ -968,7 +976,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         for plot_obj in plots:
             plot_obj.current_parent_version = version
             plot_obj.current_controller = controller
-            DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot_obj )
+            DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot_obj, cell_addresses )
 
 #        Disable File Reader, get Variable from UVCDAT
 #        plot_obj.addMergedAliases( aliases, controller.current_pipeline )
