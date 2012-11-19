@@ -390,7 +390,9 @@ class ParallelCoordinatesWidget(QCellWidget):
         if annSel.GetNumberOfNodes() > 0:
             idxArr = annSel.GetNode(0).GetSelectionList()
             if idxArr.GetNumberOfTuples() > 0:
-                self.coord.notifyModules(self, VN.vtk_to_numpy(idxArr))
+                self.coord.unregister(self)
+                self.coord.notifyModules(VN.vtk_to_numpy(idxArr))
+                self.coord.register(self)
 
 class ParallelCoordinates(SpreadsheetCell):
     """
@@ -398,7 +400,8 @@ class ParallelCoordinates(SpreadsheetCell):
     my_namespace = 'views'
     name         = 'Parallel Coordinates'
     
-    _input_ports = [('matrix',      Matrix, False)
+    _input_ports = [('coord',       Coordinator, False),
+                    ('matrix',      Matrix, False)
                     ]
     
     def compute(self):
