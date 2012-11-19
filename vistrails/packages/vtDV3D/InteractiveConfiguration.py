@@ -1488,6 +1488,51 @@ class ColormapConfigurationDialog( IVModuleConfigurationDialog ):
         layout.addWidget( self.smoothCheckBox, 1, 2 )
         self.connect( self.smoothCheckBox, SIGNAL("stateChanged(int)"), self.updateParameter )  
 
+class VolumeRenderCfgDialog( IVModuleConfigurationDialog ):   
+    """
+    VolumeRenderCfgDialog ...   
+    """ 
+    VolumeRenderTypes = [ 'Default', 'RayCastAndTexture', 'RayCast', 'Texture3D', 'Texture2D' ]
+       
+    def __init__(self, name, **args ):
+        IVModuleConfigurationDialog.__init__( self, name, **args )
+        
+    @staticmethod   
+    def getSignature():
+        return [ (String, 'config_str') ]
+        
+    def getValue(self):
+        return [ str( self.volRenderTypeCombo.currentText() )  ]
+
+    def setValue( self, value ):
+        config_str = str( value[0] ).split(';')
+        itemIndex = self.volRenderTypeCombo.findText( config_str[0], Qt.MatchFixedString )
+        if itemIndex >= 0: self.volRenderTypeCombo.setCurrentIndex( itemIndex )
+        else: print>>sys.stderr, " Can't find volume render type: %s " % config_str[0]
+         
+        
+    def createContent(self ):
+        """ createEditor() -> None
+        Configure sections       
+        """       
+        colorMapTab = QWidget() 
+        self.tabbedWidget.addTab( colorMapTab, 'Volume Render Config' )                      
+        self.tabbedWidget.setCurrentWidget(colorMapTab)
+        layout = QGridLayout()
+        colorMapTab.setLayout( layout ) 
+        layout.setMargin(10)
+        layout.setSpacing(20)
+       
+        vrType_label = QLabel( "Type:"  )
+        layout.addWidget( vrType_label, 0, 0 ) 
+
+        self.volRenderTypeCombo =  QComboBox ( self.parent() )
+        vrType_label.setBuddy( self.volRenderTypeCombo )
+        self.volRenderTypeCombo.setMaximumHeight( 30 )
+        layout.addWidget( self.volRenderTypeCombo, 0, 1, 1, 2 )
+        for vrType in self.VolumeRenderTypes: self.volRenderTypeCombo.addItem( vrType )   
+        self.connect( self.volRenderTypeCombo, SIGNAL("currentIndexChanged(QString)"), self.updateParameter )  
+        
 ################################################################################
         
 class LayerConfigurationDialog( IVModuleConfigurationDialog ):
