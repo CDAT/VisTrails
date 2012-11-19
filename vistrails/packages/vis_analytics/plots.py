@@ -4,6 +4,7 @@ from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_cell import QCellWidget
 from matrix import Matrix
 from matplotlib.transforms import Bbox
+from matplotlib.widgets import  RectangleSelector
 import taylor_diagram
 import numpy as np
 import pylab
@@ -227,87 +228,96 @@ class Dendrogram(SpreadsheetCell):
         self.displayAndWait(DendrogramWidget, (coord, matrix, title, xlabel, ylabel, method))
 
 ################################################################################
-#class TaylorDiagramWidget(MplWidget):
-#    def __init__(self, parent=None):
-#        MplWidget.__init__(self, parent)
-#        
-#        self.markers = ['o','x','*',',','+','.','s','v','<','>','^','D','h','H','_','8',
-#                        'd',3,0,1,2,7,4,5,6,'1','3','4','2','|','x']
-#        self.cm = pylab.cm.Spectral
-#        
-#    def draw(self, fig):
-#        (self.stats, title, showLegend) = self.inputPorts
-#                
-#        stds, corrs = self.stats.values[:,0], self.stats.values[:,1]
-#        self.Xs = stds*corrs
-#        self.Ys = stds*np.sin(np.arccos(corrs))
-#        
-#        pylab.clf()
-#        dia = taylor_diagram.TaylorDiagram(stds[0], corrs[0], fig=fig, label=self.stats.labels[0])
-#        dia.samplePoints[0].set_color('r')  # Mark reference point as a red star
-#        if self.stats.ids[0] in self.selectedIds: dia.samplePoints[0].set_markeredgewidth(3)
-#        
-#        # add models to Taylor diagram
-#        for i, (_id, stddev,corrcoef) in enumerate(zip(self.stats.ids[1:], stds[1:], corrs[1:])):
-#            label = self.stats.labels[i+1]
-#            size = 3 if _id in self.selectedIds else 1
-#            dia.add_sample(stddev, corrcoef,
-#                           marker=self.markers[i],
-#                           ls='',
-##                           mfc=self.cm(colors[i]),
-#                           mew = size,
-#                           label=label
-#                           )
-#
-#        # Add grid
-#        dia.add_grid()
-#
-#        # Add RMS contours, and label them
-#        contours = dia.add_contours(levels=5, colors='0.5') # 5 levels in grey
-#        pylab.clabel(contours, inline=1, fontsize=10, fmt='%.1f')
-#
-#        # Add a figure legend and title
-#        if showLegend:
-#            fig.legend(dia.samplePoints,
-#                       [ p.get_label() for p in dia.samplePoints ],
-#                       numpoints=1, prop=dict(size='small'), loc='upper right')
-#        fig.suptitle(title, size='x-large') # Figure title
-#        self.figManager.canvas.draw()
-#
-#    def updateSelection(self, selectedIds):
-#        self.selectedIds = selectedIds
-#        self.updateContents();
-#    
-#    def onselect(self, eclick, erelease):
-#        left, bottom = min(eclick.xdata, erelease.xdata), min(eclick.ydata, erelease.ydata)
-#        right, top = max(eclick.xdata, erelease.xdata), max(eclick.ydata, erelease.ydata)
-#        region = Bbox.from_extents(left, bottom, right, top)
-#        
-#        selectedIds = []
-#        for (x, y, idd) in zip(self.Xs, self.Ys, self.stats.ids):
-#            if region.contains(x, y):
-#                selectedIds.append(idd)
-#        self.coord.notifyModules(selectedIds)
-#
-#
-#class TaylorDiagram(SpreadsheetCell):
-#    """
-#    """
-#    my_namespace = 'views'
-#    name         = 'Taylor Diagram'
-#    
-#    _input_ports = [('stats',      Matrix, False),
-#                    ('title',      String,  False),
-#                    ('showLegend', Boolean, False),
-#                    ]
-#    
-#    def compute(self):
-#        """ compute() -> None        
-#        """
-#        stats      = self.getInputFromPort('stats')
-#        title      = self.forceGetInputFromPort('title', '')
-#        showLegend = self.forceGetInputFromPort('showLegend', True)
-#        self.displayAndWait(TaylorDiagramWidget, (stats, title, showLegend))
+class TaylorDiagramWidget(MplWidget):
+    def __init__(self, parent=None):
+        MplWidget.__init__(self, parent)
+        
+        self.markers = ['o','x','*',',','+','.','s','v','<','>','^','D','h','H','_','8',
+                        'd',3,0,1,2,7,4,5,6,'1','3','4','2','|','x']
+        self.cm = pylab.cm.Spectral
+        
+    def draw(self):
+        (self.coord, self.stats, title, showLegend) = self.inputPorts
+                
+        stds, corrs = self.stats.values[:,0], self.stats.values[:,1]
+        self.Xs = stds*corrs
+        self.Ys = stds*np.sin(np.arccos(corrs))
+        
+        pylab.clf()
+        fig = pylab.figure(str(self))
+        dia = taylor_diagram.TaylorDiagram(stds[0], corrs[0], fig=fig, label=self.stats.labels[0])
+        dia.samplePoints[0].set_color('r')  # Mark reference point as a red star
+        if self.stats.ids[0] in self.selectedIds: dia.samplePoints[0].set_markeredgewidth(3)
+        
+        # add models to Taylor diagram
+        for i, (_id, stddev,corrcoef) in enumerate(zip(self.stats.ids[1:], stds[1:], corrs[1:])):
+            label = self.stats.labels[i+1]
+            size = 3 if _id in self.selectedIds else 1
+            dia.add_sample(stddev, corrcoef,
+                           marker='o', #self.markers[i],
+                           ls='',
+#                           mfc=self.cm(colors[i]),
+                           mew = size,
+                           label=label
+                           )
+
+        # Add grid
+        dia.add_grid()
+
+        # Add RMS contours, and label them
+        contours = dia.add_contours(levels=5, colors='0.5') # 5 levels in grey
+        pylab.clabel(contours, inline=1, fontsize=10, fmt='%.1f')
+
+        # Add a figure legend and title
+        if showLegend:
+            fig.legend(dia.samplePoints,
+                       [ p.get_label() for p in dia.samplePoints ],
+                       numpoints=1, prop=dict(size='small'), loc='upper right')
+        fig.suptitle(title, size='x-large') # Figure title
+        self.figManager.canvas.draw()
+        
+        self.rectSelector = RectangleSelector(pylab.gca(), self.onselect, drawtype='box', 
+                                              rectprops=dict(alpha=0.4, facecolor='yellow'))
+        self.rectSelector.set_active(True)
+
+    def updateSelection(self, selectedIds):
+        self.selectedIds = selectedIds
+        self.updateContents();
+    
+    def onselect(self, eclick, erelease):
+        if (self.coord is None): return
+
+        left, bottom = min(eclick.xdata, erelease.xdata), min(eclick.ydata, erelease.ydata)
+        right, top = max(eclick.xdata, erelease.xdata), max(eclick.ydata, erelease.ydata)
+        region = Bbox.from_extents(left, bottom, right, top)
+        
+        selectedIds = []
+        for (x, y, idd) in zip(self.Xs, self.Ys, self.stats.ids):
+            if region.contains(x, y):
+                selectedIds.append(idd)
+        self.coord.notifyModules(selectedIds)
+
+
+class TaylorDiagram(SpreadsheetCell):
+    """
+    """
+    my_namespace = 'views'
+    name         = 'Taylor Diagram'
+    
+    _input_ports = [('coord',       Coordinator, False),
+                    ('stats',      Matrix, False),
+                    ('title',      String,  False),
+                    ('showLegend', Boolean, False),
+                    ]
+    
+    def compute(self):
+        """ compute() -> None        
+        """
+        coord      = self.forceGetInputFromPort('coord', None)
+        stats      = self.getInputFromPort('stats')
+        title      = self.forceGetInputFromPort('title', '')
+        showLegend = self.forceGetInputFromPort('showLegend', True)
+        self.displayAndWait(TaylorDiagramWidget, (coord, stats, title, showLegend))
 
 ################################################################################
 class ParallelCoordinatesWidget(QCellWidget):
