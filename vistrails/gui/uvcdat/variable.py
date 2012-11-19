@@ -358,6 +358,15 @@ class VariableProperties(QtGui.QDialog):
 
                     if name not in other_list:
                         other_list.append(name)
+                elif name=="CDAT":
+                    # some OpenDAP files don't have an extension trynig to open in CDAT
+                    try:
+                        tmpf=cdms2.open(str(fnm))
+                        tmpf.variables.keys()
+                        tmpf.close()
+                        self.updateCDMSFile(str(fnm))
+                    except:
+                        pass
 
             self.updateOtherPlots(other_list)
         else:
