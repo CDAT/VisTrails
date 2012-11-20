@@ -71,7 +71,6 @@
    <addaction name="menuEdit"/>
    <addaction name="menuView"/>
    <addaction name="menuVisTrails"/>
-   <addaction name="menuTools"/>
    <addaction name="menuPCMDITools"/>
    <addaction name="menuHelp"/>
   </widget>

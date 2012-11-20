@@ -8,7 +8,7 @@ import uvcdatCommons
 class QCommandsRecorderWidget(uvcdatCommons.QCommandsFileWidget):
     def __init__(self,parent,title="UVCDAT Recorded Commands",readOnly=True):
         uvcdatCommons.QCommandsFileWidget.__init__(self,parent,title,readOnly)
-        self.initCommands()
+        #self.initCommands()
 
     def initCommands(self):
         
@@ -27,10 +27,11 @@ for i in range(4):
                 
         
     def record(self,commands,*vistrails):
-        for a in self.root.mainMenu.tools.actions():
-            if a.text() == 'Record Commands' and a.isChecked():
-                self.addText(commands)
-                break
-        if uvcdatCommons.useVistrails:
-	    self.emit(QtCore.SIGNAL("recordCommands"),commands)
-
+        if False:
+            for a in self.root.mainMenu.tools.actions():
+                if a.text() == 'Record Commands' and a.isChecked():
+                    self.addText(commands)
+                    break
+            if uvcdatCommons.useVistrails:
+                self.emit(QtCore.SIGNAL("recordCommands"),commands)
+        return
