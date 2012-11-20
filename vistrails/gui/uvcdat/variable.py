@@ -65,7 +65,7 @@ class VariableProperties(QtGui.QDialog):
         self.resize(QtCore.QSize(P.width()*.8,P.height()*.9))
         self.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
         self.originTabWidget=QtGui.QTabWidget(self)
-        self.connect(self.originTabWidget,QtCore.SIGNAL("currentChanged(int)"),self.tabHasChangedVoila)
+        #self.connect(self.originTabWidget,QtCore.SIGNAL("currentChanged(int)"),self.tabHasChanged)
         sp = QtGui.QSplitter(QtCore.Qt.Vertical)
         sc=QtGui.QScrollArea()
         sc.setWidget(self.originTabWidget)
@@ -115,7 +115,7 @@ class VariableProperties(QtGui.QDialog):
     ##     if not hasattr(klass, '_instance'):
     ##         klass._instance = klass()
     ##     return klass._instance
-    def tabHasChangedVoila(self,index):
+    def tabHasChanged(self,index):
         if index==1:
             self.root.varProp.btnDefine.setEnabled(False)
             self.root.varProp.btnDefineClose.setEnabled(False)
@@ -131,6 +131,8 @@ class VariableProperties(QtGui.QDialog):
         self.connect(self.ask,QtCore.SIGNAL('accepted()'),self.checkTargetVarName)
         if self.mode=="add":
             self.tbOpenFile.clicked.connect(self.openSelectFileDialog)
+
+            self.connect(self.originTabWidget,QtCore.SIGNAL("currentChanged(int)"),self.tabHasChanged)
             self.connect(self.fileEdit, QtCore.SIGNAL('returnPressed()'),
                          self.updateFile)
             self.connect(self.historyList, QtCore.SIGNAL('itemClicked(QListWidgetItem *)'),
