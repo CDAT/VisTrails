@@ -14,21 +14,27 @@ def getDatabase():
     import api
     global moduleStoreDatabase
     page_id = 0
-    try: page_id = id( api.get_current_controller() )
-    except: pass
+#    try: page_id = id( api.get_current_controller() )
+#    except: pass
     return moduleStoreDatabase.setdefault( page_id, {} )
 
 def getCdmsDatabase():
     import api
     global cdmsStoreDatabase
     page_id = 0
-    try: page_id = id( api.get_current_controller() )
-    except: pass
+#    try: page_id = id( api.get_current_controller() )
+#    except: pass
     return cdmsStoreDatabase.setdefault( page_id, {} )
 
 def getModule( mid ):
     db = getDatabase()
     return db.get( mid, None )
+
+def removeModule( mid ):
+    db = getDatabase()
+    try:        del db[ mid ]
+    except:     return False
+    return True
 
 def forceGetModule(  mid, default_instance ):
     db = getDatabase()        

@@ -8,11 +8,12 @@ from PyQt4 import QtCore, QtGui
 from gui.qt import qt_super
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.spreadsheet.spreadsheet_base import StandardSheetReference, StandardSingleCellSheetReference
-from packages.vtk.vtkcell import QVTKWidget
+from packages.vtk.vtkcell import QVTKWidget, QVTKWidgetToolBar
 from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
 from packages.vtDV3D.InteractiveConfiguration import *
 from packages.vtDV3D.CaptionManager import *
 from packages.vtDV3D.WorkflowModule import WorkflowModule
+from packages.vtDV3D.VolumeSlicerModule import PM_VolumeSlicer
 from core.uvcdat.plot_registry import Plot
 from gui.uvcdat.project_controller_cell import ControllerCell
 if ENABLE_JOYSTICK: from packages.vtDV3D.JoystickInterface import *
@@ -61,6 +62,7 @@ class QVTKClientWidget(QVTKWidget):
         QVTKWidget.__init__(self, parent, f )
         self.dv3dRenderCount = 0         # Do not rename -> used to id a dv3d widget.
         self.dv3dRenderPeriod = 10
+        self.toolBarType = QVTKWidgetToolBar2
         self.current_button = QtCore.Qt.NoButton
         self.current_pos = QtCore.QPoint( 50, 50 )
 
@@ -508,7 +510,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         
     def clearWidget(self): 
         from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog, UVCDATGuiConfigFunction
-        UVCDATGuiConfigFunction.clearModules( self.iren )
+        UVCDATGuiConfigFunction.clearModules( self.pipeline )
         IVModuleConfigurationDialog.reset()
         self.cellWidget = None 
         self.builtCellWidget = False                        
@@ -1232,4 +1234,86 @@ class CloudCell3D( WorkflowModule ):
         if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
               
 
+class QCellToolBarExportTimeSeries(QtGui.QAction):
+    """
+    QCellToolBarExportTimeSeries is the action to export the interactive time 
+    setries to another cell using VCS components
+    
+    """
+    def __init__(self, parent=None):
+        """ QCellToolBarExportTimeSeries(parent: QWidget)
+                                         -> QCellToolBarExportTimeSeries
+        Setup the image, status tip, etc. of the action
+        
+        """
+        QtGui.QAction.__init__(self,
+                               QtGui.QIcon(os.path.join( packagePath,  'data/timeseries.png' )),
+                               "&Export Time Series",
+                               parent)
+        self.setStatusTip("Export time series to another cell")
+
+    def createTimeSeriesPlot(self):
+        # Get sheet name, column and row
+        cellWidget = self.toolBar.getSnappedWidget()
+        row = self.toolBar.row
+        col = self.toolBar.col
+        sheet = self.toolBar.sheet
+        sheetName = sheet.getSheetName()
+        
+        # get current version
+        
+        # Access Project Controller
+        from api import get_current_project_controller
+        prj_controller = get_current_project_controller()
+        
+        # Access Controller Cell
+        old_cell = prj_controller.sheet_map[sheetName][(row,col)]
+    
+        # Use project controller to create a new plot in a new cell
+        new_row, new_col = row, col+1
+        if (new_row, new_col) not in prj_controller.sheet_map[sheetName]:
+            #calling adjustSheetDimensions from vtkUtilities
+            adjustSheetDimensions(new_row, new_col)
+            prj_controller.sheet_map[sheetName][(new_row, new_col)] = ControllerCell() 
+        new_cell = prj_controller.sheet_map[sheetName][(new_row, new_col)]
+
+        # create new variable
+        coords = PM_VolumeSlicer.global_coords;
+        if (coords==[-1, -1, -1]): return
+        newname = "var_lat%0.1f_lon%0.1f_lev%0.1f" % (coords[1], coords[0], coords[2])
+        python_cmd = '%s(lat=%f, lon=%f, lev=%f, squeeze=1)' % (old_cell.variables[0], coords[1], coords[0], coords[2])
+        prj_controller.computed_variables[newname] = (old_cell.variables, 
+                                                      'Extracting Time series',
+                                                      python_cmd,
+                                                       newname)
+        new_cell.add_variable(newname)
+        
+        # create new plot
+        plot_manager = prj_controller.plot_manager;
+        new_cell.plots.append(plot_manager.get_plot('VCS', 'Yxvsx', 'ASD1'))
+        
+        prj_controller.check_update_cell(sheetName, new_row, new_col)
+        
+    def triggeredSlot(self, checked=False):
+        """ toggledSlot(checked: boolean) -> None
+        Execute the action when the button is clicked
+        
+        """
+        self.createTimeSeriesPlot()
+        
+class QVTKWidgetToolBar2(QVTKWidgetToolBar):
+    """
+    QVTKWidgetToolBar2 derives from QVTKWidgetToolBar to give the ...
+    a customizable toolbar
+    
+    """
+    def createToolBar(self):
+        """ createToolBar() -> None
+        This will get call initiallly to add customizable widgets
+        
+        """
+        QVTKWidgetToolBar.createToolBar(self)
+        
+        self.appendAction(QCellToolBarExportTimeSeries(self))
+        
 
