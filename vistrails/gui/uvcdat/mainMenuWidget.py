@@ -38,6 +38,12 @@ class QMenuWidget(QtGui.QWidget):
         self.editMenu.addAction(self.editPreferencesAction)
         self.connect(self.editPreferencesAction, QtCore.SIGNAL('triggered ()'),
                      parent.root.preferences.show)
+        self.editCdmsCacheAction = QtGui.QAction('Cdms Cache...', self)
+        self.editCdmsCacheAction.setEnabled(True)
+        self.editCdmsCacheAction.setStatusTip('Manage cached CDMS files')
+        self.editMenu.addAction(self.editCdmsCacheAction)
+        self.connect(self.editCdmsCacheAction, QtCore.SIGNAL('triggered ()'),
+                     parent.root.cdmsCacheWidget.show)
 
         self.tools = parent.ui.menuTools
         self.pcmdiTools = parent.ui.menuPCMDITools
