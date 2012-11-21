@@ -24,6 +24,7 @@ from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
 from packages.uvcdat.init import Variable, Plot
 from gui.uvcdat.theme import UVCDATTheme
+from gui.uvcdat.cdmsCache import CdmsCache
 
 canvas = None
 original_gm_attributes = {}
@@ -109,13 +110,23 @@ class CDMSVariable(Variable):
         if self.source:
             cdmsfile = self.source.var
         elif self.url:
-            cdmsfile = cdms2.open( os.path.expanduser(self.url) )
+            if self.url in CdmsCache.d:
+                #print "Using cache for %s" % self.url
+                cdmsfile = CdmsCache.d[self.url]
+            else:
+                #print "Loading file %s" % self.url
+                cdmsfile = CdmsCache.d[self.url] = cdms2.open( os.path.expanduser(self.url) )
         elif self.file:
-            cdmsfile = cdms2.open( os.path.expanduser(self.file) )
+            if self.file in CdmsCache.d:
+                #print "Using cache for %s" % self.file
+                cdmsfile = CdmsCache.d[self.file]
+            else:
+                #print "Loading file %s" % self.file
+                cdmsfile = CdmsCache.d[self.file] = cdms2.open( os.path.expanduser(self.file) )
         
         if self.varNameInFile is not None:
             var = cdmsfile.__call__(self.varNameInFile)
-        else:    
+        else:
             var = cdmsfile.__call__(self.name)
         if self.axes is not None:
             try:
