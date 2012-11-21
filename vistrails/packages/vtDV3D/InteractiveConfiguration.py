@@ -742,12 +742,12 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         self.kwargs['manager'] = manager
         gui = self.guiClass( str(self.name), **self.kwargs )
 #        self.gui.connect(self.gui, SIGNAL('delete()'), self.reset )
-        print "Getting moduleList for key ", self.name
+#        print "Getting moduleList for key ", self.name
         for moduleId in moduleList:
             module = ModuleStore.getModule( moduleId ) 
             if module:
                 gui.addActiveModule( module )
-                print " --> module %s (%d) " % ( module.__class__.__name__, module.moduleID )
+#                print " --> module %s (%d) " % ( module.__class__.__name__, module.moduleID )
 #        if self.startConfigurationObserver <> None:
 #            self.gui.connect( self.gui, self.start_parameter_signal, self.startConfigurationObserver )
 #        if self.updateConfigurationObserver <> None:
@@ -1507,7 +1507,7 @@ class VolumeRenderCfgDialog( IVModuleConfigurationDialog ):
         return [ str( self.volRenderTypeCombo.currentText() )  ]
 
     def setValue( self, value ):
-        config_str = str( value[0] ).split(';')
+        config_str = str( getItem( value ) ).split(';')
         itemIndex = self.volRenderTypeCombo.findText( config_str[0], Qt.MatchFixedString )
         if itemIndex >= 0: self.volRenderTypeCombo.setCurrentIndex( itemIndex )
         else: print>>sys.stderr, " Can't find volume render type: %s " % config_str[0]
@@ -2301,6 +2301,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
                 ispec = self.module.getInputSpec()     
                 timeAxis = ispec.getMetadata('time')
+                if not timeAxis:
+                    print>>sys.stderr, "Can't find time axis for dataset %s- animation disabled." % self.module.getDatasetId()
+                    return
                 timeValues = np.array( object=timeAxis.getValue() )
                 relTimeRef = cdtime.reltime( relTimeValueRef, ReferenceTimeUnits )
                 relTime0 = relTimeRef.torel( timeAxis.units )
