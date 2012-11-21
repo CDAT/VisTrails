@@ -14,6 +14,7 @@ import xml
 import myproxy_logon
 import subprocess
 import time
+from gui.uvcdat.cdmsCache import CdmsCache
 
 """
 class QEsgfGateway(cdms2.esgfConnection):
@@ -388,7 +389,12 @@ class QEsgfBrowser(QtGui.QDialog):
             url = txt[1].split()[0].strip()
             if service=="OPENDAP":
                 try:
-                    f=cdms2.open(url[:-5])
+                    if url[:-5] in CdmsCache.d:
+                        #print "Using cache for %s" % url[:5]
+                        f = CdmsCache.d[url[:-5]]
+                    else:
+                        #print "Loading file %s" % url[:-5]
+                        f = CdmsCache.d[url[:-5]] = cdms2.open(url[:-5])
                     fvars = f.variables.keys()
                     for v in f.variables.keys():
                         V=f[v]
@@ -402,7 +408,7 @@ class QEsgfBrowser(QtGui.QDialog):
                             if d in fvars:
                                 fvars.remove(d)
                             
-                    f.close()
+                    #f.close()
                     index=-1
                     if self.root is not None:
                         self.root.varProp.fileEdit.setText(url[:-5])
