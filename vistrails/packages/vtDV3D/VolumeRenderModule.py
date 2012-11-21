@@ -144,6 +144,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.otf_data = None
         self.ctf_data = None
         self.quickAndDirty = False
+        self.experimental = True
         self.updatingOTF = False
         self.configTime = None
         self.transFunctGraphVisible = False
@@ -301,9 +302,11 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.volumeProperty.SetScalarOpacity(self.opacityTransferFunction)
         
         # The mapper knows how to render the data
+
         if self.quickAndDirty:   self.volumeMapper = vtk.vtkVolumeTextureMapper2D()
-        else:               self.volumeMapper = vtk.vtkSmartVolumeMapper()
+        else: self.volumeMapper = vtk.vtkSmartVolumeMapper() 
         self.volumeMapper.SetBlendModeToComposite() 
+        
 #        self.volumeMapper.SetScalarModeToUsePointFieldData()
 #        self.inputModule.inputToAlgorithm( self.volumeMapper )
         

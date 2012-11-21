@@ -622,16 +622,18 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         data_range = self.module.getDataValues( imageRange )
         self.setDataRange( data_range )
 
-    def setDataRange(  self, data_range  ):
+    def setDataRange(  self, data_range, isManual = False  ):
         self.range[0:2] = data_range[0:2]
+        if isManual: self.manuallyAdjusted = True
 #        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
         self.setLevelDataHandler( self.range )
         self.persisted = False
 
-    def setScaledDataRange(  self, scaled_data_range  ):
+    def setScaledDataRange(  self, scaled_data_range, isManual = False  ):
         dr = (self.range_bounds[1]-self.range_bounds[0])
         self.range[0] = self.range_bounds[0] + scaled_data_range[0] * dr
         self.range[1] = self.range_bounds[0] + scaled_data_range[1] * dr
+        if isManual: self.manuallyAdjusted = True
 #        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
         self.setLevelDataHandler( self.range )
         self.persisted = False
@@ -656,9 +658,9 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         for cfgFunction in self.activeFunctionList:
             if (active_module_list == None) or (cfgFunction.module in active_module_list):
                 if( cfgFunction.units == self. units ):
-                    cfgFunction.setDataRange( self.range )
+                    cfgFunction.setDataRange( self.range, True )
                 else:
-                    cfgFunction.setScaledDataRange( self.getScaledDataRange() )
+                    cfgFunction.setScaledDataRange( self.getScaledDataRange(), True )
                 affected_renderers.add( cfgFunction.module.renderer )
 #               print "   -> module = %x " % id(cfgFunction.module)
 
