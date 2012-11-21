@@ -26,6 +26,7 @@ from packages.uvcdat_cdms.init import CDMSVariable
 
 from packages.pvclimate.pvvariable import PVVariable
 from gui.uvcdat.pvreadermanager import PVReaderManager
+from gui.uvcdat.cdmsCache import CdmsCache
 
 class QBookMarksListWidget(uvcdatCommons.QDragListWidget):
     def keyReleaseEvent(self,event):
@@ -367,6 +368,21 @@ class VariableProperties(QtGui.QDialog):
                     except:
                         pass
 
+#                elif name=="CDAT":
+#                    # some OpenDAP files don't have an extension trynig to open in CDAT
+#                    try:
+#                        if str(fnm) in CdmsCache.d:
+#                            #print "Using cache for %s" % str(fnm)
+#                            tmpf = CdmsCache.d[str(fnm)]
+#                        else:
+#                            #print "Loading file %s" % str(fnm)
+#                            tmpf = CdmsCache.d[str(fnm)] = cdms2.open(str(fnm))
+#                        tmpf.variables.keys()
+#                        #tmpf.close()
+#                        self.updateCDMSFile(str(fnm))
+#                    except:
+#                        pass
+
             self.updateOtherPlots(other_list)
         else:
             self.emit(QtCore.SIGNAL('fileChanged'), None)
@@ -377,11 +393,21 @@ class VariableProperties(QtGui.QDialog):
     def updateCDMSFile(self, fn):
         if fn[:7]=="http://":
             ## Maybe add something for my proxy errors here?
-            self.cdmsFile = cdms2.open(fn)
+            if fn in CdmsCache.d:
+                #print "Using cache for %s" % fn
+                self.cdmsFile = CdmsCache.d[fn]
+            else:
+                #print "Loading file %s" % fn
+                self.cdmsFile = CdmsCache.d[fn] = cdms2.open(fn)
             self.root.record("## Open file: %s" % fn)
             self.root.record("cdmsFile = cdms2.open('%s')" % fn)
         else:
-            self.cdmsFile = cdms2.open(fn)
+            if fn in CdmsCache.d:
+                #print "Using cache for %s" % fn
+                self.cdmsFile = CdmsCache.d[fn]
+            else:
+                #print "Loading file %s" % fn
+                self.cdmsFile = CdmsCache.d[fn] = cdms2.open(fn)
             self.root.record("## Open file: %s" % fn)
             self.root.record("cdmsFile = cdms2.open('%s')" % fn)
         self.updateVariableList()
