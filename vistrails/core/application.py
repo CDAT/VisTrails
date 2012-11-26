@@ -178,6 +178,9 @@ The builder window can be accessed by a spreadsheet menu option.")
              help=("Prevent debug messages from popping up in the GUI."))
         add ("-T", "--time", action="store", type="int", dest="time", default=0,
              help=("Run UVCDAT for a set amount of seconds and then quit."))
+        add ("-o", "--output", action="store", type="string", dest="output", 
+             default="uvcdatsession.log", 
+             help=("Set output log filename (empty string for stdout e.g. -o \"\")"))
         
         command_line.CommandLineParser.parse_options()
 
@@ -204,8 +207,8 @@ The builder window can be accessed by a spreadsheet menu option.")
         Read arguments from the command line
         
         """
-        print self
-        print self.__class__
+        #print self
+        #print self.__class__
         get = command_line.CommandLineParser().get_option
         self.uvcdatLoadFileStart = get('uvcdat_filename')
         self.uvcdatLoadVariableStart = get('uvcdat_var')
@@ -275,6 +278,8 @@ The builder window can be accessed by a spreadsheet menu option.")
             self.temp_configuration.noDebugPopups = not bool(get('noDebugPopups'))
         if get('time')!=None:
             self.temp_configuration.time = get("time")
+        if get('output')!=None:
+            self.temp_configuration.output = get("output")
         self.input = command_line.CommandLineParser().positional_arguments()
     def init(self, optionsDict=None):
         """ VistrailsApplicationSingleton(optionDict: dict)
@@ -344,6 +349,14 @@ The builder window can be accessed by a spreadsheet menu option.")
                 
         # Command line options override temp_configuration
         self.readOptions()
+        
+        # Redirect console output
+        if self.temp_configuration.output != "":
+            try:
+                sys.stdout = sys.stderr = open(self.temp_configuration.output, "w")
+            except (Exception):
+                print "Failed to redirect output to file: %s" % self.temp_configuration.output
+                print Exception.message 
         
         if self.temp_configuration.check('staticRegistry'):
             reg = self.temp_configuration.staticRegistry
