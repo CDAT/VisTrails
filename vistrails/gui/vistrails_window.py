@@ -564,6 +564,12 @@ class QVistrailViewWindow(QBaseViewWindow):
                          'enabled': True,
                          'callback': _app.pass_through(self.get_current_view,
                                                        'save_opm')}),
+                       ('saveProv', "PROV Document...",
+                        {'statusTip': "Saves provenance according to " \
+                             "PROV-DM in XML",
+                         'enabled': True,
+                         'callback': _app.pass_through(self.get_current_view,
+                                                       'save_prov')}),
                        ('saveLog', "Log to XML...",
                         {'statusTip': "Save the execution log to a file",
                          'enabled': False,
