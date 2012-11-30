@@ -174,7 +174,7 @@ The builder window can be accessed by a spreadsheet menu option.")
             action="store",dest="uvcdat_var")
         add ("-g", "--noSingleInstance", action="store_true",
              help=("Run VisTrails without the single instance restriction."))
-        add ("-P", "--noDebugPopups", action="store_false",
+        add ("-P", "--noDebugPopups", action="store_false", default=False,
              help=("Prevent debug messages from popping up in the GUI."))
         add ("-T", "--time", action="store", type="int", dest="time", default=0,
              help=("Run UVCDAT for a set amount of seconds and then quit."))
