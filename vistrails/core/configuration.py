@@ -190,6 +190,7 @@ def default():
         'fileDirectory': (None, str),
 #        'evolutionGraph': (None, str),
         'interactiveMode': True,
+        'isInServerMode': False,
         'logFile': (None, str),
         'logger': default_logger(),
         'maxMemory': (None, int),
@@ -198,7 +199,9 @@ def default():
         'migrateTags': False,
         'minMemory': (None, int),
         'multiHeads': False,
+        'noDebugPopups': False,
         'nologger': True,
+        'output': 'uvcdatsession.log',
         'packageDirectory': (None, str),
         'pythonPrompt': False,
         'recentVistrailList': (None, str),
@@ -216,6 +219,7 @@ def default():
         'spreadsheetDumpPDF': False,
         'staticRegistry': (None, str),
         'thumbs': default_thumbs(),
+        'time': 0,
         'upgradeOn': True,
         'upgradeDelay': True,
         'upgradeModuleFailPrompt': True,
@@ -226,8 +230,7 @@ def default():
 #        'workflowGraph': (None, str),
 #        'workflowInfo': (None, str),
         'webRepositoryLogin': (None, str),
-        'webRepositoryURL': "http://www.crowdlabs.org",
-        'isInServerMode': False,
+        'webRepositoryURL': "http://www.crowdlabs.org"
         }
     specific_dir = add_specific_config(base_dir)
     return ConfigurationObject(**specific_dir)
