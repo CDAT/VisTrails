@@ -4,7 +4,7 @@ Created on Mar 22, 2011
 @author: tpmaxwel
 '''
 from PyQt4 import QtCore, QtGui
-import sys, copy, os, cdms2, md5, imp, traceback
+import sys, copy, os, cdms2, hashlib, imp, traceback
 import numpy as np
 import cdutil, genutil
 from packages.vtDV3D.vtUtilities import *
@@ -138,7 +138,7 @@ def load_usr_task_modules( **args ):
                         try:
 #                            print "Importing user task code from file %s " % code_path
                             fin = open( code_path, 'rb' )
-                            mod = imp.load_source( md5.new(code_path).hexdigest(), code_path, fin )
+                            mod = imp.load_source( hashlib.md5(code_path).hexdigest(), code_path, fin )
                             modules.append( mod )
                             for attrName in vars(mod).keys():
                                 userCodeEntity = getattr( mod, attrName )
