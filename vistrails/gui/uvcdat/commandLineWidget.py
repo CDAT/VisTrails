@@ -36,6 +36,8 @@ import customizeUVCDAT
 import uvcdatCommons
 import re
 import keyword
+import traceback
+import StringIO
 
 def isidentifier(s):
     s = s.strip()
@@ -566,7 +568,19 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
         acommand = "temp_results_holder = %s"  % command
         exec( "import MV2,genutil,cdms2,vcs,cdutil,numpy", __main__.__dict__ )
         self.le.clear()
-        exec( command, __main__.__dict__ )
+        try:
+            exec( command, __main__.__dict__ )
+        except Exception:
+            #print exception to the command window    
+            errorText = StringIO.StringIO()
+            errorText.write('Your command produced an error.\n')
+            errorText.write('-'*60+'\n')
+            traceback.print_exc(file=errorText)
+            errorText.write('-'*60)
+            self.te.insertPlainText(errorText.getvalue())
+            # for testing purposes
+            raise sys.exc_value
+
         res = self.root.stick_main_dict_into_defvar(None)
         #-----------------------------------------------------------------------
         # record the command for preproducibility

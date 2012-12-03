@@ -16,28 +16,6 @@ def disable_lion_restore():
     if os.path.exists(ssPath):
         os.system('rm -rf "%s"' % ssPath)
     os.system('defaults write org.vistrails NSQuitAlwaysKeepsWindows -bool false')
-    
-def report_exception(exctype, value, tb):
-    import traceback
-    from gui.uvcdat.reportErrorDialog import ReportErrorDialog
-    import gui.application
-    app = gui.application.get_vistrails_application()
-    if app:
-        app.uvcdatWindow.hide()
-    s = ''.join(traceback.format_exception(exctype, value, tb))
-    dialog = ReportErrorDialog(None)
-    dialog.setErrorMessage(s);
-    dialog.exec_()
-    if app:
-        app.finishSession()
-    else:
-        sys.exit(254)
-    
-def install_exception_hook():
-    sys.excepthook = report_exception
-    
-def uninstall_exception_hook():
-    sys.excepthook = sys.__excepthook__
 
 if __name__ == '__main__':
     disable_lion_restore()
@@ -83,11 +61,6 @@ if __name__ == '__main__':
                     var.varCombo.setCurrentIndex(i)
         #var.show()
         
-    # set up error reporting for unhandled exceptions
-    install_exception_hook()
-    import atexit
-    atexit.register(uninstall_exception_hook)
-    
     if (app.temp_configuration.interactiveMode and
         not app.temp_configuration.check('spreadsheetDumpCells')): 
 

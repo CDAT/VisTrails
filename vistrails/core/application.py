@@ -174,13 +174,15 @@ The builder window can be accessed by a spreadsheet menu option.")
             action="store",dest="uvcdat_var")
         add ("-g", "--noSingleInstance", action="store_true",
              help=("Run VisTrails without the single instance restriction."))
-        add ("-P", "--noDebugPopups", action="store_false", default=False,
+        add ("-P", "--noDebugPopups", action="store_true",
              help=("Prevent debug messages from popping up in the GUI."))
         add ("-T", "--time", action="store", type="int", dest="time", default=0,
              help=("Run UVCDAT for a set amount of seconds and then quit."))
         add ("-o", "--output", action="store", type="string", dest="output", 
              default="uvcdatsession.log", 
              help=("Set output log filename (empty string for stdout e.g. -o \"\")"))
+        add ("-R", "--noErrorReporting", action="store_true",
+             help=("Do not prompt to send anonymous error information."))
         
         command_line.CommandLineParser.parse_options()
 
@@ -275,11 +277,13 @@ The builder window can be accessed by a spreadsheet menu option.")
         if get('noSingleInstance')!=None:
             self.temp_configuration.singleInstance = not bool(get('noSingleInstance'))
         if get('noDebugPopups')!=None:
-            self.temp_configuration.noDebugPopups = not bool(get('noDebugPopups'))
+            self.temp_configuration.noDebugPopups = bool(get('noDebugPopups'))
         if get('time')!=None:
             self.temp_configuration.time = get("time")
         if get('output')!=None:
             self.temp_configuration.output = get("output")
+        if get('noErrorReporting')!=None:
+            self.temp_configuration.noErrorReporting = bool(get('noErrorReporting'))
         self.input = command_line.CommandLineParser().positional_arguments()
     def init(self, optionsDict=None):
         """ VistrailsApplicationSingleton(optionDict: dict)

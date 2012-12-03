@@ -200,6 +200,7 @@ def default():
         'minMemory': (None, int),
         'multiHeads': False,
         'noDebugPopups': False,
+        'noErrorReporting': False,
         'nologger': True,
         'output': 'uvcdatsession.log',
         'packageDirectory': (None, str),
