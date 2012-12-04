@@ -365,6 +365,9 @@ class ConfigurableFunction( QObject ):
 
     def get_persisted(self):
         return self._persisted
+    
+    def updateWindow( self ):
+        pass
      
     def set_persisted(self, value):
         self._persisted = value
