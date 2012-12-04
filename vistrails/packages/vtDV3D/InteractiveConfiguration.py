@@ -625,16 +625,18 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         data_range = self.module.getDataValues( imageRange )
         self.setDataRange( data_range )
 
-    def setDataRange(  self, data_range  ):
+    def setDataRange(  self, data_range, isManual = False  ):
         self.range[0:2] = data_range[0:2]
+        if isManual: self.manuallyAdjusted = True
 #        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
         self.setLevelDataHandler( self.range )
         self.persisted = False
 
-    def setScaledDataRange(  self, scaled_data_range  ):
+    def setScaledDataRange(  self, scaled_data_range, isManual = False  ):
         dr = (self.range_bounds[1]-self.range_bounds[0])
         self.range[0] = self.range_bounds[0] + scaled_data_range[0] * dr
         self.range[1] = self.range_bounds[0] + scaled_data_range[1] * dr
+        if isManual: self.manuallyAdjusted = True
 #        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
         self.setLevelDataHandler( self.range )
         self.persisted = False
@@ -659,9 +661,9 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         for cfgFunction in self.activeFunctionList:
             if (active_module_list == None) or (cfgFunction.module in active_module_list):
                 if( cfgFunction.units == self. units ):
-                    cfgFunction.setDataRange( self.range )
+                    cfgFunction.setDataRange( self.range, True )
                 else:
-                    cfgFunction.setScaledDataRange( self.getScaledDataRange() )
+                    cfgFunction.setScaledDataRange( self.getScaledDataRange(), True )
                 affected_renderers.add( cfgFunction.module.renderer )
 #               print "   -> module = %x " % id(cfgFunction.module)
 
@@ -743,12 +745,12 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         self.kwargs['manager'] = manager
         gui = self.guiClass( str(self.name), **self.kwargs )
 #        self.gui.connect(self.gui, SIGNAL('delete()'), self.reset )
-        print "Getting moduleList for key ", self.name
+#        print "Getting moduleList for key ", self.name
         for moduleId in moduleList:
             module = ModuleStore.getModule( moduleId ) 
             if module:
                 gui.addActiveModule( module )
-                print " --> module %s (%d) " % ( module.__class__.__name__, module.moduleID )
+#                print " --> module %s (%d) " % ( module.__class__.__name__, module.moduleID )
 #        if self.startConfigurationObserver <> None:
 #            self.gui.connect( self.gui, self.start_parameter_signal, self.startConfigurationObserver )
 #        if self.updateConfigurationObserver <> None:
@@ -1491,6 +1493,51 @@ class ColormapConfigurationDialog( IVModuleConfigurationDialog ):
         layout.addWidget( self.smoothCheckBox, 1, 2 )
         self.connect( self.smoothCheckBox, SIGNAL("stateChanged(int)"), self.updateParameter )  
 
+class VolumeRenderCfgDialog( IVModuleConfigurationDialog ):   
+    """
+    VolumeRenderCfgDialog ...   
+    """ 
+    VolumeRenderTypes = [ 'Default', 'RayCastAndTexture', 'RayCast', 'Texture3D', 'Texture2D' ]
+       
+    def __init__(self, name, **args ):
+        IVModuleConfigurationDialog.__init__( self, name, **args )
+        
+    @staticmethod   
+    def getSignature():
+        return [ (String, 'config_str') ]
+        
+    def getValue(self):
+        return [ str( self.volRenderTypeCombo.currentText() )  ]
+
+    def setValue( self, value ):
+        config_str = str( getItem( value ) ).split(';')
+        itemIndex = self.volRenderTypeCombo.findText( config_str[0], Qt.MatchFixedString )
+        if itemIndex >= 0: self.volRenderTypeCombo.setCurrentIndex( itemIndex )
+        else: print>>sys.stderr, " Can't find volume render type: %s " % config_str[0]
+         
+        
+    def createContent(self ):
+        """ createEditor() -> None
+        Configure sections       
+        """       
+        colorMapTab = QWidget() 
+        self.tabbedWidget.addTab( colorMapTab, 'Volume Render Config' )                      
+        self.tabbedWidget.setCurrentWidget(colorMapTab)
+        layout = QGridLayout()
+        colorMapTab.setLayout( layout ) 
+        layout.setMargin(10)
+        layout.setSpacing(20)
+       
+        vrType_label = QLabel( "Type:"  )
+        layout.addWidget( vrType_label, 0, 0 ) 
+
+        self.volRenderTypeCombo =  QComboBox ( self.parent() )
+        vrType_label.setBuddy( self.volRenderTypeCombo )
+        self.volRenderTypeCombo.setMaximumHeight( 30 )
+        layout.addWidget( self.volRenderTypeCombo, 0, 1, 1, 2 )
+        for vrType in self.VolumeRenderTypes: self.volRenderTypeCombo.addItem( vrType )   
+        self.connect( self.volRenderTypeCombo, SIGNAL("currentIndexChanged(QString)"), self.updateParameter )  
+        
 ################################################################################
         
 class LayerConfigurationDialog( IVModuleConfigurationDialog ):
@@ -2257,6 +2304,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
                 ispec = self.module.getInputSpec()     
                 timeAxis = ispec.getMetadata('time')
+                if not timeAxis:
+                    print>>sys.stderr, "Can't find time axis for dataset %s- animation disabled." % self.module.getDatasetId()
+                    return
                 timeValues = np.array( object=timeAxis.getValue() )
                 relTimeRef = cdtime.reltime( relTimeValueRef, ReferenceTimeUnits )
                 relTime0 = relTimeRef.torel( timeAxis.units )

@@ -566,7 +566,9 @@ class DV3DConfigControlPanel(QWidget):
                 self.configWidget.setVisible ( False )
                 self.config_layout.removeWidget( self.configWidget )
             self.configWidget = cfgWidget    
-            self.config_layout.addWidget( cfgWidget )            
+            self.config_layout.addWidget( cfgWidget ) 
+#            print "Adding config widget, visible = ", str( cfgWidget.isVisible() ) 
+        return cfgWidget        
         
     def isEligibleCommand( self, cmd ):
         return self.configWidget.isEligibleCommand( cmd )
@@ -593,7 +595,7 @@ class DV3DConfigControlPanel(QWidget):
                     else:
                         plot_list_item = PlotListItem( label, module, self.plot_list )
                     plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
-                    DV3DPipelineHelper.setModulesActivation( [ module ] , isActive ) 
+                    DV3DPipelineHelper.setModulesActivation( [ module ] , isActive, False ) 
             else:
                 DV3DPipelineHelper.activationMap[ module ] = False
                     
@@ -718,7 +720,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def removeModuleFromActivationMap( module ):
         if module in DV3DPipelineHelper.activationMap:
             del DV3DPipelineHelper.activationMap[module]
-            print "Removing Module %s (%d) from activation map" % ( module.__class__.__name__, module.moduleID )
+#            print "Removing Module %s (%d) from activation map" % ( module.__class__.__name__, module.moduleID )
 
     @staticmethod    
     def getActivePlotList( ):
@@ -729,11 +731,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return active_plots
  
     @staticmethod
-    def setModulesActivation( modules, isActive ):
+    def setModulesActivation( modules, isActive, updateConfig=True ):
         for module in modules:
             DV3DPipelineHelper.activationMap[ module ] = isActive 
 #            print " ** Set module activation: module[%d] -> %s (** persist parameters? **)" % ( module.moduleID, str(isActive) )
-            if not isActive:
+            if updateConfig and not isActive:
                 config_fn = module.getCurrentConfigFunction()
                 if config_fn and not config_fn.persisted:
                     module.finalizeParameter( config_fn.name )
@@ -754,7 +756,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 if fn <> None: configFunctionList.append( fn )
 
 #        DV3DPipelineHelper.actionMap[ action_key ] = actionList
-        DV3DPipelineHelper.config_widget.init( configFunctionList )
+        w = DV3DPipelineHelper.config_widget.init( configFunctionList )
                                          
         for ( module, key, f ) in actionList:
             module.processKeyEvent( key )
@@ -765,6 +767,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         for ( module, key, f ) in actionList:
             DV3DPipelineHelper.activationMap[ module ] = True 
             DV3DPipelineHelper.config_widget.addActivePlot( module, f )
+            
+        if w: w.setVisible( True )
 
     @staticmethod
     def endInteraction():

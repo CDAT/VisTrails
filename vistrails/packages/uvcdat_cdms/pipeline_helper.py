@@ -1070,7 +1070,24 @@ class CDMSPlotWidget(QtGui.QWidget):
         if (len(self.to_be_added) != 0 or len(self.to_be_removed) != 0 or
             len(self.var_to_be_added) != 0 or len(self.var_to_be_removed) != 0 
             or self.plot_order_changed() or self.vars_were_changed):
-            action = self.update_pipeline(action)
+            sheetName = self.proj_controller.current_sheetName
+            (row, col) = self.proj_controller.current_cell_coords
+            cell = self.proj_controller.sheet_map[sheetName][(row,col)]
+#            action = self.update_pipeline(action)
+            update = cell.is_ready()
+            newVars = []
+            var1 = str(self.var1_edt.text()).strip()
+            if len(var1) > 0: 
+                newVars.append(var1)
+            var2 = str(self.var2_edt.text()).strip()
+            if len(var2) > 0 and self.var2_edt.isVisible(): 
+                newVars.append(var2)
+            if len(newVars) > 0:
+                # clear however many new vars from end of list
+                del cell.variables[0-len(newVars):]
+            for v in newVars:
+                cell.add_variable(v)
+            self.proj_controller.check_update_cell(sheetName,row,col,update)
         
         action = self.update_templates(action)
                 
@@ -1138,7 +1155,7 @@ class CDMSPlotWidget(QtGui.QWidget):
         if action is not None:
             version = action.id
         else:
-            version = self.version
+            version = self.version        
 
         plot_modules = []
 
@@ -1543,10 +1560,28 @@ class AddCDMSVarDialog(QtGui.QDialog):
                 var = self.proj_controller.defined_variables[varName]
                 var_module = var.to_module(self.proj_controller.vt_controller)
                 item = CDMSVarListWidgetItem(var_module, varName, CDMSVariable, self.var_list)
+                
+        sheetName = self.proj_controller.current_sheetName
+        (row, col) = self.proj_controller.current_cell_coords
+        cell = self.proj_controller.sheet_map[sheetName][(row,col)]
+        helper = CDMSPipelineHelper
+            
+        #only add computed vars that are in the main variable widget
+        mainVarList = []
+        count = 0
+        for wid in QApplication.topLevelWidgets():
+            varWidget = wid.findChild(QDefinedVariableWidget)
+            if varWidget is not None:
+                mainVarList = varWidget.varList
+                count = mainVarList.count()
+                break
+            
         for varName in sorted(self.proj_controller.computed_variables):
-            if varName not in self._var_list:
-                var = self.proj_controller.computed_variables[varName]
-                item = CDMSVarListWidgetItem(None, varName, CDMSVariableOperation, self.var_list)
+            if varName not in self._var_list:                
+                for i in range(count):
+                    if varName == str(mainVarList.item(i).getVarName()):
+                        var_module = self.proj_controller.get_var_module(varName, cell, helper)
+                        item = CDMSVarListWidgetItem(var_module, varName, CDMSVariableOperation, self.var_list)
             
         
 class CDMSVarListWidgetItem(QtGui.QListWidgetItem):

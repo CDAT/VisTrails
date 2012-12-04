@@ -28,6 +28,7 @@ from gui.uvcdat.variable import VariableProperties
 from gui.uvcdat.plot import PlotProperties
 from gui.uvcdat.dockcalculator import DockCalculator
 from gui.uvcdat import animationWidget
+from gui.uvcdat.cdmsCache import CdmsCacheWidget
 
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 import gui.uvcdat.uvcdat_rc
@@ -61,6 +62,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.record = self.recorder.record
         self.preferences = preferencesWidget.QPreferencesDialog(self)
         self.preferences.hide()
+        self.cdmsCacheWidget = CdmsCacheWidget(self)
 #        self.regridding = regriddingWidget.QRegriddingDialog(self)
 #        self.regridding.hide()
         ###########################################################

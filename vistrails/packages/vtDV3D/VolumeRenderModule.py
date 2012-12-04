@@ -13,6 +13,7 @@ from core.modules.module_registry import get_module_registry
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
+from packages.vtDV3D.InteractiveConfiguration import VolumeRenderCfgDialog
 # from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
 from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.SimplePlot import GraphWidget, NodeData 
@@ -143,8 +144,11 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.refinement = [ 0.0, 0.5 ]
         self.otf_data = None
         self.ctf_data = None
+        self.quickAndDirty = False
+        self.experimental = True
         self.updatingOTF = False
         self.configTime = None
+        self.volRenderConfig = 'Default'
         self.transFunctGraphVisible = False
         self.transferFunctionConfig = None
         self.setupTransferFunctionConfigDialog()
@@ -153,6 +157,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'opacityScale',  'o', label='VR Transfer Function Opacity', setLevel=self.adjustOpacity, layerDependent=True  )
         self.addConfigurableMethod( 'showTransFunctGraph', self.showTransFunctGraph, 'g', label='VR Transfer Function Graph' )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
+        self.addUVCDATConfigGuiFunction( 'renderType', VolumeRenderCfgDialog, 'v', label='Choose Volume Renderer', setValue=self.setVolRenderCfg, getValue=self.getVolRenderCfg, layerDependent=True )
     
 #    def setZScale( self, zscale_data ):
 #        if self.volume <> None:
@@ -160,6 +165,21 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #            self.volume.SetScale( 1.0, 1.0, sz )
 #            self.volume.Modified()
 #            print " VR >---------------> Set zscale: %.2f, scale: %s, spacing: %s " % ( sz, str(self.volume.GetScale()), str(self.input().GetSpacing()) )
+
+    def getVolRenderCfg( self ):
+        return self.volRenderConfig
+
+    def setVolRenderCfg( self, config_str, doRender = True ):
+        if config_str: self.volRenderConfig = str( getItem( config_str ) ).split(';')
+        renderMode = vtk.vtkSmartVolumeMapper.DefaultRenderMode
+        if self.volRenderConfig[0] == 'RayCastAndTexture': 
+            renderMode = vtk.vtkSmartVolumeMapper.RayCastAndTextureRenderMode
+        elif self.volRenderConfig[0] == 'RayCast': 
+            renderMode = vtk.vtkSmartVolumeMapper.RayCastRenderMode
+        elif self.volRenderConfig[0] == 'Texture3D': 
+            renderMode = vtk.vtkSmartVolumeMapper.TextureRenderMode            
+        self.volumeMapper.SetRequestedRenderMode( renderMode )              
+        if doRender: self.render() 
 
     def getZScale( self ):
         if self.volume <> None:
@@ -295,20 +315,27 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
                 
         # The property describes how the data will look
         self.volumeProperty = vtk.vtkVolumeProperty()
+        self.volumeProperty.SetInterpolationType( vtk.VTK_LINEAR_INTERPOLATION )
         self.volumeProperty.SetColor(self.colorTransferFunction)
         self.volumeProperty.SetScalarOpacity(self.opacityTransferFunction)
-        
+     
         # The mapper knows how to render the data
-        self.volumeMapper = vtk.vtkVolumeTextureMapper2D()
+
+#        self.volumeMapperTexture2D = vtk.vtkVolumeTextureMapper2D()
+        self.volumeMapper = vtk.vtkSmartVolumeMapper() 
+        self.volumeMapper.SetBlendModeToComposite() 
+        
 #        self.volumeMapper.SetScalarModeToUsePointFieldData()
 #        self.inputModule.inputToAlgorithm( self.volumeMapper )
         
         # The volume holds the mapper and the property and can be used to
         # position/orient the volume
         self.volume = vtk.vtkVolume()
-        self.volume.SetScale( 1.0, 1.0, 1.0 )   
+        self.volume.SetScale( 1.0, 1.0, 1.0 )
+        self.volume.SetMapper( self.volumeMapper )     
 #        self.volume.SetScale( spacing[0], spacing[1], spacing[2] )   
-        self.volume.SetMapper(self.volumeMapper)
+        self.setVolRenderCfg( None, False )
+
         self.volume.SetProperty(self.volumeProperty)
 #        self.volume.AddObserver( 'AnyEvent', self.EventWatcher )
         self.input().AddObserver( 'AnyEvent', self.EventWatcher )
@@ -319,12 +346,13 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
 
     def rebuildVolume( self ):
-        self.volumeMapper = vtk.vtkVolumeTextureMapper2D()
         self.volume = vtk.vtkVolume()
+        self.volume.SetMapper( self.volumeMapper ) 
         self.volume.SetScale( 1.0, 1.0, 1.0 )   
         self.volume.SetMapper(self.volumeMapper)
         self.volume.SetProperty(self.volumeProperty)        
         self.volume.SetPosition( self.pos )
+        self.setVolRenderCfg( None, False )
         self.renderer.AddVolume( self.volume )
 
     def setActiveScalars( self ):
@@ -340,7 +368,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
                                       
     def updateModule( self, **args  ):
         if self.inputModule():
-            self.inputModule().inputToAlgorithm( self.volumeMapper )
+            self.inputModule().inputToAlgorithm( self.volume.GetMapper()  )
             self.set3DOutput()
 
 #            center = self.volume.GetCenter() 
