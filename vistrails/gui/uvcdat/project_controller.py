@@ -31,23 +31,17 @@
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
 ###############################################################################
-import os, os.path, sys, traceback
+import os, os.path
+import sys
+import traceback
 import copy
 import uuid
 from PyQt4 import QtCore
 
-import api
-import core.db.action
-from core.db.io import load_vistrail
-from core.db.locator import FileLocator
 from core import debug
-from core.modules.module_registry import get_module_registry
-from core.utils import InstanceObject, UnimplementedException
-from core.uvcdat.variable import VariableWrapper
+from core.utils import UnimplementedException
 from core.uvcdat.plot_registry import get_plot_registry
 from core.uvcdat.plotmanager import get_plot_manager
-from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
-from core.vistrail.controller import VistrailController
 from core.configuration import get_vistrails_configuration
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
@@ -326,26 +320,41 @@ class ProjectController(QtCore.QObject):
             return None  
         
     def is_variable_in_use(self, name):
-        for sheetname in self.sheet_map:
-            for cell in self.sheet_map[sheetname].itervalues():
+        for sheet in self.sheet_map.itervalues():
+            for cell in sheet.itervalues():
                 if name in cell.variables:
                     return True
         return False
+
+    def get_cell(self, sheetName, row, col):
+        try:
+            return self.sheet_map[sheetName][(row, col)]
+        except KeyError:
+            return None
+
+    def set_cell(self, sheetName, row, col, cell):
+        try:
+            self.sheet_map[sheetName][(row, col)] = cell
+        except KeyError:
+            self.sheet_map[sheetName] = {(row, col): cell}
+
+    def new_empty_sheet(self, title):
+        self.sheet_map[title] = {}
+
+    def remove_sheet(self, title):
+        del self.sheet_map[title]
+        
+    def rename_sheet(self, oldtitle, newtitle):
+        self.sheet_map[newtitle] = self.sheet_map[oldtitle]
+        del self.sheet_map[oldtitle]
     
     def is_cell_ready(self, sheetName, row, col):
-        if sheetName in self.sheet_map:
-            if (row,col) in self.sheet_map[sheetName]:
-                cell = self.sheet_map[sheetName][(row,col)]
-                return cell.is_ready()
-        return False
+        cell = self.get_cell(sheetName, row, col)
+        return cell and cell.is_ready()
     
     def cell_has_plot(self, sheetName, row, col):
-        if sheetName in self.sheet_map:
-            if (row,col) in self.sheet_map[sheetName]:
-                cell = self.sheet_map[sheetName][(row,col)]
-                if len(cell.plots) > 0:
-                    return True
-        return False
+        cell = self.get_cell(sheetName, row, col)
+        return cell and cell.plots
     
     def connect_spreadsheet(self):
         ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
@@ -402,62 +411,45 @@ class ProjectController(QtCore.QObject):
     def variable_was_dropped(self, info):
         """variable_was_dropped(info: (varName, sheetName, row, col) """
         (varName, sheetName, row, col) = info
-        if sheetName in self.sheet_map:
-            if (row,col) in self.sheet_map[sheetName]:
-                cell = self.sheet_map[sheetName][(row,col)]
-                update = cell.is_ready()
-                replaced = cell.add_variable(varName)
-                self.check_update_cell(sheetName,row,col,update)
-            else:
-                self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[varName],
-                                                                      plots=[],
-                                                                      templates=[],
-                                                                      current_parent_version=0L)
+        cell = self.get_cell(sheetName, row, col)
+        if cell is not None:
+            update = cell.is_ready()
+            replaced = cell.add_variable(varName)
+            self.check_update_cell(sheetName,row,col,update)
         else:
-            self.sheet_map[sheetName] = {}
-            self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[varName],
-                                                                  plots=[],
-                                                                  templates=[],
-                                                                  current_parent_version=0L)
-        
+            self.set_cell(sheetName, row, col,
+                          ControllerCell(variables=[varName],
+                                         plots=[],
+                                         templates=[],
+                                         current_parent_version=0L))
+
     def template_was_dropped(self, info):
         """template_was_dropped(info: (varName, sheetName, row, col) """
         (template, sheetName, row, col) = info
-        if sheetName in self.sheet_map:
-            if (row,col) in self.sheet_map[sheetName]:
-                cell = self.sheet_map[sheetName][(row,col)]
-                cell.add_template(template)
-                if cell.is_ready():
-                    self.reset_workflow(cell)
-                self.check_update_cell(sheetName,row,col)
-            else:
-                self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
-                                                                      plots=[],
-                                                                      templates=[template],
-                                                                      current_parent_version=0L)
+        cell = self.get_cell(sheetName, row, col)
+        if cell is not None:
+            cell.add_template(template)
+            if cell.is_ready():
+                self.reset_workflow(cell)
+            self.check_update_cell(sheetName,row,col)
         else:
-            self.sheet_map[sheetName] = {}
-            self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
-                                                                  plots=[],
-                                                                  templates=[template],
-                                                                  current_parent_version=0L)
-        
+            self.set_cell(sheetName, row, col,
+                          ControllerCell(variables=[],
+                                         plots=[],
+                                         templates=[template],
+                                         current_parent_version=0L))
+
     def vis_was_dropped(self, info):
         """vis_was_dropped(info: (controller, version, sheetName, row, col) """
         (controller, version, sheetName, row, col, plot_type) = info
-        
-        if sheetName in self.sheet_map:
-            if (row,col) not in self.sheet_map[sheetName]:
-                self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
-                                                                      plots=[],
-                                                                      templates=[],
-                                                                      current_parent_version=0L)
-        else:
-            self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
-                                                                  plots=[],
-                                                                  templates=[],
-                                                                  current_parent_version=0L)
-        cell = self.sheet_map[sheetName][(row,col)]
+        cell = self.get_cell(sheetName, row, col)
+        if cell is None:
+            cell = ControllerCell(variables=[],
+                                  plots=[],
+                                  templates=[],
+                                  current_parent_version=0L)
+            self.set_cell(sheetName, row, col, cell)
+
         if cell.is_ready():
             self.reset_workflow(cell)
         
@@ -586,15 +578,13 @@ class ProjectController(QtCore.QObject):
                             self.emit_defined_variable(var)
         
     def clear_cell(self, sheetName, row, col):
-        if sheetName in self.sheet_map:
-            if (row,col) in self.sheet_map[sheetName]:
-                cell = self.sheet_map[sheetName][(row,col)]
-                self.reset_workflow(cell)
-                cell.variables = []
-                cell.plots = []
-                cell.templates = []
-                self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col)
-                self.update_plot_configure(sheetName, row, col)
+        cell = self.get_cell(sheetName, row, col)
+        if cell is not None:
+            cell.variables = []
+            cell.plots = []
+            cell.templates = []
+            self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col)
+            self.update_plot_configure(sheetName, row, col)
 
     def sheetsize_was_changed(self, sheet, dim):
         self.emit(QtCore.SIGNAL("sheet_size_changed"), sheet, dim)
@@ -608,23 +598,17 @@ class ProjectController(QtCore.QObject):
     def plot_was_dropped(self, info):
         """plot_was_dropped(info: (plot, sheetName, row, col) """
         (plot, sheetName, row, col) = info
-        if sheetName in self.sheet_map:
-            if (row,col) in self.sheet_map[sheetName]:
-                cell = self.sheet_map[sheetName][(row,col)]
-                update = cell.is_ready()
-                self.sheet_map[sheetName][(row,col)].plots.append(plot)
-                self.check_update_cell(sheetName,row,col, update)
-            else:
-                self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
-                                                                      plots=[plot],
-                                                                      templates=[],
-                                                                      current_parent_version=0L)
+        cell = self.get_cell(sheetName, row, col)
+        if cell is not None:
+            update = cell.is_ready()
+            cell.plots.append(plot)
+            self.check_update_cell(sheetName,row,col, update)
         else:
-            self.sheet_map[sheetName] = {}
-            self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
-                                                                  plots=[plot],
-                                                                  templates=[],
-                                                                  current_parent_version=0L)
+            self.set_cell(sheetName, row, col,
+                          ControllerCell(variables=[],
+                                         plots=[plot],
+                                         templates=[],
+                                         current_parent_version=0L))
     
     def reset_workflow(self, cell):
         pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
@@ -638,7 +622,7 @@ class ProjectController(QtCore.QObject):
                 cell.current_parent_version = action.id
         
     def request_plot_execution(self, sheetName, row, col):
-        cell = self.sheet_map[sheetName][(row,col)]
+        cell = self.get_cell(sheetName, row, col)
         if cell.is_ready():
             self.execute_plot(cell.current_parent_version)
             
@@ -659,7 +643,7 @@ class ProjectController(QtCore.QObject):
         
     def request_plot_configure(self, sheetName, row, col):
         from gui.uvcdat.plot import PlotProperties
-        cell = self.sheet_map[sheetName][(row,col)]
+        cell = self.get_cell(sheetName, row, col)
         if len(cell.plots) > 0:
             widget = self.get_plot_configuration(sheetName,row,col)
             plot_prop = PlotProperties.instance()
@@ -669,10 +653,7 @@ class ProjectController(QtCore.QObject):
             
     def update_plot_configure(self, sheetName, row, col):
         from gui.uvcdat.plot import PlotProperties
-        cell = None
-        if sheetName in self.sheet_map:
-            if (row,col) in self.sheet_map[sheetName]:
-                cell = self.sheet_map[sheetName][(row,col)]
+        cell = self.get_cell(sheetName, row, col)
         plot_prop = PlotProperties.instance()
         if cell is not None and len(cell.plots) > 0:
             widget = self.get_plot_configuration(sheetName,row,col)
@@ -684,7 +665,7 @@ class ProjectController(QtCore.QObject):
                 
     def get_python_script(self, sheetName, row, col):
         script = None
-        cell = self.sheet_map[sheetName][(row,col)]
+        cell = self.get_cell(sheetName, row, col)
         if len(cell.plots) > 0:
             helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
             script = helper.build_python_script_from_pipeline(self.vt_controller, 
@@ -703,24 +684,25 @@ class ProjectController(QtCore.QObject):
         self.emit(QtCore.SIGNAL("show_provenance"), sheetName, row, col)   
          
     def get_plot_configuration(self, sheetName, row, col):
-        cell = self.sheet_map[sheetName][(row,col)]
+        cell = self.get_cell(sheetName, row, col)
         helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
         return helper.show_configuration_widget(self, 
                                                 cell.current_parent_version,
                                                 cell.plots)
         
     def check_update_cell(self, sheetName, row, col, reuse_workflow=False):
-        try:
-            cell = self.sheet_map[sheetName][(row,col)]
+        cell = self.get_cell(sheetName, row, col)
+        if cell is not None:
             if cell.is_ready():
                 self.update_cell(sheetName, row, col, reuse_workflow)
                 if sheetName != self.current_sheetName or [row,col] != self.current_cell_coords:
                     self.current_cell_changed(sheetName, row, col)
-        except KeyError, err:
-            traceback.print_exc( 100, sys.stderr )
+        else:
+            sys.stderr.write("Error: check_update_cell: unknown cell\n")
+            traceback.print_stack(file=sys.stderr)
         
     def update_cell(self, sheetName, row, col, reuse_workflow=False):
-        cell = self.sheet_map[sheetName][(row,col)]
+        cell = self.get_cell(sheetName, row, col)
         helper = CDMSPipelineHelper
         # helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
         def get_var_module(varname):
@@ -821,35 +803,34 @@ class ProjectController(QtCore.QObject):
     def plot_properties_were_changed(self, sheetName, row, col, action):
         if not action:
             return
-        if sheetName in self.sheet_map:
-            if (row,col) in self.sheet_map[sheetName]:
-                cell = self.sheet_map[sheetName][(row,col)]
-                cell.current_parent_version = action.id
+        cell = self.get_cell(sheetName, row, col)
+        if cell is not None:
+            cell.current_parent_version = action.id
 
-                # FIXME: kludge since CDMSPipelineHelper is the only
-                # helper that supports these right now
-                plot_type = cell.plots[0].package
-                helper = self.plot_manager.get_plot_helper(plot_type)
-                if hasattr(helper, 'create_plot_objs_from_pipeline'):
-                    pipeline = self.vt_controller.vistrail.getPipeline(
-                        cell.current_parent_version)
-                    cell.plots = \
-                        helper.create_plot_objs_from_pipeline(pipeline,
-                                                              plot_type)
-                if get_vistrails_configuration().uvcdat.autoExecute:
-                    self.execute_plot(cell.current_parent_version)
-                    self.update_plot_configure(sheetName, row, col)
-                self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
-                          None, None, cell.plots[0].package, 
-                          cell.current_parent_version)
+            # FIXME: kludge since CDMSPipelineHelper is the only
+            # helper that supports these right now
+            plot_type = cell.plots[0].package
+            helper = self.plot_manager.get_plot_helper(plot_type)
+            if hasattr(helper, 'create_plot_objs_from_pipeline'):
+                pipeline = self.vt_controller.vistrail.getPipeline(
+                    cell.current_parent_version)
+                cell.plots = \
+                    helper.create_plot_objs_from_pipeline(pipeline,
+                                                          plot_type)
+            if get_vistrails_configuration().uvcdat.autoExecute:
+                self.execute_plot(cell.current_parent_version)
+                self.update_plot_configure(sheetName, row, col)
+            self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
+                      None, None, cell.plots[0].package, 
+                      cell.current_parent_version)
 
     def cell_was_changed(self, action):
         if not action:
             return
         sheetName = self.current_sheetName
         (row, col) = self.current_cell_coords
-        if sheetName in self.sheet_map:
-            cell = self.sheet_map[sheetName][(row, col)]
+        cell = self.get_cell(sheetName, row, col)
+        if cell is not None:
             cell.current_parent_version = action.id
             self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
                       None, None, cell.plots[0].package, 

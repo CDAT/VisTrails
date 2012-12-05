@@ -695,7 +695,7 @@ class Workspace(QtGui.QDockWidget):
                 item.update_icon()
                 item.setExpanded(True)
                 self.currentProject.sheet_to_item[title] = item
-                self.currentProject.controller.sheet_map[title] = {}
+                self.currentProject.controller.new_empty_sheet(title)
                 if not self.currentProject.sheetSize(title):
                     self.currentProject.sheetSizeChanged(title, (2,1))
 
@@ -722,7 +722,7 @@ class Workspace(QtGui.QDockWidget):
             self.currentProject.takeChild(index)
             del self.currentProject.sheet_to_tab[title]
             del self.currentProject.sheet_to_item[title]
-            del self.currentProject.controller.sheet_map[title]
+            self.currentProject.controller.remove_sheet(title)
             self.currentProject.sheetSizeChanged(title)
         self.currentProject.view.controller.set_changed(True)
 
@@ -746,9 +746,7 @@ class Workspace(QtGui.QDockWidget):
         self.currentProject.sheet_to_tab[newtitle] = tab
         self.currentProject.sheetSizeChanged(newtitle, dimval)
         # update controller sheetmap
-        sheetmap = self.currentProject.controller.sheet_map[oldtitle]
-        del self.currentProject.controller.sheet_map[oldtitle]
-        self.currentProject.controller.sheet_map[newtitle] = sheetmap
+        self.currentProject.controller.rename_sheet(oldtitle, newtitle)
         # Update actionannotations
         vistrail = self.currentProject.view.controller.vistrail
         for annotation in vistrail.action_annotations:
