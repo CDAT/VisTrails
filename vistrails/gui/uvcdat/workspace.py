@@ -180,11 +180,12 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         if (row, col) not in sheetItem.pos_to_item:
             return
         
-        item = sheetItem.pos_to_item[(row, col)]
-        version = item.workflowVersion
         from gui.application import get_vistrails_application
         _app = get_vistrails_application()
         _app.uvcdatWindow.showBuilderWindowActTriggered()
+        
+        item = sheetItem.pos_to_item[(row, col)]
+        version = item.workflowVersion
         self.view.version_selected(version, True, double_click=True)
         
         

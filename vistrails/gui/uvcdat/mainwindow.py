@@ -203,6 +203,8 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         _app.get_current_tab().zoomToFit()
         _app.qactions['pipeline'].trigger()
         _app.get_current_tab().zoomToFit()
+        self.get_current_project_controller().re_layout_workflow()
+        
         
     def showVistrailsConsoleActTriggered(self):
         from gui.shell import QShellDialog
