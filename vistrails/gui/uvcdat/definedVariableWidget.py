@@ -9,6 +9,29 @@ import  __main__
 from gui.uvcdat.variable import VariableProperties
 from gui.uvcdat.theme import UVCDATTheme
 
+class QDefinedVariableListWidget(uvcdatCommons.QDragListWidget):
+    def mouseMoveEvent(self,e):
+        self.mouseMoved = True
+        
+        # get selected list sorted by selectNum
+        items = sorted(self.selectedItems(), key=lambda i: i.getSelectNum())
+        if len(items) < 1:
+            return
+    
+        d = QtGui.QDrag(self)
+        m = QtCore.QMimeData()
+        
+        # pass empty byte array
+        m.setData("%s" % self.type,QtCore.QByteArray())
+        
+        # make comma separated list of var names
+        # WARNING: variable names that include commas will break this
+        varNames = map(lambda i: i.getVarName(), items)
+        m.setText(','.join(varNames))
+        
+        d.setMimeData(m)
+        d.start()
+
 class QDefinedVariableWidget(QtGui.QWidget):
     """ QDefinedVariable contains a list of the user defined variables and allows the
     user to apply functions on defined variables """
@@ -44,18 +67,33 @@ class QDefinedVariableWidget(QtGui.QWidget):
         ## vbox.addWidget(self.command_line)
 
         # Create List for defined variables and add it to the layout
-        self.varList = uvcdatCommons.QDragListWidget(type="definedVariables")
+        self.varList = QDefinedVariableListWidget(type="definedVariables")
         self.varList.setToolTip("You can Drag and Drop Variables into most 'white' boxes")
         self.varList.setAlternatingRowColors(True)
         self.varList.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
-        self.varList.itemDoubleClicked.connect(self.variableDoubleClicked)
+        self.varList.itemDoubleClicked.connect(self.variableDoubleClicked)        
         vbox.addWidget(self.varList)
 
         # Connect Signals
-        ## self.connect(self.varList, QtCore.SIGNAL('clicked(const QModelIndex&)'),
-        ##              self.selectVariableFromListEvent)
         self.connect(self.varList, QtCore.SIGNAL('itemPressed( QListWidgetItem *)'),
-                     self.selectVariableFromListEvent)
+                     self.myPressed)
+        self.connect(self.varList, QtCore.SIGNAL('itemClicked( QListWidgetItem *)'),
+                     self.myClicked)
+        self.waitingForClick = False
+        
+    def myPressed(self, item):
+        if item.isSelected():
+            self.selectVariableFromListEvent(item)
+            self.waitingForClick = False
+        else:
+            self.waitingForClick = True
+            item.setSelected(True) # wait for click to deselect
+            
+    def myClicked(self, item):
+        if self.waitingForClick and not self.varList.mouseMoved:
+            item.setSelected(False)
+            self.selectVariableFromListEvent(item)
+        self.waitingForClick = False
 
     def variableDoubleClicked(self,item):
         txt = str(item.text())
