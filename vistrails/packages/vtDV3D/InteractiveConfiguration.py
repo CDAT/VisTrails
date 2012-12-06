@@ -356,6 +356,7 @@ class ConfigurableFunction( QObject ):
         self.altMode = False
         self._persisted = True
         self.guiEnabled = False
+        self.range_bounds = None
 #        self.parameterInputEnabled = True                                      # Handlers executed at:
         self.initHandler = args.get( 'init', None )         #    end of compute()
         self.openHandler = args.get( 'open', None )         #    key press
@@ -521,7 +522,6 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.initial_range = args.get( 'initRange', None )
         self.initRefinement = args.get( 'initRefinement', [ 0.0, 1.0 ] )
         self.isValid = args.get( 'isValid', lambda: True )
-        self.range_bounds = None
         self.boundByRange = args.get( 'bound', True )
         self.adjustRangeInput = args.get( 'adjustRangeInput', -1 )
         self.widget = args.get( 'gui', None )
