@@ -1129,7 +1129,7 @@ class PersistentModule( QObject ):
 #                    cur_version = controller.current_version
 #                    ( sheetName, cell_addr ) = DV3DPipelineHelper.getCellAddress( self.pipeline )
 #                    coords = ( ord(cell_addr[0])-ord('A'), int( cell_addr[1] ) - 1 )
-#                    cell = controller.uvcdat_controller.sheet_map[ sheetName ][ coords ]
+#                    cell = controller.uvcdat_controller.get_cell(sheetName, *coords)
 #                    controller.change_selected_version( cell.current_parent_version )
 #                    print " _________________________________ Changing controller version: %d -> %d based on cell [%s]%s  _________________________________ " % ( cur_version, cell.current_parent_version, sheetName, str(coords) )
 #                    module = controller.current_pipeline.modules[ self.moduleID ] 
@@ -1155,7 +1155,7 @@ class PersistentModule( QObject ):
 #            ( sheetName, address ) = DV3DPipelineHelper.getCellAddress( self.pipeline )
 #            sheetName = sheetTabWidget.getSheetName()
 #            coords = ( ord(cell_addr[0])-ord('A'), int( cell_addr[1] ) - 1 )
-#            cell = controller.uvcdat_controller.sheet_map[ sheetName ][ coords ]
+#            cell = controller.uvcdat_controller.get_cell(sheetName, *coords)
 #            controller.change_selected_version( cell.current_parent_version )
 #            print " _________________________________ Changing controller version: %d -> %d based on cell [%s]%s  _________________________________ " % ( cur_version, cell.current_parent_version, sheetName, str(coords) )
 #        return cur_version
@@ -1181,7 +1181,7 @@ class PersistentModule( QObject ):
             if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
                 proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
             else: pcoords = None 
-            cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
+            cell = proj_controller.get_cell(sheetName, *cell_address)
             current_version = cell.current_parent_version 
             controller.change_selected_version( current_version )
             pipeline = controller.vistrail.getPipeline( current_version )

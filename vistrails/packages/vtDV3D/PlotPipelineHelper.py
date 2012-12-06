@@ -911,7 +911,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col, templates=[]):
 #        project_controller =  DV3DPipelineHelper.get_project_controller()
-#        current_cell = project_controller.sheet_map[sheetName][(row,col)]
+#        current_cell = project_controller.get_cell(sheetName, row, col)
         
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
 #        ConfigurableFunction.clear()

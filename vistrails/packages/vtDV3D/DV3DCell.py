@@ -408,8 +408,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         _app = get_vistrails_application()
         proj_controller = _app.uvcdatWindow.get_current_project_controller()
         sheetTabWidget = self.getSheetTabWidget()
-        self.sheetName = sheetTabWidget.getSheetName() 
-        if not self.sheetName in proj_controller.sheet_map: proj_controller.sheet_map[self.sheetName] = {}
+        self.sheetName = sheetTabWidget.getSheetName()
 #        isReady = proj_controller.is_cell_ready( self.sheetName, self.location.row, self.location.col )
         ispec = self.inputSpecs[ 0 ]           
         vars = ispec.metadata['vars']
@@ -418,14 +417,19 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if plot_name: plot_name = os.path.splitext( plot_name )[0]
         plot = Plot( plot_name, 'DV3D', None, vt_file )
         cell_coords = ( self.location.row, self.location.col )
-        if cell_coords in proj_controller.sheet_map[ self.sheetName ]:
-            if self.getPlot( proj_controller, cell_coords, plot_name, vt_file ) == None:
-                proj_controller.sheet_map[ self.sheetName ][ cell_coords ].plots.append(plot)
+        cell = proj_controller.get_cell(self.sheetName, *cell_coords)
+        if cell:
+            if self.getPlot(proj_controller,cell_coords, plot_name,vt_file) is None:
+                cell.plots.append(plot) # FIXME : cell rework
         else:
-            proj_controller.sheet_map[ self.sheetName ][ cell_coords ] = ControllerCell( variables=vars, plots=[plot], templates=[], current_parent_version=0L )  
+            proj_controller.set_cell(self.sheetName, cell_coords[0], cell_coords[1],
+                                     ControllerCell(variables=vars,
+                                                    plots=[plot],
+                                                    templates=[],
+                                                    current_parent_version=0L))
                       
     def getPlot( self, proj_controller, cell_coords, plot_name, vt_file ): 
-        plots =  proj_controller.sheet_map[ self.sheetName ][ cell_coords ].plots
+        plots =  proj_controller.get_cell(self.sheetName, *cell_coords).plots
         for plot in plots:
             if ( plot.name == plot_name ) and ( plot.package == 'DV3D' ) and ( plot.vt_file == vt_file ):
                 return plot
@@ -1267,15 +1271,16 @@ class QCellToolBarExportTimeSeries(QtGui.QAction):
         prj_controller = get_current_project_controller()
         
         # Access Controller Cell
-        old_cell = prj_controller.sheet_map[sheetName][(row,col)]
+        old_cell = prj_controller.get_cell(sheetName, row, col)
     
         # Use project controller to create a new plot in a new cell
         new_row, new_col = row, col+1
-        if (new_row, new_col) not in prj_controller.sheet_map[sheetName]:
+        new_cell = prj_controller.get_cell(sheetName, new_row, new_col)
+        if new_cell is None:
             #calling adjustSheetDimensions from vtkUtilities
             adjustSheetDimensions(new_row, new_col)
-            prj_controller.sheet_map[sheetName][(new_row, new_col)] = ControllerCell() 
-        new_cell = prj_controller.sheet_map[sheetName][(new_row, new_col)]
+            new_cell = ControllerCell() 
+            prj_controller.set_cell(sheetName, new_row, new_col, new_cell)
 
         # create new variable
         coords = PM_VolumeSlicer.global_coords;
