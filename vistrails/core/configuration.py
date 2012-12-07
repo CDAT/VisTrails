@@ -201,7 +201,7 @@ def default():
         'multiHeads': False,
         'noDebugPopups': False,
         'nologger': True,
-        'output': 'uvcdatsession.log',
+        'output': os.devnull,
         'packageDirectory': (None, str),
         'pythonPrompt': False,
         'recentVistrailList': (None, str),
