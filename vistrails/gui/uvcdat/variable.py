@@ -391,26 +391,38 @@ class VariableProperties(QtGui.QDialog):
         self.setFileName(str(item.text()))
 
     def updateCDMSFile(self, fn):
-        if fn[:7]=="http://":
-            ## Maybe add something for my proxy errors here?
-            if fn in CdmsCache.d:
-                #print "Using cache for %s" % fn
-                self.cdmsFile = CdmsCache.d[fn]
+        from cdms2.dataset import CDMSError
+        try:
+            if fn[:7]=="http://":
+                ## Maybe add something for my proxy errors here?
+                if fn in CdmsCache.d:
+                    #print "Using cache for %s" % fn
+                    self.cdmsFile = CdmsCache.d[fn]
+                else:
+                    #print "Loading file %s" % fn
+                    self.cdmsFile = CdmsCache.d[fn] = cdms2.open(fn)
+                self.root.record("## Open file: %s" % fn)
+                self.root.record("cdmsFile = cdms2.open('%s')" % fn)
             else:
-                #print "Loading file %s" % fn
-                self.cdmsFile = CdmsCache.d[fn] = cdms2.open(fn)
-            self.root.record("## Open file: %s" % fn)
-            self.root.record("cdmsFile = cdms2.open('%s')" % fn)
-        else:
-            if fn in CdmsCache.d:
-                #print "Using cache for %s" % fn
-                self.cdmsFile = CdmsCache.d[fn]
-            else:
-                #print "Loading file %s" % fn
-                self.cdmsFile = CdmsCache.d[fn] = cdms2.open(fn)
-            self.root.record("## Open file: %s" % fn)
-            self.root.record("cdmsFile = cdms2.open('%s')" % fn)
-        self.updateVariableList()
+                if fn in CdmsCache.d:
+                    #print "Using cache for %s" % fn
+                    self.cdmsFile = CdmsCache.d[fn]
+                else:
+                    #print "Loading file %s" % fn
+                    self.cdmsFile = CdmsCache.d[fn] = cdms2.open(fn)
+                self.root.record("## Open file: %s" % fn)
+                self.root.record("cdmsFile = cdms2.open('%s')" % fn)
+            self.updateVariableList()
+        except CDMSError:
+            print >> sys.stderr, "Failed to open file with CDMS."
+            fnm = self.fileEdit.text()
+            for i in range(self.historyList.count()):
+                it = self.historyList.item(i)
+                if it is not None and it.text()==fnm:
+                    self.historyList.takeItem(i)
+                    break
+            self.fileEdit.setText("")
+        
 
     def updateOtherPlots(self, namelist):
         self.emit(QtCore.SIGNAL('updateOtherPlots'), namelist)
