@@ -178,7 +178,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             renderMode = vtk.vtkSmartVolumeMapper.RayCastRenderMode
         elif self.volRenderConfig[0] == 'Texture3D': 
             renderMode = vtk.vtkSmartVolumeMapper.TextureRenderMode            
-        self.volumeMapper.SetRequestedRenderMode( renderMode )              
+        self.volumeMapper.SetRequestedRenderMode( renderMode )
+#        self.volumeMapper.SetCropping( 1 )               
         if doRender: self.render() 
 
     def getZScale( self ):
