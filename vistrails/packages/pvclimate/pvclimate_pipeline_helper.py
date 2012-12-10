@@ -161,7 +161,7 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
                 if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
                     conn = controller.create_connection(var_module, 'self',
-                                                        plot_module, 'variable')
+                                                        cell_module, 'cdms_variable')
                 else:
                     conn = controller.create_connection(var_module, 'self',
                                                         cell_module, 'variable')

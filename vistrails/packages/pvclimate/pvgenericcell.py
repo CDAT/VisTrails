@@ -26,6 +26,7 @@ import StringIO
 from pvrepresentationbase import *
 
 from pvvariable import *
+from packages.uvcdat_cdms.init import CDMSVariable
 
 class PVGenericCell(SpreadsheetCell):
     def __init__(self):
@@ -39,7 +40,10 @@ class PVGenericCell(SpreadsheetCell):
         Dispatch the vtkRenderer to the actual rendering widget
         """
         # Fetch input variable
-        variables = self.forceGetInputListFromPort('variable')
+        pv_variables = self.forceGetInputListFromPort('variable')
+        
+        # Fetch input variable
+        cdms_variables = self.forceGetInputListFromPort('cdms_variable')
 
         # Fetch slice offset from input port
         if self.hasInputFromPort("location"):
@@ -54,7 +58,7 @@ class PVGenericCell(SpreadsheetCell):
         if self.representations is None:
             return;
 
-        self.cellWidget = self.displayAndWait(QPVIsoSurfaceWidget, (self.location, variables, self.representations))
+        self.cellWidget = self.displayAndWait(QPVIsoSurfaceWidget, (self.location, pv_variables, cdms_variables, self.representations))
 
     def persistParameterList( self, parameter_list, **args ):
         print "Getting Something"
@@ -91,16 +95,19 @@ class QPVIsoSurfaceWidget(QVTKWidget):
         del self.view.Representations[:]
 
         # Fetch variables from the input port
-        (location, variables, representations) = inputPorts
-        for var in variables:
+        (location, pv_variables, cdms_variables, representations) = inputPorts
+        
+        for var in pv_variables:
             reader = var.get_reader()
-
             for rep in representations:
                 rep.set_reader(reader)
-                rep.set_variables(variables)
-                rep.set_view(self.view)
-                rep.execute()
-
+        
+        for rep in representations:   
+            rep.set_variables(pv_variables)
+            rep.set_cdms_variables(cdms_variables)         
+            rep.set_view(self.view)
+            rep.execute()
+                    
         # Set view specific properties
         self.view.CenterAxesVisibility = 0
         self.view.Background = [0.5, 0.5, 0.5]
@@ -142,6 +149,7 @@ def register_self():
     registry.add_module(PVGenericCell, configureWidgetType=PVClimateCellConfigurationWidget)
     registry.add_input_port(PVGenericCell, "Location", CellLocation)
     registry.add_input_port(PVGenericCell, "variable", PVVariable)
+    registry.add_input_port(PVGenericCell, "cdms_variable", CDMSVariable)    
 #    registry.add_input_port(PVGenericCell, "representation", PVRepresentationBase)
     registry.add_input_port(PVGenericCell, "representation", [])
     registry.add_output_port(PVGenericCell, "self", PVGenericCell)

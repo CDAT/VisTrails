@@ -27,6 +27,9 @@ class PVContourRepresentation(PVRepresentationBase):
         self.contour_var_type = type
 
     def execute(self):
+        for cdms_var in self.cdms_variables:
+            print 'cdms variable is ', cdms_var
+
         for var in self.variables:
             reader = var.get_reader()
             self.contour_var_name = var.get_variable_name()

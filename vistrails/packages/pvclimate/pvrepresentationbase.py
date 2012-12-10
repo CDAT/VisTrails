@@ -13,6 +13,7 @@ class PVRepresentationBase(Module):
         self.view = None
         self.reader = None;
         self.variables = None;
+        self.cdms_variables = None;
         self.project_sphere = None;
 
     def compute(self):
@@ -27,6 +28,9 @@ class PVRepresentationBase(Module):
 
     def set_variables(self, variables):
         self.variables = variables
+        
+    def set_cdms_variables(self, cdms_variables):
+        self.cdms_variables = cdms_variables
 
     def get_project_sphere_filter(self):
         # Import paraview
