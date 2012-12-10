@@ -34,14 +34,6 @@ defaultMapCut = -180
 SLIDER_MAX_VALUE = 100
 MAX_IMAGE_SIZE = 1000000
 
-def get_coords_from_cell_address( row, col):
-    try:
-        col = ord(col)-ord('A')
-        row = int(row)-1
-        return ( col, row )
-    except:
-        raise Exception('ColumnRowAddress format error: %s ' % str( [ row, col ] ) )
-
 def parse_cell_address( address ):
     try:
         if len(address)>1:
@@ -447,9 +439,12 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             
         if address:
 #            print "Setting Cell Address from Input: %s " % ( address )
-            address = address.replace(' ', '').upper()
-            address = address.split('!')[-1]
-            cell_coordinates = parse_cell_address( address )
+            if isList( address ):
+                cell_coordinates = ( int(address[0]), int(address[1]) )
+            else:    
+                address = address.replace(' ', '').upper()
+                address = address.split('!')[-1]
+                cell_coordinates = parse_cell_address( address )
         else:
             cell_coordinates = HyperwallManager.getInstance().getCellCoordinatesForModule( moduleId )
             if cell_coordinates == None: return None

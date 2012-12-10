@@ -70,7 +70,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.contourLineMapperer = None
         self.contours = None
         self.NumContours = 10.0
-        self.showOutlineMap = False
+        self.showOutlineMap = True
         try:
             controller = api.get_current_controller()
 #            print " Volume Slicer init, id = %x " % id(self)

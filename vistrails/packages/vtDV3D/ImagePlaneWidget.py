@@ -280,7 +280,7 @@ class ImagePlaneWidget:
             self.planeActor = vtk.vtkActor()
             self.planeActor.SetMapper(planeMapper)
             self.planeActor.SetTexture(atext)
-            self.planeActor.VisibilityOff()
+            self.planeActor.VisibilityOn()
             self.CurrentRenderer.AddViewProp(self.planeActor)
 
         self.Interactor.Render()
