@@ -876,17 +876,20 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
 
             
         elif mimeData.hasFormat("definedVariables"):
-            varName = str(mimeData.text()).split()[1]
             event.setDropAction(QtCore.Qt.CopyAction)
             event.accept()
             localPos = self.sheet.viewport().mapFromGlobal(QtGui.QCursor.pos())
             row = self.sheet.rowAt(localPos.y())
             col = self.sheet.columnAt(localPos.x())
             sheetName = str(self.tabWidget.tabText(self.tabWidget.indexOf(self)))
+            
+            varNames = str(mimeData.text()).split(',')
             #print varName, row, col
-            self.emit(QtCore.SIGNAL("dropped_variable"), (varName, sheetName, 
-                                                          row, col))
-            self.droppedVariable(varName, row, col)
+            for varName in varNames:
+                self.emit(QtCore.SIGNAL("dropped_variable"), (varName, sheetName, 
+                                                              row, col))
+                self.droppedVariable(varName, row, col)
+            
             self.sheet.selectCell(row, col, False)
 
         elif mimeData.hasFormat("plotType"):
