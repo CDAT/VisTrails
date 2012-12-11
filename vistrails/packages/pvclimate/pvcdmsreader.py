@@ -115,13 +115,14 @@ class PVCDMSReader():
         image_point_data = image_data.GetPointData()        
         image_point_data.SetScalars(vtk_data_array)
         
-#        writer = vtk.vtkDataSetWriter()
-#        writer.SetFileName("/home/aashish/Desktop/foo.vtk")
-#        writer.SetInput(image_data)
-#        writer.Write()
+        writer = vtk.vtkDataSetWriter()
+        writer.SetFileName("/home/aashish/Desktop/foo.vtk")
+        writer.SetInput(image_data)
+        writer.Write()
         
-        print image_data
+        image_data_copy = vtk.vtkImageData()
+        image_data_copy.DeepCopy(image_data)
                
-        return image_data
+        return image_data_copy
          
         
