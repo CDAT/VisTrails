@@ -1,6 +1,7 @@
 
 # Import base class module
 from pvrepresentationbase import *
+from pvcdmsreader import *
 
 # Import registry
 from core.modules.module_registry import get_module_registry
@@ -29,6 +30,9 @@ class PVContourRepresentation(PVRepresentationBase):
     def execute(self):
         for cdms_var in self.cdms_variables:
             print 'cdms variable is ', cdms_var
+            reader = PVCDMSReader()            
+            time_values = [None, 1, True]
+            reader.convert(cdms_var, time=time_values)            
 
         for var in self.variables:
             reader = var.get_reader()
