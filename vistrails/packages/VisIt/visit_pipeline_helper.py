@@ -42,7 +42,7 @@ class VisItPipelineHelper(PlotPipelineHelper):
             return visitcell.VisItCellConfigurationWidget(cell[0],controller)
 
     @staticmethod
-    def build_plot_pipeline_action(controller, version, var_modules, plots,row, col, template=None):
+    def build_plot_pipeline_action(controller, version, var_modules, plots,row, col):
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
         #plot_type = plots[0].parent
@@ -340,7 +340,8 @@ class VisItPipelineHelper(PlotPipelineHelper):
         # Update project controller cell information
         pipeline = controller.vistrail.getPipeline(action.id)
         plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
-        cell.variables =[]
+        for plot in cell.plots:
+            plot.variables = []
         #for plot in plot_modules:
         #    vars = CDMSPipelineHelper.find_variables_connected_to_plot_module(controller,
         #                                                               pipeline,

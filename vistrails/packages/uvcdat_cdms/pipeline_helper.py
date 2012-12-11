@@ -234,7 +234,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def create_actions_from_plot_objs(controller, var_modules, cell_module, 
-                                      plot_objs, templates, added_vars, istart=0):
+                                      plot_objs, added_vars, istart=0):
         reg = get_module_registry()
         ops = []
         plot_modules = []
@@ -249,10 +249,8 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             desc = plot_descriptor.module
             plot_module = controller.create_module_from_descriptor(plot_descriptor)
             plot_functions =  [('graphicsMethodName', [plot_gm])]
-            if i < len(templates):
-                plot_functions.append(('template', [templates[i]]))
-            elif i >= len(templates) and len(templates) > 0:
-                plot_functions.append(('template', [templates[-1]]))
+            if plot_obj.template is not None:
+                plot_functions.append(('template', plot_obj.template))
 
             initial_values = desc.get_initial_values(plot_gm)
             for attr in desc.gm_attributes:
@@ -276,14 +274,13 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_objs, 
-                                   row, col, templates=[]):
+                                   row, col):
         """build_plot_pipeline_action(controller: VistrailController,
                                       version: long,
                                       var_modules: [list of modules],
                                       plot_objs: [list of Plot objects],
                                       row: int,
-                                      col: int,
-                                      templates: [list of str]) -> Action 
+                                      col: int) -> Action 
         
         This function will create the complete workflow and add it to the
         provenance. You should make sure to update the state of the controller
@@ -306,8 +303,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         ops2 = CDMSPipelineHelper.create_actions_from_plot_objs(controller, 
                                                                 var_modules, 
                                                                 cell_module, 
-                                                                plot_objs, 
-                                                                templates,
+                                                                plot_objs,
                                                                 added_vars)
         ops.extend(ops2)
         loc_module = controller.create_module_from_descriptor(
@@ -341,14 +337,13 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         
     @staticmethod
     def update_plot_pipeline_action(controller, version, var_modules, plot_objs,
-                                    row, col, templates=[]):
+                                    row, col):
         """update_plot_pipeline_action(controller: VistrailController,
                                       version: long,
                                       var_modules: [list of modules],
                                       plot_objs: [list of Plot objects],
                                       row: int,
-                                      col: int,
-                                      templates: [list of str]) -> Action 
+                                      col: int) -> Action 
         
         This function will update the workflow and add it to the
         provenance. It will reuse the plot configurations that are already in 
@@ -365,7 +360,6 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         added_vars = []
         if controller is None:
             controller = api.get_current_controller()
-            version = 0L
         # action = CDMSPipelineHelper.remove_variables_from_pipeline_action(controller, version)
         # version = action.id
         version = controller.current_version
@@ -378,7 +372,6 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                                                                 var_modules, 
                                                                 cell_module, 
                                                                 plot_objs, 
-                                                                templates,
                                                                 added_vars,
                                                                 istart)
         ops.extend(ops2)
@@ -472,19 +465,20 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         # Update project controller cell information
         pipeline = controller.vistrail.getPipeline(action.id)
         plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
-        cell.variables =[]
+        
+        cell.plots = []
+        for pl_module in plot_modules:
+            gmName = CDMSPipelineHelper.get_graphics_method_name_from_module(pl_module)
+            ptype = CDMSPipelineHelper.get_plot_type_from_module(pl_module)
+            cell.add_plot(get_plot_manager().get_plot(plot_type, ptype, gmName))
+            
         for plot in plot_modules:
             vars = CDMSPipelineHelper.find_variables_connected_to_plot_module(controller, 
                                                                        pipeline, 
                                                                        plot.id)
             for var in vars:
-                cell.variables.append(CDMSPipelineHelper.get_variable_name_from_module(var))
+                cell.add_variable(CDMSPipelineHelper.get_variable_name_from_module(var))
             
-        cell.plots = []
-        for pl_module in plot_modules:
-            gmName = CDMSPipelineHelper.get_graphics_method_name_from_module(pl_module)
-            ptype = CDMSPipelineHelper.get_plot_type_from_module(pl_module)
-            cell.plots.append(get_plot_manager().get_plot(plot_type, ptype, gmName))
         return action
     
     @staticmethod
@@ -519,20 +513,19 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                 loc_module.functions[i].params[0].strValue = str(col+1)
                     
         # Update project controller cell information
-        cell.variables = []
+        cell.plots = []
+        for pl_module in plot_modules:
+            gmName = CDMSPipelineHelper.get_graphics_method_name_from_module(pl_module)
+            ptype = CDMSPipelineHelper.get_plot_type_from_module(pl_module)
+            cell.add_plot(get_plot_manager().get_plot(plot_type, ptype, gmName))
+            
         for plot in plot_modules:
             vars = CDMSPipelineHelper.find_variables_connected_to_plot_module(controller, 
                                                                        pipeline, 
                                                                        plot.id)
             for var in vars:
-                cell.variables.append(CDMSPipelineHelper.get_variable_name_from_module(var))
+                cell.add_variable(CDMSPipelineHelper.get_variable_name_from_module(var))
             
-        cell.plots = []
-        for pl_module in plot_modules:
-            gmName = CDMSPipelineHelper.get_graphics_method_name_from_module(pl_module)
-            ptype = CDMSPipelineHelper.get_plot_type_from_module(pl_module)
-            cell.plots.append(get_plot_manager().get_plot(plot_type, ptype, gmName))
-        
 #    @staticmethod
 #    def update_pipeline_action(controller, version, plot_modules):
 #        pipeline = controller.vistrail.getPipeline(version)

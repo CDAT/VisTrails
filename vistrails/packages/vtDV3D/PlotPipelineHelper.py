@@ -909,7 +909,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return VistrailsApplication.uvcdatWindow.current_controller
                                         
     @staticmethod
-    def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col, templates=[]):
+    def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col):
 #        project_controller =  DV3DPipelineHelper.get_project_controller()
 #        current_cell = project_controller.sheet_map[sheetName][(row,col)]
         
@@ -1145,7 +1145,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         
         #this will update the variables
         for i in range(plot_obj.varnum):
-            cell.variables.append(aliases[plot_obj.vars[i]])
+            cell.add_variable(aliases[plot_obj.vars[i]])
             
         #get the most recent action that is not None
         if len(actions) > 0:
@@ -1196,12 +1196,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
             
             # Update project controller cell information    
-            cell.variables = []
+            #cell.variables = []
             #FIXME: this doesn't work as expected... DV3D should provide a way 
             #to find the variables connected to a plot module so that only the
             # operation or variable connected is added.
+            for plot in cell.plots:
+                plot.variables = []
             for var in var_modules:
-                cell.variables.append(DV3DPipelineHelper.get_variable_name_from_module(var))
+                cell.add_variable(DV3DPipelineHelper.get_variable_name_from_module(var))
         else:
             print "Error: Could not find DV3D plot type based on the pipeline"
             print "Visualizations can't be loaded."            

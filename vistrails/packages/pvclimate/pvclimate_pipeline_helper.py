@@ -68,7 +68,7 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         return pipeline.modules[pipeline.get_outputPort_modules(representation.id, 'self')[0]]
 
     @staticmethod
-    def build_plot_pipeline_action(controller, version, var_modules, plots,row, col, template=None):
+    def build_plot_pipeline_action(controller, version, var_modules, plots,row, col):
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
         #print 'Calling build_plot_pipWeline_action'
@@ -324,7 +324,8 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         # Update project controller cell information
         pipeline = controller.vistrail.getPipeline(action.id)
         plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
-        cell.variables =[]
+        for plot in cell.plots:
+            plot.variables =[]
         #for plot in plot_modules:
         #    vars = CDMSPipelineHelper.find_variables_connected_to_plot_module(controller,
         #                                                               pipeline,

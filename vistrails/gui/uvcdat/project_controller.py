@@ -328,7 +328,7 @@ class ProjectController(QtCore.QObject):
     def is_variable_in_use(self, name):
         for sheetname in self.sheet_map:
             for cell in self.sheet_map[sheetname].itervalues():
-                if name in cell.variables:
+                if name in cell.variables():
                     return True
         return False
     
@@ -406,7 +406,7 @@ class ProjectController(QtCore.QObject):
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
                 update = cell.is_ready()
-                replaced = cell.add_variable(varName)
+                cell.add_variable(varName)
                 self.check_update_cell(sheetName,row,col,update)
             else:
                 self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[varName],
@@ -493,7 +493,7 @@ class ProjectController(QtCore.QObject):
         not defined. Sometimes it is necessary to reconstruct the variable 
         because some workflows are not using the Variable modules yet. """
         not_found = False
-        for var in cell.variables:
+        for var in cell.variables():
             if var not in self.defined_variables:
                 not_found = True
         if not_found:
@@ -556,7 +556,7 @@ class ProjectController(QtCore.QObject):
                 #construct the variables based on the alias values (Emanuele)
                 if cell.plots[0].package == "PVClimate":
                     from packages.pvclimate.pvvariable import PVVariable
-                    for i in range(len(cell.variables)):
+                    for i in range(len(cell.plots[0].vars)):
                         filename = pipeline.get_alias_str_value(cell.plots[0].files[i])
                         varname = pipeline.get_alias_str_value(cell.plots[0].vars[i])
                         if varname not in self.defined_variables:
@@ -571,7 +571,7 @@ class ProjectController(QtCore.QObject):
                     if cell.plots[0].serializedConfigAlias:
                         cell.plots[0].unserializeAliases(aliases)
                         
-                    for i in range(len(cell.variables)):
+                    for i in range(len(cell.plots[0].vars)):
                         filename = aliases[ cell.plots[0].files[i] ]
                         if not os.path.isfile(filename):
                             filename = aliases.get( "%s.url" % cell.plot.files[i], filename )
@@ -590,9 +590,9 @@ class ProjectController(QtCore.QObject):
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
                 self.reset_workflow(cell)
-                cell.variables = []
+                cell.variableQ = []
                 cell.plots = []
-                cell.templates = []
+                cell.templateQ = []
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col)
                 self.update_plot_configure(sheetName, row, col)
 
@@ -718,46 +718,47 @@ class ProjectController(QtCore.QObject):
                     self.current_cell_changed(sheetName, row, col)
         except KeyError, err:
             traceback.print_exc( 100, sys.stderr )
+            
+    def get_var_module(self, varname, cell, helper):
+        if varname not in self.computed_variables:
+            var = self.defined_variables[varname]
+            module = var.to_module(self.vt_controller)
+            self.vt_controller.change_selected_version(
+                cell.current_parent_version)
+            self.vt_controller.add_module_action(module)
+            cell.current_parent_version = self.vt_controller.current_version
+            return module
+        else:
+            (_vars, txt, st, name) = self.computed_variables[varname] 
+            opvar = None
+            if varname in self.computed_variables_ops:
+                opvar = self.computed_variables_ops[varname]   
+            varms = [] 
+            for v in _vars:
+                varms.append(self.get_var_module(v,cell))
+
+            build_op_pipeline = helper.build_variable_operation_pipeline
+            res = build_op_pipeline(self.vt_controller,
+                                    cell.current_parent_version,
+                                    varms,
+                                    txt,
+                                    st,
+                                    varname,
+                                    opvar)
+            if type(res) == type((1,)):
+                actions = res[1]
+                action = actions[-1]
+                if action:
+                    cell.current_parent_version = action.id 
+                varm = res[0]
+            else:
+                varm = res
+            return varm
         
     def update_cell(self, sheetName, row, col, reuse_workflow=False):
         cell = self.sheet_map[sheetName][(row,col)]
         helper = CDMSPipelineHelper
         # helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
-        def get_var_module(varname):
-            if varname not in self.computed_variables:
-                var = self.defined_variables[varname]
-                module = var.to_module(self.vt_controller)
-                self.vt_controller.change_selected_version(
-                    cell.current_parent_version)
-                self.vt_controller.add_module_action(module)
-                cell.current_parent_version = self.vt_controller.current_version
-                return module
-            else:
-                (_vars, txt, st, name) = self.computed_variables[varname] 
-                opvar = None
-                if varname in self.computed_variables_ops:
-                    opvar = self.computed_variables_ops[varname]   
-                varms = [] 
-                for v in _vars:
-                    varms.append(get_var_module(v))
-
-                build_op_pipeline = helper.build_variable_operation_pipeline
-                res = build_op_pipeline(self.vt_controller,
-                                        cell.current_parent_version,
-                                        varms,
-                                        txt,
-                                        st,
-                                        varname,
-                                        opvar)
-                if type(res) == type((1,)):
-                    actions = res[1]
-                    action = actions[-1]
-                    if action:
-                        cell.current_parent_version = action.id 
-                    varm = res[0]
-                else:
-                    varm = res
-                return varm
         if not reuse_workflow:
             self.reset_workflow(cell)
         else:
@@ -766,15 +767,20 @@ class ProjectController(QtCore.QObject):
                                    cell.current_parent_version)
             if action:
                 cell.current_parent_version = action.id
-        vars = []
-        for v in cell.variables:
-            vars.append(v)
+#        vars = []
+#        for v in cell.variables:
+#            vars.append(v)
         
-        if len(cell.plots) > 0 and cell.has_enough_variables():
+        if cell.is_ready():
+            #get var modules from plots in order without duplicates
             var_modules = []
-            for var in vars:
-                res = get_var_module(var)
-                var_modules.append(res)
+            var_dict = {}
+            for plot in cell.plots:
+                if plot.varnum == len(plot.variables):
+                    for var in plot.variables:
+                        if var not in var_dict:
+                            var_dict[var] = self.get_var_module(var, cell, helper)
+                        var_modules.append(var_dict[var])
             
             self.update_workflow(var_modules, cell, sheetName, row, col, 
                                  reuse_workflow)
@@ -783,28 +789,36 @@ class ProjectController(QtCore.QObject):
             
     def update_workflow(self, var_modules, cell, sheetName, row, column, 
                         reuse_workflow=False):
+        
+        #only build pipeline for plots that have all needed vars
+        ready_plots = []
+        for plot in cell.plots:
+            if plot.varnum == len(plot.variables):
+                ready_plots.append(plot)
+                
+        
         #Assuming that all plots in a cell are from the same package
-        helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
+        helper = self.plot_manager.get_plot_helper(ready_plots[0].package)
         
         if not reuse_workflow:
             action = helper.build_plot_pipeline_action(self.vt_controller, 
                                                        cell.current_parent_version, 
-                                                       var_modules, cell.plots,
-                                                       row, column, cell.templates)
+                                                       var_modules, ready_plots,
+                                                       row, column)
         else:
             try:
                 action = helper.update_plot_pipeline_action(self.vt_controller, 
                                                             cell.current_parent_version,
-                                                            var_modules, cell.plots,
-                                                            row, column, cell.templates)
+                                                            var_modules, ready_plots,
+                                                            row, column)
             except UnimplementedException:
                 # the pipeline helper does not support replacing variables.
                 # we will call build_plot_pipeline_action but need to reset the workflow first
                 self.reset_workflow(cell)
                 action = helper.build_plot_pipeline_action(self.vt_controller, 
                                                        cell.current_parent_version, 
-                                                       var_modules, cell.plots,
-                                                       row, column, cell.templates)
+                                                       var_modules, ready_plots,
+                                                       row, column)
         #print '### setting row/column:', row, column
         #notice that at this point the action was already performed by the helper
         # we need only to update the current parent version of the cell and 
