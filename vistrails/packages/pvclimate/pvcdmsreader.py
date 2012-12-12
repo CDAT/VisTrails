@@ -197,13 +197,13 @@ class PVCDMSReader():
         # @note: What's the difference between gridOrigin and outputOrigin
         image_data.SetScalarTypeToFloat()
 
-        origin = var_data_specs['gridOrigin']
+        origin = var_data_specs['outputOrigin']
         image_data.SetOrigin(origin[0], origin[1], origin[2])
 
         spacing = var_data_specs['gridSpacing']
         image_data.SetSpacing(spacing[0], spacing[1], spacing[2])
 
-        extents = var_data_specs['gridExtent']
+        extents = var_data_specs['outputExtent']
         extents = image_data.SetExtent(extents[0], extents[1], extents[2], extents[3], extents[4], extents[5])
         no_tuples = data_array.size
 
