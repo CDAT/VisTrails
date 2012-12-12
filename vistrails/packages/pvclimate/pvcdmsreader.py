@@ -136,15 +136,10 @@ class PVCDMSReader():
     def convert(self, cdms_var, **args):
         '''Convert a cdms data to vtk image data
         
-        '''
-        
-        # @todo: Check if cdms_var is not none and if none check 
-        # appropriately
-        print 'cdms_var is ', cdms_var
+        '''     
         trans_var = cdms_var.var                
         level_axis = trans_var.getLevel()
-        time_axis = trans_var.getTime()
-        npts = -1
+        time_axis = trans_var.getTime()        
         
         if level_axis:
             values = level_axis.getValue()
@@ -209,13 +204,9 @@ class PVCDMSReader():
         image_data.SetSpacing(spacing[0], spacing[1], spacing[2])
         
         extents = var_data_specs['gridExtent']
-#        image_data.SetDimensions(data_shape[0], data_shape[2], data_shape[1])
         extents = image_data.SetExtent(extents[0], extents[1], extents[2], extents[3], extents[4], extents[5])  
-        no_tuples = data_array.size
-        
-        print 'data_array ', data_array
-        print 'data_array type', type(data_array)
-        
+        no_tuples = data_array.size        
+                
         # @note: Assuming float right now
         vtk_data_array = vtk.vtkFloatArray()
         
