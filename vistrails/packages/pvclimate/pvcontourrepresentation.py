@@ -53,7 +53,7 @@ class PVContourRepresentation(PVRepresentationBase):
             ProgrammableSource1.OutputDataSetType = 'vtkImageData'
             ProgrammableSource1.PythonPath = ''
 
-#            #make the scripts that it runs in pipeline RI and RD passes
+#            # Make the scripts that it runs in pipeline RI and RD passes
             ProgrammableSource1.ScriptRequestInformation = """
 executive = self.GetExecutive()
 outInfo = executive.GetOutputInformation(0)

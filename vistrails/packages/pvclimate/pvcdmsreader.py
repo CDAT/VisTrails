@@ -212,7 +212,6 @@ class PVCDMSReader():
 
         # @note: Assuming number of components always equal to 1
         vtk_data_array.SetNumberOfComponents(1)
-
         vtk_data_array.SetNumberOfTuples(no_tuples)
         vtk_data_array.SetVoidArray(data_array, data_array.size, 1)
         vtk_data_array.SetName(cdms_var.varNameInFile)
