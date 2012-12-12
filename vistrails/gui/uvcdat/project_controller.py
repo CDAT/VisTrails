@@ -612,7 +612,7 @@ class ProjectController(QtCore.QObject):
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
                 update = cell.is_ready()
-                self.sheet_map[sheetName][(row,col)].plots.append(plot)
+                cell.add_plot(plot)
                 self.check_update_cell(sheetName,row,col, update)
             else:
                 self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
@@ -719,7 +719,9 @@ class ProjectController(QtCore.QObject):
         except KeyError, err:
             traceback.print_exc( 100, sys.stderr )
             
-    def get_var_module(self, varname, cell, helper):
+    def get_var_module(self, varname, cell, helper, var_dict={}):
+        if varname in var_dict:
+            return var_dict[varname]
         if varname not in self.computed_variables:
             var = self.defined_variables[varname]
             module = var.to_module(self.vt_controller)
@@ -727,6 +729,7 @@ class ProjectController(QtCore.QObject):
                 cell.current_parent_version)
             self.vt_controller.add_module_action(module)
             cell.current_parent_version = self.vt_controller.current_version
+            var_dict[varname] = module
             return module
         else:
             (_vars, txt, st, name) = self.computed_variables[varname] 
@@ -735,7 +738,7 @@ class ProjectController(QtCore.QObject):
                 opvar = self.computed_variables_ops[varname]   
             varms = [] 
             for v in _vars:
-                varms.append(self.get_var_module(v,cell))
+                varms.append(self.get_var_module(v, cell, helper, var_dict))
 
             build_op_pipeline = helper.build_variable_operation_pipeline
             res = build_op_pipeline(self.vt_controller,
@@ -753,6 +756,7 @@ class ProjectController(QtCore.QObject):
                 varm = res[0]
             else:
                 varm = res
+            var_dict[varname] = varm
             return varm
         
     def update_cell(self, sheetName, row, col, reuse_workflow=False):
@@ -778,9 +782,8 @@ class ProjectController(QtCore.QObject):
             for plot in cell.plots:
                 if plot.varnum == len(plot.variables):
                     for var in plot.variables:
-                        if var not in var_dict:
-                            var_dict[var] = self.get_var_module(var, cell, helper)
-                        var_modules.append(var_dict[var])
+                        self.get_var_module(var, cell, helper, var_dict)
+                    var_modules.append(var_dict[var])
             
             self.update_workflow(var_modules, cell, sheetName, row, col, 
                                  reuse_workflow)

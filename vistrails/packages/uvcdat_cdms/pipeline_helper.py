@@ -208,68 +208,56 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         return (op_module, actions)
                 
     @staticmethod
-    def connect_variables_to_plots(controller, var_modules, plot_modules):
+    def connect_variables_to_plots(controller, var_modules, plot_obj, plot_module):
         ops = []
-        var_idx = 0
-        for i, plot_module in enumerate(plot_modules):
-            plot_type = plot_module.module_descriptor.module.plot_type
-            var_num = int(gmInfos[plot_type]["nSlabs"])
-            for j in xrange(var_num):
-                if var_idx < len(var_modules):
-                    idx = j
-                else:
-                    # this is not quite right, but this what was done before
-                    # it is not clear what to do when two variables
-                    # are missing for example
-                    idx = -1
-
-                oport = CDMSPipelineHelper.get_output_port_name(
-                    var_modules[idx].module_descriptor.module)
-                iport = CDMSPipelineHelper.get_plot_input_port_name(var_num, j)
-                conn = controller.create_connection(var_modules[idx], oport,
-                                                    plot_module, iport)
-                ops.append(('add', conn))
-                var_idx += 1
+        for i, varName in enumerate(plot_obj.variables):
+            for var_module in var_modules:
+                if varName == CDMSPipelineHelper.get_variable_name_from_module(var_module):
+                    oport = CDMSPipelineHelper.get_output_port_name(
+                        var_module.module_descriptor.module)
+                    iport = CDMSPipelineHelper.get_plot_input_port_name(plot_obj.varnum, i)
+                    var_conn = controller.create_connection(var_module, oport,
+                                                            plot_module, iport)
+                    ops.append(('add', var_conn))
+                    break
         return ops
 
     @staticmethod
-    def create_actions_from_plot_objs(controller, var_modules, cell_module, 
-                                      plot_objs, added_vars, istart=0):
+    def create_actions_from_plot_obj(controller, var_modules, cell_module, 
+                                      plot_obj, added_vars):
         reg = get_module_registry()
         ops = []
-        plot_modules = []
-        var_idx = 0
-        for i, plot_obj in enumerate(plot_objs):
-            if i < istart:
-                continue
-            plot_type = plot_obj.parent
-            plot_gm = plot_obj.name
-            plot_descriptor = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
-                                                         'CDMS' + plot_type)
-            desc = plot_descriptor.module
-            plot_module = controller.create_module_from_descriptor(plot_descriptor)
-            plot_functions =  [('graphicsMethodName', [plot_gm])]
-            if plot_obj.template is not None:
-                plot_functions.append(('template', plot_obj.template))
 
-            initial_values = desc.get_initial_values(plot_gm)
-            for attr in desc.gm_attributes:
-                plot_functions.append((attr,[getattr(initial_values,attr)]))
-            
-            functions = controller.create_functions(plot_module,plot_functions)
-            for f in functions:
-                plot_module.add_function(f)
+        plot_type = plot_obj.parent
+        plot_gm = plot_obj.name
+        plot_descriptor = reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 
+                                                     'CDMS' + plot_type)
+        desc = plot_descriptor.module
+        plot_module = controller.create_module_from_descriptor(plot_descriptor)
+        plot_functions =  [('graphicsMethodName', [plot_gm])]
+        if plot_obj.template is not None:
+            plot_functions.append(('template', plot_obj.template))
 
-            plot_modules.append(plot_module)
-            ops.append(('add', plot_module))
+        initial_values = desc.get_initial_values(plot_gm)
+        for attr in desc.gm_attributes:
+            plot_functions.append((attr,[getattr(initial_values,attr)]))
+        
+        functions = controller.create_functions(plot_module,plot_functions)
+        for f in functions:
+            plot_module.add_function(f)
 
-            cell_conn = controller.create_connection(plot_module, 'self',
-                                                     cell_module, 'plot')
-            ops.append(('add', cell_conn))
-            ops.extend(
-                CDMSPipelineHelper.connect_variables_to_plots(controller,
-                                                              var_modules,
-                                                              plot_modules))
+        #plot_modules.append(plot_module)
+        ops.append(('add', plot_module))
+
+        cell_conn = controller.create_connection(plot_module, 'self',
+                                                 cell_module, 'plot')
+        ops.append(('add', cell_conn))
+        
+        ops.extend(
+            CDMSPipelineHelper.connect_variables_to_plots(controller,
+                                                          var_modules,
+                                                          plot_obj,
+                                                          plot_module))
         return ops
     
     @staticmethod
@@ -300,11 +288,13 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         cell_module = controller.create_module_from_descriptor(
             reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 'CDMSCell'))
         ops = [('add', cell_module)]
-        ops2 = CDMSPipelineHelper.create_actions_from_plot_objs(controller, 
-                                                                var_modules, 
-                                                                cell_module, 
-                                                                plot_objs,
-                                                                added_vars)
+        
+        for plot in plot_objs:
+            ops2 = CDMSPipelineHelper.create_actions_from_plot_obj(controller, 
+                                                                    var_modules, 
+                                                                    cell_module, 
+                                                                    plot,
+                                                                    added_vars)
         ops.extend(ops2)
         loc_module = controller.create_module_from_descriptor(
             reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet', 
@@ -367,19 +357,26 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         ops = []
         plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
         cell_module = CDMSPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
-        istart = len(plot_modules)
-        ops2 = CDMSPipelineHelper.create_actions_from_plot_objs(controller, 
-                                                                var_modules, 
-                                                                cell_module, 
-                                                                plot_objs, 
-                                                                added_vars,
-                                                                istart)
-        ops.extend(ops2)
-        ops.extend(
-            CDMSPipelineHelper.connect_variables_to_plots(controller,
-                                                          var_modules,
-                                                          plot_modules))
-
+        
+        for plot in plot_objs:
+            found = False
+            for plot_module in plot_modules:
+                gm = CDMSPipelineHelper.get_graphics_method_name_from_module(plot_module)
+                plot_type = plot_module.name[4:] #strip off CDMS
+                if plot.parent == plot_type and plot.name == gm:
+                    found = True
+                    ops2 = CDMSPipelineHelper.connect_variables_to_plots(controller, 
+                                                                         var_modules, 
+                                                                         plot, 
+                                                                         plot_module)
+            if not found:
+                ops2 = CDMSPipelineHelper.create_actions_from_plot_obj(controller, 
+                                                                       var_modules, 
+                                                                       cell_module, 
+                                                                       plot, 
+                                                                       added_vars)
+            ops.extend(ops2)
+        
         action = core.db.action.create_action(ops)
         controller.change_selected_version(version)
         controller.add_new_action(action)
@@ -387,16 +384,16 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         return action
     
     @staticmethod
-    def rebuild_pipeline_action(controller, version, plot_modules, var_modules,
-                                connections):
+    def rebuild_pipeline_action(proj_controller, version, plot_modules):
         #first clear pipeline except for cell and location modules
+        controller = proj_controller.vt_controller
         pipeline = controller.vistrail.getPipeline(version)
         controller.change_selected_version(version)
-        cell = CDMSPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
+        cell_module = CDMSPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
         cell_location = CDMSPipelineHelper.find_module_by_name(pipeline, 'CellLocation')
         ids = []
         for module in pipeline.module_list:
-            if module.id not in [cell.id,cell_location.id]:
+            if module.id not in [cell_module.id,cell_location.id]:
                 ids.append(module.id)
         action = controller.delete_module_list(ids)
         version = action.id
@@ -409,20 +406,52 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         # this seems strange
         for p in plot_modules:
             ops.append(('add', p))
-            conn = controller.create_connection(p, 'self', cell, 'plot')
+            conn = controller.create_connection(p, 'self', cell_module, 'plot')
             ops.append(('add', conn))
-            
-        for v in var_modules:
-            ops.append(('add', v))
-            
-        for (v, v_p, p, p_p) in connections:
-            conn = controller.create_connection(v, v_p, p, p_p)
-            ops.append(('add', conn))
-            
+        
         action = core.db.action.create_action(ops)
         controller.change_selected_version(version)
         controller.add_new_action(action)
         controller.perform_action(action)
+            
+        sheetName = proj_controller.current_sheetName
+        (row, col) = proj_controller.current_cell_coords
+        cell = proj_controller.sheet_map[sheetName][(row,col)]
+        
+        version = cell.current_parent_version = action.id
+            
+        var_modules = []
+        var_dict = {}
+        ready_plots = []
+        for plot in cell.plots:
+            if plot.varnum == len(plot.variables):
+                ready_plots.append(plot)
+                for var in plot.variables:
+                    proj_controller.get_var_module(var, cell, CDMSPipelineHelper, var_dict)
+                var_modules.append(var_dict[var])
+                
+        version = cell.current_parent_version
+        
+        action = CDMSPipelineHelper.update_plot_pipeline_action(controller, 
+                                                                version, 
+                                                                var_modules, 
+                                                                ready_plots, 
+                                                                row, col)
+        
+        if action is not None:
+            cell.current_parent_version = action.id
+             
+#        for v in var_modules:
+#            ops.append(('add', v))
+#            
+#        for (v, v_p, p, p_p) in connections:
+#            conn = controller.create_connection(v, v_p, p, p_p)
+#            ops.append(('add', conn))
+            
+#        action = core.db.action.create_action(ops)
+#        controller.change_selected_version(version)
+#        controller.add_new_action(action)
+#        controller.perform_action(action)
         return action
         
     @staticmethod
@@ -1126,8 +1155,10 @@ class CDMSPlotWidget(QtGui.QWidget):
         self.update_btn_del_var_state()
         
     def update_pipeline(self, action):
-        var_modules = self.var_table.get_vars()
-        connections = self.plot_table.get_connections()
+#        var_modules = self.var_table.get_vars()
+#        connections = self.plot_table.get_connections()
+        
+
         if action is not None:
             version = action.id
         else:
@@ -1144,11 +1175,11 @@ class CDMSPlotWidget(QtGui.QWidget):
             if plot.id not in self.to_be_removed:
                 plot_modules.append(plot)
 
-        action = CDMSPipelineHelper.rebuild_pipeline_action(self.controller, 
+        action = CDMSPipelineHelper.rebuild_pipeline_action(self.proj_controller, 
                                                             version, 
-                                                            plot_modules, 
-                                                            var_modules, 
-                                                            connections)
+                                                            plot_modules) 
+                                                            #var_modules, 
+                                                            #connections)
 
         ops = []
         for i, plot in enumerate(plot_modules):

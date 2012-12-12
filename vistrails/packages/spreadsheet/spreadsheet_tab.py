@@ -42,7 +42,7 @@
 #   StandardWidgetToolBar
 ################################################################################
 from PyQt4 import QtCore, QtGui
-import os.path, traceback
+import os.path, traceback, copy
 from spreadsheet_registry import spreadsheetRegistry
 from spreadsheet_sheet import StandardWidgetSheet
 from spreadsheet_cell import QCellPresenter, QCellContainer, QCellToolBar
@@ -51,6 +51,7 @@ from spreadsheet_execute import assignPipelineCellLocations, \
 from spreadsheet_prompt import QPromptCellWidget
 from spreadsheet_config import configuration
 from core.inspector import PipelineInspector
+from gui.application import get_vistrails_application
 import spreadsheet_rc
 
 ################################################################################
@@ -620,24 +621,28 @@ class StandardWidgetSheetTabInterface(object):
         
         """
         return (1, 1)
+    
+    def updatePrompt(self, sheetName, row, col):
+        cellWidget = self.getCell(row, col)
+        if type(cellWidget)==QPromptCellWidget:
+            _app = get_vistrails_application()
+            controller = _app.uvcdatWindow.get_current_project_controller()
+            cell = controller.sheet_map[sheetName][(row,col)]
+            
+            if not cell.is_ready():
+                vList = cell.variables()
+                if len(cell.plots) > 0:
+                    plotText = "Plots: %s" % ','.join(["%s-%s"%(p.parent,p.name) for p in cell.plots])
+                    varText = "Variables: %s - Please drop %d more." \
+                        % (','.join(vList), 
+                           cell.plots[0].varnum - len(cell.plots[0].variables))
+                else:
+                    plotText = "Drag and drop a plot type here"
+                    if len(vList) > 0:
+                        varText = "Variables: %s" % ','.join(vList)
+                cellWidget.setVarPromptText(varText)
+                cellWidget.setPlotPromptText(plotText)
 
-    def droppedVariable(self, varName, row, col):
-        """droppedVariable(varName, sheetName: str, row, col: int)-> None
-        It will update variable prompt with varName 
-        
-        """
-        cellWidget = self.getCell(row, col)
-                
-        if type(cellWidget)==QPromptCellWidget:
-            cellWidget.addVariable(varName)
-            cellWidget.update()
-        
-    def droppedPlot(self, plot, row, col):
-        cellWidget = self.getCell(row, col)
-        if type(cellWidget)==QPromptCellWidget:
-            cellWidget.setPlot(plot) 
-            cellWidget.update()
-   
     def displayPrompt(self):
         cells = self.getEmptyCells()
         for (r,c) in cells:
@@ -885,12 +890,14 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             
             varNames = str(mimeData.text()).split(',')
             #print varName, row, col
+
             for varName in varNames:
                 self.emit(QtCore.SIGNAL("dropped_variable"), (varName, sheetName, 
                                                               row, col))
-                self.droppedVariable(varName, row, col)
-            
+            self.updatePrompt(sheetName, row, col)
+
             self.sheet.selectCell(row, col, False)
+            self.sheet.cellWidget(row, col)
 
         elif mimeData.hasFormat("plotType"):
             if hasattr(mimeData, 'items') and len(mimeData.items) == 1:
@@ -901,9 +908,9 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
                 row = self.sheet.rowAt(localPos.y())
                 col = self.sheet.columnAt(localPos.x())
                 sheetName = str(self.tabWidget.tabText(self.tabWidget.indexOf(self)))
-                self.emit(QtCore.SIGNAL("dropped_plot"), (item.plot, 
+                self.emit(QtCore.SIGNAL("dropped_plot"), (copy.deepcopy(item.plot), 
                                                           sheetName, row, col))
-                self.droppedPlot(item.plot, row, col)
+                self.updatePrompt(sheetName, row, col)
                 self.sheet.selectCell(row, col, False)
                 
         elif (hasattr(mimeData, 'version') and
