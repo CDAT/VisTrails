@@ -18,7 +18,6 @@ class PVContourRepresentation(PVRepresentationBase):
         self.contour_var_name = None
         self.contour_var_type = None
         self.contour_values = None
-        self.time_range = {}
 
     def compute(self):
         # TODO:
@@ -32,20 +31,21 @@ class PVContourRepresentation(PVRepresentationBase):
         self.contour_var_type = type
 
     def execute(self):
-        for cdms_var in self.cdms_variables:            
+        for cdms_var in self.cdms_variables:
+
             reader = PVCDMSReader()
             time_values = [None, 1, True]
             image_data = reader.convert(cdms_var, time=time_values)
 
             #make white box filter so we can work at proxy level
             ProgrammableSource1 = pvsp.ProgrammableSource()
-            
+
             #get a hole of the vtk level filter it controls
             ps = ProgrammableSource1.GetClientSideObject()
-            
-            #give it some data (ie the imagedata)            
+
+            #give it some data (ie the imagedata)
             ps.myid = image_data
-            
+
             ProgrammableSource1.OutputDataSetType = 'vtkImageData'
             ProgrammableSource1.PythonPath = ''
 
@@ -60,27 +60,27 @@ dataType = 10 # VTK_FLOAT
 numberOfComponents = 1
 vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfComponents)"""
 
-            ProgrammableSource1.Script = """self.GetOutput().ShallowCopy(self.myid)"""            
-            ProgrammableSource1.UpdatePipeline()            
+            ProgrammableSource1.Script = """self.GetOutput().ShallowCopy(self.myid)"""
+            ProgrammableSource1.UpdatePipeline()
             pvsp.SetActiveSource(ProgrammableSource1)
-            
+
             contour = pvsp.Contour()
             pvsp.SetActiveSource(contour)
-            
+
             self.contour_var_name = str(cdms_var.varNameInFile)
             contour.ContourBy = ['POINTS', self.contour_var_name]
             self.contour_values = [0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0]
             contour.Isosurfaces = self.contour_values
-            
+
             contour.ComputeScalars = 1
             contour.ComputeNormals = 0
             contour.UpdatePipeline()
-            
+
             contour_rep = pvsp.Show(view=self.view)
 
             # @todo: Remove hard-coded look-up table
             contour_rep.LookupTable = pvsp.GetLookupTableForArray(self.contour_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[0.0, 0.23, 0.299, 0.754, 30.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
-            
+
             # @todo: Remove hard-coded representation type
             contour_rep.Representation = 'Surface'
             contour_rep.ColorArrayName = self.contour_var_name
@@ -118,7 +118,7 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
 
             # FIXME:
             # Hard coded for now
-            #contour_rep.Scale = [1, 1, 0.01]    
+            #contour_rep.Scale = [1, 1, 0.01]
 
             # FIXME:
             # Hard coded for now
