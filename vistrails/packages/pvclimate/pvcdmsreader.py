@@ -175,19 +175,15 @@ class PVCDMSReader():
             raw_data_array = trans_var( **data_args )
         except Exception, err:
             print >> sys.stderr,  "Error Reading Variable " + str(err)
-            return None       
+            return None
         
-        print 'raw_data_array shape is ', raw_data_array.shape
-        
-        # @note: Need to ask this to Thomas
+        # @note: Why masked_equal?
         try: 
             raw_data_array = MV2.masked_equal( raw_data_array, raw_data_array.fill_value )
         except:
             pass
-        
-        data_shape = raw_data_array.shape                
+
         data_array = raw_data_array
-        
         var_data_specs = self.get_grid_specs(data_array, None, 1)
         
         # @todo: Ignore the scaling for now
@@ -220,11 +216,12 @@ class PVCDMSReader():
         print 'data_array ', data_array
         print 'data_array type', type(data_array)
         
-        # Assuming float right now
+        # @note: Assuming float right now
         vtk_data_array = vtk.vtkFloatArray()
         
+        # @note: Assuming number of components always equal to 1
         vtk_data_array.SetNumberOfComponents(1)
-        print 'number of tuples ', no_tuples
+
         vtk_data_array.SetNumberOfTuples(no_tuples)
         vtk_data_array.SetVoidArray(data_array, data_array.size, 1)
         vtk_data_array.SetName(cdms_var.varNameInFile)
@@ -232,10 +229,10 @@ class PVCDMSReader():
         image_point_data = image_data.GetPointData()        
         image_point_data.SetScalars(vtk_data_array)
         
-        writer = vtk.vtkDataSetWriter()
-        writer.SetFileName("/home/aashish/Desktop/foo.vtk")
-        writer.SetInput(image_data)
-        writer.Write()
+#        writer = vtk.vtkDataSetWriter()
+#        writer.SetFileName("/home/aashish/Desktop/foo.vtk")
+#        writer.SetInput(image_data)
+#        writer.Write()
         
         image_data_copy = vtk.vtkImageData()
         image_data_copy.DeepCopy(image_data)
