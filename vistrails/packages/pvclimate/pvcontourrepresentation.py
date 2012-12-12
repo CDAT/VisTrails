@@ -32,6 +32,7 @@ class PVContourRepresentation(PVRepresentationBase):
 
     def execute(self):
         for cdms_var in self.cdms_variables:
+            print 'executing rep'
 
             reader = PVCDMSReader()
             time_values = [None, 1, True]
@@ -69,16 +70,17 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
             ProgrammableSource1.UpdatePipeline()
             pvsp.SetActiveSource(ProgrammableSource1)
 
+            data_rep = pvsp.Show(view=self.view)
+
             contour = pvsp.Contour()
             pvsp.SetActiveSource(contour)
 
             self.contour_var_name = str(cdms_var.varNameInFile)
             contour.ContourBy = ['POINTS', self.contour_var_name]
 
-            if self.contour_values == None:
-                delta = (max - min) / 10.0
-                self.contour_values = [ (x * delta + min) for x in range(10) ]
-                print self.contour_values
+            delta = (max - min) / 10.0
+            self.contour_values = [ (x * delta + min) for x in range(10) ]
+
             contour.Isosurfaces = self.contour_values
 
             contour.ComputeScalars = 1

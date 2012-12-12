@@ -106,7 +106,6 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
             ops.append(('add', var_module))
 
         for plot in plots:
-            plot_type = plot.parent
             plot_gm = plot.name
 
             #
@@ -117,36 +116,30 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
             # Is there a better way? I looked around and found none
             import re
             plotUsableName = re.sub(r'\s', '', plot_gm)
-
             plot_module = PlotPipelineHelper.find_module_by_name(pipeline, plotUsableName)
             if plot_module is not None:
                 continue
 
             plot_descriptor = reg.get_descriptor_by_name('com.kitware.pvclimate', plotUsableName)
-            plot_module = controller.create_module_from_descriptor(plot_descriptor)
 
-            # Aashish: This is no longer required as of this commit
+            # @Aashish: Looks like the pipeline is using the cached representation
+            plot_module = controller.create_module_from_descriptor(plot_descriptor)
+            ops.append(('add', plot_module))
+
+            # @Aashish: This is no longer required as of this commit
             # e13bb034ceb302afe3aad3caf20153e1525586db
             # I am not sure though why we still need to add plot module
             #ops.append(('add', var_modules[0]))
 
-            ops.append(('add', plot_module))
-
-            #print >> sys.stderr, 'var_modules[0] ', var_modules[0]
-
-            #
             # Create cell - representation linkage
-            #
-            #######################################################################
-
             # Check to see if a cell already exits, if yes then set the input (representation on it) or else
             # create a new one and then set the representation on it.
-
             if cell_module is None:
                 cell_module = PlotPipelineHelper.find_module_by_name(pipeline, "PVGenericCell")
 
             # If cell module is None, then create a new one
             if cell_module is None:
+                print 'cell module is None'
                 cell_desc = reg.get_descriptor_by_name('com.kitware.pvclimate', "PVGenericCell")
                 cell_module = controller.create_module_from_descriptor(cell_desc)
                 ops.append(('add', cell_module))

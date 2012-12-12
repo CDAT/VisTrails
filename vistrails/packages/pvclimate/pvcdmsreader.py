@@ -9,7 +9,8 @@ import cdms2, cdtime, cdutil, MV2
 import vtk
 
 # Others
-import numpy
+import numpy as np
+from mpl_toolkits.axes_grid.axes_size import Scalable
 
 class PVCDMSReader():
     def __init__(self):
@@ -68,17 +69,29 @@ class PVCDMSReader():
             bounds[1] = min( [ bounds[1], value_bounds[1] ] )
         return bounds, values
 
-    def newList( self, size, init_value ):
+    def new_list( self, size, init_value ):
         return [ init_value for i in range(size) ]
 
+    def get_new_vtk_data_array(self, scalar_dtype):
+        if scalar_dtype == np.int32:
+            return vtk.vtkIntArray()
+        if scalar_dtype == np.ushort:
+            return vtk.vtkUnsignedShortArray()
+        if scalar_dtype == np.ubyte:
+            return vtk.vtkUnsignedCharArray()
+        if scalar_dtype == np.float32:
+            return vtk.vtkFloatArray()
+        print >> sys.stderr, '[ERROR] ' + str(scalar_dtype) + ' is not supported '
+        return None
+
     def get_grid_specs(self, var, roi, zscale):
-        gridOrigin = self.newList( 3, 0.0 )
-        outputOrigin = self.newList( 3, 0.0 )
-        gridBounds = self.newList( 6, 0.0 )
-        gridSpacing = self.newList( 3, 1.0 )
-        gridExtent = self.newList( 6, 0 )
-        outputExtent = self.newList( 6, 0 )
-        gridShape = self.newList( 3, 0 )
+        gridOrigin = self.new_list( 3, 0.0 )
+        outputOrigin = self.new_list( 3, 0.0 )
+        gridBounds = self.new_list( 6, 0.0 )
+        gridSpacing = self.new_list( 3, 1.0 )
+        gridExtent = self.new_list( 6, 0 )
+        outputExtent = self.new_list( 6, 0 )
+        gridShape = self.new_list( 3, 0 )
         gridSize = 1
         self.lev = var.getLevel()
         axis_list = var.getAxisList()
@@ -195,7 +208,18 @@ class PVCDMSReader():
         image_data = vtk.vtkImageData()
 
         # @note: What's the difference between gridOrigin and outputOrigin
-        image_data.SetScalarTypeToFloat()
+        scalar_dtype = cdms_var.var.dtype
+
+        print 'scalar_dtype is ', scalar_dtype
+
+        if scalar_dtype == np.ushort:
+            image_data.SetScalarTypeToUnsignedShort()
+        if scalar_dtype == np.int32:
+            image_data.SetScalarTypeToInt()
+        if scalar_dtype == np.ubyte:
+            image_data.SetScalarTypeToUnsignedChar()
+        if scalar_dtype == np.float32:
+            image_data.SetScalarTypeToFloat()
 
         origin = var_data_specs['outputOrigin']
         image_data.SetOrigin(origin[0], origin[1], origin[2])
@@ -208,7 +232,7 @@ class PVCDMSReader():
         no_tuples = data_array.size
 
         # @note: Assuming float right now
-        vtk_data_array = vtk.vtkFloatArray()
+        vtk_data_array = self.get_new_vtk_data_array(scalar_dtype)
 
         # @note: Assuming number of components always equal to 1
         vtk_data_array.SetNumberOfComponents(1)
