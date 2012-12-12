@@ -37,6 +37,10 @@ class PVContourRepresentation(PVRepresentationBase):
             time_values = [None, 1, True]
             image_data = reader.convert(cdms_var, time=time_values)
 
+            # Get the min and max to draw default contours
+            min = cdms_var.var.min()
+            max = cdms_var.var.max()
+
             #make white box filter so we can work at proxy level
             ProgrammableSource1 = pvsp.ProgrammableSource()
 
@@ -70,7 +74,11 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
 
             self.contour_var_name = str(cdms_var.varNameInFile)
             contour.ContourBy = ['POINTS', self.contour_var_name]
-            self.contour_values = [0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0]
+
+            if self.contour_values == None:
+                delta = (max - min) / 10.0
+                self.contour_values = [ (x * delta + min) for x in range(10) ]
+                print self.contour_values
             contour.Isosurfaces = self.contour_values
 
             contour.ComputeScalars = 1
