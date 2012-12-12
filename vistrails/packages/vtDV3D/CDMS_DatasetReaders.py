@@ -684,7 +684,7 @@ class CDMSDataset(Module):
         if decimation: decimationFactor = decimation[1]+1 if HyperwallManager.getInstance().isServer else decimation[0]+1
         
         args1 = {} 
-        order = 'xyt' if ( timeBounds == None) else 'xyz'
+        order = 'xyt' if ( timeBounds == None) else 'xyz' if levaxis else 'xy'
         try:
             nts = self.timeRange[1]
             if ( timeIndex <> None ) and  useTimeIndex: 
@@ -709,7 +709,8 @@ class CDMSDataset(Module):
         if levaxis:
             if level: args1['lev'] = float( level )
             elif invert_z:  args1['lev'] = slice( None, None, -1 )
-        try: 
+        try:
+#            self.ensure3D( transVar ) 
             rv = transVar( **args1 )
         except Exception, err: 
             messageDialog.setWindowTitle( "Error Reading Variable" )
@@ -720,6 +721,18 @@ class CDMSDataset(Module):
         self.cachedTransVariables[ varName ] = ( timeValue, rv )
         print  "Reading variable %s, shape = %s, base shape = %s, args = %s" % ( varName, str(rv.shape), str(transVar.shape), str(args1) ) 
         return rv
+    
+    def ensure3D( self, cdms_variable ):
+        lev = cdms_variable.getLevel()
+        if lev == None:
+            axis_list = cdms_variable.getAxisList()
+            axis = cdms2.createAxis( [0.0] )
+            axis.designateLevel()
+            axis_list.append( axis )
+            new_shape = list( cdms_variable.data.shape )
+            new_shape.append(1)
+            cdms_variable.data.reshape( new_shape )
+            cdms_variable.setAxisList( axis_list )
 
     def getVarDataTimeSlices( self, varList, timeValue ):
         """
