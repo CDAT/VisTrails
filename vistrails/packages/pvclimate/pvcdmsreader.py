@@ -119,7 +119,7 @@ class PVCDMSReader():
             gridBounds[ 2 ] = gridBounds[ 3 ]
             gridBounds[ 3 ] = tmp
         gridSpecs = {}
-        md = { 'datasetId' : self.datasetId,  'bounds':gridBounds, 'lat':self.lat, 'lon':self.lon, 'lev':self.lev, 'time': self.timeAxis }
+        md = { 'bounds':gridBounds, 'lat':self.lat, 'lon':self.lon, 'lev':self.lev, 'time': self.time }
         gridSpecs['gridOrigin'] = gridOrigin
         gridSpecs['outputOrigin'] = outputOrigin
         gridSpecs['gridBounds'] = gridBounds
@@ -129,7 +129,8 @@ class PVCDMSReader():
         gridSpecs['gridShape'] = gridShape
         gridSpecs['gridSize'] = gridSize
         gridSpecs['md'] = md
-        if dset:  gridSpecs['attributes'] = dset.dataset.attributes
+        # @todo: How we get the attributes?
+#        if dset:  gridSpecs['attributes'] = dset.dataset.attributes
         return gridSpecs
     
     def convert(self, cdms_var, **args):
@@ -184,11 +185,10 @@ class PVCDMSReader():
         except:
             pass
         
-        data_shape = raw_data_array.shape
-        print 'raw_data_array shape is (post mask) ', data_shape
-        print 'raw_data_array id is ', raw_data_array.id
-        
+        data_shape = raw_data_array.shape                
         data_array = raw_data_array
+        
+        var_data_specs = self.get_grid_specs(data_array, None, 1)
         
         # @todo: Ignore the scaling for now
         #flat_array = data_array.ravel('F')        
@@ -203,12 +203,18 @@ class PVCDMSReader():
         # Now create a vtk image data
         image_data = vtk.vtkImageData()
         
-        # @note: Assuming certain 
+        # @note: What's the difference between gridOrigin and outputOrigin 
         image_data.SetScalarTypeToFloat()
-        image_data.SetOrigin(0.0, 0.0, 0.0)
-        image_data.SetSpacing(1.0, 1.0, 1.0)        
-#        image_data.SetDimensions(data_shape[0], data_shape[1], data_shape[2])
-        image_data.SetDimensions(data_shape[0], data_shape[2], data_shape[1]) 
+        
+        origin = var_data_specs['gridOrigin']
+        image_data.SetOrigin(origin[0], origin[1], origin[2])
+
+        spacing = var_data_specs['gridSpacing']
+        image_data.SetSpacing(spacing[0], spacing[1], spacing[2])
+        
+        extents = var_data_specs['gridExtent']
+#        image_data.SetDimensions(data_shape[0], data_shape[2], data_shape[1])
+        extents = image_data.SetExtent(extents[0], extents[1], extents[2], extents[3], extents[4], extents[5])  
         no_tuples = data_array.size
         
         print 'data_array ', data_array

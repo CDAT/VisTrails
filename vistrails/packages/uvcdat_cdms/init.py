@@ -62,6 +62,7 @@ class CDMSVariable(Variable):
                      timeBounds=None):
         Variable.__init__(self, filename, url, source, name, load)
         self.axes = axes
+        print 'axes ', axes
         self.axesOperations = axesOperations
         self.varNameInFile = varNameInFile
         self.attributes = attributes
