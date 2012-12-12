@@ -54,8 +54,9 @@ class PVContourRepresentation(PVRepresentationBase):
 executive = self.GetExecutive()
 outInfo = executive.GetOutputInformation(0)
 extents = self.myid.GetExtent()
+spacing = self.myid.GetSpacing()
 outInfo.Set(executive.WHOLE_EXTENT(), extents[0], extents[1], extents[2], extents[3], extents[4], extents[5])
-outInfo.Set(vtk.vtkDataObject.SPACING(), 1, 1, 1)
+outInfo.Set(vtk.vtkDataObject.SPACING(), spacing[0], spacing[1], spacing[2])
 dataType = 10 # VTK_FLOAT
 numberOfComponents = 1
 vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfComponents)"""
