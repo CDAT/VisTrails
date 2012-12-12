@@ -17,7 +17,8 @@ class PVContourRepresentation(PVRepresentationBase):
         PVRepresentationBase.__init__(self)
         self.contour_var_name = None
         self.contour_var_type = None
-        self.contour_values = [45.0]
+        self.contour_values = None
+        self.time_range = {}
 
     def compute(self):
         # TODO:
@@ -31,8 +32,7 @@ class PVContourRepresentation(PVRepresentationBase):
         self.contour_var_type = type
 
     def execute(self):
-        for cdms_var in self.cdms_variables:
-            print 'cdms variable is ', cdms_var
+        for cdms_var in self.cdms_variables:            
             reader = PVCDMSReader()
             time_values = [None, 1, True]
             image_data = reader.convert(cdms_var, time=time_values)
@@ -71,29 +71,17 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
             contour.ContourBy = ['POINTS', self.contour_var_name]
             self.contour_values = [0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0]
             contour.Isosurfaces = self.contour_values
-
-            # FIXME:
-            # Hard coded for now
+            
             contour.ComputeScalars = 1
             contour.ComputeNormals = 0
             contour.UpdatePipeline()
             
-            print 'contour input ', contour.GetClientSideObject().GetInput()
-            print 'contour output ', contour.GetClientSideObject().GetOutput()
-            
             contour_rep = pvsp.Show(view=self.view)
 
-            # FIXME:
-            # Hard coded for now
+            # @todo: Remove hard-coded look-up table
             contour_rep.LookupTable = pvsp.GetLookupTableForArray(self.contour_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[0.0, 0.23, 0.299, 0.754, 30.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
-
-            # FIXME:
-            # Hard coded for now
-            #contour_rep.Scale = [1, 1, 0.01]
-
-            # FIXME:
-            # Hard coded for now
-
+            
+            # @todo: Remove hard-coded representation type
             contour_rep.Representation = 'Surface'
             contour_rep.ColorArrayName = self.contour_var_name
 
@@ -130,11 +118,10 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
 
             # FIXME:
             # Hard coded for now
-            contour_rep.Scale = [1, 1, 0.01]
+            #contour_rep.Scale = [1, 1, 0.01]    
 
             # FIXME:
             # Hard coded for now
-
             contour_rep.Representation = 'Surface'
             contour_rep.ColorArrayName = self.contour_var_name
 
