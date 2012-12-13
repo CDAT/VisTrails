@@ -134,7 +134,11 @@ class VCSGMs():
         frame = QtGui.QFrame()
         layout = QtGui.QVBoxLayout()
         frame.setLayout(layout)
-        
+
+        conts = uvcdatCommons.QFramedWidget('Continents')
+        self.continents = conts.addLabeledComboBox("Type", ['Standard','Coarse','U.S.A','Political','Rivers','Outline','Other 1','Other 2'])#, indent=True, newRow=True):
+        layout.addWidget(conts)
+
         world = uvcdatCommons.QFramedWidget('World Coordinates')
         self.datawc_x1 = world.addLabeledLineEdit('datawc_x1')
         self.datawc_x2 = world.addLabeledLineEdit('datawc_x2')
