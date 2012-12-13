@@ -25,7 +25,7 @@ class PVCDMSReader():
 
     def is_level_axis(self, axis):
         if axis.isLevel(): return True
-        # @note: What's so special about isobaric?
+        #// @note: What's so special about isobaric?
         if ( axis.id == 'isobaric' ):
             axis.designateLevel(1)
             return True
@@ -142,8 +142,8 @@ class PVCDMSReader():
         gridSpecs['gridShape'] = gridShape
         gridSpecs['gridSize'] = gridSize
         gridSpecs['md'] = md
-        # @todo: How we get the attributes?
-#        if dset:  gridSpecs['attributes'] = dset.dataset.attributes
+        #// @todo: How we get the attributes?
+            #if dset:  gridSpecs['attributes'] = dset.dataset.attributes
         return gridSpecs
 
     def convert(self, cdms_var, **args):
@@ -164,10 +164,10 @@ class PVCDMSReader():
 
         raw_data_array = None
 
-       # @todo: Pass decimation required
+        #// @todo: Pass decimation required
         decimation_factor = 1
 
-        # @todo: Worry about order later
+        #// @todo: Worry about order later
         data_args = {}
 
         try:
@@ -193,20 +193,12 @@ class PVCDMSReader():
         data_array = raw_data_array
         var_data_specs = self.get_grid_specs(data_array, None, 1)
 
-        # @todo: Ignore the scaling for now
-        #flat_array = data_array.ravel('F')
+        #// @todo: Handle attributes later
 
-#        if npts == -1:
-#            npts = flat_array.size
-#        else:
-#            assert( npts == flat_array.size)
-
-        # @todo: Handle attributes later
-
-        # Now create a vtk image data
+        #// Now create a vtk image data
         image_data = vtk.vtkImageData()
 
-        # @note: What's the difference between gridOrigin and outputOrigin
+        #// @note: What's the difference between gridOrigin and outputOrigin
         scalar_dtype = cdms_var.var.dtype
 
         if scalar_dtype == np.ushort:
@@ -228,10 +220,8 @@ class PVCDMSReader():
         extents = image_data.SetExtent(extents[0], extents[1], extents[2], extents[3], extents[4], extents[5])
         no_tuples = data_array.size
 
-        # @note: Assuming float right now
-        vtk_data_array = self.get_new_vtk_data_array(scalar_dtype)
-
         # @note: Assuming number of components always equal to 1
+        vtk_data_array = self.get_new_vtk_data_array(scalar_dtype)
         vtk_data_array.SetNumberOfComponents(1)
         vtk_data_array.SetNumberOfTuples(no_tuples)
         vtk_data_array.SetVoidArray(data_array, data_array.size, 1)
