@@ -83,7 +83,11 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
             contour.ContourBy = ['POINTS', self.contour_var_name]
 
             delta = (max - min) / 10.0
-            self.contour_values = [ (x * delta + min) for x in range(10) ]
+
+            self.contour_values = self.forceGetInputListFromPort("contour_values")
+            if( (self.contour_values == None) or (len(self.contour_values) == 0) ):
+                print >> sys.stderr, "No contour values are found"
+                self.contour_values = [ (x * delta + min) for x in range(10) ]
 
             contour.Isosurfaces = self.contour_values
             contour.ComputeScalars = 1
@@ -142,23 +146,38 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
 class ContourRepresentationConfigurationWidget(RepresentationBaseConfigurationWidget):
     def __init__(self, parent, rep_module):
         RepresentationBaseConfigurationWidget.__init__(self, parent, rep_module)
-        self.representation_module = parent
         self.contour_widget = PVContourWidget()
+
         layout = QVBoxLayout()
         self.setLayout(layout)
-
         widgetLayout = QHBoxLayout()
         widgetLayout.addWidget(self.contour_widget)
+        layout.addLayout(widgetLayout)
 
-#        parent.connect(self.slice_offset_value, SIGNAL("editingFinished()"), parent.stateChanged)
+        self.connect(self.contour_widget, QtCore.SIGNAL('requestedApplyChagnes()'), self.update_contour_values)
 
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None
         Update vistrail controller (if necessary) then close the widget
+        pass"""
 
-        """
+    def update_contour_values(self):
+        print >> sys.stderr, "Update contour values"
+        print self.contour_widget.get_contour_values()
+
+        functions = []
+        functions.append( ("contour_values", [self.contour_widget.get_contour_values()]) )
+
+        print 'self.controller ', self.controller
+        print 'self.controller type ', type(self.controller)
+
+        action = self.controller.update_functions(self.rep_module, functions)
+
+        if action is not None:
+            print >> sys.stderr, 'Contour values has been updated'
 
 def register_self():
     registry = get_module_registry()
     registry.add_module(PVContourRepresentation)
     registry.add_output_port(PVContourRepresentation, "self", PVContourRepresentation)
+    registry.add_input_port(PVContourRepresentation, "contour_values", [])
