@@ -23,7 +23,6 @@ import api
 
 # Import PV Generic Cell
 from pvgenericcell import *
-import pvgenericcell
 
 import sys
 
@@ -45,14 +44,12 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
           return None
 
         if len(cell) == 0:
-            return pvgenericcell.pvgenericcellConfigurationWidget(None,
-                                                                  controller.vt_controller)
+            return PVGenericCellConfigurationWidget(None, controller.vt_controller)
         else:
             pvcell = cell[0].module_descriptor.module()
             #// Create child widgets
             #// Attach it to the parent widget
-            return pvgenericcell.pvgenericcellConfigurationWidget(cell[0],
-                                                                  controller.vt_controller)
+            return PVGenericCellConfigurationWidget(cell[0], controller.vt_controller)
 
     @staticmethod
     def find_plot_representation(pipeline, representation):
