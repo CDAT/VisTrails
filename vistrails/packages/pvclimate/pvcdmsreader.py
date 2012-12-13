@@ -42,7 +42,7 @@ class PVCDMSReader():
         if self.is_level_axis(axis):
             self.lev = axis
             icoord  = 2
-        # @todo: Not sure if this is needed here
+        #// @todo: Not sure if this is needed here
         if axis.isTime():
             self.time = axis
             icoord  = 2
@@ -220,7 +220,7 @@ class PVCDMSReader():
         extents = image_data.SetExtent(extents[0], extents[1], extents[2], extents[3], extents[4], extents[5])
         no_tuples = data_array.size
 
-        # @note: Assuming number of components always equal to 1
+        #// @note: Assuming number of components always equal to 1
         vtk_data_array = self.get_new_vtk_data_array(scalar_dtype)
         vtk_data_array.SetNumberOfComponents(1)
         vtk_data_array.SetNumberOfTuples(no_tuples)
