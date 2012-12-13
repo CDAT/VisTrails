@@ -61,8 +61,8 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def find_plot_representation(pipeline, representation):
-        #print 'rep dir ', dir(representation)
-        print 'name ', representation.name
+#        print 'rep dir ', dir(representation)
+#        print 'name ', representation.name
 #        print  'output port ', representation.forceGetOutputListFromPort('self')[0]
 #        print 'type of ', type(representation.forceGetOutputListFromPort('self')[0])
         return pipeline.modules[pipeline.get_outputPort_modules(representation.id, 'self')[0]]
@@ -137,14 +137,12 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
             if cell_module is None:
                 cell_module = PlotPipelineHelper.find_module_by_name(pipeline, "PVGenericCell")
 
-            # If cell module is None, then create a new one
+            #// If cell module is None, then create a new one
             if cell_module is None:
-                print 'cell module is None'
                 cell_desc = reg.get_descriptor_by_name('com.kitware.pvclimate', "PVGenericCell")
                 cell_module = controller.create_module_from_descriptor(cell_desc)
                 ops.append(('add', cell_module))
 
-                #
                 # Create a connection between the cell and the variable
                 # Aashish: I am expecting that every time we drop a variable, we will get a
                 # pipeline that does not have modules from the previous execution. I need to verify
@@ -200,7 +198,6 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def load_pipeline_in_location(pipeline, controller, sheetName, row, col,plot_type, cell):
-       print "Load pipeline is called"
        cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, [CellLocation])
        cell_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [SpreadsheetCell])
        #plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
@@ -231,7 +228,6 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def build_python_script_from_pipeline(controller, version, plot=None):
-        print "build_python_script"
         pipeline = controller.vistrail.getPipeline(version)
         plots = CDMSPipelineHelper.find_plot_modules(pipeline)
         text = "from PyQt4 import QtCore, QtGui\n"
@@ -279,7 +275,6 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def copy_pipeline_to_other_location(pipeline, controller, sheetName, row, col,plot_type, cell):
-        print "copyt pipeline to other location"
         pip_str = core.db.io.serialize(pipeline)
         controller.change_selected_version(cell.current_parent_version)
 

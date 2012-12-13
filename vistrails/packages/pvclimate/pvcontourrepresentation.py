@@ -72,7 +72,7 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
             self.contour_var_name = str(cdms_var.varNameInFile)
 
             data_rep = pvsp.Show(view=self.view)
-            data_rep.LookupTable = pvsp.GetLookupTableForArray(self.contour_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[0.0, 0.23, 0.299, 0.754, 30.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
+            data_rep.LookupTable = pvsp.GetLookupTableForArray(self.contour_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[min, 0.23, 0.299, 0.754, max, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
             data_rep.ColorArrayName = self.contour_var_name
 
             contour = pvsp.Contour()
@@ -89,9 +89,14 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
 
             #// @todo: Remove hard-coded values
             contour_rep = pvsp.Show(view=self.view)
-            contour_rep.LookupTable = pvsp.GetLookupTableForArray(self.contour_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[0.0, 0.23, 0.299, 0.754, 30.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
+            contour_rep.DiffuseColor = [0.0, 0.0, 0.0]
             contour_rep.Representation = 'Surface'
-            contour_rep.ColorArrayName = self.contour_var_name
+            contour_rep.ColorArrayName = ''
+
+            #// Scalar bar
+            ScalarBarWidgetRepresentation1 = pvsp.CreateScalarBar( Title=self.contour_var_name, LabelFontSize=12, Enabled=1, TitleFontSize=12 )
+            pvsp.GetRenderView().Representations.append(ScalarBarWidgetRepresentation1)
+            ScalarBarWidgetRepresentation1.LookupTable = data_rep.LookupTable
 
         for var in self.variables:
             reader = var.get_reader()
@@ -112,12 +117,12 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
             contour.ContourBy = [self.contour_var_type, self.contour_var_name]
             contour.Isosurfaces = self.contour_values
 
-            ''' @todo: Remove hard coded values '''
+            #// @todo: Remove hard coded values
             contour.ComputeScalars = 1
             contour.ComputeNormals = 0
             contour_rep = pvsp.Show(view=self.view)
 
-            contour_rep.LookupTable = pvsp.GetLookupTableForArray(self.contour_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[0.0, 0.23, 0.299, 0.754, 30.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
+            contour_rep.LookupTable = pvsp.GetLookupTableForArray(self.contour_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[min, 0.23, 0.299, 0.754, max, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
             contour_rep.Scale = [1, 1, 0.01]
 
             contour_rep.Representation = 'Surface'
