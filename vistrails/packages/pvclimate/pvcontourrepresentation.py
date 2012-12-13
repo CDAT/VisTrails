@@ -1,15 +1,15 @@
 
-# Import base class module
+#// Import base class module
 from pvrepresentationbase import *
 from pvcdmsreader import *
 
-# Import registry
+#// Import registry
 from core.modules.module_registry import get_module_registry
 
-# Import paraview
+#// Import paraview
 import paraview.simple as pvsp
 
-# CDAT
+#// CDAT
 import cdms2, cdtime, cdutil, MV2
 
 class PVContourRepresentation(PVRepresentationBase):
@@ -20,7 +20,7 @@ class PVContourRepresentation(PVRepresentationBase):
         self.contour_values = None
 
     def compute(self):
-        # TODO:
+        #// @todo:
         pass
 
     def set_contour_values(self, values):
