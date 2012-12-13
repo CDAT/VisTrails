@@ -12,6 +12,9 @@ import paraview.simple as pvsp
 #// CDAT
 import cdms2, cdtime, cdutil, MV2
 
+#// Import pvclimate modules
+from pvcontour_widget import *
+
 class PVContourRepresentation(PVRepresentationBase):
     def __init__(self):
         PVRepresentationBase.__init__(self)
@@ -140,16 +143,14 @@ class ContourRepresentationConfigurationWidget(RepresentationBaseConfigurationWi
     def __init__(self, parent, rep_module):
         RepresentationBaseConfigurationWidget.__init__(self, parent, rep_module)
         self.representation_module = parent
+        self.contour_widget = PVContourWidget()
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        sliceOffsetLayout = QHBoxLayout()
-        sliceOffsetLabel = QLabel("Some property:")
-        self.slice_offset_value =  QLineEdit (parent)
-        sliceOffsetLayout.addWidget( sliceOffsetLabel )
-        sliceOffsetLayout.addWidget( self.slice_offset_value )
-        layout.addLayout(sliceOffsetLayout)
-        parent.connect(self.slice_offset_value, SIGNAL("editingFinished()"), parent.stateChanged)
+        widgetLayout = QHBoxLayout()
+        widgetLayout.addWidget(self.contour_widget)
+
+#        parent.connect(self.slice_offset_value, SIGNAL("editingFinished()"), parent.stateChanged)
 
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None

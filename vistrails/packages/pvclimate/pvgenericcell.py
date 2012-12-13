@@ -16,7 +16,6 @@ from gui.modules.module_configure import StandardModuleConfigurationWidget
 # Needed for port related stuff
 from core.vistrail.port import PortEndPoint
 import core.modules.basic_modules as basic_modules
-from pvclimatecell import PVClimateCellConfigurationWidget
 
 # Needed to parse csv string into a list
 import csv
@@ -145,7 +144,7 @@ class QPVIsoSurfaceWidget(QVTKWidget):
 def register_self():
     registry = get_module_registry()
     # For now, we don't have configuration widget
-    registry.add_module(PVGenericCell, configureWidgetType=PVClimateCellConfigurationWidget)
+    registry.add_module(PVGenericCell)
     registry.add_input_port(PVGenericCell, "Location", CellLocation)
     registry.add_input_port(PVGenericCell, "variable", PVVariable)
     registry.add_input_port(PVGenericCell, "cdms_variable", CDMSVariable)    

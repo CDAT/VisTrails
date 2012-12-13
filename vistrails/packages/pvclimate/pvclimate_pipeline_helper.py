@@ -22,8 +22,8 @@ from gui.uvcdat.uvcdatCommons import plotTypes
 import api
 
 # Import PV Generic Cell
-from pvgenericcell import PVGenericCell
-import pvclimatecell
+from pvgenericcell import *
+import pvgenericcell
 
 import sys
 
@@ -45,13 +45,13 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
           return None
 
         if len(cell) == 0:
-            return pvclimatecell.PVClimateCellConfigurationWidget(None,
+            return pvgenericcell.pvgenericcellConfigurationWidget(None,
                                                                   controller.vt_controller)
         else:
             pvcell = cell[0].module_descriptor.module()
             #// Create child widgets
             #// Attach it to the parent widget
-            return pvclimatecell.PVClimateCellConfigurationWidget(cell[0],
+            return pvgenericcell.pvgenericcellConfigurationWidget(cell[0],
                                                                   controller.vt_controller)
 
     @staticmethod
