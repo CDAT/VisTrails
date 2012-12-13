@@ -88,7 +88,6 @@ class QPVIsoSurfaceWidget(QVTKWidget):
             renWin = self.view.GetRenderWindow()
             self.SetRenderWindow(renWin)
             iren = renWin.GetInteractor()
-            print type(iren)
             iren.SetNonInteractiveRenderDelay(0)
             iren.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
 
