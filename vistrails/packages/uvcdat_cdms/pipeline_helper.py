@@ -1,3 +1,4 @@
+import copy
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from core.uvcdat.plot_registry import get_plot_registry
 from core.modules.module_registry import get_module_registry
@@ -428,7 +429,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                 ready_plots.append(plot)
                 for var in plot.variables:
                     proj_controller.get_var_module(var, cell, CDMSPipelineHelper, var_dict)
-                var_modules.append(var_dict[var])
+                    var_modules.append(var_dict[var])
                 
         version = cell.current_parent_version
         
@@ -849,7 +850,7 @@ class CDMSPlotWidget(QtGui.QWidget):
         b_layout.addWidget(self.btn_move_down)
         b_layout.addStretch()
         self.conf_widget = QtGui.QWidget()
-        self.plot_table = PlotTableWidget(self.plots, self.controller, 
+        self.plot_table = PlotTableWidget(self.plots, self.proj_controller, 
                                           self.version, self)
         h_layout = QtGui.QHBoxLayout()
         h_layout.addLayout(b_layout)
@@ -1089,6 +1090,20 @@ class CDMSPlotWidget(QtGui.QWidget):
             self.var_to_be_added.remove(m)
             self.var_to_be_removed.remove(m)
 
+        #update variables on plot objects
+        sheetName = self.proj_controller.current_sheetName
+        (row, col) = self.proj_controller.current_cell_coords
+        cell = self.proj_controller.sheet_map[sheetName][(row,col)]
+        cell.plots = []
+        for i in range(self.plot_table.topLevelItemCount()):
+            item = self.plot_table.topLevelItem(i)
+            cell.plots.append(item.reg_plot)
+            item.reg_plot.template = item.template
+            item.reg_plot.variables = []
+            for j in range(len(item.vars)):
+                nm = CDMSPipelineHelper.get_variable_name_from_module(item.vars[j])
+                item.reg_plot.variables.append(nm)
+
         if (len(self.to_be_added) != 0 or len(self.to_be_removed) != 0 or
             len(self.var_to_be_added) != 0 or len(self.var_to_be_removed) != 0 
             or self.plot_order_changed() or self.vars_were_changed):
@@ -1246,10 +1261,11 @@ class PlotTableWidgetItem(QtGui.QTreeWidgetItem):
     
 class PlotTableWidget(QtGui.QTreeWidget):
     itemOrderChanged = pyqtSignal(PlotTableWidgetItem)
-    def __init__(self,plot_list, controller, version, parent=None):    
+    def __init__(self,plot_list, proj_controller, version, parent=None):    
         QtGui.QTreeWidget.__init__(self, parent)
         self.plots = plot_list
-        self.controller = controller
+        self.proj_controller = proj_controller
+        self.controller = proj_controller.vt_controller
         self.version = version
         self.setSizePolicy(QtGui.QSizePolicy.Expanding,
                            QtGui.QSizePolicy.Expanding)
@@ -1275,7 +1291,7 @@ class PlotTableWidget(QtGui.QTreeWidget):
                 if item.module == self.plots[0]:
                     self.setItemSelected(item,True)
             
-    def create_plot_item(self, order, plot_module, copy_vars=False):
+    def create_plot_item(self, order, plot_module, copy_vars=False, new_plot=False):
         manager = get_plot_manager()
         desc = plot_module.module_descriptor.module()
         gm_name = CDMSPipelineHelper.get_graphics_method_name_from_module(plot_module)
@@ -1297,7 +1313,13 @@ class PlotTableWidget(QtGui.QTreeWidget):
                                                                                         pipeline, 
                                                                                         p_module.id)
                       
-        reg_plot = manager.get_plot_by_name(desc.plot_type, gm_name)
+        if new_plot:
+            reg_plot = copy.deepcopy(manager.get_plot_by_name(desc.plot_type, gm_name))
+        else:
+            sheetName = self.proj_controller.current_sheetName
+            (row, col) = self.proj_controller.current_cell_coords
+            cell = self.proj_controller.sheet_map[sheetName][(row,col)]
+            reg_plot = cell.plots[order]
         item = PlotTableWidgetItem(self, order, plot_module, labels, 
                                    desc.plot_type, gm_name, _vars, reg_plot, template)
         item.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable)
@@ -1306,7 +1328,7 @@ class PlotTableWidget(QtGui.QTreeWidget):
     def add_plot_item(self, plot_module, copy_vars=False):
         order = self.topLevelItemCount()
         self.plots.append(plot_module)
-        self.create_plot_item(order,plot_module, copy_vars)
+        self.create_plot_item(order,plot_module, copy_vars, True)
     
     @pyqtSlot(bool)
     def move_item_up(self, checked):

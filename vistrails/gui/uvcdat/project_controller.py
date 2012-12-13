@@ -402,6 +402,8 @@ class ProjectController(QtCore.QObject):
     def variable_was_dropped(self, info):
         """variable_was_dropped(info: (varName, sheetName, row, col) """
         (varName, sheetName, row, col) = info
+        self.current_sheetName = sheetName
+        self.current_cell_coords = (row, col)
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
@@ -783,7 +785,7 @@ class ProjectController(QtCore.QObject):
                 if plot.varnum == len(plot.variables):
                     for var in plot.variables:
                         self.get_var_module(var, cell, helper, var_dict)
-                    var_modules.append(var_dict[var])
+                        var_modules.append(var_dict[var])
             
             self.update_workflow(var_modules, cell, sheetName, row, col, 
                                  reuse_workflow)
