@@ -31,8 +31,8 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def show_configuration_widget(controller, version, plot_obj=None):
-        print 'Calling show_configuration_widget'
-        print 'version: ', version
+#        print 'Calling show_configuration_widget'
+#        print 'version: ', version
 
         # Grab the pipeline
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
