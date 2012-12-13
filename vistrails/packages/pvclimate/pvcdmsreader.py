@@ -172,7 +172,6 @@ class PVCDMSReader():
 
         try:
             if (time_index != None and use_time_index):
-                print >> sys.stderr, "Using time index"
                 data_args['time'] = slice(time_index, time_index + 1)
             elif time_value:
                 data_args['time'] = time_value
@@ -209,8 +208,6 @@ class PVCDMSReader():
 
         # @note: What's the difference between gridOrigin and outputOrigin
         scalar_dtype = cdms_var.var.dtype
-
-        print 'scalar_dtype is ', scalar_dtype
 
         if scalar_dtype == np.ushort:
             image_data.SetScalarTypeToUnsignedShort()
