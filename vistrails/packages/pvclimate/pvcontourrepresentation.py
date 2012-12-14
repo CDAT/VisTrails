@@ -11,9 +11,11 @@ import paraview.simple as pvsp
 
 #// CDAT
 import cdms2, cdtime, cdutil, MV2
+import core.modules.basic_modules as basic_modules
 
 #// Import pvclimate modules
 from pvcontour_widget import *
+from lib2to3.fixer_util import String
 
 class PVContourRepresentation(PVRepresentationBase):
     def __init__(self):
@@ -84,10 +86,16 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
 
             delta = (max - min) / 10.0
 
-            self.contour_values = self.forceGetInputListFromPort("contour_values")
+            contours = self.forceGetInputListFromPort("contour_values")
+            print 'contours are ', contours
+            if len(contours) > 0:
+                self.contour_values = [float(d) for d in contours.split(',')]
+
             if( (self.contour_values == None) or (len(self.contour_values) == 0) ):
                 print >> sys.stderr, "No contour values are found"
                 self.contour_values = [ (x * delta + min) for x in range(10) ]
+
+            print 'Contour values are ', self.contour_values
 
             contour.Isosurfaces = self.contour_values
             contour.ComputeScalars = 1
@@ -165,8 +173,9 @@ class ContourRepresentationConfigurationWidget(RepresentationBaseConfigurationWi
         print >> sys.stderr, "Update contour values"
         print self.contour_widget.get_contour_values()
 
+        contour_values = str(self.contour_widget.get_contour_values()).strip('[]')
         functions = []
-        functions.append( ("contour_values", [self.contour_widget.get_contour_values()]) )
+        functions.append(("contour_values", contour_values))
 
         print 'self.controller ', self.controller
         print 'self.controller type ', type(self.controller)
@@ -176,8 +185,10 @@ class ContourRepresentationConfigurationWidget(RepresentationBaseConfigurationWi
         if action is not None:
             print >> sys.stderr, 'Contour values has been updated'
 
+        self.controller.execute_current_workflow()
+
 def register_self():
     registry = get_module_registry()
     registry.add_module(PVContourRepresentation)
     registry.add_output_port(PVContourRepresentation, "self", PVContourRepresentation)
-    registry.add_input_port(PVContourRepresentation, "contour_values", [])
+    registry.add_input_port(PVContourRepresentation, "contour_values", basic_modules.String)
