@@ -17,14 +17,26 @@ class PVContourWidget(QtGui.QWidget, Ui_PVContourWidget):
         self.connect(self.applyButton, QtCore.SIGNAL('clicked(bool)'), self.apply_changes)
 
     def update_contour_values(self):
-        first_val = self.firstValueLineEdit.text().toDouble()[0]
-        last_val = self.lastValueLineEdit.text().toDouble()[0]
-        steps = self.stepValueEdit.text().toInt()[0]
-        count = int((last_val - first_val) / steps)
-        values = [ (first_val + i * steps) for  i in range(count + 1)]
+        #// Contour values
         qstr_list = QtCore.QStringList()
-        for value in values:
-            qstr_list.append(QtCore.QString("%1").arg(value))
+
+        if(not self.firstValueLineEdit.text().isEmpty() and
+           not self.lastValueLineEdit.text().isEmpty() and
+           not self.stepValueEdit.text().isEmpty()):
+
+            first_val = self.firstValueLineEdit.text().toDouble()[0]
+            last_val = self.lastValueLineEdit.text().toDouble()[0]
+            steps = self.stepValueEdit.text().toInt()[0]
+            count = int((last_val - first_val) / steps)
+            values = [ (first_val + i * steps) for  i in range(count + 1)]
+
+            for value in values:
+                qstr_list.append(QtCore.QString("%1").arg(value))
+
+        if(not self.valuesLineEdit.text().isEmpty()):
+            values = self.valuesLineEdit.text().split(',')
+            for value in values:
+                qstr_list.append(value)
 
         self.list_model.reset()
         self.list_model.setStringList(qstr_list)
