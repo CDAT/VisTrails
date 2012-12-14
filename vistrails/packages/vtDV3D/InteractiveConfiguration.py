@@ -2248,7 +2248,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 if ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ): 
                     restart = ( iTS >= self.timeRange[1] ) 
                     iTS = self.timeRange[0]
-#            print " ############################################ set Time index = %d ############################################" % iTS
+            print " ############################################ set Time index = %d ############################################" % iTS
             self.setTimestep( iTS, restart )
 
     def reset( self ):
@@ -2374,9 +2374,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 iTS = self.timeRange[0]
         self.setTimestep( iTS, restart )  
         if self.running: 
-            delayTime = 0
-#            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
-#            print " Animate step, delay time = %.2f msec" % delayTime
+#            delayTime = 0
+            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
+            print " Animate step %d, delay time = %.2f msec" % ( iTS, delayTime )
             self.timer.start( delayTime ) 
 
     def finalizeConfig( self ):
