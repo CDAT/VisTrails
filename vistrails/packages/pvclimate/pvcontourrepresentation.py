@@ -3,8 +3,9 @@
 from pvrepresentationbase import *
 from pvcdmsreader import *
 
-#// Import registry
+#// Import registry and vistrails app
 from core.modules.module_registry import get_module_registry
+from core.application import get_vistrails_application
 
 #// Import paraview
 import paraview.simple as pvsp
@@ -184,6 +185,9 @@ class ContourRepresentationConfigurationWidget(RepresentationBaseConfigurationWi
 
         if action is not None:
             print >> sys.stderr, 'Contour values has been updated'
+            
+        window = get_vistrails_application().uvcdatWindow
+        window.get_current_project_controller().cell_was_changed(action)
 
         self.controller.execute_current_workflow()
 
