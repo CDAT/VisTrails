@@ -604,8 +604,6 @@ class ProjectController(QtCore.QObject):
     def current_cell_changed(self, sheetName, row, col):
         if ( row <> self.current_cell_coords[0] ) or ( col <> self.current_cell_coords[1] ):
             self.update_plot_configure(sheetName, row, col)
-            self.current_cell_coords = [ row, col ]
-            self.current_sheetName = sheetName
 
     def plot_was_dropped(self, info):
         """plot_was_dropped(info: (plot, sheetName, row, col) """
@@ -671,6 +669,8 @@ class ProjectController(QtCore.QObject):
             
     def update_plot_configure(self, sheetName, row, col):
         from gui.uvcdat.plot import PlotProperties
+        self.current_cell_coords = [ row, col ]
+        self.current_sheetName = sheetName
         cell = None
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:

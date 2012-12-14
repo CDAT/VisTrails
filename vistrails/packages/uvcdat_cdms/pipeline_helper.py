@@ -754,12 +754,16 @@ class CDMSPlotWidget(QtGui.QWidget):
 #        self.tab_widget = QtGui.QTabWidget(self)
 #        self.tab_widget.setDocumentMode(True)
 #        self.tab_widget.setTabPosition(QtGui.QTabWidget.North)
-#        
+
+        sheetName = controller.current_sheetName
+        (row, col) = controller.current_cell_coords
+        cell = controller.sheet_map[sheetName][(row, col)]
+        
         main_layout = QtGui.QVBoxLayout()
         main_layout.setMargin(0)
         main_layout.setSpacing(2)
         self.create_plot_widget()
-        self.create_var_widget()
+        self.create_var_widget(cell)
         
         var_label = QtGui.QLabel("Variables used in this visualization:")
         plot_label = QtGui.QLabel("Plots used in this visualization")
@@ -799,7 +803,7 @@ class CDMSPlotWidget(QtGui.QWidget):
         self.var_to_be_removed = []
         self.vars_were_changed = False
         self.plot_table.version = version
-        self.var_table.populate_from_vars(self.vars)
+        self.var_table.populate_from_cell()
         selected = None
         if len(self.plot_table.selectedItems()) == 1:
             item = self.plot_table.selectedItems()[0]
@@ -811,30 +815,30 @@ class CDMSPlotWidget(QtGui.QWidget):
         self.update_move_buttons(item)
         self.update_plot_vars(item)
         
-    def create_var_widget(self):
+    def create_var_widget(self, cell):
         self.var_widget = QtGui.QWidget()
-        self.var_table = VarTableWidget(self.vars, self)
-        self.btn_add_var = QDockPushButton("Add")
-        self.btn_del_var = QDockPushButton("Remove")
-        btn_layout = QtGui.QHBoxLayout()
-        btn_layout.setSpacing(3)
-        btn_layout.setMargin(0)
-        btn_layout.addWidget(self.btn_add_var)
-        btn_layout.addWidget(self.btn_del_var)
-        btn_layout.addStretch()
+        self.var_table = VarTableWidget(cell, self)
+#        self.btn_add_var = QDockPushButton("Add")
+#        self.btn_del_var = QDockPushButton("Remove")
+#        btn_layout = QtGui.QHBoxLayout()
+#        btn_layout.setSpacing(3)
+#        btn_layout.setMargin(0)
+#        btn_layout.addWidget(self.btn_add_var)
+#        btn_layout.addWidget(self.btn_del_var)
+#        btn_layout.addStretch()
         
         self.var_layout = QtGui.QVBoxLayout()
         self.var_layout.setMargin(2)
         self.var_layout.setSpacing(2)
         self.var_layout.addWidget(self.var_table)
-        self.var_layout.addLayout(btn_layout)
+#        self.var_layout.addLayout(btn_layout)
         self.var_widget.setLayout(self.var_layout)
         
         #signals
-        self.var_table.itemSelectionChanged.connect(self.update_btn_del_var_state)
-        self.btn_add_var.clicked.connect(self.add_var)
-        self.btn_del_var.clicked.connect(self.remove_var)
-        self.var_table.populate_from_vars(self.vars)
+#        self.var_table.itemSelectionChanged.connect(self.update_btn_del_var_state)
+#        self.btn_add_var.clicked.connect(self.add_var)
+#        self.btn_del_var.clicked.connect(self.remove_var)
+#        self.var_table.populate_from_vars(self.vars)
         
     def create_plot_widget(self):
         self.plot_widget = QtGui.QWidget()
@@ -932,20 +936,17 @@ class CDMSPlotWidget(QtGui.QWidget):
             
     @pyqtSlot(Module, int)
     def variable_dropped(self, var, order):
-        self.var_to_be_added.append(var.id)
+        self.var_to_be_added.append(var)
         plot_item = self.plot_table.selectedItems()[0]
-        
         while len(plot_item.vars) <= order:
-            plot_item.vars.append(var)
-            self.vars_were_changed = True
-            
+            plot_item.vars.append("")
         if plot_item.vars[order] != var:
-            plot_item.vars.pop(order)
-            plot_item.vars.insert(order,var)
+            plot_item.vars[order] = var
             self.vars_were_changed = True
         
     @pyqtSlot()
     def variable1_edited(self):
+        #TODO: if var is in main var widget table, update, else revert
         var = self.var_table.get_var_by_name(str(self.var1_edt.text()))
         if var:
             plot_item = self.plot_table.selectedItems()[0]
@@ -959,6 +960,7 @@ class CDMSPlotWidget(QtGui.QWidget):
                 
     @pyqtSlot()
     def variable2_edited(self):
+        #TODO: if var is in main var widget table, update, else revert
         var = self.var_table.get_var_by_name(str(self.var2_edt.text()))
         if var:
             plot_item = self.plot_table.selectedItems()[0]
@@ -987,16 +989,16 @@ class CDMSPlotWidget(QtGui.QWidget):
         else:
             self.btn_del_plot.setEnabled(False)
             
-    def update_btn_del_var_state(self):
-        varnum = 1
-        for i in range(self.plot_table.topLevelItemCount()):
-            item = self.plot_table.topLevelItem(i)
-            varnum = max(varnum,item.reg_plot.varnum)
-        if (len(self.var_table.selectedItems()) > 0 and 
-            self.var_table.topLevelItemCount() > varnum):
-            self.btn_del_var.setEnabled(True)
-        else:
-            self.btn_del_var.setEnabled(False)
+#    def update_btn_del_var_state(self):
+#        varnum = 1
+#        for i in range(self.plot_table.topLevelItemCount()):
+#            item = self.plot_table.topLevelItem(i)
+#            varnum = max(varnum,item.reg_plot.varnum)
+#        if (len(self.var_table.selectedItems()) > 0 and 
+#            self.var_table.topLevelItemCount() > varnum):
+#            self.btn_del_var.setEnabled(True)
+#        else:
+#            self.btn_del_var.setEnabled(False)
             
     @pyqtSlot()
     def update_conf_widget(self):
@@ -1048,12 +1050,10 @@ class CDMSPlotWidget(QtGui.QWidget):
             return
         
         self.show_vars(item.reg_plot.varnum)
-        if len(item.vars) >= 1:
-            varname = CDMSPipelineHelper.get_variable_name_from_module(item.vars[0])
-            self.var1_edt.setText(varname)
+        if len(item.vars) > 0:
+            self.var1_edt.setText(item.vars[0])
         if len(item.vars) > 1:
-            varname = CDMSPipelineHelper.get_variable_name_from_module(item.vars[1])
-            self.var2_edt.setText(varname)
+            self.var2_edt.setText(item.vars[1])
         self.template_edt.setText(item.template)
             
     def show_vars(self, num):
@@ -1100,9 +1100,8 @@ class CDMSPlotWidget(QtGui.QWidget):
             cell.plots.append(item.reg_plot)
             item.reg_plot.template = item.template
             item.reg_plot.variables = []
-            for j in range(len(item.vars)):
-                nm = CDMSPipelineHelper.get_variable_name_from_module(item.vars[j])
-                item.reg_plot.variables.append(nm)
+            for varName in item.vars:
+                item.reg_plot.variables.append(varName)
 
         if (len(self.to_be_added) != 0 or len(self.to_be_removed) != 0 or
             len(self.var_to_be_added) != 0 or len(self.var_to_be_removed) != 0 
@@ -1152,22 +1151,22 @@ class CDMSPlotWidget(QtGui.QWidget):
             self.to_be_removed.append(module.id)
         self.update_btn_del_state()
         
-    @pyqtSlot(bool)
-    def add_var(self, checked):
-        var_list = self.var_table.get_varname_list()
-        dialog = AddCDMSVarDialog(self.proj_controller, var_list, self)
-        if dialog.exec_() == QtGui.QDialog.Accepted:
-            varName = dialog.varName
-            var_module = dialog.var 
-            self.var_table.add_var_item(var_module)
-        self.update_btn_del_var_state()
+#    @pyqtSlot(bool)
+#    def add_var(self, checked):
+#        var_list = self.var_table.get_varname_list()
+#        dialog = AddCDMSVarDialog(self.proj_controller, var_list, self)
+#        if dialog.exec_() == QtGui.QDialog.Accepted:
+#            varName = dialog.varName
+#            var_module = dialog.var 
+#            self.var_table.add_var_item(var_module)
+#        self.update_btn_del_var_state()
         
-    @pyqtSlot(bool)
-    def remove_var(self, checked):
-        module = self.var_table.remove_current_item()
-        if module:
-            self.var_to_be_removed.append(module.id)
-        self.update_btn_del_var_state()
+#    @pyqtSlot(bool)
+#    def remove_var(self, checked):
+#        module = self.var_table.remove_current_item()
+#        if module:
+#            self.var_to_be_removed.append(module.id)
+#        self.update_btn_del_var_state()
         
     def update_pipeline(self, action):
 #        var_modules = self.var_table.get_vars()
@@ -1312,6 +1311,9 @@ class PlotTableWidget(QtGui.QTreeWidget):
                     _vars = CDMSPipelineHelper.find_variables_connected_to_plot_module(self.controller, 
                                                                                         pipeline, 
                                                                                         p_module.id)
+        varNames = []
+        for var_module in _vars:
+            varNames.append(CDMSPipelineHelper.get_variable_name_from_module(var_module))
                       
         if new_plot:
             reg_plot = copy.deepcopy(manager.get_plot_by_name(desc.plot_type, gm_name))
@@ -1321,7 +1323,7 @@ class PlotTableWidget(QtGui.QTreeWidget):
             cell = self.proj_controller.sheet_map[sheetName][(row,col)]
             reg_plot = cell.plots[order]
         item = PlotTableWidgetItem(self, order, plot_module, labels, 
-                                   desc.plot_type, gm_name, _vars, reg_plot, template)
+                                   desc.plot_type, gm_name, varNames, reg_plot, template)
         item.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable)
         return item
     
@@ -1389,20 +1391,20 @@ class PlotTableWidget(QtGui.QTreeWidget):
             plots.append(item.module)
         return plots
     
-    def get_connections(self):
-        conns = []
-        for i in range(self.topLevelItemCount()):
-            item = self.topLevelItem(i)
-            if len(item.vars) >= 1:
-                conns.append((item.vars[0], 'self', item.module, 'variable'))
-            if len(item.vars) > 1:
-                conns.append((item.vars[1], 'self', item.module, 'variable2'))            
-        return conns
+#    def get_connections(self):
+#        conns = []
+#        for i in range(self.topLevelItemCount()):
+#            item = self.topLevelItem(i)
+#            if len(item.vars) >= 1:
+#                conns.append((item.vars[0], 'self', item.module, 'variable'))
+#            if len(item.vars) > 1:
+#                conns.append((item.vars[1], 'self', item.module, 'variable2'))            
+#        return conns
         
 class VarTableWidget(QtGui.QTreeWidget):
-    def __init__(self, var_list, parent=None):    
+    def __init__(self, cell, parent=None):    
         QtGui.QTreeWidget.__init__(self, parent)
-        self.vars = var_list
+        self.vars = []
         self.setSizePolicy(QtGui.QSizePolicy.Expanding,
                            QtGui.QSizePolicy.Expanding)
         self.setRootIsDecorated(False)
@@ -1411,86 +1413,95 @@ class VarTableWidget(QtGui.QTreeWidget):
         self.setDragEnabled(True)
         self.flags = QtCore.Qt.ItemIsDragEnabled
         self.setAcceptDrops(False)
+        self.cell = cell
+        self.populate_from_cell()
         
-    def populate_from_vars(self, _vars=None):
-        if _vars is not None:
-            self.vars = _vars
-        self.blockSignals(True)
-        self.clear()
-        self.blockSignals(False)
-        for i in range(len(self.vars)):
-            item = self.create_var_item(self.vars[i])
-            if item.module == self.vars[0]:
-                self.setItemSelected(item,True)
+#    def populate_from_vars(self, _vars=None):
+#        if _vars is not None:
+#            self.vars = _vars
+#        self.blockSignals(True)
+#        self.clear()
+#        self.blockSignals(False)
+#        varDict = {}
+#        for i in range(len(self.vars)):
+#            if self.vars[i] not in varDict:
+#                varDict[self.vars[i]] = True
+#                item = self.create_var_item(self.vars[i])
+#                if i == 0:
+#                    self.setItemSelected(item,True)
+                
+    def populate_from_cell(self, cell=None):
+        if cell is not None:
+            self.cell = cell
+        
+        varDict = {}
+        for var in self.cell.variables():
+            if var not in varDict:
+                varDict[var] = True
+                self.addTopLevelItem(self.create_var_item(var))
             
     def mimeData(self, itemList):
         """ mimeData(itemList) -> None        
-        Setup the mime data to contain itemList because Qt 4.2.2
-        implementation doesn't instantiate QTreeWidgetMimeData
-        anywhere as it's supposed to. It must have been a bug...
+        Setup the mime data to contain empty data and varname as text
         
         """
         data = QtGui.QTreeWidget.mimeData(self, itemList)
-        a = QtCore.QByteArray()
-        a.append(self.currentItem().text(0))
-        data.setData("variable", a)
-        data.items = itemList
+        data.setData("definedVariables", QtCore.QByteArray())
+        data.setText(itemList[0].text(0))
         return data
     
-    def create_var_item(self, var_module):
-        varname = CDMSPipelineHelper.get_variable_name_from_module(var_module)
-        labels = QtCore.QStringList() << str(varname)
-        item = VarTableWidgetItem(self, var_module, labels, varname)
+    def create_var_item(self, varname):
+        item = QtGui.QTreeWidgetItem(QtCore.QStringList() << str(varname))
         item.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable |
                       QtCore.Qt.ItemIsDragEnabled | QtCore.Qt.ItemIsDropEnabled)
         return item
     
-    def add_var_item(self, var_module):
-        self.vars.append(var_module)
-        self.create_var_item(var_module)
+#    def add_var_item(self, varName):
+#        self.vars.append(varName)
+#        self.create_var_item(varName)
         
-    def remove_current_item(self):
-        item = self.selectedItems()[0]
-        index = self.indexOfTopLevelItem(item)
-        item = self.takeTopLevelItem(index)
-        self.remove_var_by_id(item.module.id)
-        return item.module
-        
-    def remove_var_by_id(self, _id):
-        found = None
-        for var in self.vars:
-            if var.id == _id:
-                found = var
-                break
-        if var is not None:
-            self.vars.remove(found)
+#    def remove_current_item(self):
+#        item = self.selectedItems()[0]
+#        index = self.indexOfTopLevelItem(item)
+#        item = self.takeTopLevelItem(index)
+#        self.remove_var_by_id(item.module.id)
+#        return item.module
+#        
+#    def remove_var_by_id(self, _id):
+#        found = None
+#        for var in self.vars:
+#            if var.id == _id:
+#                found = var
+#                break
+#        if var is not None:
+#            self.vars.remove(found)
             
     def get_varname_list(self):
         var_list = []
         for i in range(self.topLevelItemCount()):
             item = self.topLevelItem(i)
-            var_list.append(item.varname)
+            var_list.append(item.text(0))
         return var_list
     
-    def get_vars(self):
-        vars = []
-        for i in range(self.topLevelItemCount()):
-            item = self.topLevelItem(i)
-            vars.append(item.module)
-        return vars
+#    def get_vars(self):
+#        vars = []
+#        for i in range(self.topLevelItemCount()):
+#            item = self.topLevelItem(i)
+#            vars.append(item.module)
+#        return vars
     
-    def get_var_by_name(self, name):
-        for i in range(self.topLevelItemCount()):
-            item = self.topLevelItem(i)
-            if item.varname == name:
-                return item.module
-        return None
+#    def get_var_by_name(self, name):
+#        for i in range(self.topLevelItemCount()):
+#            item = self.topLevelItem(i)
+#            if item.varname == name:
+#                return item.module
+#        return None
     
-class VarTableWidgetItem(QtGui.QTreeWidgetItem):
-    def __init__(self, parent, module, labels, varname):
-        QtGui.QTreeWidgetItem.__init__(self, parent, labels)
-        self.module = module    
-        self.varname = varname
+#class VarTableWidgetItem(QtGui.QTreeWidgetItem):
+#    def __init__(self, parent, module, labels, varname):
+#        QtGui.QTreeWidgetItem.__init__(self, parent, labels)
+#        self.module = module    
+#        self.varname = varname
         
 class CDMSTreeWidget(QtGui.QTreeWidget):
     def __init__(self, parent=None):
@@ -1546,61 +1557,61 @@ class AddCDMSPlotDialog(QtGui.QDialog):
     def btn_cancel_clicked(self, checked):
         self.reject()
         
-class AddCDMSVarDialog(QtGui.QDialog):
-    def __init__(self, controller, var_list, parent=None):
-        super(AddCDMSVarDialog, self).__init__(parent)
-        self.setWindowTitle('UVCDAT VCS Plot Composition')
-        self.proj_controller = controller
-        self.var = None
-        self.varName = None
-        self._var_list = var_list
-        dlg_layout = QtGui.QVBoxLayout()
-        label = QtGui.QLabel("Please select a defined variable:")
-        self.var_list= QtGui.QListWidget(self)
-        self.btn_ok = QtGui.QPushButton("OK")
-        self.btn_cancel = QtGui.QPushButton("Cancel")
-        btn_layout = QtGui.QHBoxLayout()
-        btn_layout.addStretch()
-        btn_layout.addWidget(self.btn_ok)
-        btn_layout.addWidget(self.btn_cancel)
-        btn_layout.addStretch()
-        dlg_layout.addWidget(label)
-        dlg_layout.addWidget(self.var_list)
-        dlg_layout.addLayout(btn_layout)
-        self.btn_ok.clicked.connect(self.btn_ok_clicked)
-        self.btn_cancel.clicked.connect(self.btn_cancel_clicked)
-        self.setLayout(dlg_layout)
-        self.create_list()
-        
-    @pyqtSlot(bool)
-    def btn_ok_clicked(self, checked):
-        item = self.var_list.selectedItems()[0]
-        self.varName = item.varName
-        self.var = item.var
-        self.accept()
-       
-    @pyqtSlot(bool) 
-    def btn_cancel_clicked(self, checked):
-        self.reject()
-        
-    def create_list(self):
-        for varName in sorted(self.proj_controller.defined_variables):
-            if varName not in self._var_list:
-                var = self.proj_controller.defined_variables[varName]
-                var_module = var.to_module(self.proj_controller.vt_controller)
-                item = CDMSVarListWidgetItem(var_module, varName, CDMSVariable, self.var_list)
-        for varName in sorted(self.proj_controller.computed_variables):
-            if varName not in self._var_list:
-                var = self.proj_controller.computed_variables[varName]
-                item = CDMSVarListWidgetItem(None, varName, CDMSVariableOperation, self.var_list)
+#class AddCDMSVarDialog(QtGui.QDialog):
+#    def __init__(self, controller, var_list, parent=None):
+#        super(AddCDMSVarDialog, self).__init__(parent)
+#        self.setWindowTitle('UVCDAT VCS Plot Composition')
+#        self.proj_controller = controller
+#        self.var = None
+#        self.varName = None
+#        self._var_list = var_list
+#        dlg_layout = QtGui.QVBoxLayout()
+#        label = QtGui.QLabel("Please select a defined variable:")
+#        self.var_list= QtGui.QListWidget(self)
+#        self.btn_ok = QtGui.QPushButton("OK")
+#        self.btn_cancel = QtGui.QPushButton("Cancel")
+#        btn_layout = QtGui.QHBoxLayout()
+#        btn_layout.addStretch()
+#        btn_layout.addWidget(self.btn_ok)
+#        btn_layout.addWidget(self.btn_cancel)
+#        btn_layout.addStretch()
+#        dlg_layout.addWidget(label)
+#        dlg_layout.addWidget(self.var_list)
+#        dlg_layout.addLayout(btn_layout)
+#        self.btn_ok.clicked.connect(self.btn_ok_clicked)
+#        self.btn_cancel.clicked.connect(self.btn_cancel_clicked)
+#        self.setLayout(dlg_layout)
+#        self.create_list()
+#        
+#    @pyqtSlot(bool)
+#    def btn_ok_clicked(self, checked):
+#        item = self.var_list.selectedItems()[0]
+#        self.varName = item.varName
+#        self.var = item.var
+#        self.accept()
+#       
+#    @pyqtSlot(bool) 
+#    def btn_cancel_clicked(self, checked):
+#        self.reject()
+#        
+#    def create_list(self):
+#        for varName in sorted(self.proj_controller.defined_variables):
+#            if varName not in self._var_list:
+#                var = self.proj_controller.defined_variables[varName]
+#                var_module = var.to_module(self.proj_controller.vt_controller)
+#                item = CDMSVarListWidgetItem(var_module, varName, CDMSVariable, self.var_list)
+#        for varName in sorted(self.proj_controller.computed_variables):
+#            if varName not in self._var_list:
+#                var = self.proj_controller.computed_variables[varName]
+#                item = CDMSVarListWidgetItem(None, varName, CDMSVariableOperation, self.var_list)
             
         
-class CDMSVarListWidgetItem(QtGui.QListWidgetItem):
-    def __init__(self, var, varName, t=CDMSVariable, parent=None):
-        super(CDMSVarListWidgetItem, self).__init__(varName, parent)
-        self.var = var
-        self.varName = varName
-        self.type = t
+#class CDMSVarListWidgetItem(QtGui.QListWidgetItem):
+#    def __init__(self, var, varName, t=CDMSVariable, parent=None):
+#        super(CDMSVarListWidgetItem, self).__init__(varName, parent)
+#        self.var = var
+#        self.varName = varName
+#        self.type = t
         
 class DropVarLineEdit(QtGui.QLineEdit):
     
@@ -1610,14 +1621,14 @@ class DropVarLineEdit(QtGui.QLineEdit):
         self.order = order
         
     def dropEvent(self, event):
-        mimeData = event.mimeData()   
-        if mimeData.hasFormat("variable"):
-            if hasattr(mimeData, 'items') and len(mimeData.items) == 1:
-                event.setDropAction(QtCore.Qt.CopyAction)
-                event.accept()
-                item = mimeData.items[0]
-                self.setText(item.varname)
-                self.emit(QtCore.SIGNAL("dropped_var"), item.module, self.order)
+        mimeData = event.mimeData()
+        if mimeData.hasFormat("definedVariables"):
+            event.setDropAction(QtCore.Qt.CopyAction)
+            event.accept()
+            varNames = str(mimeData.text()).split(',')
+            self.setText(varNames[-1])
+            self.emit(QtCore.SIGNAL("dropped_var"), varNames[-1], self.order)
+            
                 
     def dragEnterEvent(self, event):
         """ dragEnterEvent(event: QDragEnterEvent) -> None
@@ -1625,7 +1636,7 @@ class DropVarLineEdit(QtGui.QLineEdit):
         
         """
         mimeData = event.mimeData()
-        if mimeData.hasFormat("variable"):
+        if mimeData.hasFormat("definedVariables"):
             event.accept()
         else:
             event.ignore()
@@ -1636,7 +1647,7 @@ class DropVarLineEdit(QtGui.QLineEdit):
         
         """
         mimeData = event.mimeData()
-        if mimeData.hasFormat("variable"):
+        if mimeData.hasFormat("definedVariables"):
             event.accept()
         else:
             event.ignore()
