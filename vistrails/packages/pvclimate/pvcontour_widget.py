@@ -38,6 +38,10 @@ class PVContourWidget(QtGui.QWidget, Ui_PVContourWidget):
             for value in values:
                 qstr_list.append(value)
 
+        #// Remove any duplicates and sort the list
+        qstr_list.removeDuplicates()
+        qstr_list.sort()
+
         self.list_model.reset()
         self.list_model.setStringList(qstr_list)
 
