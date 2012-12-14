@@ -88,8 +88,8 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
 
             contours = self.forceGetInputListFromPort("contour_values")
             print 'contours are ', contours
-            if len(contours) > 0:
-                self.contour_values = [float(d) for d in contours.split(',')]
+            if(len(contours) and contours):
+                self.contour_values = [float(d) for d in contours[0].split(',')]
 
             if( (self.contour_values == None) or (len(self.contour_values) == 0) ):
                 print >> sys.stderr, "No contour values are found"
@@ -175,7 +175,7 @@ class ContourRepresentationConfigurationWidget(RepresentationBaseConfigurationWi
 
         contour_values = str(self.contour_widget.get_contour_values()).strip('[]')
         functions = []
-        functions.append(("contour_values", contour_values))
+        functions.append(("contour_values", [contour_values]))
 
         print 'self.controller ', self.controller
         print 'self.controller type ', type(self.controller)
