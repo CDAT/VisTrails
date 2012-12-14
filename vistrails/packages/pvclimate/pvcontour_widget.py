@@ -26,7 +26,7 @@ class PVContourWidget(QtGui.QWidget, Ui_PVContourWidget):
 
             first_val = self.firstValueLineEdit.text().toDouble()[0]
             last_val = self.lastValueLineEdit.text().toDouble()[0]
-            steps = self.stepValueEdit.text().toInt()[0]
+            steps = self.stepValueEdit.text().toDouble()[0]
             count = int((last_val - first_val) / steps)
             values = [ (first_val + i * steps) for  i in range(count + 1)]
 
