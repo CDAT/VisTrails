@@ -171,25 +171,16 @@ class ContourRepresentationConfigurationWidget(RepresentationBaseConfigurationWi
         pass"""
 
     def update_contour_values(self):
-        print >> sys.stderr, "Update contour values"
-        print self.contour_widget.get_contour_values()
-
         contour_values = str(self.contour_widget.get_contour_values()).strip('[]')
         functions = []
         functions.append(("contour_values", [contour_values]))
 
-        print 'self.controller ', self.controller
-        print 'self.controller type ', type(self.controller)
-
         action = self.controller.update_functions(self.rep_module, functions)
 
         if action is not None:
-            print >> sys.stderr, 'Contour values has been updated'
-            
-        window = get_vistrails_application().uvcdatWindow
-        window.get_current_project_controller().cell_was_changed(action)
-
-        self.controller.execute_current_workflow()
+            window = get_vistrails_application().uvcdatWindow
+            window.get_current_project_controller().cell_was_changed(action)
+            self.controller.execute_current_workflow()
 
 def register_self():
     registry = get_module_registry()
