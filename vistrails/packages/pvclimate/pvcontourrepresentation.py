@@ -5,7 +5,6 @@ from pvcdmsreader import *
 
 #// Import registry and vistrails app
 from core.modules.module_registry import get_module_registry
-from core.application import get_vistrails_application
 from core.modules.vistrails_module import ModuleConnector
 
 #// Import paraview
@@ -44,13 +43,13 @@ class PVContourRepresentation(PVRepresentationBase):
     def execute(self):
         for cdms_var in self.cdms_variables:
 
-            reader = PVCDMSReader()
-            time_values = [None, 1, True]
-            image_data = reader.convert(cdms_var, time=time_values)
-
             #// Get the min and max to draw default contours
             min = cdms_var.var.min()
             max = cdms_var.var.max()
+
+            reader = PVCDMSReader()
+            time_values = [None, 1, True]
+            image_data = reader.convert(cdms_var, time=time_values)
 
             #// Make white box filter so we can work at proxy level
             ProgrammableSource1 = pvsp.ProgrammableSource()
@@ -192,13 +191,8 @@ class ContourRepresentationConfigurationWidget(RepresentationBaseConfigurationWi
         contour_values = str(self.contour_widget.get_contour_values()).strip('[]')
         functions = []
         functions.append(("contour_values", [contour_values]))
+        self.update_vistrails(self.rep_module, functions)
 
-        action = self.controller.update_functions(self.rep_module, functions)
-
-        if action is not None:
-            window = get_vistrails_application().uvcdatWindow
-            window.get_current_project_controller().cell_was_changed(action)
-            self.controller.execute_current_workflow()
 
 def register_self():
     registry = get_module_registry()

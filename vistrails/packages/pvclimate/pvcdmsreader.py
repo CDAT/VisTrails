@@ -31,6 +31,20 @@ class PVCDMSReader():
             return True
         return False
 
+    def is_three_dimensional(self, cdms_var):
+        dim = 0
+        if cdms_var is not None:
+            axes_list = cdms_var.var.getAxisList()
+
+            for axis in axes_list:
+                if axis.isLongitude():
+                    dim += 1
+                if axis.isLatitude():
+                    dim += 1
+                if self.is_level_axis(axis):
+                    dim += 1
+        return (True if (dim == 3) else False)
+
     def get_coord_type(self, axis):
         icoord = -2
         if axis.isLongitude():
