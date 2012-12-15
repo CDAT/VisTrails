@@ -100,8 +100,13 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
             if( (self.contour_values == None) or (len(self.contour_values) == 0) ):
                 print >> sys.stderr, "No contour values are found"
                 self.contour_values = [ (x * delta + min) for x in range(10) ]
+                print 'self.contour_values ', self.contour_values
 
-            print 'Contour values are ', self.contour_values
+                #// @todo: Check with Ben if this is the right way to do it:
+                import api
+                controller = api.get_current_controller()
+                module = PlotPipelineHelper.find_module_by_name(controller.current_pipeline, 'PVContourRepresentation')
+                controller.update_function(module, 'contour_values', [str(self.contour_values).strip('[]')])
 
             contour.Isosurfaces = self.contour_values
             contour.ComputeScalars = 1
@@ -156,8 +161,8 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
     @staticmethod
     def configuration_widget(parent, rep_module):
         contour_rep_widget = ContourRepresentationConfigurationWidget(parent, rep_module)
-        contour_values = contour_rep_widget.function_value('contour_values')
-        print 'contour_values for the widget is ', contour_values
+        contour_values_str = contour_rep_widget.function_value('contour_values')
+        contour_rep_widget.synchronize(contour_values_str)
         return contour_rep_widget
 
 class ContourRepresentationConfigurationWidget(RepresentationBaseConfigurationWidget):
@@ -176,7 +181,12 @@ class ContourRepresentationConfigurationWidget(RepresentationBaseConfigurationWi
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None
         Update vistrail controller (if necessary) then close the widget
-        pass"""
+        """
+        pass
+
+    def synchronize(self, contour_values_str):
+        self.contour_widget.set_contour_values(contour_values_str)
+
 
     def update_contour_values(self):
         contour_values = str(self.contour_widget.get_contour_values()).strip('[]')
