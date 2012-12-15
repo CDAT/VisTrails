@@ -6,6 +6,7 @@ from pvcdmsreader import *
 #// Import registry and vistrails app
 from core.modules.module_registry import get_module_registry
 from core.application import get_vistrails_application
+from core.modules.vistrails_module import ModuleConnector
 
 #// Import paraview
 import paraview.simple as pvsp
@@ -13,6 +14,7 @@ import paraview.simple as pvsp
 #// CDAT
 import cdms2, cdtime, cdutil, MV2
 import core.modules.basic_modules as basic_modules
+from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 
 #// Import pvclimate modules
 from pvcontour_widget import *
@@ -28,6 +30,9 @@ class PVContourRepresentation(PVRepresentationBase):
     def compute(self):
         #// @todo:
         pass
+
+    def get_contour_values(self):
+        return self.contour_values
 
     def set_contour_values(self, values):
         self.contour_values = values
@@ -150,7 +155,10 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
 
     @staticmethod
     def configuration_widget(parent, rep_module):
-        return ContourRepresentationConfigurationWidget(parent, rep_module)
+        contour_rep_widget = ContourRepresentationConfigurationWidget(parent, rep_module)
+        contour_values = contour_rep_widget.function_value('contour_values')
+        print 'contour_values for the widget is ', contour_values
+        return contour_rep_widget
 
 class ContourRepresentationConfigurationWidget(RepresentationBaseConfigurationWidget):
     def __init__(self, parent, rep_module):
