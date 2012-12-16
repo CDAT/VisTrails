@@ -31,12 +31,16 @@ class PVContourWidget(QtGui.QWidget, Ui_PVContourWidget):
             values = [ (first_val + i * steps) for  i in range(count + 1)]
 
             for value in values:
-                qstr_list.append(QtCore.QString("%1").arg(value))
+                value = value.strip()
+                if len(value > 0):
+                    qstr_list.append(value)
 
         if(not self.valuesLineEdit.text().isEmpty()):
             values = self.valuesLineEdit.text().split(',')
             for value in values:
-                qstr_list.append(value)
+                value = value.trimmed()
+                if not value.isEmpty():
+                    qstr_list.append(value)
 
         #// Remove any duplicates and sort the list
         qstr_list.removeDuplicates()
