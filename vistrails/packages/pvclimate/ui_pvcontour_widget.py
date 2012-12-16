@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'pvcontour_widget.ui'
 #
-# Created: Thu Dec 13 22:18:32 2012
+# Created: Sun Dec 16 12:02:19 2012
 #      by: PyQt4 UI code generator 4.9.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -22,9 +22,14 @@ class Ui_PVContourWidget(object):
         self.gridLayout.setObjectName(_fromUtf8("gridLayout"))
         self.horizontalLayout = QtGui.QHBoxLayout()
         self.horizontalLayout.setObjectName(_fromUtf8("horizontalLayout"))
-        self.isoValuesListView = QtGui.QListView(PVContourWidget)
+        self.groupBox_3 = QtGui.QGroupBox(PVContourWidget)
+        self.groupBox_3.setObjectName(_fromUtf8("groupBox_3"))
+        self.verticalLayout_5 = QtGui.QVBoxLayout(self.groupBox_3)
+        self.verticalLayout_5.setObjectName(_fromUtf8("verticalLayout_5"))
+        self.isoValuesListView = QtGui.QListView(self.groupBox_3)
         self.isoValuesListView.setObjectName(_fromUtf8("isoValuesListView"))
-        self.horizontalLayout.addWidget(self.isoValuesListView)
+        self.verticalLayout_5.addWidget(self.isoValuesListView)
+        self.horizontalLayout.addWidget(self.groupBox_3)
         self.verticalLayout_3 = QtGui.QVBoxLayout()
         self.verticalLayout_3.setObjectName(_fromUtf8("verticalLayout_3"))
         self.groupBox_2 = QtGui.QGroupBox(PVContourWidget)
@@ -84,6 +89,7 @@ class Ui_PVContourWidget(object):
 
     def retranslateUi(self, PVContourWidget):
         PVContourWidget.setWindowTitle(QtGui.QApplication.translate("PVContourWidget", "Form", None, QtGui.QApplication.UnicodeUTF8))
+        self.groupBox_3.setTitle(QtGui.QApplication.translate("PVContourWidget", "Contour Values", None, QtGui.QApplication.UnicodeUTF8))
         self.groupBox_2.setTitle(QtGui.QApplication.translate("PVContourWidget", "List", None, QtGui.QApplication.UnicodeUTF8))
         self.label_4.setText(QtGui.QApplication.translate("PVContourWidget", "Values", None, QtGui.QApplication.UnicodeUTF8))
         self.groupBox.setTitle(QtGui.QApplication.translate("PVContourWidget", "Range", None, QtGui.QApplication.UnicodeUTF8))
