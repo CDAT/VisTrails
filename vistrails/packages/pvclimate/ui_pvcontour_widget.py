@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'pvcontour_widget.ui'
 #
-# Created: Sun Dec 16 12:07:34 2012
+# Created: Sun Dec 16 12:11:55 2012
 #      by: PyQt4 UI code generator 4.9.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -27,6 +27,7 @@ class Ui_PVContourWidget(object):
         self.verticalLayout_5 = QtGui.QVBoxLayout(self.groupBox_3)
         self.verticalLayout_5.setObjectName(_fromUtf8("verticalLayout_5"))
         self.isoValuesListView = QtGui.QListView(self.groupBox_3)
+        self.isoValuesListView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
         self.isoValuesListView.setObjectName(_fromUtf8("isoValuesListView"))
         self.verticalLayout_5.addWidget(self.isoValuesListView)
         self.horizontalLayout.addWidget(self.groupBox_3)
