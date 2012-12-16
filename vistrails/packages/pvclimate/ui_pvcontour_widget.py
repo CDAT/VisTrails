@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'pvcontour_widget.ui'
 #
-# Created: Sun Dec 16 12:02:19 2012
+# Created: Sun Dec 16 12:07:34 2012
 #      by: PyQt4 UI code generator 4.9.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -66,9 +66,9 @@ class Ui_PVContourWidget(object):
         self.label_3 = QtGui.QLabel(self.groupBox)
         self.label_3.setObjectName(_fromUtf8("label_3"))
         self.verticalLayout.addWidget(self.label_3)
-        self.stepValueEdit = QtGui.QLineEdit(self.groupBox)
-        self.stepValueEdit.setObjectName(_fromUtf8("stepValueEdit"))
-        self.verticalLayout.addWidget(self.stepValueEdit)
+        self.stepValueLineEdit = QtGui.QLineEdit(self.groupBox)
+        self.stepValueLineEdit.setObjectName(_fromUtf8("stepValueLineEdit"))
+        self.verticalLayout.addWidget(self.stepValueLineEdit)
         spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
         self.verticalLayout.addItem(spacerItem)
         self.horizontalLayout_2.addLayout(self.verticalLayout)

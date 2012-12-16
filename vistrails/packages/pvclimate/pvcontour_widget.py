@@ -22,11 +22,11 @@ class PVContourWidget(QtGui.QWidget, Ui_PVContourWidget):
 
         if(not self.firstValueLineEdit.text().isEmpty() and
            not self.lastValueLineEdit.text().isEmpty() and
-           not self.stepValueEdit.text().isEmpty()):
+           not self.stepValueLineEdit.text().isEmpty()):
 
             first_val = self.firstValueLineEdit.text().toDouble()[0]
             last_val = self.lastValueLineEdit.text().toDouble()[0]
-            steps = self.stepValueEdit.text().toDouble()[0]
+            steps = self.stepValueLineEdit.text().toDouble()[0]
             count = int((last_val - first_val) / steps)
             values = [ (first_val + i * steps) for  i in range(count + 1)]
 
@@ -45,8 +45,16 @@ class PVContourWidget(QtGui.QWidget, Ui_PVContourWidget):
         self.list_model.reset()
         self.list_model.setStringList(qstr_list)
 
+    def clear_inputs(self):
+        self.firstValueLineEdit.clear()
+        self.lastValueLineEdit.clear()
+        self.stepValueLineEdit.clear()
+        self.valuesLineEdit.clear()
+
     def apply_changes(self):
         self.update_contour_values()
+        #// Now clear the inputs
+        self.clear_inputs()
         self.requestedApplyChagnes.emit()
 
     def set_contour_values(self, contour_values_str):

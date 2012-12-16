@@ -93,7 +93,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QLineEdit" name="stepValueEdit"/>
+             <widget class="QLineEdit" name="stepValueLineEdit"/>
             </item>
             <item>
              <spacer name="verticalSpacer">
