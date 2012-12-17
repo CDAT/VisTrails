@@ -234,10 +234,12 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.updateOTF()
         self.render()
 
+#TODO:
     def getDataRangeBounds(self): 
         range = PersistentVisualizationModule.getDataRangeBounds(self)
         if self.transferFunctionConfig:
             range[2] = self.transferFunctionConfig.getTransferFunctionType()
+            if range[2] == AbsValueTransferFunction: range[0] = 0.0
         return range
                 
     def persistTransferFunctionConfig( self ):
@@ -606,23 +608,23 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         elif transferFunctionType == AbsValueTransferFunction:
             graphData = []
             nodeDataList = self.getTransferFunctionPoints( self._range, NegativeValues )
-#            points = []
+            points = []
             pcount = 0
             for nodeData in nodeDataList:  
                 pos = nodeData.getImagePosition()
                 self.opacityTransferFunction.AddPoint( pos[0], pos[1] ) 
                 graphData.append( nodeData  ) 
-#                points.append( "\n [%d]--- p(-)[%d]: %s " % ( pcount, nodeData.index, str( nodeData.getDataPosition() ) ) )
+                points.append( "\n [%d]--- p(-)[%d]: %s " % ( pcount, nodeData.index, str( nodeData.getDataPosition() ) ) )
                 pcount += 1
             nodeDataList = self.getTransferFunctionPoints( self._range, PositiveValues ) 
             for nodeData in nodeDataList:    
                 pos = nodeData.getImagePosition()
                 self.opacityTransferFunction.AddPoint( pos[0], pos[1] ) 
                 graphData.append( nodeData  )  
-#                points.append( "\n [%d]--- p(+)[%d]: %s " % ( pcount, nodeData.index, str( nodeData.getDataPosition() ) ) )
+                points.append( "\n [%d]--- p(+)[%d]: %s " % ( pcount, nodeData.index, str( nodeData.getDataPosition() ) ) )
                 pcount += 1
             if self.otf_data: self.transferFunctionConfig.updateGraph( scalarRange, [ 0.0, 1.0 ], graphData )
-#            print "OTF: [ %s ] " % " ".join( points ) 
+            print "OTF: [ %s ] " % " ".join( points ) 
         elif transferFunctionType == FullValueTransferFunction:
             nodeDataList = self.getTransferFunctionPoints( self._range, AllValues )
             for nodeData in nodeDataList: 
