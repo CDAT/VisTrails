@@ -81,9 +81,12 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
 
             self.contour_var_name = str(cdms_var.varNameInFile)
 
-            data_rep = pvsp.Show(view=self.view)
-            data_rep.LookupTable = pvsp.GetLookupTableForArray(self.contour_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[min, 0.23, 0.299, 0.754, max, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
-            data_rep.ColorArrayName = self.contour_var_name
+            #// If the data is three dimensional, then don't draw the background imagery
+            #// since it may hide the contours
+            if not reader.is_three_dimensional(cdms_var):
+                data_rep = pvsp.Show(view=self.view)
+                data_rep.LookupTable = pvsp.GetLookupTableForArray(self.contour_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[min, 0.23, 0.299, 0.754, max, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
+                data_rep.ColorArrayName = self.contour_var_name
 
             contour = pvsp.Contour()
             pvsp.SetActiveSource(contour)
