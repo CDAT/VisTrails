@@ -32,7 +32,7 @@
 ##
 ###############################################################################
 
-import os
+import os, copy
 import ConfigParser
 from PyQt4 import QtCore
 from core.uvcdat.plot_registry import PlotRegistry
@@ -63,6 +63,7 @@ class PlotManager(QtCore.QObject):
         self._registry = None
         self._userplots = None
         self._plots = None
+        self._plot_instances = []
         
     def init_registry(self):
         self._registry = PlotRegistry()
@@ -189,17 +190,37 @@ class PlotManager(QtCore.QObject):
             except KeyError:
                 return None
             
+    def new_plot(self, plot_package, plot_type, plot_name=None):
+        plot = self.get_plot(plot_package, plot_type, plot_name)
+        if plot is not None:
+            self._plot_instances.append(copy.deepcopy(plot))
+            return self._plot_instances[-1]
+        else:
+            return None
+    
+    def new_plot_by_name(self, plot_type, plot_name=None):
+        plot = self.get_plot_by_name(plot_type, plot_name)
+        if plot is not None:
+            self._plot_instances.append(copy.deepcopy(plot))
+            return self._plot_instances[-1]
+        else:
+            return None
+    
+    def remove_plot_instance(self, plot):
+        self._plot_instances.remove(plot)
+            
     def get_plot_by_vistrail_version(self, plot_package, vistrail, version):
-        plots = self._plot_list[plot_package]
+        plots = self._plot_instances
         vistrail_a = vistrail
         version_a = version
         pipeline = vistrail.getPipeline(version)
-        for pl in plots.itervalues():
+        for pl in plots:
             vistrail_b = pl.plot_vistrail
             version_b = pl.workflow_version
             if (pl.are_workflows_equal(vistrail_a, vistrail_b, 
                                         version_a, version_b) and
-                len(pipeline.aliases) == len(pl.workflow.aliases)):
+                len(pipeline.aliases) == len(pl.workflow.aliases) and
+                pl.package == plot_package):
                 return pl
         
 def get_plot_manager():

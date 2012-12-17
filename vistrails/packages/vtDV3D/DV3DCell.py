@@ -1291,7 +1291,7 @@ class QCellToolBarExportTimeSeries(QtGui.QAction):
         
         # create new plot
         plot_manager = prj_controller.plot_manager;
-        new_cell.add_plot(plot_manager.get_plot('VCS', 'Yxvsx', 'ASD1'))
+        new_cell.add_plot(plot_manager.new_plot('VCS', 'Yxvsx', 'ASD1'))
         
         prj_controller.check_update_cell(sheetName, new_row, new_col)
         

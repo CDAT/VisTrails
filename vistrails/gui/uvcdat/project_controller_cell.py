@@ -31,6 +31,8 @@
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
 ###############################################################################
+from core.uvcdat.plotmanager import get_plot_manager
+
 class ControllerCell(object):
     
     def __init__(self, variables=[], plots=[], templates=[], current_parent_version=0L):
@@ -95,3 +97,17 @@ class ControllerCell(object):
         """
         plot_vars = [v for p in self.plots for v in p.variables] 
         return plot_vars + self.variableQ
+    
+    def remove_plot(self, plot):
+        get_plot_manager().remove_plot_instance(plot)
+        self.plots.remove(plot)
+        
+    def clear_plots(self):
+        for i in reversed(range(len(self.plots))):
+            self.remove_plot(self.plots[i])
+    
+    def clear(self):
+        self.clear_plots()
+        self.variableQ = []
+        self.templateQ = []
+        

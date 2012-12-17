@@ -51,6 +51,7 @@ from spreadsheet_execute import assignPipelineCellLocations, \
 from spreadsheet_prompt import QPromptCellWidget
 from spreadsheet_config import configuration
 from core.inspector import PipelineInspector
+from core.uvcdat.plotmanager import get_plot_manager
 from gui.application import get_vistrails_application
 import spreadsheet_rc
 
@@ -908,7 +909,9 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
                 row = self.sheet.rowAt(localPos.y())
                 col = self.sheet.columnAt(localPos.x())
                 sheetName = str(self.tabWidget.tabText(self.tabWidget.indexOf(self)))
-                self.emit(QtCore.SIGNAL("dropped_plot"), (copy.deepcopy(item.plot), 
+                new_plot = copy.deepcopy(item.plot)
+                get_plot_manager()._plot_instances.append(new_plot)
+                self.emit(QtCore.SIGNAL("dropped_plot"), (new_plot, 
                                                           sheetName, row, col))
                 self.updatePrompt(sheetName, row, col)
                 self.sheet.selectCell(row, col, False)
