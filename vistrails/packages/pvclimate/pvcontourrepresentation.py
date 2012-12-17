@@ -117,14 +117,23 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
 
             #// @todo: Remove hard-coded values
             contour_rep = pvsp.Show(view=self.view)
-            contour_rep.DiffuseColor = [0.0, 0.0, 0.0]
             contour_rep.Representation = 'Surface'
-            contour_rep.ColorArrayName = ''
+            if reader.is_three_dimensional(cdms_var):
+                contour_rep.LookupTable = pvsp.GetLookupTableForArray(self.contour_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[min, 0.23, 0.299, 0.754, max, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
+                contour_rep.ColorArrayName = self.contour_var_name
+            else:
+                contour_rep.DiffuseColor = [0.0, 0.0, 0.0]
+                contour_rep.ColorArrayName = ''
+
 
             #// Scalar bar
             ScalarBarWidgetRepresentation1 = pvsp.CreateScalarBar( Title=self.contour_var_name, LabelFontSize=12, Enabled=1, TitleFontSize=12 )
             pvsp.GetRenderView().Representations.append(ScalarBarWidgetRepresentation1)
-            ScalarBarWidgetRepresentation1.LookupTable = data_rep.LookupTable
+
+            if not reader.is_three_dimensional(cdms_var):
+                ScalarBarWidgetRepresentation1.LookupTable = data_rep.LookupTable
+            else:
+                ScalarBarWidgetRepresentation1.LookupTable = contour_rep.LookupTable
 
         for var in self.variables:
             reader = var.get_reader()
