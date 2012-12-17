@@ -62,6 +62,8 @@ class PVContourWidget(QtGui.QWidget, Ui_PVContourWidget):
         self.requestedApplyChagnes.emit()
 
     def set_contour_values(self, contour_values_str):
+        if contour_values_str is None:
+          return
         qstr_list = QtCore.QStringList()
         values = contour_values_str.split(',')
         for value in values:
