@@ -76,12 +76,13 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
             self.sliceByVarName = cdms_var.varNameInFile
             self.sliceByVarType = 'POINTS'
 
-            data_rep = pvsp.Show(view=self.view)
-            data_rep.LookupTable = pvsp.GetLookupTableForArray(self.sliceByVarName, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[min, 0.23, 0.299, 0.754, max, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
-            data_rep.ColorArrayName = self.sliceByVarName
-
             if not reader.is_three_dimensional(cdms_var):
-                continue
+              data_rep = pvsp.Show(view=self.view)
+              data_rep.LookupTable = pvsp.GetLookupTableForArray(self.sliceByVarName, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[min, 0.23, 0.299, 0.754, max, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
+              data_rep.ColorArrayName = self.sliceByVarName
+
+              print 'data has three dimensions'
+              continue
 
             bounds = image_data.GetBounds()
             origin = []
