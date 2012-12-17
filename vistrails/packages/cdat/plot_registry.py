@@ -128,6 +128,8 @@ class Plot(object):
         self.plot_vistrail = None
         self.current_parent_version = 0L
         self.current_controller = None
+        self.variables = []
+        self.template = None
             
     def load(self, loadwidget=True):
         config = ConfigParser.ConfigParser()

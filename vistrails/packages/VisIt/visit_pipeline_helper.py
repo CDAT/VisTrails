@@ -42,7 +42,7 @@ class VisItPipelineHelper(PlotPipelineHelper):
             return visitcell.VisItCellConfigurationWidget(cell[0],controller)
 
     @staticmethod
-    def build_plot_pipeline_action(controller, version, var_modules, plots,row, col, template=None):
+    def build_plot_pipeline_action(controller, version, var_modules, plots,row, col):
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
         #plot_type = plots[0].parent
@@ -246,5 +246,57 @@ class VisItPipelineHelper(PlotPipelineHelper):
     @staticmethod
     def copy_pipeline_to_other_location(pipeline, controller, sheetName, row, col,plot_type, cell):
         return None
+#        print "copyt pipeline to other location"
+#        pip_str = core.db.io.serialize(pipeline)
+#        controller.change_selected_version(cell.current_parent_version)
+#
+#        modules = controller.paste_modules_and_connections(pip_str, (0.0,0.0))
+#        cell.current_parent_version = controller.current_version
+#        pipeline = controller.current_pipeline
+#
+#        reg = get_module_registry()
+#        cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, [CellLocation])
+#        cell_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [SpreadsheetCell])
+#
+#        #we assume that there is only one CellLocation and one SpreadsheetCell
+#        # delete location and create another one with the right locations
+#        action = controller.delete_module_list([cell_locations[0].id])
+#        cell.current_parent_version = action.id
+#
+#        loc_module = controller.create_module_from_descriptor(
+#            reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet',
+#                                       'CellLocation'))
+#        functions = controller.create_functions(loc_module,
+#            [('Row', [str(row+1)]), ('Column', [str(col+1)])])
+#        for f in functions:
+#            loc_module.add_function(f)
+#        loc_conn = controller.create_connection(loc_module, 'self',
+#                                                cell_modules[0], 'Location')
+#        ops = [('add', loc_module),
+#               ('add', loc_conn)]
+#
+#        action = core.db.action.create_action(ops)
+#        controller.change_selected_version(cell.current_parent_version)
+#        controller.add_new_action(action)
+#        controller.perform_action(action)
+#        cell.current_parent_version = action.id
+#
+#        # Update project controller cell information
+#        pipeline = controller.vistrail.getPipeline(action.id)
+#        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+#        for plot in cell.plots:
+#            plot.variables = []
+#        #for plot in plot_modules:
+#        #    vars = CDMSPipelineHelper.find_variables_connected_to_plot_module(controller,
+#        #                                                               pipeline,
+#        #                                                               plot.id)
+#        #    for var in vars:
+#        #        cell.variables.append(CDMSPipelineHelper.get_variable_name_from_module(var))
+#
+#        #FIXME: This does not consider if the workflow has more than one plot
+#        #gmName = CDMSPipelineHelper.get_graphics_method_name_from_module(plot_modules[0])
+#        #ptype = CDMSPipelineHelper.get_plot_type_from_module(plot_modules[0])
+#        #cell.plot = get_plot_manager().get_plot(plot_type, ptype, gmName)
+#        return action
 
 

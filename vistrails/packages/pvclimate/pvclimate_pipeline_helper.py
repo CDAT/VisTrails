@@ -290,7 +290,8 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         #// Update project controller cell information
         pipeline = controller.vistrail.getPipeline(action.id)
         plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
-        cell.variables =[]
+        for plot in cell.plots:
+            plot.variables =[]
         #for plot in plot_modules:
         #    vars = CDMSPipelineHelper.find_variables_connected_to_plot_module(controller,
         #                                                               pipeline,
