@@ -31,8 +31,8 @@ class PVContourWidget(QtGui.QWidget, Ui_PVContourWidget):
             values = [ (first_val + i * steps) for  i in range(count + 1)]
 
             for value in values:
-                value = value.strip()
-                if len(value > 0):
+                value = str(value).strip()
+                if len(value) > 0:
                     qstr_list.append(value)
 
         if(not self.valuesLineEdit.text().isEmpty()):
