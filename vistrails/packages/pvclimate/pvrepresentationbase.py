@@ -1,7 +1,6 @@
-# Import base class
+#// Import vistrails
 from core.modules.vistrails_module import Module
-
-# Import registry
+from core.application import get_vistrails_application
 from core.modules.module_registry import get_module_registry
 
 from PyQt4.QtCore import *
@@ -13,6 +12,7 @@ class PVRepresentationBase(Module):
         self.view = None
         self.reader = None;
         self.variables = None;
+        self.cdms_variables = None;
         self.project_sphere = None;
 
     def compute(self):
@@ -27,6 +27,9 @@ class PVRepresentationBase(Module):
 
     def set_variables(self, variables):
         self.variables = variables
+
+    def set_cdms_variables(self, cdms_variables):
+        self.cdms_variables = cdms_variables
 
     def get_project_sphere_filter(self):
         # Import paraview
@@ -54,9 +57,11 @@ class RepresentationBaseConfigurationWidget(QWidget):
         QWidget.__init__(self, parent)
 
     def update_vistrails(self, module, functions):
-        action = None
         action = self.controller.update_functions(module, functions)
-        return action
+        if action is not None:
+            window = get_vistrails_application().uvcdatWindow
+            window.get_current_project_controller().cell_was_changed(action)
+            self.controller.execute_current_workflow()
 
     def function_value(self, name):
         value = None

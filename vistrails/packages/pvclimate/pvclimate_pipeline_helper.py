@@ -22,8 +22,7 @@ from gui.uvcdat.uvcdatCommons import plotTypes
 import api
 
 # Import PV Generic Cell
-from pvgenericcell import PVGenericCell
-import pvclimatecell
+from pvgenericcell import *
 
 import sys
 
@@ -31,47 +30,35 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def show_configuration_widget(controller, version, plot_obj=None):
-        print 'Calling show_configuration_widget'
-        print 'version: ', version
-
-        # Grab the pipeline
+        #// Grab the pipeline
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
 
-        # plots = VisItPipelineHelper.find_plot_modules(pipeline)
-
-        # Find the cell
+        #// Find the cell
         cell = CDMSPipelineHelper.find_modules_by_type(pipeline,[PVGenericCell])
 
         PVClimatePipelineHelper.find_plot_representation(pipeline, PVClimatePipelineHelper.find_plot_modules(pipeline)[0])
 
-        # FIXME: Remove this hack
+        #// @todo: Remove this hack
         if len(cell) == 0:
           print >> sys.stderr, 'cell is empty'
           return None
 
         if len(cell) == 0:
-            return pvclimatecell.PVClimateCellConfigurationWidget(None,
-                                                                  controller.vt_controller)
+            return PVGenericCellConfigurationWidget(None, controller.vt_controller)
         else:
             pvcell = cell[0].module_descriptor.module()
-            # Create child widgets
-            # Attach it to the parent widget
-            return pvclimatecell.PVClimateCellConfigurationWidget(cell[0],
-                                                                  controller.vt_controller)
+            #// Create child widgets
+            #// Attach it to the parent widget
+            return PVGenericCellConfigurationWidget(cell[0], controller.vt_controller)
 
     @staticmethod
     def find_plot_representation(pipeline, representation):
-        #print 'rep dir ', dir(representation)
-        print 'name ', representation.name
-#        print  'output port ', representation.forceGetOutputListFromPort('self')[0]
-#        print 'type of ', type(representation.forceGetOutputListFromPort('self')[0])
         return pipeline.modules[pipeline.get_outputPort_modules(representation.id, 'self')[0]]
 
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plots,row, col, template=None):
-        # FIXME want to make sure that nothing changes if var_module
-        # or plot_module do not change
-        #print 'Calling build_plot_pipWeline_action'
+        #// @todo: want to make sure that nothing changes if var_module
+        #// or plot_module do not change
 
         # Get controller
         if controller is None:
@@ -83,17 +70,17 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         ops = []
         cell_module = None
 
-        # First get the pipeline
+        #// First get the pipeline
         pipeline = controller.vistrail.getPipeline(version)
 
-        # FIXME: Add support for multiple variables per plot
-        # Use only the first var module for now
+        #// @todo: Add support for multiple variables per plot
+        #// Use only the first var module for now
         var_module = var_modules[0]
 
-        # Aashish: As of now, very first time var module is being added to the pipeline by the project controller
-        # but second time on the same cell, it gets removed and hence we needed to add var module again to pipeline.
-        # I need to put this code under try catch because as of now looking for an id that does not exists
-        # results in exception.
+        #// @Aashish: As of now, very first time var module is being added to the pipeline by the project controller
+        #// but second time on the same cell, it gets removed and hence we needed to add var module again to pipeline.
+        #// I need to put this code under try catch because as of now looking for an id that does not exists
+        #// results in exception.
         try:
             temp_var_module = pipeline.get_module_by_id(var_module.id)
         except KeyError:
@@ -106,68 +93,50 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
             ops.append(('add', var_module))
 
         for plot in plots:
-            plot_type = plot.parent
             plot_gm = plot.name
 
-            #
-            # Create plot module from the descriptor
-            #
-            #######################################################################
-
-            # Is there a better way? I looked around and found none
+            #// Create plot module from the descriptor
+            #// Is there a better way? I looked around and found none
             import re
             plotUsableName = re.sub(r'\s', '', plot_gm)
-
             plot_module = PlotPipelineHelper.find_module_by_name(pipeline, plotUsableName)
             if plot_module is not None:
                 continue
 
             plot_descriptor = reg.get_descriptor_by_name('com.kitware.pvclimate', plotUsableName)
+
+            #// @Aashish: Looks like the pipeline is using the cached representation
             plot_module = controller.create_module_from_descriptor(plot_descriptor)
-
-            # Aashish: This is no longer required as of this commit
-            # e13bb034ceb302afe3aad3caf20153e1525586db
-            # I am not sure though why we still need to add plot module
-            #ops.append(('add', var_modules[0]))
-
             ops.append(('add', plot_module))
 
-            #print >> sys.stderr, 'var_modules[0] ', var_modules[0]
+            #// @Aashish: This is no longer required as of this commit
+            #// e13bb034ceb302afe3aad3caf20153e1525586db
+            #// I am not sure though why we still need to add plot module
+            #ops.append(('add', var_modules[0]))
 
-            #
-            # Create cell - representation linkage
-            #
-            #######################################################################
-
-            # Check to see if a cell already exits, if yes then set the input (representation on it) or else
-            # create a new one and then set the representation on it.
-
+            #// Create cell - representation linkage
+            #// Check to see if a cell already exits, if yes then set the input (representation on it) or else
+            #// create a new one and then set the representation on it.
             if cell_module is None:
                 cell_module = PlotPipelineHelper.find_module_by_name(pipeline, "PVGenericCell")
 
-            # If cell module is None, then create a new one
+            #// If cell module is None, then create a new one
             if cell_module is None:
                 cell_desc = reg.get_descriptor_by_name('com.kitware.pvclimate', "PVGenericCell")
                 cell_module = controller.create_module_from_descriptor(cell_desc)
                 ops.append(('add', cell_module))
 
-                #
-                # Create a connection between the cell and the variable
-                # Aashish: I am expecting that every time we drop a variable, we will get a
-                # pipeline that does not have modules from the previous execution. I need to verify
-                # this but for now this assumption seems to hold.
-                #
-                #######################################################################
-
+                #// Create a connection between the cell and the variable
+                #// @Aashish: I am expecting that every time we drop a variable, we will get a
+                #// pipeline that does not have modules from the previous execution. I need to verify
+                #// this but for now this assumption seems to hold.
                 if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
                     conn = controller.create_connection(var_module, 'self',
-                                                        plot_module, 'variable')
+                                                        cell_module, 'cdms_variable')
                 else:
                     conn = controller.create_connection(var_module, 'self',
                                                         cell_module, 'variable')
                 ops.append(('add', conn))
-                #print 'connection source id is ', conn.sourceId
-                #print 'connection dest id is ', conn.destinationId
 
                 loc_module = controller.create_module_from_descriptor(
                     reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet',
@@ -181,11 +150,11 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
                 ops.extend([('add', loc_module),
                             ('add', loc_conn)])
 
-            # Create connection between the cell and the representation
+            #// Create connection between the cell and the representation
             conn = controller.create_connection(plot_module, 'self',
                                                 cell_module, 'representation')
 
-            # Add the connection to the pipeline operations
+            #// Add the connection to the pipeline operations
             ops.append(('add', conn))
 
         action = core.db.action.create_action(ops)
@@ -196,7 +165,7 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def find_plot_modules(pipeline):
-        # Find plot modules in the order they appear in the Cell
+        #// Find plot modules in the order they appear in the Cell
         res = []
         cell = PlotPipelineHelper.find_module_by_name(pipeline, 'PVGenericCell')
         plots = pipeline.get_inputPort_modules(cell.id, 'representation')
@@ -207,13 +176,12 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def load_pipeline_in_location(pipeline, controller, sheetName, row, col,plot_type, cell):
-       print "Load pipeline is called"
        cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, [CellLocation])
        cell_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [SpreadsheetCell])
-       #plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+#       plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
 
-       # we assume that there is only one CellLocation and one SpreadsheetCell
-       # update location values in place.
+       #// we assume that there is only one CellLocation and one SpreadsheetCell
+       #// update location values in place.
        loc_module = cell_locations[0]
        for i in xrange(loc_module.getNumFunctions()):
            if loc_module.functions[i].name == 'Row':
@@ -238,7 +206,6 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def build_python_script_from_pipeline(controller, version, plot=None):
-        print "build_python_script"
         pipeline = controller.vistrail.getPipeline(version)
         plots = CDMSPipelineHelper.find_plot_modules(pipeline)
         text = "from PyQt4 import QtCore, QtGui\n"
@@ -286,7 +253,6 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def copy_pipeline_to_other_location(pipeline, controller, sheetName, row, col,plot_type, cell):
-        print "copyt pipeline to other location"
         pip_str = core.db.io.serialize(pipeline)
         controller.change_selected_version(cell.current_parent_version)
 
@@ -298,8 +264,8 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, [CellLocation])
         cell_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [SpreadsheetCell])
 
-        #we assume that there is only one CellLocation and one SpreadsheetCell
-        # delete location and create another one with the right locations
+        #// We assume that there is only one CellLocation and one SpreadsheetCell
+        #// delete location and create another one with the right locations
         action = controller.delete_module_list([cell_locations[0].id])
         cell.current_parent_version = action.id
 
@@ -321,7 +287,7 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
         controller.perform_action(action)
         cell.current_parent_version = action.id
 
-        # Update project controller cell information
+        #// Update project controller cell information
         pipeline = controller.vistrail.getPipeline(action.id)
         plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
         cell.variables =[]

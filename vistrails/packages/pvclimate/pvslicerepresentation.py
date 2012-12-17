@@ -1,12 +1,13 @@
 
-# Import base class module
+#// Import base class module
 from pvrepresentationbase import *
+from pvcdmsreader import *
 
-# Import registry
+#// Import registry
 from core.modules.module_registry import get_module_registry
 import core.modules.basic_modules as basic_modules
 
-# Import paraview
+#// Import paraview
 import paraview.simple as pvsp
 
 from PyQt4.QtCore import *
@@ -35,46 +36,72 @@ class PVSliceRepresentation(PVRepresentationBase):
         self.contourByVarType = varType
 
     def execute(self):
-        for var in self.variables:
-            reader = var.get_reader()
-            self.sliceByVarName = var.get_variable_name()
-            self.sliceByVarType = var.get_variable_type()
+        for cdms_var in self.cdms_variables:
+            #// Get the min and max to draw default contours
+            min = cdms_var.var.min()
+            max = cdms_var.var.max()
 
-            # Update pipeline
-            reader.UpdatePipeline()
-            pvsp.SetActiveSource(reader)
+            reader = PVCDMSReader()
+            time_values = [None, 1, True]
+            image_data = reader.convert(cdms_var, time=time_values)
 
-            bounds = reader.GetDataInformation().GetBounds()
+            #// Make white box filter so we can work at proxy level
+            programmable_source = pvsp.ProgrammableSource()
+
+            #// Get a hole of the vtk level filter it controls
+            ps = programmable_source.GetClientSideObject()
+
+            #//  Give it some data (ie the imagedata)
+            ps.myid = image_data
+
+            programmable_source.OutputDataSetType = 'vtkImageData'
+            programmable_source.PythonPath = ''
+
+            #// Make the scripts that it runs in pipeline RI and RD passes
+            programmable_source.ScriptRequestInformation = """
+executive = self.GetExecutive()
+outInfo = executive.GetOutputInformation(0)
+extents = self.myid.GetExtent()
+spacing = self.myid.GetSpacing()
+outInfo.Set(executive.WHOLE_EXTENT(), extents[0], extents[1], extents[2], extents[3], extents[4], extents[5])
+outInfo.Set(vtk.vtkDataObject.SPACING(), spacing[0], spacing[1], spacing[2])
+dataType = 10 # VTK_FLOAT
+numberOfComponents = 1
+vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfComponents)"""
+
+            programmable_source.Script = """self.GetOutput().ShallowCopy(self.myid)"""
+            programmable_source.UpdatePipeline()
+            pvsp.SetActiveSource(programmable_source)
+
+            self.sliceByVarName = cdms_var.varNameInFile
+            self.sliceByVarType = 'POINTS'
+
+            if not reader.is_three_dimensional(cdms_var):
+              data_rep = pvsp.Show(view=self.view)
+              data_rep.LookupTable = pvsp.GetLookupTableForArray(self.sliceByVarName, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[min, 0.23, 0.299, 0.754, max, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
+              data_rep.ColorArrayName = self.sliceByVarName
+
+              print 'data has three dimensions'
+              continue
+
+            bounds = image_data.GetBounds()
             origin = []
             origin.append((bounds[1] + bounds[0]) / 2.0)
             origin.append((bounds[3] + bounds[2]) / 2.0)
             origin.append((bounds[5] + bounds[4]) / 2.0)
 
-            # Unroll a sphere
-            # FIXME: Currently hard coded
-            if reader.__class__.__name__ == 'UnstructuredNetCDFPOPreader':
-                trans_filter = self.get_project_sphere_filter()
-                trans_filter.UpdatePipeline()
-                bounds = trans_filter.GetDataInformation().GetBounds()
-                origin [:] = []
-                origin.append((bounds[1] + bounds[0]) / 2.0)
-                origin.append((bounds[3] + bounds[2]) / 2.0)
-                origin.append((bounds[5] + bounds[4]) / 2.0)
-
-                pvsp.SetActiveSource(trans_filter)
-
             # Create a slice representation
-            slice = pvsp.Slice( SliceType="Plane" )#
-            pvsp.SetActiveSource(slice)
+            plane_slice = pvsp.Slice( SliceType="Plane" )#
+            pvsp.SetActiveSource(plane_slice)
 
-            slice.SliceType.Normal = self.sliceNormal
-            slice.SliceType.Origin = origin
-            slice.SliceOffsetValues = self.forceGetInputListFromPort("sliceOffset")
+            plane_slice.SliceType.Normal = self.sliceNormal
+            plane_slice.SliceType.Origin = origin
+            plane_slice.SliceOffsetValues = self.forceGetInputListFromPort("sliceOffset")
 
             slice_rep = pvsp.Show(view=self.view)
 
             # FIXME: Hard coded for now
-            slice_rep.LookupTable =  pvsp.GetLookupTableForArray( self.sliceByVarName, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[0.0, 0.23, 0.299, 0.754, 30.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1 )
+            slice_rep.LookupTable =  pvsp.GetLookupTableForArray( self.sliceByVarName, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[min, 0.23, 0.299, 0.754, max, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1 )
             slice_rep.ColorArrayName = self.sliceByVarName
 
             # Apply scale (Make it flat)
@@ -117,16 +144,10 @@ class PVSliceRepresentationConfigurationWidget(RepresentationBaseConfigurationWi
         slice_offset = str(self.slice_offset_value.text().toLocal8Bit().data())
         functions = []
         functions.append(("sliceOffset", [slice_offset]))
-        print self.rep_module
         action = self.update_vistrails(self.rep_module, functions)
-        print self.rep_module
-
-        print 'okTriggered'
-
         if action is not None:
             self.emit(SIGNAL('doneConfigure()'))
             self.emit(SIGNAL('plotDoneConfigure'), action)
-
 
 
 def register_self():
