@@ -151,6 +151,15 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
                 slice_rep.ColorArrayName = self.slice_by_var_name
                 slice_rep.Representation = 'Surface'
 
+                #// Scalar bar
+                ScalarBarWidgetRepresentation1 = pvsp.CreateScalarBar( Title=self.slice_by_var_name, LabelFontSize=12, Enabled=1, TitleFontSize=12 )
+                pvsp.GetRenderView().Representations.append(ScalarBarWidgetRepresentation1)
+
+                if not reader.is_three_dimensional(cdms_var):
+                    ScalarBarWidgetRepresentation1.LookupTable = data_rep.LookupTable
+                else:
+                    ScalarBarWidgetRepresentation1.LookupTable = slice_rep.LookupTable
+
             except ValueError:
                 print "[ERROR] Unable to generate slice. Please check your input values"
             except (RuntimeError, TypeError, NameError):
