@@ -34,7 +34,8 @@
 import os, os.path, sys, traceback
 import copy
 import uuid
-from PyQt4 import QtCore
+from PyQt4 import QtCore, Qt
+from PyQt4.QtGui import QMessageBox, QApplication, QCursor
 
 import api
 import core.db.action
@@ -872,3 +873,23 @@ class ProjectController(QtCore.QObject):
             self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
                       None, None, cell.plots[0].package, 
                       cell.current_parent_version)
+            
+    def prompt_replace_plot(self):
+        """ Prompts the user to replace the existing plots in a cell.
+        Usually used after adding incompatible plot types to the same
+        cell. Return true if they say yes to replacement.
+        """
+        
+        msg = ("The plot you are adding is not compatible with the "
+               "plot(s) currently in the cell.")
+        question = "Replace existing plot(s) in this cell?"
+        
+        msgBox = QMessageBox()
+        msgBox.setText(msg)
+        msgBox.setInformativeText(question)
+        msgBox.setStandardButtons(Qt.QMessageBox.Yes | Qt.QMessageBox.No)
+        msgBox.setDefaultButton(Qt.QMessageBox.No)
+        QApplication.setOverrideCursor(QCursor(QtCore.Qt.ArrowCursor))
+        result = msgBox.exec_()
+        QApplication.restoreOverrideCursor()
+        return (result == Qt.QMessageBox.Yes)

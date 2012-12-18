@@ -909,12 +909,33 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
                 row = self.sheet.rowAt(localPos.y())
                 col = self.sheet.columnAt(localPos.x())
                 sheetName = str(self.tabWidget.tabText(self.tabWidget.indexOf(self)))
-                new_plot = copy.deepcopy(item.plot)
+                
+                # make sure cell doesn't have incompatible plot types
+                queuedVars = []
+                _app = get_vistrails_application()
+                proj_controller = _app.uvcdatWindow.get_current_project_controller()
+                if sheetName in proj_controller.sheet_map:
+                    if (row,col) in proj_controller.sheet_map[sheetName]:
+                        cell = proj_controller.sheet_map[sheetName][(row,col)]
+                        if not cell.acceptsPlotPackage(item.plot.package):
+                            if proj_controller.prompt_replace_plot():
+                                queuedVars = cell.variableQ[:]
+                                self.deleteCell(row, col)
+                            else:
+                                return
+                
+                new_plot = copy.copy(item.plot)
                 get_plot_manager()._plot_instances.append(new_plot)
                 self.emit(QtCore.SIGNAL("dropped_plot"), (new_plot, 
                                                           sheetName, row, col))
                 self.updatePrompt(sheetName, row, col)
                 self.sheet.selectCell(row, col, False)
+                
+                #Add queued vars if replacement occured 
+                #TODO: figure out why variables are being
+                # saved after second plot replacement
+                for v in queuedVars:
+                    cell.add_variable(v)
                 
         elif (hasattr(mimeData, 'version') and
             hasattr(mimeData, 'controller')):
