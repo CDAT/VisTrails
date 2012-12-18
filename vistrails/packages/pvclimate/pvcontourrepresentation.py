@@ -17,7 +17,6 @@ from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 
 #// Import pvclimate modules
 from pvcontour_widget import *
-from lib2to3.fixer_util import String
 
 class PVContourRepresentation(PVRepresentationBase):
     def __init__(self):
@@ -88,52 +87,55 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
                 data_rep.LookupTable = pvsp.GetLookupTableForArray(self.contour_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[min, 0.23, 0.299, 0.754, max, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
                 data_rep.ColorArrayName = self.contour_var_name
 
-            contour = pvsp.Contour()
-            pvsp.SetActiveSource(contour)
-            contour.ContourBy = ['POINTS', self.contour_var_name]
+            try:
+                contour = pvsp.Contour()
+                pvsp.SetActiveSource(contour)
+                contour.ContourBy = ['POINTS', self.contour_var_name]
 
-            delta = (max - min) / 10.0
+                delta = (max - min) / 10.0
 
-            contours = self.forceGetInputListFromPort("contour_values")
-            print 'contours are ', contours
-            if(len(contours) and contours):
-                self.contour_values = [float(d) for d in contours[0].split(',')]
+                contours = self.forceGetInputListFromPort("contour_values")
+                if(len(contours) and contours):
+                    self.contour_values = [float(d) for d in contours[0].split(',')]
 
-            if( (self.contour_values == None) or (len(self.contour_values) == 0) ):
-                print >> sys.stderr, "No contour values are found"
-                self.contour_values = [ (x * delta + min) for x in range(10) ]
-                print 'self.contour_values ', self.contour_values
+                if( (self.contour_values == None) or (len(self.contour_values) == 0) ):
+                    self.contour_values = [ (x * delta + min) for x in range(10) ]
 
-                #// @todo: Check with Ben if this is the right way to do it:
-                import api
-                controller = api.get_current_controller()
-                module = PlotPipelineHelper.find_module_by_name(controller.current_pipeline, 'PVContourRepresentation')
-                controller.update_function(module, 'contour_values', [str(self.contour_values).strip('[]')])
+                    #// @todo: Check with Ben if this is the right way to do it:
+                    import api
+                    controller = api.get_current_controller()
+                    module = PlotPipelineHelper.find_module_by_name(controller.current_pipeline, 'PVContourRepresentation')
+                    controller.update_function(module, 'contour_values', [str(self.contour_values).strip('[]')])
 
-            contour.Isosurfaces = self.contour_values
-            contour.ComputeScalars = 1
-            contour.ComputeNormals = 0
-            contour.UpdatePipeline()
+                contour.Isosurfaces = self.contour_values
+                contour.ComputeScalars = 1
+                contour.ComputeNormals = 0
+                contour.UpdatePipeline()
 
-            #// @todo: Remove hard-coded values
-            contour_rep = pvsp.Show(view=self.view)
-            contour_rep.Representation = 'Surface'
-            if reader.is_three_dimensional(cdms_var):
-                contour_rep.LookupTable = pvsp.GetLookupTableForArray(self.contour_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[min, 0.23, 0.299, 0.754, max, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
-                contour_rep.ColorArrayName = self.contour_var_name
-            else:
-                contour_rep.DiffuseColor = [0.0, 0.0, 0.0]
-                contour_rep.ColorArrayName = ''
+                #// @todo: Remove hard-coded values
+                contour_rep = pvsp.Show(view=self.view)
+                contour_rep.Representation = 'Surface'
+                if reader.is_three_dimensional(cdms_var):
+                    contour_rep.LookupTable = pvsp.GetLookupTableForArray(self.contour_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[min, 0.23, 0.299, 0.754, max, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1)
+                    contour_rep.ColorArrayName = self.contour_var_name
+                else:
+                    contour_rep.DiffuseColor = [0.0, 0.0, 0.0]
+                    contour_rep.ColorArrayName = ''
 
 
-            #// Scalar bar
-            ScalarBarWidgetRepresentation1 = pvsp.CreateScalarBar( Title=self.contour_var_name, LabelFontSize=12, Enabled=1, TitleFontSize=12 )
-            pvsp.GetRenderView().Representations.append(ScalarBarWidgetRepresentation1)
+                #// Scalar bar
+                ScalarBarWidgetRepresentation1 = pvsp.CreateScalarBar( Title=self.contour_var_name, LabelFontSize=12, Enabled=1, TitleFontSize=12 )
+                pvsp.GetRenderView().Representations.append(ScalarBarWidgetRepresentation1)
 
-            if not reader.is_three_dimensional(cdms_var):
-                ScalarBarWidgetRepresentation1.LookupTable = data_rep.LookupTable
-            else:
-                ScalarBarWidgetRepresentation1.LookupTable = contour_rep.LookupTable
+                if not reader.is_three_dimensional(cdms_var):
+                    ScalarBarWidgetRepresentation1.LookupTable = data_rep.LookupTable
+                else:
+                    ScalarBarWidgetRepresentation1.LookupTable = contour_rep.LookupTable
+
+            except ValueError:
+                print "[ERROR] Unable to generate contours. Please check your input values"
+            except (RuntimeError, TypeError, NameError):
+                pass
 
         for var in self.variables:
             reader = var.get_reader()

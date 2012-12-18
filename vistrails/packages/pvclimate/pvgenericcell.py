@@ -181,7 +181,6 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
         self.moduleId = module.id
         self.getParameters( module )
         self.createLayout()
-        self.createButtonLayout()
         if ( PVClimateConfigurationWidget.newConfigurationWidget == None ): PVClimateConfigurationWidget.setupSaveConfigurations()
         PVClimateConfigurationWidget.newConfigurationWidget = self
 
@@ -191,8 +190,6 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
 
     def sizeHint(self):
         return QSize(400,200)
-
-        self.createButtonLayout()
 
     def addTransformationTab(self):
         transformationPanel = self.getTransformationPanel()
@@ -284,25 +281,9 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
 
     def saveTriggered(self, checked = False):
         self.okTriggered()
-        #for port in self.inputPorts:
-        #    if (port.optional and
-        #        self.inputDict[port.name].checkState()==Qt.Checked):
-        #        self.module.visible_input_ports.add(port.name)
-        #    else:
-        #        self.module.visible_input_ports.discard(port.name)
-
-        #for port in self.outputPorts:
-        #    if (port.optional and
-        #        self.outputDict[port.name].checkState()==Qt.Checked):
-        #        self.module.visible_output_ports.add(port.name)
-        #    else:
-        #        self.module.visible_output_ports.discard(port.name)
         self.saveButton.setEnabled(False)
-        #self.resetButton.setEnabled(False)
         self.state_changed = False
         self.emit(SIGNAL("stateChanged"))
-        #self.emit(SIGNAL('doneConfigure'), self.module.id)
-        #self.close()
 
     def resetTriggered(self):
         self.startOver();
@@ -348,29 +329,6 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
         self.setLayout( QVBoxLayout() )
         self.layout().setMargin(0)
         self.layout().setSpacing(0)
-
-
-    def createButtonLayout(self):
-        """ createButtonLayout() -> None
-        Construct Save & Reset button
-
-        """
-        self.buttonLayout = QHBoxLayout()
-        self.buttonLayout.setMargin(5)
-        self.saveButton = QPushButton('&Save', self)
-        self.saveButton.setFixedWidth(100)
-        self.saveButton.setEnabled(True)
-        self.buttonLayout.addWidget(self.saveButton)
-        self.resetButton = QPushButton('&Reset', self)
-        self.resetButton.setFixedWidth(100)
-        self.resetButton.setEnabled(True)
-        self.buttonLayout.addWidget(self.resetButton)
-
-        self.layout().addLayout(self.buttonLayout)
-        self.connect(self.saveButton,SIGNAL('clicked(bool)'),  self.saveTriggered)
-        self.connect(self.resetButton,SIGNAL('clicked(bool)'),  self.resetTriggered)
-        self.setMouseTracking(True)
-        self.setFocusPolicy( Qt.WheelFocus )
 
     def okTriggered(self):
         pass
