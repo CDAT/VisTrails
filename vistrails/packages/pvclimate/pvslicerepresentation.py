@@ -152,7 +152,7 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
                 slice_rep.Representation = 'Surface'
 
             except ValueError:
-                print "[ERROR] Unable to generate contours. Please check your input values"
+                print "[ERROR] Unable to generate slice. Please check your input values"
             except (RuntimeError, TypeError, NameError):
                 pass
 
