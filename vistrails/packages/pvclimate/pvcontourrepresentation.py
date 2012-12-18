@@ -17,7 +17,6 @@ from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 
 #// Import pvclimate modules
 from pvcontour_widget import *
-from lib2to3.fixer_util import String
 
 class PVContourRepresentation(PVRepresentationBase):
     def __init__(self):

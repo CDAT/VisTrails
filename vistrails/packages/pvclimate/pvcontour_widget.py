@@ -14,7 +14,20 @@ class PVContourWidget(QtGui.QWidget, Ui_PVContourWidget):
 
         self.list_model = QtGui.QStringListModel()
         self.isoValuesListView.setModel(self.list_model)
+
+        self.set_input_validators()
+
         self.connect(self.applyButton, QtCore.SIGNAL('clicked(bool)'), self.apply_changes)
+
+
+    def set_input_validators(self):
+        rx = QtCore.QRegExp( "(\d+.?\d+)(,\s*\d+.?\d+)*" )
+        validator = QtGui.QRegExpValidator(rx, self.valuesLineEdit);
+        self.valuesLineEdit.setValidator(validator)
+
+        self.firstValueLineEdit.setValidator(QtGui.QDoubleValidator(self.firstValueLineEdit))
+        self.lastValueLineEdit.setValidator(QtGui.QDoubleValidator(self.lastValueLineEdit))
+        self.stepValueLineEdit.setValidator(QtGui.QDoubleValidator(self.stepValueLineEdit))
 
     def update_contour_values(self):
         #// Contour values
