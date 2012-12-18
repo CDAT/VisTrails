@@ -19,7 +19,6 @@ class PVContourWidget(QtGui.QWidget, Ui_PVContourWidget):
 
         self.connect(self.applyButton, QtCore.SIGNAL('clicked(bool)'), self.apply_changes)
 
-
     def set_input_validators(self):
         rx = QtCore.QRegExp( "(\d+.?\d+)(,\s*\d+.?\d+)*" )
         validator = QtGui.QRegExpValidator(rx, self.valuesLineEdit);

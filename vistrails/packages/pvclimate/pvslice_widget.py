@@ -10,7 +10,13 @@ class PVSliceWidget(QtGui.QWidget, Ui_PVSliceWidget):
     def __init__(self, parent=None):
         super(PVSliceWidget, self).__init__(parent)
         self.setupUi(self)
+        self.set_input_validators()
         self.connect(self.applyButton, QtCore.SIGNAL('clicked(bool)'), self.apply_changes)
+
+    def set_input_validators(self):
+        rx = QtCore.QRegExp( "(\d+.?\d+)(,\s*\d+.?\d+)*" )
+        validator = QtGui.QRegExpValidator(rx, self.csvLineEdit);
+        self.csvLineEdit.setValidator(validator)
 
     def update_slice_offset_values(self):
         self.sliceOffsetListWidget.clear()
