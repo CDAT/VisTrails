@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'pvcontour_widget.ui'
 #
-# Created: Sun Dec 16 12:11:55 2012
+# Created: Mon Dec 17 18:55:05 2012
 #      by: PyQt4 UI code generator 4.9.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -78,11 +78,13 @@ class Ui_PVContourWidget(object):
         self.gridLayout.addLayout(self.horizontalLayout, 0, 0, 1, 1)
         self.verticalLayout_4 = QtGui.QVBoxLayout()
         self.verticalLayout_4.setObjectName(_fromUtf8("verticalLayout_4"))
+        spacerItem1 = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        self.verticalLayout_4.addItem(spacerItem1)
         self.applyButton = QtGui.QPushButton(PVContourWidget)
         self.applyButton.setObjectName(_fromUtf8("applyButton"))
         self.verticalLayout_4.addWidget(self.applyButton)
-        spacerItem1 = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
-        self.verticalLayout_4.addItem(spacerItem1)
+        spacerItem2 = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        self.verticalLayout_4.addItem(spacerItem2)
         self.gridLayout.addLayout(self.verticalLayout_4, 0, 1, 1, 1)
 
         self.retranslateUi(PVContourWidget)
@@ -91,9 +93,9 @@ class Ui_PVContourWidget(object):
     def retranslateUi(self, PVContourWidget):
         PVContourWidget.setWindowTitle(QtGui.QApplication.translate("PVContourWidget", "Form", None, QtGui.QApplication.UnicodeUTF8))
         self.groupBox_3.setTitle(QtGui.QApplication.translate("PVContourWidget", "Contour Values", None, QtGui.QApplication.UnicodeUTF8))
-        self.groupBox_2.setTitle(QtGui.QApplication.translate("PVContourWidget", "List", None, QtGui.QApplication.UnicodeUTF8))
+        self.groupBox_2.setTitle(QtGui.QApplication.translate("PVContourWidget", "Input List", None, QtGui.QApplication.UnicodeUTF8))
         self.label_4.setText(QtGui.QApplication.translate("PVContourWidget", "Values", None, QtGui.QApplication.UnicodeUTF8))
-        self.groupBox.setTitle(QtGui.QApplication.translate("PVContourWidget", "Range", None, QtGui.QApplication.UnicodeUTF8))
+        self.groupBox.setTitle(QtGui.QApplication.translate("PVContourWidget", "Input Range", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("PVContourWidget", "First Value", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("PVContourWidget", "Last Value", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("PVContourWidget", "Step", None, QtGui.QApplication.UnicodeUTF8))
