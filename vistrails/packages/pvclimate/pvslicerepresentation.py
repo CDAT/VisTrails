@@ -99,56 +99,62 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
               data_rep.ColorArrayName = self.slice_by_var_name
               continue
 
-            slice_origin = self.forceGetInputListFromPort("slice_origin")
-            if slice_origin == None or len(slice_origin) == 0:
-                bounds = image_data.GetBounds()
-                self.slice_origin = []
-                self.slice_origin.append((bounds[1] + bounds[0]) / 2.0)
-                self.slice_origin.append((bounds[3] + bounds[2]) / 2.0)
-                self.slice_origin.append((bounds[5] + bounds[4]) / 2.0)
+            try:
+                slice_origin = self.forceGetInputListFromPort("slice_origin")
+                if slice_origin == None or len(slice_origin) == 0:
+                    bounds = image_data.GetBounds()
+                    self.slice_origin = []
+                    self.slice_origin.append((bounds[1] + bounds[0]) / 2.0)
+                    self.slice_origin.append((bounds[3] + bounds[2]) / 2.0)
+                    self.slice_origin.append((bounds[5] + bounds[4]) / 2.0)
 
-                import api
-                controller = api.get_current_controller()
-                module = PlotPipelineHelper.find_module_by_name(controller.current_pipeline, 'PVSliceRepresentation')
-                controller.update_function(module, 'slice_origin', [str(self.slice_origin).strip('[]')])
-            else:
-                self.slice_origin = [float(d) for d in slice_origin[0].split(',')]
+                    import api
+                    controller = api.get_current_controller()
+                    module = PlotPipelineHelper.find_module_by_name(controller.current_pipeline, 'PVSliceRepresentation')
+                    controller.update_function(module, 'slice_origin', [str(self.slice_origin).strip('[]')])
+                else:
+                    self.slice_origin = [float(d) for d in slice_origin[0].split(',')]
 
-            slice_normal = self.forceGetInputListFromPort("slice_normal")
-            if slice_normal == None or len(slice_normal) == 0:
-                self.slice_normal = [0.0, 0.0, 1.0]
+                slice_normal = self.forceGetInputListFromPort("slice_normal")
+                if slice_normal == None or len(slice_normal) == 0:
+                    self.slice_normal = [0.0, 0.0, 1.0]
 
-                import api
-                controller = api.get_current_controller()
-                module = PlotPipelineHelper.find_module_by_name(controller.current_pipeline, 'PVSliceRepresentation')
-                controller.update_function(module, 'slice_normal', [str(self.slice_normal).strip('[]')])
-            else:
-                self.slice_normal = [float(d) for d in slice_normal[0].split(',')]
+                    import api
+                    controller = api.get_current_controller()
+                    module = PlotPipelineHelper.find_module_by_name(controller.current_pipeline, 'PVSliceRepresentation')
+                    controller.update_function(module, 'slice_normal', [str(self.slice_normal).strip('[]')])
+                else:
+                    self.slice_normal = [float(d) for d in slice_normal[0].split(',')]
 
-            slice_offset_values = self.forceGetInputListFromPort("slice_offset_values")
-            if(len(slice_offset_values) and slice_offset_values):
-                self.slice_offset_values = [float(d) for d in slice_offset_values[0].split(',')]
-            else:
-                self.slice_offset_values = [0.0]
+                slice_offset_values = self.forceGetInputListFromPort("slice_offset_values")
+                if(len(slice_offset_values) and slice_offset_values):
+                    self.slice_offset_values = [float(d) for d in slice_offset_values[0].split(',')]
+                else:
+                    self.slice_offset_values = [0.0]
 
-                import api
-                controller = api.get_current_controller()
-                module = PlotPipelineHelper.find_module_by_name(controller.current_pipeline, 'PVSliceRepresentation')
-                controller.update_function(module, 'slice_offset_values', [str(self.slice_offset_values).strip('[]')])
+                    import api
+                    controller = api.get_current_controller()
+                    module = PlotPipelineHelper.find_module_by_name(controller.current_pipeline, 'PVSliceRepresentation')
+                    controller.update_function(module, 'slice_offset_values', [str(self.slice_offset_values).strip('[]')])
 
-            #// Create a slice representation
-            plane_slice = pvsp.Slice( SliceType="Plane" )
-            pvsp.SetActiveSource(plane_slice)
+                #// Create a slice representation
+                plane_slice = pvsp.Slice( SliceType="Plane" )
+                pvsp.SetActiveSource(plane_slice)
 
-            plane_slice.SliceType.Normal = self.slice_normal
-            plane_slice.SliceType.Origin = self.slice_origin
-            plane_slice.SliceOffsetValues = self.slice_offset_values
+                plane_slice.SliceType.Normal = self.slice_normal
+                plane_slice.SliceType.Origin = self.slice_origin
+                plane_slice.SliceOffsetValues = self.slice_offset_values
 
-            slice_rep = pvsp.Show(view=self.view)
+                slice_rep = pvsp.Show(view=self.view)
 
-            slice_rep.LookupTable =  pvsp.GetLookupTableForArray( self.slice_by_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[min, 0.23, 0.299, 0.754, max, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1 )
-            slice_rep.ColorArrayName = self.slice_by_var_name
-            slice_rep.Representation = 'Surface'
+                slice_rep.LookupTable =  pvsp.GetLookupTableForArray( self.slice_by_var_name, 1, NanColor=[0.25, 0.0, 0.0], RGBPoints=[min, 0.23, 0.299, 0.754, max, 0.706, 0.016, 0.15], VectorMode='Magnitude', ColorSpace='Diverging', LockScalarRange=1 )
+                slice_rep.ColorArrayName = self.slice_by_var_name
+                slice_rep.Representation = 'Surface'
+
+            except ValueError:
+                print "[ERROR] Unable to generate contours. Please check your input values"
+            except (RuntimeError, TypeError, NameError):
+                pass
 
     @staticmethod
     def name():
