@@ -24,7 +24,6 @@ LinearTransferFunction = 1
 PosValueTransferFunction = 2  
 NegValueTransferFunction = 3  
 AbsValueTransferFunction = 4
-FullValueTransferFunction = 5 
 
 PositiveValues = 0
 NegativeValues = 1
@@ -58,7 +57,7 @@ class TransferFunctionConfigurationDialog( QDialog ):
         self.functions = {} 
         self.setLayout(QVBoxLayout())
         self.defaultTransferFunctionType = args.get( 'default_type', AbsValueTransferFunction )
-        self.tf_map = { "Signed Value" : FullValueTransferFunction, "Absolute Value" : AbsValueTransferFunction }
+        self.tf_map = { "Pos Value" : PosValueTransferFunction, "Neg Value" : NegValueTransferFunction, "Absolute Value" : AbsValueTransferFunction }
         self.currentTransferFunction = None
         
         tf_type_layout = QHBoxLayout()
@@ -152,8 +151,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.transFunctGraphVisible = False
         self.transferFunctionConfig = None
         self.setupTransferFunctionConfigDialog()
-        self.addConfigurableLevelingFunction( 'colorScale',    'C', label='Colormap Scale', units='data', setLevel=self.generateCTF, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0 )
-        self.addConfigurableLevelingFunction( 'functionScale', 'T', label='VR Transfer Function Scale', units='data', setLevel=self.generateOTF, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0, initRefinement=[ self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
+        self.addConfigurableLevelingFunction( 'colorScale',    'C', label='Colormap Scale', units='data', setLevel=self.generateCTF, getLevel=self.getSgnRangeBounds, layerDependent=True, adjustRangeInput=0 )
+        self.addConfigurableLevelingFunction( 'functionScale', 'T', label='VR Transfer Function Scale', units='data', setLevel=self.generateOTF, getLevel=self.getAbsRangeBounds, layerDependent=True, adjustRangeInput=0, initRefinement=[ self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
         self.addConfigurableLevelingFunction( 'opacityScale',  'o', label='VR Transfer Function Opacity', setLevel=self.adjustOpacity, layerDependent=True  )
         self.addConfigurableMethod( 'showTransFunctGraph', self.showTransFunctGraph, 'g', label='VR Transfer Function Graph' )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
@@ -171,7 +170,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 
     def setVolRenderCfg( self, config_str, doRender = True ):
         if config_str: self.volRenderConfig = str( getItem( config_str ) ).split(';')
-        renderMode = vtk.vtkSmartVolumeMapper.DefaultRenderMode
+        renderMode = vtk.vtkSmartVolumeMapper.TextureRenderMode
         if self.volRenderConfig[0] == 'RayCastAndTexture': 
             renderMode = vtk.vtkSmartVolumeMapper.RayCastAndTextureRenderMode
         elif self.volRenderConfig[0] == 'RayCast': 
@@ -235,11 +234,18 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.render()
 
 #TODO:
-    def getDataRangeBounds(self): 
-        range = PersistentVisualizationModule.getDataRangeBounds(self)
+    def getAbsRangeBounds(self): 
+        full_range = self.getDataRangeBounds()
+        abs_range = []
+        abs_range.append( max( 0.0, full_range[0]) )
+        abs_range.append( max( abs(full_range[1]), abs(full_range[0]) ) )
+        abs_range.append( self.transferFunctionConfig.getTransferFunctionType() if self.transferFunctionConfig else AbsValueTransferFunction )
+        return abs_range
+
+    def getSgnRangeBounds(self): 
+        range = self.getDataRangeBounds()
         if self.transferFunctionConfig:
             range[2] = self.transferFunctionConfig.getTransferFunctionType()
-            if range[2] == AbsValueTransferFunction: range[0] = 0.0
         return range
                 
     def persistTransferFunctionConfig( self ):
@@ -265,6 +271,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #        for configFunct in cfs: configFunct.initLeveling()
         
     def clearTransferFunctionConfigDialog(self):
+        self.persistTransferFunctionConfig()
         self.transFunctGraphVisible = False
         self.resetNavigation()
 
@@ -451,9 +458,10 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
             colormapManager = self.getColormapManager( index=cmap_index )
             colormapManager.setScale( imageRange, ctf_data )
-            self.invert = ctf_data[2]
+            if len(ctf_data) > 2 :
+                self.invert = ctf_data[2]
             self.rebuildColorTransferFunction( imageRange )
-            print " Volume Renderer[%d]: Scale Colormap: ( %.4g, %.4g ) " % ( self.moduleID, ctf_data[0], ctf_data[1] )
+#            print " Volume Renderer[%d]: Scale Colormap: ( %.4g, %.4g ) " % ( self.moduleID, ctf_data[0], ctf_data[1] )
 
     def setColormap( self, data, cmap_index=0 ):
         if PersistentVisualizationModule.setColormap( self, data, cmap_index ):
@@ -511,7 +519,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         zero_point = image_value_range[2] 
         scalar_bounds = [ 0, self._max_scalar_value ]
         points = []
-        print "getTransferFunctionPoints: image_value_range = ( %f %f ), zero_point = %f, refinement = ( %f %f ), max_opacity = %s" % ( image_value_range[0], image_value_range[1], zero_point, self.refinement[0], self.refinement[1], self.max_opacity )             
+#        print "getTransferFunctionPoints: image_value_range = ( %f %f ), zero_point = %f, refinement = ( %f %f ), max_opacity = %s" % ( image_value_range[0], image_value_range[1], zero_point, self.refinement[0], self.refinement[1], self.max_opacity )             
         if pointType == PositiveValues:
             full_range = [ image_value_range[i] if image_value_range[i] >= zero_point else zero_point for i in range(2) ]
             mid_point = ( full_range[0] + full_range[1] ) / 2.0   
@@ -592,13 +600,13 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         if self.updatingOTF: return   # Avoid infinite recursion
         self.updatingOTF = True
         self.setupTransferFunctionConfigDialog()
-        print " Update Volume OTF, self._range = %s, max opacity = %s, refinement = %s  " % ( str( self._range ), str( self.max_opacity ), str( self.refinement ) )
+#        print " Update Volume OTF, self._range = %s, max opacity = %s, refinement = %s  " % ( str( self._range ), str( self.max_opacity ), str( self.refinement ) )
         self.opacityTransferFunction.RemoveAllPoints()  
         transferFunctionType = self.transferFunctionConfig.getTransferFunctionType()
         scalarRange = self.getScalarRange()
 #        dthresh = self._range[3]
         if (transferFunctionType == PosValueTransferFunction) or (transferFunctionType == NegValueTransferFunction):
-            pointType = PositiveValues if (self.TransferFunction == PosValueTransferFunction) else NegativeValues
+            pointType = PositiveValues if (transferFunctionType == PosValueTransferFunction) else NegativeValues
             nodeDataList = self.getTransferFunctionPoints( self._range, pointType )
             for nodeData in nodeDataList: 
                 pos = nodeData.getImagePosition()
@@ -607,29 +615,23 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         elif transferFunctionType == AbsValueTransferFunction:
             graphData = []
             nodeDataList = self.getTransferFunctionPoints( self._range, NegativeValues )
-            points = []
+#            points = []
             pcount = 0
             for nodeData in nodeDataList:  
                 pos = nodeData.getImagePosition()
                 self.opacityTransferFunction.AddPoint( pos[0], pos[1] ) 
                 graphData.append( nodeData  ) 
-                points.append( "\n [%d]--- p(-)[%d]: %s " % ( pcount, nodeData.index, str( nodeData.getDataPosition() ) ) )
+#                points.append( "\n [%d]--- p(-)[%d]: %s " % ( pcount, nodeData.index, str( nodeData.getDataPosition() ) ) )
                 pcount += 1
             nodeDataList = self.getTransferFunctionPoints( self._range, PositiveValues ) 
             for nodeData in nodeDataList:    
                 pos = nodeData.getImagePosition()
                 self.opacityTransferFunction.AddPoint( pos[0], pos[1] ) 
                 graphData.append( nodeData  )  
-                points.append( "\n [%d]--- p(+)[%d]: %s " % ( pcount, nodeData.index, str( nodeData.getDataPosition() ) ) )
+#                points.append( "\n [%d]--- p(+)[%d]: %s " % ( pcount, nodeData.index, str( nodeData.getDataPosition() ) ) )
                 pcount += 1
             if self.otf_data: self.transferFunctionConfig.updateGraph( scalarRange, [ 0.0, 1.0 ], graphData )
-            print "OTF: [ %s ] " % " ".join( points ) 
-        elif transferFunctionType == FullValueTransferFunction:
-            nodeDataList = self.getTransferFunctionPoints( self._range, AllValues )
-            for nodeData in nodeDataList: 
-                pos = nodeData.getImagePosition()
-                self.opacityTransferFunction.AddPoint( pos[0], pos[1] ) 
-            if self.otf_data: self.transferFunctionConfig.updateGraph( scalarRange, [ 0.0, 1.0 ], nodeDataList ) 
+#            print "OTF: [ %s ] " % " ".join( points ) 
         self.updatingOTF = False
         
 from packages.vtDV3D.WorkflowModule import WorkflowModule

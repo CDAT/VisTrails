@@ -348,7 +348,7 @@ class DV3DRangeConfigWidget(QFrame):
                 HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'slider-%d' % iSlider, fval ]  )
         
     def updateSliderValues( self, initialize=False ): 
-        if self.active_cfg_cmd:
+        if self.active_cfg_cmd and hasattr( self.active_cfg_cmd, 'range' ):
 #            print ' update Slider Values, widget = %x ' % id( self )
             try:
                 self.active_cfg_cmd.updateWindow()
@@ -413,7 +413,7 @@ class DV3DRangeConfigWidget(QFrame):
             self.setTab( LevelingType.GUI )
         
     def finalizeConfig( self ):
-        if len( self.active_modules ) and self.active_cfg_cmd:
+        if len( self.active_modules ) and self.active_cfg_cmd and hasattr( self.active_cfg_cmd, 'range' ):
             interactionState = self.active_cfg_cmd.name
             parm_range = list( self.active_cfg_cmd.range )
             for module in self.active_modules:
@@ -742,6 +742,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 if config_fn and not config_fn.persisted:
                     module.finalizeParameter( config_fn.name )
                     config_fn.persisted = True
+                    
+    @staticmethod
+    def getConfigCmdType( key ):                
+        cmdRecList = DV3DPipelineHelper.cfg_cmds.get(key,[])
+        for cmdRec in cmdRecList:
+            cmd = cmdRec[1]
+            if cmd: return cmd.type
+        return 'untyped'
              
     @staticmethod
     def execAction( action_key ):
@@ -763,7 +771,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         for ( module, key, f ) in actionList:
             module.processKeyEvent( key )
 
-        if  (key in DV3DPipelineHelper.cfg_cmds): 
+        if  ( key in DV3DPipelineHelper.cfg_cmds ) and ( DV3DPipelineHelper.getConfigCmdType( key ) in [ 'leveling', 'uvcdat-gui' ] ): 
             DV3DPipelineHelper.config_widget.startConfig( action_key, key )
         
         for ( module, key, f ) in actionList:
