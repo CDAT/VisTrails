@@ -111,3 +111,9 @@ class ControllerCell(object):
         self.variableQ = []
         self.templateQ = []
         
+    def acceptsPlotPackage(self, pkg):
+        """ Returns true if pkg does not conflict with existing
+        plot packages
+        """
+        return (len(self.plots) == 0 or self.plots[0].package == pkg)
+        

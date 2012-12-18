@@ -20,6 +20,7 @@ from gui.common_widgets import QDockPushButton
 from gui.uvcdat.dockplot import PlotTreeWidgetItem
 from gui.uvcdat.uvcdatCommons import plotTypes, gmInfos
 from gui.uvcdat.definedVariableWidget import QDefinedVariableWidget
+from gui.application import get_vistrails_application
 import api
 
 class CDMSPipelineHelper(PlotPipelineHelper):
@@ -1088,7 +1089,7 @@ class CDMSPlotWidget(QtGui.QWidget):
         cell.clear_plots()
         for i in range(self.plot_table.topLevelItemCount()):
             item = self.plot_table.topLevelItem(i)
-            new_plot = copy.deepcopy(item.reg_plot)
+            new_plot = copy.copy(item.reg_plot)
             get_plot_manager()._plot_instances.append(new_plot)
             new_plot.template = item.template
             new_plot.variables = []
@@ -1559,7 +1560,7 @@ class AddCDMSPlotDialog(QtGui.QDialog):
         
     @pyqtSlot(bool)
     def btn_ok_clicked(self, checked):
-        item = self.tree.selectedItems()[0]
+        item = self.tree.selectedItems()[0]        
         self.plot = item.plot
         self.accept()
        

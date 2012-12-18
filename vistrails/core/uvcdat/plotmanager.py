@@ -193,7 +193,7 @@ class PlotManager(QtCore.QObject):
     def new_plot(self, plot_package, plot_type, plot_name=None):
         plot = self.get_plot(plot_package, plot_type, plot_name)
         if plot is not None:
-            self._plot_instances.append(copy.deepcopy(plot))
+            self._plot_instances.append(copy.copy(plot))
             return self._plot_instances[-1]
         else:
             return None
@@ -201,7 +201,7 @@ class PlotManager(QtCore.QObject):
     def new_plot_by_name(self, plot_type, plot_name=None):
         plot = self.get_plot_by_name(plot_type, plot_name)
         if plot is not None:
-            self._plot_instances.append(copy.deepcopy(plot))
+            self._plot_instances.append(copy.copy(plot))
             return self._plot_instances[-1]
         else:
             return None
