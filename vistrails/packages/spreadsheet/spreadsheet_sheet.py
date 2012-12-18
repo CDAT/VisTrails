@@ -40,7 +40,6 @@
 ################################################################################
 from PyQt4 import QtCore, QtGui
 from spreadsheet_helpers import CellHelpers, CellResizer
-from core.configuration import get_vistrails_configuration
 
 ################################################################################
 
@@ -66,9 +65,6 @@ class StandardWidgetHeaderView(QtGui.QHeaderView):
         self.setClickable(True)
         self.setHighlightSections(True)
         self.fitToViewport = False
-        if getattr(get_vistrails_configuration(),'fixedSpreadsheetCells',False):
-            self.setResizeMode(self.ResizeToContents)
-        
         if orientation==QtCore.Qt.Vertical:
             self.setDefaultAlignment(QtCore.Qt.AlignHCenter |
                                      QtCore.Qt.AlignVCenter)
@@ -240,12 +236,7 @@ class StandardWidgetSheet(QtGui.QTableWidget):
         self.helpers = CellHelpers(parent, CellResizer(self))
         self.setRowCount(rows)
         self.setColumnCount(cols)
-        fix = getattr(get_vistrails_configuration(),'fixedSpreadsheetCells',False)
         self.setFitToWindow(True)
-        if fix:
-            self.resizeColumnsToContents()
-            self.resizeRowsToContents()
-            self.setFitToWindow(False)
         self.connect(self,
                      QtCore.SIGNAL('cellActivated(int, int, bool)'),
                      self.selectCell)
