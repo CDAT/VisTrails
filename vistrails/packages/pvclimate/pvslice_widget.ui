@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Form</class>
- <widget class="QWidget" name="Form">
+ <class>PVSliceWidget</class>
+ <widget class="QWidget" name="PVSliceWidget">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -19,11 +19,11 @@
      <property name="title">
       <string>Slice Base Parameters</string>
      </property>
-     <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <layout class="QVBoxLayout" name="verticalLayout_7">
       <item>
-       <layout class="QVBoxLayout" name="verticalLayout">
+       <layout class="QHBoxLayout" name="horizontalLayout_4">
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,0,0,0">
+         <layout class="QVBoxLayout" name="verticalLayout_2">
           <item>
            <widget class="QLabel" name="label_2">
             <property name="text">
@@ -32,33 +32,41 @@
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="sliceNormalXLineEdit"/>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="sliceNormalYLineEdit"/>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="sliceNormalZLineEdit"/>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,0,0,0">
-          <item>
            <widget class="QLabel" name="label">
             <property name="text">
              <string>Origin</string>
             </property>
            </widget>
           </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout">
           <item>
-           <widget class="QLineEdit" name="sliceOriginXLineEdit"/>
+           <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,0,0">
+            <item>
+             <widget class="QLineEdit" name="sliceNormalXLineEdit"/>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="sliceNormalYLineEdit"/>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="sliceNormalZLineEdit"/>
+            </item>
+           </layout>
           </item>
           <item>
-           <widget class="QLineEdit" name="sliceOriginYLineEdit"/>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="sliceOriginZLineEdit"/>
+           <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0">
+            <item>
+             <widget class="QLineEdit" name="sliceOriginXLineEdit"/>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="sliceOriginYLineEdit"/>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="sliceOriginZLineEdit"/>
+            </item>
+           </layout>
           </item>
          </layout>
         </item>
@@ -111,10 +119,14 @@
      </property>
      <layout class="QHBoxLayout" name="horizontalLayout_3">
       <item>
-       <widget class="QListWidget" name="sliceOffsetListWidget"/>
+       <widget class="QListWidget" name="sliceOffsetListWidget">
+        <property name="editTriggers">
+         <set>QAbstractItemView::NoEditTriggers</set>
+        </property>
+       </widget>
       </item>
       <item>
-       <widget class="QGroupBox" name="groupBox_3">
+       <widget class="QGroupBox" name="inputGroupBox">
         <property name="title">
          <string>Input</string>
         </property>
@@ -129,7 +141,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QLineEdit" name="sliceOffCSVLineEdit"/>
+            <widget class="QLineEdit" name="csvLineEdit"/>
            </item>
            <item>
             <spacer name="verticalSpacer">

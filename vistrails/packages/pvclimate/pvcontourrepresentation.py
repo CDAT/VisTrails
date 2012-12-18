@@ -95,14 +95,11 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
             delta = (max - min) / 10.0
 
             contours = self.forceGetInputListFromPort("contour_values")
-            print 'contours are ', contours
             if(len(contours) and contours):
                 self.contour_values = [float(d) for d in contours[0].split(',')]
 
             if( (self.contour_values == None) or (len(self.contour_values) == 0) ):
-                print >> sys.stderr, "No contour values are found"
                 self.contour_values = [ (x * delta + min) for x in range(10) ]
-                print 'self.contour_values ', self.contour_values
 
                 #// @todo: Check with Ben if this is the right way to do it:
                 import api
