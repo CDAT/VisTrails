@@ -14,6 +14,7 @@ import xml
 import myproxy_logon
 import subprocess
 import time
+from gui.common_widgets import QDockPushButton
 
 """
 class QEsgfGateway(cdms2.esgfConnection):

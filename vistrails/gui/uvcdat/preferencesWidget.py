@@ -123,6 +123,29 @@ class QPreferencesDialog(QtGui.QDialog):
         self._tab_widget.addTab(self.varTab(self),"Variables")
         self._tab_widget.addTab(self.ioTab(self),"I/O")
         self._tab_widget.addTab(self.vcsTab(self),"VCS")
+        self._tab_widget.addTab(self.esgfTab(self),"ESGF")
+
+    def esgfTab(self,parent):
+        tab= QtGui.QFrame()
+        l=QtGui.QVBoxLayout()
+        tab.setLayout(l)
+        h=QtGui.QHBoxLayout()
+        lb=QtGui.QLabel("File Retrieval Limit")
+        self.file_retrieval_limit=QtGui.QLineEdit()
+        self.file_retrieval_limit.setText("500")
+        h.addWidget(lb)
+        h.addWidget(self.file_retrieval_limit)
+        l.addLayout(h)
+        self.connect(self.file_retrieval_limit,QtCore.SIGNAL('editingFinished()'),self.get_file_limit)
+        return tab
+
+    def get_file_limit(self):
+        self.file_limit=str(self.file_retrieval_limit.text()).strip()
+        if not self.file_limit.isdigit():
+            m=QtGui.QMessageBox()
+            m.setText("You must enter a number for the file retrieval limit")
+            m.exec_()
+	    #QtGui.QMessageBox.warning(self, "Message", "You must enter a number for the file retrieval limit",QMessageBox.Ok)
 
     def varTab(self,parent):
         tab= QtGui.QFrame()
