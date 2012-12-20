@@ -45,14 +45,14 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
 
         if len(cell) == 0:
             widget = PVGenericCellConfigurationWidget(None, controller.vt_controller)
-            widget.init(pipeline)
+            widget.init(pipeline, version)
             return widget
         else:
             pvcell = cell[0].module_descriptor.module()
             #// Create child widgets
             #// Attach it to the parent widget
             widget = PVGenericCellConfigurationWidget(cell[0], controller.vt_controller)
-            widget.init(pipeline)
+            widget.init(pipeline, version)
             return widget
 
     @staticmethod

@@ -60,9 +60,11 @@ class RepresentationBaseConfigurationWidget(QWidget):
     def __init__(self, parent, rep_module):
         self.rep_module = rep_module
         self.controller = parent.controller
+        self.version = parent.version
         QWidget.__init__(self, parent)
 
     def update_vistrails(self, module, functions):
+        self.controller.change_selected_version(self.version)
         action = self.controller.update_functions(module, functions)
         if action is not None:
             window = get_vistrails_application().uvcdatWindow

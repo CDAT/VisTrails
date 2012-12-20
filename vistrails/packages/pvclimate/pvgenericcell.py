@@ -364,10 +364,12 @@ class PVGenericCellConfigurationWidget(PVClimateConfigurationWidget):
         # self.init_representations()
         PVClimateConfigurationWidget.__init__(self, module, controller, 'PVClimate Cell Configuration', parent)
 
-    def init(self, pipeline=None):
+    def init(self, pipeline=None, version=None):
         if pipeline is None:
             # assume current_pipeline when we're not in uv-cdat
             pipeline = self.controller.current_pipeline
+            version = self.controller.current_version
+        self.version = version
         self.init_representations(pipeline)
         self.createLayout()
 
