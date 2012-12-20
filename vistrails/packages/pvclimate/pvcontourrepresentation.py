@@ -98,14 +98,13 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
                 if(len(contours) and contours):
                     self.contour_values = [float(d) for d in contours[0].split(',')]
 
-                if( (self.contour_values == None) or (len(self.contour_values) == 0) ):
+                # if( (self.contour_values == None) or (len(self.contour_values) == 0) ):
+                else:
                     self.contour_values = [ (x * delta + min) for x in range(10) ]
 
-                    #// @todo: Check with Ben if this is the right way to do it:
-                    import api
-                    controller = api.get_current_controller()
-                    module = PlotPipelineHelper.find_module_by_name(controller.current_pipeline, 'PVContourRepresentation')
-                    controller.update_function(module, 'contour_values', [str(self.contour_values).strip('[]')])
+                    # use change_parameter not update_function
+                    self.change_parameter('contour_values', 
+                                          [str(self.contour_values).strip('[]')])
 
                 contour.Isosurfaces = self.contour_values
                 contour.ComputeScalars = 1

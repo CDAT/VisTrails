@@ -180,9 +180,15 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
         self.setWindowTitle( title )
         self.moduleId = module.id
         self.getParameters( module )
-        self.createLayout()
+        # self.createLayout()
         if ( PVClimateConfigurationWidget.newConfigurationWidget == None ): PVClimateConfigurationWidget.setupSaveConfigurations()
         PVClimateConfigurationWidget.newConfigurationWidget = self
+
+    def init(self, pipeline=None):
+        if pipeline is None:
+            # assume current_pipeline when we're not in uv-cdat
+            pipeline = self.controller.current_pipeline
+        self.createLayout()
 
     def destroy( self, destroyWindow = True, destroySubWindows = True):
         self.saveConfigurations()
@@ -371,8 +377,15 @@ class PVGenericCellConfigurationWidget(PVClimateConfigurationWidget):
         self.representation_modules = []
         self.controller = controller
         self.moduleId = module.id
-        self.init_representations()
+        # self.init_representations()
         PVClimateConfigurationWidget.__init__(self, module, controller, 'PVClimate Cell Configuration', parent)
+
+    def init(self, pipeline=None):
+        if pipeline is None:
+            # assume current_pipeline when we're not in uv-cdat
+            pipeline = self.controller.current_pipeline
+        self.init_representations(pipeline)
+        self.createLayout()
 
     def getParameters( self, module ):
         pass
@@ -386,8 +399,8 @@ class PVGenericCellConfigurationWidget(PVClimateConfigurationWidget):
         action = self.controller.update_functions(self.module, functions)
         return action
 
-    def init_representations(self):
-        pipeline = self.controller.current_pipeline
+    def init_representations(self, pipeline):
+        # pipeline = self.controller.current_pipeline
         representation_ids = pipeline.get_inputPort_modules(self.moduleId, 'representation')
         for i, rep_id in enumerate(representation_ids):
             rep_module = pipeline.get_module_by_id(rep_id)

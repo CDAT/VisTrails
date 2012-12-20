@@ -44,12 +44,16 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
           return None
 
         if len(cell) == 0:
-            return PVGenericCellConfigurationWidget(None, controller.vt_controller)
+            widget = PVGenericCellConfigurationWidget(None, controller.vt_controller)
+            widget.init(pipeline)
+            return widget
         else:
             pvcell = cell[0].module_descriptor.module()
             #// Create child widgets
             #// Attach it to the parent widget
-            return PVGenericCellConfigurationWidget(cell[0], controller.vt_controller)
+            widget = PVGenericCellConfigurationWidget(cell[0], controller.vt_controller)
+            widget.init(pipeline)
+            return widget
 
     @staticmethod
     def find_plot_representation(pipeline, representation):
