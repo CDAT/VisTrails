@@ -136,10 +136,11 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
                 #// this but for now this assumption seems to hold.
                 if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
                     conn = controller.create_connection(var_module, 'self',
-                                                        cell_module, 'cdms_variable')
+                                                        plot_module, 'cdms_variable')
                 else:
-                    conn = controller.create_connection(var_module, 'self',
-                                                        cell_module, 'variable')
+                    pass
+#                    conn = controller.create_connection(var_module, 'self',
+#                                                        plot_module, 'variable')
                 ops.append(('add', conn))
 
                 loc_module = controller.create_module_from_descriptor(
