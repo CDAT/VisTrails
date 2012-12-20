@@ -32,6 +32,7 @@
 ##
 ###############################################################################
 from core.uvcdat.plotmanager import get_plot_manager
+import sys
 
 class ControllerCell(object):
     
@@ -99,8 +100,11 @@ class ControllerCell(object):
         return plot_vars + self.variableQ
     
     def remove_plot(self, plot):
-        get_plot_manager().remove_plot_instance(plot)
-        self.plots.remove(plot)
+        try:
+            get_plot_manager().remove_plot_instance(plot)
+            self.plots.remove(plot)
+        except ValueError, err:
+            print>>sys.stderr, " -- Error Removing plot (probably removing the plot more then once from the same list)-- "
         
     def clear_plots(self):
         for i in reversed(range(len(self.plots))):
