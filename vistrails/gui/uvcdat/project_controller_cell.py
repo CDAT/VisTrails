@@ -31,6 +31,10 @@
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
 ###############################################################################
+
+from core.uvcdat.plotmanager import get_plot_manager
+import sys
+
 class ControllerCell(object):
     
     def __init__(self, variables=[], plots=[], templates=[],  current_parent_version=0L):
@@ -80,3 +84,32 @@ class ControllerCell(object):
             if plot.varnum > len(self.variables):
                 return False
         return True
+
+    def variables(self):
+        """
+        Returns list of all variables in plots and queue
+        """
+        plot_vars = [v for p in self.plots for v in p.variables] 
+        return plot_vars + self.variableQ
+    
+    def remove_plot(self, plot):
+        try:
+            get_plot_manager().remove_plot_instance(plot)
+            self.plots.remove(plot)
+        except ValueError, err:
+            print>>sys.stderr, " -- Error Removing plot (probably removing the plot more then once from the same list)-- "
+        
+    def clear_plots(self):
+        for i in reversed(range(len(self.plots))):
+            self.remove_plot(self.plots[i])
+    
+    def clear(self):
+        self.clear_plots()
+        self.variableQ = []
+        self.templateQ = []
+        
+    def acceptsPlotPackage(self, pkg):
+        """ Returns true if pkg does not conflict with existing
+        plot packages
+        """
+        return (len(self.plots) == 0 or self.plots[0].package == pkg)
