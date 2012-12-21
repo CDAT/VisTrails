@@ -44,12 +44,16 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
           return None
 
         if len(cell) == 0:
-            return PVGenericCellConfigurationWidget(None, controller.vt_controller)
+            widget = PVGenericCellConfigurationWidget(None, controller.vt_controller)
+            widget.init(pipeline, version)
+            return widget
         else:
             pvcell = cell[0].module_descriptor.module()
             #// Create child widgets
             #// Attach it to the parent widget
-            return PVGenericCellConfigurationWidget(cell[0], controller.vt_controller)
+            widget = PVGenericCellConfigurationWidget(cell[0], controller.vt_controller)
+            widget.init(pipeline, version)
+            return widget
 
     @staticmethod
     def find_plot_representation(pipeline, representation):
@@ -132,10 +136,11 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
                 #// this but for now this assumption seems to hold.
                 if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
                     conn = controller.create_connection(var_module, 'self',
-                                                        cell_module, 'cdms_variable')
+                                                        plot_module, 'cdms_variable')
                 else:
-                    conn = controller.create_connection(var_module, 'self',
-                                                        cell_module, 'variable')
+                    pass
+#                    conn = controller.create_connection(var_module, 'self',
+#                                                        plot_module, 'variable')
                 ops.append(('add', conn))
 
                 loc_module = controller.create_module_from_descriptor(

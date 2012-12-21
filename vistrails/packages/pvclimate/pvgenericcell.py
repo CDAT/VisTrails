@@ -27,7 +27,6 @@ import StringIO
 #// PVRepresentation
 from pvrepresentationbase import *
 
-from pvvariable import *
 from packages.uvcdat_cdms.init import CDMSVariable
 
 class PVGenericCell(SpreadsheetCell):
@@ -40,12 +39,7 @@ class PVGenericCell(SpreadsheetCell):
     def compute(self):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
-        """
-        # Fetch input variable
-        pv_variables = self.forceGetInputListFromPort('variable')
-
-        # Fetch input variable
-        cdms_variables = self.forceGetInputListFromPort('cdms_variable')
+        """        
 
         # Fetch slice offset from input port
         if self.hasInputFromPort("location"):
@@ -60,7 +54,7 @@ class PVGenericCell(SpreadsheetCell):
         if self.representations is None:
             return;
 
-        self.cellWidget = self.displayAndWait(QPVIsoSurfaceWidget, (self.location, pv_variables, cdms_variables, self.representations))
+        self.cellWidget = self.displayAndWait(QPVIsoSurfaceWidget, (self.location, self.representations))
 
     def persistParameterList( self, parameter_list, **args ):
         print "Getting Something"
@@ -96,16 +90,9 @@ class QPVIsoSurfaceWidget(QVTKWidget):
         del self.view.Representations[:]
 
         # Fetch variables from the input port
-        (location, pv_variables, cdms_variables, representations) = inputPorts
-
-        for var in pv_variables:
-            reader = var.get_reader()
-            for rep in representations:
-                rep.set_reader(reader)
-
+        (location, representations) = inputPorts
+        
         for rep in representations:
-            rep.set_variables(pv_variables)
-            rep.set_cdms_variables(cdms_variables)
             rep.set_view(self.view)
             rep.execute()
 
@@ -149,9 +136,6 @@ def register_self():
     # For now, we don't have configuration widget
     registry.add_module(PVGenericCell)
     registry.add_input_port(PVGenericCell, "Location", CellLocation)
-    registry.add_input_port(PVGenericCell, "variable", PVVariable)
-    registry.add_input_port(PVGenericCell, "cdms_variable", CDMSVariable)
-#    registry.add_input_port(PVGenericCell, "representation", PVRepresentationBase)
     registry.add_input_port(PVGenericCell, "representation", [])
     registry.add_output_port(PVGenericCell, "self", PVGenericCell)
 
@@ -180,9 +164,15 @@ class PVClimateConfigurationWidget(StandardModuleConfigurationWidget):
         self.setWindowTitle( title )
         self.moduleId = module.id
         self.getParameters( module )
-        self.createLayout()
+        # self.createLayout()
         if ( PVClimateConfigurationWidget.newConfigurationWidget == None ): PVClimateConfigurationWidget.setupSaveConfigurations()
         PVClimateConfigurationWidget.newConfigurationWidget = self
+
+    def init(self, pipeline=None):
+        if pipeline is None:
+            # assume current_pipeline when we're not in uv-cdat
+            pipeline = self.controller.current_pipeline
+        self.createLayout()
 
     def destroy( self, destroyWindow = True, destroySubWindows = True):
         self.saveConfigurations()
@@ -371,8 +361,17 @@ class PVGenericCellConfigurationWidget(PVClimateConfigurationWidget):
         self.representation_modules = []
         self.controller = controller
         self.moduleId = module.id
-        self.init_representations()
+        # self.init_representations()
         PVClimateConfigurationWidget.__init__(self, module, controller, 'PVClimate Cell Configuration', parent)
+
+    def init(self, pipeline=None, version=None):
+        if pipeline is None:
+            # assume current_pipeline when we're not in uv-cdat
+            pipeline = self.controller.current_pipeline
+            version = self.controller.current_version
+        self.version = version
+        self.init_representations(pipeline)
+        self.createLayout()
 
     def getParameters( self, module ):
         pass
@@ -386,8 +385,8 @@ class PVGenericCellConfigurationWidget(PVClimateConfigurationWidget):
         action = self.controller.update_functions(self.module, functions)
         return action
 
-    def init_representations(self):
-        pipeline = self.controller.current_pipeline
+    def init_representations(self, pipeline):
+        # pipeline = self.controller.current_pipeline
         representation_ids = pipeline.get_inputPort_modules(self.moduleId, 'representation')
         for i, rep_id in enumerate(representation_ids):
             rep_module = pipeline.get_module_by_id(rep_id)
