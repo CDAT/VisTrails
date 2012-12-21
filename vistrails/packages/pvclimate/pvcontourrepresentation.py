@@ -125,7 +125,7 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
 
                 #// Scalar bar
                 ScalarBarWidgetRepresentation1 = pvsp.CreateScalarBar( Title=self.contour_var_name, LabelFontSize=12, Enabled=1, TitleFontSize=12 )
-                pvsp.GetRenderView().Representations.append(ScalarBarWidgetRepresentation1)
+                self.view.Representations.append(ScalarBarWidgetRepresentation1)
 
                 if not reader.is_three_dimensional(cdms_var):
                     ScalarBarWidgetRepresentation1.LookupTable = data_rep.LookupTable
