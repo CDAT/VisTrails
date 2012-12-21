@@ -17,6 +17,7 @@ import paraview.simple as pvsp
 import cdms2, cdtime, cdutil, MV2
 import core.modules.basic_modules as basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
+from packages.uvcdat_cdms.init import CDMSVariable
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -53,13 +54,17 @@ class PVSliceRepresentation(PVRepresentationBase):
         return self.slice_normal
 
     def execute(self):
+        self.cdms_variables = self.forceGetInputListFromPort('cdms_variable')
         for cdms_var in self.cdms_variables:
+            
+            #// @todo: hardcoded for now
+            time_values = [None, 1, True]
+            
             #// Get the min and max to draw default contours
             min = cdms_var.var.min()
             max = cdms_var.var.max()
 
             reader = PVCDMSReader()
-            time_values = [None, 1, True]
             image_data = reader.convert(cdms_var, time=time_values)
 
             #// Make white box filter so we can work at proxy level
@@ -99,43 +104,35 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
               data_rep.ColorArrayName = self.slice_by_var_name
               continue
 
+            functions = []
             try:
-                slice_origin = self.forceGetInputListFromPort("slice_origin")
-                if slice_origin == None or len(slice_origin) == 0:
-                    bounds = image_data.GetBounds()
+                slice_origin = self.forceGetInputListFromPort("slice_origin")                
+                if (slice_origin == None) or len(slice_origin) == 0:                    
+                    bounds = image_data.GetBounds()                    
                     self.slice_origin = []
                     self.slice_origin.append((bounds[1] + bounds[0]) / 2.0)
                     self.slice_origin.append((bounds[3] + bounds[2]) / 2.0)
-                    self.slice_origin.append((bounds[5] + bounds[4]) / 2.0)
-
-                    import api
-                    controller = api.get_current_controller()
-                    module = PlotPipelineHelper.find_module_by_name(controller.current_pipeline, 'PVSliceRepresentation')
-                    controller.update_function(module, 'slice_origin', [str(self.slice_origin).strip('[]')])
+                    self.slice_origin.append((bounds[5] + bounds[4]) / 2.0)                    
+                    functions.append(('slice_origin', [str(self.slice_origin).strip('[]')]))
                 else:
-                    self.slice_origin = [float(d) for d in slice_origin[0].split(',')]
+                    self.slice_origin = [float(d) for d in slice_origin[0].split(',')]                    
 
                 slice_normal = self.forceGetInputListFromPort("slice_normal")
                 if slice_normal == None or len(slice_normal) == 0:
-                    self.slice_normal = [0.0, 0.0, 1.0]
-
-                    import api
-                    controller = api.get_current_controller()
-                    module = PlotPipelineHelper.find_module_by_name(controller.current_pipeline, 'PVSliceRepresentation')
-                    controller.update_function(module, 'slice_normal', [str(self.slice_normal).strip('[]')])
+                    self.slice_normal = [0.0, 0.0, 1.0] 
+                    functions.append(('slice_normal', [str(self.slice_normal).strip('[]')]))                                        
                 else:
-                    self.slice_normal = [float(d) for d in slice_normal[0].split(',')]
+                    self.slice_normal = [float(d) for d in slice_normal[0].split(',')]                    
 
                 slice_offset_values = self.forceGetInputListFromPort("slice_offset_values")
                 if(len(slice_offset_values) and slice_offset_values):
-                    self.slice_offset_values = [float(d) for d in slice_offset_values[0].split(',')]
+                    self.slice_offset_values = [float(d) for d in slice_offset_values[0].split(',')]                    
                 else:
                     self.slice_offset_values = [0.0]
-
-                    import api
-                    controller = api.get_current_controller()
-                    module = PlotPipelineHelper.find_module_by_name(controller.current_pipeline, 'PVSliceRepresentation')
-                    controller.update_function(module, 'slice_offset_values', [str(self.slice_offset_values).strip('[]')])
+                    functions.append(('slice_offset_values', [str(self.slice_offset_values).strip('[]')]))                    
+                  
+                if len(functions) > 0:                      
+                    self.update_functions('PVSliceRepresentation', functions)
 
                 #// Create a slice representation
                 plane_slice = pvsp.Slice( SliceType="Plane" )
@@ -153,7 +150,7 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
 
                 #// Scalar bar
                 ScalarBarWidgetRepresentation1 = pvsp.CreateScalarBar( Title=self.slice_by_var_name, LabelFontSize=12, Enabled=1, TitleFontSize=12 )
-                pvsp.GetRenderView().Representations.append(ScalarBarWidgetRepresentation1)
+                self.view.Representations.append(ScalarBarWidgetRepresentation1)
 
                 if not reader.is_three_dimensional(cdms_var):
                     ScalarBarWidgetRepresentation1.LookupTable = data_rep.LookupTable
@@ -163,7 +160,7 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
             except ValueError:
                 print "[ERROR] Unable to generate slice. Please check your input values"
             except (RuntimeError, TypeError, NameError):
-                pass
+                print "[ERROR] Unknown error"
 
     @staticmethod
     def name():
@@ -211,14 +208,7 @@ class PVSliceRepresentationConfigurationWidget(RepresentationBaseConfigurationWi
         Update vistrail controller (if necessary) then close the widget
 
         """
-        slice_offset = str(self.slice_offset_value.text().toLocal8Bit().data())
-        functions = []
-        functions.append(("sliceOffset", [slice_offset]))
-        action = self.update_vistrails(self.rep_module, functions)
-        if action is not None:
-            self.emit(SIGNAL('doneConfigure()'))
-            self.emit(SIGNAL('plotDoneConfigure'), action)
-
+        pass
 
 def register_self():
     registry = get_module_registry()
@@ -227,3 +217,4 @@ def register_self():
     registry.add_input_port(PVSliceRepresentation, "slice_offset_values", basic_modules.String)
     registry.add_input_port(PVSliceRepresentation, "slice_origin", basic_modules.String)
     registry.add_input_port(PVSliceRepresentation, "slice_normal", basic_modules.String)
+    registry.add_input_port(PVSliceRepresentation, "cdms_variable", CDMSVariable)
