@@ -644,7 +644,13 @@ class ProjectController(QtCore.QObject):
             
     def execute_plot(self, version):
         self.vt_controller.change_selected_version(version)
-        (results, _) = self.vt_controller.execute_current_workflow()
+        (results, changed) = self.vt_controller.execute_current_workflow()
+        if changed:
+            # a bit of a hack, but we know this will be the latest
+            # version
+            new_version = self.vt_controller.get_latest_version_in_graph()
+            action = InstanceObject(id=new_version)
+            self.cell_was_changed(action)
         from gui.vistrails_window import _app
         _app.notify('execution_updated')
             
@@ -814,6 +820,8 @@ class ProjectController(QtCore.QObject):
             cell.current_parent_version = action.id
             
             if get_vistrails_configuration().uvcdat.autoExecute:
+                self.current_sheetName = sheetName
+                self.current_cell_coords = [row, column]
                 self.execute_plot(cell.current_parent_version)
                 self.update_plot_configure(sheetName, row, column)
                 
