@@ -31,6 +31,7 @@
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
 ###############################################################################
+
 from core.uvcdat.plotmanager import get_plot_manager
 import sys
 
@@ -120,4 +121,3 @@ class ControllerCell(object):
         plot packages
         """
         return (len(self.plots) == 0 or self.plots[0].package == pkg)
-        
