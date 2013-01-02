@@ -38,9 +38,10 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         #find plot modules in the order they appear in the Cell
         res = []
         cell = CDMSPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
-        plots = pipeline.get_inputPort_modules(cell.id,'plot')
-        for plot in plots:
-            res.append(pipeline.modules[plot])
+        if cell is not None:
+            plots = pipeline.get_inputPort_modules(cell.id,'plot')
+            for plot in plots:
+                res.append(pipeline.modules[plot])
         return res
                 
     @staticmethod

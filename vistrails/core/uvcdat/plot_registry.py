@@ -32,7 +32,7 @@
 ##
 ###############################################################################
 import ConfigParser
-import os, os.path
+import os, os.path, copy
 
 from PyQt4 import QtCore
 # vistrails imports
@@ -151,6 +151,36 @@ class Plot(object):
         self.current_controller = None
         self.variables = []
         self.template = None
+        
+    def __copy__(self):
+        """
+        Override to include variables list on shallow copy.
+        See copy.copy
+        """
+        cls = type(self)
+
+        copier = copy._copy_dispatch.get(cls)
+        if copier:
+            newone = copier(self)
+        else:    
+            reductor = copy.dispatch_table.get(cls)
+            if reductor:
+                rv = reductor(self)
+            else:
+                reductor = getattr(self, "__reduce_ex__", None)
+                if reductor:
+                    rv = reductor(2)
+                else:
+                    reductor = getattr(self, "__reduce__", None)
+                    if reductor:
+                        rv = reductor()
+                    else:
+                        raise Exception("un(shallow)copyable object of type %s" % cls)
+        
+            newone = copy._reconstruct(self, rv, 0)
+
+        newone.variables = self.variables[:]
+        return newone
             
     def load(self, loadworkflow=True):
         config = ConfigParser.ConfigParser()
