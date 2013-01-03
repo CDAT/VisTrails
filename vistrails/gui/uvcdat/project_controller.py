@@ -70,8 +70,8 @@ class ProjectController(QtCore.QObject):
         self.sheet_map = {}
         self.plot_registry = get_plot_registry()
         self.plot_manager = get_plot_manager()
-        self.current_cell_coords = [ -1, -1 ]
-        self.current_sheetName = None
+        self.current_cell_coords = [ 0, 0 ]
+        self.current_sheetName = "Sheet 1"
         
     def add_defined_variable(self, var):
         self.defined_variables[var.name] = var
@@ -601,7 +601,9 @@ class ProjectController(QtCore.QObject):
         self.emit(QtCore.SIGNAL("sheet_size_changed"), sheet, dim)
 
     def current_cell_changed(self, sheetName, row, col):
-        if ( row <> self.current_cell_coords[0] ) or ( col <> self.current_cell_coords[1] ):
+        if (row <> self.current_cell_coords[0] or 
+            col <> self.current_cell_coords[1] or
+            sheetName <> self.current_sheetName):
             self.update_plot_configure(sheetName, row, col)
 
     def plot_was_dropped(self, info):
