@@ -147,7 +147,7 @@ The builder window can be accessed by a spreadsheet menu option.")
         add("-w", "--executeworkflows", action="store_true",
             default = None,
             help="The workflows will be executed")
-        add("-F", "--fixedcells", action="store_true",
+        add("-R", "--fixedcells", action="store_true",
             default = None,
             help="Use a fixed spreadsheet cell size of 200*180")
         add("-I", "--workflowinfo", action="store",
