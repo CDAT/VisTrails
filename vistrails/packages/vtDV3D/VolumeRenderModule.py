@@ -147,7 +147,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.experimental = True
         self.updatingOTF = False
         self.configTime = None
-        self.volRenderConfig = 'Default'
+        self.volRenderConfig = [ 'Default', 'False' ]
         self.transFunctGraphVisible = False
         self.transferFunctionConfig = None
         self.setupTransferFunctionConfigDialog()
@@ -166,10 +166,11 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #            print " VR >---------------> Set zscale: %.2f, scale: %s, spacing: %s " % ( sz, str(self.volume.GetScale()), str(self.input().GetSpacing()) )
 
     def getVolRenderCfg( self ):
-        return self.volRenderConfig
+        return [ ';'.join( self.volRenderConfig ) ]
 
     def setVolRenderCfg( self, config_str, doRender = True ):
-        if config_str: self.volRenderConfig = str( getItem( config_str ) ).split(';')
+        if config_str: 
+            self.volRenderConfig = getItem( config_str ).strip('[]').split(';')
         renderMode = vtk.vtkSmartVolumeMapper.TextureRenderMode
         if self.volRenderConfig[0] == 'RayCastAndTexture': 
             renderMode = vtk.vtkSmartVolumeMapper.RayCastAndTextureRenderMode
@@ -178,6 +179,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         elif self.volRenderConfig[0] == 'Texture3D': 
             renderMode = vtk.vtkSmartVolumeMapper.TextureRenderMode            
         self.volumeMapper.SetRequestedRenderMode( renderMode )
+        self.volumeProperty.SetShade( self.volRenderConfig[1] == str(True) )
 #        self.volumeMapper.SetCropping( 1 )               
         if doRender: self.render() 
 
@@ -328,6 +330,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.volumeProperty.SetInterpolationType( vtk.VTK_LINEAR_INTERPOLATION )
         self.volumeProperty.SetColor(self.colorTransferFunction)
         self.volumeProperty.SetScalarOpacity(self.opacityTransferFunction)
+#        self.volumeProperty.SetGradientOpacity(self.opacityTransferFunction)
      
         # The mapper knows how to render the data
 
@@ -634,6 +637,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             if self.otf_data: self.transferFunctionConfig.updateGraph( scalarRange, [ 0.0, 1.0 ], graphData )
 #            print "OTF: [ %s ] " % " ".join( points ) 
         self.updatingOTF = False
+        print "Update OTF: Lighting coefs = %s" % str( [ self.volumeProperty.GetShade(), self.volumeProperty.GetAmbient(), self.volumeProperty.GetDiffuse(), self.volumeProperty.GetSpecular(), self.volumeProperty.GetSpecularPower() ] )
+        
         
 from packages.vtDV3D.WorkflowModule import WorkflowModule
 
