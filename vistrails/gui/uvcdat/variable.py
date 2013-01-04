@@ -116,6 +116,7 @@ class VariableProperties(QtGui.QDialog):
     ##     if not hasattr(klass, '_instance'):
     ##         klass._instance = klass()
     ##     return klass._instance
+
     def tabHasChanged(self,index):
         if index==1:
             self.root.varProp.btnDefine.setEnabled(False)
@@ -125,8 +126,7 @@ class VariableProperties(QtGui.QDialog):
             self.root.varProp.btnDefine.setEnabled(True)
             self.root.varProp.btnDefineClose.setEnabled(True)
             self.root.varProp.btnDefineAs.setEnabled(True)
-
-
+ 
     def connectSignals(self):
         self.btnCancel.clicked.connect(self.close)
         self.connect(self.ask,QtCore.SIGNAL('accepted()'),self.checkTargetVarName)

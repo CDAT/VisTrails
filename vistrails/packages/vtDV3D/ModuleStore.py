@@ -32,13 +32,20 @@ def getModule( mid ):
 
 def removeModule( mid ):
     db = getDatabase()
-    try:        del db[ mid ]
+    try:        
+        del db[ mid ]
+#        print>>sys.stderr, "  ______________________________ ModuleStore: deleting module %d ______________________________" % mid
     except:     return False
     return True
 
 def forceGetModule(  mid, default_instance ):
-    db = getDatabase()        
-    return db.setdefault( mid, default_instance )
+    module = getModule( mid )
+    if module == None:
+        db = getDatabase()
+        module = default_instance
+        db[ mid ] = module   
+#        print>>sys.stderr, " ______________________________ Add module to ModuleStore: %d ______________________________ " %  mid   
+    return module
 
 def getModuleList():
     db = getDatabase()     

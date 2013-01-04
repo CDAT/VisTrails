@@ -463,10 +463,10 @@ class StandardWidgetTabController(QtGui.QTabWidget):
     def delete_sheet_by_index(self, index):
         widget = self.widget(index)
         self.emit(QtCore.SIGNAL("remove_tab"), widget)
+        widget.deleteAllCells()
         self.tabWidgets.remove(widget)
         self.removeTab(index)
         self.removeSheetReference(widget)
-        widget.deleteAllCells()
         widget.deleteLater()
         QtCore.QCoreApplication.processEvents()
         gc.collect()
@@ -479,10 +479,10 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         if self.count()>0:
             widget = self.currentWidget()
             self.emit(QtCore.SIGNAL("remove_tab"), widget)
+            widget.deleteAllCells()
             self.tabWidgets.remove(widget)
             self.removeTab(self.currentIndex())
             self.removeSheetReference(widget)
-            widget.deleteAllCells()
             widget.deleteLater()
             QtCore.QCoreApplication.processEvents()
             gc.collect()

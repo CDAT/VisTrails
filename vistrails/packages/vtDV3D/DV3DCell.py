@@ -34,14 +34,6 @@ defaultMapCut = -180
 SLIDER_MAX_VALUE = 100
 MAX_IMAGE_SIZE = 1000000
 
-def get_coords_from_cell_address( row, col):
-    try:
-        col = ord(col)-ord('A')
-        row = int(row)-1
-        return ( col, row )
-    except:
-        raise Exception('ColumnRowAddress format error: %s ' % str( [ row, col ] ) )
-
 def parse_cell_address( address ):
     try:
         if len(address)>1:
@@ -447,9 +439,12 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             
         if address:
 #            print "Setting Cell Address from Input: %s " % ( address )
-            address = address.replace(' ', '').upper()
-            address = address.split('!')[-1]
-            cell_coordinates = parse_cell_address( address )
+            if isList( address ):
+                cell_coordinates = ( int(address[0]), int(address[1]) )
+            else:    
+                address = address.replace(' ', '').upper()
+                address = address.split('!')[-1]
+                cell_coordinates = parse_cell_address( address )
         else:
             cell_coordinates = HyperwallManager.getInstance().getCellCoordinatesForModule( moduleId )
             if cell_coordinates == None: return None
@@ -508,8 +503,15 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.renderer.ResetCamera() 
         self.render()  
         
-    def clearWidget(self): 
+    def clearWidget(self, sheetName, row, col ): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper      
         from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog, UVCDATGuiConfigFunction
+        if not sheetName: print>>sys.stderr, " ---> Vistrails error, no sheetName supplied in 'cell_deleted' signal"
+        elif ( sheetName <> self.sheetName ): return
+        if ( self.location.col <> col ) or  ( self.location.row <> row ): return
+        cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )  
+#        print " --- Clearing Cell %s ---" % cell_address
+        self.pipeline = DV3DPipelineHelper.getPipeline( cell_address )
         UVCDATGuiConfigFunction.clearModules( self.pipeline )
         IVModuleConfigurationDialog.reset()
         self.cellWidget = None 

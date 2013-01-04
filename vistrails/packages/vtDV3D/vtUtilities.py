@@ -58,6 +58,14 @@ dvLogFile =  open( os.path.expanduser( '~/.vistrails/dv3d_log.txt' ), 'w' )
 dvDbgIO = DebugPrint()
 dvDbgIO.set_stream( sys.stderr )
 
+def get_coords_from_cell_address( row, col):
+    try:
+        col = ord(col)-ord('A')
+        row = int(row)-1
+        return ( col, row )
+    except:
+        raise Exception('ColumnRowAddress format error: %s ' % str( [ row, col ] ) )
+
 def dvLog( obj, msg ):
     dvLogFile.write( '\n%s: %s' % ( obj.__class__.__name__, msg ) )
     dvLogFile.flush( )
@@ -135,6 +143,9 @@ def delete_module( module,pipeline ):
 def isList( val ):
     valtype = type(val)
     return ( valtype ==type(list()) ) or  ( valtype ==type(tuple()) )
+
+def isStr( val ):
+    return ( type(val) == type(' ') ) 
 
 def str2bool( value ):
     if ( type(value) == bool ): return value
