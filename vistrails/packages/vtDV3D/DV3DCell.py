@@ -412,8 +412,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         cell_coords = ( self.location.row, self.location.col )
         if cell_coords in proj_controller.sheet_map[ self.sheetName ]:
             cell = proj_controller.sheet_map[ self.sheetName ][ cell_coords ]
-            if not plot in cell.plots: 
-                cell.plots.append(plot)  # TODO: replace plots.append with add_plot when available.
+#            if not plot in cell.plots: 
+#                cell.plots.append(plot)  # TODO: replace plots.append with add_plot when available.
         else:
             proj_controller.sheet_map[ self.sheetName ][ cell_coords ] = ControllerCell( variables=vars, plots=[plot], templates=[], current_parent_version=0L )  
                       
