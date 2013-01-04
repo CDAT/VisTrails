@@ -892,12 +892,20 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
             
             varNames = str(mimeData.text()).split(',')
             #print varName, row, col
+<<<<<<< HEAD
 
             for varName in varNames:
                 self.emit(QtCore.SIGNAL("dropped_variable"), (varName, sheetName, 
                                                               row, col))
             self.updatePrompt(sheetName, row, col)
 
+=======
+            for varName in varNames:
+                self.emit(QtCore.SIGNAL("dropped_variable"), (varName, sheetName, 
+                                                              row, col))
+                self.droppedVariable(varName, row, col)
+            
+>>>>>>> uvcdat_bug55
             self.sheet.selectCell(row, col, False)
             self.sheet.cellWidget(row, col)
 
