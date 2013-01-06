@@ -886,10 +886,47 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         use those parameters.
          
         """
-        return DV3DPipelineHelper.build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col)
+        return DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot, cell_addresses )
+#        added_vars = []
+#        if controller is None:
+#            controller = api.get_current_controller()
+#        # action = CDMSPipelineHelper.remove_variables_from_pipeline_action(controller, version)
+#        # version = action.id
+#        version = controller.current_version
+#        pipeline = controller.vistrail.getPipeline(version)
+#        ops = []
+#        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+#        cell_module = CDMSPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
+#        
+#        for plot in plot_objs:
+#            found = False
+#            for plot_module in plot_modules:
+#                gm = CDMSPipelineHelper.get_graphics_method_name_from_module(plot_module)
+#                plot_type = plot_module.name[4:] #strip off CDMS
+#                if plot.parent == plot_type and plot.name == gm:
+#                    found = True
+#                    ops2 = CDMSPipelineHelper.connect_variables_to_plots(controller, 
+#                                                                         var_modules, 
+#                                                                         plot, 
+#                                                                         plot_module)
+#            if not found:
+#                ops2 = CDMSPipelineHelper.create_actions_from_plot_obj(controller, 
+#                                                                       var_modules, 
+#                                                                       cell_module, 
+#                                                                       plot, 
+#                                                                       added_vars)
+#            ops.extend(ops2)
+#        
+#        action = core.db.action.create_action(ops)
+#        controller.change_selected_version(version)
+#        controller.add_new_action(action)
+#        controller.perform_action(action)
+#        return action
      
     @staticmethod
     def add_additional_plot_to_pipeline( controller, version, plot, cell_addresses ):
+        if controller is None: controller = api.get_current_controller()
+        version = controller.current_version
         workflow = plot.workflow
         if not workflow: return
         pipeline = controller.current_pipeline
@@ -925,6 +962,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 pass
                 
         action2 = core.db.action.create_action(ops)
+        controller.change_selected_version(version)
         controller.add_new_action(action2)
         controller.perform_action(action2)
 
