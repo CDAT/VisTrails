@@ -1075,13 +1075,17 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         if sheetName == None:    
             sheetTabWidget = getSheetTabWidget()
             sheetName = sheetTabWidget.getSheetName() 
-            proj_controller = api.get_current_project_controller()
-            controller =  proj_controller.vt_controller
-            cell_coords = get_coords_from_cell_address( cell_address[1], cell_address[0] ) if isStr( cell_address ) else cell_address
+        pipeline = None
+        proj_controller = api.get_current_project_controller()
+        controller =  proj_controller.vt_controller
+        cell_coords = get_coords_from_cell_address( cell_address[1], cell_address[0] ) if isStr( cell_address ) else cell_address
+        try:
             cell = proj_controller.sheet_map[ sheetName ][ ( cell_coords[1], cell_coords[0] ) ]
             current_version = cell.current_parent_version 
             controller.change_selected_version( current_version )
             pipeline = controller.vistrail.getPipeline( current_version )  
+        except KeyError:
+            print "Can't find sheet: ", sheetName
         return pipeline       
 
     @staticmethod
