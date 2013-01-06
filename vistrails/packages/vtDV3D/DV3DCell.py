@@ -424,7 +424,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
 #                return plot
 #        return None
                   
-    def setCellLocation( self, moduleId ):
+    def overrideCellLocationForModule( self, moduleId ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
         cellLocation = CellLocation()
         cellLocation.rowSpan = 1
@@ -458,7 +458,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         return [ cellLocation.col, cellLocation.row, 1, 1 ]
     
     def updateHyperwall(self):
-        dimensions = self.setCellLocation( self.moduleID )  
+        dimensions = self.overrideCellLocationForModule( self.moduleID )  
         if dimensions:  
             ispec = self.inputSpecs[ 0 ]    
             HyperwallManager.getInstance().addCell( self.moduleID, ispec.datasetId, str(0), dimensions )
