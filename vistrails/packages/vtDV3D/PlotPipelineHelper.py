@@ -867,32 +867,57 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        return action
 
     @staticmethod
-    def update_plot_pipeline_action(controller, version, var_modules, plot_objs, row, column):
+    def update_plot_pipeline_action(controller, version, var_modules, plot_objs,
+                                    row, col):
+        """update_plot_pipeline_action(controller: VistrailController,
+                                      version: long,
+                                      var_modules: [list of modules],
+                                      plot_objs: [list of Plot objects],
+                                      row: int,
+                                      col: int) -> Action 
+        
+        This function will update the workflow and add it to the
+        provenance. It will reuse the plot configurations that are already in 
+        the pipeline. You should make sure to update the state of the controller
+        so its current_version is version before adding the VisTrails action to 
+        the provenance.
+        row and col contain the position of the cell in the spreadsheet the 
+        workflow should be displayed, but as we keep a single cell, we don't
+        use those parameters.
+         
+        """
+        # FIXME want to make sure that nothing changes if var_module
+        # or plot_module do not change
         added_vars = []
         if controller is None:
             controller = api.get_current_controller()
-            version = 0L
         # action = CDMSPipelineHelper.remove_variables_from_pipeline_action(controller, version)
         # version = action.id
         version = controller.current_version
         pipeline = controller.vistrail.getPipeline(version)
         ops = []
-        plot_modules = DV3DPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
-        cell_module = DV3DPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
-        istart = len(plot_modules)
-        ops2 = DV3DPipelineHelper.create_actions_from_plot_objs(controller, 
-                                                                var_modules, 
-                                                                cell_module, 
-                                                                plot_objs, 
-                                                                templates,
-                                                                added_vars,
-                                                                istart)
-        ops.extend(ops2)
-        ops.extend(
-            DV3DPipelineHelper.connect_variables_to_plots(controller,
-                                                          var_modules,
-                                                          plot_modules))
-
+#        plot_modules = DV3DPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+#        cell_module = DV3DPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
+#        
+#        for plot in plot_objs:
+#            found = False
+#            for plot_module in plot_modules:
+#                gm = DV3DPipelineHelper.get_graphics_method_name_from_module(plot_module)
+#                plot_type = plot_module.name[4:] #strip off CDMS
+#                if plot.parent == plot_type and plot.name == gm:
+#                    found = True
+#                    ops2 = DV3DPipelineHelper.connect_variables_to_plots(controller, 
+#                                                                         var_modules, 
+#                                                                         plot, 
+#                                                                         plot_module)
+#            if not found:
+#                ops2 = DV3DPipelineHelper.create_actions_from_plot_obj(controller, 
+#                                                                       var_modules, 
+#                                                                       cell_module, 
+#                                                                       plot, 
+#                                                                       added_vars)
+#            ops.extend(ops2)
+#        
         action = core.db.action.create_action(ops)
         controller.change_selected_version(version)
         controller.add_new_action(action)
