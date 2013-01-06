@@ -867,8 +867,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        return action
 
     @staticmethod
-    def update_plot_pipeline_action(controller, version, var_modules, plot_objs,
-                                    row, col):
+    def update_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col):
         """update_plot_pipeline_action(controller: VistrailController,
                                       version: long,
                                       var_modules: [list of modules],
@@ -886,7 +885,19 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         use those parameters.
          
         """
-        return DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot, cell_addresses )
+        cell_specs = []
+        cell_addresses = []
+        plot_obj = plot_objs[0]
+        try:
+            cell = plot_obj.cells[0] 
+            location = cell.address_name if cell.address_name else 'location1'    # address_name defined using 'address_alias=...' in cell section of plot cfg file.
+            cell_addr = "%s%s" % ( chr(ord('A') + col ), row+1)
+            cell_specs.append( '%s!%s' % ( location, cell_addr ) )
+            cell_addresses.append( cell_addr )
+        except Exception, err:
+            print>>sys.stderr, " Error producing cell specs: %s " % str( err )
+
+        return DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot_obj, cell_addresses )
 #        added_vars = []
 #        if controller is None:
 #            controller = api.get_current_controller()
