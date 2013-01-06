@@ -865,6 +865,39 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        controller.add_new_action(action)
 #        controller.perform_action(action)
 #        return action
+
+    @staticmethod
+    def update_plot_pipeline_action(controller, version, var_modules, plot_objs, row, column):
+        added_vars = []
+        if controller is None:
+            controller = api.get_current_controller()
+            version = 0L
+        # action = CDMSPipelineHelper.remove_variables_from_pipeline_action(controller, version)
+        # version = action.id
+        version = controller.current_version
+        pipeline = controller.vistrail.getPipeline(version)
+        ops = []
+        plot_modules = DV3DPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+        cell_module = DV3DPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
+        istart = len(plot_modules)
+        ops2 = DV3DPipelineHelper.create_actions_from_plot_objs(controller, 
+                                                                var_modules, 
+                                                                cell_module, 
+                                                                plot_objs, 
+                                                                templates,
+                                                                added_vars,
+                                                                istart)
+        ops.extend(ops2)
+        ops.extend(
+            DV3DPipelineHelper.connect_variables_to_plots(controller,
+                                                          var_modules,
+                                                          plot_modules))
+
+        action = core.db.action.create_action(ops)
+        controller.change_selected_version(version)
+        controller.add_new_action(action)
+        controller.perform_action(action)
+        return action
      
     @staticmethod
     def add_additional_plot_to_pipeline( controller, version, plot, cell_addresses ):
