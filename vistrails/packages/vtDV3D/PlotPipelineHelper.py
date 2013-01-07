@@ -22,6 +22,7 @@ from packages.uvcdat_cdms.init import CDMSVariableOperation, CDMSVariable
 from packages.vtDV3D.vtUtilities import *
 from core.uvcdat.plot_registry import get_plot_registry
 from core.modules.module_registry import get_module_registry
+from core.utils import UnimplementedException
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from packages.vtDV3D import HyperwallManager
@@ -867,7 +868,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        return action
 
     @staticmethod
-    def update_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col):
+    def update_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col, templates=[]):
         """update_plot_pipeline_action(controller: VistrailController,
                                       version: long,
                                       var_modules: [list of modules],
@@ -884,55 +885,78 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         workflow should be displayed, but as we keep a single cell, we don't
         use those parameters.
          
-        """
-        cell_specs = []
-        cell_addresses = []
-        plot_obj = plot_objs[0]
-        try:
-            cell = plot_obj.cells[0] 
-            location = cell.address_name if cell.address_name else 'location1'    # address_name defined using 'address_alias=...' in cell section of plot cfg file.
-            cell_addr = "%s%s" % ( chr(ord('A') + col ), row+1)
-            cell_specs.append( '%s!%s' % ( location, cell_addr ) )
-            cell_addresses.append( cell_addr )
-        except Exception, err:
-            print>>sys.stderr, " Error producing cell specs: %s " % str( err )
+        """ 
+        raise UnimplementedException
+        controller.change_selected_version(version)
+        vistrail_a = controller.vistrail
+        version_a = version
+        pipeline = controller.current_pipeline
+        new_plots = []
+        for pl in plot_objs:
+            vistrail_b = pl.plot_vistrail
+            version_b = pl.workflow_version
+            if vistrail_b is not None and version_b > 0:
+                if not DV3DPipelineHelper.are_workflows_compatible( vistrail_a, vistrail_b,  version_a, version_b ):
+                    new_plots.append(pl) 
+ 
+        aliases = {}
+        for plot_obj in new_plots:
+            cell_specs = []
+            cell_addresses = []
+            try:
+                cell = plot_obj.cells[0] 
+                location = cell.address_name if cell.address_name else 'location1'   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
+                cell_addr = "%s%s" % ( chr(ord('A') + col ), row+1)
+                cell_specs.append( '%s!%s' % ( location, cell_addr ) )
+                cell_addresses.append( cell_addr )
+            except Exception, err:
+                print>>sys.stderr, " Error producing cell specs: %s " % str( err )
 
-        return DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot_obj, cell_addresses )
-#        added_vars = []
-#        if controller is None:
-#            controller = api.get_current_controller()
-#        # action = CDMSPipelineHelper.remove_variables_from_pipeline_action(controller, version)
-#        # version = action.id
-#        version = controller.current_version
-#        pipeline = controller.vistrail.getPipeline(version)
-#        ops = []
-#        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
-#        cell_module = CDMSPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
-#        
-#        for plot in plot_objs:
-#            found = False
-#            for plot_module in plot_modules:
-#                gm = CDMSPipelineHelper.get_graphics_method_name_from_module(plot_module)
-#                plot_type = plot_module.name[4:] #strip off CDMS
-#                if plot.parent == plot_type and plot.name == gm:
-#                    found = True
-#                    ops2 = CDMSPipelineHelper.connect_variables_to_plots(controller, 
-#                                                                         var_modules, 
-#                                                                         plot, 
-#                                                                         plot_module)
-#            if not found:
-#                ops2 = CDMSPipelineHelper.create_actions_from_plot_obj(controller, 
-#                                                                       var_modules, 
-#                                                                       cell_module, 
-#                                                                       plot, 
-#                                                                       added_vars)
-#            ops.extend(ops2)
-#        
-#        action = core.db.action.create_action(ops)
-#        controller.change_selected_version(version)
-#        controller.add_new_action(action)
-#        controller.perform_action(action)
-#        return action
+            plot_obj.current_parent_version = version
+            plot_obj.current_controller = controller
+            DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot_obj, cell_addresses )
+
+    #        Disable File Reader, get Variable from UVCDAT
+    #        plot_obj.addMergedAliases( aliases, controller.current_pipeline )
+            action = DV3DPipelineHelper.addParameterChangesAction( controller.current_pipeline,  controller,  controller.vistrail, controller.current_version, aliases, iter(cell_specs) )        
+    #        if action: controller.change_selected_version( action.id )   
+            
+            reader_1v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader ] )
+            reader_3v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VectorReader ] )
+            reader_modules = reader_1v_modules + reader_3v_modules
+            iVarModule = 0
+            ops = []           
+            for module in reader_modules:
+                nInputs = 1 if module in reader_1v_modules else 3
+                for iInput in range( nInputs ):
+                    if iInput < len( var_modules ):
+                        try:
+                            var_module = var_modules[ iVarModule ]
+                            var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
+                            if var_module_in_pipeline == None: 
+                                ops.append( ( 'add', var_module ) )
+                            inputPort = 'variable' if (iInput == 0) else "variable%d" % ( iInput + 1)
+                            conn1 = controller.create_connection( var_module, 'self', module, inputPort )
+                            ops.append( ( 'add', conn1 ) )
+                            iVarModule = iVarModule+1
+                        except Exception, err:
+                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                            break
+                                           
+            try:
+                action = core.db.action.create_action(ops)
+                controller.add_new_action(action)
+                controller.perform_action(action)
+            except Exception, err:
+                print " Error connecting CDMSVariable to workflow: ", str(err)
+                traceback.print_exc()
+            
+            sheetTabWidget = getSheetTabWidget()
+            sheetName = sheetTabWidget.getSheetName() 
+            for cell_address in cell_addresses: 
+                for mid in controller.current_pipeline.modules:   
+                    DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )   
+                    
      
     @staticmethod
     def add_additional_plot_to_pipeline( controller, version, plot, cell_addresses ):
