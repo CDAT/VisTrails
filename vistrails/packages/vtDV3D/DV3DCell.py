@@ -481,7 +481,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
         PersistentVisualizationModule.execute(self, **args)
         self.recordCameraPosition()
-        self.updateProject()
+#        self.updateProject()
         
     def addTitle(self):    
         title = getItem( self.getInputValue( "title", None ) )
