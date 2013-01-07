@@ -363,7 +363,7 @@ class QEsgfBrowser(QtGui.QDialog):
         #faceth.addWidget(self.selected_facet_combobox)
 
         self.facet_obj=cdms2.FacetConnection()
-        facet_xmlelement=self.facet_obj.get_xmlelement()
+        facet_xmlelement=self.facet_obj.get_xmlelement("replica=false")
 	self.facet_dict_of_dict={}
         self.facet_dict=self.facet_obj.make_facet_dict(facet_xmlelement)
         self.data_nodelist=self.get_data_nodelist()
@@ -385,6 +385,7 @@ class QEsgfBrowser(QtGui.QDialog):
         
  
         self.current_selection_listwidget=QtGui.QListWidget()
+        self.current_selection_listwidget.addItem(QtGui.QListWidgetItem("replica:false"))
         current_selection_layout.addLayout(current_selection_btn_layout)
         current_selection_layout.addWidget(self.current_selection_listwidget)
         current_selection_groupbox.setLayout(current_selection_layout)
@@ -404,6 +405,7 @@ class QEsgfBrowser(QtGui.QDialog):
         datanode_btn_layout.addWidget(self.selection_display_btn)
         self.datanode_listwidget=QtGui.QListWidget()
         self.datanode_listwidget.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
+        self.datanode_listwidget.connect(self.datanode_listwidget,QtCore.SIGNAL("clicked(const QModelIndex &)"),self.datanode_listwidget_clicked)
         for item in self.data_nodelist:
             new_item = QtGui.QListWidgetItem(item.strip())
             self.datanode_listwidget.addItem(new_item)
@@ -505,6 +507,35 @@ class QEsgfBrowser(QtGui.QDialog):
         downloadMultiAction = self.multiItemsMenu.addAction('&Download Selected Files and Directories')
         self.connect(downloadMultiAction,QtCore.SIGNAL("triggered()"),self.downloadMulti)
    
+    def datanode_listwidget_clicked(self, index):
+        self.setCursor(QtCore.Qt.WaitCursor)
+ 
+        search_text1=self.make_search_text_from_facet_combobox()
+        search_text2=self.make_search_text_from_node_tree_widget()
+        if search_text1 and search_text2:
+            search_text='&'.join([search_text1,search_text2])
+        elif search_text1 and not search_text2:
+            search_text=search_text1
+        elif not search_text1 and search_text2:
+            search_text=search_text2
+        else:
+            search_text=None
+        if search_text:
+            search_text=search_text.replace('"','')
+            search_text=search_text.replace(' ', '%20')
+            found,limit,search_text=self.remove_limit_from_search_text(search_text)
+            facet_xmlelement=self.facet_obj.get_xmlelement(search_text)
+            # update self.facet_dict and call make facet_dict_of_dict to update self.facet_dict_of_dict
+        else:
+            facet_xmlelement=self.facet_obj.get_xmlelement()
+        self.facet_dict=self.facet_obj.make_facet_dict(facet_xmlelement)
+        #add new facet to facet_dict_of_dict
+        self.add_facet_item_to_dict_of_dict()
+        #update facet buttons
+        self.update_dict_of_dict([])
+
+        self.setCursor(QtCore.Qt.ArrowCursor)
+        
     def get_facet_label_without_count(self,facet_label_with_count):
         facet_label_tokens=facet_label_with_count.split(" ")
         return facet_label_tokens[0]
@@ -539,6 +570,7 @@ class QEsgfBrowser(QtGui.QDialog):
         else:
             self.datanode_listwidget.clearSelection()
             self.selection_display_btn.setText(str("Select All"))
+        self.datanode_listwidget_clicked(None)
     
     def get_current_top_tree_level_idx(self):
         tree_item=self.tree.currentItem()
@@ -616,6 +648,7 @@ class QEsgfBrowser(QtGui.QDialog):
                     limit_found=False
                     if search_text:
                         limit_found,limit,search_text=self.remove_limit_from_search_text(search_text)
+                        #search_text=self.remove_replica_from_search_text(search_text)
                         facet_xmlelement_count=self.facet_obj.get_xmlelement_count(search_text)
                     else:
                         facet_xmlelement_count=self.facet_obj.get_xmlelement_count()
@@ -646,6 +679,7 @@ class QEsgfBrowser(QtGui.QDialog):
                 limit_found=False
                 if search_text:
                     limit_found,limit,search_text=self.remove_limit_from_search_text(search_text)
+                    #search_text=self.remove_replica_from_search_text(search_text)
                     facet_xmlelement_count=self.facet_obj.get_xmlelement_count(search_text)
                 else:
                     facet_xmlelement_count=self.facet_obj.get_xmlelement_count()
@@ -777,24 +811,49 @@ class QEsgfBrowser(QtGui.QDialog):
         idx_list=self.current_selection_listwidget.selectedIndexes()
         idx_list.reverse()
         for cur_idx in idx_list:
-            self.current_selection_listwidget.takeItem(cur_idx.row())
+            item=self.current_selection_listwidget.takeItem(cur_idx.row())
+            if str(item.text())=='replica:false':
+                self.show_all_replicas_checkbox.setChecked(True)
+            
 
         #cur_idx=self.selected_facet_combobox.currentIndex()
         #cur_text=self.selected_facet_combobox.itemText(cur_idx)
         #facet_name=cur_text.split(':')[0]
         #self.remove_selected_facet(cur_idx)
-        search_text=self.make_search_text_from_facet_combobox()
-        limit_found,limit,search_text=self.remove_limit_from_search_text(search_text)
 
-        search_text=search_text.replace('"','')
-        search_text=search_text.replace(' ', '%20')
-        facet_xmlelement=self.facet_obj.get_xmlelement(search_text)
+
+        self.setCursor(QtCore.Qt.WaitCursor)
+        search_text1=self.make_search_text_from_facet_combobox()
+        search_text2=self.make_search_text_from_node_tree_widget()
+        if search_text1 and search_text2:
+            search_text='&'.join([search_text1,search_text2])
+        elif search_text1 and not search_text2:
+            search_text=search_text1
+        elif not search_text1 and search_text2:
+            search_text=search_text2
+        else:
+            search_text=None
+        if search_text:
+            search_text=search_text.replace('"','')
+            search_text=search_text.replace(' ', '%20')
+            found,limit,search_text=self.remove_limit_from_search_text(search_text)
+            facet_xmlelement=self.facet_obj.get_xmlelement(search_text)
+            # update self.facet_dict and call make facet_dict_of_dict to update self.facet_dict_of_dict
+        else:
+            facet_xmlelement=self.facet_obj.get_xmlelement()
         self.facet_dict=self.facet_obj.make_facet_dict(facet_xmlelement)
-        #self.update_dict_of_dict(facet_name)
+        #add new facet to facet_dict_of_dict
+        self.add_facet_item_to_dict_of_dict()
+        #update facet buttons
         self.update_dict_of_dict([])
+        self.setCursor(QtCore.Qt.ArrowCursor)
        
     def facet_removeAll_button_pressed(self):
         self.setCursor(QtCore.Qt.WaitCursor)
+        cur_list=self.get_current_list_from_facet_combobox()
+        if 'replica:false' in cur_list:
+            self.show_all_replicas_checkbox.setChecked(True)
+
         self.current_selection_listwidget.clear()
         facet_xmlelement=self.facet_obj.get_xmlelement()
         self.facet_dict=self.facet_obj.make_facet_dict(facet_xmlelement)
@@ -847,6 +906,18 @@ class QEsgfBrowser(QtGui.QDialog):
             search_text=None
         self.search_using_facet_selection(search_text)
 
+    def remove_replica_from_search_text(self, search_text):
+        tokens=search_text.split('&')
+        new_list=[]
+        target="replica=false"
+        if self.show_all_replicas_checkbox.isChecked():
+            target="replica=true"
+        for token in tokens:
+            if not token.startswith('replica'):
+                new_list.append(token)
+        new_list.append(target)
+        return '&'.join(new_list)
+
     def remove_limit_from_search_text(self, search_text):
         tokens=search_text.split('&')
         new_list=[]
@@ -875,6 +946,7 @@ class QEsgfBrowser(QtGui.QDialog):
         limit_found=False
         if search_text:
             limit_found,limit,search_text=self.remove_limit_from_search_text(search_text)
+            #search_text=self.remove_replica_from_search_text(search_text)
             keys = self.parseQuery(search_text)
             facet_xmlelement_count=self.facet_obj.get_xmlelement_count(search_text)
         else:
@@ -912,7 +984,9 @@ class QEsgfBrowser(QtGui.QDialog):
 
     def remove_selected_facet(self,selected_index):
         #self.selected_facet_combobox.removeItem(selected_index)
-        self.current_selection_listwidget.takeItem(selected_index)
+        item=self.current_selection_listwidget.takeItem(selected_index)
+        if str(item.text())=='replica:false':
+            self.show_all_replicas_checkbox.setChecked(True)
 
     def get_data_nodelist(self):
         nodelist=self.facet_dict["data_node"]
@@ -958,20 +1032,47 @@ class QEsgfBrowser(QtGui.QDialog):
 
     def show_all_replicas_checkbox_checked(self):
         target="replica:true"
+        target2="replica:false"
         cur_list_combobox=self.get_current_list_from_facet_combobox()
-        if self.show_all_replicas_checkbox.isChecked():
-            if target not in cur_list_combobox:
-                self.current_selection_listwidget.addItem(QtGui.QListWidgetItem(target))
-        else:
+        if self.show_all_replicas_checkbox.isChecked(): 
             idx=0
             found=False
             for item in cur_list_combobox:
-                if item == target:
+                if item == target2:
                     found=True
                     break
                 idx=idx+1
             if found:
                 self.remove_selected_facet(idx) 
+        else:
+            if target2 not in cur_list_combobox:
+                self.current_selection_listwidget.addItem(QtGui.QListWidgetItem(target2))
+
+        self.setCursor(QtCore.Qt.WaitCursor)
+        search_text1=self.make_search_text_from_facet_combobox()
+        search_text2=self.make_search_text_from_node_tree_widget()
+        if search_text1 and search_text2:
+            search_text='&'.join([search_text1,search_text2])
+        elif search_text1 and not search_text2:
+            search_text=search_text1
+        elif not search_text1 and search_text2:
+            search_text=search_text2
+        else:
+            search_text=None
+        if search_text:
+            search_text=search_text.replace('"','')
+            search_text=search_text.replace(' ', '%20')
+            found,limit,search_text=self.remove_limit_from_search_text(search_text)
+            facet_xmlelement=self.facet_obj.get_xmlelement(search_text)
+            # update self.facet_dict and call make facet_dict_of_dict to update self.facet_dict_of_dict
+        else:
+            facet_xmlelement=self.facet_obj.get_xmlelement()
+        self.facet_dict=self.facet_obj.make_facet_dict(facet_xmlelement)
+        #add new facet to facet_dict_of_dict
+        self.add_facet_item_to_dict_of_dict()
+        #update facet buttons
+        self.update_dict_of_dict([])
+        self.setCursor(QtCore.Qt.ArrowCursor)
 
     def entered_search_line(self):
         current_text=self.searchLine.text()
@@ -1057,10 +1158,26 @@ class QEsgfBrowser(QtGui.QDialog):
     def update_facet_selection(self,selected_facet_key):
         self.setCursor(QtCore.Qt.WaitCursor)
         self.update_facet_combobox_from_facet_changes()
-        search_text=self.make_search_text_from_facet_combobox()
-        found,limit,search_text=self.remove_limit_from_search_text(search_text)
-        facet_xmlelement=self.facet_obj.get_xmlelement(search_text)
-        # update self.facet_dict and call make facet_dict_of_dict to update self.facet_dict_of_dict
+        search_text1=self.make_search_text_from_facet_combobox()
+        search_text2=self.make_search_text_from_node_tree_widget()
+        if search_text1 and search_text2:
+            search_text='&'.join([search_text1,search_text2])
+        elif search_text1 and not search_text2:
+            search_text=search_text1
+        elif not search_text1 and search_text2:
+            search_text=search_text2
+        else:
+            search_text=None
+
+        if search_text:
+            search_text=search_text.replace('"','')
+            search_text=search_text.replace(' ', '%20')
+            found,limit,search_text=self.remove_limit_from_search_text(search_text)
+            facet_xmlelement=self.facet_obj.get_xmlelement(search_text)
+            # update self.facet_dict and call make facet_dict_of_dict to update self.facet_dict_of_dict
+        else:
+            facet_xmlelement=self.facet_obj.get_xmlelement()
+
         self.facet_dict=self.facet_obj.make_facet_dict(facet_xmlelement)
         #add new facet to facet_dict_of_dict
         self.add_facet_item_to_dict_of_dict()
@@ -1071,6 +1188,10 @@ class QEsgfBrowser(QtGui.QDialog):
         else:
             self.update_dict_of_dict([])
         self.setCursor(QtCore.Qt.ArrowCursor)
+
+
+
+
 
     def add_key_to_dict_of_dict(self,k):
         self.facet_dict_of_dict[k]={}
