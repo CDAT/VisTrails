@@ -22,6 +22,7 @@ from packages.uvcdat_cdms.init import CDMSVariableOperation, CDMSVariable
 from packages.vtDV3D.vtUtilities import *
 from core.uvcdat.plot_registry import get_plot_registry
 from core.modules.module_registry import get_module_registry
+from core.utils import UnimplementedException
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from packages.vtDV3D import HyperwallManager
@@ -885,6 +886,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         use those parameters.
          
         """ 
+        raise UnimplementedException
         controller.change_selected_version(version)
         vistrail_a = controller.vistrail
         version_a = version
