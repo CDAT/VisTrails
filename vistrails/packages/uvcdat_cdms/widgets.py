@@ -1,5 +1,6 @@
 import ast
 from PyQt4 import QtCore, QtGui
+from PyQt4.QtCore import Qt
 from core.utils import InstanceObject
 import core.db.action
 from gui.uvcdat.graphicsMethodsWidgets import QBoxfillEditor, QIsofillEditor,\
@@ -93,6 +94,18 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         self.continents = self.getValueFromFunction('continents')
         if self.continents:
             self.gmEditor.continents.setCurrentIndex(self.continents-1)
+            
+        #set aspect ratio
+        self.ratio = self.getValueFromFunction('ratio')
+        if self.ratio is None or self.ratio == 'autot':
+            self.gmEditor.aspectAuto.setCheckState(Qt.Checked)
+        else:
+            #if the ratio cannot cast to float, check auto in gui
+            try:
+                self.gmEditor.aspectRatio.setText(str(float(self.ratio)))
+                self.gmEditor.aspectAuto.setCheckState(Qt.Unchecked)
+            except ValueError:
+                self.gmEditor.aspectAuto.setCheckState(Qt.Checked)
         
     def getValueFromFunction(self, fun):
         if fun in self.fun_map:
@@ -154,6 +167,18 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             functions.append(('continents',[str(gui_continent)]))
             self.continents = gui_continent
             
+        # aspect ratio
+        gui_ratio = self.gmEditor.getAspectRatio()
+        if self.ratio is None:
+            func_obj = self.controller.create_function(self.module,
+                                                       'ratio',
+                                                       [str(gui_ratio)])
+            action1 = self.controller.add_function_action(self.module, func_obj)
+            self.ratio = gui_ratio
+        elif gui_ratio != self.ratio:
+            functions.append(('ratio', [str(gui_ratio)]))
+            self.ratio = gui_ratio
+                
         action = self.controller.update_functions(self.module, 
                                                   functions)
         
@@ -172,9 +197,18 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
                     changed = True
                     break
         
-        #check if continents changed
-        if not changed and self.continents is not None:
-            if self.continents != self.gmEditor.continents.currentIndex()+1:
+        #check if continents or ratios changed
+        if not changed:
+            if self.continents is None:
+                if self.gmEditor.continents.currentIndex() != 0:
+                    changed = True
+            elif self.continents != self.gmEditor.continents.currentIndex()+1:
+                changed = True
+                
+            if self.ratio is None:
+                if self.gmEditor.getAspectRatio() != 'autot':
+                    changed = True
+            elif self.ratio != self.gmEditor.getAspectRatio():
                 changed = True
             
         return changed
@@ -207,4 +241,3 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             else:
                 self.resetTriggered()
                 return False
-        

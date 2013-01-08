@@ -222,7 +222,7 @@ class QPreferencesDialog(QtGui.QDialog):
                 #b.setChecked(True)
                 b.click()
                 
-        l.addWidget(aspect)
+#        l.addWidget(aspect)
         
         return tab
 
