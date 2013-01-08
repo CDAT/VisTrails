@@ -110,12 +110,21 @@ class QVisItWidget(QCellWidget):
 
     def GetDetails(self):
         windowid = self.getKey()
-        filename = self.cdms_var.filename
-        var = self.cdms_var.varNameInFile
-        return (windowid,filename,var)
-        
+
+        if hasattr(self.cdms_var,'filename') and \
+           hasattr(self.cdms_var,'varNameInFile'):
+            filename = self.cdms_var.filename
+            var = self.cdms_var.varNameInFile
+            return (windowid,filename,var)
+        self.LoadPlotError()
+        return (None,None,None)
+   
+    def LoadPlotError(self):
+        QMessageBox.information(None, "VisIt failed to load plot...", "VisIt Failed to load plot. VisIt currently does not support transient variables.")
+
     def LoadPseudocolorPlot(self):
         (windowid,filename,var) = self.GetDetails()
+        if windowid is None: return
         wid = viswinmapper[windowid]
         visit.SetActiveWindow(wid)
         visit.DeleteAllPlots()
@@ -125,6 +134,7 @@ class QVisItWidget(QCellWidget):
 
     def LoadContourPlot(self):
         (windowid,filename,var) = self.GetDetails() 
+        if windowid is None: return
         wid = viswinmapper[windowid]
         visit.SetActiveWindow(wid)
         visit.DeleteAllPlots()
@@ -134,6 +144,7 @@ class QVisItWidget(QCellWidget):
 
     def LoadExtremeValueAnalysisPlot(self):
         (windowid,filename,var) = self.GetDetails() 
+        if windowid is None: return
         wid = viswinmapper[windowid]
         visit.SetActiveWindow(wid)
         visit.DeleteAllPlots()
@@ -155,6 +166,12 @@ class QVisItWidget(QCellWidget):
         visit.DrawPlots()
 
     def updateContents(self, inputPorts):
+        try:
+            self.updateVisIt(inputPorts)
+        except:
+            QMessageBox.information(None,"Exception..","VisIt has encountered an exception while processing")
+
+    def updateVisIt(self, inputPorts):
         global viswin
         global viswinmapper
         global availWindows
