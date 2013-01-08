@@ -89,6 +89,11 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         gm = InstanceObject(**self.attributes)
         self.gmEditor.initValues(gm)
         
+        #set continent
+        self.continents = self.getValueFromFunction('continents')
+        if self.continents:
+            self.gmEditor.continents.setCurrentIndex(self.continents-1)
+        
     def getValueFromFunction(self, fun):
         if fun in self.fun_map:
             fid = self.fun_map[fun]
@@ -136,8 +141,22 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             if newval != self.attributes[attr]:
                 functions.append((attr,[str(getattr(gm,attr))]))
                 self.attributes[attr] = newval
+        
+        #continents
+        gui_continent = self.gmEditor.continents.currentIndex() + 1
+        if self.continents is None:
+            func_obj = self.controller.create_function(self.module, 
+                                                       'continents', 
+                                                       [str(gui_continent)])
+            action1 = self.controller.add_function_action(self.module, func_obj)
+            self.continents = gui_continent
+        elif gui_continent != self.continents:
+            functions.append(('continents',[str(gui_continent)]))
+            self.continents = gui_continent
+            
         action = self.controller.update_functions(self.module, 
                                                   functions)
+        
         if action is None:
             action = action1
         return (action, True)
@@ -152,6 +171,12 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
                 if str(getattr(gm,attr)) != str(self.attributes[attr]):
                     changed = True
                     break
+        
+        #check if continents changed
+        if not changed and self.continents is not None:
+            if self.continents != self.gmEditor.continents.currentIndex()+1:
+                changed = True
+            
         return changed
     
     def saveTriggered(self, checked = False):
