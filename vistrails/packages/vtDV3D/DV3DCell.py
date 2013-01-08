@@ -1283,8 +1283,9 @@ class QCellToolBarExportTimeSeries(QtGui.QAction):
         coords = PM_VolumeSlicer.global_coords;
         if (coords==[-1, -1, -1]): return
         newname = "var_lat%0.1f_lon%0.1f_lev%0.1f" % (coords[1], coords[0], coords[2])
-        python_cmd = '%s(lat=%f, lon=%f, lev=%f, squeeze=1)' % (old_cell.variables[0], coords[1], coords[0], coords[2])
-        prj_controller.computed_variables[newname] = (old_cell.variables, 
+        python_cmd = '%s(lat=%f, lon=%f, lev=%f, squeeze=1)' % (old_cell.plots[0].variables[0], coords[1], coords[0], coords[2])
+        # combine all vars from all plots in cell into one list of vars
+        prj_controller.computed_variables[newname] = (old_cell.variables(), 
                                                       'Extracting Time series',
                                                       python_cmd,
                                                        newname)
@@ -1292,7 +1293,7 @@ class QCellToolBarExportTimeSeries(QtGui.QAction):
         
         # create new plot
         plot_manager = prj_controller.plot_manager;
-        new_cell.plots.append(plot_manager.get_plot('VCS', 'Yxvsx', 'ASD1'))
+        new_cell.add_plot(plot_manager.new_plot('VCS', 'Yxvsx', 'ASD1'))
         
         prj_controller.check_update_cell(sheetName, new_row, new_col)
         
