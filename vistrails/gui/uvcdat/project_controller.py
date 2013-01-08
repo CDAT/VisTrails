@@ -826,7 +826,6 @@ class ProjectController(QtCore.QObject):
                 self.current_cell_coords = [row, column]
                 self.execute_plot(cell.current_parent_version)
                 self.update_plot_configure(sheetName, row, column)
-                
     
     def plot_properties_were_changed(self, sheetName, row, col, action):
         if not action:
@@ -864,3 +863,59 @@ class ProjectController(QtCore.QObject):
             self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
                       None, None, cell.plots[0].package, 
                       cell.current_parent_version)
+            
+    def re_layout_workflow(self, sheetName=None, row=None, col=None, cell=None):
+        """
+        Performs a Re-Layout on the workflow pipeline if the builder window
+        is visible        
+        """
+
+        # set current cell info variables if any are None        
+        if None in (sheetName, row, col):
+            (cSheetName, cRow, cCol) = self.get_current_cell_info()
+            if sheetName is None: sheetName = cSheetName
+            if row is None: row = cRow
+            if col is None: col = cCol
+        
+        if sheetName not in self.sheet_map:
+            return
+        
+        if cell is None:
+            cell = self.sheet_map[sheetName][(row,col)]
+        
+        # only do a relayout if the builder window is visible
+        from gui.vistrails_window import _app
+        if not _app.isVisible():
+            return
+        
+        # perform layout
+        _app.qactions['layout'].trigger()
+        
+        # update necessary version variables since a layout adds a new version
+        # to the vistrail
+        from gui.application import get_vistrails_application
+        gui_app = get_vistrails_application()
+        project = gui_app.uvcdatWindow.workspace.currentProject
+            
+        if sheetName not in project.sheet_to_item:
+            return
+        
+        sheetItem = project.sheet_to_item[sheetName]
+        if (row, col) not in sheetItem.pos_to_item:
+            return
+        
+        item = sheetItem.pos_to_item[(row, col)]
+        item.workflowVersion = self.vt_controller.current_version
+    
+        cell = self.sheet_map[sheetName][(row, col)]
+        cell.current_parent_version = self.vt_controller.current_version
+        
+        self.vt_controller.change_selected_version(self.vt_controller.current_version)
+        
+    def get_current_cell_info(self):
+        """
+        Returns the current (sheetName, row, col)
+        """
+        (row,col) = self.current_cell_coords
+        return (self.current_sheetName, row, col)
+
