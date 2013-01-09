@@ -298,5 +298,3 @@ class VisItPipelineHelper(PlotPipelineHelper):
 #        #ptype = CDMSPipelineHelper.get_plot_type_from_module(plot_modules[0])
 #        #cell.plot = get_plot_manager().get_plot(plot_type, ptype, gmName)
 #        return action
-
-
