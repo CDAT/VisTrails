@@ -53,6 +53,7 @@ from core.configuration import get_vistrails_configuration
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
 from gui.uvcdat.project_controller_cell import ControllerCell
+from gui.application import get_vistrails_application
 
 class ProjectController(QtCore.QObject):
     """ProjecController is the class that interfaces between GUI actions in
@@ -286,7 +287,6 @@ class ProjectController(QtCore.QObject):
         import cdms2
         from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
         from packages.pvclimate.pvvariable import PVVariable
-        from gui.application import get_vistrails_application
         _app = get_vistrails_application()
         if isinstance(var, CDMSVariable):
             _app.uvcdatWindow.dockVariable.widget().addVariable(var.to_python())
@@ -690,6 +690,7 @@ class ProjectController(QtCore.QObject):
         else:
             plot_prop.set_controller(None)
             plot_prop.updateProperties(None, sheetName,row,col)
+        self.checkEnableUndoAction(cell)
                 
     def get_python_script(self, sheetName, row, col):
         script = None
@@ -718,7 +719,7 @@ class ProjectController(QtCore.QObject):
                                                 cell.current_parent_version,
                                                 cell.plots)
         
-    def check_update_cell(self, sheetName, row, col, reuse_workflow=False):
+    def check_update_cell(self, sheetName, row, col, reuse_workflow=True):
         try:
             cell = self.sheet_map[sheetName][(row,col)]
             if cell.is_ready():
@@ -768,7 +769,7 @@ class ProjectController(QtCore.QObject):
             var_dict[varname] = varm
             return varm
         
-    def update_cell(self, sheetName, row, col, reuse_workflow=False):
+    def update_cell(self, sheetName, row, col, reuse_workflow=True):
         cell = self.sheet_map[sheetName][(row,col)]
         helper = CDMSPipelineHelper
         # helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
@@ -838,6 +839,10 @@ class ProjectController(QtCore.QObject):
         
         if action is not None:
             cell.current_parent_version = action.id
+            
+            #keep track of first rendered version of plot, cannot undo past this
+            if not reuse_workflow:
+                cell.base_version = cell.current_parent_version
             
             if get_vistrails_configuration().uvcdat.autoExecute:
                 self.current_sheetName = sheetName
@@ -957,3 +962,41 @@ class ProjectController(QtCore.QObject):
         result = msgBox.exec_()
         QApplication.restoreOverrideCursor()
         return (result == Qt.QMessageBox.Yes)
+    
+    def undo(self):
+        """ Changes version of current cell to it's previous version, if possible """
+        #assuming vt_controller is updated based on current cell
+        fullVersionTree = self.vt_controller.vistrail.tree.getVersionTree()
+        
+        try:
+            parent_version = fullVersionTree.parent(self.vt_controller.current_version)
+        except KeyError, VertexHasNoParentError:
+            return
+        
+        self.vt_controller.change_selected_version(parent_version)
+        self.vt_controller.execute_current_workflow()
+        
+        (sheetName, row, col) = self.get_current_cell_info()
+        cell = self.sheet_map[sheetName][(row, col)]
+        cell.current_parent_version = self.vt_controller.current_version
+        self.update_plot_configure(sheetName, row, col)
+        
+        from gui.application import get_vistrails_application
+        gui_app = get_vistrails_application()
+        project = gui_app.uvcdatWindow.workspace.currentProject
+            
+        if sheetName not in project.sheet_to_item:
+            return
+        
+        sheetItem = project.sheet_to_item[sheetName]
+        if (row, col) not in sheetItem.pos_to_item:
+            return
+        
+        item = sheetItem.pos_to_item[(row, col)]
+        item.workflowVersion = self.vt_controller.current_version
+        
+    def checkEnableUndoAction(self, cell):
+        enable = cell is not None and cell.is_ready() and \
+            cell.current_parent_version != cell.base_version
+        _app = get_vistrails_application()
+        _app.uvcdatWindow.mainMenu.editUndoAction.setEnabled(enable)

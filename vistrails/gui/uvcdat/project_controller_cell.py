@@ -40,6 +40,7 @@ class ControllerCell(object):
     def __init__(self, variables=[], plots=[], templates=[], current_parent_version=0L):
         self.plots = plots
         self._current_version=current_parent_version
+        self.base_version=current_parent_version
         
         self.variableQ = []
         self.templateQ = []
