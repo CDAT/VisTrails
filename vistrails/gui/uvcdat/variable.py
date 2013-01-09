@@ -120,6 +120,7 @@ class VariableProperties(QtGui.QDialog):
         self._paraviewConnectionDialog = ParaViewConnectionDialog(self)
         self._pvProcessFile = PVProcessFile()
         self.cdmsFile = None
+        self.updatingFile = False
 
     ## @classmethod
     ## def instance(klass):
@@ -145,7 +146,7 @@ class VariableProperties(QtGui.QDialog):
 
             self.connect(self.originTabWidget,QtCore.SIGNAL("currentChanged(int)"),self.tabHasChanged)
             self.connect(self.fileEdit, QtCore.SIGNAL('returnPressed()'),
-                         self.updateFile)
+                         self.updateFileFromReturnPressed)
             self.connect(self.historyList, QtCore.SIGNAL('itemClicked(QListWidgetItem *)'),
                          self.selectFromList)
             self.connect(self.bookmarksList, QtCore.SIGNAL('itemClicked(QListWidgetItem *)'),
@@ -343,8 +344,11 @@ class VariableProperties(QtGui.QDialog):
         self.fileEdit.setText(fnm)
         self.updateFile()
 
-    def updateFile(self):
+    def updateFileFromReturnPressed(self):
         self.updatingFile = True
+        self.updateFile()
+        
+    def updateFile(self):
         self.cdmsFile = None
         fnm = self.fileEdit.text()
         fi = QtCore.QFileInfo(fnm)
