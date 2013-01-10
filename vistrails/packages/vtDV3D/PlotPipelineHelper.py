@@ -886,7 +886,9 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         use those parameters.
          
         """ 
-        raise UnimplementedException
+
+        raise UnimplementedException    #  Raise this exception to run the fallback code (rebuild from scratch) because the following code doesn't work. 
+        
         controller.change_selected_version(version)
         vistrail_a = controller.vistrail
         version_a = version
