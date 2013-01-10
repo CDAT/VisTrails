@@ -907,18 +907,27 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         controller.perform_action(action2)
 
         sheetTabWidget = getSheetTabWidget()
-        sheetName = sheetTabWidget.getSheetName()        
+#<<<<<<< HEAD
+#        sheetName = sheetTabWidget.getSheetName()        
+#        for cell_address in cell_addresses:
+##            if len( pipeline.module_list ) == 0:
+##                print "Attempt to add empty pipeline to %s " % ( str(( sheetName, cell_address )) )
+##            else:
+##                DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline           
+#            for mid in controller.current_pipeline.modules:
+#                module = ModuleStore.getModule( mid ) 
+#                if module: 
+#                    module.setCellLocation( sheetName, cell_address )   
+#                    DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
+#=======
+        sheetName = sheetTabWidget.getSheetName()          
         for cell_address in cell_addresses:
-#            if len( pipeline.module_list ) == 0:
-#                print "Attempt to add empty pipeline to %s " % ( str(( sheetName, cell_address )) )
-#            else:
-#                DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline           
+            DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline
+        
             for mid in controller.current_pipeline.modules:
                 module = ModuleStore.getModule( mid ) 
-                if module: 
-                    module.setCellLocation( sheetName, cell_address )   
-                    DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
-
+                if module:
+                    module.setCellLocation( sheetName, cell_address )
         return action2
     
     @staticmethod
@@ -945,6 +954,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         if len( plot_obj.cells ) > 0: 
             plot_obj.current_parent_version = version
             plot_obj.current_controller = controller
+<<<<<<< HEAD
             aliases = {}
             for i in range(len(var_modules)):
                 if issubclass( var_modules[i].module_descriptor.module, CDMSVariableOperation):
@@ -953,6 +963,24 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     aliases[plot_obj.vars[i]] = varname
                     aliases[ "%s.cmd" % plot_obj.vars[i] ] = python_command
                 else:
+=======
+            DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot_obj, cell_addresses )
+
+#        Disable File Reader, get Variable from UVCDAT
+#        plot_obj.addMergedAliases( aliases, controller.current_pipeline )
+        action = DV3DPipelineHelper.addParameterChangesAction( controller.current_pipeline,  controller,  controller.vistrail, controller.current_version, aliases, iter(cell_specs) )        
+#        if action: controller.change_selected_version( action.id )   
+        
+        reader_1v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader ] )
+        reader_3v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VectorReader ] )
+        reader_modules = reader_1v_modules + reader_3v_modules
+        iVarModule = 0
+        ops = []           
+        for module in reader_modules:
+            nInputs = 1 if module in reader_1v_modules else 3
+            for iInput in range( nInputs ):
+                if iInput < len( var_modules ):
+>>>>>>> 951d1f92ab1be105fc4afc7d0ec4831f224237d5
                     try:
                         filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'filename')
                         if filename is None:
