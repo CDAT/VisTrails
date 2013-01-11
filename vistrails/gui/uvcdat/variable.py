@@ -17,6 +17,7 @@ import uvcdatCommons
 import customizeUVCDAT
 import editVariableWidget
 from gui.common_widgets import QDockPushButton
+from gui.application import get_vistrails_application
 from packages.uvcdat_cdms.init import CDMSVariable
 from gui.uvcdat.cdmsCache import CdmsCache
 
