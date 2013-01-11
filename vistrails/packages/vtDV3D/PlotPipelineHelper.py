@@ -960,7 +960,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     
      
     @staticmethod
-    def add_additional_plot_to_pipeline( controller, version, plot, cell_addresses ):
+    def add_additional_plot_to_pipeline( controller, version, plot, cell_addresses, component_index=0 ):
         if controller is None: controller = api.get_current_controller()
         version = controller.current_version
         workflow = plot.workflow
@@ -983,6 +983,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 for connected_module_id in connected_module_ids:
                     connected_module = workflow.modules[ connected_module_id ]
                     plot_module = controller.create_module_from_descriptor( connected_module.module_descriptor )
+#                    plot_module.setComponentIndex( component_index )
                     ops.append( ('add', plot_module) )
                     if reader_module:
                         conn0 = controller.create_connection( reader_module, 'volume', plot_module, 'volume' )
@@ -1091,10 +1092,12 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             pip_str = core.db.io.serialize(plot_obj.workflow)
             controller.paste_modules_and_connections(pip_str, (0.0,0.0))
             
+            comp_index = 1
             for plot_obj in plots:
                 plot_obj.current_parent_version = version
                 plot_obj.current_controller = controller
-                DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot_obj, cell_addresses )
+                DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot_obj, cell_addresses, comp_index )
+                comp_index = comp_index + 1
     
     #        Disable File Reader, get Variable from UVCDAT
     #        plot_obj.addMergedAliases( aliases, controller.current_pipeline )

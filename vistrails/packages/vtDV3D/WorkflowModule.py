@@ -20,11 +20,15 @@ class WorkflowModule( NotCacheable,  Module ):
     def __init__( self, **args ):
         Module.__init__(self) 
         self.pmod = None
+        self.componentIndex = 0
         
     def __del__( self ):
 #        print " $$$$$$$$$$$$$$$$$$$$$$ deleting class %s $$$$$$$$$$$$$$$$$$$$$$ " % ( self.__class__.__name__ )
         self.pmod.invalidateWorkflowModule( self ) 
         Module.__del__( self )
+        
+    def setComponentIndex( self, component_index ):
+        self.componentIndex = component_index
 
     def compute(self):
         start_t = time.time() 
