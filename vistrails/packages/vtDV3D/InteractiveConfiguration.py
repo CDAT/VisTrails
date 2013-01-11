@@ -1500,6 +1500,7 @@ class VolumeRenderCfgDialog( IVModuleConfigurationDialog ):
     VolumeRenderTypes = [ 'Default', 'RayCastAndTexture', 'RayCast', 'Texture3D', 'Texture2D' ]
        
     def __init__(self, name, **args ):
+        self.enableShading = False
         IVModuleConfigurationDialog.__init__( self, name, **args )
         
     @staticmethod   
@@ -1507,14 +1508,19 @@ class VolumeRenderCfgDialog( IVModuleConfigurationDialog ):
         return [ (String, 'config_str') ]
         
     def getValue(self):
-        return [ str( self.volRenderTypeCombo.currentText() )  ]
+        return [ ";".join( [ str( self.volRenderTypeCombo.currentText() ), str( self.enableShading )  ] ) ]
 
     def setValue( self, value ):
         config_str = str( getItem( value ) ).split(';')
         itemIndex = self.volRenderTypeCombo.findText( config_str[0], Qt.MatchFixedString )
         if itemIndex >= 0: self.volRenderTypeCombo.setCurrentIndex( itemIndex )
         else: print>>sys.stderr, " Can't find volume render type: %s " % config_str[0]
-         
+        self.enableShading = ( config_str[1] == str( True ) )
+        self.shadeCheckbox.setChecked( self.enableShading )
+        
+    def setShading( self, isChecked ):
+        self.enableShading = isChecked
+        self.updateParameter() 
         
     def createContent(self ):
         """ createEditor() -> None
@@ -1537,6 +1543,12 @@ class VolumeRenderCfgDialog( IVModuleConfigurationDialog ):
         layout.addWidget( self.volRenderTypeCombo, 0, 1, 1, 2 )
         for vrType in self.VolumeRenderTypes: self.volRenderTypeCombo.addItem( vrType )   
         self.connect( self.volRenderTypeCombo, SIGNAL("currentIndexChanged(QString)"), self.updateParameter )  
+        
+        self.shadeCheckbox = QCheckBox( self.parent() )
+        self.shadeCheckbox.setText( "Enable Shading" )
+        layout.addWidget(self.shadeCheckbox)
+        self.connect( self.shadeCheckbox, SIGNAL("toggled(bool)"), self.setShading )  
+
         
 ################################################################################
         
