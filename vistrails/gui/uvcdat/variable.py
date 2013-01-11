@@ -17,15 +17,7 @@ import uvcdatCommons
 import customizeUVCDAT
 import editVariableWidget
 from gui.common_widgets import QDockPushButton
-from gui.application import get_vistrails_application
-# Paraview related imports
-#from paraviewconnection import ParaViewConnectionDialog
-#from pvprocessfile import PVProcessFile
-#from pvtabwidget import PVTabWidget
 from packages.uvcdat_cdms.init import CDMSVariable
-
-#from packages.pvclimate.pvvariable import PVVariable
-#from gui.uvcdat.pvreadermanager import PVReaderManager
 from gui.uvcdat.cdmsCache import CdmsCache
 
 class QBookMarksListWidget(uvcdatCommons.QDragListWidget):
@@ -107,7 +99,6 @@ class VariableProperties(QtGui.QDialog):
         self.varNameInFile = None #store the name of the variable when loaded from file
         self.createFileTab()
         self.createESGFTab()
-        #self.createPVTab()
         self.createEditTab()
         self.createInfoTab()
         for i in range(self.originTabWidget.count()):
@@ -117,8 +108,6 @@ class VariableProperties(QtGui.QDialog):
         self.createDimensions()
         self.connectSignals()
         sp.setStretchFactor(0,2)
-        #self._paraviewConnectionDialog = ParaViewConnectionDialog(self)
-        #self._pvProcessFile = PVProcessFile()
         self.cdmsFile = None
         self.updatingFile = False
 
@@ -155,12 +144,6 @@ class VariableProperties(QtGui.QDialog):
             self.connect(self.varCombo, QtCore.SIGNAL('currentIndexChanged(const QString&)'),
                          self.variableSelected)
             self.connect(self.bookmarksList,QtCore.SIGNAL("droppedInto"),self.droppedBookmark)
-
-            # Paraview
-            # @NOTE: Disabled this feature for now
-            #self._pvTabWidget.serverConnectButton.clicked.connect(self.onClickConnectServer)
-            #self._pvTabWidget.applyButton.clicked.connect(self.processFile)
-            #self._pvTabWidget.pvPickLocalFileButton.clicked.connect(self.selectRemoteFile)
 
         self.connect(self.root.dockVariable.widget(),QtCore.SIGNAL("setupDefinedVariableAxes"),self.varAddedToDefined)
 
@@ -361,8 +344,6 @@ class VariableProperties(QtGui.QDialog):
                 break
         self.historyList.insertItem(0,fnm)
         self.historyList.setCurrentRow(0)
-        # I imagine that there will be filetypes that both ParaView and
-        # CDAT will know how to deal with them.
         if fi.exists() or fnm[:7]=="http://":
             if fi.exists():
                 self.root.dockVariable.lastDirectory=str(fi.dir().path())
@@ -534,18 +515,10 @@ class VariableProperties(QtGui.QDialog):
         self.varEditArea.setWidget(editVariableWidget.editVariableWidget(var,parent=self.parent,root=self.root))
 
     def defineVarClicked(self,*args):
-#        if self.originTabWidget.currentIndex() in [0, 1, 3]:
         self.getUpdatedVarCheck()
-#        elif self.originTabWidget.currentIndex() == 2:
-#            #paraview
-#            self.getVarFromPVTab()
 
     def defineVarCloseClicked(self,*args):
-#        if self.originTabWidget.currentIndex() in [0, 1, 3]:
         self.getUpdatedVarCheck()
-#        elif self.originTabWidget.currentIndex() == 2:
-#            #paraview
-#            self.getVarFromPVTab()
         self.close()
 
     def defineAsVarClicked(self, *args):
@@ -556,27 +529,6 @@ class VariableProperties(QtGui.QDialog):
                                                   text="")
         if ok:
             self.getUpdatedVarCheck(str(qtname))
-
-#    def getVarFromPVTab(self):
-#        fileName = str(self._pvProcessFile._fileName)
-#        varName = str(self._pvTabWidget.cbVar.currentText()).strip()
-#        kwargs ={}
-#
-#        #FIXME: need to check if the variable already exists
-#        self.root.dockVariable.widget().addVariable(varName,type_="PARAVIEW")
-#        _app = get_vistrails_application()
-#        controller = _app.uvcdatWindow.get_current_project_controller()
-#
-#        # Hard coded for point variables for now
-#        parameters = PVReaderManager.register(self._pvProcessFile.getReader(),
-#                                              varName)
-#        pvVar = PVVariable(fileName, varName, 'POINTS', parameters)
-#
-#        # TODO: We should emit this but for now it is not working
-#        #self.emit(QtCore.SIGNAL('definedVariableEvent'),(None,pvVar))
-#
-#        controller.add_defined_variable(pvVar)
-#        # controller.add_defined_variable(filename, varName, kwargs)
 
     def getUpdatedVarCheck(self,targetId=None):
         """ Return a new tvariable object with the updated information from
@@ -715,75 +667,3 @@ class VariableProperties(QtGui.QDialog):
         #kwargs['squeeze'] = 0
         kwargs['order'] = axisList.getAxesOrderString()
         return kwargs
-
-#    def openRemoteFile(self):
-#        import pvFileDialog as fd
-#        dir(fd)
-#        fileDialog = fd.PVFileDialog(self)
-#        if fileDialog.exec_():
-#          return fileDialog.getAllSelectedFiles()[0][0]
-#        return ''
-
-#    def populateVariables(self, variables):
-#        self._pvTabWidget.populateVars(variables)
-
-#    def processFile(self):
-#        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-#        self._pvProcessFile.setStride(self._pvTabWidget.getStride())
-#        self.populateVariables(self._pvProcessFile.getVariables())
-#        QtGui.QApplication.restoreOverrideCursor()
-
-#    def updateConnectionStatus(self, isConnected):
-#        if isConnected:
-#            self._pvTabWidget.serverConnectButton.setText("Connected")
-#        else:
-#            self._pvTabWidget.serverConnectButton.setText("Connect")
-
-#    def selectRemoteFile(self):
-#        # Do not process the file right away. Wait till user hits the apply button
-#        fileName = self.openRemoteFile()
-#        if len(fileName) == 0:
-#          return
-#        self._pvProcessFile.setFileName(fileName)
-#        reader = self._pvProcessFile.createReader()
-#        if reader is not None:
-#          self._pvTabWidget.pvSelectedFileLineEdit.setText(fileName)
-#          self._pvTabWidget.readerNameLabel.setText(reader.__class__.__name__)
-#          self._pvTabWidget.applyButton.setEnabled(True)
-#          if 'Stride' in dir(reader):
-#            self._pvTabWidget.enableStride()
-#          else:
-#            self._pvTabWidget.disableStride()
-#        else:
-#          QtGui.QMessageBox.warning(self,'Message', QString('Unable to read file ' + fileName),
-#                                    QMessageBox.Ok)
-
-#    def onClickConnectServer(self):
-#        isConnected = self._paraviewConnectionDialog.isConnected()
-#        self.updateConnectionStatus(isConnected);
-#        if isConnected:
-#            self.selectRemoteFile()
-#        else:
-#            accepted = self._paraviewConnectionDialog.exec_()
-#            if accepted == QtGui.QDialog.Rejected:
-#                return
-#            self._paraviewConnectionDialog.connect()
-#            isConnected = self._paraviewConnectionDialog.isConnected()
-#            if isConnected:
-#                self.selectRemoteFile()
-#
-#            self.updateConnectionStatus(isConnected);
-
-#    def createPVTab(self):
-#        self._pvTabWidget = PVTabWidget(self)
-#        self.originTabWidget.addTab(self._pvTabWidget,"ParaView")
-
-#    def show(self):
-#        # May be useful for other modes
-#        #if self.isFloating():
-#        #    offset = 50
-#        #    self.move(self.parent.x() + offset, self.parent.y() + offset)
-#        QtGui.QDockWidget.show(self)
-#
-#    def exec_(self):
-#        QtGui.QDockWidget.exec_(self)
