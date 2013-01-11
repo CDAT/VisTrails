@@ -279,9 +279,19 @@ class QFacetButton(QDockPushButton):
         #for k in self.parent.facet_dict_of_dict:
         #    self.parent.facet_dict_of_dict[k]['ScrollArea'].show()
  
-class QEsgfBrowser(QtGui.QDialog):
+class QScrollArea2(QtGui.QScrollArea):
+    def __init(self,parent=None):
+ 	QtGui.QScrollArea.__init__(self,parent)
+
+    def resizeEvent(*args):
+	args[0].F1.setMinimumWidth(args[0].size().width())
+	args[0].F1.setMaximumWidth(args[0].size().width())
+        QtGui.QScrollArea.resizeEvent(*args)
+
+
+class QEsgfBrowser(QtGui.QFrame):
     def __init__(self,parent=None,mapping=None):
-        QtGui.QDialog.__init__(self,parent)
+        QtGui.QFrame.__init__(self,parent)
         pol = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Fixed)
         ## Decorations
         self.opendapIcon = QtGui.QIcon(customizeUVCDAT.esgfOpenDapIcon)
@@ -297,6 +307,7 @@ class QEsgfBrowser(QtGui.QDialog):
         vbox=QtGui.QVBoxLayout()
         self.mapping=mapping
         self.setLayout(vbox)
+        self.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,QtGui.QSizePolicy.MinimumExpanding) 
         self.toolBar = QtGui.QToolBar()
         try:
             self.root=parent.root
@@ -324,35 +335,31 @@ class QEsgfBrowser(QtGui.QDialog):
         self.credentials.hide()
         
         vbox.addWidget(self.toolBar)
-        search_groupbox=QtGui.QGroupBox("Text Search")
-        search_groupbox.setFlat(True)
+        
+        self.facet_search_btn=QDockPushButton("Search",self)
+        self.facet_search_btn.setStyleSheet("background-color:lightblue")
+        self.facet_search_btn.connect(self.facet_search_btn,QtCore.SIGNAL("clicked(bool)"),self.facet_search_button_pressed)
 
         search_example_string="Enter your search terms (examples: temperature, \"surface temperature\", climate AND project:CMIP5 AND variable:hus)."
-        #self.searchLine = uvcdatCommons.QLabeledWidgetContainer(QtGui.QLineEdit(),label="Search: %s"%search_example_string,widgetSizePolicy=pol,labelSizePolicy=pol)
-        #self.searchLine.widget.setText("")
-        #self.connect(self.searchLine.widget,QtCore.SIGNAL("returnPressed()"),self.entered_search_line)
-        #vbox.addWidget(self.searchLine)
-        search_field_layout=QtGui.QHBoxLayout()
-        #search_icon=QtGui.QPushButton()
-        #search_icon.setIcon(self.searchIcon)
-        #search_icon.setFlat(True)
-        #search_icon.setToolTip("Enter your search entry in the text field")
         self.searchLine=QtGui.QLineEdit()
         self.searchLine.setText("")
         self.connect(self.searchLine,QtCore.SIGNAL("returnPressed()"),self.entered_search_line)
         self.searchLine.setToolTip(search_example_string)
         self.searchLine.setStyleSheet("font-size:16px")
         self.searchLine.setMinimumHeight(30)
-        search_field_layout.addWidget(self.searchLine)
-        search_groupbox.setLayout(search_field_layout)
+        search_groupbox=QtGui.QGroupBox("Text Search")
+        text_search_vbox=QtGui.QVBoxLayout()
+        text_search_vbox.addWidget(self.searchLine)
         search_groupbox.setToolTip(search_example_string)
-        #search_field_layout.addWidget(search_icon)    
-        vbox.addWidget(search_groupbox) 
-
-
-        self.facet_search_btn=QDockPushButton("Search",self)
-        self.facet_search_btn.setStyleSheet("background-color:lightblue")
-        self.facet_search_btn.connect(self.facet_search_btn,QtCore.SIGNAL("clicked(bool)"),self.facet_search_button_pressed)
+        search_groupbox.setLayout(text_search_vbox)
+        
+        #vbox.addWidget(search_groupbox) 
+        frame1=QtGui.QFrame()
+        frame1_hbox=QtGui.QHBoxLayout()
+        frame1_hbox.addWidget(self.facet_search_btn)
+        frame1_hbox.addWidget(search_groupbox)
+        frame1.setLayout(frame1_hbox)
+        vbox.addWidget(frame1)
 
         #faceth=QtGui.QHBoxLayout()
         #l=QtGui.QLabel("Current Selection(s):")
@@ -362,7 +369,7 @@ class QEsgfBrowser(QtGui.QDialog):
         #self.selected_facet_combobox.setSizePolicy(QtGui.QSizePolicy.Preferred,QtGui.QSizePolicy.Fixed)
         #faceth.addWidget(self.selected_facet_combobox)
 
-        self.facet_obj=cdms2.FacetConnection()
+        self.facet_obj=cdms2.FacetConnection(host=str(self.root.preferences.host_url.currentText()))
         facet_xmlelement=self.facet_obj.get_xmlelement("replica=false")
 	self.facet_dict_of_dict={}
         self.facet_dict=self.facet_obj.make_facet_dict(facet_xmlelement)
@@ -389,13 +396,12 @@ class QEsgfBrowser(QtGui.QDialog):
         current_selection_layout.addLayout(current_selection_btn_layout)
         current_selection_layout.addWidget(self.current_selection_listwidget)
         current_selection_groupbox.setLayout(current_selection_layout)
-        current_selection_groupbox.setFlat(True)
         search_option_layout.addWidget(current_selection_groupbox)
 
         datanode_groupbox=QtGui.QGroupBox("Data Node Selection(s)")
         datanode_layout=QtGui.QVBoxLayout()
         datanode_btn_layout=QtGui.QHBoxLayout()
-        self.datanode_display_btn=QtGui.QPushButton("Hide",self)
+        self.datanode_display_btn=QtGui.QPushButton("Show Data Nodes",self)
         self.datanode_display_btn.connect(self.datanode_display_btn,QtCore.SIGNAL("clicked(bool)"),self.display_datanode_button_pressed)
         self.datanode_display_btn.setDisabled(False)
         self.selection_display_btn=QtGui.QPushButton("Select All",self)
@@ -412,16 +418,18 @@ class QEsgfBrowser(QtGui.QDialog):
         datanode_layout.addLayout(datanode_btn_layout)
         datanode_layout.addWidget(self.datanode_listwidget)
         datanode_groupbox.setLayout(datanode_layout)
-        datanode_groupbox.setFlat(True)
+        self.datanode_listwidget.hide()
+        self.selection_display_btn.hide() 
         
         datanode_layout3=QtGui.QVBoxLayout()
         datanode_layout3.addWidget(datanode_groupbox)
         self.show_all_replicas_checkbox=QtGui.QCheckBox("Show All Replicas")
         self.show_all_replicas_checkbox.connect(self.show_all_replicas_checkbox,QtCore.SIGNAL("clicked()"),self.show_all_replicas_checkbox_checked)
-        datanode_layout2=QtGui.QHBoxLayout()
-        datanode_layout2.addWidget(self.show_all_replicas_checkbox)
-        datanode_layout2.addWidget(self.facet_search_btn)
-        datanode_layout3.addLayout(datanode_layout2)
+        #datanode_layout2=QtGui.QHBoxLayout()
+        #datanode_layout2.addWidget(self.show_all_replicas_checkbox)
+        #datanode_layout2.addWidget(self.facet_search_btn)
+        #datanode_layout3.addLayout(datanode_layout2)
+        datanode_layout3.addWidget(self.show_all_replicas_checkbox)
         search_option_layout.addLayout(datanode_layout3)
         vbox.addLayout(search_option_layout)
 
@@ -435,14 +443,101 @@ class QEsgfBrowser(QtGui.QDialog):
 
 
         self.facet_order_list=['project','institute','model','submodel','instrument','experiment_family','experiment','subexperiment','time_frequency','product','realm','variable','variable_long_name','cmor_table','cf_standard_name','ensemble']
-        hsp = QtGui.QSplitter(QtCore.Qt.Horizontal)
+
+	scroll = QScrollArea2()
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        scroll.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,QtGui.QSizePolicy.MinimumExpanding)
+        scroll.F1 = F1 = QtGui.QFrame()
+        QS=scroll.size()
+        F1.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,QtGui.QSizePolicy.MinimumExpanding)
+	H1 = QtGui.QHBoxLayout()
+        F1.setLayout(H1)
+
+        #self.vsp = QtGui.QVBoxLayout() # Facets, originally named V1
         self.vsp=QtGui.QSplitter(QtCore.Qt.Vertical)
 	self.add_facet_list_to_dict_of_dict(self.facet_order_list)
         self.disable_unneeded_facet()
-        hsp.addWidget(self.vsp)
- 
-        result_widget=QtGui.QSplitter(QtCore.Qt.Vertical)
-        self.page_hbox=QtGui.QSplitter(QtCore.Qt.Horizontal)
+        H1.addWidget(self.vsp)
+
+	V2=QtGui.QVBoxLayout() 
+	#H1.addLayout(V2)
+        F2=QtGui.QFrame()
+        F2.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,QtGui.QSizePolicy.MinimumExpanding)
+        F2.setLayout(V2)
+        H1.addWidget(F2)
+        
+	self.page_hbox=QtGui.QFrame() # Page, next, collapes,orignally named H2
+        self.page_hbox.setContentsMargins(QtCore.QMargins(0,0,0,0))
+        self.page_hlayout=QtGui.QHBoxLayout()
+        self.page_hbox.setLayout(self.page_hlayout)
+        l=QtGui.QLabel("Page: ")
+        l.setAlignment(QtCore.Qt.AlignRight)
+        self.page_hlayout.addWidget(l)
+        self.page_input=QtGui.QLineEdit()
+        #self.page_input.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,QtGui.QSizePolicy.MinimumExpanding)
+        #self.page_input.setMaximumHeight(25)
+        self.page_input.setText("1")
+        self.page_input.connect(self.page_input,QtCore.SIGNAL("returnPressed()"),self.page_input_return_pressed)
+        self.page_input.setToolTip("Enter a page number.")
+        self.page_input.setAlignment(QtCore.Qt.AlignRight)
+        self.page_label=""
+        self.page_label_dict={}
+        self.page_hlayout.addWidget(self.page_input)
+        self.l2=QtGui.QLabel("")
+        self.page_hlayout.addWidget(self.l2)
+        self.next_page_btn=QtGui.QPushButton("Next",self)
+        self.next_page_btn.connect(self.next_page_btn,QtCore.SIGNAL("clicked(bool)"),self.next_page_button_pressed)
+        self.page_hlayout.addWidget(self.next_page_btn)
+        self.page_hbox.hide()
+        self.tree_btn_hbox=QtGui.QFrame()
+        self.tree_btn_hbox.setContentsMargins(QtCore.QMargins(0,0,0,0))
+        self.tree_btn_layout=QtGui.QHBoxLayout()
+        self.tree_btn_hbox.setLayout(self.tree_btn_layout)
+        self.remove_tree_node_btn=QDockPushButton("Delete",self)
+        self.remove_tree_node_btn.setToolTip("Remove the highlighted top level node in the search result tree")
+        self.remove_tree_node_btn.connect(self.remove_tree_node_btn,QtCore.SIGNAL("clicked(bool)"),self.remove_tree_node_btn_pressed)
+        self.removeAll_tree_node_btn=QDockPushButton("Delete All",self)
+        self.removeAll_tree_node_btn.setToolTip("Remove all the nodes in the tree")
+        self.removeAll_tree_node_btn.connect(self.removeAll_tree_node_btn,QtCore.SIGNAL("clicked(bool)"),self.removeAll_tree_node_btn_pressed)
+        self.collapseAll_tree_node_btn=QDockPushButton("Collapse All", self)
+        self.collapseAll_tree_node_btn.setToolTip("Collapse all the nodes in the tree")
+        self.collapseAll_tree_node_btn.connect(self.collapseAll_tree_node_btn,QtCore.SIGNAL("clicked(bool)"),self.collapseAll_tree_node_btn_pressed)
+        self.tree_btn_layout.addWidget(self.remove_tree_node_btn)
+        self.tree_btn_layout.addWidget(self.removeAll_tree_node_btn)
+        self.tree_btn_layout.addWidget(self.collapseAll_tree_node_btn)
+        self.tree_btn_hbox.hide()
+	V2.addWidget(self.page_hbox)
+        V2.addWidget(self.tree_btn_hbox) 
+        V2.setSpacing(0)
+        self.tree = QtGui.QTreeWidget()
+        self.tree.setSelectionMode(QtGui.QTreeWidget.ExtendedSelection)
+        self.tree.setIconSize(QtCore.QSize(customizeUVCDAT.esgfTreeIconSize,customizeUVCDAT.esgfTreeIconSize))
+        self.tree.connect(self.tree,QtCore.SIGNAL("itemSelectionChanged()"),self.tree_current_item_changed)
+
+	V2.addWidget(self.tree)
+	scroll.setWidget(F1)
+        vbox.addWidget(scroll)
+
+        self.index=[]
+        self.nsearches=0
+        self.cacheDir=os.path.join(os.environ["HOME"],"PCMDI_GRAPHICS")
+        self.cache={}
+        self.loadCache(self.cacheDir)
+
+
+        #hsp = QtGui.QSplitter(QtCore.Qt.Horizontal)
+        #self.vsp=QtGui.QSplitter(QtCore.Qt.Vertical)
+	#self.add_facet_list_to_dict_of_dict(self.facet_order_list)
+        #self.disable_unneeded_facet()
+        #hsp.addWidget(self.vsp)
+        
+        
+        #result_widget=QtGui.QSplitter(QtCore.Qt.Vertical)
+        #self.page_hbox=QtGui.QSplitter(QtCore.Qt.Horizontal)
+        #result_widget=QtGui.QVBoxLayout()
+        #self.page_hbox=QtGui.QFrame()
+        #page_hboxlayout=QtGui.QHBoxLayout()
+        """
         l=QtGui.QLabel("Page: ")
         l.setAlignment(QtCore.Qt.AlignRight)
         self.page_hbox.addWidget(l)
@@ -457,9 +552,18 @@ class QEsgfBrowser(QtGui.QDialog):
         self.page_hbox.addWidget(self.page_input)
         self.l2=QtGui.QLabel("")
         self.page_hbox.addWidget(self.l2)
-        self.page_hbox.hide()
+ 
+        self.next_page_btn=QtGui.QPushButton("Next",self)
+        self.next_page_btn.connect(self.next_page_btn,QtCore.SIGNAL("clicked(bool)"),self.next_page_button_pressed)
+        self.page_hbox.addWidget(self.next_page_btn)
+        #page_hboxlayout.addWidget(l)
+        #page_hboxlayout.addWidget(self.page_input)
+        #page_hboxlayout.addWidget(self.l2)
+        #page_hboxlayout.addWidget(self.next_page_btn)
+        #self.page_hbox.setLayout(page_hboxlayout)
+        
+        #self.page_hbox.hide()
         result_widget.addWidget(self.page_hbox)        
-
         self.remove_tree_node_btn=QDockPushButton("Delete",self)
         self.remove_tree_node_btn.setToolTip("Remove the highlighted top level node in the search result tree")
         self.remove_tree_node_btn.setMaximumHeight(30)
@@ -472,28 +576,31 @@ class QEsgfBrowser(QtGui.QDialog):
         self.collapseAll_tree_node_btn.setToolTip("Collapse all the nodes in the tree")
         self.collapseAll_tree_node_btn.connect(self.collapseAll_tree_node_btn,QtCore.SIGNAL("clicked(bool)"),self.collapseAll_tree_node_btn_pressed)
         self.collapseAll_tree_node_btn.setMaximumHeight(30)
-        self.tree_btn_hbox=QtGui.QSplitter(QtCore.Qt.Horizontal)
-        self.tree_btn_hbox.addWidget(self.remove_tree_node_btn)
-        self.tree_btn_hbox.addWidget(self.removeAll_tree_node_btn)
-        self.tree_btn_hbox.addWidget(self.collapseAll_tree_node_btn)
-        self.tree_btn_hbox.hide()
-        result_widget.addWidget(self.tree_btn_hbox)
-
+        #self.tree_btn_hbox=QtGui.QSplitter(QtCore.Qt.Horizontal)
+        #self.tree_btn_hbox.addWidget(self.remove_tree_node_btn)
+        #self.tree_btn_hbox.addWidget(self.removeAll_tree_node_btn)
+        #self.tree_btn_hbox.addWidget(self.collapseAll_tree_node_btn)
+        #self.tree_btn_hbox.hide()
+        """
+        """
         self.tree = QtGui.QTreeWidget()
         self.tree.setSelectionMode(QtGui.QTreeWidget.ExtendedSelection)
         self.tree.setIconSize(QtCore.QSize(customizeUVCDAT.esgfTreeIconSize,customizeUVCDAT.esgfTreeIconSize))
         self.tree.connect(self.tree,QtCore.SIGNAL("itemSelectionChanged()"),self.tree_current_item_changed)
         #hsp.addWidget(self.tree)
         result_widget.addWidget(self.tree)
-        hsp.addWidget(result_widget)
-        hsp.setSizes([200,600])
+        #hsp.addWidget(result_widget)
+        hsp.setLayout(result_widget)
+        #hsp.setSizes([200,600])
         self.index=[]
         self.nsearches=0
         self.cacheDir=os.path.join(os.environ["HOME"],"PCMDI_GRAPHICS")
         self.cache={}
         self.loadCache(self.cacheDir)
         vbox.addWidget(hsp)
-        
+        """
+        #hsp.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,QtGui.QSizePolicy.MinimumExpanding)
+              
         self.itemMenu = QtGui.QMenu(self)
         menuVbox = QtGui.QVBoxLayout()
         menuVbox.setMargin(2)
@@ -506,6 +613,107 @@ class QEsgfBrowser(QtGui.QDialog):
         self.multiItemsMenu.setLayout(menuVbox)
         downloadMultiAction = self.multiItemsMenu.addAction('&Download Selected Files and Directories')
         self.connect(downloadMultiAction,QtCore.SIGNAL("triggered()"),self.downloadMulti)
+        self.connect(self.root.preferences.host_url,QtCore.SIGNAL('currentIndexChanged(int)'),self.get_host_url)
+    
+    def get_host_url(self, index):
+        cur_text=self.root.preferences.host_url.currentText()
+        if not cur_text:
+            cur_text="pcmdi9.llnl.gov"
+        else:
+            cur_text=str(cur_text)
+        if len(self.index )>0:
+            self.index.pop(0)
+        self.addGateway(cur_text)
+        #update data_nodelist and facets
+        self.facet_obj=cdms2.FacetConnection(host=cur_text)
+        self.setCursor(QtCore.Qt.WaitCursor)
+ 
+        search_text1=self.make_search_text_from_facet_combobox()
+        search_text2=None
+        if search_text1 and search_text2:
+            search_text='&'.join([search_text1,search_text2])
+        elif search_text1 and not search_text2:
+            search_text=search_text1
+        elif not search_text1 and search_text2:
+            search_text=search_text2
+        else:
+            search_text=None
+        if search_text:
+            search_text=search_text.replace('"','')
+            search_text=search_text.replace(' ', '%20')
+            found,limit,search_text=self.remove_limit_from_search_text(search_text)
+            facet_xmlelement=self.facet_obj.get_xmlelement(search_text)
+            # update self.facet_dict and call make facet_dict_of_dict to update self.facet_dict_of_dict
+        else:
+            facet_xmlelement=self.facet_obj.get_xmlelement()
+        self.facet_dict=self.facet_obj.make_facet_dict(facet_xmlelement)
+        #add new facet to facet_dict_of_dict
+        self.add_facet_item_to_dict_of_dict()
+        #update facet buttons
+        self.update_dict_of_dict([])
+
+        self.setCursor(QtCore.Qt.ArrowCursor)
+        self.data_nodelist=self.get_data_nodelist()
+        self.datanode_listwidget.clear()
+        for item in self.data_nodelist:
+            new_item = QtGui.QListWidgetItem(item.strip())
+            self.datanode_listwidget.addItem(new_item)
+         
+
+    def update_data_nodelist(self,updated_nodelist):
+        self.data_nodelist=updated_nodelist
+        self.datanode_listwidget.clear()
+        #self.datanode_listwidget.addItem(QtGui.QListWidgetItem("*****"))
+
+        for item in updated_nodelist:
+            new_item = QtGui.QListWidgetItem(item.strip())
+            self.datanode_listwidget.addItem(new_item)
+        
+    def next_page_button_pressed(self, pressed):
+        page_input=str(self.page_input.text() )
+        if len(page_input)==0 or (not page_input.isdigit()):
+            m=QtGui.QMessageBox()
+            m.setText("Please enter a page number.")
+            m.exec_()
+        else:
+            page_num=int(page_input)+1
+            max_page=int(str(self.l2.text()).split(' ')[2].strip())
+            if max_page<=1:
+                m=QtGui.QMessageBox()
+                m.setText("All results are retrieved in your current search.  There is no additional page to return to user.")
+                m.exec_()
+                return
+            if page_num < 1:
+                page_num=1
+            elif page_num > max_page:
+                page_num=max_page
+               
+        self.setCursor(QtCore.Qt.WaitCursor)
+        current_limit=int(self.root.preferences.file_retrieval_limit.text())
+        offset=(page_num-1)*current_limit
+
+        idx=self.get_current_top_tree_level_idx()
+        top_node_label=str(self.tree.topLevelItem(idx).text(0))
+        search_text=top_node_label.split(' ')[-1]
+        if search_text.startswith('?'):
+            search_text=search_text[1:]
+        if search_text:
+            search_text=search_text+'&offset=%d'%(offset)
+        else:
+            search_text='offset=%d'%(offset)
+        keys=self.parseQuery(search_text)
+        for i in range(self.tree.topLevelItemCount()):
+            item = self.tree.topLevelItem(i)
+            item.setExpanded(False)
+        page_label_template=self.tree_current_item_changed()
+        page_label_tokens=page_label_template.split(" ") 
+        page_label_tokens[1]=str(page_num)
+        self.page_label=" ".join(page_label_tokens)
+        self.search(**keys)
+        self.tree.topLevelItem(self.tree.topLevelItemCount()-1).setExpanded(True)
+
+        self.setCursor(QtCore.Qt.ArrowCursor)
+        
    
     def datanode_listwidget_clicked(self, index):
         self.setCursor(QtCore.Qt.WaitCursor)
@@ -560,7 +768,7 @@ class QEsgfBrowser(QtGui.QDialog):
         else:
             self.datanode_listwidget.hide()
             self.selection_display_btn.hide() 
-            self.datanode_display_btn.setText("Show")
+            self.datanode_display_btn.setText("Show Data Nodes")
 
     def selectAll_datanode_button_pressed(self):
         label=str(self.selection_display_btn.text())
@@ -574,6 +782,10 @@ class QEsgfBrowser(QtGui.QDialog):
     
     def get_current_top_tree_level_idx(self):
         tree_item=self.tree.currentItem()
+        if not tree_item:
+            m=QtGui.QMessageBox()
+            m.setText("Please select a node on the search result tree")
+            m.exec_()
         idx=self.tree.indexOfTopLevelItem(tree_item)
         found=True
         if idx==-1:
@@ -701,6 +913,10 @@ class QEsgfBrowser(QtGui.QDialog):
             #self.page_label="Page %s of %s (Total Files: %s)"%(str(cur_page),str(total_page),str(total_file))
             self.page_hbox.show()
             self.tree_btn_hbox.show()
+            if total_page <= 1:
+                self.next_page_btn.setDisabled(True)
+            else:
+                self.next_page_btn.setDisabled(False)
         return "Page %s of %s (Total Files: %s)"%(str(cur_page),str(total_page),str(total_file))
 
     def remove_tree_node_btn_pressed(self):
@@ -735,21 +951,6 @@ class QEsgfBrowser(QtGui.QDialog):
         current_limit=int(self.root.preferences.file_retrieval_limit.text())
         offset=(page_num-1)*current_limit
 
-        #search_text1=self.make_search_text_from_facet_combobox()
-        #search_text2=self.make_search_text_from_node_tree_widget()
-        #if search_text1 and search_text2:
-        #    search_text='&'.join([search_text1,search_text2])
-        #elif search_text1 and not search_text2:
-        #    search_text=search_text1
-        #elif not search_text1 and search_text2:
-        #    search_text=search_text2
-        #else:
-        #    search_text=None
-        #limit_found=False
-        #if search_text:
-        #    limit_found,limit,search_text=self.remove_limit_from_search_text(search_text)
-        #if limit_found:
-        #    self.root.preferences.file_retrieval_limit.setText(limit)
         idx=self.get_current_top_tree_level_idx()
         top_node_label=str(self.tree.topLevelItem(idx).text(0))
         search_text=top_node_label.split(' ')[-1]
@@ -966,6 +1167,10 @@ class QEsgfBrowser(QtGui.QDialog):
         self.page_label="Page 1 of %d (Total Files: %d)"%(total_pages,total_file)
         self.page_hbox.show()
         self.tree_btn_hbox.show()
+        if total_pages <= 1:
+            self.next_page_btn.setDisabled(True)
+        else:
+            self.next_page_btn.setDisabled(False)
         #if total_file and total_file > current_limit:
         #    m=QtGui.QMessageBox()
         #    m.setText("Please refine your current selection(s).  Your total number of requested files (%d) exceeds the current limit (%d).  Only the top %d files are displayed."%(total_file, current_limit, current_limit))
@@ -989,6 +1194,8 @@ class QEsgfBrowser(QtGui.QDialog):
             self.show_all_replicas_checkbox.setChecked(True)
 
     def get_data_nodelist(self):
+        if "data_node" not in self.facet_dict:
+            return []
         nodelist=self.facet_dict["data_node"]
         found_pcmdi9=False
         for node in nodelist:
@@ -1203,17 +1410,16 @@ class QEsgfBrowser(QtGui.QDialog):
         self.facet_dict_of_dict[k]['btn'].setDisabled(False)
         self.vsp.addWidget(self.facet_dict_of_dict[k]['btn'])
         self.facet_dict_of_dict[k]['ListWidget']=QtGui.QListWidget()
-        #self.facet_dict_of_dict[k]['ScrollArea']=QtGui.QScrollArea()
         self.facet_dict_of_dict[k]['ListWidget'].setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
-        #self.facet_dict_of_dict[k]['ScrollArea'].setWidget(self.facet_dict_of_dict[k]['ListWidget'])
+        self.facet_dict_of_dict[k]['ListWidget'].setMinimumHeight(100)
+         
+        
         if k in self.facet_dict:
             for item in self.facet_dict[k]:
                 new_item = QtGui.QListWidgetItem(item.strip())
                 self.facet_dict_of_dict[k]['ListWidget'].addItem(new_item)
         self.vsp.addWidget(self.facet_dict_of_dict[k]['ListWidget'])
         self.facet_dict_of_dict[k]['ListWidget'].hide()        
-        #self.vsp.addWidget(self.facet_dict_of_dict[k]['ScrollArea'])
-        #self.facet_dict_of_dict[k]['ScrollArea'].hide()        
         self.facet_dict_of_dict[k]['ListWidget'].connect(self.facet_dict_of_dict[k]['ListWidget'],QtCore.SIGNAL("itemSelectionChanged()"),self.facet_dict_of_dict[k]['btn'].update_facet_selection)
 
     def add_facet_list_to_dict_of_dict(self, add_list):
@@ -1533,6 +1739,7 @@ class QEsgfBrowser(QtGui.QDialog):
         if self.page_label:
             self.page_label_dict[self.nsearches]=self.page_label
         self.createTreeSearchItem(files,"Search %i %s" % (self.nsearches,query))
+        self.tree.setCurrentItem(self.tree.topLevelItem(self.tree.topLevelItemCount()-1))
 
     def createTreeSearchItem(self,searchResults,name):
         ## First the top Item
