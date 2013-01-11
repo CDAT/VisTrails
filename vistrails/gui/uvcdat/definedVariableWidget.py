@@ -226,8 +226,8 @@ class QDefinedVariableWidget(QtGui.QWidget):
             for i in range(self.varList.count()-1,-1,-1):
                 if self.varList.item(i).getVarName() == var.id:
                     self.varList.takeItem(i)
-        elif type_ == 'PARAVIEW':
-            item = QDefinedVariableItem(var,self.root,None,QDefinedVariableItem.PARAVIEW)
+#        elif type_ == 'PARAVIEW':
+#            item = QDefinedVariableItem(var,self.root,None,QDefinedVariableItem.PARAVIEW)
         self.varList.addItem(item)
         # Recording define variable teaching command
 #        self.recordDefineVariableTeachingCommand(varName, var.id, file, axesArgString)
@@ -515,16 +515,16 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
     type ==1 is for cdms variables
     type==2 is for paraview variables """
     CDMS = 1
-    PARAVIEW = 2
+#    PARAVIEW = 2
     def __init__(self, variable, root, cdmsVar=None, type=1, parent=None,project=None):
         QtGui.QListWidgetItem.__init__(self, parent, type)
         if type == self.CDMS:
             self.varName = variable.id # This is also the tabname
             self.variable = variable
             self.cdmsVar = cdmsVar
-        elif type == self.PARAVIEW:
-            self.varName = variable
-            self.variable = variable
+#        elif type == self.PARAVIEW:
+#            self.varName = variable
+#            self.variable = variable
         self.root=root
         if project is None:
 
@@ -562,8 +562,8 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
             numString = str(num).zfill(2)
         if self.type() == self.CDMS:
             varString = "%s %s %s" % (numString, self.varName, str(self.variable.shape))
-        elif self.type() == self.PARAVIEW:
-            varString = "%s %s" % (numString, self.varName)
+#        elif self.type() == self.PARAVIEW:
+#            varString = "%s %s" % (numString, self.varName)
         self.setData(0, QtCore.QVariant(QtCore.QString(varString)))
 
     def setFile(self, cdmsFile):
