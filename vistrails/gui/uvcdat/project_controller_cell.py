@@ -41,6 +41,9 @@ class ControllerCell(object):
         self.plots = plots
         self._current_version=current_parent_version
         
+        self.undoStack = []
+        self.redoStack = []
+        
         self.variableQ = []
         self.templateQ = []
         
@@ -113,11 +116,66 @@ class ControllerCell(object):
     
     def clear(self):
         self.clear_plots()
+        self.clear_queues()
+        self.clear_stacks()
+        
+    def clear_queues(self):
         self.variableQ = []
         self.templateQ = []
+        
+    def clear_stacks(self):
+        self.undoStack = []
+        self.redoStack = []
         
     def acceptsPlotPackage(self, pkg):
         """ Returns true if pkg does not conflict with existing
         plot packages
         """
         return (len(self.plots) == 0 or self.plots[0].package == pkg)
+    
+    def pushUndoVersion(self, version = None):
+        """pushes an undo version onto the stack and clears redo stack"""
+        if version is None:
+            version = self.current_parent_version
+        if len(self.undoStack) == 0 or version != self.undoStack[-1]:
+            self.undoStack.append(version)
+            self.redoStack = []
+            
+    def canUndo(self):
+        return self._has_other(self.undoStack, self.current_parent_version)
+    
+    def canRedo(self):
+        return self._has_other(self.redoStack, self.current_parent_version)
+            
+    def _has_other(self, list, item):
+        """return true if list contains atleast one value other than item"""
+        for value in list:
+            if item != value:
+                return True
+        return False
+            
+    def undo(self):
+        """changes the current_parent_version and adjust the undo and
+        redo stacks accordingly, if possible"""
+        self._slide_stacks(self.undoStack, self.redoStack)
+            
+    def redo(self):
+        """changes the current_parent_version and adjust the undo and
+        redo stacks accordingly, if possible"""
+        self._slide_stacks(self.redoStack, self.undoStack)
+        
+    def _slide_stacks(self, fro, to):
+        """ sets current_parent_version to first item in stack 'fro' that isn't itself
+        and also places that item on the end of stack 'to' """
+        print "Before %s %d %s" % (str(fro),self.current_parent_version,str(to))
+        for i in reversed(range(len(fro))):
+            if self.current_parent_version != fro[i]:
+                self.current_parent_version = fro[i]
+                if len(fro) > i+1 and (len(to) == 0 or to[-1] != fro[i+1]):
+                    to.append(fro[i+1])
+                del fro[i+1:]
+                break
+        #ensure end of undo stack matches current version
+        if len(self.undoStack) > 0 and self.undoStack[-1] != self.current_parent_version:
+            self.undoStack.append(self.current_parent_version)
+        print "After %s %d %s" % (str(fro),self.current_parent_version,str(to))
