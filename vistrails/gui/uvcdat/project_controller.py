@@ -31,7 +31,7 @@
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
 ###############################################################################
-import os, os.path, sys, traceback
+import os, os.path, sys, traceback, __main__
 import copy
 import uuid
 from PyQt4 import QtCore, Qt
@@ -135,22 +135,71 @@ class ProjectController(QtCore.QObject):
         else:
             debug.warning("Variable was not renamed: variable named '%s' not found." %oldname)
             
-    def remove_defined_variable(self, name):
+    def remove_defined_variable(self, name, force = False):
         """remove_defined_variable(name: str) -> None
         This will remove the variable only if it is not used to create other
         variables.
         
         """
-        if name in self.defined_variables:
-            (res, cvars) = self.var_used_in_computed_variable(name)
-            if not res:
+        (res, cvars) = self.var_used_in_computed_variable(name)
+        if res:
+            msg = name + " is used to derive other variables. Delete those first."
+            if not force:
+                QMessageBox(msg)._exec()
+            return
+        if self.promt_delete_var_plots(name, force):
+            if name in self.defined_variables:
                 del self.defined_variables[name]
-        elif name in self.computed_variables:
-            (res, cvars) = self.var_used_in_computed_variable(name)
-            if not res:
+            elif name in self.computed_variables:
                 del self.computed_variables[name]
                 if name in self.computed_variables_ops:
                     del self.computed_variables_ops[name]
+            
+            #remove from global main dict
+            self.removeVarFromMainDict(name)
+                                    
+    def promt_delete_var_plots(self, name, force = False):
+        """checks if var is being used by any plots, and if so prompts
+        user to delete said plots. Returns true if user agrees to delete plots,
+        if var is not used in any plots, or if force is True. Setting force to 
+        True will automatically delete associated plots without prompting."""
+        
+        def yes_delete():
+            msg = ("This variable is currently being used by 1 or more plots. "
+                   "Removing it will remove these plots as well.")
+            question = "Remove variable and associated plots?"
+            
+            msgBox = QMessageBox()
+            msgBox.setText(msg)
+            msgBox.setInformativeText(question)
+            msgBox.setStandardButtons(Qt.QMessageBox.Yes | Qt.QMessageBox.Cancel)
+            msgBox.setDefaultButton(Qt.QMessageBox.Cancel)
+            QApplication.setOverrideCursor(QCursor(QtCore.Qt.ArrowCursor))
+            result = msgBox.exec_()
+            QApplication.restoreOverrideCursor()
+            return result == Qt.MessageBox.Yes
+        
+        found = False
+        
+        for sheetName, sheet in self.sheet_map.iteritems():
+            for (row,col), cell in sheet.iteritems():
+                cell_plot_count = len(cell.plots)
+                for i in reversed(range(cell_plot_count)):
+                    if name in cell.plots[i].variables:
+                        if not found:
+                            found = True
+                            if not (force or yes_delete()):
+                                return False
+                        cell_changed = True
+                        cell.remove_plot(cell.plots[i])
+                if len(cell.plots) < cell_plot_count:
+                    self.clear_cell(sheetName, row, col)
+                    #self.check_update_cell(sheetName, row, col, True)
+                    #cell.pushUndoVersion()
+                    
+        return True
+                    
+                
         
     def var_used_in_computed_variable(self, varname):
         """var_used_in_computed_variable(varname:str) -> (bool, [var])
@@ -596,6 +645,7 @@ class ProjectController(QtCore.QObject):
                 cell.clear()
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col)
                 self.update_plot_configure(sheetName, row, col)
+                self.checkEnableUndoRedo(cell)
 
     def sheetsize_was_changed(self, sheet, dim):
         self.emit(QtCore.SIGNAL("sheet_size_changed"), sheet, dim)
@@ -690,7 +740,7 @@ class ProjectController(QtCore.QObject):
         else:
             plot_prop.set_controller(None)
             plot_prop.updateProperties(None, sheetName,row,col)
-        self.checkEnableUndoAction(cell)
+        self.checkEnableUndoRedo(cell)
                 
     def get_python_script(self, sheetName, row, col):
         script = None
@@ -719,7 +769,7 @@ class ProjectController(QtCore.QObject):
                                                 cell.current_parent_version,
                                                 cell.plots)
         
-    def check_update_cell(self, sheetName, row, col, reuse_workflow=True):
+    def check_update_cell(self, sheetName, row, col, reuse_workflow=False):
         try:
             cell = self.sheet_map[sheetName][(row,col)]
             if cell.is_ready():
@@ -769,7 +819,7 @@ class ProjectController(QtCore.QObject):
             var_dict[varname] = varm
             return varm
         
-    def update_cell(self, sheetName, row, col, reuse_workflow=True):
+    def update_cell(self, sheetName, row, col, reuse_workflow=False):
         cell = self.sheet_map[sheetName][(row,col)]
         helper = CDMSPipelineHelper
         # helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
@@ -839,11 +889,6 @@ class ProjectController(QtCore.QObject):
         
         if action is not None:
             cell.current_parent_version = action.id
-            
-            #keep track of first rendered version of plot, cannot undo past this
-            if not reuse_workflow:
-                cell.base_version = cell.current_parent_version
-            
             if get_vistrails_configuration().uvcdat.autoExecute:
                 self.current_sheetName = sheetName
                 self.current_cell_coords = [row, column]
@@ -884,6 +929,7 @@ class ProjectController(QtCore.QObject):
         if sheetName in self.sheet_map:
             cell = self.sheet_map[sheetName][(row, col)]
             cell.current_parent_version = action.id
+            cell.pushUndoVersion()
             self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
                       None, None, cell.plots[0].package, 
                       cell.current_parent_version)
@@ -963,40 +1009,50 @@ class ProjectController(QtCore.QObject):
         QApplication.restoreOverrideCursor()
         return (result == Qt.QMessageBox.Yes)
     
-    def undo(self):
-        """ Changes version of current cell to it's previous version, if possible """
-        #assuming vt_controller is updated based on current cell
-        fullVersionTree = self.vt_controller.vistrail.tree.getVersionTree()
-        
-        try:
-            parent_version = fullVersionTree.parent(self.vt_controller.current_version)
-        except KeyError, VertexHasNoParentError:
-            return
-        
-        self.vt_controller.change_selected_version(parent_version)
-        self.vt_controller.execute_current_workflow()
-        
-        (sheetName, row, col) = self.get_current_cell_info()
+    def undo(self, sheetName = None, row = None, col = None):
+        if not (sheetName and row and col):
+            (sheetName, row, col) = self.get_current_cell_info()
         cell = self.sheet_map[sheetName][(row, col)]
-        cell.current_parent_version = self.vt_controller.current_version
+        if cell is not None:
+            cell.undo()
+            self._finish_undo_redo(sheetName, row, col)
+            
+    def redo(self, sheetName = None, row = None, col = None):
+        if sheetName is None or row is None or col is None:
+            (sheetName, row, col) = self.get_current_cell_info()
+        cell = self.sheet_map[sheetName][(row, col)]
+        if cell is not None:
+            cell.redo()
+            self._finish_undo_redo(sheetName, row, col)
+            
+    def _finish_undo_redo(self, sheetName, row, col):
+        cell = self.sheet_map[sheetName][(row, col)]
+        self.vt_controller.change_selected_version(cell.current_parent_version)
+        self.vt_controller.execute_current_workflow()
         self.update_plot_configure(sheetName, row, col)
         
         from gui.application import get_vistrails_application
         gui_app = get_vistrails_application()
         project = gui_app.uvcdatWindow.workspace.currentProject
-            
-        if sheetName not in project.sheet_to_item:
-            return
+        if sheetName in project.sheet_to_item:
+            sheetItem = project.sheet_to_item[sheetName]
+            if (row, col) in sheetItem.pos_to_item:
+                item = sheetItem.pos_to_item[(row, col)]
+                item.workflowVersion = cell.current_parent_version
         
-        sheetItem = project.sheet_to_item[sheetName]
-        if (row, col) not in sheetItem.pos_to_item:
-            return
-        
-        item = sheetItem.pos_to_item[(row, col)]
-        item.workflowVersion = self.vt_controller.current_version
-        
-    def checkEnableUndoAction(self, cell):
-        enable = cell is not None and cell.is_ready() and \
-            cell.current_parent_version != cell.base_version
+    def checkEnableUndoRedo(self, cell):
+        canUndo = cell is not None and cell.canUndo()
+        canRedo = cell is not None and cell.canRedo()
         _app = get_vistrails_application()
-        _app.uvcdatWindow.mainMenu.editUndoAction.setEnabled(enable)
+        _app.uvcdatWindow.mainMenu.editUndoAction.setEnabled(canUndo)
+        _app.uvcdatWindow.mainMenu.editRedoAction.setEnabled(canRedo)
+        
+    def removeVarFromMainDict(self, name):
+        if name in __main__.__dict__:
+            del __main__.__dict__[name]
+        
+    def removeAllVarsFromMainDict(self):
+        for name in self.computed_variables:
+            self.removeVarFromMainDict(name)
+        for name in self.defined_variables:
+            self.removeVarFromMainDict(name)

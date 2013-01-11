@@ -49,9 +49,13 @@ class QMenuWidget(QtGui.QWidget):
         self.editUndoAction = QtGui.QAction('Undo', self)
         self.editUndoAction.setEnabled(False)
         self.editUndoAction.setStatusTip("Undo last action for selected plot")
-        self.editMenu.addAction(self.editUndoAction)
-        self.connect(self.editUndoAction, QtCore.SIGNAL('triggered()'),
-                     self.undo)
+        #self.editMenu.addAction(self.editUndoAction)
+        self.connect(self.editUndoAction, QtCore.SIGNAL('triggered()'), self.undo)
+        self.editRedoAction = QtGui.QAction('Redo', self)
+        self.editRedoAction.setEnabled(False)
+        self.editRedoAction.setStatusTip("Redo last action for selected plot")
+        #self.editMenu.addAction(self.editRedoAction)
+        self.connect(self.editRedoAction, QtCore.SIGNAL('triggered()'), self.redo)
 
         #self.tools = parent.ui.menuTools
         self.pcmdiTools = parent.ui.menuPCMDITools
@@ -383,3 +387,6 @@ class QMenuWidget(QtGui.QWidget):
         
     def undo(self):
         get_current_project_controller().undo()
+        
+    def redo(self):
+        get_current_project_controller().redo()
