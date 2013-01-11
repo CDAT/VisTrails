@@ -385,6 +385,11 @@ Makes sure input port 'name' is filled."""
                 return conn()
         return self.inputPorts[inputPort][0]()
 
+    def getInputsFromPort( self, inputPort ):
+        if not self.inputPorts.has_key(inputPort):
+            raise ModuleError(self, "Missing value from port %s" % inputPort)
+        return [ conn() for conn in self.inputPorts[inputPort] ]
+
     def hasInputFromPort(self, inputPort):
         return self.inputPorts.has_key(inputPort)
 
@@ -397,6 +402,12 @@ Makes sure input port 'name' is filled."""
     def forceGetInputFromPort(self, inputPort, defaultValue=None):
         if self.hasInputFromPort(inputPort):
             return self.getInputFromPort(inputPort)
+        else:
+            return defaultValue
+
+    def forceGetInputsFromPort(self, inputPort, defaultValue=None):
+        if self.hasInputFromPort(inputPort):
+            return self.getInputsFromPort(inputPort)
         else:
             return defaultValue
 
