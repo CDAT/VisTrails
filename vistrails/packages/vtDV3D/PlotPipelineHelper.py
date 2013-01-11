@@ -1060,14 +1060,16 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                         varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'name')
                         file_varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varNameInFile')
                         axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
-                        aliases[ ".".join( [plot_obj.files[i],"url"] )  ] = url if url else ""
                         aliases[plot_obj.vars[i]] = varname
                         aliases[ "%s.file" % plot_obj.vars[i] ] = file_varname if file_varname else ""
                         if len(plot_obj.axes) > i:
                             aliases[plot_obj.axes[i]] = axes
-                        aliases[plot_obj.files[i]] = filename
+                        if i < len( plot_obj.files ):
+                            aliases[ ".".join( [plot_obj.files[i],"url"] )  ] = url if url else ""
+                            aliases[plot_obj.files[i]] = filename
                     except Exception, err:
                         print>>sys.stderr,  "Error setting aliases: %s" % ( str(err) )
+                        traceback.print_exc()
     
             #FIXME: this will always spread the cells in the same row
             cell_specs = []
@@ -1107,10 +1109,24 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             reader_1v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader ] )
             reader_3v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VectorReader ] )
             reader_modules = reader_1v_modules + reader_3v_modules
-            iVarModule = 0
             ops = []           
-            for module in reader_modules:
-                nInputs = 1 if module in reader_1v_modules else 3
+            nInputs = 1 if len( reader_1v_modules ) else 3
+            module = reader_modules[0]
+            if nInputs == 1:
+                inputPort = 'variable'
+                for iInput in range( len( var_modules ) ):
+                    try:
+                        var_module = var_modules[ iInput ]
+                        var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
+                        if var_module_in_pipeline == None: 
+                            ops.append( ( 'add', var_module ) )
+                        conn1 = controller.create_connection( var_module, 'self', module, inputPort )
+                        ops.append( ( 'add', conn1 ) )
+                    except Exception, err:
+                        print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                        break                                     
+            else: 
+                iVarModule = 0
                 for iInput in range( nInputs ):
                     if iInput < len( var_modules ):
                         try:
