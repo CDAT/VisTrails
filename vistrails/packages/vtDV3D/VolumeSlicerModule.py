@@ -106,7 +106,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def setZScale( self, zscale_data, **args ):
         if self.setInputZScale( zscale_data ):
             if self.planeWidgetX <> None:
-                bounds = list( self.input().GetBounds() ) 
+                primaryInput = self.input()
+                bounds = list( primaryInput.GetBounds() ) 
                 if not self.planeWidgetX.MatchesBounds( bounds ):
                     self.planeWidgetX.PlaceWidget( bounds )        
                     self.planeWidgetY.PlaceWidget( bounds ) 
@@ -182,7 +183,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             self.planeWidgetY.SetTextureInterpolate( colormapManager.smoothColormap )
             self.planeWidgetZ.SetTextureInterpolate( colormapManager.smoothColormap )
             self.updateModule()
-                                                            
+                                                                        
     def buildPipeline(self):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
@@ -196,7 +197,6 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         contour_ispec = self.getInputSpec(  1 )       
         contourInput = contour_ispec.input if contour_ispec <> None else None
         primaryInput = self.input()
-        nComp = primaryInput.GetNumberOfScalarComponents()
 
 #        self.contourInput = None if contourModule == None else contourModule.getOutput() 
         # The 3 image plane widgets are used to probe the dataset.    

@@ -86,7 +86,6 @@ class AlgorithmOutputModule( Module ):
             else:           algorithm.SetInputConnection( iPort, self.algoOutputPort )
         else: 
             output = self.getOutput() 
-#            print " inputToAlgorithm: oid = %x " % id( output ) 
             algorithm.SetInput( output )
             algorithm.Modified()
 
@@ -431,6 +430,20 @@ class PersistentModule( QObject ):
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
 
+    def selectInputArray( self, raw_input, inputIndex ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        old_point_data = raw_input.GetPointData()  
+        nArrays = old_point_data.GetNumberOfArrays() 
+        if nArrays == 1: return raw_input  
+        image_data = vtk.vtkImageData()
+        image_data.ShallowCopy( raw_input )
+        new_point_data = image_data.GetPointData() 
+        plotIndex = DV3DPipelineHelper.getPlotIndex( self.moduleID, inputIndex )     
+        if plotIndex < nArrays:
+            aname = new_point_data.GetArrayName( plotIndex )
+            new_point_data.SetActiveScalars( aname )  
+        return image_data
+    
     def setCellLocation( self, sheetName, cell_address ):
         self.sheetName = sheetName 
         self.cell_address = cell_address
@@ -708,8 +721,8 @@ class PersistentModule( QObject ):
     def getCDMSDataset(self):
         return ModuleStore.getCdmsDataset( self.datasetId )
            
-    def setActiveScalars( self ):
-        pass
+#    def setActiveScalars( self ):
+#        pass
 
     def getInputCopy(self):
         image_data = vtk.vtkImageData() 
@@ -742,8 +755,9 @@ class PersistentModule( QObject ):
                 inMod = self.getPrimaryInput( port=inputPort, **args )
                 if inMod: ispec.inputModule = inMod
                 
-            if  ispec.inputModule <> None: 
-                ispec.input =  ispec.inputModule.getOutput()                 
+            if  ispec.inputModule <> None:
+                raw_input = ispec.inputModule.getOutput()  
+                ispec.input =  self.selectInputArray( raw_input, inputIndex )               
                 ispec.updateMetadata()
                 
                 if inputIndex == 0:     
@@ -1429,7 +1443,6 @@ class PersistentVisualizationModule( PersistentModule ):
  
     def disableVisualizationInteraction(self): 
         pass
-    
                       
     def setInputZScale( self, zscale_data, input_index=0, **args  ):
         ispec = self.inputSpecs[ input_index ] 
