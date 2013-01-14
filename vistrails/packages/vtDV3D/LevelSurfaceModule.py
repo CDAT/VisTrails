@@ -361,7 +361,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
             self.surfacePicker  = vtk.vtkPointPicker()
                     
         self.levelSetFilter = vtk.vtkContourFilter()
-        self.levelSetFilter.SetInout()
+        self.levelSetFilter.SetInput( primaryInput )
         self.levelSetMapper = vtk.vtkPolyDataMapper()
         self.levelSetMapper.SetColorModeToMapScalars()
         if ( self.probeFilter == None ):
