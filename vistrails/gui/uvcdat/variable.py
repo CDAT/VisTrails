@@ -760,6 +760,15 @@ class VariableProperties(QtGui.QDialog):
     def createPVTab(self):
         self._pvTabWidget = PVTabWidget(self)
         self.originTabWidget.addTab(self._pvTabWidget,"ParaView")
+        
+    def applyEditsClicked(self):
+        varname = self.varEditArea.widget().var.id
+        self.getUpdatedVar(varname)
+        
+        _app = get_vistrails_application()
+        controller = _app.uvcdatWindow.get_current_project_controller()
+        
+        controller.variableEdited(varname)
 
 #    def show(self):
 #        # May be useful for other modes

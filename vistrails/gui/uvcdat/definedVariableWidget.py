@@ -122,7 +122,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         varProp.btnDefineClose.setVisible(False)
         varProp.btnDefineAs.setVisible(False)
         varProp.btnApplyEdits.setVisible(True)
-        varProp.btnApplyEdits.setEnable(False)
+#        varProp.btnApplyEdits.setEnabled(False)
         varProp.show()
 
     def defineQuickplot(self, file, var):
