@@ -77,6 +77,9 @@ class VariableProperties(QtGui.QDialog):
         h.addWidget(self.btnDefineClose)
         self.btnDefineAs=QDockPushButton("Load As")
         h.addWidget(self.btnDefineAs)
+        self.btnApplyEdits=QDockPushButton("Apply")
+        self.btnApplyEdits.setVisible(False)
+        h.addWidget(self.btnApplyEdits)
         self.btnCancel=QDockPushButton("Close")
 
         # defaults?
@@ -117,6 +120,13 @@ class VariableProperties(QtGui.QDialog):
     ##     if not hasattr(klass, '_instance'):
     ##         klass._instance = klass()
     ##     return klass._instance
+    
+    def closeEvent(self, event):
+        super(VariableProperties, self).closeEvent(event)
+        self.btnDefine.setVisible(True)
+        self.btnDefineAs.setVisible(True)
+        self.btnDefineClose.setVisible(True)
+        self.btnApplyEdits.setVisible(False)
 
     def tabHasChanged(self,index):
         if index==1:
@@ -153,6 +163,7 @@ class VariableProperties(QtGui.QDialog):
         self.btnDefineClose.clicked.connect(self.defineVarCloseClicked)
         self.btnDefineAs.clicked.connect(self.defineAsVarClicked)
         self.connect(self,QtCore.SIGNAL('definedVariableEvent'),self.root.dockVariable.widget().addVariable)
+        self.btnApplyEdits.clicked.connect(self.applyEditsClicked)
 
 
     def checkTargetVarName(self):
@@ -668,3 +679,12 @@ class VariableProperties(QtGui.QDialog):
         #kwargs['squeeze'] = 0
         kwargs['order'] = axisList.getAxesOrderString()
         return kwargs
+        
+    def applyEditsClicked(self):
+        varname = self.varEditArea.widget().var.id
+        self.getUpdatedVar(varname)
+        
+        _app = get_vistrails_application()
+        controller = _app.uvcdatWindow.get_current_project_controller()
+        
+        controller.variableEdited(varname)

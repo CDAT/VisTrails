@@ -118,6 +118,11 @@ class QDefinedVariableWidget(QtGui.QWidget):
             varProp.varNameInFile = cdmsVar.varNameInFile
         else:
             varProp.varNameInFile = None
+        varProp.btnDefine.setVisible(False)
+        varProp.btnDefineClose.setVisible(False)
+        varProp.btnDefineAs.setVisible(False)
+        varProp.btnApplyEdits.setVisible(True)
+#        varProp.btnApplyEdits.setEnabled(False)
         varProp.show()
 
     def defineQuickplot(self, file, var):
