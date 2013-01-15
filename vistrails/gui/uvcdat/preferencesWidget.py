@@ -18,6 +18,7 @@ import uvcdatCommons
 import cdms2
 import os
 import customizeUVCDAT
+from esgf import QEsgfBrowser
 
 class QAliasesDialog(QtGui.QDialog):
     def __init__(self,parent):
@@ -123,6 +124,65 @@ class QPreferencesDialog(QtGui.QDialog):
         self._tab_widget.addTab(self.varTab(self),"Variables")
         self._tab_widget.addTab(self.ioTab(self),"I/O")
         self._tab_widget.addTab(self.vcsTab(self),"VCS")
+        self._tab_widget.addTab(self.esgfTab(self),"ESGF")
+
+    def esgfTab(self,parent):
+        tab= QtGui.QFrame()
+        l=QtGui.QVBoxLayout()
+        tab.setLayout(l)
+        h1=QtGui.QHBoxLayout()
+        lb1=QtGui.QLabel("Peer Node")
+        self.host_url=QtGui.QComboBox()
+        peer_node_list=["dev.esg.anl.gov","esgf-index1.ceda.ac.uk","esg.bnu.edu.cn","adm07.cmcc.it","euclipse1.dkrz.de","esgf-data.dkrz.de","esgdata.gfdl.noaa.gov","esgf-node.ipsl.fr","esgf.nccs.nasa.gov","esg-datanode.jpl.nasa.gov","esg2.nci.org.au","esg01.nersc.gov","esg.ccs.ornl.gov","pcmdi9.llnl.gov"]
+        self.host_url.addItems(peer_node_list)
+        self.host_url.setCurrentIndex(self.host_url.count()-1)
+        h1.addWidget(lb1)
+        h1.addWidget(self.host_url)
+        l.addLayout(h1)
+        h=QtGui.QHBoxLayout()
+        lb=QtGui.QLabel("File Retrieval Limit")
+        self.file_retrieval_limit=QtGui.QLineEdit()
+        self.file_retrieval_limit.setText("500")
+        h.addWidget(lb)
+        h.addWidget(self.file_retrieval_limit)
+        l.addLayout(h)
+        self.connect(self.file_retrieval_limit,QtCore.SIGNAL('editingFinished()'),self.get_file_limit)
+        #self.connect(self.host_url,QtCore.SIGNAL('currentIndexChanged(int)'),self.get_host_url)
+        #self.selected_host_url='pcmdi9.llnl.gov' 
+        #self.changed_host_url=False
+        return tab
+
+    def get_host_url(self, index):
+        cur_text=self.host_url.currentText()
+        if not cur_text:
+            cur_text="pcmdi9.llnl.gov"
+        else:
+            cur_text=str(cur_text)
+        esgf=QEsgfBrowser(self)
+        if len(esgf.index )>0:
+            esgf.index.pop(0)
+        esgf.addGateway(cur_text)
+        #esgf.datanode_listwidget.clear()
+        #esgf.data_nodelist=esgf.get_data_nodelist()
+        #for item in esgf.data_nodelist:
+        #    esgf.datanode_listwidget.addItem(QtGui.QListWidgetItem(item.strip()))
+        self.data_nodelist=esgf.get_data_nodelist()
+        #esgf.update_data_nodelist(data_nodelist)
+        #if self.selected_host_url == cur_text:
+        #    self.changed_host_url=False
+        #else:
+        #    self.changed_host_url=True
+        #    self.selected_host_url=cur_text
+        return cur_text
+
+    def get_file_limit(self):
+        self.file_limit=str(self.file_retrieval_limit.text()).strip()
+        if not self.file_limit.isdigit():
+            m=QtGui.QMessageBox()
+            m.setText("You must enter a number for the file retrieval limit")
+            m.exec_()
+            self.file_retrieval_limit.setText("500")
+	    #QtGui.QMessageBox.warning(self, "Message", "You must enter a number for the file retrieval limit",QMessageBox.Ok)
 
     def varTab(self,parent):
         tab= QtGui.QFrame()
