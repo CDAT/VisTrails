@@ -15,6 +15,7 @@
 ###############################################################################
 import types
 from PyQt4 import QtCore, QtGui
+from PyQt4.QtCore import Qt
 import vcs
 import uvcdatCommons
 from gui.application import get_vistrails_application
@@ -134,7 +135,17 @@ class VCSGMs():
         frame = QtGui.QFrame()
         layout = QtGui.QVBoxLayout()
         frame.setLayout(layout)
+
+        conts = uvcdatCommons.QFramedWidget('Continents')
+        self.continents = conts.addLabeledComboBox("Type", ['Standard','Coarse','U.S.A','Political','Rivers','Outline','Other 1','Other 2'])#, indent=True, newRow=True):
+        layout.addWidget(conts)
         
+        aspect = uvcdatCommons.QFramedWidget("Aspect Ratio")
+        self.aspectAuto = aspect.addCheckBox("Auto (lat/lon)")
+        self.aspectRatio = aspect.addLabeledLineEdit("Custom value (Y=n*X) n:")
+        self.connect(self.aspectAuto,QtCore.SIGNAL("stateChanged(int)"),self.aspectClicked)
+        layout.addWidget(aspect)
+
         world = uvcdatCommons.QFramedWidget('World Coordinates')
         self.datawc_x1 = world.addLabeledLineEdit('datawc_x1')
         self.datawc_x2 = world.addLabeledLineEdit('datawc_x2')
@@ -233,7 +244,20 @@ class VCSGMs():
     def saveChanges(self,click):
        self.applyChanges()
        self.root.record(self.changesString())
-       
+        
+    def aspectClicked(self,checkState):
+        self.aspectRatio.label.setEnabled(checkState == Qt.Unchecked)
+        self.aspectRatio.setEnabled(checkState == Qt.Unchecked)
+        
+    def getAspectRatio(self):
+        if self.aspectAuto.checkState() == Qt.Checked:
+            return 'autot'
+        try:
+            return str(float(self.aspectRatio.text()))
+        except ValueError:
+            self.aspectAuto.setCheckState(Qt.Checked)
+            return 'autot'
+        
 class VCSGMs1D:
 
     def saveChanges(self,click):

@@ -757,6 +757,8 @@ class CDMSPlot(Plot, NotCacheable):
                                       ('ymtics1', 'basic:String', True),
                                       ('ymtics2', 'basic:String', True),
                                       ('projection', 'basic:String', True),
+                                      ('continents', 'basic:Integer', True),
+                                      ('ratio', 'basic:String', True),
                                       ("colorMap", "CDMSColorMap", True)])
     _output_ports = expand_port_specs([("self", "CDMSPlot")])
 
@@ -801,6 +803,19 @@ class CDMSPlot(Plot, NotCacheable):
         self.colorMap = None
         if self.hasInputFromPort('colorMap'):
             self.colorMap = self.getInputFromPort('colorMap')
+            
+        self.kwargs['continents'] = 1
+        if self.hasInputFromPort('continents'):
+            self.kwargs['continents'] = self.getInputFromPort('continents')
+            
+        self.kwargs['ratio'] = 'autot'
+        if self.hasInputFromPort('ratio'):
+            self.kwargs['ratio'] = self.getInputFromPort('ratio')
+            if self.kwargs['ratio'] != 'autot':
+                try:
+                    float(self.kwargs['ratio'])
+                except ValueError:
+                    self.kwargs['ratio'] = 'autot'
 
     def to_module(self, controller):
         module = Plot.to_module(self, controller, identifier)
@@ -1025,18 +1040,15 @@ Please delete unused CDAT Cells in the spreadsheet.")
                         #print k, " = ", getattr(cgm,k)
                             
             kwargs = plot.kwargs
-            #check aspect Ratio
-            
-            conf = get_vistrails_configuration()
-            if conf.has('uvcdat'):
-                if conf.uvcdat.check('aspectRatio'):
-                    kwargs['ratio'] = 'autot'
+                    
+            #record commands
             cmd+=" '%s', '%s'" %( plot.template,cgm.name)
             for k in kwargs:
                 cmd+=", %s=%s" % (k, repr(kwargs[k]))
             cmd+=")"
             from gui.application import get_vistrails_application
             _app = get_vistrails_application()
+            conf = get_vistrails_configuration()
             interactive = conf.check('interactiveMode')
             if interactive:
                 _app.uvcdatWindow.record(cmd)                
