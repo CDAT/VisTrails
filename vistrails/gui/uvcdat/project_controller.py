@@ -883,6 +883,13 @@ class ProjectController(QtCore.QObject):
                       None, None, cell.plots[0].package, 
                       cell.current_parent_version)
             
+    def variableEdited(self, varname):
+        for sheetname in self.sheet_map:
+            for (row,col) in self.sheet_map[sheetname]:
+                cell = self.sheet_map[sheetname][(row,col)]
+                if cell and varname in cell.variables():
+                    self.update_cell(sheetname, row, col, True)
+            
     def re_layout_workflow(self, sheetName=None, row=None, col=None, cell=None):
         """
         Performs a Re-Layout on the workflow pipeline if the builder window
