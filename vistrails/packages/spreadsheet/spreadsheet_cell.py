@@ -47,6 +47,7 @@ import cell_rc
 import celltoolbar_rc
 import spreadsheet_controller
 import analogy_api
+from core.configuration import get_vistrails_configuration
 
 ################################################################################
 
@@ -76,6 +77,9 @@ class QCellWidget(QtGui.QWidget):
         self.connect(self._playerTimer,
                      QtCore.SIGNAL('timeout()'),
                      self.playNextFrame)
+        if getattr(get_vistrails_configuration(),'fixedSpreadsheetCells',False):
+            self.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+            self.setFixedSize(200, 180)
 
     def setAnimationEnabled(self, enabled):
         """ setAnimationEnabled(enabled: bool) -> None
