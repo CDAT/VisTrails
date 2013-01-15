@@ -1033,6 +1033,17 @@ class ProjectController(QtCore.QObject):
     def _finish_undo_redo(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row, col)]
         self.vt_controller.change_selected_version(cell.current_parent_version)
+        
+        helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
+        pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
+        helper.load_pipeline_in_location(pipeline,
+                                         self.vt_controller,
+                                         sheetName,
+                                         row,
+                                         col,
+                                         cell.plots[0].package,
+                                         cell)
+        
         self.vt_controller.execute_current_workflow()
         self.update_plot_configure(sheetName, row, col)
         
