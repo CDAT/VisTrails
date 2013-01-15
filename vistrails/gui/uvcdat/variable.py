@@ -85,6 +85,16 @@ class VariableProperties(QtGui.QDialog):
         self.btnDefineAs=QDockPushButton("Load As")
         h.addWidget(self.btnDefineAs)
         self.btnCancel=QDockPushButton("Close")
+
+        # defaults?
+        self.btnDefine.setDefault(False)
+        self.btnDefineClose.setDefault(False)
+        self.btnDefineAs.setDefault(False)
+
+        # Disabling at first
+        self.btnDefine.setEnabled(False)
+        self.btnDefineClose.setEnabled(False)
+        self.btnDefineAs.setEnabled(False)
         h.addWidget(self.btnCancel)
         v.addLayout(h)
         self.layout=v
@@ -110,6 +120,7 @@ class VariableProperties(QtGui.QDialog):
         self._paraviewConnectionDialog = ParaViewConnectionDialog(self)
         self._pvProcessFile = PVProcessFile()
         self.cdmsFile = None
+        self.updatingFile = False
 
     ## @classmethod
     ## def instance(klass):
@@ -122,11 +133,12 @@ class VariableProperties(QtGui.QDialog):
             self.root.varProp.btnDefine.setEnabled(False)
             self.root.varProp.btnDefineClose.setEnabled(False)
             self.root.varProp.btnDefineAs.setEnabled(False)
-        else:
-            self.root.varProp.btnDefine.setEnabled(True)
-            self.root.varProp.btnDefineClose.setEnabled(True)
-            self.root.varProp.btnDefineAs.setEnabled(True)
- 
+        ## else:
+        ##     self.root.varProp.btnDefine.setEnabled(True)
+        ##     self.root.varProp.btnDefineClose.setEnabled(True)
+        ##     self.root.varProp.btnDefineAs.setEnabled(True)
+
+
     def connectSignals(self):
         self.btnCancel.clicked.connect(self.close)
         self.connect(self.ask,QtCore.SIGNAL('accepted()'),self.checkTargetVarName)
@@ -135,7 +147,7 @@ class VariableProperties(QtGui.QDialog):
 
             self.connect(self.originTabWidget,QtCore.SIGNAL("currentChanged(int)"),self.tabHasChanged)
             self.connect(self.fileEdit, QtCore.SIGNAL('returnPressed()'),
-                         self.updateFile)
+                         self.updateFileFromReturnPressed)
             self.connect(self.historyList, QtCore.SIGNAL('itemClicked(QListWidgetItem *)'),
                          self.selectFromList)
             self.connect(self.bookmarksList, QtCore.SIGNAL('itemClicked(QListWidgetItem *)'),
@@ -157,6 +169,7 @@ class VariableProperties(QtGui.QDialog):
         self.btnDefineClose.clicked.connect(self.defineVarCloseClicked)
         self.btnDefineAs.clicked.connect(self.defineAsVarClicked)
         self.connect(self,QtCore.SIGNAL('definedVariableEvent'),self.root.dockVariable.widget().addVariable)
+
 
     def checkTargetVarName(self):
         result = None
@@ -333,6 +346,10 @@ class VariableProperties(QtGui.QDialog):
         self.fileEdit.setText(fnm)
         self.updateFile()
 
+    def updateFileFromReturnPressed(self):
+        self.updatingFile = True
+        self.updateFile()
+        
     def updateFile(self):
         self.cdmsFile = None
         fnm = self.fileEdit.text()
@@ -387,6 +404,10 @@ class VariableProperties(QtGui.QDialog):
             self.updateOtherPlots(other_list)
         else:
             self.emit(QtCore.SIGNAL('fileChanged'), None)
+        self.root.varProp.btnDefine.setEnabled(True)
+        self.root.varProp.btnDefineClose.setEnabled(True)
+        self.root.varProp.btnDefineAs.setEnabled(True)
+
 
     def selectFromList(self,item):
         self.setFileName(str(item.text()))
@@ -466,6 +487,10 @@ class VariableProperties(QtGui.QDialog):
         axisList.setupVariableAxes()
         self.axisListHolder = axisList
         self.fillDimensionsWidget(axisList)
+        self.root.varProp.btnDefine.setEnabled(True)
+        self.root.varProp.btnDefineClose.setEnabled(True)
+        self.root.varProp.btnDefineAs.setEnabled(True)
+        
 
     def fillDimensionsWidget(self,axisList):
         if not self.axisListHolder is None:
@@ -581,6 +606,9 @@ class VariableProperties(QtGui.QDialog):
             self.getUpdatedVar(tid)
 
     def getUpdatedVar(self,targetId):
+        if self.updatingFile:
+            self.updatingFile = False
+            return
         axisList = self.dimsLayout.itemAt(1).widget()
         kwargs = self.generateKwArgs()
         # Here we try to remove useless keywords as we record them
