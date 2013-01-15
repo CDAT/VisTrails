@@ -1,5 +1,0 @@
-<RCC>
-  <qresource prefix="icons/16x16">
-    <file alias="browse">resources/icons/16x16/browse.png</file>
-  </qresource>
-</RCC>
