@@ -1,3 +1,4 @@
+import os, random
 from info import identifier
 from PyQt4 import QtCore
 from PyQt4 import QtGui
@@ -31,10 +32,13 @@ from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_event import DisplayCellEvent
 
 import visit.pyqt_support
+import cdms2
 
 viswinmapper = {}
 availWindows = []
 VisItLaunched = False
+
+global_cdms_var = None
 
 def LaunchVisIt():
     global viswin, availWindows
@@ -110,15 +114,31 @@ class QVisItWidget(QCellWidget):
             self.view.hide()
 
     def GetDetails(self):
-        windowid = self.getKey()
+        global global_cdms_var
+        global_cdms_var = self.cdms_var
 
+        windowid = self.getKey()
+        
         if hasattr(self.cdms_var,'filename') and \
            hasattr(self.cdms_var,'varNameInFile'):
             filename = self.cdms_var.filename
-            var = self.cdms_var.varNameInFile
-            return (windowid,filename,var)
-        self.LoadPlotError()
-        return (None,None,None)
+            varname = self.cdms_var.varNameInFile
+        else: #generate a file..
+            try:
+                filename = "/tmp/abc" + str(int(random.random()*1000000000)) + ".nc"
+                filename = "/tmp/"  
+                filename += self.cdms_var.varname + "_" 
+                filename += str(int(random.random()*1000000000)) + ".nc"
+
+                varname = self.cdms_var.outvar.name
+                f = cdms2.open(filename,"w")
+                f.write(self.cdms_var.outvar.var)
+                f.close()
+
+            except:
+                self.LoadPlotError()
+                return (None,None,None)
+        return (windowid,filename,varname)
    
     def LoadPlotError(self):
         QMessageBox.information(None, "VisIt failed to load plot...", "VisIt Failed to load plot. VisIt currently does not support transient variables.")
