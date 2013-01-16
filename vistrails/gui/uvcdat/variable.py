@@ -680,7 +680,7 @@ class VariableProperties(QtGui.QDialog):
         #kwargs['squeeze'] = 0
         kwargs['order'] = axisList.getAxesOrderString()
         return kwargs
-        
+
     def applyEditsClicked(self):
         varname = self.varEditArea.widget().var.id
         self.getUpdatedVar(varname)
