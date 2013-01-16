@@ -16,7 +16,6 @@ from packages.vtDV3D import HyperwallManager, ModuleStore
 from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.PersistentModule import * 
 from packages.vtDV3D.ROISelection import ROISelectionDialog
-from collections import OrderedDict
 
 import numpy.ma as ma
 # from vtk.util.misc import vtkGetDataRoot
@@ -491,7 +490,7 @@ class CDMSDataset(Module):
     def __init__( self ):
         Module.__init__(self)
         self.datasetRecs = {}
-        self.variableRecs = OrderedDict()
+        self.variableRecs = {}
         self.transientVariables = {}
         self.cachedTransVariables = {}
         self.outputVariables = {}

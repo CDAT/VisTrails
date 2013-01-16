@@ -86,6 +86,7 @@ class AlgorithmOutputModule( Module ):
             else:           algorithm.SetInputConnection( iPort, self.algoOutputPort )
         else: 
             output = self.getOutput() 
+#            print " inputToAlgorithm: oid = %x " % id( output ) 
             algorithm.SetInput( output )
             algorithm.Modified()
 
@@ -430,20 +431,6 @@ class PersistentModule( QObject ):
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
 
-    def selectInputArray( self, raw_input, inputIndex ):
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
-        old_point_data = raw_input.GetPointData()  
-        nArrays = old_point_data.GetNumberOfArrays() 
-        if nArrays == 1: return raw_input  
-        image_data = vtk.vtkImageData()
-        image_data.ShallowCopy( raw_input )
-        new_point_data = image_data.GetPointData() 
-        plotIndex = DV3DPipelineHelper.getPlotIndex( self.moduleID, inputIndex )     
-        if plotIndex < nArrays:
-            aname = new_point_data.GetArrayName( plotIndex )
-            new_point_data.SetActiveScalars( aname )  
-        return image_data
-    
     def setCellLocation( self, sheetName, cell_address ):
         self.sheetName = sheetName 
         self.cell_address = cell_address
@@ -697,21 +684,13 @@ class PersistentModule( QObject ):
         import api
         self.getDatasetId( **args )
         pval = self.getParameter( inputName, None )
-#        if inputName == 'levelRangeScale':
-#            controller = api.get_current_controller()
-#            print ' Input levelRangeScale value, MID[%d], ctrl_version=%d, parameter value = %s, (defval=%s)'  % ( self.moduleID, controller.current_version, str(pval), str(default_value) )            
+        if inputName == 'levelRangeScale':
+            controller = api.get_current_controller()
+            print ' Input levelRangeScale value, MID[%d], ctrl_version=%d, parameter value = %s, (defval=%s)'  % ( self.moduleID, controller.current_version, str(pval), str(default_value) )            
         if (pval == None) and (self.wmod <> None):
             pval = self.wmod.forceGetInputFromPort( inputName, default_value )             
 #        if inputName == 'levelRangeScale':
 #            print ' Actual Input value = %s'  % str(pval)           
-        return pval
-
-    def getInputValues( self, inputName, default_value = None, **args ):
-        import api
-        self.getDatasetId( **args )
-        pval = self.getParameter( inputName, None )
-        if (pval == None) and (self.wmod <> None):
-            pval = self.wmod.forceGetInputsFromPort( inputName, default_value )             
         return pval
           
     def setResult( self, outputName, value ): 
@@ -721,8 +700,8 @@ class PersistentModule( QObject ):
     def getCDMSDataset(self):
         return ModuleStore.getCdmsDataset( self.datasetId )
            
-#    def setActiveScalars( self ):
-#        pass
+    def setActiveScalars( self ):
+        pass
 
     def getInputCopy(self):
         image_data = vtk.vtkImageData() 
@@ -755,9 +734,8 @@ class PersistentModule( QObject ):
                 inMod = self.getPrimaryInput( port=inputPort, **args )
                 if inMod: ispec.inputModule = inMod
                 
-            if  ispec.inputModule <> None:
-                raw_input = ispec.inputModule.getOutput()  
-                ispec.input =  self.selectInputArray( raw_input, inputIndex )               
+            if  ispec.inputModule <> None: 
+                ispec.input =  ispec.inputModule.getOutput()                 
                 ispec.updateMetadata()
                 
                 if inputIndex == 0:     
@@ -1443,6 +1421,7 @@ class PersistentVisualizationModule( PersistentModule ):
  
     def disableVisualizationInteraction(self): 
         pass
+    
                       
     def setInputZScale( self, zscale_data, input_index=0, **args  ):
         ispec = self.inputSpecs[ input_index ] 

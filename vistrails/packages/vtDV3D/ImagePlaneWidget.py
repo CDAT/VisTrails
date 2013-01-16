@@ -647,7 +647,6 @@ class ImagePlaneWidget:
         # This method must be called _after_ SetInput
         #
         self.ImageData  = self.Reslice.GetInput()
-        aname = self.ImageData.GetPointData().GetScalars().GetName()
         if ( not self.ImageData ):        
             print>>sys.stderr, "SetInput() before setting plane orientation."
             return

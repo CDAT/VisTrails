@@ -119,12 +119,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     def execute(self, **args ):
         import api
         from packages.vtDV3D.CDMS_DatasetReaders import CDMSDataset
-        cdms_vars = self.getInputValues( "variable"  ) 
-        if cdms_vars and len(cdms_vars):
-            iVar = 1
-            cdms_var = cdms_vars.pop(0)
+        cdms_var = self.getInputValue( "variable"  ) 
+        if cdms_var:
             self.cdmsDataset = CDMSDataset()
-            var, dsetId = self.addCDMSVariable( cdms_var, iVar )
+            var, dsetId = self.addCDMSVariable( cdms_var, 1 )
             self.newDataset = ( self.datasetId <> dsetId )
             if self.newDataset: ModuleStore.archiveCdmsDataset( dsetId, self.cdmsDataset )
             self.newLayerConfiguration = self.newDataset
@@ -158,17 +156,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.useTimeIndex = timeData[2]
 #            print "Set Time [mid = %d]: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( self.moduleID, str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
 #            print "Time Step Labels: %s" % str( self.timeLabels )
-            while( len(cdms_vars) ):
-                cdms_var2 = cdms_vars.pop(0)
-                if cdms_var2: 
-                    iVar = iVar+1
-                    self.addCDMSVariable( cdms_var2, iVar )
-                               
-            for iVarInputIndex in range( 2,5 ):
-                cdms_var2 = self.getInputValue( "variable%d" % iVarInputIndex  ) 
-                if cdms_var2: 
-                    iVar = iVar+1
-                    self.addCDMSVariable( cdms_var2, iVar )
+            for iVar in range( 2,5 ):
+                cdms_var2 = self.getInputValue( "variable%d" % iVar  ) 
+                if cdms_var2: self.addCDMSVariable( cdms_var2, iVar )
             self.generateOutput()
 #            if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
         else:

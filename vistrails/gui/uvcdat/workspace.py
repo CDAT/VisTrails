@@ -523,6 +523,7 @@ class Workspace(QtGui.QDockWidget):
             defVars = self.root.dockVariable.widget()
             for i in range(defVars.varList.count()):
                 v = defVars.varList.item(i)
+                if v is None: continue
                 if len(v.projects) == 1:
                     if str(controller.name) == v.projects[0]:
                         defVars.varList.takeItem(i)
