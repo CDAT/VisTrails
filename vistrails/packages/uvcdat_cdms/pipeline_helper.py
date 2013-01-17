@@ -1107,18 +1107,6 @@ class CDMSPlotWidget(QtGui.QWidget):
             cell = self.proj_controller.sheet_map[sheetName][(row,col)]
 #            action = self.update_pipeline(action)
             update = cell.is_ready()
-#            newVars = []
-#            var1 = str(self.var1_edt.text()).strip()
-#            if len(var1) > 0: 
-#                newVars.append(var1)
-#            var2 = str(self.var2_edt.text()).strip()
-#            if len(var2) > 0 and self.var2_edt.isVisible(): 
-#                newVars.append(var2)
-#            if len(newVars) > 0:
-#                # clear however many new vars from end of list
-#                del cell.variables[0-len(newVars):]
-#            for v in newVars:
-#                cell.add_variable(v)
             self.proj_controller.check_update_cell(sheetName,row,col,update)
         
         action = self.update_templates(action)
