@@ -227,7 +227,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def create_actions_from_plot_obj(controller, var_modules, cell_module, 
-                                      plot_obj, added_vars):
+                                      plot_obj, added_vars, order=None):
         reg = get_module_registry()
         ops = []
 
@@ -240,6 +240,8 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         plot_functions =  [('graphicsMethodName', [plot_gm])]
         if plot_obj.template is not None:
             plot_functions.append(('template', plot_obj.template))
+        if order is not None:
+            plot_functions.append(('plotOrder', [str(order)]))
 
         initial_values = desc.get_initial_values(plot_gm)
         for attr in desc.gm_attributes:
@@ -292,12 +294,13 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 'CDMSCell'))
         ops = [('add', cell_module)]
         
-        for plot in plot_objs:
+        for i, plot in enumerate(plot_objs):
             ops2 = CDMSPipelineHelper.create_actions_from_plot_obj(controller, 
                                                                     var_modules, 
                                                                     cell_module, 
                                                                     plot,
-                                                                    added_vars)
+                                                                    added_vars,
+                                                                    i+1)
         ops.extend(ops2)
         loc_module = controller.create_module_from_descriptor(
             reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet', 
@@ -361,7 +364,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
         cell_module = CDMSPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
         
-        for plot in plot_objs:
+        for i, plot in enumerate(plot_objs):
             found = False
             for plot_module in plot_modules:
                 gm = CDMSPipelineHelper.get_graphics_method_name_from_module(plot_module)
@@ -372,13 +375,21 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                                                                          var_modules, 
                                                                          plot, 
                                                                          plot_module)
+                    
+                    if (i+1) != PlotPipelineHelper.get_value_from_function(plot_module,
+                                                                           "plotOrder"):
+                        ops2.extend(controller.update_function_ops(plot_module,
+                                                                       'plotOrder',
+                                                                       [str(i+1)]))
             if not found:
                 ops2 = CDMSPipelineHelper.create_actions_from_plot_obj(controller, 
                                                                        var_modules, 
                                                                        cell_module, 
                                                                        plot, 
-                                                                       added_vars)
+                                                                       added_vars,
+                                                                       i+1)
             ops.extend(ops2)
+
         
         action = core.db.action.create_action(ops)
         controller.change_selected_version(version)
@@ -534,6 +545,10 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, [CellLocation])
         cell_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [SpreadsheetCell]) 
         plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+        
+        #sort plot modules based on order
+        fn = lambda x: PlotPipelineHelper.get_value_from_function(x, "plotOrder")
+        plot_modules.sort(key=fn, reverse=False)
         
         # we assume that there is only one CellLocation and one SpreadsheetCell
         # update location values in place.
@@ -730,24 +745,16 @@ class CDMSPlotWidget(QtGui.QWidget):
         self.plots = plot_list
         self.varWidget = None
         
-        #only add vars that are in the main variable widget
-#        mainVarList = []
-#        count = 0
+        #sort plot modules by order
+        fn = lambda x: PlotPipelineHelper.get_value_from_function(x, "plotOrder")
+        self.plots.sort(key=fn, reverse=False)
+        
+        #find variable widget
         for wid in QApplication.topLevelWidgets():
             varWidget = wid.findChild(QDefinedVariableWidget)
             if varWidget is not None:
                 self.varWidget = varWidget
-#                mainVarList = varWidget.varList
-#                count = mainVarList.count()
-#                break
-#                    
-#        self.vars = []
-#        for v in var_list:
-#            varname = str(CDMSPipelineHelper.get_variable_name_from_module(v))
-#            for i in range(count):
-#                if varname == str(mainVarList.item(i).getVarName()):
-#                    self.vars.append(v)
-#                    break
+                break;
         
         self.to_be_added = []
         self.to_be_removed = []
