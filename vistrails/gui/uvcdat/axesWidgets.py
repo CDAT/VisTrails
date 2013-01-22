@@ -488,7 +488,6 @@ class QAxis(QtGui.QWidget):
                   'sum summation of selected axis points',
                   'avg average of selected axis points',
                   'wgt weighted average of selected axis points',
-                  'awt altered weighted average of selected axis points',
                   'gtm geometrical mean of selected axis points',
                   'std standard deviation of selected axis points',]
         if self.virtual>0:
@@ -517,10 +516,11 @@ class QAxis(QtGui.QWidget):
         op = self.sender().text()[:3] # def, sum, avg, wgt, awt, gtm, or std
 
         # If the operation is 'awt' ask the user for an alternate weight var
-        if op == 'awt':
-            definedVars = self.parent.parent.getDefinedVars()
-            QReplaceAxisWeightsDialog(definedVars, self).show()
-            return
+        # C. Doutriaux 2012-12-19: Removing for now since code seems to have disappeared... nowhere in the repo....
+        ## if op == 'awt':
+        ##     definedVars = self.parent.parent.getDefinedVars()
+        ##     QReplaceAxisWeightsDialog(definedVars, self).show()
+        ##     return
 
         # Set button text to what the user selected
         self.axisOperationsButton.setText(" %s  " % op)

@@ -48,7 +48,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         PersistentVisualizationModule.__init__( self, mid, **args )
         self.primaryInputPorts = [ 'volume', 'contours' ]
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0 )
-        self.addConfigurableLevelingFunction( 'opacity', 'O', label='Slice Plane Opacity',    setLevel=self.setOpacity, activeBound='min',  getLevel=self.getOpacity, isDataValue=False, layerDependent=True, bound = False )
+        self.addConfigurableLevelingFunction( 'opacity', 'O', label='Slice Plane Opacity', rangeBounds=[ 0.0, 1.0 ],  setLevel=self.setOpacity, activeBound='min',  getLevel=self.getOpacity, isDataValue=False, layerDependent=True, bound = False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
         self.addConfigurableLevelingFunction( 'contourDensity', 'g', label='Contour Density', activeBound='max', setLevel=self.setContourDensity, getLevel=self.getContourDensity, layerDependent=True, windowing=False, rangeBounds=[ 3.0, 30.0, 1 ], bound=False, isValid=self.hasContours )
         self.addConfigurableLevelingFunction( 'contourColorScale', 'S', label='Contour Colormap Scale', units='data', setLevel=self.scaleContourColormap, getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRangeInput=1, isValid=self.hasContours )
@@ -56,7 +56,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
         self.addUVCDATConfigGuiFunction( 'contourColormap', ColormapConfigurationDialog, 'K', label='Choose Contour Colormap', setValue=lambda data: self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasContours )
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
-        self.opacity = [ 0.75, 1.0 ]
+        self.opacity = [ 1.0, 1.0 ]
         self.iOrientation = 0
         self.updatingPlacement = False
         self.isSlicing = False
@@ -106,7 +106,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def setZScale( self, zscale_data, **args ):
         if self.setInputZScale( zscale_data ):
             if self.planeWidgetX <> None:
-                bounds = list( self.input().GetBounds() ) 
+                primaryInput = self.input()
+                bounds = list( primaryInput.GetBounds() ) 
                 if not self.planeWidgetX.MatchesBounds( bounds ):
                     self.planeWidgetX.PlaceWidget( bounds )        
                     self.planeWidgetY.PlaceWidget( bounds ) 
@@ -182,7 +183,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             self.planeWidgetY.SetTextureInterpolate( colormapManager.smoothColormap )
             self.planeWidgetZ.SetTextureInterpolate( colormapManager.smoothColormap )
             self.updateModule()
-                                                            
+                                                                        
     def buildPipeline(self):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
@@ -195,18 +196,19 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #                print>>sys.stderr, "Error, must provide an input to the Volume Slicer module!"
         contour_ispec = self.getInputSpec(  1 )       
         contourInput = contour_ispec.input if contour_ispec <> None else None
+        primaryInput = self.input()
 
 #        self.contourInput = None if contourModule == None else contourModule.getOutput() 
         # The 3 image plane widgets are used to probe the dataset.    
 #        print " Volume Slicer buildPipeline, id = %s " % str( id(self) )
         self.sliceOutput = vtk.vtkImageData()  
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = primaryInput.GetWholeExtent()       
         self.slicePosition = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
-        dataType = self.input().GetScalarTypeAsString()
-        bounds = list(self.input().GetBounds()) 
-        origin = self.input().GetOrigin()
+        dataType = primaryInput.GetScalarTypeAsString()
+        bounds = list(primaryInput.GetBounds()) 
+        origin = primaryInput.GetOrigin()
         if (dataType <> 'float') and (dataType <> 'double'):
-             self.setMaxScalarValue( self.input().GetScalarType() )
+             self.setMaxScalarValue( primaryInput.GetScalarType() )
 #        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s, slicePosition=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input().GetWholeExtent()), str(origin), str(bounds), str(self.slicePosition)  )
       
         # The shared picker enables us to use 3 planes at one time
@@ -228,7 +230,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             self.planeWidgetX.SetLookupTable( lut )
             
 #            self.planeWidgetX.SetSliceIndex( self.slicePosition[0] )
-        self.planeWidgetX.SetInput( self.input(), contourInput )
+        self.planeWidgetX.SetInput( primaryInput, contourInput )
         self.planeWidgetX.SetPlaneOrientationToXAxes()
 #        self.planeWidgetX.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 0 ) )
 #            self.planeWidgetX.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
@@ -236,7 +238,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetX.PlaceWidget( bounds )       
 
 #        if bounds[0] < 0.0: self.planeWidgetX.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
-#        self.planeWidgetX.SetOrigin( self.input().GetOrigin() )
+#        self.planeWidgetX.SetOrigin( primaryInput.GetOrigin() )
 #        self.planeWidgetX.AddObserver( 'AnyEvent', self.TestObserver )
                 
         if self.planeWidgetY == None: 
@@ -250,7 +252,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             self.planeWidgetY.SetUserControlledLookupTable(1)
             self.planeWidgetY.SetLookupTable( lut )
         
-        self.planeWidgetY.SetInput( self.input(), contourInput )
+        self.planeWidgetY.SetInput( primaryInput, contourInput )
         self.planeWidgetY.SetPlaneOrientationToYAxes()       
         self.planeWidgetY.PlaceWidget(  bounds  ) 
         
@@ -264,7 +266,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             self.planeWidgetZ.SetUserControlledLookupTable(1)
             self.planeWidgetZ.SetLookupTable( lut )
        
-        self.planeWidgetZ.SetInput( self.input(), contourInput )
+        self.planeWidgetZ.SetInput( primaryInput, contourInput )
         self.planeWidgetZ.SetPlaneOrientationToZAxes()
         self.planeWidgetZ.PlaceWidget( bounds )
         self.planeWidgetZ.SetOutlineMap( self.buildOutlineMap() )
@@ -350,11 +352,12 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         return 0
                 
     def updateModule(self, **args ):
+        primaryInput = self.input()
         contour_ispec = self.getInputSpec(  1 )       
         contourInput = contour_ispec.input if contour_ispec <> None else None
-        self.planeWidgetX.SetInput( self.input(), contourInput )         
-        self.planeWidgetY.SetInput( self.input(), contourInput )         
-        self.planeWidgetZ.SetInput( self.input(), contourInput ) 
+        self.planeWidgetX.SetInput( primaryInput, contourInput )         
+        self.planeWidgetY.SetInput( primaryInput, contourInput )         
+        self.planeWidgetZ.SetInput( primaryInput, contourInput ) 
         self.set3DOutput()
            
     def TestObserver( self, caller=None, event = None ):

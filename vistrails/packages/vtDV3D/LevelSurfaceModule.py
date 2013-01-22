@@ -321,8 +321,9 @@ class PM_LevelSurface(PersistentVisualizationModule):
             self.levelSetFilter.ComputeGradientsOff()
 
     def updateModule(self, **args ):
-        self.inputModule().inputToAlgorithm( self.levelSetFilter ) 
-#        self.levelSetFilter.Modified()
+        primaryInput = self.input()
+        self.levelSetFilter.SetInput( primaryInput )
+        self.levelSetFilter.Modified()
         self.set3DOutput()
         print "Update Level Surface Module with %d Level(s), range = [ %f, %f ], levels = %s" %  ( self.numberOfLevels, self.range[0], self.range[1], str(self.getLevelValues()) )  
                            
@@ -331,15 +332,16 @@ class PM_LevelSurface(PersistentVisualizationModule):
         Dispatch the vtkRenderer to the actual rendering widget
         """ 
         
+        primaryInput = self.input()
         texture_ispec = self.getInputSpec(  1 )                
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = primaryInput.GetWholeExtent()       
         self.sliceCenter = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
-        spacing = self.input().GetSpacing()
+        spacing = primaryInput.GetSpacing()
         sx, sy, sz = spacing       
-        origin = self.input().GetOrigin()
+        origin = primaryInput.GetOrigin()
         ox, oy, oz = origin
-        dataType = self.input().GetScalarTypeAsString()
-        self.setMaxScalarValue( self.input().GetScalarType() )
+        dataType = primaryInput.GetScalarTypeAsString()
+        self.setMaxScalarValue( primaryInput.GetScalarType() )
         self.colorByMappedScalars = False
         rangeBounds = self.getRangeBounds()
 
@@ -359,7 +361,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
             self.surfacePicker  = vtk.vtkPointPicker()
                     
         self.levelSetFilter = vtk.vtkContourFilter()
-        self.inputModule().inputToAlgorithm( self.levelSetFilter )
+        self.levelSetFilter.SetInput( primaryInput )
         self.levelSetMapper = vtk.vtkPolyDataMapper()
         self.levelSetMapper.SetColorModeToMapScalars()
         if ( self.probeFilter == None ):

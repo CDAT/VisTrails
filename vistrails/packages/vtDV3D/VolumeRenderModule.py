@@ -147,7 +147,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.experimental = True
         self.updatingOTF = False
         self.configTime = None
-        self.volRenderConfig = 'Default'
+        self.volRenderConfig = [ 'Default', 'False' ]
         self.transFunctGraphVisible = False
         self.transferFunctionConfig = None
         self.setupTransferFunctionConfigDialog()
@@ -158,18 +158,12 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
         self.addUVCDATConfigGuiFunction( 'renderType', VolumeRenderCfgDialog, 'v', label='Choose Volume Renderer', setValue=self.setVolRenderCfg, getValue=self.getVolRenderCfg, layerDependent=True )
     
-#    def setZScale( self, zscale_data ):
-#        if self.volume <> None:
-#            sz = ( zscale_data[0] + zscale_data[1] ) / 0.5
-#            self.volume.SetScale( 1.0, 1.0, sz )
-#            self.volume.Modified()
-#            print " VR >---------------> Set zscale: %.2f, scale: %s, spacing: %s " % ( sz, str(self.volume.GetScale()), str(self.input().GetSpacing()) )
-
     def getVolRenderCfg( self ):
-        return self.volRenderConfig
+        return [ ';'.join( self.volRenderConfig ) ]
 
     def setVolRenderCfg( self, config_str, doRender = True ):
-        if config_str: self.volRenderConfig = str( getItem( config_str ) ).split(';')
+        if config_str: 
+            self.volRenderConfig = getItem( config_str ).strip('[]').split(';')
         renderMode = vtk.vtkSmartVolumeMapper.TextureRenderMode
         if self.volRenderConfig[0] == 'RayCastAndTexture': 
             renderMode = vtk.vtkSmartVolumeMapper.RayCastAndTextureRenderMode
@@ -178,6 +172,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         elif self.volRenderConfig[0] == 'Texture3D': 
             renderMode = vtk.vtkSmartVolumeMapper.TextureRenderMode            
         self.volumeMapper.SetRequestedRenderMode( renderMode )
+        self.volumeProperty.SetShade( self.volRenderConfig[1] == str(True) )
 #        self.volumeMapper.SetCropping( 1 )               
         if doRender: self.render() 
 
@@ -289,29 +284,31 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #        print "Volume Render Event: scale = %s, bounds = %s, origin = %s, dims = %s " % ( str2f( scale ), str2f( bounds ), str2f( origin ), str( dims )  )
                  
     def buildPipeline(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
-        """  
-        extent = self.input().GetExtent() 
+        """ 
+        primaryInput = self.input()
+        extent = primaryInput.GetExtent() 
         rangeBounds = self.getRangeBounds() 
         self.sliceCenter = [ (extent[2*i+1]-extent[2*i])/2 for i in range(3) ]       
-        spacing = self.input().GetSpacing()
+        spacing = primaryInput.GetSpacing()
         sx, sy, sz = spacing       
-        origin = self.input().GetOrigin()
+        origin = primaryInput.GetOrigin()
         ox, oy, oz = origin
         self._range = [ rangeBounds[0], rangeBounds[1], rangeBounds[0], 0 ]
-        dataType = self.input().GetScalarTypeAsString()
-        self.setMaxScalarValue( self.input().GetScalarType() )
+        dataType = primaryInput.GetScalarTypeAsString()
+        self.setMaxScalarValue( primaryInput.GetScalarType() )
         self.pos = [ spacing[i]*extent[2*i] for i in range(3) ]
 #        if ( (origin[0] + self.pos[0]) < 0.0): self.pos[0] = self.pos[0] + 360.0
         bounds = [ ( origin[i/2] + spacing[i/2]*extent[i] ) for i in range(6) ]
         print " @@@VolumeRenderer@@@   Data Type = %s, range = (%f,%f), max_scalar = %s" % ( dataType, rangeBounds[0], rangeBounds[1], self._max_scalar_value )
-        print "Extent: %s " % str( self.input().GetWholeExtent() )
+        print "Extent: %s " % str( primaryInput.GetWholeExtent() )
         print "Spacing: %s " % str( spacing )
         print "Origin: %s " % str( origin )
-        print "Dimensions: %s " % str( self.input().GetDimensions() )
+        print "Dimensions: %s " % str( primaryInput.GetDimensions() )
         print "Bounds: %s " % str( bounds )
-        print "Input Bounds: %s " % str( self.input().GetBounds() )
+        print "Input Bounds: %s " % str( primaryInput.GetBounds() )
         print "VolumePosition: %s " % str( self.pos )
         
 #        self.inputInfo = self.inputPort.GetInformation() 
@@ -328,6 +325,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.volumeProperty.SetInterpolationType( vtk.VTK_LINEAR_INTERPOLATION )
         self.volumeProperty.SetColor(self.colorTransferFunction)
         self.volumeProperty.SetScalarOpacity(self.opacityTransferFunction)
+#        self.volumeProperty.SetGradientOpacity(self.opacityTransferFunction)
      
         # The mapper knows how to render the data
 
@@ -335,7 +333,6 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.volumeMapper.SetBlendModeToComposite() 
         
 #        self.volumeMapper.SetScalarModeToUsePointFieldData()
-#        self.inputModule.inputToAlgorithm( self.volumeMapper )
         
         # The volume holds the mapper and the property and can be used to
         # position/orient the volume
@@ -347,7 +344,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 
         self.volume.SetProperty(self.volumeProperty)
 #        self.volume.AddObserver( 'AnyEvent', self.EventWatcher )
-        self.input().AddObserver( 'AnyEvent', self.EventWatcher )
+        primaryInput.AddObserver( 'AnyEvent', self.EventWatcher )
         
         self.volume.SetPosition( self.pos )
 
@@ -364,11 +361,11 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.setVolRenderCfg( None, False )
         self.renderer.AddVolume( self.volume )
 
-    def setActiveScalars( self ):
-        pointData = self.input().GetPointData()
-        if self.activeLayer:  
-            pointData.SetActiveScalars( self.activeLayer )
-            print " SetActiveScalars on pointData(%s): %s" % ( addr(pointData), self.activeLayer )
+#    def setActiveScalars( self ):
+#        pointData = self.input().GetPointData()
+#        if self.activeLayer:  
+#            pointData.SetActiveScalars( self.activeLayer )
+#            print " SetActiveScalars on pointData(%s): %s" % ( addr(pointData), self.activeLayer )
 
 #    def setActiveScalars( self ):
 #        if self.activeLayer <> None: 
@@ -376,9 +373,9 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #            self.volumeMapper.SelectScalarArray(  self.activeLayer  )  
                                       
     def updateModule( self, **args  ):
-        if self.inputModule():
-            self.inputModule().inputToAlgorithm( self.volume.GetMapper()  )
-            self.set3DOutput()
+        primaryInput = self.input()
+        self.volume.GetMapper().SetInput( primaryInput )
+        self.set3DOutput()
 
 #            center = self.volume.GetCenter() 
 #            matrix = self.volume.GetMatrix()
@@ -633,6 +630,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             if self.otf_data: self.transferFunctionConfig.updateGraph( scalarRange, [ 0.0, 1.0 ], graphData )
 #            print "OTF: [ %s ] " % " ".join( points ) 
         self.updatingOTF = False
+        print "Update OTF: Lighting coefs = %s" % str( [ self.volumeProperty.GetShade(), self.volumeProperty.GetAmbient(), self.volumeProperty.GetDiffuse(), self.volumeProperty.GetSpecular(), self.volumeProperty.GetSpecularPower() ] )
+        
         
 from packages.vtDV3D.WorkflowModule import WorkflowModule
 

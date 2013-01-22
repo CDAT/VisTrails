@@ -94,14 +94,6 @@ class PlotManager(QtCore.QObject):
         pkg_parser = ConfigParser.ConfigParser()
         if pkg_parser.read(os.path.join(PLOT_FILES_PATH, 'registry.cfg')):
             for p in pkg_parser.sections():
-                #BAB for future, should check to make sure package successfully loaded before we load it's plot here
-                # for now doing specific check for visit
-                if p == 'VisIt':
-                    from packages.VisIt.info import package_requirements as visit_requirements
-                    try:
-                        visit_requirements()
-                    except Exception:
-                        continue
                 try:
                     plot_package_folder = os.path.join(PLOT_FILES_PATH,
                                                        pkg_parser.get(p,'codepath'))
@@ -133,9 +125,10 @@ class PlotManager(QtCore.QObject):
                         traceback.print_exc()
                         
                 except Exception, e:
-                    print "Error when loading package_config_file: %s" % plot_package_config_file, str(e)
-                    import traceback
-                    traceback.print_exc()
+                    print "%s plots not loaded." % p
+#                    print "Error when loading package_config_file: %s" % plot_package_config_file, str(e)
+#                    import traceback
+#                    traceback.print_exc()
                     
     def load_vcs_plots(self):
         from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper

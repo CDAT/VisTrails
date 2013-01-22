@@ -1,3 +1,4 @@
+import sys
 from PyQt4 import QtCore, QtGui
 
 from gui.uvcdat.project_controller import ProjectController

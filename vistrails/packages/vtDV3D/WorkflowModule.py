@@ -25,7 +25,7 @@ class WorkflowModule( NotCacheable,  Module ):
 #        print " $$$$$$$$$$$$$$$$$$$$$$ deleting class %s $$$$$$$$$$$$$$$$$$$$$$ " % ( self.__class__.__name__ )
         self.pmod.invalidateWorkflowModule( self ) 
         Module.__del__( self )
-
+        
     def compute(self):
         start_t = time.time() 
         DV3DConfigurationWidget.saveNewConfigurations()            

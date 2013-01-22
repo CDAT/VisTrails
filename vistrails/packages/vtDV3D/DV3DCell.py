@@ -411,19 +411,20 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         plot = Plot( plot_name, 'DV3D', None, vt_file )
         cell_coords = ( self.location.row, self.location.col )
         if cell_coords in proj_controller.sheet_map[ self.sheetName ]:
-            if self.getPlot( proj_controller, cell_coords, plot_name, vt_file ) == None:
-                proj_controller.sheet_map[ self.sheetName ][ cell_coords ].plots.append(plot)
+            cell = proj_controller.sheet_map[ self.sheetName ][ cell_coords ]
+#            if not plot in cell.plots: 
+#                cell.plots.append(plot)  # TODO: replace plots.append with add_plot when available.
         else:
             proj_controller.sheet_map[ self.sheetName ][ cell_coords ] = ControllerCell( variables=vars, plots=[plot], templates=[], current_parent_version=0L )  
                       
-    def getPlot( self, proj_controller, cell_coords, plot_name, vt_file ): 
-        plots =  proj_controller.sheet_map[ self.sheetName ][ cell_coords ].plots
-        for plot in plots:
-            if ( plot.name == plot_name ) and ( plot.package == 'DV3D' ) and ( plot.vt_file == vt_file ):
-                return plot
-        return None
+#    def getPlot( self, proj_controller, cell_coords, plot_name, vt_file ): 
+#        plots =  proj_controller.sheet_map[ self.sheetName ][ cell_coords ].plots
+#        for plot in plots:
+#            if ( plot.name == plot_name ) and ( plot.package == 'DV3D' ) and ( plot.vt_file == vt_file ):
+#                return plot
+#        return None
                   
-    def setCellLocation( self, moduleId ):
+    def overrideCellLocationForModule( self, moduleId ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
         cellLocation = CellLocation()
         cellLocation.rowSpan = 1
@@ -457,7 +458,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         return [ cellLocation.col, cellLocation.row, 1, 1 ]
     
     def updateHyperwall(self):
-        dimensions = self.setCellLocation( self.moduleID )  
+        dimensions = self.overrideCellLocationForModule( self.moduleID )  
         if dimensions:  
             ispec = self.inputSpecs[ 0 ]    
             HyperwallManager.getInstance().addCell( self.moduleID, ispec.datasetId, str(0), dimensions )
@@ -480,7 +481,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
         PersistentVisualizationModule.execute(self, **args)
         self.recordCameraPosition()
-        self.updateProject()
+#        self.updateProject()
         
     def addTitle(self):    
         title = getItem( self.getInputValue( "title", None ) )

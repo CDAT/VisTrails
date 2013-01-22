@@ -335,12 +335,9 @@ class ProjectController(QtCore.QObject):
     def emit_defined_variable(self, var):
         import cdms2
         from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
-        from packages.pvclimate.pvvariable import PVVariable
         _app = get_vistrails_application()
         if isinstance(var, CDMSVariable):
             _app.uvcdatWindow.dockVariable.widget().addVariable(var.to_python())
-        elif isinstance(var, PVVariable):
-            _app.uvcdatWindow.dockVariable.widget().addVariable(var.name, type_='PARAVIEW')
         elif isinstance(var, CDMSVariableOperation):
             varObj = var.to_python()
             if isinstance(varObj, cdms2.tvariable.TransientVariable):
@@ -606,15 +603,16 @@ class ProjectController(QtCore.QObject):
                 #when all workflows are updated to include the variable modules.
                 #they will be included in the case above. For now we need to 
                 #construct the variables based on the alias values (Emanuele)
-                if cell.plots[0].package == "PVClimate":
-                    from packages.pvclimate.pvvariable import PVVariable
-                    for i in range(len(cell.plots[0].vars)):
-                        filename = pipeline.get_alias_str_value(cell.plots[0].files[i])
-                        varname = pipeline.get_alias_str_value(cell.plots[0].vars[i])
-                        if varname not in self.defined_variables:
-                            var = PVVariable(filename=filename, name=varname)
-                            self.defined_variables[varname] = var
-                            self.emit_defined_variable(var)
+#                if cell.plots[0].package == "PVClimate":
+                    #TODO: needs to be updated now that paraview package uses cdms vars
+#                    from packages.pvclimate.pvvariable import PVVariable
+#                    for i in range(len(cell.plots[0].vars)):
+#                        filename = pipeline.get_alias_str_value(cell.plots[0].files[i])
+#                        varname = pipeline.get_alias_str_value(cell.plots[0].vars[i])
+#                        if varname not in self.defined_variables:
+#                            var = PVVariable(filename=filename, name=varname)
+#                            self.defined_variables[varname] = var
+#                            self.emit_defined_variable(var)
                 if cell.plots[0].package == "DV3D":
                     aliases = {}
                     for a in pipeline.aliases:
@@ -933,6 +931,13 @@ class ProjectController(QtCore.QObject):
             self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
                       None, None, cell.plots[0].package, 
                       cell.current_parent_version)
+            
+    def variableEdited(self, varname):
+        for sheetname in self.sheet_map:
+            for (row,col) in self.sheet_map[sheetname]:
+                cell = self.sheet_map[sheetname][(row,col)]
+                if cell and varname in cell.variables():
+                    self.update_cell(sheetname, row, col, True)
             
     def re_layout_workflow(self, sheetName=None, row=None, col=None, cell=None):
         """
