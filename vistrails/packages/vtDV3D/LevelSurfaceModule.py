@@ -163,7 +163,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
             self.cursorActor.VisibilityOff()
         else:
             level_ispec = self.getInputSpec() 
-            if level_ispec and level_ispec.input: 
+            if level_ispec and level_ispec.input(): 
                 pdata = self.levelSetFilter.GetOutput()
                 point_data = pdata.GetPointData()
                 pos = pdata.GetPoint( pointId )
@@ -173,7 +173,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
                 data_value = level_ispec.getDataValue( image_data_value )
                 textDisplay = " Position: (%.2f, %.2f, %.2f), Level Value: %.3G %s" % ( pos[0], pos[1], pos[2], data_value, level_ispec.units )  
                 texture_ispec = self.getInputSpec(  1 )                
-                if texture_ispec and texture_ispec.input:
+                if texture_ispec and texture_ispec.input():
                     tex_pdata = self.probeFilter.GetOutput()
                     tex_point_data = tex_pdata.GetPointData()
                     tex_scalarsArray = tex_point_data.GetScalars()
@@ -239,8 +239,8 @@ class PM_LevelSurface(PersistentVisualizationModule):
 
     def setInputZScale( self, zscale_data, **args  ):       
         texture_ispec = self.getInputSpec(  1 )                
-        if texture_ispec and texture_ispec.input:
-            textureInput = texture_ispec.input 
+        if texture_ispec and texture_ispec.input():
+            textureInput = texture_ispec.input() 
             ix, iy, iz = textureInput.GetSpacing()
             sz = zscale_data[1]
             textureInput.SetSpacing( ix, iy, sz )  
@@ -257,7 +257,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         
     def setColorScale( self, range, cmap_index=0, **args  ):
         ispec = self.getInputSpec( cmap_index )
-        if ispec and ispec.input:
+        if ispec and ispec.input():
             imageRange = self.getImageValues( range[0:2], cmap_index ) 
             colormapManager = self.getColormapManager( index=cmap_index )
             colormapManager.setScale( imageRange, range )
@@ -351,10 +351,10 @@ class PM_LevelSurface(PersistentVisualizationModule):
         print "Data Type = %s, range = (%f,%f), range bounds = (%f,%f), max_scalar = %s" % ( dataType, self.range[0], self.range[1], rangeBounds[0], rangeBounds[1], self._max_scalar_value )
         self.probeFilter = None
         textureRange = self.range
-        if texture_ispec and texture_ispec.input:
+        if texture_ispec and texture_ispec.input():
             self.probeFilter = vtk.vtkProbeFilter()
-            textureRange = texture_ispec.input.GetScalarRange()
-            self.probeFilter.SetSource( texture_ispec.input )
+            textureRange = texture_ispec.input().GetScalarRange()
+            self.probeFilter.SetSource( texture_ispec.input() )
             self.generateTexture = True
 
         if (self.surfacePicker == None):           
@@ -373,7 +373,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
             self.levelSetMapper.SetInputConnection( self.probeFilter.GetOutputPort() ) 
             self.levelSetMapper.SetScalarRange( textureRange )
             
-        if texture_ispec and texture_ispec.input:
+        if texture_ispec and texture_ispec.input():
             colormapManager = self.getColormapManager( index=1 )     
             colormapManager.setAlphaRange ( self.opacityRange ) 
             self.levelSetMapper.SetLookupTable( colormapManager.lut ) 
