@@ -774,6 +774,8 @@ class ProjectController(QtCore.QObject):
                 self.update_cell(sheetName, row, col, reuse_workflow)
                 if sheetName != self.current_sheetName or [row,col] != self.current_cell_coords:
                     self.current_cell_changed(sheetName, row, col)
+                cell.pushUndoVersion()
+                self.checkEnableUndoRedo(cell)
         except KeyError, err:
             traceback.print_exc( 100, sys.stderr )
             
@@ -928,6 +930,7 @@ class ProjectController(QtCore.QObject):
             cell = self.sheet_map[sheetName][(row, col)]
             cell.current_parent_version = action.id
             cell.pushUndoVersion()
+            self.checkEnableUndoRedo(cell)
             self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
                       None, None, cell.plots[0].package, 
                       cell.current_parent_version)
