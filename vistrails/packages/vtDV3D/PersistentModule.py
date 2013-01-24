@@ -36,7 +36,7 @@ def IsListType( val ):
     valtype = type(val)
     return ( valtype ==type(list()) ) or  ( valtype ==type(tuple()) )
 
-def intersectExtents( e0, e1 ):
+def intersectExtents( e1, e2 ):
     int_ext = []
     intersectionRequired = False
     if e1 and e2:
@@ -170,7 +170,7 @@ class InputSpecs:
     def initializeInput( self, inputIndex, moduleID ): 
         if self.inputModule:
             raw_input = self.inputModule.getOutput()  
-            ispec._input =  self.selectInputArray( raw_input, inputIndex, moduleID )                             
+            self._input =  self.selectInputArray( raw_input, inputIndex, moduleID )                             
             self.updateMetadata()
             return True
         return False
@@ -812,7 +812,7 @@ class PersistentModule( QObject ):
                 inMod = self.getPrimaryInput( port=inputPort, **args )
                 if inMod: ispec.inputModule = inMod
                 
-            if  ispec.initializeInput( inputIndex, self.moduleId ): 
+            if  ispec.initializeInput( inputIndex, self.moduleID ): 
                 
                 if inputIndex == 0:     
                     self.setParameter( 'metadata', ispec.metadata ) 
