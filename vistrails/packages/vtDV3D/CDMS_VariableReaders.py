@@ -329,7 +329,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         if dataDebug: self.dumpData( varName, newDataArray )
                         flatArray = newDataArray.ravel('F') 
                         if npts == -1:  npts = flatArray.size
-                        else:           assert( npts == flatArray.size )
+#                        else:           assert( npts == flatArray.size )
                             
                         var_md = copy.copy( varData.attributes )
                         var_md[ 'range' ] = ( range_min, range_max )
