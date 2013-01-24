@@ -117,8 +117,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         rv = PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args ) 
         if rv:
             ispec = self.getInputSpec(  1 )       
-            if (ispec <> None) and (ispec.input <> None):
-                contourInput = ispec.input 
+            if (ispec <> None) and (ispec.input() <> None):
+                contourInput = ispec.input() 
                 ix, iy, iz = contourInput.GetSpacing()
                 sz = zscale_data[1]
                 contourInput.SetSpacing( ix, iy, sz )  
@@ -194,7 +194,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #                self.input() = contourModule.getOutput() 
 #            else:
 #                print>>sys.stderr, "Error, must provide an input to the Volume Slicer module!"
+        self.intersectInputExtents()
         contour_ispec = self.getInputSpec(  1 )       
+
         contourInput = contour_ispec.input if contour_ispec <> None else None
         primaryInput = self.input()
 
@@ -274,7 +276,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.updateOpacity() 
         
-        if (contour_ispec <> None) and (contour_ispec.input <> None) and (self.contours == None):
+        if (contour_ispec <> None) and (contour_ispec.input() <> None) and (self.contours == None):
             rangeBounds = self.getRangeBounds(1)
             colormapManager = self.getColormapManager( index=1 )
             self.generateContours = True   
@@ -570,7 +572,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
     def scaleColormap( self, ctf_data, cmap_index=0, **args ):
         ispec = self.inputSpecs[ cmap_index ]
-        if ispec and ispec.input: 
+        if ispec and ispec.input(): 
             colormapManager = self.getColormapManager( index=cmap_index )
 #            if not colormapManager.matchDisplayRange( ctf_data ):
             imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
