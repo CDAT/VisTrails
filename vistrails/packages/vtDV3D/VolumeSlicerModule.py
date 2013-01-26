@@ -424,7 +424,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 slice_data.Update()                
                 self.contours.SetInput( slice_data )
                 self.contours.Modified()
-                origin = caller.GetOrigin2()
+                origin = caller.GetOrigin()
                 contourLineActor = self.getContourActor( iAxis )
                 contourLineActor.SetPosition( origin[0], origin[1], origin[2] )
 #                contourLineActor.SetOrigin( origin[0], origin[1], origin[2] )

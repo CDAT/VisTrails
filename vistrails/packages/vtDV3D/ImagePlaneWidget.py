@@ -46,7 +46,6 @@ class ImagePlaneWidget:
         self.CurrentImageValue2 = vtk.VTK_DOUBLE_MAX
         self.NavigationInteractorStyle = None
         self.ConfigurationInteractorStyle = vtk.vtkInteractorStyleUser()
-        self.Input2Offset = [0,0,0]
         self.Input2ExtentOffset = [0,0,0]        
                         
         # Represent the plane's outline
@@ -54,9 +53,6 @@ class ImagePlaneWidget:
         self.PlaneSource  = vtk.vtkPlaneSource()
         self.PlaneSource.SetXResolution(1)
         self.PlaneSource.SetYResolution(1)
-        self.PlaneSource2  = vtk.vtkPlaneSource()
-        self.PlaneSource2.SetXResolution(1)
-        self.PlaneSource2.SetYResolution(1)
         self.PlaneOutlinePolyData  = vtk.vtkPolyData()
         self.PlaneOutlineActor     = vtk.vtkActor()
             
@@ -753,15 +749,13 @@ class ImagePlaneWidget:
 
     def UpdatePlane(self):
         resliceFilters = [ self.Reslice, self.Reslice2 ]
-        planeSources = [ self.PlaneSource, self.PlaneSource2 ]
-        bounds0 = None
+        planeSource = self.PlaneSource
         origin0 = None
          
         for iInputIndex in range(2):
             reslicer =  resliceFilters[ iInputIndex ]   
             resliceAxes   = vtk.vtkMatrix4x4()
             imageData  = reslicer.GetInput()
-            planeSource = planeSources[ iInputIndex ] 
             if (  not reslicer or not imageData ): return
              
             if iInputIndex == 0:   self.ImageData = imageData
@@ -775,10 +769,8 @@ class ImagePlaneWidget:
             extent = imageData.GetWholeExtent()        
             bounds = [ origin[0] + spacing[0]*extent[0], origin[0] + spacing[0]*extent[1],  origin[1] + spacing[1]*extent[2],  origin[1] + spacing[1]*extent[3],  origin[2] + spacing[2]*extent[4],  origin[2] + spacing[2]*extent[5] ]    
             if iInputIndex == 0:    
-                bounds0 = bounds
                 origin0 = origin
             else:                   
-                self.Input2Offset = [ (bounds[i]-bounds0[i]) for i in range(0,6,2) ]
                 self.Input2ExtentOffset = [ int( round( ( origin[i] - origin0[i] ) / spacing[i] ) ) for i in range(3) ]
                
             for j in range( 3 ): 
@@ -1150,10 +1142,6 @@ class ImagePlaneWidget:
 
 
 #----------------------------------------------------------------------------
-    def GetOrigin2( self ):
-        origin = self.PlaneSource.GetOrigin()
-        origin2 = [ origin[i] + self.Input2Offset[i] for i in range(3) ] 
-        return origin2 
     
     def GetOrigin( self ):
         return self.PlaneSource.GetOrigin() 
