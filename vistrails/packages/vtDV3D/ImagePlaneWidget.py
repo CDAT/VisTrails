@@ -46,12 +46,17 @@ class ImagePlaneWidget:
         self.CurrentImageValue2 = vtk.VTK_DOUBLE_MAX
         self.NavigationInteractorStyle = None
         self.ConfigurationInteractorStyle = vtk.vtkInteractorStyleUser()
+        self.Input2Offset = [0,0,0]
+        self.Input2ExtentOffset = [0,0,0]        
                         
         # Represent the plane's outline
         #
         self.PlaneSource  = vtk.vtkPlaneSource()
         self.PlaneSource.SetXResolution(1)
         self.PlaneSource.SetYResolution(1)
+        self.PlaneSource2  = vtk.vtkPlaneSource()
+        self.PlaneSource2.SetXResolution(1)
+        self.PlaneSource2.SetYResolution(1)
         self.PlaneOutlinePolyData  = vtk.vtkPolyData()
         self.PlaneOutlineActor     = vtk.vtkActor()
             
@@ -63,7 +68,6 @@ class ImagePlaneWidget:
         self.Reslice.TransformInputSamplingOff()
         self.Reslice2 = vtk.vtkImageReslice()
         self.Reslice2.TransformInputSamplingOff()
-        self.ResliceAxes   = vtk.vtkMatrix4x4()
         self.Texture = vtk.vtkTexture()
         self.TexturePlaneActor   = vtk.vtkActor()
         self.Transform     = vtk.vtkTransform()
@@ -712,6 +716,8 @@ class ImagePlaneWidget:
     
         self.ImageData = inputData
         self.ImageData2 = inputData2
+        ext0 = inputData.GetWholeExtent()      
+        ext2 = inputData2.GetWholeExtent()      
         
         if(  not self.ImageData ):       
             # If None is passed, remove any reference that Reslice had
@@ -746,97 +752,111 @@ class ImagePlaneWidget:
         self.outlineMap = outlineMap
 
     def UpdatePlane(self):
-        
-        self.ImageData  =self.Reslice.GetInput()
-        if (  not self.Reslice or not self.ImageData ): return
-           
-        # Calculate appropriate pixel spacing for the reslicing
-        #
-        self.ImageData.UpdateInformation()
-        spacing = self.ImageData.GetSpacing()
-        origin = self.ImageData.GetOrigin()
-        extent = self.ImageData.GetWholeExtent()        
-        bounds = [ origin[0] + spacing[0]*extent[0], origin[0] + spacing[0]*extent[1],  origin[1] + spacing[1]*extent[2],  origin[1] + spacing[1]*extent[3],  origin[2] + spacing[2]*extent[4],  origin[2] + spacing[2]*extent[5] ]    
-        
-        for j in range( 3 ): 
-            i = 2*j   
-            if ( bounds[i] > bounds[i+1] ):
-                t = bounds[i+1]
-                bounds[i+1] = bounds[i]
-                bounds[i] = t
-           
-        abs_normal = list( self.PlaneSource.GetNormal() )
-        planeCenter = list( self.PlaneSource.GetCenter() )
-        nmax = 0.0
-        k = 0
-        for i in range( 3 ):    
-            abs_normal[i] = abs(abs_normal[i])
-            if ( abs_normal[i]>nmax ):       
-                nmax = abs_normal[i]
-                k = i
-            
-        # Force the plane to lie within the true image bounds along its normal
-        #
-        if ( planeCenter[k] > bounds[2*k+1] ):    
-            planeCenter[k] = bounds[2*k+1]   
-        elif ( planeCenter[k] < bounds[2*k] ):   
-            planeCenter[k] = bounds[2*k]
+        resliceFilters = [ self.Reslice, self.Reslice2 ]
+        planeSources = [ self.PlaneSource, self.PlaneSource2 ]
+        bounds0 = None
+        origin0 = None
+         
+        for iInputIndex in range(2):
+            reslicer =  resliceFilters[ iInputIndex ]   
+            resliceAxes   = vtk.vtkMatrix4x4()
+            imageData  = reslicer.GetInput()
+            planeSource = planeSources[ iInputIndex ] 
+            if (  not reslicer or not imageData ): return
+             
+            if iInputIndex == 0:   self.ImageData = imageData
+            else:                  self.ImageData2 = imageData
+                         
+            # Calculate appropriate pixel spacing for the reslicing
+            #
+            imageData.UpdateInformation()
+            spacing = imageData.GetSpacing()
+            origin = imageData.GetOrigin()
+            extent = imageData.GetWholeExtent()        
+            bounds = [ origin[0] + spacing[0]*extent[0], origin[0] + spacing[0]*extent[1],  origin[1] + spacing[1]*extent[2],  origin[1] + spacing[1]*extent[3],  origin[2] + spacing[2]*extent[4],  origin[2] + spacing[2]*extent[5] ]    
+            if iInputIndex == 0:    
+                bounds0 = bounds
+                origin0 = origin
+            else:                   
+                self.Input2Offset = [ (bounds[i]-bounds0[i]) for i in range(0,6,2) ]
+                self.Input2ExtentOffset = [ int( round( ( origin[i] - origin0[i] ) / spacing[i] ) ) for i in range(3) ]
                
-        self.PlaneSource.SetCenter(planeCenter)
+            for j in range( 3 ): 
+                i = 2*j   
+                if ( bounds[i] > bounds[i+1] ):
+                    t = bounds[i+1]
+                    bounds[i+1] = bounds[i]
+                    bounds[i] = t
+               
+            abs_normal = list( planeSource.GetNormal() )
+            planeCenter = list( planeSource.GetCenter() )
+            nmax = 0.0
+            k = 0
+            for i in range( 3 ):    
+                abs_normal[i] = abs(abs_normal[i])
+                if ( abs_normal[i]>nmax ):       
+                    nmax = abs_normal[i]
+                    k = i
+                
+            # Force the plane to lie within the true image bounds along its normal
+            #
+            if ( planeCenter[k] > bounds[2*k+1] ):    
+                planeCenter[k] = bounds[2*k+1]   
+            elif ( planeCenter[k] < bounds[2*k] ):   
+                planeCenter[k] = bounds[2*k]
+                   
+            planeSource.SetCenter(planeCenter)
+                
+            planeAxis1 = self.GetVector1()
+            planeAxis2 = self.GetVector2()
             
-        planeAxis1 = self.GetVector1()
-        planeAxis2 = self.GetVector2()
-        
-        # The x,y dimensions of the plane
-        #
-        planeSizeX  = vtk.vtkMath.Normalize(planeAxis1)
-        planeSizeY  = vtk.vtkMath.Normalize(planeAxis2)
-        normal = list( self.PlaneSource.GetNormal() )
-        
-        # Generate the slicing matrix
-        #
-        
-        self.ResliceAxes.Identity()
-        for i in range( 3 ):       
-            self.ResliceAxes.SetElement(0,i,planeAxis1[i])
-            self.ResliceAxes.SetElement(1,i,planeAxis2[i])
-            self.ResliceAxes.SetElement(2,i,normal[i])
-           
-        srcPlaneOrigin = self.PlaneSource.GetOrigin()         
-        planeOrigin = [ srcPlaneOrigin[0], srcPlaneOrigin[1], srcPlaneOrigin[2], 1.0 ]
-        originXYZW = self.ResliceAxes.MultiplyPoint(planeOrigin)    
-        self.ResliceAxes.Transpose()
-        neworiginXYZW = self.ResliceAxes.MultiplyPoint(originXYZW) 
-        
-        self.ResliceAxes.SetElement(0,3,neworiginXYZW[0])
-        self.ResliceAxes.SetElement(1,3,neworiginXYZW[1])
-        self.ResliceAxes.SetElement(2,3,neworiginXYZW[2])
-        
-        self.Reslice.SetResliceAxes(self.ResliceAxes)
-        self.Reslice2.SetResliceAxes(self.ResliceAxes)
-        
-        spacingX = abs(planeAxis1[0]*spacing[0]) + abs(planeAxis1[1]*spacing[1]) + abs(planeAxis1[2]*spacing[2])   
-        spacingY = abs(planeAxis2[0]*spacing[0]) + abs(planeAxis2[1]*spacing[1]) + abs(planeAxis2[2]*spacing[2])
-        
-        # make sure we're working with valid values
-        realExtentX = vtk.VTK_INT_MAX if ( spacingX == 0 ) else planeSizeX / spacingX       
-        # make sure extentY doesn't wrap during padding
-        realExtentY = vtk.VTK_INT_MAX if ( spacingY == 0 ) else planeSizeY / spacingY
-
-        extentX = 1
-        while (extentX < realExtentX): extentX = extentX << 1
-        extentY = 1
-        while (extentY < realExtentY): extentY = extentY << 1
+            # The x,y dimensions of the plane
+            #
+            planeSizeX  = vtk.vtkMath.Normalize(planeAxis1)
+            planeSizeY  = vtk.vtkMath.Normalize(planeAxis2)
+            normal = list( planeSource.GetNormal() )
             
-        outputSpacingX = 1.0 if (planeSizeX == 0) else planeSizeX/extentX
-        outputSpacingY = 1.0 if (planeSizeY == 0) else planeSizeY/extentY
-        self.Reslice.SetOutputSpacing(outputSpacingX, outputSpacingY, 1)
-        self.Reslice.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
-        self.Reslice.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
-        self.Reslice2.SetOutputSpacing(outputSpacingX, outputSpacingY, 1)
-        self.Reslice2.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
-        self.Reslice2.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
+            # Generate the slicing matrix
+            #
+            
+            resliceAxes.Identity()
+            for i in range( 3 ):       
+                resliceAxes.SetElement(0,i,planeAxis1[i])
+                resliceAxes.SetElement(1,i,planeAxis2[i])
+                resliceAxes.SetElement(2,i,normal[i])
+               
+            srcPlaneOrigin = planeSource.GetOrigin()         
+            planeOrigin = [ srcPlaneOrigin[0], srcPlaneOrigin[1], srcPlaneOrigin[2], 1.0 ]
+            originXYZW = resliceAxes.MultiplyPoint(planeOrigin)    
+            resliceAxes.Transpose()
+            neworiginXYZW = resliceAxes.MultiplyPoint(originXYZW) 
+            
+            resliceAxes.SetElement(0,3,neworiginXYZW[0])
+            resliceAxes.SetElement(1,3,neworiginXYZW[1])
+            resliceAxes.SetElement(2,3,neworiginXYZW[2])
+            
+            reslicer.SetResliceAxes(resliceAxes)
+            
+            spacingX = abs(planeAxis1[0]*spacing[0]) + abs(planeAxis1[1]*spacing[1]) + abs(planeAxis1[2]*spacing[2])   
+            spacingY = abs(planeAxis2[0]*spacing[0]) + abs(planeAxis2[1]*spacing[1]) + abs(planeAxis2[2]*spacing[2])
+            
+            # make sure we're working with valid values
+            realExtentX = vtk.VTK_INT_MAX if ( spacingX == 0 ) else planeSizeX / spacingX       
+            # make sure extentY doesn't wrap during padding
+            realExtentY = vtk.VTK_INT_MAX if ( spacingY == 0 ) else planeSizeY / spacingY
     
+            extentX = 1
+            while (extentX < realExtentX): extentX = extentX << 1
+            extentY = 1
+            while (extentY < realExtentY): extentY = extentY << 1
+                
+            outputSpacingX = 1.0 if (planeSizeX == 0) else planeSizeX/extentX
+            outputSpacingY = 1.0 if (planeSizeY == 0) else planeSizeY/extentY
+            
+            reslicer.SetOutputSpacing(outputSpacingX, outputSpacingY, 1)
+            reslicer.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
+            reslicer.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
+               
 #----------------------------------------------------------------------------
 
     def GetResliceOutput(self):      
@@ -1110,7 +1130,12 @@ class ImagePlaneWidget:
             self.CurrentCursorPosition[i] = int(iq)
                   
         self.CurrentImageValue = self.ImageData.GetScalarComponentAsDouble( self.CurrentCursorPosition[0], self.CurrentCursorPosition[1], self.CurrentCursorPosition[2], 0 )
-        if self.ImageData2: self.CurrentImageValue2 = self.ImageData2.GetScalarComponentAsDouble( self.CurrentCursorPosition[0], self.CurrentCursorPosition[1], self.CurrentCursorPosition[2], 0 )
+        if self.ImageData2:
+            extent = self.ImageData2.GetExtent() 
+            pos2 = [ (self.CurrentCursorPosition[i] - self.Input2ExtentOffset[i]) for i in range(3) ] 
+            if ( (pos2[0] >= extent[0]) and (pos2[0] <= extent[1]) and (pos2[1] >= extent[2]) and (pos2[1] <= extent[3]) and (pos2[2] >= extent[4]) and (pos2[2] <= extent[5]) ):
+                self.CurrentImageValue2 = self.ImageData2.GetScalarComponentAsDouble( pos2[0], pos2[1], pos2[2], 0 )
+            else: self.CurrentImageValue2 = None
         return rq
 
 #----------------------------------------------------------------------------
@@ -1125,8 +1150,13 @@ class ImagePlaneWidget:
 
 
 #----------------------------------------------------------------------------
+    def GetOrigin2( self ):
+        origin = self.PlaneSource.GetOrigin()
+        origin2 = [ origin[i] + self.Input2Offset[i] for i in range(3) ] 
+        return origin2 
+    
     def GetOrigin( self ):
-        return self.PlaneSource.GetOrigin()
+        return self.PlaneSource.GetOrigin() 
 
 #----------------------------------------------------------------------------
 

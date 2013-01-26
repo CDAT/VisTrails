@@ -177,7 +177,9 @@ class InputSpecs:
         
     def input( self ):
         if self.clipper:
-            return self.clipper.GetOutput()
+            input = self.clipper.GetOutput()
+            input.Update()
+            return input
         return self._input
         
     def clipInput( self, extent ):
@@ -516,8 +518,9 @@ class PersistentModule( QObject ):
                 ext_list.append( ispec.input().GetExtent() )
         ie = intersectExtentList( ext_list )
         if ie:
-            for ispec in self.inputSpecs.values():
+            for ( ispecIndex, ispec ) in self.inputSpecs.items():
                 ispec.clipInput( ie )
+                self.reInitInput( ispecIndex )
             
     def getUnits(self, input_index=0 ):
         ispec = self.inputSpecs[ input_index ] 
@@ -792,6 +795,14 @@ class PersistentModule( QObject ):
         image_data.SetSpacing( gridSpacing[0], gridSpacing[1], gridSpacing[2] )
         image_data.SetExtent( gridExtent[0], gridExtent[1], gridExtent[2], gridExtent[3], gridExtent[4], gridExtent[5] )
         return image_data
+    
+    def reInitInput( self, inputIndex ):
+        ispec = self.inputSpecs[ inputIndex ] 
+        if  ispec.initializeInput( inputIndex, self.moduleID ):            
+            if inputIndex == 0:     self.setParameter( 'metadata', ispec.metadata ) 
+            else:                   self.setParameter( 'metadata-%d' % inputIndex, ispec.metadata )
+            self.roi = ispec.metadata.get( 'bounds', None )  
+            ispec.initializeScalarRange()
 
     def initializeInputs( self, **args ):
         isAnimation = args.get( 'animate', False )
@@ -1825,10 +1836,11 @@ class PersistentVisualizationModule( PersistentModule ):
         ds= ModuleStore.getCdmsDataset( ispec.datasetId )
         
         if ds <> None:
-            if len(ds.transientVariables)<>1:
-                print 'ERROR: this module has many', 
-            var = ds.transientVariables.values()[0]
-            lensActor.SetYRange(var.min(), var.max())
+            if len(ds.transientVariables)>1:
+                print 'ERROR: this module has many transient Variables'
+            if len(ds.transientVariables)>0:
+                var = ds.transientVariables.values()[0]
+                lensActor.SetYRange(var.min(), var.max())
 
         prop = lensActor.GetProperty()
         prop.SetColor( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] )

@@ -194,10 +194,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #                self.input() = contourModule.getOutput() 
 #            else:
 #                print>>sys.stderr, "Error, must provide an input to the Volume Slicer module!"
-        self.intersectInputExtents()
+ #       self.intersectInputExtents()
         contour_ispec = self.getInputSpec(  1 )       
 
-        contourInput = contour_ispec.input if contour_ispec <> None else None
+        contourInput = contour_ispec.input() if contour_ispec <> None else None
         primaryInput = self.input()
 
 #        self.contourInput = None if contourModule == None else contourModule.getOutput() 
@@ -356,7 +356,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def updateModule(self, **args ):
         primaryInput = self.input()
         contour_ispec = self.getInputSpec(  1 )       
-        contourInput = contour_ispec.input if contour_ispec <> None else None
+        contourInput = contour_ispec.input() if contour_ispec <> None else None
         self.planeWidgetX.SetInput( primaryInput, contourInput )         
         self.planeWidgetY.SetInput( primaryInput, contourInput )         
         self.planeWidgetZ.SetInput( primaryInput, contourInput ) 
@@ -385,10 +385,13 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 dataValue = self.getDataValue( image_value )
                 wpos = ispec.getWorldCoords( cpos )
                 if self.generateContours:
-                    contour_image_value = cursor_data[4] 
-                    contour_value = self.getDataValue( contour_image_value, 1 )
-                    contour_units = self.getUnits(1)
-                    textDisplay = " Position: (%s, %s, %s), Value: %.3G %s, Contour Value: %.3G %s" % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units, contour_value, contour_units )
+                    contour_image_value = cursor_data[4]
+                    if  contour_image_value:
+                        contour_value = self.getDataValue( contour_image_value, 1 )
+                        contour_units = self.getUnits(1)
+                        textDisplay = " Position: (%s, %s, %s), Value: %.3G %s, Contour Value: %.3G %s" % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units, contour_value, contour_units )
+                    else:
+                        textDisplay = " Position: (%s, %s, %s), Value: %.3G %s" % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units )
 #                    print " >>>>> Current Image Value: %d %d, data value: %.3G, contour value: %.3G, pos = %s, (%s) " % ( image_value, contour_image_value, dataValue, contour_value, str(cpos), str(wpos) )
                 else:
                     textDisplay = " Position: (%s, %s, %s), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units )
@@ -421,12 +424,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 slice_data.Update()                
                 self.contours.SetInput( slice_data )
                 self.contours.Modified()
-                pos1 = caller.GetPoint1()
-                pos2 = caller.GetPoint2()
-                origin = caller.GetOrigin()
+                origin = caller.GetOrigin2()
                 contourLineActor = self.getContourActor( iAxis )
                 contourLineActor.SetPosition( origin[0], origin[1], origin[2] )
-#                contourLineActor.SetOrigin( origin[0] + 0.1, origin[1] + 0.1, origin[2] + 0.1 )
+#                contourLineActor.SetOrigin( origin[0], origin[1], origin[2] )
                 self.setVisibleContour( iAxis )
                 
             self.render()

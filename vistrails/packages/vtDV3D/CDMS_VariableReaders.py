@@ -119,12 +119,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     def execute(self, **args ):
         import api
         from packages.vtDV3D.CDMS_DatasetReaders import CDMSDataset
-        cdms_vars = self.getInputValues( "variable"  ) 
-        if cdms_vars and len(cdms_vars):
-            iVar = 1
-            cdms_var = cdms_vars.pop(0)
+        cdms_var = self.getInputValue( "variable"  ) 
+        if cdms_var:
             self.cdmsDataset = CDMSDataset()
-            var, dsetId = self.addCDMSVariable( cdms_var, iVar )
+            var, dsetId = self.addCDMSVariable( cdms_var, 1 )
             self.newDataset = ( self.datasetId <> dsetId )
             if self.newDataset: ModuleStore.archiveCdmsDataset( dsetId, self.cdmsDataset )
             self.newLayerConfiguration = self.newDataset
@@ -158,17 +156,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.useTimeIndex = timeData[2]
 #            print "Set Time [mid = %d]: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( self.moduleID, str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
 #            print "Time Step Labels: %s" % str( self.timeLabels )
-            while( len(cdms_vars) ):
-                cdms_var2 = cdms_vars.pop(0)
-                if cdms_var2: 
-                    iVar = iVar+1
-                    self.addCDMSVariable( cdms_var2, iVar )
-                               
-            for iVarInputIndex in range( 2,5 ):
-                cdms_var2 = self.getInputValue( "variable%d" % iVarInputIndex  ) 
-                if cdms_var2: 
-                    iVar = iVar+1
-                    self.addCDMSVariable( cdms_var2, iVar )
+            for iVar in range( 2,5 ):
+                cdms_var2 = self.getInputValue( "variable%d" % iVar  ) 
+                if cdms_var2: self.addCDMSVariable( cdms_var2, iVar )
             self.generateOutput()
 #            if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
         else:
@@ -253,7 +243,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 
     def setCurrentLevel(self, level ): 
         self.currentLevel = level
-       
+               
     def getImageData( self, orec, **args ):
         """
         This method converts cdat data into vtkImageData objects. The ds object is a CDMSDataset instance which wraps a CDAT CDMS Dataset object. 
@@ -265,6 +255,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         varList = orec.varList
         npts = -1
         dataDebug = False
+        useVarDataCache = False
         if len( varList ) == 0: return False
         varDataIds = []
         exampleVarDataSpecs = None
@@ -297,7 +288,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     varDataIdIndex = selectedLevel
             varDataId = '%s;%s;%d;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex) )
             varDataIds.append( varDataId )
-            varDataSpecs = self.getCachedData( varDataId )
+            varDataSpecs = self.getCachedData( varDataId ) if useVarDataCache else None
             flatArray = None
             if varDataSpecs == None:
                 if varName == '__zeros__':
@@ -329,7 +320,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         if dataDebug: self.dumpData( varName, newDataArray )
                         flatArray = newDataArray.ravel('F') 
                         if npts == -1:  npts = flatArray.size
-#                        else:           assert( npts == flatArray.size )
+                        else:           assert( npts == flatArray.size )
                             
                         var_md = copy.copy( varData.attributes )
                         var_md[ 'range' ] = ( range_min, range_max )
