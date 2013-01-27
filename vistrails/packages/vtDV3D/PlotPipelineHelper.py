@@ -1120,16 +1120,19 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             reader_modules = reader_1v_modules + reader_3v_modules
             ops = []           
             nInputs = 1 if len( reader_1v_modules ) else 3
+
             iReaderModule = 0
             module = reader_modules[iReaderModule]
+            added_modules = []
             if nInputs == 1:
                 inputPort = 'variable'
                 for iInput in range( len( var_modules ) ):
                     try:
                         var_module = var_modules[ iInput ]
                         var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
-                        if var_module_in_pipeline == None: 
+                        if (var_module_in_pipeline == None) and not (var_module.id in added_modules):  
                             ops.append( ( 'add', var_module ) )
+                            added_modules.append( var_module.id )
                         conn1 = controller.create_connection( var_module, 'self', module, inputPort )
                         ops.append( ( 'add', conn1 ) )
                         iReaderModule = iReaderModule + 1
@@ -1145,12 +1148,16 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                         try:
                             var_module = var_modules[ iVarModule ]
                             var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
-                            if var_module_in_pipeline == None: 
+                            if (var_module_in_pipeline == None) and not (var_module.id in added_modules): 
                                 ops.append( ( 'add', var_module ) )
+                                added_modules.append( var_module.id )
                             inputPort = 'variable' if (iInput == 0) else "variable%d" % ( iInput + 1)
                             conn1 = controller.create_connection( var_module, 'self', module, inputPort )
                             ops.append( ( 'add', conn1 ) )
                             iVarModule = iVarModule+1
+                        except Exception, err:
+                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                            break
                         except Exception, err:
                             print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
                             break
