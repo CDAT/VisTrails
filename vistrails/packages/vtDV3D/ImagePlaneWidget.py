@@ -712,8 +712,6 @@ class ImagePlaneWidget:
     
         self.ImageData = inputData
         self.ImageData2 = inputData2
-        ext0 = inputData.GetWholeExtent()      
-        ext2 = inputData2.GetWholeExtent()      
         
         if(  not self.ImageData ):       
             # If None is passed, remove any reference that Reslice had
