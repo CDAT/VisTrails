@@ -1120,7 +1120,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             reader_modules = reader_1v_modules + reader_3v_modules
             ops = []           
             nInputs = 1 if len( reader_1v_modules ) else 3
-            module = reader_modules[0]
+            iReaderModule = 0
+            module = reader_modules[iReaderModule]
             if nInputs == 1:
                 inputPort = 'variable'
                 for iInput in range( len( var_modules ) ):
@@ -1131,6 +1132,9 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                             ops.append( ( 'add', var_module ) )
                         conn1 = controller.create_connection( var_module, 'self', module, inputPort )
                         ops.append( ( 'add', conn1 ) )
+                        iReaderModule = iReaderModule + 1
+                        if iReaderModule < len( reader_modules ):
+                            module = reader_modules[iReaderModule]
                     except Exception, err:
                         print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
                         break                                     
