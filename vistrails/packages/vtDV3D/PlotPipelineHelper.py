@@ -1121,26 +1121,40 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             ops = []           
             nInputs = 1 if len( reader_1v_modules ) else 3
 
-            iReaderModule = 0
-            module = reader_modules[iReaderModule]
+            module = reader_modules[0]
             added_modules = []
             if nInputs == 1:
                 inputPort = 'variable'
-                for iInput in range( len( var_modules ) ):
-                    try:
-                        var_module = var_modules[ iInput ]
-                        var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
-                        if (var_module_in_pipeline == None) and not (var_module.id in added_modules):  
-                            ops.append( ( 'add', var_module ) )
-                            added_modules.append( var_module.id )
-                        conn1 = controller.create_connection( var_module, 'self', module, inputPort )
-                        ops.append( ( 'add', conn1 ) )
-                        iReaderModule = iReaderModule + 1
-                        if iReaderModule < len( reader_modules ):
-                            module = reader_modules[iReaderModule]
-                    except Exception, err:
-                        print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
-                        break                                     
+                if len( reader_modules ) == 1:
+                    module = reader_modules[0]
+                    for iInput in range( len( var_modules ) ):
+                        try:
+                            var_module = var_modules[ iInput ]
+                            var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
+                            if (var_module_in_pipeline == None) and not (var_module.id in added_modules):  
+                                ops.append( ( 'add', var_module ) )
+                                added_modules.append( var_module.id )
+                            conn1 = controller.create_connection( var_module, 'self', module, inputPort )
+                            ops.append( ( 'add', conn1 ) )
+                        except Exception, err:
+                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                            break  
+                elif len( reader_modules ) == len( var_modules ):
+                    for iInput in range( len( var_modules ) ):
+                        try:
+                            var_module = var_modules[ iInput ]
+                            module = reader_modules[ iInput ]
+                            var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
+                            if (var_module_in_pipeline == None) and not (var_module.id in added_modules):  
+                                ops.append( ( 'add', var_module ) )
+                                added_modules.append( var_module.id )
+                            conn1 = controller.create_connection( var_module, 'self', module, inputPort )
+                            ops.append( ( 'add', conn1 ) )
+                        except Exception, err:
+                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                            break  
+                else:
+                    print>>sys.stderr, "Don't know how to match %d CDMSVariable inputs to %d CDMSReader modules" % ( len( var_modules ), len( reader_modules ) )                                                                                      
             else: 
                 iVarModule = 0
                 for iInput in range( nInputs ):
