@@ -253,7 +253,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 
     def setCurrentLevel(self, level ): 
         self.currentLevel = level
-       
+               
     def getImageData( self, orec, **args ):
         """
         This method converts cdat data into vtkImageData objects. The ds object is a CDMSDataset instance which wraps a CDAT CDMS Dataset object. 
@@ -265,6 +265,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         varList = orec.varList
         npts = -1
         dataDebug = False
+        useVarDataCache = False
         if len( varList ) == 0: return False
         varDataIds = []
         exampleVarDataSpecs = None
@@ -297,7 +298,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     varDataIdIndex = selectedLevel
             varDataId = '%s;%s;%d;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex) )
             varDataIds.append( varDataId )
-            varDataSpecs = self.getCachedData( varDataId )
+            varDataSpecs = self.getCachedData( varDataId ) if useVarDataCache else None
             flatArray = None
             if varDataSpecs == None:
                 if varName == '__zeros__':
