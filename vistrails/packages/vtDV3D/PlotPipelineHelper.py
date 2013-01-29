@@ -1124,11 +1124,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             module = reader_modules[0]
             added_modules = []
             if nInputs == 1:
-                inputPort = 'variable'
                 if len( reader_modules ) == 1:
                     module = reader_modules[0]
                     for iInput in range( len( var_modules ) ):
                         try:
+                            inputPort = 'variable' if (iInput == 0) else "variable%d" % ( iInput + 1)
                             var_module = var_modules[ iInput ]
                             var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
                             if (var_module_in_pipeline == None) and not (var_module.id in added_modules):  
@@ -1140,6 +1140,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                             print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
                             break  
                 elif len( reader_modules ) == len( var_modules ):
+                    inputPort = 'variable'
                     for iInput in range( len( var_modules ) ):
                         try:
                             var_module = var_modules[ iInput ]
