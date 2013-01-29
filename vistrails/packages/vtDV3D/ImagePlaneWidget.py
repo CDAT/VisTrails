@@ -858,6 +858,7 @@ class ImagePlaneWidget:
         resliceFilters = [ self.Reslice, self.Reslice2 ]
         planeSource = self.PlaneSource
         origin0 = None
+        bounds0 = None
          
         for iInputIndex in range(2):
             reslicer =  resliceFilters[ iInputIndex ]   
@@ -877,8 +878,10 @@ class ImagePlaneWidget:
             bounds = [ origin[0] + spacing[0]*extent[0], origin[0] + spacing[0]*extent[1],  origin[1] + spacing[1]*extent[2],  origin[1] + spacing[1]*extent[3],  origin[2] + spacing[2]*extent[4],  origin[2] + spacing[2]*extent[5] ]    
             if iInputIndex == 0:    
                 origin0 = origin
+                bounds0 = bounds
             else:                   
                 self.Input2ExtentOffset = [ int( round( ( origin[i] - origin0[i] ) / spacing[i] ) ) for i in range(3) ]
+                self.Input2Offset = [ (bounds[i]-bounds0[i]) for i in range(0,6,2) ]
                
             for j in range( 3 ): 
                 i = 2*j   
@@ -1253,9 +1256,12 @@ class ImagePlaneWidget:
 #----------------------------------------------------------------------------
     
     def GetOrigin( self ):
-        o = self.PlaneSource.GetOrigin()
-#        return  [ ( o[i] + self.Input2OriginOffset[i] ) for i in range(3) ]
-        return o
+        return self.PlaneSource.GetOrigin()
+
+    def GetOrigin2( self ):
+        origin = self.PlaneSource.GetOrigin()
+        origin2 = [ origin[i] - self.Input2Offset[i] for i in range(3) ] 
+        return origin2 
 
 #----------------------------------------------------------------------------
 
