@@ -429,6 +429,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 contourLineActor.SetPosition( origin[0], origin[1], origin[2] )
 #                contourLineActor.SetOrigin( origin[0], origin[1], origin[2] )
                 self.setVisibleContour( iAxis )
+                print " Generate Contours, data dims = %s, origin = %s, pos = %s, extent = %s" % ( str( slice_data.GetDimensions() ), str(slice_data.GetOrigin()), str(origin), str(slice_data.GetExtent()) )
                 
             self.render()
 #                print " Generate Contours, data dims = %s, pos = %s %s %s " % ( str( slice_data.GetDimensions() ), str(pos1), str(pos2), str(origin) )
