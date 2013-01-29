@@ -158,18 +158,22 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.useTimeIndex = timeData[2]
 #            print "Set Time [mid = %d]: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( self.moduleID, str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
 #            print "Time Step Labels: %s" % str( self.timeLabels )
+            intersectedRoi = self.cdmsDataset.gridBounds
+            intersectedRoi = self.getIntersectedRoi( cdms_var, intersectedRoi )
             while( len(cdms_vars) ):
                 cdms_var2 = cdms_vars.pop(0)
                 if cdms_var2: 
                     iVar = iVar+1
                     self.addCDMSVariable( cdms_var2, iVar )
-                               
+                    intersectedRoi = self.getIntersectedRoi( cdms_var2, intersectedRoi )
+                  
             for iVarInputIndex in range( 2,5 ):
                 cdms_var2 = self.getInputValue( "variable%d" % iVarInputIndex  ) 
                 if cdms_var2: 
                     iVar = iVar+1
                     self.addCDMSVariable( cdms_var2, iVar )
-            self.generateOutput()
+                    
+            self.generateOutput(roi=intersectedRoi)
 #            if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
         else:
             dset = self.getInputValue( "dataset"  ) 
@@ -222,7 +226,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 if (ndim < 0 ) or (orec.ndim == ndim): return orec
         return None
              
-    def generateOutput( self ): 
+    def generateOutput( self, **args ): 
         oRecMgr = None 
         varRecs = self.cdmsDataset.getVarRecValues()
         if len( varRecs ):
@@ -240,7 +244,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         orecs = oRecMgr.getOutputRecs( self.datasetId ) if oRecMgr else None
         if not orecs: raise ModuleError( self, 'No Variable selected for dataset %s.' % self.datasetId )             
         for orec in orecs:
-            cachedImageDataName = self.getImageData( orec ) 
+            cachedImageDataName = self.getImageData( orec, **args ) 
             if cachedImageDataName: 
                 imageDataCache = self.getImageDataCache()            
                 if   orec.ndim >= 3: self.set3DOutput( name=orec.name,  output=imageDataCache[cachedImageDataName] )
@@ -268,6 +272,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         useVarDataCache = False
         if len( varList ) == 0: return False
         varDataIds = []
+        intersectedRoi = args.get('roi', self.cdmsDataset.gridBounds )
         exampleVarDataSpecs = None
         for varRec in varList:
             range_min, range_max, scale, shift  = 0.0, 0.0, 1.0, 0.0   
@@ -311,7 +316,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue, iTimestep, self.useTimeIndex ] 
                     varData = self.cdmsDataset.getVarDataCube( dsid, varName, tval, selectedLevel )
                     if varData.id <> 'NULL':
-                        varDataSpecs = self.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale, self.outputType, ds )
+                        varDataSpecs = self.getGridSpecs( varData, intersectedRoi, self.cdmsDataset.zscale, self.outputType, ds )
                         if (exampleVarDataSpecs == None) and (varDataSpecs <> None): exampleVarDataSpecs = varDataSpecs
                         range_min = varData.min()
                         range_max = varData.max()
@@ -483,6 +488,22 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.time = axis
             iCoord  = 2 if ( outputType == CDMSDataType.Hoffmuller ) else -1
         return iCoord
+
+    def getIntersectedRoi( self, var, current_roi ):   
+        axis_list = var.axes.split('),')
+        intersectedRoi = newList( 4, 0.0 )
+        for axis in axis_list:
+            axis_recs = axis.split('=')
+            iCoord = -1
+            axis_name = axis_recs[0].lower()
+            if axis_name.startswith('lon'): iCoord = 0
+            if axis_name.startswith('lat'): iCoord = 1
+            if (iCoord == 0) or (iCoord == 1):
+                axisBounds = axis_recs[1].strip("()").split(',')
+                roiBounds = [ float(axisBounds[i]) for i in range(2) ]
+                intersectedRoi[ iCoord ] = max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
+                intersectedRoi[ 2+iCoord ] = min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
+        return intersectedRoi
        
     def getGridSpecs( self, var, roi, zscale, outputType, dset ):   
         dims = var.getAxisIds()
