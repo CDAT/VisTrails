@@ -811,6 +811,7 @@ class PersistentModule( QObject ):
         for inputIndex, inputPort in enumerate( self.primaryInputPorts ):
             ispec = InputSpecs()
             self.inputSpecs[ inputIndex ] = ispec
+            inputList = self.getPrimaryInputList( port=inputPort, **args )
             if self.allowMultipleInputs.get( inputIndex, False ):
                 try:
                     ispec.setInputModule(  self.getPrimaryInputList( port=inputPort, **args ) )
