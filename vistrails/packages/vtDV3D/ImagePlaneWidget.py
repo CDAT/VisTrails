@@ -562,7 +562,7 @@ class ImagePlaneWidget:
         v = [  p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] ]
         distance = vtk.vtkMath.Dot( v, self.PlaneSource.GetNormal() )
         self.PlaneSource.Push( distance )
-        print "Push Plane by distance %.3f " % distance
+#        print "Push Plane by distance %.3f " % distance
         self.ProcessEvent( self.InteractionUpdateEvent )
 
 #----------------------------------------------------------------------------
@@ -797,7 +797,7 @@ class ImagePlaneWidget:
         elif ( planeCenter[k] < bounds[2*k] ):  planeCenter[k] = bounds[2*k]
                
         self.PlaneSource.SetCenter(planeCenter)
-        print "Set Plane Center = %s, bounds = %s " % ( str( planeCenter ), str(bounds) )
+#        print "Set Plane Center = %s, bounds = %s " % ( str( planeCenter ), str(bounds) )
             
         planeAxis1 = self.GetVector1()
         planeAxis2 = self.GetVector2()
@@ -908,7 +908,7 @@ class ImagePlaneWidget:
                 planeCenter[k] = bounds[2*k]
                    
             planeSource.SetCenter(planeCenter)
-            print "Set Plane Center = %s, bounds = %s " % ( str( planeCenter ), str(bounds) )
+#            print "Set Plane Center = %s, bounds = %s " % ( str( planeCenter ), str(bounds) )
                 
             planeAxis1 = self.GetVector1()
             planeAxis2 = self.GetVector2()
