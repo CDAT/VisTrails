@@ -17,6 +17,10 @@ from packages.vtDV3D.PersistentModule import *
 import cdms2, cdtime, cdutil, MV2 
 PortDataVersion = 0
 
+def getRoiSize( roi ):
+    if roi == None: return 0
+    return abs((roi[2]-roi[0])*(roi[3]-roi[1]))
+
 def getTitle( dsid, name, attributes, showUnits=False ):
        long_name = attributes.get( 'long_name', attributes.get( 'standard_name', name ) )
        if not showUnits: return "%s:%s" % ( dsid, long_name )
@@ -272,7 +276,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         useVarDataCache = False
         if len( varList ) == 0: return False
         varDataIds = []
-        intersectedRoi = args.get('roi', self.cdmsDataset.gridBounds )
+        intersectedRoi = args.get('roi', None )
+        self.cdmsDataset.setRoi( intersectedRoi )
         exampleVarDataSpecs = None
         for varRec in varList:
             range_min, range_max, scale, shift  = 0.0, 0.0, 1.0, 0.0   
@@ -316,7 +321,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue, iTimestep, self.useTimeIndex ] 
                     varData = self.cdmsDataset.getVarDataCube( dsid, varName, tval, selectedLevel )
                     if varData.id <> 'NULL':
-                        varDataSpecs = self.getGridSpecs( varData, intersectedRoi, self.cdmsDataset.zscale, self.outputType, ds )
+                        varDataSpecs = self.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale, self.outputType, ds )
                         if (exampleVarDataSpecs == None) and (varDataSpecs <> None): exampleVarDataSpecs = varDataSpecs
                         range_min = varData.min()
                         range_max = varData.max()
@@ -334,8 +339,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         
                         if dataDebug: self.dumpData( varName, newDataArray )
                         flatArray = newDataArray.ravel('F') 
-                        if npts == -1:  npts = flatArray.size
-                        else:           assert( npts == flatArray.size )
+                        array_size = flatArray.size
+                        if npts == -1:  npts = array_size
+                        else:           assert( npts == array_size )
                             
                         var_md = copy.copy( varData.attributes )
                         var_md[ 'range' ] = ( range_min, range_max )
@@ -491,7 +497,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 
     def getIntersectedRoi( self, var, current_roi ):   
         axis_list = var.axes.split('),')
-        intersectedRoi = newList( 4, 0.0 )
+        newRoi = newList( 4, 0.0 )
+        current_roi_size = getRoiSize( current_roi )
         for axis in axis_list:
             axis_recs = axis.split('=')
             iCoord = -1
@@ -500,10 +507,12 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             if axis_name.startswith('lat'): iCoord = 1
             if (iCoord == 0) or (iCoord == 1):
                 axisBounds = axis_recs[1].strip("()").split(',')
-                roiBounds = [ float(axisBounds[i]) for i in range(2) ]
-                intersectedRoi[ iCoord ] = max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
-                intersectedRoi[ 2+iCoord ] = min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
-        return intersectedRoi
+                roiBounds = [ float(axisBounds[i]) for i in range(2) ]                
+                newRoi[ iCoord ] = roiBounds[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
+                newRoi[ 2+iCoord ] = roiBounds[1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
+        if ( current_roi_size == 0 ): return newRoi
+        new_roi_size = getRoiSize( newRoi )
+        return newRoi if ( current_roi_size > new_roi_size ) else current_roi
        
     def getGridSpecs( self, var, roi, zscale, outputType, dset ):   
         dims = var.getAxisIds()
