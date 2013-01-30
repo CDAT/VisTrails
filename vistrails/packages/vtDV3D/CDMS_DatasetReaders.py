@@ -517,6 +517,9 @@ class CDMSDataset(Module):
     def getVarRecKeys( self ):
         return self.variableRecs.keys() 
 
+    def setRoi( self, roi ): 
+        if roi <> None: self.gridBounds = roi
+
     def setBounds( self, timeRange, roi, zscale, decimation ): 
         self.timeRange = timeRange
         self.gridBounds = roi
@@ -641,7 +644,7 @@ class CDMSDataset(Module):
                     rv = dsetRec.getFileVarDataCube( varName, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]], refVar=self.referenceVariable, refLev=self.referenceLev )  
             elif varName in self.getTransientVariableNames():
                 tvar = self.getTransientVariable( varName ) 
-                rv = self.getTransVarDataCube( varName, tvar, self.decimation, time=timeValues, lev=levelValues )  
+                rv = self.getTransVarDataCube( varName, tvar, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]] )  
         if (rv.id == "NULL") and (varName in self.outputVariables):
             rv = self.outputVariables[ varName ]
         if rv.id <> "NULL": 
@@ -663,6 +666,9 @@ class CDMSDataset(Module):
         levaxis = transVar.getLevel() 
         timeaxis = transVar.getTime() 
         level = args.get( 'lev', None )
+        lonBounds = args.get( 'lon', None )
+        latBounds = args.get( 'lat', None )
+
         if levaxis:
             values = levaxis.getValue()
             ascending_values = ( values[-1] > values[0] )
@@ -694,17 +700,19 @@ class CDMSDataset(Module):
                 args1['time'] = timeValue
         except: pass
 
-        if decimationFactor > 1:
+        if (decimationFactor > 1) or lonBounds or latBounds:
             lonAxis = transVar.getLongitude() 
-            lonVals = lonAxis.getValue()
+            lonVals = lonBounds if lonBounds else lonAxis.getValue()
             varLonInt = lonAxis.mapIntervalExt( [ lonVals[0], lonVals[-1] ], 'ccn' )
-            args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
+            if (decimationFactor > 1):  args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
+            else:                       args1['lon'] = slice( varLonInt[0], varLonInt[1] )
            
             latAxis = transVar.getLatitude() 
-            latVals = latAxis.getValue()
+            latVals = latBounds if latBounds else latAxis.getValue()
             latRange = [ latVals[0], latVals[-1] ] if (latVals[-1] > latVals[0]) else [ latVals[-1], latVals[0] ]
             varLatInt = latAxis.mapIntervalExt( latRange, 'ccn' )
-            args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
+            if (decimationFactor > 1):  args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
+            else:                       args1['lat'] = slice( varLatInt[0], varLatInt[1] )
         
         args1['order'] = order
         if levaxis:
