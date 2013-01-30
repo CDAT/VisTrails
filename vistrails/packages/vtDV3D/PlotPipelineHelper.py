@@ -648,6 +648,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     moduleMap = {} 
     actionMenu = None
     plotIndexMap = {}
+    inputCounter = 0
     _config_mode = LevelingType.GUI
 
     def __init__(self):
@@ -890,6 +891,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         raise UnimplementedException    #  Raise this exception to run the fallback code (rebuild from scratch) because the following code doesn't work. 
         
         DV3DPipelineHelper.plotIndexMap = {}
+        DV3DPipelineHelper.inputCounter = 0
         controller.change_selected_version(version)
         vistrail_a = controller.vistrail
         version_a = version
@@ -986,7 +988,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     connected_module = workflow.modules[ connected_module_id ]
                     plot_module = controller.create_module_from_descriptor( connected_module.module_descriptor )
                     ops.append( ('add', plot_module) )
-                    DV3DPipelineHelper.plotIndexMap[plot_module.id] = component_index
+                    DV3DPipelineHelper.plotIndexMap[plot_module.id] = DV3DPipelineHelper.inputCounter
                     if reader_module:
                         conn0 = controller.create_connection( reader_module, 'volume', plot_module, 'volume' )
                         ops.append( ('add', conn0) )
@@ -1017,7 +1019,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 if module: 
                     module.setCellLocation( sheetName, cell_address )   
                     DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
-
+                    
+        DV3DPipelineHelper.inputCounter += len(plot.vars)
         return action2
     
     @staticmethod
@@ -1028,8 +1031,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     
     @staticmethod
     def getPlotIndex( mid, index ):
-        pi = DV3DPipelineHelper.plotIndexMap.get(mid,0) if (index == 0) else 0
-        return pi
+        pi = DV3DPipelineHelper.plotIndexMap.get(mid,0)
+        return pi + index
                                         
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col):
@@ -1039,13 +1042,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
 #        ConfigurableFunction.clear()
         controller.change_selected_version(version)
-        DV3DPipelineHelper.plotIndex = 0 
+        DV3DPipelineHelper.plotIndexMap = {}
 #        print "[%d,%d] ~~~~~~~~~~~~~~~>> build_plot_pipeline_action, version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
 #        print " --> plot_modules = ",  str( controller.current_pipeline.modules.keys() )
 #        print " --> var_modules = ",  str( [ var.id for var in var_modules ] )
         plots = list( plot_objs )
         #Considering that plot_objs has a single plot_obj
         plot_obj = plots.pop(0)
+        DV3DPipelineHelper.inputCounter = len(plot_obj.vars)
         action = None
         if len( plot_obj.cells ) > 0: 
             plot_obj.current_parent_version = version
