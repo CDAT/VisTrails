@@ -385,7 +385,11 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         for aname in range( pointData.GetNumberOfArrays() ): 
             pointData.RemoveArray( pointData.GetArrayName(aname) )
         fieldData = self.getFieldData()
-        fieldData.RemoveArray('metadata')
+        na = fieldData.GetNumberOfArrays()
+        for ia in range(na):
+            aname = fieldData.GetArrayName(ia)
+            if aname.startswith('metadata'):
+                fieldData.RemoveArray(aname)
         extent = image_data.GetExtent()    
         scalars, nTup = None, 0
         vars = []      
@@ -436,21 +440,18 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 pointData.SetVectors(vtkdata)
                 pointData.SetActiveVectors( 'vectors'  )         
             if len( vars )== 0: raise ModuleError( self, 'No dataset variables selected for output %s.' % orec.name) 
-            md = None
             for varDataId in varDataIds:
                 varDataFields = varDataId.split(';')
                 dsid = varDataFields[0] 
                 varName = varDataFields[1] 
                 if varName <> '__zeros__':
                     varDataSpecs = self.getCachedData( varDataId )
-                    vmd = varDataSpecs[ 'md' ]   
-                    if (md == None):  
-                        md = vmd          
-                        md[ 'vars' ] = vars               
-                        md[ 'title' ] = getTitle( dsid, varName, var_md )
-                    md[ 'valueRange-'+varName ] = vmd[ 'valueRange']                   
-            enc_mdata = encodeToString( md ) 
-            if enc_mdata: fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                       
+                    vmd = varDataSpecs[ 'md' ]          
+#                    vmd[ 'vars' ] = vars               
+                    vmd[ 'title' ] = getTitle( dsid, varName, var_md )                 
+                    enc_mdata = encodeToString( vmd ) 
+                    if enc_mdata: fieldData.AddArray( getStringDataArray( 'metadata:%s' % varName,   [ enc_mdata ]  ) ) 
+            if enc_mdata: fieldData.AddArray( getStringDataArray( 'varlist',  vars  ) )                       
             image_data.Modified()
         except Exception, err:
             print>>sys.stderr, "Error encoding variable metadata: %s " % str(err)

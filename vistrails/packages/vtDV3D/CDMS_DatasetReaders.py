@@ -573,7 +573,10 @@ class CDMSDataset(Module):
         Module.__del__( self )
          
     def addTransientVariable( self, varName, variable, ndim = None ):
-        self.transientVariables[ varName ] = variable
+        if varName in self.transientVariables:
+            print>>sys.stderr, "Error, transient variable %s already exists in dataset, ignoring!" % ( varName )
+        else:
+            self.transientVariables[ varName ] = variable
 
     def getTransientVariable( self, varName ):
         return self.transientVariables.get( varName, None )
@@ -681,6 +684,7 @@ class CDMSDataset(Module):
         if cachedTransVariableRec:
             cachedTimeVal = cachedTransVariableRec[ 0 ]
             if cachedTimeVal.value == timeValue.value:
+                print>>sys.stderr, "Returning cached trans var %s" % varName
                 return cachedTransVariableRec[ 1 ]
         
         rv = CDMSDataset.NullVariable 

@@ -165,18 +165,6 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetY.DisableInteraction()                                                
         self.planeWidgetZ.DisableInteraction()  
 
-#    def updateContourMetadata(self):
-#        if self.contourMetadata == None:
-#            scalars = None
-#            self.newDataset = False
-#            self.contourInput.Update()
-#            contourFieldData = self.contourInput.GetFieldData()                 
-#            self.contourMetadata = extractMetadata( contourFieldData )            
-#            if self.contourMetadata <> None:    
-#                attributes = self.contourMetadata.get( 'attributes' , None )
-#                if attributes:
-#                    self.contour_units = attributes.get( 'units' , '' )
-
     def updatingColormap( self, cmap_index, colormapManager ):
         if cmap_index == 0:
             self.planeWidgetX.SetTextureInterpolate( colormapManager.smoothColormap )
@@ -429,7 +417,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 contourLineActor.SetPosition( origin[0], origin[1], origin[2] )
 #                contourLineActor.SetOrigin( origin[0], origin[1], origin[2] )
                 self.setVisibleContour( iAxis )
-                print " Generate Contours, data dims = %s, origin = %s, pos = %s, extent = %s" % ( str( slice_data.GetDimensions() ), str(slice_data.GetOrigin()), str(origin), str(slice_data.GetExtent()) )
+#                print " Generate Contours, data dims = %s, origin = %s, pos = %s, extent = %s" % ( str( slice_data.GetDimensions() ), str(slice_data.GetOrigin()), str(origin), str(slice_data.GetExtent()) )
                 
             self.render()
 #                print " Generate Contours, data dims = %s, pos = %s %s %s " % ( str( slice_data.GetDimensions() ), str(pos1), str(pos2), str(origin) )

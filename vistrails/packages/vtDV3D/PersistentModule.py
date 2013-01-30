@@ -164,7 +164,8 @@ class InputSpecs:
         plotIndex = DV3DPipelineHelper.getPlotIndex( moduleID, inputIndex )     
         if plotIndex < nArrays:
             aname = new_point_data.GetArrayName( plotIndex )
-            new_point_data.SetActiveScalars( aname )  
+            new_point_data.SetActiveScalars( aname ) 
+            print "Select input array, mid=%d, input=%d, plot=%d/%d, var=%s" % ( moduleID, inputIndex, plotIndex, nArrays, aname )
         return image_data
  
     def initializeInput( self, inputIndex, moduleID ): 
@@ -172,6 +173,7 @@ class InputSpecs:
             raw_input = self.inputModule.getOutput()  
             self._input =  self.selectInputArray( raw_input, inputIndex, moduleID )                             
             self.updateMetadata()
+            print "Computed metadata for input %d to module %d: %s " % ( inputIndex, moduleID, str(self.metadata) )
             return True
         return False
         
@@ -1837,9 +1839,8 @@ class PersistentVisualizationModule( PersistentModule ):
         ds= ModuleStore.getCdmsDataset( ispec.datasetId )
         
         if ds <> None:
-            if len(ds.transientVariables)>1:
-                print 'ERROR: this module has many transient Variables'
             if len(ds.transientVariables)>0:
+                if len(ds.transientVariables)>1: print 'Warning: this module has several transient Variables, plotting the first one.'
                 var = ds.transientVariables.values()[0]
                 lensActor.SetYRange(var.min(), var.max())
 
