@@ -110,7 +110,6 @@ class AlgorithmOutputModule( Module ):
             else:           algorithm.SetInputConnection( iPort, self.algoOutputPort )
         else: 
             output = self.getOutput() 
-#            print " inputToAlgorithm: oid = %x " % id( output ) 
             algorithm.SetInput( output )
             algorithm.Modified()
 
@@ -501,6 +500,7 @@ class PersistentModule( QObject ):
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
 
+    
     def setCellLocation( self, sheetName, cell_address ):
         self.sheetName = sheetName 
         self.cell_address = cell_address
@@ -765,13 +765,21 @@ class PersistentModule( QObject ):
         import api
         self.getDatasetId( **args )
         pval = self.getParameter( inputName, None )
-        if inputName == 'levelRangeScale':
-            controller = api.get_current_controller()
-            print ' Input levelRangeScale value, MID[%d], ctrl_version=%d, parameter value = %s, (defval=%s)'  % ( self.moduleID, controller.current_version, str(pval), str(default_value) )            
+#        if inputName == 'levelRangeScale':
+#            controller = api.get_current_controller()
+#            print ' Input levelRangeScale value, MID[%d], ctrl_version=%d, parameter value = %s, (defval=%s)'  % ( self.moduleID, controller.current_version, str(pval), str(default_value) )            
         if (pval == None) and (self.wmod <> None):
             pval = self.wmod.forceGetInputFromPort( inputName, default_value )             
 #        if inputName == 'levelRangeScale':
 #            print ' Actual Input value = %s'  % str(pval)           
+        return pval
+
+    def getInputValues( self, inputName, default_value = None, **args ):
+        import api
+        self.getDatasetId( **args )
+        pval = self.getParameter( inputName, None )
+        if (pval == None) and (self.wmod <> None):
+            pval = self.wmod.forceGetInputsFromPort( inputName, default_value )             
         return pval
           
     def setResult( self, outputName, value ): 
@@ -781,8 +789,8 @@ class PersistentModule( QObject ):
     def getCDMSDataset(self):
         return ModuleStore.getCdmsDataset( self.datasetId )
            
-    def setActiveScalars( self ):
-        pass
+#    def setActiveScalars( self ):
+#        pass
 
     def getInputCopy(self):
         image_data = vtk.vtkImageData() 
@@ -823,7 +831,6 @@ class PersistentModule( QObject ):
                 inMod = self.getPrimaryInput( port=inputPort, **args )
                 if inMod: ispec.inputModule = inMod
                 
-
             if  ispec.initializeInput( inputIndex, self.moduleID ): 
                 
                 if inputIndex == 0:     
@@ -1509,7 +1516,6 @@ class PersistentVisualizationModule( PersistentModule ):
  
     def disableVisualizationInteraction(self): 
         pass
-    
                       
     def setInputZScale( self, zscale_data, input_index=0, **args  ):
         ispec = self.inputSpecs[ input_index ] 
