@@ -188,23 +188,6 @@ class InputSpecs:
         self.clipper.AddInput( self._input )
         self.clipper.SetOutputWholeExtent( extent )
 
-    def initializeScalarRange( self ): 
-        metadata = self.getMetadata()  
-        var_md = metadata.get( 'attributes' , None )
-        if var_md <> None:
-            range = var_md.get( 'range', None )
-            if range: 
-#                print "\n ***************** ScalarRange = %s, md[%d], var_md[%d] *****************  \n" % ( str(range), id(metadata), id(var_md) )
-                self.scalarRange = list( range )
-                self.scalarRange.append( 1 )
-                if not self.seriesScalarRange:
-                    self.seriesScalarRange = list(range)
-                else:
-                    if self.seriesScalarRange[0] > range[0]:
-                        self.seriesScalarRange[0] = range[0] 
-                    if self.seriesScalarRange[1] < range[1]:
-                        self.seriesScalarRange[1] = range[1] 
-
     def getWorldCoords( self, image_coords ):
         plotType = self.metadata[ 'plotType' ]                   
         world_coords = None
@@ -338,8 +321,7 @@ class InputSpecs:
         return imageScaledValue
 
     def getMetadata( self, key = None ):
-        if not self.metadata: self.updateMetadata()
-        return self.metadata.get( key, None ) if key else self.metadata
+        return self.metadata.get( key, None ) if ( key and self.metadata )  else self.metadata
     
     def getFieldData( self ):
         return self.fieldData  
@@ -371,11 +353,22 @@ class InputSpecs:
                         self.titleBuffer = "\n%s" % ( title )
                     elif len( targs ) > 1:
                         self.titleBuffer = "%s\n%s" % ( targs[1], targs[0] )
-                else: self.titleBuffer = ""
-    #            self.persistParameterList( [ ( 'title' , [ self.titleBuffer ]  ), ] )    
+                else: self.titleBuffer = "" 
                 attributes = self.metadata.get( 'attributes' , None )
                 if attributes:
                     self.units = attributes.get( 'units' , '' )
+                    range = attributes.get( 'range', None )
+                    if range: 
+        #                print "\n ***************** ScalarRange = %s, md[%d], var_md[%d] *****************  \n" % ( str(range), id(metadata), id(var_md) )
+                        self.scalarRange = list( range )
+                        self.scalarRange.append( 1 )
+                        if not self.seriesScalarRange:
+                            self.seriesScalarRange = list(range)
+                        else:
+                            if self.seriesScalarRange[0] > range[0]:
+                                self.seriesScalarRange[0] = range[0] 
+                            if self.seriesScalarRange[1] < range[1]:
+                                self.seriesScalarRange[1] = range[1] 
 
     def getUnits(self):
         return self.units
@@ -475,7 +468,6 @@ class PersistentModule( QObject ):
         self.parmUpdating = {}
         self.ndims = args.get( 'ndims', 3 ) 
         self.primaryInputPorts = [ 'slice' ] if (self.ndims == 2) else [ 'volume' ]
-        self.primaryMetaDataPort = self.primaryInputPorts[0]
         self.documentation = None
         self.parameterCache = {}
         self.timeValue = cdtime.reltime( 0.0, ReferenceTimeUnits ) 
@@ -700,11 +692,11 @@ class PersistentModule( QObject ):
         return None, 1
           
     def getPrimaryInput( self, **args ):
-        port = args.get('port', self.primaryInputPorts[0] )
+        port = args.get('port', self.getPrimaryInputPorts()[0] )
         return self.getInputValue( port, **args )
     
     def getPrimaryInputList(self, **args ):
-        port = args.get('port', self.primaryInputPorts[0] )
+        port = args.get('port', self.getPrimaryInputPorts()[0] )
         return self.getInputList( port, **args  )
     
     def isLayerDependentParameter( self, parmName ):
@@ -811,14 +803,17 @@ class PersistentModule( QObject ):
         if  ispec.initializeInput( inputIndex, self.moduleID ):            
             if inputIndex == 0:     self.setParameter( 'metadata', ispec.metadata ) 
             else:                   self.setParameter( 'metadata-%d' % inputIndex, ispec.metadata )
-            self.roi = ispec.metadata.get( 'bounds', None )  
-            ispec.initializeScalarRange()
+            self.roi = ispec.metadata.get( 'bounds', None )
+            
+    def getPrimaryInputPorts(self):
+        return self.primaryInputPorts
 
     def initializeInputs( self, **args ):
         isAnimation = args.get( 'animate', False )
         restarting = args.get( 'restarting', False )
         self.newDataset = False
-        for inputIndex, inputPort in enumerate( self.primaryInputPorts ):
+        inputPorts = self.getPrimaryInputPorts()
+        for inputIndex, inputPort in enumerate( inputPorts ):
             ispec = InputSpecs()
             self.inputSpecs[ inputIndex ] = ispec
             inputList = self.getPrimaryInputList( port=inputPort, **args )
@@ -859,10 +854,7 @@ class PersistentModule( QObject ):
 #                    if inputIndex == 0: 
 #                        scalars = ispec.metadata.get( 'scalars', None )
 #                        self.initializeLayers( scalars )
-                    
-                ispec.initializeScalarRange()
-                
-                
+                                    
             elif ( ispec.fieldData == None ): 
                 ispec.initializeMetadata()
 
@@ -1985,6 +1977,7 @@ class PersistentVisualizationModule( PersistentModule ):
             
     def processKeyEvent( self, key, caller=None, event=None ):
 #        print "process Key Event, key = %s" % ( key )
+        md = self.getInputSpec().getMetadata()
         if key == 'h': 
             if  PersistentVisualizationModule.moduleDocumentationDialog == None:
                 modDoc = ModuleDocumentationDialog()
@@ -2006,7 +1999,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 configFunct = self.configurableFunctions[pname]
                 param_value = configFunct.reset() 
                 if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                
-        elif ( self.getInputSpec().getMetadata()['plotType']=='xyz' and key == 't'  ):
+        elif ( md and ( md['plotType']=='xyz' ) and ( key == 't' )  ):
             self.showInteractiveLens = not self.showInteractiveLens 
             self.render() 
         else:
