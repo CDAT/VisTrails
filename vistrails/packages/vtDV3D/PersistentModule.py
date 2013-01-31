@@ -153,27 +153,26 @@ class InputSpecs:
         self.inputModuleList = module
         self.inputModule = self.inputModuleList[ 0 ]
 
-    def selectInputArray( self, raw_input, inputIndex, moduleID ):
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+    def selectInputArray( self, raw_input, plotIndex ):
         old_point_data = raw_input.GetPointData()  
         nArrays = old_point_data.GetNumberOfArrays() 
         if nArrays == 1: return raw_input  
         image_data = vtk.vtkImageData()
         image_data.ShallowCopy( raw_input )
-        new_point_data = image_data.GetPointData() 
-        plotIndex = DV3DPipelineHelper.getPlotIndex( moduleID, inputIndex )     
+        new_point_data = image_data.GetPointData()        
         if plotIndex < nArrays:
             aname = new_point_data.GetArrayName( plotIndex )
             new_point_data.SetActiveScalars( aname ) 
-            print "Select input array, mid=%d, input=%d, plot=%d/%d, var=%s" % ( moduleID, inputIndex, plotIndex, nArrays, aname )
         return image_data
  
     def initializeInput( self, inputIndex, moduleID ): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         if self.inputModule:
-            raw_input = self.inputModule.getOutput()  
-            self._input =  self.selectInputArray( raw_input, inputIndex, moduleID )                             
-            self.updateMetadata()
-            print "Computed metadata for input %d to module %d: %s " % ( inputIndex, moduleID, str(self.metadata) )
+            raw_input = self.inputModule.getOutput() 
+            plotIndex = DV3DPipelineHelper.getPlotIndex( moduleID, inputIndex )      
+            self._input =  self.selectInputArray( raw_input, plotIndex )                             
+            self.updateMetadata( plotIndex )
+            print "Computed metadata for input %d to module %d (plotIndex = %d): %s " % ( inputIndex, moduleID, plotIndex, str(self.metadata) )
             return True
         return False
         
@@ -345,7 +344,7 @@ class InputSpecs:
     def getFieldData( self ):
         return self.fieldData  
     
-    def updateMetadata( self ):
+    def updateMetadata( self, plotIndex ):
         if self.metadata == None:
             scalars = None
             if self.input() <> None:
@@ -355,7 +354,7 @@ class InputSpecs:
             elif self.inputModule:
                 self.fieldData = self.inputModule.getFieldData() 
     
-            self.metadata = self.computeMetadata()
+            self.metadata = self.computeMetadata( plotIndex )
             
             if self.metadata <> None:
                 self.rangeBounds = None              
@@ -389,10 +388,15 @@ class InputSpecs:
             if array_name: layerList.append( array_name )
         return layerList
     
-    def computeMetadata( self  ):
+    def computeMetadata( self, plotIndex ):
         if not self.fieldData: self.initializeMetadata() 
         if self.fieldData:
-            return extractMetadata( self.fieldData )
+            mdList = extractMetadata( self.fieldData )
+            if plotIndex < len(mdList):
+                return mdList[ plotIndex ]
+            else:
+                print>>sys.stderr, "Error, Metadata for input %d not found" % plotIndex
+                return mdList[ 0 ]
         return {}
         
     def addMetadataObserver( self, caller, event ):
