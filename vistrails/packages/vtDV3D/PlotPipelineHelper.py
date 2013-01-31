@@ -635,7 +635,7 @@ class ConnectionType:
     OUTPUT = 1
     BOTH = 2
 
-   
+  
 class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     '''
     This will take care of pipeline manipulation for plots.
@@ -888,10 +888,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         use those parameters.
          
         """ 
-
         raise UnimplementedException    #  Raise this exception to run the fallback code (rebuild from scratch) because the following code doesn't work. 
         
-
         DV3DPipelineHelper.plotIndexMap = {}
         DV3DPipelineHelper.inputCounter = 0
         controller.change_selected_version(version)
@@ -966,7 +964,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     
      
     @staticmethod
-    def add_additional_plot_to_pipeline( controller, version, plot, cell_addresses ):
+    def add_additional_plot_to_pipeline( controller, version, plot, cell_addresses, component_index=0 ):
         if controller is None: controller = api.get_current_controller()
         version = controller.current_version
         workflow = plot.workflow
@@ -1044,14 +1042,12 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
 #        ConfigurableFunction.clear()
         controller.change_selected_version(version)
-
         DV3DPipelineHelper.plotIndexMap = {}
 #        print "[%d,%d] ~~~~~~~~~~~~~~~>> build_plot_pipeline_action, version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
 #        print " --> plot_modules = ",  str( controller.current_pipeline.modules.keys() )
 #        print " --> var_modules = ",  str( [ var.id for var in var_modules ] )
         plots = list( plot_objs )
         #Considering that plot_objs has a single plot_obj
-
         plot_obj = plots.pop(0)
         DV3DPipelineHelper.inputCounter = len(plot_obj.vars)
         action = None
@@ -1067,23 +1063,26 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     aliases[ "%s.cmd" % plot_obj.vars[i] ] = python_command
                 else:
                     try:
-                        filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'filename')
-                        if filename is None:
-                            filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'file')
-                        if isinstance( filename, core.modules.basic_modules.File ):
-                            filename = filename.name
-                        url = PlotPipelineHelper.get_value_from_function( var_modules[i], 'url')            
-                        varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'name')
-                        file_varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varNameInFile')
-                        axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
-                        aliases[ ".".join( [plot_obj.files[i],"url"] )  ] = url if url else ""
-                        aliases[plot_obj.vars[i]] = varname
-                        aliases[ "%s.file" % plot_obj.vars[i] ] = file_varname if file_varname else ""
-                        if len(plot_obj.axes) > i:
-                            aliases[plot_obj.axes[i]] = axes
-                        aliases[plot_obj.files[i]] = filename
+                        if i < len( plot_obj.vars ):
+                            filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'filename')
+                            if filename is None:
+                                filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'file')
+                            if isinstance( filename, core.modules.basic_modules.File ):
+                                filename = filename.name
+                            url = PlotPipelineHelper.get_value_from_function( var_modules[i], 'url')            
+                            varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'name')
+                            file_varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varNameInFile')
+                            axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
+                            aliases[plot_obj.vars[i]] = varname
+                            aliases[ "%s.file" % plot_obj.vars[i] ] = file_varname if file_varname else ""
+                            if i < len(plot_obj.axes):
+                                aliases[plot_obj.axes[i]] = axes
+                            if i < len( plot_obj.files ):
+                                aliases[ ".".join( [plot_obj.files[i],"url"] )  ] = url if url else ""
+                                aliases[plot_obj.files[i]] = filename
                     except Exception, err:
                         print>>sys.stderr,  "Error setting aliases: %s" % ( str(err) )
+                        traceback.print_exc()
     
             #FIXME: this will always spread the cells in the same row
             cell_specs = []
@@ -1108,10 +1107,12 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             pip_str = core.db.io.serialize(plot_obj.workflow)
             controller.paste_modules_and_connections(pip_str, (0.0,0.0))
             
+            comp_index = 1
             for plot_obj in plots:
                 plot_obj.current_parent_version = version
                 plot_obj.current_controller = controller
-                DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot_obj, cell_addresses )
+                DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot_obj, cell_addresses, comp_index )
+                comp_index = comp_index + 1
     
     #        Disable File Reader, get Variable from UVCDAT
     #        plot_obj.addMergedAliases( aliases, controller.current_pipeline )
@@ -1121,7 +1122,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             reader_1v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader ] )
             reader_3v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VectorReader ] )
             reader_modules = reader_1v_modules + reader_3v_modules
-            iVarModule = 0
             ops = []           
             nInputs = 1 if len( reader_1v_modules ) else 3
             added_modules = []
