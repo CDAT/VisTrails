@@ -36,6 +36,30 @@ def IsListType( val ):
     valtype = type(val)
     return ( valtype ==type(list()) ) or  ( valtype ==type(tuple()) )
 
+def intersectExtents( e1, e2 ):
+    int_ext = []
+    intersectionRequired = False
+    if e1 and e2:
+        for ie in range(0,3):
+            ie0, ie1 = 2*ie, 2*ie+1
+            if (e1[ ie0 ] <> e2[ ie0 ]) or (e1[ ie1 ] <> e2[ ie1 ]):
+                intersectionRequired = True
+            int_ext.append( max( e1[ ie0 ], e2[ ie0 ] )  )
+            int_ext.append( min( e1[ ie1 ], e2[ ie1 ] )  )                    
+    return int_ext if intersectionRequired else None
+    
+def intersectExtentList( extList ):
+    intExtent = None
+    intersectionRequired = False
+    for e in extList:
+        newIntExtent = intersectExtents( e, intExtent )
+        if newIntExtent <> None: 
+            intersectionRequired = True 
+            intExtent = newIntExtent
+        else: intExtent = e
+    return intExtent if intersectionRequired else None
+    
+    
 def ExtendClassDocumentation( klass ):
     instance = klass()
     default_doc = "" if ( klass.__doc__ == None ) else klass.__doc__ 
@@ -119,11 +143,51 @@ class InputSpecs:
         self.seriesScalarRange = None
         self.rangeBounds = None
         self.metadata = None
-        self.input = None
+        self._input = None
         self.fieldData = None
         self.inputModule = None
         self.inputModuleList = None
         self.datasetId = None
+        self.clipper = None
+
+    def setInputModule( self, module ): 
+        self.inputModuleList = module
+        self.inputModule = self.inputModuleList[ 0 ]
+
+    def selectInputArray( self, raw_input, plotIndex ):
+        old_point_data = raw_input.GetPointData()  
+        nArrays = old_point_data.GetNumberOfArrays() 
+        if nArrays == 1: return raw_input  
+        image_data = vtk.vtkImageData()
+        image_data.ShallowCopy( raw_input )
+        new_point_data = image_data.GetPointData()        
+        if plotIndex < nArrays:
+            aname = new_point_data.GetArrayName( plotIndex )
+            new_point_data.SetActiveScalars( aname ) 
+        return image_data
+ 
+    def initializeInput( self, inputIndex, moduleID ): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        if self.inputModule:
+            raw_input = self.inputModule.getOutput() 
+            plotIndex = DV3DPipelineHelper.getPlotIndex( moduleID, inputIndex )      
+            self._input =  self.selectInputArray( raw_input, plotIndex )                             
+            self.updateMetadata( plotIndex )
+#            print "Computed metadata for input %d to module %d (plotIndex = %d): %s " % ( inputIndex, moduleID, plotIndex, str(self.metadata) )
+            return True
+        return False
+        
+    def input( self ):
+        if self.clipper:
+            input = self.clipper.GetOutput()
+            input.Update()
+            return input
+        return self._input
+        
+    def clipInput( self, extent ):
+        self.clipper = vtk.vtkImageClip()
+        self.clipper.AddInput( self._input )
+        self.clipper.SetOutputWholeExtent( extent )
 
     def initializeScalarRange( self ): 
         metadata = self.getMetadata()  
@@ -160,8 +224,8 @@ class InputSpecs:
                 lev = self.metadata[ 'lev' ]
                 world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), getFloatStr(lev[ image_coords[2] ]) ]   
         except:
-            gridSpacing = self.input.GetSpacing()
-            gridOrigin = self.input.GetOrigin()
+            gridSpacing = self.input().GetSpacing()
+            gridOrigin = self.input().GetOrigin()
             world_coords = [ getFloatStr(gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
         return world_coords
 
@@ -183,8 +247,8 @@ class InputSpecs:
                 lev = self.metadata[ 'lev' ]
                 world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], lev[ image_coords[2] ] ]   
         except:
-            gridSpacing = self.input.GetSpacing()
-            gridOrigin = self.input.GetOrigin()
+            gridSpacing = self.input().GetSpacing()
+            gridOrigin = self.input().GetOrigin()
             world_coords = [ gridOrigin[i] + image_coords[i]*gridSpacing[i] for i in range(3) ]
         return world_coords
     def getWorldCoord( self, image_coord, iAxis ):
@@ -200,8 +264,8 @@ class InputSpecs:
             return axisNames[iAxis], getFloatStr( world_coord )
         except:
             if (plotType == 'zyx') or (iAxis < 2):
-                gridSpacing = self.input.GetSpacing()
-                gridOrigin = self.input.GetOrigin()
+                gridSpacing = self.input().GetSpacing()
+                gridOrigin = self.input().GetOrigin()
                 return axes[iAxis], getFloatStr( gridOrigin[iAxis] + image_coord*gridSpacing[iAxis] ) 
             return axes[iAxis], ""
 
@@ -281,17 +345,17 @@ class InputSpecs:
     def getFieldData( self ):
         return self.fieldData  
     
-    def updateMetadata( self ):
+    def updateMetadata( self, plotIndex ):
         if self.metadata == None:
             scalars = None
-            if self.input <> None:
-                fd = self.input.GetFieldData() 
-                self.input.Update()
-                self.fieldData = self.input.GetFieldData()             
+            if self.input() <> None:
+                fd = self.input().GetFieldData() 
+                self.input().Update()
+                self.fieldData = self.input().GetFieldData()             
             elif self.inputModule:
                 self.fieldData = self.inputModule.getFieldData() 
     
-            self.metadata = self.computeMetadata()
+            self.metadata = self.computeMetadata( plotIndex )
             
             if self.metadata <> None:
                 self.rangeBounds = None              
@@ -319,16 +383,21 @@ class InputSpecs:
     
     def getLayerList(self):
         layerList = []
-        pointData = self.input.GetPointData()
+        pointData = self.input().GetPointData()
         for iA in range( pointData.GetNumberOfArrays() ):
             array_name = pointData.GetArrayName(iA)
             if array_name: layerList.append( array_name )
         return layerList
     
-    def computeMetadata( self  ):
+    def computeMetadata( self, plotIndex ):
         if not self.fieldData: self.initializeMetadata() 
         if self.fieldData:
-            return extractMetadata( self.fieldData )
+            mdList = extractMetadata( self.fieldData )
+            if plotIndex < len(mdList):
+                return mdList[ plotIndex ]
+            else:
+                print>>sys.stderr, "Error, Metadata for input %d not found" % plotIndex
+                return mdList[ 0 ]
         return {}
         
     def addMetadataObserver( self, caller, event ):
@@ -346,8 +415,9 @@ class InputSpecs:
 
     def addMetadata( self, metadata ):
         dataVector = self.fieldData.GetAbstractArray( 'metadata' ) 
-        if dataVector == None:   
-            print " Can't get Metadata for class %s " % getClassName( self )
+        if dataVector == None:
+            cname = getClassName( self ) 
+            if cname <> "InputSpecs": print " Can't get Metadata for class %s " % cname
         else:
             enc_mdata = encodeToString( metadata )
             dataVector.InsertNextValue( enc_mdata  )
@@ -446,8 +516,19 @@ class PersistentModule( QObject ):
 
     def input( self, input_index=0 ):
         ispec = self.inputSpecs[ input_index ] 
-        return ispec.input
-    
+        return ispec.input()
+
+    def intersectInputExtents( self ):
+        ext_list = []
+        if len( self.inputSpecs.keys() ) > 1:
+            for ispec in self.inputSpecs.values():
+                ext_list.append( ispec.input().GetExtent() )
+        ie = intersectExtentList( ext_list )
+        if ie:
+            for ( ispecIndex, ispec ) in self.inputSpecs.items():
+                ispec.clipInput( ie )
+                self.reInitInput( ispecIndex )
+            
     def getUnits(self, input_index=0 ):
         ispec = self.inputSpecs[ input_index ] 
         return ispec.getUnits()
@@ -705,14 +786,22 @@ class PersistentModule( QObject ):
 
     def getInputCopy(self):
         image_data = vtk.vtkImageData() 
-        gridSpacing = self.input.GetSpacing()
-        gridOrigin = self.input.GetOrigin()
-        gridExtent = self.input.GetExtent()
-        image_data.SetScalarType( self.input.GetScalarType() )  
+        gridSpacing = self.input().GetSpacing()
+        gridOrigin = self.input().GetOrigin()
+        gridExtent = self.input().GetExtent()
+        image_data.SetScalarType( self.input().GetScalarType() )  
         image_data.SetOrigin( gridOrigin[0], gridOrigin[1], gridOrigin[2] )
         image_data.SetSpacing( gridSpacing[0], gridSpacing[1], gridSpacing[2] )
         image_data.SetExtent( gridExtent[0], gridExtent[1], gridExtent[2], gridExtent[3], gridExtent[4], gridExtent[5] )
         return image_data
+    
+    def reInitInput( self, inputIndex ):
+        ispec = self.inputSpecs[ inputIndex ] 
+        if  ispec.initializeInput( inputIndex, self.moduleID ):            
+            if inputIndex == 0:     self.setParameter( 'metadata', ispec.metadata ) 
+            else:                   self.setParameter( 'metadata-%d' % inputIndex, ispec.metadata )
+            self.roi = ispec.metadata.get( 'bounds', None )  
+            ispec.initializeScalarRange()
 
     def initializeInputs( self, **args ):
         isAnimation = args.get( 'animate', False )
@@ -721,10 +810,10 @@ class PersistentModule( QObject ):
         for inputIndex, inputPort in enumerate( self.primaryInputPorts ):
             ispec = InputSpecs()
             self.inputSpecs[ inputIndex ] = ispec
+            inputList = self.getPrimaryInputList( port=inputPort, **args )
             if self.allowMultipleInputs.get( inputIndex, False ):
                 try:
-                    ispec.inputModuleList = self.getPrimaryInputList( port=inputPort, **args )
-                    ispec.inputModule = ispec.inputModuleList[0]
+                    ispec.setInputModule(  self.getPrimaryInputList( port=inputPort, **args ) )
                 except Exception, err:
                     print>>sys.stderr, 'Error: Broken pipeline at input to module %s:\n (%s)' % ( getClassName(self), str(err) ) 
                     self.getPrimaryInputList( port=inputPort, **args )
@@ -734,9 +823,8 @@ class PersistentModule( QObject ):
                 inMod = self.getPrimaryInput( port=inputPort, **args )
                 if inMod: ispec.inputModule = inMod
                 
-            if  ispec.inputModule <> None: 
-                ispec.input =  ispec.inputModule.getOutput()                 
-                ispec.updateMetadata()
+
+            if  ispec.initializeInput( inputIndex, self.moduleID ): 
                 
                 if inputIndex == 0:     
                     self.setParameter( 'metadata', ispec.metadata ) 
@@ -777,7 +865,7 @@ class PersistentModule( QObject ):
 #        if self.activeLayer == None: 
 #            self.activeLayer =self.getAnnotation( 'activeLayer' )
 #        if self.input and not scalars:
-#            scalarsArray = self.input.GetPointData().GetScalars()
+#            scalarsArray = self.input().GetPointData().GetScalars()
 #            if scalarsArray <> None:
 #                scalars = scalarsArray.GetName() 
 #            else:
@@ -1425,14 +1513,14 @@ class PersistentVisualizationModule( PersistentModule ):
                       
     def setInputZScale( self, zscale_data, input_index=0, **args  ):
         ispec = self.inputSpecs[ input_index ] 
-        if ispec.input <> None:
-            spacing = ispec.input.GetSpacing()
+        if ispec.input() <> None:
+            spacing = ispec.input().GetSpacing()
             ix, iy, iz = spacing
             sz = zscale_data[1]
             if iz <> sz:
 #                print " PVM >---------------> Change input zscale: %.4f -> %.4f" % ( iz, sz )
-                ispec.input.SetSpacing( ix, iy, sz )  
-                ispec.input.Modified() 
+                ispec.input().SetSpacing( ix, iy, sz )  
+                ispec.input().Modified() 
                 return True
         return False
                     
@@ -1459,8 +1547,8 @@ class PersistentVisualizationModule( PersistentModule ):
         ispec = self.inputSpecs[ input_index ] 
         fieldData = ispec.getFieldData()
         if not ( ('output' in args) or ('port' in args) ):
-            if ispec.input <> None: 
-                args[ 'output' ] = ispec.input
+            if ispec.input() <> None: 
+                args[ 'output' ] = ispec.input()
             elif ispec.inputModule <> None: 
                 port = ispec.inputModule.getOutputPort()
                 if port: args[ 'port' ] = port
@@ -1601,7 +1689,7 @@ class PersistentVisualizationModule( PersistentModule ):
         enableStereo = int( data[2] )
         smoothColormap = int( data[3] ) if ( len( data ) > 3 ) else 1 
         ispec = self.getInputSpec( cmap_index )  
-        if  (ispec <> None) and (ispec.input <> None):         
+        if  (ispec <> None) and (ispec.input() <> None):         
     #        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
     #        print ' ~~~~~~~ SET COLORMAP:  --%s--  ' % self.colormapName
             self.updateStereo( enableStereo )
@@ -1750,10 +1838,10 @@ class PersistentVisualizationModule( PersistentModule ):
         ds= ModuleStore.getCdmsDataset( ispec.datasetId )
         
         if ds <> None:
-            if len(ds.transientVariables)<>1:
-                print 'ERROR: this module has many', 
-            var = ds.transientVariables.values()[0]
-            lensActor.SetYRange(var.min(), var.max())
+            if len(ds.transientVariables)>0:
+                if len(ds.transientVariables)>1: print 'Warning: this module has several transient Variables, plotting the first one.'
+                var = ds.transientVariables.values()[0]
+                lensActor.SetYRange(var.min(), var.max())
 
         prop = lensActor.GetProperty()
         prop.SetColor( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] )

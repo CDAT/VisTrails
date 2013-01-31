@@ -647,6 +647,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     activationMap = {}
     moduleMap = {} 
     actionMenu = None
+    plotIndexMap = {}
+    inputCounter = 0
     _config_mode = LevelingType.GUI
 
     def __init__(self):
@@ -889,6 +891,9 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 
         raise UnimplementedException    #  Raise this exception to run the fallback code (rebuild from scratch) because the following code doesn't work. 
         
+
+        DV3DPipelineHelper.plotIndexMap = {}
+        DV3DPipelineHelper.inputCounter = 0
         controller.change_selected_version(version)
         vistrail_a = controller.vistrail
         version_a = version
@@ -985,6 +990,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     connected_module = workflow.modules[ connected_module_id ]
                     plot_module = controller.create_module_from_descriptor( connected_module.module_descriptor )
                     ops.append( ('add', plot_module) )
+                    DV3DPipelineHelper.plotIndexMap[plot_module.id] = DV3DPipelineHelper.inputCounter
                     if reader_module:
                         conn0 = controller.create_connection( reader_module, 'volume', plot_module, 'volume' )
                         ops.append( ('add', conn0) )
@@ -1015,7 +1021,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 if module: 
                     module.setCellLocation( sheetName, cell_address )   
                     DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
-
+                    
+        DV3DPipelineHelper.inputCounter += len(plot.vars)
         return action2
     
     @staticmethod
@@ -1023,6 +1030,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         from gui.application import get_vistrails_application
         VistrailsApplication = get_vistrails_application()
         return VistrailsApplication.uvcdatWindow.current_controller
+    
+    @staticmethod
+    def getPlotIndex( mid, index ):
+        pi = DV3DPipelineHelper.plotIndexMap.get(mid,0)
+        return pi + index
                                         
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col):
@@ -1032,12 +1044,16 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
 #        ConfigurableFunction.clear()
         controller.change_selected_version(version)
+
+        DV3DPipelineHelper.plotIndexMap = {}
 #        print "[%d,%d] ~~~~~~~~~~~~~~~>> build_plot_pipeline_action, version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
 #        print " --> plot_modules = ",  str( controller.current_pipeline.modules.keys() )
 #        print " --> var_modules = ",  str( [ var.id for var in var_modules ] )
         plots = list( plot_objs )
         #Considering that plot_objs has a single plot_obj
-        plot_obj = plots.pop()
+
+        plot_obj = plots.pop(0)
+        DV3DPipelineHelper.inputCounter = len(plot_obj.vars)
         action = None
         if len( plot_obj.cells ) > 0: 
             plot_obj.current_parent_version = version
@@ -1108,24 +1124,39 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             iVarModule = 0
             ops = []           
             nInputs = 1 if len( reader_1v_modules ) else 3
-            iReaderModule = 0
-            module = reader_modules[iReaderModule]
+            added_modules = []
+            inputPort = 'variable'
             if nInputs == 1:
-                inputPort = 'variable'
-                for iInput in range( len( var_modules ) ):
-                    try:
-                        var_module = var_modules[ iInput ]
-                        var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
-                        if var_module_in_pipeline == None: 
-                            ops.append( ( 'add', var_module ) )
-                        conn1 = controller.create_connection( var_module, 'self', module, inputPort )
-                        ops.append( ( 'add', conn1 ) )
-                        iReaderModule = iReaderModule + 1
-                        if iReaderModule < len( reader_modules ):
-                            module = reader_modules[iReaderModule]
-                    except Exception, err:
-                        print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
-                        break                                     
+                if len( reader_modules ) == 1:
+                    module = reader_modules[0]
+                    for iInput in range( len( var_modules ) ):
+                        try:
+                            var_module = var_modules[ iInput ]
+                            var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
+                            if (var_module_in_pipeline == None) and not (var_module.id in added_modules):  
+                                ops.append( ( 'add', var_module ) )
+                                added_modules.append( var_module.id )
+                            conn1 = controller.create_connection( var_module, 'self', module, inputPort )
+                            ops.append( ( 'add', conn1 ) )
+                        except Exception, err:
+                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                            break  
+                elif len( reader_modules ) == len( var_modules ):
+                    for iInput in range( len( var_modules ) ):
+                        try:
+                            var_module = var_modules[ iInput ]
+                            module = reader_modules[ iInput ]
+                            var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
+                            if (var_module_in_pipeline == None) and not (var_module.id in added_modules):  
+                                ops.append( ( 'add', var_module ) )
+                                added_modules.append( var_module.id )
+                            conn1 = controller.create_connection( var_module, 'self', module, inputPort )
+                            ops.append( ( 'add', conn1 ) )
+                        except Exception, err:
+                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                            break  
+                else:
+                    print>>sys.stderr, "Don't know how to match %d CDMSVariable inputs to %d CDMSReader modules" % ( len( var_modules ), len( reader_modules ) )                                                                                      
             else: 
                 iVarModule = 0
                 for iInput in range( nInputs ):
@@ -1133,12 +1164,16 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                         try:
                             var_module = var_modules[ iVarModule ]
                             var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
-                            if var_module_in_pipeline == None: 
+                            if (var_module_in_pipeline == None) and not (var_module.id in added_modules): 
                                 ops.append( ( 'add', var_module ) )
+                                added_modules.append( var_module.id )
                             inputPort = 'variable' if (iInput == 0) else "variable%d" % ( iInput + 1)
                             conn1 = controller.create_connection( var_module, 'self', module, inputPort )
                             ops.append( ( 'add', conn1 ) )
                             iVarModule = iVarModule+1
+                        except Exception, err:
+                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                            break
                         except Exception, err:
                             print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
                             break
