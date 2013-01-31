@@ -774,12 +774,15 @@ class PersistentModule( QObject ):
 #            print ' Actual Input value = %s'  % str(pval)           
         return pval
 
-    def getInputValues( self, inputName, default_value = None, **args ):
+    def getInputValues( self, inputName, **args ):
         import api
         self.getDatasetId( **args )
         pval = self.getParameter( inputName, None )
         if (pval == None) and (self.wmod <> None):
-            pval = self.wmod.forceGetInputsFromPort( inputName, default_value )             
+            if 'forceGetInputListFromPort' in dir(self.wmod):
+                pval = self.wmod.forceGetInputListFromPort( inputName )    
+            else:
+                pval = self.wmod.forceGetInputsFromPort( inputName, [] )             
         return pval
           
     def setResult( self, outputName, value ): 
