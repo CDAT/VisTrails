@@ -1124,8 +1124,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             reader_modules = reader_1v_modules + reader_3v_modules
             ops = []           
             nInputs = 1 if len( reader_1v_modules ) else 3
-
-            module = reader_modules[0]
             added_modules = []
             inputPort = 'variable'
             if nInputs == 1:
