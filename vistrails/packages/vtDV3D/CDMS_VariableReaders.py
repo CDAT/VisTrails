@@ -446,7 +446,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 varName = varDataFields[1] 
                 if varName <> '__zeros__':
                     varDataSpecs = self.getCachedData( varDataId )
-                    vmd = varDataSpecs[ 'md' ]          
+                    vmd = varDataSpecs[ 'md' ] 
+                    var_md = md[ 'attributes' ]               
 #                    vmd[ 'vars' ] = vars               
                     vmd[ 'title' ] = getTitle( dsid, varName, var_md )                 
                     enc_mdata = encodeToString( vmd ) 
@@ -466,18 +467,20 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             if   axis.isLongitude():  bounds = [ roi[0], roi[2] ]
             elif axis.isLatitude():   bounds = [ roi[1], roi[3] ] 
         if bounds:
-            if axis.isLongitude() and (values[0] > values[-1]):
-               values[-1] = values[-1] + 360.0 
-            value_bounds = [ min(values[0],values[-1]), max(values[0],values[-1]) ]
-            mid_value = ( value_bounds[0] + value_bounds[1] ) / 2.0
-            mid_bounds = ( bounds[0] + bounds[1] ) / 2.0
-            offset = (360.0 if mid_bounds > mid_value else -360.0)
-            trans_val = mid_value + offset
-            if (trans_val > bounds[0]) and (trans_val < bounds[1]):
-                value_bounds[0] = value_bounds[0] + offset
-                value_bounds[1] = value_bounds[1] + offset           
-            bounds[0] = max( [ bounds[0], value_bounds[0] ] )
-            bounds[1] = min( [ bounds[1], value_bounds[1] ] )
+            if len( values ) < 2: values = bounds
+            else:
+                if axis.isLongitude() and (values[0] > values[-1]):
+                    values[-1] = values[-1] + 360.0 
+                value_bounds = [ min(values[0],values[-1]), max(values[0],values[-1]) ]
+                mid_value = ( value_bounds[0] + value_bounds[1] ) / 2.0
+                mid_bounds = ( bounds[0] + bounds[1] ) / 2.0
+                offset = (360.0 if mid_bounds > mid_value else -360.0)
+                trans_val = mid_value + offset
+                if (trans_val > bounds[0]) and (trans_val < bounds[1]):
+                    value_bounds[0] = value_bounds[0] + offset
+                    value_bounds[1] = value_bounds[1] + offset           
+                bounds[0] = max( [ bounds[0], value_bounds[0] ] )
+                bounds[1] = min( [ bounds[1], value_bounds[1] ] )
         return bounds, values
 
     def getCoordType( self, axis, outputType ):
