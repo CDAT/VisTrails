@@ -882,6 +882,11 @@ class PersistentModule( QObject ):
     def getDataValue( self, image_value, input_index = 0 ):
         ispec = self.inputSpecs[ input_index ] 
         return ispec.getDataValue( image_value )
+
+    def getTimeAxis(self):
+        ispec = self.getInputSpec()     
+        timeAxis = ispec.getMetadata('time') if ispec else None
+        return timeAxis
     
     def getInputSpec( self, input_index=0 ):
         return self.inputSpecs.get( input_index, None )

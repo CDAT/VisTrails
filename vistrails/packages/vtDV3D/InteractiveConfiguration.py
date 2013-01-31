@@ -2314,8 +2314,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 self.setValue( iTimestep )
                 sheetTabs = set()
                 relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
-                ispec = self.module.getInputSpec()     
-                timeAxis = ispec.getMetadata('time')
+                timeAxis =  self.module.getTimeAxis()     
                 if not timeAxis:
                     print>>sys.stderr, "Can't find time axis for dataset %s- animation disabled." % self.module.getDatasetId()
                     return
