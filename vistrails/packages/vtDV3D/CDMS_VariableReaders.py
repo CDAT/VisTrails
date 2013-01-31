@@ -61,6 +61,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         self.timeAxis = None
         if self.outputType == CDMSDataType.Hoffmuller:
             self.addUVCDATConfigGuiFunction( 'chooseLevel', LevelConfigurationDialog, 'L', label='Choose Level' ) 
+            
+    def getTimeAxis(self):
+        return self.timeAxis
        
     def getImageDataCache(self):
         return self.imageDataCache.setdefault( self.moduleID, {} )
