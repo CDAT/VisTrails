@@ -172,7 +172,7 @@ class InputSpecs:
             plotIndex = DV3DPipelineHelper.getPlotIndex( moduleID, inputIndex )      
             self._input =  self.selectInputArray( raw_input, plotIndex )                             
             self.updateMetadata( plotIndex )
-            print "Computed metadata for input %d to module %d (plotIndex = %d): %s " % ( inputIndex, moduleID, plotIndex, str(self.metadata) )
+#            print "Computed metadata for input %d to module %d (plotIndex = %d): %s " % ( inputIndex, moduleID, plotIndex, str(self.metadata) )
             return True
         return False
         

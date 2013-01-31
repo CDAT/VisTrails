@@ -755,7 +755,7 @@ class ImagePlaneWidget:
     def SetOutlineMap(self, outlineMap):
         self.outlineMap = outlineMap
 
-    def UpdatePlane0(self): 
+    def UpdatePlane1(self): 
         if not self.ImageData: return            
         self.ImageData = self.Reslice.GetInput()
         self.ImageData2 = self.Reslice2.GetInput()

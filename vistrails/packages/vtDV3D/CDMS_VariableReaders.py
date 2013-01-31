@@ -273,7 +273,6 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         varList = orec.varList
         npts = -1
         dataDebug = False
-        useVarDataCache = False
         if len( varList ) == 0: return False
         varDataIds = []
         intersectedRoi = args.get('roi', None )
@@ -306,9 +305,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     varDataIdIndex = 0
                 else:
                     varDataIdIndex = selectedLevel
-            varDataId = '%s;%s;%d;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex) )
+            roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] )
+            varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), roiStr )
             varDataIds.append( varDataId )
-            varDataSpecs = self.getCachedData( varDataId ) if useVarDataCache else None
+            varDataSpecs = self.getCachedData( varDataId ) 
             flatArray = None
             if varDataSpecs == None:
                 if varName == '__zeros__':
@@ -352,8 +352,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         md['timeValue']= self.timeValue.value
                         md[ 'attributes' ] = var_md
                         md[ 'plotType' ] = 'zyt' if (self.outputType == CDMSDataType.Hoffmuller) else 'xyz'
-                        
-                
+                                        
                 self.setCachedData( varDataId, varDataSpecs )  
         
         if not varDataSpecs: return None            
