@@ -47,7 +47,8 @@ class ImagePlaneWidget:
         self.NavigationInteractorStyle = None
         self.ConfigurationInteractorStyle = vtk.vtkInteractorStyleUser()
         self.Input2ExtentOffset = [0,0,0]        
-        self.Input2OriginOffset = [0,0,0]        
+        self.Input2OriginOffset = [0,0,0]
+        self.ResliceAxes   = vtk.vtkMatrix4x4()        
                         
         # Represent the plane's outline
         #
@@ -855,6 +856,97 @@ class ImagePlaneWidget:
 
 
     def UpdatePlane(self):
+        
+        self.ImageData  =self.Reslice.GetInput()
+        if (  not self.Reslice or not self.ImageData ): return
+           
+        # Calculate appropriate pixel spacing for the reslicing
+        #
+        self.ImageData.UpdateInformation()
+        spacing = self.ImageData.GetSpacing()
+        origin = self.ImageData.GetOrigin()
+        extent = self.ImageData.GetWholeExtent()        
+        bounds = [ origin[0] + spacing[0]*extent[0], origin[0] + spacing[0]*extent[1],  origin[1] + spacing[1]*extent[2],  origin[1] + spacing[1]*extent[3],  origin[2] + spacing[2]*extent[4],  origin[2] + spacing[2]*extent[5] ]    
+        
+        for j in range( 3 ): 
+            i = 2*j   
+            if ( bounds[i] > bounds[i+1] ):
+                t = bounds[i+1]
+                bounds[i+1] = bounds[i]
+                bounds[i] = t
+           
+        abs_normal = list( self.PlaneSource.GetNormal() )
+        planeCenter = list( self.PlaneSource.GetCenter() )
+        nmax = 0.0
+        k = 0
+        for i in range( 3 ):    
+            abs_normal[i] = abs(abs_normal[i])
+            if ( abs_normal[i]>nmax ):       
+                nmax = abs_normal[i]
+                k = i
+            
+        # Force the plane to lie within the true image bounds along its normal
+        #
+        if ( planeCenter[k] > bounds[2*k+1] ):    
+            planeCenter[k] = bounds[2*k+1]   
+        elif ( planeCenter[k] < bounds[2*k] ):   
+            planeCenter[k] = bounds[2*k]
+               
+        self.PlaneSource.SetCenter(planeCenter)
+            
+        planeAxis1 = self.GetVector1()
+        planeAxis2 = self.GetVector2()
+        
+        # The x,y dimensions of the plane
+        #
+        planeSizeX  = vtk.vtkMath.Normalize(planeAxis1)
+        planeSizeY  = vtk.vtkMath.Normalize(planeAxis2)
+        normal = list( self.PlaneSource.GetNormal() )
+        
+        # Generate the slicing matrix
+        #
+        self.ResliceAxes.Identity()
+        for i in range( 3 ):       
+            self.ResliceAxes.SetElement(0,i,planeAxis1[i])
+            self.ResliceAxes.SetElement(1,i,planeAxis2[i])
+            self.ResliceAxes.SetElement(2,i,normal[i])
+           
+        srcPlaneOrigin = self.PlaneSource.GetOrigin()         
+        planeOrigin = [ srcPlaneOrigin[0], srcPlaneOrigin[1], srcPlaneOrigin[2], 1.0 ]
+        originXYZW = self.ResliceAxes.MultiplyPoint(planeOrigin)    
+        self.ResliceAxes.Transpose()
+        neworiginXYZW = self.ResliceAxes.MultiplyPoint(originXYZW) 
+        
+        self.ResliceAxes.SetElement(0,3,neworiginXYZW[0])
+        self.ResliceAxes.SetElement(1,3,neworiginXYZW[1])
+        self.ResliceAxes.SetElement(2,3,neworiginXYZW[2])
+        
+        self.Reslice.SetResliceAxes(self.ResliceAxes)
+        self.Reslice2.SetResliceAxes(self.ResliceAxes)
+        
+        spacingX = abs(planeAxis1[0]*spacing[0]) + abs(planeAxis1[1]*spacing[1]) + abs(planeAxis1[2]*spacing[2])   
+        spacingY = abs(planeAxis2[0]*spacing[0]) + abs(planeAxis2[1]*spacing[1]) + abs(planeAxis2[2]*spacing[2])
+        
+        # make sure we're working with valid values
+        realExtentX = vtk.VTK_INT_MAX if ( spacingX == 0 ) else planeSizeX / spacingX       
+        # make sure extentY doesn't wrap during padding
+        realExtentY = vtk.VTK_INT_MAX if ( spacingY == 0 ) else planeSizeY / spacingY
+
+        extentX = 1
+        while (extentX < realExtentX): extentX = extentX << 1
+        extentY = 1
+        while (extentY < realExtentY): extentY = extentY << 1
+            
+        outputSpacingX = 1.0 if (planeSizeX == 0) else planeSizeX/extentX
+        outputSpacingY = 1.0 if (planeSizeY == 0) else planeSizeY/extentY
+        self.Reslice.SetOutputSpacing(outputSpacingX, outputSpacingY, 1)
+        self.Reslice.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
+        self.Reslice.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
+        self.Reslice2.SetOutputSpacing(outputSpacingX, outputSpacingY, 1)
+        self.Reslice2.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
+        self.Reslice2.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
+
+    def UpdatePlane2(self):
         resliceFilters = [ self.Reslice, self.Reslice2 ]
         planeSource = self.PlaneSource
         origin0 = None
