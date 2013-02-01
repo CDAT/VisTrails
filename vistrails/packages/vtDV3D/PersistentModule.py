@@ -154,22 +154,30 @@ class InputSpecs:
         self.inputModule = self.inputModuleList[ 0 ]
 
     def selectInputArray( self, raw_input, plotIndex ):
+        self.updateMetadata( plotIndex )
         old_point_data = raw_input.GetPointData()  
         nArrays = old_point_data.GetNumberOfArrays() 
         if nArrays == 1: return raw_input  
         image_data = vtk.vtkImageData()
         image_data.ShallowCopy( raw_input )
         new_point_data = image_data.GetPointData()        
-        if plotIndex < nArrays:
-            aname = new_point_data.GetArrayName( plotIndex )
-            new_point_data.SetActiveScalars( aname ) 
+        array_index = plotIndex if plotIndex < nArrays else 0
+        inputVarList = self.metadata.get( 'inputVarList', [] )
+        if array_index < len( inputVarList ):
+            aname = inputVarList[ array_index ] 
+            new_point_data.SetActiveScalars( aname )
+#            print "Selecting scalars array %s for input %d" % ( aname, array_index )
+        else:
+            print>>sys.stderr, "Error, can't find scalars array for input %d" % array_index
+#        print "Selecting %s (array-%d) for plot index %d" % ( aname, array_index, plotIndex)
         return image_data
  
     def initializeInput( self, inputIndex, moduleID ): 
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         if self.inputModule:
             raw_input = self.inputModule.getOutput() 
-            plotIndex = DV3DPipelineHelper.getPlotIndex( moduleID, inputIndex )      
+            plotIndex = DV3DPipelineHelper.getPlotIndex( moduleID, inputIndex ) 
+#            print "InitializeInput for module %d, inputIndex=%d, plotIndex=%d" % ( moduleID, inputIndex, plotIndex)     
             self._input =  self.selectInputArray( raw_input, plotIndex )                             
             self.updateMetadata( plotIndex )
 #            print "Computed metadata for input %d to module %d (plotIndex = %d): %s " % ( inputIndex, moduleID, plotIndex, str(self.metadata) )
@@ -322,7 +330,7 @@ class InputSpecs:
 
     def getMetadata( self, key = None ):
         return self.metadata.get( key, None ) if ( key and self.metadata )  else self.metadata
-    
+  
     def getFieldData( self ):
         return self.fieldData  
     

@@ -281,6 +281,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         intersectedRoi = args.get('roi', None )
         self.cdmsDataset.setRoi( intersectedRoi )
         exampleVarDataSpecs = None
+#        print " Get Image Data: varList = %s " % str( varList )
         for varRec in varList:
             range_min, range_max, scale, shift  = 0.0, 0.0, 1.0, 0.0   
             imageDataName = getItem( varRec )
@@ -362,6 +363,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         cachedImageDataName = '-'.join( varDataIds )
         imageDataCache = self.getImageDataCache() 
         if not ( cachedImageDataName in imageDataCache ):
+            print 'Building Image for cache: %s ' % cachedImageDataName
             image_data = vtk.vtkImageData() 
             outputOrigin = varDataSpecs[ 'outputOrigin' ]
             outputExtent = varDataSpecs[ 'outputExtent' ]
@@ -392,6 +394,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             aname = fieldData.GetArrayName(ia)
             if aname.startswith('metadata'):
                 fieldData.RemoveArray(aname)
+#                print 'Remove fieldData Array: %s ' % aname
         extent = image_data.GetExtent()    
         scalars, nTup = None, 0
         vars = []      
@@ -413,6 +416,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     vtkdata.SetName( varName )
                     vtkdata.Modified()
                     pointData.AddArray( vtkdata )
+#                    print "Add array to PointData: %s " % ( varName  )  
                     if (scalars == None) and (varName <> '__zeros__'):
                         scalars = varName
                         pointData.SetActiveScalars( varName  ) 
@@ -420,7 +424,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             except Exception, err:
                 print>>sys.stderr, "Error creating variable metadata: %s " % str(err)
                 traceback.print_exc()
-         
+        for iArray in range(2):
+            scalars = pointData.GetArray(iArray) 
+#            print "Add array %d to PointData: %s (%s)" % ( iArray, pointData.GetArrayName(iArray), scalars.GetName()  )       
         try:                           
             if (self.outputType == CDMSDataType.Vector ): 
                 vtkdata = getNewVtkDataArray( scalar_dtype )

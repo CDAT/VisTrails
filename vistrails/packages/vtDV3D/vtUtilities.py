@@ -241,6 +241,7 @@ def getRangeBounds( type_str ):
         
 def extractMetadata( fieldData ):
     mdList = []
+    inputVarList = []
     varlist = fieldData.GetAbstractArray( 'varlist' ) 
     if varlist == None:  
         print>>sys.stderr, " Can't get Metadata!" 
@@ -248,6 +249,7 @@ def extractMetadata( fieldData ):
         nvar = varlist.GetNumberOfValues()
         for vid in range(nvar):
             varName = str( varlist.GetValue(vid) )
+            inputVarList.append( varName )
             dataVector = fieldData.GetAbstractArray( 'metadata:%s' % varName ) 
             if dataVector == None:  
                 print>>sys.stderr, " Can't get Metadata for var %s!" % varName 
@@ -259,7 +261,8 @@ def extractMetadata( fieldData ):
                     md = decodeFromString( enc_mdata )
                     metadata.update( md )
                 mdList.append( metadata )
-    return mdList
+        for md in mdList: md['inputVarList'] = inputVarList
+    return mdList 
 
 def getFloatDataArray( name, values = [] ): 
     array = vtk.vtkFloatArray()
