@@ -1539,7 +1539,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 if (DV3DPipelineHelper.are_workflows_compatible(vistrail_a, vistrail_b, 
                                                                 version_a, version_b) and
                     len(pipeline.aliases) == len(pl.workflow.aliases)):
-                    return pl
+                    return get_plot_manager().new_plot(pl.package, pl.name)
         return None
     
     @staticmethod
