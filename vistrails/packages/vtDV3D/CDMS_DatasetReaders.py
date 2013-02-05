@@ -712,8 +712,11 @@ class CDMSDataset(Module):
             else:                       args1['lon'] = slice( varLonInt[0], varLonInt[1] )
            
             latAxis = transVar.getLatitude() 
-            latVals = latBounds if latBounds else latAxis.getValue()
-            latRange = [ latVals[0], latVals[-1] ] if (latVals[-1] > latVals[0]) else [ latVals[-1], latVals[0] ]
+            latVals = latAxis.getValue()
+            latRange = [ latVals[0], latVals[-1] ]
+            if latBounds:
+                if ( latVals[-1] > latVals[0] ):     latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] > latBounds[0]) else [ latBounds[-1], latBounds[0] ]
+                else:                                latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] < latBounds[0]) else [ latBounds[-1], latBounds[0] ]
             varLatInt = latAxis.mapIntervalExt( latRange, 'ccn' )
             if (decimationFactor > 1):  args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
             else:                       args1['lat'] = slice( varLatInt[0], varLatInt[1] )

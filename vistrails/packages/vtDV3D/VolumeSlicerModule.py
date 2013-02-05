@@ -3,7 +3,7 @@ Created on Dec 2, 2010
 
 @author: tpmaxwel
 '''
-import vtk, math
+import vtk, math, traceback
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import core.modules.module_registry
@@ -259,7 +259,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ.SetInput( primaryInput, contourInput )
         self.planeWidgetZ.SetPlaneOrientationToZAxes()
         self.planeWidgetZ.PlaceWidget( bounds )
-        self.planeWidgetZ.SetOutlineMap( self.buildOutlineMap() )
+        outlineMap = self.buildOutlineMap()
+        if outlineMap: self.planeWidgetZ.SetOutlineMap( outlineMap )
 
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.updateOpacity() 
@@ -298,32 +299,41 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         import vtk.util.vtkImageImportFromArray as vtkUtil
 
         # read outline image and convert to gray scale
-        data = imread(defaultOutlineMapFile)
-        data = data.mean(axis=2)
-
-#        # create a variable using the data loaded in the image and an uniform grid
-        dims = data.shape
-        reso = [180.0/dims[0], 360.0/dims[1]]
-        var = cdms2.createVariable(data)
-        lat = cdms2.createUniformLatitudeAxis(90, dims[0], -reso[0])
-        lon = cdms2.createUniformLongitudeAxis(-180, dims[1], reso[1])
-        var.setAxis(0, lat)
-        var.setAxis(1, lon)
-
-        # create the final map using the ROI
-        odims = [ (self.roi[3]-self.roi[2])/reso[0] , (self.roi[1]-self.roi[0])/reso[1] ]
-        ogrid = cdms2.createUniformGrid(self.roi[2], odims[0], reso[0], self.roi[0], odims[1], reso[1])
-        ovar = var.regrid(ogrid, regridTool='regrid2')
+        try:
+            data = imread(defaultOutlineMapFile)
+            data = data.mean(axis=2)
+    
+    #        # create a variable using the data loaded in the image and an uniform grid
+            dims = data.shape
+            reso = [180.0/dims[0], 360.0/dims[1]]
+            var = cdms2.createVariable(data)
+            lat = cdms2.createUniformLatitudeAxis(90, dims[0], -reso[0])
+            lon = cdms2.createUniformLongitudeAxis(-180, dims[1], reso[1])
+            var.setAxis(0, lat)
+            var.setAxis(1, lon)
+    
+            # create the final map using the ROI
+            ROI = self.roi[:]
+            if ROI[2] < -90.0: ROI[2] = -90.0
+            if ROI[3] >  90.0: ROI[3] =  90.0
+            odims = [ (ROI[3]-ROI[2])/reso[0] , (ROI[1]-ROI[0])/reso[1] ]
+            ogrid = cdms2.createUniformGrid( ROI[2], odims[0], reso[0], ROI[0], odims[1], reso[1] )
+            ovar = var.regrid(ogrid, regridTool='regrid2')
+            
+            # replace outlier numbers
+            d = ovar.data
+            d[d==1e+20] = d[d<>1e+20].max()
+            
+            img = vtkUtil.vtkImageImportFromArray()
+            img.SetArray(ovar.data)
+            img.Update()
+            
+        except Exception:
+            print>>sys.stderr, "Error building Outline Map"
+            traceback.print_exc()
+            return None
         
-        # replace outlier numbers
-        d = ovar.data
-        d[d==1e+20] = d[d<>1e+20].max()
-        
-        # convert to vtkImageData
-        img = vtkUtil.vtkImageImportFromArray()
-        img.SetArray(ovar.data)
-        img.Update()
-        
+        # convert to vtkImageData       
         return img.GetOutput()
     
     def updateContourDensity(self):
