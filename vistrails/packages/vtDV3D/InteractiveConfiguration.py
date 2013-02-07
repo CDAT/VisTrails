@@ -553,7 +553,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     def expandRange( self ):
         if self.adjustRangeInput >= 0:
             ispec = self.module.getInputSpec( self.adjustRangeInput )
-            if ispec and ispec.input:
+            if ispec and ispec.input():
                 if ( self.range_bounds[0] <> ispec.seriesScalarRange[0] ) or ( self.range_bounds[1] <> ispec.seriesScalarRange[1] ):
                     self.range_bounds[0:2] = ispec.seriesScalarRange[0:2]
                     self.initial_range[:] = self.range_bounds[:]
@@ -2314,8 +2314,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 self.setValue( iTimestep )
                 sheetTabs = set()
                 relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
-                ispec = self.module.getInputSpec()     
-                timeAxis = ispec.getMetadata('time')
+                timeAxis =  self.module.getTimeAxis()     
                 if not timeAxis:
                     print>>sys.stderr, "Can't find time axis for dataset %s- animation disabled." % self.module.getDatasetId()
                     return

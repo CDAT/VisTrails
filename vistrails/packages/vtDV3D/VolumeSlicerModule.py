@@ -3,7 +3,7 @@ Created on Dec 2, 2010
 
 @author: tpmaxwel
 '''
-import vtk, math
+import vtk, math, traceback
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import core.modules.module_registry
@@ -117,8 +117,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         rv = PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args ) 
         if rv:
             ispec = self.getInputSpec(  1 )       
-            if (ispec <> None) and (ispec.input <> None):
-                contourInput = ispec.input 
+            if (ispec <> None) and (ispec.input() <> None):
+                contourInput = ispec.input() 
                 ix, iy, iz = contourInput.GetSpacing()
                 sz = zscale_data[1]
                 contourInput.SetSpacing( ix, iy, sz )  
@@ -165,18 +165,6 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetY.DisableInteraction()                                                
         self.planeWidgetZ.DisableInteraction()  
 
-#    def updateContourMetadata(self):
-#        if self.contourMetadata == None:
-#            scalars = None
-#            self.newDataset = False
-#            self.contourInput.Update()
-#            contourFieldData = self.contourInput.GetFieldData()                 
-#            self.contourMetadata = extractMetadata( contourFieldData )            
-#            if self.contourMetadata <> None:    
-#                attributes = self.contourMetadata.get( 'attributes' , None )
-#                if attributes:
-#                    self.contour_units = attributes.get( 'units' , '' )
-
     def updatingColormap( self, cmap_index, colormapManager ):
         if cmap_index == 0:
             self.planeWidgetX.SetTextureInterpolate( colormapManager.smoothColormap )
@@ -194,8 +182,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #                self.input() = contourModule.getOutput() 
 #            else:
 #                print>>sys.stderr, "Error, must provide an input to the Volume Slicer module!"
+ #       self.intersectInputExtents()
         contour_ispec = self.getInputSpec(  1 )       
-        contourInput = contour_ispec.input if contour_ispec <> None else None
+
+        contourInput = contour_ispec.input() if contour_ispec <> None else None
         primaryInput = self.input()
 
 #        self.contourInput = None if contourModule == None else contourModule.getOutput() 
@@ -269,12 +259,13 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ.SetInput( primaryInput, contourInput )
         self.planeWidgetZ.SetPlaneOrientationToZAxes()
         self.planeWidgetZ.PlaceWidget( bounds )
-        self.planeWidgetZ.SetOutlineMap( self.buildOutlineMap() )
+        outlineMap = self.buildOutlineMap()
+        if outlineMap: self.planeWidgetZ.SetOutlineMap( outlineMap )
 
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.updateOpacity() 
         
-        if (contour_ispec <> None) and (contour_ispec.input <> None) and (self.contours == None):
+        if (contour_ispec <> None) and (contour_ispec.input() <> None) and (self.contours == None):
             rangeBounds = self.getRangeBounds(1)
             colormapManager = self.getColormapManager( index=1 )
             self.generateContours = True   
@@ -308,32 +299,41 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         import vtk.util.vtkImageImportFromArray as vtkUtil
 
         # read outline image and convert to gray scale
-        data = imread(defaultOutlineMapFile)
-        data = data.mean(axis=2)
-
-#        # create a variable using the data loaded in the image and an uniform grid
-        dims = data.shape
-        reso = [180.0/dims[0], 360.0/dims[1]]
-        var = cdms2.createVariable(data)
-        lat = cdms2.createUniformLatitudeAxis(90, dims[0], -reso[0])
-        lon = cdms2.createUniformLongitudeAxis(-180, dims[1], reso[1])
-        var.setAxis(0, lat)
-        var.setAxis(1, lon)
-
-        # create the final map using the ROI
-        odims = [ (self.roi[3]-self.roi[2])/reso[0] , (self.roi[1]-self.roi[0])/reso[1] ]
-        ogrid = cdms2.createUniformGrid(self.roi[2], odims[0], reso[0], self.roi[0], odims[1], reso[1])
-        ovar = var.regrid(ogrid, regridTool='regrid2')
+        try:
+            data = imread(defaultOutlineMapFile)
+            data = data.mean(axis=2)
+    
+    #        # create a variable using the data loaded in the image and an uniform grid
+            dims = data.shape
+            reso = [180.0/dims[0], 360.0/dims[1]]
+            var = cdms2.createVariable(data)
+            lat = cdms2.createUniformLatitudeAxis(90, dims[0], -reso[0])
+            lon = cdms2.createUniformLongitudeAxis(-180, dims[1], reso[1])
+            var.setAxis(0, lat)
+            var.setAxis(1, lon)
+    
+            # create the final map using the ROI
+            ROI = self.roi[:]
+            if ROI[2] < -90.0: ROI[2] = -90.0
+            if ROI[3] >  90.0: ROI[3] =  90.0
+            odims = [ (ROI[3]-ROI[2])/reso[0] , (ROI[1]-ROI[0])/reso[1] ]
+            ogrid = cdms2.createUniformGrid( ROI[2], odims[0], reso[0], ROI[0], odims[1], reso[1] )
+            ovar = var.regrid(ogrid, regridTool='regrid2')
+            
+            # replace outlier numbers
+            d = ovar.data
+            d[d==1e+20] = d[d<>1e+20].max()
+            
+            img = vtkUtil.vtkImageImportFromArray()
+            img.SetArray(ovar.data)
+            img.Update()
+            
+        except Exception:
+            print>>sys.stderr, "Error building Outline Map"
+            traceback.print_exc()
+            return None
         
-        # replace outlier numbers
-        d = ovar.data
-        d[d==1e+20] = d[d<>1e+20].max()
-        
-        # convert to vtkImageData
-        img = vtkUtil.vtkImageImportFromArray()
-        img.SetArray(ovar.data)
-        img.Update()
-        
+        # convert to vtkImageData       
         return img.GetOutput()
     
     def updateContourDensity(self):
@@ -354,7 +354,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def updateModule(self, **args ):
         primaryInput = self.input()
         contour_ispec = self.getInputSpec(  1 )       
-        contourInput = contour_ispec.input if contour_ispec <> None else None
+        contourInput = contour_ispec.input() if contour_ispec <> None else None
         self.planeWidgetX.SetInput( primaryInput, contourInput )         
         self.planeWidgetY.SetInput( primaryInput, contourInput )         
         self.planeWidgetZ.SetInput( primaryInput, contourInput ) 
@@ -383,10 +383,13 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 dataValue = self.getDataValue( image_value )
                 wpos = ispec.getWorldCoords( cpos )
                 if self.generateContours:
-                    contour_image_value = cursor_data[4] 
-                    contour_value = self.getDataValue( contour_image_value, 1 )
-                    contour_units = self.getUnits(1)
-                    textDisplay = " Position: (%s, %s, %s), Value: %.3G %s, Contour Value: %.3G %s" % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units, contour_value, contour_units )
+                    contour_image_value = cursor_data[4]
+                    if  contour_image_value:
+                        contour_value = self.getDataValue( contour_image_value, 1 )
+                        contour_units = self.getUnits(1)
+                        textDisplay = " Position: (%s, %s, %s), Value: %.3G %s, Contour Value: %.3G %s" % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units, contour_value, contour_units )
+                    else:
+                        textDisplay = " Position: (%s, %s, %s), Value: %.3G %s" % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units )
 #                    print " >>>>> Current Image Value: %d %d, data value: %.3G, contour value: %.3G, pos = %s, (%s) " % ( image_value, contour_image_value, dataValue, contour_value, str(cpos), str(wpos) )
                 else:
                     textDisplay = " Position: (%s, %s, %s), Value: %.3G %s." % ( wpos[0], wpos[1], wpos[2], dataValue, ispec.units )
@@ -419,13 +422,12 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 slice_data.Update()                
                 self.contours.SetInput( slice_data )
                 self.contours.Modified()
-                pos1 = caller.GetPoint1()
-                pos2 = caller.GetPoint2()
                 origin = caller.GetOrigin()
                 contourLineActor = self.getContourActor( iAxis )
                 contourLineActor.SetPosition( origin[0], origin[1], origin[2] )
-#                contourLineActor.SetOrigin( origin[0] + 0.1, origin[1] + 0.1, origin[2] + 0.1 )
+#                contourLineActor.SetOrigin( origin[0], origin[1], origin[2] )
                 self.setVisibleContour( iAxis )
+#                print " Generate Contours, data dims = %s, origin = %s, pos = %s, extent = %s" % ( str( slice_data.GetDimensions() ), str(slice_data.GetOrigin()), str(origin), str(slice_data.GetExtent()) )
                 
             self.render()
 #                print " Generate Contours, data dims = %s, pos = %s %s %s " % ( str( slice_data.GetDimensions() ), str(pos1), str(pos2), str(origin) )
@@ -570,7 +572,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
     def scaleColormap( self, ctf_data, cmap_index=0, **args ):
         ispec = self.inputSpecs[ cmap_index ]
-        if ispec and ispec.input: 
+        if ispec and ispec.input(): 
             colormapManager = self.getColormapManager( index=cmap_index )
 #            if not colormapManager.matchDisplayRange( ctf_data ):
             imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 

@@ -17,6 +17,10 @@ from packages.vtDV3D.PersistentModule import *
 import cdms2, cdtime, cdutil, MV2 
 PortDataVersion = 0
 
+def getRoiSize( roi ):
+    if roi == None: return 0
+    return abs((roi[2]-roi[0])*(roi[3]-roi[1]))
+
 def getTitle( dsid, name, attributes, showUnits=False ):
        long_name = attributes.get( 'long_name', attributes.get( 'standard_name', name ) )
        if not showUnits: return "%s:%s" % ( dsid, long_name )
@@ -57,6 +61,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         self.timeAxis = None
         if self.outputType == CDMSDataType.Hoffmuller:
             self.addUVCDATConfigGuiFunction( 'chooseLevel', LevelConfigurationDialog, 'L', label='Choose Level' ) 
+            
+    def getTimeAxis(self):
+        return self.timeAxis
        
     def getImageDataCache(self):
         return self.imageDataCache.setdefault( self.moduleID, {} )
@@ -158,18 +165,22 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.useTimeIndex = timeData[2]
 #            print "Set Time [mid = %d]: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( self.moduleID, str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
 #            print "Time Step Labels: %s" % str( self.timeLabels )
+            intersectedRoi = self.cdmsDataset.gridBounds
+            intersectedRoi = self.getIntersectedRoi( cdms_var, intersectedRoi )
             while( len(cdms_vars) ):
                 cdms_var2 = cdms_vars.pop(0)
                 if cdms_var2: 
                     iVar = iVar+1
                     self.addCDMSVariable( cdms_var2, iVar )
-                               
+                    intersectedRoi = self.getIntersectedRoi( cdms_var2, intersectedRoi )
+                  
             for iVarInputIndex in range( 2,5 ):
                 cdms_var2 = self.getInputValue( "variable%d" % iVarInputIndex  ) 
                 if cdms_var2: 
                     iVar = iVar+1
                     self.addCDMSVariable( cdms_var2, iVar )
-            self.generateOutput()
+                    
+            self.generateOutput(roi=intersectedRoi)
 #            if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
         else:
             dset = self.getInputValue( "dataset"  ) 
@@ -222,7 +233,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 if (ndim < 0 ) or (orec.ndim == ndim): return orec
         return None
              
-    def generateOutput( self ): 
+    def generateOutput( self, **args ): 
         oRecMgr = None 
         varRecs = self.cdmsDataset.getVarRecValues()
         if len( varRecs ):
@@ -240,7 +251,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         orecs = oRecMgr.getOutputRecs( self.datasetId ) if oRecMgr else None
         if not orecs: raise ModuleError( self, 'No Variable selected for dataset %s.' % self.datasetId )             
         for orec in orecs:
-            cachedImageDataName = self.getImageData( orec ) 
+            cachedImageDataName = self.getImageData( orec, **args ) 
             if cachedImageDataName: 
                 imageDataCache = self.getImageDataCache()            
                 if   orec.ndim >= 3: self.set3DOutput( name=orec.name,  output=imageDataCache[cachedImageDataName] )
@@ -265,10 +276,12 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         varList = orec.varList
         npts = -1
         dataDebug = False
-        useVarDataCache = False
         if len( varList ) == 0: return False
         varDataIds = []
+        intersectedRoi = args.get('roi', None )
+        self.cdmsDataset.setRoi( intersectedRoi )
         exampleVarDataSpecs = None
+#        print " Get Image Data: varList = %s " % str( varList )
         for varRec in varList:
             range_min, range_max, scale, shift  = 0.0, 0.0, 1.0, 0.0   
             imageDataName = getItem( varRec )
@@ -296,9 +309,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     varDataIdIndex = 0
                 else:
                     varDataIdIndex = selectedLevel
-            varDataId = '%s;%s;%d;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex) )
+            roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] )
+            varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), roiStr )
             varDataIds.append( varDataId )
-            varDataSpecs = self.getCachedData( varDataId ) if useVarDataCache else None
+            varDataSpecs = self.getCachedData( varDataId ) 
             flatArray = None
             if varDataSpecs == None:
                 if varName == '__zeros__':
@@ -329,8 +343,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         
                         if dataDebug: self.dumpData( varName, newDataArray )
                         flatArray = newDataArray.ravel('F') 
-                        if npts == -1:  npts = flatArray.size
-                        else:           assert( npts == flatArray.size )
+                        array_size = flatArray.size
+                        if npts == -1:  npts = array_size
+                        else:           assert( npts == array_size )
                             
                         var_md = copy.copy( varData.attributes )
                         var_md[ 'range' ] = ( range_min, range_max )
@@ -341,14 +356,14 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         md['timeValue']= self.timeValue.value
                         md[ 'attributes' ] = var_md
                         md[ 'plotType' ] = 'zyt' if (self.outputType == CDMSDataType.Hoffmuller) else 'xyz'
-                        
-                
+                                        
                 self.setCachedData( varDataId, varDataSpecs )  
         
         if not varDataSpecs: return None            
         cachedImageDataName = '-'.join( varDataIds )
         imageDataCache = self.getImageDataCache() 
         if not ( cachedImageDataName in imageDataCache ):
+            print 'Building Image for cache: %s ' % cachedImageDataName
             image_data = vtk.vtkImageData() 
             outputOrigin = varDataSpecs[ 'outputOrigin' ]
             outputExtent = varDataSpecs[ 'outputExtent' ]
@@ -374,7 +389,12 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         for aname in range( pointData.GetNumberOfArrays() ): 
             pointData.RemoveArray( pointData.GetArrayName(aname) )
         fieldData = self.getFieldData()
-        fieldData.RemoveArray('metadata')
+        na = fieldData.GetNumberOfArrays()
+        for ia in range(na):
+            aname = fieldData.GetArrayName(ia)
+            if aname.startswith('metadata'):
+                fieldData.RemoveArray(aname)
+#                print 'Remove fieldData Array: %s ' % aname
         extent = image_data.GetExtent()    
         scalars, nTup = None, 0
         vars = []      
@@ -396,6 +416,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     vtkdata.SetName( varName )
                     vtkdata.Modified()
                     pointData.AddArray( vtkdata )
+#                    print "Add array to PointData: %s " % ( varName  )  
                     if (scalars == None) and (varName <> '__zeros__'):
                         scalars = varName
                         pointData.SetActiveScalars( varName  ) 
@@ -403,7 +424,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             except Exception, err:
                 print>>sys.stderr, "Error creating variable metadata: %s " % str(err)
                 traceback.print_exc()
-         
+        for iArray in range(2):
+            scalars = pointData.GetArray(iArray) 
+#            print "Add array %d to PointData: %s (%s)" % ( iArray, pointData.GetArrayName(iArray), scalars.GetName()  )       
         try:                           
             if (self.outputType == CDMSDataType.Vector ): 
                 vtkdata = getNewVtkDataArray( scalar_dtype )
@@ -425,21 +448,19 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 pointData.SetVectors(vtkdata)
                 pointData.SetActiveVectors( 'vectors'  )         
             if len( vars )== 0: raise ModuleError( self, 'No dataset variables selected for output %s.' % orec.name) 
-            md = None
             for varDataId in varDataIds:
                 varDataFields = varDataId.split(';')
                 dsid = varDataFields[0] 
                 varName = varDataFields[1] 
                 if varName <> '__zeros__':
                     varDataSpecs = self.getCachedData( varDataId )
-                    vmd = varDataSpecs[ 'md' ]   
-                    if (md == None):  
-                        md = vmd          
-                        md[ 'vars' ] = vars               
-                        md[ 'title' ] = getTitle( dsid, varName, var_md )
-                    md[ 'valueRange-'+varName ] = vmd[ 'valueRange']                   
-            enc_mdata = encodeToString( md ) 
-            if enc_mdata: fieldData.AddArray( getStringDataArray( 'metadata',   [ enc_mdata ]  ) )                       
+                    vmd = varDataSpecs[ 'md' ] 
+                    var_md = md[ 'attributes' ]               
+#                    vmd[ 'vars' ] = vars               
+                    vmd[ 'title' ] = getTitle( dsid, varName, var_md )                 
+                    enc_mdata = encodeToString( vmd ) 
+                    if enc_mdata: fieldData.AddArray( getStringDataArray( 'metadata:%s' % varName,   [ enc_mdata ]  ) ) 
+            if enc_mdata: fieldData.AddArray( getStringDataArray( 'varlist',  vars  ) )                       
             image_data.Modified()
         except Exception, err:
             print>>sys.stderr, "Error encoding variable metadata: %s " % str(err)
@@ -454,18 +475,20 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             if   axis.isLongitude():  bounds = [ roi[0], roi[2] ]
             elif axis.isLatitude():   bounds = [ roi[1], roi[3] ] 
         if bounds:
-            if axis.isLongitude() and (values[0] > values[-1]):
-               values[-1] = values[-1] + 360.0 
-            value_bounds = [ min(values[0],values[-1]), max(values[0],values[-1]) ]
-            mid_value = ( value_bounds[0] + value_bounds[1] ) / 2.0
-            mid_bounds = ( bounds[0] + bounds[1] ) / 2.0
-            offset = (360.0 if mid_bounds > mid_value else -360.0)
-            trans_val = mid_value + offset
-            if (trans_val > bounds[0]) and (trans_val < bounds[1]):
-                value_bounds[0] = value_bounds[0] + offset
-                value_bounds[1] = value_bounds[1] + offset           
-            bounds[0] = max( [ bounds[0], value_bounds[0] ] )
-            bounds[1] = min( [ bounds[1], value_bounds[1] ] )
+            if len( values ) < 2: values = bounds
+            else:
+                if axis.isLongitude() and (values[0] > values[-1]):
+                    values[-1] = values[-1] + 360.0 
+                value_bounds = [ min(values[0],values[-1]), max(values[0],values[-1]) ]
+                mid_value = ( value_bounds[0] + value_bounds[1] ) / 2.0
+                mid_bounds = ( bounds[0] + bounds[1] ) / 2.0
+                offset = (360.0 if mid_bounds > mid_value else -360.0)
+                trans_val = mid_value + offset
+                if (trans_val > bounds[0]) and (trans_val < bounds[1]):
+                    value_bounds[0] = value_bounds[0] + offset
+                    value_bounds[1] = value_bounds[1] + offset           
+                bounds[0] = max( [ bounds[0], value_bounds[0] ] )
+                bounds[1] = min( [ bounds[1], value_bounds[1] ] )
         return bounds, values
 
     def getCoordType( self, axis, outputType ):
@@ -483,6 +506,25 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.time = axis
             iCoord  = 2 if ( outputType == CDMSDataType.Hoffmuller ) else -1
         return iCoord
+
+    def getIntersectedRoi( self, var, current_roi ):   
+        axis_list = var.axes.split('),')
+        newRoi = newList( 4, 0.0 )
+        current_roi_size = getRoiSize( current_roi )
+        for axis in axis_list:
+            axis_recs = axis.split('=')
+            iCoord = -1
+            axis_name = axis_recs[0].lower()
+            if axis_name.startswith('lon'): iCoord = 0
+            if axis_name.startswith('lat'): iCoord = 1
+            if (iCoord == 0) or (iCoord == 1):
+                axisBounds = axis_recs[1].strip("()").split(',')
+                roiBounds = [ float(axisBounds[i]) for i in range(2) ]                
+                newRoi[ iCoord ] = roiBounds[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
+                newRoi[ 2+iCoord ] = roiBounds[1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
+        if ( current_roi_size == 0 ): return newRoi
+        new_roi_size = getRoiSize( newRoi )
+        return newRoi if ( current_roi_size > new_roi_size ) else current_roi
        
     def getGridSpecs( self, var, roi, zscale, outputType, dset ):   
         dims = var.getAxisIds()
