@@ -309,8 +309,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     varDataIdIndex = 0
                 else:
                     varDataIdIndex = selectedLevel
-            roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] )
-            varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), roiStr )
+            tvar = self.cdmsDataset.getTransientVariable( varName )
+            extStr = ":".join( [ ( "%d" % ishp ) for ishp in tvar.shape ] ) if ( id(tvar) <> id(None) ) else ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] )
+            varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), extStr )
             varDataIds.append( varDataId )
             varDataSpecs = self.getCachedData( varDataId ) 
             flatArray = None
@@ -508,23 +509,21 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         return iCoord
 
     def getIntersectedRoi( self, var, current_roi ):   
-        axis_list = var.axes.split('),')
         newRoi = newList( 4, 0.0 )
+        tvar = self.cdmsDataset.getTransientVariable( var.name )
+        if id( tvar ) == id( None ): return current_roi
         current_roi_size = getRoiSize( current_roi )
-        for axis in axis_list:
-            axis_recs = axis.split('=')
-            iCoord = -1
-            axis_name = axis_recs[0].lower()
-            if axis_name.startswith('lon'): iCoord = 0
-            if axis_name.startswith('lat'): iCoord = 1
-            if (iCoord == 0) or (iCoord == 1):
-                axisBounds = axis_recs[1].strip("()").split(',')
-                roiBounds = [ float(axisBounds[i]) for i in range(2) ]                
-                newRoi[ iCoord ] = roiBounds[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
-                newRoi[ 2+iCoord ] = roiBounds[1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
+        for iCoord in range(2):
+            axis = None
+            if iCoord == 0: axis = tvar.getLongitude()
+            if iCoord == 1: axis = tvar.getLatitude()
+            if axis:
+                axisvals = axis.getValue()          
+                newRoi[ iCoord ] = axisvals[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
+                newRoi[ 2+iCoord ] = axisvals[-1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
         if ( current_roi_size == 0 ): return newRoi
         new_roi_size = getRoiSize( newRoi )
-        return newRoi if ( current_roi_size > new_roi_size ) else current_roi
+        return newRoi if ( ( current_roi_size > new_roi_size ) and ( new_roi_size > 0.0 ) ) else current_roi
        
     def getGridSpecs( self, var, roi, zscale, outputType, dset ):   
         dims = var.getAxisIds()

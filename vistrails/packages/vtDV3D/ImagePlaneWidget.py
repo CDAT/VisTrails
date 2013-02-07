@@ -609,6 +609,8 @@ class ImagePlaneWidget:
         bounds.append(  center[1] + placeFactor*(bnds[3]-center[1]) )
         bounds.append(  center[2] + placeFactor*(bnds[4]-center[2]) )
         bounds.append(  center[2] + placeFactor*(bnds[5]-center[2]) )
+        for ib in range(3): 
+            if ( bounds[2*ib] == bounds[2*ib+1] ): bounds[2*ib+1] = bounds[2*ib] + 0.001
         
         if ( self.PlaneOrientation == 1 ):
 #            pt1 = self.PlaneSource.GetPoint1()
