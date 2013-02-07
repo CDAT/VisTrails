@@ -573,7 +573,7 @@ class CDMSDataset(Module):
          
     def addTransientVariable( self, varName, variable, ndim = None ):
         if varName in self.transientVariables:
-            print>>sys.stderr, "Error, transient variable %s already exists in dataset, ignoring!" % ( varName )
+            print>>sys.stderr, "Warning, transient variable %s already exists in dataset, overwriting!" % ( varName )
         else:
             self.transientVariables[ varName ] = variable
 
