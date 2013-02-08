@@ -32,8 +32,10 @@ def getModule( mid ):
 
 def removeModule( mid ):
     db = getDatabase()
-    try:        
+    try:
+        module = db[ mid ]       
         del db[ mid ]
+        del module
 #        print>>sys.stderr, "  ______________________________ ModuleStore: deleting module %d ______________________________" % mid
     except:     return False
     return True
