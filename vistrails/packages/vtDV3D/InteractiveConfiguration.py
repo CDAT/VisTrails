@@ -2334,8 +2334,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
                 displayText = self.getTextDisplay()
                 HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, iTimestep, self.uniformTimeRange, displayText ], False  )
-                for module in IVModuleConfigurationDialog.getActiveModules():
-                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
+                active_mods = IVModuleConfigurationDialog.getActiveModules()
+                for module in active_mods:
+#                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
                     module.updateAnimation( [ relTimeValueRefAdj, iTimestep, self.uniformTimeRange ], displayText, restart  )
             except Exception:
                 traceback.print_exc( 100, sys.stderr )
