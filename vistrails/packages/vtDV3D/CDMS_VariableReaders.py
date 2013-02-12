@@ -309,6 +309,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     varDataIdIndex = 0
                 else:
                     varDataIdIndex = selectedLevel
+
             roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] )
             varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), roiStr )
             varDataIds.append( varDataId )
@@ -547,15 +548,17 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 iCoord2 = 2*iCoord
                 gridShape[ iCoord ] = size
                 gridSize = gridSize * size
-                outputExtent[ iCoord2+1 ] = gridExtent[ iCoord2+1 ] = size-1                    
+                outputExtent[ iCoord2+1 ] = gridExtent[ iCoord2+1 ] = size-1 
+                vmax = max( values[0], values[-1] )                   
+                vmin = min( values[0], values[-1] )                   
                 if iCoord < 2:
                     lonOffset = 0.0 #360.0 if ( ( iCoord == 0 ) and ( roiBounds[0] < -180.0 ) ) else 0.0
-                    outputOrigin[ iCoord ] = gridOrigin[ iCoord ] = values[0] + lonOffset
-                    spacing = (values[size-1] - values[0])/(size-1)
+                    outputOrigin[ iCoord ] = gridOrigin[ iCoord ] = vmin + lonOffset
+                    spacing = (vmax - vmin)/(size-1)
                     if roiBounds:
                         if ( roiBounds[1] < 0.0 ) and  ( roiBounds[0] >= 0.0 ): roiBounds[1] = roiBounds[1] + 360.0
-                        gridExtent[ iCoord2 ] = int( round( ( roiBounds[0] - values[0] )  / spacing ) )                
-                        gridExtent[ iCoord2+1 ] = int( round( ( roiBounds[1] - values[0] )  / spacing ) )
+                        gridExtent[ iCoord2 ] = int( round( ( roiBounds[0] - vmin )  / spacing ) )                
+                        gridExtent[ iCoord2+1 ] = int( round( ( roiBounds[1] - vmin )  / spacing ) )
                         if gridExtent[ iCoord2 ] > gridExtent[ iCoord2+1 ]:
                             geTmp = gridExtent[ iCoord2+1 ]
                             gridExtent[ iCoord2+1 ] = gridExtent[ iCoord2 ] 
@@ -564,13 +567,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         outputOrigin[ iCoord ] = lonOffset + roiBounds[0]
                     roisize = gridExtent[ iCoord2+1 ] - gridExtent[ iCoord2 ] + 1                  
                     gridSpacing[ iCoord ] = spacing
-                    gridBounds[ iCoord2 ] = roiBounds[0] if roiBounds else values[0] 
-                    gridBounds[ iCoord2+1 ] = (roiBounds[0] + roisize*spacing) if roiBounds else values[ size-1 ]
+                    gridBounds[ iCoord2 ] = roiBounds[0] if roiBounds else vmin 
+                    gridBounds[ iCoord2+1 ] = (roiBounds[0] + roisize*spacing) if roiBounds else vmax
                 else:                                             
                     gridSpacing[ iCoord ] = 1.0
 #                    gridSpacing[ iCoord ] = zscale
-                    gridBounds[ iCoord2 ] = values[0]  # 0.0
-                    gridBounds[ iCoord2+1 ] = values[ size-1 ] # float( size-1 )
+                    gridBounds[ iCoord2 ] = vmin  # 0.0
+                    gridBounds[ iCoord2+1 ] = vmax # float( size-1 )
         if gridBounds[ 2 ] > gridBounds[ 3 ]:
             tmp = gridBounds[ 2 ]
             gridBounds[ 2 ] = gridBounds[ 3 ]
