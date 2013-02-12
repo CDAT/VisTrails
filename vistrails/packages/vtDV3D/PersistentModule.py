@@ -449,7 +449,6 @@ class PersistentModule( QObject ):
         self.newLayerConfiguration = False
         self.activeLayer = None
         self.newDataset = False
-        self.sheetName = None 
         self.cell_address = None
         self.moduleID = mid
         self.timeIndex = 0 
@@ -501,9 +500,9 @@ class PersistentModule( QObject ):
 #        IVModuleConfigurationDialog.reset()
 
     
-    def setCellLocation( self, sheetName, cell_address ):
-        self.sheetName = sheetName 
-        self.cell_address = cell_address
+#    def setCellLocation( self, sheetName, cell_address ):
+#        self.sheetName = sheetName 
+#        self.cell_address = cell_address
         
     def GetRenWinID(self):
         return -1
