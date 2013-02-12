@@ -396,13 +396,12 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                     dcam.SetViewUp(cup)
                     
     def updateProject(self): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper      
         from gui.application import get_vistrails_application
         _app = get_vistrails_application()
         proj_controller = _app.uvcdatWindow.get_current_project_controller()
-        sheetTabWidget = self.getSheetTabWidget()
-        self.sheetName = sheetTabWidget.getSheetName() 
-        if not self.sheetName in proj_controller.sheet_map: proj_controller.sheet_map[self.sheetName] = {}
-#        isReady = proj_controller.is_cell_ready( self.sheetName, self.location.row, self.location.col )
+        ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
+        if not sheetName in proj_controller.sheet_map: proj_controller.sheet_map[sheetName] = {}
         ispec = self.inputSpecs[ 0 ]           
         vars = ispec.metadata['vars']
         vt_file = proj_controller.vt_controller.file_name
@@ -410,12 +409,12 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if plot_name: plot_name = os.path.splitext( plot_name )[0]
         plot = Plot( plot_name, 'DV3D', None, vt_file )
         cell_coords = ( self.location.row, self.location.col )
-        if cell_coords in proj_controller.sheet_map[ self.sheetName ]:
-            cell = proj_controller.sheet_map[ self.sheetName ][ cell_coords ]
-#            if not plot in cell.plots: 
-#                cell.plots.append(plot)  # TODO: replace plots.append with add_plot when available.
+        if cell_coords in proj_controller.sheet_map[ sheetName ]:
+            cell = proj_controller.sheet_map[ sheetName ][ cell_coords ]
+            if not plot in cell.plots: 
+                cell.add_plot(plot)  # TODO: replace plots.append with add_plot when available.
         else:
-            proj_controller.sheet_map[ self.sheetName ][ cell_coords ] = ControllerCell( variables=vars, plots=[plot], templates=[], current_parent_version=0L )  
+            proj_controller.sheet_map[ sheetName ][ cell_coords ] = ControllerCell( variables=vars, plots=[plot], templates=[], current_parent_version=0L )  
                       
 #    def getPlot( self, proj_controller, cell_coords, plot_name, vt_file ): 
 #        plots =  proj_controller.sheet_map[ self.sheetName ][ cell_coords ].plots
@@ -507,9 +506,15 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def clearWidget(self, sheetName, row, col ): 
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper      
         from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog, UVCDATGuiConfigFunction
-        if not sheetName: print>>sys.stderr, " ---> Vistrails error, no sheetName supplied in 'cell_deleted' signal"
-        elif not self.sheetName: print>>sys.stderr, " ---> Vistrails error, no sheetName in DV3DCell"
-        elif ( sheetName <> self.sheetName ): return
+        ( cell_sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
+        if not sheetName: 
+            print>>sys.stderr, " ---> Vistrails error, no sheetName supplied in 'cell_deleted' signal"
+            return
+        elif not cell_sheetName: 
+            print>>sys.stderr, " ---> Vistrails error, no sheetName in DV3DCell"
+            return
+        elif ( sheetName <> cell_sheetName ): 
+            return
         if ( self.location.col <> col ) or  ( self.location.row <> row ): return
         cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )  
 #        print " --- Clearing Cell %s ---" % cell_address
@@ -842,7 +847,7 @@ class PM_MapCell3D( PM_DV3DCell ):
         self.enableBasemap = True
 
     def updateModule( self, **args ):
-        print "Update DV3D Cell, mid = %s, location = %s, time = %s" % ( str(self.moduleID), str((self.location.col,self.location.row)), str(self.timeIndex) )
+#        print "Update DV3D Cell, mid = %s, location = %s, time = %s" % ( str(self.moduleID), str((self.location.col,self.location.row)), str(self.timeIndex) )
         PM_DV3DCell.updateModule( self, **args )
         if self.baseMapActor: self.baseMapActor.SetVisibility( int( self.enableBasemap ) )
         if self.renWin: self.renWin.Render()
