@@ -1190,7 +1190,10 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             sheetName = sheetTabWidget.getSheetName() 
             for cell_address in cell_addresses: 
                 for mid in controller.current_pipeline.modules:   
-                    DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )       
+                    DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )   
+                    module = ModuleStore.getModule( mid ) 
+                    if module: module.setCellLocation( sheetName, cell_address )   
+                        
 #            pipeline =  controller.current_pipeline        
 #            for cell_address in cell_addresses:
 #                if len( pipeline.module_list ) == 0:

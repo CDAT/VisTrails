@@ -508,6 +508,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper      
         from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog, UVCDATGuiConfigFunction
         if not sheetName: print>>sys.stderr, " ---> Vistrails error, no sheetName supplied in 'cell_deleted' signal"
+        elif not self.sheetName: print>>sys.stderr, " ---> Vistrails error, no sheetName in DV3DCell"
         elif ( sheetName <> self.sheetName ): return
         if ( self.location.col <> col ) or  ( self.location.row <> row ): return
         cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )  
@@ -841,6 +842,7 @@ class PM_MapCell3D( PM_DV3DCell ):
         self.enableBasemap = True
 
     def updateModule( self, **args ):
+        print "Update DV3D Cell, mid = %s, location = %s, time = %s" % ( str(self.moduleID), str((self.location.col,self.location.row)), str(self.timeIndex) )
         PM_DV3DCell.updateModule( self, **args )
         if self.baseMapActor: self.baseMapActor.SetVisibility( int( self.enableBasemap ) )
         if self.renWin: self.renWin.Render()
