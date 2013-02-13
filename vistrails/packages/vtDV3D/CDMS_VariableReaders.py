@@ -509,21 +509,27 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         return iCoord
 
     def getIntersectedRoi( self, var, current_roi ):   
-        newRoi = newList( 4, 0.0 )
-        tvar = self.cdmsDataset.getTransientVariable( var.name )
-        if id( tvar ) == id( None ): return current_roi
-        current_roi_size = getRoiSize( current_roi )
-        for iCoord in range(2):
-            axis = None
-            if iCoord == 0: axis = tvar.getLongitude()
-            if iCoord == 1: axis = tvar.getLatitude()
-            if axis:
-                axisvals = axis.getValue()          
-                newRoi[ iCoord ] = axisvals[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
-                newRoi[ 2+iCoord ] = axisvals[-1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
-        if ( current_roi_size == 0 ): return newRoi
-        new_roi_size = getRoiSize( newRoi )
-        return newRoi if ( ( current_roi_size > new_roi_size ) and ( new_roi_size > 0.0 ) ) else current_roi
+        try:
+            newRoi = newList( 4, 0.0 )
+            varname = var.outvar.name if hasattr( var,'outvar') else var.name
+            tvar = self.cdmsDataset.getTransientVariable( varname )
+            if id( tvar ) == id( None ): return current_roi
+            current_roi_size = getRoiSize( current_roi )
+            for iCoord in range(2):
+                axis = None
+                if iCoord == 0: axis = tvar.getLongitude()
+                if iCoord == 1: axis = tvar.getLatitude()
+                if axis:
+                    axisvals = axis.getValue()          
+                    newRoi[ iCoord ] = axisvals[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
+                    newRoi[ 2+iCoord ] = axisvals[-1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
+            if ( current_roi_size == 0 ): return newRoi
+            new_roi_size = getRoiSize( newRoi )
+            return newRoi if ( ( current_roi_size > new_roi_size ) and ( new_roi_size > 0.0 ) ) else current_roi
+        except:
+            print>>sts.stderr, "Error getting ROI for input variable"
+            traceback.print_exc()
+            return current_roi
        
     def getGridSpecs( self, var, roi, zscale, outputType, dset ):   
         dims = var.getAxisIds()
