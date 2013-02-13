@@ -449,8 +449,6 @@ class PersistentModule( QObject ):
         self.newLayerConfiguration = False
         self.activeLayer = None
         self.newDataset = False
-        self.sheetName = None 
-        self.cell_address = None
         self.moduleID = mid
         self.timeIndex = 0 
         self.inputSpecs = {}
@@ -499,11 +497,6 @@ class PersistentModule( QObject ):
 #    def __del__(self):
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
-
-    
-    def setCellLocation( self, sheetName, cell_address ):
-        self.sheetName = sheetName 
-        self.cell_address = cell_address
         
     def GetRenWinID(self):
         return -1
@@ -675,6 +668,7 @@ class PersistentModule( QObject ):
         return str( getClassName( self ) )
         
     def dvCompute( self, **args ):
+        print "  ***** Updating %s Module, id = %d ***** " % ( self.__class__.__name__, self.moduleID )
         self.initializeInputs( **args )     
         self.updateHyperwall()
         if self.input() or self.inputModuleList() or not self.requiresPrimaryInput:
