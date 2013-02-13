@@ -527,7 +527,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             new_roi_size = getRoiSize( newRoi )
             return newRoi if ( ( current_roi_size > new_roi_size ) and ( new_roi_size > 0.0 ) ) else current_roi
         except:
-            print>>sts.stderr, "Error getting ROI for input variable"
+            print>>std.stderr, "Error getting ROI for input variable"
             traceback.print_exc()
             return current_roi
        
