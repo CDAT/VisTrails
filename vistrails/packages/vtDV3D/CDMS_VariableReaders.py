@@ -474,7 +474,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         bounds = None
         if roi:
             if   axis.isLongitude():  bounds = [ roi[0], roi[2] ]
-            elif axis.isLatitude():   bounds = [ roi[1], roi[3] ] 
+            elif axis.isLatitude():   bounds = [ roi[1], roi[3] ] if ( roi[3] > roi[1] ) else [ roi[3], roi[1] ] 
         if bounds:
             if len( values ) < 2: values = bounds
             else:
@@ -549,8 +549,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 gridShape[ iCoord ] = size
                 gridSize = gridSize * size
                 outputExtent[ iCoord2+1 ] = gridExtent[ iCoord2+1 ] = size-1 
-                vmax = max( values[0], values[-1] )                   
-                vmin = min( values[0], values[-1] )                   
+                vmax =  max( values[0], values[-1] )                   
+                vmin =  min( values[0], values[-1] )                   
                 if iCoord < 2:
                     lonOffset = 0.0 #360.0 if ( ( iCoord == 0 ) and ( roiBounds[0] < -180.0 ) ) else 0.0
                     outputOrigin[ iCoord ] = gridOrigin[ iCoord ] = vmin + lonOffset
