@@ -19,44 +19,52 @@ class WorkflowModule( NotCacheable,  Module ):
       
     def __init__( self, **args ):
         Module.__init__(self) 
-        self.pmod = None
         
     def __del__( self ):
-#        print " $$$$$$$$$$$$$$$$$$$$$$ deleting class %s $$$$$$$$$$$$$$$$$$$$$$ " % ( self.__class__.__name__ )
-        self.pmod.invalidateWorkflowModule( self ) 
+        print " $$$$$$$$$$$$$$$$$$$$$$ deleting WorkflowModule, id = %d $$$$$$$$$$$$$$$$$$$$$$ " % ( self.moduleInfo['moduleId'] )
+        self.getPersistentModule( invalidate=True )
         Module.__del__( self )
+
+    def clear( self ):
+        print " -------------------------------- clearing WorkflowModule, id = %d -------------------------------- " % ( self.moduleInfo['moduleId'] )
+        self.getPersistentModule( invalidate=True )
+        Module.clear( self )
         
     def compute(self):
         start_t = time.time() 
         DV3DConfigurationWidget.saveNewConfigurations()            
-        self.updatePersistentModule()
-        self.pmod.dvCompute( wmod=self )
+        pmod = self.getPersistentModule( force=True )
+        pmod.dvCompute( wmod=self )
         end_t = time.time() 
 #        print " +----------------------------------{ Computed Module %s: time = %.3f }----------------------------------+ " % ( self.__class__.__name__, ( end_t-start_t ) )
 
     def refreshVersion(self): 
-        self.updatePersistentModule()
-        self.pmod.refreshVersion()
-        return self.pmod
+        pmod = self.getPersistentModule( force=True )
+        pmod.refreshVersion()
+        return pmod
                
-    @classmethod    
-    def forceGetPersistentModule( klass, mid, **args ):
+#    @classmethod    
+#    def forceGetPersistentModule( klass, mid, **args ):
+#        module = ModuleStore.getModule( mid ) 
+#        if not module: module = ModuleStore.forceGetModule(  mid, klass.PersistentModuleClass( mid, **args ) )        
+#        return module
+    
+    def getPersistentModule( self, **args ):
+        mid = self.moduleInfo['moduleId']
+        force = args.get('force',False)
         module = ModuleStore.getModule( mid ) 
-        if not module: module = ModuleStore.forceGetModule(  mid, klass.PersistentModuleClass( mid, **args ) )        
+        if force and ( module == None ):
+            module = ModuleStore.forceGetModule(  mid, self.__class__.PersistentModuleClass( mid, **args ) ) 
+        if module:     
+            invalidate = args.get('invalidate',False)
+            if invalidate:  pmod.invalidateWorkflowModule( self )
+            else:           module.setWorkflowModule( self ) 
         return module
-
-    @classmethod    
-    def getPersistentModule( klass, mid ):            
-        return ModuleStore.getModule(  mid ) 
-
-    @staticmethod    
-    def persistentModule( mid ):            
-        return ModuleStore.getModule(  mid ) 
-
-    def updatePersistentModule( self ):
-        if not self.pmod: 
-            self.pmod = self.__class__.forceGetPersistentModule( self.moduleInfo['moduleId'], pipeline=self.moduleInfo['pipeline'] )
-        self.pmod.setWorkflowModule( self )
+        
+#    def updatePersistentModule( self ):
+#        if not self._pmod: 
+#            self._pmod = self.__class__.forceGetPersistentModule( self.moduleInfo['moduleId'], pipeline=self.moduleInfo['pipeline'] )
+#        self._pmod.setWorkflowModule( self )
       
     @classmethod
     def registerConfigurableFunctions( klass, reg ):
