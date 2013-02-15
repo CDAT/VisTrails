@@ -636,9 +636,10 @@ class ChartCellConfigurationWidget(DV3DConfigurationWidget):
         DV3DConfigurationWidget.__init__(self, module, controller, 'Chart Cell Configuration', parent)
                 
     def getParameters( self, module ):
+        pmod = self.getPersistentModule()
         titleParms = getFunctionParmStrValues( module, "title" )
         if titleParms: self.title = str( titleParms[0] )
-        if not self.title: self.title = self.pmod.getTitle()
+        if not self.title: self.title = pmod.getTitle()
         celllocParams = getFunctionParmStrValues( module, "cell_location" )
         if celllocParams:  self.cellAddress = str( celllocParams[0] )
         opacityParams = getFunctionParmStrValues( module, "opacity" )
@@ -731,7 +732,7 @@ class ChartCell( WorkflowModule ):
         WorkflowModule.__init__(self, **args) 
         
     def syncCamera( self, cpos, cfol, cup ):
-        if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
+        if self._pmod: self._pmod.syncCamera( cpos, cfol, cup )  
 
 class PM_CloudCell3D( PM_DV3DCell ):
 
@@ -768,7 +769,9 @@ class CloudCell3DConfigurationWidget(DV3DConfigurationWidget):
     def getParameters( self, module ):
         titleParms = getFunctionParmStrValues( module, "title" )
         if titleParms: self.title = str( titleParms[0] )
-        if not self.title: self.title = self.pmod.getTitle()
+        if not self.title: 
+            pmod = self.getPersistentModule()
+            self.title = pmod.getTitle()
         celllocParams = getFunctionParmStrValues( module, "cell_location" )
         if celllocParams:  self.cellAddress = str( celllocParams[0] )
 
@@ -1108,7 +1111,9 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
     def getParameters( self, module ):
         titleParms = getFunctionParmStrValues( module, "title" )
         if titleParms: self.title = str( titleParms[0] )
-        if not self.title: self.title = self.pmod.getTitle()
+        if not self.title: 
+            pmod = self.getPersistentModule()
+            self.title = pmod.getTitle()
         basemapParams = getFunctionParmStrValues( module, "enable_basemap" )
         if basemapParams: self.enableBasemap = bool( basemapParams[0] )
         basemapParams = getFunctionParmStrValues( module, "map_border_size" )
@@ -1231,7 +1236,7 @@ class MapCell3D( WorkflowModule ):
         WorkflowModule.__init__(self, **args) 
         
     def syncCamera( self, cpos, cfol, cup ):
-        if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
+        if self._pmod: self._pmod.syncCamera( cpos, cfol, cup )  
               
 class CloudCell3D( WorkflowModule ):
     
@@ -1241,7 +1246,7 @@ class CloudCell3D( WorkflowModule ):
         WorkflowModule.__init__(self, **args) 
         
     def syncCamera( self, cpos, cfol, cup ):
-        if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
+        if self._pmod: self._pmod.syncCamera( cpos, cfol, cup )  
               
 
 class QCellToolBarExportTimeSeries(QtGui.QAction):

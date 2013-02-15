@@ -42,12 +42,12 @@ def getFormattedQString( value ):
 
 class PlotListItem( QListWidgetItem ):
 
-    def __init__( self, label, module, parent=None):
+    def __init__( self, label, moduleID, parent=None):
         QListWidgetItem.__init__(self, label, parent)
-        self.modules = [ module ]
+        self.moduleIDs = [ moduleID ]
         
-    def addModule( self, module ):
-        self.modules.append( module )
+    def addModule( self, moduleID ):
+        self.moduleIDs.append( moduleID )
         
 
 class DV3DParameterSliderWidget(QWidget):
@@ -395,11 +395,12 @@ class DV3DRangeConfigWidget(QFrame):
                 self.deactivate_current_command()
                 active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
                 for cmd_entry in cmd_list:
-                    module = cmd_entry[0]
-                    cfg_cmd = cmd_entry[1] 
-                    self.active_modules.add( module )
-                    if ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ):
-                        self.active_cfg_cmd = cfg_cmd
+                    module = ModuleStore.getModule( cmd_entry[0] )
+                    if module:
+                        cfg_cmd = cmd_entry[1] 
+                        self.active_modules.add( module )
+                        if ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ):
+                            self.active_cfg_cmd = cfg_cmd
                 self.updateSliderValues(True)
                 if self.active_cfg_cmd:
                     self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues ) 
@@ -577,11 +578,12 @@ class DV3DConfigControlPanel(QWidget):
     def isEligibleCommand( self, cmd ):
         return self.configWidget.isEligibleCommand( cmd )
 
-    def addActivePlot( self, module, config_fn ):
+    def addActivePlot( self, moduleID, config_fn ):
         if self.showActivePlotsPanel and self.configWidget:
             active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
             if self.configWidget.active_cfg_cmd <> None and self.configWidget.active_cfg_cmd.isCompatible( config_fn ):
                 cellsOnly = self.configWidget.active_cfg_cmd.activateByCellsOnly
+                module = ModuleStore.getModule( moduleID ) 
                 isActive = ( module.GetRenWinID() in active_renwin_ids )
                 cell_addr = module.getCellAddress()
                 if cell_addr:
@@ -595,13 +597,13 @@ class DV3DConfigControlPanel(QWidget):
                         existing_items = []
                     if len( existing_items ):
                         plot_list_item = existing_items[0]
-                        plot_list_item.addModule( module )
+                        plot_list_item.addModule( moduleID )
                     else:
-                        plot_list_item = PlotListItem( label, module, self.plot_list )
+                        plot_list_item = PlotListItem( label, moduleID, self.plot_list )
                     plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
-                    DV3DPipelineHelper.setModulesActivation( [ module ] , isActive, False ) 
+                    DV3DPipelineHelper.setModulesActivation( [ moduleID ] , isActive, False ) 
             else:
-                DV3DPipelineHelper.activationMap[ module ] = False
+                DV3DPipelineHelper.activationMap[ moduleID ] = False
                     
     def  processPlotListEvent( self, list_item ): 
         DV3DPipelineHelper.setModulesActivation( list_item.modules, ( list_item.checkState() == Qt.Checked ) ) 
@@ -698,8 +700,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def addAction( module, action_key, config_key, isActive=True ):
         actionList = DV3DPipelineHelper.actionMap.setdefault( action_key[1], [] )
         fn = module.configurableFunctions.get( action_key[1], None )
-        actionList.append( ( module, config_key, fn ) )
-        DV3DPipelineHelper.addConfigCommand( module, fn, config_key ) 
+        actionList.append( ( module.moduleID, config_key, fn ) )
+        DV3DPipelineHelper.addConfigCommand( module.moduleID, fn, config_key ) 
         if isActive:
             actions = DV3DPipelineHelper.actionMenu.actions() 
             for action in actions:
@@ -712,33 +714,33 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return DV3DPipelineHelper.cfg_cmds.get( cfg_key, None )
 
     @staticmethod
-    def addConfigCommand( pmod, cmd, key = None ):
+    def addConfigCommand( mid, cmd, key = None ):
         if not key: key = cmd.key
         cmd_list = DV3DPipelineHelper.cfg_cmds.setdefault( key, [] )
-        cmd_list.append( ( pmod, cmd ) )
+        cmd_list.append( ( mid, cmd ) )
     
     @staticmethod    
-    def getPlotActivation( module ):
-        return DV3DPipelineHelper.activationMap.get( module, False )
+    def getPlotActivation( moduleID ):
+        return DV3DPipelineHelper.activationMap.get( moduleID, False )
 
     @staticmethod    
-    def removeModuleFromActivationMap( module ):
-        if module in DV3DPipelineHelper.activationMap:
-            del DV3DPipelineHelper.activationMap[module]
+    def removeModuleFromActivationMap( moduleID ):
+        if moduleID in DV3DPipelineHelper.activationMap:
+            del DV3DPipelineHelper.activationMap[moduleID]
 #            print "Removing Module %s (%d) from activation map" % ( module.__class__.__name__, module.moduleID )
 
     @staticmethod    
     def getActivePlotList( ):
         active_plots = []
-        for module in DV3DPipelineHelper.activationMap.keys():
-            if DV3DPipelineHelper.activationMap[ module ]:
-                active_plots.append( module )
+        for moduleID in DV3DPipelineHelper.activationMap.keys():
+            if DV3DPipelineHelper.activationMap[ moduleID ]:
+                active_plots.append( moduleID )
         return active_plots
  
     @staticmethod
-    def setModulesActivation( modules, isActive, updateConfig=True ):
-        for module in modules:
-            DV3DPipelineHelper.activationMap[ module ] = isActive 
+    def setModulesActivation( moduleIDs, isActive, updateConfig=True ):
+        for moduleID in moduleIDs:
+            DV3DPipelineHelper.activationMap[ moduleID ] = isActive 
 #            print " ** Set module activation: module[%d] -> %s (** persist parameters? **)" % ( module.moduleID, str(isActive) )
             if updateConfig and not isActive:
                 config_fn = module.getCurrentConfigFunction()
@@ -763,23 +765,24 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         actionList = [] 
         configFunctionList = []
         validModuleIdList = ModuleStore.getModuleIDs() # DV3DPipelineHelper.getValidModuleIdList( )
-        for ( module, key, fn ) in currentActionList:
-            if module.moduleID in validModuleIdList:
-                actionList.append( ( module, key, fn ) )
+        for ( moduleID, key, fn ) in currentActionList:
+            if moduleID in validModuleIdList:
+                actionList.append( ( moduleID, key, fn ) )
                 if fn <> None: configFunctionList.append( fn )
 
 #        DV3DPipelineHelper.actionMap[ action_key ] = actionList
         w = DV3DPipelineHelper.config_widget.init( configFunctionList )
                                          
-        for ( module, key, f ) in actionList:
+        for ( moduleID, key, f ) in actionList:
+            module = ModuleStore.getModule( moduleID )
             module.processKeyEvent( key )
 
         if  ( key in DV3DPipelineHelper.cfg_cmds ) and ( DV3DPipelineHelper.getConfigCmdType( key ) in [ 'leveling', 'uvcdat-gui' ] ): 
             DV3DPipelineHelper.config_widget.startConfig( action_key, key )
         
-        for ( module, key, f ) in actionList:
-            DV3DPipelineHelper.activationMap[ module ] = True 
-            DV3DPipelineHelper.config_widget.addActivePlot( module, f )
+        for ( moduleID, key, f ) in actionList:
+            DV3DPipelineHelper.activationMap[ moduleID ] = True 
+            DV3DPipelineHelper.config_widget.addActivePlot( moduleID, f )
             
         if w: w.setVisible( True )
 
@@ -796,7 +799,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 DV3DPipelineHelper.config_widget.configWidget.clearInteractionState()
                 for item in DV3DPipelineHelper.activationMap.items():
                     if item[1]: 
-                        module =  item[0]          
+                        module =  ModuleStore.getModule( item[0] )         
                         module.finalizeParameter( interactionState, notifyHelper=False )
         DV3DPipelineHelper.actionMap = {}
         DV3DPipelineHelper.cfg_cmds = {}
@@ -1487,17 +1490,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     isActive = ( id( pmod.renderer.GetRenderWindow() ) in active_renwin_ids ) 
                     DV3DPipelineHelper.addAction( pmod, action_key, config_key, isActive ) 
                     pmods.add(pmod)
-                    
-#        for module in pipeline.module_list:
-#            pmod = ModuleStore.getModule(  module.id ) 
-#            if pmod:
-#                pmods.add(pmod)
-#                configFuncs = pmod.configurableFunctions.values()
-#                for configFunc in configFuncs:
-#                    action_key = str( configFunc.label )
-#                    config_key = configFunc.key               
-#                    DV3DPipelineHelper.addAction( pmod, action_key, config_key ) 
-                    
+                                        
         menu1 = DV3DPipelineHelper.startNewMenu() 
         for pmod in pmods:
             DV3DPipelineHelper.addAction( pmod, [ 'Help', 'help' ], 'h' )
@@ -1508,7 +1501,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         for pmod in pmods:
             cmdList = pmod.getConfigFunctions( [ 'leveling', 'uvcdat-gui' ] )
             for cmd in cmdList:
-                DV3DPipelineHelper.addConfigCommand( pmod, cmd )
+                DV3DPipelineHelper.addConfigCommand( pmod.moduleID, cmd )
             pmod.resetNavigation()
         return DV3DPipelineHelper.config_widget
 

@@ -294,84 +294,13 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         self.updateTask( self.taskCombo.currentText() )
         self.stateChanged( False )
 
-#        portsTab = QWidget()        
-#        self.tabbedWidget.addTab( portsTab, 'parameters' )                 
-#        ports_layout = QVBoxLayout()
-#        portsTab.setLayout( ports_layout ) 
-# 
-#        self.scrollArea = QtGui.QScrollArea(self)
-#        ports_layout.addWidget(self.scrollArea)
-#        self.scrollArea.setFrameStyle(QtGui.QFrame.NoFrame)
-#        self.listContainer = QtGui.QWidget(self.scrollArea)
-#        self.listContainer.setLayout(QtGui.QGridLayout(self.listContainer))
-#        self.inputPorts = self.module.destinationPorts()
-#        self.inputDict = {}
-#        self.outputPorts = self.module.sourcePorts()
-#        self.outputDict = {}
-#        self.constructList()
-#    def checkBoxFromPort(self, port, input_=False):
-#        checkBox = QtGui.QCheckBox(port.name)
-#        if input_:
-#            pep = PortEndPoint.Destination
-#        else:
-#            pep = PortEndPoint.Source
-#        if not port.optional or (pep, port.name) in self.module.portVisible:
-#            checkBox.setCheckState(QtCore.Qt.Checked)
-#        else:
-#            checkBox.setCheckState(QtCore.Qt.Unchecked)
-#        if not port.optional or (input_ and port.sigstring=='()'):
-#            checkBox.setEnabled(False)
-#        return checkBox
-
-#    def constructList(self):
-#        label = QtGui.QLabel('Input Ports')
-#        label.setAlignment(QtCore.Qt.AlignHCenter)
-#        label.font().setBold(True)
-#        label.font().setPointSize(12)
-#        self.listContainer.layout().addWidget(label, 0, 0)
-#        label = QtGui.QLabel('Output Ports')
-#        label.setAlignment(QtCore.Qt.AlignHCenter)
-#        label.font().setBold(True)
-#        label.font().setPointSize(12)
-#        self.listContainer.layout().addWidget(label, 0, 1)
-#
-#        for i in xrange(len(self.inputPorts)):
-#            port = self.inputPorts[i]
-#            checkBox = self.checkBoxFromPort(port, True)
-#            self.inputDict[port.name] = checkBox
-#            self.listContainer.layout().addWidget(checkBox, i+1, 0)
-#        
-#        for i in xrange(len(self.outputPorts)):
-#            port = self.outputPorts[i]
-#            checkBox = self.checkBoxFromPort(port)
-#            self.outputDict[port.name] = checkBox
-#            self.listContainer.layout().addWidget(checkBox, i+1, 1)
-#        
-#        self.listContainer.adjustSize()
-#        self.listContainer.setFixedHeight(self.listContainer.height())
-#        self.scrollArea.setWidget(self.listContainer)
-#        self.scrollArea.setWidgetResizable(True)
 
     def okTriggered(self, checked = False):
-#        for port in self.inputPorts:
-#            entry = (PortEndPoint.Destination, port.name)
-#            if (port.optional and
-#                self.inputDict[port.name].checkState()==QtCore.Qt.Checked):
-#                self.module.portVisible.add(entry)
-#            else:
-#                self.module.portVisible.discard(entry)
-#            
-#        for port in self.outputPorts:
-#            entry = (PortEndPoint.Source, port.name)
-#            if (port.optional and
-#                self.outputDict[port.name].checkState()==QtCore.Qt.Checked):
-#                self.module.portVisible.add(entry)
-#            else:
-#                self.module.portVisible.discard(entry)
+        pmod = self.getPersistentModule() 
         task = str( self.taskCombo.currentText() )
         self.persistParameterList( [ ('task', [ self.getSerializedTaskData( task ) ] ) ], datasetId=self.datasetId )
         self.stateChanged( False ) 
-        self.pmod.setLabel( task )
+        pmod.setLabel( task )
 #        self.close()
 
 if __name__ == '__main__':

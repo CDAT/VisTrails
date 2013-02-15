@@ -1219,12 +1219,14 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.selectedGrid = None
         DV3DConfigurationWidget.__init__(self, module, controller, 'CDMS Dataset Configuration', parent)
         self.metadataViewer = MetadataViewerDialog( self )
-        if self.pmod: self.pmod.clearNewConfiguration()
+        pmod = self.getPersistentModule() 
+        if pmod: pmod.clearNewConfiguration()
         if self.currentDatasetId: self.registerCurrentDataset( id=self.currentDatasetId )
         self.stateChanged( False )
         
     def initTimeRange( self ):
-        timeRangeParams =   self.pmod.getInputValue( "timeRange"  ) # getFunctionParmStrValues( self.module, "timeRange"  )
+        pmod = self.getPersistentModule() 
+        timeRangeParams = pmod.getInputValue( "timeRange"  ) # getFunctionParmStrValues( self.module, "timeRange"  )
         tRange = [ int(timeRangeParams[0]), int(timeRangeParams[1]) ] if timeRangeParams else None
         if tRange:
             for iParam in range( 2, len(timeRangeParams) ): tRange.append( float(timeRangeParams[iParam] ) ) 
@@ -1237,20 +1239,23 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.endIndexEdit.setText( str( self.timeRange[1] ) )  
 
     def initRoi( self ):
-        roiParams = self.pmod.getInputValue( "roi" ) #getFunctionParmStrValues( self.module, "roi"  )self.getParameterId()
+        pmod = self.getPersistentModule() 
+        roiParams = pmod.getInputValue( "roi" ) #getFunctionParmStrValues( self.module, "roi"  )self.getParameterId()
         if roiParams:  self.roi = [ float(rois) for rois in roiParams ]
         else: self.roi = self.fullRoi[ self.lonRangeType ] 
         self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
 
     def initDecimation( self ):
-        decimationParams = self.pmod.getInputValue( "decimation" ) #getFunctionParmStrValues( self.module, "roi"  )self.getParameterId()
+        pmod = self.getPersistentModule() 
+        decimationParams = pmod.getInputValue( "decimation" ) #getFunctionParmStrValues( self.module, "roi"  )self.getParameterId()
         if decimationParams:  self.decimation = [ int(dec) for dec in decimationParams ]
         else: self.decimation = DefaultDecimation
         self.clientDecimationCombo.setCurrentIndex( self.decimation[0] ) 
         self.serverDecimationCombo.setCurrentIndex( self.decimation[1] ) 
         
     def initZScale( self ):
-        zsParams = self.pmod.getInputValue( "zscale" )
+        pmod = self.getPersistentModule() 
+        zsParams = pmod.getInputValue( "zscale" )
         if zsParams:  self.zscale = float( getItem( zsParams ) )
         self.selectZScaleLineEdit.setText( "%.2f" % self.zscale)
 #        self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
@@ -1260,16 +1265,18 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         datasetMapParams = getFunctionParmStrValues( module, "datasets" )
         if datasetMapParams: self.datasets = deserializeFileMap( datasetMapParams[0] )
         datasetParams = getFunctionParmStrValues( module, "datasetId" )
-        if datasetParams: 
+        if datasetParams:
+            pmod = self.getPersistentModule()  
             gridParams = getFunctionParmStrValues( module, "grid" )
             if gridParams:  self.selectedGrid = gridParams[0]
             self.currentDatasetId = datasetParams[0] 
-            self.pmod.datasetId = self.currentDatasetId
+            pmod.datasetId = self.currentDatasetId
             if( len(datasetParams) > 1 ): DataSetVersion = int( datasetParams[1] )
 
     def setDatasetProperties(self, dataset, cdmsFile ):
+        pmod = self.getPersistentModule() 
         self.currentDatasetId = dataset.id  
-        self.pmod.datasetId = dataset.id 
+        pmod.datasetId = dataset.id 
         relFilePath = getHomeRelativePath( cdmsFile )
         self.datasets[ self.currentDatasetId ] = relFilePath  
         self.metadataViewer.setDatasetProperties( dataset, cdmsFile ) 
@@ -1278,7 +1285,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         id = args.get( 'id', None ) 
         relFilePath = args.get( 'file', None )
         cdmsFile = None
-        if self.pmod: self.pmod.setNewConfiguration( **args )
+        pmod = self.getPersistentModule() 
+        if pmod: pmod.setNewConfiguration( **args )
         if id: 
             self.currentDatasetId = str( id )
             relFilePath = self.datasets.get( self.currentDatasetId, None ) 
@@ -1294,8 +1302,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.initRoi()
             self.initDecimation()
             self.initZScale()
-            if self.pmod: 
-                self.pmod.clearNewConfiguration()
+            if pmod: pmod.clearNewConfiguration()
             dataset.close()
         except Exception, err:
             print>>sys.stderr, " Error initializing dataset '%s': %s " % ( str(relFilePath), str( err ) )
@@ -1314,7 +1321,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
                     self.datasets[ self.currentDatasetId ] = relFilePath  
                     self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
                     self.dsCombo.setCurrentIndex( 0 )
-                    self.pmod.datasetId = '*'.join( self.datasets.keys() )
+                    pmod = self.getPersistentModule() 
+                    pmod.datasetId = '*'.join( self.datasets.keys() )
                     dataset.close()
                 except:
                     print "Error opening dataset: %s" % str(cdmsFile)
@@ -1333,7 +1341,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         if self.dsCombo.count() == 0: self.metadataViewer.clear() 
         else:
             self.dsCombo.setCurrentIndex(0) 
-            self.pmod.datasetId = '*'.join( self.datasets.keys() )                         
+            pmod = self.getPersistentModule() 
+            pmod.datasetId = '*'.join( self.datasets.keys() )                         
             self.registerCurrentDataset( id=self.dsCombo.currentText() )
         global DataSetVersion 
         DataSetVersion = DataSetVersion + 1 
@@ -1776,8 +1785,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         cellInputSpecs = '' 
         executionSpecs = ';'.join( [ fileInputSpecs, varInputSpecs, gridInputSpecs, cellInputSpecs ] )
         parmRecList.append( ( 'executionSpecs' , [ executionSpecs, ]  ), )         
-        self.persistParameterList( parmRecList ) 
-        self.pmod.clearDataCache()
+        pmod = self.persistParameterList( parmRecList ) 
+        pmod.clearDataCache()
         self.stateChanged(False)
            
     def okTriggered(self, checked = False):

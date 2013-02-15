@@ -494,7 +494,8 @@ class PersistentModule( QObject ):
 #            if dataArray: return dataArray.GetValue(0)
 #        return 0
 
-#    def __del__(self):
+    def __del__(self):
+        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
         
@@ -931,22 +932,22 @@ class PersistentModule( QObject ):
          
            
     def addConfigurableMethod( self, name, method, key, **args ):
-        self.configurableFunctions[name] = ConfigurableFunction( name, None, key, pmod=self, hasState=False, open=method, **args )
+        self.configurableFunctions[name] = ConfigurableFunction( name, None, key, hasState=False, open=method, **args )
 
     def addConfigurableFunction(self, name, function_args, key, **args):
-        self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, pmod=self, **args )
+        self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, **args )
 
     def addConfigurableLevelingFunction(self, name, key, **args):
-        self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, pmod=self, **args )
+        self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, **args )
                         
     def addConfigurableGuiFunction(self, name, guiClass, key, **args):
         isActive = not HyperwallManager.getInstance().isClient
-        guiCF = GuiConfigurableFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
+        guiCF = GuiConfigurableFunction( name, guiClass, key, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
 
     def addUVCDATConfigGuiFunction(self, name, guiClass, key, **args):
         isActive = not HyperwallManager.getInstance().isClient
-        guiCF = UVCDATGuiConfigFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
+        guiCF = UVCDATGuiConfigFunction( name, guiClass, key, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
         
     def getConfigFunction( self, name ):
@@ -956,7 +957,7 @@ class PersistentModule( QObject ):
         del self.configurableFunctions[name]
 
     def addConfigurableWidgetFunction(self, name, signature, widgetWrapper, key, **args):
-        wCF = WidgetConfigurableFunction( name, signature, widgetWrapper, key, pmod=self, **args )
+        wCF = WidgetConfigurableFunction( name, signature, widgetWrapper, key, **args )
         self.configurableFunctions[name] = wCF
     
     def getConfigurationHelpText(self):
@@ -2035,7 +2036,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 rcf = configFunct
 #                print " UpdateInteractionState, state = %s, cf = %s " % ( state, str(configFunct) )
             if not configFunct and self.acceptsGenericConfigs:
-                configFunct = ConfigurableFunction( state, None, None, pmod=self )              
+                configFunct = ConfigurableFunction( state, None, None )              
                 self.configurableFunctions[ state ] = configFunct
             if configFunct:
                 configFunct.open( state, self.isAltMode )
