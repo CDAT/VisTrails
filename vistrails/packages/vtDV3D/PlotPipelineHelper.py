@@ -1014,11 +1014,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #                print "Attempt to add empty pipeline to %s " % ( str(( sheetName, cell_address )) )
 #            else:
 #                DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline           
-            for mid in controller.current_pipeline.modules:
-                module = ModuleStore.getModule( mid ) 
-                if module: 
-                    module.setCellLocation( sheetName, cell_address )   
-                    DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
+            for mid in controller.current_pipeline.modules: 
+                DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
                     
         DV3DPipelineHelper.inputCounter += len(plot.vars)
         return action2
@@ -1190,7 +1187,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             sheetName = sheetTabWidget.getSheetName() 
             for cell_address in cell_addresses: 
                 for mid in controller.current_pipeline.modules:   
-                    DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )       
+                    DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )   
+                        
 #            pipeline =  controller.current_pipeline        
 #            for cell_address in cell_addresses:
 #                if len( pipeline.module_list ) == 0:
@@ -1404,7 +1402,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         else:
             print "Error: Could not find DV3D plot type based on the pipeline"
             print "Visualizations can't be loaded."            
-
     
     @staticmethod
     def build_python_script_from_pipeline(controller, version, plot_objs=[]):

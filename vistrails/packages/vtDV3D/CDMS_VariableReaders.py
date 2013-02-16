@@ -309,6 +309,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     varDataIdIndex = 0
                 else:
                     varDataIdIndex = selectedLevel
+
             roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] )
             varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), roiStr )
             varDataIds.append( varDataId )
@@ -473,7 +474,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         bounds = None
         if roi:
             if   axis.isLongitude():  bounds = [ roi[0], roi[2] ]
-            elif axis.isLatitude():   bounds = [ roi[1], roi[3] ] 
+            elif axis.isLatitude():   bounds = [ roi[1], roi[3] ] if ( roi[3] > roi[1] ) else [ roi[3], roi[1] ] 
         if bounds:
             if len( values ) < 2: values = bounds
             else:
@@ -508,23 +509,27 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         return iCoord
 
     def getIntersectedRoi( self, var, current_roi ):   
-        axis_list = var.axes.split('),')
-        newRoi = newList( 4, 0.0 )
-        current_roi_size = getRoiSize( current_roi )
-        for axis in axis_list:
-            axis_recs = axis.split('=')
-            iCoord = -1
-            axis_name = axis_recs[0].lower()
-            if axis_name.startswith('lon'): iCoord = 0
-            if axis_name.startswith('lat'): iCoord = 1
-            if (iCoord == 0) or (iCoord == 1):
-                axisBounds = axis_recs[1].strip("()").split(',')
-                roiBounds = [ float(axisBounds[i]) for i in range(2) ]                
-                newRoi[ iCoord ] = roiBounds[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
-                newRoi[ 2+iCoord ] = roiBounds[1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
-        if ( current_roi_size == 0 ): return newRoi
-        new_roi_size = getRoiSize( newRoi )
-        return newRoi if ( current_roi_size > new_roi_size ) else current_roi
+        try:
+            newRoi = newList( 4, 0.0 )
+            varname = var.outvar.name if hasattr( var,'outvar') else var.name
+            tvar = self.cdmsDataset.getTransientVariable( varname )
+            if id( tvar ) == id( None ): return current_roi
+            current_roi_size = getRoiSize( current_roi )
+            for iCoord in range(2):
+                axis = None
+                if iCoord == 0: axis = tvar.getLongitude()
+                if iCoord == 1: axis = tvar.getLatitude()
+                if axis:
+                    axisvals = axis.getValue()          
+                    newRoi[ iCoord ] = axisvals[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
+                    newRoi[ 2+iCoord ] = axisvals[-1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
+            if ( current_roi_size == 0 ): return newRoi
+            new_roi_size = getRoiSize( newRoi )
+            return newRoi if ( ( current_roi_size > new_roi_size ) and ( new_roi_size > 0.0 ) ) else current_roi
+        except:
+            print>>std.stderr, "Error getting ROI for input variable"
+            traceback.print_exc()
+            return current_roi
        
     def getGridSpecs( self, var, roi, zscale, outputType, dset ):   
         dims = var.getAxisIds()
@@ -547,15 +552,17 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 iCoord2 = 2*iCoord
                 gridShape[ iCoord ] = size
                 gridSize = gridSize * size
-                outputExtent[ iCoord2+1 ] = gridExtent[ iCoord2+1 ] = size-1                    
+                outputExtent[ iCoord2+1 ] = gridExtent[ iCoord2+1 ] = size-1 
+                vmax =  max( values[0], values[-1] )                   
+                vmin =  min( values[0], values[-1] )                   
                 if iCoord < 2:
                     lonOffset = 0.0 #360.0 if ( ( iCoord == 0 ) and ( roiBounds[0] < -180.0 ) ) else 0.0
-                    outputOrigin[ iCoord ] = gridOrigin[ iCoord ] = values[0] + lonOffset
-                    spacing = (values[size-1] - values[0])/(size-1)
+                    outputOrigin[ iCoord ] = gridOrigin[ iCoord ] = vmin + lonOffset
+                    spacing = (vmax - vmin)/(size-1)
                     if roiBounds:
                         if ( roiBounds[1] < 0.0 ) and  ( roiBounds[0] >= 0.0 ): roiBounds[1] = roiBounds[1] + 360.0
-                        gridExtent[ iCoord2 ] = int( round( ( roiBounds[0] - values[0] )  / spacing ) )                
-                        gridExtent[ iCoord2+1 ] = int( round( ( roiBounds[1] - values[0] )  / spacing ) )
+                        gridExtent[ iCoord2 ] = int( round( ( roiBounds[0] - vmin )  / spacing ) )                
+                        gridExtent[ iCoord2+1 ] = int( round( ( roiBounds[1] - vmin )  / spacing ) )
                         if gridExtent[ iCoord2 ] > gridExtent[ iCoord2+1 ]:
                             geTmp = gridExtent[ iCoord2+1 ]
                             gridExtent[ iCoord2+1 ] = gridExtent[ iCoord2 ] 
@@ -564,13 +571,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         outputOrigin[ iCoord ] = lonOffset + roiBounds[0]
                     roisize = gridExtent[ iCoord2+1 ] - gridExtent[ iCoord2 ] + 1                  
                     gridSpacing[ iCoord ] = spacing
-                    gridBounds[ iCoord2 ] = roiBounds[0] if roiBounds else values[0] 
-                    gridBounds[ iCoord2+1 ] = (roiBounds[0] + roisize*spacing) if roiBounds else values[ size-1 ]
+                    gridBounds[ iCoord2 ] = roiBounds[0] if roiBounds else vmin 
+                    gridBounds[ iCoord2+1 ] = (roiBounds[0] + roisize*spacing) if roiBounds else vmax
                 else:                                             
                     gridSpacing[ iCoord ] = 1.0
 #                    gridSpacing[ iCoord ] = zscale
-                    gridBounds[ iCoord2 ] = values[0]  # 0.0
-                    gridBounds[ iCoord2+1 ] = values[ size-1 ] # float( size-1 )
+                    gridBounds[ iCoord2 ] = vmin  # 0.0
+                    gridBounds[ iCoord2+1 ] = vmax # float( size-1 )
         if gridBounds[ 2 ] > gridBounds[ 3 ]:
             tmp = gridBounds[ 2 ]
             gridBounds[ 2 ] = gridBounds[ 3 ]
