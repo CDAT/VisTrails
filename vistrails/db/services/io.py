@@ -62,6 +62,7 @@ from db.domain import DBVistrail, DBWorkflow, DBLog, DBAbstraction, DBGroup, \
 import db.services.abstraction
 import db.services.log
 import db.services.opm
+import db.services.prov
 import db.services.registry
 import db.services.workflow
 import db.services.vistrail
