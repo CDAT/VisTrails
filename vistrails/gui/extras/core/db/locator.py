@@ -1,5 +1,6 @@
 ###############################################################################
 ##
+## Copyright (C) 2011-2012, NYU-Poly.
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
 ## Contact: contact@vistrails.org
@@ -133,7 +134,7 @@ suffix_map = {'vistrail': ['.vt', '.xml', '.vtl'],
               'log': ['.xml'],
               'registry': ['.xml'],
               'opm_graph': ['.xml'],
-              }
+              'prov_document': ['.xml']}
 
 def get_load_file_locator_from_gui(parent, obj_type):
     suffixes = "*" + " *".join(suffix_map[obj_type])

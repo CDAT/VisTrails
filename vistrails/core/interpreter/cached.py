@@ -1,5 +1,6 @@
 ###############################################################################
 ##
+## Copyright (C) 2011-2012, NYU-Poly.
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
 ## Contact: contact@vistrails.org
@@ -219,8 +220,6 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
                 else:
                     tupleModule = core.interpreter.base.InternalTuple()
                     tupleModule.length = len(f.params)
-                    if f.name == 'levelRangeScale':
-                        pass
                     for (j,p) in enumerate(f.params):
                         try:
                             constant = create_constant(p, module)
@@ -348,6 +347,7 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
             i = get_remapped_id(obj.id)
             if was_suspended:
                 view.set_module_suspended(i, error)
+                error = error.msg
             elif not error:
                 view.set_module_success(i)
             else:

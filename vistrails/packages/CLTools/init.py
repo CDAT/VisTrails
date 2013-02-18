@@ -1,5 +1,6 @@
 ###############################################################################
 ##
+## Copyright (C) 2011-2012, NYU-Poly.
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
 ## Contact: contact@vistrails.org
@@ -237,16 +238,53 @@ def add_tool(path):
                           args[0] in ['dir', 'cd']:
             kwargs['shell'] = True
             
+        env = {}
+        # 0. add defaults
+        # 1. add from configuration
+        # 2. add from module env
+        # 3. add from env port
         if configuration.check('env'):
-            env = os.environ
-            for var in configuration.env.split(";"):
-                key, value = var.split('=')
-                key = key.strip()
-                value = value.strip()
-                if key:
-                    env[key] = value
-            kwargs['env'] = env
-        #print "calling", args, kwargs
+            try:
+                for var in configuration.env.split(";"):
+                    key, value = str(var).split('=')
+                    key = key.strip()
+                    value = value.strip()
+                    if key:
+                        env[key] = value
+            except Exception, e:
+                raise ModuleError('Error parsing configuration env: %s' % str(e))
+
+        if 'options' in self.conf and 'env' in self.conf['options']:
+            try:
+                for var in self.conf['options']['env'].split(";"):
+                    key, value = str(var).split('=')
+                    key = key.strip()
+                    value = value.strip()
+                    if key:
+                        env[key] = value
+            except Exception, e:
+                raise ModuleError('Error parsing module env: %s' % str(e))
+            
+        if 'options' in self.conf and 'env_port' in self.conf['options']:
+            for e in self.forceGetInputListFromPort('env'):
+                try:
+                    for var in e.split(';'):
+                        if not var:
+                            continue
+                        key, value = str(var).split('=')
+                        key = key.strip()
+                        value = value.strip()
+                        if key:
+                            env[key] = value
+                except Exception, e:
+                    raise ModuleError('Error parsing env port: %s' % str(e))
+
+        if env:
+            kwargs['env'] = dict(os.environ)
+            kwargs['env'].update(env)
+            # write to execution provenance
+            env = ';'.join(['%s=%s'%(k,v) for k,v in env.iteritems()])
+            self.annotate({'execution_env': env})
 
         if 'dir' in self.conf:
             kwargs['cwd'] = self.conf['dir']
@@ -263,7 +301,6 @@ def add_tool(path):
             #    print "stdout:", len(stdout), stdout[:30]
             #if stderr:
             #    print "stderr:", len(stderr), stderr[:30]
-
 
         for f in open_files:
             f.close()
@@ -330,6 +367,8 @@ def add_tool(path):
         name, type, options = conf['stderr']
         optional = 'required' not in options
         reg.add_output_port(M, name, to_vt_type(type), optional=optional)
+    if 'options' in conf and 'env_port' in conf['options']:
+        reg.add_input_port(M, 'env', to_vt_type('string'))
     for type, name, klass, options in conf['args']:
         optional = 'required' not in options
         if 'input' == type.lower():
@@ -375,13 +414,11 @@ def initialize(*args, **keywords):
 
 def reload_scripts():
     global cl_tools
-    from core.interpreter.cached import CachedInterpreter
-    CachedInterpreter.flush()
 
     reg = core.modules.module_registry.get_module_registry()
     for tool_name in cl_tools.keys():
-        reg.delete_module(identifier, tool_name)
         del cl_tools[tool_name]
+        reg.delete_module(identifier, tool_name)
     if "CLTools" == name:
         # this is the original package 
         location = os.path.join(core.system.default_dot_vistrails(),
@@ -408,6 +445,10 @@ def reload_scripts():
                 debug.critical("Package CLTools failed to create module "
                    "from '%s': %s" % (os.path.join(location, path), str(exc)),
                    traceback.format_exc())
+
+    from gui.vistrails_window import _app
+    _app.invalidate_pipelines()
+
 wizards_list = []
 
 def menu_items():
@@ -424,7 +465,7 @@ def menu_items():
     lst = []
     if "CLTools" == name:
         def open_wizard():
-            window = QCLToolsWizardWindow()
+            window = QCLToolsWizardWindow(reload_scripts=reload_scripts)
             wizards_list.append(window)
             window.show()
         lst.append(("Open Wizard", open_wizard))

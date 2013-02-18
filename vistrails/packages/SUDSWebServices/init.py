@@ -1,5 +1,6 @@
 ###############################################################################
 ##
+## Copyright (C) 2011-2012, NYU-Poly.
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
 ## Contact: contact@vistrails.org
@@ -774,8 +775,9 @@ def saveVistrailFileHook(vistrail, temp_dir):
     """ This is called when a vistrail is loaded
         We should copy all used Web Services in temp_dir to .vistrails
         """
-
-    
+    if not hasattr(vistrail, 'get_used_packages'):
+        # Do not process DBVistrails
+        return
     packages = vistrail.get_used_packages()
     # clear old files
     for name in os.listdir(temp_dir):

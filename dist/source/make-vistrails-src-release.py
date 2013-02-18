@@ -39,13 +39,13 @@ GIT_URL = "git://www.vistrails.org/vistrails.git"
 GIT_ARGS = ""
 
 # VisTrails Release Version
-VT_VERSION = '2.0'
+VT_VERSION = '2.0.1'
 
 # Branch to be used to build release
 VT_BRANCH = 'v2.0'
 
 # Hash used in the release
-VT_HASH = '240bcab5bbcdb51758709ba8f8f4c016d9ba5df8'
+VT_HASH = '5e35e2b83b9034352baf6557bfd460206a94d851'
 
 # Prefix of target git export dir (also used as prefix for log files)
 EXPORT_DIR_PREFIX = "vistrails-src-%s"%VT_VERSION

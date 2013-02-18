@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 ###############################################################################
 ##
+## Copyright (C) 2011-2012, NYU-Poly.
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
 ## Contact: contact@vistrails.org
@@ -128,6 +129,8 @@ parser.add_option("-e", "--examples", action="store_true",
                   help="will run vistrails examples")
 
 (options, args) = parser.parse_args()
+# remove empty strings
+args = filter(len, args)
 verbose = 0
 if options.verbose:
     verbose = options.verbose
@@ -158,6 +161,8 @@ if v != 0:
 
 print "Test Suite for VisTrails"
 
+tests_passed = True
+
 main_test_suite = unittest.TestSuite()
 
 if test_modules:
@@ -167,7 +172,7 @@ else:
 
 for (p, subdirs, files) in os.walk(root_directory):
     # skip subversion subdirectories
-    if p.find('.svn') != -1:
+    if p.find('.svn') != -1 or p.find('.git') != -1 :
         continue
     for filename in files:
         # skip files that don't look like VisTrails python modules
@@ -322,9 +327,12 @@ if test_examples:
             print "  Ok."
     print "-----------------------------------------------------------------"
     if errors:
+        tests_passed = False
         print "There were errors. See summary for more information"
     else:
         print "Examples ran successfully."
 
 gui.application.get_vistrails_application().finishSession()
 gui.application.stop_application()
+# Test Runners can use the return value to know if the tests passed
+sys.exit(0 if tests_passed else 1)

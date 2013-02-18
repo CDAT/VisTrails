@@ -1,5 +1,6 @@
 ###############################################################################
 ##
+## Copyright (C) 2011-2012, NYU-Poly.
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
 ## Contact: contact@vistrails.org
@@ -624,6 +625,17 @@ class DefaultTheme(object):
         self.MASHUP_ALIAS_ICON = QtGui.QIcon(
             core.system.vistrails_root_directory() +
             '/gui/resources/images/alias.png')
+
+        # Job View Icons
+        self.JOB_SCHEDULED = QtGui.QIcon(
+            core.system.vistrails_root_directory() +
+            '/gui/resources/images/appointment-new.png')
+        self.JOB_FINISHED = QtGui.QIcon(
+            core.system.vistrails_root_directory() +
+            '/gui/resources/images/emblem-important.png')
+        self.JOB_CHECKING = QtGui.QIcon(
+            core.system.vistrails_root_directory() +
+            '/gui/resources/images/view-refresh.png')
         
         # Saved Queries icons
         self.QUERY_VIEW_ICON = self.ZOOM_ICON

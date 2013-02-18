@@ -1,5 +1,6 @@
 ###############################################################################
 ##
+## Copyright (C) 2011-2012, NYU-Poly.
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
 ## Contact: contact@vistrails.org
@@ -47,6 +48,7 @@ from core.vistrail.vistrail import Vistrail
 from core.vistrail.pipeline import Pipeline
 from core.log.log import Log
 from core.log.opm_graph import OpmGraph
+from core.log.prov_document import ProvDocument
 from core.db.locator import FileLocator, XMLFileLocator
 from core.modules.module_registry import ModuleRegistry
 from core.configuration import get_vistrails_configuration
@@ -1034,6 +1036,25 @@ class QVistrailView(QtGui.QWidget):
         if not locator:
             return False
         self.controller.write_opm(locator)
+        
+    
+    def save_prov(self, locator_class=XMLFileLocator, 
+             force_choose_locator=True):
+        self.flush_changes()
+        gui_get = locator_class.save_from_gui
+        if force_choose_locator:
+            locator = gui_get(self, ProvDocument.vtType,
+                              self.controller.locator)
+        else:
+            locator = (self.controller.locator or
+                       gui_get(self, ProvDocument.vtType,
+                               self.controller.locator))
+        if locator == untitled_locator():
+            locator = gui_get(self, ProvDocument.vtType,
+                              self.controller.locator)
+        if not locator:
+            return False
+        self.controller.write_prov(locator)
 
 
     def has_changes(self):

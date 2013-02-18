@@ -1,5 +1,6 @@
 ###############################################################################
 ##
+## Copyright (C) 2011-2012, NYU-Poly.
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
 ## Contact: contact@vistrails.org
@@ -363,6 +364,7 @@ parameters from other instances")
             self.builderWindow.hide()
             self.showWindow(self.uvcdatWindow)
         self.builderWindow.create_first_vistrail()
+        self.builderWindow.check_running_jobs()
 
     def noninteractiveMode(self):
         """ noninteractiveMode() -> None

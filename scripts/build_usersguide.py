@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 ###############################################################################
 ##
+## Copyright (C) 2011-2012, NYU-Poly.
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
 ## Contact: contact@vistrails.org
@@ -46,14 +47,14 @@ import sys
 import time
 ### Begin configuration ###
 # Folder where vistrails is
-PATH_TO_VISTRAILS_GIT = "/Users/emanuele/code/vistrails"
+PATH_TO_VISTRAILS_GIT = "/Users/vistrails/code/vistrails"
 
 # Folder where the html files will be placed. This script will build
 # the docs in the standard location and move files later
 HTML_FOLDER = None
 
 # Complete file path to where copy final pdf file
-PDF_FILE = "/Users/emanuele/code/vistrails/dist/mac/dist/doc/VisTrails.pdf"
+PDF_FILE = "/Users/vistrails/code/vistrails/dist/mac/dist/doc/VisTrails.pdf"
 
 # Should we run a `git pull` before building docs? 
 PERFORM_GIT_PULL = True

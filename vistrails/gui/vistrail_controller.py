@@ -1,5 +1,6 @@
 ###############################################################################
 ##
+## Copyright (C) 2011-2012, NYU-Poly.
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
 ## Contact: contact@vistrails.org
@@ -41,6 +42,7 @@ import core.modules.vistrails_module
 from core.utils import VistrailsInternalError, InvalidPipeline
 from core.layout.version_tree_layout import VistrailsTreeLayoutLW
 from core.log.opm_graph import OpmGraph
+from core.log.prov_document import ProvDocument
 from core.modules.abstraction import identifier as abstraction_pkg
 from core.modules.module_registry import get_module_registry, MissingPort
 from core.modules.package import Package
@@ -1255,6 +1257,19 @@ class VistrailController(QtCore.QObject, BaseController):
                                  workflow=self.current_pipeline,
                                  registry=get_module_registry())
             locator.save_as(opm_graph)
+            
+    def write_prov(self, locator):
+        if self.log:
+            if self.vistrail.db_log_filename is not None:
+                log = core.db.io.merge_logs(self.log, 
+                                            self.vistrail.db_log_filename)
+            else:
+                log = self.log
+            prov_document = ProvDocument(log=log, 
+                                         version=self.current_version,
+                                         workflow=self.current_pipeline,
+                                         registry=get_module_registry())
+            locator.save_as(prov_document)
 
     def query_by_example(self, pipeline):
         """ query_by_example(pipeline: Pipeline) -> None

@@ -1,5 +1,6 @@
 ###############################################################################
 ##
+## Copyright (C) 2011-2012, NYU-Poly.
 ## Copyright (C) 2006-2011, University of Utah. 
 ## All rights reserved.
 ## Contact: contact@vistrails.org
@@ -79,9 +80,11 @@ def translate_object(obj, method_name, version=None, target_version=None):
         '0.9.5': '1.0.0',
         '1.0.0': '1.0.1',
         '1.0.1': '1.0.2',
+        '1.0.2': '1.0.3',
         }
 
     rev_version_map = {
+        '1.0.3': '1.0.2',
         '1.0.2': '1.0.1',
         '1.0.1': '1.0.0',
         '1.0.0': '0.9.5',
