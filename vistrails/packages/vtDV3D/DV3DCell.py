@@ -260,6 +260,12 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.logoRepresentation = None 
         self.captionManager = None 
         self.addConfigurableFunction( CaptionManager.config_name, [ ( String, 'data') ], 'k', label='Add Caption', open=self.editCaption )
+
+    def clearReferrents(self):
+        PersistentVisualizationModule.clearReferrents(self)
+        self.cellWidget = None
+        self.renWin = None
+        self.renderers = []
         
     def editCaption( self, caption=None ): 
         if self.captionManager:  

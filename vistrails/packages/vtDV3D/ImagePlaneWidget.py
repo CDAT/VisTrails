@@ -199,6 +199,18 @@ class ImagePlaneWidget:
                     if iren: self.SetInteractor( iren ) 
 
 #----------------------------------------------------------------------------
+
+    def RemoveAllObservers( self ):
+        self.Interactor.RemoveAllObservers()
+        self.RenderWindow.RemoveAllObservers()
+        self.Interactor = None
+        self.RenderWindow = None
+        if self.CurrentRenderer: 
+            self.CurrentRenderer.RemoveViewProp( self.PlaneOutlineActor )
+        self.PlaneOutlineActor = None
+        self.PlaneProperty = None
+        
+#----------------------------------------------------------------------------
                                 
     def SetInteractor( self, iren ):
         if ( iren <> None ):

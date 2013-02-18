@@ -58,7 +58,7 @@ class WorkflowModule( NotCacheable,  Module ):
             module = ModuleStore.forceGetModule(  mid, self.__class__.PersistentModuleClass( mid, **args ) ) 
         if module:     
             invalidate = args.get('invalidate',False)
-            if invalidate:  pmod.invalidateWorkflowModule( self )
+            if invalidate:  module.invalidateWorkflowModule( self )
             else:           module.setWorkflowModule( self ) 
         return module
         

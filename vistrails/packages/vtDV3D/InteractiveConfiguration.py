@@ -363,10 +363,21 @@ class ConfigurableFunction( QObject ):
         self.startHandler = args.get( 'start', None )       #    left click
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
         self.hasState = args.get( 'hasState', True )
+        
+    def __del__(self):
+        self.clearReferrents()
+        
+    def clearReferrents(self):
+        self.initHandler = None
+        self.openHandler = None
+        self.startHandler = None
+        self.updateHandler = None
+        self.active = False
+        self.moduleID = None
 
     @property
     def module(self):
-        return ModuleStore.getModule( self.moduleID ) 
+        return ModuleStore.getModule( self.moduleID ) if self.moduleID else None
 
     def get_persisted(self):
         return self._persisted
@@ -410,8 +421,11 @@ class ConfigurableFunction( QObject ):
     @staticmethod
     def clear( moduleId ):
         for configFunctionMap in ConfigurableFunction.ConfigurableFunctions.values():
-            if moduleId in configFunctionMap: 
+            if moduleId in configFunctionMap:
+                cfgFunction = configFunctionMap[moduleId]
+                cfgFunction.clearReferrents()
                 del configFunctionMap[ moduleId ]
+                del cfgFunction
          
     def updateActiveFunctionList( self ):
         from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 

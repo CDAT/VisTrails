@@ -38,9 +38,11 @@ def removeModule( mid ):
     try: 
         m = db.get( mid, None )
         if m:     
-            referents1 = gc.get_referents(m)
+            m.clearReferrents()
             del db[ mid ]
-            referents0 = gc.get_referents(m)
+            gc.collect()
+            referents = gc.get_referents(m)
+            referrers = gc.get_referrers(m)
             del m
             print "  ______________________________ ModuleStore: deleting module %d ______________________________" % mid
     except Exception, ex:     

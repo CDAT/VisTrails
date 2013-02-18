@@ -421,7 +421,8 @@ class InputSpecs:
         else:
             enc_mdata = encodeToString( metadata )
             dataVector.InsertNextValue( enc_mdata  )
-       
+ 
+              
 class PersistentModule( QObject ):
     '''
     <H2> Interactive Configuration</H2>
@@ -496,8 +497,17 @@ class PersistentModule( QObject ):
 
     def __del__(self):
         print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
+        sys.stdout.flush()
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
+
+    def clearReferrents(self):
+        for f in self.configurableFunctions.values(): 
+            f.clearReferrents()
+        self.configurableFunctions.clear()
+        self.updateConfigurationObserver = None
+        self.startConfigurationObserver = None
+        self.finalizeConfigurationObserver = None
         
     def GetRenWinID(self):
         return -1
@@ -1475,7 +1485,8 @@ class TextBlinkThread( threading.Thread ):
             textOn = not textOn 
             if textOn:
                 blinkCount += 1
-                if self.nblinks > 0 and blinkCount >= self.nblinks: return
+                if self.nblinks > 0 and blinkCount >= self.nblinks: return 
+
        
 class PersistentVisualizationModule( PersistentModule ):
 
@@ -1506,6 +1517,8 @@ class PersistentVisualizationModule( PersistentModule ):
         self.textBlinkThread = None 
         self.activation = {}
         self.isAltMode = False
+        self.observerTags = []
+        self.observerTargets = set()
         self.stereoEnabled = 0
         self.showInteractiveLens = False
         self.navigationInteractorStyle = None
@@ -1750,7 +1763,7 @@ class PersistentVisualizationModule( PersistentModule ):
         inputModule = self.getPrimaryInput()
         renderer_import = inputModule.getRenderer() if  inputModule <> None else None 
         self.renderer = vtk.vtkRenderer() if renderer_import == None else renderer_import
-        self.renderer.AddObserver( 'ModifiedEvent', self.activateEvent )
+        self.addObserver( self.renderer, 'ModifiedEvent', self.activateEvent )
         self.labelBuff = "NA                          "
 #        if self.createColormap: 
 #            colormapManager = self.getColormapManager( )
@@ -1933,27 +1946,43 @@ class PersistentVisualizationModule( PersistentModule ):
                 if ( iren <> None ) and not self.isConfigStyle( iren ):
                     if ( iren <> self.iren ):
                         if self.iren == None: 
-                            self.renwin.AddObserver("AbortCheckEvent", CheckAbort)
+                            self.addObserver( self.renwin,"AbortCheckEvent", CheckAbort)
                         self.iren = iren
                         self.activateWidgets( self.iren )                                  
-                        self.iren.AddObserver( 'CharEvent', self.setInteractionState )                   
-                        self.iren.AddObserver( 'MouseMoveEvent', self.updateLevelingEvent )
-#                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
-                        self.iren.AddObserver( 'AnyEvent', self.onAnyEvent )  
-#                        self.iren.AddObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
-#                        self.iren.AddObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
-                        self.iren.AddObserver( 'CharEvent', self.onKeyPress )
-                        self.iren.AddObserver( 'KeyReleaseEvent', self.onKeyRelease )
-                        self.iren.AddObserver( 'LeftButtonPressEvent', self.onLeftButtonPress )
-                        self.iren.AddObserver( 'ModifiedEvent', self.onModified )
-                        self.iren.AddObserver( 'RenderEvent', self.onRender )                   
-                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.onLeftButtonRelease )
-                        self.iren.AddObserver( 'RightButtonReleaseEvent', self.onRightButtonRelease )
-                        self.iren.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )
+                        self.addObserver( self.iren, 'CharEvent', self.setInteractionState )                   
+                        self.addObserver( self.iren, 'MouseMoveEvent', self.updateLevelingEvent )
+#                        self.addObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
+                        self.addObserver( self.iren, 'AnyEvent', self.onAnyEvent )  
+#                        self.addObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
+#                        self.addObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
+                        self.addObserver( self.iren, 'CharEvent', self.onKeyPress )
+                        self.addObserver( self.iren, 'KeyReleaseEvent', self.onKeyRelease )
+                        self.addObserver( self.iren, 'LeftButtonPressEvent', self.onLeftButtonPress )
+                        self.addObserver( self.iren, 'ModifiedEvent', self.onModified )
+                        self.addObserver( self.iren, 'RenderEvent', self.onRender )                   
+                        self.addObserver( self.iren, 'LeftButtonReleaseEvent', self.onLeftButtonRelease )
+                        self.addObserver( self.iren, 'RightButtonReleaseEvent', self.onRightButtonRelease )
+                        self.addObserver( self.iren, 'RightButtonPressEvent', self.onRightButtonPress )
                         for configurableFunction in self.configurableFunctions.values():
                             configurableFunction.activateWidget( iren )
                     self.updateInteractor()  
-                    
+    
+    def addObserver( self, target, event, observer ):
+        self.observerTargets.add( target ) 
+        target.AddObserver( event, observer ) 
+
+    def clearReferrents(self):
+        PersistentModule.clearReferrents(self)
+        self.removeObservers()
+        self.renderer = None
+        self.iren = None
+        self.gui = None
+
+    def removeObservers( self ): 
+        for target in self.observerTargets:
+            target.RemoveAllObservers()
+        self.observerTargets.clear()
+                                               
     def updateInteractor(self): 
         pass
                     
