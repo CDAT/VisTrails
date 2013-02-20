@@ -379,6 +379,10 @@ class ConfigurableFunction( QObject ):
     def module(self):
         return ModuleStore.getModule( self.moduleID ) if self.moduleID else None
 
+    @property
+    def module(self):
+        return ModuleStore.getModule( self.moduleID ) 
+
     def get_persisted(self):
         return self._persisted
     

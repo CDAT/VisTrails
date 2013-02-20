@@ -79,6 +79,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
     def __del__(self):
         print " **************************************** Deleting VolumeSlicer module, id = %d  **************************************** " % self.moduleID
+#        self.planeWidgetX.RemoveAllObservers()
+#        self.planeWidgetY.RemoveAllObservers()
+#        self.planeWidgetZ.RemoveAllObservers()
         del VolumeSlicerModules[ self.moduleID ]
         PersistentVisualizationModule.__del__(self)
 
