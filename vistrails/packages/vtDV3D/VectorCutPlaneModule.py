@@ -651,13 +651,13 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.streamerStepLenth = 0.05
         self.currentLevel = 0
         self.streamerSeedGridSpacing = [ 5.0, 50.0 ] 
-        self.minStreamerSeedGridSpacing = [ 5.0, 6.0 ] 
+        self.minStreamerSeedGridSpacing = [ 1.0, 1.0 ] 
         self.streamer = None
         self.planeWidget = None
         self.primaryInputPorts = [ 'volume' ]
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0, units='data' )
         self.addConfigurableLevelingFunction( 'streamerScale', 'Z', label='Streamer Scale', setLevel=self.setStreamerScale, getLevel=self.getStreamerScale, layerDependent=True, windowing=False, bound=False )
-        self.addConfigurableLevelingFunction( 'streamerDensity', 'G', label='Streamer Density', activeBound='max', setLevel=self.setStreamerDensity, getLevel=self.getStreamerDensity, layerDependent=True, windowing=False, bound=False )
+        self.addConfigurableLevelingFunction( 'streamerDensity', 'G', label='Streamer Density', activeBound='max', setLevel=self.setStreamerDensity, initRange=[ 1.0, 10.0, 1 ], getLevel=self.getStreamerDensity, layerDependent=True, windowing=False, bound=False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', activeBound='max', setLevel=self.setZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
 
     def setZScale( self, zscale_data, **args ):
@@ -832,7 +832,6 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
     def UpdateStreamerSeedGrid( self ):
         sampleRate = self.streamerSeedGridSpacing
         currentLevel = self.getCurentLevel()
-#        print " ---- ApplyStreamerSeedGridSpacing:  Sample rate: %s, current Level: %d " % ( str( sampleRate ), currentLevel )
         sample_source = vtk.vtkImageData()        
         gridSpacing = self.input().GetSpacing()
         gridOrigin = self.input().GetOrigin()
@@ -843,6 +842,9 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         sample_source.SetSpacing( sourceSpacing )
         sample_source.SetExtent( sourceExtent )
         self.streamer.SetSource( sample_source )
+#        self.Render()
+        print " ---- ApplyStreamerSeedGridSpacing:  Sample rate: %s, current Level: %d, sourceSpacing: %s, sourceExtent: %s " % ( str( sampleRate ), currentLevel, str( sourceSpacing ), str(sourceExtent ) )
+        sys.stdout.flush()
     
     def SliceObserver(self, caller, event = None ): 
         caller.GetPlane( self.plane )

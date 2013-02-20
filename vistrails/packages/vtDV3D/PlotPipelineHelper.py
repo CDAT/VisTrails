@@ -1156,6 +1156,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     print>>sys.stderr, "Don't know how to match %d CDMSVariable inputs to %d CDMSReader modules" % ( len( var_modules ), len( reader_modules ) )                                                                                      
             else: 
                 iVarModule = 0
+                module = reader_modules[ 0 ]
                 for iInput in range( nInputs ):
                     if iInput < len( var_modules ):
                         try:
