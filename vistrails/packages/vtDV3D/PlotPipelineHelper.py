@@ -1173,11 +1173,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                             iVarModule = iVarModule+1
                         except Exception, err:
                             print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
-                            break
-                        except Exception, err:
-                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
-                            break
-                                           
+                            break                                           
             try:
                 action = core.db.action.create_action(ops)
                 controller.add_new_action(action)
