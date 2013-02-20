@@ -708,8 +708,9 @@ class CDMSDataset(Module):
             lonAxis = transVar.getLongitude() 
             lonVals = lonBounds if lonBounds else lonAxis.getValue()
             varLonInt = lonAxis.mapIntervalExt( [ lonVals[0], lonVals[-1] ], 'ccn' )
-            if (decimationFactor > 1):  args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
-            else:                       args1['lon'] = slice( varLonInt[0], varLonInt[1] )
+            if varLonInt:
+                if (decimationFactor > 1):  args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
+                else:                       args1['lon'] = slice( varLonInt[0], varLonInt[1] )
            
             latAxis = transVar.getLatitude() 
             latVals = latAxis.getValue()
@@ -718,8 +719,9 @@ class CDMSDataset(Module):
                 if ( latVals[-1] > latVals[0] ):     latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] > latBounds[0]) else [ latBounds[-1], latBounds[0] ]
                 else:                                latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] < latBounds[0]) else [ latBounds[-1], latBounds[0] ]
             varLatInt = latAxis.mapIntervalExt( latRange, 'ccn' )
-            if (decimationFactor > 1):  args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
-            else:                       args1['lat'] = slice( varLatInt[0], varLatInt[1] )
+            if varLatInt:
+                if (decimationFactor > 1):  args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
+                else:                       args1['lat'] = slice( varLatInt[0], varLatInt[1] )
         
         args1['order'] = order
         if levaxis:
