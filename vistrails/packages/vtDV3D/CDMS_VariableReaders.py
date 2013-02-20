@@ -188,6 +188,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 if cdms_var2: 
                     iVar = iVar+1
                     self.addCDMSVariable( cdms_var2, iVar )
+                    intersectedRoi = self.getIntersectedRoi( cdms_var2, intersectedRoi )
                     
             self.generateOutput(roi=intersectedRoi)
 #            if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
