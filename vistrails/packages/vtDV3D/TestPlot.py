@@ -19,6 +19,10 @@ class TestConfigPopupManager( QObject ):
     def __init__( self, **args ):
         self.menu = QMenu()
         self.actionMap = {}
+        
+    def __del__(self):
+        print "Deleting TestConfigPopupManager"
+
 
 #        self.connect( self.menu, SIGNAL("triggered(QAction)"), self.execAction ) 
             
@@ -52,7 +56,10 @@ class MainWindow(QMainWindow):
         self.testConfigPopupManager = TestConfigPopupManager()
         
     def mousePressEvent ( self, event ): 
-        self.testConfigPopupManager.show()  
+ #       self.testConfigPopupManager.show() 
+        self.testConfigPopupManager
+        self.testConfigPopupManager = None
+        
         
 app = QApplication(sys.argv)
 main = MainWindow()

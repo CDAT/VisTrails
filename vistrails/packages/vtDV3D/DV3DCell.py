@@ -533,6 +533,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         pipeline = DV3DPipelineHelper.getPipeline( cell_address, sheetName )
 #        pipeline = self.getCurrentPipeline() 
         if pipeline:  UVCDATGuiConfigFunction.clearModules( pipeline )
+
         IVModuleConfigurationDialog.reset()
         self.cellWidget = None 
         self.builtCellWidget = False                        
