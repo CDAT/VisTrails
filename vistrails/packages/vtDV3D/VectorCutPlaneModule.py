@@ -648,11 +648,12 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
     """    
     def __init__( self, mid, **args ):
         PersistentVisualizationModule.__init__( self, mid, **args )
-        self.streamerScaleMax = 50.0 
-        self.streamerScale = 10.0 
+        self.streamerScaleMax = 10.0 
+        self.streamerScale = 5.0 
         self.streamerStepLenth = 0.05
         self.currentLevel = 0
-        self.streamerSeedGridSpacing = [ 5.0, 50.0 ] 
+        self.streamerSeedGridSpacing = [ 2.0, 20.0 ] 
+        self.streamerSeedGridInitSpacing = [ 2.0, 20.0 ] 
         self.minStreamerSeedGridSpacing = [ 1.0, 1.0 ] 
         self.streamer = None
         self.planeWidget = None
@@ -701,7 +702,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.UpdateCut()
         
     def getStreamerDensity(self):
-        return self.streamerSeedGridSpacing
+        return self.streamerSeedGridInitSpacing
                               
     def buildPipeline(self):
         """ execute() -> None
