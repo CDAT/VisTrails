@@ -262,10 +262,14 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.addConfigurableFunction( CaptionManager.config_name, [ ( String, 'data') ], 'k', label='Add Caption', open=self.editCaption )
 
     def clearReferrents(self):
+        from packages.spreadsheet.spreadsheet_controller import spreadsheetController                       
         PersistentVisualizationModule.clearReferrents(self)
         self.cellWidget = None
         self.renWin = None
-        self.renderers = []
+        self.renderers = []        
+        ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+        tabController = ssheetWindow.get_current_tab_controller()
+        tabController.disconnect ( QtCore.SIGNAL("cell_deleted"), self, self.clearWidget )
         
     def editCaption( self, caption=None ): 
         if self.captionManager:  

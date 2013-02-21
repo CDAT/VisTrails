@@ -82,11 +82,11 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #        self.planeWidgetX.RemoveAllObservers()
 #        self.planeWidgetY.RemoveAllObservers()
 #        self.planeWidgetZ.RemoveAllObservers()
-        del VolumeSlicerModules[ self.moduleID ]
         PersistentVisualizationModule.__del__(self)
 
     def clearReferrents(self):
         PersistentVisualizationModule.clearReferrents(self)
+        del VolumeSlicerModules[ self.moduleID ]
         self.planeWidgetX = None
         self.planeWidgetY = None
         self.planeWidgetZ = None

@@ -45,7 +45,8 @@ def removeModule( mid ):
             referrers = gc.get_referrers(m)
             del m
             print "  ______________________________ ModuleStore: deleting module %d ______________________________" % mid
-    except Exception, ex:     
+    except Exception, ex: 
+        print>>sys.stderr, " _________ ModuleStore: Error deleting module %d : %s " % ( mid, str(ex) )    
         return False
     return True
 

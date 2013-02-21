@@ -19,8 +19,6 @@ import cdms2, cdtime
 ReferenceTimeUnits = "days since 1900-1-1"
 MIN_LINE_LEN = 50
 
-moduleInstances = {}
-
 def getClassName( instance ):
     return instance.__class__.__name__ if ( instance <> None ) else "None" 
 
