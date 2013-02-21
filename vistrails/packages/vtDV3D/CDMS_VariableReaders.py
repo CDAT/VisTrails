@@ -179,6 +179,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 if cdms_var2: 
                     iVar = iVar+1
                     self.addCDMSVariable( cdms_var2, iVar )
+                    intersectedRoi = self.getIntersectedRoi( cdms_var2, intersectedRoi )
                     
             self.generateOutput(roi=intersectedRoi)
 #            if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
@@ -281,6 +282,14 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         intersectedRoi = args.get('roi', None )
         self.cdmsDataset.setRoi( intersectedRoi )
         exampleVarDataSpecs = None
+        dsid = None
+        if (self.outputType == CDMSDataType.Vector ) and len(varList) < 3:
+            if len(varList) == 2: 
+                imageDataName = getItem( varList[0] )
+                dsid = imageDataName.split('*')[0]
+                varList.append( '*'.join( [ dsid, '__zeros__' ] ) )
+            else: 
+                print>>sys.stderr, "Not enough components for vector plot: %d" % len(varList)
 #        print " Get Image Data: varList = %s " % str( varList )
         for varRec in varList:
             range_min, range_max, scale, shift  = 0.0, 0.0, 1.0, 0.0   
@@ -319,9 +328,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 if varName == '__zeros__':
                     assert( npts > 0 )
                     newDataArray = np.zeros( npts, dtype=scalar_dtype ) 
-                    self.setCachedData( varName, ( newDataArray, var_md ) ) 
                     varDataSpecs = copy.deepcopy( exampleVarDataSpecs )
                     varDataSpecs['newDataArray'] = newDataArray.ravel('F')  
+                    self.setCachedData( varName, ( newDataArray, varDataSpecs ) ) 
                 else: 
                     tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue, iTimestep, self.useTimeIndex ] 
                     varData = self.cdmsDataset.getVarDataCube( dsid, varName, tval, selectedLevel )
@@ -442,7 +451,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     vtkdata.CopyComponent( iComp, fromArray, 0 )
                     if iComp == 0: 
                         md[ 'scalars'] = varName 
-                    iComp = iComp + 1
+                    iComp = iComp + 1                    
                 vtkdata.SetName( 'vectors' )
                 md[ 'vectors'] = ','.join( vars ) 
                 vtkdata.Modified()

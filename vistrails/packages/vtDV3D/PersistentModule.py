@@ -508,7 +508,10 @@ class PersistentModule( QObject ):
         return [ self.activeLayer, ]
 
     def input( self, input_index=0 ):
-        ispec = self.inputSpecs[ input_index ] 
+        try:
+            ispec = self.inputSpecs[ input_index ]
+        except:
+            return None 
         return ispec.input()
 
     def intersectInputExtents( self ):

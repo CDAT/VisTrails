@@ -34,7 +34,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         self.primaryInputPorts = [ 'volume' ]
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0 )
         self.addConfigurableLevelingFunction( 'glyphScale', 'ZS', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, bound=False  )
-        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False  )
+        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False, activeBound='max', initRange=[0.02,1.0, 1]   )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
 
     def setZScale( self, zscale_data, **args ):
@@ -304,14 +304,15 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         PersistentVisualizationModule.__init__( self, mid, **args )
         self.glyphScale = 1.0 
         self.glyphRange = 1.0
+        self.glyphDecimationFactorBounds = [ 1.0, 20.0 ] 
         self.glyphDecimationFactor = [ 1.0, 10.0 ] 
         self.glyph = None
         self.useGlyphMapper = True 
         self.planeWidget = None    
         self.primaryInputPorts = [ 'volume' ]
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0, units='data' )
-        self.addConfigurableLevelingFunction( 'glyphScale', 'Z', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, windowing=False, bound=False  )
-        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False  )
+        self.addConfigurableLevelingFunction( 'glyphScale', 'Z', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, windowing=False, bound=False, activeBound='max'   )
+        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False, activeBound='min'   )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
 
     def setZScale( self, zscale_data, **args ):
@@ -358,7 +359,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.ApplyGlyphDecimationFactor()
         
     def getGlyphDensity(self):
-        return self.glyphDecimationFactor
+        return self.glyphDecimationFactorBounds
                               
     def buildPipeline(self):
         """ execute() -> None
@@ -556,9 +557,9 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
 
 
     def ApplyGlyphDecimationFactor(self):
-        sampleRate = [ int( round( abs( self.glyphDecimationFactor[0] ) )  ), int( round( abs( self.glyphDecimationFactor[1] ) ) )  ]
+        sampleRate =  int( round( abs( self.glyphDecimationFactor[0] ) )  )
 #        print "Sample rate: %s " % str( sampleRate )
-        self.resample.SetSampleRate( sampleRate[0], sampleRate[0], 1 )
+        self.resample.SetSampleRate( sampleRate, sampleRate, 1 )
         
 #        spacing = [ self.initialSpacing[i]*self.glyphDecimationFactor for i in range(3) ]
 #        extent = [ int( (self.dataBounds[i] - self.initialOrigin[i/2]) / spacing[i/2] ) for i in range( 6 )  ]
@@ -647,16 +648,18 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
     """    
     def __init__( self, mid, **args ):
         PersistentVisualizationModule.__init__( self, mid, **args )
-        self.streamerScale = 10.0 
+        self.streamerScaleMax = 10.0 
+        self.streamerScale = 5.0 
         self.streamerStepLenth = 0.05
         self.currentLevel = 0
-        self.streamerSeedGridSpacing = [ 5.0, 50.0 ] 
-        self.minStreamerSeedGridSpacing = [ 5.0, 6.0 ] 
+        self.streamerSeedGridSpacing = [ 2.0, 20.0 ] 
+        self.streamerSeedGridInitSpacing = [ 2.0, 20.0 ] 
+        self.minStreamerSeedGridSpacing = [ 1.0, 1.0 ] 
         self.streamer = None
         self.planeWidget = None
         self.primaryInputPorts = [ 'volume' ]
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0, units='data' )
-        self.addConfigurableLevelingFunction( 'streamerScale', 'Z', label='Streamer Scale', setLevel=self.setStreamerScale, getLevel=self.getStreamerScale, layerDependent=True, windowing=False, bound=False )
+        self.addConfigurableLevelingFunction( 'streamerScale', 'Z', label='Streamer Scale', setLevel=self.setStreamerScale, activeBound='max', getLevel=self.getStreamerScale, layerDependent=True, windowing=False, bound=False )
         self.addConfigurableLevelingFunction( 'streamerDensity', 'G', label='Streamer Density', activeBound='max', setLevel=self.setStreamerDensity, getLevel=self.getStreamerDensity, layerDependent=True, windowing=False, bound=False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', activeBound='max', setLevel=self.setZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
 
@@ -680,7 +683,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
 
     def setStreamerScale( self, ctf_data, **args ):
         self.streamerScale = abs( ctf_data[1] )
-        self.streamerStepLenth = abs( ctf_data[0] )
+        self.streamerStepLenth = 0.02 # abs( ctf_data[0] )
         self.updateScaling()
         
     def updateScaling( self ):
@@ -690,7 +693,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
             self.streamer.SetMaximumPropagationTime( self.streamerScale ) 
 
     def getStreamerScale( self ):
-        return [ self.streamerStepLenth, self.streamerScale ]
+        return [ self.streamerStepLenth, self.streamerScaleMax ]
 
     def setStreamerDensity( self, ctf_data, **args ):
         for i in range(2):
@@ -699,7 +702,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.UpdateCut()
         
     def getStreamerDensity(self):
-        return self.streamerSeedGridSpacing
+        return self.streamerSeedGridInitSpacing
                               
     def buildPipeline(self):
         """ execute() -> None
@@ -832,7 +835,6 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
     def UpdateStreamerSeedGrid( self ):
         sampleRate = self.streamerSeedGridSpacing
         currentLevel = self.getCurentLevel()
-#        print " ---- ApplyStreamerSeedGridSpacing:  Sample rate: %s, current Level: %d " % ( str( sampleRate ), currentLevel )
         sample_source = vtk.vtkImageData()        
         gridSpacing = self.input().GetSpacing()
         gridOrigin = self.input().GetOrigin()
@@ -843,6 +845,9 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         sample_source.SetSpacing( sourceSpacing )
         sample_source.SetExtent( sourceExtent )
         self.streamer.SetSource( sample_source )
+#        self.Render()
+        print " ---- ApplyStreamerSeedGridSpacing:  Sample rate: %s, current Level: %d, sourceSpacing: %s, sourceExtent: %s " % ( str( sampleRate ), currentLevel, str( sourceSpacing ), str(sourceExtent ) )
+        sys.stdout.flush()
     
     def SliceObserver(self, caller, event = None ): 
         caller.GetPlane( self.plane )
