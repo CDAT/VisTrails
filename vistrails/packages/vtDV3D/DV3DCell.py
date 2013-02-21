@@ -269,7 +269,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.renderers = []        
         ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
         tabController = ssheetWindow.get_current_tab_controller()
-        tabController.disconnect ( QtCore.SIGNAL("cell_deleted"), self, self.clearWidget )
+        self.disconnect ( tabController, QtCore.SIGNAL("cell_deleted"), self.clearWidget )
         
     def editCaption( self, caption=None ): 
         if self.captionManager:  
