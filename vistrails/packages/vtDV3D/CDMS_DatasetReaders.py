@@ -4,6 +4,7 @@ Created on Dec 11, 2010
 @author: tpmaxwel
 '''
 import vtk, sys, os, copy, time
+from collections import OrderedDict 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import core.modules.module_registry

@@ -1061,12 +1061,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             plot_obj.current_parent_version = version
             plot_obj.current_controller = controller
             aliases = {}
+            varnames = {}
             for i in range(len(var_modules)):
                 if issubclass( var_modules[i].module_descriptor.module, CDMSVariableOperation):
                     varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varname' )
                     python_command = PlotPipelineHelper.get_value_from_function( var_modules[i], 'python_command' )
                     aliases[plot_obj.vars[i]] = varname
                     aliases[ "%s.cmd" % plot_obj.vars[i] ] = python_command
+                    varnames[i] = varname
                 else:
                     try:
                         if i < len( plot_obj.vars ):
@@ -1080,6 +1082,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                             file_varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varNameInFile')
                             axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
                             aliases[plot_obj.vars[i]] = varname
+                            varnames[i] = varname
                             aliases[ "%s.file" % plot_obj.vars[i] ] = file_varname if file_varname else ""
                             if i < len(plot_obj.axes):
                                 aliases[plot_obj.axes[i]] = axes
@@ -1088,8 +1091,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                                 aliases[plot_obj.files[i]] = filename
                     except Exception, err:
                         print>>sys.stderr,  "Error setting aliases: %s" % ( str(err) )
-                        traceback.print_exc()
-    
+                        traceback.print_exc()    
             #FIXME: this will always spread the cells in the same row
             cell_specs = []
             cell_addresses = []
@@ -1144,6 +1146,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                                 added_modules.append( var_module.id )
                             conn1 = controller.create_connection( var_module, 'self', module, inputPort )
                             ops.append( ( 'add', conn1 ) )
+                            varname = varnames.get( iInput, None )
+                            if varname: print " * DV3D Pipeline Handler: Add Variable %s to input %s " % ( varname, inputPort )
                         except Exception, err:
                             print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
                             break  
@@ -1158,6 +1162,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                                 added_modules.append( var_module.id )
                             conn1 = controller.create_connection( var_module, 'self', module, inputPort )
                             ops.append( ( 'add', conn1 ) )
+                            varname = varnames.get( iInput, None )
+                            if varname: print " ** DV3D Pipeline Handler: Add Variable %s to input %s " % ( varname, inputPort )
                         except Exception, err:
                             print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
                             break  
@@ -1177,6 +1183,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                             inputPort = 'variable' if (iInput == 0) else "variable%d" % ( iInput + 1)
                             conn1 = controller.create_connection( var_module, 'self', module, inputPort )
                             ops.append( ( 'add', conn1 ) )
+                            varname = varnames.get( iVarModule, None )
+                            if varname: print " *** DV3D Pipeline Handler: Add Variable %s to input %s " % ( varname, inputPort )
                             iVarModule = iVarModule+1
                         except Exception, err:
                             print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
