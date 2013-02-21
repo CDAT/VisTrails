@@ -291,6 +291,14 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         intersectedRoi = args.get('roi', None )
         self.cdmsDataset.setRoi( intersectedRoi )
         exampleVarDataSpecs = None
+        dsid = None
+        if (self.outputType == CDMSDataType.Vector ) and len(varList) < 3:
+            if len(varList) == 2: 
+                imageDataName = getItem( varList[0] )
+                dsid = imageDataName.split('*')[0]
+                varList.append( '*'.join( [ dsid, '__zeros__' ] ) )
+            else: 
+                print>>sys.stderr, "Not enough components for vector plot: %d" % len(varList)
 #        print " Get Image Data: varList = %s " % str( varList )
         for varRec in varList:
             range_min, range_max, scale, shift  = 0.0, 0.0, 1.0, 0.0   
@@ -452,7 +460,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     vtkdata.CopyComponent( iComp, fromArray, 0 )
                     if iComp == 0: 
                         md[ 'scalars'] = varName 
-                    iComp = iComp + 1
+                    iComp = iComp + 1                    
                 vtkdata.SetName( 'vectors' )
                 md[ 'vectors'] = ','.join( vars ) 
                 vtkdata.Modified()
