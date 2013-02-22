@@ -470,11 +470,6 @@ def getFunctionParmStrValues( module, functionName, defValue = None ):
                 return values
     return defValue
 
-#def getInputValue( mid, inputName ):
-#    pmod = getPersistentModule( mid )
-#    if pmod <> None: return pmod.forceGetInputFromPort( inputName, None ) 
-#    return None
-
 def getModuleClass( mid ):
     import api
     registry = get_module_registry()

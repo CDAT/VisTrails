@@ -351,7 +351,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 
         self.volume.SetProperty(self.volumeProperty)
 #        self.volume.AddObserver( 'AnyEvent', self.EventWatcher )
-        self.input().AddObserver( 'AnyEvent', self.EventWatcher )
+#        self.input().AddObserver( 'AnyEvent', self.EventWatcher )
         
         self.volume.SetPosition( self.pos )
 

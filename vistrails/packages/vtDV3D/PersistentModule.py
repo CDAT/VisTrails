@@ -19,8 +19,6 @@ import cdms2, cdtime
 ReferenceTimeUnits = "days since 1900-1-1"
 MIN_LINE_LEN = 50
 
-moduleInstances = {}
-
 def getClassName( instance ):
     return instance.__class__.__name__ if ( instance <> None ) else "None" 
 
@@ -421,7 +419,8 @@ class InputSpecs:
         else:
             enc_mdata = encodeToString( metadata )
             dataVector.InsertNextValue( enc_mdata  )
-       
+ 
+              
 class PersistentModule( QObject ):
     '''
     <H2> Interactive Configuration</H2>
@@ -494,9 +493,19 @@ class PersistentModule( QObject ):
 #            if dataArray: return dataArray.GetValue(0)
 #        return 0
 
-#    def __del__(self):
+    def __del__(self):
+        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
+        sys.stdout.flush()
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
+
+    def clearReferrents(self):
+        for f in self.configurableFunctions.values(): 
+            f.clearReferrents()
+        self.configurableFunctions.clear()
+        self.updateConfigurationObserver = None
+        self.startConfigurationObserver = None
+        self.finalizeConfigurationObserver = None
         
     def GetRenWinID(self):
         return -1
@@ -934,22 +943,22 @@ class PersistentModule( QObject ):
          
            
     def addConfigurableMethod( self, name, method, key, **args ):
-        self.configurableFunctions[name] = ConfigurableFunction( name, None, key, pmod=self, hasState=False, open=method, **args )
+        self.configurableFunctions[name] = ConfigurableFunction( name, None, key, hasState=False, open=method, **args )
 
     def addConfigurableFunction(self, name, function_args, key, **args):
-        self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, pmod=self, **args )
+        self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, **args )
 
     def addConfigurableLevelingFunction(self, name, key, **args):
-        self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, pmod=self, **args )
+        self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, **args )
                         
     def addConfigurableGuiFunction(self, name, guiClass, key, **args):
         isActive = not HyperwallManager.getInstance().isClient
-        guiCF = GuiConfigurableFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
+        guiCF = GuiConfigurableFunction( name, guiClass, key, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
 
     def addUVCDATConfigGuiFunction(self, name, guiClass, key, **args):
         isActive = not HyperwallManager.getInstance().isClient
-        guiCF = UVCDATGuiConfigFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
+        guiCF = UVCDATGuiConfigFunction( name, guiClass, key, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
         
     def getConfigFunction( self, name ):
@@ -959,7 +968,7 @@ class PersistentModule( QObject ):
         del self.configurableFunctions[name]
 
     def addConfigurableWidgetFunction(self, name, signature, widgetWrapper, key, **args):
-        wCF = WidgetConfigurableFunction( name, signature, widgetWrapper, key, pmod=self, **args )
+        wCF = WidgetConfigurableFunction( name, signature, widgetWrapper, key, **args )
         self.configurableFunctions[name] = wCF
     
     def getConfigurationHelpText(self):
@@ -1477,7 +1486,8 @@ class TextBlinkThread( threading.Thread ):
             textOn = not textOn 
             if textOn:
                 blinkCount += 1
-                if self.nblinks > 0 and blinkCount >= self.nblinks: return
+                if self.nblinks > 0 and blinkCount >= self.nblinks: return 
+
        
 class PersistentVisualizationModule( PersistentModule ):
 
@@ -1508,6 +1518,8 @@ class PersistentVisualizationModule( PersistentModule ):
         self.textBlinkThread = None 
         self.activation = {}
         self.isAltMode = False
+        self.observerTags = []
+        self.observerTargets = set()
         self.stereoEnabled = 0
         self.showInteractiveLens = False
         self.navigationInteractorStyle = None
@@ -1752,7 +1764,7 @@ class PersistentVisualizationModule( PersistentModule ):
         inputModule = self.getPrimaryInput()
         renderer_import = inputModule.getRenderer() if  inputModule <> None else None 
         self.renderer = vtk.vtkRenderer() if renderer_import == None else renderer_import
-        self.renderer.AddObserver( 'ModifiedEvent', self.activateEvent )
+        self.addObserver( self.renderer, 'ModifiedEvent', self.activateEvent )
         self.labelBuff = "NA                          "
 #        if self.createColormap: 
 #            colormapManager = self.getColormapManager( )
@@ -1935,27 +1947,43 @@ class PersistentVisualizationModule( PersistentModule ):
                 if ( iren <> None ) and not self.isConfigStyle( iren ):
                     if ( iren <> self.iren ):
                         if self.iren == None: 
-                            self.renwin.AddObserver("AbortCheckEvent", CheckAbort)
+                            self.addObserver( self.renwin,"AbortCheckEvent", CheckAbort)
                         self.iren = iren
                         self.activateWidgets( self.iren )                                  
-                        self.iren.AddObserver( 'CharEvent', self.setInteractionState )                   
-                        self.iren.AddObserver( 'MouseMoveEvent', self.updateLevelingEvent )
-#                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
-                        self.iren.AddObserver( 'AnyEvent', self.onAnyEvent )  
-#                        self.iren.AddObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
-#                        self.iren.AddObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
-                        self.iren.AddObserver( 'CharEvent', self.onKeyPress )
-                        self.iren.AddObserver( 'KeyReleaseEvent', self.onKeyRelease )
-                        self.iren.AddObserver( 'LeftButtonPressEvent', self.onLeftButtonPress )
-                        self.iren.AddObserver( 'ModifiedEvent', self.onModified )
-                        self.iren.AddObserver( 'RenderEvent', self.onRender )                   
-                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.onLeftButtonRelease )
-                        self.iren.AddObserver( 'RightButtonReleaseEvent', self.onRightButtonRelease )
-                        self.iren.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )
+                        self.addObserver( self.iren, 'CharEvent', self.setInteractionState )                   
+                        self.addObserver( self.iren, 'MouseMoveEvent', self.updateLevelingEvent )
+#                        self.addObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
+                        self.addObserver( self.iren, 'AnyEvent', self.onAnyEvent )  
+#                        self.addObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
+#                        self.addObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
+                        self.addObserver( self.iren, 'CharEvent', self.onKeyPress )
+                        self.addObserver( self.iren, 'KeyReleaseEvent', self.onKeyRelease )
+                        self.addObserver( self.iren, 'LeftButtonPressEvent', self.onLeftButtonPress )
+                        self.addObserver( self.iren, 'ModifiedEvent', self.onModified )
+                        self.addObserver( self.iren, 'RenderEvent', self.onRender )                   
+                        self.addObserver( self.iren, 'LeftButtonReleaseEvent', self.onLeftButtonRelease )
+                        self.addObserver( self.iren, 'RightButtonReleaseEvent', self.onRightButtonRelease )
+                        self.addObserver( self.iren, 'RightButtonPressEvent', self.onRightButtonPress )
                         for configurableFunction in self.configurableFunctions.values():
                             configurableFunction.activateWidget( iren )
                     self.updateInteractor()  
-                    
+    
+    def addObserver( self, target, event, observer ):
+        self.observerTargets.add( target ) 
+        target.AddObserver( event, observer ) 
+
+    def clearReferrents(self):
+        PersistentModule.clearReferrents(self)
+        self.removeObservers()
+        self.renderer = None
+        self.iren = None
+        self.gui = None
+
+    def removeObservers( self ): 
+        for target in self.observerTargets:
+            target.RemoveAllObservers()
+        self.observerTargets.clear()
+                                               
     def updateInteractor(self): 
         pass
                     
@@ -2038,7 +2066,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 rcf = configFunct
 #                print " UpdateInteractionState, state = %s, cf = %s " % ( state, str(configFunct) )
             if not configFunct and self.acceptsGenericConfigs:
-                configFunct = ConfigurableFunction( state, None, None, pmod=self )              
+                configFunct = ConfigurableFunction( state, None, None )              
                 self.configurableFunctions[ state ] = configFunct
             if configFunct:
                 configFunct.open( state, self.isAltMode )
