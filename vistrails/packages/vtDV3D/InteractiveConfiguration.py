@@ -2275,7 +2275,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
                 timeAxis =  module.getTimeAxis()     
                 if not timeAxis:
-                    print>>sys.stderr, "Can't find time axis for dataset %s- animation disabled." % self.module.getDatasetId()
+                    print>>sys.stderr, "Can't find time axis for dataset %s- animation disabled." % module.getDatasetId()
                     return
                 timeValues = np.array( object=timeAxis.getValue() )
                 relTimeRef = cdtime.reltime( relTimeValueRef, ReferenceTimeUnits )
