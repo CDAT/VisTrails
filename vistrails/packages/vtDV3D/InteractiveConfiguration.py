@@ -374,6 +374,8 @@ class ConfigurableFunction( QObject ):
         self.updateHandler = None
         self.active = False
         self.moduleID = None
+        self.kwargs.clear()
+        self.args = []
 
     @property
     def module(self):
@@ -722,7 +724,8 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
 
     @staticmethod
     def clearModules( pipeline ): 
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        DV3DPipelineHelper.reset() 
         if pipeline:   
             for moduleId in pipeline.modules: 
                 DV3DPipelineHelper.removeModuleFromActivationMap( moduleId ) 

@@ -41,7 +41,7 @@ def removeModule( mid ):
             m.clearReferrents()
             del db[ mid ]
             gc.collect()
-            referents = gc.get_referents(m)
+#            referents = gc.get_referents(m)
             referrers = gc.get_referrers(m)
             del m
             print "  ______________________________ ModuleStore: deleting module %d ______________________________" % mid
