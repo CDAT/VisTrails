@@ -2289,13 +2289,13 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 r0 = cdtime.reltime( relTimeValue0, timeAxis.units )
                 relTimeRef = r0.torel( ReferenceTimeUnits )
                 relTimeValueRefAdj = relTimeRef.value
-                print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
+#                print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
                 displayText = self.getTextDisplay()
                 HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, iTimestep, self.uniformTimeRange, displayText ], False  )
                 active_mods = IVModuleConfigurationDialog.getActiveModules()
                 for modID in active_mods:
                     module = ModuleStore.getModule( modID )
-                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
+#                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
                     module.updateAnimation( [ relTimeValueRefAdj, iTimestep, self.uniformTimeRange ], displayText, restart  )
             except Exception:
                 traceback.print_exc( 100, sys.stderr )

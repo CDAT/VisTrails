@@ -606,7 +606,7 @@ class DV3DConfigControlPanel(QWidget):
                 DV3DPipelineHelper.activationMap[ moduleID ] = False
                     
     def  processPlotListEvent( self, list_item ): 
-        DV3DPipelineHelper.setModulesActivation( list_item.modules, ( list_item.checkState() == Qt.Checked ) ) 
+        DV3DPipelineHelper.setModulesActivation( list_item.moduleIDs, ( list_item.checkState() == Qt.Checked ) ) 
                            
     def startConfig(self, qs_action_key, qs_cfg_key ):
         self.plot_list.clear()
@@ -1214,21 +1214,21 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             print "Can't find sheet: ", sheetName
         return pipeline       
 
-    @staticmethod
-    def getCellAddress( pipeline ):
-        proj_controller = api.get_current_project_controller()
-        controller =  proj_controller.vt_controller 
-        for sheet_item in proj_controller.sheet_map.items(): 
-            sheetName = sheet_item[0]
-            cellMap = sheet_item[1]
-            for cell_item in cellMap.items():
-                cell_address = cell_item[0]
-                cell = cell_item[1]
-                current_version = cell.current_parent_version 
-                controller.change_selected_version( current_version )
-                cell_pipeline = controller.vistrail.getPipeline( current_version )  
-                if cell_pipeline == pipeline: return( sheetName, ( cell_address[1], cell_address[0] ) )
-        return ( None, None ) 
+#    @staticmethod
+#    def getCellAddress( pipeline ):
+#        proj_controller = api.get_current_project_controller()
+#        controller =  proj_controller.vt_controller 
+#        for sheet_item in proj_controller.sheet_map.items(): 
+#            sheetName = sheet_item[0]
+#            cellMap = sheet_item[1]
+#            for cell_item in cellMap.items():
+#                cell_address = cell_item[0]
+#                cell = cell_item[1]
+#                current_version = cell.current_parent_version 
+#                controller.change_selected_version( current_version )
+#                cell_pipeline = controller.vistrail.getPipeline( current_version )  
+#                if cell_pipeline == pipeline: return( sheetName, ( cell_address[1], cell_address[0] ) )
+#        return ( None, None ) 
 
     @staticmethod
     def getCellCoordinates( mid ):
