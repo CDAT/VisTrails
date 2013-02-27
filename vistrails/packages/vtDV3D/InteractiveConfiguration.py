@@ -352,7 +352,7 @@ class ConfigurableFunction( QObject ):
         self.activeBound = args.get( 'activeBound', 'both' )
         self.active = args.get( 'active', True )
         self.activeFunctionList = []
-        self.module = None
+        self.moduleID = None
         self.altMode = False
         self._persisted = True
         self.guiEnabled = False
@@ -363,6 +363,27 @@ class ConfigurableFunction( QObject ):
         self.startHandler = args.get( 'start', None )       #    left click
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
         self.hasState = args.get( 'hasState', True )
+        
+    def __del__(self):
+        self.clearReferrents()
+        
+    def clearReferrents(self):
+        self.initHandler = None
+        self.openHandler = None
+        self.startHandler = None
+        self.updateHandler = None
+        self.active = False
+        self.moduleID = None
+        self.kwargs.clear()
+        self.args = []
+
+    @property
+    def module(self):
+        return ModuleStore.getModule( self.moduleID ) if self.moduleID else None
+
+    @property
+    def module(self):
+        return ModuleStore.getModule( self.moduleID ) 
 
     def get_persisted(self):
         return self._persisted
@@ -372,9 +393,7 @@ class ConfigurableFunction( QObject ):
      
     def set_persisted(self, value):
         self._persisted = value
-#        if (self.name == 'colorScale') or (self.name == 'colormap') or (self.name == 'zScale'):
-#            print " Set persisted=%s for config function %s, module = %d" % ( str(value), self.name, (self.module.moduleID if self.module else -1) )
-        
+#        
     persisted = property(get_persisted, set_persisted) 
 
     def isValid(self):
@@ -400,15 +419,19 @@ class ConfigurableFunction( QObject ):
         activeFunctionList = []
         for cfgFunctionMap in ConfigurableFunction.ConfigurableFunctions.values():
             for cfgFunction in cfgFunctionMap.values():
-                if cfgFunction.module and (  ( active_irens == None ) or ( cfgFunction.module.iren in active_irens ) ):
+                mod = cfgFunction.module
+                if mod and (  ( active_irens == None ) or ( mod.iren in active_irens ) ):
                     activeFunctionList.append( cfgFunction )
         return activeFunctionList
     
     @staticmethod
-    def clear( module ):
+    def clear( moduleId ):
         for configFunctionMap in ConfigurableFunction.ConfigurableFunctions.values():
-            if module in configFunctionMap: 
-                del configFunctionMap[module]
+            if moduleId in configFunctionMap:
+                cfgFunction = configFunctionMap[moduleId]
+                cfgFunction.clearReferrents()
+                del configFunctionMap[ moduleId ]
+                del cfgFunction
          
     def updateActiveFunctionList( self ):
         from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 
@@ -433,14 +456,13 @@ class ConfigurableFunction( QObject ):
 #        if self.name == 'colorScale':
 #            print "."
         self.moduleID = module.moduleID
-        self.module = module
         if self.units == 'data': 
             self.units = module.getUnits() 
             self.matchUnits = True             
         if ( self.initHandler != None ):
             self.initHandler( **self.kwargs ) 
         configFunctionMap = ConfigurableFunction.ConfigurableFunctions.setdefault( self.name, {} )
-        configFunctionMap[self.module] = self
+        configFunctionMap[self.moduleID] = self
 
     def fixRange(self):
         pass
@@ -534,9 +556,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             self.setLevelDataHandler( self.range, **args )
             self.persisted = False
         except Exception, err:
-            print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)
-#        print "Apply %s Parameter[%s:%d]: %s " % ( self.type, self.name, self.module.moduleID, str( self.range ) )
-        
+            print>>sys.stderr, "Error in setLevelDataHandler: ", str(err)        
     def reset(self):
         self.setLevelDataHandler( self.initial_range )
         self.persisted = False
@@ -597,9 +617,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
 
     def getTextDisplay(self, **args ):
         try:
+            mod = self.module
             rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
             rmax = self.range[1] # if not self.isDataValue else self.module.getDataValue( self.range[1] )
-            units = self.module.units if ( self.module and hasattr(self.module,'units') )  else None
+            units = mod.units if ( mod and hasattr(mod,'units') )  else None
             if units: textDisplay = " Range: %.4G, %.4G %s . " % ( rmin, rmax, units )
             else: textDisplay = " Range: %.4G, %.4G . " % ( rmin, rmax )
             return textDisplay
@@ -651,15 +672,15 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
 #        print " ** Broadcast Leveling: altMode = %s, range = %s, refine = %s, Modules: " % ( str( self.altMode ) , str( self.range[0:2] ), str( self.range[3:5] )  )
         affected_renderers = set()
         active_module_list = args.get( 'active_modules', None )
-        if (active_module_list == None) or (self.module in active_module_list):
+        if (active_module_list == None) or (self.moduleID in active_module_list):
+            mod = self.module
             self.setLevelDataHandler( self.range )
-            self.module.setParameter( self.name, range )
+            mod.setParameter( self.name, range )
             self.persisted = False
-            affected_renderers.add( self.module.renderer )
+            affected_renderers.add( mod.renderer )
             self.manuallyAdjusted = True
-#        print "   -> self = %x " % id(self.module)
         for cfgFunction in self.activeFunctionList:
-            if (active_module_list == None) or (cfgFunction.module in active_module_list):
+            if (active_module_list == None) or (cfgFunction.moduleID in active_module_list):
                 if( cfgFunction.units == self. units ):
                     cfgFunction.setDataRange( self.range, True )
                 else:
@@ -703,32 +724,26 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
 
     @staticmethod
     def clearModules( pipeline ): 
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
-        for moduleId in pipeline.modules: 
-            module = ModuleStore.getModule( moduleId ) 
-            DV3DPipelineHelper.removeModuleFromActivationMap( module ) 
-            ConfigurableFunction.clear( module )
-            for (key, moduleList) in UVCDATGuiConfigFunction.connectedModules.items():
-                if moduleId in moduleList: 
-                    moduleList.remove( moduleId )
-#                    print "Removing module %s (%d) from connectedModules for key %s" % ( module.__class__.__name__, moduleId, key )
-            ModuleStore.removeModule( moduleId ) 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        DV3DPipelineHelper.reset() 
+        if pipeline:   
+            for moduleId in pipeline.modules: 
+                DV3DPipelineHelper.removeModuleFromActivationMap( moduleId ) 
+                ConfigurableFunction.clear( moduleId )
+                for (key, moduleList) in UVCDATGuiConfigFunction.connectedModules.items():
+                    if moduleId in moduleList: 
+                        moduleList.remove( moduleId )
+    #                    print "Removing module %s (%d) from connectedModules for key %s" % ( module.__class__.__name__, moduleId, key )
+                ModuleStore.removeModule( moduleId ) 
               
     def initGui( self, **args ):   # init value from moudle input port
         moduleList = UVCDATGuiConfigFunction.connectedModules.setdefault( self.name, Set() )
-        moduleList.add( self.module.moduleID )
-#        print "Adding module %s (%d) to connectedModules for key %s" % ( self.module.__class__.__name__, self.module.moduleID, self.name )
+        moduleList.add( self.moduleID )
         initValue = args.get( 'initValue', True ) 
         if initValue:
             initial_value = None if ( self.getValueHandler == None ) else self.getValueHandler()         
             value = self.module.getInputValue( self.name, initial_value )  
             if value: self.setValue( value ) 
-#        self.setLevelDataHandler( self.range )
-#        self.module.setParameter( self.name, self.range )
-#        if self.widget: 
-#            self.widget.initLeveling( self.range )
-#            self.connect( self.widget, SIGNAL('update(QString)'), self.broadcastLevelingData )
-
         
     def reset(self):
         self.updateWindow()
@@ -746,10 +761,7 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         gui = self.guiClass( str(self.name), **self.kwargs )
 #        self.gui.connect(self.gui, SIGNAL('delete()'), self.reset )
 #        print "Getting moduleList for key ", self.name
-        for moduleId in moduleList:
-            module = ModuleStore.getModule( moduleId ) 
-            if module:
-                gui.addActiveModule( module )
+        for moduleId in moduleList: gui.addActiveModule( moduleId )
 #                print " --> module %s (%d) " % ( module.__class__.__name__, module.moduleID )
 #        if self.startConfigurationObserver <> None:
 #            self.gui.connect( self.gui, self.start_parameter_signal, self.startConfigurationObserver )
@@ -761,8 +773,6 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         value = self.module.getInputValue( self.name, initial_value )  # if self.parameterInputEnabled else initial_value
         if value <> None: gui.setValue( value )
         self.guiEnabled = True
-#            self.setValue( value )
-#            self.module.setResult( self.name, value )
         return gui
                
     def updateWindow(self):
@@ -772,12 +782,13 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
         gui = DV3DPipelineHelper.getGuiKernel() 
         if gui:
+            mod = self.module
             value = self.getValueHandler() if (self.getValueHandler <> None) else None 
 #            print " -AAXX- Accessing gui: %s[%s:%s], id = %x " % ( self.__class__.__name__, self.module.__class__.__name__, self.name, id( self ) )
-            gui.initWidgetFields( value, self.module )
+            gui.initWidgetFields( value, mod )
             gui.createGuiPanels()
             gui.show()
-            self.module.resetNavigation()
+            mod.resetNavigation()
         
     def getTextDisplay(self, **args ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
@@ -812,8 +823,9 @@ class GuiConfigurableFunction( ConfigurableFunction ):
         self.gui = None
         
     def initGui( self, **args ):
+        mod = self.module
         if self.gui == None: 
-            self.gui = self.guiClass.getInstance( self.guiClass, self.name, self.module, **args  )
+            self.gui = self.guiClass.getInstance( self.guiClass, self.name, mod, **args  )
             if self.startConfigurationObserver <> None:
                 self.gui.connect( self.gui, self.start_parameter_signal, self.startConfigurationObserver )
             if self.updateConfigurationObserver <> None:
@@ -821,17 +833,18 @@ class GuiConfigurableFunction( ConfigurableFunction ):
             if self.finalizeConfigurationObserver <> None:
                 self.gui.connect( self.gui, self.finalize_parameter_signal, self.finalizeConfigurationObserver )
         initial_value = None if ( self.getValueHandler == None ) else self.getValueHandler()          
-        value = self.module.getInputValue( self.name, initial_value )  # if self.parameterInputEnabled else initial_value
+        value = mod.getInputValue( self.name, initial_value )  # if self.parameterInputEnabled else initial_value
         if value <> None: 
             self.gui.setValue( value )
             self.setValue( value )
-            self.module.setResult( self.name, value )
+            mod.setResult( self.name, value )
 
     def openGui( self ):
+        mod = self.module
         value = self.getValueHandler() if (self.getValueHandler <> None) else None 
-        self.gui.initWidgetFields( value, self.module )
+        self.gui.initWidgetFields( value, mod )
         self.gui.show()
-        self.module.resetNavigation()
+        mod.resetNavigation()
         
     def getTextDisplay(self, **args ):
         try:
@@ -858,13 +871,14 @@ class WidgetConfigurableFunction( ConfigurableFunction ):
         self.getValueHandler = args.get( 'getValue', None )
         
     def initWidget( self, **args ):
-        if self.widget == None: self.widget = self.widgetWrapper( self.name, self.module, **args )
+        mod = self.module
+        if self.widget == None: self.widget = self.widgetWrapper( self.name, mod, **args )
         initial_value = None if ( self.getValueHandler == None ) else self.getValueHandler() 
-        value = self.module.getInputValue( self.name, initial_value ) # if self.parameterInputEnabled else initial_range
+        value = mod.getInputValue( self.name, initial_value ) # if self.parameterInputEnabled else initial_range
         if value <> None: 
             self.widget.setInitialValue( value )         
             self.setValue( value )
-            self.module.setParameter( self.name, value )
+            mod.setParameter( self.name, value )
                 
     def reset(self):
         return self.widget.reset()
@@ -973,7 +987,7 @@ class IVModuleConfigurationDialog( QWidget ):
         self.dialogButtonLayout = None
         self.guiButtonLayout = None
         self.modules = Set()
-        self.module = None
+        self.moduleID = None
         self.initValue = None
         self.name = name
         self.initialize()
@@ -1087,11 +1101,12 @@ class IVModuleConfigurationDialog( QWidget ):
 #            activateCheckBox = self.modules[ module ] 
 #            activateCheckBox.setChecked( isActive )
     
-    def addActiveModule( self, module ):
-        if not module in self.modules:
-            self.modules.add(  module )
-            if not ( IVModuleConfigurationDialog.activeModuleList and IVModuleConfigurationDialog.activeModuleList[-1] == module ):
-                IVModuleConfigurationDialog.activeModuleList.append( module )
+    def addActiveModule( self, moduleID ):
+        if not moduleID in self.modules:
+            self.modules.add(  moduleID )
+            if not ( IVModuleConfigurationDialog.activeModuleList and IVModuleConfigurationDialog.activeModuleList[-1] == moduleID ):
+                IVModuleConfigurationDialog.activeModuleList.append( moduleID )
+                module = ModuleStore.getModule( moduleID )
                 self.connect( self, self.update_animation_signal, module.updateAnimation )
 
 #    @staticmethod              
@@ -1102,9 +1117,9 @@ class IVModuleConfigurationDialog( QWidget ):
     def getActiveModules():
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
         active_mods = Set()
-        for module in IVModuleConfigurationDialog.activeModuleList:
-            isActive = DV3DPipelineHelper.getPlotActivation( module )
-            if isActive: active_mods.add( module )
+        for moduleID in IVModuleConfigurationDialog.activeModuleList:
+            isActive = DV3DPipelineHelper.getPlotActivation( moduleID )
+            if isActive: active_mods.add( moduleID )
         return active_mods
             
 #    def registerActiveModules(self):
@@ -1125,8 +1140,9 @@ class IVModuleConfigurationDialog( QWidget ):
          
     def parameterUpdating(self):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
-        for module in self.modules:
-            if DV3DPipelineHelper.getPlotActivation( module ):
+        for moduleID in self.modules:
+            if DV3DPipelineHelper.getPlotActivation( moduleID ):
+                module = ModuleStore.getModule( moduleID )
                 if module.parameterUpdating( self.name ):
                     return True
         return False
@@ -1136,40 +1152,45 @@ class IVModuleConfigurationDialog( QWidget ):
         command = [ self.name ]
         value = self.getValue()
         command.extend( value ) if isList( value ) else command.append( value )   
-        for module in self.modules:
-            if DV3DPipelineHelper.getPlotActivation( module ) :
-                self.active_modules.add( module )
+        for moduleID in self.modules:
+            if DV3DPipelineHelper.getPlotActivation( moduleID ) :
+                self.active_modules.add( moduleID )
+                module = ModuleStore.getModule( moduleID )
                 module.updateConfigurationObserver( self.name, value )        
         HyperwallManager.getInstance().processGuiCommand( command  )
 
     def startConfiguration(self):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
-        for module in self.modules:
-            if DV3DPipelineHelper.getPlotActivation( module ) :
+        for moduleID in self.modules:
+            if DV3DPipelineHelper.getPlotActivation( moduleID ) :
+                module = ModuleStore.getModule( moduleID )
                 module.startConfigurationObserver( self.name, self.getValue() )        
 
     def finalizeConfiguration(self):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
-        for module in self.modules:
-            if DV3DPipelineHelper.getPlotActivation( module ) :
+        for moduleID in self.modules:
+            if DV3DPipelineHelper.getPlotActivation( moduleID ) :
+                module = ModuleStore.getModule( moduleID )
                 module.finalizeConfigurationObserver( self.name, self.getValue() )        
 
     def initiateParameterUpdate(self):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
-        for module in self.modules:
-            if DV3DPipelineHelper.getPlotActivation( module ) :
+        for moduleID in self.modules:
+            if DV3DPipelineHelper.getPlotActivation( moduleID ) :
+                module = ModuleStore.getModule( moduleID )
                 module.initiateParameterUpdate( self.name )
  
     def refreshPipeline(self):
         wmods = getWorkflowObjectMap()
-        for module in self.modules:   
-            wmod = wmods[ module.moduleID ]
+        for moduleID in self.modules:   
+            wmod = wmods[ moduleID ]
             if wmod == None:
                 executeWorkflow()
                 return
             
     def resetNavigation(self):   
-        for module in self.modules: 
+        for moduleID in self.modules: 
+            module = ModuleStore.getModule( moduleID )
             module.resetNavigation()
             
     def close(self):
@@ -1187,8 +1208,9 @@ class IVModuleConfigurationDialog( QWidget ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
         text_value = None
         text_value_priority = 0
-        for module in self.modules:
-            if DV3DPipelineHelper.getPlotActivation( module ):
+        for moduleID in self.modules:
+            if DV3DPipelineHelper.getPlotActivation( moduleID ):
+                module = ModuleStore.getModule( moduleID )
                 tval, priority = module.getParameterDisplay( self.name, value )
                 if tval and ( priority > text_value_priority ): 
                     text_value = tval
@@ -1199,8 +1221,8 @@ class IVModuleConfigurationDialog( QWidget ):
         pass
 
     def initWidgetFields( self, value, module ):
-        if ( self.module == None ) or ( module.renderer <> None ): 
-            self.module = module
+        if ( self.moduleID == None ) or ( module.renderer <> None ): 
+            self.moduleID = module.moduleID
 #        self.initActivation( module )
         self.initValue = value
 
@@ -1316,12 +1338,13 @@ class IVModuleConfigurationDialog( QWidget ):
                 self.deactivate_current_command()
                 active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
                 for cmd_entry in cmd_list:
-                    module = cmd_entry[0]
-                    cfg_cmd = cmd_entry[1] 
-                    if cfg_cmd and cfg_cmd.guiEnabled:
-                        self.gui_cmds.append( cfg_cmd )
-                        if ( ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ) ):
-                            self.active_cfg_cmd = cfg_cmd  
+                    module = ModuleStore.getModule( cmd_entry[0] )
+                    if module:
+                        cfg_cmd = cmd_entry[1] 
+                        if cfg_cmd and cfg_cmd.guiEnabled:
+                            self.gui_cmds.append( cfg_cmd )
+                            if ( ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ) ):
+                                self.active_cfg_cmd = cfg_cmd  
                 if self.active_cfg_cmd:                 
                     self.active_cfg_cmd.updateActiveFunctionList()
                     self.enable()
@@ -1338,8 +1361,9 @@ class IVModuleConfigurationDialog( QWidget ):
     def finalizeConfig( self ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
         interactionState = self.name
-        for module in self.modules:
-            if DV3DPipelineHelper.getPlotActivation( module ):
+        for moduleID in self.modules:
+            if DV3DPipelineHelper.getPlotActivation( moduleID ):
+                module = ModuleStore.getModule( moduleID )
                 config_data = module.getParameter( interactionState  ) 
                 if config_data: 
                     module.writeConfigurationResult( interactionState, config_data ) 
@@ -1355,82 +1379,7 @@ class IVModuleConfigurationDialog( QWidget ):
             cfg_cmd.reset() 
         self.gui_cmds = []             
 
-################################################################################
- 
-class IVModuleWidgetWrapper( QObject ):
-    """
-    IVModuleConfigurationDialog ...   
-    """ 
-       
-    def __init__(self, name, module, **args ):
-        QObject.__init__(self)
-        self.name = name
-        self.module = module
-        self.initial_value = None
-        self.current_value = None
-#        self.configToParameterConversion = args.pop( 'configToParameter' )
-#        self.parameterToConfigConversion = args.pop( 'parameterToConfig' )
-        self.createContent( )
-                              
-    def createContent( self ):
-        """ createContent() 
-        Creates the content of this widget       
-        """
-        pass
-    
-    def getTextDisplay( self ):
-        return "%s: %s" % ( self.name, str(self.getCurrentValue() ) )
- 
-    def activateWidget( self, iren ):
-        pass
-    
-    def render(self):
-        self.module.render()
-           
-    def close():
-        pass 
-
-    def open( start_value ):
-        pass 
-    
-    def finalizeParameter( self, *args ):
-        self.module.finalizeConfigurationObserver( self.name, *args )
-
-    def startParameter( self, *args ):
-        self.module.startConfigurationObserver( self.name, *args )
-
-    def updateParameter( self, *args ):
-        param_value = self.getValue()
-        self.module.updateConfigurationObserver( self.name, param_value, *args )
-        
-    def getWidgetConfiguration( self ):
-        return None
-    
-    def setInitialValue( self,  initial_value ):
-        self.initial_value =  initial_value
-        
-    def getValue(self):
-        self.current_value = self.getWidgetConfiguration() 
-#        self.current_value = self.configToParameterConversion( config_value )
-        return self.current_value
-
-    def getCurrentValue(self):
-        return self.current_value
-        
-    def reset(self):
-        if self.initial_value <> None:
-            self.setValue( self.initial_value )
-        return self.initial_value 
-            
-    def setValue( self, parameter_value ):
-        config_value = parameter_value # self.parameterToConfigConversion( parameter_value )
-        self.setWidgetConfiguration( config_value )
-        return config_value
-
-    def setWidgetConfiguration( self, value ):
-        pass
-
-################################################################################
+#################################################################################
         
 class ColormapConfigurationDialog( IVModuleConfigurationDialog ):   
     """
@@ -1596,7 +1545,8 @@ class LayerConfigurationDialog( IVModuleConfigurationDialog ):
 #        return []      
             
     def getLayerList( self ):
-        for module in self.modules:
+        for moduleID in self.modules:
+            module = ModuleStore.getModule( moduleID )
             layerList = module.getLayerList()
             if len(layerList): return layerList
         return []
@@ -1646,7 +1596,7 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         StandardModuleConfigurationWidget.__init__(self, module, controller, parent)
         self.setWindowTitle( title )
         self.moduleId = module.id
-        self.pmod = module.module_descriptor.module.forceGetPersistentModule( module.id ) # self.module_descriptor.module.forceGetPersistentModule( module.id )
+#        self.pmod = module.module_descriptor.module.forceGetPersistentModule( module.id ) # self.module_descriptor.module.forceGetPersistentModule( module.id )
         self.getParameters( module )
         self.createTabs()
         self.createLayout()
@@ -2110,8 +2060,13 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 #        self.pmod.persistParameter( parameter_name, output, **args )
 #        self.pmod.persistVersionMap() 
 
+    def getPersistentModule( self ):
+        return ModuleStore.getModule( self.moduleId ) 
+
     def persistParameterList( self, parameter_list, **args ):
-        self.pmod.persistParameterList( parameter_list, **args )
+        pmod = self.getPersistentModule() 
+        if pmod: pmod.persistParameterList( parameter_list, **args )
+        return pmod
                         
 #    def queryLayerList( self, ndims=3 ):
 #        portName = 'volume' if ( ndims == 3 ) else 'slice'
@@ -2275,7 +2230,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 
     def getTimeRange1( self ): 
 #        wmods = getWorkflowObjectMap()
-        for module in self.modules: 
+        for moduleID in self.modules: 
+            module = ModuleStore.getModule( moduleID )
             timeRangeInput =  module.getCachedParameter( "timeRange" )
             if timeRangeInput: 
                 self.timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
@@ -2288,8 +2244,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         timeRange = None
         self.uniformTimeRange = True
-        for module in self.modules:
-            if DV3DPipelineHelper.getPlotActivation( module ): 
+        for moduleID in self.modules:
+            if DV3DPipelineHelper.getPlotActivation( moduleID ): 
+                module = ModuleStore.getModule( moduleID )
                 if  isinstance( module, PM_CDMSDataReader ):                  
                     timeRangeInput =  module.getCachedParameter( "timeRange" )
                     if timeRangeInput:
@@ -2315,12 +2272,13 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             self.running = False
         else:
             try:
+                module = ModuleStore.getModule( self.moduleID )
                 self.setValue( iTimestep )
                 sheetTabs = set()
                 relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
-                timeAxis =  self.module.getTimeAxis()     
+                timeAxis =  module.getTimeAxis()     
                 if not timeAxis:
-                    print>>sys.stderr, "Can't find time axis for dataset %s- animation disabled." % self.module.getDatasetId()
+                    print>>sys.stderr, "Can't find time axis for dataset %s- animation disabled." % module.getDatasetId()
                     return
                 timeValues = np.array( object=timeAxis.getValue() )
                 relTimeRef = cdtime.reltime( relTimeValueRef, ReferenceTimeUnits )
@@ -2331,11 +2289,12 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 r0 = cdtime.reltime( relTimeValue0, timeAxis.units )
                 relTimeRef = r0.torel( ReferenceTimeUnits )
                 relTimeValueRefAdj = relTimeRef.value
-                print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
+#                print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
                 displayText = self.getTextDisplay()
                 HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, iTimestep, self.uniformTimeRange, displayText ], False  )
                 active_mods = IVModuleConfigurationDialog.getActiveModules()
-                for module in active_mods:
+                for modID in active_mods:
+                    module = ModuleStore.getModule( modID )
 #                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
                     module.updateAnimation( [ relTimeValueRefAdj, iTimestep, self.uniformTimeRange ], displayText, restart  )
             except Exception:
@@ -2345,7 +2304,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     def stop(self):
         self.runButton.setText('Run')
         self.running = False 
-        for module in IVModuleConfigurationDialog.getActiveModules():
+        for moduleID in IVModuleConfigurationDialog.getActiveModules():
+            module = ModuleStore.getModule( moduleID )
             module.stopAnimation()
 
     def cancelTriggered(self, checked = False):
@@ -2502,9 +2462,10 @@ class LevelConfigurationDialog( IVModuleConfigurationDialog ):
         levValue = self.getValue()
         self.module.setCurrentLevel( levValue )
         textDisplay = "%s: %s" % ( self.name, levValue )
-        for module in IVModuleConfigurationDialog.getActiveModules():
-            module.dvUpdate( animate=True ) 
-            module.updateTextDisplay( textDisplay ) 
+        for moduleID in IVModuleConfigurationDialog.getActiveModules():
+            mod = ModuleStore.getModule( moduleID )
+            mod.dvUpdate( animate=True ) 
+            mod.updateTextDisplay( textDisplay ) 
         
     def updateLayout(self):
         if self.levelsCombo.count() == 0:
