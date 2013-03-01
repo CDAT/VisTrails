@@ -216,13 +216,15 @@ class QSliderCombo(QtGui.QWidget):
             except:
                 pass
             
-    def updateBounds( self, bounds, dataset ):
+    def checkBounds( self, bounds, dataset ):
         from gui.application import get_vistrails_application
         values = sorted( self.axisValues )
         if ( bounds[0] < values[0] ) or ( bounds[1] > values[-1] ):
             parent = get_vistrails_application().uvcdatWindow.varProp.roiSelector
             if dataset == None: QtGui.QMessageBox.warning( parent, "UVCDAT Warning", "Selected bounds are out of range for the transient variable. Please reaccess this variable from the dataset.")
             else:               QtGui.QMessageBox.warning( parent, "UVCDAT Warning", "Selected bounds are out of range for the dataset.")
+            return False
+        return True
 #            self.resetValues()
                 
     def resetValues( self, axis = None ):     
