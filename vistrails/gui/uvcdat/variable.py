@@ -321,16 +321,16 @@ class VariableProperties(QtGui.QDialog):
                 # Ok this is a lat we need to adjust the sliders now.
                 lat1 = self.roi[1]
                 lat2 = self.roi[3]
-                axis.sliderCombo.updateBounds( sorted([ lat1, lat2 ]), axis.axis.parent )
-                axis.sliderCombo.updateTopSlider(axis.sliderCombo.findAxisIndex(lat1))
-                axis.sliderCombo.updateBottomSlider(axis.sliderCombo.findAxisIndex(lat2))
+                if axis.sliderCombo.checkBounds( sorted([ lat1, lat2 ]), axis.axis.parent ):
+                    axis.sliderCombo.updateTopSlider(axis.sliderCombo.findAxisIndex(lat1))
+                    axis.sliderCombo.updateBottomSlider(axis.sliderCombo.findAxisIndex(lat2))
             if axis.axis.isLongitude() or axis.virtual==1:
                 # Ok this is a lat we need to adjust the sliders now.
                 lon1 = self.roi[0]
                 lon2 = self.roi[2]
-                axis.sliderCombo.updateBounds( sorted([ lon1, lon2 ]), axis.axis.parent )
-                axis.sliderCombo.updateTopSlider(axis.sliderCombo.findAxisIndex(lon1))
-                axis.sliderCombo.updateBottomSlider(axis.sliderCombo.findAxisIndex(lon2))
+                if axis.sliderCombo.checkBounds( sorted([ lon1, lon2 ]), axis.axis.parent ):
+                    axis.sliderCombo.updateTopSlider(axis.sliderCombo.findAxisIndex(lon1))
+                    axis.sliderCombo.updateBottomSlider(axis.sliderCombo.findAxisIndex(lon2))
 
     def openSelectFileDialog(self):
         file = QtGui.QFileDialog.getOpenFileName(self, 'Open CDAT data file...',
