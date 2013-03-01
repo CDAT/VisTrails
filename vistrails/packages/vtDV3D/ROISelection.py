@@ -170,7 +170,6 @@ class ROISelectionDialog(QDialog):
         worldMapExtent = WorldMapGridExtent[ self.lonRangeType ]      
         self.view = GraphicsView( item, worldMapExtent, ROIcorner0, ROIcorner1, self )
         self.view.setMinimumSize( 500, 500 )
-        self.filename = QString()
         self.view.setScene(self.scene)
 #        self.scene.addItem(item)
                
@@ -518,7 +517,6 @@ class ArrayEditor(QDialog):
                
         self.view = GraphicsView( self.graphicsImageItem, None, ROICorner0, ROICorner1, self )
         self.scene = QGraphicsScene(self)
-        self.filename = QString()
         self.view.setScene(self.scene)
         self.scene.addItem(self.graphicsImageItem)
         
