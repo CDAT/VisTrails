@@ -68,8 +68,8 @@ class QtROISelectorMapFrame:
          self.roiRect.setRect ( x0, y0, dx, dy )
          self.view.update()
          
-MapFrames = [  QtROISelectorMapFrame( 'Map-1', defaultMapDir, 'WorldMap.jpg', ( 106, 72, 2902, 1470 ), ( -180, -90 , 180.0, 90.0), (0.4,0.4) ), 
-               QtROISelectorMapFrame( 'Map-2', defaultMapDir, 'WorldMap2.jpg', ( 0, 0, 2048, 512 ), ( -180, -90 , 540.0, 90.0), (1.2,1.2) ) ]
+MapFrames = [  QtROISelectorMapFrame( 'Double Map', defaultMapDir, 'WorldMap2.jpg', ( 0, 0, 2048, 512 ), ( -180, -90 , 540.0, 90.0), (1.2,1.2) ),
+               QtROISelectorMapFrame( 'Gridded Map', defaultMapDir, 'WorldMap.jpg', ( 106, 72, 2902, 1470 ), ( -180, -90 , 180.0, 90.0), (0.4,0.4) ) ]
  
 class MapGraphicsView(QGraphicsView):
 
