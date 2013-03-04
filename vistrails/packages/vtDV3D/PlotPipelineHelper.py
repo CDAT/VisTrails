@@ -10,7 +10,7 @@ Created on Feb 29, 2012
 
 '''
 
-import core.db.io, sys, traceback, api
+import core.db.io, sys, traceback, api, copy
 import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
@@ -1030,7 +1030,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def getPlotIndex( mid, index ):
         pi = DV3DPipelineHelper.plotIndexMap.get(mid,0) if (index == 0) else 0
         return pi
-                                        
+
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col):
 #        project_controller =  DV3DPipelineHelper.get_project_controller()
@@ -1169,7 +1169,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #                if len( pipeline.module_list ) == 0:
 #                    print "Attempt to add empty pipeline to %s " % ( str(( sheetName, cell_address )) )
 #                else:
-#                    DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline                   
+#                    DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline
+                  
         return action
 
     @staticmethod
@@ -1352,9 +1353,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             plot_name = DV3DPipelineHelper.get_plot_name_from_module(pipeline, pl_module)
             cell.add_plot(get_plot_manager().new_plot(plot_type, plot_name))
             
-            vars = DV3DPipelineHelper.find_variables_connected_to_plot_module(controller, 
-                                                                       pipeline, 
-                                                                       pl_module.id)
+            vars = DV3DPipelineHelper.find_variables_connected_to_plot_module( pipeline, pl_module.id )
             for var in vars:
                 cell.add_variable(CDMSPipelineHelper.get_variable_name_from_module(var))
             
@@ -1381,20 +1380,25 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def find_dv3d_plot_modules(pipeline):
         """ Find the dv3d plot modules
         """
-        pass
+        return PlotPipelineHelper.find_modules_by_type( pipeline, [ MapCell3D, CloudCell3D ] )
     
     @staticmethod
     def get_plot_name_from_module(pipeline, plot_module):
         """ Find the name of the plot as used by the PlotManager
         """
-        pass
 
     @staticmethod
-    def find_variables_connected_to_plot_module(controller, pipeline, plot_module):
+    def find_variables_connected_to_plot_module( pipeline, plot_module_id ):
         """ Find the variable modules that are used by this plot module 
         """
-        pass
-    
+#        localPipeline = copy.copy(pipeline) 
+#        local_plot_modules = DV3DPipelineHelper.find_dv3d_plot_modules( localPipeline )                   
+#        for local_plot_module in local_plot_modules:
+#            if ( local_plot_module.id <> plot_module_id ):
+#                delete_module( local_plot_module, localPipeline )        
+        var_modules = PlotPipelineHelper.find_modules_by_type( pipeline, [ CDMSVariableOperation, CDMSVariable ] ) 
+        return var_modules                                      
+   
     @staticmethod
     def build_python_script_from_pipeline(controller, version, plot_objs=[]):
         from api import load_workflow_as_function
