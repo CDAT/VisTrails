@@ -10,7 +10,7 @@ Created on Feb 29, 2012
 
 '''
 
-import core.db.io, sys, traceback, api
+import core.db.io, sys, os, traceback, api, time
 import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
@@ -1402,21 +1402,36 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         else:
             print "Error: Could not find DV3D plot type based on the pipeline"
             print "Visualizations can't be loaded."            
+
+    @staticmethod
+    def find_topo_sort_modules_by_types(pipeline, moduletypes):
+        modules = []
+        for m in pipeline.module_list:
+            desc = m.module_descriptor
+            if issubclass(desc.module,tuple(moduletypes)):
+                modules.append(m.id)
+        ids = pipeline.graph.vertices_topological_sort()
+        result = []
+        for i in ids:
+            if i in modules:
+                module = pipeline.modules[i] 
+                result.append(module)
+        return result
     
     @staticmethod
-    def build_python_script_from_pipeline(controller, version, plot_objs=[]):
-        from api import load_workflow_as_function
-        text = "from api import load_workflow_as_function\n"
-        if len(plot_objs) > 0:
-            text += "proj_file = '%s'\n"%controller.get_locator().name
-            text += "vis_id = %s\n"%version
-            text += "vis = load_workflow_as_function(proj_file, vis_id)\n"
-            vis = load_workflow_as_function(controller.get_locator().name, version)
-            doc = vis.__doc__
-            lines = doc.split("\n")
-            for line in lines:
-                text += "# %s\n"%line                 
-            return text
+    def build_python_script_from_pipeline( controller, version, plot=None ):
+        from core.db.locator import ZIPFileLocator
+        snapshots_dir = os.path.join( os.path.expanduser('~'), '.vistrails', 'snapshots' ) 
+        if not os.path.exists(snapshots_dir): os.makedirs(snapshots_dir)
+        workflow_name = '-'.join( [ 'workflow', str( int( time.time() ) ) ] )
+        filename = os.path.join( snapshots_dir, '.'.join( [ workflow_name, 'vt' ] ) )
+        controller.write_vistrail( ZIPFileLocator( filename ) )
+        current_controller = api.get_current_controller()
+        print "Saving workflow to %s, version = %d, current version = %d, vistrails current version = %d" % ( filename, version, controller.current_version, current_controller.current_version )
+        sys.stdout.flush()
+        text =  "from uvcdat import execute_vistrail\n"
+        text += "execute_vistrail( '%s', dir='%s', version=%d )" % ( workflow_name, snapshots_dir, controller.current_version ) 
+        return text
             
     @staticmethod
     def are_workflows_compatible(vistrail_a, vistrail_b, version_a, version_b):
