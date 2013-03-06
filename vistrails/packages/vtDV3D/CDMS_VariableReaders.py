@@ -70,8 +70,17 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 
     @classmethod
     def clearCache(cls):
-        cls.dataCache = {}
-        cls.imageDataCache = {}
+        for varDataSpecs in cls.dataCache.values():
+            varDataMap = varDataSpecs.get('varData', None )
+            if varDataMap:
+                dataArray = varDataMap.get('newDataArray', None )
+                if dataArray: del dataArray 
+            del varDataSpecs
+        cls.dataCache.clear()
+        for imageDataMap in cls.imageDataCache.values():
+            for imageData in imageDataMap.values():
+                del imageData
+        cls.imageDataCache.clear()
         
     def getCachedData( self, varDataId ):
         varData = self.dataCache.setdefault( varDataId, {} )
@@ -330,7 +339,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     newDataArray = np.zeros( npts, dtype=scalar_dtype ) 
                     varDataSpecs = copy.deepcopy( exampleVarDataSpecs )
                     varDataSpecs['newDataArray'] = newDataArray.ravel('F')  
-                    self.setCachedData( varName, ( newDataArray, varDataSpecs ) ) 
+                    self.setCachedData( varName, varDataSpecs ) 
                 else: 
                     tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue, iTimestep, self.useTimeIndex ] 
                     varData = self.cdmsDataset.getVarDataCube( dsid, varName, tval, selectedLevel )

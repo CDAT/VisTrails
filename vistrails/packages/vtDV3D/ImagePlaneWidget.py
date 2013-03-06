@@ -1,5 +1,5 @@
 
-import vtk, sys
+import vtk, sys, gc
 
 VTK_NEAREST_RESLICE = 0
 VTK_LINEAR_RESLICE  = 1
@@ -203,12 +203,26 @@ class ImagePlaneWidget:
     def RemoveAllObservers( self ):
         self.Interactor.RemoveAllObservers()
         self.RenderWindow.RemoveAllObservers()
-        self.Interactor = None
-        self.RenderWindow = None
-        if self.CurrentRenderer: 
-            self.CurrentRenderer.RemoveViewProp( self.PlaneOutlineActor )
-        self.PlaneOutlineActor = None
-        self.PlaneProperty = None
+        rc = self.Reslice.GetReferenceCount()
+        del self.Reslice
+        del self.Reslice2
+        del self.Interactor
+        del self.RenderWindow
+        del self.PlaneOutlineActor
+        del self.PlaneProperty
+        del self.ResliceAxes                             
+        del self.PlaneSource 
+        del self.PlaneOutlinePolyData 
+        del self.ColorMap
+        del self.Texture
+        del self.TexturePlaneActor  
+        del self.Transform    
+        del self.ImageData   
+        del self.ImageData2  
+        del self.LookupTable 
+        del self.InputBounds
+        del self.CursorPolyData 
+        del self.CursorActor    
         
 #----------------------------------------------------------------------------
                                 
