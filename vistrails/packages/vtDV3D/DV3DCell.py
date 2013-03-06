@@ -439,7 +439,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         cellLocation.rowSpan = 1
         cellLocation.colSpan = 1
         cell_coordinates = None
-        ( sheetName, address ) = DV3DPipelineHelper.getCellAddress( self.pipeline ) 
+        ( sheetName, address ) = DV3DPipelineHelper.getCellCoordinates( moduleId )
+#        ( sheetName, address ) = DV3DPipelineHelper.getCellAddress( self.pipeline ) 
         if self.isClient:            
             cellLocation.sheetReference = StandardSheetReference()
             cellLocation.sheetReference.sheetName = HyperwallManager.getInstance().deviceName
@@ -458,8 +459,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         else:
             cell_coordinates = HyperwallManager.getInstance().getCellCoordinatesForModule( moduleId )
             if cell_coordinates == None: return None
-        cellLocation.col = cell_coordinates[0]
-        cellLocation.row = cell_coordinates[1]
+        cellLocation.row = cell_coordinates[0]
+        cellLocation.col = cell_coordinates[1]
          
 #        print " --- Set cell location[%s]: %s, address: %s "  % ( str(moduleId), str( [ cellLocation.col, cellLocation.row ] ), str(address) )
         self.overrideLocation( cellLocation )
@@ -528,9 +529,10 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if ( self.location.col <> col ) or  ( self.location.row <> row ): return
         cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )  
 #        print " --- Clearing Cell %s ---" % cell_address
-        self.pipeline = DV3DPipelineHelper.getPipeline( cell_address )
-        if self.pipeline: 
-            UVCDATGuiConfigFunction.clearModules( self.pipeline )
+
+        pipeline = DV3DPipelineHelper.getPipeline( cell_address, sheetName )
+        if pipeline:  UVCDATGuiConfigFunction.clearModules( pipeline )
+        
         IVModuleConfigurationDialog.reset()
         self.cellWidget = None 
         self.builtCellWidget = False                        

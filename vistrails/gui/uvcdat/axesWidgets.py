@@ -4,7 +4,7 @@ import cdutil
 import cdms2
 import numpy
 import genutil
-import re
+import re, copy
 import cdtime
 import MV2
 from gui.application import get_vistrails_application
@@ -104,8 +104,10 @@ pins = {}
 ##         currentTab = self.currentIndex()
 ##         return str(self.tabText(currentTab))
 
-
-
+#def copy_axis( axis ):
+#    axis1 = axis.subAxis( 0, axis.length )
+#    if axis.isCircular(): axis1.designateCircular(360.0)
+#    return axis1
 
 class QSliderCombo(QtGui.QWidget):
     """ Widget containing min slider, max slider, min label, max label, and a
@@ -118,6 +120,8 @@ class QSliderCombo(QtGui.QWidget):
         self.indexMode = False
         self.startIndex = 0
         self.isModuloed = False
+        self.isLat = False
+        self.isLon = False
 
         # Init Layout
         hbox = QtGui.QHBoxLayout()
@@ -156,6 +160,7 @@ class QSliderCombo(QtGui.QWidget):
         vbox.addLayout(hbox)
 
         # Initialize the sliders' and comboBox's values
+#        self.initialAxis = copy_axis( axis )
         self.initAxisValues(axis)
         self.setSlidersMinMax()
         if self.isModuloed:
@@ -189,8 +194,10 @@ class QSliderCombo(QtGui.QWidget):
             k="UVTIMEAXIS"
         elif axis.isLatitude():
             k="UVLATAXIS"
+            self.isLat = True
         elif axis.isLongitude():
             k="UVLONAXIS"
+            self.isLon = True
         elif axis.isLevel():
             k="UVLEVELAXIS"
         else:
@@ -209,7 +216,32 @@ class QSliderCombo(QtGui.QWidget):
             except:
                 pass
             
-        
+    def checkBounds( self, bounds, dataset ):
+        from gui.application import get_vistrails_application
+        values = sorted( self.axisValues )
+        if ( bounds[0] < values[0] ) or ( bounds[1] > values[-1] ):
+            parent = get_vistrails_application().uvcdatWindow.varProp.roiSelector
+            if dataset == None: QtGui.QMessageBox.warning( parent, "UVCDAT Warning", "Selected bounds are out of range for the transient variable. Please reaccess this variable from the dataset.")
+            else:               QtGui.QMessageBox.warning( parent, "UVCDAT Warning", "Selected bounds are out of range for the dataset.")
+            return False
+        return True
+#            self.resetValues()
+                
+    def resetValues( self, axis = None ):     
+        values = self.setDefaultAxisValues() if ( axis == None ) else self.initAxisValues( axis ) 
+        if values <> None:
+            self.setSlidersMinMax()
+            if self.isModuloed:
+                self.updateTopSlider(self.findAxisIndex(values[0]))
+            else:
+                self.topSlider.setValue(self.minIndex)
+                
+            if self.isModuloed:
+                self.updateBottomSlider(self.findAxisIndex(values[-1]))
+            else:
+                self.bottomSlider.setValue(self.maxIndex)
+            self.axisCombo.initValues(self.axisValues)
+   
     def findAxisIndex(self,val):
         self.axisValues = numpy.array(self.axisValues)
         vals = self.axisValues
@@ -291,6 +323,32 @@ class QSliderCombo(QtGui.QWidget):
             nticks=1
         self.topSlider.setTickInterval(nticks)
         self.bottomSlider.setTickInterval(nticks)
+        return self.axisValues
+
+    def setDefaultAxisValues( self ):               
+        if self.isLat:  axisValues = [ float(fval) for fval in range(0,360) ]
+        if self.isLon:  axisValues = [ float(fval) for fval in range(-90,90) ]
+        else:           axisValues = None 
+        if axisValues:
+            n=len(axisValues)
+            self.axisValues = numpy.array( axisValues )  
+            self.axisIndices = range(n)
+            if self.isLon:
+                modulo = 360.0
+                self.isModuloed = True
+                self.axisValues=numpy.concatenate((self.axisValues[n/2:]-modulo,self.axisValues,self.axisValues[:n/2]+modulo))
+                self.axisIndices=numpy.concatenate((self.axisIndices[n/2:],self.axisIndices,self.axisIndices[:n/2]))
+                n=len(axisValues)
+            self.updateMin(0)
+            self.updateMax(n - 1)
+            nticks = n
+            if nticks > 15:
+                nticks /= 15
+            else:
+                nticks=1
+            self.topSlider.setTickInterval(nticks)
+            self.bottomSlider.setTickInterval(nticks)
+        return self.axisValues
 
     def setStartIndex(self, index):
         self.startIndex = index

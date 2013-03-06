@@ -451,7 +451,6 @@ class PersistentModule( QObject ):
         self.moduleID = mid
         self.timeIndex = 0 
         self.inputSpecs = {}
-        self.pipeline = args.get( 'pipeline', None )
         self.taggedVersionMap = {}
         self.persistedParameters = []
         self.versionTags = {}
@@ -1270,6 +1269,25 @@ class PersistentModule( QObject ):
 #        return cur_version
 #            
 
+    def getCurrentPipeline( self ):
+        import api
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
+        try:
+            ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
+            proj_controller = api.get_current_project_controller()
+            controller =  proj_controller.vt_controller 
+            pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
+            if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
+                proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+            else: pcoords = None 
+            cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
+            current_version = cell.current_parent_version 
+            controller.change_selected_version( current_version )
+            return controller.vistrail.getPipeline( current_version )
+        except Exception, err:
+            print>>sys.stderr, "Error getting current pipeline: %s " % str( err )
+            return controller.current_pipeline       
+
     def change_parameters( self, parmRecList ):
         import api
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
@@ -1412,16 +1430,7 @@ class PersistentModule( QObject ):
         
     def updateModule(self, **args ):
         pass
-   
-    def getCurrentPipeline(self):
-        if self.pipeline <> None:
-            return self.pipeline
-        else:
-            import api
-            controller = api.get_current_controller() 
-            pipeline = controller.current_pipeline
-            return pipeline
-    
+       
     def getOutputModules( self, port ):
         pipeline = self.getCurrentPipeline()
         mid = self.moduleID
