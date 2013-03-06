@@ -87,9 +87,19 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def clearReferrents(self):
         PersistentVisualizationModule.clearReferrents(self)
         del VolumeSlicerModules[ self.moduleID ]
+        del self.planeWidgetX
+        del self.planeWidgetY
+        del self.planeWidgetZ
         self.planeWidgetX = None
         self.planeWidgetY = None
         self.planeWidgetZ = None
+        del self.sliceOutput
+        self.sliceOutput = None 
+        if self.contours:
+            del self.contours
+            self.contours = None    
+            del self.contourLineMapperer 
+            self.contourLineMapperer = None
         
     def toogleOutlineMap(self):
         self.showOutlineMap = not self.showOutlineMap
