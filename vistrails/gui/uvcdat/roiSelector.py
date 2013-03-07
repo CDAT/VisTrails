@@ -166,6 +166,16 @@ class ROISelectionDialog(QDialog):
     def __init__(self, parent=None, **args ):
         super(QDialog, self).__init__(parent)
         init_frame_index = args.get("mapFrameIndex",0)
+        
+        self.ROICornerLon0 = QLineEdit( ) 
+        self.ROICornerLat0 = QLineEdit( )
+        self.ROICornerLon1 = QLineEdit( )
+        self.ROICornerLat1 = QLineEdit( )
+        self.ROICornerLon0.setValidator( QDoubleValidator(self) )
+        self.ROICornerLat0.setValidator( QDoubleValidator(self) )
+        self.ROICornerLon1.setValidator( QDoubleValidator(self) )
+        self.ROICornerLat1.setValidator( QDoubleValidator(self) )
+
         self.tabbedWidget = QTabWidget()
         layout = QVBoxLayout()
         layout.addWidget( self.tabbedWidget )
@@ -182,14 +192,6 @@ class ROISelectionDialog(QDialog):
         
         ROICorner0Label = QLabel("<b><u>ROI Corner0:</u></b>")
         ROICorner1Label = QLabel("<b><u>ROI Corner1:</u></b>")
-        self.ROICornerLon0 = QLineEdit( ) 
-        self.ROICornerLat0 = QLineEdit( )
-        self.ROICornerLon1 = QLineEdit( )
-        self.ROICornerLat1 = QLineEdit( )
-        self.ROICornerLon0.setValidator( QDoubleValidator(self) )
-        self.ROICornerLat0.setValidator( QDoubleValidator(self) )
-        self.ROICornerLon1.setValidator( QDoubleValidator(self) )
-        self.ROICornerLat1.setValidator( QDoubleValidator(self) )
         
         self.connect( self.ROICornerLon0, SIGNAL("editingFinished()"), self.adjustROIRect )
         self.connect( self.ROICornerLat0, SIGNAL("editingFinished()"), self.adjustROIRect )
@@ -290,16 +292,18 @@ class ROISelectionDialog(QDialog):
          return [ float(self.ROICornerLon0.text()), float(self.ROICornerLat0.text()), float(self.ROICornerLon1.text()), float(self.ROICornerLat1.text())   ]      
      
     def adjustROIRect( self, index = 0 ): 
-        geoPt0 = QPointF( float(self.ROICornerLon0.text()), float(self.ROICornerLat0.text()) ) 
-        geoPt1 = QPointF( float(self.ROICornerLon1.text()), float(self.ROICornerLat1.text()) )   
-        if( geoPt1.x() < geoPt0.x() ):
-            geoPt1.setX( geoPt0.x() )
-        if( geoPt1.y() < geoPt0.y() ):
-            geoPt1.setY( geoPt0.y() )  
-        view = self.getView()         
-        scenePt0 = view.GetScenePointFromGeoPoint( geoPt0 )
-        scenePt1 = view.GetScenePointFromGeoPoint( geoPt1 )
-        self.UpdateROIRect( scenePt0, scenePt1 )
+        try:
+            geoPt0 = QPointF( float(self.ROICornerLon0.text()), float(self.ROICornerLat0.text()) ) 
+            geoPt1 = QPointF( float(self.ROICornerLon1.text()), float(self.ROICornerLat1.text()) )   
+            if( geoPt1.x() < geoPt0.x() ):
+                geoPt1.setX( geoPt0.x() )
+            if( geoPt1.y() < geoPt0.y() ):
+                geoPt1.setY( geoPt0.y() )  
+            view = self.getView()         
+            scenePt0 = view.GetScenePointFromGeoPoint( geoPt0 )
+            scenePt1 = view.GetScenePointFromGeoPoint( geoPt1 )
+            self.UpdateROIRect( scenePt0, scenePt1 )
+        except: pass
 
 class ExampleForm(QDialog):
  

@@ -5,6 +5,7 @@ Created on Aug 25, 2012
 '''
 
 from PyQt4 import QtCore, QtGui
+from vtUtilities import *
 import vtk
 
 class CaptionEditor(QtGui.QDialog):
@@ -135,7 +136,7 @@ class CaptionManager( QtCore.QObject ):
         self.emit(self.persist_captions_signal, result )
         
     def deserializeCaptions( self, captionData ):
-        captionReps = captionData.split(';')
+        captionReps = getItem( captionData ).split(';')
         for captionRep in captionReps:
             cf = captionRep.split(',')
             pos0 = [ float(cf[0]), float(cf[1]) ]
