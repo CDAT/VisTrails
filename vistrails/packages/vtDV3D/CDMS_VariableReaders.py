@@ -73,8 +73,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         for varDataSpecs in cls.dataCache.values():
             varDataMap = varDataSpecs.get('varData', None )
             if varDataMap:
-                dataArray = varDataMap.get('newDataArray', None )
-                if dataArray: del dataArray 
+                try:
+                    dataArray = varDataMap[ 'newDataArray']
+                    del dataArray 
+                except: pass
             del varDataSpecs
         cls.dataCache.clear()
         for imageDataMap in cls.imageDataCache.values():
