@@ -725,7 +725,9 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
     @staticmethod
     def clearModules( pipeline ): 
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
-        DV3DPipelineHelper.reset() 
+        from packages.vtDV3D.CDMS_VariableReaders import PM_CDMSDataReader
+        DV3DPipelineHelper.reset()
+        PM_CDMSDataReader.clearCache() 
         if pipeline:   
             for moduleId in pipeline.modules: 
                 DV3DPipelineHelper.removeModuleFromActivationMap( moduleId ) 
