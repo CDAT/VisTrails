@@ -1393,7 +1393,7 @@ class ColormapConfigurationDialog( IVModuleConfigurationDialog ):
         
     @staticmethod   
     def getSignature():
-        return [ (String, 'name'), ( Integer, 'invert'), ( Integer, 'stereo') ]
+        return [ (String, 'name'), ( Integer, 'invert'), ( Integer, 'stereo'), ( Integer, 'smooth') ]
         
     def getValue(self):
         checkState = 1 if ( self.invertCheckBox.checkState() == Qt.Checked ) else 0

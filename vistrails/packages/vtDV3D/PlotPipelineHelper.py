@@ -329,8 +329,10 @@ class DV3DRangeConfigWidget(QFrame):
             parm_range[ iSlider ] = fval
             self.active_cfg_cmd.broadcastLevelingData( parm_range,  active_modules = DV3DPipelineHelper.getActivePlotList() ) 
             if len( self.active_modules ):            
-                for module in self.active_modules: 
-                    if DV3DPipelineHelper.getPlotActivation( module ): module.render()
+                for moduleID in self.active_modules: 
+                    if DV3DPipelineHelper.getPlotActivation( moduleID ):
+                        module = ModuleStore.getModule( moduleID ) 
+                        module.render()
                 HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'text-%d' % iSlider, fval ]  )
         
         
@@ -344,8 +346,10 @@ class DV3DRangeConfigWidget(QFrame):
 #            print " sliderValueChanged[%d], bounds=%s, range=%s, fval=%f" % ( self.active_cfg_cmd.module.moduleID, str(rbnds), str(parm_range), fval )
             self.active_cfg_cmd.broadcastLevelingData( parm_range, active_modules = DV3DPipelineHelper.getActivePlotList( )  ) 
             if len( self.active_modules ):            
-                for module in self.active_modules:
-                    if DV3DPipelineHelper.getPlotActivation( module ): module.render()
+                for moduleID in self.active_modules:
+                    if DV3DPipelineHelper.getPlotActivation( moduleID ):
+                        module = ModuleStore.getModule( moduleID ) 
+                        module.render()
                 HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'slider-%d' % iSlider, fval ]  )
         
     def updateSliderValues( self, initialize=False ): 
@@ -398,7 +402,7 @@ class DV3DRangeConfigWidget(QFrame):
                     module = ModuleStore.getModule( cmd_entry[0] )
                     if module:
                         cfg_cmd = cmd_entry[1] 
-                        self.active_modules.add( module )
+                        self.active_modules.add( module.moduleID )
                         if ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ):
                             self.active_cfg_cmd = cfg_cmd
                 self.updateSliderValues(True)
@@ -418,8 +422,9 @@ class DV3DRangeConfigWidget(QFrame):
         if len( self.active_modules ) and self.active_cfg_cmd and hasattr( self.active_cfg_cmd, 'range' ):
             interactionState = self.active_cfg_cmd.name
             parm_range = list( self.active_cfg_cmd.range )
-            for module in self.active_modules:
-                if DV3DPipelineHelper.getPlotActivation( module ):
+            for moduleID in self.active_modules:
+                if DV3DPipelineHelper.getPlotActivation( moduleID ):
+                    module = ModuleStore.getModule( moduleID )
                     config_data = module.getParameter( interactionState  ) 
                     if config_data: 
                         config_data[0:2] = parm_range[0:2]
@@ -436,8 +441,9 @@ class DV3DRangeConfigWidget(QFrame):
             except: pass
             self.active_cfg_cmd.broadcastLevelingData( self.initialRange )  
             interactionState = self.active_cfg_cmd.name
-            for module in self.active_modules:
-                if DV3DPipelineHelper.getPlotActivation( module ): 
+            for moduleID in self.active_modules:
+                if DV3DPipelineHelper.getPlotActivation( moduleID ): 
+                    module = ModuleStore.getModule( moduleID )
                     module.finalizeConfigurationObserver( interactionState ) 
             HyperwallManager.getInstance().setInteractionState( None )  
         self.endConfig()
