@@ -478,8 +478,8 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         """
         if self.count()>0:
             widget = self.currentWidget()
-            self.emit(QtCore.SIGNAL("remove_tab"), widget)
             widget.deleteAllCells()
+            self.emit(QtCore.SIGNAL("remove_tab"), widget)
             self.tabWidgets.remove(widget)
             self.removeTab(self.currentIndex())
             self.removeSheetReference(widget)
