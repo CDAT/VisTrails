@@ -525,49 +525,50 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.builtCellWidget = False                        
         
     def buildWidget(self): 
-        from packages.spreadsheet.spreadsheet_controller import spreadsheetController                       
-        if self.renderers and not self.isBuilt():
-            renderViews = []
-            renderView = None
-            iStyle = None
-            iHandlers = []
-            picker = None
-            style = vtk.vtkInteractorStyleTrackballCamera()
-            style_name = style.__class__.__name__
-            iStyle = wrapVTKModule( style_name, style )   
-            
-            if self.isServer:
-                self.cellWidget = self.displayAndWait( QVTKServerWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
-                self.cellWidget.setLocation( self.location )
-            elif self.isClient:
-                self.cellWidget = self.displayAndWait( QVTKClientWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
-            else:
-                self.cellWidget = self.displayAndWait( QVTKClientWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
-            #in mashup mode, self.displayAndWait will return None
-            if self.cellWidget:
-                self.renWin = self.cellWidget.GetRenderWindow() 
-                self.iren = self.renWin.GetInteractor()
-                self.navigationInteractorStyle = self.iren.GetInteractorStyle()
-                caption_data = self.getInputValue( CaptionManager.config_name, None )
-                self.captionManager = CaptionManager( self.cellWidget, self.iren, data=caption_data )
-                self.connect(self.captionManager, CaptionManager.persist_captions_signal, self.persistCaptions )  
+        from packages.spreadsheet.spreadsheet_controller import spreadsheetController  
+        if not self.isBuilt():                     
+            if self.renderers:
+                renderViews = []
+                renderView = None
+                iStyle = None
+                iHandlers = []
+                picker = None
+                style = vtk.vtkInteractorStyleTrackballCamera()
+                style_name = style.__class__.__name__
+                iStyle = wrapVTKModule( style_name, style )   
                 
-                if ENABLE_JOYSTICK: 
-                    if joystick.enabled():
-                        joystick.addTarget( self.cellWidget )   
-            else: 
-                print "  --- Error creating cellWidget --- "   
-                sys.stdout.flush()     
-            
-            cell_location = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )   
-            PersistentVisualizationModule.renderMap[ cell_location ] = self.iren
-            self.builtCellWidget = True
-            
-            ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
-            tabController = ssheetWindow.get_current_tab_controller()
-            self.connect( tabController, QtCore.SIGNAL("cell_deleted"), self.clearWidget )
-        else:               
-            print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
+                if self.isServer:
+                    self.cellWidget = self.displayAndWait( QVTKServerWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
+                    self.cellWidget.setLocation( self.location )
+                elif self.isClient:
+                    self.cellWidget = self.displayAndWait( QVTKClientWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
+                else:
+                    self.cellWidget = self.displayAndWait( QVTKClientWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
+                #in mashup mode, self.displayAndWait will return None
+                if self.cellWidget:
+                    self.renWin = self.cellWidget.GetRenderWindow() 
+                    self.iren = self.renWin.GetInteractor()
+                    self.navigationInteractorStyle = self.iren.GetInteractorStyle()
+                    caption_data = self.getInputValue( CaptionManager.config_name, None )
+                    self.captionManager = CaptionManager( self.cellWidget, self.iren, data=caption_data )
+                    self.connect(self.captionManager, CaptionManager.persist_captions_signal, self.persistCaptions )  
+                    
+                    if ENABLE_JOYSTICK: 
+                        if joystick.enabled():
+                            joystick.addTarget( self.cellWidget )   
+                else: 
+                    print "  --- Error creating cellWidget --- "   
+                    sys.stdout.flush()     
+                
+                cell_location = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )   
+                PersistentVisualizationModule.renderMap[ cell_location ] = self.iren
+                self.builtCellWidget = True
+                
+                ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+                tabController = ssheetWindow.get_current_tab_controller()
+                self.connect( tabController, QtCore.SIGNAL("cell_deleted"), self.clearWidget )
+            else:               
+                print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
      
     def persistCaptions( self, serializedCaptions ): 
         parmList = []
