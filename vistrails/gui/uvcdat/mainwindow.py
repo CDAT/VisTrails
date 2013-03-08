@@ -15,6 +15,7 @@
 ###############################################################################
 from PyQt4 import QtCore, QtGui
 import os
+import sys
 import cdms2
 import vcs
 import __main__
@@ -75,7 +76,21 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.embedSpreadsheet()
         self.connectSignals()
         self.resize(1150,800)
+        self.addPlugins()
+
+
+
+    def clicked(self,action):
+        print str(action.text())
         
+    def addPlugins(self):
+        self.plugins=[]
+        #m = QtGui.QMenu("Test Menu",parent=self)
+        s = self.menuBar().addMenu("Sample")
+        m = s.addMenu("Neighbors")
+        a = m.addAction("Sssneigbors")
+        sys.path.insert(0,"/git/uread")
+        self.connect(a,QtCore.SIGNAL("Triggered()"),self.clicked)
     def initCustomize(self,customPath,styles):
         if customPath is None:
             customPath=os.path.join(os.environ["HOME"],"PCMDI_GRAPHICS","customizeUVCDAT.py")
