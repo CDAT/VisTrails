@@ -19,6 +19,8 @@ import commandsRecorderWidget
 import customizeUVCDAT
 import genutil,cdutil
 import preFunctionPopUpWidget
+from api import get_current_project_controller
+
 class QMenuWidget(QtGui.QWidget):
     def __init__(self, parent=None):
         QtGui.QWidget.__init__(self,parent)
@@ -44,6 +46,16 @@ class QMenuWidget(QtGui.QWidget):
         self.editMenu.addAction(self.editCdmsCacheAction)
         self.connect(self.editCdmsCacheAction, QtCore.SIGNAL('triggered ()'),
                      parent.root.cdmsCacheWidget.show)
+        self.editUndoAction = QtGui.QAction('Undo', self)
+        self.editUndoAction.setEnabled(False)
+        self.editUndoAction.setStatusTip("Undo last action for selected plot")
+        #self.editMenu.addAction(self.editUndoAction)
+        self.connect(self.editUndoAction, QtCore.SIGNAL('triggered()'), self.undo)
+        self.editRedoAction = QtGui.QAction('Redo', self)
+        self.editRedoAction.setEnabled(False)
+        self.editRedoAction.setStatusTip("Redo last action for selected plot")
+        #self.editMenu.addAction(self.editRedoAction)
+        self.connect(self.editRedoAction, QtCore.SIGNAL('triggered()'), self.redo)
 
         #self.tools = parent.ui.menuTools
         self.pcmdiTools = parent.ui.menuPCMDITools
@@ -296,7 +308,6 @@ class QMenuWidget(QtGui.QWidget):
                 self.root.record("cdutil.times.setTimeBoundDaily(%s,%g)" % (v.id,val))
                 vtnm = "%s:%g"%(nm,val)
             #send command to project controller to be stored as provenance
-            from api import get_current_project_controller
             prj_controller = get_current_project_controller()
             prj_controller.change_defined_variable_time_bounds(v.id, vtnm)
 
@@ -373,3 +384,9 @@ class QMenuWidget(QtGui.QWidget):
         prj_controller.process_typed_calculator_command(varname, rhsCommand)
         prj_controller.calculator_command(sV, "REGRID", varname, rhsCommand.strip())
         QLine.setFocus()
+        
+    def undo(self):
+        get_current_project_controller().undo()
+        
+    def redo(self):
+        get_current_project_controller().redo()

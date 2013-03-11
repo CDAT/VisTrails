@@ -689,4 +689,3 @@ class VariableProperties(QtGui.QDialog):
         controller = _app.uvcdatWindow.get_current_project_controller()
         
         controller.variableEdited(varname)
-

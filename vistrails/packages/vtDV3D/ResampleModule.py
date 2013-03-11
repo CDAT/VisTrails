@@ -542,6 +542,84 @@ class DecimationConfigurationWidget( IVModuleConfigurationDialog ):
             
  ################################################################################
 
+ 
+class IVModuleWidgetWrapper( QObject ):
+    """
+    IVModuleConfigurationDialog ...   
+    """ 
+       
+    def __init__(self, name, module, **args ):
+        QObject.__init__(self)
+        self.name = name
+        self.moduleID = module.moduleID
+        self.initial_value = None
+        self.current_value = None
+#        self.configToParameterConversion = args.pop( 'configToParameter' )
+#        self.parameterToConfigConversion = args.pop( 'parameterToConfig' )
+        self.createContent( )
+
+    @property
+    def module(self):
+        return ModuleStore.getModule( self.moduleID ) 
+                              
+    def createContent( self ):
+        """ createContent() 
+        Creates the content of this widget       
+        """
+        pass
+    
+    def getTextDisplay( self ):
+        return "%s: %s" % ( self.name, str(self.getCurrentValue() ) )
+ 
+    def activateWidget( self, iren ):
+        pass
+    
+    def render(self):
+        self.module.render()
+           
+    def close():
+        pass 
+
+    def open( start_value ):
+        pass 
+    
+    def finalizeParameter( self, *args ):
+        self.module.finalizeConfigurationObserver( self.name, *args )
+
+    def startParameter( self, *args ):
+        self.module.startConfigurationObserver( self.name, *args )
+
+    def updateParameter( self, *args ):
+        param_value = self.getValue()
+        self.module.updateConfigurationObserver( self.name, param_value, *args )
+        
+    def getWidgetConfiguration( self ):
+        return None
+    
+    def setInitialValue( self,  initial_value ):
+        self.initial_value =  initial_value
+        
+    def getValue(self):
+        self.current_value = self.getWidgetConfiguration() 
+#        self.current_value = self.configToParameterConversion( config_value )
+        return self.current_value
+
+    def getCurrentValue(self):
+        return self.current_value
+        
+    def reset(self):
+        if self.initial_value <> None:
+            self.setValue( self.initial_value )
+        return self.initial_value 
+            
+    def setValue( self, parameter_value ):
+        config_value = parameter_value # self.parameterToConfigConversion( parameter_value )
+        self.setWidgetConfiguration( config_value )
+        return config_value
+
+    def setWidgetConfiguration( self, value ):
+        pass
+
 class BoxWidgetWrapper( IVModuleWidgetWrapper ):
     """
     BoxWidgetWrapper ...   
