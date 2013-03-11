@@ -648,6 +648,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     moduleMap = {} 
     actionMenu = None
     plotIndexMap = {}
+    inputCounter = 0
     _config_mode = LevelingType.GUI
 
     def __init__(self):
@@ -890,6 +891,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         raise UnimplementedException    #  Raise this exception to run the fallback code (rebuild from scratch) because the following code doesn't work. 
         
         DV3DPipelineHelper.plotIndexMap = {}
+        DV3DPipelineHelper.inputCounter = 0
         controller.change_selected_version(version)
         vistrail_a = controller.vistrail
         version_a = version
@@ -986,7 +988,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     connected_module = workflow.modules[ connected_module_id ]
                     plot_module = controller.create_module_from_descriptor( connected_module.module_descriptor )
                     ops.append( ('add', plot_module) )
-                    DV3DPipelineHelper.plotIndexMap[plot_module.id] = component_index
+                    DV3DPipelineHelper.plotIndexMap[plot_module.id] = DV3DPipelineHelper.inputCounter
                     if reader_module:
                         conn0 = controller.create_connection( reader_module, 'volume', plot_module, 'volume' )
                         ops.append( ('add', conn0) )
@@ -1012,12 +1014,10 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #                print "Attempt to add empty pipeline to %s " % ( str(( sheetName, cell_address )) )
 #            else:
 #                DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline           
-            for mid in controller.current_pipeline.modules:
-                module = ModuleStore.getModule( mid ) 
-                if module: 
-                    module.setCellLocation( sheetName, cell_address )   
-                    DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
-
+            for mid in controller.current_pipeline.modules: 
+                DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
+                    
+        DV3DPipelineHelper.inputCounter += len(plot.vars)
         return action2
     
     @staticmethod
@@ -1028,8 +1028,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     
     @staticmethod
     def getPlotIndex( mid, index ):
-        pi = DV3DPipelineHelper.plotIndexMap.get(mid,0) if (index == 0) else 0
-        return pi
+        pi = DV3DPipelineHelper.plotIndexMap.get(mid,0)
+        return pi + index
 
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col):
@@ -1039,13 +1039,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
 #        ConfigurableFunction.clear()
         controller.change_selected_version(version)
-        DV3DPipelineHelper.plotIndex = 0 
+        DV3DPipelineHelper.plotIndexMap = {}
 #        print "[%d,%d] ~~~~~~~~~~~~~~~>> build_plot_pipeline_action, version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
 #        print " --> plot_modules = ",  str( controller.current_pipeline.modules.keys() )
 #        print " --> var_modules = ",  str( [ var.id for var in var_modules ] )
         plots = list( plot_objs )
         #Considering that plot_objs has a single plot_obj
         plot_obj = plots.pop(0)
+        DV3DPipelineHelper.inputCounter = len(plot_obj.vars)
         action = None
         if len( plot_obj.cells ) > 0: 
             plot_obj.current_parent_version = version
@@ -1120,20 +1121,39 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             reader_modules = reader_1v_modules + reader_3v_modules
             ops = []           
             nInputs = 1 if len( reader_1v_modules ) else 3
-            module = reader_modules[0]
+            added_modules = []
+            inputPort = 'variable'
             if nInputs == 1:
-                inputPort = 'variable'
-                for iInput in range( len( var_modules ) ):
-                    try:
-                        var_module = var_modules[ iInput ]
-                        var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
-                        if var_module_in_pipeline == None: 
-                            ops.append( ( 'add', var_module ) )
-                        conn1 = controller.create_connection( var_module, 'self', module, inputPort )
-                        ops.append( ( 'add', conn1 ) )
-                    except Exception, err:
-                        print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
-                        break                                     
+                if len( reader_modules ) == 1:
+                    module = reader_modules[0]
+                    for iInput in range( len( var_modules ) ):
+                        try:
+                            var_module = var_modules[ iInput ]
+                            var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
+                            if (var_module_in_pipeline == None) and not (var_module.id in added_modules):  
+                                ops.append( ( 'add', var_module ) )
+                                added_modules.append( var_module.id )
+                            conn1 = controller.create_connection( var_module, 'self', module, inputPort )
+                            ops.append( ( 'add', conn1 ) )
+                        except Exception, err:
+                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                            break  
+                elif len( reader_modules ) == len( var_modules ):
+                    for iInput in range( len( var_modules ) ):
+                        try:
+                            var_module = var_modules[ iInput ]
+                            module = reader_modules[ iInput ]
+                            var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
+                            if (var_module_in_pipeline == None) and not (var_module.id in added_modules):  
+                                ops.append( ( 'add', var_module ) )
+                                added_modules.append( var_module.id )
+                            conn1 = controller.create_connection( var_module, 'self', module, inputPort )
+                            ops.append( ( 'add', conn1 ) )
+                        except Exception, err:
+                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                            break  
+                else:
+                    print>>sys.stderr, "Don't know how to match %d CDMSVariable inputs to %d CDMSReader modules" % ( len( var_modules ), len( reader_modules ) )                                                                                      
             else: 
                 iVarModule = 0
                 for iInput in range( nInputs ):
@@ -1141,12 +1161,16 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                         try:
                             var_module = var_modules[ iVarModule ]
                             var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
-                            if var_module_in_pipeline == None: 
+                            if (var_module_in_pipeline == None) and not (var_module.id in added_modules): 
                                 ops.append( ( 'add', var_module ) )
+                                added_modules.append( var_module.id )
                             inputPort = 'variable' if (iInput == 0) else "variable%d" % ( iInput + 1)
                             conn1 = controller.create_connection( var_module, 'self', module, inputPort )
                             ops.append( ( 'add', conn1 ) )
                             iVarModule = iVarModule+1
+                        except Exception, err:
+                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                            break
                         except Exception, err:
                             print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
                             break
@@ -1163,7 +1187,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             sheetName = sheetTabWidget.getSheetName() 
             for cell_address in cell_addresses: 
                 for mid in controller.current_pipeline.modules:   
-                    DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )       
+                    DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )   
+                        
 #            pipeline =  controller.current_pipeline        
 #            for cell_address in cell_addresses:
 #                if len( pipeline.module_list ) == 0:
@@ -1333,33 +1358,24 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     @staticmethod
     def load_pipeline_in_location(pipeline, controller, sheetName, row, col, 
                                         plot_type, cell):
+        #for now this helper will change the location in place
+        #based on the alias dictionary
+
+        print "Loading vtdv3d pipeline in location %d %d" % (row,col)
+        var_modules = DV3DPipelineHelper.find_modules_by_type(pipeline, 
+                                                              [CDMSVariable,
+                                                               CDMSVariableOperation])
         
-        cell_locations = DV3DPipelineHelper.find_modules_by_type(pipeline, [CellLocation]) 
-        plot_modules = DV3DPipelineHelper.find_dv3d_plot_modules(pipeline)
-        
-        # we assume that there is only one CellLocation and one SpreadsheetCell
-        # update location values in place.
-        loc_module = cell_locations[0]
-        for i in xrange(loc_module.getNumFunctions()):
-            if loc_module.functions[i].name == 'Row':
-                loc_module.functions[i].params[0].strValue = str(row+1)
-            elif loc_module.functions[i].name == "Column":
-                loc_module.functions[i].params[0].strValue = str(col+1)
-                    
-        # Update project controller cell information
-        cell.clear_plots()
-        cell.clear_queues()
-        for pl_module in plot_modules:
-            plot_name = DV3DPipelineHelper.get_plot_name_from_module(pipeline, pl_module)
-            cell.add_plot(get_plot_manager().new_plot(plot_type, plot_name))
-            
-            vars = DV3DPipelineHelper.find_variables_connected_to_plot_module( pipeline, pl_module.id )
-            for var in vars:
-                cell.add_variable(CDMSPipelineHelper.get_variable_name_from_module(var))
-            
-            plot_obj = cell.plots[-1]
+        # This assumes that the pipelines will be different except for variable 
+        # modules
+        controller.change_selected_version(cell.current_parent_version)
+        plot_obj = DV3DPipelineHelper.get_plot_by_vistrail_version(plot_type, 
+                                                                   controller.vistrail, 
+                                                                   controller.current_version)
+        if plot_obj is not None:
             plot_obj.current_parent_version = cell.current_parent_version
             plot_obj.current_controller = controller
+            cell.plots = [plot_obj]
             #FIXME: this will always spread the cells in the same row
             cell_specs = []
             cell_addresses = []
@@ -1375,29 +1391,19 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             for cell_address in cell_addresses:
                 for mid in pipeline.modules:   
                     DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
-                    
-    @staticmethod
-    def find_dv3d_plot_modules(pipeline):
-        """ Find the dv3d plot modules
-        """
-        return PlotPipelineHelper.find_modules_by_type( pipeline, [ MapCell3D, CloudCell3D ] )
-    
-    @staticmethod
-    def get_plot_name_from_module(pipeline, plot_module):
-        """ Find the name of the plot as used by the PlotManager
-        """
-
-    @staticmethod
-    def find_variables_connected_to_plot_module( pipeline, plot_module_id ):
-        """ Find the variable modules that are used by this plot module 
-        """
-#        localPipeline = copy.copy(pipeline) 
-#        local_plot_modules = DV3DPipelineHelper.find_dv3d_plot_modules( localPipeline )                   
-#        for local_plot_module in local_plot_modules:
-#            if ( local_plot_module.id <> plot_module_id ):
-#                delete_module( local_plot_module, localPipeline )        
-        var_modules = PlotPipelineHelper.find_modules_by_type( pipeline, [ CDMSVariableOperation, CDMSVariable ] ) 
-        return var_modules                                      
+            
+            # Update project controller cell information    
+            #cell.variables = []
+            #FIXME: this doesn't work as expected... DV3D should provide a way 
+            #to find the variables connected to a plot module so that only the
+            # operation or variable connected is added.
+            for plot in cell.plots:
+                plot.variables = []
+            for var in var_modules:
+                cell.add_variable(DV3DPipelineHelper.get_variable_name_from_module(var))
+        else:
+            print "Error: Could not find DV3D plot type based on the pipeline"
+            print "Visualizations can't be loaded."                                              
    
     @staticmethod
     def build_python_script_from_pipeline(controller, version, plot_objs=[]):

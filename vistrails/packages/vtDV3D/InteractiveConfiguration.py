@@ -553,7 +553,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
     def expandRange( self ):
         if self.adjustRangeInput >= 0:
             ispec = self.module.getInputSpec( self.adjustRangeInput )
-            if ispec and ispec.input:
+            if ispec and ispec.input():
                 if ( self.range_bounds[0] <> ispec.seriesScalarRange[0] ) or ( self.range_bounds[1] <> ispec.seriesScalarRange[1] ):
                     self.range_bounds[0:2] = ispec.seriesScalarRange[0:2]
                     self.initial_range[:] = self.range_bounds[:]
@@ -1093,7 +1093,11 @@ class IVModuleConfigurationDialog( QWidget ):
             if not ( IVModuleConfigurationDialog.activeModuleList and IVModuleConfigurationDialog.activeModuleList[-1] == module ):
                 IVModuleConfigurationDialog.activeModuleList.append( module )
                 self.connect( self, self.update_animation_signal, module.updateAnimation )
-              
+
+#    @staticmethod              
+#    def removeActiveModule( self, module ):
+#        IVModuleConfigurationDialog.activeModuleList
+                             
     @staticmethod              
     def getActiveModules():
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
@@ -2314,8 +2318,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 self.setValue( iTimestep )
                 sheetTabs = set()
                 relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
-                ispec = self.module.getInputSpec()     
-                timeAxis = ispec.getMetadata('time')
+                timeAxis =  self.module.getTimeAxis()     
                 if not timeAxis:
                     print>>sys.stderr, "Can't find time axis for dataset %s- animation disabled." % self.module.getDatasetId()
                     return
@@ -2331,8 +2334,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
                 displayText = self.getTextDisplay()
                 HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, iTimestep, self.uniformTimeRange, displayText ], False  )
-                for module in IVModuleConfigurationDialog.getActiveModules():
-                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
+                active_mods = IVModuleConfigurationDialog.getActiveModules()
+                for module in active_mods:
+#                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
                     module.updateAnimation( [ relTimeValueRefAdj, iTimestep, self.uniformTimeRange ], displayText, restart  )
             except Exception:
                 traceback.print_exc( 100, sys.stderr )
