@@ -1362,9 +1362,12 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         #based on the alias dictionary
 
         print "Loading vtdv3d pipeline in location %d %d" % (row,col)
-        var_modules = DV3DPipelineHelper.find_modules_by_type(pipeline, 
-                                                              [CDMSVariable,
-                                                               CDMSVariableOperation])
+        
+        cell_modules = PlotPipelineHelper.find_modules_by_type( pipeline, [ MapCell3D ] )
+        for module in cell_modules:
+            persistentCellModule = ModuleStore.getModule( module.id )  
+            if persistentCellModule: persistentCellModule.clearWidget( sheetName, row, col )
+        var_modules = DV3DPipelineHelper.find_modules_by_type(pipeline, [CDMSVariable, CDMSVariableOperation] )
         
         # This assumes that the pipelines will be different except for variable 
         # modules
@@ -1401,6 +1404,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 plot.variables = []
             for var in var_modules:
                 cell.add_variable(DV3DPipelineHelper.get_variable_name_from_module(var))
+                
         else:
             print "Error: Could not find DV3D plot type based on the pipeline"
             print "Visualizations can't be loaded."                                              
