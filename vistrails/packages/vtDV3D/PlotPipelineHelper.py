@@ -10,7 +10,8 @@ Created on Feb 29, 2012
 
 '''
 
-import core.db.io, sys, os, traceback, api, time
+
+import core.db.io, sys, os, traceback, api
 import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
@@ -1039,7 +1040,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def getPlotIndex( mid, index ):
         pi = DV3DPipelineHelper.plotIndexMap.get(mid,0)
         return pi + index
-                                        
+
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col):
 #        project_controller =  DV3DPipelineHelper.get_project_controller()
@@ -1208,7 +1209,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #                if len( pipeline.module_list ) == 0:
 #                    print "Attempt to add empty pipeline to %s " % ( str(( sheetName, cell_address )) )
 #                else:
-#                    DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline                   
+#                    DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline
+                  
         return action
 
     @staticmethod
@@ -1374,6 +1376,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         #for now this helper will change the location in place
         #based on the alias dictionary
 
+        print "Loading vtdv3d pipeline in location %d %d" % (row,col)
         var_modules = DV3DPipelineHelper.find_modules_by_type(pipeline, 
                                                               [CDMSVariable,
                                                                CDMSVariableOperation])
