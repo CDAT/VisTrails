@@ -1021,20 +1021,24 @@ class ProjectController(QtCore.QObject):
         return (result == Qt.QMessageBox.Yes)
     
     def undo(self, sheetName = None, row = None, col = None):
+        QApplication.setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))
         if not (sheetName and row and col):
             (sheetName, row, col) = self.get_current_cell_info()
         cell = self.sheet_map[sheetName][(row, col)]
         if cell is not None:
             cell.undo()
             self._finish_undo_redo(sheetName, row, col)
+        QApplication.restoreOverrideCursor()
             
     def redo(self, sheetName = None, row = None, col = None):
+        QApplication.setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))
         if sheetName is None or row is None or col is None:
             (sheetName, row, col) = self.get_current_cell_info()
         cell = self.sheet_map[sheetName][(row, col)]
         if cell is not None:
             cell.redo()
             self._finish_undo_redo(sheetName, row, col)
+        QApplication.restoreOverrideCursor()
             
     def _finish_undo_redo(self, sheetName, row, col):
         cell = self.sheet_map[sheetName][(row, col)]

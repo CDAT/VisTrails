@@ -10,8 +10,7 @@ Created on Feb 29, 2012
 
 '''
 
-
-import core.db.io, sys, os, traceback, api
+import core.db.io, sys, os, traceback, api, time
 import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
@@ -1371,15 +1370,17 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return None
     
     @staticmethod
-    def load_pipeline_in_location(pipeline, controller, sheetName, row, col, 
-                                        plot_type, cell):
+    def load_pipeline_in_location(pipeline, controller, sheetName, row, col, plot_type, cell):
         #for now this helper will change the location in place
         #based on the alias dictionary
 
         print "Loading vtdv3d pipeline in location %d %d" % (row,col)
-        var_modules = DV3DPipelineHelper.find_modules_by_type(pipeline, 
-                                                              [CDMSVariable,
-                                                               CDMSVariableOperation])
+        
+        cell_modules = PlotPipelineHelper.find_modules_by_type( pipeline, [ MapCell3D ] )
+        for module in cell_modules:
+            persistentCellModule = ModuleStore.getModule( module.id )  
+            if persistentCellModule: persistentCellModule.clearWidget( sheetName, row, col )
+        var_modules = DV3DPipelineHelper.find_modules_by_type(pipeline, [CDMSVariable, CDMSVariableOperation] )
         
         # This assumes that the pipelines will be different except for variable 
         # modules
@@ -1416,9 +1417,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 plot.variables = []
             for var in var_modules:
                 cell.add_variable(DV3DPipelineHelper.get_variable_name_from_module(var))
+                
         else:
             print "Error: Could not find DV3D plot type based on the pipeline"
             print "Visualizations can't be loaded."            
+
 
     @staticmethod
     def find_topo_sort_modules_by_types(pipeline, moduletypes):
@@ -1434,7 +1437,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 module = pipeline.modules[i] 
                 result.append(module)
         return result
-    
+
     @staticmethod
     def build_python_script_from_pipeline( controller, version, plot=None ):
         from core.db.locator import ZIPFileLocator
