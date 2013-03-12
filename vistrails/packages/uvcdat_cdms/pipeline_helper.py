@@ -543,7 +543,6 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         """
         
         cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, [CellLocation])
-        cell_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [SpreadsheetCell]) 
         plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
         
         #sort plot modules based on order
