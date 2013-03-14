@@ -490,6 +490,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def execute(self, **args ):
         if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
         PersistentVisualizationModule.execute(self, **args)
+        pipeline = self.getCurrentPipeline()
         self.recordCameraPosition()
 #        self.updateProject()
         

@@ -1300,6 +1300,7 @@ class PersistentModule( QObject ):
         try:
             ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
             proj_controller = api.get_current_project_controller()
+            if ( sheetName <> proj_controller.current_sheetName ): return
             controller =  proj_controller.vt_controller 
             pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
             if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
@@ -1307,10 +1308,6 @@ class PersistentModule( QObject ):
             else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
-<<<<<<< Updated upstream
-=======
-#            print " Change parameters, current version = %d, current_parent_version = %d " % ( controller.current_version, current_version )
->>>>>>> Stashed changes
             controller.change_selected_version( current_version )
             pipeline = controller.vistrail.getPipeline( current_version )
         except Exception, err:
@@ -1349,6 +1346,9 @@ class PersistentModule( QObject ):
             if proj_controller:
                 proj_controller.cell_was_changed(action)
                 if pcoords:  proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
+
+#            print " Perform save action: current version = %d, current_parent_version = %d, sheetName = %s, cell_address = %s " % ( controller.current_version, cell.current_parent_version, sheetName, str( cell_address ) )
+#            sys.stdout.flush()
                 
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
