@@ -269,6 +269,8 @@ class QCellToolBar(QtGui.QToolBar):
         self.appendAction(QCellToolBarShowCellQueue(self))
         self.appendAction(QCellToolBarViewProvenance(self))
         self.appendAction(QCellToolBarMergeCells(QtGui.QIcon(':celltoolbar/mergecells.png'), self))
+        self.appendAction(QCellToolBarUndo(self))
+        self.appendAction(QCellToolBarRedo(self))
         self.createToolBar()
 
     def addAnimationButtons(self):
@@ -724,6 +726,108 @@ class QCellToolBarShowCellQueue(QtGui.QAction):
         # Will not show up if there is no cell selected  
         if len(selectedCells)==1:
             self.setVisible(True)
+        else:
+            self.setVisible(False)               
+            
+class QCellToolBarUndo(QtGui.QAction):
+    """
+    QCellToolBarUndo is the action to undo
+
+    """
+    def __init__(self, parent=None):
+        """ QCellToolBarUndo(parent: QWidget)
+                                   -> QCellToolBarUndo
+        Setup the image, status tip, etc. of the action
+        
+        """
+        QtGui.QAction.__init__(self,
+                               QtGui.QIcon(":/icons/resources/icons/undo.png"),
+                               "Undo last action in current cell",
+                               parent)
+        self.setStatusTip("Undo last action in current cell")
+        
+        self.variablePlotQueueWidget = VariablePlotQueueWidget()
+
+    def triggeredSlot(self, checked=False):
+        """ toggledSlot(checked: boolean) -> None
+        Execute the action when the button is clicked
+        
+        """        
+        from gui.application import get_vistrails_application as vt_app
+        vt_app().uvcdatWindow.get_current_project_controller().undo()
+
+    def updateStatus(self, info):
+        """ updateStatus(info: tuple) -> None
+        Updates the status of the button based on the input info
+        
+        """
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
+        (sheet, row, col, cellWidget) = info
+        selectedCells = sorted(sheet.getSelectedLocations())
+
+        proj_controller = _app.uvcdatWindow.get_current_project_controller()
+        cell = None
+        if sheet.getSheetName() in proj_controller.sheet_map:
+            if (row,col) in proj_controller.sheet_map[sheet.getSheetName()]:
+                cell = proj_controller.sheet_map[sheet.getSheetName()][(row,col)]
+
+        # Will not show up if there is no cell selected  
+        if (len(selectedCells)==1 and 
+            proj_controller.is_cell_ready(sheetName,row,col)):
+            self.setVisible(True)
+            self.setEnabled(cell is not None and cell.canUndo())
+        else:
+            self.setVisible(False)              
+            
+class QCellToolBarRedo(QtGui.QAction):
+    """
+    QCellToolBarRedo is the action to redo
+
+    """
+    def __init__(self, parent=None):
+        """ QCellToolBarRedo(parent: QWidget)
+                                   -> QCellToolBarRedo
+        Setup the image, status tip, etc. of the action
+        
+        """
+        QtGui.QAction.__init__(self,
+                               QtGui.QIcon(":/icons/resources/icons/redo.png"),
+                               "Redo last action in current cell",
+                               parent)
+        self.setStatusTip("Redo last action in current cell")
+        
+        self.variablePlotQueueWidget = VariablePlotQueueWidget()
+
+    def triggeredSlot(self, checked=False):
+        """ toggledSlot(checked: boolean) -> None
+        Execute the action when the button is clicked
+        
+        """        
+        from gui.application import get_vistrails_application as vt_app
+        vt_app().uvcdatWindow.get_current_project_controller().redo()
+
+    def updateStatus(self, info):
+        """ updateStatus(info: tuple) -> None
+        Updates the status of the button based on the input info
+        
+        """
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
+        (sheet, row, col, cellWidget) = info
+        selectedCells = sorted(sheet.getSelectedLocations())
+
+        proj_controller = _app.uvcdatWindow.get_current_project_controller()
+        cell = None
+        if sheet.getSheetName() in proj_controller.sheet_map:
+            if (row,col) in proj_controller.sheet_map[sheet.getSheetName()]:
+                cell = proj_controller.sheet_map[sheet.getSheetName()][(row,col)]
+
+        # Will not show up if there is no cell selected  
+        if (len(selectedCells)==1 and 
+            proj_controller.is_cell_ready(sheetName,row,col)):
+            self.setVisible(True)
+            self.setEnabled(cell is not None and cell.canRedo())
         else:
             self.setVisible(False)
             
