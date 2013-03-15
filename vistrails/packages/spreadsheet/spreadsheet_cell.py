@@ -774,7 +774,7 @@ class QCellToolBarUndo(QtGui.QAction):
 
         # Will not show up if there is no cell selected  
         if (len(selectedCells)==1 and 
-            proj_controller.is_cell_ready(sheetName,row,col)):
+            proj_controller.is_cell_ready(sheet.getSheetName(),row,col)):
             self.setVisible(True)
             self.setEnabled(cell is not None and cell.canUndo())
         else:
@@ -825,7 +825,7 @@ class QCellToolBarRedo(QtGui.QAction):
 
         # Will not show up if there is no cell selected  
         if (len(selectedCells)==1 and 
-            proj_controller.is_cell_ready(sheetName,row,col)):
+            proj_controller.is_cell_ready(sheet.getSheetName(),row,col)):
             self.setVisible(True)
             self.setEnabled(cell is not None and cell.canRedo())
         else:
