@@ -384,15 +384,16 @@ class VariableProperties(QtGui.QDialog):
                 elif name=="CDAT":
                     # some OpenDAP files don't have an extension trynig to open in CDAT
                     try:
-                        if str(fnm) in CdmsCache.d:
-                            #print "Using cache for %s" % str(fnm)
-                            tmpf = CdmsCache.d[str(fnm)]
+                        file_path = os.path.expanduser(str(fnm))
+                        if file_path in CdmsCache.d:
+                            #print "Using cache2 for %s" % file_path
+                            tmpf = CdmsCache.d[file_path]
                         else:
-                            #print "Loading file %s" % str(fnm)
-                            tmpf = CdmsCache.d[str(fnm)] = cdms2.open(str(fnm))
+                            #print "Loading file2 %s" % file_path
+                            tmpf = CdmsCache.d[file_path] = cdms2.open(file_path)
                         tmpf.variables.keys()
                         #tmpf.close()
-                        self.updateCDMSFile(str(fnm))
+                        self.updateCDMSFile(file_path)
                     except:
                         pass
 
@@ -411,22 +412,23 @@ class VariableProperties(QtGui.QDialog):
         if fn[:7]=="http://":
             ## Maybe add something for my proxy errors here?
             if fn in CdmsCache.d:
-                #print "Using cache for %s" % fn
+                #print "Using cache3 for %s" % fn
                 self.cdmsFile = CdmsCache.d[fn]
             else:
-                #print "Loading file %s" % fn
+                #print "Loading file3 %s" % fn
                 self.cdmsFile = CdmsCache.d[fn] = cdms2.open(fn)
             self.root.record("## Open file: %s" % fn)
             self.root.record("cdmsFile = cdms2.open('%s')" % fn)
         else:
+            file_path = os.path.expanduser(fn)
             if fn in CdmsCache.d:
-                #print "Using cache for %s" % fn
-                self.cdmsFile = CdmsCache.d[fn]
+                #print "Using cache4 for %s" % file_path
+                self.cdmsFile = CdmsCache.d[file_path]
             else:
-                #print "Loading file %s" % fn
-                self.cdmsFile = CdmsCache.d[fn] = cdms2.open(fn)
-            self.root.record("## Open file: %s" % fn)
-            self.root.record("cdmsFile = cdms2.open('%s')" % fn)
+                #print "Loading file4 %s" % file_path
+                self.cdmsFile = CdmsCache.d[file_path] = cdms2.open(file_path)
+            self.root.record("## Open file: %s" % file_path)
+            self.root.record("cdmsFile = cdms2.open('%s')" % file_path)
         self.updateVariableList()
 
     def updateOtherPlots(self, namelist):

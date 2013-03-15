@@ -1521,10 +1521,10 @@ class QEsgfBrowser(QtGui.QFrame):
             if service=="OPENDAP":
                 try:
                     if url[:-5] in CdmsCache.d:
-                        #print "Using cache for %s" % url[:5]
+                        #print "Using cache1 for %s" % url[:5]
                         f = CdmsCache.d[url[:-5]]
                     else:
-                        #print "Loading file %s" % url[:-5]
+                        #print "Loading file1 %s" % url[:-5]
                         f = CdmsCache.d[url[:-5]] = cdms2.open(url[:-5])
                     fvars = f.variables.keys()
                     for v in f.variables.keys():
