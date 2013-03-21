@@ -106,8 +106,8 @@ def initialize(*args, **keywords):
     
     """
     import core.application
-    if not core.application.is_running_gui():
-        raise Exception, "GUI is not running. The Spreadsheet package requires the GUI"
+#    if not core.application.is_running_gui():
+#        raise Exception, "GUI is not running. The Spreadsheet package requires the GUI"
     
     # initialize widgets
     debug.log('Loading Spreadsheet widgets...')
