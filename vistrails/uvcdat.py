@@ -70,7 +70,8 @@ def execute_vistrail( *args, **kwargs ):
 
 if __name__ == '__main__':
     disable_lion_restore()
-
+    import cdat_info
+    cdat_info.SOURCE="UV-CDAT"
     import gui.requirements
     gui.requirements.check_pyqt4()
 

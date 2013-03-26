@@ -60,7 +60,7 @@ if __name__ == '__main__':
     import core.requirements
     import gui.bundles.installbundle
     import cdat_info
-    cdat-info.SOURCE="UV-CDAT"
+    cdat_info.SOURCE="UV-CDAT"
     try:
         core.requirements.require_python_module('PyQt4.QtGui')
         core.requirements.require_python_module('PyQt4.QtOpenGL')
