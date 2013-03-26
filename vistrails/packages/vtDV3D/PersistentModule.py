@@ -1307,10 +1307,6 @@ class PersistentModule( QObject ):
             else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
-<<<<<<< Updated upstream
-=======
-#            print " Change parameters, current version = %d, current_parent_version = %d " % ( controller.current_version, current_version )
->>>>>>> Stashed changes
             controller.change_selected_version( current_version )
             pipeline = controller.vistrail.getPipeline( current_version )
         except Exception, err:
