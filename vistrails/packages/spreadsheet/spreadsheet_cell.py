@@ -38,6 +38,7 @@
 #   QCellToolBar
 ################################################################################
 from PyQt4 import QtCore, QtGui
+from gui.qt import qt_super
 import datetime
 import os
 from core import system, debug
@@ -80,6 +81,49 @@ class QCellWidget(QtGui.QWidget):
         if getattr(get_vistrails_configuration(),'fixedSpreadsheetCells',False):
             self.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
             self.setFixedSize(200, 180)
+            
+    SENDING_EVENTS = False
+    def event(self, e):
+        """ event(e: QEvent) -> depends on event type
+        Process window and interaction events. 
+        
+        """
+        
+        #send events to all selected cells, to support linked interaction
+        if e.type() in [QtCore.QEvent.MouseMove, 
+                        QtCore.QEvent.MouseButtonPress,
+                        QtCore.QEvent.MouseButtonRelease]:
+            if not QCellWidget.SENDING_EVENTS:
+                QCellWidget.SENDING_EVENTS = True
+                try:
+                    for cell in self.getSelectedCellWidgets():
+                        if cell is not self: 
+                            cell.event(e)
+                finally:
+                    QCellWidget.SENDING_EVENTS = False
+        
+        return qt_super(QCellWidget, self).event(e)
+    
+
+    def getSelectedCellWidgets(self):
+        sheet = self.findSheetTabWidget()
+        if sheet:
+            return [sheet.getCell(row, col) \
+                    for (row, col) in sheet.getSelectedLocations()]
+        return []
+
+    def findSheetTabWidget(self):
+        """ findSheetTabWidget() -> QTabWidget
+        Find and return the sheet tab widget
+        
+        """
+        p = self.parent()
+        while p:
+            if hasattr(p, 'isSheetTabWidget'):
+                if p.isSheetTabWidget()==True:
+                    return p
+            p = p.parent()
+        return None
 
     def setAnimationEnabled(self, enabled):
         """ setAnimationEnabled(enabled: bool) -> None
