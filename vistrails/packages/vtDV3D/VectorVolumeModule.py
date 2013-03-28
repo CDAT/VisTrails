@@ -27,13 +27,15 @@ class PM_VectorVolume(PersistentVisualizationModule):
     """    
     def __init__( self, mid, **args ):
         PersistentVisualizationModule.__init__( self, mid, **args )
+        self.glyphScaleBounds = [ 0.02, 0.5 ] 
         self.glyphScale = [ 0.0, 0.5 ] 
         self.glyphRange = None
-        self.glyphDecimationFactor = [ 20.0, 2.0 ] 
+        self.glyphDecimationFactor = [ 20.0, 2.0 ]
+        self.glyphDecimationFactorBounds = [ 1.0, 20.0 ]
         self.primaryInputPorts = [ 'volume' ]
         self.resample = None
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0 )
-        self.addConfigurableLevelingFunction( 'glyphScale', 'Z', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, bound=False )
+        self.addConfigurableLevelingFunction( 'glyphScale', 'Z', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, activeBound='max', layerDependent=True, bound=False )
         self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
       
@@ -54,14 +56,14 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.render()
 
     def getGlyphScale( self ):
-        return self.glyphScale
+        return self.glyphScaleBounds
 
     def setGlyphDensity( self, ctf_data ):
         self.glyphDecimationFactor = ctf_data
         self.ApplyGlyphDecimationFactor()
         
     def getGlyphDensity(self):
-        return self.glyphDecimationFactor
+        return self.glyphDecimationFactorBounds
                               
     def buildPipeline(self):
         """ execute() -> None
@@ -134,7 +136,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.glyph = vtk.vtkGlyph3DMapper() 
 #        if self.colorInputModule <> None:   self.glyph.SetColorModeToColorByScalar()            
 #        else:                               self.glyph.SetColorModeToColorByVector()          
-        scalarRange = self.getScalarRange(1)
+        scalarRange = self.getScalarRange()
         self.glyph.SetScaleModeToScaleByMagnitude()
         self.glyph.SetColorModeToMapScalars()     
         self.glyph.SetUseLookupTableScalarRange(1)
