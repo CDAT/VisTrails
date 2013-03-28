@@ -1336,7 +1336,7 @@ class QCDATWidgetAnimation(QtGui.QAction):
                                "Animate",
                                parent)
         self.setStatusTip("Animate this plot")
-        self.setEnabled(False) # For now because it hangs
+        self.setEnabled(True) # For now because it hangs
         
 
     def triggeredSlot(self, checked=False):

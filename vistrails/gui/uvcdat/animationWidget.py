@@ -14,7 +14,7 @@ class QThreadAnimationCreate(QtCore.QThread):
         self.cursor=cursor
         ## self.exiting=False
     def run(self):
-        self.canvas.animate.create(thread_it=0)
+        self.canvas.animate.create(thread_it=1)
         self.parent.emit(QtCore.SIGNAL("animationCreated"),self.canvas,self.cursor)
     ## def __del__(self):
     ##     self.exiting=True
