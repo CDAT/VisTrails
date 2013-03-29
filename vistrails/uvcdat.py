@@ -112,6 +112,7 @@ if __name__ == '__main__':
                 if str(var.varCombo.itemText(i)).split()[0]==app.uvcdatLoadVariableStart:
                     var.varCombo.setCurrentIndex(i)
         #var.show()
+        
     if (app.temp_configuration.interactiveMode and
         not app.temp_configuration.check('spreadsheetDumpCells')): 
 
