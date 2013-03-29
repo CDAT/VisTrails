@@ -983,6 +983,8 @@ class QAxisList(QtGui.QWidget):
         self.gridLayout = QtGui.QGridLayout()
         self.gridLayout.setMargin(0)
         self.gridLayout.setSpacing(0)
+        l=QtGui.QLabel("Dimensions")
+        vbox.addWidget(l)
         vbox.addLayout(self.gridLayout)
         vbox.addStretch()
         vbox.setSpacing(0)

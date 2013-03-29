@@ -71,6 +71,8 @@ class VariableProperties(QtGui.QDialog):
         sp.addWidget(self.dims)
         v.addWidget(sp)
         h=QtGui.QHBoxLayout()
+        self.selectRoiButton = QDockPushButton('Select Region Of Interest (ROI)')
+        h.addWidget( self.selectRoiButton )
         s=QtGui.QSpacerItem(40,20,QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Preferred)
         h.addItem(s)
         self.btnDefine=QDockPushButton("Load")
@@ -88,11 +90,13 @@ class VariableProperties(QtGui.QDialog):
         self.btnDefine.setDefault(False)
         self.btnDefineClose.setDefault(False)
         self.btnDefineAs.setDefault(False)
+        self.selectRoiButton.setDefault(False)
 
         # Disabling at first
         self.btnDefine.setEnabled(False)
         self.btnDefineClose.setEnabled(False)
         self.btnDefineAs.setEnabled(False)
+        self.selectRoiButton.setEnabled(False)
         h.addWidget(self.btnCancel)
         v.addLayout(h)
         self.layout=v
@@ -112,11 +116,15 @@ class VariableProperties(QtGui.QDialog):
             if self.originTabWidget.tabText(i) == "Edit":
                 self.originTabWidget.setTabEnabled(i,False)
 
-        self.createDimensions()
         self.connectSignals()
         sp.setStretchFactor(0,2)
         self.cdmsFile = None
         self.updatingFile = False
+
+        self.roiSelector = ROISelectionDialog( self.parent )
+        self.roiSelector.setWindowFlags( self.roiSelector.windowFlags() | Qt.WindowStaysOnTopHint )
+        self.connect(self.roiSelector, QtCore.SIGNAL('doneConfigure()'), self.setRoi )
+        if self.roi: self.roiSelector.setROI( self.roi )
 
     ## @classmethod
     ## def instance(klass):
@@ -136,6 +144,7 @@ class VariableProperties(QtGui.QDialog):
             self.root.varProp.btnDefine.setEnabled(False)
             self.root.varProp.btnDefineClose.setEnabled(False)
             self.root.varProp.btnDefineAs.setEnabled(False)
+            self.root.varProp.selectRoiButton.setEnabled(False)
         ## else:
         ##     self.root.varProp.btnDefine.setEnabled(True)
         ##     self.root.varProp.btnDefineClose.setEnabled(True)
@@ -167,7 +176,7 @@ class VariableProperties(QtGui.QDialog):
         self.btnDefineAs.clicked.connect(self.defineAsVarClicked)
         self.connect(self,QtCore.SIGNAL('definedVariableEvent'),self.root.dockVariable.widget().addVariable)
         self.btnApplyEdits.clicked.connect(self.applyEditsClicked)
-
+        self.selectRoiButton.clicked.connect( self.selectRoi )
 
     def checkTargetVarName(self):
         result = None
@@ -298,20 +307,6 @@ class VariableProperties(QtGui.QDialog):
         self.varEditArea.setWidgetResizable(True)
         self.originTabWidget.addTab(self.varEditArea,"Edit")
 
-    def createDimensions(self):
-        labelLayout = QtGui.QHBoxLayout()
-        l=QtGui.QLabel("Dimensions")
-        labelLayout.addWidget(l)
-
-        self.selectRoiButton = QDockPushButton('Select Region Of Interest (ROI)', self)
-        labelLayout.addWidget( self.selectRoiButton )
-        self.connect( self.selectRoiButton, QtCore.SIGNAL('clicked(bool)'), self.selectRoi )
-        self.roiSelector = ROISelectionDialog( self.parent )
-        self.roiSelector.setWindowFlags( self.roiSelector.windowFlags() | Qt.WindowStaysOnTopHint )
-        self.connect(self.roiSelector, QtCore.SIGNAL('doneConfigure()'), self.setRoi )
-        if self.roi: self.roiSelector.setROI( self.roi )
-        self.dimsLayout.insertLayout( 0, labelLayout )
-
     def selectRoi( self ):
         if self.roi: self.roiSelector.setROI( self.roi )
         self.roiSelector.show()
@@ -410,6 +405,7 @@ class VariableProperties(QtGui.QDialog):
         self.root.varProp.btnDefine.setEnabled(True)
         self.root.varProp.btnDefineClose.setEnabled(True)
         self.root.varProp.btnDefineAs.setEnabled(True)
+        self.root.varProp.selectRoiButton.setEnabled(True)
 
 
     def selectFromList(self,item):
@@ -493,19 +489,20 @@ class VariableProperties(QtGui.QDialog):
         self.root.varProp.btnDefine.setEnabled(True)
         self.root.varProp.btnDefineClose.setEnabled(True)
         self.root.varProp.btnDefineAs.setEnabled(True)
+        self.root.varProp.selectRoiButton.setEnabled(True)
         
 
     def fillDimensionsWidget(self,axisList):
         if not self.axisListHolder is None:
             self.axisListHolder.destroy()
-        it = self.dimsLayout.takeAt(1)
-        if it:
+        it = self.dimsLayout.takeAt(0)
+        if it: 
             it.widget().deleteLater()
     ##             it.widget().destroy()
 #            self.dimsLayout.removeItem(it)
             del(it)
         self.axisListHolder = axisList
-        self.dimsLayout.insertWidget(1,axisList)
+        self.dimsLayout.insertWidget(0,axisList)
         self.updateVarInfo(axisList)
         self.dims.update()
         self.update()
@@ -572,7 +569,7 @@ class VariableProperties(QtGui.QDialog):
         """ Return a new tvariable object with the updated information from
         evaluating the var with the current user selected args / options
         """
-        axisList = self.dimsLayout.itemAt(1).widget()
+        axisList = self.dimsLayout.itemAt(0).widget()
 
         if targetId is not None:
             tid = targetId
@@ -598,7 +595,7 @@ class VariableProperties(QtGui.QDialog):
         if self.updatingFile:
             self.updatingFile = False
             return
-        axisList = self.dimsLayout.itemAt(1).widget()
+        axisList = self.dimsLayout.itemAt(0).widget()
         kwargs = self.generateKwArgs()
         # Here we try to remove useless keywords as we record them
         cmds = ""
@@ -694,7 +691,7 @@ class VariableProperties(QtGui.QDialog):
     def generateKwArgs(self, axisList=None):
         """ Generate and return the variable axes keyword arguments """
         if axisList is None:
-            axisList = self.dimsLayout.itemAt(1).widget()
+            axisList = self.dimsLayout.itemAt(0).widget()
 
         kwargs = {}
         for axisWidget in axisList.getAxisWidgets():

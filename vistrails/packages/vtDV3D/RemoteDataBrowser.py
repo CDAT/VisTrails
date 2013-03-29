@@ -74,8 +74,10 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
                 if self.type() == ServerType.THREDDS: self.parser = ThreddsDataElementParser( self.url ) 
                 else: print>>sys.stderr, "Error, unimplemented Server type: %d " % self.type()
             
-            if self.parser: return self.parser.execute()
-            return None
+            if self.parser:
+                self.result = self.parser.execute() 
+                return self.result 
+        return None if ( self.node_type == self.Directory ) else self.result 
        
     def __repr__(self): 
         return " %s Node: '%s' <%s>" % ( self.getNodeType(), str(self.text(0)), self.url )
