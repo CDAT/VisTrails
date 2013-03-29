@@ -40,7 +40,6 @@
 ################################################################################
 from PyQt4 import QtCore, QtGui
 from spreadsheet_helpers import CellHelpers, CellResizer
-from spreadsheet_prompt import QPromptCellWidget
 
 ################################################################################
 

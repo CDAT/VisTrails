@@ -5,6 +5,15 @@ from PyQt4.QtGui import *
 def execAction1( index ):
     print " execAction: ", index
 
+class TestObject( QObject ):
+    
+    def __init__( self, **args ):
+        pass
+
+    def __del__(self):
+        print "Deleting TestObject"
+
+
 class TestConfigPopupManager( QObject ):
     
     def __init__( self, **args ):
@@ -37,6 +46,9 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self)
         self.setFixedSize( 300, 300 )
+        tobj = TestObject()
+#        self.test_obj = tobj
+        del tobj
         self.testConfigPopupManager = TestConfigPopupManager()
         
     def mousePressEvent ( self, event ): 

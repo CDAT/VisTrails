@@ -275,7 +275,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         Either passing the figure manager to a SpreadsheetCell or save
         the image to file
         """      
-        self.input.AddObserver( "RenderEvent", self.SliceObserver )
+        self.addObserver( self.input, "RenderEvent", self.SliceObserver )
         self.imageExport = vtkImageExportToArray()
         self.imageExport.SetInput( self.input )
         input_dims = self.input.GetDimensions()

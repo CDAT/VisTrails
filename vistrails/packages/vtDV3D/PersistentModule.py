@@ -19,8 +19,6 @@ import cdms2, cdtime
 ReferenceTimeUnits = "days since 1900-1-1"
 MIN_LINE_LEN = 50
 
-moduleInstances = {}
-
 def getClassName( instance ):
     return instance.__class__.__name__ if ( instance <> None ) else "None" 
 
@@ -36,6 +34,30 @@ def IsListType( val ):
     valtype = type(val)
     return ( valtype ==type(list()) ) or  ( valtype ==type(tuple()) )
 
+def intersectExtents( e1, e2 ):
+    int_ext = []
+    intersectionRequired = False
+    if e1 and e2:
+        for ie in range(0,3):
+            ie0, ie1 = 2*ie, 2*ie+1
+            if (e1[ ie0 ] <> e2[ ie0 ]) or (e1[ ie1 ] <> e2[ ie1 ]):
+                intersectionRequired = True
+            int_ext.append( max( e1[ ie0 ], e2[ ie0 ] )  )
+            int_ext.append( min( e1[ ie1 ], e2[ ie1 ] )  )                    
+    return int_ext if intersectionRequired else None
+    
+def intersectExtentList( extList ):
+    intExtent = None
+    intersectionRequired = False
+    for e in extList:
+        newIntExtent = intersectExtents( e, intExtent )
+        if newIntExtent <> None: 
+            intersectionRequired = True 
+            intExtent = newIntExtent
+        else: intExtent = e
+    return intExtent if intersectionRequired else None
+    
+    
 def ExtendClassDocumentation( klass ):
     instance = klass()
     default_doc = "" if ( klass.__doc__ == None ) else klass.__doc__ 
@@ -86,7 +108,6 @@ class AlgorithmOutputModule( Module ):
             else:           algorithm.SetInputConnection( iPort, self.algoOutputPort )
         else: 
             output = self.getOutput() 
-#            print " inputToAlgorithm: oid = %x " % id( output ) 
             algorithm.SetInput( output )
             algorithm.Modified()
 
@@ -119,28 +140,59 @@ class InputSpecs:
         self.seriesScalarRange = None
         self.rangeBounds = None
         self.metadata = None
-        self.input = None
+        self._input = None
         self.fieldData = None
         self.inputModule = None
         self.inputModuleList = None
         self.datasetId = None
+        self.clipper = None
 
-    def initializeScalarRange( self ): 
-        metadata = self.getMetadata()  
-        var_md = metadata.get( 'attributes' , None )
-        if var_md <> None:
-            range = var_md.get( 'range', None )
-            if range: 
-#                print "\n ***************** ScalarRange = %s, md[%d], var_md[%d] *****************  \n" % ( str(range), id(metadata), id(var_md) )
-                self.scalarRange = list( range )
-                self.scalarRange.append( 1 )
-                if not self.seriesScalarRange:
-                    self.seriesScalarRange = list(range)
-                else:
-                    if self.seriesScalarRange[0] > range[0]:
-                        self.seriesScalarRange[0] = range[0] 
-                    if self.seriesScalarRange[1] < range[1]:
-                        self.seriesScalarRange[1] = range[1] 
+    def setInputModule( self, module ): 
+        self.inputModuleList = module
+        self.inputModule = self.inputModuleList[ 0 ]
+
+    def selectInputArray( self, raw_input, plotIndex ):
+        self.updateMetadata( plotIndex )
+        old_point_data = raw_input.GetPointData()  
+        nArrays = old_point_data.GetNumberOfArrays() 
+        if nArrays == 1: return raw_input  
+        image_data = vtk.vtkImageData()
+        image_data.ShallowCopy( raw_input )
+        new_point_data = image_data.GetPointData()        
+        array_index = plotIndex if plotIndex < nArrays else 0
+        inputVarList = self.metadata.get( 'inputVarList', [] )
+        if array_index < len( inputVarList ):
+            aname = inputVarList[ array_index ] 
+            new_point_data.SetActiveScalars( aname )
+#            print "Selecting scalars array %s for input %d" % ( aname, array_index )
+        else:
+            print>>sys.stderr, "Error, can't find scalars array for input %d" % array_index
+#        print "Selecting %s (array-%d) for plot index %d" % ( aname, array_index, plotIndex)
+        return image_data
+ 
+    def initializeInput( self, inputIndex, moduleID ): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        if self.inputModule:
+            raw_input = self.inputModule.getOutput() 
+            plotIndex = DV3DPipelineHelper.getPlotIndex( moduleID, inputIndex ) 
+#            print "InitializeInput for module %d, inputIndex=%d, plotIndex=%d" % ( moduleID, inputIndex, plotIndex)     
+            self._input =  self.selectInputArray( raw_input, plotIndex )                             
+            self.updateMetadata( plotIndex )
+#            print "Computed metadata for input %d to module %d (plotIndex = %d): %s " % ( inputIndex, moduleID, plotIndex, str(self.metadata) )
+            return True
+        return False
+        
+    def input( self ):
+        if self.clipper:
+            input = self.clipper.GetOutput()
+            input.Update()
+            return input
+        return self._input
+        
+    def clipInput( self, extent ):
+        self.clipper = vtk.vtkImageClip()
+        self.clipper.AddInput( self._input )
+        self.clipper.SetOutputWholeExtent( extent )
 
     def getWorldCoords( self, image_coords ):
         plotType = self.metadata[ 'plotType' ]                   
@@ -160,8 +212,8 @@ class InputSpecs:
                 lev = self.metadata[ 'lev' ]
                 world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), getFloatStr(lev[ image_coords[2] ]) ]   
         except:
-            gridSpacing = self.input.GetSpacing()
-            gridOrigin = self.input.GetOrigin()
+            gridSpacing = self.input().GetSpacing()
+            gridOrigin = self.input().GetOrigin()
             world_coords = [ getFloatStr(gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
         return world_coords
 
@@ -183,8 +235,8 @@ class InputSpecs:
                 lev = self.metadata[ 'lev' ]
                 world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], lev[ image_coords[2] ] ]   
         except:
-            gridSpacing = self.input.GetSpacing()
-            gridOrigin = self.input.GetOrigin()
+            gridSpacing = self.input().GetSpacing()
+            gridOrigin = self.input().GetOrigin()
             world_coords = [ gridOrigin[i] + image_coords[i]*gridSpacing[i] for i in range(3) ]
         return world_coords
     def getWorldCoord( self, image_coord, iAxis ):
@@ -200,8 +252,8 @@ class InputSpecs:
             return axisNames[iAxis], getFloatStr( world_coord )
         except:
             if (plotType == 'zyx') or (iAxis < 2):
-                gridSpacing = self.input.GetSpacing()
-                gridOrigin = self.input.GetOrigin()
+                gridSpacing = self.input().GetSpacing()
+                gridOrigin = self.input().GetOrigin()
                 return axes[iAxis], getFloatStr( gridOrigin[iAxis] + image_coord*gridSpacing[iAxis] ) 
             return axes[iAxis], ""
 
@@ -275,23 +327,22 @@ class InputSpecs:
         return imageScaledValue
 
     def getMetadata( self, key = None ):
-        if not self.metadata: self.updateMetadata()
-        return self.metadata.get( key, None ) if key else self.metadata
-    
+        return self.metadata.get( key, None ) if ( key and self.metadata )  else self.metadata
+  
     def getFieldData( self ):
         return self.fieldData  
     
-    def updateMetadata( self ):
+    def updateMetadata( self, plotIndex ):
         if self.metadata == None:
             scalars = None
-            if self.input <> None:
-                fd = self.input.GetFieldData() 
-                self.input.Update()
-                self.fieldData = self.input.GetFieldData()             
+            if self.input() <> None:
+                fd = self.input().GetFieldData() 
+                self.input().Update()
+                self.fieldData = self.input().GetFieldData()             
             elif self.inputModule:
                 self.fieldData = self.inputModule.getFieldData() 
     
-            self.metadata = self.computeMetadata()
+            self.metadata = self.computeMetadata( plotIndex )
             
             if self.metadata <> None:
                 self.rangeBounds = None              
@@ -308,27 +359,43 @@ class InputSpecs:
                         self.titleBuffer = "\n%s" % ( title )
                     elif len( targs ) > 1:
                         self.titleBuffer = "%s\n%s" % ( targs[1], targs[0] )
-                else: self.titleBuffer = ""
-    #            self.persistParameterList( [ ( 'title' , [ self.titleBuffer ]  ), ] )    
+                else: self.titleBuffer = "" 
                 attributes = self.metadata.get( 'attributes' , None )
                 if attributes:
                     self.units = attributes.get( 'units' , '' )
+                    range = attributes.get( 'range', None )
+                    if range: 
+        #                print "\n ***************** ScalarRange = %s, md[%d], var_md[%d] *****************  \n" % ( str(range), id(metadata), id(var_md) )
+                        self.scalarRange = list( range )
+                        self.scalarRange.append( 1 )
+                        if not self.seriesScalarRange:
+                            self.seriesScalarRange = list(range)
+                        else:
+                            if self.seriesScalarRange[0] > range[0]:
+                                self.seriesScalarRange[0] = range[0] 
+                            if self.seriesScalarRange[1] < range[1]:
+                                self.seriesScalarRange[1] = range[1] 
 
     def getUnits(self):
         return self.units
     
     def getLayerList(self):
         layerList = []
-        pointData = self.input.GetPointData()
+        pointData = self.input().GetPointData()
         for iA in range( pointData.GetNumberOfArrays() ):
             array_name = pointData.GetArrayName(iA)
             if array_name: layerList.append( array_name )
         return layerList
     
-    def computeMetadata( self  ):
+    def computeMetadata( self, plotIndex ):
         if not self.fieldData: self.initializeMetadata() 
         if self.fieldData:
-            return extractMetadata( self.fieldData )
+            mdList = extractMetadata( self.fieldData )
+            if plotIndex < len(mdList):
+                return mdList[ plotIndex ]
+            else:
+                print>>sys.stderr, "Error, Metadata for input %d not found" % plotIndex
+                return mdList[ 0 ]
         return {}
         
     def addMetadataObserver( self, caller, event ):
@@ -346,12 +413,14 @@ class InputSpecs:
 
     def addMetadata( self, metadata ):
         dataVector = self.fieldData.GetAbstractArray( 'metadata' ) 
-        if dataVector == None:   
-            print " Can't get Metadata for class %s " % getClassName( self )
+        if dataVector == None:
+            cname = getClassName( self ) 
+            if cname <> "InputSpecs": print " Can't get Metadata for class %s " % cname
         else:
             enc_mdata = encodeToString( metadata )
             dataVector.InsertNextValue( enc_mdata  )
-       
+ 
+              
 class PersistentModule( QObject ):
     '''
     <H2> Interactive Configuration</H2>
@@ -379,12 +448,9 @@ class PersistentModule( QObject ):
         self.newLayerConfiguration = False
         self.activeLayer = None
         self.newDataset = False
-        self.sheetName = None 
-        self.cell_address = None
         self.moduleID = mid
         self.timeIndex = 0 
         self.inputSpecs = {}
-        self.pipeline = args.get( 'pipeline', None )
         self.taggedVersionMap = {}
         self.persistedParameters = []
         self.versionTags = {}
@@ -406,7 +472,6 @@ class PersistentModule( QObject ):
         self.parmUpdating = {}
         self.ndims = args.get( 'ndims', 3 ) 
         self.primaryInputPorts = [ 'slice' ] if (self.ndims == 2) else [ 'volume' ]
-        self.primaryMetaDataPort = self.primaryInputPorts[0]
         self.documentation = None
         self.parameterCache = {}
         self.timeValue = cdtime.reltime( 0.0, ReferenceTimeUnits ) 
@@ -427,13 +492,19 @@ class PersistentModule( QObject ):
 #            if dataArray: return dataArray.GetValue(0)
 #        return 0
 
-#    def __del__(self):
+    def __del__(self):
+        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
+        sys.stdout.flush()
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
 
-    def setCellLocation( self, sheetName, cell_address ):
-        self.sheetName = sheetName 
-        self.cell_address = cell_address
+    def clearReferrents(self):
+        for f in self.configurableFunctions.values(): 
+            f.clearReferrents()
+        self.configurableFunctions.clear()
+        self.updateConfigurationObserver = None
+        self.startConfigurationObserver = None
+        self.finalizeConfigurationObserver = None
         
     def GetRenWinID(self):
         return -1
@@ -446,8 +517,19 @@ class PersistentModule( QObject ):
 
     def input( self, input_index=0 ):
         ispec = self.inputSpecs[ input_index ] 
-        return ispec.input
-    
+        return ispec.input()
+
+    def intersectInputExtents( self ):
+        ext_list = []
+        if len( self.inputSpecs.keys() ) > 1:
+            for ispec in self.inputSpecs.values():
+                ext_list.append( ispec.input().GetExtent() )
+        ie = intersectExtentList( ext_list )
+        if ie:
+            for ( ispecIndex, ispec ) in self.inputSpecs.items():
+                ispec.clipInput( ie )
+                self.reInitInput( ispecIndex )
+            
     def getUnits(self, input_index=0 ):
         ispec = self.inputSpecs[ input_index ] 
         return ispec.getUnits()
@@ -594,6 +676,7 @@ class PersistentModule( QObject ):
         return str( getClassName( self ) )
         
     def dvCompute( self, **args ):
+        print "  ***** Updating %s Module, id = %d ***** " % ( self.__class__.__name__, self.moduleID )
         self.initializeInputs( **args )     
         self.updateHyperwall()
         if self.input() or self.inputModuleList() or not self.requiresPrimaryInput:
@@ -619,11 +702,11 @@ class PersistentModule( QObject ):
         return None, 1
           
     def getPrimaryInput( self, **args ):
-        port = args.get('port', self.primaryInputPorts[0] )
+        port = args.get('port', self.getPrimaryInputPorts()[0] )
         return self.getInputValue( port, **args )
     
     def getPrimaryInputList(self, **args ):
-        port = args.get('port', self.primaryInputPorts[0] )
+        port = args.get('port', self.getPrimaryInputPorts()[0] )
         return self.getInputList( port, **args  )
     
     def isLayerDependentParameter( self, parmName ):
@@ -684,13 +767,24 @@ class PersistentModule( QObject ):
         import api
         self.getDatasetId( **args )
         pval = self.getParameter( inputName, None )
-        if inputName == 'levelRangeScale':
-            controller = api.get_current_controller()
-            print ' Input levelRangeScale value, MID[%d], ctrl_version=%d, parameter value = %s, (defval=%s)'  % ( self.moduleID, controller.current_version, str(pval), str(default_value) )            
+#        if inputName == 'levelRangeScale':
+#            controller = api.get_current_controller()
+#            print ' Input levelRangeScale value, MID[%d], ctrl_version=%d, parameter value = %s, (defval=%s)'  % ( self.moduleID, controller.current_version, str(pval), str(default_value) )            
         if (pval == None) and (self.wmod <> None):
             pval = self.wmod.forceGetInputFromPort( inputName, default_value )             
 #        if inputName == 'levelRangeScale':
 #            print ' Actual Input value = %s'  % str(pval)           
+        return pval
+
+    def getInputValues( self, inputName, **args ):
+        import api
+        self.getDatasetId( **args )
+        pval = self.getParameter( inputName, None )
+        if (pval == None) and (self.wmod <> None):
+            if 'forceGetInputListFromPort' in dir(self.wmod):
+                pval = self.wmod.forceGetInputListFromPort( inputName )    
+            else:
+                pval = self.wmod.forceGetInputsFromPort( inputName, [] )             
         return pval
           
     def setResult( self, outputName, value ): 
@@ -700,31 +794,42 @@ class PersistentModule( QObject ):
     def getCDMSDataset(self):
         return ModuleStore.getCdmsDataset( self.datasetId )
            
-    def setActiveScalars( self ):
-        pass
+#    def setActiveScalars( self ):
+#        pass
 
     def getInputCopy(self):
         image_data = vtk.vtkImageData() 
-        gridSpacing = self.input.GetSpacing()
-        gridOrigin = self.input.GetOrigin()
-        gridExtent = self.input.GetExtent()
-        image_data.SetScalarType( self.input.GetScalarType() )  
+        gridSpacing = self.input().GetSpacing()
+        gridOrigin = self.input().GetOrigin()
+        gridExtent = self.input().GetExtent()
+        image_data.SetScalarType( self.input().GetScalarType() )  
         image_data.SetOrigin( gridOrigin[0], gridOrigin[1], gridOrigin[2] )
         image_data.SetSpacing( gridSpacing[0], gridSpacing[1], gridSpacing[2] )
         image_data.SetExtent( gridExtent[0], gridExtent[1], gridExtent[2], gridExtent[3], gridExtent[4], gridExtent[5] )
         return image_data
+    
+    def reInitInput( self, inputIndex ):
+        ispec = self.inputSpecs[ inputIndex ] 
+        if  ispec.initializeInput( inputIndex, self.moduleID ):            
+            if inputIndex == 0:     self.setParameter( 'metadata', ispec.metadata ) 
+            else:                   self.setParameter( 'metadata-%d' % inputIndex, ispec.metadata )
+            self.roi = ispec.metadata.get( 'bounds', None )
+            
+    def getPrimaryInputPorts(self):
+        return self.primaryInputPorts
 
     def initializeInputs( self, **args ):
         isAnimation = args.get( 'animate', False )
         restarting = args.get( 'restarting', False )
         self.newDataset = False
-        for inputIndex, inputPort in enumerate( self.primaryInputPorts ):
+        inputPorts = self.getPrimaryInputPorts()
+        for inputIndex, inputPort in enumerate( inputPorts ):
             ispec = InputSpecs()
             self.inputSpecs[ inputIndex ] = ispec
+            inputList = self.getPrimaryInputList( port=inputPort, **args )
             if self.allowMultipleInputs.get( inputIndex, False ):
                 try:
-                    ispec.inputModuleList = self.getPrimaryInputList( port=inputPort, **args )
-                    ispec.inputModule = ispec.inputModuleList[0]
+                    ispec.setInputModule(  self.getPrimaryInputList( port=inputPort, **args ) )
                 except Exception, err:
                     print>>sys.stderr, 'Error: Broken pipeline at input to module %s:\n (%s)' % ( getClassName(self), str(err) ) 
                     self.getPrimaryInputList( port=inputPort, **args )
@@ -734,9 +839,7 @@ class PersistentModule( QObject ):
                 inMod = self.getPrimaryInput( port=inputPort, **args )
                 if inMod: ispec.inputModule = inMod
                 
-            if  ispec.inputModule <> None: 
-                ispec.input =  ispec.inputModule.getOutput()                 
-                ispec.updateMetadata()
+            if  ispec.initializeInput( inputIndex, self.moduleID ): 
                 
                 if inputIndex == 0:     
                     self.setParameter( 'metadata', ispec.metadata ) 
@@ -761,10 +864,7 @@ class PersistentModule( QObject ):
 #                    if inputIndex == 0: 
 #                        scalars = ispec.metadata.get( 'scalars', None )
 #                        self.initializeLayers( scalars )
-                    
-                ispec.initializeScalarRange()
-                
-                
+                                    
             elif ( ispec.fieldData == None ): 
                 ispec.initializeMetadata()
 
@@ -777,7 +877,7 @@ class PersistentModule( QObject ):
 #        if self.activeLayer == None: 
 #            self.activeLayer =self.getAnnotation( 'activeLayer' )
 #        if self.input and not scalars:
-#            scalarsArray = self.input.GetPointData().GetScalars()
+#            scalarsArray = self.input().GetPointData().GetScalars()
 #            if scalarsArray <> None:
 #                scalars = scalarsArray.GetName() 
 #            else:
@@ -792,6 +892,11 @@ class PersistentModule( QObject ):
     def getDataValue( self, image_value, input_index = 0 ):
         ispec = self.inputSpecs[ input_index ] 
         return ispec.getDataValue( image_value )
+
+    def getTimeAxis(self):
+        ispec = self.getInputSpec()     
+        timeAxis = ispec.getMetadata('time') if ispec else None
+        return timeAxis
     
     def getInputSpec( self, input_index=0 ):
         return self.inputSpecs.get( input_index, None )
@@ -834,22 +939,22 @@ class PersistentModule( QObject ):
          
            
     def addConfigurableMethod( self, name, method, key, **args ):
-        self.configurableFunctions[name] = ConfigurableFunction( name, None, key, pmod=self, hasState=False, open=method, **args )
+        self.configurableFunctions[name] = ConfigurableFunction( name, None, key, hasState=False, open=method, **args )
 
     def addConfigurableFunction(self, name, function_args, key, **args):
-        self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, pmod=self, **args )
+        self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, **args )
 
     def addConfigurableLevelingFunction(self, name, key, **args):
-        self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, pmod=self, **args )
+        self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, **args )
                         
     def addConfigurableGuiFunction(self, name, guiClass, key, **args):
         isActive = not HyperwallManager.getInstance().isClient
-        guiCF = GuiConfigurableFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
+        guiCF = GuiConfigurableFunction( name, guiClass, key, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
 
     def addUVCDATConfigGuiFunction(self, name, guiClass, key, **args):
         isActive = not HyperwallManager.getInstance().isClient
-        guiCF = UVCDATGuiConfigFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
+        guiCF = UVCDATGuiConfigFunction( name, guiClass, key, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
         
     def getConfigFunction( self, name ):
@@ -859,7 +964,7 @@ class PersistentModule( QObject ):
         del self.configurableFunctions[name]
 
     def addConfigurableWidgetFunction(self, name, signature, widgetWrapper, key, **args):
-        wCF = WidgetConfigurableFunction( name, signature, widgetWrapper, key, pmod=self, **args )
+        wCF = WidgetConfigurableFunction( name, signature, widgetWrapper, key, **args )
         self.configurableFunctions[name] = wCF
     
     def getConfigurationHelpText(self):
@@ -1161,6 +1266,25 @@ class PersistentModule( QObject ):
 #        return cur_version
 #            
 
+    def getCurrentPipeline( self ):
+        import api
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
+        try:
+            ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
+            proj_controller = api.get_current_project_controller()
+            controller =  proj_controller.vt_controller 
+            pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
+            if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
+                proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+            else: pcoords = None 
+            cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
+            current_version = cell.current_parent_version 
+            controller.change_selected_version( current_version )
+            return controller.vistrail.getPipeline( current_version )
+        except Exception, err:
+            print>>sys.stderr, "Error getting current pipeline: %s " % str( err )
+            return controller.current_pipeline       
+
     def change_parameters( self, parmRecList ):
         import api
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
@@ -1204,11 +1328,8 @@ class PersistentModule( QObject ):
         try:
             op_list = []
 #            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
-            for parmRec in parmRecList:  
-                try:
-                    op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
-                except: 
-                    print>>sys.stderr, " Unrecognized input port %s in module %s " % ( str(parmRec[0]), str(self.moduleID) )
+            for parmRec in parmRecList: 
+                op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
                 config_fn = self.getConfigFunction( parmRec[0] )
                 if config_fn: config_list.append( config_fn )
                 else: print>>sys.stderr, "Unrecognized config function %s in module %s" % ( parmRec[0], str(self.moduleID) )
@@ -1303,16 +1424,7 @@ class PersistentModule( QObject ):
         
     def updateModule(self, **args ):
         pass
-   
-    def getCurrentPipeline(self):
-        if self.pipeline <> None:
-            return self.pipeline
-        else:
-            import api
-            controller = api.get_current_controller() 
-            pipeline = controller.current_pipeline
-            return pipeline
-    
+       
     def getOutputModules( self, port ):
         pipeline = self.getCurrentPipeline()
         mid = self.moduleID
@@ -1377,7 +1489,8 @@ class TextBlinkThread( threading.Thread ):
             textOn = not textOn 
             if textOn:
                 blinkCount += 1
-                if self.nblinks > 0 and blinkCount >= self.nblinks: return
+                if self.nblinks > 0 and blinkCount >= self.nblinks: return 
+
        
 class PersistentVisualizationModule( PersistentModule ):
 
@@ -1408,6 +1521,8 @@ class PersistentVisualizationModule( PersistentModule ):
         self.textBlinkThread = None 
         self.activation = {}
         self.isAltMode = False
+        self.observerTags = []
+        self.observerTargets = set()
         self.stereoEnabled = 0
         self.showInteractiveLens = False
         self.navigationInteractorStyle = None
@@ -1421,18 +1536,17 @@ class PersistentVisualizationModule( PersistentModule ):
  
     def disableVisualizationInteraction(self): 
         pass
-    
                       
     def setInputZScale( self, zscale_data, input_index=0, **args  ):
         ispec = self.inputSpecs[ input_index ] 
-        if ispec.input <> None:
-            spacing = ispec.input.GetSpacing()
+        if ispec.input() <> None:
+            spacing = ispec.input().GetSpacing()
             ix, iy, iz = spacing
             sz = zscale_data[1]
             if iz <> sz:
 #                print " PVM >---------------> Change input zscale: %.4f -> %.4f" % ( iz, sz )
-                ispec.input.SetSpacing( ix, iy, sz )  
-                ispec.input.Modified() 
+                ispec.input().SetSpacing( ix, iy, sz )  
+                ispec.input().Modified() 
                 return True
         return False
                     
@@ -1459,8 +1573,8 @@ class PersistentVisualizationModule( PersistentModule ):
         ispec = self.inputSpecs[ input_index ] 
         fieldData = ispec.getFieldData()
         if not ( ('output' in args) or ('port' in args) ):
-            if ispec.input <> None: 
-                args[ 'output' ] = ispec.input
+            if ispec.input() <> None: 
+                args[ 'output' ] = ispec.input()
             elif ispec.inputModule <> None: 
                 port = ispec.inputModule.getOutputPort()
                 if port: args[ 'port' ] = port
@@ -1601,7 +1715,7 @@ class PersistentVisualizationModule( PersistentModule ):
         enableStereo = int( data[2] )
         smoothColormap = int( data[3] ) if ( len( data ) > 3 ) else 1 
         ispec = self.getInputSpec( cmap_index )  
-        if  (ispec <> None) and (ispec.input <> None):         
+        if  (ispec <> None) and (ispec.input() <> None):         
     #        self.addMetadata( { 'colormap' : self.getColormapSpec() } )
     #        print ' ~~~~~~~ SET COLORMAP:  --%s--  ' % self.colormapName
             self.updateStereo( enableStereo )
@@ -1653,7 +1767,7 @@ class PersistentVisualizationModule( PersistentModule ):
         inputModule = self.getPrimaryInput()
         renderer_import = inputModule.getRenderer() if  inputModule <> None else None 
         self.renderer = vtk.vtkRenderer() if renderer_import == None else renderer_import
-        self.renderer.AddObserver( 'ModifiedEvent', self.activateEvent )
+        self.addObserver( self.renderer, 'ModifiedEvent', self.activateEvent )
         self.labelBuff = "NA                          "
 #        if self.createColormap: 
 #            colormapManager = self.getColormapManager( )
@@ -1750,10 +1864,10 @@ class PersistentVisualizationModule( PersistentModule ):
         ds= ModuleStore.getCdmsDataset( ispec.datasetId )
         
         if ds <> None:
-            if len(ds.transientVariables)<>1:
-                print 'ERROR: this module has many', 
-            var = ds.transientVariables.values()[0]
-            lensActor.SetYRange(var.min(), var.max())
+            if len(ds.transientVariables)>0:
+                if len(ds.transientVariables)>1: print 'Warning: this module has several transient Variables, plotting the first one.'
+                var = ds.transientVariables.values()[0]
+                lensActor.SetYRange(var.min(), var.max())
 
         prop = lensActor.GetProperty()
         prop.SetColor( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] )
@@ -1836,27 +1950,43 @@ class PersistentVisualizationModule( PersistentModule ):
                 if ( iren <> None ) and not self.isConfigStyle( iren ):
                     if ( iren <> self.iren ):
                         if self.iren == None: 
-                            self.renwin.AddObserver("AbortCheckEvent", CheckAbort)
+                            self.addObserver( self.renwin,"AbortCheckEvent", CheckAbort)
                         self.iren = iren
                         self.activateWidgets( self.iren )                                  
-                        self.iren.AddObserver( 'CharEvent', self.setInteractionState )                   
-                        self.iren.AddObserver( 'MouseMoveEvent', self.updateLevelingEvent )
-#                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
-                        self.iren.AddObserver( 'AnyEvent', self.onAnyEvent )  
-#                        self.iren.AddObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
-#                        self.iren.AddObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
-                        self.iren.AddObserver( 'CharEvent', self.onKeyPress )
-                        self.iren.AddObserver( 'KeyReleaseEvent', self.onKeyRelease )
-                        self.iren.AddObserver( 'LeftButtonPressEvent', self.onLeftButtonPress )
-                        self.iren.AddObserver( 'ModifiedEvent', self.onModified )
-                        self.iren.AddObserver( 'RenderEvent', self.onRender )                   
-                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.onLeftButtonRelease )
-                        self.iren.AddObserver( 'RightButtonReleaseEvent', self.onRightButtonRelease )
-                        self.iren.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )
+                        self.addObserver( self.iren, 'CharEvent', self.setInteractionState )                   
+                        self.addObserver( self.iren, 'MouseMoveEvent', self.updateLevelingEvent )
+#                        self.addObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
+                        self.addObserver( self.iren, 'AnyEvent', self.onAnyEvent )  
+#                        self.addObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
+#                        self.addObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
+                        self.addObserver( self.iren, 'CharEvent', self.onKeyPress )
+                        self.addObserver( self.iren, 'KeyReleaseEvent', self.onKeyRelease )
+                        self.addObserver( self.iren, 'LeftButtonPressEvent', self.onLeftButtonPress )
+                        self.addObserver( self.iren, 'ModifiedEvent', self.onModified )
+                        self.addObserver( self.iren, 'RenderEvent', self.onRender )                   
+                        self.addObserver( self.iren, 'LeftButtonReleaseEvent', self.onLeftButtonRelease )
+                        self.addObserver( self.iren, 'RightButtonReleaseEvent', self.onRightButtonRelease )
+                        self.addObserver( self.iren, 'RightButtonPressEvent', self.onRightButtonPress )
                         for configurableFunction in self.configurableFunctions.values():
                             configurableFunction.activateWidget( iren )
                     self.updateInteractor()  
-                    
+    
+    def addObserver( self, target, event, observer ):
+        self.observerTargets.add( target ) 
+        target.AddObserver( event, observer ) 
+
+    def clearReferrents(self):
+        PersistentModule.clearReferrents(self)
+        self.removeObservers()
+        self.renderer = None
+        self.iren = None
+        self.gui = None
+
+    def removeObservers( self ): 
+        for target in self.observerTargets:
+            target.RemoveAllObservers()
+        self.observerTargets.clear()
+                                               
     def updateInteractor(self): 
         pass
                     
@@ -1888,6 +2018,7 @@ class PersistentVisualizationModule( PersistentModule ):
             
     def processKeyEvent( self, key, caller=None, event=None ):
 #        print "process Key Event, key = %s" % ( key )
+        md = self.getInputSpec().getMetadata()
         if key == 'h': 
             if  PersistentVisualizationModule.moduleDocumentationDialog == None:
                 modDoc = ModuleDocumentationDialog()
@@ -1909,7 +2040,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 configFunct = self.configurableFunctions[pname]
                 param_value = configFunct.reset() 
                 if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                
-        elif ( self.getInputSpec().getMetadata()['plotType']=='xyz' and key == 't'  ):
+        elif ( md and ( md['plotType']=='xyz' ) and ( key == 't' )  ):
             self.showInteractiveLens = not self.showInteractiveLens 
             self.render() 
         else:
@@ -1938,7 +2069,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 rcf = configFunct
 #                print " UpdateInteractionState, state = %s, cf = %s " % ( state, str(configFunct) )
             if not configFunct and self.acceptsGenericConfigs:
-                configFunct = ConfigurableFunction( state, None, None, pmod=self )              
+                configFunct = ConfigurableFunction( state, None, None )              
                 self.configurableFunctions[ state ] = configFunct
             if configFunct:
                 configFunct.open( state, self.isAltMode )

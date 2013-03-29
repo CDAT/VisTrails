@@ -265,7 +265,7 @@ class ROISelectionDialog(QDialog):
          
         panelLayout.addStretch(1)
 
-        self.connect(self.view, SIGNAL("ROISelected"), self.UpdateROICoords )
+        self.connect(self.view, SIGNAL("ROISelected"), self.UpdateGeoCoords )
         
         self.okButton = QPushButton('&OK', self)
         self.okButton.setFixedWidth(100)
@@ -316,13 +316,20 @@ class ROISelectionDialog(QDialog):
         geoPt1 = QPointF( roi[2], roi[3] )
         scenePt0 = self.view.GetScenePointFromGeoPoint( geoPt0 )
         scenePt1 = self.view.GetScenePointFromGeoPoint( geoPt1 )
-        self.UpdateROICoords( geoPt0, geoPt1, scenePt0, scenePt1 )
+        self.UpdateROICoords( roi, scenePt0, scenePt1 )
                 
-    def UpdateROICoords(self, geoPt0, geoPt1, scenePt0, scenePt1 ):
+    def UpdateGeoCoords(self, geoPt0, geoPt1, scenePt0, scenePt1 ):
         self.ROICornerLon0.setText ( "%.1f" % geoPt0.x() )
         self.ROICornerLat0.setText ( "%.1f" % geoPt0.y() )
         self.ROICornerLon1.setText ( "%.1f" % geoPt1.x() )
         self.ROICornerLat1.setText ( "%.1f" % geoPt1.y() )
+        self.UpdateROIRect( scenePt0, scenePt1 )
+
+    def UpdateROICoords(self, roi, scenePt0, scenePt1 ):
+        self.ROICornerLon0.setText ( "%.1f" % roi[0] )
+        self.ROICornerLat0.setText ( "%.1f" % roi[1] )
+        self.ROICornerLon1.setText ( "%.1f" % roi[2] )
+        self.ROICornerLat1.setText ( "%.1f" % roi[3] )
         self.UpdateROIRect( scenePt0, scenePt1 )
         
     def UpdateROIRect(self, scenePt0, scenePt1 ):

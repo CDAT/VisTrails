@@ -1,6 +1,8 @@
 from init import CDMSData
 from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
 from packages.uvcdat_cdms.init import CDMSVariableOperation, CDMSVariable
+from core.uvcdat.plotmanager import get_plot_manager
+
 import api
 import core.db.io
 from core import debug
@@ -10,14 +12,13 @@ class MatplotlibPipelineHelper(CDMSPipelineHelper):
     
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_objs, 
-                                   row, col, templates=[]):
+                                   row, col):
         """build_plot_pipeline_action(controller: VistrailController,
                                       version: long,
                                       var_modules: [list of modules],
                                       plot_objs: [list of Plot objects],
                                       row: int,
-                                      col: int,
-                                      templates: [list of str]) -> Action 
+                                      col: int) -> Action 
         
         This function will build the complete workflow and add it to the
         provenance. You should make sure to update the state of the controller
@@ -87,14 +88,13 @@ class MatplotlibPipelineHelper(CDMSPipelineHelper):
     
     @staticmethod
     def update_plot_pipeline_action(controller, version, var_modules, plot_objs,
-                                    row, col, templates=[]):
+                                    row, col):
         """update_plot_pipeline_action(controller: VistrailController,
                                       version: long,
                                       var_modules: [list of modules],
                                       plot_objs: [list of Plot objects],
                                       row: int,
-                                      col: int,
-                                      templates: [list of str]) -> Action 
+                                      col: int) -> Action 
         
         This function will create the complete workflow and add it to the
         provenance. You should make sure to update the state of the controller
@@ -221,7 +221,7 @@ class MatplotlibPipelineHelper(CDMSPipelineHelper):
                                                                   row+1))        
         #this will update the variables
         for i in range(plot_obj.varnum):
-            cell.variables.append(pipeline.get_alias_str_value(plot_obj.vars[i])) 
+            cell.add_variable(pipeline.get_alias_str_value(plot_obj.vars[i])) 
             
     @staticmethod
     def show_configuration_widget(controller, version, plot_objs=[]):
@@ -247,9 +247,9 @@ class MatplotlibPipelineHelper(CDMSPipelineHelper):
     def addParameterChangesFromAliasesAction(pipeline, controller, vistrail, parent_version, aliases):
         param_changes = []
         newid = parent_version
-        print "MatplotlibPipelineHelper.addParameterChangesFromAliasesAction()"
-        print "Aliases: %s " % str( aliases )
-        print "Pipeline Aliases: %s " % str( pipeline.aliases )
+        #print "MatplotlibPipelineHelper.addParameterChangesFromAliasesAction()"
+        #print "Aliases: %s " % str( aliases )
+        #print "Pipeline Aliases: %s " % str( pipeline.aliases )
         aliasList = aliases.iteritems()
         for k,value in aliasList:
             alias = pipeline.aliases.get(k,None) # alias = (type, oId, parentType, parentId, mId)
@@ -319,6 +319,27 @@ class MatplotlibPipelineHelper(CDMSPipelineHelper):
                     len(pipeline.aliases) == len(pl.workflow.aliases)):
                     return pl
         return None
+
+    @staticmethod
+    def create_plot_objs_from_pipeline(pipeline, plot_type):
+        plot_objs = []
+        helper = MatplotlibPipelineHelper
+        # get to from cell?
+        for plot_module in helper.find_plot_modules(pipeline):
+            plot_objs.append(get_plot_manager().get_plot('Matplotlib', plot_module.name[3:]))
+        return plot_objs
+    
+    @staticmethod
+    def find_plot_modules(pipeline):
+        #find plot modules in the order they appear in the Cell
+        res = []
+        cellModule = MatplotlibPipelineHelper.find_module_by_name(pipeline, 'MplFigureCell')
+        figureModuleIds = pipeline.get_inputPort_modules(cellModule.id,'FigureManager')
+        for figId in figureModuleIds:
+            plotModuleIds = pipeline.get_inputPort_modules(figId,'Script')
+            for plotId in plotModuleIds:
+                res.append(pipeline.modules[plotId])
+        return res
     
 class CDMSAliasesPlotWidget(AliasesPlotWidget):
     def __init__(self,controller, version, plot_obj, parent=None):

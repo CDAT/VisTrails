@@ -1,3 +1,4 @@
+import sys
 from PyQt4 import QtCore, QtGui
 
 from gui.uvcdat.project_controller import ProjectController
@@ -180,11 +181,12 @@ class QProjectItem(QtGui.QTreeWidgetItem):
         if (row, col) not in sheetItem.pos_to_item:
             return
         
-        item = sheetItem.pos_to_item[(row, col)]
-        version = item.workflowVersion
         from gui.application import get_vistrails_application
         _app = get_vistrails_application()
         _app.uvcdatWindow.showBuilderWindowActTriggered()
+        
+        item = sheetItem.pos_to_item[(row, col)]
+        version = item.workflowVersion
         self.view.version_selected(version, True, double_click=True)
         
         
@@ -517,11 +519,23 @@ class Workspace(QtGui.QDockWidget):
         Items and spreadsheets are removed
         """
         if id(view) in self.viewToItem:
+            controller = self.viewToItem[id(view)].controller
+            defVars = self.root.dockVariable.widget()
+            for i in range(defVars.varList.count()):
+                v = defVars.varList.item(i)
+                if v is None: continue
+                if len(v.projects) == 1:
+                    if str(controller.name) == v.projects[0]:
+                        defVars.varList.takeItem(i)
+                        controller.removeVarFromMainDict(str(v.text()).split()[1])
+                elif str(controller.name) in v.projects:
+                    v.projects.remove(str(controller.name))
+            defVars.refreshVariablesStrings()
+            controller.removeAllVarsFromMainDict()
             index = self.treeProjects.indexOfTopLevelItem(
                                         self.viewToItem[id(view)])
             self.treeProjects.takeTopLevelItem(index)
-            self.emit(QtCore.SIGNAL("project_removed"),
-                      self.viewToItem[id(view)].controller.name)
+            self.emit(QtCore.SIGNAL("project_removed"), controller.name)
             del self.viewToItem[id(view)]
             
     def setBold(self, item, value):

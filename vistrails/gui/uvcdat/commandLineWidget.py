@@ -74,20 +74,18 @@ class QCommandLineType(QtGui.QLineEdit):
         QtGui.QLineEdit.keyPressEvent(self,event)
         
     def dragEnterEvent(self,event):
-        ok = False
-        d = event.mimeData().data("definedVariables")
-        if d.data() != "":
-            ok =True
-        if ok:
+        if event.mimeData().hasFormat("definedVariables"):
             event.accept()
         else:
             event.ignore()
         
     def dropEvent(self,event):
         event.accept()
-        txt = str(event.mimeData().text()).split()[1]
+        varNames = str(event.mimeData().text());
+        if ',' in varNames:
+            varNames = '(%s)'%varNames
         ctxt = str(self.text())
-        self.setText(ctxt+txt)
+        self.setText(ctxt+varNames)
         self.setFocus()
         
 

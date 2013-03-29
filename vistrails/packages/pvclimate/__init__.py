@@ -1,6 +1,6 @@
 identifier = 'com.kitware.pvclimate'
 name = 'PVClimate'
-version = '0.1.3'
+version = '0.1.4'
 
 def package_dependencies():
     import core.packagemanager
@@ -20,7 +20,6 @@ def package_requirements():
         raise core.requirements.MissingRequirement('vtk')
     if not core.requirements.python_module_exists('paraview'):
         raise core.requirements.MissingRequirement('paraview')
-    # Figure out how to check on pvvariable
     if not core.requirements.python_module_exists('PyQt4'):
         from core import debug
         debug.warning('PyQt4 is not available. There will be no interaction '

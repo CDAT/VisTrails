@@ -10,7 +10,7 @@ Created on Feb 29, 2012
 
 '''
 
-import core.db.io, sys, traceback, api
+import core.db.io, sys, os, traceback, api, time
 import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
@@ -22,6 +22,7 @@ from packages.uvcdat_cdms.init import CDMSVariableOperation, CDMSVariable
 from packages.vtDV3D.vtUtilities import *
 from core.uvcdat.plot_registry import get_plot_registry
 from core.modules.module_registry import get_module_registry
+from core.utils import UnimplementedException
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from packages.vtDV3D import HyperwallManager
@@ -41,12 +42,12 @@ def getFormattedQString( value ):
 
 class PlotListItem( QListWidgetItem ):
 
-    def __init__( self, label, module, parent=None):
+    def __init__( self, label, moduleID, parent=None):
         QListWidgetItem.__init__(self, label, parent)
-        self.modules = [ module ]
+        self.moduleIDs = [ moduleID ]
         
-    def addModule( self, module ):
-        self.modules.append( module )
+    def addModule( self, moduleID ):
+        self.moduleIDs.append( moduleID )
         
 
 class DV3DParameterSliderWidget(QWidget):
@@ -328,8 +329,10 @@ class DV3DRangeConfigWidget(QFrame):
             parm_range[ iSlider ] = fval
             self.active_cfg_cmd.broadcastLevelingData( parm_range,  active_modules = DV3DPipelineHelper.getActivePlotList() ) 
             if len( self.active_modules ):            
-                for module in self.active_modules: 
-                    if DV3DPipelineHelper.getPlotActivation( module ): module.render()
+                for moduleID in self.active_modules: 
+                    if DV3DPipelineHelper.getPlotActivation( moduleID ):
+                        module = ModuleStore.getModule( moduleID ) 
+                        module.render()
                 HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'text-%d' % iSlider, fval ]  )
         
         
@@ -343,19 +346,24 @@ class DV3DRangeConfigWidget(QFrame):
 #            print " sliderValueChanged[%d], bounds=%s, range=%s, fval=%f" % ( self.active_cfg_cmd.module.moduleID, str(rbnds), str(parm_range), fval )
             self.active_cfg_cmd.broadcastLevelingData( parm_range, active_modules = DV3DPipelineHelper.getActivePlotList( )  ) 
             if len( self.active_modules ):            
-                for module in self.active_modules:
-                    if DV3DPipelineHelper.getPlotActivation( module ): module.render()
+                for moduleID in self.active_modules:
+                    if DV3DPipelineHelper.getPlotActivation( moduleID ):
+                        module = ModuleStore.getModule( moduleID ) 
+                        module.render()
                 HyperwallManager.getInstance().processGuiCommand( [ "pipelineHelper", 'slider-%d' % iSlider, fval ]  )
         
     def updateSliderValues( self, initialize=False ): 
-        if self.active_cfg_cmd:
+        if self.active_cfg_cmd and hasattr( self.active_cfg_cmd, 'range' ):
 #            print ' update Slider Values, widget = %x ' % id( self )
-            self.active_cfg_cmd.updateWindow()
-            rbnds = self.active_cfg_cmd.range_bounds
-            parm_range = list( self.active_cfg_cmd.range )
-#            print " Update Slider Values-> range: %s, bounds: %s " % ( str(parm_range), str(rbnds) )
-            self.getConfigTab().setDataValue( parm_range, rbnds )
-            if initialize: self.initialRange = parm_range[0:2]
+            try:
+                self.active_cfg_cmd.updateWindow()
+                rbnds = self.active_cfg_cmd.range_bounds
+                parm_range = list( self.active_cfg_cmd.range )
+    #            print " Update Slider Values-> range: %s, bounds: %s " % ( str(parm_range), str(rbnds) )
+                self.getConfigTab().setDataValue( parm_range, rbnds )
+                if initialize: self.initialRange = parm_range[0:2]
+            except Exception, err:
+                print>>sys.stderr, " Error in updateSliderValues: %s " % str(err)
                 
     def updateRange(self, min, max ): 
         pass     
@@ -391,11 +399,12 @@ class DV3DRangeConfigWidget(QFrame):
                 self.deactivate_current_command()
                 active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
                 for cmd_entry in cmd_list:
-                    module = cmd_entry[0]
-                    cfg_cmd = cmd_entry[1] 
-                    self.active_modules.add( module )
-                    if ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ):
-                        self.active_cfg_cmd = cfg_cmd
+                    module = ModuleStore.getModule( cmd_entry[0] )
+                    if module:
+                        cfg_cmd = cmd_entry[1] 
+                        self.active_modules.add( module.moduleID )
+                        if ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ):
+                            self.active_cfg_cmd = cfg_cmd
                 self.updateSliderValues(True)
                 if self.active_cfg_cmd:
                     self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues ) 
@@ -410,11 +419,12 @@ class DV3DRangeConfigWidget(QFrame):
             self.setTab( LevelingType.GUI )
         
     def finalizeConfig( self ):
-        if len( self.active_modules ) and self.active_cfg_cmd:
+        if len( self.active_modules ) and self.active_cfg_cmd and hasattr( self.active_cfg_cmd, 'range' ):
             interactionState = self.active_cfg_cmd.name
             parm_range = list( self.active_cfg_cmd.range )
-            for module in self.active_modules:
-                if DV3DPipelineHelper.getPlotActivation( module ):
+            for moduleID in self.active_modules:
+                if DV3DPipelineHelper.getPlotActivation( moduleID ):
+                    module = ModuleStore.getModule( moduleID )
                     config_data = module.getParameter( interactionState  ) 
                     if config_data: 
                         config_data[0:2] = parm_range[0:2]
@@ -431,8 +441,9 @@ class DV3DRangeConfigWidget(QFrame):
             except: pass
             self.active_cfg_cmd.broadcastLevelingData( self.initialRange )  
             interactionState = self.active_cfg_cmd.name
-            for module in self.active_modules:
-                if DV3DPipelineHelper.getPlotActivation( module ): 
+            for moduleID in self.active_modules:
+                if DV3DPipelineHelper.getPlotActivation( moduleID ): 
+                    module = ModuleStore.getModule( moduleID )
                     module.finalizeConfigurationObserver( interactionState ) 
             HyperwallManager.getInstance().setInteractionState( None )  
         self.endConfig()
@@ -566,16 +577,19 @@ class DV3DConfigControlPanel(QWidget):
                 self.configWidget.setVisible ( False )
                 self.config_layout.removeWidget( self.configWidget )
             self.configWidget = cfgWidget    
-            self.config_layout.addWidget( cfgWidget )            
+            self.config_layout.addWidget( cfgWidget ) 
+#            print "Adding config widget, visible = ", str( cfgWidget.isVisible() ) 
+        return cfgWidget        
         
     def isEligibleCommand( self, cmd ):
         return self.configWidget.isEligibleCommand( cmd )
 
-    def addActivePlot( self, module, config_fn ):
+    def addActivePlot( self, moduleID, config_fn ):
         if self.showActivePlotsPanel and self.configWidget:
             active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
             if self.configWidget.active_cfg_cmd <> None and self.configWidget.active_cfg_cmd.isCompatible( config_fn ):
                 cellsOnly = self.configWidget.active_cfg_cmd.activateByCellsOnly
+                module = ModuleStore.getModule( moduleID ) 
                 isActive = ( module.GetRenWinID() in active_renwin_ids )
                 cell_addr = module.getCellAddress()
                 if cell_addr:
@@ -589,16 +603,16 @@ class DV3DConfigControlPanel(QWidget):
                         existing_items = []
                     if len( existing_items ):
                         plot_list_item = existing_items[0]
-                        plot_list_item.addModule( module )
+                        plot_list_item.addModule( moduleID )
                     else:
-                        plot_list_item = PlotListItem( label, module, self.plot_list )
+                        plot_list_item = PlotListItem( label, moduleID, self.plot_list )
                     plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
-                    DV3DPipelineHelper.setModulesActivation( [ module ] , isActive ) 
+                    DV3DPipelineHelper.setModulesActivation( [ moduleID ] , isActive, False ) 
             else:
-                DV3DPipelineHelper.activationMap[ module ] = False
+                DV3DPipelineHelper.activationMap[ moduleID ] = False
                     
     def  processPlotListEvent( self, list_item ): 
-        DV3DPipelineHelper.setModulesActivation( list_item.modules, ( list_item.checkState() == Qt.Checked ) ) 
+        DV3DPipelineHelper.setModulesActivation( list_item.moduleIDs, ( list_item.checkState() == Qt.Checked ) ) 
                            
     def startConfig(self, qs_action_key, qs_cfg_key ):
         self.plot_list.clear()
@@ -629,7 +643,7 @@ class ConnectionType:
     OUTPUT = 1
     BOTH = 2
 
-   
+  
 class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     '''
     This will take care of pipeline manipulation for plots.
@@ -639,9 +653,10 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     cfg_cmds = {}
     actionMap = {}
     activationMap = {}
-    pipelineMap = {} 
     moduleMap = {} 
     actionMenu = None
+    plotIndexMap = {}
+    inputCounter = 0
     _config_mode = LevelingType.GUI
 
     def __init__(self):
@@ -691,8 +706,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def addAction( module, action_key, config_key, isActive=True ):
         actionList = DV3DPipelineHelper.actionMap.setdefault( action_key[1], [] )
         fn = module.configurableFunctions.get( action_key[1], None )
-        actionList.append( ( module, config_key, fn ) )
-        DV3DPipelineHelper.addConfigCommand( module, fn, config_key ) 
+        actionList.append( ( module.moduleID, config_key, fn ) )
+        DV3DPipelineHelper.addConfigCommand( module.moduleID, fn, config_key ) 
         if isActive:
             actions = DV3DPipelineHelper.actionMenu.actions() 
             for action in actions:
@@ -705,39 +720,47 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return DV3DPipelineHelper.cfg_cmds.get( cfg_key, None )
 
     @staticmethod
-    def addConfigCommand( pmod, cmd, key = None ):
+    def addConfigCommand( mid, cmd, key = None ):
         if not key: key = cmd.key
         cmd_list = DV3DPipelineHelper.cfg_cmds.setdefault( key, [] )
-        cmd_list.append( ( pmod, cmd ) )
+        cmd_list.append( ( mid, cmd ) )
     
     @staticmethod    
-    def getPlotActivation( module ):
-        return DV3DPipelineHelper.activationMap.get( module, False )
+    def getPlotActivation( moduleID ):
+        return DV3DPipelineHelper.activationMap.get( moduleID, False )
 
     @staticmethod    
-    def removeModuleFromActivationMap( module ):
-        if module in DV3DPipelineHelper.activationMap:
-            del DV3DPipelineHelper.activationMap[module]
-            print "Removing Module %s (%d) from activation map" % ( module.__class__.__name__, module.moduleID )
+    def removeModuleFromActivationMap( moduleID ):
+        if moduleID in DV3DPipelineHelper.activationMap:
+            del DV3DPipelineHelper.activationMap[moduleID]
+#            print "Removing Module %s (%d) from activation map" % ( module.__class__.__name__, module.moduleID )
 
     @staticmethod    
     def getActivePlotList( ):
         active_plots = []
-        for module in DV3DPipelineHelper.activationMap.keys():
-            if DV3DPipelineHelper.activationMap[ module ]:
-                active_plots.append( module )
+        for moduleID in DV3DPipelineHelper.activationMap.keys():
+            if DV3DPipelineHelper.activationMap[ moduleID ]:
+                active_plots.append( moduleID )
         return active_plots
  
     @staticmethod
-    def setModulesActivation( modules, isActive ):
-        for module in modules:
-            DV3DPipelineHelper.activationMap[ module ] = isActive 
+    def setModulesActivation( moduleIDs, isActive, updateConfig=True ):
+        for moduleID in moduleIDs:
+            DV3DPipelineHelper.activationMap[ moduleID ] = isActive 
 #            print " ** Set module activation: module[%d] -> %s (** persist parameters? **)" % ( module.moduleID, str(isActive) )
-            if not isActive:
+            if updateConfig and not isActive:
                 config_fn = module.getCurrentConfigFunction()
                 if config_fn and not config_fn.persisted:
                     module.finalizeParameter( config_fn.name )
                     config_fn.persisted = True
+                    
+    @staticmethod
+    def getConfigCmdType( key ):                
+        cmdRecList = DV3DPipelineHelper.cfg_cmds.get(key,[])
+        for cmdRec in cmdRecList:
+            cmd = cmdRec[1]
+            if cmd: return cmd.type
+        return 'untyped'
              
     @staticmethod
     def execAction( action_key ):
@@ -747,24 +770,27 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         
         actionList = [] 
         configFunctionList = []
-        validModuleIdList = DV3DPipelineHelper.getValidModuleIdList( )
-        for ( module, key, fn ) in currentActionList:
-            if module.moduleID in validModuleIdList:
-                actionList.append( ( module, key, fn ) )
+        validModuleIdList = ModuleStore.getModuleIDs() # DV3DPipelineHelper.getValidModuleIdList( )
+        for ( moduleID, key, fn ) in currentActionList:
+            if moduleID in validModuleIdList:
+                actionList.append( ( moduleID, key, fn ) )
                 if fn <> None: configFunctionList.append( fn )
 
 #        DV3DPipelineHelper.actionMap[ action_key ] = actionList
-        DV3DPipelineHelper.config_widget.init( configFunctionList )
+        w = DV3DPipelineHelper.config_widget.init( configFunctionList )
                                          
-        for ( module, key, f ) in actionList:
+        for ( moduleID, key, f ) in actionList:
+            module = ModuleStore.getModule( moduleID )
             module.processKeyEvent( key )
 
-        if  (key in DV3DPipelineHelper.cfg_cmds): 
+        if  ( key in DV3DPipelineHelper.cfg_cmds ) and ( DV3DPipelineHelper.getConfigCmdType( key ) in [ 'leveling', 'uvcdat-gui' ] ): 
             DV3DPipelineHelper.config_widget.startConfig( action_key, key )
         
-        for ( module, key, f ) in actionList:
-            DV3DPipelineHelper.activationMap[ module ] = True 
-            DV3DPipelineHelper.config_widget.addActivePlot( module, f )
+        for ( moduleID, key, f ) in actionList:
+            DV3DPipelineHelper.activationMap[ moduleID ] = True 
+            DV3DPipelineHelper.config_widget.addActivePlot( moduleID, f )
+            
+        if w: w.setVisible( True )
 
     @staticmethod
     def endInteraction():
@@ -779,10 +805,10 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 DV3DPipelineHelper.config_widget.configWidget.clearInteractionState()
                 for item in DV3DPipelineHelper.activationMap.items():
                     if item[1]: 
-                        module =  item[0]          
+                        module =  ModuleStore.getModule( item[0] )         
                         module.finalizeParameter( interactionState, notifyHelper=False )
-        DV3DPipelineHelper.actionMap = {}
-        DV3DPipelineHelper.cfg_cmds = {}
+        DV3DPipelineHelper.actionMap.clear()
+        DV3DPipelineHelper.cfg_cmds.clear()
      
     @staticmethod          
     def startNewMenu():
@@ -851,10 +877,107 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        controller.add_new_action(action)
 #        controller.perform_action(action)
 #        return action
+
+    @staticmethod
+    def update_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col, templates=[]):
+        """update_plot_pipeline_action(controller: VistrailController,
+                                      version: long,
+                                      var_modules: [list of modules],
+                                      plot_objs: [list of Plot objects],
+                                      row: int,
+                                      col: int) -> Action 
+        
+        This function will update the workflow and add it to the
+        provenance. It will reuse the plot configurations that are already in 
+        the pipeline. You should make sure to update the state of the controller
+        so its current_version is version before adding the VisTrails action to 
+        the provenance.
+        row and col contain the position of the cell in the spreadsheet the 
+        workflow should be displayed, but as we keep a single cell, we don't
+        use those parameters.
+         
+        """ 
+        raise UnimplementedException    #  Raise this exception to run the fallback code (rebuild from scratch) because the following code doesn't work. 
+        
+        DV3DPipelineHelper.plotIndexMap = {}
+        DV3DPipelineHelper.inputCounter = 0
+        controller.change_selected_version(version)
+        vistrail_a = controller.vistrail
+        version_a = version
+        pipeline = controller.current_pipeline
+        new_plots = []
+        for pl in plot_objs:
+            vistrail_b = pl.plot_vistrail
+            version_b = pl.workflow_version
+            if vistrail_b is not None and version_b > 0:
+                if not DV3DPipelineHelper.are_workflows_compatible( vistrail_a, vistrail_b,  version_a, version_b ):
+                    new_plots.append(pl) 
+ 
+        aliases = {}
+        for plot_obj in new_plots:
+            cell_specs = []
+            cell_addresses = []
+            try:
+                cell = plot_obj.cells[0] 
+                location = cell.address_name if cell.address_name else 'location1'   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
+                cell_addr = "%s%s" % ( chr(ord('A') + col ), row+1)
+                cell_specs.append( '%s!%s' % ( location, cell_addr ) )
+                cell_addresses.append( cell_addr )
+            except Exception, err:
+                print>>sys.stderr, " Error producing cell specs: %s " % str( err )
+
+            plot_obj.current_parent_version = version
+            plot_obj.current_controller = controller
+            DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot_obj, cell_addresses )
+
+    #        Disable File Reader, get Variable from UVCDAT
+    #        plot_obj.addMergedAliases( aliases, controller.current_pipeline )
+            action = DV3DPipelineHelper.addParameterChangesAction( controller.current_pipeline,  controller,  controller.vistrail, controller.current_version, aliases, iter(cell_specs) )        
+    #        if action: controller.change_selected_version( action.id )   
+            
+            reader_1v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader ] )
+            reader_3v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VectorReader ] )
+            reader_modules = reader_1v_modules + reader_3v_modules
+            iVarModule = 0
+            ops = []           
+            for module in reader_modules:
+                nInputs = 1 if module in reader_1v_modules else 3
+                for iInput in range( nInputs ):
+                    if iInput < len( var_modules ):
+                        try:
+                            var_module = var_modules[ iVarModule ]
+                            var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
+                            if var_module_in_pipeline == None: 
+                                ops.append( ( 'add', var_module ) )
+                            inputPort = 'variable' if (iInput == 0) else "variable%d" % ( iInput + 1)
+                            conn1 = controller.create_connection( var_module, 'self', module, inputPort )
+                            ops.append( ( 'add', conn1 ) )
+                            iVarModule = iVarModule+1
+                        except Exception, err:
+                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                            break
+                                           
+            try:
+                action = core.db.action.create_action(ops)
+                controller.add_new_action(action)
+                controller.perform_action(action)
+            except Exception, err:
+                print " Error connecting CDMSVariable to workflow: ", str(err)
+                traceback.print_exc()
+            
+            sheetTabWidget = getSheetTabWidget()
+            sheetName = sheetTabWidget.getSheetName() 
+            for cell_address in cell_addresses: 
+                for mid in controller.current_pipeline.modules:   
+                    DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )   
+                    
      
     @staticmethod
-    def add_additional_plot_to_pipeline( controller, version, plot ):
+    def add_additional_plot_to_pipeline( controller, version, plot, cell_addresses, component_index=0 ):
+        if controller is None: controller = api.get_current_controller()
+        version = controller.current_version
         workflow = plot.workflow
+        if not workflow: return
         pipeline = controller.current_pipeline
         cell_module = None
         reader_module = None
@@ -874,6 +997,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     connected_module = workflow.modules[ connected_module_id ]
                     plot_module = controller.create_module_from_descriptor( connected_module.module_descriptor )
                     ops.append( ('add', plot_module) )
+                    DV3DPipelineHelper.plotIndexMap[plot_module.id] = DV3DPipelineHelper.inputCounter
                     if reader_module:
                         conn0 = controller.create_connection( reader_module, 'volume', plot_module, 'volume' )
                         ops.append( ('add', conn0) )
@@ -888,18 +1012,21 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 pass
                 
         action2 = core.db.action.create_action(ops)
+        controller.change_selected_version(version)
         controller.add_new_action(action2)
         controller.perform_action(action2)
 
         sheetTabWidget = getSheetTabWidget()
-        sheetName = sheetTabWidget.getSheetName()          
-#        for cell_address in cell_addresses:
-#            DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline
-        
-        for mid in controller.current_pipeline.modules:
-            module = ModuleStore.getModule( mid ) 
-            module.setCellLocation( sheetName, cell_address )
-
+        sheetName = sheetTabWidget.getSheetName()        
+        for cell_address in cell_addresses:
+#            if len( pipeline.module_list ) == 0:
+#                print "Attempt to add empty pipeline to %s " % ( str(( sheetName, cell_address )) )
+#            else:
+#                DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline           
+            for mid in controller.current_pipeline.modules: 
+                DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
+                    
+        DV3DPipelineHelper.inputCounter += len(plot.vars)
         return action2
     
     @staticmethod
@@ -907,132 +1034,207 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         from gui.application import get_vistrails_application
         VistrailsApplication = get_vistrails_application()
         return VistrailsApplication.uvcdatWindow.current_controller
+    
+    @staticmethod
+    def getPlotIndex( mid, index ):
+        pi = DV3DPipelineHelper.plotIndexMap.get(mid,0)
+        return pi + index
                                         
     @staticmethod
-    def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col, templates=[]):
+    def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col):
 #        project_controller =  DV3DPipelineHelper.get_project_controller()
 #        current_cell = project_controller.sheet_map[sheetName][(row,col)]
         
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
 #        ConfigurableFunction.clear()
         controller.change_selected_version(version)
+        DV3DPipelineHelper.plotIndexMap = {}
 #        print "[%d,%d] ~~~~~~~~~~~~~~~>> build_plot_pipeline_action, version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
 #        print " --> plot_modules = ",  str( controller.current_pipeline.modules.keys() )
 #        print " --> var_modules = ",  str( [ var.id for var in var_modules ] )
         plots = list( plot_objs )
         #Considering that plot_objs has a single plot_obj
-        plot_obj = plots.pop()
-        plot_obj.current_parent_version = version
-        plot_obj.current_controller = controller
-        aliases = {}
-        for i in range(len(var_modules)):
-            if issubclass( var_modules[i].module_descriptor.module, CDMSVariableOperation):
-                varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varname' )
-                python_command = PlotPipelineHelper.get_value_from_function( var_modules[i], 'python_command' )
-                aliases[plot_obj.vars[i]] = varname
-                aliases[ "%s.cmd" % plot_obj.vars[i] ] = python_command
-            else:
-                try:
-                    filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'filename')
-                    if filename is None:
-                        filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'file')
-                    if isinstance( filename, core.modules.basic_modules.File ):
-                        filename = filename.name
-                    url = PlotPipelineHelper.get_value_from_function( var_modules[i], 'url')            
-                    varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'name')
-                    file_varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varNameInFile')
-                    axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
-                    aliases[ ".".join( [plot_obj.files[i],"url"] )  ] = url if url else ""
-                    aliases[plot_obj.vars[i]] = varname
-                    aliases[ "%s.file" % plot_obj.vars[i] ] = file_varname if file_varname else ""
-                    if len(plot_obj.axes) > i:
-                        aliases[plot_obj.axes[i]] = axes
-                    aliases[plot_obj.files[i]] = filename
-                except Exception, err:
-                    print>>sys.stderr,  "Error setting aliases: %s" % ( str(err) )
-
-        #FIXME: this will always spread the cells in the same row
-        cell_specs = []
-        cell_addresses = []
-        for j in range(plot_obj.cellnum):
-            cell = plot_obj.cells[j] 
-            location = cell.address_name if cell.address_name else 'location%d' % (j+1)   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
-            cell_addr = "%s%s" % ( chr(ord('A') + col+j ), row+1)
-#            aliases[ location ] = cell_spec
-            cell_specs.append( '%s!%s' % ( location, cell_addr ) )
-            cell_addresses.append( cell_addr )
-#            cell_specs.append( 'location%d!%s' % ( j, cell_spec ) )
-#            
-#        for a,w in plot_obj.alias_widgets.iteritems():
-#            try:    aliases[a] = w.contents()
-#            except Exception, err: print>>sys.stderr, "Error updating alias %s:" % str( a ), str(err)
-
-        if plot_obj.serializedConfigAlias and var_modules: aliases[ plot_obj.serializedConfigAlias ] = ';;;' + ( '|'.join( cell_specs ) )
-        pip_str = core.db.io.serialize(plot_obj.workflow)
-        controller.paste_modules_and_connections(pip_str, (0.0,0.0))
-        
-        for plot_obj in plots:
+        plot_obj = plots.pop(0)
+        DV3DPipelineHelper.inputCounter = len(plot_obj.vars)
+        action = None
+        if len( plot_obj.cells ) > 0: 
             plot_obj.current_parent_version = version
             plot_obj.current_controller = controller
-            DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot_obj )
-
-#        Disable File Reader, get Variable from UVCDAT
-#        plot_obj.addMergedAliases( aliases, controller.current_pipeline )
-        action = DV3DPipelineHelper.addParameterChangesAction( controller.current_pipeline,  controller,  controller.vistrail, controller.current_version, aliases, iter(cell_specs) )        
-#        if action: controller.change_selected_version( action.id )   
-        
-        reader_1v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader ] )
-        reader_3v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VectorReader ] )
-        reader_modules = reader_1v_modules + reader_3v_modules
-        iVarModule = 0
-        ops = []           
-        for module in reader_modules:
-            nInputs = 1 if module in reader_1v_modules else 3
-            for iInput in range( nInputs ):
-                if iInput < len( var_modules ):
+            aliases = {}
+            for i in range(len(var_modules)):
+                if issubclass( var_modules[i].module_descriptor.module, CDMSVariableOperation):
+                    varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varname' )
+                    python_command = PlotPipelineHelper.get_value_from_function( var_modules[i], 'python_command' )
+                    aliases[plot_obj.vars[i]] = varname
+                    aliases[ "%s.cmd" % plot_obj.vars[i] ] = python_command
+                else:
                     try:
-                        var_module = var_modules[ iVarModule ]
-                        var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
-                        if var_module_in_pipeline == None: 
-                            ops.append( ( 'add', var_module ) )
-                        inputPort = 'variable' if (iInput == 0) else "variable%d" % ( iInput + 1)
-                        conn1 = controller.create_connection( var_module, 'self', module, inputPort )
-                        ops.append( ( 'add', conn1 ) )
-                        iVarModule = iVarModule+1
+                        if i < len( plot_obj.vars ):
+                            filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'filename')
+                            if filename is None:
+                                filename = PlotPipelineHelper.get_value_from_function( var_modules[i], 'file')
+                            if isinstance( filename, core.modules.basic_modules.File ):
+                                filename = filename.name
+                            url = PlotPipelineHelper.get_value_from_function( var_modules[i], 'url')            
+                            varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'name')
+                            file_varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varNameInFile')
+                            axes = PlotPipelineHelper.get_value_from_function( var_modules[i], 'axes')
+                            aliases[plot_obj.vars[i]] = varname
+                            aliases[ "%s.file" % plot_obj.vars[i] ] = file_varname if file_varname else ""
+                            if i < len(plot_obj.axes):
+                                aliases[plot_obj.axes[i]] = axes
+                            if i < len( plot_obj.files ):
+                                aliases[ ".".join( [plot_obj.files[i],"url"] )  ] = url if url else ""
+                                aliases[plot_obj.files[i]] = filename
                     except Exception, err:
-                        print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
-                        break
-                                       
-        try:
-            action = core.db.action.create_action(ops)
-            controller.add_new_action(action)
-            controller.perform_action(action)
-        except Exception, err:
-            print " Error connecting CDMSVariable to workflow: ", str(err)
-            traceback.print_exc()
-        
-        sheetTabWidget = getSheetTabWidget()
-        sheetName = sheetTabWidget.getSheetName()          
-        for cell_address in cell_addresses:
-            DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline
-        
-        for mid in controller.current_pipeline.modules:   
-            DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
-                
+                        print>>sys.stderr,  "Error setting aliases: %s" % ( str(err) )
+                        traceback.print_exc()
+    
+            #FIXME: this will always spread the cells in the same row
+            cell_specs = []
+            cell_addresses = []
+            for j in range(plot_obj.cellnum):
+                try:
+                    cell = plot_obj.cells[j] 
+                    location = cell.address_name if cell.address_name else 'location%d' % (j+1)   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
+                    cell_addr = "%s%s" % ( chr(ord('A') + col+j ), row+1)
+                    cell_specs.append( '%s!%s' % ( location, cell_addr ) )
+                    cell_addresses.append( cell_addr )
+                except Exception, err:
+                    print>>sys.stderr, " Error producing cell specs: %s " % str( err )
+    #            aliases[ location ] = cell_spec
+    #            cell_specs.append( 'location%d!%s' % ( j, cell_spec ) )
+    #            
+    #        for a,w in plot_obj.alias_widgets.iteritems():
+    #            try:    aliases[a] = w.contents()
+    #            except Exception, err: print>>sys.stderr, "Error updating alias %s:" % str( a ), str(err)
+    
+            if plot_obj.serializedConfigAlias and var_modules: aliases[ plot_obj.serializedConfigAlias ] = ';;;' + ( '|'.join( cell_specs ) )
+            pip_str = core.db.io.serialize(plot_obj.workflow)
+            controller.paste_modules_and_connections(pip_str, (0.0,0.0))
+            
+            comp_index = 1
+            for plot_obj in plots:
+                plot_obj.current_parent_version = version
+                plot_obj.current_controller = controller
+                DV3DPipelineHelper.add_additional_plot_to_pipeline( controller, version, plot_obj, cell_addresses, comp_index )
+                comp_index = comp_index + 1
+    
+    #        Disable File Reader, get Variable from UVCDAT
+    #        plot_obj.addMergedAliases( aliases, controller.current_pipeline )
+            action = DV3DPipelineHelper.addParameterChangesAction( controller.current_pipeline,  controller,  controller.vistrail, controller.current_version, aliases, iter(cell_specs) )        
+    #        if action: controller.change_selected_version( action.id )   
+            
+            reader_1v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader ] )
+            reader_3v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VectorReader ] )
+            reader_modules = reader_1v_modules + reader_3v_modules
+            ops = []           
+            nInputs = 1 if len( reader_1v_modules ) else 3
+            added_modules = []
+            inputPort = 'variable'
+            if nInputs == 1:
+                if len( reader_modules ) == 1:
+                    module = reader_modules[0]
+                    for iInput in range( len( var_modules ) ):
+                        try:
+                            var_module = var_modules[ iInput ]
+                            var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
+                            if (var_module_in_pipeline == None) and not (var_module.id in added_modules):  
+                                ops.append( ( 'add', var_module ) )
+                                added_modules.append( var_module.id )
+                            conn1 = controller.create_connection( var_module, 'self', module, inputPort )
+                            ops.append( ( 'add', conn1 ) )
+                        except Exception, err:
+                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                            break  
+                elif len( reader_modules ) == len( var_modules ):
+                    for iInput in range( len( var_modules ) ):
+                        try:
+                            var_module = var_modules[ iInput ]
+                            module = reader_modules[ iInput ]
+                            var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
+                            if (var_module_in_pipeline == None) and not (var_module.id in added_modules):  
+                                ops.append( ( 'add', var_module ) )
+                                added_modules.append( var_module.id )
+                            conn1 = controller.create_connection( var_module, 'self', module, inputPort )
+                            ops.append( ( 'add', conn1 ) )
+                        except Exception, err:
+                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                            break  
+                else:
+                    print>>sys.stderr, "Don't know how to match %d CDMSVariable inputs to %d CDMSReader modules" % ( len( var_modules ), len( reader_modules ) )                                                                                      
+            else: 
+                iVarModule = 0
+                for iInput in range( nInputs ):
+                    if iInput < len( var_modules ):
+                        try:
+                            var_module = var_modules[ iVarModule ]
+                            var_module_in_pipeline = PlotPipelineHelper.find_module_by_id( controller.current_pipeline, var_module.id )
+                            if (var_module_in_pipeline == None) and not (var_module.id in added_modules): 
+                                ops.append( ( 'add', var_module ) )
+                                added_modules.append( var_module.id )
+                            inputPort = 'variable' if (iInput == 0) else "variable%d" % ( iInput + 1)
+                            conn1 = controller.create_connection( var_module, 'self', module, inputPort )
+                            ops.append( ( 'add', conn1 ) )
+                            iVarModule = iVarModule+1
+                        except Exception, err:
+                            print>>sys.stderr, "Exception adding CDMSVariable input:", str( err)
+                            break                                           
+            try:
+                action = core.db.action.create_action(ops)
+                controller.add_new_action(action)
+                controller.perform_action(action)
+            except Exception, err:
+                print " Error connecting CDMSVariable to workflow: ", str(err)
+                traceback.print_exc()
+            
+            sheetTabWidget = getSheetTabWidget()
+            sheetName = sheetTabWidget.getSheetName() 
+            for cell_address in cell_addresses: 
+                for mid in controller.current_pipeline.modules:   
+                    DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )   
+                        
+#            pipeline =  controller.current_pipeline        
+#            for cell_address in cell_addresses:
+#                if len( pipeline.module_list ) == 0:
+#                    print "Attempt to add empty pipeline to %s " % ( str(( sheetName, cell_address )) )
+#                else:
+#                    DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline                   
         return action
 
     @staticmethod
     def getPipeline( cell_address, sheetName = None ):
         if sheetName == None:    
             sheetTabWidget = getSheetTabWidget()
-            sheetName = sheetTabWidget.getSheetName()          
-        return DV3DPipelineHelper.pipelineMap.get( ( sheetName, cell_address ), None )
+            sheetName = sheetTabWidget.getSheetName() 
+        pipeline = None
+        proj_controller = api.get_current_project_controller()
+        controller =  proj_controller.vt_controller
+        cell_coords = get_coords_from_cell_address( cell_address[1], cell_address[0] ) if isStr( cell_address ) else cell_address
+        try:
+            cell = proj_controller.sheet_map[ sheetName ][ ( cell_coords[1], cell_coords[0] ) ]
+            current_version = cell.current_parent_version 
+            controller.change_selected_version( current_version )
+            pipeline = controller.vistrail.getPipeline( current_version )  
+        except KeyError:
+            print "Can't find sheet: ", sheetName
+        return pipeline       
 
-    @staticmethod
-    def getCellAddress( pipeline ): 
-        for item in  DV3DPipelineHelper.pipelineMap.items():
-            if item[1] == pipeline: return item[0]
-        return ( None, None ) 
+#    @staticmethod
+#    def getCellAddress( pipeline ):
+#        proj_controller = api.get_current_project_controller()
+#        controller =  proj_controller.vt_controller 
+#        for sheet_item in proj_controller.sheet_map.items(): 
+#            sheetName = sheet_item[0]
+#            cellMap = sheet_item[1]
+#            for cell_item in cellMap.items():
+#                cell_address = cell_item[0]
+#                cell = cell_item[1]
+#                current_version = cell.current_parent_version 
+#                controller.change_selected_version( current_version )
+#                cell_pipeline = controller.vistrail.getPipeline( current_version )  
+#                if cell_pipeline == pipeline: return( sheetName, ( cell_address[1], cell_address[0] ) )
+#        return ( None, None ) 
 
     @staticmethod
     def getCellCoordinates( mid ):
@@ -1145,7 +1347,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         
         #this will update the variables
         for i in range(plot_obj.varnum):
-            cell.variables.append(aliases[plot_obj.vars[i]])
+            cell.add_variable(aliases[plot_obj.vars[i]])
             
         #get the most recent action that is not None
         if len(actions) > 0:
@@ -1188,39 +1390,53 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 cell_addresses.append( cell_spec )
 
             sheetTabWidget = getSheetTabWidget()
-            sheetName = sheetTabWidget.getSheetName()          
+            sheetName = sheetTabWidget.getSheetName()                  
             for cell_address in cell_addresses:
-                DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = pipeline
-
-            for mid in pipeline.modules:   
-                DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
+                for mid in pipeline.modules:   
+                    DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
             
             # Update project controller cell information    
-            cell.variables = []
+            #cell.variables = []
             #FIXME: this doesn't work as expected... DV3D should provide a way 
             #to find the variables connected to a plot module so that only the
             # operation or variable connected is added.
+            for plot in cell.plots:
+                plot.variables = []
             for var in var_modules:
-                cell.variables.append(DV3DPipelineHelper.get_variable_name_from_module(var))
+                cell.add_variable(DV3DPipelineHelper.get_variable_name_from_module(var))
         else:
             print "Error: Could not find DV3D plot type based on the pipeline"
             print "Visualizations can't be loaded."            
 
+    @staticmethod
+    def find_topo_sort_modules_by_types(pipeline, moduletypes):
+        modules = []
+        for m in pipeline.module_list:
+            desc = m.module_descriptor
+            if issubclass(desc.module,tuple(moduletypes)):
+                modules.append(m.id)
+        ids = pipeline.graph.vertices_topological_sort()
+        result = []
+        for i in ids:
+            if i in modules:
+                module = pipeline.modules[i] 
+                result.append(module)
+        return result
     
     @staticmethod
-    def build_python_script_from_pipeline(controller, version, plot_objs=[]):
-        from api import load_workflow_as_function
-        text = "from api import load_workflow_as_function\n"
-        if len(plot_objs) > 0:
-            text += "proj_file = '%s'\n"%controller.get_locator().name
-            text += "vis_id = %s\n"%version
-            text += "vis = load_workflow_as_function(proj_file, vis_id)\n"
-            vis = load_workflow_as_function(controller.get_locator().name, version)
-            doc = vis.__doc__
-            lines = doc.split("\n")
-            for line in lines:
-                text += "# %s\n"%line                 
-            return text
+    def build_python_script_from_pipeline( controller, version, plot=None ):
+        from core.db.locator import ZIPFileLocator
+        snapshots_dir = os.path.join( os.path.expanduser('~'), '.vistrails', 'snapshots' ) 
+        if not os.path.exists(snapshots_dir): os.makedirs(snapshots_dir)
+        workflow_name = '-'.join( [ 'workflow', str( int( time.time() ) ) ] )
+        filename = os.path.join( snapshots_dir, '.'.join( [ workflow_name, 'vt' ] ) )
+        controller.write_vistrail( ZIPFileLocator( filename ) )
+        current_controller = api.get_current_controller()
+        print "Saving workflow to %s, version = %d, current version = %d, vistrails current version = %d" % ( filename, version, controller.current_version, current_controller.current_version )
+        sys.stdout.flush()
+        text =  "from uvcdat import execute_vistrail\n"
+        text += "execute_vistrail( '%s', dir='%s', version=%d )" % ( workflow_name, snapshots_dir, controller.current_version ) 
+        return text
             
     @staticmethod
     def are_workflows_compatible(vistrail_a, vistrail_b, version_a, version_b):
@@ -1291,17 +1507,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     isActive = ( id( pmod.renderer.GetRenderWindow() ) in active_renwin_ids ) 
                     DV3DPipelineHelper.addAction( pmod, action_key, config_key, isActive ) 
                     pmods.add(pmod)
-                    
-#        for module in pipeline.module_list:
-#            pmod = ModuleStore.getModule(  module.id ) 
-#            if pmod:
-#                pmods.add(pmod)
-#                configFuncs = pmod.configurableFunctions.values()
-#                for configFunc in configFuncs:
-#                    action_key = str( configFunc.label )
-#                    config_key = configFunc.key               
-#                    DV3DPipelineHelper.addAction( pmod, action_key, config_key ) 
-                    
+                                        
         menu1 = DV3DPipelineHelper.startNewMenu() 
         for pmod in pmods:
             DV3DPipelineHelper.addAction( pmod, [ 'Help', 'help' ], 'h' )
@@ -1312,7 +1518,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         for pmod in pmods:
             cmdList = pmod.getConfigFunctions( [ 'leveling', 'uvcdat-gui' ] )
             for cmd in cmdList:
-                DV3DPipelineHelper.addConfigCommand( pmod, cmd )
+                DV3DPipelineHelper.addConfigCommand( pmod.moduleID, cmd )
             pmod.resetNavigation()
         return DV3DPipelineHelper.config_widget
 
@@ -1340,7 +1546,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 if (DV3DPipelineHelper.are_workflows_compatible(vistrail_a, vistrail_b, 
                                                                 version_a, version_b) and
                     len(pipeline.aliases) == len(pl.workflow.aliases)):
-                    return pl
+                    return get_plot_manager().new_plot(pl.package, pl.name)
         return None
     
     @staticmethod

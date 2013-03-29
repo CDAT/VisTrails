@@ -20,7 +20,7 @@ class PlotPipelineHelper(object):
         
     @staticmethod
     def update_plot_pipeline_action(controller, version, var_modules, plot_objs,
-                                     row, column, templates=[]):
+                                     row, column):
         unimplemented()
         
     @staticmethod
@@ -85,7 +85,7 @@ class PlotPipelineHelper(object):
     
     @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules,  plot_objs, 
-                                   row, col, templates=[]):
+                                   row, col):
         from packages.uvcdat_cdms.init import CDMSVariableOperation 
         #for now, this helper will generate change parameter actions based on the
         #alias dictionary
@@ -188,7 +188,7 @@ class PlotPipelineHelper(object):
         
         #this will update the variables
         for i in range(plot_obj.varnum):
-            cell.variables.append(aliases[plot_obj.vars[i]])
+            cell.add_variable(aliases[plot_obj.vars[i]])
             
         #get the most recent action that is not None
         if len(actions) > 0:
@@ -225,7 +225,7 @@ class PlotPipelineHelper(object):
                                                                   row+1))        
         #this will update the variables
         for i in range(plot_obj.varnum):
-            cell.variables.append(pipeline.get_alias_str_value(plot_obj.vars[i]))            
+            cell.add_variable(pipeline.get_alias_str_value(plot_obj.vars[i]))            
 
     
     @staticmethod

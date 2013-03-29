@@ -70,6 +70,7 @@ class QDragListWidget(QtGui.QListWidget):
         self.dropTypes=dropTypes
         if self.dropTypes!=[]:
             self.setAcceptDrops(True)
+        self.mouseMoved = False;
 
     def dragEnterEvent(self,event):
         ok = False
@@ -93,6 +94,7 @@ class QDragListWidget(QtGui.QListWidget):
         self.emit(QtCore.SIGNAL("droppedInto"),event)
         
     def mouseMoveEvent(self,e):
+        self.mouseMoved = True    
         d =QtGui.QDrag(self)
         m = QtCore.QMimeData()
         a = QtCore.QByteArray()
@@ -100,9 +102,17 @@ class QDragListWidget(QtGui.QListWidget):
             return
         a.append(self.currentItem().text())
         m.setData("%s" % self.type,a)
-        m.setText(self.currentItem().text())
+        m.setText(self.currentItem().text())        
         d.setMimeData(m)
         d.start()
+        
+    def mousePressEvent(self, e):
+        """
+        Track mouse moved to prevent item deselection when initiating 
+        drag and drop
+        """
+        self.mouseMoved = False
+        QtGui.QListWidget.mousePressEvent(self, e)
         
 class QLabeledWidgetContainer(QtGui.QWidget):
     """ Container widget for the 3 main widgets: QVariableView, QCDATFileWidget,

@@ -32,7 +32,7 @@
 ##
 ###############################################################################
 
-import os
+import os, copy
 import ConfigParser
 from PyQt4 import QtCore
 from core.uvcdat.plot_registry import PlotRegistry
@@ -63,6 +63,7 @@ class PlotManager(QtCore.QObject):
         self._registry = None
         self._userplots = None
         self._plots = None
+        self._plot_instances = []
         
     def init_registry(self):
         self._registry = PlotRegistry()
@@ -93,14 +94,6 @@ class PlotManager(QtCore.QObject):
         pkg_parser = ConfigParser.ConfigParser()
         if pkg_parser.read(os.path.join(PLOT_FILES_PATH, 'registry.cfg')):
             for p in pkg_parser.sections():
-                #BAB for future, should check to make sure package successfully loaded before we load it's plot here
-                # for now doing specific check for visit
-                if p == 'VisIt':
-                    from packages.VisIt.info import package_requirements as visit_requirements
-                    try:
-                        visit_requirements()
-                    except Exception:
-                        continue
                 try:
                     plot_package_folder = os.path.join(PLOT_FILES_PATH,
                                                        pkg_parser.get(p,'codepath'))
@@ -132,9 +125,10 @@ class PlotManager(QtCore.QObject):
                         traceback.print_exc()
                         
                 except Exception, e:
-                    print "Error when loading package_config_file: %s" % plot_package_config_file, str(e)
-                    import traceback
-                    traceback.print_exc()
+                    print "%s plots not loaded." % p
+#                    print "Error when loading package_config_file: %s" % plot_package_config_file, str(e)
+#                    import traceback
+#                    traceback.print_exc()
                     
     def load_vcs_plots(self):
         from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
@@ -189,17 +183,37 @@ class PlotManager(QtCore.QObject):
             except KeyError:
                 return None
             
+    def new_plot(self, plot_package, plot_type, plot_name=None):
+        plot = self.get_plot(plot_package, plot_type, plot_name)
+        if plot is not None:
+            self._plot_instances.append(copy.copy(plot))
+            return self._plot_instances[-1]
+        else:
+            return None
+    
+    def new_plot_by_name(self, plot_type, plot_name=None):
+        plot = self.get_plot_by_name(plot_type, plot_name)
+        if plot is not None:
+            self._plot_instances.append(copy.copy(plot))
+            return self._plot_instances[-1]
+        else:
+            return None
+    
+    def remove_plot_instance(self, plot):
+        self._plot_instances.remove(plot)
+            
     def get_plot_by_vistrail_version(self, plot_package, vistrail, version):
-        plots = self._plot_list[plot_package]
+        plots = self._plot_instances
         vistrail_a = vistrail
         version_a = version
         pipeline = vistrail.getPipeline(version)
-        for pl in plots.itervalues():
+        for pl in plots:
             vistrail_b = pl.plot_vistrail
             version_b = pl.workflow_version
             if (pl.are_workflows_equal(vistrail_a, vistrail_b, 
                                         version_a, version_b) and
-                len(pipeline.aliases) == len(pl.workflow.aliases)):
+                len(pipeline.aliases) == len(pl.workflow.aliases) and
+                pl.package == plot_package):
                 return pl
         
 def get_plot_manager():

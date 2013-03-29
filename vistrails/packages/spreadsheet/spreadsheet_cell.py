@@ -42,10 +42,12 @@ import datetime
 import os
 from core import system, debug
 from gui.uvcdat.theme import UVCDATTheme
+from gui.uvcdat.variablePlotQueue import VariablePlotQueueWidget
 import cell_rc
 import celltoolbar_rc
 import spreadsheet_controller
 import analogy_api
+from core.configuration import get_vistrails_configuration
 
 ################################################################################
 
@@ -75,6 +77,9 @@ class QCellWidget(QtGui.QWidget):
         self.connect(self._playerTimer,
                      QtCore.SIGNAL('timeout()'),
                      self.playNextFrame)
+        if getattr(get_vistrails_configuration(),'fixedSpreadsheetCells',False):
+            self.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+            self.setFixedSize(200, 180)
 
     def setAnimationEnabled(self, enabled):
         """ setAnimationEnabled(enabled: bool) -> None
@@ -261,6 +266,7 @@ class QCellToolBar(QtGui.QToolBar):
         self.appendAction(QCellToolBarExecutePlot(self))
         self.appendAction(QCellToolBarViewSource(self))
         self.appendAction(QCellToolBarConfigurePlot(self))
+        self.appendAction(QCellToolBarShowCellQueue(self))
         self.appendAction(QCellToolBarViewProvenance(self))
         self.appendAction(QCellToolBarMergeCells(QtGui.QIcon(':celltoolbar/mergecells.png'), self))
         self.createToolBar()
@@ -676,7 +682,50 @@ class QCellToolBarMergeCells(QtGui.QAction):
                 self.setChecked(False)
                 self.setVisible(True)
             else:
-                self.setVisible(False)
+                self.setVisible(False)                
+            
+class QCellToolBarShowCellQueue(QtGui.QAction):
+    """
+    QCellToolBarShowCellQueue is the action to see the plot and variable queue 
+    of the current cell
+
+    """
+    def __init__(self, parent=None):
+        """ QCellToolBarShowCellQueue(parent: QWidget)
+                                   -> QCellToolBarShowCellQueue
+        Setup the image, status tip, etc. of the action
+        
+        """
+        QtGui.QAction.__init__(self,
+                               QtGui.QIcon(":/icons/resources/icons/list_view.png"),
+                               "View queue of the current cell",
+                               parent)
+        self.setStatusTip("View queue of the current cell")
+        
+        self.variablePlotQueueWidget = VariablePlotQueueWidget()
+
+    def triggeredSlot(self, checked=False):
+        """ toggledSlot(checked: boolean) -> None
+        Execute the action when the button is clicked
+        
+        """
+        self.variablePlotQueueWidget.show()
+
+    def updateStatus(self, info):
+        """ updateStatus(info: tuple) -> None
+        Updates the status of the button based on the input info
+        
+        """
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
+        (sheet, row, col, cellWidget) = info
+        selectedCells = sorted(sheet.getSelectedLocations())
+
+        # Will not show up if there is no cell selected  
+        if len(selectedCells)==1:
+            self.setVisible(True)
+        else:
+            self.setVisible(False)
             
 class QCellToolBarCaptureToHistory(QtGui.QAction):
     """

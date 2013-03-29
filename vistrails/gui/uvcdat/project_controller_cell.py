@@ -31,13 +31,24 @@
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 ##
 ###############################################################################
+
+from core.uvcdat.plotmanager import get_plot_manager
+import sys
+
 class ControllerCell(object):
     
-    def __init__(self, variables=[], plots=[], templates=[],  current_parent_version=0L):
-        self.variables = variables
+    def __init__(self, variables=[], plots=[], templates=[], current_parent_version=0L):
         self.plots = plots
-        self.templates = templates
         self._current_version=current_parent_version
+        
+        self.undoStack = []
+        self.redoStack = []
+        
+        self.variableQ = []
+        self.templateQ = []
+        
+        for v in variables: self.add_variable(v)
+        for t in templates: self.add_template(t)
 
     def _get_current_parent_version(self):
         return self._current_version    
@@ -45,38 +56,126 @@ class ControllerCell(object):
         self._current_version = version
 #        print "\n ****************** Set Cell current_parent_version: %d ****************** \n" % version    
     current_parent_version = property( _get_current_parent_version, _set_current_parent_version ) 
-        
-    def get_plots_varnum(self):
-        res = 0
-        for plot in self.plots:
-            res += plot.varnum
-        return res
     
     def add_variable(self, varname):
-        replaced = False
-        if len(self.variables) < self.get_plots_varnum():
-            self.variables.append(varname)
-        else:
-            if len(self.variables) > 0:
-                self.variables.pop()
-                replaced = True
-            self.variables.append(varname)
-        return replaced
-    
-    def add_template(self, template):
-        if len(self.templates) < len(self.plots):
-            self.templates.append(template)
-        else:
-            if len(self.templates) > 0:
-                self.templates.pop()
-            self.templates.append(template)
-    def is_ready(self):
-        if len(self.plots) > 0 and self.has_enough_variables():
-            return True
+        for plot in self.plots:
+            if len(plot.variables) < plot.varnum:
+                plot.variables.append(varname)
+                return len(plot.variables) == plot.varnum
+            
+        self.variableQ.append(varname)
         return False
     
-    def has_enough_variables(self):
+    def add_template(self, template):
         for plot in self.plots:
-            if plot.varnum > len(self.variables):
+            if plot.template is None:
+                plot.template = template
+                return len(plot.variables) == plot.varnum
+            
+        self.templateQ.append(template)
+        return False
+    
+    def add_plot(self, plot):
+        self.plots.append(plot)
+        
+        #add template from queue
+        if plot.template is None and len(self.templateQ) > 0:
+            plot.template = self.templateQ.pop(0)
+        
+        #add vars from queue
+        for i in range(plot.varnum - len(plot.variables)):
+            if len(self.variableQ) > 0:
+                plot.variables.append(self.variableQ.pop(0))
+            else:
                 return False
-        return True
+        return len(plot.variables) == plot.varnum
+            
+    def is_ready(self):
+        for p in self.plots:
+            if p.varnum == len(p.variables):
+                return True
+        return False
+    
+    def variables(self):
+        """
+        Returns list of all variables in plots and queue
+        """
+        plot_vars = [v for p in self.plots for v in p.variables] 
+        return plot_vars + self.variableQ
+    
+    def remove_plot(self, plot):
+        try:
+            get_plot_manager().remove_plot_instance(plot)
+            self.plots.remove(plot)
+        except ValueError, err:
+            print>>sys.stderr, " -- Error Removing plot (probably removing the plot more then once from the same list)-- "
+        
+    def clear_plots(self):
+        for i in reversed(range(len(self.plots))):
+            self.remove_plot(self.plots[i])
+    
+    def clear(self):
+        self.clear_plots()
+        self.clear_queues()
+        self.clear_stacks()
+        
+    def clear_queues(self):
+        self.variableQ = []
+        self.templateQ = []
+        
+    def clear_stacks(self):
+        self.undoStack = []
+        self.redoStack = []
+        
+    def acceptsPlotPackage(self, pkg):
+        """ Returns true if pkg does not conflict with existing
+        plot packages
+        """
+        return (len(self.plots) == 0 or self.plots[0].package == pkg)
+    
+    def pushUndoVersion(self, version = None):
+        """pushes an undo version onto the stack and clears redo stack"""
+        if version is None:
+            version = self.current_parent_version
+        if len(self.undoStack) == 0 or version != self.undoStack[-1]:
+            self.undoStack.append(version)
+            self.redoStack = []
+            
+    def canUndo(self):
+        return self._has_other(self.undoStack, self.current_parent_version)
+    
+    def canRedo(self):
+        return self._has_other(self.redoStack, self.current_parent_version)
+            
+    def _has_other(self, list, item):
+        """return true if list contains atleast one value other than item"""
+        for value in list:
+            if item != value:
+                return True
+        return False
+            
+    def undo(self):
+        """changes the current_parent_version and adjust the undo and
+        redo stacks accordingly, if possible"""
+        self._slide_stacks(self.undoStack, self.redoStack)
+            
+    def redo(self):
+        """changes the current_parent_version and adjust the undo and
+        redo stacks accordingly, if possible"""
+        self._slide_stacks(self.redoStack, self.undoStack)
+        
+    def _slide_stacks(self, fro, to):
+        """ sets current_parent_version to first item in stack 'fro' that isn't itself
+        and also places that item on the end of stack 'to' """
+        print "Before %s %d %s" % (str(fro),self.current_parent_version,str(to))
+        for i in reversed(range(len(fro))):
+            if self.current_parent_version != fro[i]:
+                self.current_parent_version = fro[i]
+                if len(fro) > i+1 and (len(to) == 0 or to[-1] != fro[i+1]):
+                    to.append(fro[i+1])
+                del fro[i+1:]
+                break
+        #ensure end of undo stack matches current version
+        if len(self.undoStack) > 0 and self.undoStack[-1] != self.current_parent_version:
+            self.undoStack.append(self.current_parent_version)
+        print "After %s %d %s" % (str(fro),self.current_parent_version,str(to))

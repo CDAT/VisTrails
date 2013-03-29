@@ -9,6 +9,29 @@ import  __main__
 from gui.uvcdat.variable import VariableProperties
 from gui.uvcdat.theme import UVCDATTheme
 
+class QDefinedVariableListWidget(uvcdatCommons.QDragListWidget):
+    def mouseMoveEvent(self,e):
+        self.mouseMoved = True
+        
+        # get selected list sorted by selectNum
+        items = sorted(self.selectedItems(), key=lambda i: i.getSelectNum())
+        if len(items) < 1:
+            return
+    
+        d = QtGui.QDrag(self)
+        m = QtCore.QMimeData()
+        
+        # pass empty byte array
+        m.setData("%s" % self.type,QtCore.QByteArray())
+        
+        # make comma separated list of var names
+        # WARNING: variable names that include commas will break this
+        varNames = map(lambda i: i.getVarName(), items)
+        m.setText(','.join(varNames))
+        
+        d.setMimeData(m)
+        d.start()
+
 class QDefinedVariableWidget(QtGui.QWidget):
     """ QDefinedVariable contains a list of the user defined variables and allows the
     user to apply functions on defined variables """
@@ -44,18 +67,33 @@ class QDefinedVariableWidget(QtGui.QWidget):
         ## vbox.addWidget(self.command_line)
 
         # Create List for defined variables and add it to the layout
-        self.varList = uvcdatCommons.QDragListWidget(type="definedVariables")
+        self.varList = QDefinedVariableListWidget(type="definedVariables")
         self.varList.setToolTip("You can Drag and Drop Variables into most 'white' boxes")
         self.varList.setAlternatingRowColors(True)
         self.varList.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
-        self.varList.itemDoubleClicked.connect(self.variableDoubleClicked)
+        self.varList.itemDoubleClicked.connect(self.variableDoubleClicked)        
         vbox.addWidget(self.varList)
 
         # Connect Signals
-        ## self.connect(self.varList, QtCore.SIGNAL('clicked(const QModelIndex&)'),
-        ##              self.selectVariableFromListEvent)
         self.connect(self.varList, QtCore.SIGNAL('itemPressed( QListWidgetItem *)'),
-                     self.selectVariableFromListEvent)
+                     self.myPressed)
+        self.connect(self.varList, QtCore.SIGNAL('itemClicked( QListWidgetItem *)'),
+                     self.myClicked)
+        self.waitingForClick = False
+        
+    def myPressed(self, item):
+        if item.isSelected():
+            self.selectVariableFromListEvent(item)
+            self.waitingForClick = False
+        else:
+            self.waitingForClick = True
+            item.setSelected(True) # wait for click to deselect
+            
+    def myClicked(self, item):
+        if self.waitingForClick and not self.varList.mouseMoved:
+            item.setSelected(False)
+            self.selectVariableFromListEvent(item)
+        self.waitingForClick = False
 
     def variableDoubleClicked(self,item):
         txt = str(item.text())
@@ -80,6 +118,11 @@ class QDefinedVariableWidget(QtGui.QWidget):
             varProp.varNameInFile = cdmsVar.varNameInFile
         else:
             varProp.varNameInFile = None
+        varProp.btnDefine.setVisible(False)
+        varProp.btnDefineClose.setVisible(False)
+        varProp.btnDefineAs.setVisible(False)
+        varProp.btnApplyEdits.setVisible(True)
+#        varProp.btnApplyEdits.setEnabled(False)
         varProp.show()
 
     def defineQuickplot(self, file, var):
@@ -188,8 +231,6 @@ class QDefinedVariableWidget(QtGui.QWidget):
             for i in range(self.varList.count()-1,-1,-1):
                 if self.varList.item(i).getVarName() == var.id:
                     self.varList.takeItem(i)
-        elif type_ == 'PARAVIEW':
-            item = QDefinedVariableItem(var,self.root,None,QDefinedVariableItem.PARAVIEW)
         self.varList.addItem(item)
         # Recording define variable teaching command
 #        self.recordDefineVariableTeachingCommand(varName, var.id, file, axesArgString)
@@ -474,19 +515,14 @@ class QDefinedVariableWidget(QtGui.QWidget):
 
 class QDefinedVariableItem(QtGui.QListWidgetItem):
     """ Item to be stored by QDefinedVariable's list widget
-    type ==1 is for cdms variables
-    type==2 is for paraview variables """
+    type ==1 is for cdms variables"""
     CDMS = 1
-    PARAVIEW = 2
     def __init__(self, variable, root, cdmsVar=None, type=1, parent=None,project=None):
         QtGui.QListWidgetItem.__init__(self, parent, type)
         if type == self.CDMS:
             self.varName = variable.id # This is also the tabname
             self.variable = variable
             self.cdmsVar = cdmsVar
-        elif type == self.PARAVIEW:
-            self.varName = variable
-            self.variable = variable
         self.root=root
         if project is None:
 
@@ -524,8 +560,6 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
             numString = str(num).zfill(2)
         if self.type() == self.CDMS:
             varString = "%s %s %s" % (numString, self.varName, str(self.variable.shape))
-        elif self.type() == self.PARAVIEW:
-            varString = "%s %s" % (numString, self.varName)
         self.setData(0, QtCore.QVariant(QtCore.QString(varString)))
 
     def setFile(self, cdmsFile):

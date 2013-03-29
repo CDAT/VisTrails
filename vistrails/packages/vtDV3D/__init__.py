@@ -319,7 +319,9 @@ def executeVistrail( *args, **kwargs ):
                 app.finishSession()
             sys.exit(v)
         app = gui.application.get_vistrails_application()
-        resource_path = app.resource_path if hasattr( app, "resource_path" ) else None
+        resource_path = kwargs.get( 'dir', None )
+        if not resource_path:
+            resource_path = app.resource_path if hasattr( app, "resource_path" ) else None
         for vistrail_name in args:
             workflow_dir =  resource_path if resource_path else os.path.join( packagePath, "workflows" )
             vistrail_filename = os.path.join( workflow_dir, vistrail_name + '.vt' )

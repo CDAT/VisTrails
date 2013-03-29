@@ -58,6 +58,14 @@ dvLogFile =  open( os.path.expanduser( '~/.vistrails/dv3d_log.txt' ), 'w' )
 dvDbgIO = DebugPrint()
 dvDbgIO.set_stream( sys.stderr )
 
+def get_coords_from_cell_address( row, col):
+    try:
+        col = ord(col)-ord('A')
+        row = int(row)-1
+        return ( col, row )
+    except:
+        raise Exception('ColumnRowAddress format error: %s ' % str( [ row, col ] ) )
+
 def dvLog( obj, msg ):
     dvLogFile.write( '\n%s: %s' % ( obj.__class__.__name__, msg ) )
     dvLogFile.flush( )
@@ -135,6 +143,9 @@ def delete_module( module,pipeline ):
 def isList( val ):
     valtype = type(val)
     return ( valtype ==type(list()) ) or  ( valtype ==type(tuple()) )
+
+def isStr( val ):
+    return ( type(val) == type(' ') ) 
 
 def str2bool( value ):
     if ( type(value) == bool ): return value
@@ -229,17 +240,29 @@ def getRangeBounds( type_str ):
 
         
 def extractMetadata( fieldData ):
-    dataVector = fieldData.GetAbstractArray( 'metadata' ) 
-    metadata = {}
-    if dataVector == None:  
-        print " Can't get Metadata!" 
+    mdList = []
+    inputVarList = []
+    varlist = fieldData.GetAbstractArray( 'varlist' ) 
+    if varlist == None:  
+        print>>sys.stderr, " Can't get Metadata!" 
     else: 
-        nval = dataVector.GetNumberOfValues()
-        for id in range(nval):
-            enc_mdata = str( dataVector.GetValue(id) )
-            md = decodeFromString( enc_mdata )
-            metadata.update( md )
-    return metadata
+        nvar = varlist.GetNumberOfValues()
+        for vid in range(nvar):
+            varName = str( varlist.GetValue(vid) )
+            inputVarList.append( varName )
+            dataVector = fieldData.GetAbstractArray( 'metadata:%s' % varName ) 
+            if dataVector == None:  
+                print>>sys.stderr, " Can't get Metadata for var %s!" % varName 
+            else: 
+                metadata = {}
+                nval = dataVector.GetNumberOfValues()
+                for id in range(nval):
+                    enc_mdata = str( dataVector.GetValue(id) )
+                    md = decodeFromString( enc_mdata )
+                    metadata.update( md )
+                mdList.append( metadata )
+        for md in mdList: md['inputVarList'] = inputVarList
+    return mdList 
 
 def getFloatDataArray( name, values = [] ): 
     array = vtk.vtkFloatArray()
@@ -446,11 +469,6 @@ def getFunctionParmStrValues( module, functionName, defValue = None ):
                     values.append( parameter.strValue )
                 return values
     return defValue
-
-#def getInputValue( mid, inputName ):
-#    pmod = getPersistentModule( mid )
-#    if pmod <> None: return pmod.forceGetInputFromPort( inputName, None ) 
-#    return None
 
 def getModuleClass( mid ):
     import api
