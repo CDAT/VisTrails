@@ -252,10 +252,10 @@ class VariableProperties(QtGui.QDialog):
         h.addWidget(self.bookmarksList)
         v.addLayout(h)
 
-        self.fileTab = QtGui.QFrame()
-        self.fileTab.setLayout(v)
+        fileTab = QtGui.QFrame()
+        fileTab.setLayout(v)
 
-        self.originTabWidget.addTab( self.fileTab, "File" )
+        self.originTabWidget.addTab( fileTab, "File" )
 
     def createESGFTab(self):
         ## layout = QtGui.QVBoxLayout()
@@ -268,14 +268,14 @@ class VariableProperties(QtGui.QDialog):
 
     def createOpenDAPTab(self):
         from packages.vtDV3D.RemoteDataBrowser import RemoteDataBrowser
-        browser = RemoteDataBrowser(self)
+        browser = RemoteDataBrowser()
         self.connect( browser, RemoteDataBrowser.new_data_element, self.processDataAddress )
         self.originTabWidget.addTab(browser,"OpenDAP")
         
     def processDataAddress( self, address ):
+        self.originTabWidget.setCurrentIndex( 0 )
         self.fileEdit.setText( address )
-        self.originTabWidget.setCurrentWidget( self.fileTab )
-        self.updateFileFromReturnPressed()
+        self.updateFile()
 
     def createInfoTab(self):
         info = QtGui.QFrame()

@@ -197,7 +197,7 @@ class ThreddsDataElementParser(HTMLCatalogParser):
 #                print " >>>> Data Parser URL: %s " % ( self.data_element_address )
                 self.processHref = False
                     
-class RemoteDataBrowser(QtGui.QWidget):
+class RemoteDataBrowser(QtGui.QFrame):
     new_data_element = QtCore.SIGNAL("new_data_element")
     server_file_path = os.path.expanduser( '~/.vistrails/remote_server_list' )
 
