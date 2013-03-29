@@ -13,12 +13,16 @@ from PyQt4 import QtCore, QtGui
 #    TableRow = 4
 #    Anchor = 5
     
-class CatalogNodeType:
+class ServerType:
     THREDDS = QtGui.QTreeWidgetItem.UserType + 1
+    DODS = QtGui.QTreeWidgetItem.UserType + 2
 
     @classmethod    
     def getType( cls, url ):
-        if ( url.upper().find('THREDDS') >= 0 ): return cls.THREDDS
+        tokens = url.split('/')
+        for token in tokens:
+            if token.upper() == 'THREDDS': return cls.THREDDS
+            if token.lower() == 'dods': return cls.DODS
         return QtGui.QTreeWidgetItem.UserType
     
 class CatalogNode( QtGui.QTreeWidgetItem ):
@@ -28,16 +32,19 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
     
     def __init__( self, url, widget = None ):
          self.parser = None
-         self.node_type = CatalogNodeType.getType( url )
+         self.server_type = ServerType.getType( url )
          self.url = url
          if widget: 
-            QtGui.QTreeWidgetItem.__init__( self, widget, self.node_type  )
+            QtGui.QTreeWidgetItem.__init__( self, widget, self.server_type  )
             CatalogNode.Style = widget.style() 
             self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_DriveNetIcon ) ) 
             self.setText( 0, "%s Catalog (%s)" % ( self.getCatalogType(), self.url ) )
             self.node_type = self.Directory
          else: 
-             QtGui.QTreeWidgetItem.__init__( self, self.node_type  )  
+             QtGui.QTreeWidgetItem.__init__( self, self.server_type  ) 
+             
+    def isTopLevel(self): 
+        return ( self.parent() == None )
          
     def setLabel( self, text ):
         if text[-1] == '/':     
@@ -48,29 +55,30 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
             self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_FileIcon) )
         self.setText( 0, text.strip('/') )
         
-    def getType(self):
+    def getNodeType(self):
         if self.node_type == self.Directory: return "Directory"
         if self.node_type == self.DataObject: return "DataObject"
         return "None"
 
     def getCatalogType(self):
-        if self.type() == CatalogNodeType.THREDDS: return "THREDDS"
+        if self.type() == ServerType.THREDDS: return "THREDDS"
+        if self.type() == ServerType.DODS: return "DODS"
         return "Undefined"
                     
     def retrieveContent(self): 
         if self.parser == None:
             if self.node_type == self.Directory: 
-                if self.type() == CatalogNodeType.THREDDS: self.parser = ThreddsDirectoryParser( self ) 
-                else: print>>sys.stderr, "Error, unimplemented Catalog type: %d " % self.type()
+                if self.type() == ServerType.THREDDS: self.parser = ThreddsDirectoryParser( self ) 
+                else: print>>sys.stderr, "Error, unimplemented Server type: %d " % self.type()
             else:
-                if self.type() == CatalogNodeType.THREDDS: self.parser = ThreddsDataElementParser( self.url ) 
-                else: print>>sys.stderr, "Error, unimplemented Catalog type: %d " % self.type()
+                if self.type() == ServerType.THREDDS: self.parser = ThreddsDataElementParser( self.url ) 
+                else: print>>sys.stderr, "Error, unimplemented Server type: %d " % self.type()
             
             if self.parser: return self.parser.execute()
             return None
        
     def __repr__(self): 
-        return " %s Node: '%s' <%s>" % ( self.getType(), str(self.text(0)), self.url )
+        return " %s Node: '%s' <%s>" % ( self.getNodeType(), str(self.text(0)), self.url )
 
 class HTMLCatalogParser(HTMLParser):
     
@@ -195,7 +203,6 @@ class RemoteDataBrowser(QtGui.QWidget):
 
     def __init__( self, parent = None, **args ):
         QtGui.QFrame.__init__( self, parent )
-        self.inSync = True
         self.inputDialog = QtGui.QInputDialog()
 #        self.inputDialog.setMinimumWidth( 500 )
         self.treeWidget = QtGui.QTreeWidget()
@@ -221,8 +228,8 @@ class RemoteDataBrowser(QtGui.QWidget):
         button_list_layout.addWidget( self.discard_server_button )
         self.discard_server_button.setEnabled ( False )
 
-        useCloseButton = args.get( 'closeButton', False )
-        if useCloseButton:
+        self.useCloseButton = args.get( 'closeButton', False )
+        if self.useCloseButton:
             close_button = QtGui.QPushButton( "Close"  )       
             button_list_layout.addWidget( close_button )       
             self.connect( close_button, QtCore.SIGNAL('clicked(bool)'), self.close)
@@ -248,18 +255,13 @@ class RemoteDataBrowser(QtGui.QWidget):
             serverItem = self.treeWidget.topLevelItem( si )
             server_file.write( serverItem.url + "\n" )
         server_file.close()
-        self.inSync = True 
-        
-    def close(self): 
-        if not self.inSync: self.updateServerList()
-        QtGui.QDialog.close( self ) 
-                               
+                                       
     def addNewServer(self): 
         url, ok = self.inputDialog.getText( self, 'Add OpenDap Server', 'Enter new server url:')     
         if ok and url:
             base_node = CatalogNode( str(url), self.treeWidget ) 
             base_node.retrieveContent() 
-            self.inSync = False
+            self.updateServerList()
     
     @staticmethod          
     def notify( msg ):
@@ -267,23 +269,21 @@ class RemoteDataBrowser(QtGui.QWidget):
         
     def removeSelectedServer(self): 
         currentItem = self.treeWidget.currentItem()
-#        treeWidget = currentItem.treeWidget()
-        if currentItem: 
+        if currentItem and currentItem.isTopLevel(): 
             removed_item = self.treeWidget.takeTopLevelItem( self.treeWidget.indexOfTopLevelItem( currentItem ) )
             del removed_item
-            self.inSync = False
+            self.updateServerList()
         else:
             self.notify( "Must select a server." )
             self.discard_server_button.setEnabled ( False )
                 
     def retrieveItem( self, item, index ):
-        treeWidget = item.treeWidget()
-        self.discard_server_button.setEnabled ( treeWidget <> None )
+        self.discard_server_button.setEnabled ( item.isTopLevel() )
         data_element_address = item.retrieveContent()
         if data_element_address: 
             self.emit(  self.new_data_element, data_element_address )
             print "Emit new_data_element signal: ", data_element_address
-            self.close()
+            if not self.useCloseButton: self.parent().close()
 
 class RemoteDataBrowserDialog(QtGui.QDialog):
 
