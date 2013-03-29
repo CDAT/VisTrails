@@ -103,6 +103,7 @@ class VariableProperties(QtGui.QDialog):
         self.varNameInFile = None #store the name of the variable when loaded from file
         self.createFileTab()
         self.createESGFTab()
+        self.createOpenDAPTab()
         self.createEditTab()
         self.createInfoTab()
         for i in range(self.originTabWidget.count()):
@@ -251,10 +252,10 @@ class VariableProperties(QtGui.QDialog):
         h.addWidget(self.bookmarksList)
         v.addLayout(h)
 
-        f=QtGui.QFrame()
-        f.setLayout(v)
+        self.fileTab = QtGui.QFrame()
+        self.fileTab.setLayout(v)
 
-        self.originTabWidget.addTab(f,"File")
+        self.originTabWidget.addTab( self.fileTab, "File" )
 
     def createESGFTab(self):
         ## layout = QtGui.QVBoxLayout()
@@ -265,6 +266,16 @@ class VariableProperties(QtGui.QDialog):
         esgf.addGateway(gateway=str(self.root.preferences.host_url.currentText()))
         self.originTabWidget.addTab(esgf,"ESGF")
 
+    def createOpenDAPTab(self):
+        from packages.vtDV3D.RemoteDataBrowser import RemoteDataBrowser
+        browser = RemoteDataBrowser(self)
+        self.connect( browser, RemoteDataBrowser.new_data_element, self.processDataAddress )
+        self.originTabWidget.addTab(browser,"OpenDAP")
+        
+    def processDataAddress( self, address ):
+        self.fileEdit.setText( address )
+        self.originTabWidget.setCurrentWidget( self.fileTab )
+        self.updateFileFromReturnPressed()
 
     def createInfoTab(self):
         info = QtGui.QFrame()

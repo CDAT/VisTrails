@@ -188,17 +188,16 @@ class ThreddsDataElementParser(HTMLCatalogParser):
                 self.data_element_address =  urljoin( self.base_url, data )     
 #                print " >>>> Data Parser URL: %s " % ( self.data_element_address )
                 self.processHref = False
-
-class RemoteDataBrowser(QtGui.QDialog):
+                    
+class RemoteDataBrowser(QtGui.QWidget):
     new_data_element = QtCore.SIGNAL("new_data_element")
     server_file_path = os.path.expanduser( '~/.vistrails/remote_server_list' )
 
-    def __init__( self, parent = None ):
-        QtGui.QDialog.__init__( self, parent )
+    def __init__( self, parent = None, **args ):
+        QtGui.QFrame.__init__( self, parent )
         self.inSync = True
-        self.setFixedSize( 500, 500 )
         self.inputDialog = QtGui.QInputDialog()
-        self.inputDialog.setMinimumWidth( 500 )
+#        self.inputDialog.setMinimumWidth( 500 )
         self.treeWidget = QtGui.QTreeWidget()
         self.treeWidget.setColumnCount(1)
         self.treeWidget.connect( self.treeWidget, QtCore.SIGNAL("itemClicked(QTreeWidgetItem *,int)"), self.retrieveItem ) 
@@ -222,10 +221,11 @@ class RemoteDataBrowser(QtGui.QDialog):
         button_list_layout.addWidget( self.discard_server_button )
         self.discard_server_button.setEnabled ( False )
 
-        close_button = QtGui.QPushButton( "Close"  )       
-        button_list_layout.addWidget( close_button )       
-        self.connect( close_button, QtCore.SIGNAL('clicked(bool)'), self.close)
-        self.connect( close_button, QtCore.SIGNAL('clicked(bool)'), self.close)
+        useCloseButton = args.get( 'closeButton', False )
+        if useCloseButton:
+            close_button = QtGui.QPushButton( "Close"  )       
+            button_list_layout.addWidget( close_button )       
+            self.connect( close_button, QtCore.SIGNAL('clicked(bool)'), self.close)
         
         layout.addLayout( button_list_layout )
         self.readServerList()
@@ -267,8 +267,8 @@ class RemoteDataBrowser(QtGui.QDialog):
         
     def removeSelectedServer(self): 
         currentItem = self.treeWidget.currentItem()
-        treeWidget = currentItem.treeWidget()
-        if currentItem and treeWidget: 
+#        treeWidget = currentItem.treeWidget()
+        if currentItem: 
             removed_item = self.treeWidget.takeTopLevelItem( self.treeWidget.indexOfTopLevelItem( currentItem ) )
             del removed_item
             self.inSync = False
@@ -284,9 +284,19 @@ class RemoteDataBrowser(QtGui.QDialog):
             self.emit(  self.new_data_element, data_element_address )
             print "Emit new_data_element signal: ", data_element_address
             self.close()
+
+class RemoteDataBrowserDialog(QtGui.QDialog):
+
+    def __init__( self, parent = None ):
+        QtGui.QDialog.__init__( self, parent )
+        self.browser = RemoteDataBrowser( self, closeButton = True )
+        self.browser.setFixedSize( 500, 500 )
+        layout = QtGui.QVBoxLayout(self)
+        self.setLayout(layout)
+        layout.addWidget( self.browser )
                      
 if __name__ == '__main__':   
     app = QtGui.QApplication(sys.argv)
-    browser = RemoteDataBrowser( ) # "http://dp6.nccs.nasa.gov/thredds/", CatalogNodeType.THREDDS )
+    browser = RemoteDataBrowserDialog( ) # "http://dp6.nccs.nasa.gov/thredds/", CatalogNodeType.THREDDS )
     browser.show()
     app.exec_()
