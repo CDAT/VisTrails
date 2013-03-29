@@ -283,7 +283,6 @@ class RemoteDataBrowser(QtGui.QFrame):
         if data_element_address: 
             self.emit(  self.new_data_element, data_element_address )
             print "Emit new_data_element signal: ", data_element_address
-            if not self.useCloseButton: self.parent().close()
 
 class RemoteDataBrowserDialog(QtGui.QDialog):
 
