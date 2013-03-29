@@ -269,7 +269,8 @@ class RemoteDataBrowser(QtGui.QDialog):
         currentItem = self.treeWidget.currentItem()
         treeWidget = currentItem.treeWidget()
         if currentItem and treeWidget: 
-            removed_item = self.treeWidget.takeTopLevelItem( self.treeWidget.currentIndex() )
+            removed_item = self.treeWidget.takeTopLevelItem( self.treeWidget.indexOfTopLevelItem( currentItem ) )
+            del removed_item
             self.inSync = False
         else:
             self.notify( "Must select a server." )
