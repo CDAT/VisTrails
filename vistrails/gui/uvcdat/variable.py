@@ -66,6 +66,8 @@ class VariableProperties(QtGui.QDialog):
         #sc.setWidgetResizable(True)
         sp.addWidget(self.originTabWidget)
         self.dims=QtGui.QFrame()
+        self.dimsLayout=QtGui.QVBoxLayout()
+        self.dims.setLayout( self.dimsLayout )
         sp.addWidget(self.dims)
         v.addWidget(sp)
         h=QtGui.QHBoxLayout()
@@ -297,7 +299,6 @@ class VariableProperties(QtGui.QDialog):
         self.originTabWidget.addTab(self.varEditArea,"Edit")
 
     def createDimensions(self):
-        self.dimsLayout=QtGui.QVBoxLayout()
         labelLayout = QtGui.QHBoxLayout()
         l=QtGui.QLabel("Dimensions")
         labelLayout.addWidget(l)
@@ -308,10 +309,8 @@ class VariableProperties(QtGui.QDialog):
         self.roiSelector = ROISelectionDialog( self.parent )
         self.roiSelector.setWindowFlags( self.roiSelector.windowFlags() | Qt.WindowStaysOnTopHint )
         self.connect(self.roiSelector, QtCore.SIGNAL('doneConfigure()'), self.setRoi )
-        if self.roi:
-            self.roiSelector.setROI( self.roi )
-        self.dims.setLayout( self.dimsLayout )
-        self.dimsLayout.addLayout( labelLayout )
+        if self.roi: self.roiSelector.setROI( self.roi )
+        self.dimsLayout.insertLayout( 0, labelLayout )
 
     def selectRoi( self ):
         if self.roi: self.roiSelector.setROI( self.roi )
@@ -499,19 +498,34 @@ class VariableProperties(QtGui.QDialog):
     def fillDimensionsWidget(self,axisList):
         if not self.axisListHolder is None:
             self.axisListHolder.destroy()
-        N=self.dimsLayout.count()
-        while N>1:
-            it = self.dimsLayout.takeAt(N-1)
+        it = self.dimsLayout.takeAt(1)
+        if it:
             it.widget().deleteLater()
-##             it.widget().destroy()
-            self.dimsLayout.removeItem(it)
+    ##             it.widget().destroy()
+#            self.dimsLayout.removeItem(it)
             del(it)
-            self.dims.update()
-            self.update()
-            N=self.dimsLayout.count()
         self.axisListHolder = axisList
-        self.dimsLayout.addWidget(axisList)
+        self.dimsLayout.insertWidget(1,axisList)
         self.updateVarInfo(axisList)
+        self.dims.update()
+        self.update()
+
+#    def fillDimensionsWidget1(self,axisList):
+#        if not self.axisListHolder is None:
+#            self.axisListHolder.destroy()
+#        N=self.dimsLayout.count()
+#        while N>1:
+#            it = self.dimsLayout.takeAt(N-1)
+#            it.widget().deleteLater()
+###             it.widget().destroy()
+#            self.dimsLayout.removeItem(it)
+#            del(it)
+#            self.dims.update()
+#            self.update()
+#            N=self.dimsLayout.count()
+#        self.axisListHolder = axisList
+#        self.dimsLayout.addWidget(axisList)
+#        self.updateVarInfo(axisList)
 
 
     def updateVarInfo(self, axisList):
