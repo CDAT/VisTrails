@@ -576,8 +576,6 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             traceback.print_exc(file=errorText)
             errorText.write('-'*60)
             self.te.insertPlainText(errorText.getvalue())
-            # for testing purposes
-            raise sys.exc_value
 
         res = self.root.stick_main_dict_into_defvar(None)
         #-----------------------------------------------------------------------

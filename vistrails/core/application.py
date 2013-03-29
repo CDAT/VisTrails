@@ -184,7 +184,7 @@ The builder window can be accessed by a spreadsheet menu option.")
         add ("-o", "--output", action="store", type="string", dest="output", 
              default="uvcdatsession.log", 
              help=("Set output log filename (empty string for stdout e.g. -o \"\")"))
-        add ("-R", "--noErrorReporting", action="store_true",
+        add ("-N", "--noErrorReporting", action="store_true",
              help=("Do not prompt to send anonymous error information."))
         
         command_line.CommandLineParser.parse_options()
