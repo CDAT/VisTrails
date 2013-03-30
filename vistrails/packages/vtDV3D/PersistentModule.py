@@ -516,7 +516,10 @@ class PersistentModule( QObject ):
         return [ self.activeLayer, ]
 
     def input( self, input_index=0 ):
-        ispec = self.inputSpecs[ input_index ] 
+        try:
+            ispec = self.inputSpecs[ input_index ]
+        except:
+            return None 
         return ispec.input()
 
     def intersectInputExtents( self ):
@@ -1300,6 +1303,7 @@ class PersistentModule( QObject ):
         try:
             ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
             proj_controller = api.get_current_project_controller()
+            if ( sheetName <> proj_controller.current_sheetName ): return
             controller =  proj_controller.vt_controller 
             pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
             if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
@@ -1338,13 +1342,17 @@ class PersistentModule( QObject ):
             action = create_action( op_list ) 
             controller.add_new_action(action)
             controller.perform_action(action)
-            
+            controller.select_latest_version()
+          
             for config_fn in config_list:
                 config_fn.persisted = True
                 
             if proj_controller:
                 proj_controller.cell_was_changed(action)
                 if pcoords:  proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
+
+            print " Perform save action: current version = %d, current_parent_version = %d, sheetName = %s, cell_address = %s " % ( controller.current_version, cell.current_parent_version, sheetName, str( cell_address ) )
+            sys.stdout.flush()
                 
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
@@ -1867,6 +1875,8 @@ class PersistentVisualizationModule( PersistentModule ):
             if len(ds.transientVariables)>0:
                 if len(ds.transientVariables)>1: print 'Warning: this module has several transient Variables, plotting the first one.'
                 var = ds.transientVariables.values()[0]
+                lensActor.SetTitle("Time vs. %s (%s)" % (var.long_name, var.id))
+                lensActor.SetYTitle(var.id)
                 lensActor.SetYRange(var.min(), var.max())
 
         prop = lensActor.GetProperty()
