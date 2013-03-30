@@ -17,9 +17,60 @@ import numpy as np
 
 packagePath = os.path.dirname( __file__ )  
 defaultMapDir = os.path.join( packagePath, 'resources/images' )
-defaultMapFile = [ os.path.join( defaultMapDir,  'WorldMap.jpg' ), os.path.join( defaultMapDir,  'WorldMap.jpg' ) ]
-WorldMapGridExtent = [ ( 106, 72, 2902, 1470 ), ( 106, 72, 2902, 1470 ) ]
+#defaultMapFile = [ os.path.join( defaultMapDir,  'WorldMap.jpg' ), os.path.join( defaultMapDir,  'WorldMap.jpg' ) ]
+#WorldMapGridExtent = [ ( 106, 72, 2902, 1470 ), ( 106, 72, 2902, 1470 ) ]
 
+class QtROISelectorMapFrame:
+    
+     def __init__( self, name, map_dir, map_file, grid_extent, latlon_bounds, map_scale ):
+         self.name = name
+         self.map_dir = map_dir
+         self.map_file = map_file
+         self.grid_extent = grid_extent
+         self.latlon_bounds = latlon_bounds
+         self.mapScale = map_scale
+         self.view = None
+         
+     def getMapGridExtent(self):
+        return self.grid_extent
+         
+     def getMapFilePath(self):
+         return os.path.join( self.map_dir, self.map_file )
+     
+     def getPixmap(self):
+         worldMapFile = QString( self.getMapFilePath() )
+         return QPixmap(worldMapFile) 
+     
+     def getCornerPoint( self, index ):
+         return QPointF( self.latlon_bounds[ 2*index ], self.latlon_bounds[ 2*index + 1 ] )
+
+     def createView( self, parent ):      
+        self.scene = QGraphicsScene(parent)
+        self.item = QGraphicsPixmapItem( self.getPixmap(), None, self.scene )
+        self.item.setFlags( QGraphicsItem.ItemIsMovable )
+        self.item.setAcceptedMouseButtons ( Qt.LeftButton )
+        self.item.setPos( 0, 0 )         
+        self.view = MapGraphicsView( self.item, self.grid_extent, self.getCornerPoint( 0 ), self.getCornerPoint( 1 ), parent )
+        self.view.setScene( self.scene )
+        self.view.scale( self.mapScale[0], self.mapScale[1] )
+        self.roiRect = QGraphicsRectItem( self.grid_extent[0], self.grid_extent[1], (self.grid_extent[2]-self.grid_extent[0]), (self.grid_extent[3]-self.grid_extent[1]), self.item, self.scene )
+        self.roiRect.setBrush( QBrush( Qt.NoBrush ) )
+        pen = QPen( Qt.green ) 
+        pen.setWidth( 2 );
+        self.roiRect.setPen( pen )
+        self.roiRect.setZValue(1)
+    
+     def getView( self, parent ):
+         if not self.view: self.createView( parent )
+         return self.view
+
+     def setRect( self, x0, y0, dx, dy ):
+         self.roiRect.setRect ( x0, y0, dx, dy )
+         self.view.update()
+         
+MapFrames = [  QtROISelectorMapFrame( 'Double Map', defaultMapDir, 'WorldMap2.jpg', ( 0, 0, 2048, 512 ), ( -180, -90 , 540.0, 90.0), (1.2,1.2) ),
+               QtROISelectorMapFrame( 'Gridded Map', defaultMapDir, 'WorldMap.jpg', ( 106, 72, 2902, 1470 ), ( -180, -90 , 180.0, 90.0), (0.4,0.4) ) ]
+ 
 class MapGraphicsView(QGraphicsView):
 
     def __init__(self, imageGraphicsItem, imageContentExtents, pt0, pt1, parent=None):
@@ -50,9 +101,12 @@ class MapGraphicsView(QGraphicsView):
     def GetPointCoords(self):
         imagePtScaled = None
         ptS = None
-        point = self.mapFromGlobal(QCursor.pos())
+        cursor_pos = QCursor.pos()
+        point = self.mapFromGlobal( cursor_pos )
+        pos0 = self.imageGraphicsItem.pos()
+        pos1 = self.mapToScene(point)
 #        if self.geometry().contains(point):
-        ptS = self.mapToScene(point) - self.imageGraphicsItem.pos()
+        ptS = pos1 - pos0 
         mapPt = ptS - self.imageOriginOffset
         imagePtScaled = QPointF( (mapPt.x() * self.imageLatLonScale[0]) + self.Extent[0], self.Extent[3] - (mapPt.y() * self.imageLatLonScale[1] ) ) 
         if imagePtScaled.x() < self.Extent[0]:
@@ -98,64 +152,54 @@ class MapGraphicsView(QGraphicsView):
         self.orderY(pt0, pt1)
       
     def mouseReleaseEvent(self, event):
-        ( self.roiCorner1, self.scenePt1 ) = self.GetPointCoords()
-        if self.roiCorner0 != None and self.roiCorner1 != None:
-            self.orderCoords( self.roiCorner0, self.roiCorner1 )
-            self.emit( SIGNAL("ROISelected"), self.roiCorner0, self.roiCorner1, self.scenePt0, self.scenePt1 )
-        if self.scenePt1 != None:
-            self.emit( SIGNAL("PointSelected"), self.scenePt1, self.roiCorner1 )
+        if event.button() == Qt.RightButton:
+            ( self.roiCorner1, self.scenePt1 ) = self.GetPointCoords()
+            if self.roiCorner0 != None and self.roiCorner1 != None:
+                self.orderCoords( self.roiCorner0, self.roiCorner1 )
+                self.emit( SIGNAL("ROISelected"), self.roiCorner0, self.roiCorner1, self.scenePt0, self.scenePt1 )
+            if self.scenePt1 != None:
+                self.emit( SIGNAL("PointSelected"), self.scenePt1, self.roiCorner1 )
         QGraphicsView.mouseReleaseEvent(self, event)
 
 class ROISelectionDialog(QDialog):
-
+    
     def __init__(self, parent=None, **args ):
         super(QDialog, self).__init__(parent)
-             
-        self.scene = QGraphicsScene(self)
-        self.lonRangeType = args.get( 'lonRangeType', 1 )
-        worldMapFile = QString( defaultMapFile[ self.lonRangeType ] )
-        pixmap = QPixmap(worldMapFile) 
-        item = QGraphicsPixmapItem( pixmap, None, self.scene )
-        item.setFlags(QGraphicsItem.ItemIsMovable)
-        item.setAcceptedMouseButtons ( Qt.LeftButton )
-        item.setPos( 0, 0 )
+        init_frame_index = args.get("mapFrameIndex",0)
         
-        ROIcorner0 = QPointF( 0, -90)   if self.lonRangeType == 0 else QPointF(-180,-90 )    
-        ROIcorner1 = QPointF(360, 90)   if self.lonRangeType == 0 else QPointF( 180, 90 )  
-        worldMapExtent = WorldMapGridExtent[ self.lonRangeType ]      
-        self.view = MapGraphicsView( item, worldMapExtent, ROIcorner0, ROIcorner1, self )
-        self.filename = QString()
-        self.view.setScene(self.scene)
-               
-        self.roiRect = QGraphicsRectItem( worldMapExtent[0], worldMapExtent[1], (worldMapExtent[2]-worldMapExtent[0]), (worldMapExtent[3]-worldMapExtent[1]), item, self.scene )
-        self.roiRect.setBrush( QBrush(Qt.NoBrush) )
-        pen = QPen(Qt.green) 
-        pen.setWidth(2);
-        self.roiRect.setPen( pen )
-        self.roiRect.setZValue (1)
+        self.ROICornerLon0 = QLineEdit( ) 
+        self.ROICornerLat0 = QLineEdit( )
+        self.ROICornerLon1 = QLineEdit( )
+        self.ROICornerLat1 = QLineEdit( )
+        self.ROICornerLon0.setValidator( QDoubleValidator(self) )
+        self.ROICornerLat0.setValidator( QDoubleValidator(self) )
+        self.ROICornerLon1.setValidator( QDoubleValidator(self) )
+        self.ROICornerLat1.setValidator( QDoubleValidator(self) )
+
+        self.tabbedWidget = QTabWidget()
+        layout = QVBoxLayout()
+        layout.addWidget( self.tabbedWidget )
+        self.connect( self.tabbedWidget, SIGNAL("currentChanged(int)"), self.adjustROIRect )
         
+        for mapFrame in MapFrames: 
+            view = mapFrame.getView( self )            
+            self.connect( view, SIGNAL("ROISelected"), self.UpdateGeoCoords )
+            self.tabbedWidget.addTab( view, mapFrame.name ) 
+                       
         w = QWidget()
         panelLayout = QHBoxLayout()
         w.setLayout( panelLayout )
         
         ROICorner0Label = QLabel("<b><u>ROI Corner0:</u></b>")
         ROICorner1Label = QLabel("<b><u>ROI Corner1:</u></b>")
-        self.ROICornerLon0 = QLineEdit( "%.1f" % ROIcorner0.x() )
-        self.ROICornerLat0 = QLineEdit( "%.1f" % ROIcorner0.y() )
-        self.ROICornerLon1 = QLineEdit( "%.1f" % ROIcorner1.x() )
-        self.ROICornerLat1 = QLineEdit( "%.1f" % ROIcorner1.y() )
-        self.ROICornerLon0.setValidator( QDoubleValidator(self) )
-        self.ROICornerLat0.setValidator( QDoubleValidator(self) )
-        self.ROICornerLon1.setValidator( QDoubleValidator(self) )
-        self.ROICornerLat1.setValidator( QDoubleValidator(self) )
         
         self.connect( self.ROICornerLon0, SIGNAL("editingFinished()"), self.adjustROIRect )
         self.connect( self.ROICornerLat0, SIGNAL("editingFinished()"), self.adjustROIRect )
         self.connect( self.ROICornerLon1, SIGNAL("editingFinished()"), self.adjustROIRect )
         self.connect( self.ROICornerLat1, SIGNAL("editingFinished()"), self.adjustROIRect )
       
-        LatLabel0 = QLabel("Lat: ")
-        LonLabel0 = QLabel("Lon: ")            
+        LatLabel0 = QLabel( "Lat: ")
+        LonLabel0 = QLabel( "Lon: ")            
         grid0 = QHBoxLayout()
         grid0.addWidget( LonLabel0 )
         grid0.addWidget( self.ROICornerLon0 )
@@ -178,10 +222,7 @@ class ROISelectionDialog(QDialog):
         w1.setLayout( grid1 )
         panelLayout.addWidget( w1 )
                  
-        panelLayout.addStretch(1)
-
-        self.connect(self.view, SIGNAL("ROISelected"), self.UpdateGeoCoords )
-        
+        panelLayout.addStretch(1)        
         self.okButton = QPushButton('&OK', self)
         self.okButton.setFixedWidth(100)
         panelLayout.addWidget(self.okButton)
@@ -192,17 +233,33 @@ class ROISelectionDialog(QDialog):
         self.connect(self.okButton, SIGNAL('clicked(bool)'), self.okTriggered)
         self.connect(self.cancelButton, SIGNAL('clicked(bool)'), self.close )
 
-        layout = QVBoxLayout()
-        layout.addWidget(self.view)
         layout.addWidget(w)
         self.setLayout(layout)
-        self.view.scale( 0.4, 0.4 )
+        self.initROIBounds( init_frame_index )
+        self.setCurrentMapFrame( init_frame_index )
+        
+    def setCurrentMapFrame(self, index ):
+        self.tabbedWidget.setCurrentIndex ( index )
+        self.adjustROIRect()
+        
+    def initROIBounds( self, index ):
+        mapFrame = MapFrames[ index ]
+        ROIcorner0 = mapFrame.getCornerPoint( 0 )    
+        ROIcorner1 = mapFrame.getCornerPoint( 1 )           
+        self.ROICornerLon0.setText ( "%.1f" % ROIcorner0.x() )
+        self.ROICornerLat0.setText ( "%.1f" % ROIcorner0.y() )
+        self.ROICornerLon1.setText ( "%.1f" % ROIcorner1.x() )
+        self.ROICornerLat1.setText ( "%.1f" % ROIcorner1.y() )
+                
+    def getView(self):
+        return self.tabbedWidget.currentWidget()
         
     def setROI( self, roi ):
+        view = self.getView()
         geoPt0 = QPointF( roi[0], roi[1] )
         geoPt1 = QPointF( roi[2], roi[3] )
-        scenePt0 = self.view.GetScenePointFromGeoPoint( geoPt0 )
-        scenePt1 = self.view.GetScenePointFromGeoPoint( geoPt1 )
+        scenePt0 = view.GetScenePointFromGeoPoint( geoPt0 )
+        scenePt1 = view.GetScenePointFromGeoPoint( geoPt1 )
         self.UpdateROICoords( roi, scenePt0, scenePt1 )
                 
     def UpdateGeoCoords(self, geoPt0, geoPt1, scenePt0, scenePt1 ):
@@ -219,9 +276,13 @@ class ROISelectionDialog(QDialog):
         self.ROICornerLat1.setText ( "%.1f" % roi[3] )
         self.UpdateROIRect( scenePt0, scenePt1 )
         
+    def getCurrentMapFrame(self):    
+        index = self.tabbedWidget.currentIndex()
+        return MapFrames[ index ]
+        
     def UpdateROIRect(self, scenePt0, scenePt1 ):
-        self.roiRect.setRect ( scenePt0.x(), scenePt0.y(), scenePt1.x()-scenePt0.x(), scenePt1.y()-scenePt0.y() )
-        self.view.update()
+        currentFrame = self.getCurrentMapFrame()
+        currentFrame.setRect ( scenePt0.x(), scenePt0.y(), scenePt1.x()-scenePt0.x(), scenePt1.y()-scenePt0.y() )
         
     def okTriggered(self):
         self.emit(SIGNAL('doneConfigure()'))
@@ -230,16 +291,19 @@ class ROISelectionDialog(QDialog):
     def getROI(self):
          return [ float(self.ROICornerLon0.text()), float(self.ROICornerLat0.text()), float(self.ROICornerLon1.text()), float(self.ROICornerLat1.text())   ]      
      
-    def adjustROIRect(self): 
-        geoPt0 = QPointF( float(self.ROICornerLon0.text()), float(self.ROICornerLat0.text()) ) 
-        geoPt1 = QPointF( float(self.ROICornerLon1.text()), float(self.ROICornerLat1.text()) )   
-        if( geoPt1.x() < geoPt0.x() ):
-            geoPt1.setX( geoPt0.x() )
-        if( geoPt1.y() < geoPt0.y() ):
-            geoPt1.setY( geoPt0.y() )           
-        scenePt0 = self.view.GetScenePointFromGeoPoint( geoPt0 )
-        scenePt1 = self.view.GetScenePointFromGeoPoint( geoPt1 )
-        self.UpdateROIRect( scenePt0, scenePt1 )
+    def adjustROIRect( self, index = 0 ): 
+        try:
+            geoPt0 = QPointF( float(self.ROICornerLon0.text()), float(self.ROICornerLat0.text()) ) 
+            geoPt1 = QPointF( float(self.ROICornerLon1.text()), float(self.ROICornerLat1.text()) )   
+            if( geoPt1.x() < geoPt0.x() ):
+                geoPt1.setX( geoPt0.x() )
+            if( geoPt1.y() < geoPt0.y() ):
+                geoPt1.setY( geoPt0.y() )  
+            view = self.getView()         
+            scenePt0 = view.GetScenePointFromGeoPoint( geoPt0 )
+            scenePt1 = view.GetScenePointFromGeoPoint( geoPt1 )
+            self.UpdateROIRect( scenePt0, scenePt1 )
+        except: pass
 
 class ExampleForm(QDialog):
  
