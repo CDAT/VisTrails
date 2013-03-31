@@ -12,6 +12,7 @@ from core.interpreter.default import get_default_interpreter as getDefaultInterp
 from db.domain import DBModule, DBAnnotation
 from core.db.action import create_action
 from core.debug import DebugPrint
+from PyQt4 import QtCore, QtGui
 import numpy.core.umath as umath
 # from vtk.util.vtkConstants import *
 import numpy as np
@@ -57,6 +58,11 @@ currentTime = 0
 dvLogFile =  open( os.path.expanduser( '~/.vistrails/dv3d_log.txt' ), 'w' )
 dvDbgIO = DebugPrint()
 dvDbgIO.set_stream( sys.stderr )
+
+def displayMessage( msg ):
+    msgBox = QtGui.QMessageBox()
+    msgBox.setText( msg )
+    msgBox.exec_()
 
 def get_coords_from_cell_address( row, col):
     try:

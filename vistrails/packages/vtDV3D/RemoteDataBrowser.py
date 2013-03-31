@@ -3,6 +3,7 @@ import urllib2, sys, os
 from HTMLParser import HTMLParser
 from urlparse import *
 from PyQt4 import QtCore, QtGui
+from vtUtilities import displayMessage
 #        split_url = urlsplit(catalog_url) urlunsplit(split_url)
 
 #class HTMLState:
@@ -69,11 +70,11 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
         if self.parser == None:
             if self.node_type == self.Directory: 
                 if self.type() == ServerType.THREDDS: self.parser = ThreddsDirectoryParser( self ) 
-                else: print>>sys.stderr, "Error, unimplemented Server type: %d " % self.type()
+                if self.type() == ServerType.THREDDS: self.parser = DodsDirectoryParser( self ) 
+                else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )
             else:
-                if self.type() == ServerType.THREDDS: self.parser = ThreddsDataElementParser( self.url ) 
-                else: print>>sys.stderr, "Error, unimplemented Server type: %d " % self.type()
-            
+                if self.type() == ServerType.THREDDS: self.parser = DodsDataElementParser( self.url ) 
+                else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )      
             if self.parser:
                 self.result = self.parser.execute() 
                 return self.result 
@@ -146,8 +147,11 @@ class ThreddsDirectoryParser(HTMLCatalogParser):
         self.root_node = base_node
 
     def execute(self):
-        response = urllib2.urlopen( self.root_node.url )
-        self.feed( response.read() )
+        try:
+            response = urllib2.urlopen( self.root_node.url )
+            self.feed( response.read() )
+        except Exception, err:
+            displayMessage( "Error connecting to server:\n%s"  % str(err) )
         return None
 
     def dump(self):
@@ -174,7 +178,64 @@ class ThreddsDirectoryParser(HTMLCatalogParser):
 #            print "Adding Child:", str( self.child_node )
             self.child_node = None
 
+
+class DodsDirectoryParser(HTMLCatalogParser):
+    
+    def __init__( self, base_node ):
+        HTMLCatalogParser.__init__( self )    
+        self.child_node = None
+        self.root_node = base_node
+
+    def execute(self):
+        try:
+            response = urllib2.urlopen( self.root_node.url )
+            self.feed( response.read() )
+        except Exception, err:
+            displayMessage( "Error connecting to server:\n%s"  % str(err) )
+        return None
+            
+    def inCatalogEntry(self):
+        return self.has_state( 'a' ) and self.has_state( 'tr' )
+        
+    def process_start_tag( self, tag, attrs ):          
+        if ( tag == 'a' ) and self.has_state( 'tr' ):
+            url = self.get_attribute( 'href', attrs )
+            self.child_node = CatalogNode( urljoin( self.root_node.url, url ) )
+
+    def process_data( self,  data ): 
+        if self.child_node and self.inCatalogEntry() and data:         
+            self.child_node.setLabel( data.strip() )
+            self.root_node.addChild ( self.child_node )
+#            print "Adding Child:", str( self.child_node )
+            self.child_node = None
+
+
 class ThreddsDataElementParser(HTMLCatalogParser):
+    
+    def __init__( self, url ):
+        HTMLCatalogParser.__init__( self ) 
+        self.base_url = url 
+        self.data_element_address = None
+        self.processHref = False  
+
+    def execute(self):
+        response = urllib2.urlopen( self.base_url )
+        data = response.read()
+        self.feed( data )
+        return self.data_element_address
+                    
+    def process_data( self,  data ): 
+        if ( data.upper().find('OPENDAP') >= 0 ) and self.has_state( 'li' ):
+            self.processHref = True  
+#            print " >>>> Data Parser Data Tag: data=%s, state=%s  " % ( str( data.strip() ), str( self.state_stack ) )
+        elif self.processHref: 
+#            print " >>>> Data Parser Data Tag: %s" % ( data )
+            if self.has_state( 'a' ):
+                self.data_element_address =  urljoin( self.base_url, data )     
+#                print " >>>> Data Parser URL: %s " % ( self.data_element_address )
+                self.processHref = False
+
+class DodsDataElementParser(HTMLCatalogParser):
     
     def __init__( self, url ):
         HTMLCatalogParser.__init__( self ) 
