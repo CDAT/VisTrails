@@ -334,7 +334,7 @@ class VariableProperties(QtGui.QDialog):
 
     def openSelectFileDialog(self):
         file = QtGui.QFileDialog.getOpenFileName(self, 'Open CDAT data file...',
-                                                 self.root.dockVariable.lastDirectory,
+                                                 '',
                                                  VariableProperties.FILTER + ';;All files (*.*)')
         if not file.isNull():
             self.setFileName(file)

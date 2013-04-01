@@ -1352,6 +1352,7 @@ class PersistentModule( QObject ):
                 if pcoords:  proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
 
             print " Perform save action: current version = %d, current_parent_version = %d, sheetName = %s, cell_address = %s " % ( controller.current_version, cell.current_parent_version, sheetName, str( cell_address ) )
+
             sys.stdout.flush()
                 
         except Exception, err:
