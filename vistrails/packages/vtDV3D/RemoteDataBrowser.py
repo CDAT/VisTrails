@@ -1,9 +1,8 @@
 
-import urllib2, sys, os
+import urllib2, sys, os, copy, httplib
 from HTMLParser import HTMLParser
 from urlparse import *
-from PyQt4 import QtCore, QtGui
-from vtUtilities import displayMessage
+from PyQt4 import QtCore, QtGui, QtWebKit
 #        split_url = urlsplit(catalog_url) urlunsplit(split_url)
 
 #class HTMLState:
@@ -13,7 +12,19 @@ from vtUtilities import displayMessage
 #    Table = 3
 #    TableRow = 4
 #    Anchor = 5
-    
+
+def url_exists(site, path ):
+    conn = httplib.HTTPConnection(site)
+    conn.request('HEAD', path)
+    response = conn.getresponse()
+    conn.close()
+    return response.status == 200
+
+def displayMessage( msg ):
+    msgBox = QtGui.QMessageBox()
+    msgBox.setText( msg )
+    msgBox.exec_()
+       
 class ServerType:
     THREDDS = QtGui.QTreeWidgetItem.UserType + 1
     DODS = QtGui.QTreeWidgetItem.UserType + 2
@@ -48,7 +59,7 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
         return ( self.parent() == None )
          
     def setLabel( self, text ):
-        if text[-1] == '/':     
+        if text.endswith( '/' ) or text.endswith( '/:' ):     
             self.node_type = self.Directory
             self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_DirIcon) )
         else:                   
@@ -69,29 +80,33 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
     def retrieveContent(self): 
         if self.parser == None:
             if self.node_type == self.Directory: 
-                if self.type() == ServerType.THREDDS: self.parser = ThreddsDirectoryParser( self ) 
-                if self.type() == ServerType.THREDDS: self.parser = DodsDirectoryParser( self ) 
+                if     self.type() == ServerType.THREDDS:   self.parser = ThreddsDirectoryParser( self ) 
+                elif   self.type() == ServerType.DODS:      self.parser = DodsDirectoryParser( self ) 
                 else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )
             else:
-                if self.type() == ServerType.THREDDS: self.parser = DodsDataElementParser( self.url ) 
+                if     self.type() == ServerType.THREDDS:   self.parser = ThreddsDataElementParser( self.url ) 
+                elif   self.type() == ServerType.DODS:      self.parser = DodsDataElementParser( self.url, debug=True ) 
                 else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )      
             if self.parser:
-                self.result = self.parser.execute() 
-                return self.result 
-        return None if ( self.node_type == self.Directory ) else self.result 
+                self.parser.execute() 
+                return ( self.parser.data_url, self.parser.metadata ) 
+        return ( None, None ) if ( self.node_type == self.Directory ) else ( self.parser.data_url, self.parser.metadata )
        
     def __repr__(self): 
         return " %s Node: '%s' <%s>" % ( self.getNodeType(), str(self.text(0)), self.url )
 
 class HTMLCatalogParser(HTMLParser):
-    
-    def __init__( self ):
+    IgnoredTags = [ 'br', 'hr', 'p' ]
+   
+    def __init__( self, **args ):
         HTMLParser.__init__( self )    
-        self.debug_mode = False
+        self.debug_mode = args.get( 'debug', False)
         self.state_stack = [ 'root' ]
+        self.data_url = None
+        self.metadata = None
         
     def execute(self):
-        return None
+        pass
 
     def dump(self):
         pass
@@ -103,10 +118,10 @@ class HTMLCatalogParser(HTMLParser):
         return state in self.state_stack        
             
     def handle_starttag(self, tag, attrs):
-        self.state_stack.append( tag )
-        if self.debug_mode:
-            print " Start Tag %s: %s " % ( tag, str( attrs ) )
-        else: 
+        if tag not in self.IgnoredTags:
+            self.state_stack.append( tag )
+            if self.debug_mode: 
+                print " Start Tag %s: %s " % ( tag, str( attrs ) ) 
             self.process_start_tag( tag, attrs )           
     
     @staticmethod           
@@ -116,19 +131,23 @@ class HTMLCatalogParser(HTMLParser):
         return None
         
     def handle_endtag(self, tag):
-        while True: 
-            frame = self.state_stack.pop()
-            if frame == tag: break
-        if self.debug_mode:
-            print " End Tag %s " % ( tag )
-        else:
+        stack_backup = copy.deepcopy( self.state_stack )
+        if tag not in self.IgnoredTags:
+            while True: 
+                try:
+                    frame = self.state_stack.pop()
+                except Exception, err:
+                    print " <<<<<<<<<<<<<<<<<<< Parse error processing end tag: %s, state stack: %s >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" % ( tag, str(stack_backup) )
+                    self.state_stack = stack_backup
+                    return
+                if frame == tag: break
+            if self.debug_mode: print " End Tag %s " % ( tag )
             self.process_end_tag( tag )              
         
     def handle_data( self, data ):
-        if self.debug_mode:
-            print " State: %s, Data: %s " % ( str(self.state_stack), data )           
-        else:
-            self.process_data( data )
+        sdata = data.strip()
+        if self.debug_mode: print "                      State: %s, Data: %s " % ( str(self.state_stack), sdata )           
+        self.process_data( sdata )
             
     def process_start_tag( self, tag, attrs ):
         pass   
@@ -141,8 +160,8 @@ class HTMLCatalogParser(HTMLParser):
 
 class ThreddsDirectoryParser(HTMLCatalogParser):
     
-    def __init__( self, base_node ):
-        HTMLCatalogParser.__init__( self )    
+    def __init__( self, base_node, **args ):
+        HTMLCatalogParser.__init__( self, **args )    
         self.child_node = None
         self.root_node = base_node
 
@@ -152,7 +171,6 @@ class ThreddsDirectoryParser(HTMLCatalogParser):
             self.feed( response.read() )
         except Exception, err:
             displayMessage( "Error connecting to server:\n%s"  % str(err) )
-        return None
 
     def dump(self):
         print "Retreiving response from: ", self.root_node.url
@@ -181,10 +199,11 @@ class ThreddsDirectoryParser(HTMLCatalogParser):
 
 class DodsDirectoryParser(HTMLCatalogParser):
     
-    def __init__( self, base_node ):
-        HTMLCatalogParser.__init__( self )    
-        self.child_node = None
+    def __init__( self, base_node, **args ):
+        HTMLCatalogParser.__init__( self, **args )    
         self.root_node = base_node
+        self.row_index = 1
+        self.current_data = None
 
     def execute(self):
         try:
@@ -192,72 +211,72 @@ class DodsDirectoryParser(HTMLCatalogParser):
             self.feed( response.read() )
         except Exception, err:
             displayMessage( "Error connecting to server:\n%s"  % str(err) )
-        return None
-            
-    def inCatalogEntry(self):
-        return self.has_state( 'a' ) and self.has_state( 'tr' )
-        
-    def process_start_tag( self, tag, attrs ):          
-        if ( tag == 'a' ) and self.has_state( 'tr' ):
+                    
+    def process_start_tag( self, tag, attrs ):       
+        if ( tag == 'a' ) :
             url = self.get_attribute( 'href', attrs )
-            self.child_node = CatalogNode( urljoin( self.root_node.url, url ) )
+            if url and self.current_data: 
+                child_node = CatalogNode( urljoin( self.root_node.url, url ) )
+                child_node.setLabel( ' '.join( self.current_data ) )
+                self.root_node.addChild ( child_node )
+#                print "Adding Child:", str( child_node )
+                self.current_data = None
+                self.row_index = self.row_index + 1
 
     def process_data( self,  data ): 
-        if self.child_node and self.inCatalogEntry() and data:         
-            self.child_node.setLabel( data.strip() )
-            self.root_node.addChild ( self.child_node )
-#            print "Adding Child:", str( self.child_node )
-            self.child_node = None
+#        print " ----> Data: %s, state = %s " % ( data, str( self.state_stack ) )
+        data = data.strip().replace( '\n', ' ' )
+        if self.has_state( 'body' ) and data.startswith( "%d:" % self.row_index ): 
+            self.current_data = [ data ]
+        elif data and self.current_data: self.current_data.append( data )
 
 
 class ThreddsDataElementParser(HTMLCatalogParser):
     
-    def __init__( self, url ):
-        HTMLCatalogParser.__init__( self ) 
+    def __init__( self, url, **args ):
+        HTMLCatalogParser.__init__( self, **args ) 
         self.base_url = url 
-        self.data_element_address = None
         self.processHref = False  
 
     def execute(self):
         response = urllib2.urlopen( self.base_url )
         data = response.read()
         self.feed( data )
-        return self.data_element_address
                     
     def process_data( self,  data ): 
-        if ( data.upper().find('OPENDAP') >= 0 ) and self.has_state( 'li' ):
+        if ( data.find('Data URL') >= 0 ) and self.has_state( 'td' ):
             self.processHref = True  
 #            print " >>>> Data Parser Data Tag: data=%s, state=%s  " % ( str( data.strip() ), str( self.state_stack ) )
-        elif self.processHref: 
+        elif self.processHref and self.has_state( 'td' ): 
 #            print " >>>> Data Parser Data Tag: %s" % ( data )
             if self.has_state( 'a' ):
-                self.data_element_address =  urljoin( self.base_url, data )     
+                self.data_url =  urljoin( self.base_url, data )     
 #                print " >>>> Data Parser URL: %s " % ( self.data_element_address )
                 self.processHref = False
 
 class DodsDataElementParser(HTMLCatalogParser):
     
-    def __init__( self, url ):
-        HTMLCatalogParser.__init__( self ) 
+    def __init__( self, url, **args ):
+        HTMLCatalogParser.__init__( self, **args ) 
         self.base_url = url 
         self.data_element_address = None
         self.processHref = False  
 
+#    def process_start_tag( self, tag, attrs ):       
+#        print "Start Tag %s: %s" % ( tag, str(attrs) )
+        
     def execute(self):
         response = urllib2.urlopen( self.base_url )
-        data = response.read()
-        self.feed( data )
-        return self.data_element_address
+        self.metadata = response.read()
+        self.feed( self.metadata )
+#        print self.metadata
                     
     def process_data( self,  data ): 
-        if ( data.upper().find('OPENDAP') >= 0 ) and self.has_state( 'li' ):
+        if ( data.find('Data URL') >= 0 ) and self.has_state( 'td' ):
             self.processHref = True  
-#            print " >>>> Data Parser Data Tag: data=%s, state=%s  " % ( str( data.strip() ), str( self.state_stack ) )
-        elif self.processHref: 
-#            print " >>>> Data Parser Data Tag: %s" % ( data )
-            if self.has_state( 'a' ):
-                self.data_element_address =  urljoin( self.base_url, data )     
-#                print " >>>> Data Parser URL: %s " % ( self.data_element_address )
+        elif self.processHref and self.has_state( 'td' ): 
+            if data.startswith("http:"):
+                self.data_url =  urljoin( self.base_url, data )     
                 self.processHref = False
                     
 class RemoteDataBrowser(QtGui.QFrame):
@@ -267,9 +286,12 @@ class RemoteDataBrowser(QtGui.QFrame):
     def __init__( self, parent = None, **args ):
         QtGui.QFrame.__init__( self, parent )
         self.inputDialog = QtGui.QInputDialog()
-#        self.inputDialog.setMinimumWidth( 500 )
+        self.autoRetrieveBaseCatalogs = args.get("autoretrieve",False)
+        self.data_element_address = None
+        self.metadata = None
         self.treeWidget = QtGui.QTreeWidget()
         self.treeWidget.setColumnCount(1)
+        self.treeWidget.setMinimumHeight( 250 )
         self.treeWidget.connect( self.treeWidget, QtCore.SIGNAL("itemClicked(QTreeWidgetItem *,int)"), self.retrieveItem ) 
         layout = QtGui.QVBoxLayout(self)
         self.setLayout(layout)
@@ -277,6 +299,9 @@ class RemoteDataBrowser(QtGui.QFrame):
         layout.addWidget( self.treeWidget )
         self.setWindowTitle( "Remote Data Browser" )
         self.treeWidget.setHeaderLabel ( "Data Servers" )
+
+        self.view = QtWebKit.QWebView( self )
+        layout.addWidget( self.view )
                 
         button_list_layout = QtGui.QHBoxLayout()
         
@@ -296,6 +321,12 @@ class RemoteDataBrowser(QtGui.QFrame):
             close_button = QtGui.QPushButton( "Close"  )       
             button_list_layout.addWidget( close_button )       
             self.connect( close_button, QtCore.SIGNAL('clicked(bool)'), self.close)
+
+        self.load_data_button = QtGui.QPushButton( "Open"  )   
+        self.load_data_button.setToolTip( "Open Selected Dataset in UVCDAT")        
+        self.connect( self.load_data_button, QtCore.SIGNAL('clicked(bool)'), self.loadData )
+        button_list_layout.addWidget( self.load_data_button )
+        self.load_data_button.setEnabled ( False )
         
         layout.addLayout( button_list_layout )
         self.readServerList()
@@ -307,7 +338,7 @@ class RemoteDataBrowser(QtGui.QFrame):
             address = server_file.readline().strip()
             if not address: break
             base_node = CatalogNode( str(address), self.treeWidget ) 
-            base_node.retrieveContent() 
+            if self.autoRetrieveBaseCatalogs: base_node.retrieveContent() 
         server_file.close()               
 
     def updateServerList( self ):
@@ -323,7 +354,7 @@ class RemoteDataBrowser(QtGui.QFrame):
         url, ok = self.inputDialog.getText( self, 'Add OpenDap Server', 'Enter new server url:')     
         if ok and url:
             base_node = CatalogNode( str(url), self.treeWidget ) 
-            base_node.retrieveContent() 
+            if self.autoRetrieveBaseCatalogs: base_node.retrieveContent() 
             self.updateServerList()
     
     @staticmethod          
@@ -341,11 +372,18 @@ class RemoteDataBrowser(QtGui.QFrame):
             self.discard_server_button.setEnabled ( False )
                 
     def retrieveItem( self, item, index ):
-        self.discard_server_button.setEnabled ( item.isTopLevel() )
-        data_element_address = item.retrieveContent()
-        if data_element_address: 
-            self.emit(  self.new_data_element, data_element_address )
-            print "Emit new_data_element signal: ", data_element_address
+        self.discard_server_button.setEnabled( item.isTopLevel() )
+        try:
+            (self.data_element_address, self.metadata) = item.retrieveContent()
+            if self.metadata: self.view.setHtml( self.metadata )
+        except Exception, err:
+            print>>sys.stderr, "Error retrieving data item: %s\n Item: %s" % ( str(err), str(item) )
+            (self.data_element_address, self.metadata) = ( None, None )
+        self.load_data_button.setEnabled ( self.data_element_address <> None ) 
+           
+    def loadData( self ):
+        self.emit(  self.new_data_element, self.data_element_address )
+        print "Loading URL: ", self.data_element_address
 
 class RemoteDataBrowserDialog(QtGui.QDialog):
 
