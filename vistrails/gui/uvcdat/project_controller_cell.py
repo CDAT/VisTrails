@@ -153,8 +153,11 @@ class ControllerCell(object):
         
     def getUndoVersion(self):
         """returns first ancestor that has uvcdat-last-visit annotation"""
-        vistrail = api.get_current_controller().vistrail
-        
+        try:
+            vistrail = api.get_current_controller().vistrail
+        except api.NoVistrail:
+            return None
+            
         def _getParent(version):
             if version != 0:
                 return vistrail.actionMap[version].parent
@@ -171,7 +174,11 @@ class ControllerCell(object):
     def getRedoVersion(self):
         """looks at all child versions, and returns that which has the most
         recent uvcdat-last-visit annotation, if any """
-        vistrail = api.get_current_controller().vistrail
+        try:
+            vistrail = api.get_current_controller().vistrail
+        except api.NoVistrail:
+            return None
+        
         graph = vistrail.tree.getVersionTree()
         
         maxes = [datetime.min, None] #time, version
