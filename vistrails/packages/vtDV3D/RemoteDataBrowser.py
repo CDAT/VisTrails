@@ -260,15 +260,14 @@ class ThreddsDataElementParser(HTMLCatalogParser):
                 self.processHref = False
 
 class ThreddsMetadataParser(HTMLCatalogParser):
-    OTHER = 0
-    MD_DECL = 1
-    MD_TEXT = 2
+
     
     def __init__( self, url, **args ):
         HTMLCatalogParser.__init__( self, **args ) 
         self.base_url = url
         self.metadata = [ "<html><head><title>Metadata</title></head><body><p><h1>Metadata</h1><p><hr><p>" ] 
-        self.parse_state = self.OTHER
+        self.md_decl = False
+        self.md_text = False
 
     def execute(self):
         response = urllib2.urlopen( self.base_url )
@@ -283,23 +282,24 @@ class ThreddsMetadataParser(HTMLCatalogParser):
         if (tag == 'input'):
            input_type = self.get_attribute( 'type', attrs )
            if input_type == 'checkbox': 
-               self.parse_state = self.MD_DECL
+               self.md_decl = True
                self.metadata.append( '<p>') 
-        if (tag == 'textarea') and self.parse_state == self.MD_DECL:         
-           self.parse_state = self.MD_TEXT 
-           self.metadata.append( '<p>') 
+        if (tag == 'textarea'):
+            self.md_text = True       
+            self.metadata.append( '<p>') 
 
     def process_end_tag( self, tag ):
-        if (tag == 'textarea') and self.parse_state == self.MD_TEXT:
-            self.parse_state = self.OTHER
+        if (tag == 'textarea'):
+            self.md_text = False
+            self.md_decl = False
             self.metadata.append( '<p><hr><p>') 
                                
     def process_data( self,  data ): 
-        if self.parse_state == self.MD_DECL: 
+        if self.md_text:       
+            self.metadata.append( "<pre>%s</pre>" % data ) 
+        elif self.md_decl: 
             if self.has_state('font'):  self.metadata.append( '<strong>%s</strong>' % data )     
             else:                       self.metadata.append( data )
-        elif self.parse_state == self.MD_TEXT:       
-            self.metadata.append( "<pre>%s</pre>" % data ) 
 
 class DodsDataElementParser(HTMLCatalogParser):
     
@@ -347,7 +347,13 @@ class RemoteDataBrowser(QtGui.QFrame):
         self.treeWidget.setHeaderLabel ( "Data Servers" )
 
         self.view = QtWebKit.QWebView( self )
-        layout.addWidget( self.view )
+        f = QtGui.QFrame( self )
+        f.setFrameStyle( QtGui.QFrame.StyledPanel | QtGui.QFrame.Raised )
+        f.setLineWidth(2)
+        f_layout = QtGui.QVBoxLayout(f)
+        f.setLayout( f_layout )
+        f_layout.addWidget( self.view )
+        layout.addWidget( f )
                 
         button_list_layout = QtGui.QHBoxLayout()
         

@@ -291,7 +291,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         if len( varList ) == 0: return False
         varDataIds = []
         intersectedRoi = args.get('roi', None )
-        self.cdmsDataset.setRoi( intersectedRoi )
+        if intersectedRoi: self.cdmsDataset.setRoi( intersectedRoi )
         exampleVarDataSpecs = None
         dsid = None
         if (self.outputType == CDMSDataType.Vector ) and len(varList) < 3:
@@ -330,7 +330,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 else:
                     varDataIdIndex = selectedLevel
 
-            roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] )
+            roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] ) if self.cdmsDataset.gridBounds else ""
             varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), roiStr )
             varDataIds.append( varDataId )
             varDataSpecs = self.getCachedData( varDataId ) 
@@ -539,10 +539,12 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 axis = None
                 if iCoord == 0: axis = tvar.getLongitude()
                 if iCoord == 1: axis = tvar.getLatitude()
-                if axis:
-                    axisvals = axis.getValue()          
-                    newRoi[ iCoord ] = axisvals[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
-                    newRoi[ 2+iCoord ] = axisvals[-1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
+                axisvals = axis.getValue()          
+                if ( len( axisvals.shape) > 1 ):
+#                    displayMessage( "Curvilinear grids not currently supported by DV3D.  Please regrid. ")
+                    return current_roi
+                newRoi[ iCoord ] = axisvals[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
+                newRoi[ 2+iCoord ] = axisvals[-1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
             if ( current_roi_size == 0 ): return newRoi
             new_roi_size = getRoiSize( newRoi )
             return newRoi if ( ( current_roi_size > new_roi_size ) and ( new_roi_size > 0.0 ) ) else current_roi
@@ -564,6 +566,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         domain = var.getDomain()
         self.lev = var.getLevel()
         axis_list = var.getAxisList()
+        isCurvilinear = False
         for axis in axis_list:
             size = len( axis )
             iCoord = self.getCoordType( axis, outputType )
