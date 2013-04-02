@@ -96,10 +96,10 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
         return " %s Node: '%s' <%s>" % ( self.getNodeType(), str(self.text(0)), self.url )
 
 class HTMLCatalogParser(HTMLParser):
-    IgnoredTags = [ 'br', 'hr', 'p' ]
    
     def __init__( self, **args ):
         HTMLParser.__init__( self )    
+        self.IgnoredTags = [ 'br', 'hr', 'p' ]
         self.debug_mode = args.get( 'debug', False)
         self.state_stack = [ 'root' ]
         self.data_url = None
@@ -242,17 +242,64 @@ class ThreddsDataElementParser(HTMLCatalogParser):
         response = urllib2.urlopen( self.base_url )
         data = response.read()
         self.feed( data )
-                    
+
+    def process_start_tag( self, tag, attrs ): 
+        if self.processHref and (tag == 'a'):
+           url = self.get_attribute( 'href', attrs )
+           metadata_url = urljoin( self.base_url, url )
+           md_parser = ThreddsMetadataParser( metadata_url )
+           md_parser.execute()
+           self.metadata = md_parser.getMetadata()
+                               
     def process_data( self,  data ): 
-        if ( data.find('Data URL') >= 0 ) and self.has_state( 'td' ):
+        if ( data.find('OPENDAP:') >= 0 ) and self.has_state( 'li' ):
             self.processHref = True  
-#            print " >>>> Data Parser Data Tag: data=%s, state=%s  " % ( str( data.strip() ), str( self.state_stack ) )
-        elif self.processHref and self.has_state( 'td' ): 
-#            print " >>>> Data Parser Data Tag: %s" % ( data )
+        elif self.processHref and self.has_state( 'li' ): 
             if self.has_state( 'a' ):
                 self.data_url =  urljoin( self.base_url, data )     
-#                print " >>>> Data Parser URL: %s " % ( self.data_element_address )
                 self.processHref = False
+
+class ThreddsMetadataParser(HTMLCatalogParser):
+    OTHER = 0
+    MD_DECL = 1
+    MD_TEXT = 2
+    
+    def __init__( self, url, **args ):
+        HTMLCatalogParser.__init__( self, **args ) 
+        self.base_url = url
+        self.metadata = [ "<html><head><title>Metadata</title></head><body><p><h1>Metadata</h1><p><hr><p>" ] 
+        self.parse_state = self.OTHER
+
+    def execute(self):
+        response = urllib2.urlopen( self.base_url )
+        data = response.read()
+        self.metadata.append( '</body></html>')
+        self.feed( data )
+
+    def getMetadata(self):
+        return ' '.join( self.metadata )
+
+    def process_start_tag( self, tag, attrs ): 
+        if (tag == 'input'):
+           input_type = self.get_attribute( 'type', attrs )
+           if input_type == 'checkbox': 
+               self.parse_state = self.MD_DECL
+               self.metadata.append( '<p>') 
+        if (tag == 'textarea') and self.parse_state == self.MD_DECL:         
+           self.parse_state = self.MD_TEXT 
+           self.metadata.append( '<p>') 
+
+    def process_end_tag( self, tag ):
+        if (tag == 'textarea') and self.parse_state == self.MD_TEXT:
+            self.parse_state = self.OTHER
+            self.metadata.append( '<p><hr><p>') 
+                               
+    def process_data( self,  data ): 
+        if self.parse_state == self.MD_DECL: 
+            if self.has_state('font'):  self.metadata.append( '<strong>%s</strong>' % data )     
+            else:                       self.metadata.append( data )
+        elif self.parse_state == self.MD_TEXT:       
+            self.metadata.append( "<pre>%s</pre>" % data ) 
 
 class DodsDataElementParser(HTMLCatalogParser):
     
@@ -269,7 +316,6 @@ class DodsDataElementParser(HTMLCatalogParser):
         response = urllib2.urlopen( self.base_url )
         self.metadata = response.read()
         self.feed( self.metadata )
-#        print self.metadata
                     
     def process_data( self,  data ): 
         if ( data.find('Data URL') >= 0 ) and self.has_state( 'td' ):
