@@ -3,7 +3,7 @@ Created on Dec 2, 2010
 
 @author: tpmaxwel
 '''
-import vtk, os
+import vtk, os, math
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import core.modules.module_registry
@@ -84,7 +84,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
     def setOpacityRange( self, opacity_range ):
 #        print "Update Opacity, range = %s" %  str( opacity_range )
         self.opacityRange = opacity_range
-        self.colormapManager.setAlphaRange ( opacity_range[0:2] ) 
+#        self.colormapManager.setAlphaRange ( opacity_range[0:2] ) 
         self.render()
         
     def setColorScale( self, range ):
@@ -109,78 +109,74 @@ class PM_CurtainPlot(PersistentVisualizationModule):
     def setInteractionState( self, caller, event ):
         PersistentVisualizationModule.setInteractionState( self, caller, event )
         
-    def getCurtainGeometry( self, nLevels, vertRange, **args ):
+    def getCurtainGeometry( self, **args ):
         path = defaultPathFile
         pathInput = self.wmod.forceGetInputFromPort( "path", None ) 
-        if pathInput <> None: path = pathInput.name       
-        reader = PathFileReader()
-        reader.read(path)  
-        points = vtk.vtkPoints()     
-        latData = reader.getData( 'Latitude' )
-        lonData = reader.getData( 'Longitude' )
+        extent =  self.input().GetExtent() 
+        nStrips = extent[5] - extent[4]  
+        lonData = []
+        latData = []
+        if pathInput <> None: 
+            path = pathInput.name       
+            reader = PathFileReader()
+            reader.read(path)  
+            latData = reader.getData( 'Latitude' )
+            lonData = reader.getData( 'Longitude' )
+        else:
+            nPts = 100
+            xstep =  (self.roi[1]-self.roi[0])/nPts
+            ysize = ( self.roi[3]-self.roi[2] ) / 2.5
+            y0 = ( self.roi[3]+self.roi[2] ) / 2.0
+            for iPt in range(nPts):
+                lonData.append( self.roi[0] + xstep*iPt )
+                latData.append( y0 + ysize * math.sin( (iPt/float(nPts)) * 2.0 * math.pi ) )
         lonDataIter = iter( lonData )
-        z_inc = ( vertRange[1] - vertRange[0] ) / ( nLevels - 1 )
+        z_inc = ( self.roi[5] - self.roi[4] ) / nStrips
         polydata = vtk.vtkPolyData()
         stripArray = vtk.vtkCellArray()
-        nstrips = nLevels - 1
-        stripData = [ vtk.vtkIdList() for istrip in range( nstrips) ]
+        stripData = [ vtk.vtkIdList() for istrip in range( nStrips ) ]
+        points = vtk.vtkPoints()     
         for latVal in latData:
             lonVal = lonDataIter.next()
             if ( latVal <> None ) and  ( lonVal <> None ) :
-                z = vertRange[0]
-                for iLevel in range( nLevels ):
+                z = self.roi[4]
+                for iLevel in range( nStrips ):
                     z = z + z_inc 
-                    if iLevel < nstrips:
-                        vtkId = points.InsertNextPoint( lonVal, latVal, z )
-                        sd = stripData[ iLevel ]
-                        sd.InsertNextId( vtkId )               
-                        sd.InsertNextId( vtkId+1 )
+                    vtkId = points.InsertNextPoint( lonVal, latVal, z )
+                    sd = stripData[ iLevel ]
+                    sd.InsertNextId( vtkId )               
+                    sd.InsertNextId( vtkId+1 )
                         
         for strip in stripData:
             stripArray.InsertNextCell(strip)
             
         polydata.SetPoints( points )
         polydata.SetStrips( stripArray )
+        return polydata
 
                            
-    def execute(self, **args ):
+    def buildPipeline(self):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
         """ 
-        testTexture = True
-        textureInput = None
-        xMin = 0 
-        xMax = 360 
-        yMin = 0 
-        yMax = 180 
-        zMin = 0 
-        zMax = 20
-        spacing = ( 1.0, 1.0, 2.0 )
-        origin = ( 0, -90, 0 )
-        lut = self.getLut()
-                     
-        self.probeFilter = None
-        if self.input <> None:
-            self.probeFilter = vtk.vtkProbeFilter()
-            textureInput = self.input.GetOutput() 
-        elif testTexture:
-            self.probeFilter = vtk.vtkProbeFilter()
-            textureGenerator = vtk.vtkImageSinusoidSource()
-            textureGenerator.SetWholeExtent ( xMin, xMax, yMin, yMax, zMin, zMax )
-            textureGenerator.SetDirection( 1.0, 1.0, 1.0 )
-            textureGenerator.SetPeriod( xMax-xMin )
-            textureGenerator.SetAmplitude( 125.0 )
-            textureGenerator.Update()
-            textureInput = textureGenerator.GetOutput() 
-            textureInput.SetSpacing( spacing )
-            textureInput.SetOrigin( origin )
+        self.probeFilter = vtk.vtkProbeFilter()
+        textureInput = self.input()
+        lut = self.getLut()                     
+
+#            self.probeFilter = vtk.vtkProbeFilter()
+#            textureGenerator = vtk.vtkImageSinusoidSource()
+#            textureGenerator.SetWholeExtent ( xMin, xMax, yMin, yMax, zMin, zMax )
+#            textureGenerator.SetDirection( 1.0, 1.0, 1.0 )
+#            textureGenerator.SetPeriod( xMax-xMin )
+#            textureGenerator.SetAmplitude( 125.0 )
+#            textureGenerator.Update()
+#            textureInput = textureGenerator.GetOutput() 
+#            textureInput.SetSpacing( spacing )
+#            textureInput.SetOrigin( origin )
             
         textureRange = textureInput.GetScalarRange()
-        self.probeFilter.SetSource( textureInput )
-         
-        nLevels = zMax - zMin
-        vertRange = [ zMin*spacing[2], zMax*spacing[2] ]  
-        curtain = self.getCurtainGeometry( nLevels, vertRange )
+        self.probeFilter.SetSource( textureInput )             
+        curtain = self.getCurtainGeometry()
                     
         self.probeFilter.SetInput( curtain )
         self.curtainMapper = vtk.vtkPolyDataMapper()
@@ -188,7 +184,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         self.curtainMapper.SetScalarRange( textureRange )
         self.curtainMapper.SetLookupTable( lut ) 
               
-        self.colormapManager.setAlphaRange ( self.opacityRange )           
+#        self.colormapManager.setAlphaRange ( self.opacityRange )           
 #        curtainMapper.SetColorModeToMapScalars()  
 #        levelSetActor = vtk.vtkLODActor() 
         curtainActor = vtk.vtkActor() 

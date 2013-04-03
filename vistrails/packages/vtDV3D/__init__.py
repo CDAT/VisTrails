@@ -261,9 +261,9 @@ def initialize(*args, **keywords):
 #    reg.add_output_port( Resample, "volume", AlgorithmOutputModule3D ) 
 #    Resample.registerConfigurableFunctions( reg )
 
-    reg.add_module( CurtainPlot, namespace='vtk|experimental'  )
-    reg.add_input_port( CurtainPlot, "path", ( File, 'path_file' )  ) 
+    reg.add_module( CurtainPlot, namespace='vtk'  )
     reg.add_input_port( CurtainPlot, "volume", AlgorithmOutputModule3D  )
+    reg.add_input_port( CurtainPlot, "path", ( File, 'path_file' )  ) 
     reg.add_output_port( CurtainPlot, "volume", AlgorithmOutputModule3D ) 
     CurtainPlot.registerConfigurableFunctions( reg )
        
