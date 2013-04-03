@@ -647,15 +647,15 @@ class CDMSDataset(Module):
                     args = { 'time':timeValues, 'lev':levelValues, 'refVar':self.referenceVariable, 'refLev':self.referenceLev }
                     if self.gridBounds:
                         args['lon'] = [self.gridBounds[0],self.gridBounds[2]] 
-                        args['lat'] = [self.gridBounds[1],self.gridBounds[1]] 
+                        args['lat'] = [self.gridBounds[1],self.gridBounds[3]] 
                     rv = dsetRec.getFileVarDataCube( varName, self.decimation, **args )  
             elif varName in self.getTransientVariableNames():
                 tvar = self.getTransientVariable( varName ) 
                 args = { 'time':timeValues, 'lev':levelValues }
                 if self.gridBounds:
                     args['lon'] = [self.gridBounds[0],self.gridBounds[2]] 
-                    args['lat'] = [self.gridBounds[1],self.gridBounds[1]] 
-                rv = self.getTransVarDataCube( varName, tvar, self.decimation )  
+                    args['lat'] = [self.gridBounds[1],self.gridBounds[3]] 
+                rv = self.getTransVarDataCube( varName, tvar, self.decimation, **args )  
         if (rv.id == "NULL") and (varName in self.outputVariables):
             rv = self.outputVariables[ varName ]
         if rv.id <> "NULL": 
