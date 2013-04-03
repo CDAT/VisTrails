@@ -644,10 +644,18 @@ class CDMSDataset(Module):
             dsetRec = self.datasetRecs.get( dsid, None )
             if dsetRec:
                 if varName in dsetRec.dataset.variables:
-                    rv = dsetRec.getFileVarDataCube( varName, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]], refVar=self.referenceVariable, refLev=self.referenceLev )  
+                    args = { 'time':timeValues, 'lev':levelValues, 'refVar':self.referenceVariable, 'refLev':self.referenceLev }
+                    if self.gridBounds:
+                        args['lon'] = [self.gridBounds[0],self.gridBounds[2]] 
+                        args['lat'] = [self.gridBounds[1],self.gridBounds[1]] 
+                    rv = dsetRec.getFileVarDataCube( varName, self.decimation, **args )  
             elif varName in self.getTransientVariableNames():
                 tvar = self.getTransientVariable( varName ) 
-                rv = self.getTransVarDataCube( varName, tvar, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]] )  
+                args = { 'time':timeValues, 'lev':levelValues }
+                if self.gridBounds:
+                    args['lon'] = [self.gridBounds[0],self.gridBounds[2]] 
+                    args['lat'] = [self.gridBounds[1],self.gridBounds[1]] 
+                rv = self.getTransVarDataCube( varName, tvar, self.decimation )  
         if (rv.id == "NULL") and (varName in self.outputVariables):
             rv = self.outputVariables[ varName ]
         if rv.id <> "NULL": 
