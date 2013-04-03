@@ -328,6 +328,7 @@ class DodsDataElementParser(HTMLCatalogParser):
 class RemoteDataBrowser(QtGui.QFrame):
     new_data_element = QtCore.SIGNAL("new_data_element")
     server_file_path = os.path.expanduser( '~/.vistrails/remote_server_list' )
+    default_server_list = [ 'http://nomads.ncep.noaa.gov:80/dods/' ]
 
     def __init__( self, parent = None, **args ):
         QtGui.QFrame.__init__( self, parent )
@@ -381,6 +382,7 @@ class RemoteDataBrowser(QtGui.QFrame):
         self.load_data_button.setEnabled ( False )
         
         layout.addLayout( button_list_layout )
+        self.initServerFile()
         self.readServerList()
      
     def readServerList( self ):
@@ -401,6 +403,14 @@ class RemoteDataBrowser(QtGui.QFrame):
             serverItem = self.treeWidget.topLevelItem( si )
             server_file.write( serverItem.url + "\n" )
         server_file.close()
+
+    def initServerFile( self ):
+        if not os.path.isfile( self.server_file_path ):
+            try:    server_file = open( self.server_file_path, "w" )
+            except: return
+            for server in self.default_server_list:
+                server_file.write( server + "\n" )
+            server_file.close()
                                        
     def addNewServer(self): 
         url, ok = self.inputDialog.getText( self, 'Add OpenDap Server', 'Enter new server url:')     
