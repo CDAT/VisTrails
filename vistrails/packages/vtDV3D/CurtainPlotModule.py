@@ -77,29 +77,31 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         PersistentVisualizationModule.__init__(self, mid, **args)
         self.opacityRange =  [ 0.8, 0.8 ]
         self.numberOfLevels = 2
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', setLevel=self.setColorScale, getLevel=self.getColorScale, getInitLevel=self.getScalarRange, adjustRangeInput=0 )
+        self.addConfigurableLevelingFunction( 'colorScale',    'C', label='Colormap Scale', units='data', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, adjustRangeInput=0 )
         self.addConfigurableLevelingFunction( 'opacity', 'O', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange )
-        pass
+#        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
     
-    def setOpacityRange( self, opacity_range ):
+    def setOpacityRange( self, opacity_range, **args  ):
 #        print "Update Opacity, range = %s" %  str( opacity_range )
         self.opacityRange = opacity_range
-#        self.colormapManager.setAlphaRange ( opacity_range[0:2] ) 
-        self.render()
+        colormapManager = self.getColormapManager( index=0 )
+        colormapManager.setAlphaRange ( [ opacity_range[0], opacity_range[0] ]  ) 
+#        self.levelSetProperty.SetOpacity( opacity_range[1] )
         
-    def setColorScale( self, range ):
-        self.curtainMapper.SetScalarRange( range[0], range[1] )
-        self.render()
+    def setColorScale( self, range, cmap_index=0, **args  ):
+        ispec = self.getInputSpec( cmap_index )
+        if ispec and ispec.input():
+            imageRange = self.getImageValues( range[0:2], cmap_index ) 
+            colormapManager = self.getColormapManager( index=cmap_index )
+            colormapManager.setScale( imageRange, range )
+            self.curtainMapper.Modified()
 
-    def getColorScale( self ):
-        sr = self.curtainMapper.GetScalarRange()
+    def getColorScale( self, cmap_index=0 ):
+        sr = self.getDataRangeBounds( cmap_index )
         return [ sr[0], sr[1], 0 ]
 
     def getOpacityRange( self ):
         return [ self.opacityRange[0], self.opacityRange[1], 0 ]
-         
-    def getLevelRange(self): 
-        return [ self.range[0], self.range[1], 0 ]
  
         
     def finalizeConfiguration( self ):
@@ -182,7 +184,11 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         self.curtainMapper = vtk.vtkPolyDataMapper()
         self.curtainMapper.SetInputConnection( self.probeFilter.GetOutputPort() ) 
         self.curtainMapper.SetScalarRange( textureRange )
-        self.curtainMapper.SetLookupTable( lut ) 
+                
+        colormapManager = self.getColormapManager( index=0 )     
+        colormapManager.setAlphaRange ( self.opacityRange ) 
+        self.curtainMapper.SetLookupTable( colormapManager.lut ) 
+        self.curtainMapper.UseLookupTableScalarRangeOn()
               
 #        self.colormapManager.setAlphaRange ( self.opacityRange )           
 #        curtainMapper.SetColorModeToMapScalars()  
