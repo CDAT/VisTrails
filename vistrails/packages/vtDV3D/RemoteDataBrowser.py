@@ -1,5 +1,5 @@
 
-import urllib2, sys, os, copy, httplib
+import urllib2, sys, os, copy, time, httplib
 from HTMLParser import HTMLParser
 from urlparse import *
 from PyQt4 import QtCore, QtGui, QtWebKit
@@ -85,7 +85,7 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
                 else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )
             else:
                 if     self.type() == ServerType.THREDDS:   self.parser = ThreddsDataElementParser( self.url ) 
-                elif   self.type() == ServerType.DODS:      self.parser = DodsDataElementParser( self.url, debug=True ) 
+                elif   self.type() == ServerType.DODS:      self.parser = DodsDataElementParser( self.url ) 
                 else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )      
             if self.parser:
                 self.parser.execute() 
@@ -307,15 +307,23 @@ class DodsDataElementParser(HTMLCatalogParser):
         HTMLCatalogParser.__init__( self, **args ) 
         self.base_url = url 
         self.data_element_address = None
-        self.processHref = False  
+        self.processHref = False 
+        self.completeListing = args.get( 'complete', False ) 
 
 #    def process_start_tag( self, tag, attrs ):       
 #        print "Start Tag %s: %s" % ( tag, str(attrs) )
         
     def execute(self):
         response = urllib2.urlopen( self.base_url )
+        t0 = time.time()
+        c0 = time.clock()
         self.metadata = response.read()
+        t1 = time.time()
+        c1 = time.clock()
         self.feed( self.metadata )
+        c2 = time.clock()
+        t2 = time.time()
+        print "Metadata retreival time = %.1f/%.1f, parse time = %.1f/%.1f" % ( (t1-t0), (c1-c0), (t2-t1), (c2-c1) )
                     
     def process_data( self,  data ): 
         if ( data.find('Data URL') >= 0 ) and self.has_state( 'td' ):
@@ -374,6 +382,12 @@ class RemoteDataBrowser(QtGui.QFrame):
             close_button = QtGui.QPushButton( "Close"  )       
             button_list_layout.addWidget( close_button )       
             self.connect( close_button, QtCore.SIGNAL('clicked(bool)'), self.close)
+
+        self.load_mdata_button = QtGui.QPushButton( "Show Metadata"  )   
+        self.load_mdata_button.setToolTip( "Display complete metadata listing")        
+        self.connect( self.load_mdata_button, QtCore.SIGNAL('clicked(bool)'), self.loadMetadata )
+#        button_list_layout.addWidget( self.load_mdata_button )
+        self.load_mdata_button.setEnabled ( False )
 
         self.load_data_button = QtGui.QPushButton( "Open"  )   
         self.load_data_button.setToolTip( "Open Selected Dataset in UVCDAT")        
@@ -442,10 +456,14 @@ class RemoteDataBrowser(QtGui.QFrame):
             print>>sys.stderr, "Error retrieving data item: %s\n Item: %s" % ( str(err), str(item) )
             (self.data_element_address, self.metadata) = ( None, None )
         self.load_data_button.setEnabled ( self.data_element_address <> None ) 
+#        self.load_mdata_button.setEnabled( self.data_element_address <> None ) 
            
     def loadData( self ):
         self.emit(  self.new_data_element, self.data_element_address )
         print "Loading URL: ", self.data_element_address
+
+    def loadMetadata( self ):
+        pass
 
 class RemoteDataBrowserDialog(QtGui.QDialog):
 
