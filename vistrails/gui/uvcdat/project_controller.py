@@ -490,12 +490,22 @@ class ProjectController(QtCore.QObject):
                                                                       plots=[],
                                                                       templates=[],
                                                                       current_parent_version=0L)
+                
         else:
             self.sheet_map[sheetName] = {}
             self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[varName],
                                                                   plots=[],
                                                                   templates=[],
                                                                   current_parent_version=0L)
+            
+
+        if len(self.sheet_map[sheetName][(row,col)].plots) == 0:
+            from gui.application import get_vistrails_application
+            gui_app = get_vistrails_application()
+            defaultPlot = gui_app.uvcdatWindow.preferences.getDefaultPlot()
+            if defaultPlot is not None:
+                self.plot_was_dropped((defaultPlot, sheetName, row, col))
+                self.sheet_map[sheetName][(row,col)].usingDefaultPlot = True
         
     def template_was_dropped(self, info):
         """template_was_dropped(info: (varName, sheetName, row, col) """
@@ -695,9 +705,17 @@ class ProjectController(QtCore.QObject):
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
-                update = cell.is_ready()
-                cell.add_plot(plot)
-                self.check_update_cell(sheetName,row,col, update)
+                if cell.usingDefaultPlot:
+                    varNames = [v for v in cell.plots[0].variables]
+                    self.clear_cell(sheetName, row, col)
+                    del self.sheet_map[sheetName][(row,col)]
+                    self.plot_was_dropped(info)
+                    for varName in varNames:
+                        self.variable_was_dropped((varName, sheetName, row, col))
+                else:
+                    update = cell.is_ready()
+                    cell.add_plot(plot)
+                    self.check_update_cell(sheetName,row,col, update)
             else:
                 self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
                                                                       plots=[plot],

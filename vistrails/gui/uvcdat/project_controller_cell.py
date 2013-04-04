@@ -52,6 +52,8 @@ class ControllerCell(object):
         
         for v in variables: self.add_variable(v)
         for t in templates: self.add_template(t)
+        
+        self.usingDefaultPlot = False
 
     def _get_current_parent_version(self):
         return self._current_version    
@@ -59,11 +61,13 @@ class ControllerCell(object):
         if version != self._current_version:
             self.undoVersion = version
             self.redoVersion = version
+            self.usingDefaultPlot = False
             self._current_version = version
 #        print "\n ****************** Set Cell current_parent_version: %d ****************** \n" % version    
     current_parent_version = property( _get_current_parent_version, _set_current_parent_version ) 
-    
+        
     def add_variable(self, varname):
+        self.defaultPlotVersion = None
         for plot in self.plots:
             if len(plot.variables) < plot.varnum:
                 plot.variables.append(varname)
