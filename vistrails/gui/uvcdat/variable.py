@@ -140,11 +140,13 @@ class VariableProperties(QtGui.QDialog):
         self.btnApplyEdits.setVisible(False)
 
     def tabHasChanged(self,index):
-        if index==1:
+        if (index==1) or (index==2):
             self.root.varProp.btnDefine.setEnabled(False)
             self.root.varProp.btnDefineClose.setEnabled(False)
             self.root.varProp.btnDefineAs.setEnabled(False)
             self.root.varProp.selectRoiButton.setEnabled(False)
+        if (index==2):
+            self.clearDimensionsWidget()
         ## else:
         ##     self.root.varProp.btnDefine.setEnabled(True)
         ##     self.root.varProp.btnDefineClose.setEnabled(True)
@@ -494,7 +496,7 @@ class VariableProperties(QtGui.QDialog):
         self.root.varProp.selectRoiButton.setEnabled(True)
         
 
-    def fillDimensionsWidget(self,axisList):
+    def clearDimensionsWidget(self):
         if not self.axisListHolder is None:
             self.axisListHolder.destroy()
         it = self.dimsLayout.takeAt(0)
@@ -503,6 +505,9 @@ class VariableProperties(QtGui.QDialog):
     ##             it.widget().destroy()
 #            self.dimsLayout.removeItem(it)
             del(it)
+
+    def fillDimensionsWidget(self,axisList):
+        self.clearDimensionsWidget()
         self.axisListHolder = axisList
         self.dimsLayout.insertWidget(0,axisList)
         self.updateVarInfo(axisList)
