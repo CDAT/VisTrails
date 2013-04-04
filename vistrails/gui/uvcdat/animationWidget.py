@@ -19,7 +19,7 @@ class QThreadAnimationCreate(QtCore.QThread):
     ## def __del__(self):
     ##     self.exiting=True
     ##     self.wait()
-        
+    
     
 class QAnimationView(QtGui.QWidget):
     """ Widget containing plot options: plot button, plot type combobox, cell
@@ -160,8 +160,9 @@ class QAnimationView(QtGui.QWidget):
         self.createButton.setText("Stop Creating Frames")
         #self.disconnect(self.createButton,QtCore.SIGNAL("clicked()"),self.create)
         self.connect(self.createButton,QtCore.SIGNAL("clicked()"),self.stop)
-        t=QThreadAnimationCreate(self,self.canvas,c)
-        t.start()
+        #t=QThreadAnimationCreate(self,self.canvas,c)
+        #t.start()
+        self.canvas.animate.create(thread_it=1)
     def animationCreated(self,canvas,cursor):
         icon = QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'symbol_add.ico'))
         self.createButton.setIcon(icon)
