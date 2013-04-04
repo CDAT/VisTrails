@@ -38,6 +38,7 @@ defaultEsgfMapping=None
 appStyles = {}
 confirmB4Exit=True
 saveB4Exit=True
+defaultPlot="None"
 ##  cdms2 stuff
 timeAliases=[]
 levelAliases=[]
