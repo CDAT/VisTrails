@@ -1149,7 +1149,8 @@ class QCDATWidgetToolBar(QCellToolBar):
             self.dimSelector = QCDATDimSelector(self,cell)
             self.addWidget(self.dimSelector)
             self.nextAction=QCDATWidgetNext(self)
-            self.appendAction(self.nextAction)
+            self.addWidget(self.nextAction)
+            self.nextAction.toolBar = self
             
 
         self.appendAction(QCDATWidgetPrint(self))
@@ -1217,7 +1218,35 @@ class QCDATWidgetPrev(QtGui.QAction):
                 self.setVisible(True)
         else:
             self.setVisible(False)
-class QCDATWidgetNext(QtGui.QAction):
+class QDimsSlider(QtGui.QWidget):
+    def __init__(self,parent):
+        super(QDimsSlider,self).__init__(parent)
+        #cellWidget = parent.parent().parent().toolBar.getSnappedWidget()
+        #selectedDim = str(parent.parent().parent().parent().dimSelector.currentText())
+        l = QtGui.QVBoxLayout()
+        self.current = QtGui.QLabel("Date")
+        l.addWidget(self.current)
+        self.slider = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.first = QtGui.QLabel("First")
+        self.last = QtGui.QLabel("Last")
+        h=QtGui.QHBoxLayout()
+        h.addWidget(self.first)
+        h.addWidget(self.slider)
+        h.addWidget(self.last)
+        l.addLayout(h)
+        self.setLayout(l)
+
+
+        
+class QDIMSSliderAction(QtGui.QWidgetAction):
+    def __init__(self,parent):
+        super(QDIMSSliderAction,self).__init__(parent)
+    def createWidget(self,parent):
+        t = QDimsSlider(parent)
+        return t
+
+
+class QCDATWidgetNext(QtGui.QToolButton):
     """
     QCDATWidgetColormap is the action to export the plot 
     of the current cell to a file
@@ -1229,18 +1258,24 @@ class QCDATWidgetNext(QtGui.QAction):
         Brings up the naimation
         
         """
-        QtGui.QAction.__init__(self,
-                               UVCDATTheme.PLOT_NEXT_ICON,
-                               "Next",
-                               parent)
+        super(QCDATWidgetNext,self).__init__(parent)
+        #QtGui.QAbstractButton.__init__(self,
+                #UVCDATTheme.PLOT_NEXT_ICON,
+                #             "Next",
+                    #           parent)
+        self.setIcon(UVCDATTheme.PLOT_NEXT_ICON)
         self.setStatusTip("Move to Next Dimensions")
-        
+        self.connect(self, QtCore.SIGNAL("clicked(bool)"),self.clicked)
+        menu = QtGui.QMenu(self)
+        menu.addAction(QDIMSSliderAction(self))
+        self.setMenu(menu)
 
-    def triggeredSlot(self, checked=False):
+    def clicked(self, value):
         """ toggledSlot(checked: boolean) -> None
         Execute the action when the button is clicked
         
         """
+        print "value:",value
         #make sure we get the canvas object used in the cell
         cellWidget = self.toolBar.getSnappedWidget()
         selectedDim = str(self.parent().dimSelector.currentText())
