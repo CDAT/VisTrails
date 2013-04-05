@@ -133,7 +133,8 @@ class PM_CurtainPlot(PersistentVisualizationModule):
                 lonData.append( self.roi[0] + xstep*iPt )
                 latData.append( y0 + ysize * math.sin( (iPt/float(nPts)) * 2.0 * math.pi ) )
         lonDataIter = iter( lonData )
-        z_inc = ( self.roi[5] - self.roi[4] ) / nStrips
+#        z_inc = ( self.roi[5] - self.roi[4] ) / nStrips
+        z_inc = 1.0 / nStrips
         polydata = vtk.vtkPolyData()
         stripArray = vtk.vtkCellArray()
         stripData = [ vtk.vtkIdList() for istrip in range( nStrips ) ]
@@ -141,7 +142,8 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         for latVal in latData:
             lonVal = lonDataIter.next()
             if ( latVal <> None ) and  ( lonVal <> None ) :
-                z = self.roi[4]
+#                z = self.roi[4]
+                z = 0.0
                 for iLevel in range( nStrips ):
                     z = z + z_inc 
                     vtkId = points.InsertNextPoint( lonVal, latVal, z )
@@ -156,7 +158,17 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         polydata.SetStrips( stripArray )
         return polydata
 
-                           
+    def updateModule(self, **args ):
+        probeOutput = self.probeFilter.GetOutput()
+        probeOutput.Update() 
+        pts = []
+        for ipt in range( 100, 200 ):
+            ptd = probeOutput.GetPoint( ipt ) 
+            pts.append( "(%.2f,%.2f,%.2f)" % ( ptd[0], ptd[1], ptd[2] ) ) 
+            if ipt % 10 == 0: pts.append( "\n" )
+        print "Sample Points:", ' '.join(pts)
+           
+                                   
     def buildPipeline(self):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
