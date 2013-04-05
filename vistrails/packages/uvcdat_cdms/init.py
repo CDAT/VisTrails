@@ -968,7 +968,6 @@ class QCDATWidget(QCellWidget):
             raise ModuleError(self, "Maximum number of vcs.Canvas objects achieved.\
 Please delete unused CDAT Cells in the spreadsheet.")
         else:
-            print "using canvas ", windowIndex
             if windowIndex > len(vcs.canvaslist):
                 self.canvas = vcs.init()
             else:
@@ -1152,7 +1151,8 @@ class QCDATWidgetToolBar(QCellToolBar):
             self.dimSelector = QCDATDimSelector(self,cell)
             self.addWidget(self.dimSelector)
             self.nextAction=QCDATWidgetNext(self)
-            self.appendAction(self.nextAction)
+            self.addWidget(self.nextAction)
+            self.nextAction.toolBar = self
             
 
         self.appendAction(QCDATWidgetPrint(self))
@@ -1165,9 +1165,10 @@ class QCDATDimSelector(QtGui.QComboBox):
     def __init__(self,parent=None,cell=None):
         QtGui.QComboBox.__init__(self,parent)
         self.addItems(cell.extraDimsNames)
+        self.connect(self,QtCore.SIGNAL("currentIndexChanged(int)"),self.valueChanged)
     def valueChanged(self, *args):
-        print "You changed the dims name",args
-        
+        self.parent().nextAction.wAction.updateLabels(fromDimension=True)
+
 class QCDATWidgetPrev(QtGui.QAction):
     """
     QCDATWidgetColormap is the action to export the plot 
@@ -1220,7 +1221,62 @@ class QCDATWidgetPrev(QtGui.QAction):
                 self.setVisible(True)
         else:
             self.setVisible(False)
-class QCDATWidgetNext(QtGui.QAction):
+class QDimsSlider(QtGui.QWidget):
+    def updateLabels(self,val=None,fromDimension=False):
+        selectedDim = str(self.parent().parent().parent().dimSelector.currentText())
+        for a in self.V.getAxisList():
+            if a.id == selectedDim:
+                break
+        index = self.slider.value()
+        if fromDimension:
+            index=0
+        if self.slider.maximum()!=len(a)-1:
+            self.slider.setMaximum(len(a)-1)
+
+        if a.isTime():
+            a = a.asComponentTime()
+            self.current.setText(str(a[index]))
+            self.first.setText(str(a[0]))
+            self.last.setText(str(a[-1]))
+        else:
+            self.current.setText("%g %s" % (a[index],a.units))
+            self.first.setText("%g" % a[0])
+            self.last.setText("%g" % a[-1])
+        try:
+            if not fromDimension:
+                self.parent().parent().parent().nextAction.clicked(fromSlider=True,index=index)
+        except Exception,err:
+            pass
+    def __init__(self,parent):
+        super(QDimsSlider,self).__init__(parent)
+        toolBar = parent.parent().parent()
+        self.cell = toolBar.parent().getCell(toolBar.parent().parentRow,toolBar.parent().parentCol) 
+        self.V = self.cell.inputPorts[0][0].var.var
+        l = QtGui.QVBoxLayout()
+        self.current = QtGui.QLabel("Date")
+        l.addWidget(self.current)
+        self.slider = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.first = QtGui.QLabel("First")
+        self.last = QtGui.QLabel("Last")
+        h=QtGui.QHBoxLayout()
+        h.addWidget(self.first)
+        h.addWidget(self.slider)
+        h.addWidget(self.last)
+        l.addLayout(h)
+        self.setLayout(l)
+        self.updateLabels()
+        self.connect(self.slider,QtCore.SIGNAL("valueChanged(int)"),self.updateLabels)
+        
+class QDIMSSliderAction(QtGui.QWidgetAction):
+    def __init__(self,parent):
+        super(QDIMSSliderAction,self).__init__(parent)
+    def createWidget(self,parent):
+        t = QDimsSlider(parent)
+        self.parent().wAction = t
+        return t
+
+
+class QCDATWidgetNext(QtGui.QToolButton):
     """
     QCDATWidgetColormap is the action to export the plot 
     of the current cell to a file
@@ -1232,14 +1288,20 @@ class QCDATWidgetNext(QtGui.QAction):
         Brings up the naimation
         
         """
-        QtGui.QAction.__init__(self,
-                               UVCDATTheme.PLOT_NEXT_ICON,
-                               "Next",
-                               parent)
+        super(QCDATWidgetNext,self).__init__(parent)
+        #QtGui.QAbstractButton.__init__(self,
+                #UVCDATTheme.PLOT_NEXT_ICON,
+                #             "Next",
+                    #           parent)
+        self.setIcon(UVCDATTheme.PLOT_NEXT_ICON)
         self.setStatusTip("Move to Next Dimensions")
-        
+        self.connect(self, QtCore.SIGNAL("clicked(bool)"),self.clicked)
+        menu = QtGui.QMenu(self)
+        wAction = QDIMSSliderAction(self)
+        menu.addAction(wAction)
+        self.setMenu(menu)
 
-    def triggeredSlot(self, checked=False):
+    def clicked(self, fromSlider=False,index=0):
         """ toggledSlot(checked: boolean) -> None
         Execute the action when the button is clicked
         
@@ -1248,10 +1310,17 @@ class QCDATWidgetNext(QtGui.QAction):
         cellWidget = self.toolBar.getSnappedWidget()
         selectedDim = str(self.parent().dimSelector.currentText())
         i = cellWidget.extraDimsNames.index(selectedDim)
-        cellWidget.extraDimsIndex[i]+=1
+        if not fromSlider:
+            if cellWidget.extraDimsIndex[i]!=cellWidget.extraDimsLen[i]-1:
+                cellWidget.extraDimsIndex[i]+=1
+        else: 
+            cellWidget.extraDimsIndex[i]=index
         cellWidget.updateContents(cellWidget.inputPorts,True)
-        self.parent().prevAction.setEnabled(True)
-        if  cellWidget.extraDimsIndex[i]==cellWidget.extraDimsLen[i]-1:
+        if cellWidget.extraDimsIndex[i]!=0:
+            self.parent().prevAction.setEnabled(True)
+        else:
+            self.parent().prevAction.setEnabled(False)
+        if  not fromSlider and cellWidget.extraDimsIndex[i]==cellWidget.extraDimsLen[i]-1:
             self.setEnabled(False) 
         
     def updateStatus(self, info):
