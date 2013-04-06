@@ -81,13 +81,14 @@ class PM_CurtainPlot(PersistentVisualizationModule):
 #        self.addConfigurableLevelingFunction( 'opacity', 'O', label='Curtain Opacity', activeBound='min', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
 
-    def setInputZScale( self, zscale_data, **args  ):       
+    def setInputZScale( self, zscale_data, **args  ): 
+        rv = PersistentVisualizationModule.setInputZScale( self,  zscale_data, **args )      
         curtain = self.getCurtainGeometry()                   
         self.probeFilter.SetInput( curtain )
-        probeOutput = self.probeFilter.GetOutput()
-        probeOutput.Update() 
-        self.render()
-        return PersistentVisualizationModule.setInputZScale( self,  zscale_data, **args )
+#        probeOutput = self.probeFilter.GetOutput()
+#        probeOutput.Update() 
+#        self.render()
+        return rv
     
     def setOpacityRange( self, opacity_range, **args  ):
 #        print "Update Opacity, range = %s" %  str( opacity_range )
