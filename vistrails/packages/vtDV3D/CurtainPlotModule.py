@@ -76,22 +76,18 @@ class PM_CurtainPlot(PersistentVisualizationModule):
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__(self, mid, **args)
         self.opacityRange =  [ 0.0, 1.0 ]
-        self.numberOfLevels = 2
         self.addConfigurableLevelingFunction( 'colorScale',    'C', label='Colormap Scale', units='data', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, adjustRangeInput=0 )
 #        self.addConfigurableLevelingFunction( 'opacity', 'O', label='Curtain Opacity', activeBound='min', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
+        self.trajectory = None
 
     def setInputZScale( self, zscale_data, **args  ): 
         rv = PersistentVisualizationModule.setInputZScale( self,  zscale_data, **args )      
         curtain = self.getCurtainGeometry()                   
         self.probeFilter.SetInput( curtain )
-#        probeOutput = self.probeFilter.GetOutput()
-#        probeOutput.Update() 
-#        self.render()
         return rv
     
     def setOpacityRange( self, opacity_range, **args  ):
-#        print "Update Opacity, range = %s" %  str( opacity_range )
         self.opacityRange = opacity_range
         colormapManager = self.getColormapManager( index=0 )
         colormapManager.setAlphaRange ( [ opacity_range[0], opacity_range[0] ]  ) 
@@ -119,13 +115,9 @@ class PM_CurtainPlot(PersistentVisualizationModule):
     def setInteractionState( self, caller, event ):
         PersistentVisualizationModule.setInteractionState( self, caller, event )
         
-    def getCurtainGeometry( self, **args ):
+    def computeInitialTrajectory(self):
         path = defaultPathFile
         pathInput = self.wmod.forceGetInputFromPort( "path", None ) 
-        extent =  self.input().GetExtent() 
-        spacing =  self.input().GetSpacing() 
-        nStrips = extent[5] - extent[4] 
-        zmax = spacing[2] * nStrips
         lonData = []
         latData = []
         if pathInput <> None: 
@@ -142,8 +134,16 @@ class PM_CurtainPlot(PersistentVisualizationModule):
             for iPt in range(nPts):
                 lonData.append( self.roi[0] + xstep*iPt )
                 latData.append( y0 + ysize * math.sin( (iPt/float(nPts)) * 2.0 * math.pi ) )
+        return ( lonData, latData )
+        
+    def getCurtainGeometry( self, **args ):
+        if self.trajectory == None: self.trajectory = self.computeInitialTrajectory()
+        ( lonData, latData ) = self.trajectory
+        extent =  self.input().GetExtent() 
+        spacing =  self.input().GetSpacing() 
+        nStrips = extent[5] - extent[4] 
+        zmax = spacing[2] * nStrips
         lonDataIter = iter( lonData )
-#        z_inc = ( self.roi[5] - self.roi[4] ) / nStrips
         z_inc = zmax / nStrips
         polydata = vtk.vtkPolyData()
         stripArray = vtk.vtkCellArray()
@@ -151,16 +151,14 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         points = vtk.vtkPoints()     
         for latVal in latData:
             lonVal = lonDataIter.next()
-            if ( latVal <> None ) and  ( lonVal <> None ) :
-#                z = self.roi[4]
-                z = 0.0
-                for iLevel in range( nStrips ):
-                    vtkId = points.InsertNextPoint( lonVal, latVal, z )
-                    sd = stripData[ iLevel ]
-                    sd.InsertNextId( vtkId )               
-                    sd.InsertNextId( vtkId+1 )
-                    z = z + z_inc 
-                points.InsertNextPoint( lonVal, latVal, z )
+            z = 0.0
+            for iLevel in range( nStrips ):
+                vtkId = points.InsertNextPoint( lonVal, latVal, z )
+                sd = stripData[ iLevel ]
+                sd.InsertNextId( vtkId )               
+                sd.InsertNextId( vtkId+1 )
+                z = z + z_inc 
+            points.InsertNextPoint( lonVal, latVal, z )
                        
         for strip in stripData:
             stripArray.InsertNextCell(strip)
@@ -170,11 +168,16 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         return polydata
 
     def updateModule(self, **args ):
-        curtain = self.getCurtainGeometry()                   
-        self.probeFilter.SetInput( curtain )
-        probeOutput = self.probeFilter.GetOutput()
-        probeOutput.Update() 
-        self.render()
+        textureInput = self.input()
+        self.probeFilter.SetSource( textureInput )      
+        self.probeFilter.Modified()
+        self.set3DOutput()
+                
+#        curtain = self.getCurtainGeometry()                   
+#        self.probeFilter.SetInput( curtain )
+#        probeOutput = self.probeFilter.GetOutput()
+#        probeOutput.Update() 
+#        self.render()
 #        pts = []
 #        for ipt in range( 400, 500 ):
 #            ptd = probeOutput.GetPoint( ipt ) 
@@ -190,23 +193,9 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         self.probeFilter = vtk.vtkProbeFilter()
         textureInput = self.input()
         lut = self.getLut()                     
-
-#            self.probeFilter = vtk.vtkProbeFilter()
-#            textureGenerator = vtk.vtkImageSinusoidSource()
-#            textureGenerator.SetWholeExtent ( xMin, xMax, yMin, yMax, zMin, zMax )
-#            textureGenerator.SetDirection( 1.0, 1.0, 1.0 )
-#            textureGenerator.SetPeriod( xMax-xMin )
-#            textureGenerator.SetAmplitude( 125.0 )
-#            textureGenerator.Update()
-#            textureInput = textureGenerator.GetOutput() 
-#            textureInput.SetSpacing( spacing )
-#            textureInput.SetOrigin( origin )
             
         textureRange = textureInput.GetScalarRange()
         self.probeFilter.SetSource( textureInput )             
-#        curtain = self.getCurtainGeometry()
-                    
-#        self.probeFilter.SetInput( curtain )
         self.curtainMapper = vtk.vtkPolyDataMapper()
         self.curtainMapper.SetInputConnection( self.probeFilter.GetOutputPort() ) 
         self.curtainMapper.SetScalarRange( textureRange )
@@ -216,59 +205,12 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         self.curtainMapper.SetLookupTable( colormapManager.lut ) 
         self.curtainMapper.UseLookupTableScalarRangeOn()
               
-#        self.colormapManager.setAlphaRange ( self.opacityRange )           
-#        curtainMapper.SetColorModeToMapScalars()  
-#        levelSetActor = vtk.vtkLODActor() 
         curtainActor = vtk.vtkActor() 
-#            curtainMapper.ScalarVisibilityOff() 
-#            levelSetActor.SetProperty( self.levelSetProperty )              
-        curtainActor.SetMapper( self.curtainMapper )
-           
+        curtainActor.SetMapper( self.curtainMapper )           
         self.renderer.AddActor( curtainActor )
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )                                             
         self.set3DOutput()                                              
                                                 
-
-class NLevelConfigurationWidget( IVModuleConfigurationDialog ):
-    """
-    NLevelConfigurationWidget ...   
-    """    
-    def __init__(self, name, **args):
-        IVModuleConfigurationDialog.__init__( self, name, **args )
-        
-    @staticmethod   
-    def getSignature():
-        return [ (Integer, 'nlevels'), ]
-        
-    def getValue(self):
-        return int( self.nLevelCombo.currentText() )
-
-    def setValue( self, value ):
-        nLevelStr = str( value )
-        itemIndex = self.nLevelCombo.findText( nLevelStr, Qt.MatchFixedString )
-        if itemIndex >= 0: self.nLevelCombo.setCurrentIndex( itemIndex )
-        else: print>>sys.stderr, " Illegal number of levels: %s " % nLevelStr
-        
-    def createContent( self ):
-        nLevelTab = QWidget()        
-        self.layout().addTab( nLevelTab )                 
-        layout = QGridLayout()
-        nLevelTab.setLayout( layout ) 
-        layout.setMargin(10)
-        layout.setSpacing(20)
-       
-        nLevel_label = QLabel( "Number of Levels:"  )
-        layout.addWidget( nLevel_label, 0, 0 ) 
-
-        self.nLevelCombo =  QComboBox ( self.parent() )
-        nLevel_label.setBuddy( self.nLevelCombo )
-        self.nLevelCombo.setMaximumHeight( 30 )
-        layout.addWidget( self.nLevelCombo, 0,1 )
-        for iLevel in range(1,6): self.nLevelCombo.addItem( str(iLevel) )   
-        self.connect( self.nLevelCombo, SIGNAL("currentIndexChanged(QString)"), self.updateParameter )  
-
-
-
 from packages.vtDV3D.WorkflowModule import WorkflowModule
 
 class CurtainPlot(WorkflowModule):
@@ -278,47 +220,4 @@ class CurtainPlot(WorkflowModule):
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args) 
 
-         
-                
-if __name__ == '__main__':
-    import core.requirements, os
-    from core.db.locator import FileLocator
-    core.requirements.check_pyqt4()
-    vistrail_filename = os.path.join( os.path.dirname( __file__ ), 'CurtainPlotDemo.vt' )
-
-    from PyQt4 import QtGui
-    import gui.application
-    import sys
-    import os
-
-    try:
-        v = gui.application.start_application()
-        if v != 0:
-            app = gui.application.get_vistrails_application()
-            if app:
-                app.finishSession()
-            sys.exit(v)
-        app = gui.application.get_vistrails_application()
-        f = FileLocator(vistrail_filename)
-        app.builderWindow.open_vistrail(f) 
-#        app.builderWindow.viewModeChanged(0)   
-    except SystemExit, e:
-        app = gui.application.get_vistrails_application()
-        if app:
-            app.finishSession()
-        sys.exit(e)
-    except Exception, e:
-        app = gui.application.get_vistrails_application()
-        if app:
-            app.finishSession()
-        print "Uncaught exception on initialization: %s" % e
-        import traceback
-        traceback.print_exc()
-        sys.exit(255)
-    if (app.temp_configuration.interactiveMode and
-        not app.temp_configuration.check('spreadsheetDumpCells')): 
-        v = app.exec_()
-    
-    gui.application.stop_application()
-    sys.exit(v)    
  
