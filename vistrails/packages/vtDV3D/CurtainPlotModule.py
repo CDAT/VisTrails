@@ -75,18 +75,26 @@ class PM_CurtainPlot(PersistentVisualizationModule):
            
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__(self, mid, **args)
-        self.opacityRange =  [ 0.8, 0.8 ]
+        self.opacityRange =  [ 0.0, 1.0 ]
         self.numberOfLevels = 2
         self.addConfigurableLevelingFunction( 'colorScale',    'C', label='Colormap Scale', units='data', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, adjustRangeInput=0 )
-        self.addConfigurableLevelingFunction( 'opacity', 'O', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange )
-#        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
+#        self.addConfigurableLevelingFunction( 'opacity', 'O', label='Curtain Opacity', activeBound='min', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
+
+    def setInputZScale( self, zscale_data, **args  ):       
+        curtain = self.getCurtainGeometry()                   
+        self.probeFilter.SetInput( curtain )
+        probeOutput = self.probeFilter.GetOutput()
+        probeOutput.Update() 
+        self.render()
+        return PersistentVisualizationModule.setInputZScale( self,  zscale_data, **args )
     
     def setOpacityRange( self, opacity_range, **args  ):
 #        print "Update Opacity, range = %s" %  str( opacity_range )
         self.opacityRange = opacity_range
         colormapManager = self.getColormapManager( index=0 )
         colormapManager.setAlphaRange ( [ opacity_range[0], opacity_range[0] ]  ) 
-#        self.levelSetProperty.SetOpacity( opacity_range[1] )
+        self.curtainMapper.Modified()
         
     def setColorScale( self, range, cmap_index=0, **args  ):
         ispec = self.getInputSpec( cmap_index )
@@ -102,7 +110,6 @@ class PM_CurtainPlot(PersistentVisualizationModule):
 
     def getOpacityRange( self ):
         return [ self.opacityRange[0], self.opacityRange[1], 0 ]
- 
         
     def finalizeConfiguration( self ):
         PersistentVisualizationModule.finalizeConfiguration( self )
@@ -115,7 +122,9 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         path = defaultPathFile
         pathInput = self.wmod.forceGetInputFromPort( "path", None ) 
         extent =  self.input().GetExtent() 
-        nStrips = extent[5] - extent[4]  
+        spacing =  self.input().GetSpacing() 
+        nStrips = extent[5] - extent[4] 
+        zmax = spacing[2] * nStrips
         lonData = []
         latData = []
         if pathInput <> None: 
@@ -134,7 +143,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
                 latData.append( y0 + ysize * math.sin( (iPt/float(nPts)) * 2.0 * math.pi ) )
         lonDataIter = iter( lonData )
 #        z_inc = ( self.roi[5] - self.roi[4] ) / nStrips
-        z_inc = 1.0 / nStrips
+        z_inc = zmax / nStrips
         polydata = vtk.vtkPolyData()
         stripArray = vtk.vtkCellArray()
         stripData = [ vtk.vtkIdList() for istrip in range( nStrips ) ]
@@ -145,12 +154,13 @@ class PM_CurtainPlot(PersistentVisualizationModule):
 #                z = self.roi[4]
                 z = 0.0
                 for iLevel in range( nStrips ):
-                    z = z + z_inc 
                     vtkId = points.InsertNextPoint( lonVal, latVal, z )
                     sd = stripData[ iLevel ]
                     sd.InsertNextId( vtkId )               
                     sd.InsertNextId( vtkId+1 )
-                        
+                    z = z + z_inc 
+                points.InsertNextPoint( lonVal, latVal, z )
+                       
         for strip in stripData:
             stripArray.InsertNextCell(strip)
             
@@ -159,14 +169,17 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         return polydata
 
     def updateModule(self, **args ):
+        curtain = self.getCurtainGeometry()                   
+        self.probeFilter.SetInput( curtain )
         probeOutput = self.probeFilter.GetOutput()
         probeOutput.Update() 
-        pts = []
-        for ipt in range( 100, 200 ):
-            ptd = probeOutput.GetPoint( ipt ) 
-            pts.append( "(%.2f,%.2f,%.2f)" % ( ptd[0], ptd[1], ptd[2] ) ) 
-            if ipt % 10 == 0: pts.append( "\n" )
-        print "Sample Points:", ' '.join(pts)
+        self.render()
+#        pts = []
+#        for ipt in range( 400, 500 ):
+#            ptd = probeOutput.GetPoint( ipt ) 
+#            pts.append( "(%.2f,%.2f,%.2f)" % ( ptd[0], ptd[1], ptd[2] ) ) 
+#            if ipt % 10 == 0: pts.append( "\n" )
+#        print "Sample Points:", ' '.join(pts)
            
                                    
     def buildPipeline(self):
@@ -190,15 +203,15 @@ class PM_CurtainPlot(PersistentVisualizationModule):
             
         textureRange = textureInput.GetScalarRange()
         self.probeFilter.SetSource( textureInput )             
-        curtain = self.getCurtainGeometry()
+#        curtain = self.getCurtainGeometry()
                     
-        self.probeFilter.SetInput( curtain )
+#        self.probeFilter.SetInput( curtain )
         self.curtainMapper = vtk.vtkPolyDataMapper()
         self.curtainMapper.SetInputConnection( self.probeFilter.GetOutputPort() ) 
         self.curtainMapper.SetScalarRange( textureRange )
                 
         colormapManager = self.getColormapManager( index=0 )     
-        colormapManager.setAlphaRange ( self.opacityRange ) 
+        colormapManager.setAlphaRange ( [ 1.0, 1.0 ]  )
         self.curtainMapper.SetLookupTable( colormapManager.lut ) 
         self.curtainMapper.UseLookupTableScalarRangeOn()
               
