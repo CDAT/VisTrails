@@ -20,6 +20,11 @@ packagePath = os.path.dirname( __file__ )
 defaultDataDir = os.path.join( packagePath, 'data' )
 defaultPathFile = os.path.join( defaultDataDir,  'demoPath.csv' )
 
+def displayMessage( msg ):
+     msgBox = QMessageBox()
+     msgBox.setText(msg)
+     msgBox.exec_() 
+ 
 class PathFileReader:
     
     def __init__( self, **args ):
@@ -82,7 +87,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
 #        self.addConfigurableLevelingFunction( 'opacity', 'O', label='Curtain Opacity', activeBound='min', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
         self.addConfigurableLevelingFunction( 'nHandles', 'H', label='Number Of Handles', setLevel=self.setNumberOfHandles, activeBound='max', getLevel=self.getNumberOfHandles, windowing=False, initRange=[ 3.0, self.n_spline_spans, 1 ] )
-        self.addConfigurableLevelingFunction( 'splineRes', 'T', label='Trajectory Resolution', setLevel=self.setSplineResolution, activeBound='max', getLevel=self.getSplineResolution, windowing=False, initRange=[ 5.0, spline_resolution, 1 ] )
+        self.addConfigurableLevelingFunction( 'splineRes', 'T', label='Trajectory Resolution', setLevel=self.setSplineResolution, activeBound='max', getLevel=self.getSplineResolution, windowing=False, initRange=[ 5.0, self.spline_resolution, 1 ] )
         self.addConfigurableMethod('Reset Trajectory', self.resetSpline, 'R' )
         self.addConfigurableMethod('Toggle Edit Trajectory Mode', self.toggleEditSpline, 'I' )
         self.trajectory = None
@@ -123,9 +128,15 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         return [ 2.0, 100.0, 1.0 ]
         
     def toggleEditSpline(self):
-        self.iren.SetKeyEventInformation( 0, 0, "i", 0, "i" )     
+        cell_mods = self.getDownstreamCellModules()
+        cell_mods[0].cellWidget.setFocus()
+        renwin = self.iren.GetRenderWindow()
+        renwin.MakeCurrent()
+        self.iren.SetKeyEventInformation( 0, 0, "i", 1, "i" )     
         self.iren.KeyPressEvent()
         self.iren.KeyReleaseEvent()
+        self.render()
+        displayMessage( " Tap the 'i' key to toggle edit trajectory mode. " )
 
 #        self.invokeKeyEvent( 'i' )
 #        self.spline.InvokeEvent( vtk.vtkCommand.KeyPressEvent,  )
@@ -192,7 +203,9 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         polyData = vtk.vtkPolyData()
         self.spline.GetPolyData( polyData )
         npts = polyData.GetNumberOfPoints()
-        print "Get Curtain Geometry From Spline, NP = ", npts
+        print "----------------------------------------------------"
+        print " ** Get Curtain Geometry From Spline, NP = %d **" % npts
+        print "----------------------------------------------------"
         sys.stdout.flush()                
         extent =  self.input().GetExtent() 
         spacing =  self.input().GetSpacing() 
@@ -288,10 +301,9 @@ class PM_CurtainPlot(PersistentVisualizationModule):
 
     def onAnyEvent( self, caller, event ):
         code = self.iren.GetKeyCode()
-        sym = self.iren.GetKeySym()
-        print "Event Detected: %s " % ( event )
+        epos = self.iren.GetEventPosition()
         if ( event == "KeyPressEvent" ) or ( event == "KeyReleaseEvent" ):
-            print " __________________________________  "
+            print "Key Press Position: %s " % str( epos )
 
     def onTrajectoryModified( self, caller, event ):
 #        print " onTrajectoryModified: %s " % ( str(event) )

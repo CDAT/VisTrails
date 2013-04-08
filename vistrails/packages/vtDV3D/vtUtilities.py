@@ -58,6 +58,7 @@ dvLogFile =  open( os.path.expanduser( '~/.vistrails/dv3d_log.txt' ), 'w' )
 dvDbgIO = DebugPrint()
 dvDbgIO.set_stream( sys.stderr )
 
+
 def get_coords_from_cell_address( row, col):
     try:
         col = ord(col)-ord('A')
