@@ -232,10 +232,12 @@ class PM_CurtainPlot(PersistentVisualizationModule):
            
     def activateWidgets( self, iren ):
         self.spline.SetInteractor( iren )       
-        self.addObserver( self.iren, 'ModifiedEvent', self.onTrajectoryModified )
+        self.addObserver( self.spline, 'EndInteractionEvent', self.onTrajectoryModified )
 
     def onTrajectoryModified( self, caller, event ):
-        print " onTrajectoryModified: %s %s " % ( str(caller), str(event) )
+#        print " onTrajectoryModified: %s " % ( str(event) )
+        curtain = self.getCurtainGeometryFromSpline()
+        self.probeFilter.SetInput( curtain )
         return 0
                                    
     def buildPipeline(self):
