@@ -404,7 +404,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                 new_modules=var_modules + new_plot_modules,
                 new_connections=conns)
         
-        action = core.db.action.create_action(ops)
+        action = core.db.action.create_action(ops + layout_ops)
         controller.change_selected_version(version)
         controller.add_new_action(action)
         controller.perform_action(action)
