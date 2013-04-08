@@ -2103,6 +2103,11 @@ class PersistentVisualizationModule( PersistentModule ):
                     if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                
                 HyperwallManager.getInstance().setInteractionState( state, False )                        
         return rcf
+
+    def invokeKeyEvent( self, keysym ):
+        ascii_key = QString(keysym).toLatin1()[0]
+        self.iren.SetKeyEventInformation( 0, 0, ascii_key, 0, keysym )
+        self.iren.KeyPressEvent()
                    
     def endInteraction( self, **args ):
         PersistentModule.endInteraction( self, **args  )
