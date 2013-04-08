@@ -76,17 +76,64 @@ class PM_CurtainPlot(PersistentVisualizationModule):
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__(self, mid, **args)
         self.opacityRange =  [ 0.0, 1.0 ]
+        self.n_spline_spans = 10
+        self.spline_resolution = 20
         self.addConfigurableLevelingFunction( 'colorScale',    'C', label='Colormap Scale', units='data', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, adjustRangeInput=0 )
 #        self.addConfigurableLevelingFunction( 'opacity', 'O', label='Curtain Opacity', activeBound='min', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
+        self.addConfigurableLevelingFunction( 'nHandles', 'H', label='Number Of Handles', setLevel=self.setNumberOfHandles, activeBound='max', getLevel=self.getNumberOfHandles, windowing=False, initRange=[ 3.0, self.n_spline_spans, 1 ] )
+        self.addConfigurableLevelingFunction( 'splineRes', 'T', label='Trajectory Resolution', setLevel=self.setSplineResolution, activeBound='max', getLevel=self.getSplineResolution, windowing=False, initRange=[ 5.0, spline_resolution, 1 ] )
+        self.addConfigurableMethod('Reset Trajectory', self.resetSpline, 'R' )
+        self.addConfigurableMethod('Toggle Edit Trajectory Mode', self.toggleEditSpline, 'I' )
         self.trajectory = None
+        self.nPoints = 100
         self.spline = vtk.vtkSplineWidget()
+        self.curtainModified = False
 
     def setInputZScale( self, zscale_data, **args  ): 
         rv = PersistentVisualizationModule.setInputZScale( self,  zscale_data, **args )      
-        curtain = self.getCurtainGeometry()                   
+        curtain = self.getCurtainGeometryFromSpline() if self.curtainModified else self.getCurtainGeometry()                  
         self.probeFilter.SetInput( curtain )
         return rv
+    
+    def resetSpline(self):
+        self.curtainModified = False
+        curtain = self.getCurtainGeometry()                  
+        self.probeFilter.SetInput( curtain )
+        self.render()
+        
+    def setNumberOfHandles(self, nhandles_data, **args  ):
+        ns = int( round( nhandles_data[1] ) )
+        if ns <> self.n_spline_spans:
+            self.n_spline_spans = ns
+            self.trajectory == None
+            self.getCurtainGeometry()
+            
+    def setSplineResolution(self, tres_data, **args  ):
+        sr = int( round( tres_data[1] ) )
+        if sr <> self.spline_resolution:
+            self.spline_resolution = sr
+            self.trajectory == None
+            self.getCurtainGeometry()
+            
+    def getNumberOfHandles(self):
+        return [ 3.0, 25.0, 1.0 ]
+
+    def getSplineResolution(self):
+        return [ 2.0, 100.0, 1.0 ]
+        
+    def toggleEditSpline(self):
+        self.iren.SetKeyEventInformation( 0, 0, "i", 0, "i" )     
+        self.iren.KeyPressEvent()
+        self.iren.KeyReleaseEvent()
+
+#        self.invokeKeyEvent( 'i' )
+#        self.spline.InvokeEvent( vtk.vtkCommand.KeyPressEvent,  )
+        
+#        ascii_key = QString(keysym).toLatin1()[0]
+#        self.iren.SetKeyEventInformation( 0, 0, ascii_key, 0, keysym )
+#        self.iren.KeyPressEvent()
+
     
     def setOpacityRange( self, opacity_range, **args  ):
         self.opacityRange = opacity_range
@@ -128,27 +175,20 @@ class PM_CurtainPlot(PersistentVisualizationModule):
             latData = reader.getData( 'Latitude' )
             lonData = reader.getData( 'Longitude' )
         else:
-            spline_span_length = 10
-            n_spline_spans = 10
-            nPts = spline_span_length * n_spline_spans 
-            xstep =  (self.roi[1]-self.roi[0])/nPts
+            nPts = int( round ( self.nPoints / float(self.n_spline_spans) ) ) * self.n_spline_spans
+            xstep =  (self.roi[1]-self.roi[0]) / nPts
             ysize = ( self.roi[3]-self.roi[2] ) / 2.5
             y0 = ( self.roi[3]+self.roi[2] ) / 2.0
-            self.spline.SetNumberOfHandles( n_spline_spans + 1 )
-            self.spline.SetResolution( spline_span_length*50 )
-            self.spline.SetProjectionNormalToZAxes() 
-            self.spline.SetProjectToPlane(2)       
-            for iPt in range(nPts+1):
+            for iPt in range( nPts + 1 ):
                 x = self.roi[0] + xstep*iPt
                 y = y0 + ysize * math.sin( (iPt/float(nPts)) * 2.0 * math.pi )
                 lonData.append( x )
                 latData.append( y )
-                if iPt % spline_span_length == 0:
-                    iH = iPt/spline_span_length 
-                    self.spline.SetHandlePosition ( iH, x, y, 0.0 )
         return ( lonData, latData )
  
     def getCurtainGeometryFromSpline( self, **args ):
+        if self.trajectory == None: 
+            self.trajectory = self.computeInitialTrajectory()
         polyData = vtk.vtkPolyData()
         self.spline.GetPolyData( polyData )
         npts = polyData.GetNumberOfPoints()
@@ -179,6 +219,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
             
         polydata.SetPoints( points )
         polydata.SetStrips( stripArray )
+        self.curtainModified = True
         return polydata
        
     def getCurtainGeometry( self, **args ):
@@ -193,7 +234,13 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         polydata = vtk.vtkPolyData()
         stripArray = vtk.vtkCellArray()
         stripData = [ vtk.vtkIdList() for istrip in range( nStrips ) ]
-        points = vtk.vtkPoints()     
+        points = vtk.vtkPoints() 
+        spline_span_length = self.nPoints / self.n_spline_spans 
+        self.spline.SetNumberOfHandles( self.n_spline_spans + 1 )
+        self.spline.SetResolution( spline_span_length * self.spline_resolution )
+        self.spline.SetProjectionNormalToZAxes() 
+        self.spline.SetProjectToPlane(2)       
+        iPt = 0    
         for latVal in latData:
             lonVal = lonDataIter.next()
             z = 0.0
@@ -203,7 +250,11 @@ class PM_CurtainPlot(PersistentVisualizationModule):
                 sd.InsertNextId( vtkId )               
                 sd.InsertNextId( vtkId+1 )
                 z = z + z_inc 
+            if iPt % spline_span_length == 0:
+                iH = iPt / spline_span_length 
+                self.spline.SetHandlePosition ( iH, lonVal, latVal, 0.0 )
             points.InsertNextPoint( lonVal, latVal, z )
+            iPt = iPt+1
                        
         for strip in stripData:
             stripArray.InsertNextCell(strip)
@@ -233,6 +284,14 @@ class PM_CurtainPlot(PersistentVisualizationModule):
     def activateWidgets( self, iren ):
         self.spline.SetInteractor( iren )       
         self.addObserver( self.spline, 'EndInteractionEvent', self.onTrajectoryModified )
+        self.addObserver( self.spline, 'AnyEvent', self.onAnyEvent )
+
+    def onAnyEvent( self, caller, event ):
+        code = self.iren.GetKeyCode()
+        sym = self.iren.GetKeySym()
+        print "Event Detected: %s " % ( event )
+        if ( event == "KeyPressEvent" ) or ( event == "KeyReleaseEvent" ):
+            print " __________________________________  "
 
     def onTrajectoryModified( self, caller, event ):
 #        print " onTrajectoryModified: %s " % ( str(event) )
