@@ -63,7 +63,7 @@ def displayMessage( msg ):
     msgBox = QtGui.QMessageBox()
     msgBox.setText( msg )
     msgBox.exec_()
-    
+
 def get_coords_from_cell_address( row, col):
     try:
         col = ord(col)-ord('A')
