@@ -318,20 +318,22 @@ class VariableProperties(QtGui.QDialog):
         self.updateAxesFromRoi()
 
     def updateAxesFromRoi(self):
+        from packages.vtDV3D.CDMS_VariableReaders import getAxisType, AxisType
         #print "Selected roi: %s " % str( self.roi )
         # Add code here to update Lat Lon sliders.
         n = self.axisListHolder.gridLayout.rowCount()
         #print "ok in roi self is: ",n
         for i in range(len(self.axisListHolder.axisWidgets)):
             axis = self.axisListHolder.axisWidgets[i]
-            if axis.axis.isLatitude() or axis.virtual==1:
+            axis_type = getAxisType( axis.axis )  
+            if ( axis_type == AxisType.Latitude ) or axis.virtual==1:
                 # Ok this is a lat we need to adjust the sliders now.
                 lat1 = self.roi[1]
                 lat2 = self.roi[3]
                 [ lat1, lat2 ] = axis.sliderCombo.checkBounds( [ lat1, lat2 ], axis.axis.parent )
                 axis.sliderCombo.updateTopSlider(axis.sliderCombo.findAxisIndex(lat1))
                 axis.sliderCombo.updateBottomSlider(axis.sliderCombo.findAxisIndex(lat2))
-            if axis.axis.isLongitude() or axis.virtual==1:
+            if ( axis_type == AxisType.Longitude ) or axis.virtual==1:
                 # Ok this is a lat we need to adjust the sliders now.
                 lon1 = self.roi[0]
                 lon2 = self.roi[2]
@@ -544,6 +546,8 @@ class VariableProperties(QtGui.QDialog):
 
 
     def updateVarInfo(self, axisList):
+        from packages.vtDV3D.CDMS_VariableReaders import getAxisType, AxisType
+        
         """ Update the text box with the variable's information """
         if axisList is None:
             return
@@ -556,7 +560,8 @@ class VariableProperties(QtGui.QDialog):
         showRoi = False
         for i in range(len(self.axisListHolder.axisWidgets)):
             axis = self.axisListHolder.axisWidgets[i]
-            if axis.axis.isLatitude() or axis.virtual==1 or axis.axis.isLongitude() or axis.virtual==1:
+            axis_type = getAxisType(axis.axis)
+            if axis_type in [ AxisType.Latitude, AxisType.Longitude ] or axis.virtual==1:
                 showRoi = True
         if showRoi:
             self.selectRoiButton.setHidden(False)
