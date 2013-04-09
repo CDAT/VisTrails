@@ -28,6 +28,7 @@ def displayMessage( msg ):
 class ServerType:
     THREDDS = QtGui.QTreeWidgetItem.UserType + 1
     DODS = QtGui.QTreeWidgetItem.UserType + 2
+    HYDRAX = QtGui.QTreeWidgetItem.UserType + 3
 
     @classmethod    
     def getType( cls, url ):
@@ -35,6 +36,7 @@ class ServerType:
         for token in tokens:
             if token.upper() == 'THREDDS': return cls.THREDDS
             if token.lower() == 'dods': return cls.DODS
+            if token.lower() == 'opendap': return cls.HYDRAX
         return QtGui.QTreeWidgetItem.UserType
     
 class CatalogNode( QtGui.QTreeWidgetItem ):
@@ -75,6 +77,7 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
     def getCatalogType(self):
         if self.type() == ServerType.THREDDS: return "THREDDS"
         if self.type() == ServerType.DODS: return "DODS"
+        if self.type() == ServerType.HYDRAX: return "HYDRAX"
         return "Undefined"
                     
     def retrieveContent(self): 
@@ -82,10 +85,12 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
             if self.node_type == self.Directory: 
                 if     self.type() == ServerType.THREDDS:   self.parser = ThreddsDirectoryParser( self ) 
                 elif   self.type() == ServerType.DODS:      self.parser = DodsDirectoryParser( self ) 
+                elif   self.type() == ServerType.HYDRAX:    self.parser = HydraxDirectoryParser( self ) 
                 else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )
             else:
                 if     self.type() == ServerType.THREDDS:   self.parser = ThreddsDataElementParser( self.url ) 
                 elif   self.type() == ServerType.DODS:      self.parser = DodsDataElementParser( self.url ) 
+                elif   self.type() == ServerType.HYDRAX:      self.parser = HydraxDataElementParser( self.url ) 
                 else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )      
             if self.parser:
                 self.parser.execute() 
@@ -230,6 +235,34 @@ class DodsDirectoryParser(HTMLCatalogParser):
             self.current_data = [ data ]
         elif data and self.current_data: self.current_data.append( data )
 
+class HydraxDirectoryParser(HTMLCatalogParser):
+    
+    def __init__( self, base_node, **args ):
+        HTMLCatalogParser.__init__( self, **args )    
+        self.root_node = base_node
+        self.current_url = None
+        self.excluded_links = [ 'ddx', 'dds', 'das', 'info', 'html', 'viewers', 'parent directory/', 'rdf', 'doc', 'thredds catalog', 'xml', 'nsf', 'nasa', 'noaa' ]
+
+    def execute(self):
+        try:
+            response = urllib2.urlopen( self.root_node.url )
+            self.feed( response.read() )
+        except Exception, err:
+            displayMessage( "Error connecting to server:\n%s"  % str(err) )
+                    
+    def process_start_tag( self, tag, attrs ): 
+        if ( tag == 'a' ) and self.has_state( 'td' ) and not self.has_state( 'div' ):
+#            print " Anchor start tag: %s, state: %s "  % ( str( attrs ), str( self.state_stack ) )    
+            self.current_url = self.get_attribute( 'href', attrs )
+
+    def process_data( self,  data ):
+        data = data.strip().replace( '\n', ' ' )
+        if self.current_url and data:
+            if ( data.lower() not in self.excluded_links ): 
+                child_node = CatalogNode( urljoin( self.root_node.url, self.current_url ) )
+                child_node.setLabel( data )
+                self.root_node.addChild( child_node )
+            self.current_url = None
 
 class ThreddsDataElementParser(HTMLCatalogParser):
     
@@ -301,6 +334,45 @@ class ThreddsMetadataParser(HTMLCatalogParser):
             if self.has_state('font'):  self.metadata.append( '<strong>%s</strong>' % data )     
             else:                       self.metadata.append( data )
 
+class HydraxMetadataParser(HTMLCatalogParser):
+    
+    def __init__( self, html_form_data, **args ):
+        HTMLCatalogParser.__init__( self, **args ) 
+        self.raw_html = html_form_data
+        self.metadata = [ "<html><head><title>Metadata</title></head><body><p><h1>Metadata</h1><p><hr><p>" ] 
+        self.md_decl = False
+        self.md_text = False
+
+    def execute(self):
+        self.feed( self.raw_html )
+        self.metadata.append( '</body></html>')
+
+    def getMetadata(self):
+        return ' '.join( self.metadata )
+
+    def process_start_tag( self, tag, attrs ): 
+        if (tag == 'input'):
+           input_type = self.get_attribute( 'type', attrs )
+           if input_type == 'checkbox': 
+               self.md_decl = True
+               self.metadata.append( '<p>') 
+        if (tag == 'textarea'):
+            self.md_text = True       
+            self.metadata.append( '<p>') 
+
+    def process_end_tag( self, tag ):
+        if (tag == 'textarea'):
+            self.md_text = False
+            self.md_decl = False
+            self.metadata.append( '<p><hr><p>') 
+                               
+    def process_data( self,  data ): 
+        if self.md_text:       
+            self.metadata.append( "<pre>%s</pre>" % data ) 
+        elif self.md_decl: 
+            if self.has_state('font'):  self.metadata.append( '<strong>%s</strong>' % data )     
+            else:                       self.metadata.append( data )
+
 class DodsDataElementParser(HTMLCatalogParser):
     
     def __init__( self, url, **args ):
@@ -310,28 +382,48 @@ class DodsDataElementParser(HTMLCatalogParser):
         self.processHref = False 
         self.completeListing = args.get( 'complete', False ) 
 
-#    def process_start_tag( self, tag, attrs ):       
-#        print "Start Tag %s: %s" % ( tag, str(attrs) )
+    def process_start_tag( self, tag, attrs ):       
+        print "Start Tag %s: %s" % ( tag, str(attrs) )
         
     def execute(self):
         response = urllib2.urlopen( self.base_url )
-        t0 = time.time()
-        c0 = time.clock()
         self.metadata = response.read()
-        t1 = time.time()
-        c1 = time.clock()
         self.feed( self.metadata )
-        c2 = time.clock()
-        t2 = time.time()
-        print "Metadata retreival time = %.1f/%.1f, parse time = %.1f/%.1f" % ( (t1-t0), (c1-c0), (t2-t1), (c2-c1) )
                     
     def process_data( self,  data ): 
+        print "Data: %s" % ( data )
         if ( data.find('Data URL') >= 0 ) and self.has_state( 'td' ):
             self.processHref = True  
         elif self.processHref and self.has_state( 'td' ): 
             if data.startswith("http:"):
                 self.data_url =  urljoin( self.base_url, data )     
                 self.processHref = False
+
+class HydraxDataElementParser(HTMLCatalogParser):
+    
+    def __init__( self, url, **args ):
+        HTMLCatalogParser.__init__( self, **args ) 
+        self.base_url = url 
+        self.processHref = False 
+
+    def process_start_tag( self, tag, attrs ): 
+        if self.processHref and tag == 'input':
+            url = self.get_attribute( 'value', attrs )
+            if url:     
+                self.data_url =  urljoin( self.base_url, url )     
+                self.processHref = False
+        
+    def execute(self):
+        link = urllib2.urlopen( self.base_url )
+        response = link.read()
+        mdparser = HydraxMetadataParser( response )
+        mdparser.execute()
+        self.metadata = mdparser.getMetadata()
+        self.feed( response )
+                    
+    def process_data( self,  data ): 
+        if ( data.find('Data URL') >= 0 ) and self.has_state( 'td' ):
+            self.processHref = True  
                     
 class RemoteDataBrowser(QtGui.QFrame):
     new_data_element = QtCore.SIGNAL("new_data_element")
