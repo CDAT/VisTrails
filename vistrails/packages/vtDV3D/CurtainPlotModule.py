@@ -91,6 +91,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         self.addConfigurableMethod('Reset Trajectory', self.resetSpline, 'R' )
         self.addConfigurableMethod('Toggle Edit Trajectory Mode', self.toggleEditSpline, 'I' )
         self.trajectory = None
+        self.modifiedPoints = None
         self.nPoints = 100
         self.spline = vtk.vtkSplineWidget()
         self.curtainModified = False
@@ -103,49 +104,44 @@ class PM_CurtainPlot(PersistentVisualizationModule):
     
     def resetSpline(self):
         self.curtainModified = False
+        self.modifiedPoints = None
         curtain = self.getCurtainGeometry()                  
         self.probeFilter.SetInput( curtain )
-        self.render()
-        
+        self.getCurtainGeometry()
+               
     def setNumberOfHandles(self, nhandles_data, **args  ):
         ns = int( round( nhandles_data[1] ) )
         if ns <> self.n_spline_spans:
-            self.n_spline_spans = ns
-            self.trajectory == None
-            self.getCurtainGeometry()
+            self.resetHandles(ns)
             
     def setSplineResolution(self, tres_data, **args  ):
         sr = int( round( tres_data[1] ) )
         if sr <> self.spline_resolution:
             self.spline_resolution = sr
-            self.trajectory == None
             self.getCurtainGeometry()
             
     def getNumberOfHandles(self):
-        return [ 3.0, 25.0, 1.0 ]
+        return [ 3.0, 50.0, 1.0 ]
 
     def getSplineResolution(self):
         return [ 2.0, 100.0, 1.0 ]
         
     def toggleEditSpline(self):
-        cell_mods = self.getDownstreamCellModules()
-        cell_mods[0].cellWidget.setFocus()
-        renwin = self.iren.GetRenderWindow()
-        renwin.MakeCurrent()
-        self.iren.SetKeyEventInformation( 0, 0, "i", 1, "i" )     
-        self.iren.KeyPressEvent()
-        self.iren.KeyReleaseEvent()
-        self.render()
-        displayMessage( " Tap the 'i' key to toggle edit trajectory mode. " )
-
+        displayMessage( " Tap the 'i' key to toggle edit trajectory mode.\nClick on the yellow curved line and then drag the handles (spheres) to modify the trajectory." )
+#        cell_mods = self.getDownstreamCellModules()
+#        cell_mods[0].cellWidget.setFocus()
+#        renwin = self.iren.GetRenderWindow()
+#        renwin.MakeCurrent()
+#        self.iren.SetKeyEventInformation( 0, 0, "i", 1, "i" )     
+#        self.iren.KeyPressEvent()
+#        self.iren.KeyReleaseEvent()
+#        self.render()
 #        self.invokeKeyEvent( 'i' )
-#        self.spline.InvokeEvent( vtk.vtkCommand.KeyPressEvent,  )
-        
+#        self.spline.InvokeEvent( vtk.vtkCommand.KeyPressEvent,  )       
 #        ascii_key = QString(keysym).toLatin1()[0]
 #        self.iren.SetKeyEventInformation( 0, 0, ascii_key, 0, keysym )
 #        self.iren.KeyPressEvent()
-
-    
+   
     def setOpacityRange( self, opacity_range, **args  ):
         self.opacityRange = opacity_range
         colormapManager = self.getColormapManager( index=0 )
@@ -203,6 +199,8 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         polyData = vtk.vtkPolyData()
         self.spline.GetPolyData( polyData )
         npts = polyData.GetNumberOfPoints()
+        isModification = args.get( "isModification", False )
+        if isModification: self.modifiedPoints = polyData
         print "----------------------------------------------------"
         print " ** Get Curtain Geometry From Spline, NP = %d **" % npts
         print "----------------------------------------------------"
@@ -234,6 +232,33 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         polydata.SetStrips( stripArray )
         self.curtainModified = True
         return polydata
+    
+    def resetHandles( self, nspans ):
+        self.n_spline_spans = nspans
+        npts = self.modifiedPoints.GetNumberOfPoints() if self.modifiedPoints else 0
+        if npts:
+            spline_coords = []
+            handle_step = npts / self.n_spline_spans
+            for iS in range( self.n_spline_spans ):
+                iPt = iS*handle_step
+                ptcoords = self.modifiedPoints.GetPoint( iPt )
+                spline_coords.append( ptcoords )
+            ptcoords = self.modifiedPoints.GetPoint( npts-1 )
+            spline_coords.append( ptcoords )
+            
+            spline_span_length = self.nPoints / self.n_spline_spans 
+            self.spline.SetNumberOfHandles( self.n_spline_spans + 1 )
+            self.spline.SetResolution( spline_span_length * self.spline_resolution )
+            self.spline.SetProjectionNormalToZAxes() 
+            self.spline.SetProjectToPlane(2) 
+            for iS in range( len(spline_coords) ):
+                ptcoords = spline_coords[iS]      
+                self.spline.SetHandlePosition ( iS, ptcoords[0], ptcoords[1], 0.0 )
+            curtain = self.getCurtainGeometryFromSpline()
+            self.probeFilter.SetInput( curtain )
+        else: 
+            curtain = self.getCurtainGeometry()
+            self.probeFilter.SetInput( curtain )
        
     def getCurtainGeometry( self, **args ):
         if self.trajectory == None: self.trajectory = self.computeInitialTrajectory()
@@ -307,7 +332,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
 
     def onTrajectoryModified( self, caller, event ):
 #        print " onTrajectoryModified: %s " % ( str(event) )
-        curtain = self.getCurtainGeometryFromSpline()
+        curtain = self.getCurtainGeometryFromSpline(isModification=True)
         self.probeFilter.SetInput( curtain )
         return 0
                                    
