@@ -25,6 +25,7 @@ from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
 from packages.uvcdat.init import Variable, Plot
 from gui.uvcdat.theme import UVCDATTheme
 from gui.uvcdat.cdmsCache import CdmsCache
+import gui.uvcdat.regionExtractor #for certain toPython commands
 
 canvas = None
 original_gm_attributes = {}
