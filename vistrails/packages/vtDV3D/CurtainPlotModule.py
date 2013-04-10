@@ -107,7 +107,6 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         self.modifiedPoints = None
         curtain = self.getCurtainGeometry()                  
         self.probeFilter.SetInput( curtain )
-        self.getCurtainGeometry()
                
     def setNumberOfHandles(self, nhandles_data, **args  ):
         ns = int( round( nhandles_data[1] ) )
@@ -118,7 +117,10 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         sr = int( round( tres_data[1] ) )
         if sr <> self.spline_resolution:
             self.spline_resolution = sr
-            self.getCurtainGeometry()
+            curtain = self.getCurtainGeometry()  
+            self.probeFilter.SetInput( curtain )
+            npts = curtain.GetNumberOfPoints()
+            print " *** Set Spline Resolution: %d, npts = %d " % ( sr, npts )
             
     def getNumberOfHandles(self):
         return [ 3.0, 50.0, 1.0 ]
