@@ -146,6 +146,8 @@ class QAnimationView(QtGui.QWidget):
         layout.addWidget(controlsFrame)
 
         self.connect(self,QtCore.SIGNAL("animationCreated"),self.animationCreated)
+        self.animationTimer = QtCore.QBasicTimer()
+        self.animationFrame = 0        
         
 
     def setCanvas(self,canvas):
@@ -162,7 +164,9 @@ class QAnimationView(QtGui.QWidget):
         self.connect(self.createButton,QtCore.SIGNAL("clicked()"),self.stop)
         #t=QThreadAnimationCreate(self,self.canvas,c)
         #t.start()
-        self.canvas.animate.create(thread_it=1)
+        self.canvas.animate.create(thread_it=0, saveToFiles=False)
+        self.animationCreated(self.canvas, c)
+        
     def animationCreated(self,canvas,cursor):
         icon = QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'symbol_add.ico'))
         self.createButton.setIcon(icon)
@@ -174,19 +178,30 @@ class QAnimationView(QtGui.QWidget):
         self.framesSlider.setMaximum(nframes)
         self.player.setEnabled(True)
         self.setCursor(cursor)
-        pass
-    
     def run(self):
+        if not self.animationTimer.isActive():
+            self.animationTimer.start(100, self)
+        self.animationFrame = 0
         #c = self.cursor()
         #self.setCursor(QtCore.Qt.BusyCursor)
         #canvas=int(self.canvas.currentText())-1
-        self.canvas.animate.pause(99)
-        self.canvas.animate.run()
+        #self.canvas.animate.pause(99)
+        #self.canvas.animate.run()
         #self.setCursor(c)
     def stop(self):
+        self.animationTimer.stop()
         ### stops generating animation
         #canvas=int(self.canvas.currentText())-1
         self.canvas.animate.stop_create()
+    def timerEvent(self, event):
+        if self.animationFrame>=self.canvas.animate.number_of_frames():
+            self.animationTimer.stop()
+        else:
+            args = self.canvas.animate.animation_args[self.animationFrame]
+            self.canvas.clear()
+            for a in args:
+                self.canvas.plot(*a)
+            self.animationFrame += 1
     def save(self):
         pass
     def load(self):
