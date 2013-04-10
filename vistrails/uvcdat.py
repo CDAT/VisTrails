@@ -70,7 +70,8 @@ def execute_vistrail( *args, **kwargs ):
 
 if __name__ == '__main__':
     disable_lion_restore()
-
+    import cdat_info
+    cdat_info.SOURCE="UV-CDAT"
     import gui.requirements
     gui.requirements.check_pyqt4()
 
@@ -111,6 +112,7 @@ if __name__ == '__main__':
                 if str(var.varCombo.itemText(i)).split()[0]==app.uvcdatLoadVariableStart:
                     var.varCombo.setCurrentIndex(i)
         #var.show()
+        
     if (app.temp_configuration.interactiveMode and
         not app.temp_configuration.check('spreadsheetDumpCells')): 
 
