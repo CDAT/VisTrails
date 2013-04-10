@@ -34,3 +34,9 @@
 """Main file for the VisTrails distribution."""
 
 # FIXME: In the future, bootstrap everything from here.
+
+
+from uvcdat import execute_vistrail
+
+if __name__ == '__main__':
+    execute_vistrail( 'workflow-1362763474', dir='/Users/tpmaxwell/.vistrails/snapshots', version=11 )

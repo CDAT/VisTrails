@@ -260,6 +260,16 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.logoRepresentation = None 
         self.captionManager = None 
         self.addConfigurableFunction( CaptionManager.config_name, [ ( String, 'data') ], 'k', label='Add Caption', open=self.editCaption )
+
+    def clearReferrents(self):
+        from packages.spreadsheet.spreadsheet_controller import spreadsheetController                       
+        PersistentVisualizationModule.clearReferrents(self)
+        self.cellWidget = None
+        self.renWin = None
+        self.renderers = []        
+        ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+        tabController = ssheetWindow.get_current_tab_controller()
+        self.disconnect ( tabController, QtCore.SIGNAL("cell_deleted"), self.clearWidget )
         
     def editCaption( self, caption=None ): 
         if self.captionManager:  
@@ -429,7 +439,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         cellLocation.rowSpan = 1
         cellLocation.colSpan = 1
         cell_coordinates = None
-        ( sheetName, address ) = DV3DPipelineHelper.getCellAddress( self.pipeline ) 
+        ( sheetName, address ) = DV3DPipelineHelper.getCellCoordinates( moduleId )
+#        ( sheetName, address ) = DV3DPipelineHelper.getCellAddress( self.pipeline ) 
         if self.isClient:            
             cellLocation.sheetReference = StandardSheetReference()
             cellLocation.sheetReference.sheetName = HyperwallManager.getInstance().deviceName
@@ -448,8 +459,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         else:
             cell_coordinates = HyperwallManager.getInstance().getCellCoordinatesForModule( moduleId )
             if cell_coordinates == None: return None
-        cellLocation.col = cell_coordinates[0]
-        cellLocation.row = cell_coordinates[1]
+        cellLocation.row = cell_coordinates[0]
+        cellLocation.col = cell_coordinates[1]
          
 #        print " --- Set cell location[%s]: %s, address: %s "  % ( str(moduleId), str( [ cellLocation.col, cellLocation.row ] ), str(address) )
         self.overrideLocation( cellLocation )
@@ -479,6 +490,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def execute(self, **args ):
         if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
         PersistentVisualizationModule.execute(self, **args)
+        pipeline = self.getCurrentPipeline()
         self.recordCameraPosition()
 #        self.updateProject()
         
@@ -518,56 +530,58 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if ( self.location.col <> col ) or  ( self.location.row <> row ): return
         cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )  
 #        print " --- Clearing Cell %s ---" % cell_address
-        self.pipeline = DV3DPipelineHelper.getPipeline( cell_address )
-        UVCDATGuiConfigFunction.clearModules( self.pipeline )
+        pipeline = DV3DPipelineHelper.getPipeline( cell_address, sheetName )
+        if pipeline:  UVCDATGuiConfigFunction.clearModules( pipeline )
+        
         IVModuleConfigurationDialog.reset()
         self.cellWidget = None 
         self.builtCellWidget = False                        
         
     def buildWidget(self): 
-        from packages.spreadsheet.spreadsheet_controller import spreadsheetController                       
-        if self.renderers and not self.isBuilt():
-            renderViews = []
-            renderView = None
-            iStyle = None
-            iHandlers = []
-            picker = None
-            style = vtk.vtkInteractorStyleTrackballCamera()
-            style_name = style.__class__.__name__
-            iStyle = wrapVTKModule( style_name, style )   
-            
-            if self.isServer:
-                self.cellWidget = self.displayAndWait( QVTKServerWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
-                self.cellWidget.setLocation( self.location )
-            elif self.isClient:
-                self.cellWidget = self.displayAndWait( QVTKClientWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
-            else:
-                self.cellWidget = self.displayAndWait( QVTKClientWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
-            #in mashup mode, self.displayAndWait will return None
-            if self.cellWidget:
-                self.renWin = self.cellWidget.GetRenderWindow() 
-                self.iren = self.renWin.GetInteractor()
-                self.navigationInteractorStyle = self.iren.GetInteractorStyle()
-                caption_data = self.getInputValue( CaptionManager.config_name, None )
-                self.captionManager = CaptionManager( self.cellWidget, self.iren, data=caption_data )
-                self.connect(self.captionManager, CaptionManager.persist_captions_signal, self.persistCaptions )  
+        from packages.spreadsheet.spreadsheet_controller import spreadsheetController  
+        if not self.isBuilt():                     
+            if self.renderers:
+                renderViews = []
+                renderView = None
+                iStyle = None
+                iHandlers = []
+                picker = None
+                style = vtk.vtkInteractorStyleTrackballCamera()
+                style_name = style.__class__.__name__
+                iStyle = wrapVTKModule( style_name, style )   
                 
-                if ENABLE_JOYSTICK: 
-                    if joystick.enabled():
-                        joystick.addTarget( self.cellWidget )   
-            else: 
-                print "  --- Error creating cellWidget --- "   
-                sys.stdout.flush()     
-            
-            cell_location = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )   
-            PersistentVisualizationModule.renderMap[ cell_location ] = self.iren
-            self.builtCellWidget = True
-            
-            ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
-            tabController = ssheetWindow.get_current_tab_controller()
-            self.connect( tabController, QtCore.SIGNAL("cell_deleted"), self.clearWidget )
-        else:               
-            print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
+                if self.isServer:
+                    self.cellWidget = self.displayAndWait( QVTKServerWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
+                    self.cellWidget.setLocation( self.location )
+                elif self.isClient:
+                    self.cellWidget = self.displayAndWait( QVTKClientWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
+                else:
+                    self.cellWidget = self.displayAndWait( QVTKClientWidget, (self.renderers, renderView, iHandlers, iStyle, picker ) )
+                #in mashup mode, self.displayAndWait will return None
+                if self.cellWidget:
+                    self.renWin = self.cellWidget.GetRenderWindow() 
+                    self.iren = self.renWin.GetInteractor()
+                    self.navigationInteractorStyle = self.iren.GetInteractorStyle()
+                    caption_data = self.getInputValue( CaptionManager.config_name, None )
+                    self.captionManager = CaptionManager( self.cellWidget, self.iren, data=caption_data )
+                    self.connect(self.captionManager, CaptionManager.persist_captions_signal, self.persistCaptions )  
+                    
+                    if ENABLE_JOYSTICK: 
+                        if joystick.enabled():
+                            joystick.addTarget( self.cellWidget )   
+                else: 
+                    print "  --- Error creating cellWidget --- "   
+                    sys.stdout.flush()     
+                
+                cell_location = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )   
+                PersistentVisualizationModule.renderMap[ cell_location ] = self.iren
+                self.builtCellWidget = True
+                
+                ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+                tabController = ssheetWindow.get_current_tab_controller()
+                self.connect( tabController, QtCore.SIGNAL("cell_deleted"), self.clearWidget )
+            else:               
+                print>>sys.stderr, "Error, no renderers supplied to DV3DCell" 
      
     def persistCaptions( self, serializedCaptions ): 
         parmList = []
@@ -636,9 +650,10 @@ class ChartCellConfigurationWidget(DV3DConfigurationWidget):
         DV3DConfigurationWidget.__init__(self, module, controller, 'Chart Cell Configuration', parent)
                 
     def getParameters( self, module ):
+        pmod = self.getPersistentModule()
         titleParms = getFunctionParmStrValues( module, "title" )
         if titleParms: self.title = str( titleParms[0] )
-        if not self.title: self.title = self.pmod.getTitle()
+        if not self.title: self.title = pmod.getTitle()
         celllocParams = getFunctionParmStrValues( module, "cell_location" )
         if celllocParams:  self.cellAddress = str( celllocParams[0] )
         opacityParams = getFunctionParmStrValues( module, "opacity" )
@@ -731,7 +746,7 @@ class ChartCell( WorkflowModule ):
         WorkflowModule.__init__(self, **args) 
         
     def syncCamera( self, cpos, cfol, cup ):
-        if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
+        if self._pmod: self._pmod.syncCamera( cpos, cfol, cup )  
 
 class PM_CloudCell3D( PM_DV3DCell ):
 
@@ -768,7 +783,9 @@ class CloudCell3DConfigurationWidget(DV3DConfigurationWidget):
     def getParameters( self, module ):
         titleParms = getFunctionParmStrValues( module, "title" )
         if titleParms: self.title = str( titleParms[0] )
-        if not self.title: self.title = self.pmod.getTitle()
+        if not self.title: 
+            pmod = self.getPersistentModule()
+            self.title = pmod.getTitle()
         celllocParams = getFunctionParmStrValues( module, "cell_location" )
         if celllocParams:  self.cellAddress = str( celllocParams[0] )
 
@@ -1119,7 +1136,9 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
     def getParameters( self, module ):
         titleParms = getFunctionParmStrValues( module, "title" )
         if titleParms: self.title = str( titleParms[0] )
-        if not self.title: self.title = self.pmod.getTitle()
+        if not self.title: 
+            pmod = self.getPersistentModule()
+            self.title = pmod.getTitle()
         basemapParams = getFunctionParmStrValues( module, "enable_basemap" )
         if basemapParams: self.enableBasemap = bool( basemapParams[0] )
         basemapParams = getFunctionParmStrValues( module, "map_border_size" )
@@ -1242,7 +1261,7 @@ class MapCell3D( WorkflowModule ):
         WorkflowModule.__init__(self, **args) 
         
     def syncCamera( self, cpos, cfol, cup ):
-        if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
+        if self._pmod: self._pmod.syncCamera( cpos, cfol, cup )  
               
 class CloudCell3D( WorkflowModule ):
     
@@ -1252,7 +1271,7 @@ class CloudCell3D( WorkflowModule ):
         WorkflowModule.__init__(self, **args) 
         
     def syncCamera( self, cpos, cfol, cup ):
-        if self.pmod: self.pmod.syncCamera( cpos, cfol, cup )  
+        if self._pmod: self._pmod.syncCamera( cpos, cfol, cup )  
               
 
 class QCellToolBarExportTimeSeries(QtGui.QAction):

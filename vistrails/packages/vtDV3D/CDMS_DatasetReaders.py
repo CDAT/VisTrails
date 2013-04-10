@@ -4,6 +4,7 @@ Created on Dec 11, 2010
 @author: tpmaxwel
 '''
 import vtk, sys, os, copy, time
+from collections import OrderedDict 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import core.modules.module_registry
@@ -16,7 +17,6 @@ from packages.vtDV3D import HyperwallManager, ModuleStore
 from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.PersistentModule import * 
 from packages.vtDV3D.ROISelection import ROISelectionDialog
-from collections import OrderedDict
 
 import numpy.ma as ma
 # from vtk.util.misc import vtkGetDataRoot
@@ -491,7 +491,7 @@ class CDMSDataset(Module):
     def __init__( self ):
         Module.__init__(self)
         self.datasetRecs = {}
-        self.variableRecs = OrderedDict()
+        self.variableRecs = {}
         self.transientVariables = {}
         self.cachedTransVariables = {}
         self.outputVariables = {}
@@ -574,7 +574,7 @@ class CDMSDataset(Module):
          
     def addTransientVariable( self, varName, variable, ndim = None ):
         if varName in self.transientVariables:
-            print>>sys.stderr, "Error, transient variable %s already exists in dataset, ignoring!" % ( varName )
+            print>>sys.stderr, "Warning, transient variable %s already exists in dataset, overwriting!" % ( varName )
         else:
             self.transientVariables[ varName ] = variable
 
@@ -644,10 +644,18 @@ class CDMSDataset(Module):
             dsetRec = self.datasetRecs.get( dsid, None )
             if dsetRec:
                 if varName in dsetRec.dataset.variables:
-                    rv = dsetRec.getFileVarDataCube( varName, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]], refVar=self.referenceVariable, refLev=self.referenceLev )  
+                    args = { 'time':timeValues, 'lev':levelValues, 'refVar':self.referenceVariable, 'refLev':self.referenceLev }
+                    if self.gridBounds:
+                        args['lon'] = [self.gridBounds[0],self.gridBounds[2]] 
+                        args['lat'] = [self.gridBounds[1],self.gridBounds[3]] 
+                    rv = dsetRec.getFileVarDataCube( varName, self.decimation, **args )  
             elif varName in self.getTransientVariableNames():
                 tvar = self.getTransientVariable( varName ) 
-                rv = self.getTransVarDataCube( varName, tvar, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]] )  
+                args = { 'time':timeValues, 'lev':levelValues }
+                if self.gridBounds:
+                    args['lon'] = [self.gridBounds[0],self.gridBounds[2]] 
+                    args['lat'] = [self.gridBounds[1],self.gridBounds[3]] 
+                rv = self.getTransVarDataCube( varName, tvar, self.decimation, **args )  
         if (rv.id == "NULL") and (varName in self.outputVariables):
             rv = self.outputVariables[ varName ]
         if rv.id <> "NULL": 
@@ -708,8 +716,9 @@ class CDMSDataset(Module):
             lonAxis = transVar.getLongitude() 
             lonVals = lonBounds if lonBounds else lonAxis.getValue()
             varLonInt = lonAxis.mapIntervalExt( [ lonVals[0], lonVals[-1] ], 'ccn' )
-            if (decimationFactor > 1):  args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
-            else:                       args1['lon'] = slice( varLonInt[0], varLonInt[1] )
+            if varLonInt:
+                if (decimationFactor > 1):  args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
+                else:                       args1['lon'] = slice( varLonInt[0], varLonInt[1] )
            
             latAxis = transVar.getLatitude() 
             latVals = latAxis.getValue()
@@ -718,8 +727,9 @@ class CDMSDataset(Module):
                 if ( latVals[-1] > latVals[0] ):     latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] > latBounds[0]) else [ latBounds[-1], latBounds[0] ]
                 else:                                latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] < latBounds[0]) else [ latBounds[-1], latBounds[0] ]
             varLatInt = latAxis.mapIntervalExt( latRange, 'ccn' )
-            if (decimationFactor > 1):  args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
-            else:                       args1['lat'] = slice( varLatInt[0], varLatInt[1] )
+            if varLatInt:
+                if (decimationFactor > 1):  args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
+                else:                       args1['lat'] = slice( varLatInt[0], varLatInt[1] )
         
         args1['order'] = order
         if levaxis:
@@ -1220,12 +1230,14 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         self.selectedGrid = None
         DV3DConfigurationWidget.__init__(self, module, controller, 'CDMS Dataset Configuration', parent)
         self.metadataViewer = MetadataViewerDialog( self )
-        if self.pmod: self.pmod.clearNewConfiguration()
+        pmod = self.getPersistentModule() 
+        if pmod: pmod.clearNewConfiguration()
         if self.currentDatasetId: self.registerCurrentDataset( id=self.currentDatasetId )
         self.stateChanged( False )
         
     def initTimeRange( self ):
-        timeRangeParams =   self.pmod.getInputValue( "timeRange"  ) # getFunctionParmStrValues( self.module, "timeRange"  )
+        pmod = self.getPersistentModule() 
+        timeRangeParams = pmod.getInputValue( "timeRange"  ) # getFunctionParmStrValues( self.module, "timeRange"  )
         tRange = [ int(timeRangeParams[0]), int(timeRangeParams[1]) ] if timeRangeParams else None
         if tRange:
             for iParam in range( 2, len(timeRangeParams) ): tRange.append( float(timeRangeParams[iParam] ) ) 
@@ -1238,20 +1250,23 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.endIndexEdit.setText( str( self.timeRange[1] ) )  
 
     def initRoi( self ):
-        roiParams = self.pmod.getInputValue( "roi" ) #getFunctionParmStrValues( self.module, "roi"  )self.getParameterId()
+        pmod = self.getPersistentModule() 
+        roiParams = pmod.getInputValue( "roi" ) #getFunctionParmStrValues( self.module, "roi"  )self.getParameterId()
         if roiParams:  self.roi = [ float(rois) for rois in roiParams ]
         else: self.roi = self.fullRoi[ self.lonRangeType ] 
         self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
 
     def initDecimation( self ):
-        decimationParams = self.pmod.getInputValue( "decimation" ) #getFunctionParmStrValues( self.module, "roi"  )self.getParameterId()
+        pmod = self.getPersistentModule() 
+        decimationParams = pmod.getInputValue( "decimation" ) #getFunctionParmStrValues( self.module, "roi"  )self.getParameterId()
         if decimationParams:  self.decimation = [ int(dec) for dec in decimationParams ]
         else: self.decimation = DefaultDecimation
         self.clientDecimationCombo.setCurrentIndex( self.decimation[0] ) 
         self.serverDecimationCombo.setCurrentIndex( self.decimation[1] ) 
         
     def initZScale( self ):
-        zsParams = self.pmod.getInputValue( "zscale" )
+        pmod = self.getPersistentModule() 
+        zsParams = pmod.getInputValue( "zscale" )
         if zsParams:  self.zscale = float( getItem( zsParams ) )
         self.selectZScaleLineEdit.setText( "%.2f" % self.zscale)
 #        self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
@@ -1261,16 +1276,18 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         datasetMapParams = getFunctionParmStrValues( module, "datasets" )
         if datasetMapParams: self.datasets = deserializeFileMap( datasetMapParams[0] )
         datasetParams = getFunctionParmStrValues( module, "datasetId" )
-        if datasetParams: 
+        if datasetParams:
+            pmod = self.getPersistentModule()  
             gridParams = getFunctionParmStrValues( module, "grid" )
             if gridParams:  self.selectedGrid = gridParams[0]
             self.currentDatasetId = datasetParams[0] 
-            self.pmod.datasetId = self.currentDatasetId
+            pmod.datasetId = self.currentDatasetId
             if( len(datasetParams) > 1 ): DataSetVersion = int( datasetParams[1] )
 
     def setDatasetProperties(self, dataset, cdmsFile ):
+        pmod = self.getPersistentModule() 
         self.currentDatasetId = dataset.id  
-        self.pmod.datasetId = dataset.id 
+        pmod.datasetId = dataset.id 
         relFilePath = getHomeRelativePath( cdmsFile )
         self.datasets[ self.currentDatasetId ] = relFilePath  
         self.metadataViewer.setDatasetProperties( dataset, cdmsFile ) 
@@ -1279,7 +1296,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         id = args.get( 'id', None ) 
         relFilePath = args.get( 'file', None )
         cdmsFile = None
-        if self.pmod: self.pmod.setNewConfiguration( **args )
+        pmod = self.getPersistentModule() 
+        if pmod: pmod.setNewConfiguration( **args )
         if id: 
             self.currentDatasetId = str( id )
             relFilePath = self.datasets.get( self.currentDatasetId, None ) 
@@ -1295,8 +1313,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             self.initRoi()
             self.initDecimation()
             self.initZScale()
-            if self.pmod: 
-                self.pmod.clearNewConfiguration()
+            if pmod: pmod.clearNewConfiguration()
             dataset.close()
         except Exception, err:
             print>>sys.stderr, " Error initializing dataset '%s': %s " % ( str(relFilePath), str( err ) )
@@ -1315,7 +1332,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
                     self.datasets[ self.currentDatasetId ] = relFilePath  
                     self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
                     self.dsCombo.setCurrentIndex( 0 )
-                    self.pmod.datasetId = '*'.join( self.datasets.keys() )
+                    pmod = self.getPersistentModule() 
+                    pmod.datasetId = '*'.join( self.datasets.keys() )
                     dataset.close()
                 except:
                     print "Error opening dataset: %s" % str(cdmsFile)
@@ -1334,7 +1352,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         if self.dsCombo.count() == 0: self.metadataViewer.clear() 
         else:
             self.dsCombo.setCurrentIndex(0) 
-            self.pmod.datasetId = '*'.join( self.datasets.keys() )                         
+            pmod = self.getPersistentModule() 
+            pmod.datasetId = '*'.join( self.datasets.keys() )                         
             self.registerCurrentDataset( id=self.dsCombo.currentText() )
         global DataSetVersion 
         DataSetVersion = DataSetVersion + 1 
@@ -1777,8 +1796,8 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         cellInputSpecs = '' 
         executionSpecs = ';'.join( [ fileInputSpecs, varInputSpecs, gridInputSpecs, cellInputSpecs ] )
         parmRecList.append( ( 'executionSpecs' , [ executionSpecs, ]  ), )         
-        self.persistParameterList( parmRecList ) 
-        self.pmod.clearDataCache()
+        pmod = self.persistParameterList( parmRecList ) 
+        pmod.clearDataCache()
         self.stateChanged(False)
            
     def okTriggered(self, checked = False):

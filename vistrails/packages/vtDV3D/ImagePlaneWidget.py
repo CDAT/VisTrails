@@ -1,5 +1,5 @@
 
-import vtk, sys
+import vtk, sys, gc
 
 VTK_NEAREST_RESLICE = 0
 VTK_LINEAR_RESLICE  = 1
@@ -198,6 +198,32 @@ class ImagePlaneWidget:
                     iren = self.RenderWindow.GetInteractor()
                     if iren: self.SetInteractor( iren ) 
 
+#----------------------------------------------------------------------------
+
+    def RemoveAllObservers( self ):
+        self.Interactor.RemoveAllObservers()
+        self.RenderWindow.RemoveAllObservers()
+        rc = self.Reslice.GetReferenceCount()
+        del self.Reslice
+        del self.Reslice2
+        del self.Interactor
+        del self.RenderWindow
+        del self.PlaneOutlineActor
+        del self.PlaneProperty
+        del self.ResliceAxes                             
+        del self.PlaneSource 
+        del self.PlaneOutlinePolyData 
+        del self.ColorMap
+        del self.Texture
+        del self.TexturePlaneActor  
+        del self.Transform    
+        del self.ImageData   
+        del self.ImageData2  
+        del self.LookupTable 
+        del self.InputBounds
+        del self.CursorPolyData 
+        del self.CursorActor    
+        
 #----------------------------------------------------------------------------
                                 
     def SetInteractor( self, iren ):
@@ -609,6 +635,8 @@ class ImagePlaneWidget:
         bounds.append(  center[1] + placeFactor*(bnds[3]-center[1]) )
         bounds.append(  center[2] + placeFactor*(bnds[4]-center[2]) )
         bounds.append(  center[2] + placeFactor*(bnds[5]-center[2]) )
+        for ib in range(3): 
+            if ( bounds[2*ib] == bounds[2*ib+1] ): bounds[2*ib+1] = bounds[2*ib] + 0.001
         
         if ( self.PlaneOrientation == 1 ):
 #            pt1 = self.PlaneSource.GetPoint1()
@@ -651,7 +679,6 @@ class ImagePlaneWidget:
         # This method must be called _after_ SetInput
         #
         self.ImageData  = self.Reslice.GetInput()
-        aname = self.ImageData.GetPointData().GetScalars().GetName()
         if ( not self.ImageData ):        
             print>>sys.stderr, "SetInput() before setting plane orientation."
             return

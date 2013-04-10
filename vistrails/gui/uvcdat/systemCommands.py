@@ -56,7 +56,7 @@ class OutLog:
         #---------------------------------------------------------------------------------
         cursor = self.edit.textCursor()
         cursor.movePosition(cursor.End )
-        self.edit.setTextCursor(cursor)
+        self.edit.setTextCursor(cursor)            
 
 
 #------------------------------------------------------------------------

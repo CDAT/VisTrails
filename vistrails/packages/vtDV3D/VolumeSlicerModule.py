@@ -78,11 +78,28 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             pass
 
     def __del__(self):
-        self.planeWidgetX.RemoveAllObservers()
-        self.planeWidgetY.RemoveAllObservers()
-        self.planeWidgetZ.RemoveAllObservers()
-        del VolumeSlicerModules[ self.moduleID ]
+        print " **************************************** Deleting VolumeSlicer module, id = %d  **************************************** " % self.moduleID
+#        self.planeWidgetX.RemoveAllObservers()
+#        self.planeWidgetY.RemoveAllObservers()
+#        self.planeWidgetZ.RemoveAllObservers()
         PersistentVisualizationModule.__del__(self)
+
+    def clearReferrents(self):
+        PersistentVisualizationModule.clearReferrents(self)
+        del VolumeSlicerModules[ self.moduleID ]
+        del self.planeWidgetX
+        del self.planeWidgetY
+        del self.planeWidgetZ
+        self.planeWidgetX = None
+        self.planeWidgetY = None
+        self.planeWidgetZ = None
+        del self.sliceOutput
+        self.sliceOutput = None 
+        if self.contours:
+            del self.contours
+            self.contours = None    
+            del self.contourLineMapperer 
+            self.contourLineMapperer = None
         
     def toogleOutlineMap(self):
         self.showOutlineMap = not self.showOutlineMap
@@ -213,6 +230,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             picker.SetTolerance(0.005) 
             self.planeWidgetX = ImagePlaneWidget( self, 0 )
             self.planeWidgetX.SetPicker(picker)
+            self.observerTargets.add( self.planeWidgetX )
             self.planeWidgetX.SetRenderer( self.renderer )
             prop1 = self.planeWidgetX.GetPlaneProperty()
             prop1.SetColor(1, 0, 0)
@@ -236,6 +254,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             self.planeWidgetY.SetPicker(picker)
             self.planeWidgetY.SetRenderer( self.renderer )
             self.planeWidgetY.SetUserControlledLookupTable(1)
+            self.observerTargets.add( self.planeWidgetY )
 #            self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
             prop2 = self.planeWidgetY.GetPlaneProperty()
             prop2.SetColor(1, 1, 0)
@@ -250,6 +269,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             self.planeWidgetZ = ImagePlaneWidget( self, 2 )
             self.planeWidgetZ.SetPicker(picker)
             self.planeWidgetZ.SetRenderer( self.renderer )
+            self.observerTargets.add( self.planeWidgetZ )
 #            self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
             prop3 = self.planeWidgetZ.GetPlaneProperty()
             prop3.SetColor(0, 0, 1)

@@ -3,7 +3,7 @@ Created on Dec 11, 2010
 
 @author: tpmaxwel
 '''
-import vtk, sys, os, vtDV3D
+import vtk, sys, os, packages.vtDV3D
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import core.modules.module_registry
@@ -205,8 +205,8 @@ class DemoDataConfigurationWidget(DV3DConfigurationWidget):
         return QSize(300,200)
 
     def updateController(self, controller):
-        self.pmod.persistParameter(  'dataset', [ self.dataset, ])
-        self.pmod.persistParameter(  'maxNTimeSteps', [ self.maxNTimeSteps, ])
+        self.persistParameter(  'dataset', [ self.dataset, ])
+        self.persistParameter(  'maxNTimeSteps', [ self.maxNTimeSteps, ])
 
     def okTriggered(self, checked = False):
         """ okTriggered(checked: bool) -> None

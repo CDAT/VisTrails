@@ -19,8 +19,6 @@ import cdms2, cdtime
 ReferenceTimeUnits = "days since 1900-1-1"
 MIN_LINE_LEN = 50
 
-moduleInstances = {}
-
 def getClassName( instance ):
     return instance.__class__.__name__ if ( instance <> None ) else "None" 
 
@@ -421,7 +419,8 @@ class InputSpecs:
         else:
             enc_mdata = encodeToString( metadata )
             dataVector.InsertNextValue( enc_mdata  )
-       
+ 
+              
 class PersistentModule( QObject ):
     '''
     <H2> Interactive Configuration</H2>
@@ -452,7 +451,6 @@ class PersistentModule( QObject ):
         self.moduleID = mid
         self.timeIndex = 0 
         self.inputSpecs = {}
-        self.pipeline = args.get( 'pipeline', None )
         self.taggedVersionMap = {}
         self.persistedParameters = []
         self.versionTags = {}
@@ -494,9 +492,19 @@ class PersistentModule( QObject ):
 #            if dataArray: return dataArray.GetValue(0)
 #        return 0
 
-#    def __del__(self):
+    def __del__(self):
+        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
+        sys.stdout.flush()
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
+
+    def clearReferrents(self):
+        for f in self.configurableFunctions.values(): 
+            f.clearReferrents()
+        self.configurableFunctions.clear()
+        self.updateConfigurationObserver = None
+        self.startConfigurationObserver = None
+        self.finalizeConfigurationObserver = None
         
     def GetRenWinID(self):
         return -1
@@ -508,7 +516,10 @@ class PersistentModule( QObject ):
         return [ self.activeLayer, ]
 
     def input( self, input_index=0 ):
-        ispec = self.inputSpecs[ input_index ] 
+        try:
+            ispec = self.inputSpecs[ input_index ]
+        except:
+            return None 
         return ispec.input()
 
     def intersectInputExtents( self ):
@@ -931,22 +942,22 @@ class PersistentModule( QObject ):
          
            
     def addConfigurableMethod( self, name, method, key, **args ):
-        self.configurableFunctions[name] = ConfigurableFunction( name, None, key, pmod=self, hasState=False, open=method, **args )
+        self.configurableFunctions[name] = ConfigurableFunction( name, None, key, hasState=False, open=method, **args )
 
     def addConfigurableFunction(self, name, function_args, key, **args):
-        self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, pmod=self, **args )
+        self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, **args )
 
     def addConfigurableLevelingFunction(self, name, key, **args):
-        self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, pmod=self, **args )
+        self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, **args )
                         
     def addConfigurableGuiFunction(self, name, guiClass, key, **args):
         isActive = not HyperwallManager.getInstance().isClient
-        guiCF = GuiConfigurableFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
+        guiCF = GuiConfigurableFunction( name, guiClass, key, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
 
     def addUVCDATConfigGuiFunction(self, name, guiClass, key, **args):
         isActive = not HyperwallManager.getInstance().isClient
-        guiCF = UVCDATGuiConfigFunction( name, guiClass, key, pmod=self, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
+        guiCF = UVCDATGuiConfigFunction( name, guiClass, key, active = isActive, start=self.startConfigurationObserver, update=self.updateConfigurationObserver, finalize=self.finalizeConfigurationObserver, **args )
         self.configurableFunctions[name] = guiCF
         
     def getConfigFunction( self, name ):
@@ -956,7 +967,7 @@ class PersistentModule( QObject ):
         del self.configurableFunctions[name]
 
     def addConfigurableWidgetFunction(self, name, signature, widgetWrapper, key, **args):
-        wCF = WidgetConfigurableFunction( name, signature, widgetWrapper, key, pmod=self, **args )
+        wCF = WidgetConfigurableFunction( name, signature, widgetWrapper, key, **args )
         self.configurableFunctions[name] = wCF
     
     def getConfigurationHelpText(self):
@@ -1258,6 +1269,25 @@ class PersistentModule( QObject ):
 #        return cur_version
 #            
 
+    def getCurrentPipeline( self ):
+        import api
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
+        try:
+            ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
+            proj_controller = api.get_current_project_controller()
+            controller =  proj_controller.vt_controller 
+            pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
+            if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
+                proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+            else: pcoords = None 
+            cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
+            current_version = cell.current_parent_version 
+            controller.change_selected_version( current_version )
+            return controller.vistrail.getPipeline( current_version )
+        except Exception, err:
+            print>>sys.stderr, "Error getting current pipeline: %s " % str( err )
+            return controller.current_pipeline       
+
     def change_parameters( self, parmRecList ):
         import api
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
@@ -1273,6 +1303,7 @@ class PersistentModule( QObject ):
         try:
             ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
             proj_controller = api.get_current_project_controller()
+            if ( sheetName <> proj_controller.current_sheetName ): return
             controller =  proj_controller.vt_controller 
             pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
             if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
@@ -1280,6 +1311,7 @@ class PersistentModule( QObject ):
             else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
+            print " Change parameters, current version = %d, current_parent_version = %d " % ( controller.current_version, current_version )
             controller.change_selected_version( current_version )
             pipeline = controller.vistrail.getPipeline( current_version )
         except Exception, err:
@@ -1301,11 +1333,8 @@ class PersistentModule( QObject ):
         try:
             op_list = []
 #            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
-            for parmRec in parmRecList:  
-                try:
-                    op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
-                except: 
-                    print>>sys.stderr, " Unrecognized input port %s in module %s " % ( str(parmRec[0]), str(self.moduleID) )
+            for parmRec in parmRecList: 
+                op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
                 config_fn = self.getConfigFunction( parmRec[0] )
                 if config_fn: config_list.append( config_fn )
                 else: print>>sys.stderr, "Unrecognized config function %s in module %s" % ( parmRec[0], str(self.moduleID) )
@@ -1314,13 +1343,16 @@ class PersistentModule( QObject ):
             action = create_action( op_list ) 
             controller.add_new_action(action)
             controller.perform_action(action)
-            
+            controller.select_latest_version()
+          
             for config_fn in config_list:
                 config_fn.persisted = True
                 
             if proj_controller:
                 proj_controller.cell_was_changed(action)
                 if pcoords:  proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
+            print " Perform save action: current version = %d, current_parent_version = %d " % ( controller.current_version, cell.current_parent_version  )
+            sys.stdout.flush()
                 
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
@@ -1400,16 +1432,7 @@ class PersistentModule( QObject ):
         
     def updateModule(self, **args ):
         pass
-   
-    def getCurrentPipeline(self):
-        if self.pipeline <> None:
-            return self.pipeline
-        else:
-            import api
-            controller = api.get_current_controller() 
-            pipeline = controller.current_pipeline
-            return pipeline
-    
+       
     def getOutputModules( self, port ):
         pipeline = self.getCurrentPipeline()
         mid = self.moduleID
@@ -1474,7 +1497,8 @@ class TextBlinkThread( threading.Thread ):
             textOn = not textOn 
             if textOn:
                 blinkCount += 1
-                if self.nblinks > 0 and blinkCount >= self.nblinks: return
+                if self.nblinks > 0 and blinkCount >= self.nblinks: return 
+
        
 class PersistentVisualizationModule( PersistentModule ):
 
@@ -1505,6 +1529,8 @@ class PersistentVisualizationModule( PersistentModule ):
         self.textBlinkThread = None 
         self.activation = {}
         self.isAltMode = False
+        self.observerTags = []
+        self.observerTargets = set()
         self.stereoEnabled = 0
         self.showInteractiveLens = False
         self.navigationInteractorStyle = None
@@ -1749,7 +1775,7 @@ class PersistentVisualizationModule( PersistentModule ):
         inputModule = self.getPrimaryInput()
         renderer_import = inputModule.getRenderer() if  inputModule <> None else None 
         self.renderer = vtk.vtkRenderer() if renderer_import == None else renderer_import
-        self.renderer.AddObserver( 'ModifiedEvent', self.activateEvent )
+        self.addObserver( self.renderer, 'ModifiedEvent', self.activateEvent )
         self.labelBuff = "NA                          "
 #        if self.createColormap: 
 #            colormapManager = self.getColormapManager( )
@@ -1849,6 +1875,8 @@ class PersistentVisualizationModule( PersistentModule ):
             if len(ds.transientVariables)>0:
                 if len(ds.transientVariables)>1: print 'Warning: this module has several transient Variables, plotting the first one.'
                 var = ds.transientVariables.values()[0]
+                lensActor.SetTitle("Time vs. %s (%s)" % (var.long_name, var.id))
+                lensActor.SetYTitle(var.id)
                 lensActor.SetYRange(var.min(), var.max())
 
         prop = lensActor.GetProperty()
@@ -1932,27 +1960,43 @@ class PersistentVisualizationModule( PersistentModule ):
                 if ( iren <> None ) and not self.isConfigStyle( iren ):
                     if ( iren <> self.iren ):
                         if self.iren == None: 
-                            self.renwin.AddObserver("AbortCheckEvent", CheckAbort)
+                            self.addObserver( self.renwin,"AbortCheckEvent", CheckAbort)
                         self.iren = iren
                         self.activateWidgets( self.iren )                                  
-                        self.iren.AddObserver( 'CharEvent', self.setInteractionState )                   
-                        self.iren.AddObserver( 'MouseMoveEvent', self.updateLevelingEvent )
-#                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
-                        self.iren.AddObserver( 'AnyEvent', self.onAnyEvent )  
-#                        self.iren.AddObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
-#                        self.iren.AddObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
-                        self.iren.AddObserver( 'CharEvent', self.onKeyPress )
-                        self.iren.AddObserver( 'KeyReleaseEvent', self.onKeyRelease )
-                        self.iren.AddObserver( 'LeftButtonPressEvent', self.onLeftButtonPress )
-                        self.iren.AddObserver( 'ModifiedEvent', self.onModified )
-                        self.iren.AddObserver( 'RenderEvent', self.onRender )                   
-                        self.iren.AddObserver( 'LeftButtonReleaseEvent', self.onLeftButtonRelease )
-                        self.iren.AddObserver( 'RightButtonReleaseEvent', self.onRightButtonRelease )
-                        self.iren.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )
+                        self.addObserver( self.iren, 'CharEvent', self.setInteractionState )                   
+                        self.addObserver( self.iren, 'MouseMoveEvent', self.updateLevelingEvent )
+#                        self.addObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
+                        self.addObserver( self.iren, 'AnyEvent', self.onAnyEvent )  
+#                        self.addObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
+#                        self.addObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
+                        self.addObserver( self.iren, 'CharEvent', self.onKeyPress )
+                        self.addObserver( self.iren, 'KeyReleaseEvent', self.onKeyRelease )
+                        self.addObserver( self.iren, 'LeftButtonPressEvent', self.onLeftButtonPress )
+                        self.addObserver( self.iren, 'ModifiedEvent', self.onModified )
+                        self.addObserver( self.iren, 'RenderEvent', self.onRender )                   
+                        self.addObserver( self.iren, 'LeftButtonReleaseEvent', self.onLeftButtonRelease )
+                        self.addObserver( self.iren, 'RightButtonReleaseEvent', self.onRightButtonRelease )
+                        self.addObserver( self.iren, 'RightButtonPressEvent', self.onRightButtonPress )
                         for configurableFunction in self.configurableFunctions.values():
                             configurableFunction.activateWidget( iren )
                     self.updateInteractor()  
-                    
+    
+    def addObserver( self, target, event, observer ):
+        self.observerTargets.add( target ) 
+        target.AddObserver( event, observer ) 
+
+    def clearReferrents(self):
+        PersistentModule.clearReferrents(self)
+        self.removeObservers()
+        self.renderer = None
+        self.iren = None
+        self.gui = None
+
+    def removeObservers( self ): 
+        for target in self.observerTargets:
+            target.RemoveAllObservers()
+        self.observerTargets.clear()
+                                               
     def updateInteractor(self): 
         pass
                     
@@ -2035,7 +2079,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 rcf = configFunct
 #                print " UpdateInteractionState, state = %s, cf = %s " % ( state, str(configFunct) )
             if not configFunct and self.acceptsGenericConfigs:
-                configFunct = ConfigurableFunction( state, None, None, pmod=self )              
+                configFunct = ConfigurableFunction( state, None, None )              
                 self.configurableFunctions[ state ] = configFunct
             if configFunct:
                 configFunct.open( state, self.isAltMode )

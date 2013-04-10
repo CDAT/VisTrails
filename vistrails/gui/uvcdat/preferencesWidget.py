@@ -19,6 +19,7 @@ import cdms2
 import os
 import customizeUVCDAT
 from esgf import QEsgfBrowser
+from core.uvcdat.plotmanager import get_plot_manager
 
 class QAliasesDialog(QtGui.QDialog):
     def __init__(self,parent):
@@ -188,10 +189,12 @@ class QPreferencesDialog(QtGui.QDialog):
         tab= QtGui.QFrame()
         l=QtGui.QVBoxLayout()
         tab.setLayout(l)
+        
         self.squeeze = QtGui.QCheckBox("Squeeze Dimensions")
         self.squeeze.setEnabled(True)
         self.squeeze.setChecked(customizeUVCDAT.squeezeVariables)
         l.addWidget(self.squeeze)
+        
         h=QtGui.QHBoxLayout()
         lb=QtGui.QLabel("Dimensions Aliases")
         self.aliases = QtGui.QComboBox()
@@ -199,8 +202,48 @@ class QPreferencesDialog(QtGui.QDialog):
         h.addWidget(lb)
         h.addWidget(self.aliases)
         l.addLayout(h)
+        
+        dh=QtGui.QHBoxLayout()
+        dlb=QtGui.QLabel("Default Plot")
+        self.defaultPlot = QtGui.QComboBox()
+        dh.addWidget(dlb)
+        dh.addWidget(self.defaultPlot)
+        l.addLayout(dh)
+        
         self.connect(self.aliases,QtCore.SIGNAL('activated(int)'),self.showAliases)
         return tab
+    
+    def setupDefaultPlotOptions(self):
+        plotOptions = ["None"]
+        currentIndex = 0
+        i = 1
+        plotList = get_plot_manager()._plot_list
+        for package in plotList:
+            for plot in plotList[package]:
+                if type(plotList[package][plot]) is dict:
+                    for method in plotList[package][plot]:
+                        item = "%s_-_%s_-_%s" % (package, plot, method)
+                        plotOptions.append(item)
+                        if item == customizeUVCDAT.defaultPlot:
+                            currentIndex = i
+                        i+=1
+                else:
+                    item = "%s_-_%s" % (package, plot)
+                    plotOptions.append(item)
+                    if item == customizeUVCDAT.defaultPlot:
+                        currentIndex = i
+                    i+=1
+        self.defaultPlot.addItems(plotOptions)
+        self.defaultPlot.setCurrentIndex(currentIndex)
+    
+    def getDefaultPlot(self):
+        args = str(self.defaultPlot.currentText()).split('_-_')
+        if len(args) == 2:
+            return get_plot_manager().new_plot(args[0], args[1])
+        elif len(args) == 3:
+            return get_plot_manager().new_plot(args[0], args[1], args[2])
+        else:
+            return None
 
     def showAliases(self):
         if str(self.root.preferences.aliases.currentText())=="choose":
@@ -317,6 +360,7 @@ class QPreferencesDialog(QtGui.QDialog):
     def saveState(self):
         fnm=os.path.join(os.environ["HOME"],"PCMDI_GRAPHICS","customizeUVCDAT.py")
         f=open(fnm,"w")
+        customizeUVCDAT.defaultPlot = self.defaultPlot.currentText()
         customizeUVCDAT.squeezeVariables=self.squeeze.isChecked()
         customizeUVCDAT.ncShuffle=cdms2.getNetcdfShuffleFlag()
         customizeUVCDAT.ncDeflate=cdms2.getNetcdfDeflateFlag()

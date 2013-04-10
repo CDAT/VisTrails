@@ -5,11 +5,24 @@ from PyQt4.QtGui import *
 def execAction1( index ):
     print " execAction: ", index
 
+class TestObject( QObject ):
+    
+    def __init__( self, **args ):
+        pass
+
+    def __del__(self):
+        print "Deleting TestObject"
+
+
 class TestConfigPopupManager( QObject ):
     
     def __init__( self, **args ):
         self.menu = QMenu()
         self.actionMap = {}
+        
+    def __del__(self):
+        print "Deleting TestConfigPopupManager"
+
 
 #        self.connect( self.menu, SIGNAL("triggered(QAction)"), self.execAction ) 
             
@@ -37,10 +50,16 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self)
         self.setFixedSize( 300, 300 )
+        tobj = TestObject()
+#        self.test_obj = tobj
+        del tobj
         self.testConfigPopupManager = TestConfigPopupManager()
         
     def mousePressEvent ( self, event ): 
-        self.testConfigPopupManager.show()  
+ #       self.testConfigPopupManager.show() 
+        self.testConfigPopupManager
+        self.testConfigPopupManager = None
+        
         
 app = QApplication(sys.argv)
 main = MainWindow()

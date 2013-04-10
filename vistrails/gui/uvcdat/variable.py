@@ -66,9 +66,13 @@ class VariableProperties(QtGui.QDialog):
         #sc.setWidgetResizable(True)
         sp.addWidget(self.originTabWidget)
         self.dims=QtGui.QFrame()
+        self.dimsLayout=QtGui.QVBoxLayout()
+        self.dims.setLayout( self.dimsLayout )
         sp.addWidget(self.dims)
         v.addWidget(sp)
         h=QtGui.QHBoxLayout()
+        self.selectRoiButton = QDockPushButton('Select Region Of Interest (ROI)')
+        h.addWidget( self.selectRoiButton )
         s=QtGui.QSpacerItem(40,20,QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Preferred)
         h.addItem(s)
         self.btnDefine=QDockPushButton("Load")
@@ -86,11 +90,13 @@ class VariableProperties(QtGui.QDialog):
         self.btnDefine.setDefault(False)
         self.btnDefineClose.setDefault(False)
         self.btnDefineAs.setDefault(False)
+        self.selectRoiButton.setDefault(False)
 
         # Disabling at first
         self.btnDefine.setEnabled(False)
         self.btnDefineClose.setEnabled(False)
         self.btnDefineAs.setEnabled(False)
+        self.selectRoiButton.setEnabled(False)
         h.addWidget(self.btnCancel)
         v.addLayout(h)
         self.layout=v
@@ -103,17 +109,22 @@ class VariableProperties(QtGui.QDialog):
         self.varNameInFile = None #store the name of the variable when loaded from file
         self.createFileTab()
         self.createESGFTab()
+        self.createOpenDAPTab()
         self.createEditTab()
         self.createInfoTab()
         for i in range(self.originTabWidget.count()):
             if self.originTabWidget.tabText(i) == "Edit":
                 self.originTabWidget.setTabEnabled(i,False)
 
-        self.createDimensions()
         self.connectSignals()
         sp.setStretchFactor(0,2)
         self.cdmsFile = None
         self.updatingFile = False
+
+        self.roiSelector = ROISelectionDialog( self.parent )
+        self.roiSelector.setWindowFlags( self.roiSelector.windowFlags() | Qt.WindowStaysOnTopHint )
+        self.connect(self.roiSelector, QtCore.SIGNAL('doneConfigure()'), self.setRoi )
+        if self.roi: self.roiSelector.setROI( self.roi )
 
     ## @classmethod
     ## def instance(klass):
@@ -129,10 +140,13 @@ class VariableProperties(QtGui.QDialog):
         self.btnApplyEdits.setVisible(False)
 
     def tabHasChanged(self,index):
-        if index==1:
+        if (index==1) or (index==2):
             self.root.varProp.btnDefine.setEnabled(False)
             self.root.varProp.btnDefineClose.setEnabled(False)
             self.root.varProp.btnDefineAs.setEnabled(False)
+            self.root.varProp.selectRoiButton.setEnabled(False)
+        if (index==2):
+            self.clearDimensionsWidget()
         ## else:
         ##     self.root.varProp.btnDefine.setEnabled(True)
         ##     self.root.varProp.btnDefineClose.setEnabled(True)
@@ -164,7 +178,7 @@ class VariableProperties(QtGui.QDialog):
         self.btnDefineAs.clicked.connect(self.defineAsVarClicked)
         self.connect(self,QtCore.SIGNAL('definedVariableEvent'),self.root.dockVariable.widget().addVariable)
         self.btnApplyEdits.clicked.connect(self.applyEditsClicked)
-
+        self.selectRoiButton.clicked.connect( self.selectRoi )
 
     def checkTargetVarName(self):
         result = None
@@ -251,10 +265,10 @@ class VariableProperties(QtGui.QDialog):
         h.addWidget(self.bookmarksList)
         v.addLayout(h)
 
-        f=QtGui.QFrame()
-        f.setLayout(v)
+        fileTab = QtGui.QFrame()
+        fileTab.setLayout(v)
 
-        self.originTabWidget.addTab(f,"File")
+        self.originTabWidget.addTab( fileTab, "File" )
 
     def createESGFTab(self):
         ## layout = QtGui.QVBoxLayout()
@@ -265,6 +279,16 @@ class VariableProperties(QtGui.QDialog):
         esgf.addGateway(gateway=str(self.root.preferences.host_url.currentText()))
         self.originTabWidget.addTab(esgf,"ESGF")
 
+    def createOpenDAPTab(self):
+        from packages.vtDV3D.RemoteDataBrowser import RemoteDataBrowser
+        browser = RemoteDataBrowser()
+        self.connect( browser, RemoteDataBrowser.new_data_element, self.processDataAddress )
+        self.originTabWidget.addTab(browser,"OpenDAP")
+        
+    def processDataAddress( self, address ):
+        self.originTabWidget.setCurrentIndex( 0 )
+        self.fileEdit.setText( address )
+        self.updateFile()
 
     def createInfoTab(self):
         info = QtGui.QFrame()
@@ -285,23 +309,6 @@ class VariableProperties(QtGui.QDialog):
         self.varEditArea.setWidgetResizable(True)
         self.originTabWidget.addTab(self.varEditArea,"Edit")
 
-    def createDimensions(self):
-        self.dimsLayout=QtGui.QVBoxLayout()
-        labelLayout = QtGui.QHBoxLayout()
-        l=QtGui.QLabel("Dimensions")
-        labelLayout.addWidget(l)
-
-        self.selectRoiButton = QDockPushButton('Select Region Of Interest (ROI)', self)
-        labelLayout.addWidget( self.selectRoiButton )
-        self.connect( self.selectRoiButton, QtCore.SIGNAL('clicked(bool)'), self.selectRoi )
-        self.roiSelector = ROISelectionDialog( self.parent )
-        self.roiSelector.setWindowFlags( self.roiSelector.windowFlags() | Qt.WindowStaysOnTopHint )
-        self.connect(self.roiSelector, QtCore.SIGNAL('doneConfigure()'), self.setRoi )
-        if self.roi:
-            self.roiSelector.setROI( self.roi )
-        self.dims.setLayout( self.dimsLayout )
-        self.dimsLayout.addLayout( labelLayout )
-
     def selectRoi( self ):
         if self.roi: self.roiSelector.setROI( self.roi )
         self.roiSelector.show()
@@ -311,28 +318,32 @@ class VariableProperties(QtGui.QDialog):
         self.updateAxesFromRoi()
 
     def updateAxesFromRoi(self):
+        from packages.vtDV3D.CDMS_VariableReaders import getAxisType, AxisType
         #print "Selected roi: %s " % str( self.roi )
         # Add code here to update Lat Lon sliders.
         n = self.axisListHolder.gridLayout.rowCount()
         #print "ok in roi self is: ",n
         for i in range(len(self.axisListHolder.axisWidgets)):
             axis = self.axisListHolder.axisWidgets[i]
-            if axis.axis.isLatitude() or axis.virtual==1:
+            axis_type = getAxisType( axis.axis )  
+            if ( axis_type == AxisType.Latitude ) or axis.virtual==1:
                 # Ok this is a lat we need to adjust the sliders now.
                 lat1 = self.roi[1]
                 lat2 = self.roi[3]
+                [ lat1, lat2 ] = axis.sliderCombo.checkBounds( [ lat1, lat2 ], axis.axis.parent )
                 axis.sliderCombo.updateTopSlider(axis.sliderCombo.findAxisIndex(lat1))
                 axis.sliderCombo.updateBottomSlider(axis.sliderCombo.findAxisIndex(lat2))
-            if axis.axis.isLongitude() or axis.virtual==1:
+            if ( axis_type == AxisType.Longitude ) or axis.virtual==1:
                 # Ok this is a lat we need to adjust the sliders now.
                 lon1 = self.roi[0]
                 lon2 = self.roi[2]
+                [ lon1, lon2 ] = axis.sliderCombo.checkBounds( [ lon1, lon2 ], axis.axis.parent )
                 axis.sliderCombo.updateTopSlider(axis.sliderCombo.findAxisIndex(lon1))
                 axis.sliderCombo.updateBottomSlider(axis.sliderCombo.findAxisIndex(lon2))
 
     def openSelectFileDialog(self):
         file = QtGui.QFileDialog.getOpenFileName(self, 'Open CDAT data file...',
-                                                 self.root.dockVariable.lastDirectory,
+                                                 '',
                                                  VariableProperties.FILTER + ';;All files (*.*)')
         if not file.isNull():
             self.setFileName(file)
@@ -382,15 +393,16 @@ class VariableProperties(QtGui.QDialog):
                 elif name=="CDAT":
                     # some OpenDAP files don't have an extension trynig to open in CDAT
                     try:
-                        if str(fnm) in CdmsCache.d:
-                            #print "Using cache for %s" % str(fnm)
-                            tmpf = CdmsCache.d[str(fnm)]
+                        file_path = os.path.expanduser(str(fnm))
+                        if file_path in CdmsCache.d:
+                            #print "Using cache2 for %s" % file_path
+                            tmpf = CdmsCache.d[file_path]
                         else:
-                            #print "Loading file %s" % str(fnm)
-                            tmpf = CdmsCache.d[str(fnm)] = cdms2.open(str(fnm))
+                            #print "Loading file2 %s" % file_path
+                            tmpf = CdmsCache.d[file_path] = cdms2.open(file_path)
                         tmpf.variables.keys()
                         #tmpf.close()
-                        self.updateCDMSFile(str(fnm))
+                        self.updateCDMSFile(file_path)
                     except:
                         pass
 
@@ -400,6 +412,7 @@ class VariableProperties(QtGui.QDialog):
         self.root.varProp.btnDefine.setEnabled(True)
         self.root.varProp.btnDefineClose.setEnabled(True)
         self.root.varProp.btnDefineAs.setEnabled(True)
+        self.root.varProp.selectRoiButton.setEnabled(True)
 
 
     def selectFromList(self,item):
@@ -409,22 +422,23 @@ class VariableProperties(QtGui.QDialog):
         if fn[:7]=="http://":
             ## Maybe add something for my proxy errors here?
             if fn in CdmsCache.d:
-                #print "Using cache for %s" % fn
+                #print "Using cache3 for %s" % fn
                 self.cdmsFile = CdmsCache.d[fn]
             else:
-                #print "Loading file %s" % fn
+                #print "Loading file3 %s" % fn
                 self.cdmsFile = CdmsCache.d[fn] = cdms2.open(fn)
             self.root.record("## Open file: %s" % fn)
             self.root.record("cdmsFile = cdms2.open('%s')" % fn)
         else:
+            file_path = os.path.expanduser(fn)
             if fn in CdmsCache.d:
-                #print "Using cache for %s" % fn
-                self.cdmsFile = CdmsCache.d[fn]
+                #print "Using cache4 for %s" % file_path
+                self.cdmsFile = CdmsCache.d[file_path]
             else:
-                #print "Loading file %s" % fn
-                self.cdmsFile = CdmsCache.d[fn] = cdms2.open(fn)
-            self.root.record("## Open file: %s" % fn)
-            self.root.record("cdmsFile = cdms2.open('%s')" % fn)
+                #print "Loading file4 %s" % file_path
+                self.cdmsFile = CdmsCache.d[file_path] = cdms2.open(file_path)
+            self.root.record("## Open file: %s" % file_path)
+            self.root.record("cdmsFile = cdms2.open('%s')" % file_path)
         self.updateVariableList()
 
     def updateOtherPlots(self, namelist):
@@ -483,27 +497,48 @@ class VariableProperties(QtGui.QDialog):
         self.root.varProp.btnDefine.setEnabled(True)
         self.root.varProp.btnDefineClose.setEnabled(True)
         self.root.varProp.btnDefineAs.setEnabled(True)
+        self.root.varProp.selectRoiButton.setEnabled(True)
         
 
-    def fillDimensionsWidget(self,axisList):
+    def clearDimensionsWidget(self):
         if not self.axisListHolder is None:
             self.axisListHolder.destroy()
-        N=self.dimsLayout.count()
-        while N>1:
-            it = self.dimsLayout.takeAt(N-1)
+        it = self.dimsLayout.takeAt(0)
+        if it: 
             it.widget().deleteLater()
-##             it.widget().destroy()
-            self.dimsLayout.removeItem(it)
+    ##             it.widget().destroy()
+#            self.dimsLayout.removeItem(it)
             del(it)
-            self.dims.update()
-            self.update()
-            N=self.dimsLayout.count()
+
+    def fillDimensionsWidget(self,axisList):
+        self.clearDimensionsWidget()
         self.axisListHolder = axisList
-        self.dimsLayout.addWidget(axisList)
+        self.dimsLayout.insertWidget(0,axisList)
         self.updateVarInfo(axisList)
+        self.dims.update()
+        self.update()
+
+#    def fillDimensionsWidget1(self,axisList):
+#        if not self.axisListHolder is None:
+#            self.axisListHolder.destroy()
+#        N=self.dimsLayout.count()
+#        while N>1:
+#            it = self.dimsLayout.takeAt(N-1)
+#            it.widget().deleteLater()
+###             it.widget().destroy()
+#            self.dimsLayout.removeItem(it)
+#            del(it)
+#            self.dims.update()
+#            self.update()
+#            N=self.dimsLayout.count()
+#        self.axisListHolder = axisList
+#        self.dimsLayout.addWidget(axisList)
+#        self.updateVarInfo(axisList)
 
 
     def updateVarInfo(self, axisList):
+        from packages.vtDV3D.CDMS_VariableReaders import getAxisType, AxisType
+        
         """ Update the text box with the variable's information """
         if axisList is None:
             return
@@ -516,7 +551,8 @@ class VariableProperties(QtGui.QDialog):
         showRoi = False
         for i in range(len(self.axisListHolder.axisWidgets)):
             axis = self.axisListHolder.axisWidgets[i]
-            if axis.axis.isLatitude() or axis.virtual==1 or axis.axis.isLongitude() or axis.virtual==1:
+            axis_type = getAxisType(axis.axis)
+            if axis_type in [ AxisType.Latitude, AxisType.Longitude ] or axis.virtual==1:
                 showRoi = True
         if showRoi:
             self.selectRoiButton.setHidden(False)
@@ -547,7 +583,7 @@ class VariableProperties(QtGui.QDialog):
         """ Return a new tvariable object with the updated information from
         evaluating the var with the current user selected args / options
         """
-        axisList = self.dimsLayout.itemAt(1).widget()
+        axisList = self.dimsLayout.itemAt(0).widget()
 
         if targetId is not None:
             tid = targetId
@@ -573,7 +609,7 @@ class VariableProperties(QtGui.QDialog):
         if self.updatingFile:
             self.updatingFile = False
             return
-        axisList = self.dimsLayout.itemAt(1).widget()
+        axisList = self.dimsLayout.itemAt(0).widget()
         kwargs = self.generateKwArgs()
         # Here we try to remove useless keywords as we record them
         cmds = ""
@@ -669,7 +705,7 @@ class VariableProperties(QtGui.QDialog):
     def generateKwArgs(self, axisList=None):
         """ Generate and return the variable axes keyword arguments """
         if axisList is None:
-            axisList = self.dimsLayout.itemAt(1).widget()
+            axisList = self.dimsLayout.itemAt(0).widget()
 
         kwargs = {}
         for axisWidget in axisList.getAxisWidgets():
@@ -689,4 +725,3 @@ class VariableProperties(QtGui.QDialog):
         controller = _app.uvcdatWindow.get_current_project_controller()
         
         controller.variableEdited(varname)
-
