@@ -110,19 +110,21 @@ class CDMSVariable(Variable):
         if self.source:
             cdmsfile = self.source.var
         elif self.url:
-            if self.url in CdmsCache.d:
-                #print "Using cache for %s" % self.url
-                cdmsfile = CdmsCache.d[self.url]
+            url_path = os.path.expanduser(self.url)
+            if url_path in CdmsCache.d:
+                #print "Using cache5 for %s" % url_path
+                cdmsfile = CdmsCache.d[url_path]
             else:
-                #print "Loading file %s" % self.url
-                cdmsfile = CdmsCache.d[self.url] = cdms2.open( os.path.expanduser(self.url) )
+                #print "Loading file5 %s" % url_path
+                cdmsfile = CdmsCache.d[url_path] = cdms2.open( os.path.expanduser(url_path) )
         elif self.file:
-            if self.file in CdmsCache.d:
-                #print "Using cache for %s" % self.file
-                cdmsfile = CdmsCache.d[self.file]
+            file_path = os.path.expanduser(self.file)
+            if file_path in CdmsCache.d:
+                #print "Using cache6 for %s" % file_path
+                cdmsfile = CdmsCache.d[file_path]
             else:
-                #print "Loading file %s" % self.file
-                cdmsfile = CdmsCache.d[self.file] = cdms2.open( os.path.expanduser(self.file) )
+                #print "Loading file6 %s" % file_path
+                cdmsfile = CdmsCache.d[file_path] = cdms2.open( file_path )
         
         if self.varNameInFile is not None:
             var = cdmsfile.__call__(self.varNameInFile)
