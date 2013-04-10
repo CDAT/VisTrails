@@ -87,13 +87,13 @@ class PM_CurtainPlot(PersistentVisualizationModule):
 #        self.addConfigurableLevelingFunction( 'opacity', 'O', label='Curtain Opacity', activeBound='min', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
         self.addConfigurableLevelingFunction( 'nHandles', 'H', label='Number Of Handles', setLevel=self.setNumberOfHandles, activeBound='max', getLevel=self.getNumberOfHandles, windowing=False, initRange=[ 3.0, self.n_spline_spans, 1 ] )
-        self.addConfigurableLevelingFunction( 'splineRes', 'T', label='Trajectory Resolution', setLevel=self.setSplineResolution, activeBound='max', getLevel=self.getSplineResolution, windowing=False, initRange=[ 5.0, self.spline_resolution, 1 ] )
+#        self.addConfigurableLevelingFunction( 'splineRes', 'T', label='Trajectory Resolution', setLevel=self.setSplineResolution, activeBound='max', getLevel=self.getSplineResolution, windowing=False, initRange=[ 5.0, self.spline_resolution, 1 ] )
         self.addConfigurableMethod('Reset Trajectory', self.resetSpline, 'R' )
-        self.addConfigurableMethod('Toggle Edit Trajectory Mode', self.toggleEditSpline, 'I' )
+        self.addConfigurableMethod('Edit Trajectory', self.toggleEditSpline, 'I' )
         self.trajectory = None
         self.modifiedPoints = None
         self.nPoints = 100
-        self.spline = vtk.vtkSplineWidget()
+        self.spline = vtk.vtkSplineWidget() 
         self.curtainModified = False
 
     def setInputZScale( self, zscale_data, **args  ): 
@@ -116,11 +116,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
     def setSplineResolution(self, tres_data, **args  ):
         sr = int( round( tres_data[1] ) )
         if sr <> self.spline_resolution:
-            self.spline_resolution = sr
-            curtain = self.getCurtainGeometry()  
-            self.probeFilter.SetInput( curtain )
-            npts = curtain.GetNumberOfPoints()
-            print " *** Set Spline Resolution: %d, npts = %d " % ( sr, npts )
+            self.resetResolution(sr)
             
     def getNumberOfHandles(self):
         return [ 3.0, 50.0, 1.0 ]
@@ -250,9 +246,6 @@ class PM_CurtainPlot(PersistentVisualizationModule):
             
             spline_span_length = self.nPoints / self.n_spline_spans 
             self.spline.SetNumberOfHandles( self.n_spline_spans + 1 )
-            self.spline.SetResolution( spline_span_length * self.spline_resolution )
-            self.spline.SetProjectionNormalToZAxes() 
-            self.spline.SetProjectToPlane(2) 
             for iS in range( len(spline_coords) ):
                 ptcoords = spline_coords[iS]      
                 self.spline.SetHandlePosition ( iS, ptcoords[0], ptcoords[1], 0.0 )
@@ -261,6 +254,41 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         else: 
             curtain = self.getCurtainGeometry()
             self.probeFilter.SetInput( curtain )
+
+
+    def resetResolution( self, sr ):
+        self.spline_resolution = sr
+        npts = self.modifiedPoints.GetNumberOfPoints() if self.modifiedPoints else 0
+        spline_coords = []
+        if npts:
+            handle_step = npts / self.n_spline_spans
+            for iS in range( self.n_spline_spans ):
+                iPt = iS*handle_step
+                ptcoords = self.modifiedPoints.GetPoint( iPt )
+                spline_coords.append( ptcoords )
+            ptcoords = self.modifiedPoints.GetPoint( npts-1 )
+            spline_coords.append( ptcoords )
+        else:
+            ( lonData, latData ) = self.trajectory
+            npts = len(latData)
+            handle_step = npts / self.n_spline_spans
+            for iPt in range( 0, npts, handle_step ):
+                 latVal = latData[iPt]
+                 lonVal = lonData[iPt]
+                 spline_coords.append( ( lonData[iPt], latData[iPt] ) ) 
+        nHandles = len(spline_coords)          
+        spline_span_length = self.nPoints / self.n_spline_spans 
+        self.spline.SetNumberOfHandles( nHandles )
+        self.spline.SetResolution( spline_span_length * self.spline_resolution )
+        self.spline.SetProjectionNormalToZAxes() 
+        self.spline.SetProjectToPlane(2) 
+        for iS in range( nHandles ):
+            ptcoords = spline_coords[iS]      
+            self.spline.SetHandlePosition ( iS, ptcoords[0], ptcoords[1], 0.0 )
+        curtain = self.getCurtainGeometryFromSpline()
+        self.probeFilter.SetInput( curtain )           
+        npts = curtain.GetNumberOfPoints()
+        print " *** Set Spline Resolution: %d, npts = %d, handles = %s " % ( sr, npts, str(spline_coords) )            
        
     def getCurtainGeometry( self, **args ):
         if self.trajectory == None: self.trajectory = self.computeInitialTrajectory()
@@ -320,17 +348,20 @@ class PM_CurtainPlot(PersistentVisualizationModule):
 #            pts.append( "(%.2f,%.2f,%.2f)" % ( ptd[0], ptd[1], ptd[2] ) ) 
 #            if ipt % 10 == 0: pts.append( "\n" )
 #        print "Sample Points:", ' '.join(pts)
-           
+
     def activateWidgets( self, iren ):
+        if iren: self.activateSpline( iren )
+           
+    def activateSpline( self, iren ):
         self.spline.SetInteractor( iren )       
         self.addObserver( self.spline, 'EndInteractionEvent', self.onTrajectoryModified )
-        self.addObserver( self.spline, 'AnyEvent', self.onAnyEvent )
+#        self.addObserver( self.spline, 'AnyEvent', self.onAnyEvent )
 
-    def onAnyEvent( self, caller, event ):
-        code = self.iren.GetKeyCode()
-        epos = self.iren.GetEventPosition()
-        if ( event == "KeyPressEvent" ) or ( event == "KeyReleaseEvent" ):
-            print "Key Press Position: %s " % str( epos )
+#    def onAnyEvent( self, caller, event ):
+#        code = self.iren.GetKeyCode()
+#        epos = self.iren.GetEventPosition()
+#        if ( event == "KeyPressEvent" ) or ( event == "KeyReleaseEvent" ):
+#            print "Key Press Position: %s " % str( epos )
 
     def onTrajectoryModified( self, caller, event ):
 #        print " onTrajectoryModified: %s " % ( str(event) )
