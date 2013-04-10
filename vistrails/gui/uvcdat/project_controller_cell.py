@@ -61,8 +61,9 @@ class ControllerCell(object):
         if version != self._current_version:
             self.undoVersion = version
             self.redoVersion = version
-            self.usingDefaultPlot = False
             self._current_version = version
+            self.usingDefaultPlot = False
+
 #        print "\n ****************** Set Cell current_parent_version: %d ****************** \n" % version    
     current_parent_version = property( _get_current_parent_version, _set_current_parent_version ) 
         

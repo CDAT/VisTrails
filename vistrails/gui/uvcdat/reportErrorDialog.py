@@ -15,6 +15,7 @@ from ui_reportErrorDialog import Ui_ReportErrorDialog
 
 
 def report_exception(exctype, value, tb):
+    uninstall_exception_hook()
     app = gui.application.get_vistrails_application()
     if app:
         app.uvcdatWindow.hide()
@@ -25,7 +26,7 @@ def report_exception(exctype, value, tb):
     except:
         eType = str(type(value))
     dialog.setDescription("%s: %s" % (eType, str(value)))
-    dialog.setErrorMessage(s);
+    dialog.setErrorMessage(s)
     dialog.exec_()
     if app:
         app.finishSession()
@@ -74,12 +75,14 @@ class ReportErrorDialog(QtGui.QDialog, Ui_ReportErrorDialog):
         
         if get_vistrails_configuration().output != '':
             fname = get_vistrails_configuration().output
+            # read at most last 5000 chars from output log
             with open(fname, "r") as f:
                 f.seek (0, 2)           # Seek @ EOF
                 fsize = f.tell()        # Get Size
                 f.seek (max (fsize-5000, 0), 0) # Set pos @ last n chars
                 data['execution_log'] = f.read()
-                
-        result = urlopen("http://www.uv-cdat.org/UVCDATUsage/log/error/", 
+        print urlencode(data)
+        print "http://uvcdat.llnl.gov/UVCDATUsage/log/add/error/"
+        result = urlopen("http://uvcdat.llnl.gov/UVCDATUsage/log/add/error/", 
                          urlencode(data))
         
