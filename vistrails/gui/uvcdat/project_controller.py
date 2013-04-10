@@ -956,7 +956,10 @@ class ProjectController(QtCore.QObject):
             return
         
         if cell is None:
-            cell = self.sheet_map[sheetName][(row,col)]
+            if (row,col) in self.sheet_map[sheetName]:
+                cell = self.sheet_map[sheetName][(row,col)]
+            else:
+                return
         
         # only do a relayout if the builder window is visible
         from gui.vistrails_window import _app
