@@ -48,6 +48,7 @@ import core.requirements
 from db import VistrailsDBException
 import db.services.io
 from gui import qt
+from gui.uvcdat.reportErrorDialog import install_exception_hook
 import gui.theme
 import os.path
 import getpass
@@ -138,7 +139,10 @@ parameters from other instances")
         
         # DAK this is handled by finalize_vistrails in core.application now
         # self.connect(self, QtCore.SIGNAL("aboutToQuit()"), self.finishSession)
-        VistrailsApplicationInterface.init(self,optionsDict)
+        VistrailsApplicationInterface.init(self,optionsDict)        
+        
+        if not self.temp_configuration.noErrorReporting:
+            install_exception_hook()
 
         # the uvcdat theme needs to be initialized after the configuration is loaded
         gui.uvcdat.theme.initializeUVCDATTheme()
