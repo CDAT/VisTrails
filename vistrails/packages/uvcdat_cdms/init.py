@@ -127,18 +127,18 @@ class CDMSVariable(Variable):
                 #print "Loading file6 %s" % file_path
                 cdmsfile = CdmsCache.d[file_path] = cdms2.open( file_path )
         
+        varName = self.name
         if self.varNameInFile is not None:
-            var = cdmsfile.__call__(self.varNameInFile)
-        else:
-            var = cdmsfile.__call__(self.name)
+            varName = self.varNameInFile
+            
         if self.axes is not None:
             try:
-                var = eval("var(%s)"% self.axes)
+                var = eval("cdmsfile.__call__(varName,%s)"% self.axes)
             except Exception, e:
                 raise ModuleError(self, "Invalid 'axes' specification: %s" % \
                                       str(e))
-        if self.axesOperations is not None:
-            var = self.applyAxesOperations(var, self.axesOperations)
+        else:
+            var = cdmsfile.__call__(varName)
             
         #make sure that var.id is the same as self.name
         var.id = self.name
