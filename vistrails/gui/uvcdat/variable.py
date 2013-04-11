@@ -407,12 +407,23 @@ class VariableProperties(QtGui.QDialog):
                         pass
 
             self.updateOtherPlots(other_list)
+            self.root.varProp.btnDefine.setEnabled(True)
+            self.root.varProp.btnDefineClose.setEnabled(True)
+            self.root.varProp.btnDefineAs.setEnabled(True)
+            self.root.varProp.selectRoiButton.setEnabled(True)
         else:
+            print "Unable to find file %s" % fnm
             self.emit(QtCore.SIGNAL('fileChanged'), None)
-        self.root.varProp.btnDefine.setEnabled(True)
-        self.root.varProp.btnDefineClose.setEnabled(True)
-        self.root.varProp.btnDefineAs.setEnabled(True)
-        self.root.varProp.selectRoiButton.setEnabled(True)
+
+            self.historyList.takeItem(0) #remove from history
+            if self.historyList.item(0):
+                self.historyList.setCurrentRow(0)
+                self.setFileName(self.historyList.item(0).text())
+            else:
+                self.root.varProp.btnDefine.setEnabled(False)
+                self.root.varProp.btnDefineClose.setEnabled(False)
+                self.root.varProp.btnDefineAs.setEnabled(False)
+                self.root.varProp.selectRoiButton.setEnabled(False)  
 
 
     def selectFromList(self,item):
