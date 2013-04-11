@@ -102,3 +102,4 @@ class PlotProperties(QtGui.QDockWidget):
         if enabled:
             self.show()
             self.raise_()
+            self.setFloating(True)

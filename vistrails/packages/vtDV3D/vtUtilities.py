@@ -3,7 +3,7 @@ Created on Dec 9, 2010
 
 @author: tpmaxwel
 '''
-import sys, vtk, StringIO, cPickle, time, os, gui, ConfigParser, shutil
+import sys, vtk, StringIO, cPickle, time, os, ConfigParser, shutil
 import core.modules.module_registry
 from core.modules.vistrails_module import Module, ModuleError
 from core.modules.module_registry import get_module_registry
@@ -12,6 +12,7 @@ from core.interpreter.default import get_default_interpreter as getDefaultInterp
 from db.domain import DBModule, DBAnnotation
 from core.db.action import create_action
 from core.debug import DebugPrint
+from PyQt4 import QtCore, QtGui
 import numpy.core.umath as umath
 # from vtk.util.vtkConstants import *
 import numpy as np
@@ -58,6 +59,11 @@ dvLogFile =  open( os.path.expanduser( '~/.vistrails/dv3d_log.txt' ), 'w' )
 dvDbgIO = DebugPrint()
 dvDbgIO.set_stream( sys.stderr )
 
+def displayMessage( msg ):
+    msgBox = QtGui.QMessageBox()
+    msgBox.setText( msg )
+    msgBox.exec_()
+    
 def get_coords_from_cell_address( row, col):
     try:
         col = ord(col)-ord('A')
@@ -103,7 +109,8 @@ def callbackWrapper( func, wrapped_arg ):
     return callMe
 
 def getConfiguration( defaults ):
-    app = gui.application.get_vistrails_application()
+    from gui.application import get_vistrails_application
+    app = get_vistrails_application()
     appConfig = app.temp_configuration if app else None
     dotVistrails = appConfig.dotVistrails if appConfig else os.path.expanduser("~/.vistrails/")
     datasetConfigFile = os.path.expanduser( os.path.join( dotVistrails, 'dv3d.cfg' )  )

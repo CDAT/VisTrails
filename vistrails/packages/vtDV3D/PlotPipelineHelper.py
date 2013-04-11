@@ -10,7 +10,8 @@ Created on Feb 29, 2012
 
 '''
 
-import core.db.io, sys, os, traceback, api, time
+
+import core.db.io, sys, os, traceback, api, time, copy
 import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
@@ -1423,7 +1424,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             print "Error: Could not find DV3D plot type based on the pipeline"
             print "Visualizations can't be loaded."            
 
-
     @staticmethod
     def find_topo_sort_modules_by_types(pipeline, moduletypes):
         modules = []
@@ -1438,7 +1438,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 module = pipeline.modules[i] 
                 result.append(module)
         return result
-
 
     @staticmethod
     def build_python_script_from_pipeline( controller, version, plot=None ):

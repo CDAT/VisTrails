@@ -220,11 +220,12 @@ class QSliderCombo(QtGui.QWidget):
         from gui.application import get_vistrails_application
         values = sorted( self.axisValues )
         if ( bounds[0] < values[0] ) or ( bounds[1] > values[-1] ):
+            bounds[0] = max( bounds[0], values[0]  )
+            bounds[1] = min( bounds[1], values[-1] )
             parent = get_vistrails_application().uvcdatWindow.varProp.roiSelector
             if dataset == None: QtGui.QMessageBox.warning( parent, "UVCDAT Warning", "Selected bounds are out of range for the transient variable. Please reaccess this variable from the dataset.")
             else:               QtGui.QMessageBox.warning( parent, "UVCDAT Warning", "Selected bounds are out of range for the dataset.")
-            return False
-        return True
+        return bounds
 #            self.resetValues()
                 
     def resetValues( self, axis = None ):     
@@ -1041,6 +1042,8 @@ class QAxisList(QtGui.QWidget):
         self.gridLayout = QtGui.QGridLayout()
         self.gridLayout.setMargin(0)
         self.gridLayout.setSpacing(0)
+        l=QtGui.QLabel("Dimensions")
+        vbox.addWidget(l)
         vbox.addLayout(self.gridLayout)
         vbox.addStretch()
         vbox.setSpacing(0)

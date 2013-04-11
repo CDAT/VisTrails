@@ -17,7 +17,7 @@ class Matrix(Module):
         # lbl3, val31, val32, val33, ...
         # ... , ...  , ...  , ...  , ...
         self.values     = None      # numpy.array
-        self.ids        = None      # numpy.array
+        self.ids        = None      # list<int>
         self.labels     = None      # list<string>
         self.attributes = None      # list<string>
         
