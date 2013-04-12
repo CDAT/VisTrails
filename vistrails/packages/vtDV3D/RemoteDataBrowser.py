@@ -382,8 +382,8 @@ class DodsDataElementParser(HTMLCatalogParser):
         self.processHref = False 
         self.completeListing = args.get( 'complete', False ) 
 
-    def process_start_tag( self, tag, attrs ):       
-        print "Start Tag %s: %s" % ( tag, str(attrs) )
+#    def process_start_tag( self, tag, attrs ):       
+#        print "Start Tag %s: %s" % ( tag, str(attrs) )
         
     def execute(self):
         response = urllib2.urlopen( self.base_url )
@@ -391,7 +391,7 @@ class DodsDataElementParser(HTMLCatalogParser):
         self.feed( self.metadata )
                     
     def process_data( self,  data ): 
-        print "Data: %s" % ( data )
+#        print "Data: %s" % ( data )
         if ( data.find('Data URL') >= 0 ) and self.has_state( 'td' ):
             self.processHref = True  
         elif self.processHref and self.has_state( 'td' ): 

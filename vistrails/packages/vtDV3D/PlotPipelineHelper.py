@@ -530,6 +530,12 @@ class DV3DConfigControlPanel(QWidget):
                     
         main_layout.addStretch()                       
         self.setLayout(main_layout)
+        
+    def askToSaveChanges(self):
+        if self.configWidget: 
+            self.configWidget.finalizeConfig( )
+            self.configWidget.setVisible ( False )
+            self.config_layout.removeWidget( self.configWidget )
 
 #    def __del__(self):
 ##        print "Deleting DV3DConfigControlPanel: id = %x " % id( self )
