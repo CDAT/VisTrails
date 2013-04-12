@@ -318,7 +318,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         if handle_points:
             self.modifyTrajectory( handle_points )
         else: 
-            curtain = self.getCurtainGeometry()
+            curtain = self.createCurtain()
             self.probeFilter.SetInput( curtain )
 
 
@@ -404,7 +404,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         z_inc = zmax / nStrips
         polydata = vtk.vtkPolyData()
         stripArray = vtk.vtkCellArray()
-        stripData = [ vtk.vtkIdList() ] * nStrips
+        stripData = [ vtk.vtkIdList() for ix in range(nStrips) ] 
         points = vtk.vtkPoints() 
         for iPt in range( trajectory_points.GetNumberOfPoints() ):
             pt_coords = trajectory_points.GetPoint( iPt )
