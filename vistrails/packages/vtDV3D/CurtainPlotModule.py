@@ -97,34 +97,38 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         self.firstEdit = True
         self.modifiedPoints = None
         self.nPoints = 100
-        self.spline = vtk.vtkSplineWidget() 
+        self.initNewSpline()
         self.curtainModified = False
         self.activated = False
 
     def initNewSpline( self, **args ):
-        points = args.get( 'handles', None )
+        handle_points = args.get( 'handles', None )
         self.spline = vtk.vtkSplineWidget() 
         self.spline.SetProjectionNormalToZAxes() 
         self.spline.SetProjectToPlane(2) 
         if self.iren: self.activateSpline( self.iren ) 
-        if points:
-            nH = points.GetNumberOfPoints()
-            self.spline.SetNumberOfHandles( nH ) 
-            for iH in range( nH ):
-                coords = points.GetPoint(iH)
-                self.spline.SetHandlePosition( iH, coords[0], coords[1], 0.0 ) 
+        if handle_points: self.modifyTrajectory( handle_points, **args )   
      
     def setInputZScale( self, zscale_data, **args  ): 
         rv = PersistentVisualizationModule.setInputZScale( self,  zscale_data, **args )      
-        curtain = self.getCurtainGeometryFromSpline() if self.curtainModified else self.getCurtainGeometry()                  
+        curtain = self.createCurtain()                
         self.probeFilter.SetInput( curtain )
         return rv
+    
+    def getTrajectoryPoints( self, **args ):
+        isModification = args.get( "isModification", False )
+        if isModification: self.curtainModified = True
+        if self.curtainModified: return self.getSplinePoints( isModification )
+        if self.trajectory == None: self.trajectory = self.computeInitialTrajectory()         
+        return self.trajectory
     
     def resetSpline(self):
         self.curtainModified = False
         self.modifiedPoints = None
-        curtain = self.getCurtainGeometry()                  
+        curtain = self.createCurtain(  )                  
         self.probeFilter.SetInput( curtain )
+        handle_points = self.getHandlesFromTrajectoryPoints( self.getTrajectoryPoints() )
+        if handle_points: self.modifyTrajectory( handle_points )  
         self.render()
                
     def setNumberOfHandles(self, nhandles_data, **args  ):
@@ -176,12 +180,15 @@ class PM_CurtainPlot(PersistentVisualizationModule):
             coords =line.split(',') 
             handle_points.InsertNextPoint( float(coords[0]), float(coords[1]), 0.0 ) 
             print "Insert Point: %s " % str( [ float(coords[0]), float(coords[1]) ] )
-        f.close()           
-#        self.initNewSpline( handles=handle_points )
+        f.close() 
+        self.modifyTrajectory( handle_points, isModification=True )          
+
+    def modifyTrajectory( self, handle_points, **args ):
         self.spline.InitializeHandles( handle_points )
-        if not self.editMode: self.toggleEditSpline()  
-        curtain = self.getCurtainGeometryFromSpline( isModification=True )
-        self.probeFilter.SetInput( curtain )  
+        if not self.editMode: self.spline.SetEnabled( True )
+        curtain = self.createCurtain( **args ) 
+        self.probeFilter.SetInput( curtain )
+        if not self.editMode: self.spline.SetEnabled( False )  
         self.render()
                    
     def toggleEditSpline( self, notify=True ):
@@ -191,7 +198,6 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         if self.editMode and self.firstEdit:
             if notify: displayMessage( " Click on the yellow curved line and then drag the handles (spheres) to modify the trajectory." )
             self.firstEdit = False
-#        configFn = self.configurableFunctions['nHandles']
            
     def setOpacityRange( self, opacity_range, **args  ):
         self.opacityRange = opacity_range
@@ -224,14 +230,15 @@ class PM_CurtainPlot(PersistentVisualizationModule):
     def computeInitialTrajectory(self):
         path = defaultPathFile
         pathInput = self.wmod.forceGetInputFromPort( "path", None ) 
-        lonData = []
-        latData = []
+        points = vtk.vtkPoints()
         if pathInput <> None: 
             path = pathInput.name       
             reader = PathFileReader()
             reader.read(path)  
             latData = reader.getData( 'Latitude' )
             lonData = reader.getData( 'Longitude' )
+            for iPt in range(len(latData)):
+                points.InsertNextPoint( lonData[iPt], latData[iPt], 0.0 ) 
         else:
             nPts = self.nPoints 
             xstep =  (self.roi[1]-self.roi[0]) / nPts
@@ -240,150 +247,175 @@ class PM_CurtainPlot(PersistentVisualizationModule):
             for iPt in range( nPts + 1 ):
                 x = self.roi[0] + xstep*iPt
                 y = y0 + ysize * math.sin( (iPt/float(nPts)) * 2.0 * math.pi )
-                lonData.append( x )
-                latData.append( y )
-        return ( lonData, latData )
- 
-    def getCurtainGeometryFromSpline( self, **args ):
-        if self.trajectory == None: 
-            self.trajectory = self.computeInitialTrajectory()
+                points.InsertNextPoint( x, y, 0.0 )
+        return points
+    
+    def getSplinePoints( self, isModification ):
         polyData = vtk.vtkPolyData()
         self.spline.GetPolyData( polyData )
-        npts = polyData.GetNumberOfPoints()
-        isModification = args.get( "isModification", False )
         if isModification: self.modifiedPoints = polyData
-        print "----------------------------------------------------"
-        print " ** Get Curtain Geometry From Spline, NP = %d **" % npts
-        print "----------------------------------------------------"
-        sys.stdout.flush()                
-        extent =  self.input().GetExtent() 
-        spacing =  self.input().GetSpacing() 
-        nStrips = extent[5] - extent[4] 
-        zmax = spacing[2] * nStrips
-        z_inc = zmax / nStrips
-        polydata = vtk.vtkPolyData()
-        stripArray = vtk.vtkCellArray()
-        stripData = [ vtk.vtkIdList() for istrip in range( nStrips ) ]
-        points = vtk.vtkPoints() 
-        nH = self.spline.GetNumberOfHandles ()
-        print " Handles: " 
-        for iH in range(nH):
-            handle = self.spline.GetHandlePosition( iH )
-            print " ( %.2f %.2f )" % ( handle[0], handle[1] )
-        print " Points: " 
-        for iPt in range( npts ):  
-            ptcoords = polyData.GetPoint( iPt )
-            print " ( %.2f %.2f )" % ( ptcoords[0], ptcoords[1] )
-            z = 0.0
-            for iLevel in range( nStrips ):
-                vtkId = points.InsertNextPoint( ptcoords[0], ptcoords[1], z )
-                sd = stripData[ iLevel ]
-                sd.InsertNextId( vtkId )               
-                sd.InsertNextId( vtkId+1 )
-                z = z + z_inc 
-            points.InsertNextPoint( ptcoords[0], ptcoords[1], z )
-                       
-        for strip in stripData:
-            stripArray.InsertNextCell(strip)
-            
-        polydata.SetPoints( points )
-        polydata.SetStrips( stripArray )
-        self.curtainModified = True
-        return polydata
+        return polyData
+ 
+#    def getCurtainGeometryFromSpline( self, **args ):
+#        if self.trajectory == None: 
+#            self.trajectory = self.computeInitialTrajectory()
+#        polyData = vtk.vtkPolyData()
+#        self.spline.GetPolyData( polyData )
+#        npts = polyData.GetNumberOfPoints()
+#        isModification = args.get( "isModification", False )
+#        if isModification: self.modifiedPoints = polyData
+#        print "----------------------------------------------------"
+#        print " ** Get Curtain Geometry From Spline, NP = %d **" % npts
+#        print "----------------------------------------------------"
+#        sys.stdout.flush()                
+#        extent =  self.input().GetExtent() 
+#        spacing =  self.input().GetSpacing() 
+#        nStrips = extent[5] - extent[4] 
+#        zmax = spacing[2] * nStrips
+#        z_inc = zmax / nStrips
+#        polydata = vtk.vtkPolyData()
+#        stripArray = vtk.vtkCellArray()
+#        stripData = [ vtk.vtkIdList() for istrip in range( nStrips ) ]
+#        points = vtk.vtkPoints() 
+#        nH = self.spline.GetNumberOfHandles ()
+#        for iPt in range( npts ):  
+#            ptcoords = polyData.GetPoint( iPt )
+#            z = 0.0
+#            for iLevel in range( nStrips ):
+#                vtkId = points.InsertNextPoint( ptcoords[0], ptcoords[1], z )
+#                sd = stripData[ iLevel ]
+#                sd.InsertNextId( vtkId )               
+#                sd.InsertNextId( vtkId+1 )
+#                z = z + z_inc 
+#            points.InsertNextPoint( ptcoords[0], ptcoords[1], z )
+#                       
+#        for strip in stripData:
+#            stripArray.InsertNextCell(strip)
+#            
+#        polydata.SetPoints( points )
+#        polydata.SetStrips( stripArray )
+#        self.curtainModified = True
+#        return polydata
+
+    def getHandlesFromTrajectoryPoints( self, points ):
+        npts = points.GetNumberOfPoints() if points else 0
+        handle_points = None
+        if npts:
+            handle_points = vtk.vtkPoints()
+            handle_step = npts / self.n_spline_spans
+            for iS in range( self.n_spline_spans ):
+                iPt = iS*handle_step
+                ptcoords = points.GetPoint( iPt )
+                handle_points.InsertNextPoint( ptcoords[0], ptcoords[1], 0.0 )
+            ptcoords = points.GetPoint( npts-1 )
+            handle_points.InsertNextPoint( ptcoords[0], ptcoords[1], 0.0 ) 
+        return handle_points          
     
     def resetHandles( self, nspans ):
         if not self.editMode: self.toggleEditSpline()
         self.n_spline_spans = nspans
-        npts = self.modifiedPoints.GetNumberOfPoints() if self.modifiedPoints else 0
-        if npts:
-            spline_coords = []
-            handle_step = npts / self.n_spline_spans
-            for iS in range( self.n_spline_spans ):
-                iPt = iS*handle_step
-                ptcoords = self.modifiedPoints.GetPoint( iPt )
-                spline_coords.append( ptcoords )
-            ptcoords = self.modifiedPoints.GetPoint( npts-1 )
-            spline_coords.append( ptcoords )
-            
-            spline_span_length = self.nPoints / self.n_spline_spans 
-            self.spline.SetNumberOfHandles( self.n_spline_spans + 1 )
-            for iS in range( len(spline_coords) ):
-                ptcoords = spline_coords[iS]      
-                self.spline.SetHandlePosition ( iS, ptcoords[0], ptcoords[1], 0.0 )
-            curtain = self.getCurtainGeometryFromSpline()
-            self.probeFilter.SetInput( curtain )
+        handle_points = self.getHandlesFromTrajectoryPoints( self.modifiedPoints )
+        if handle_points:
+            self.modifyTrajectory( handle_points )
         else: 
             curtain = self.getCurtainGeometry()
             self.probeFilter.SetInput( curtain )
 
 
-    def resetResolution( self, sr ):
-        self.spline_resolution = sr
-        npts = self.modifiedPoints.GetNumberOfPoints() if self.modifiedPoints else 0
-        spline_coords = []
-        if npts:
-            handle_step = npts / self.n_spline_spans
-            for iS in range( self.n_spline_spans ):
-                iPt = iS*handle_step
-                ptcoords = self.modifiedPoints.GetPoint( iPt )
-                spline_coords.append( ptcoords )
-            ptcoords = self.modifiedPoints.GetPoint( npts-1 )
-            spline_coords.append( ptcoords )
-        else:
-            ( lonData, latData ) = self.trajectory
-            npts = len(latData)
-            handle_step = npts / self.n_spline_spans
-            for iPt in range( 0, npts, handle_step ):
-                 latVal = latData[iPt]
-                 lonVal = lonData[iPt]
-                 spline_coords.append( ( lonData[iPt], latData[iPt] ) ) 
-        nHandles = len(spline_coords)          
-        spline_span_length = self.nPoints / self.n_spline_spans 
-        self.spline.SetNumberOfHandles( nHandles )
-#        self.spline.SetResolution( spline_span_length * self.spline_resolution )
-        self.spline.SetProjectionNormalToZAxes() 
-        self.spline.SetProjectToPlane(2) 
-        for iS in range( nHandles ):
-            ptcoords = spline_coords[iS]      
-            self.spline.SetHandlePosition ( iS, ptcoords[0], ptcoords[1], 0.0 )
-        curtain = self.getCurtainGeometryFromSpline()
-        self.probeFilter.SetInput( curtain )           
-        npts = curtain.GetNumberOfPoints()
-        print " *** Set Spline Resolution: %d, npts = %d, handles = %s " % ( sr, npts, str(spline_coords) )            
+#    def resetResolution( self, sr ):
+#        self.spline_resolution = sr
+#        npts = self.modifiedPoints.GetNumberOfPoints() if self.modifiedPoints else 0
+#        spline_coords = []
+#        if npts:
+#            handle_step = npts / self.n_spline_spans
+#            for iS in range( self.n_spline_spans ):
+#                iPt = iS*handle_step
+#                ptcoords = self.modifiedPoints.GetPoint( iPt )
+#                spline_coords.append( ptcoords )
+#            ptcoords = self.modifiedPoints.GetPoint( npts-1 )
+#            spline_coords.append( ptcoords )
+#        else:
+#            ( lonData, latData ) = self.trajectory
+#            npts = len(latData)
+#            handle_step = npts / self.n_spline_spans
+#            for iPt in range( 0, npts, handle_step ):
+#                 latVal = latData[iPt]
+#                 lonVal = lonData[iPt]
+#                 spline_coords.append( ( lonData[iPt], latData[iPt] ) ) 
+#        nHandles = len(spline_coords)          
+#        spline_span_length = self.nPoints / self.n_spline_spans 
+#        self.spline.SetNumberOfHandles( nHandles )
+##        self.spline.SetResolution( spline_span_length * self.spline_resolution )
+#        self.spline.SetProjectionNormalToZAxes() 
+#        self.spline.SetProjectToPlane(2) 
+#        for iS in range( nHandles ):
+#            ptcoords = spline_coords[iS]      
+#            self.spline.SetHandlePosition ( iS, ptcoords[0], ptcoords[1], 0.0 )
+#        curtain = self.getCurtainGeometryFromSpline()
+#        self.probeFilter.SetInput( curtain )           
+#        npts = curtain.GetNumberOfPoints()
+#        print " *** Set Spline Resolution: %d, npts = %d, handles = %s " % ( sr, npts, str(spline_coords) )            
        
-    def getCurtainGeometry( self, **args ):
-        if self.trajectory == None: self.trajectory = self.computeInitialTrajectory()
-        ( lonData, latData ) = self.trajectory
+
+#    def getCurtainGeometry( self, **args ):
+#        if self.trajectory == None: self.trajectory = self.computeInitialTrajectory()
+#        ( lonData, latData ) = self.trajectory
+#        extent =  self.input().GetExtent() 
+#        spacing =  self.input().GetSpacing() 
+#        nStrips = extent[5] - extent[4] 
+#        zmax = spacing[2] * nStrips
+#        lonDataIter = iter( lonData )
+#        z_inc = zmax / nStrips
+#        polydata = vtk.vtkPolyData()
+#        stripArray = vtk.vtkCellArray()
+#        stripData = [ vtk.vtkIdList() for istrip in range( nStrips ) ]
+#        points = vtk.vtkPoints() 
+#        spline_span_length = self.nPoints / self.n_spline_spans 
+#        self.spline.SetNumberOfHandles( self.n_spline_spans + 1 )
+#        iPt = 0  
+#        for latVal in latData:
+#            lonVal = lonDataIter.next()
+#            z = 0.0
+#            for iLevel in range( nStrips ):
+#                vtkId = points.InsertNextPoint( lonVal, latVal, z )
+#                sd = stripData[ iLevel ]
+#                sd.InsertNextId( vtkId )               
+#                sd.InsertNextId( vtkId+1 )
+#                z = z + z_inc 
+#            if iPt % spline_span_length == 0:
+#                iH = iPt / spline_span_length 
+#                self.spline.SetHandlePosition ( iH, lonVal, latVal, 0.0 )
+#            points.InsertNextPoint( lonVal, latVal, z )
+#            iPt = iPt+1
+#                       
+#        for strip in stripData:
+#            stripArray.InsertNextCell(strip)
+#            
+#        polydata.SetPoints( points )
+#        polydata.SetStrips( stripArray )
+#        return polydata
+
+    def createCurtain( self, **args ):
+        trajectory_points = self.getTrajectoryPoints( **args )
         extent =  self.input().GetExtent() 
         spacing =  self.input().GetSpacing() 
         nStrips = extent[5] - extent[4] 
         zmax = spacing[2] * nStrips
-        lonDataIter = iter( lonData )
         z_inc = zmax / nStrips
         polydata = vtk.vtkPolyData()
         stripArray = vtk.vtkCellArray()
-        stripData = [ vtk.vtkIdList() for istrip in range( nStrips ) ]
+        stripData = [ vtk.vtkIdList() ] * nStrips
         points = vtk.vtkPoints() 
-        spline_span_length = self.nPoints / self.n_spline_spans 
-        self.spline.SetNumberOfHandles( self.n_spline_spans + 1 )
-#        self.spline.SetResolution( spline_span_length * self.spline_resolution )
-        self.spline.SetProjectionNormalToZAxes() 
-        self.spline.SetProjectToPlane(2)       
-        iPt = 0  
-        for latVal in latData:
-            lonVal = lonDataIter.next()
+        for iPt in range( trajectory_points.GetNumberOfPoints() ):
+            pt_coords = trajectory_points.GetPoint( iPt )
             z = 0.0
             for iLevel in range( nStrips ):
-                vtkId = points.InsertNextPoint( lonVal, latVal, z )
+                vtkId = points.InsertNextPoint( pt_coords[0], pt_coords[1], z )
                 sd = stripData[ iLevel ]
                 sd.InsertNextId( vtkId )               
                 sd.InsertNextId( vtkId+1 )
                 z = z + z_inc 
-            if iPt % spline_span_length == 0:
-                iH = iPt / spline_span_length 
-                self.spline.SetHandlePosition ( iH, lonVal, latVal, 0.0 )
-            points.InsertNextPoint( lonVal, latVal, z )
-            iPt = iPt+1
+            points.InsertNextPoint( pt_coords[0], pt_coords[1], z )
                        
         for strip in stripData:
             stripArray.InsertNextCell(strip)
@@ -417,6 +449,9 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         self.spline.SetInteractor( iren )       
         self.addObserver( self.spline, 'EndInteractionEvent', self.onTrajectoryModified )
         self.activated = True
+        handle_points = self.getHandlesFromTrajectoryPoints( self.getTrajectoryPoints() )
+        if handle_points: self.modifyTrajectory( handle_points )  
+
 #        self.addObserver( self.spline, 'AnyEvent', self.onAnyEvent )
 
 #    def onAnyEvent( self, caller, event ):
@@ -426,8 +461,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
 #            print "Key Press Position: %s " % str( epos )
 
     def onTrajectoryModified( self, caller, event ):
-#        print " onTrajectoryModified: %s " % ( str(event) )
-        curtain = self.getCurtainGeometryFromSpline(isModification=True)
+        curtain = self.createCurtain( isModification=True ) 
         self.probeFilter.SetInput( curtain )
         return 0
                                    
