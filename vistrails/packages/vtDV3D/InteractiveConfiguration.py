@@ -403,6 +403,7 @@ class ConfigurableFunction( QObject ):
         return ( self.units == 'data' )
     
     def isCompatible( self, config_fn ):
+        if not config_fn: return False
         if self.matchUnits:
             if self.units <> config_fn.units:
                 return False           
