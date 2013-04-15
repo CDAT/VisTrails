@@ -395,7 +395,8 @@ class InputSpecs:
                 return mdList[ plotIndex ]
             else:
                 print>>sys.stderr, "Error, Metadata for input %d not found" % plotIndex
-                return mdList[ 0 ]
+                try: return mdList[ 0 ]
+                except: pass
         return {}
         
     def addMetadataObserver( self, caller, event ):
