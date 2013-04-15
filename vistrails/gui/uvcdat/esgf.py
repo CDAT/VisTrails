@@ -1663,8 +1663,10 @@ class QEsgfBrowser(QtGui.QFrame):
                 self.index.append(cdms2.esgfDataset(gateway,port=port,limit=limit,offset=offset,mapping=mapping,datasetids=datasetids,fileids=fileids,restPath=restPath))
                 #self.QIndex.addIndex("%s:%i" % (gateway,port))
             except Exception,err:
+                import traceback
+                traceback.print_last() #writes to session log or console
                 m = QtGui.QMessageBox()
-                m.setText(str(err))
+                m.setText("%s\n\nSee session log" % str(err))
                 m.exec_()
                 return            
 
