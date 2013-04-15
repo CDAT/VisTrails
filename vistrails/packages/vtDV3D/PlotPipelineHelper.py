@@ -1072,11 +1072,15 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             varnames = {}
             for i in range(len(var_modules)):
                 if issubclass( var_modules[i].module_descriptor.module, CDMSVariableOperation):
-                    varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varname' )
-                    python_command = PlotPipelineHelper.get_value_from_function( var_modules[i], 'python_command' )
-                    aliases[plot_obj.vars[i]] = varname
-                    aliases[ "%s.cmd" % plot_obj.vars[i] ] = python_command
-                    varnames[i] = varname
+                    try:
+                        varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varname' )
+                        python_command = PlotPipelineHelper.get_value_from_function( var_modules[i], 'python_command' )
+                        aliases[plot_obj.vars[i]] = varname
+                        aliases[ "%s.cmd" % plot_obj.vars[i] ] = python_command
+                        varnames[i] = varname
+                    except Exception, err:
+                        print>>sys.stderr,  "Error setting aliases: %s" % ( str(err) )
+                        traceback.print_exc()    
                 else:
                     try:
                         if i < len( plot_obj.vars ):
