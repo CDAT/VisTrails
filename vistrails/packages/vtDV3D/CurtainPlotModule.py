@@ -6,6 +6,7 @@ Created on Dec 2, 2010
 import vtk, os, sys, math
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+if __name__ == '__main__': app = QApplication(sys.argv)
 import core.modules.module_registry
 from core.modules.vistrails_module import Module, ModuleError
 from packages.vtk.base_module import vtkBaseModule
@@ -62,8 +63,6 @@ class PathFileReader:
                                     col.append( item ) 
                         except StopIteration: break                                           
         pathFile.close()
-
-
          
 class PM_CurtainPlot(PersistentVisualizationModule):
     """
@@ -169,6 +168,20 @@ class PM_CurtainPlot(PersistentVisualizationModule):
             out << "%.2f,%.2f\n" %  ( hpos[0], hpos[1] )
         f.close()
 
+    @staticmethod
+    def savePointsToFile( file_path, points ):
+        f = QFile( QString( file_path ) )
+        if not f.open( QIODevice.WriteOnly | QIODevice.Text ):
+            print>>sys.stderr, " Can't open this file. " 
+            return
+        out = QTextStream (f)
+        nP = points.GetNumberOfPoints()
+        for iP in range( nP ):
+            ptcoords = points.GetPoint(iP)
+            out << "%.2f,%.2f\n" %  ( ptcoords[0], ptcoords[1] )
+        f.close()
+        print "Saved %d points to file %s" % ( nP, file_path )
+
     def readPath(self):
         filename = QFileDialog.getOpenFileName( None, QString("Read path file"), os.path.expanduser('~'), QString("Path Files (*.path)") )
         f = QFile( filename )
@@ -176,21 +189,31 @@ class PM_CurtainPlot(PersistentVisualizationModule):
             displayMessage( " Can't open this file. " )
             return
         instream = QTextStream(f)
-        handle_points = vtk.vtkPoints()
-        handle_points.SetDataTypeToFloat()
+        points = vtk.vtkPoints()
+        points.SetDataTypeToFloat()
+        ( x0, x1, y0, y1 ) = ( sys.float_info.max, -sys.float_info.max, sys.float_info.max, -sys.float_info.max )
         while not instream.atEnd():
             line = str( instream.readLine() )
-            coords =line.split(',') 
-            handle_points.InsertNextPoint( float(coords[0]), float(coords[1]), 0.0 ) 
-            print "Insert Point: %s " % str( [ float(coords[0]), float(coords[1]) ] )
+            coords =line.split(',')
+            x = float(coords[0])
+            y = float(coords[1])
+            x0 = min( x, x0 ); y0 = min( y, y0 ); x1 = max( x, x1 ); y1 = max( y, y1 ) 
+            points.InsertNextPoint( x, y, 0.0 ) 
         f.close() 
-        self.modifyTrajectory( handle_points  )          
+        self.modifyTrajectory( points  )          
         self.refreshCurtain( takeSnapshot=True ) 
-        self.render()    
+        self.render() 
+        print "Read %d points from path file %s\n Bounds: %s" % ( points.GetNumberOfPoints(), filename, str( ( x0, x1, y0, y1 ) ) ) 
 
-    def modifyTrajectory( self, handle_points, **args ):
+    def modifyTrajectory( self, points, **args ):
         if not self.editMode: self.spline.SetEnabled( True )
-        self.spline.InitializeHandles( handle_points )
+        num_handle_range = self.getNumberOfHandles()
+        if points.GetNumberOfPoints() <= num_handle_range[1]:
+            self.spline.InitializeHandles( points )
+            self.refreshCurtain( takeSnapshot=True ) 
+        else:
+            self.trajectory = points
+            self.resetSpline()
         if not self.editMode: self.spline.SetEnabled( False )
                    
     def toggleEditSpline( self, notify=True ):
@@ -230,26 +253,15 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         PersistentVisualizationModule.setInteractionState( self, caller, event )
         
     def computeInitialTrajectory(self):
-        path = defaultPathFile
-        pathInput = self.wmod.forceGetInputFromPort( "path", None ) 
         points = vtk.vtkPoints()
-        if pathInput <> None: 
-            path = pathInput.name       
-            reader = PathFileReader()
-            reader.read(path)  
-            latData = reader.getData( 'Latitude' )
-            lonData = reader.getData( 'Longitude' )
-            for iPt in range(len(latData)):
-                points.InsertNextPoint( lonData[iPt], latData[iPt], 0.0 ) 
-        else:
-            nPts = self.nPoints 
-            xstep =  (self.roi[1]-self.roi[0]) / nPts
-            ysize = ( self.roi[3]-self.roi[2] ) / 2.5
-            y0 = ( self.roi[3]+self.roi[2] ) / 2.0
-            for iPt in range( nPts + 1 ):
-                x = self.roi[0] + xstep*iPt
-                y = y0 + ysize * math.sin( (iPt/float(nPts)) * 2.0 * math.pi )
-                points.InsertNextPoint( x, y, 0.0 )
+        nPts = self.nPoints 
+        xstep =  (self.roi[1]-self.roi[0]) / nPts
+        ysize = ( self.roi[3]-self.roi[2] ) / 2.5
+        y0 = ( self.roi[3]+self.roi[2] ) / 2.0
+        for iPt in range( nPts + 1 ):
+            x = self.roi[0] + xstep*iPt
+            y = y0 + ysize * math.sin( (iPt/float(nPts)) * 2.0 * math.pi )
+            points.InsertNextPoint( x, y, 0.0 )
         return points
     
     def getSplinePoints( self, takeSnapshot ):
@@ -395,4 +407,22 @@ class CurtainPlot(WorkflowModule):
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args) 
 
+
+if __name__ == '__main__':
+    
+    points = vtk.vtkPoints()
+    path_file = defaultPathFile 
+    reader = PathFileReader()
+    reader.read( path_file )  
+    latData = reader.getData( 'Latitude' )
+    lonData = reader.getData( 'Longitude' )
+    for iPt in range(len(latData)):
+        ( lonVal, latVal  ) = ( lonData[iPt], latData[iPt] )
+        if lonVal and latVal:
+            try: points.InsertNextPoint( lonVal, latVal, 0.0 ) 
+            except Exception, err:
+                print>>sys.stderr, "Error reading point %d ( %s %s ): %s " % ( iPt, str(lonVal), str(latVal), str(err) )
+    
+    filename = os.path.expanduser( '~/ArlindoTrajectory.path' )   
+    PM_CurtainPlot.savePointsToFile( filename, points )
  
