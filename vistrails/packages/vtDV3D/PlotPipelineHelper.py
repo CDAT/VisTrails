@@ -756,6 +756,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             DV3DPipelineHelper.activationMap[ moduleID ] = isActive 
 #            print " ** Set module activation: module[%d] -> %s (** persist parameters? **)" % ( module.moduleID, str(isActive) )
             if updateConfig and not isActive:
+                module = ModuleStore.getModule( moduleID ) 
                 config_fn = module.getCurrentConfigFunction()
                 if config_fn and not config_fn.persisted:
                     module.finalizeParameter( config_fn.name )
@@ -771,7 +772,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
              
     @staticmethod
     def execAction( action_key ):
-        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 
+#        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 
 #        print " execAction: ", action_key
         currentActionList  =  DV3DPipelineHelper.actionMap[ action_key ]
         
@@ -1071,11 +1072,15 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             varnames = {}
             for i in range(len(var_modules)):
                 if issubclass( var_modules[i].module_descriptor.module, CDMSVariableOperation):
-                    varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varname' )
-                    python_command = PlotPipelineHelper.get_value_from_function( var_modules[i], 'python_command' )
-                    aliases[plot_obj.vars[i]] = varname
-                    aliases[ "%s.cmd" % plot_obj.vars[i] ] = python_command
-                    varnames[i] = varname
+                    try:
+                        varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varname' )
+                        python_command = PlotPipelineHelper.get_value_from_function( var_modules[i], 'python_command' )
+                        aliases[plot_obj.vars[i]] = varname
+                        aliases[ "%s.cmd" % plot_obj.vars[i] ] = python_command
+                        varnames[i] = varname
+                    except Exception, err:
+                        print>>sys.stderr,  "Error setting aliases: %s" % ( str(err) )
+                        traceback.print_exc()    
                 else:
                     try:
                         if i < len( plot_obj.vars ):
