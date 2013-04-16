@@ -179,7 +179,7 @@ class ProjectController(QtCore.QObject):
             QApplication.setOverrideCursor(QCursor(QtCore.Qt.ArrowCursor))
             result = msgBox.exec_()
             QApplication.restoreOverrideCursor()
-            return result == Qt.MessageBox.Yes
+            return result == QMessageBox.Yes
         
         found = False
         
