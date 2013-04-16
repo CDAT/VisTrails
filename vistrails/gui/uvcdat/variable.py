@@ -276,7 +276,10 @@ class VariableProperties(QtGui.QDialog):
         ## layout.addWidget(self.esgfBrowser)
         esgf = QEsgfBrowser(self)
         #esgf.addGateway(gateway=customizeUVCDAT.defaultEsgfNode)
-        esgf.addGateway(gateway=str(self.root.preferences.host_url.currentText()))
+        import threading
+        T=threading.Thread(target=esgf.addGateway,kwargs={'gateway':str(self.root.preferences.host_url.currentText())})
+        T.start()
+        #esgf.addGateway(gateway=str(self.root.preferences.host_url.currentText()))
         self.originTabWidget.addTab(esgf,"ESGF")
 
     def createOpenDAPTab(self):
