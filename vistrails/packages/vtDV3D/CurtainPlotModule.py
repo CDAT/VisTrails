@@ -105,7 +105,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         self.spline.SetProjectionNormalToZAxes() 
         self.spline.SetProjectToPlane(2) 
         if self.iren: self.activateSpline( self.iren ) 
-        if handle_points: self.modifyTrajectory( handle_points, **args )  
+        if handle_points: self.modifyTrajectory( handle_points, takeSnapshot=True )  
         
     def refreshCurtain( self, **args ): 
         curtain = self.createCurtain( **args )                
@@ -129,17 +129,17 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         self.trajectorySnapshot = None
         self.refreshCurtain()     
         handle_points = self.getHandlesFromTrajectoryPoints( self.getTrajectoryPoints() )
-        if handle_points: self.modifyTrajectory( handle_points ) 
+        if handle_points: self.modifyTrajectory( handle_points, takeSnapshot=True ) 
         self.refreshCurtain()  
         self.render()
                
     def setNumberOfHandles(self, nhandles_data, **args  ):
-        if self.editMode:
-            ns = int( round( nhandles_data[1] ) )
-            if ns <> self.n_spline_spans:
+        ns = int( round( nhandles_data[1] ) )
+        if ns <> self.n_spline_spans:
+            if self.editMode:
                 self.resetHandles(ns)          
-        elif self.activated: 
-            displayMessage( " Must be in path edit mode to use this feature (click 'Toggle Edit Path'). " )
+            elif self.activated: 
+                displayMessage( " Must be in path edit mode to use this feature (click 'Toggle Edit Path'). " )
            
     def setSplineResolution(self, tres_data, **args  ):
         sr = int( round( tres_data[1] ) )
@@ -200,20 +200,19 @@ class PM_CurtainPlot(PersistentVisualizationModule):
             x0 = min( x, x0 ); y0 = min( y, y0 ); x1 = max( x, x1 ); y1 = max( y, y1 ) 
             points.InsertNextPoint( x, y, 0.0 ) 
         f.close() 
-        self.modifyTrajectory( points  )          
+        num_handle_range = self.getNumberOfHandles()
+        if points.GetNumberOfPoints() > num_handle_range[1]:
+            self.trajectory = points
+        else:
+            self.modifyTrajectory( points  )          
         self.refreshCurtain( takeSnapshot=True ) 
         self.render() 
         print "Read %d points from path file %s\n Bounds: %s" % ( points.GetNumberOfPoints(), filename, str( ( x0, x1, y0, y1 ) ) ) 
 
     def modifyTrajectory( self, points, **args ):
         if not self.editMode: self.spline.SetEnabled( True )
-        num_handle_range = self.getNumberOfHandles()
-        if points.GetNumberOfPoints() <= num_handle_range[1]:
-            self.spline.InitializeHandles( points )
-            self.refreshCurtain( takeSnapshot=True ) 
-        else:
-            self.trajectory = points
-            self.resetSpline()
+        self.spline.InitializeHandles( points )
+        self.refreshCurtain( **args ) 
         if not self.editMode: self.spline.SetEnabled( False )
                    
     def toggleEditSpline( self, notify=True ):
@@ -276,19 +275,25 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         if npts:
             handle_points = vtk.vtkPoints()
             handle_step = npts / self.n_spline_spans
+            remainder_step = 1.0 - (handle_step*self.n_spline_spans)/float(npts)
+            remander = 0.0
             for iS in range( self.n_spline_spans ):
                 iPt = iS*handle_step
+                remander = remander + remainder_step
+                if remander > 1.0:
+                    iPt = iPt + 1
+                    remander = remander - 1.0
                 ptcoords = points.GetPoint( iPt )
                 handle_points.InsertNextPoint( ptcoords[0], ptcoords[1], 0.0 )
             ptcoords = points.GetPoint( npts-1 )
             handle_points.InsertNextPoint( ptcoords[0], ptcoords[1], 0.0 ) 
         return handle_points          
     
-    def resetHandles( self, nspans ):
+    def resetHandles( self, nspans, **args ):
         if not self.editMode: self.toggleEditSpline()
         self.n_spline_spans = nspans
         handle_points = self.getHandlesFromTrajectoryPoints( self.getTrajectoryPoints() )
-        self.modifyTrajectory( handle_points )
+        self.modifyTrajectory( handle_points, **args )
 
 
 #    def resetResolution( self, sr ):
@@ -369,7 +374,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         self.addObserver( self.spline, 'EndInteractionEvent', self.onTrajectoryModified )
         self.activated = True
         handle_points = self.getHandlesFromTrajectoryPoints( self.getTrajectoryPoints() )
-        if handle_points: self.modifyTrajectory( handle_points )  
+        if handle_points: self.modifyTrajectory( handle_points, takeSnapshot=True )  
 
     def onTrajectoryModified( self, caller, event ):
         self.refreshCurtain( takeSnapshot=True )     
