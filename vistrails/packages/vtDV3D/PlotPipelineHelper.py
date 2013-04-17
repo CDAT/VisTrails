@@ -167,8 +167,11 @@ class DV3DRangeConfigTab(QWidget):
         save_button = QPushButton("Save", self)
         button_layout.addWidget( revert_button )
         button_layout.addWidget( save_button )
-        revert_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
-        save_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
+        min_height = save_button.minimumHeight()
+        revert_button.setMinimumHeight( 25 )
+        save_button.setMinimumHeight( 25 )
+#        revert_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
+#        save_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
         self.connect( revert_button, SIGNAL("clicked()"), lambda: self.revertConfig() ) 
         self.connect( save_button, SIGNAL("clicked()"), lambda: self.finalizeConfig() ) 
         
@@ -747,7 +750,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def setModulesActivation( moduleIDs, isActive, updateConfig=True ):
         for moduleID in moduleIDs:
             DV3DPipelineHelper.activationMap[ moduleID ] = isActive 
-#            print " ** Set module activation: module[%d] -> %s (** persist parameters? **)" % ( module.moduleID, str(isActive) )
             if updateConfig and not isActive:
                 config_fn = module.getCurrentConfigFunction()
                 if config_fn and not config_fn.persisted:
@@ -788,6 +790,10 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         
         for ( moduleID, key, f ) in actionList:
             DV3DPipelineHelper.activationMap[ moduleID ] = True 
+<<<<<<< Updated upstream
+=======
+#            print " ** Set module activation: module[%d] -> True" % ( moduleID )
+>>>>>>> Stashed changes
             DV3DPipelineHelper.config_widget.addActivePlot( moduleID, f )
             
         if w: w.setVisible( True )

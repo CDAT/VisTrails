@@ -1025,8 +1025,11 @@ class IVModuleConfigurationDialog( QWidget ):
             self.guiButtonLayout.addWidget( revert_button )
             self.guiButtonLayout.addStretch() 
             self.guiButtonLayout.addWidget( save_button )
-            revert_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
-            save_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
+            min_height = save_button.minimumHeight()
+            revert_button.setMinimumHeight( 25 )
+            save_button.setMinimumHeight( 25 )
+#            revert_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
+#            save_button.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum  )
             self.connect( revert_button, SIGNAL("clicked()"), lambda: self.revertConfig() ) 
             self.connect( save_button, SIGNAL("clicked()"), lambda: self.finalizeConfig() )         
             self.layout().addLayout( self.guiButtonLayout ) 
@@ -2156,18 +2159,21 @@ class CaptionConfigurationDialog( IVModuleConfigurationDialog ):
         self.runButton = QPushButton( 'Run', self )
         self.runButton.setAutoDefault(False)
         self.runButton.setFixedWidth(100)
+        self.runButton.setMinimumHeight( 25 )
         self.buttonLayout.addWidget(self.runButton)
         self.connect(self.runButton, SIGNAL('clicked(bool)'), self.run )
 
         self.stepButton = QPushButton( 'Step', self )
         self.stepButton.setAutoDefault(False)
         self.stepButton.setFixedWidth(100)
+        self.stepButton.setMinimumHeight( 25 )
         self.buttonLayout.addWidget(self.stepButton)
         self.connect(self.stepButton, SIGNAL('clicked(bool)'), self.step )
 
         self.resetButton = QPushButton( 'Reset', self )
         self.resetButton.setAutoDefault(False)
         self.resetButton.setFixedWidth(100)
+        self.resetButton.setMinimumHeight( 25 )
         self.buttonLayout.addWidget(self.resetButton)
         self.connect(self.resetButton, SIGNAL('clicked(bool)'), self.reset )
         
@@ -2191,6 +2197,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.timer.connect( self.timer, SIGNAL('timeout()'), self.animate )
         self.timer.setSingleShot( True )
         IVModuleConfigurationDialog.__init__( self, name, **args )
+        
+    def __del__(self):
+        print "Disposing of AnimationConfigurationDialog"
                                   
     @staticmethod   
     def getSignature():
@@ -2270,7 +2279,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 
     def setTimestep( self, iTimestep, restart = False ):
         from packages.vtDV3D.PersistentModule import ReferenceTimeUnits 
-        if self.timeRange[0] == self.timeRange[1]:
+        if (self.timeRange == None) or self.timeRange[0] == self.timeRange[1]:
             self.running = False
         else:
             try:
@@ -2423,18 +2432,21 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.runButton = QPushButton( 'Run', self )
         self.runButton.setAutoDefault(False)
         self.runButton.setFixedWidth(100)
+        self.runButton.setMinimumHeight( 25 )
         self.buttonLayout.addWidget(self.runButton)
         self.connect(self.runButton, SIGNAL('clicked(bool)'), self.run )
 
         self.stepButton = QPushButton( 'Step', self )
         self.stepButton.setAutoDefault(False)
         self.stepButton.setFixedWidth(100)
+        self.stepButton.setMinimumHeight( 25 )
         self.buttonLayout.addWidget(self.stepButton)
         self.connect(self.stepButton, SIGNAL('clicked(bool)'), self.step )
 
         self.resetButton = QPushButton( 'Reset', self )
         self.resetButton.setAutoDefault(False)
         self.resetButton.setFixedWidth(100)
+        self.resetButton.setMinimumHeight( 25 )
         self.buttonLayout.addWidget(self.resetButton)
         self.connect(self.resetButton, SIGNAL('clicked(bool)'), self.reset )
 
