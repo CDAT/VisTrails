@@ -609,6 +609,7 @@ class DV3DConfigControlPanel(QWidget):
                     plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
                     DV3DPipelineHelper.setModulesActivation( [ moduleID ] , isActive, False ) 
             else:
+                print " ** Set module activation: module[%d] -> False" % ( moduleID )
                 DV3DPipelineHelper.activationMap[ moduleID ] = False
                     
     def  processPlotListEvent( self, list_item ): 
@@ -733,13 +734,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def removeModuleFromActivationMap( moduleID ):
         if moduleID in DV3DPipelineHelper.activationMap:
             del DV3DPipelineHelper.activationMap[moduleID]
-#            print "Removing Module %s (%d) from activation map" % ( module.__class__.__name__, module.moduleID )
+            print "Removing Module (%d) from activation map" % ( moduleID )
 
     @staticmethod    
     def getActivePlotList( ):
         active_plots = []
         for moduleID in DV3DPipelineHelper.activationMap.keys():
             if DV3DPipelineHelper.activationMap[ moduleID ]:
+                print "Adding Module (%d) to activation map" % ( moduleID )
                 active_plots.append( moduleID )
         return active_plots
  
@@ -747,7 +749,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def setModulesActivation( moduleIDs, isActive, updateConfig=True ):
         for moduleID in moduleIDs:
             DV3DPipelineHelper.activationMap[ moduleID ] = isActive 
-#            print " ** Set module activation: module[%d] -> %s (** persist parameters? **)" % ( module.moduleID, str(isActive) )
+            print " ** Set module activation: module[%d] -> %s (** persist parameters? **)" % ( moduleID, str(isActive) )
             if updateConfig and not isActive:
                 config_fn = module.getCurrentConfigFunction()
                 if config_fn and not config_fn.persisted:
@@ -788,6 +790,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         
         for ( moduleID, key, f ) in actionList:
             DV3DPipelineHelper.activationMap[ moduleID ] = True 
+            print " ** Set module activation: module[%d] -> True" % ( moduleID )
             DV3DPipelineHelper.config_widget.addActivePlot( moduleID, f )
             
         if w: w.setVisible( True )
