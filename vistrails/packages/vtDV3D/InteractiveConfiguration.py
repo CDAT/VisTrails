@@ -403,8 +403,7 @@ class ConfigurableFunction( QObject ):
         return ( self.units == 'data' )
     
     def isCompatible( self, config_fn ):
-        if not config_fn: return False
-        if self.matchUnits:
+        if config_fn and self.matchUnits:
             if self.units <> config_fn.units:
                 return False           
         return True
@@ -2353,8 +2352,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 iTS = self.timeRange[0]
         self.setTimestep( iTS, restart )  
         if self.running: 
-#            delayTime = 0
-            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
+            delayTime = 0
+#            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
  #           print " Animate step %d, delay time = %.2f msec" % ( iTS, delayTime )
             self.timer.start( delayTime ) 
 
