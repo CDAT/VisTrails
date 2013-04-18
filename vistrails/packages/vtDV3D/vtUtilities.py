@@ -55,7 +55,7 @@ VTK_ID_TYPE         =12
 
 hyperwall_role = None 
 currentTime = 0
-dvLogFile =  open( os.path.expanduser( '~/.vistrails/dv3d_log.txt' ), 'w' )
+# dvLogFile =  open( os.path.expanduser( '~/.vistrails/dv3d_log.txt' ), 'w' )
 dvDbgIO = DebugPrint()
 dvDbgIO.set_stream( sys.stderr )
 
@@ -72,9 +72,9 @@ def get_coords_from_cell_address( row, col):
     except:
         raise Exception('ColumnRowAddress format error: %s ' % str( [ row, col ] ) )
 
-def dvLog( obj, msg ):
-    dvLogFile.write( '\n%s: %s' % ( obj.__class__.__name__, msg ) )
-    dvLogFile.flush( )
+#def dvLog( obj, msg ):
+#    dvLogFile.write( '\n%s: %s' % ( obj.__class__.__name__, msg ) )
+#    dvLogFile.flush( )
 
 def bound( val, bounds ): return max( min( val, bounds[1] ), bounds[0] )
 
