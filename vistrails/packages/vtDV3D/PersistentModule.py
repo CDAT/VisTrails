@@ -446,6 +446,7 @@ class PersistentModule( QObject ):
     def __init__( self, mid, **args ):
         QObject.__init__(self)
         self.pipelineBuilt = False
+        self.update_proj_controller = True
         self.newLayerConfiguration = False
         self.activeLayer = None
         self.newDataset = False
@@ -1277,10 +1278,12 @@ class PersistentModule( QObject ):
             ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
             proj_controller = api.get_current_project_controller()
             controller =  proj_controller.vt_controller 
-            pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
-            if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
-                proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
-            else: pcoords = None 
+            if self.update_proj_controller:
+                pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
+                if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
+#                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+                    self.current_cell_changed( proj_controller, sheetName, cell_address[0], cell_address[1]  )
+                else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
             controller.change_selected_version( current_version )
@@ -1288,6 +1291,15 @@ class PersistentModule( QObject ):
         except Exception, err:
             print>>sys.stderr, "Error getting current pipeline: %s " % str( err )
             return controller.current_pipeline       
+
+    def current_cell_changed(self, proj_controller, sheetName, row, col ):
+        from gui.uvcdat.plot import PlotProperties
+        plot_prop = PlotProperties.instance()
+#        widget = proj_controller.get_plot_configuration(sheetName,row,col)
+        plot_prop.set_controller( proj_controller )
+        plot_prop.sheetName = sheetName
+        plot_prop.row = row
+        plot_prop.col = col
 
     def change_parameters( self, parmRecList ):
         import api
@@ -1306,10 +1318,12 @@ class PersistentModule( QObject ):
             proj_controller = api.get_current_project_controller()
             if ( sheetName <> proj_controller.current_sheetName ): return
             controller =  proj_controller.vt_controller 
-            pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
-            if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
-                proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
-            else: pcoords = None 
+            if self.update_proj_controller:
+                pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
+                if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
+#                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+                    self.current_cell_changed( proj_controller, sheetName, cell_address[0], cell_address[1]  )
+                else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
             controller.change_selected_version( current_version )
@@ -1348,7 +1362,7 @@ class PersistentModule( QObject ):
             for config_fn in config_list:
                 config_fn.persisted = True
                 
-            if proj_controller:
+            if self.update_proj_controller and proj_controller:
                 proj_controller.cell_was_changed(action)
                 if pcoords:  proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
 
@@ -1359,8 +1373,6 @@ class PersistentModule( QObject ):
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
             traceback.print_exc()
-
-
                
     def persistParameterList( self, parmRecList, **args ):
         if parmRecList and not self.isClient: 
