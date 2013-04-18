@@ -568,14 +568,15 @@ class DV3DConfigControlPanel(QWidget):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper    
         if configFunctionList:
             for configFunction in configFunctionList:
-                renWinID = configFunction.module.GetRenWinID()
-                activeRenWinIds = DV3DPipelineHelper.getActiveRenWinIds()
-                if renWinID in activeRenWinIds:
-#                   print " Got Config Widget: using cfg fn %s from module %d " % ( configFunction.name, configFunction.module.moduleID )
-                    if configFunction.type == "leveling":
-                        return DV3DRangeConfigWidget(self) 
-                    if configFunction.type == "uvcdat-gui":
-                        return configFunction.getWidget(self) 
+                if configFunction.module:
+                    renWinID = configFunction.module.GetRenWinID()
+                    activeRenWinIds = DV3DPipelineHelper.getActiveRenWinIds()
+                    if renWinID in activeRenWinIds:
+    #                   print " Got Config Widget: using cfg fn %s from module %d " % ( configFunction.name, configFunction.module.moduleID )
+                        if configFunction.type == "leveling":
+                            return DV3DRangeConfigWidget(self) 
+                        if configFunction.type == "uvcdat-gui":
+                            return configFunction.getWidget(self) 
         return None
         
     def init( self, configFunctionList ):
@@ -676,7 +677,16 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         '''
         Constructor
         '''
-
+    @staticmethod
+    def clearActionMap():
+        for currentActionList in DV3DPipelineHelper.actionMap.values():
+            nItems = len( currentActionList )
+            for index in range(nItems-1,-1,-1):
+                ( moduleID, key, fn ) = currentActionList[ index ]
+                module = ModuleStore.getModule( moduleID )
+                if module == None: 
+                    currentActionList.pop( index ) 
+                
 #    @staticmethod                         
 #    def updateCell( action, key=0 ):
 #        current_cell = DV3DPipelineHelper.cellMap.get( key, None )

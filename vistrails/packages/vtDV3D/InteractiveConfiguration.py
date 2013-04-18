@@ -367,7 +367,7 @@ class ConfigurableFunction( QObject ):
         
     def __del__(self):
         self.clearReferrents()
-        
+                
     def clearReferrents(self):
         self.initHandler = None
         self.openHandler = None
@@ -381,10 +381,6 @@ class ConfigurableFunction( QObject ):
     @property
     def module(self):
         return ModuleStore.getModule( self.moduleID ) if self.moduleID else None
-
-    @property
-    def module(self):
-        return ModuleStore.getModule( self.moduleID ) 
 
     def get_persisted(self):
         return self._persisted if self.persist else True
@@ -738,6 +734,7 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
                         moduleList.remove( moduleId )
     #                    print "Removing module %s (%d) from connectedModules for key %s" % ( module.__class__.__name__, moduleId, key )
                 ModuleStore.removeModule( moduleId ) 
+        DV3DPipelineHelper.clearActionMap()
               
     def initGui( self, **args ):   # init value from moudle input port
         moduleList = UVCDATGuiConfigFunction.connectedModules.setdefault( self.name, Set() )
