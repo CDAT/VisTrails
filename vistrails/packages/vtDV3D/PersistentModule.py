@@ -1281,8 +1281,8 @@ class PersistentModule( QObject ):
             if self.update_proj_controller:
                 pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
                 if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
-#                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
-                    self.current_cell_changed( proj_controller, sheetName, cell_address[0], cell_address[1]  )
+                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+#                    self.current_cell_changed( proj_controller, sheetName, cell_address[0], cell_address[1]  )
                 else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
@@ -1321,8 +1321,8 @@ class PersistentModule( QObject ):
             if self.update_proj_controller:
                 pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
                 if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
-#                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
-                    self.current_cell_changed( proj_controller, sheetName, cell_address[0], cell_address[1]  )
+                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+#                    self.current_cell_changed( proj_controller, sheetName, cell_address[0], cell_address[1]  )
                 else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
@@ -1365,17 +1365,11 @@ class PersistentModule( QObject ):
                 
             if self.update_proj_controller and proj_controller:
                 proj_controller.cell_was_changed(action)
-<<<<<<< Updated upstream
-                if pcoords:  proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
-            print " Perform save action: current version = %d, current_parent_version = %d " % ( controller.current_version, cell.current_parent_version  )
-=======
                 if pcoords:  
-#                    proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
-                    self.current_cell_changed( proj_controller, sheetName, pcoords[0], pcoords[1]  )
+                    proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
+#                    self.current_cell_changed( proj_controller, sheetName, pcoords[0], pcoords[1]  )
 
             print " Perform save action: current version = %d, current_parent_version = %d, sheetName = %s, cell_address = %s " % ( controller.current_version, cell.current_parent_version, sheetName, str( cell_address ) )
-
->>>>>>> Stashed changes
             sys.stdout.flush()
                 
         except Exception, err:

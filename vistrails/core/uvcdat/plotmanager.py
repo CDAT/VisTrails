@@ -126,9 +126,9 @@ class PlotManager(QtCore.QObject):
                         
                 except Exception, e:
                     print "%s plots not loaded." % p
-#                    print "Error when loading package_config_file: %s" % plot_package_config_file, str(e)
-#                    import traceback
-#                    traceback.print_exc()
+                    print "Error when loading package_config_file: %s" % plot_package_config_file, str(e)
+                    import traceback
+                    traceback.print_exc()
                     
     def load_vcs_plots(self):
         from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
