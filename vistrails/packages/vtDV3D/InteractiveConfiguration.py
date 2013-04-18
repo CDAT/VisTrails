@@ -340,6 +340,7 @@ class ConfigurableFunction( QObject ):
         QObject.__init__(self)
         self.name = name
         self.activateByCellsOnly = args.get( 'cellsOnly', False )
+        self.persist = args.get( 'persist', True )
         self.type = 'generic'
         self.matchUnits = False
         self.args = function_args
@@ -386,7 +387,7 @@ class ConfigurableFunction( QObject ):
         return ModuleStore.getModule( self.moduleID ) 
 
     def get_persisted(self):
-        return self._persisted
+        return self._persisted if self.persist else True
     
     def updateWindow( self ):
         pass

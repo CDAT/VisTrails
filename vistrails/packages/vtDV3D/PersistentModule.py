@@ -479,7 +479,7 @@ class PersistentModule( QObject ):
         if self.createColormap:
             self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Colormap', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
 #        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
-        self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue, cellsOnly=True )
+        self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue, persist=False, cellsOnly=True )
         
 #        print "**********************************************************************"
 #        print "Create Module [%d] : %s (%x)" % ( self.moduleID, self.__class__.__name__, id(self) )
