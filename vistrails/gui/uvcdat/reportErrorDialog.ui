@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>526</width>
+    <width>564</width>
     <height>459</height>
    </rect>
   </property>
@@ -31,7 +31,7 @@
       </font>
      </property>
      <property name="text">
-      <string>UV-CDAT has encountered an error and needs to close.</string>
+      <string>UV-CDAT has encountered an unexpected error.</string>
      </property>
      <property name="textFormat">
       <enum>Qt::AutoText</enum>
@@ -54,6 +54,12 @@
        <width>0</width>
        <height>30</height>
       </size>
+     </property>
+     <property name="autoFillBackground">
+      <bool>false</bool>
+     </property>
+     <property name="inputMethodHints">
+      <set>Qt::ImhNone</set>
      </property>
     </widget>
    </item>
@@ -82,7 +88,7 @@
       </font>
      </property>
      <property name="text">
-      <string>Additional comments about the actions that lead up to this error:</string>
+      <string>Please enter additional comments about the actions that lead up to this error:</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>
@@ -101,7 +107,7 @@
       </font>
      </property>
      <property name="text">
-      <string>Would you like to send anonymous information about this error?</string>
+      <string>Please send anonymous information about this error.</string>
      </property>
     </widget>
    </item>
