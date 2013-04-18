@@ -800,14 +800,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         
         for ( moduleID, key, f ) in actionList:
             DV3DPipelineHelper.activationMap[ moduleID ] = True 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-#            print " ** Set module activation: module[%d] -> True" % ( moduleID )
->>>>>>> Stashed changes
-=======
-            print " ** Set module activation: module[%d] -> True" % ( moduleID )
->>>>>>> 30c9b82b2392fd28bc81770e283ad16ab52e7ff1
             DV3DPipelineHelper.config_widget.addActivePlot( moduleID, f )
             
         if w: w.setVisible( True )
