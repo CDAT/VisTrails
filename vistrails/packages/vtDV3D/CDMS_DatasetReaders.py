@@ -574,9 +574,10 @@ class CDMSDataset(Module):
          
     def addTransientVariable( self, varName, variable, ndim = None ):
         if varName in self.transientVariables:
-            print>>sys.stderr, "Warning, transient variable %s already exists in dataset, overwriting!" % ( varName )
-        else:
-            self.transientVariables[ varName ] = variable
+            var = self.transientVariables[ varName ]
+            if id(var) <> id(variable): print>>sys.stderr, "Warning, transient variable %s already exists in dataset, overwriting!" % ( varName )
+            else: return
+        self.transientVariables[ varName ] = variable
 
     def getTransientVariable( self, varName ):
         return self.transientVariables.get( varName, None )
@@ -644,10 +645,18 @@ class CDMSDataset(Module):
             dsetRec = self.datasetRecs.get( dsid, None )
             if dsetRec:
                 if varName in dsetRec.dataset.variables:
-                    rv = dsetRec.getFileVarDataCube( varName, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]], refVar=self.referenceVariable, refLev=self.referenceLev )  
+                    args = { 'time':timeValues, 'lev':levelValues, 'refVar':self.referenceVariable, 'refLev':self.referenceLev }
+                    if self.gridBounds:
+                        args['lon'] = [self.gridBounds[0],self.gridBounds[2]] 
+                        args['lat'] = [self.gridBounds[1],self.gridBounds[3]] 
+                    rv = dsetRec.getFileVarDataCube( varName, self.decimation, **args )  
             elif varName in self.getTransientVariableNames():
                 tvar = self.getTransientVariable( varName ) 
-                rv = self.getTransVarDataCube( varName, tvar, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]] )  
+                args = { 'time':timeValues, 'lev':levelValues }
+                if self.gridBounds:
+                    args['lon'] = [self.gridBounds[0],self.gridBounds[2]] 
+                    args['lat'] = [self.gridBounds[1],self.gridBounds[3]] 
+                rv = self.getTransVarDataCube( varName, tvar, self.decimation, **args )  
         if (rv.id == "NULL") and (varName in self.outputVariables):
             rv = self.outputVariables[ varName ]
         if rv.id <> "NULL": 

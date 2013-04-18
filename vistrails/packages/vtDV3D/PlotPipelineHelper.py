@@ -10,7 +10,8 @@ Created on Feb 29, 2012
 
 '''
 
-import core.db.io, sys, os, traceback, api, time
+
+import core.db.io, sys, os, traceback, api, time, copy
 import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
@@ -532,6 +533,12 @@ class DV3DConfigControlPanel(QWidget):
                     
         main_layout.addStretch()                       
         self.setLayout(main_layout)
+        
+    def askToSaveChanges(self):
+        if self.configWidget: 
+            self.configWidget.finalizeConfig( )
+            self.configWidget.setVisible ( False )
+            self.config_layout.removeWidget( self.configWidget )
 
 #    def __del__(self):
 ##        print "Deleting DV3DConfigControlPanel: id = %x " % id( self )
@@ -753,6 +760,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         for moduleID in moduleIDs:
             DV3DPipelineHelper.activationMap[ moduleID ] = isActive 
             if updateConfig and not isActive:
+                module = ModuleStore.getModule( moduleID ) 
                 config_fn = module.getCurrentConfigFunction()
                 if config_fn and not config_fn.persisted:
                     module.finalizeParameter( config_fn.name )
@@ -768,7 +776,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
              
     @staticmethod
     def execAction( action_key ):
-        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 
+#        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 
 #        print " execAction: ", action_key
         currentActionList  =  DV3DPipelineHelper.actionMap[ action_key ]
         
@@ -819,8 +827,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     if item[1]: 
                         module =  ModuleStore.getModule( item[0] )         
                         module.finalizeParameter( interactionState, notifyHelper=False )
-        DV3DPipelineHelper.actionMap.clear()
-        DV3DPipelineHelper.cfg_cmds.clear()
+                DV3DPipelineHelper.actionMap.clear()
+                DV3DPipelineHelper.cfg_cmds.clear()
      
     @staticmethod          
     def startNewMenu():
@@ -1076,11 +1084,15 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             varnames = {}
             for i in range(len(var_modules)):
                 if issubclass( var_modules[i].module_descriptor.module, CDMSVariableOperation):
-                    varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varname' )
-                    python_command = PlotPipelineHelper.get_value_from_function( var_modules[i], 'python_command' )
-                    aliases[plot_obj.vars[i]] = varname
-                    aliases[ "%s.cmd" % plot_obj.vars[i] ] = python_command
-                    varnames[i] = varname
+                    try:
+                        varname = PlotPipelineHelper.get_value_from_function( var_modules[i], 'varname' )
+                        python_command = PlotPipelineHelper.get_value_from_function( var_modules[i], 'python_command' )
+                        aliases[plot_obj.vars[i]] = varname
+                        aliases[ "%s.cmd" % plot_obj.vars[i] ] = python_command
+                        varnames[i] = varname
+                    except Exception, err:
+                        print>>sys.stderr,  "Error setting aliases: %s" % ( str(err) )
+                        traceback.print_exc()    
                 else:
                     try:
                         if i < len( plot_obj.vars ):
@@ -1435,7 +1447,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             print "Error: Could not find DV3D plot type based on the pipeline"
             print "Visualizations can't be loaded."            
 
-
     @staticmethod
     def find_topo_sort_modules_by_types(pipeline, moduletypes):
         modules = []
@@ -1450,7 +1461,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 module = pipeline.modules[i] 
                 result.append(module)
         return result
-
 
     @staticmethod
     def build_python_script_from_pipeline( controller, version, plot=None ):

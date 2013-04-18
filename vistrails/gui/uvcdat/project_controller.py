@@ -34,7 +34,7 @@
 import os, os.path, sys, traceback, __main__
 import copy
 import uuid
-from PyQt4 import QtCore, Qt
+from PyQt4 import QtCore, Qt, QtGui
 from PyQt4.QtGui import QMessageBox, QApplication, QCursor
 
 import api
@@ -54,6 +54,8 @@ from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
 from gui.uvcdat.project_controller_cell import ControllerCell
 from gui.application import get_vistrails_application
+
+import cdms2
 
 class ProjectController(QtCore.QObject):
     """ProjecController is the class that interfaces between GUI actions in
@@ -343,13 +345,39 @@ class ProjectController(QtCore.QObject):
             if isinstance(varObj, cdms2.tvariable.TransientVariable):
                 _app.uvcdatWindow.dockVariable.widget().addVariable(varObj)
             
-    def load_variables_from_modules(self, var_modules, helper):
+    def load_variables_from_modules(self, var_modules, helper, cell):
         for varm in var_modules:
             varname = helper.get_value_from_function(varm, 'name')
             if varname not in self.defined_variables:
-                var = varm.module_descriptor.module.from_module(varm)
-                self.defined_variables[varname] = var
-                self.emit_defined_variable(var)
+                try:
+                    var = varm.module_descriptor.module.from_module(varm)
+                    self.defined_variables[varname] = var
+                    self.emit_defined_variable(var)
+                except cdms2.error.CDMSError:
+                    oldFilename = helper.get_value_from_function(varm, 'file').name
+                    _app = get_vistrails_application()
+                    filename = QtGui.QFileDialog.getOpenFileName(_app.uvcdatWindow, 
+                                                                 'Filename not found: '+oldFilename,
+                                                                  oldFilename)
+                
+                    self.vt_controller.change_selected_version(cell.current_parent_version)
+                    self.vt_controller.update_function(varm, 'file', [str(filename)])
+                    cell.current_parent_version = self.vt_controller.current_version
+                    
+                    # get the new modified variable and emit
+                    pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
+                    varm = PlotPipelineHelper.find_module_by_id(pipeline, varm.id)
+                    var = varm.module_descriptor.module.from_module(varm)
+                    self.defined_variables[varname] = var
+                    self.emit_defined_variable(var)
+            else:
+                # if the variable exist, make sure we are pointing to the same file location
+                oldFilename = helper.get_value_from_function(varm, 'file').name
+                newFilename = self.defined_variables[varname].filename
+                if oldFilename != newFilename:
+                    self.vt_controller.change_selected_version(cell.current_parent_version)
+                    self.vt_controller.update_function(varm, 'file', [str(newFilename)])
+                    cell.current_parent_version = self.vt_controller.current_version
                 
     def load_computed_variables_from_modules(self, op_modules, info, op_info, helper):
         for (opm,op) in op_modules:
@@ -462,12 +490,22 @@ class ProjectController(QtCore.QObject):
                                                                       plots=[],
                                                                       templates=[],
                                                                       current_parent_version=0L)
+                
         else:
             self.sheet_map[sheetName] = {}
             self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[varName],
                                                                   plots=[],
                                                                   templates=[],
                                                                   current_parent_version=0L)
+            
+
+        if len(self.sheet_map[sheetName][(row,col)].plots) == 0:
+            from gui.application import get_vistrails_application
+            gui_app = get_vistrails_application()
+            defaultPlot = gui_app.uvcdatWindow.preferences.getDefaultPlot()
+            if defaultPlot is not None:
+                self.plot_was_dropped((defaultPlot, sheetName, row, col))
+                self.sheet_map[sheetName][(row,col)].usingDefaultPlot = True
         
     def template_was_dropped(self, info):
         """template_was_dropped(info: (varName, sheetName, row, col) """
@@ -526,7 +564,9 @@ class ProjectController(QtCore.QObject):
             #cell.current_parent_version was updated in copy_pipeline_to_other_location
             
         #check if a new var was added:
+        pipeline = controller.vistrail.getPipeline(cell.current_parent_version)
         self.search_and_emit_new_variables(cell)
+        pipeline = controller.vistrail.getPipeline(cell.current_parent_version)
                     
         if controller == self.vt_controller:
             self.execute_plot_pipeline(pipeline, cell)
@@ -541,10 +581,13 @@ class ProjectController(QtCore.QObject):
         It will go through the variables in the cell and define them if they are 
         not defined. Sometimes it is necessary to reconstruct the variable 
         because some workflows are not using the Variable modules yet. """
-        not_found = False
-        for var in cell.variables():
-            if var not in self.defined_variables:
-                not_found = True
+        
+        # FIXMEME, we need to avoid loading again the files. I force here to read 
+        # multiples times because some CMDSVariables are not updated properly
+        not_found = True
+#        for var in cell.variables():
+#            if var not in self.defined_variables:
+#                not_found = True
         if not_found:
             from packages.uvcdat.init import Variable
             from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
@@ -552,6 +595,10 @@ class ProjectController(QtCore.QObject):
             pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
             var_modules = helper.find_modules_by_type(pipeline, 
                                                       [Variable])
+            if len(var_modules) > 0:
+                self.load_variables_from_modules(var_modules, helper, cell)
+                
+            pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
             #this will give me the modules in topological order
             #so when I try to reconstruct the operations they will be on the
             #right order
@@ -559,8 +606,6 @@ class ProjectController(QtCore.QObject):
                                                      [CDMSVariableOperation])
             op_tuples = []
             computed_ops = {}
-            if len(var_modules) > 0:
-                self.load_variables_from_modules(var_modules, helper)
             if len(op_modules) > 0:
                 info = {}
                 op_info = {}
@@ -660,9 +705,17 @@ class ProjectController(QtCore.QObject):
         if sheetName in self.sheet_map:
             if (row,col) in self.sheet_map[sheetName]:
                 cell = self.sheet_map[sheetName][(row,col)]
-                update = cell.is_ready()
-                cell.add_plot(plot)
-                self.check_update_cell(sheetName,row,col, update)
+                if cell.usingDefaultPlot:
+                    varNames = [v for v in cell.plots[0].variables]
+                    self.clear_cell(sheetName, row, col)
+                    del self.sheet_map[sheetName][(row,col)]
+                    self.plot_was_dropped(info)
+                    for varName in varNames:
+                        self.variable_was_dropped((varName, sheetName, row, col))
+                else:
+                    update = cell.is_ready()
+                    cell.add_plot(plot)
+                    self.check_update_cell(sheetName,row,col, update)
             else:
                 self.sheet_map[sheetName][(row,col)] = ControllerCell(variables=[],
                                                                       plots=[plot],
@@ -774,6 +827,8 @@ class ProjectController(QtCore.QObject):
                 self.update_cell(sheetName, row, col, reuse_workflow)
                 if sheetName != self.current_sheetName or [row,col] != self.current_cell_coords:
                     self.current_cell_changed(sheetName, row, col)
+                cell.pushUndoVersion()
+                self.checkEnableUndoRedo(cell)
         except KeyError, err:
             traceback.print_exc( 100, sys.stderr )
             
@@ -928,6 +983,7 @@ class ProjectController(QtCore.QObject):
             cell = self.sheet_map[sheetName][(row, col)]
             cell.current_parent_version = action.id
             cell.pushUndoVersion()
+            self.checkEnableUndoRedo(cell)
             self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col,
                       None, None, cell.plots[0].package, 
                       cell.current_parent_version)
@@ -938,54 +994,6 @@ class ProjectController(QtCore.QObject):
                 cell = self.sheet_map[sheetname][(row,col)]
                 if cell and varname in cell.variables():
                     self.update_cell(sheetname, row, col, True)
-            
-    def re_layout_workflow(self, sheetName=None, row=None, col=None, cell=None):
-        """
-        Performs a Re-Layout on the workflow pipeline if the builder window
-        is visible        
-        """
-
-        # set current cell info variables if any are None        
-        if None in (sheetName, row, col):
-            (cSheetName, cRow, cCol) = self.get_current_cell_info()
-            if sheetName is None: sheetName = cSheetName
-            if row is None: row = cRow
-            if col is None: col = cCol
-        
-        if sheetName not in self.sheet_map:
-            return
-        
-        if cell is None:
-            cell = self.sheet_map[sheetName][(row,col)]
-        
-        # only do a relayout if the builder window is visible
-        from gui.vistrails_window import _app
-        if not _app.isVisible():
-            return
-        
-        # perform layout
-        _app.qactions['layout'].trigger()
-        
-        # update necessary version variables since a layout adds a new version
-        # to the vistrail
-        from gui.application import get_vistrails_application
-        gui_app = get_vistrails_application()
-        project = gui_app.uvcdatWindow.workspace.currentProject
-            
-        if sheetName not in project.sheet_to_item:
-            return
-        
-        sheetItem = project.sheet_to_item[sheetName]
-        if (row, col) not in sheetItem.pos_to_item:
-            return
-        
-        item = sheetItem.pos_to_item[(row, col)]
-        item.workflowVersion = self.vt_controller.current_version
-    
-        cell = self.sheet_map[sheetName][(row, col)]
-        cell.current_parent_version = self.vt_controller.current_version
-        
-        self.vt_controller.change_selected_version(self.vt_controller.current_version)
         
     def get_current_cell_info(self):
         """
