@@ -827,8 +827,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     if item[1]: 
                         module =  ModuleStore.getModule( item[0] )         
                         module.finalizeParameter( interactionState, notifyHelper=False )
-        DV3DPipelineHelper.actionMap.clear()
-        DV3DPipelineHelper.cfg_cmds.clear()
+                DV3DPipelineHelper.actionMap.clear()
+                DV3DPipelineHelper.cfg_cmds.clear()
      
     @staticmethod          
     def startNewMenu():
