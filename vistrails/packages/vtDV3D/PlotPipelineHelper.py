@@ -725,16 +725,17 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
            
     @staticmethod                         
     def addAction( module, action_key, config_key, isActive=True ):
-        actionList = DV3DPipelineHelper.actionMap.setdefault( action_key[1], [] )
-        fn = module.configurableFunctions.get( action_key[1], None )
-        actionList.append( ( module.moduleID, config_key, fn ) )
-        DV3DPipelineHelper.addConfigCommand( module.moduleID, fn, config_key ) 
-        if isActive:
-            actions = DV3DPipelineHelper.actionMenu.actions() 
-            for action in actions:
-                if str(action.text()) == str(action_key[0]): return
-            menuItem = DV3DPipelineHelper.actionMenu.addAction( action_key[0] )
-            menuItem.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key[1]: DV3DPipelineHelper.execAction( akey ) )
+        if not DV3DPipelineHelper.hasConfigCommand( module.moduleID, config_key ):
+            actionList = DV3DPipelineHelper.actionMap.setdefault( action_key[1], [] )
+            fn = module.configurableFunctions.get( action_key[1], None )
+            actionList.append( ( module.moduleID, config_key, fn ) )
+            DV3DPipelineHelper.addConfigCommand( module.moduleID, fn, config_key ) 
+            if isActive:
+                actions = DV3DPipelineHelper.actionMenu.actions() 
+                for action in actions:
+                    if str(action.text()) == str(action_key[0]): return
+                menuItem = DV3DPipelineHelper.actionMenu.addAction( action_key[0] )
+                menuItem.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key[1]: DV3DPipelineHelper.execAction( akey ) )
     
     @staticmethod
     def getConfigCmd( cfg_key ):   
@@ -745,6 +746,13 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         if not key: key = cmd.key
         cmd_list = DV3DPipelineHelper.cfg_cmds.setdefault( key, [] )
         cmd_list.append( ( mid, cmd ) )
+
+    @staticmethod
+    def hasConfigCommand( mid, key ):
+        cmd_list = DV3DPipelineHelper.cfg_cmds.get( key, [] )
+        for cmd_item in cmd_list:
+            if cmd_item[0] == mid: return True
+        return False
     
     @staticmethod    
     def getPlotActivation( moduleID ):
@@ -754,14 +762,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def removeModuleFromActivationMap( moduleID ):
         if moduleID in DV3DPipelineHelper.activationMap:
             del DV3DPipelineHelper.activationMap[moduleID]
-            print "Removing Module (%d) from activation map" % ( moduleID )
+#            print "Removing Module (%d) from activation map" % ( moduleID )
 
     @staticmethod    
     def getActivePlotList( ):
         active_plots = []
         for moduleID in DV3DPipelineHelper.activationMap.keys():
             if DV3DPipelineHelper.activationMap[ moduleID ]:
-                print "Adding Module (%d) to activation map" % ( moduleID )
+#                print "Adding Module (%d) to activation map" % ( moduleID )
                 active_plots.append( moduleID )
         return active_plots
  
@@ -829,8 +837,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     if item[1]: 
                         module =  ModuleStore.getModule( item[0] )         
                         module.finalizeParameter( interactionState, notifyHelper=False )
-                DV3DPipelineHelper.actionMap.clear()
-                DV3DPipelineHelper.cfg_cmds.clear()
+        DV3DPipelineHelper.actionMap.clear()
+        DV3DPipelineHelper.cfg_cmds.clear()
      
     @staticmethod          
     def startNewMenu():
@@ -1401,7 +1409,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         #for now this helper will change the location in place
         #based on the alias dictionary
 
-        print "Loading vtdv3d pipeline in location %d %d" % (row,col)
+#        print "Loading vtdv3d pipeline in location %d %d" % (row,col)
         
         cell_modules = PlotPipelineHelper.find_modules_by_type( pipeline, [ MapCell3D ] )
         for module in cell_modules:
