@@ -2228,7 +2228,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 if ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ): 
                     restart = ( iTS >= self.timeRange[1] ) 
                     iTS = self.timeRange[0]
-            print " ############################################ set Time index = %d ############################################" % iTS
+#            print " ############################################ set Time index = %d ############################################" % iTS
             self.setTimestep( iTS, restart )
 
     def reset( self ):

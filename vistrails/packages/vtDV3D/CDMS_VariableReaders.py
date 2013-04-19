@@ -388,7 +388,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         if (exampleVarDataSpecs == None) and (varDataSpecs <> None): exampleVarDataSpecs = varDataSpecs
                         range_min = varData.min()
                         range_max = varData.max()
-                        print " Read volume data for variable %s, scalar range = [ %f, %f ]" % ( varName, range_min, range_max )
+                        if type( range_max ).__name__ == 'MaskedConstant': range_max = 0.0
+#                        print " Read volume data for variable %s, scalar range = [ %f, %f ]" % ( varName, range_min, range_max )
                         newDataArray = varData
                                                           
                         if scalar_dtype == np.float:
@@ -422,7 +423,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         cachedImageDataName = '-'.join( varDataIds )
         imageDataCache = self.getImageDataCache() 
         if not ( cachedImageDataName in imageDataCache ):
-            print 'Building Image for cache: %s ' % cachedImageDataName
+#            print 'Building Image for cache: %s ' % cachedImageDataName
             image_data = vtk.vtkImageData() 
             outputOrigin = varDataSpecs[ 'outputOrigin' ]
             outputExtent = varDataSpecs[ 'outputExtent' ]

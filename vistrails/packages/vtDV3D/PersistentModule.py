@@ -495,7 +495,7 @@ class PersistentModule( QObject ):
 #        return 0
 
     def __del__(self):
-        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
+#        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
         sys.stdout.flush()
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
@@ -681,7 +681,7 @@ class PersistentModule( QObject ):
         return str( getClassName( self ) )
         
     def dvCompute( self, **args ):
-        print "  ***** Updating %s Module, id = %d ***** " % ( self.__class__.__name__, self.moduleID )
+#        print "  ***** Updating %s Module, id = %d ***** " % ( self.__class__.__name__, self.moduleID )
         self.initializeInputs( **args )     
         self.updateHyperwall()
         if self.input() or self.inputModuleList() or not self.requiresPrimaryInput:
@@ -1281,8 +1281,7 @@ class PersistentModule( QObject ):
             if self.update_proj_controller:
                 pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
                 if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
-#                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
-                    self.current_cell_changed( proj_controller, sheetName, cell_address[0], cell_address[1]  )
+                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
                 else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
@@ -1291,15 +1290,6 @@ class PersistentModule( QObject ):
         except Exception, err:
             print>>sys.stderr, "Error getting current pipeline: %s " % str( err )
             return controller.current_pipeline       
-
-    def current_cell_changed(self, proj_controller, sheetName, row, col ):
-        from gui.uvcdat.plot import PlotProperties
-        plot_prop = PlotProperties.instance()
-#        widget = proj_controller.get_plot_configuration(sheetName,row,col)
-        plot_prop.set_controller( proj_controller )
-        plot_prop.sheetName = sheetName
-        plot_prop.row = row
-        plot_prop.col = col
 
     def change_parameters( self, parmRecList ):
         import api
@@ -1321,8 +1311,7 @@ class PersistentModule( QObject ):
             if self.update_proj_controller:
                 pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
                 if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
-#                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
-                    self.current_cell_changed( proj_controller, sheetName, cell_address[0], cell_address[1]  )
+                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
                 else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
@@ -1366,7 +1355,6 @@ class PersistentModule( QObject ):
             if self.update_proj_controller and proj_controller:
                 proj_controller.cell_was_changed(action)
                 if pcoords:  proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
-            print " Perform save action: current version = %d, current_parent_version = %d " % ( controller.current_version, cell.current_parent_version  )
             sys.stdout.flush()
                 
         except Exception, err:
