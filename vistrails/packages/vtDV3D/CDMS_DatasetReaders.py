@@ -1058,31 +1058,31 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         serializedInputSpecs = getItem( self.getInputValue( "executionSpecs" ) )
         if serializedInputSpecs:
             inputSpecs = SerializedInterfaceSpecs( serializedInputSpecs ) if serializedInputSpecs else None
-            print " ** serializedInputSpecs: ", str( serializedInputSpecs ) 
-            print " ** InputSpecs: ", str( inputSpecs ) 
+#            print " ** serializedInputSpecs: ", str( serializedInputSpecs ) 
+#            print " ** InputSpecs: ", str( inputSpecs ) 
             self.idSpecs, self.fileSpecs, self.varSpecs, self.gridSpecs = [], [], [], []
             nInputs = inputSpecs.getNInputs() if inputSpecs else 0
             if nInputs: 
-                print " _____________________ File Reader _____________________ "    
+#                print " _____________________ File Reader _____________________ "    
                 for iInput in range( nInputs  ):
                     inputSpec = inputSpecs.getInput(  index=iInput )
-                    print " ** InputSpec: ", str( inputSpec ) 
+#                    print " ** InputSpec: ", str( inputSpec ) 
                     self.idSpecs.append( inputSpec[0] ) 
                     self.fileSpecs.append( inputSpec[1] )
                     self.varSpecs.append( inputSpec[2] )
                     if( not len(self.gridSpecs) and len(inputSpec[3]) ): 
                         self.gridSpecs = splitGridSpecs( inputSpec[3] )                   
-                        print " ** Grid Specs: ", str( self.gridSpecs )  
+#                        print " ** Grid Specs: ", str( self.gridSpecs )  
                 dsMapData = ';'.join( self.fileSpecs )   
                 self.computeGridFromSpecs()
-                print " ** ID Specs: ", str( self.idSpecs )
-                print " ** File Specs: ", str( self.fileSpecs )
-                print " ** Var Specs: ", str( self.varSpecs )            
-                print " ** dsMapData: ", str( dsMapData )
-                print " ** ROI: ", str( self.roi )
-                print " ** zscale: ", str( zscale )
-                print " ** decimation: ", str( decimation )
-                print " ________________________________________________________ "   
+#                print " ** ID Specs: ", str( self.idSpecs )
+#                print " ** File Specs: ", str( self.fileSpecs )
+#                print " ** Var Specs: ", str( self.varSpecs )            
+#                print " ** dsMapData: ", str( dsMapData )
+#                print " ** ROI: ", str( self.roi )
+#                print " ** zscale: ", str( zscale )
+#                print " ** decimation: ", str( decimation )
+#                print " ________________________________________________________ "   
                 self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
                 dsKeys = self.datasetMap.keys()
                 for iVar in range( len(self.varSpecs) ):
@@ -1114,7 +1114,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             self.datasetModule.setReferenceVariable( self.ref_var )
             if inputSpecs: self.persistDatasetParameters() 
             self.setResult( 'dataset', self.datasetModule )
-            print " ......  Start Workflow, dsid=%s, zscale = %.2f ......  " % ( self.datasetModule.getDsetId(), zscale )
+#            print " ......  Start Workflow, dsid=%s, zscale = %.2f ......  " % ( self.datasetModule.getDsetId(), zscale )
 
     def persistDatasetParameters( self ):
         parmRecList = []
