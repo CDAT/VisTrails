@@ -190,7 +190,6 @@ parameters from other instances")
         
         #uv-cdat plots initialization
         self.initialize_uvcdat_plots()
-        self.uvcdatWindow.preferences.setupDefaultPlotOptions()
         
         # ugly workaround for configuration initialization order issue
         # If we go through the configuration too late,
@@ -213,6 +212,8 @@ parameters from other instances")
         if self.temp_configuration.time > 0:
             QtCore.QTimer().singleShot(self.temp_configuration.time*1000, 
                                        self.uvcdatWindow.quit)
+        
+        self.uvcdatWindow.preferences.setupDefaultPlotOptions()
             
         
         return True
