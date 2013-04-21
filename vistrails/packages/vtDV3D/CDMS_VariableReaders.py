@@ -42,7 +42,45 @@ def matchesAxisType( axis, axis_attr, axis_aliases ):
                 matches = True
                 break
     return matches
-    
+
+class AxisType:
+    NONE = 0
+    Time = 1
+    Longitude = 2
+    Latitude = 3
+    Level = 4
+    lev_aliases = [ 'bottom', 'top', 'zdim' ]
+    lev_axis_attr = [ 'z' ]
+    lat_aliases = [ 'north', 'south', 'ydim' ]
+    lat_axis_attr = [ 'y' ]
+    lon_aliases = [ 'east', 'west', 'xdim' ]
+    lon_axis_attr = [ 'x' ]
+
+def getAxisType( axis ):
+    if axis.isLevel() or matchesAxisType( axis, AxisType.lev_axis_attr, AxisType.lev_aliases ):
+        return AxisType.Level      
+    elif axis.isLatitude() or matchesAxisType( axis, AxisType.lat_axis_attr, AxisType.lat_aliases ):
+        return AxisType.Latitude                   
+    elif axis.isLongitude() or matchesAxisType( axis, AxisType.lon_axis_attr, AxisType.lon_aliases ):
+        return AxisType.Longitude     
+    elif axis.isTime():
+        return AxisType.Time
+    else: return  AxisType.NONE    
+
+def designateAxisType( self, axis ):
+    if not isDesignated( axis ):
+        if matchesAxisType( axis, AxisType.lev_axis_attr, AxisType.lev_aliases ):
+            axis.designateLevel() 
+            return AxisType.Level         
+        elif matchesAxisType( axis, AxisType.lat_axis_attr, AxisType.lat_aliases ):
+            axis.designateLatitude() 
+            return AxisType.Latitude                    
+        elif matchesAxisType( axis, AxisType.lon_axis_attr, AxisType.lon_aliases ):
+            axis.designateLongitude()
+            return AxisType.Longitude    
+    return getAxisType( axis )
+
+                   
 class PM_CDMSDataReader( PersistentVisualizationModule ):
     
     dataCache = {}
@@ -291,7 +329,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         if len( varList ) == 0: return False
         varDataIds = []
         intersectedRoi = args.get('roi', None )
-        self.cdmsDataset.setRoi( intersectedRoi )
+        if intersectedRoi: self.cdmsDataset.setRoi( intersectedRoi )
         exampleVarDataSpecs = None
         dsid = None
         if (self.outputType == CDMSDataType.Vector ) and len(varList) < 3:
@@ -330,7 +368,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 else:
                     varDataIdIndex = selectedLevel
 
-            roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] )
+            roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] ) if self.cdmsDataset.gridBounds else ""
             varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), roiStr )
             varDataIds.append( varDataId )
             varDataSpecs = self.getCachedData( varDataId ) 
@@ -350,7 +388,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         if (exampleVarDataSpecs == None) and (varDataSpecs <> None): exampleVarDataSpecs = varDataSpecs
                         range_min = varData.min()
                         range_max = varData.max()
-                        print " Read volume data for variable %s, scalar range = [ %f, %f ]" % ( varName, range_min, range_max )
+                        if type( range_max ).__name__ == 'MaskedConstant': range_max = 0.0
+#                        print " Read volume data for variable %s, scalar range = [ %f, %f ]" % ( varName, range_min, range_max )
                         newDataArray = varData
                                                           
                         if scalar_dtype == np.float:
@@ -384,7 +423,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         cachedImageDataName = '-'.join( varDataIds )
         imageDataCache = self.getImageDataCache() 
         if not ( cachedImageDataName in imageDataCache ):
-            print 'Building Image for cache: %s ' % cachedImageDataName
+#            print 'Building Image for cache: %s ' % cachedImageDataName
             image_data = vtk.vtkImageData() 
             outputOrigin = varDataSpecs[ 'outputOrigin' ]
             outputExtent = varDataSpecs[ 'outputExtent' ]
@@ -539,15 +578,17 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 axis = None
                 if iCoord == 0: axis = tvar.getLongitude()
                 if iCoord == 1: axis = tvar.getLatitude()
-                if axis:
-                    axisvals = axis.getValue()          
-                    newRoi[ iCoord ] = axisvals[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
-                    newRoi[ 2+iCoord ] = axisvals[-1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
+                axisvals = axis.getValue()          
+                if ( len( axisvals.shape) > 1 ):
+#                    displayMessage( "Curvilinear grids not currently supported by DV3D.  Please regrid. ")
+                    return current_roi
+                newRoi[ iCoord ] = axisvals[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
+                newRoi[ 2+iCoord ] = axisvals[-1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
             if ( current_roi_size == 0 ): return newRoi
             new_roi_size = getRoiSize( newRoi )
             return newRoi if ( ( current_roi_size > new_roi_size ) and ( new_roi_size > 0.0 ) ) else current_roi
         except:
-            print>>std.stderr, "Error getting ROI for input variable"
+            print>>sys.stderr, "Error getting ROI for input variable"
             traceback.print_exc()
             return current_roi
        
@@ -564,6 +605,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         domain = var.getDomain()
         self.lev = var.getLevel()
         axis_list = var.getAxisList()
+        isCurvilinear = False
         for axis in axis_list:
             size = len( axis )
             iCoord = self.getCoordType( axis, outputType )

@@ -28,7 +28,7 @@ class SCurveGenerator(Module, Generator):
         # Creating matrix with values, ids, labels and attributes
         matrix = Matrix()
         matrix.values     = X
-        matrix.ids        = t
+        matrix.ids        = range(X.shape[1])
         matrix.labels     = [str(_id) for _id in matrix.ids]
         matrix.attributes = [str(attr) for attr in range(X.shape[1])]
          
@@ -52,7 +52,7 @@ class SwissRollGenerator(Module, Generator):
         # Creating matrix with values, ids, labels and attributes
         matrix = Matrix()
         matrix.values     = X
-        matrix.ids        = t
+        matrix.ids        = range(X.shape[1])
         matrix.labels     = [str(_id) for _id in matrix.ids]
         matrix.attributes = [str(attr) for attr in range(X.shape[1])]
          

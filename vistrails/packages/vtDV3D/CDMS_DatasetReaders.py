@@ -574,9 +574,10 @@ class CDMSDataset(Module):
          
     def addTransientVariable( self, varName, variable, ndim = None ):
         if varName in self.transientVariables:
-            print>>sys.stderr, "Warning, transient variable %s already exists in dataset, overwriting!" % ( varName )
-        else:
-            self.transientVariables[ varName ] = variable
+            var = self.transientVariables[ varName ]
+            if id(var) <> id(variable): print>>sys.stderr, "Warning, transient variable %s already exists in dataset, overwriting!" % ( varName )
+            else: return
+        self.transientVariables[ varName ] = variable
 
     def getTransientVariable( self, varName ):
         return self.transientVariables.get( varName, None )
@@ -644,10 +645,18 @@ class CDMSDataset(Module):
             dsetRec = self.datasetRecs.get( dsid, None )
             if dsetRec:
                 if varName in dsetRec.dataset.variables:
-                    rv = dsetRec.getFileVarDataCube( varName, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]], refVar=self.referenceVariable, refLev=self.referenceLev )  
+                    args = { 'time':timeValues, 'lev':levelValues, 'refVar':self.referenceVariable, 'refLev':self.referenceLev }
+                    if self.gridBounds:
+                        args['lon'] = [self.gridBounds[0],self.gridBounds[2]] 
+                        args['lat'] = [self.gridBounds[1],self.gridBounds[3]] 
+                    rv = dsetRec.getFileVarDataCube( varName, self.decimation, **args )  
             elif varName in self.getTransientVariableNames():
                 tvar = self.getTransientVariable( varName ) 
-                rv = self.getTransVarDataCube( varName, tvar, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]] )  
+                args = { 'time':timeValues, 'lev':levelValues }
+                if self.gridBounds:
+                    args['lon'] = [self.gridBounds[0],self.gridBounds[2]] 
+                    args['lat'] = [self.gridBounds[1],self.gridBounds[3]] 
+                rv = self.getTransVarDataCube( varName, tvar, self.decimation, **args )  
         if (rv.id == "NULL") and (varName in self.outputVariables):
             rv = self.outputVariables[ varName ]
         if rv.id <> "NULL": 
@@ -1049,31 +1058,31 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         serializedInputSpecs = getItem( self.getInputValue( "executionSpecs" ) )
         if serializedInputSpecs:
             inputSpecs = SerializedInterfaceSpecs( serializedInputSpecs ) if serializedInputSpecs else None
-            print " ** serializedInputSpecs: ", str( serializedInputSpecs ) 
-            print " ** InputSpecs: ", str( inputSpecs ) 
+#            print " ** serializedInputSpecs: ", str( serializedInputSpecs ) 
+#            print " ** InputSpecs: ", str( inputSpecs ) 
             self.idSpecs, self.fileSpecs, self.varSpecs, self.gridSpecs = [], [], [], []
             nInputs = inputSpecs.getNInputs() if inputSpecs else 0
             if nInputs: 
-                print " _____________________ File Reader _____________________ "    
+#                print " _____________________ File Reader _____________________ "    
                 for iInput in range( nInputs  ):
                     inputSpec = inputSpecs.getInput(  index=iInput )
-                    print " ** InputSpec: ", str( inputSpec ) 
+#                    print " ** InputSpec: ", str( inputSpec ) 
                     self.idSpecs.append( inputSpec[0] ) 
                     self.fileSpecs.append( inputSpec[1] )
                     self.varSpecs.append( inputSpec[2] )
                     if( not len(self.gridSpecs) and len(inputSpec[3]) ): 
                         self.gridSpecs = splitGridSpecs( inputSpec[3] )                   
-                        print " ** Grid Specs: ", str( self.gridSpecs )  
+#                        print " ** Grid Specs: ", str( self.gridSpecs )  
                 dsMapData = ';'.join( self.fileSpecs )   
                 self.computeGridFromSpecs()
-                print " ** ID Specs: ", str( self.idSpecs )
-                print " ** File Specs: ", str( self.fileSpecs )
-                print " ** Var Specs: ", str( self.varSpecs )            
-                print " ** dsMapData: ", str( dsMapData )
-                print " ** ROI: ", str( self.roi )
-                print " ** zscale: ", str( zscale )
-                print " ** decimation: ", str( decimation )
-                print " ________________________________________________________ "   
+#                print " ** ID Specs: ", str( self.idSpecs )
+#                print " ** File Specs: ", str( self.fileSpecs )
+#                print " ** Var Specs: ", str( self.varSpecs )            
+#                print " ** dsMapData: ", str( dsMapData )
+#                print " ** ROI: ", str( self.roi )
+#                print " ** zscale: ", str( zscale )
+#                print " ** decimation: ", str( decimation )
+#                print " ________________________________________________________ "   
                 self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
                 dsKeys = self.datasetMap.keys()
                 for iVar in range( len(self.varSpecs) ):
@@ -1105,7 +1114,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             self.datasetModule.setReferenceVariable( self.ref_var )
             if inputSpecs: self.persistDatasetParameters() 
             self.setResult( 'dataset', self.datasetModule )
-            print " ......  Start Workflow, dsid=%s, zscale = %.2f ......  " % ( self.datasetModule.getDsetId(), zscale )
+#            print " ......  Start Workflow, dsid=%s, zscale = %.2f ......  " % ( self.datasetModule.getDsetId(), zscale )
 
     def persistDatasetParameters( self ):
         parmRecList = []

@@ -340,6 +340,7 @@ class ConfigurableFunction( QObject ):
         QObject.__init__(self)
         self.name = name
         self.activateByCellsOnly = args.get( 'cellsOnly', False )
+        self.persist = args.get( 'persist', True )
         self.type = 'generic'
         self.matchUnits = False
         self.args = function_args
@@ -366,7 +367,7 @@ class ConfigurableFunction( QObject ):
         
     def __del__(self):
         self.clearReferrents()
-        
+                
     def clearReferrents(self):
         self.initHandler = None
         self.openHandler = None
@@ -381,12 +382,8 @@ class ConfigurableFunction( QObject ):
     def module(self):
         return ModuleStore.getModule( self.moduleID ) if self.moduleID else None
 
-    @property
-    def module(self):
-        return ModuleStore.getModule( self.moduleID ) 
-
     def get_persisted(self):
-        return self._persisted
+        return self._persisted if self.persist else True
     
     def updateWindow( self ):
         pass
@@ -737,6 +734,7 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
                         moduleList.remove( moduleId )
     #                    print "Removing module %s (%d) from connectedModules for key %s" % ( module.__class__.__name__, moduleId, key )
                 ModuleStore.removeModule( moduleId ) 
+        DV3DPipelineHelper.clearActionMap()
               
     def initGui( self, **args ):   # init value from moudle input port
         moduleList = UVCDATGuiConfigFunction.connectedModules.setdefault( self.name, Set() )
@@ -2230,7 +2228,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 if ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ): 
                     restart = ( iTS >= self.timeRange[1] ) 
                     iTS = self.timeRange[0]
-            print " ############################################ set Time index = %d ############################################" % iTS
+#            print " ############################################ set Time index = %d ############################################" % iTS
             self.setTimestep( iTS, restart )
 
     def reset( self ):

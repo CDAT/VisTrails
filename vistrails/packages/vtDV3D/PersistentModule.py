@@ -480,7 +480,7 @@ class PersistentModule( QObject ):
         if self.createColormap:
             self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Colormap', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
 #        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
-        self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue, cellsOnly=True )
+        self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue, persist=False, cellsOnly=True )
         
 #        print "**********************************************************************"
 #        print "Create Module [%d] : %s (%x)" % ( self.moduleID, self.__class__.__name__, id(self) )
@@ -495,7 +495,7 @@ class PersistentModule( QObject ):
 #        return 0
 
     def __del__(self):
-        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
+#        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
         sys.stdout.flush()
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
@@ -681,7 +681,7 @@ class PersistentModule( QObject ):
         return str( getClassName( self ) )
         
     def dvCompute( self, **args ):
-        print "  ***** Updating %s Module, id = %d ***** " % ( self.__class__.__name__, self.moduleID )
+#        print "  ***** Updating %s Module, id = %d ***** " % ( self.__class__.__name__, self.moduleID )
         self.initializeInputs( **args )     
         self.updateHyperwall()
         if self.input() or self.inputModuleList() or not self.requiresPrimaryInput:
@@ -1282,7 +1282,6 @@ class PersistentModule( QObject ):
                 pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
                 if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
                     proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
-#                    self.current_cell_changed( proj_controller, sheetName, cell_address[0], cell_address[1]  )
                 else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
@@ -1291,15 +1290,6 @@ class PersistentModule( QObject ):
         except Exception, err:
             print>>sys.stderr, "Error getting current pipeline: %s " % str( err )
             return controller.current_pipeline       
-
-    def current_cell_changed(self, proj_controller, sheetName, row, col ):
-        from gui.uvcdat.plot import PlotProperties
-        plot_prop = PlotProperties.instance()
-#        widget = proj_controller.get_plot_configuration(sheetName,row,col)
-        plot_prop.set_controller( proj_controller )
-        plot_prop.sheetName = sheetName
-        plot_prop.row = row
-        plot_prop.col = col
 
     def change_parameters( self, parmRecList ):
         import api
@@ -1322,7 +1312,6 @@ class PersistentModule( QObject ):
                 pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
                 if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
                     proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
-#                    self.current_cell_changed( proj_controller, sheetName, cell_address[0], cell_address[1]  )
                 else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
@@ -1365,18 +1354,12 @@ class PersistentModule( QObject ):
                 
             if self.update_proj_controller and proj_controller:
                 proj_controller.cell_was_changed(action)
-                if pcoords:  
-                    proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
-#                    self.current_cell_changed( proj_controller, sheetName, pcoords[0], pcoords[1]  )
-
-            print " Perform save action: current version = %d, current_parent_version = %d, sheetName = %s, cell_address = %s " % ( controller.current_version, cell.current_parent_version, sheetName, str( cell_address ) )
+                if pcoords:  proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
             sys.stdout.flush()
                 
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
             traceback.print_exc()
-
-
                
     def persistParameterList( self, parmRecList, **args ):
         if parmRecList and not self.isClient: 
@@ -1893,7 +1876,10 @@ class PersistentVisualizationModule( PersistentModule ):
             if len(ds.transientVariables)>0:
                 if len(ds.transientVariables)>1: print 'Warning: this module has several transient Variables, plotting the first one.'
                 var = ds.transientVariables.values()[0]
-                lensActor.SetTitle("Time vs. %s (%s)" % (var.long_name, var.id))
+                if hasattr(var, 'long_name'):
+                    lensActor.SetTitle("Time vs. %s (%s)" % (var.long_name, var.id))
+                else:
+                    lensActor.SetTitle("Time vs.%s" % var.id)
                 lensActor.SetYTitle(var.id)
                 lensActor.SetYRange(var.min(), var.max())
 
