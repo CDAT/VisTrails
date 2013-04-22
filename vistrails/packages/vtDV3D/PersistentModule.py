@@ -1499,7 +1499,6 @@ class TextBlinkThread( threading.Thread ):
             if textOn:
                 blinkCount += 1
                 if self.nblinks > 0 and blinkCount >= self.nblinks: return 
-
        
 class PersistentVisualizationModule( PersistentModule ):
 
