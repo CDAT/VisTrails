@@ -218,6 +218,8 @@ class PM_CurtainPlot(PersistentVisualizationModule):
     def toggleEditSpline( self, notify=True ):
         self.editMode = not self.editMode 
         self.spline.SetEnabled( self.editMode )
+        if self.editMode: self.spline.On()
+        else: self.spline.Off()
         self.spline.SetProcessEvents( self.editMode ) 
         if self.editMode and self.firstEdit:
             if notify: displayMessage( " Click on the yellow curved line and then drag the handles (spheres) to modify the trajectory." )
