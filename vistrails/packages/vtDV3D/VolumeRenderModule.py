@@ -145,6 +145,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.ctf_data = None
         self.updatingOTF = False
         self.configTime = None
+        self.clipper = vtk.vtkBoxWidget()
+        self.clipping_enabled = False
         self.volRenderConfig = [ 'Default', 'False' ]
         self.transFunctGraphVisible = False
         self.transferFunctionConfig = None
@@ -153,8 +155,25 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'functionScale', 'T', label='VR Transfer Function Scale', units='data', setLevel=self.generateOTF, getLevel=self.getAbsRangeBounds, layerDependent=True, adjustRangeInput=0, initRefinement=[ self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
         self.addConfigurableLevelingFunction( 'opacityScale',  'o', label='VR Transfer Function Opacity', setLevel=self.adjustOpacity, layerDependent=True  )
         self.addConfigurableMethod( 'showTransFunctGraph', self.showTransFunctGraph, 'g', label='VR Transfer Function Graph' )
+        self.addConfigurableMethod( 'toggleClipping', self.toggleClipping, 'X', label='Toggle Clipping' )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
         self.addUVCDATConfigGuiFunction( 'renderType', VolumeRenderCfgDialog, 'v', label='Choose Volume Renderer', setValue=self.setVolRenderCfg, getValue=self.getVolRenderCfg, layerDependent=True )
+
+    def activateEvent( self, caller, event ):
+        PersistentVisualizationModule.activateEvent( self, caller, event )
+        self.renwin = self.renderer.GetRenderWindow( )
+        if self.renwin <> None:
+            iren = self.renwin.GetInteractor() 
+            if ( iren <> None ): 
+                self.clipper.SetInteractor( iren )
+            
+    def toggleClipping(self):
+        self.clipping_enabled = not self.clipping_enabled 
+        self.clipper.SetEnabled( self.clipping_enabled )
+        if self.clipping_enabled: 
+            self.clipper.On()
+        else: 
+            self.clipper.Off()
     
 #    def setZScale( self, zscale_data ):
 #        if self.volume <> None:
@@ -287,7 +306,14 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #        dims = [  int( round( ( bounds[2*i+1]-bounds[2*i] ) / scale[i] ) ) for i in range(3) ]
 #        print " Volume position: %s " % str( self.volume.GetPosition() )
 #        print "Volume Render Event: scale = %s, bounds = %s, origin = %s, dims = %s " % ( str2f( scale ), str2f( bounds ), str2f( origin ), str( dims )  )
-                 
+
+    def getVolumeBounds(self):  
+        extent = self.input().GetExtent() 
+        spacing = self.input().GetSpacing()
+        origin = self.input().GetOrigin()
+        bounds = [ ( origin[i/2] + spacing[i/2]*extent[i] ) for i in range(6) ]
+        return bounds
+                              
     def buildPipeline(self):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
@@ -338,7 +364,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         
 #        self.volumeMapper.SetScalarModeToUsePointFieldData()
 #        self.inputModule.inputToAlgorithm( self.volumeMapper )
-        
+           
         # The volume holds the mapper and the property and can be used to
         # position/orient the volume
         self.volume = vtk.vtkVolume()
@@ -355,6 +381,12 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 
         self.renderer.AddVolume( self.volume )
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
+        
+    def executeClip():
+        planes = vtk.vtkPlanes()
+        self.clipper.GetPlanes(planes)
+        self.volumeMapper.SetClippingPlanes(planes)
+        self.render()
 
     def rebuildVolume( self ):
         self.volume = vtk.vtkVolume()
@@ -380,6 +412,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
     def updateModule( self, **args  ):
         if self.inputModule():
             self.inputModule().inputToAlgorithm( self.volume.GetMapper()  )
+#            self.clipper.SetInputData( self.inputModule() )
+            self.clipper.PlaceWidget( self.getVolumeBounds() )
             self.set3DOutput()
 
 #            center = self.volume.GetCenter() 
