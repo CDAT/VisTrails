@@ -2394,7 +2394,6 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 ##            printTime( 'Finish Animation delay' )
                 
 #    def setDelay( self, dval  ):
-#        dval = 
 #        self.delay = delay_in_sec if ( delay_in_sec<>None ) else self.speedSlider.value()/100.0
         
         

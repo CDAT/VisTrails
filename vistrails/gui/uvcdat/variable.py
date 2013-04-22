@@ -145,8 +145,9 @@ class VariableProperties(QtGui.QDialog):
             self.root.varProp.btnDefineClose.setEnabled(False)
             self.root.varProp.btnDefineAs.setEnabled(False)
             self.root.varProp.selectRoiButton.setEnabled(False)
-        if (index==2):
-            self.clearDimensionsWidget()
+            if (index==2): self.clearDimensionsWidget()
+        elif (index==3):
+            self.root.varProp.selectRoiButton.setEnabled(True)
         ## else:
         ##     self.root.varProp.btnDefine.setEnabled(True)
         ##     self.root.varProp.btnDefineClose.setEnabled(True)
