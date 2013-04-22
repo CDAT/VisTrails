@@ -1537,6 +1537,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     
     @staticmethod
     def show_configuration_widget( controller, version, plot_objs=[ None ] ):
+        """  Config Command Filtering:
+        This method controls what config commands will be displayed in the DV3D configuration panel when a given plot is clicked upon.
+        Config commands for all selected (blue rimmed) plots are displayed.   To display only the config commands for a single plot (type),
+        deselect all rows and cols in the spreadsheet before clicking on a plot- this will select only plot that is clicked on.  The list
+        of selected cells is represented by the 'active_renwin_ids' list.  Config commands for plots in unselected cells have isActive=False 
+        and, as a result, are not displayed in the configuration panel.    
+        
+        """
         from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper, CDMSPlotWidget
         current_controller = api.get_current_controller()
         pipeline = controller.vt_controller.vistrail.getPipeline(version) 
