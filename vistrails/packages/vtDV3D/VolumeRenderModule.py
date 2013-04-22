@@ -145,8 +145,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.ctf_data = None
         self.updatingOTF = False
         self.configTime = None
-        self.clipper = vtk.vtkBoxWidget()
         self.clipping_enabled = False
+        self.clipper = None
         self.volRenderConfig = [ 'Default', 'False' ]
         self.transFunctGraphVisible = False
         self.transferFunctionConfig = None
@@ -161,11 +161,12 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 
     def activateEvent( self, caller, event ):
         PersistentVisualizationModule.activateEvent( self, caller, event )
-        self.renwin = self.renderer.GetRenderWindow( )
-        if self.renwin <> None:
-            iren = self.renwin.GetInteractor() 
-            if ( iren <> None ): 
-                self.clipper.SetInteractor( iren )
+        if self.clipper:
+            self.renwin = self.renderer.GetRenderWindow( )
+            if self.renwin <> None:
+                iren = self.renwin.GetInteractor() 
+                if ( iren <> None ): 
+                    self.clipper.SetInteractor( iren )
             
     def toggleClipping(self):
         self.clipping_enabled = not self.clipping_enabled 
@@ -362,6 +363,9 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.volumeMapper = vtk.vtkSmartVolumeMapper() 
         self.volumeMapper.SetBlendModeToComposite() 
         
+        self.clipper = vtk.vtkBoxWidget()
+        self.clipper.RotationEnabledOff()
+        
 #        self.volumeMapper.SetScalarModeToUsePointFieldData()
 #        self.inputModule.inputToAlgorithm( self.volumeMapper )
            
@@ -374,7 +378,9 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.setVolRenderCfg( None, False )
 
         self.volume.SetProperty(self.volumeProperty)
-#        self.volume.AddObserver( 'AnyEvent', self.EventWatcher )
+        self.clipper.AddObserver( 'AnyEvent', self.EventWatcher )
+        self.clipper.AddObserver( 'InteractionEvent', self.executeClip )
+               
 #        self.input().AddObserver( 'AnyEvent', self.EventWatcher )
         
         self.volume.SetPosition( self.pos )
@@ -382,11 +388,17 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.renderer.AddVolume( self.volume )
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         
-    def executeClip():
+    def executeClip( self, caller, event ):
         planes = vtk.vtkPlanes()
         self.clipper.GetPlanes(planes)
         self.volumeMapper.SetClippingPlanes(planes)
-        self.render()
+        np = planes.GetNumberOfPlanes()
+        for ip in range( np ):
+            plane = planes.GetPlane( ip )
+            n = plane.GetNormal()
+            o = plane.GetOrigin()
+            print "Plane[%d]: o=%s, n=%s" % ( ip, str(o), str(n) )
+
 
     def rebuildVolume( self ):
         self.volume = vtk.vtkVolume()
@@ -478,9 +490,12 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #        self.setActiveScalars(  )  
         
     def EventWatcher( self, caller, event ): 
-#        print "Event %s on class %s "  % ( event, caller.__class__.__name__ ) 
+        print "Event %s on class %s "  % ( event, caller.__class__.__name__ ) 
 #        print "  --- Volume Input Extent: %s " % str( self.input().GetWholeExtent() )
         pass          
+
+#    def onAnyEvent(self, caller, event ):
+#        print "Event %s on class %s "  % ( event, caller.__class__.__name__ ) 
                                                                                                
     def onKeyPress( self, caller, event ):
         key = caller.GetKeyCode() 
