@@ -387,7 +387,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         varDataSpecs = self.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale, self.outputType, ds )
                         if (exampleVarDataSpecs == None) and (varDataSpecs <> None): exampleVarDataSpecs = varDataSpecs
                         range_min = varData.min()
+                        if type( range_min ).__name__ == "MaskedConstant": range_min = 0.0
                         range_max = varData.max()
+                        if type( range_max ).__name__ == 'MaskedConstant': range_max = 0.0
                         print " Read volume data for variable %s, scalar range = [ %f, %f ]" % ( varName, range_min, range_max )
                         newDataArray = varData
                                                           
@@ -395,7 +397,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                             newDataArray = newDataArray.filled( 1.0e-15 * range_min )
                         else:
                             shift = -range_min
-                            scale = ( self._max_scalar_value ) / ( range_max - range_min )            
+                            scale = ( self._max_scalar_value ) / ( range_max - range_min ) if  ( range_max > range_min ) else 1.0        
                             rescaledDataArray = ( ( newDataArray + shift ) * scale )
                             newDataArray = rescaledDataArray.astype(scalar_dtype) 
                             newDataArray = newDataArray.filled( 0 )
