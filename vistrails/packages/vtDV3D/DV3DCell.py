@@ -490,7 +490,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def execute(self, **args ):
         if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
         PersistentVisualizationModule.execute(self, **args)
-        pipeline = self.getCurrentPipeline()
+#        pipeline = self.getCurrentPipeline()
         self.recordCameraPosition()
 #        self.updateProject()
         
@@ -596,7 +596,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
  
     def toggleStereo(self):
         iren = self.renWin.GetInteractor()
-        keycode = QString('3').unicode().toLatin1()
+        keycode = QString('3').toLatin1()
         iren.SetKeyEventInformation( 0, 0, keycode, 0, "3" )     
         iren.InvokeEvent( vtk.vtkCommand.KeyPressEvent )
 

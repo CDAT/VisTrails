@@ -446,6 +446,7 @@ class PersistentModule( QObject ):
     def __init__( self, mid, **args ):
         QObject.__init__(self)
         self.pipelineBuilt = False
+        self.update_proj_controller = True
         self.newLayerConfiguration = False
         self.activeLayer = None
         self.newDataset = False
@@ -479,7 +480,7 @@ class PersistentModule( QObject ):
         if self.createColormap:
             self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Colormap', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
 #        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
-        self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue, cellsOnly=True )
+        self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue, persist=False, cellsOnly=True )
         
 #        print "**********************************************************************"
 #        print "Create Module [%d] : %s (%x)" % ( self.moduleID, self.__class__.__name__, id(self) )
@@ -494,7 +495,7 @@ class PersistentModule( QObject ):
 #        return 0
 
     def __del__(self):
-        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
+#        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
         sys.stdout.flush()
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
@@ -680,7 +681,7 @@ class PersistentModule( QObject ):
         return str( getClassName( self ) )
         
     def dvCompute( self, **args ):
-        print "  ***** Updating %s Module, id = %d ***** " % ( self.__class__.__name__, self.moduleID )
+#        print "  ***** Updating %s Module, id = %d ***** " % ( self.__class__.__name__, self.moduleID )
         self.initializeInputs( **args )     
         self.updateHyperwall()
         if self.input() or self.inputModuleList() or not self.requiresPrimaryInput:
@@ -1277,10 +1278,11 @@ class PersistentModule( QObject ):
             ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
             proj_controller = api.get_current_project_controller()
             controller =  proj_controller.vt_controller 
-            pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
-            if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
-                proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
-            else: pcoords = None 
+            if self.update_proj_controller:
+                pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
+                if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
+                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+                else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
             controller.change_selected_version( current_version )
@@ -1306,10 +1308,11 @@ class PersistentModule( QObject ):
             proj_controller = api.get_current_project_controller()
             if ( sheetName <> proj_controller.current_sheetName ): return
             controller =  proj_controller.vt_controller 
-            pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
-            if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
-                proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
-            else: pcoords = None 
+            if self.update_proj_controller:
+                pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
+                if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
+                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+                else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
             print " Change parameters, current version = %d, current_parent_version = %d " % ( controller.current_version, current_version )
@@ -1349,17 +1352,14 @@ class PersistentModule( QObject ):
             for config_fn in config_list:
                 config_fn.persisted = True
                 
-            if proj_controller:
+            if self.update_proj_controller and proj_controller:
                 proj_controller.cell_was_changed(action)
                 if pcoords:  proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
-            print " Perform save action: current version = %d, current_parent_version = %d " % ( controller.current_version, cell.current_parent_version  )
             sys.stdout.flush()
                 
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
             traceback.print_exc()
-
-
                
     def persistParameterList( self, parmRecList, **args ):
         if parmRecList and not self.isClient: 
@@ -2103,6 +2103,11 @@ class PersistentVisualizationModule( PersistentModule ):
                     if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                
                 HyperwallManager.getInstance().setInteractionState( state, False )                        
         return rcf
+
+    def invokeKeyEvent( self, keysym ):
+        ascii_key = QString(keysym).toLatin1()[0]
+        self.iren.SetKeyEventInformation( 0, 0, ascii_key, 0, keysym )
+        self.iren.KeyPressEvent()
                    
     def endInteraction( self, **args ):
         PersistentModule.endInteraction( self, **args  )
