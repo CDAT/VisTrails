@@ -146,6 +146,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.updatingOTF = False
         self.configTime = None
         self.clipping_enabled = False
+        self.cropRegion = None
+        self.cropZextent = None
         self.clipper = None
         self.volRenderConfig = [ 'Default', 'False' ]
         self.transFunctGraphVisible = False
@@ -159,6 +161,24 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
         self.addUVCDATConfigGuiFunction( 'renderType', VolumeRenderCfgDialog, 'v', label='Choose Volume Renderer', setValue=self.setVolRenderCfg, getValue=self.getVolRenderCfg, layerDependent=True )
 
+#    def processZScaleChange( self, new_spacing ):
+#        if self.cropRegion:
+#            vbounds = self.getVolumeBounds( spacing=new_spacing )
+#            for ib in [4,5]: self.cropRegion[ib] = vbounds[ib]
+#            if self.volumeMapper.GetCropping():
+#                self.volumeMapper.SetCroppingRegionPlanes( self.cropRegion  ) 
+#                print "Handle Size = %f" % self.clipper.GetHandleSize( )    
+
+    def processScaleChange( self, old_spacing, new_spacing ):
+        if self.cropRegion:
+            if self.clipping_enabled: self.toggleClipping()
+            extent = self.cropZextent if self.cropZextent else self.input().GetExtent()[4:6] 
+            origin = self.input().GetOrigin() 
+            for ib in [4,5]: 
+                self.cropRegion[ib] = ( origin[ib/2] + new_spacing[ib/2]*extent[ib-4] ) 
+            if self.volumeMapper.GetCropping():
+                self.volumeMapper.SetCroppingRegionPlanes( self.cropRegion  ) 
+         
     def activateEvent( self, caller, event ):
         PersistentVisualizationModule.activateEvent( self, caller, event )
         if self.clipper:
@@ -170,9 +190,16 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             
     def toggleClipping(self):
         self.clipping_enabled = not self.clipping_enabled 
+        self.volumeMapper.CroppingOn()
         self.clipper.SetEnabled( self.clipping_enabled )
-        if self.clipping_enabled: 
+        if self.clipping_enabled:
+            if self.cropRegion == None: 
+                self.cropRegion = self.getVolumeBounds() 
+            self.clipper.PlaceWidget( self.cropRegion )
+            self.clipper.SetHandleSize( 0.005 )
             self.clipper.On()
+            self.executeClip()
+            sys.stdout.flush()  
         else: 
             self.clipper.Off()
     
@@ -308,12 +335,6 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #        print " Volume position: %s " % str( self.volume.GetPosition() )
 #        print "Volume Render Event: scale = %s, bounds = %s, origin = %s, dims = %s " % ( str2f( scale ), str2f( bounds ), str2f( origin ), str( dims )  )
 
-    def getVolumeBounds(self):  
-        extent = self.input().GetExtent() 
-        spacing = self.input().GetSpacing()
-        origin = self.input().GetOrigin()
-        bounds = [ ( origin[i/2] + spacing[i/2]*extent[i] ) for i in range(6) ]
-        return bounds
                               
     def buildPipeline(self):
         """ execute() -> None
@@ -362,9 +383,12 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #        self.volumeMapperTexture2D = vtk.vtkVolumeTextureMapper2D()
         self.volumeMapper = vtk.vtkSmartVolumeMapper() 
         self.volumeMapper.SetBlendModeToComposite() 
-        
+        self.volumeMapper.CroppingOff()
+       
         self.clipper = vtk.vtkBoxWidget()
         self.clipper.RotationEnabledOff()
+        self.clipper.SetPlaceFactor( 1.0 )    
+
         
 #        self.volumeMapper.SetScalarModeToUsePointFieldData()
 #        self.inputModule.inputToAlgorithm( self.volumeMapper )
@@ -378,7 +402,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.setVolRenderCfg( None, False )
 
         self.volume.SetProperty(self.volumeProperty)
-        self.clipper.AddObserver( 'AnyEvent', self.EventWatcher )
+#        self.clipper.AddObserver( 'AnyEvent', self.EventWatcher )
         self.clipper.AddObserver( 'InteractionEvent', self.executeClip )
                
 #        self.input().AddObserver( 'AnyEvent', self.EventWatcher )
@@ -388,17 +412,20 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.renderer.AddVolume( self.volume )
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         
-    def executeClip( self, caller, event ):
-        planes = vtk.vtkPlanes()
+    def executeClip( self, caller=None, event=None ):
+        planes = vtk.vtkPlanes(); np = 6
         self.clipper.GetPlanes(planes)
-        self.volumeMapper.SetClippingPlanes(planes)
-        np = planes.GetNumberOfPlanes()
+        spacing = self.input().GetSpacing() 
+        origin = self.input().GetOrigin()        
+        if not self.cropRegion: self.cropRegion = [0.0]*np
         for ip in range( np ):
             plane = planes.GetPlane( ip )
-            n = plane.GetNormal()
             o = plane.GetOrigin()
-            print "Plane[%d]: o=%s, n=%s" % ( ip, str(o), str(n) )
-
+            self.cropRegion[ip] = o[ ip/2 ]
+        self.cropZextent = [ int( ( self.cropRegion[ip] - origin[ip/2] ) / spacing[ip/2] ) for ip in [4,5] ]
+        self.volumeMapper.SetCroppingRegionPlanes( self.cropRegion  ) 
+        self.render() 
+        sys.stdout.flush()  
 
     def rebuildVolume( self ):
         self.volume = vtk.vtkVolume()
@@ -424,8 +451,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
     def updateModule( self, **args  ):
         if self.inputModule():
             self.inputModule().inputToAlgorithm( self.volume.GetMapper()  )
-#            self.clipper.SetInputData( self.inputModule() )
-            self.clipper.PlaceWidget( self.getVolumeBounds() )
+#            print "Clip Region: %s " % str( clipRegion )
             self.set3DOutput()
 
 #            center = self.volume.GetCenter() 
