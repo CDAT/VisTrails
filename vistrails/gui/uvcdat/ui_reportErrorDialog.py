@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'gui/uvcdat/reportErrorDialog.ui'
+# Form implementation generated from reading ui file 'reportErrorDialog.ui'
 #
-# Created: Mon Dec  3 13:58:04 2012
-#      by: PyQt4 UI code generator 4.9.4
+# Created: Thu Apr 18 14:48:11 2013
+#      by: PyQt4 UI code generator 4.10
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -12,12 +12,21 @@ from PyQt4 import QtCore, QtGui
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
-    _fromUtf8 = lambda s: s
+    def _fromUtf8(s):
+        return s
+
+try:
+    _encoding = QtGui.QApplication.UnicodeUTF8
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig, _encoding)
+except AttributeError:
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig)
 
 class Ui_ReportErrorDialog(object):
     def setupUi(self, ReportErrorDialog):
         ReportErrorDialog.setObjectName(_fromUtf8("ReportErrorDialog"))
-        ReportErrorDialog.resize(526, 459)
+        ReportErrorDialog.resize(564, 459)
         font = QtGui.QFont()
         font.setKerning(False)
         ReportErrorDialog.setFont(font)
@@ -42,6 +51,8 @@ class Ui_ReportErrorDialog(object):
         sizePolicy.setHeightForWidth(self.userComments.sizePolicy().hasHeightForWidth())
         self.userComments.setSizePolicy(sizePolicy)
         self.userComments.setMinimumSize(QtCore.QSize(0, 30))
+        self.userComments.setAutoFillBackground(False)
+        self.userComments.setInputMethodHints(QtCore.Qt.ImhNone)
         self.userComments.setObjectName(_fromUtf8("userComments"))
         self.gridLayout.addWidget(self.userComments, 5, 0, 1, 1)
         self.buttonBox = QtGui.QDialogButtonBox(ReportErrorDialog)
@@ -85,9 +96,9 @@ class Ui_ReportErrorDialog(object):
         QtCore.QMetaObject.connectSlotsByName(ReportErrorDialog)
 
     def retranslateUi(self, ReportErrorDialog):
-        ReportErrorDialog.setWindowTitle(QtGui.QApplication.translate("ReportErrorDialog", "Report Error", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("ReportErrorDialog", "UV-CDAT has encountered an error and needs to close.", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_2.setText(QtGui.QApplication.translate("ReportErrorDialog", "Additional comments about the actions that lead up to this error:", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_4.setText(QtGui.QApplication.translate("ReportErrorDialog", "Would you like to send anonymous information about this error?", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_3.setText(QtGui.QApplication.translate("ReportErrorDialog", "We\'re sorry.", None, QtGui.QApplication.UnicodeUTF8))
+        ReportErrorDialog.setWindowTitle(_translate("ReportErrorDialog", "Report Error", None))
+        self.label.setText(_translate("ReportErrorDialog", "UV-CDAT has encountered an unexpected error.", None))
+        self.label_2.setText(_translate("ReportErrorDialog", "Please enter additional comments about the actions that lead up to this error:", None))
+        self.label_4.setText(_translate("ReportErrorDialog", "Please send anonymous information about this error.", None))
+        self.label_3.setText(_translate("ReportErrorDialog", "We\'re sorry.", None))
 

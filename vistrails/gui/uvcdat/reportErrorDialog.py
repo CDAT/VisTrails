@@ -17,8 +17,8 @@ from ui_reportErrorDialog import Ui_ReportErrorDialog
 def report_exception(exctype, value, tb):
     uninstall_exception_hook()
     app = gui.application.get_vistrails_application()
-    if app:
-        app.uvcdatWindow.hide()
+#    if app:
+#        app.uvcdatWindow.hide()
     s = ''.join(traceback.format_exception(exctype, value, tb))
     dialog = ReportErrorDialog(None)
     try:
@@ -28,10 +28,10 @@ def report_exception(exctype, value, tb):
     dialog.setDescription("%s: %s" % (eType, str(value)))
     dialog.setErrorMessage(s)
     dialog.exec_()
-    if app:
-        app.finishSession()
-    else:
-        sys.exit(254)
+#    if app:
+#        app.finishSession()
+#    else:
+#        sys.exit(254)
     
 def install_exception_hook():
     sys.excepthook = report_exception
