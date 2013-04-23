@@ -951,7 +951,7 @@ class PersistentModule( QObject ):
          
            
     def addConfigurableMethod( self, name, method, key, **args ):
-        self.configurableFunctions[name] = ConfigurableFunction( name, None, key, hasState=False, open=method, **args )
+        self.configurableFunctions[name] = ConfigurableFunction( name, args.get('signature',None), key, hasState=False, open=method, **args )
 
     def addConfigurableFunction(self, name, function_args, key, **args):
         self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, **args )

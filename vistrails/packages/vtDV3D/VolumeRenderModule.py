@@ -157,7 +157,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'functionScale', 'T', label='VR Transfer Function Scale', units='data', setLevel=self.generateOTF, getLevel=self.getAbsRangeBounds, layerDependent=True, adjustRangeInput=0, initRefinement=[ self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
         self.addConfigurableLevelingFunction( 'opacityScale',  'o', label='VR Transfer Function Opacity', setLevel=self.adjustOpacity, layerDependent=True  )
         self.addConfigurableMethod( 'showTransFunctGraph', self.showTransFunctGraph, 'g', label='VR Transfer Function Graph' )
-        self.addConfigurableMethod( 'toggleClipping', self.toggleClipping, 'X', label='Toggle Clipping' )
+        self.addConfigurableMethod( 'cropRegion', self.toggleClipping, 'X', label='Cropping', signature=[ ( Float, 'xmin'), ( Float, 'xmax'), ( Float, 'ymin'), ( Float, 'ymax'), ( Float, 'zmin'), ( Float, 'zmax') ] )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
         self.addUVCDATConfigGuiFunction( 'renderType', VolumeRenderCfgDialog, 'v', label='Choose Volume Renderer', setValue=self.setVolRenderCfg, getValue=self.getVolRenderCfg, layerDependent=True )
 
@@ -193,8 +193,9 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.volumeMapper.CroppingOn()
         self.clipper.SetEnabled( self.clipping_enabled )
         if self.clipping_enabled:
-            if self.cropRegion == None: 
-                self.cropRegion = self.getVolumeBounds() 
+            if self.cropRegion == None:
+                cr = self.wmod.forceGetInputFromPort( "cropRegion", None  ) 
+                self.cropRegion = list(cr) if cr else self.getVolumeBounds()
             self.clipper.PlaceWidget( self.cropRegion )
             self.clipper.SetHandleSize( 0.005 )
             self.clipper.On()
@@ -202,6 +203,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             sys.stdout.flush()  
         else: 
             self.clipper.Off()
+            self.persistCropRegion()
     
 #    def setZScale( self, zscale_data ):
 #        if self.volume <> None:
@@ -313,9 +315,15 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         range_values[2] = self.transferFunctionConfig.getTransferFunctionType()
         parmList.append( ('functionScale', range_values ) )
         cfs.append( configFunct )
-        
+               
         self.persistParameterList( parmList )
 #        for configFunct in cfs: configFunct.initLeveling()
+
+    def persistCropRegion( self ):
+        if self.cropRegion:
+            parmList = []
+            parmList.append( ( 'cropRegion', self.cropRegion ) ) 
+            self.persistParameterList( parmList )
         
     def clearTransferFunctionConfigDialog(self):
         self.persistTransferFunctionConfig()
