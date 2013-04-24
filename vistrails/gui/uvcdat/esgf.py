@@ -323,7 +323,7 @@ class QEsgfBrowser(QtGui.QFrame):
             #(':/icons/resources/icons/db_add_256.ico', 'Add Gateway',self.userAddsGateway,True),
             (':/icons/resources/icons/binary-tree-icon.png', 'Edit Mapping',self.editMapping,True),
             (':/icons/resources/icons/floppy_disk_blue.ico', 'Save cache',self.userSaveCache,True),
-            (self.loginIcon, 'Get Credentials',self.clickedCredentials,True),
+            (':/icons/resources/icons/login.ico', 'Get Credentials',self.clickedCredentials,True),
             ]
         for info in actionInfo:
             if isinstance(info[0],str):
@@ -1562,7 +1562,7 @@ class QEsgfBrowser(QtGui.QFrame):
                     m.setText("Couldn't open URL: %s (error: %s).Check credentials"%(url[:-5],err))
                     m.exec_()
             elif service == "HTTPServer":
-                fnm = QtGui.QFileDialog.getSaveFileName(self,"NetCDF File",filter="NetCDF Files (*.nc *.cdg *.NC *.CDF *.nc4 *.NC4) ;; All Files (*.*)",options=QtGui.QFileDialog.DontConfirmOverwrite)
+                fnm = QtGui.QFileDialog.getSaveFileName(self,"NetCDF File",url,filter="NetCDF Files (*.nc *.cdg *.NC *.CDF *.nc4 *.NC4) ;; All Files (*.*)",options=QtGui.QFileDialog.DontConfirmOverwrite)
                 if len(str(fnm))==0:
                     return
                 pipe = self.httpDownloadFile(url,fnm)
