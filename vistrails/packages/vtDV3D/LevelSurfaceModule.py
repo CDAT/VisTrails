@@ -47,6 +47,11 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.surfacePicker = None
         self.levelSetActor = None
         self.cursorActor = None
+        self.clipping_enabled = False
+        self.cropRegion = None
+        self.cropZextent = None
+        self.clipper = None
+        self.clipPlanes = None
         self.currentButton = self.NoButtonDown
         self.visualizationInteractionEnabled = True
         self.removeConfigurableFunction( 'colormap' )
@@ -57,6 +62,81 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Texture Colormap Scale', units='data', setLevel=lambda data, **args:self.setColorScale(data,1,**args), getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRangeInput=1, isValid=self.hasTexture )
         self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Texture Colormap', setValue=lambda data:self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasTexture )
+        self.addConfigurableMethod( 'cropRegion', self.toggleClipping, 'X', label='Cropping', signature=[ ( Float, 'xmin'), ( Float, 'xmax'), ( Float, 'ymin'), ( Float, 'ymax'), ( Float, 'zmin'), ( Float, 'zmax') ] )
+
+    def resetCamera(self):
+        self.cropRegion = self.getVolumeBounds()
+        self.cropZextent = None
+        self.cropLevelSet( False ) 
+        self.render()
+
+    def processScaleChange( self, old_spacing, new_spacing ):
+        if self.cropRegion:
+            if self.clipping_enabled: self.toggleClipping()
+            extent = self.cropZextent if self.cropZextent else self.input().GetExtent()[4:6] 
+            origin = self.input().GetOrigin() 
+            for ib in [4,5]: 
+                self.cropRegion[ib] = ( origin[ib/2] + new_spacing[ib/2]*extent[ib-4] ) 
+            if self.volumeMapper.GetCropping():
+                self.cropLevelSet( False ) 
+         
+    def activateEvent( self, caller, event ):
+        PersistentVisualizationModule.activateEvent( self, caller, event )
+        if self.clipper and ( self.cropRegion == None ):
+            self.renwin = self.renderer.GetRenderWindow( )
+            if self.renwin <> None:
+                iren = self.renwin.GetInteractor() 
+                if ( iren <> None ): 
+                    self.clipper.SetInteractor( iren )
+                    cr = self.wmod.forceGetInputFromPort( "cropRegion", None  ) 
+                    self.cropRegion = list(cr) if cr else self.getVolumeBounds()
+                    self.clipper.PlaceWidget( self.cropRegion )
+                    if cr:
+                        self.cropLevelSet() 
+                   
+    def toggleClipping(self):
+        self.clipping_enabled = not self.clipping_enabled 
+        self.clipper.SetEnabled( self.clipping_enabled )
+        if self.clipping_enabled:
+            if self.cropRegion == None:
+                cr = self.wmod.forceGetInputFromPort( "cropRegion", None  ) 
+                self.cropRegion = list(cr) if cr else self.getVolumeBounds()
+            self.clipper.PlaceWidget( self.cropRegion )
+            self.clipper.SetHandleSize( 0.005 )
+            self.clipper.On()
+            self.executeClip()
+        else: 
+            self.clipper.Off()
+            self.persistCropRegion()
+
+    def executeClip( self, caller=None, event=None ):
+        self.clipPlanes = vtk.vtkPlanes(); np = 6
+        self.clipper.GetPlanes(self.clipPlanes)
+        if not self.cropRegion: self.cropRegion = [0.0]*np
+        for ip in range( np ):
+            plane = self.clipPlanes.GetPlane( ip )
+            o = plane.GetOrigin()
+            self.cropRegion[ip] = o[ ip/2 ]
+        self.cropLevelSet() 
+        
+    def cropLevelSet(self, setCropExtent=True ):
+        if setCropExtent:
+            spacing = self.input().GetSpacing() 
+            origin = self.input().GetOrigin()        
+            self.cropZextent = [ int( ( self.cropRegion[ip] - origin[ip/2] ) / spacing[ip/2] ) for ip in [4,5] ]
+        if self.clipPlanes:
+#            self.levelSetMapper.SetClippingPlanes( self.clipPlanes  ) 
+            self.levelSetMapper.RemoveAllClippingPlanes ()
+            for ip in range( 6 ):
+                plane = self.clipPlanes.GetPlane( ip )
+                self.levelSetMapper.AddClippingPlane( plane  ) 
+            self.render()
+
+    def persistCropRegion( self ):
+        if self.cropRegion:
+            parmList = []
+            parmList.append( ( 'cropRegion', self.cropRegion ) ) 
+            self.persistParameterList( parmList )
 
     def createDefaultProperties(self):                       
         if (  not  self.cursorProperty ):           
@@ -324,16 +404,16 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.inputModule().inputToAlgorithm( self.levelSetFilter ) 
 #        self.levelSetFilter.Modified()
         self.set3DOutput()
-        print "Update Level Surface Module with %d Level(s), range = [ %f, %f ], levels = %s" %  ( self.numberOfLevels, self.range[0], self.range[1], str(self.getLevelValues()) )  
-        probeOutput = self.probeFilter.GetOutput()
-        probeOutput.Update() 
-        pts = []
-        for ipt in range( 1000, 1200 ):
-            ptd = probeOutput.GetPoint( ipt ) 
-            pts.append( "(%.1f,%.1f,%.1f)" % ( ptd[0], ptd[1], ptd[2] ) ) 
-            if ipt % 10 == 0: pts.append( "\n" )
-        print "Sample Points:", ' '.join(pts)
-        sys.stdout.flush()
+#        print "Update Level Surface Module with %d Level(s), range = [ %f, %f ], levels = %s" %  ( self.numberOfLevels, self.range[0], self.range[1], str(self.getLevelValues()) )  
+#        probeOutput = self.probeFilter.GetOutput()
+#        probeOutput.Update() 
+#        pts = []
+#        for ipt in range( 1000, 1200 ):
+#            ptd = probeOutput.GetPoint( ipt ) 
+#            pts.append( "(%.1f,%.1f,%.1f)" % ( ptd[0], ptd[1], ptd[2] ) ) 
+#            if ipt % 10 == 0: pts.append( "\n" )
+#        print "Sample Points:", ' '.join(pts)
+#        sys.stdout.flush()
                            
     def buildPipeline(self):
         """ execute() -> None
@@ -406,6 +486,11 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.cursor.SetRadius(2.0)
         self.cursor.SetThetaResolution(8)
         self.cursor.SetPhiResolution(8)
+
+        self.clipper = vtk.vtkBoxWidget()
+        self.clipper.RotationEnabledOff()
+        self.clipper.SetPlaceFactor( 1.0 )    
+        self.clipper.AddObserver( 'InteractionEvent', self.executeClip )
         
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInput(self.cursor.GetOutput())
