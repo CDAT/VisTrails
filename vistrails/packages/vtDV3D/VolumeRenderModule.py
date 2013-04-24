@@ -154,9 +154,9 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.transferFunctionConfig = None
         self.setupTransferFunctionConfigDialog()
         self.addConfigurableLevelingFunction( 'colorScale',    'C', label='Colormap Scale', units='data', setLevel=self.generateCTF, getLevel=self.getSgnRangeBounds, layerDependent=True, adjustRangeInput=0 )
-        self.addConfigurableLevelingFunction( 'functionScale', 'T', label='VR Transfer Function Scale', units='data', setLevel=self.generateOTF, getLevel=self.getAbsRangeBounds, layerDependent=True, adjustRangeInput=0, initRefinement=[ self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
-        self.addConfigurableLevelingFunction( 'opacityScale',  'o', label='VR Transfer Function Opacity', setLevel=self.adjustOpacity, layerDependent=True  )
-        self.addConfigurableMethod( 'showTransFunctGraph', self.showTransFunctGraph, 'g', label='VR Transfer Function Graph' )
+        self.addConfigurableLevelingFunction( 'functionScale', 'T', label='Transfer Function Scale', units='data', setLevel=self.generateOTF, getLevel=self.getAbsRangeBounds, layerDependent=True, adjustRangeInput=0, initRefinement=[ self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
+        self.addConfigurableLevelingFunction( 'opacityScale',  'o', label='Transfer Function Opacity', setLevel=self.adjustOpacity, layerDependent=True  )
+        self.addConfigurableMethod( 'showTransFunctGraph', self.showTransFunctGraph, 'g', label='Transfer Function Graph' )
         self.addConfigurableMethod( 'cropRegion', self.toggleClipping, 'X', label='Cropping', signature=[ ( Float, 'xmin'), ( Float, 'xmax'), ( Float, 'ymin'), ( Float, 'ymax'), ( Float, 'zmin'), ( Float, 'zmax') ] )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
         self.addUVCDATConfigGuiFunction( 'renderType', VolumeRenderCfgDialog, 'v', label='Choose Volume Renderer', setValue=self.setVolRenderCfg, getValue=self.getVolRenderCfg, layerDependent=True )
@@ -391,7 +391,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.clipper = vtk.vtkBoxWidget()
         self.clipper.RotationEnabledOff()
         self.clipper.SetPlaceFactor( 1.0 )    
-
+        self.clipper.AddObserver( 'InteractionEvent', self.executeClip )
         
 #        self.volumeMapper.SetScalarModeToUsePointFieldData()
 #        self.inputModule.inputToAlgorithm( self.volumeMapper )
@@ -406,7 +406,6 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 
         self.volume.SetProperty(self.volumeProperty)
 #        self.clipper.AddObserver( 'AnyEvent', self.EventWatcher )
-        self.clipper.AddObserver( 'InteractionEvent', self.executeClip )
                
 #        self.input().AddObserver( 'AnyEvent', self.EventWatcher )
         
