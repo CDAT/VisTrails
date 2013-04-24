@@ -324,16 +324,16 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.inputModule().inputToAlgorithm( self.levelSetFilter ) 
 #        self.levelSetFilter.Modified()
         self.set3DOutput()
-        print "Update Level Surface Module with %d Level(s), range = [ %f, %f ], levels = %s" %  ( self.numberOfLevels, self.range[0], self.range[1], str(self.getLevelValues()) )  
-        probeOutput = self.probeFilter.GetOutput()
-        probeOutput.Update() 
-        pts = []
-        for ipt in range( 1000, 1200 ):
-            ptd = probeOutput.GetPoint( ipt ) 
-            pts.append( "(%.1f,%.1f,%.1f)" % ( ptd[0], ptd[1], ptd[2] ) ) 
-            if ipt % 10 == 0: pts.append( "\n" )
-        print "Sample Points:", ' '.join(pts)
-        sys.stdout.flush()
+#        print "Update Level Surface Module with %d Level(s), range = [ %f, %f ], levels = %s" %  ( self.numberOfLevels, self.range[0], self.range[1], str(self.getLevelValues()) )  
+#        probeOutput = self.probeFilter.GetOutput()
+#        probeOutput.Update() 
+#        pts = []
+#        for ipt in range( 1000, 1200 ):
+#            ptd = probeOutput.GetPoint( ipt ) 
+#            pts.append( "(%.1f,%.1f,%.1f)" % ( ptd[0], ptd[1], ptd[2] ) ) 
+#            if ipt % 10 == 0: pts.append( "\n" )
+#        print "Sample Points:", ' '.join(pts)
+#        sys.stdout.flush()
                            
     def buildPipeline(self):
         """ execute() -> None
