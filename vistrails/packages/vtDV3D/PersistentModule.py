@@ -507,6 +507,13 @@ class PersistentModule( QObject ):
         self.updateConfigurationObserver = None
         self.startConfigurationObserver = None
         self.finalizeConfigurationObserver = None
+
+    def getVolumeBounds( self, **args ):  
+        extent = args.get( "extent", self.input().GetExtent() )
+        spacing = args.get( "spacing", self.input().GetSpacing() )
+        origin = args.get( "origin", self.input().GetOrigin() )
+        bounds = [ ( origin[i/2] + spacing[i/2]*extent[i] ) for i in range(6) ]
+        return bounds
         
     def GetRenWinID(self):
         return -1
@@ -944,7 +951,7 @@ class PersistentModule( QObject ):
          
            
     def addConfigurableMethod( self, name, method, key, **args ):
-        self.configurableFunctions[name] = ConfigurableFunction( name, None, key, hasState=False, open=method, **args )
+        self.configurableFunctions[name] = ConfigurableFunction( name, args.get('signature',None), key, hasState=False, open=method, **args )
 
     def addConfigurableFunction(self, name, function_args, key, **args):
         self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, **args )
@@ -1498,7 +1505,6 @@ class TextBlinkThread( threading.Thread ):
             if textOn:
                 blinkCount += 1
                 if self.nblinks > 0 and blinkCount >= self.nblinks: return 
-
        
 class PersistentVisualizationModule( PersistentModule ):
 
@@ -1555,11 +1561,15 @@ class PersistentVisualizationModule( PersistentModule ):
 #                print " PVM >---------------> Change input zscale: %.4f -> %.4f" % ( iz, sz )
                 ispec.input().SetSpacing( ix, iy, sz )  
                 ispec.input().Modified() 
+                self.processScaleChange( spacing, ( ix, iy, sz ) )
                 return True
         return False
                     
     def getScaleBounds(self):
         return [ 0.5, 100.0 ]
+    
+    def processScaleChange( self, old_spacing, new_spacing ):
+        pass
         
     def getTitle(self):
         return self.titleBuffer
