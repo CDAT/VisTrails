@@ -164,7 +164,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
     def resetCamera(self):
         self.cropRegion = self.getVolumeBounds()
         self.cropZextent = None
-        self.volumeMapper.SetCroppingRegionPlanes( self.cropRegion  ) 
+        self.cropVolume( False ) 
         self.render()
 
     def processScaleChange( self, old_spacing, new_spacing ):
@@ -175,7 +175,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             for ib in [4,5]: 
                 self.cropRegion[ib] = ( origin[ib/2] + new_spacing[ib/2]*extent[ib-4] ) 
             if self.volumeMapper.GetCropping():
-                self.volumeMapper.SetCroppingRegionPlanes( self.cropRegion  ) 
+                self.cropVolume( False ) 
          
     def activateEvent( self, caller, event ):
         PersistentVisualizationModule.activateEvent( self, caller, event )
@@ -189,7 +189,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
                     self.cropRegion = list(cr) if cr else self.getVolumeBounds()
                     self.clipper.PlaceWidget( self.cropRegion )
                     if cr:
-                        self.volumeMapper.SetCroppingRegionPlanes( self.cropRegion  ) 
+                        self.cropVolume() 
                         self.volumeMapper.CroppingOn()
                    
     def toggleClipping(self):
@@ -204,7 +204,6 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             self.clipper.SetHandleSize( 0.005 )
             self.clipper.On()
             self.executeClip()
-            sys.stdout.flush()  
         else: 
             self.clipper.Off()
             self.persistCropRegion()
@@ -419,17 +418,20 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
     def executeClip( self, caller=None, event=None ):
         planes = vtk.vtkPlanes(); np = 6
         self.clipper.GetPlanes(planes)
-        spacing = self.input().GetSpacing() 
-        origin = self.input().GetOrigin()        
         if not self.cropRegion: self.cropRegion = [0.0]*np
         for ip in range( np ):
             plane = planes.GetPlane( ip )
             o = plane.GetOrigin()
             self.cropRegion[ip] = o[ ip/2 ]
-        self.cropZextent = [ int( ( self.cropRegion[ip] - origin[ip/2] ) / spacing[ip/2] ) for ip in [4,5] ]
+        self.cropVolume() 
+        
+    def cropVolume(self, setCropExtent=True ):
+        if setCropExtent:
+            spacing = self.input().GetSpacing() 
+            origin = self.input().GetOrigin()        
+            self.cropZextent = [ int( ( self.cropRegion[ip] - origin[ip/2] ) / spacing[ip/2] ) for ip in [4,5] ]
         self.volumeMapper.SetCroppingRegionPlanes( self.cropRegion  ) 
-        self.render() 
-        sys.stdout.flush()  
+        self.render()
 
     def rebuildVolume( self ):
         self.volume = vtk.vtkVolume()
