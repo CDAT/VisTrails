@@ -8,6 +8,7 @@ from vtUtilities import displayMessage
 iRODS_enabled = True
 try:    from irods import *
 except: iRODS_enabled = False
+iRods_visible = True
 #        split_url = urlsplit(catalog_url) urlunsplit(split_url)
 
 #class HTMLState:
@@ -37,15 +38,19 @@ class ServerType:
     DODS = QtGui.QTreeWidgetItem.UserType + 2
     HYDRAX = QtGui.QTreeWidgetItem.UserType + 3
     IRODS = QtGui.QTreeWidgetItem.UserType + 4
+    REST = QtGui.QTreeWidgetItem.UserType + 5
 
     @classmethod    
     def getType( cls, address ):
-        tokens = address.split('/')
-        for token in tokens:
-            if token.upper() == 'THREDDS': return cls.THREDDS
-            if token.lower() == 'dods': return cls.DODS
-            if token.lower() == 'opendap': return cls.HYDRAX
-        return QtGui.QTreeWidgetItem.UserType
+        if address.count(';') >= 3:
+           return cls.IRODS
+        else: 
+            tokens = address.split('/')
+            for token in tokens:
+                if token.upper() == 'THREDDS': return cls.THREDDS
+                if token.lower() == 'dods': return cls.DODS
+                if token.lower() == 'opendap': return cls.HYDRAX 
+            return QtGui.QTreeWidgetItem.UserType
 
 class NewServerDialog(QtGui.QDialog):
     def __init__( self, parent ):
@@ -67,28 +72,28 @@ class NewServerDialog(QtGui.QDialog):
         opendapTab.setLayout( opendapTabLayout )        
         self.serverTypeTabbedWidget.addTab( opendapTab, "OpenDAP" ) 
 
-        if iRODS_enabled:
-            myEnv, status = getRodsEnv()
+        if iRods_visible:
+            myEnv, status = getRodsEnv() if iRODS_enabled else None, None
             iRODSTab = QtGui.QWidget()  
             iRODSTabLayout = QtGui.QGridLayout()        
             rodsHostLabel = QtGui.QLabel("iRods Host:", iRODSTab)
             iRODSTabLayout.addWidget( rodsHostLabel, 0, 0 )
-            self.RodsHost = QtGui.QLineEdit( myEnv.getRodsHost(), iRODSTab )
+            self.RodsHost = QtGui.QLineEdit( myEnv.getRodsHost() if myEnv else "", iRODSTab )
             iRODSTabLayout.addWidget( self.RodsHost, 0, 1 )
             
             rodsPortLabel = QtGui.QLabel("iRods Port:", iRODSTab)
             iRODSTabLayout.addWidget( rodsPortLabel, 1, 0 )
-            self.RodsPort = QtGui.QLineEdit( myEnv.getRodsPort(), iRODSTab )
+            self.RodsPort = QtGui.QLineEdit( myEnv.getRodsPort() if myEnv else "", iRODSTab )
             iRODSTabLayout.addWidget( self.RodsPort, 1, 1 )
 
             rodsUserNameLabel = QtGui.QLabel("iRods User Name:", iRODSTab)
             iRODSTabLayout.addWidget( rodsUserNameLabel, 2, 0 )
-            self.RodsUserName = QtGui.QLineEdit( myEnv.getRodsUserName(), iRODSTab )
+            self.RodsUserName = QtGui.QLineEdit( myEnv.getRodsUserName() if myEnv else "", iRODSTab )
             iRODSTabLayout.addWidget( self.RodsUserName, 2, 1 )
 
-            rodsZoneLabel = QtGui.QLabel("iRods User Name:", iRODSTab)
+            rodsZoneLabel = QtGui.QLabel("iRods Zone:", iRODSTab)
             iRODSTabLayout.addWidget( rodsZoneLabel, 3, 0 )
-            self.RodsZone = QtGui.QLineEdit( myEnv.getRodsZone(),  iRODSTab )
+            self.RodsZone = QtGui.QLineEdit( myEnv.getRodsZone() if myEnv else "",  iRODSTab )
             iRODSTabLayout.addWidget( self.RodsZone, 3, 1 )            
                    
             iRODSTab.setLayout( iRODSTabLayout )        
@@ -113,6 +118,8 @@ class NewServerDialog(QtGui.QDialog):
     def okClicked(self):
         if self.serverTypeTabbedWidget.currentIndex() == 0:
             self.address = str( self.OpenDAPServer.text() )
+        elif self.serverTypeTabbedWidget.currentIndex() == 1:
+            self.address = ';'.join( [ str( self.RodsHost.text() ), str( self.RodsPort.text() ), str( self.RodsUserName.text() ), str( self.RodsZone.text() ) ] )
 #            if url_exists( self.address ): self.close()
 #            else: displayMessage( "This does not appear to be a valid server address.")
 
@@ -158,6 +165,8 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
         if self.type() == ServerType.THREDDS: return "THREDDS"
         if self.type() == ServerType.DODS: return "DODS"
         if self.type() == ServerType.HYDRAX: return "HYDRAX"
+        if self.type() == ServerType.IRODS: return "IRODS"
+        if self.type() == ServerType.REST: return "REST"
         return "Undefined"
                     
     def retrieveContent(self): 
@@ -166,11 +175,13 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
                 if     self.type() == ServerType.THREDDS:   self.parser = ThreddsDirectoryParser( self ) 
                 elif   self.type() == ServerType.DODS:      self.parser = DodsDirectoryParser( self ) 
                 elif   self.type() == ServerType.HYDRAX:    self.parser = HydraxDirectoryParser( self ) 
+                elif   self.type() == ServerType.IRODS:     self.parser = IRODSDirectoryParser( self ) 
                 else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )
             else:
                 if     self.type() == ServerType.THREDDS:   self.parser = ThreddsDataElementParser( self.address ) 
                 elif   self.type() == ServerType.DODS:      self.parser = DodsDataElementParser( self.address ) 
-                elif   self.type() == ServerType.HYDRAX:      self.parser = HydraxDataElementParser( self.address ) 
+                elif   self.type() == ServerType.HYDRAX:    self.parser = HydraxDataElementParser( self.address ) 
+                elif   self.type() == ServerType.IRODS:     self.parser = IRODSDataElementParser( self.address ) 
                 else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )      
             if self.parser:
                 self.parser.execute() 
@@ -179,6 +190,19 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
        
     def __repr__(self): 
         return " %s Node: '%s' <%s>" % ( self.getNodeType(), str(self.text(0)), self.address )
+
+class IRODSDirectoryParser:
+
+    def __init__( self, base_node, **args ): 
+        self.conn = None
+        self.collection = None
+        self.root_node = base_node
+        
+    def execute(self):
+        node_tokens = self.root_node.address.split(';')
+        self.conn, errMsg = rcConnect( node_tokens[0], node_tokens[1], node_tokens[2], node_tokens[3] )
+        self.collection = irodsCollection( self.conn )
+
 
 class HTMLCatalogParser(HTMLParser):
    
