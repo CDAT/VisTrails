@@ -3,6 +3,11 @@ import urllib2, sys, os, copy, time, httplib
 from HTMLParser import HTMLParser
 from urlparse import *
 from PyQt4 import QtCore, QtGui, QtWebKit
+from vtUtilities import displayMessage
+
+iRODS_enabled = True
+try:    from irods import *
+except: iRODS_enabled = False
 #        split_url = urlsplit(catalog_url) urlunsplit(split_url)
 
 #class HTMLState:
@@ -13,46 +18,121 @@ from PyQt4 import QtCore, QtGui, QtWebKit
 #    TableRow = 4
 #    Anchor = 5
 
-def url_exists(site, path ):
+def url_exists2(site, path ):
     conn = httplib.HTTPConnection(site)
     conn.request('HEAD', path)
     response = conn.getresponse()
     conn.close()
     return response.status == 200
 
-def displayMessage( msg ):
-    msgBox = QtGui.QMessageBox()
-    msgBox.setText( msg )
-    msgBox.exec_()
+def url_exists( url ):
+    try: conn = urllib2.urlopen(url)
+    except: return False
+    code = conn.getcode() 
+    conn.close()
+    return code == 200
        
 class ServerType:
     THREDDS = QtGui.QTreeWidgetItem.UserType + 1
     DODS = QtGui.QTreeWidgetItem.UserType + 2
     HYDRAX = QtGui.QTreeWidgetItem.UserType + 3
+    IRODS = QtGui.QTreeWidgetItem.UserType + 4
 
     @classmethod    
-    def getType( cls, url ):
-        tokens = url.split('/')
+    def getType( cls, address ):
+        tokens = address.split('/')
         for token in tokens:
             if token.upper() == 'THREDDS': return cls.THREDDS
             if token.lower() == 'dods': return cls.DODS
             if token.lower() == 'opendap': return cls.HYDRAX
         return QtGui.QTreeWidgetItem.UserType
-    
+
+class NewServerDialog(QtGui.QDialog):
+    def __init__( self, parent ):
+        QtGui.QDialog.__init__(self, parent)        
+        self.setWindowTitle('Select New Server')
+        self.address = None
+        layout = QtGui.QVBoxLayout(self)
+        self.setLayout(layout)
+
+        self.serverTypeTabbedWidget = QtGui.QTabWidget()
+        layout.addWidget( self.serverTypeTabbedWidget )
+
+        opendapTab = QtGui.QWidget()  
+        opendapTabLayout = QtGui.QHBoxLayout()  
+        url_label = QtGui.QLabel( "Server URL:"  )
+        opendapTabLayout.addWidget( url_label ) 
+        self.OpenDAPServer = QtGui.QLineEdit( self )
+        opendapTabLayout.addWidget( self.OpenDAPServer )              
+        opendapTab.setLayout( opendapTabLayout )        
+        self.serverTypeTabbedWidget.addTab( opendapTab, "OpenDAP" ) 
+
+        if iRODS_enabled:
+            myEnv, status = getRodsEnv()
+            iRODSTab = QtGui.QWidget()  
+            iRODSTabLayout = QtGui.QGridLayout()        
+            rodsHostLabel = QtGui.QLabel("iRods Host:", iRODSTab)
+            iRODSTabLayout.addWidget( rodsHostLabel, 0, 0 )
+            self.RodsHost = QtGui.QLineEdit( myEnv.getRodsHost(), iRODSTab )
+            iRODSTabLayout.addWidget( self.RodsHost, 0, 1 )
+            
+            rodsPortLabel = QtGui.QLabel("iRods Port:", iRODSTab)
+            iRODSTabLayout.addWidget( rodsPortLabel, 1, 0 )
+            self.RodsPort = QtGui.QLineEdit( myEnv.getRodsPort(), iRODSTab )
+            iRODSTabLayout.addWidget( self.RodsPort, 1, 1 )
+
+            rodsUserNameLabel = QtGui.QLabel("iRods User Name:", iRODSTab)
+            iRODSTabLayout.addWidget( rodsUserNameLabel, 2, 0 )
+            self.RodsUserName = QtGui.QLineEdit( myEnv.getRodsUserName(), iRODSTab )
+            iRODSTabLayout.addWidget( self.RodsUserName, 2, 1 )
+
+            rodsZoneLabel = QtGui.QLabel("iRods User Name:", iRODSTab)
+            iRODSTabLayout.addWidget( rodsZoneLabel, 3, 0 )
+            self.RodsZone = QtGui.QLineEdit( myEnv.getRodsZone(),  iRODSTab )
+            iRODSTabLayout.addWidget( self.RodsZone, 3, 1 )            
+                   
+            iRODSTab.setLayout( iRODSTabLayout )        
+            self.serverTypeTabbedWidget.addTab( iRODSTab, "iRODS" )         
+        
+        # Add ok/cancel buttons
+        buttonLayout = QtGui.QHBoxLayout()
+        buttonLayout.setMargin(5)
+        self.okButton = QtGui.QPushButton('&OK', self)
+        self.okButton.setAutoDefault(False)
+        self.okButton.setFixedWidth(100)
+        buttonLayout.addWidget(self.okButton)
+        self.cancelButton = QtGui.QPushButton('&Cancel', self)
+        self.cancelButton.setAutoDefault(False)
+        self.cancelButton.setShortcut('Esc')
+        self.cancelButton.setFixedWidth(100)
+        buttonLayout.addWidget(self.cancelButton)
+        layout.addLayout(buttonLayout)
+        self.connect(self.okButton, QtCore.SIGNAL('clicked(bool)'), self.okClicked )
+        self.connect(self.cancelButton, QtCore.SIGNAL('clicked(bool)'), self.close )  
+        
+    def okClicked(self):
+        if self.serverTypeTabbedWidget.currentIndex() == 0:
+            self.address = str( self.OpenDAPServer.text() )
+#            if url_exists( self.address ): self.close()
+#            else: displayMessage( "This does not appear to be a valid server address.")
+
+    def getServerAddress(self):
+        return self.address
+      
 class CatalogNode( QtGui.QTreeWidgetItem ):
     Directory = 0
     DataObject = 1
     Style = None
     
-    def __init__( self, url, widget = None ):
+    def __init__( self, address, widget = None ):
          self.parser = None
-         self.server_type = ServerType.getType( url )
-         self.url = url
+         self.server_type = ServerType.getType( address )
+         self.address = address
          if widget: 
             QtGui.QTreeWidgetItem.__init__( self, widget, self.server_type  )
             CatalogNode.Style = widget.style() 
             self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_DriveNetIcon ) ) 
-            self.setText( 0, "%s Catalog (%s)" % ( self.getCatalogType(), self.url ) )
+            self.setText( 0, "%s Catalog (%s)" % ( self.getCatalogType(), self.address ) )
             self.node_type = self.Directory
          else: 
              QtGui.QTreeWidgetItem.__init__( self, self.server_type  ) 
@@ -88,17 +168,17 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
                 elif   self.type() == ServerType.HYDRAX:    self.parser = HydraxDirectoryParser( self ) 
                 else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )
             else:
-                if     self.type() == ServerType.THREDDS:   self.parser = ThreddsDataElementParser( self.url ) 
-                elif   self.type() == ServerType.DODS:      self.parser = DodsDataElementParser( self.url ) 
-                elif   self.type() == ServerType.HYDRAX:      self.parser = HydraxDataElementParser( self.url ) 
+                if     self.type() == ServerType.THREDDS:   self.parser = ThreddsDataElementParser( self.address ) 
+                elif   self.type() == ServerType.DODS:      self.parser = DodsDataElementParser( self.address ) 
+                elif   self.type() == ServerType.HYDRAX:      self.parser = HydraxDataElementParser( self.address ) 
                 else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )      
             if self.parser:
                 self.parser.execute() 
-                return ( self.parser.data_url, self.parser.metadata ) 
-        return ( None, None ) if ( self.node_type == self.Directory ) else ( self.parser.data_url, self.parser.metadata )
+                return ( self.parser.data_address, self.parser.metadata ) 
+        return ( None, None ) if ( self.node_type == self.Directory ) else ( self.parser.data_address, self.parser.metadata )
        
     def __repr__(self): 
-        return " %s Node: '%s' <%s>" % ( self.getNodeType(), str(self.text(0)), self.url )
+        return " %s Node: '%s' <%s>" % ( self.getNodeType(), str(self.text(0)), self.address )
 
 class HTMLCatalogParser(HTMLParser):
    
@@ -107,7 +187,7 @@ class HTMLCatalogParser(HTMLParser):
         self.IgnoredTags = [ 'br', 'hr', 'p' ]
         self.debug_mode = args.get( 'debug', False)
         self.state_stack = [ 'root' ]
-        self.data_url = None
+        self.data_address = None
         self.metadata = None
         
     def execute(self):
@@ -172,14 +252,14 @@ class ThreddsDirectoryParser(HTMLCatalogParser):
 
     def execute(self):
         try:
-            response = urllib2.urlopen( self.root_node.url )
+            response = urllib2.urlopen( self.root_node.address )
             self.feed( response.read() )
         except Exception, err:
             displayMessage( "Error connecting to server:\n%s"  % str(err) )
 
     def dump(self):
-        print "Retreiving response from: ", self.root_node.url
-        response = urllib2.urlopen( self.root_node.url )
+        print "Retreiving response from: ", self.root_node.address
+        response = urllib2.urlopen( self.root_node.address )
         self.debug_mode = True
         data = response.read()
         print data
@@ -191,8 +271,8 @@ class ThreddsDirectoryParser(HTMLCatalogParser):
         
     def process_start_tag( self, tag, attrs ):          
         if ( tag == 'a' ) and self.has_state( 'tr' ):
-            url = self.get_attribute( 'href', attrs )
-            self.child_node = CatalogNode( urljoin( self.root_node.url, url ) )
+            address = self.get_attribute( 'href', attrs )
+            self.child_node = CatalogNode( urljoin( self.root_node.address, address ) )
 
     def process_data( self,  data ): 
         if self.child_node and self.inCatalogEntry() and data:         
@@ -212,16 +292,16 @@ class DodsDirectoryParser(HTMLCatalogParser):
 
     def execute(self):
         try:
-            response = urllib2.urlopen( self.root_node.url )
+            response = urllib2.urlopen( self.root_node.address )
             self.feed( response.read() )
         except Exception, err:
             displayMessage( "Error connecting to server:\n%s"  % str(err) )
                     
     def process_start_tag( self, tag, attrs ):       
         if ( tag == 'a' ) :
-            url = self.get_attribute( 'href', attrs )
-            if url and self.current_data: 
-                child_node = CatalogNode( urljoin( self.root_node.url, url ) )
+            address = self.get_attribute( 'href', attrs )
+            if address and self.current_data: 
+                child_node = CatalogNode( urljoin( self.root_node.address, address ) )
                 child_node.setLabel( ' '.join( self.current_data ) )
                 self.root_node.addChild ( child_node )
 #                print "Adding Child:", str( child_node )
@@ -240,12 +320,12 @@ class HydraxDirectoryParser(HTMLCatalogParser):
     def __init__( self, base_node, **args ):
         HTMLCatalogParser.__init__( self, **args )    
         self.root_node = base_node
-        self.current_url = None
+        self.current_address = None
         self.excluded_links = [ 'ddx', 'dds', 'das', 'info', 'html', 'viewers', 'parent directory/', 'rdf', 'doc', 'thredds catalog', 'xml', 'nsf', 'nasa', 'noaa' ]
 
     def execute(self):
         try:
-            response = urllib2.urlopen( self.root_node.url )
+            response = urllib2.urlopen( self.root_node.address )
             self.feed( response.read() )
         except Exception, err:
             displayMessage( "Error connecting to server:\n%s"  % str(err) )
@@ -253,34 +333,34 @@ class HydraxDirectoryParser(HTMLCatalogParser):
     def process_start_tag( self, tag, attrs ): 
         if ( tag == 'a' ) and self.has_state( 'td' ) and not self.has_state( 'div' ):
 #            print " Anchor start tag: %s, state: %s "  % ( str( attrs ), str( self.state_stack ) )    
-            self.current_url = self.get_attribute( 'href', attrs )
+            self.current_address = self.get_attribute( 'href', attrs )
 
     def process_data( self,  data ):
         data = data.strip().replace( '\n', ' ' )
-        if self.current_url and data:
+        if self.current_address and data:
             if ( data.lower() not in self.excluded_links ): 
-                child_node = CatalogNode( urljoin( self.root_node.url, self.current_url ) )
+                child_node = CatalogNode( urljoin( self.root_node.address, self.current_address ) )
                 child_node.setLabel( data )
                 self.root_node.addChild( child_node )
-            self.current_url = None
+            self.current_address = None
 
 class ThreddsDataElementParser(HTMLCatalogParser):
     
-    def __init__( self, url, **args ):
+    def __init__( self, address, **args ):
         HTMLCatalogParser.__init__( self, **args ) 
-        self.base_url = url 
+        self.base_address = address 
         self.processHref = False  
 
     def execute(self):
-        response = urllib2.urlopen( self.base_url )
+        response = urllib2.urlopen( self.base_address )
         data = response.read()
         self.feed( data )
 
     def process_start_tag( self, tag, attrs ): 
         if self.processHref and (tag == 'a'):
-           url = self.get_attribute( 'href', attrs )
-           metadata_url = urljoin( self.base_url, url )
-           md_parser = ThreddsMetadataParser( metadata_url )
+           address = self.get_attribute( 'href', attrs )
+           metadata_address = urljoin( self.base_address, address )
+           md_parser = ThreddsMetadataParser( metadata_address )
            md_parser.execute()
            self.metadata = md_parser.getMetadata()
                                
@@ -289,21 +369,21 @@ class ThreddsDataElementParser(HTMLCatalogParser):
             self.processHref = True  
         elif self.processHref and self.has_state( 'li' ): 
             if self.has_state( 'a' ):
-                self.data_url =  urljoin( self.base_url, data )     
+                self.data_address =  urljoin( self.base_address, data )     
                 self.processHref = False
 
 class ThreddsMetadataParser(HTMLCatalogParser):
 
     
-    def __init__( self, url, **args ):
+    def __init__( self, address, **args ):
         HTMLCatalogParser.__init__( self, **args ) 
-        self.base_url = url
+        self.base_address = address
         self.metadata = [ "<html><head><title>Metadata</title></head><body><p><h1>Metadata</h1><p><hr><p>" ] 
         self.md_decl = False
         self.md_text = False
 
     def execute(self):
-        response = urllib2.urlopen( self.base_url )
+        response = urllib2.urlopen( self.base_address )
         data = response.read()
         self.metadata.append( '</body></html>')
         self.feed( data )
@@ -375,9 +455,9 @@ class HydraxMetadataParser(HTMLCatalogParser):
 
 class DodsDataElementParser(HTMLCatalogParser):
     
-    def __init__( self, url, **args ):
+    def __init__( self, address, **args ):
         HTMLCatalogParser.__init__( self, **args ) 
-        self.base_url = url 
+        self.base_address = address 
         self.data_element_address = None
         self.processHref = False 
         self.completeListing = args.get( 'complete', False ) 
@@ -386,7 +466,7 @@ class DodsDataElementParser(HTMLCatalogParser):
 #        print "Start Tag %s: %s" % ( tag, str(attrs) )
         
     def execute(self):
-        response = urllib2.urlopen( self.base_url )
+        response = urllib2.urlopen( self.base_address )
         self.metadata = response.read()
         self.feed( self.metadata )
                     
@@ -396,25 +476,25 @@ class DodsDataElementParser(HTMLCatalogParser):
             self.processHref = True  
         elif self.processHref and self.has_state( 'td' ): 
             if data.startswith("http:"):
-                self.data_url =  urljoin( self.base_url, data )     
+                self.data_address =  urljoin( self.base_address, data )     
                 self.processHref = False
 
 class HydraxDataElementParser(HTMLCatalogParser):
     
-    def __init__( self, url, **args ):
+    def __init__( self, address, **args ):
         HTMLCatalogParser.__init__( self, **args ) 
-        self.base_url = url 
+        self.base_address = address 
         self.processHref = False 
 
     def process_start_tag( self, tag, attrs ): 
         if self.processHref and tag == 'input':
-            url = self.get_attribute( 'value', attrs )
-            if url:     
-                self.data_url =  urljoin( self.base_url, url )     
+            address = self.get_attribute( 'value', attrs )
+            if address:     
+                self.data_address =  urljoin( self.base_address, address )     
                 self.processHref = False
         
     def execute(self):
-        link = urllib2.urlopen( self.base_url )
+        link = urllib2.urlopen( self.base_address )
         response = link.read()
         mdparser = HydraxMetadataParser( response )
         mdparser.execute()
@@ -459,12 +539,12 @@ class RemoteDataBrowser(QtGui.QFrame):
         button_list_layout = QtGui.QHBoxLayout()
         
         new_server_button = QtGui.QPushButton( "New Server" )  
-        new_server_button.setToolTip( "Add new OpenDAP server")  
+        new_server_button.setToolTip( "Add new server")  
         self.connect( new_server_button, QtCore.SIGNAL('clicked(bool)'), self.addNewServer )
         button_list_layout.addWidget( new_server_button )
              
         self.discard_server_button = QtGui.QPushButton( "Remove Server"  )   
-        self.discard_server_button.setToolTip( "Remove selected OpenDAP server")        
+        self.discard_server_button.setToolTip( "Remove selected server")        
         self.connect( self.discard_server_button, QtCore.SIGNAL('clicked(bool)'), self.removeSelectedServer )
         button_list_layout.addWidget( self.discard_server_button )
         self.discard_server_button.setEnabled ( False )
@@ -507,7 +587,7 @@ class RemoteDataBrowser(QtGui.QFrame):
         nservers = self.treeWidget.topLevelItemCount() 
         for si in range( nservers ):
             serverItem = self.treeWidget.topLevelItem( si )
-            server_file.write( serverItem.url + "\n" )
+            server_file.write( serverItem.address + "\n" )
         server_file.close()
 
     def initServerFile( self ):
@@ -517,11 +597,13 @@ class RemoteDataBrowser(QtGui.QFrame):
             for server in self.default_server_list:
                 server_file.write( server + "\n" )
             server_file.close()
-                                       
+                                             
     def addNewServer(self): 
-        url, ok = self.inputDialog.getText( self, 'Add OpenDap Server', 'Enter new server url:')     
-        if ok and url:
-            base_node = CatalogNode( str(url), self.treeWidget ) 
+        dlg = NewServerDialog( self )
+        dlg.exec_()
+        address = dlg.getServerAddress()     
+        if address:
+            base_node = CatalogNode( str(address), self.treeWidget ) 
             if self.autoRetrieveBaseCatalogs: base_node.retrieveContent() 
             self.updateServerList()
     
