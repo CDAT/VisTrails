@@ -164,7 +164,7 @@ class QAnimationView(QtGui.QWidget):
         self.connect(self.createButton,QtCore.SIGNAL("clicked()"),self.stop)
         #t=QThreadAnimationCreate(self,self.canvas,c)
         #t.start()
-        self.canvas.animate.create(thread_it=0, saveToFiles=False)
+        self.canvas.animate.create(thread_it=0)
         self.animationCreated(self.canvas, c)
         
     def animationCreated(self,canvas,cursor):
@@ -197,10 +197,9 @@ class QAnimationView(QtGui.QWidget):
         if self.animationFrame>=self.canvas.animate.number_of_frames():
             self.animationTimer.stop()
         else:
-            args = self.canvas.animate.animation_args[self.animationFrame]
+            fn = self.canvas.animate.animation_files[self.animationFrame]
+            self.canvas.animate.vcs_self.canvas.put_png_on_canvas(fn)
             self.canvas.clear()
-            for a in args:
-                self.canvas.plot(*a)
             self.animationFrame += 1
     def save(self):
         pass
