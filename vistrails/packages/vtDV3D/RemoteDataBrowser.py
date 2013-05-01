@@ -7,8 +7,9 @@ from vtUtilities import displayMessage
 
 iRODS_enabled = True
 try:    from irods import *
-except: iRODS_enabled = False
-iRods_visible = True
+except Exception, err: 
+    iRODS_enabled = False
+
 #        split_url = urlsplit(catalog_url) urlunsplit(split_url)
 
 #class HTMLState:
@@ -72,8 +73,9 @@ class NewServerDialog(QtGui.QDialog):
         opendapTab.setLayout( opendapTabLayout )        
         self.serverTypeTabbedWidget.addTab( opendapTab, "OpenDAP" ) 
 
-        if iRods_visible:
-            myEnv, status = getRodsEnv() if iRODS_enabled else None, None
+        if iRODS_enabled:
+            envTup = getRodsEnv() if iRODS_enabled else ( None, None )
+            myEnv = envTup[0]
             iRODSTab = QtGui.QWidget()  
             iRODSTabLayout = QtGui.QGridLayout()        
             rodsHostLabel = QtGui.QLabel("iRods Host:", iRODSTab)
@@ -83,7 +85,7 @@ class NewServerDialog(QtGui.QDialog):
             
             rodsPortLabel = QtGui.QLabel("iRods Port:", iRODSTab)
             iRODSTabLayout.addWidget( rodsPortLabel, 1, 0 )
-            self.RodsPort = QtGui.QLineEdit( myEnv.getRodsPort() if myEnv else "", iRODSTab )
+            self.RodsPort = QtGui.QLineEdit( str (myEnv.getRodsPort() ) if myEnv else "", iRODSTab )
             iRODSTabLayout.addWidget( self.RodsPort, 1, 1 )
 
             rodsUserNameLabel = QtGui.QLabel("iRods User Name:", iRODSTab)
@@ -113,13 +115,15 @@ class NewServerDialog(QtGui.QDialog):
         buttonLayout.addWidget(self.cancelButton)
         layout.addLayout(buttonLayout)
         self.connect(self.okButton, QtCore.SIGNAL('clicked(bool)'), self.okClicked )
-        self.connect(self.cancelButton, QtCore.SIGNAL('clicked(bool)'), self.close )  
+        self.connect(self.cancelButton, QtCore.SIGNAL('clicked(bool)'), self.close ) 
+        self.setMinimumWidth ( 500 ) 
         
     def okClicked(self):
         if self.serverTypeTabbedWidget.currentIndex() == 0:
             self.address = str( self.OpenDAPServer.text() )
         elif self.serverTypeTabbedWidget.currentIndex() == 1:
             self.address = ';'.join( [ str( self.RodsHost.text() ), str( self.RodsPort.text() ), str( self.RodsUserName.text() ), str( self.RodsZone.text() ) ] )
+        self.close()
 #            if url_exists( self.address ): self.close()
 #            else: displayMessage( "This does not appear to be a valid server address.")
 
@@ -131,7 +135,7 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
     DataObject = 1
     Style = None
     
-    def __init__( self, address, widget = None ):
+    def __init__( self, address, widget = None, **args ):
          self.parser = None
          self.server_type = ServerType.getType( address )
          self.address = address
@@ -139,8 +143,8 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
             QtGui.QTreeWidgetItem.__init__( self, widget, self.server_type  )
             CatalogNode.Style = widget.style() 
             self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_DriveNetIcon ) ) 
-            self.setText( 0, "%s Catalog (%s)" % ( self.getCatalogType(), self.address ) )
-            self.node_type = self.Directory
+            self.setText( 0, "%s Catalog (%s)" % ( self.getCatalogType(), self.getAddressLabel() ) )
+            self.node_type = args.get( 'type', None )
          else: 
              QtGui.QTreeWidgetItem.__init__( self, self.server_type  ) 
              
@@ -148,12 +152,11 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
         return ( self.parent() == None )
          
     def setLabel( self, text ):
-        if text.endswith( '/' ) or text.endswith( '/:' ):     
-            self.node_type = self.Directory
-            self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_DirIcon) )
-        else:                   
-            self.node_type = self.DataObject
-            self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_FileIcon) )
+        if self.node_type == None: 
+            hasDirTxt = ( text.endswith( '/' ) or text.endswith( '/:' ) )
+            self.node_type = self.Directory if hasDirTxt else self.DataObject                
+        if self.node_type == self.Directory:  self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_DirIcon) )
+        if self.node_type == self.DataObject: self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_FileIcon) )
         self.setText( 0, text.strip('/') )
         
     def getNodeType(self):
@@ -187,9 +190,16 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
                 self.parser.execute() 
                 return ( self.parser.data_address, self.parser.metadata ) 
         return ( None, None ) if ( self.node_type == self.Directory ) else ( self.parser.data_address, self.parser.metadata )
+    
+    def getAddressLabel(self):
+        if self.type() == ServerType.IRODS:
+            address_tokens = self.address.split(';')
+            return "%s:%s/%s" % ( address_tokens[0], address_tokens[1], address_tokens[3] )
+        else:
+            return self.address
        
     def __repr__(self): 
-        return " %s Node: '%s' <%s>" % ( self.getNodeType(), str(self.text(0)), self.address )
+        return " %s Node: '%s' <%s>" % ( self.getNodeType(), str(self.text(0)), self.getAddressLabel() )
 
 class IRODSDirectoryParser:
 
@@ -197,13 +207,30 @@ class IRODSDirectoryParser:
         self.conn = None
         self.collection = None
         self.root_node = base_node
+        self.data_address = ""
+        self.metadata = ""
         
     def execute(self):
         node_tokens = self.root_node.address.split(';')
-        self.conn, errMsg = rcConnect( node_tokens[0], node_tokens[1], node_tokens[2], node_tokens[3] )
+        self.conn, errMsg = rcConnect( node_tokens[0], int(node_tokens[1]), node_tokens[2], node_tokens[3] )
         self.collection = irodsCollection( self.conn )
+        subCollections = self.collection.getSubCollections()
+        for collection in subCollections:
+            pass
+        dataObjs = self.collection.getObjects()
+        for dataObj in dataObjs:
+            pass
+        print "Collection obj methods: ", dir(self.collection)
 
 
+class IRODSDataElementParser():
+    
+    def __init__( self, address, **args ):
+        self.base_address = address 
+        
+    def execute(self):
+        pass
+                    
 class HTMLCatalogParser(HTMLParser):
    
     def __init__( self, **args ):
@@ -601,7 +628,7 @@ class RemoteDataBrowser(QtGui.QFrame):
         while True:
             address = server_file.readline().strip()
             if not address: break
-            base_node = CatalogNode( str(address), self.treeWidget ) 
+            base_node = CatalogNode( str(address), self.treeWidget, type=CatalogNode.Directory ) 
             if self.autoRetrieveBaseCatalogs: base_node.retrieveContent() 
         server_file.close()               
 
@@ -627,7 +654,7 @@ class RemoteDataBrowser(QtGui.QFrame):
         dlg.exec_()
         address = dlg.getServerAddress()     
         if address:
-            base_node = CatalogNode( str(address), self.treeWidget ) 
+            base_node = CatalogNode( str(address), self.treeWidget, type=CatalogNode.Directory ) 
             if self.autoRetrieveBaseCatalogs: base_node.retrieveContent() 
             self.updateServerList()
     
