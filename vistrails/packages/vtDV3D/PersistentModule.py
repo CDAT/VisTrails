@@ -495,8 +495,9 @@ class PersistentModule( QObject ):
 #        return 0
 
     def __del__(self):
+        pass
 #        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
-        sys.stdout.flush()
+#        sys.stdout.flush()
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
 

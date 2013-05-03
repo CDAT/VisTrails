@@ -53,13 +53,39 @@ class ServerType:
                 if token.lower() == 'opendap': return cls.HYDRAX 
             return QtGui.QTreeWidgetItem.UserType
 
+    @classmethod    
+    def getTypeStr( cls, type ):
+        if type == cls.THREDDS: return "THREDDS"
+        if type == cls.DODS: return "DODS"
+        if type == cls.HYDRAX: return "HYDRAX"
+        if type == cls.IRODS: return "IRODS"
+        if type == cls.REST: return "REST"
+        return "Undefined"
+
+class ServerClass:
+    OPENDAP = 0
+    IRODS = 1
+    
+    @classmethod    
+    def getStr( cls, server_class ):
+        if server_class == cls.OPENDAP: return "OPENDAP"
+        if server_class == cls.IRODS: return "IRODS"
+
+    @classmethod    
+    def getIndex( cls, server_str ):
+        if server_str == "OPENDAP": return cls.OPENDAP
+        if server_str == "IRODS": return cls.IRODS
+
 class NewServerDialog(QtGui.QDialog):
+    UNDEF = -1
+    
     def __init__( self, parent ):
         QtGui.QDialog.__init__(self, parent)        
         self.setWindowTitle('Select New Server')
         self.address = None
         layout = QtGui.QVBoxLayout(self)
         self.setLayout(layout)
+        self.serverClass = NewServerDialog.UNDEF
 
         self.serverTypeTabbedWidget = QtGui.QTabWidget()
         layout.addWidget( self.serverTypeTabbedWidget )
@@ -71,7 +97,7 @@ class NewServerDialog(QtGui.QDialog):
         self.OpenDAPServer = QtGui.QLineEdit( self )
         opendapTabLayout.addWidget( self.OpenDAPServer )              
         opendapTab.setLayout( opendapTabLayout )        
-        self.serverTypeTabbedWidget.addTab( opendapTab, "OpenDAP" ) 
+        self.serverTypeTabbedWidget.addTab( opendapTab, ServerClass.getStr( ServerClass.OPENDAP ) ) 
 
         if iRODS_enabled:
             envTup = getRodsEnv() if iRODS_enabled else ( None, None )
@@ -99,7 +125,7 @@ class NewServerDialog(QtGui.QDialog):
             iRODSTabLayout.addWidget( self.RodsZone, 3, 1 )            
                    
             iRODSTab.setLayout( iRODSTabLayout )        
-            self.serverTypeTabbedWidget.addTab( iRODSTab, "iRODS" )         
+            NewServerDialog.IRODS = self.serverTypeTabbedWidget.addTab( iRODSTab, ServerClass.getStr( ServerClass.IRODS ) )         
         
         # Add ok/cancel buttons
         buttonLayout = QtGui.QHBoxLayout()
@@ -119,9 +145,11 @@ class NewServerDialog(QtGui.QDialog):
         self.setMinimumWidth ( 500 ) 
         
     def okClicked(self):
-        if self.serverTypeTabbedWidget.currentIndex() == 0:
+        tab_index = self.serverTypeTabbedWidget.currentIndex()
+        self.serverClass = ServerClass.getIndex( self.serverTypeTabbedWidget.tabText( tab_index ) )
+        if self.serverClass == ServerClass.OPENDAP:
             self.address = str( self.OpenDAPServer.text() )
-        elif self.serverTypeTabbedWidget.currentIndex() == 1:
+        elif self.serverTypeTabbedWidget.currentIndex() == ServerClass.IRODS:
             self.address = ';'.join( [ str( self.RodsHost.text() ), str( self.RodsPort.text() ), str( self.RodsUserName.text() ), str( self.RodsZone.text() ) ] )
         self.close()
 #            if url_exists( self.address ): self.close()
@@ -129,22 +157,23 @@ class NewServerDialog(QtGui.QDialog):
 
     def getServerAddress(self):
         return self.address
+    
+    def getServerClass(self):
+        return self.serverClass
       
 class CatalogNode( QtGui.QTreeWidgetItem ):
     Directory = 0
     DataObject = 1
     Style = None
     
-    def __init__( self, address, widget = None, **args ):
-         self.parser = None
-         self.server_type = ServerType.getType( address )
-         self.address = address
+    def __init__( self, **args ):
+         self.node_type = args.get( 'node_type', None )
+         widget = args.get( 'widget', None )
          if widget: 
             QtGui.QTreeWidgetItem.__init__( self, widget, self.server_type  )
             CatalogNode.Style = widget.style() 
             self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_DriveNetIcon ) ) 
-            self.setText( 0, "%s Catalog (%s)" % ( self.getCatalogType(), self.getAddressLabel() ) )
-            self.node_type = args.get( 'type', None )
+            self.setText( 0, "%s Catalog (%s)" % ( ServerType.getTypeStr( self.type() ), self.getAddressLabel() ) )
          else: 
              QtGui.QTreeWidgetItem.__init__( self, self.server_type  ) 
              
@@ -152,76 +181,125 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
         return ( self.parent() == None )
          
     def setLabel( self, text ):
-        if self.node_type == None: 
-            hasDirTxt = ( text.endswith( '/' ) or text.endswith( '/:' ) )
-            self.node_type = self.Directory if hasDirTxt else self.DataObject                
-        if self.node_type == self.Directory:  self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_DirIcon) )
-        if self.node_type == self.DataObject: self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_FileIcon) )
-        self.setText( 0, text.strip('/') )
-        
+        self.setNodeDisplay( text )               
+         
     def getNodeType(self):
         if self.node_type == self.Directory: return "Directory"
         if self.node_type == self.DataObject: return "DataObject"
         return "None"
 
+    def setNodeDisplay( self, text ):
+        if self.node_type == self.Directory:  self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_DirIcon) )
+        if self.node_type == self.DataObject: self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_FileIcon) )
+        self.setText( 0, text.strip('/') )
+
     def getCatalogType(self):
-        if self.type() == ServerType.THREDDS: return "THREDDS"
-        if self.type() == ServerType.DODS: return "DODS"
-        if self.type() == ServerType.HYDRAX: return "HYDRAX"
-        if self.type() == ServerType.IRODS: return "IRODS"
-        if self.type() == ServerType.REST: return "REST"
         return "Undefined"
                     
+    def retrieveContent(self): 
+        return ( None, None ) 
+    
+    def getAddressLabel(self):
+        return ""
+       
+    def __repr__(self): 
+        return " %s Node: '%s' <%s>" % ( self.getNodeType(), str(self.text(0)), self.getAddressLabel() )
+
+class OpenDAPCatalogNode( CatalogNode ):
+    server_class = None
+    
+    def __init__( self, **args ):
+        self.server_class=ServerClass.OPENDAP
+        self.parser = None
+        self.address = args.get( "server_address", None )
+        self.server_type = args.get( "server_type", ServerType.getType( self.address ) )
+        CatalogNode.__init__( self, **args )
+                                                  
     def retrieveContent(self): 
         if self.parser == None:
             if self.node_type == self.Directory: 
                 if     self.type() == ServerType.THREDDS:   self.parser = ThreddsDirectoryParser( self ) 
                 elif   self.type() == ServerType.DODS:      self.parser = DodsDirectoryParser( self ) 
                 elif   self.type() == ServerType.HYDRAX:    self.parser = HydraxDirectoryParser( self ) 
-                elif   self.type() == ServerType.IRODS:     self.parser = IRODSDirectoryParser( self ) 
                 else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )
             else:
                 if     self.type() == ServerType.THREDDS:   self.parser = ThreddsDataElementParser( self.address ) 
                 elif   self.type() == ServerType.DODS:      self.parser = DodsDataElementParser( self.address ) 
                 elif   self.type() == ServerType.HYDRAX:    self.parser = HydraxDataElementParser( self.address ) 
-                elif   self.type() == ServerType.IRODS:     self.parser = IRODSDataElementParser( self.address ) 
                 else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )      
             if self.parser:
                 self.parser.execute() 
                 return ( self.parser.data_address, self.parser.metadata ) 
         return ( None, None ) if ( self.node_type == self.Directory ) else ( self.parser.data_address, self.parser.metadata )
+
+    def setLabel( self, text ):
+        if self.node_type == None: 
+            hasDirTxt = ( text.endswith( '/' ) or text.endswith( '/:' ) )
+            self.node_type = self.Directory if hasDirTxt else self.DataObject 
+        self.setNodeDisplay( text )               
     
     def getAddressLabel(self):
-        if self.type() == ServerType.IRODS:
-            address_tokens = self.address.split(';')
-            return "%s:%s/%s" % ( address_tokens[0], address_tokens[1], address_tokens[3] )
-        else:
-            return self.address
-       
-    def __repr__(self): 
-        return " %s Node: '%s' <%s>" % ( self.getNodeType(), str(self.text(0)), self.getAddressLabel() )
+        return self.address
 
-class IRODSDirectoryParser:
-
-    def __init__( self, base_node, **args ): 
-        self.conn = None
+class iRodsCatalogNode( CatalogNode ):
+    Directory = 0
+    DataObject = 1
+    Style = None
+    
+    def __init__( self, **args ):
+        self.server_class=ServerClass.IRODS
+        self.server_type = ServerType.IRODS
+        self.server_address = args.get('server_address',None)
+        CatalogNode.__init__( self, **args )
+        self.catalog_path = args.get( 'catalog_path','' )       
+        self.server_conn = args.get('conn',None)
         self.collection = None
-        self.root_node = base_node
-        self.data_address = ""
-        self.metadata = ""
         
-    def execute(self):
-        node_tokens = self.root_node.address.split(';')
-        self.conn, errMsg = rcConnect( node_tokens[0], int(node_tokens[1]), node_tokens[2], node_tokens[3] )
-        self.collection = irodsCollection( self.conn )
-        subCollections = self.collection.getSubCollections()
-        for collection in subCollections:
-            pass
-        dataObjs = self.collection.getObjects()
-        for dataObj in dataObjs:
-            pass
-        print "Collection obj methods: ", dir(self.collection)
-
+    def __del__(self):
+        if self.server_conn:
+            print "Disconnecting."
+            self.server_conn.disconnect()
+            self.server_conn = None
+                                 
+    def retrieveContent(self):
+        mdata = None
+        if not self.collection:
+            if self.server_conn == None: 
+                node_tokens = self.server_address.split(';')
+                self.server_conn, errMsg = rcConnect( node_tokens[0], int(node_tokens[1]), node_tokens[2], node_tokens[3] )
+                status = clientLogin( self.server_conn )
+            if self.node_type == self.Directory:
+                self.collection = irodsCollection( self.server_conn )
+                path_tokens = self.catalog_path.split('/')
+                for subCollection in path_tokens:
+                    if subCollection: self.collection.openCollection(subCollection)
+                subCollections = self.collection.getSubCollections()
+                for subCollection in subCollections:
+                    rv = self.collection.openCollection(subCollection)
+                    path = '/'.join( [ self.catalog_path, subCollection] )
+                    catalogNode = iRodsCatalogNode( conn=self.server_conn, catalog_path=path, node_type=CatalogNode.Directory )
+                    catalogNode.setLabel( subCollection )
+                    self.addChild ( catalogNode )
+                    self.collection.upCollection()
+                dataObjRefs = self.collection.getObjects()
+                for dataObjRef in dataObjRefs:
+                    data_name = dataObjRef[0]
+                    resc_name = dataObjRef[1]
+                    path = '/'.join( [ self.catalog_path, data_name] )
+                    dataObj = self.collection.open( data_name, "r", resc_name )
+                    dataObjNode = iRodsCatalogNode( conn=self.server_conn, catalog_path=path, node_type=CatalogNode.DataObject )
+                    dataObjNode.setLabel( data_name )
+                    self.addChild ( dataObjNode )
+                    self.collection.upCollection()
+                if self.collection: mdata = self.collection.getUserMetadata() 
+        return ( None, mdata ) 
+    
+    def getAddressLabel(self):
+        if self.server_address:
+            address_tokens = self.server_address.split(';')
+            return "%s:%s/%s" % ( address_tokens[0], address_tokens[1], address_tokens[3] )
+        return self.name
+       
 
 class IRODSDataElementParser():
     
@@ -323,7 +401,7 @@ class ThreddsDirectoryParser(HTMLCatalogParser):
     def process_start_tag( self, tag, attrs ):          
         if ( tag == 'a' ) and self.has_state( 'tr' ):
             address = self.get_attribute( 'href', attrs )
-            self.child_node = CatalogNode( urljoin( self.root_node.address, address ) )
+            self.child_node = OpenDAPCatalogNode( server_address=urljoin( self.root_node.address, address ) )
 
     def process_data( self,  data ): 
         if self.child_node and self.inCatalogEntry() and data:         
@@ -352,7 +430,7 @@ class DodsDirectoryParser(HTMLCatalogParser):
         if ( tag == 'a' ) :
             address = self.get_attribute( 'href', attrs )
             if address and self.current_data: 
-                child_node = CatalogNode( urljoin( self.root_node.address, address ) )
+                child_node = OpenDAPCatalogNode( server_address=urljoin( self.root_node.address, address ) )
                 child_node.setLabel( ' '.join( self.current_data ) )
                 self.root_node.addChild ( child_node )
 #                print "Adding Child:", str( child_node )
@@ -390,7 +468,7 @@ class HydraxDirectoryParser(HTMLCatalogParser):
         data = data.strip().replace( '\n', ' ' )
         if self.current_address and data:
             if ( data.lower() not in self.excluded_links ): 
-                child_node = CatalogNode( urljoin( self.root_node.address, self.current_address ) )
+                child_node = OpenDAPCatalogNode( server_address=urljoin( self.root_node.address, self.current_address ) )
                 child_node.setLabel( data )
                 self.root_node.addChild( child_node )
             self.current_address = None
@@ -573,6 +651,8 @@ class RemoteDataBrowser(QtGui.QFrame):
         self.treeWidget.connect( self.treeWidget, QtCore.SIGNAL("itemClicked(QTreeWidgetItem *,int)"), self.retrieveItem ) 
         layout = QtGui.QVBoxLayout(self)
         self.setLayout(layout)
+        self.newServerDialog = NewServerDialog( self )
+
                 
         layout.addWidget( self.treeWidget )
         self.setWindowTitle( "Remote Data Browser" )
@@ -628,7 +708,8 @@ class RemoteDataBrowser(QtGui.QFrame):
         while True:
             address = server_file.readline().strip()
             if not address: break
-            base_node = CatalogNode( str(address), self.treeWidget, type=CatalogNode.Directory ) 
+            address_tokens = address.split(',')
+            base_node = self.getBaseNode( int(address_tokens[0]), address_tokens[1] ) 
             if self.autoRetrieveBaseCatalogs: base_node.retrieveContent() 
         server_file.close()               
 
@@ -638,7 +719,7 @@ class RemoteDataBrowser(QtGui.QFrame):
         nservers = self.treeWidget.topLevelItemCount() 
         for si in range( nservers ):
             serverItem = self.treeWidget.topLevelItem( si )
-            server_file.write( serverItem.address + "\n" )
+            server_file.write( "%d,%s\n" % ( serverItem.server_class, serverItem.address )  )
         server_file.close()
 
     def initServerFile( self ):
@@ -648,13 +729,19 @@ class RemoteDataBrowser(QtGui.QFrame):
             for server in self.default_server_list:
                 server_file.write( server + "\n" )
             server_file.close()
+            
+    def getBaseNode( self, server_class, server_address ):
+        if server_address: 
+            if server_class == ServerClass.OPENDAP:
+                return OpenDAPCatalogNode( server_address=server_address, widget=self.treeWidget, node_type=CatalogNode.Directory )         
+            if server_class == ServerClass.IRODS:
+                return iRodsCatalogNode( server_address=server_address, widget=self.treeWidget,  node_type=CatalogNode.Directory )
+        return None
                                              
     def addNewServer(self): 
-        dlg = NewServerDialog( self )
-        dlg.exec_()
-        address = dlg.getServerAddress()     
-        if address:
-            base_node = CatalogNode( str(address), self.treeWidget, type=CatalogNode.Directory ) 
+        self.newServerDialog.exec_()
+        base_node = self.getBaseNode( self.newServerDialog.getServerClass(), self.newServerDialog.getServerAddress() )
+        if base_node:
             if self.autoRetrieveBaseCatalogs: base_node.retrieveContent() 
             self.updateServerList()
     
@@ -695,7 +782,7 @@ class RemoteDataBrowserDialog(QtGui.QDialog):
     def __init__( self, parent = None ):
         QtGui.QDialog.__init__( self, parent )
         self.browser = RemoteDataBrowser( self, closeButton = True )
-        self.browser.setFixedSize( 500, 500 )
+        self.browser.setMinimumSize ( 700, 500 )
         layout = QtGui.QVBoxLayout(self)
         self.setLayout(layout)
         layout.addWidget( self.browser )
