@@ -164,7 +164,7 @@ class QAnimationView(QtGui.QWidget):
         self.connect(self.createButton,QtCore.SIGNAL("clicked()"),self.stop)
         #t=QThreadAnimationCreate(self,self.canvas,c)
         #t.start()
-        self.canvas.animate.create(thread_it=0)
+        self.canvas.animate.create()
         self.animationCreated(self.canvas, c)
         
     def animationCreated(self,canvas,cursor):
@@ -179,9 +179,10 @@ class QAnimationView(QtGui.QWidget):
         self.player.setEnabled(True)
         self.setCursor(cursor)
     def run(self):
+        print 'hhahhahah'
+        self.animationFrame = 0
         if not self.animationTimer.isActive():
             self.animationTimer.start(100, self)
-        self.animationFrame = 0
         #c = self.cursor()
         #self.setCursor(QtCore.Qt.BusyCursor)
         #canvas=int(self.canvas.currentText())-1
@@ -197,17 +198,19 @@ class QAnimationView(QtGui.QWidget):
         if self.animationFrame>=self.canvas.animate.number_of_frames():
             self.animationTimer.stop()
         else:
-            fn = self.canvas.animate.animation_files[self.animationFrame]
-            self.canvas.animate.vcs_self.canvas.put_png_on_canvas(fn)
-            self.canvas.clear()
+            self.canvas.animate.draw(self.animationFrame)
+#            fn = self.canvas.animate.animation_files[self.animationFrame]
+#            print fn
+#            self.canvas.clear()
+#            self.canvas.animate.vcs_self.canvas.put_png_on_canvas(fn)
             self.animationFrame += 1
     def save(self):
         pass
     def load(self):
         pass
     def zoomIn(self):
-        self.zoomFactor+=1
-        if self.zoomFactor==20:
+        self.zoomFactor+=0.1
+        if self.zoomFactor==10:
             self.zoomInButton.setEnabled(False)
         self.zoomOutButton.setEnabled(True)
         self.upButton.setEnabled(True)
