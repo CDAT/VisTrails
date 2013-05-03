@@ -897,7 +897,7 @@ class QVistrailView(QtGui.QWidget):
             import traceback
             debug.critical('Failed to save vistrail: %s' % str(e),
                            traceback.format_exc())
-            raise
+#            raise
             return False
         if export:
             return self.controller.locator
