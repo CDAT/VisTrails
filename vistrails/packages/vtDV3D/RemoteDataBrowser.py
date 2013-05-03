@@ -245,6 +245,7 @@ class iRodsCatalogNode( CatalogNode ):
     Directory = 0
     DataObject = 1
     Style = None
+
     
     def __init__( self, **args ):
         self.server_class=ServerClass.IRODS
@@ -254,6 +255,23 @@ class iRodsCatalogNode( CatalogNode ):
         self.catalog_path = args.get( 'catalog_path','' )       
         self.server_conn = args.get('conn',None)
         self.collection = None
+        self.metadata = None
+
+    def getFileObject( self, file_path ): 
+        myEnv, status = getRodsEnv()
+        path = myEnv.getRodsHome() + file_path              
+        f = iRodsOpen( self.server_conn, path, 'r' )
+        if f:
+            if self.metadata == None:
+                print "Reading Metadata for file", path
+                strList = [] 
+                mdataList = f.getUserMetadata() 
+                for mdataItem in mdataList:
+                    if mdataItem[2]:    strList.append( "%s = %s (%s)" % ( mdataItem[0], mdataItem[1], mdataItem[2]) )
+                    else:               strList.append( "%s = %s" % ( mdataItem[0], mdataItem[1] ) )
+                self.metadata = '<p>'.join(strList)
+        else: print>>sys.stderr, " Error, Can't open Data Object: ", path
+        return f
         
     def __del__(self):
         if self.server_conn:
@@ -292,22 +310,17 @@ class iRodsCatalogNode( CatalogNode ):
                     self.addChild ( dataObjNode )
                     self.collection.upCollection()
                 if self.collection: mdata = self.collection.getUserMetadata() 
-        return ( None, mdata ) 
+            elif self.node_type == self.DataObject:
+                f = self.getFileObject( self.catalog_path )
+                # transfer file to client and open 
+                f.close()
+        return ( self.catalog_path, self.metadata )
     
     def getAddressLabel(self):
         if self.server_address:
             address_tokens = self.server_address.split(';')
             return "%s:%s/%s" % ( address_tokens[0], address_tokens[1], address_tokens[3] )
-        return self.name
-       
-
-class IRODSDataElementParser():
-    
-    def __init__( self, address, **args ):
-        self.base_address = address 
-        
-    def execute(self):
-        pass
+        return self.catalog_path
                     
 class HTMLCatalogParser(HTMLParser):
    
