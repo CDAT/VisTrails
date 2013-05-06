@@ -177,6 +177,9 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
          else: 
              QtGui.QTreeWidgetItem.__init__( self, self.server_type  ) 
              
+    def loadData(self):
+        pass
+             
     def isTopLevel(self): 
         return ( self.parent() == None )
          
@@ -252,29 +255,31 @@ class iRodsCatalogNode( CatalogNode ):
         self.server_type = ServerType.IRODS
         self.server_address = args.get('server_address',None)
         CatalogNode.__init__( self, **args )
-        self.catalog_path = args.get( 'catalog_path','' )       
+        self.catalog_path = args.get( 'catalog_path','' )   
+        self.download_dir = args.get( 'download_dir','/tmp/' )        
         self.server_conn = args.get('conn',None)
         self.collection = None
         self.metadata = None
+        self.localFilePath = None
 
-    def getFileObject( self, file_path ): 
-        myEnv, status = getRodsEnv()
-        path = myEnv.getRodsHome() + file_path              
-        f = iRodsOpen( self.server_conn, path, 'r' )
-        if f:
-            if self.metadata == None:
-                print "Reading Metadata for file", path
+    def getFileMetadata( self ): 
+        if self.metadata == None:
+            path = self.getIRodsPath()
+            f = iRodsOpen( self.server_conn, path, 'r' )
+            if f:
+#                print "Reading Metadata for file", path
                 strList = [] 
-                strList.append( "Data Name = %s" % f.getDataName() )
+                strList.append( "File Name = %s" % f.getDataName() )
                 strList.append( "Owner Name = %s" % f.getOwnerName() )
                 strList.append( "Size = %s" % f.getSize() )
                 mdataList = getFileUserMetadata( self.server_conn, path ) 
                 for mdataItem in mdataList:
-                    if mdataItem[2]:    strList.append( "%s = %s (%s)" % ( mdataItem[0], mdataItem[1], mdataItem[2]) )
-                    else:               strList.append( "%s = %s" % ( mdataItem[0], mdataItem[1] ) )
+                    mdname = mdataItem[0].replace( '_', ' ' ).title()
+                    if mdataItem[2]:    strList.append( "%s = %s (%s)" % ( mdname, mdataItem[1], mdataItem[2]) )
+                    else:               strList.append( "%s = %s" % ( mdname, mdataItem[1] ) )
                 self.metadata = '<p>'.join(strList)
-        else: print>>sys.stderr, " Error, Can't open Data Object: ", path
-        return f
+                f.close()
+            else: print>>sys.stderr, " Error, Can't open Data Object: ", path
         
     def __del__(self):
         if self.server_conn:
@@ -315,11 +320,24 @@ class iRodsCatalogNode( CatalogNode ):
                     self.collection.upCollection()
                 if self.collection: mdata = self.collection.getUserMetadata() 
             elif self.node_type == self.DataObject:
-                f = self.getFileObject( self.catalog_path )
-                data_path = f.getPath() 
-                # transfer file to client and open 
-                f.close()
-        return ( data_path, self.metadata )
+                path_tokens = self.catalog_path.split('/')
+                fileName = path_tokens[-1] 
+                self.localFilePath = os.path.join( self.download_dir, fileName )
+                self.getFileMetadata()    
+        return ( self.localFilePath, self.metadata )
+    
+    def getIRodsPath(self):
+        myEnv, status = getRodsEnv()
+        irods_path = myEnv.getRodsHome() + self.catalog_path 
+        return irods_path             
+          
+    def loadData( self ):
+        status = -1
+        if self.localFilePath and not os.path.exists( self.localFilePath ):
+            dataObjInp = dataObjInp_t()
+            dataObjInp.setObjPath( self.getIRodsPath() )
+            status = rcDataObjGet( self.server_conn, dataObjInp, self.localFilePath ) 
+        return status
     
     def getAddressLabel(self):
         if self.server_address:
@@ -663,6 +681,7 @@ class RemoteDataBrowser(QtGui.QFrame):
         self.autoRetrieveBaseCatalogs = args.get("autoretrieve",False)
         self.data_element_address = None
         self.metadata = None
+        self.current_data_item = None
         self.treeWidget = QtGui.QTreeWidget()
         self.treeWidget.setColumnCount(1)
         self.treeWidget.setMinimumHeight( 250 )
@@ -754,6 +773,7 @@ class RemoteDataBrowser(QtGui.QFrame):
                 return OpenDAPCatalogNode( server_address=server_address, widget=self.treeWidget, node_type=CatalogNode.Directory )         
             if server_class == ServerClass.IRODS:
                 return iRodsCatalogNode( server_address=server_address, widget=self.treeWidget,  node_type=CatalogNode.Directory )
+            self.current_data_item = None
         return None
                                              
     def addNewServer(self): 
@@ -781,14 +801,17 @@ class RemoteDataBrowser(QtGui.QFrame):
         self.discard_server_button.setEnabled( item.isTopLevel() )
         try:
             (self.data_element_address, self.metadata) = item.retrieveContent()
+            self.current_data_item = item
             if self.metadata: self.view.setHtml( self.metadata )
         except Exception, err:
             print>>sys.stderr, "Error retrieving data item: %s\n Item: %s" % ( str(err), str(item) )
             (self.data_element_address, self.metadata) = ( None, None )
+            self.current_data_item = None
         self.load_data_button.setEnabled ( self.data_element_address <> None ) 
 #        self.load_mdata_button.setEnabled( self.data_element_address <> None ) 
            
     def loadData( self ):
+        self.current_data_item.loadData()
         self.emit(  self.new_data_element, self.data_element_address )
         print "Loading URL: ", self.data_element_address
 
