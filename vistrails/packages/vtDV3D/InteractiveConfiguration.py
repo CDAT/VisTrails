@@ -1340,14 +1340,16 @@ class IVModuleConfigurationDialog( QWidget ):
             if cmd_list:
                 self.deactivate_current_command()
                 active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
+                active_module_located = False
                 for cmd_entry in cmd_list:
                     module = ModuleStore.getModule( cmd_entry[0] )
                     if module:
                         cfg_cmd = cmd_entry[1] 
                         if cfg_cmd and cfg_cmd.guiEnabled:
                             self.gui_cmds.append( cfg_cmd )
-                            if ( ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ) ):
-                                self.active_cfg_cmd = cfg_cmd  
+                            if ( not active_module_located and ( ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ) ) ):
+                                self.active_cfg_cmd = cfg_cmd 
+                                if module.GetRenWinID() == active_renwin_ids[0]: active_module_located = True
                 if self.active_cfg_cmd:                 
                     self.active_cfg_cmd.updateActiveFunctionList()
                     self.enable()
