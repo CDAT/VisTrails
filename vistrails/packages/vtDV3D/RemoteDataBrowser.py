@@ -320,11 +320,17 @@ class iRodsCatalogNode( CatalogNode ):
                     self.collection.upCollection()
                 if self.collection: mdata = self.collection.getUserMetadata() 
             elif self.node_type == self.DataObject:
-                path_tokens = self.catalog_path.split('/')
-                fileName = path_tokens[-1] 
-                self.localFilePath = os.path.join( self.download_dir, fileName )
+                self.getLocaPath()
                 self.getFileMetadata()    
         return ( self.localFilePath, self.metadata )
+    
+    def getLocaPath(self):
+        irods_path = self.getIRodsPath().strip('/')
+        self.localFilePath = os.path.join( self.download_dir, irods_path )
+        dirname = os.path.dirname( self.localFilePath )
+        try: os.makedirs( dirname )
+        except OSError, err: 
+            if not os.path.isdir(dirname): print>>sys.stderr, "Error creating directory %s: %s " % ( dirname, str(err) )
     
     def getIRodsPath(self):
         myEnv, status = getRodsEnv()
