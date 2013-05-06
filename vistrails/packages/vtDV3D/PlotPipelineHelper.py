@@ -401,14 +401,16 @@ class DV3DRangeConfigWidget(QFrame):
             cmd_list = DV3DPipelineHelper.getConfigCmd ( cfg_key )
             if cmd_list:
                 self.deactivate_current_command()
+                located_active_config_cmd = False
                 active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
                 for cmd_entry in cmd_list:
                     module = ModuleStore.getModule( cmd_entry[0] )
                     if module:
                         cfg_cmd = cmd_entry[1] 
                         self.active_modules.add( module.moduleID )
-                        if ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ):
+                        if not located_active_config_cmd and (( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids )):
                             self.active_cfg_cmd = cfg_cmd
+                            if ( module.GetRenWinID() == active_renwin_ids[0] ): located_active_config_cmd = True
                 self.updateSliderValues(True)
                 if self.active_cfg_cmd:
                     self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues ) 
@@ -1515,7 +1517,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def getActiveCells():
         sheetTabWidget = getSheetTabWidget()
         selected_cells = sheetTabWidget.getSelectedLocations() 
-        return selected_cells
+        activeCell = sheetTabWidget.sheet.activeCell
+        active_cells = [ activeCell ]
+        for cell in selected_cells:
+            if not (  (cell[0] == activeCell[0]) and (cell[1] == activeCell[1]) ): active_cells.append( cell )
+        return active_cells
 
     @staticmethod
     def getActiveIrens():
