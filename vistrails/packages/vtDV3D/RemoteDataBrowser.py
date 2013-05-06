@@ -265,7 +265,10 @@ class iRodsCatalogNode( CatalogNode ):
             if self.metadata == None:
                 print "Reading Metadata for file", path
                 strList = [] 
-                mdataList = f.getUserMetadata() 
+                strList.append( "Data Name = %s" % f.getDataName() )
+                strList.append( "Owner Name = %s" % f.getOwnerName() )
+                strList.append( "Size = %s" % f.getSize() )
+                mdataList = getFileUserMetadata( self.server_conn, path ) 
                 for mdataItem in mdataList:
                     if mdataItem[2]:    strList.append( "%s = %s (%s)" % ( mdataItem[0], mdataItem[1], mdataItem[2]) )
                     else:               strList.append( "%s = %s" % ( mdataItem[0], mdataItem[1] ) )
@@ -281,6 +284,7 @@ class iRodsCatalogNode( CatalogNode ):
                                  
     def retrieveContent(self):
         mdata = None
+        data_path = None
         if not self.collection:
             if self.server_conn == None: 
                 node_tokens = self.server_address.split(';')
@@ -312,9 +316,10 @@ class iRodsCatalogNode( CatalogNode ):
                 if self.collection: mdata = self.collection.getUserMetadata() 
             elif self.node_type == self.DataObject:
                 f = self.getFileObject( self.catalog_path )
+                data_path = f.getPath() 
                 # transfer file to client and open 
                 f.close()
-        return ( self.catalog_path, self.metadata )
+        return ( data_path, self.metadata )
     
     def getAddressLabel(self):
         if self.server_address:

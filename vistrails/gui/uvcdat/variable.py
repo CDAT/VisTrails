@@ -109,7 +109,7 @@ class VariableProperties(QtGui.QDialog):
         self.varNameInFile = None #store the name of the variable when loaded from file
         self.createFileTab()
         self.createESGFTab()
-        self.createOpenDAPTab()
+        self.createDataServicesTab()
         self.createEditTab()
         self.createInfoTab()
         for i in range(self.originTabWidget.count()):
@@ -283,11 +283,11 @@ class VariableProperties(QtGui.QDialog):
             esgf = QtGui.QLabel("No Internet?")
         self.originTabWidget.addTab(esgf,"ESGF")
 
-    def createOpenDAPTab(self):
+    def createDataServicesTab(self):
         from packages.vtDV3D.RemoteDataBrowser import RemoteDataBrowser
         browser = RemoteDataBrowser()
         self.connect( browser, RemoteDataBrowser.new_data_element, self.processDataAddress )
-        self.originTabWidget.addTab(browser,"OpenDAP")
+        self.originTabWidget.addTab(browser,"Data Services")
         
     def processDataAddress( self, address ):
         self.originTabWidget.setCurrentIndex( 0 )
