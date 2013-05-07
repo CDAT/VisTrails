@@ -422,7 +422,7 @@ def getDownstreamModules( controller,  mid ):
         output_port_specs = test_mod.output_port_specs
         for output_port in output_port_specs:
             out_modules = pipeline.get_outputPort_modules( test_mod.id, output_port.name )
-
+            
 def getDesignatedConnections( controller,  mid, portName, isDestinationPort = True ):
     portType = "destination" if isDestinationPort else "source" 
     connections = controller.current_pipeline.connections

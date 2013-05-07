@@ -435,7 +435,7 @@ class ConfigurableFunction( QObject ):
         cfgFunctGlobalMap = ConfigurableFunction.ConfigurableFunctions
         cfgFunctionMap = cfgFunctGlobalMap.get( self.name, {} )
         self.activeFunctionList = []
-        valid_irens =  PersistentVisualizationModule.getValidIrens() 
+#        valid_irens =  PersistentVisualizationModule.getValidIrens() 
 #        print " ** N active_irens: %d " % len( active_irens )      
         for cfgFunction in cfgFunctionMap.values():
             if (cfgFunction <> self) and cfgFunction.module:
@@ -1339,17 +1339,18 @@ class IVModuleConfigurationDialog( QWidget ):
             cmd_list = DV3DPipelineHelper.getConfigCmd ( cfg_key )
             if cmd_list:
                 self.deactivate_current_command()
-                active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
+                active_cells = DV3DPipelineHelper.getActiveCellStrs()
                 active_module_located = False
                 for cmd_entry in cmd_list:
                     module = ModuleStore.getModule( cmd_entry[0] )
                     if module:
                         cfg_cmd = cmd_entry[1] 
-                        if cfg_cmd and cfg_cmd.guiEnabled:
+                        cell_loc = module.getCellLocation()
+                        if cfg_cmd and cell_loc and cfg_cmd.guiEnabled:
                             self.gui_cmds.append( cfg_cmd )
-                            if ( not active_module_located and ( ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ) ) ):
+                            if ( not active_module_located and ( ( self.active_cfg_cmd == None ) or ( cell_loc[-1] in active_cells ) ) ):
                                 self.active_cfg_cmd = cfg_cmd 
-                                if module.GetRenWinID() == active_renwin_ids[0]: active_module_located = True
+                                if cell_loc[-1] == active_cells[0]: active_module_located = True
                 if self.active_cfg_cmd:                 
                     self.active_cfg_cmd.updateActiveFunctionList()
                     self.enable()

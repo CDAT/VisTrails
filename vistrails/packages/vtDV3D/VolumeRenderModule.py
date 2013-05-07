@@ -200,6 +200,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
             if self.cropRegion == None:
                 cr = self.wmod.forceGetInputFromPort( "cropRegion", None  ) 
                 self.cropRegion = list(cr) if cr else self.getVolumeBounds()
+            self.haltNavigationInteraction()
             self.clipper.PlaceWidget( self.cropRegion )
             self.clipper.SetHandleSize( 0.005 )
             self.clipper.On()
@@ -207,6 +208,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         else: 
             self.clipper.Off()
             self.persistCropRegion()
+            self.resetNavigation()
     
     def getVolRenderCfg( self ):
         return [ ';'.join( self.volRenderConfig ) ]
