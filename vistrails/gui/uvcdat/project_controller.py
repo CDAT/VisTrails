@@ -791,7 +791,11 @@ class ProjectController(QtCore.QObject):
         else:
             plot_prop.set_controller(None)
             plot_prop.updateProperties(None, sheetName,row,col)
-        self.checkEnableUndoRedo(cell)
+        try: 
+            self.checkEnableUndoRedo(cell)
+        except: 
+            print "Error in checkEnableUndoRedo: "
+            traceback.print_exc( 100, sys.stderr ) 
                 
     def get_python_script(self, sheetName, row, col):
         script = None

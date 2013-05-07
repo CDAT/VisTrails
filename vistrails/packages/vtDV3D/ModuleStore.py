@@ -16,16 +16,18 @@ def getDatabase():
     import api
     global moduleStoreDatabase
     page_id = 0
-#    try: page_id = id( api.get_current_controller() )
-#    except: pass
+    prj_controller = api.get_current_project_controller()
+    try: page_id = prj_controller.name
+    except: pass
     return moduleStoreDatabase.setdefault( page_id, {} )
 
 def getCdmsDatabase():
     import api
     global cdmsStoreDatabase
     page_id = 0
-#    try: page_id = id( api.get_current_controller() )
-#    except: pass
+    prj_controller = api.get_current_project_controller()
+    try: page_id = prj_controller.name
+    except: pass
     return cdmsStoreDatabase.setdefault( page_id, {} )
 
 def getModule( mid ):
