@@ -441,7 +441,6 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         cellLocation.colSpan = 1
         cell_coordinates = None
         ( sheetName, address ) = DV3DPipelineHelper.getCellCoordinates( moduleId )
-#        ( sheetName, address ) = DV3DPipelineHelper.getCellAddress( self.pipeline ) 
         if self.isClient:            
             cellLocation.sheetReference = StandardSheetReference()
             cellLocation.sheetReference.sheetName = HyperwallManager.getInstance().deviceName

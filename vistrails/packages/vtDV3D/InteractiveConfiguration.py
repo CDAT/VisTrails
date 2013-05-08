@@ -45,8 +45,8 @@ class ConfigPopupManager( QObject ):
             self.actionMap = {}
             
         for configFunc in module.configurableFunctions.values():
-            action_key = str( configFunc.label )
-            menuItem = self.menu.addAction( action_key )
+            action_key = str( configFunc.name )
+            menuItem = self.menu.addAction( configFunc.label )
             self.actionMap.setdefault( action_key, [] ).append( ( module, configFunc.key ) ) 
             self.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key: self.execAction( akey ) )
 
@@ -520,6 +520,22 @@ class ConfigurableFunction( QObject ):
             
 ################################################################################
 
+class ConfigurableBooleanFunction( ConfigurableFunction ):
+    
+    def __init__( self, name, function_args, key, **args ):
+        ConfigurableFunction.__init__( self, name, function_args, key, **args )
+        self.switchVal = args.get( 'initVal', False )
+        self.labels = args.get( 'labels', '|'.join([self.name]*2) ).split('|')
+        self.label = self.labels[ int(self.switchVal) ]
+    
+    
+    def open( self, state, alt = False ):
+        if( self.name == state ): 
+            self.altMode = alt
+            if ( self.openHandler != None ):
+                self.switchVal = not self.switchVal
+                self.label = self.labels[ int(self.switchVal) ]
+                self.openHandler( self.switchVal )
 
 ################################################################################
 
