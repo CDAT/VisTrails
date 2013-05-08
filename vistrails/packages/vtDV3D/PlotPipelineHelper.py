@@ -607,9 +607,9 @@ class DV3DConfigControlPanel(QWidget):
                 module = ModuleStore.getModule( moduleID )
                 if module.onCurrentPage(): 
                     cell_loc = module.getCellLocation()
-                    isActive = cell_loc and ( cell_loc[-1] in active_cells )
-                    cell_addr = module.getCellAddress()
-                    if cell_addr:
+                    if cell_loc:
+                        cell_addr = cell_loc[-1]
+                        isActive = ( cell_addr in active_cells )
                         if cellsOnly:
                             label = cell_addr     
                             existing_items = self.plot_list.findItems ( label, Qt.MatchFixedString )  
@@ -1269,22 +1269,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         except KeyError:
             print "Can't find sheet: ", sheetName
         return pipeline       
-
-#    @staticmethod
-#    def getCellAddress( pipeline ):
-#        proj_controller = api.get_current_project_controller()
-#        controller =  proj_controller.vt_controller 
-#        for sheet_item in proj_controller.sheet_map.items(): 
-#            sheetName = sheet_item[0]
-#            cellMap = sheet_item[1]
-#            for cell_item in cellMap.items():
-#                cell_address = cell_item[0]
-#                cell = cell_item[1]
-#                current_version = cell.current_parent_version 
-#                controller.change_selected_version( current_version )
-#                cell_pipeline = controller.vistrail.getPipeline( current_version )  
-#                if cell_pipeline == pipeline: return( sheetName, ( cell_address[1], cell_address[0] ) )
-#        return ( None, None ) 
 
     @staticmethod
     def getCellCoordinates( mid ):

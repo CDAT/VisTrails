@@ -18,6 +18,7 @@ from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
 ReferenceTimeUnits = "days since 1900-1-1"
 MIN_LINE_LEN = 50
+ecount = 0
 
 def getClassName( instance ):
     return instance.__class__.__name__ if ( instance <> None ) else "None" 
@@ -457,6 +458,7 @@ class PersistentModule( QObject ):
         self.persistedParameters = []
         self.versionTags = {}
         self.cell_location = None
+        self.isInSelectedCell = False
 #        self.initVersionMap()
         role = get_hyperwall_role( )
         self.isClient = ( role == 'hw_client' )
@@ -502,7 +504,22 @@ class PersistentModule( QObject ):
 #        IVModuleConfigurationDialog.reset()
 
     def setCellLocation( self, cell_location ):
-        self.cell_location = cell_location
+        self.cell_location = cell_location       
+        ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+        tabController = ssheetWindow.get_current_tab_controller()        
+        self.connect( tabController, QtCore.SIGNAL("current_cell_changed"), self.current_cell_changed )
+        
+        
+    def clearCellSelection(self):
+        ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+        tabController = ssheetWindow.get_current_tab_controller() 
+        for w in tabController.tabWidgets:       
+            w.clearSelection()
+
+    def current_cell_changed(self, sheetName, row, col):
+        if ( sheetName == self.cell_location[1] ):
+            cell_addr = "%s%d" % ( chr(ord('A') + col ), row+1 )
+            self.isInSelectedCell = ( cell_addr == self.cell_location[-1] )
 
     def getCellLocation( self ):
         return self.cell_location
@@ -961,6 +978,9 @@ class PersistentModule( QObject ):
            
     def addConfigurableMethod( self, name, method, key, **args ):
         self.configurableFunctions[name] = ConfigurableFunction( name, args.get('signature',None), key, hasState=False, open=method, **args )
+
+    def addConfigurableBooleanFunction( self, name, method, key, **args ):
+        self.configurableFunctions[name] = ConfigurableBooleanFunction( name, args.get('signature',None), key, hasState=False, open=method, **args )
 
     def addConfigurableFunction(self, name, function_args, key, **args):
         self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, **args )
@@ -2232,18 +2252,7 @@ class PersistentVisualizationModule( PersistentModule ):
              
     def onKeyPress( self, caller, event ):
         return 0
- 
-    def getCellAddress(self):  
-        cell_items = self.renderMap.items()
-        r = id( self.iren.GetRenderWindow() )  if self.iren else None
-        if r:
-            for cell_item in cell_items:
-                renlist = cell_item[1]
-                if r in renlist:
-                    address_tokens = cell_item[0].split(':')
-                    return address_tokens[-1]
-        return None
-        
+         
     def getActiveRens(self):
         from api import get_current_project_controller
         sheetTabWidget = getSheetTabWidget()
@@ -2257,8 +2266,15 @@ class PersistentVisualizationModule( PersistentModule ):
         return rens
        
     def onAnyEvent(self, caller, event ):
-        if self.iren:
-            istyle = self.iren.GetInteractorStyle() 
+        global ecount
+#        if self.cell_location:
+#            addr = self.cell_location[-1]
+#            if event == "ModifiedEvent" and addr == "A2":
+#                print "Cell %s, E[%d]: %s" % ( str(addr), ecount, str( event ) )
+#                ecount = ecount + 1
+
+#        if self.iren:
+#            istyle = self.iren.GetInteractorStyle() 
 #            print "onAnyEvent: %s, iren style = %s, interactionState = %s  " % ( str( event ), istyle.__class__.__name__, self.InteractionState )
 
 #        isKeyEvent = ( event in [ 'KeyPressEvent', 'CharEvent', 'KeyReleaseEvent' ] )

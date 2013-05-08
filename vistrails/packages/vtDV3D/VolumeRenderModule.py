@@ -157,7 +157,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'functionScale', 'T', label='Transfer Function Scale', units='data', setLevel=self.generateOTF, getLevel=self.getAbsRangeBounds, layerDependent=True, adjustRangeInput=0, initRefinement=[ self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )
         self.addConfigurableLevelingFunction( 'opacityScale',  'o', label='Transfer Function Opacity', setLevel=self.adjustOpacity, layerDependent=True  )
         self.addConfigurableMethod( 'showTransFunctGraph', self.showTransFunctGraph, 'g', label='Transfer Function Graph' )
-        self.addConfigurableMethod( 'cropRegion', self.toggleClipping, 'X', label='Cropping', signature=[ ( Float, 'xmin'), ( Float, 'xmax'), ( Float, 'ymin'), ( Float, 'ymax'), ( Float, 'zmin'), ( Float, 'zmax') ] )
+        self.addConfigurableBooleanFunction( 'cropRegion', self.toggleClipping, 'X', labels='Start Cropping|End Cropping', signature=[ ( Float, 'xmin'), ( Float, 'xmax'), ( Float, 'ymin'), ( Float, 'ymax'), ( Float, 'zmin'), ( Float, 'zmax') ] )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
         self.addUVCDATConfigGuiFunction( 'renderType', VolumeRenderCfgDialog, 'v', label='Choose Volume Renderer', setValue=self.setVolRenderCfg, getValue=self.getVolRenderCfg, layerDependent=True )
 
@@ -191,24 +191,33 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
                     if cr:
                         self.cropVolume() 
                         self.volumeMapper.CroppingOn()
-                   
-    def toggleClipping(self):
-        self.clipping_enabled = not self.clipping_enabled 
-        self.volumeMapper.CroppingOn()
-        self.clipper.SetEnabled( self.clipping_enabled )
+
+    def current_cell_changed(self, sheetName, row, col):
+        PersistentModule.current_cell_changed(self, sheetName, row, col) 
         if self.clipping_enabled:
-            if self.cropRegion == None:
-                cr = self.wmod.forceGetInputFromPort( "cropRegion", None  ) 
-                self.cropRegion = list(cr) if cr else self.getVolumeBounds()
-            self.haltNavigationInteraction()
-            self.clipper.PlaceWidget( self.cropRegion )
-            self.clipper.SetHandleSize( 0.005 )
-            self.clipper.On()
-            self.executeClip()
-        else: 
-            self.clipper.Off()
-            self.persistCropRegion()
-            self.resetNavigation()
+            if self.isInSelectedCell:   self.clipOn()
+            else:                       self.clipOff() 
+                 
+    def clipOn(self):
+        if self.cropRegion == None:
+            cr = self.wmod.forceGetInputFromPort( "cropRegion", None  ) 
+            self.cropRegion = list(cr) if cr else self.getVolumeBounds()
+        self.clipper.PlaceWidget( self.cropRegion )
+        self.clipper.SetHandleSize( 0.005 )
+        self.clipper.SetEnabled( True )
+        self.clipper.On()
+        self.executeClip()
+
+    def clipOff(self):
+        self.clipper.SetEnabled( False )
+        self.clipper.Off()
+        self.persistCropRegion()
+                   
+    def toggleClipping( self, enableClipping ):
+        self.clipping_enabled = enableClipping 
+        self.volumeMapper.CroppingOn()
+        if self.clipping_enabled and self.isInSelectedCell:     self.clipOn()
+        else:                                                   self.clipOff()
     
     def getVolRenderCfg( self ):
         return [ ';'.join( self.volRenderConfig ) ]
@@ -393,7 +402,10 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.clipper = vtk.vtkBoxWidget()
         self.clipper.RotationEnabledOff()
         self.clipper.SetPlaceFactor( 1.0 )    
+        self.clipper.AddObserver( 'StartInteractionEvent', self.startClip )
+        self.clipper.AddObserver( 'EndInteractionEvent', self.endClip )
         self.clipper.AddObserver( 'InteractionEvent', self.executeClip )
+#        self.clipper.AddObserver( 'AnyEvent', self.clipObserver )
         
 #        self.volumeMapper.SetScalarModeToUsePointFieldData()
 #        self.inputModule.inputToAlgorithm( self.volumeMapper )
@@ -415,6 +427,16 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 
         self.renderer.AddVolume( self.volume )
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
+
+      
+    def clipObserver( self, caller=None, event=None ):
+        print " Clip Observer: %s ", str(event)
+
+    def startClip( self, caller=None, event=None ):
+        self.clearCellSelection()
+
+    def endClip( self, caller=None, event=None ):
+        pass
         
     def executeClip( self, caller=None, event=None ):
         planes = vtk.vtkPlanes(); np = 6
