@@ -2238,17 +2238,19 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             self.runButton.setText('Run')
             self.running = False
         self.setTimestep(0)
-
-    def getTimeRange1( self ): 
-#        wmods = getWorkflowObjectMap()
-        for moduleID in self.modules: 
-            module = ModuleStore.getModule( moduleID )
-            timeRangeInput =  module.getCachedParameter( "timeRange" )
-            if timeRangeInput: 
-                self.timeRange = [ int(timeRangeInput[0]), int(timeRangeInput[1]) ]
-                self.relTimeStart = float( timeRangeInput[2] )
-                self.relTimeStep = float( timeRangeInput[3] )
-                return
+            
+    def getConvertedTimeRange( self, module ):
+        timeRangeInput =  module.getCachedParameter( "timeRange" )
+        if self.referenceTimeUnits == module.referenceTimeUnits: return timeRangeInput
+        else: 
+            timeAxis =  module.getTimeAxis() 
+            tbnds = [ timeRangeInput[2], timeRangeInput[2] + timeRangeInput[1]*timeRangeInput[3] ] 
+            t0 = cdtime.reltime( tbnds[0], module.referenceTimeUnits ).torel( self.referenceTimeUnits ).value
+            t1 = cdtime.reltime( tbnds[1], module.referenceTimeUnits ).torel( self.referenceTimeUnits ).value
+            print "Axis methods: ", str( dir( timeAxis ) ); sys.stdout.flush()
+            nt = timeAxis.shape[0]
+            dt = ( t1-t0 ) / nt
+        return [ 0, nt, t0, dt ]
             
     def getTimeRange( self ):
         from packages.vtDV3D.CDMS_VariableReaders import PM_CDMSDataReader 
@@ -2259,7 +2261,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             if DV3DPipelineHelper.getPlotActivation( moduleID ): 
                 module = ModuleStore.getModule( moduleID )
                 if  isinstance( module, PM_CDMSDataReader ):                  
-                    timeRangeInput =  module.getCachedParameter( "timeRange" )
+                    timeRangeInput =  self.getConvertedTimeRange( module )
                     if timeRangeInput:
                         if timeRange == None:
                             timeRange = timeRangeInput 
@@ -2278,36 +2280,32 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 
 
     def setTimestep( self, iTimestep, restart = False ):
-        from packages.vtDV3D.PersistentModule import ReferenceTimeUnits 
         if (self.timeRange == None) or self.timeRange[0] == self.timeRange[1]:
             self.running = False
         else:
             try:
-                module = ModuleStore.getModule( self.moduleID )
                 self.setValue( iTimestep )
                 sheetTabs = set()
                 relTimeValueRef = self.relTimeStart + self.iTimeStep * self.relTimeStep
-                timeAxis =  module.getTimeAxis()     
-                if not timeAxis:
-                    print>>sys.stderr, "Can't find time axis for dataset %s- animation disabled." % module.getDatasetId()
-                    return
-                timeValues = np.array( object=timeAxis.getValue() )
-                relTimeRef = cdtime.reltime( relTimeValueRef, ReferenceTimeUnits )
-                relTime0 = relTimeRef.torel( timeAxis.units )
-                timeIndex = timeValues.searchsorted( relTime0.value ) 
-                if ( timeIndex >= len( timeValues ) ): timeIndex = len( timeValues ) - 1
-                relTimeValue0 =  timeValues[ timeIndex ]
-                r0 = cdtime.reltime( relTimeValue0, timeAxis.units )
-                relTimeRef = r0.torel( ReferenceTimeUnits )
-                relTimeValueRefAdj = relTimeRef.value
-#                print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
-                displayText = self.getTextDisplay()
-                HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, iTimestep, self.uniformTimeRange, displayText ], False  )
                 active_mods = IVModuleConfigurationDialog.getActiveModules()
                 for modID in active_mods:
                     module = ModuleStore.getModule( modID )
-#                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
-                    module.updateAnimation( [ relTimeValueRefAdj, iTimestep, self.uniformTimeRange ], displayText, restart  )
+                    timeAxis =  module.getTimeAxis()     
+                    if timeAxis:
+                        timeValues = np.array( object=timeAxis.getValue() )
+                        relTimeRef = cdtime.reltime( relTimeValueRef, self.referenceTimeUnits )
+                        relTime0 = relTimeRef.torel( timeAxis.units )
+                        timeIndex = timeValues.searchsorted( relTime0.value ) 
+                        if ( timeIndex >= len( timeValues ) ): timeIndex = len( timeValues ) - 1
+                        relTimeValue0 =  timeValues[ timeIndex ]
+                        r0 = cdtime.reltime( relTimeValue0, timeAxis.units )
+                        relTimeRef = r0.torel( module.referenceTimeUnits )
+                        relTimeValueRefAdj = relTimeRef.value
+        #                print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
+                        displayText = str( r0.tocomp() )
+                        HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, timeIndex, self.uniformTimeRange, displayText ], False  )
+    #                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
+                        module.updateAnimation( [ relTimeValueRefAdj, timeIndex, self.uniformTimeRange ], displayText, restart  )
             except Exception:
                 traceback.print_exc( 100, sys.stderr )
 #                print>>sys.stdout, "Error in setTimestep[%d]: %s " % ( iTimestep, str(err) )
@@ -2324,8 +2322,18 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         IVModuleConfigurationDialog.cancelTriggered( self, checked )
         
     def updateTimeRange(self):   
+        active_mods = IVModuleConfigurationDialog.getActiveModules()
+        self.referenceTimeUnits = None
+        for modID in active_mods:
+            module = ModuleStore.getModule( modID )
+            if self.referenceTimeUnits == None:
+                self.referenceTimeUnits = module.referenceTimeUnits
+            else:
+                t = cdtime.reltime( 0, self.referenceTimeUnits)
+                if t.cmp( cdtime.reltime( 0, module.referenceTimeUnits ) ) == 1:
+                    self.referenceTimeUnits = module.referenceTimeUnits 
         newConfig = DV3DConfigurationWidget.saveConfigurations()
-        if newConfig or not self.relTimeStart: self.getTimeRange()
+        self.getTimeRange()
 
     def start(self):
         self.updateTimeRange()

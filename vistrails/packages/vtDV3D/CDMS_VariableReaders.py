@@ -193,10 +193,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 self.nTimesteps = len( self.timeAxis ) if self.timeAxis else 1
                 try:
                     comp_time_values = self.timeAxis.asComponentTime()
-                    t0 = comp_time_values[0].torel(ReferenceTimeUnits).value
+                    t0 = comp_time_values[0].torel(self.referenceTimeUnits).value
+                    if (t0 < 0):
+                        self.referenceTimeUnits = self.timeAxis.units
+                        t0 = comp_time_values[0].torel(self.referenceTimeUnits).value
                     dt = 0.0
                     if self.nTimesteps > 1:
-                        t1 = comp_time_values[-1].torel(ReferenceTimeUnits).value
+                        t1 = comp_time_values[-1].torel(self.referenceTimeUnits).value
                         dt = (t1-t0)/(self.nTimesteps-1)
                         self.timeRange = [ 0, self.nTimesteps, t0, dt ]
                 except:
@@ -207,9 +210,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     self.timeRange = [ 0, self.nTimesteps, t0, dt ]
             self.setParameter( "timeRange" , self.timeRange )
             self.cdmsDataset.timeRange = self.timeRange
+            self.cdmsDataset.referenceTimeUnits = self.referenceTimeUnits
             self.timeLabels = self.cdmsDataset.getTimeValues()
             timeData = args.get( 'timeData', [ self.cdmsDataset.timeRange[2], 0, False ] )
-            self.timeValue = cdtime.reltime( float(timeData[0]), ReferenceTimeUnits )
+            self.timeValue = cdtime.reltime( float(timeData[0]), self.referenceTimeUnits )
             self.timeIndex = timeData[1]
             self.useTimeIndex = timeData[2]
 #            print "Set Time [mid = %d]: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( self.moduleID, str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
@@ -245,7 +249,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 ModuleStore.archiveCdmsDataset( self.datasetId, self.cdmsDataset )
                 self.timeRange = self.cdmsDataset.timeRange
                 timeData = args.get( 'timeData', [ self.cdmsDataset.timeRange[2], 0, False ] )
-                self.timeValue = cdtime.reltime( float(timeData[0]), ReferenceTimeUnits )
+                self.timeValue = cdtime.reltime( float(timeData[0]), self.referenceTimeUnits )
                 self.timeIndex = timeData[1]
                 self.useTimeIndex = timeData[2]
                 self.timeLabels = self.cdmsDataset.getTimeValues()
@@ -414,6 +418,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         md =  varDataSpecs['md']                 
                         md['datatype'] = datatype
                         md['timeValue']= self.timeValue.value
+                        md['timeUnits' ] = self.referenceTimeUnits
                         md[ 'attributes' ] = var_md
                         md[ 'plotType' ] = 'zyt' if (self.outputType == CDMSDataType.Hoffmuller) else 'xyz'
                                         
