@@ -402,15 +402,17 @@ class DV3DRangeConfigWidget(QFrame):
             if cmd_list:
                 self.deactivate_current_command()
                 located_active_config_cmd = False
-                active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
+                active_cells = DV3DPipelineHelper.getActiveCellStrs()
                 for cmd_entry in cmd_list:
                     module = ModuleStore.getModule( cmd_entry[0] )
-                    if module:
+                    if module and module.onCurrentPage():
+                        cell_loc = module.getCellLocation()
                         cfg_cmd = cmd_entry[1] 
                         self.active_modules.add( module.moduleID )
-                        if not located_active_config_cmd and (( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids )):
+                        ren_id = id( module.renderer )
+                        if not located_active_config_cmd and (( self.active_cfg_cmd == None ) or ( cell_loc[-1] in active_cells )):
                             self.active_cfg_cmd = cfg_cmd
-                            if ( module.GetRenWinID() == active_renwin_ids[0] ): located_active_config_cmd = True
+                            if ( cell_loc[-1] == active_cells[0] ): located_active_config_cmd = True
                 self.updateSliderValues(True)
                 if self.active_cfg_cmd:
                     self.connect( self.active_cfg_cmd, SIGNAL('updateLeveling()'), self.updateSliderValues ) 
@@ -569,11 +571,11 @@ class DV3DConfigControlPanel(QWidget):
     def getConfigWidget( self, configFunctionList ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper    
         if configFunctionList:
+            active_cells = DV3DPipelineHelper.getActiveCellStrs()
             for configFunction in configFunctionList:
-                if configFunction.module:
-                    renWinID = configFunction.module.GetRenWinID()
-                    activeRenWinIds = DV3DPipelineHelper.getActiveRenWinIds()
-                    if renWinID in activeRenWinIds:
+                if configFunction.module and configFunction.module.onCurrentPage():
+                    cell_loc = configFunction.module.getCellLocation()
+                    if cell_loc and ( cell_loc[-1] in active_cells ):
     #                   print " Got Config Widget: using cfg fn %s from module %d " % ( configFunction.name, configFunction.module.moduleID )
                         if configFunction.type == "leveling":
                             return DV3DRangeConfigWidget(self) 
@@ -599,28 +601,30 @@ class DV3DConfigControlPanel(QWidget):
 
     def addActivePlot( self, moduleID, config_fn ):
         if self.showActivePlotsPanel and self.configWidget:
-            active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
+            active_cells = DV3DPipelineHelper.getActiveCellStrs()
             if self.configWidget.active_cfg_cmd <> None and self.configWidget.active_cfg_cmd.isCompatible( config_fn ):
                 cellsOnly = self.configWidget.active_cfg_cmd.activateByCellsOnly
-                module = ModuleStore.getModule( moduleID ) 
-                isActive = ( module.GetRenWinID() in active_renwin_ids )
-                cell_addr = module.getCellAddress()
-                if cell_addr:
-                    if cellsOnly:
-                        label = cell_addr     
-                        existing_items = self.plot_list.findItems ( label, Qt.MatchFixedString )  
-                    else:
-                        plot_type = module.__class__.__name__
-                        if plot_type[0:3] == "PM_": plot_type = plot_type[3:]
-                        label = "%s: %s" % ( cell_addr, plot_type )   
-                        existing_items = []
-                    if len( existing_items ):
-                        plot_list_item = existing_items[0]
-                        plot_list_item.addModule( moduleID )
-                    else:
-                        plot_list_item = PlotListItem( label, moduleID, self.plot_list )
-                    plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
-                    DV3DPipelineHelper.setModulesActivation( [ moduleID ] , isActive, False ) 
+                module = ModuleStore.getModule( moduleID )
+                if module.onCurrentPage(): 
+                    cell_loc = module.getCellLocation()
+                    if cell_loc:
+                        cell_addr = cell_loc[-1]
+                        isActive = ( cell_addr in active_cells )
+                        if cellsOnly:
+                            label = cell_addr     
+                            existing_items = self.plot_list.findItems ( label, Qt.MatchFixedString )  
+                        else:
+                            plot_type = module.__class__.__name__
+                            if plot_type[0:3] == "PM_": plot_type = plot_type[3:]
+                            label = "%s: %s" % ( cell_addr, plot_type )   
+                            existing_items = []
+                        if len( existing_items ):
+                            plot_list_item = existing_items[0]
+                            plot_list_item.addModule( moduleID )
+                        else:
+                            plot_list_item = PlotListItem( label, moduleID, self.plot_list )
+                        plot_list_item.setCheckState( Qt.Checked if isActive else Qt.Unchecked )
+                        DV3DPipelineHelper.setModulesActivation( [ moduleID ] , isActive, False ) 
             else:
                 print " ** Set module activation: module[%d] -> False" % ( moduleID )
                 DV3DPipelineHelper.activationMap[ moduleID ] = False
@@ -1266,22 +1270,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             print "Can't find sheet: ", sheetName
         return pipeline       
 
-#    @staticmethod
-#    def getCellAddress( pipeline ):
-#        proj_controller = api.get_current_project_controller()
-#        controller =  proj_controller.vt_controller 
-#        for sheet_item in proj_controller.sheet_map.items(): 
-#            sheetName = sheet_item[0]
-#            cellMap = sheet_item[1]
-#            for cell_item in cellMap.items():
-#                cell_address = cell_item[0]
-#                cell = cell_item[1]
-#                current_version = cell.current_parent_version 
-#                controller.change_selected_version( current_version )
-#                cell_pipeline = controller.vistrail.getPipeline( current_version )  
-#                if cell_pipeline == pipeline: return( sheetName, ( cell_address[1], cell_address[0] ) )
-#        return ( None, None ) 
-
     @staticmethod
     def getCellCoordinates( mid ):
         ( sheetName, cell_addr ) = DV3DPipelineHelper.moduleMap.get( mid, ( None, None ) )
@@ -1523,23 +1511,32 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             if not (  (cell[0] == activeCell[0]) and (cell[1] == activeCell[1]) ): active_cells.append( cell )
         return active_cells
 
-    @staticmethod
-    def getActiveIrens():
-        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule
-        irens = []
-        for cell in DV3DPipelineHelper.getActiveCells():
-            cell_spec = "%s%s" % ( chr(ord('A') + cell[1] ), cell[0]+1 )
-            iren = PersistentVisualizationModule.renderMap.get( cell_spec, None )
-            irens.append( iren )
-        return irens
 
     @staticmethod
-    def getActiveRenWinIds():
-        rwins = []
-        for iren in DV3DPipelineHelper.getActiveIrens():
-            rw = iren.GetRenderWindow() if iren else None
-            if rw: rwins.append( id(rw) )
-        return rwins
+    def getActiveCellStrs():
+        active_cells = DV3DPipelineHelper.getActiveCells()
+        return [ "%s%d" % ( chr(ord('A') + cell[1] ), cell[0]+1 ) for cell in active_cells ]
+
+#    @staticmethod
+#    def getActiveRens():
+#        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule
+#        from api import get_current_project_controller
+#        rens = []
+#        prj_controller = get_current_project_controller() 
+#        for cell in DV3DPipelineHelper.getActiveCells():
+#            cell_spec = "%s:%s:%s%s" % ( prj_controller.name, prj_controller.current_sheetName, chr(ord('A') + cell[1] ), cell[0]+1 )
+#            winid = PersistentVisualizationModule.renderMap.get( cell_spec, None )
+#            print "Get Active winid for cell %s: %s[%s]" % ( cell_spec, str(cell), str(winid) )
+#            rens.append( winid )
+#        return rens
+
+#    @staticmethod
+#    def getActiveRenWinIds():
+#        rwins = []
+#        for iren in DV3DPipelineHelper.getActiveIrens():
+#            rw = iren.GetRenderWindow() if iren else None
+#            if rw: rwins.append( id(rw) )
+#        return rwins
     
     @staticmethod
     def show_configuration_widget( controller, version, plot_objs=[ None ] ):
@@ -1547,7 +1544,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         This method controls what config commands will be displayed in the DV3D configuration panel when a given plot is clicked upon.
         Config commands for all selected (blue rimmed) plots are displayed.   To display only the config commands for a single plot (type),
         deselect all rows and cols in the spreadsheet before clicking on a plot- this will select only plot that is clicked on.  The list
-        of selected cells is represented by the 'active_renwin_ids' list.  Config commands for plots in unselected cells have isActive=False 
+        of selected cells is represented by the 'active_cells' list.  Config commands for plots in unselected cells have isActive=False 
         and, as a result, are not displayed in the configuration panel.    
         
         """
@@ -1560,15 +1557,17 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         pmods = set()
         DV3DPipelineHelper.reset()
         menu = DV3DPipelineHelper.startNewMenu()
-        configFuncs = ConfigurableFunction.getActiveFunctionList( ) # DV3DPipelineHelper.getActiveIrens() )
-        active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
+        configFuncs = ConfigurableFunction.getActiveFunctionList( ) 
+        active_cells = DV3DPipelineHelper.getActiveCellStrs()
         for configFunc in configFuncs:
             if configFunc.isValid():
                 action_key = ( str( configFunc.label ), str( configFunc.name ) )
                 config_key = configFunc.key 
                 pmod = configFunc.module
-                if pmod.renderer:
-                    isActive = ( id( pmod.renderer.GetRenderWindow() ) in active_renwin_ids ) 
+                cell_loc = pmod.getCellLocation()
+                if cell_loc:
+                    isActive = pmod.onCurrentPage() and ( cell_loc[-1] in active_cells )
+#                    print "--->> Config %s[%s]: pmod=%d, active=%s " % ( str( configFunc.label ), cell_loc, pmod.moduleID, str(isActive) )
                     DV3DPipelineHelper.addAction( pmod, action_key, config_key, isActive ) 
                     pmods.add(pmod)
                                         

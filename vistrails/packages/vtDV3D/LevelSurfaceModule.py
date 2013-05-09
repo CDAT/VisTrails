@@ -92,20 +92,34 @@ class PM_LevelSurface(PersistentVisualizationModule):
                     self.clipper.PlaceWidget( self.cropRegion )
                     self.executeClip()
                    
+    def current_cell_changed(self, sheetName, row, col):
+        PersistentModule.current_cell_changed(self, sheetName, row, col) 
+        if self.clipping_enabled:
+            if self.isInSelectedCell:   self.clipOn()
+            else:                       self.clipOff() 
+                 
+    def clipOn(self):
+        if self.cropRegion == None:
+            cr = self.wmod.forceGetInputFromPort( "cropRegion", None  ) 
+            self.cropRegion = list(cr) if cr else self.getVolumeBounds()
+        self.clipper.PlaceWidget( self.cropRegion )
+        self.clipper.SetHandleSize( 0.005 )
+        self.clipper.SetEnabled( True )
+        self.clipper.On()
+        self.executeClip()
+
+    def clipOff(self):
+        self.clipper.SetEnabled( False )
+        self.clipper.Off()
+        self.persistCropRegion()
+                   
     def toggleClipping(self):
         self.clipping_enabled = not self.clipping_enabled 
-        self.clipper.SetEnabled( self.clipping_enabled )
-        if self.clipping_enabled:
-            if self.cropRegion == None:
-                cr = self.wmod.forceGetInputFromPort( "cropRegion", None  ) 
-                self.cropRegion = list(cr) if cr else self.getVolumeBounds()
-            self.clipper.PlaceWidget( self.cropRegion )
-            self.clipper.SetHandleSize( 0.005 )
-            self.clipper.On()
-            self.executeClip()
-        else: 
-            self.clipper.Off()
-            self.persistCropRegion()
+        if self.clipping_enabled and self.isInSelectedCell:     self.clipOn()
+        else:                                                   self.clipOff()
+
+    def startClip( self, caller=None, event=None ):
+        self.clearCellSelection()
 
     def executeClip( self, caller=None, event=None ):
         if self.clipPlanes:
@@ -117,7 +131,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
                 o = plane.GetOrigin()
                 self.cropRegion[ip] = o[ ip/2 ]
             self.setCropZExtent() 
-        
+       
     def setCropZExtent(self ):
         spacing = self.input().GetSpacing() 
         origin = self.input().GetOrigin()        
@@ -489,6 +503,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.clipper = vtk.vtkBoxWidget()
         self.clipper.RotationEnabledOff()
         self.clipper.SetPlaceFactor( 1.0 )    
+        self.clipper.AddObserver( 'StartInteractionEvent', self.startClip )
         self.clipper.AddObserver( 'EndInteractionEvent', self.executeClip )
         
         mapper = vtk.vtkPolyDataMapper()

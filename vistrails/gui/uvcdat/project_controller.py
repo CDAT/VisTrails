@@ -791,11 +791,7 @@ class ProjectController(QtCore.QObject):
         else:
             plot_prop.set_controller(None)
             plot_prop.updateProperties(None, sheetName,row,col)
-        try: 
-            self.checkEnableUndoRedo(cell)
-        except: 
-            print "Error in checkEnableUndoRedo: "
-            traceback.print_exc( 100, sys.stderr ) 
+        self.checkEnableUndoRedo(cell)
                 
     def get_python_script(self, sheetName, row, col):
         script = None
@@ -1073,11 +1069,16 @@ class ProjectController(QtCore.QObject):
                 item.workflowVersion = cell.current_parent_version
         
     def checkEnableUndoRedo(self, cell):
-        canUndo = cell is not None and cell.canUndo()
-        canRedo = cell is not None and cell.canRedo()
-        _app = get_vistrails_application()
-        _app.uvcdatWindow.mainMenu.editUndoAction.setEnabled(canUndo)
-        _app.uvcdatWindow.mainMenu.editRedoAction.setEnabled(canRedo)
+        try:
+            canUndo = cell is not None and cell.canUndo()
+            canRedo = cell is not None and cell.canRedo()
+            _app = get_vistrails_application()
+            _app.uvcdatWindow.mainMenu.editUndoAction.setEnabled(canUndo)
+            _app.uvcdatWindow.mainMenu.editRedoAction.setEnabled(canRedo)
+        except: 
+            print "Error in checkEnableUndoRedo: "
+            traceback.print_exc( 100, sys.stderr ) 
+
         
     def removeVarFromMainDict(self, name):
         if name in __main__.__dict__:

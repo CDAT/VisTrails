@@ -18,6 +18,7 @@ from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
 DefaultReferenceTimeUnits = "days since 1900-1-1"
 MIN_LINE_LEN = 50
+ecount = 0
 
 def getClassName( instance ):
     return instance.__class__.__name__ if ( instance <> None ) else "None" 
@@ -459,6 +460,8 @@ class PersistentModule( QObject ):
         self.taggedVersionMap = {}
         self.persistedParameters = []
         self.versionTags = {}
+        self.cell_location = None
+        self.isInSelectedCell = False
 #        self.initVersionMap()
         role = get_hyperwall_role( )
         self.isClient = ( role == 'hw_client' )
@@ -503,6 +506,32 @@ class PersistentModule( QObject ):
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
 
+    def setCellLocation( self, cell_location ):
+        self.cell_location = cell_location       
+        ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+        tabController = ssheetWindow.get_current_tab_controller()        
+        self.connect( tabController, QtCore.SIGNAL("current_cell_changed"), self.current_cell_changed )
+        
+        
+    def clearCellSelection(self):
+        ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+        tabController = ssheetWindow.get_current_tab_controller() 
+        for w in tabController.tabWidgets:       
+            w.clearSelection()
+
+    def current_cell_changed(self, sheetName, row, col):
+        if ( sheetName == self.cell_location[1] ):
+            cell_addr = "%s%d" % ( chr(ord('A') + col ), row+1 )
+            self.isInSelectedCell = ( cell_addr == self.cell_location[-1] )
+
+    def getCellLocation( self ):
+        return self.cell_location
+
+    def onCurrentPage(self):
+        import api
+        prj_controller = api.get_current_project_controller()
+        return ( self.cell_location[0] == prj_controller.name ) and ( self.cell_location[1] == prj_controller.current_sheetName )
+        
     def clearReferrents(self):
         for f in self.configurableFunctions.values(): 
             f.clearReferrents()
@@ -517,10 +546,7 @@ class PersistentModule( QObject ):
         origin = args.get( "origin", self.input().GetOrigin() )
         bounds = [ ( origin[i/2] + spacing[i/2]*extent[i] ) for i in range(6) ]
         return bounds
-        
-    def GetRenWinID(self):
-        return -1
-        
+                
     def setLayer( self, layer ):
         self.activeLayer = getItem( layer )
 
@@ -957,6 +983,9 @@ class PersistentModule( QObject ):
            
     def addConfigurableMethod( self, name, method, key, **args ):
         self.configurableFunctions[name] = ConfigurableFunction( name, args.get('signature',None), key, hasState=False, open=method, **args )
+
+    def addConfigurableBooleanFunction( self, name, method, key, **args ):
+        self.configurableFunctions[name] = ConfigurableBooleanFunction( name, args.get('signature',None), key, hasState=False, open=method, **args )
 
     def addConfigurableFunction(self, name, function_args, key, **args):
         self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, **args )
@@ -1546,9 +1575,6 @@ class PersistentVisualizationModule( PersistentModule ):
         self.showInteractiveLens = False
         self.navigationInteractorStyle = None
         self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
-
-    def GetRenWinID(self):
-        return id( self.renderer.GetRenderWindow() ) if self.renderer else -1
 
     def enableVisualizationInteraction(self): 
         pass
@@ -2230,34 +2256,29 @@ class PersistentVisualizationModule( PersistentModule ):
              
     def onKeyPress( self, caller, event ):
         return 0
- 
-    def getCellAddress(self):  
-        cell_items = self.renderMap.items()
-        rw = self.renderer.GetRenderWindow() if self.renderer else None
-        if rw:
-            for cell_item in cell_items:
-                crw = cell_item[1].GetRenderWindow()
-                if id( crw ) == id( rw ):
-                    return cell_item[0]
-        return None
-        
-    def getActiveIrens(self):
+         
+    def getActiveRens(self):
+        from api import get_current_project_controller
         sheetTabWidget = getSheetTabWidget()
+        prj_controller = get_current_project_controller() 
         selected_cells = sheetTabWidget.getSelectedLocations() 
-        irens = []
+        rens = []
         for cell in selected_cells:
-            cell_spec = "%s%s" % ( chr(ord('A') + cell[1] ), cell[0]+1 )
-            iren = PersistentVisualizationModule.renderMap.get( cell_spec, None )
-            irens.append( iren )
-        return irens
-   
-    @staticmethod
-    def getValidIrens():
-        return PersistentVisualizationModule.renderMap.values()
-    
+            cell_spec = "%s:%s:%s%s" % ( prj_controller.name, prj_controller.current_sheetName, chr(ord('A') + cell[1] ), cell[0]+1 )
+            winid = PersistentVisualizationModule.renderMap.get( cell_spec, None )
+            if winid: rens.append( winid )
+        return rens
+       
     def onAnyEvent(self, caller, event ):
-        if self.iren:
-            istyle = self.iren.GetInteractorStyle() 
+        global ecount
+#        if self.cell_location:
+#            addr = self.cell_location[-1]
+#            if event == "ModifiedEvent" and addr == "A2":
+#                print "Cell %s, E[%d]: %s" % ( str(addr), ecount, str( event ) )
+#                ecount = ecount + 1
+
+#        if self.iren:
+#            istyle = self.iren.GetInteractorStyle() 
 #            print "onAnyEvent: %s, iren style = %s, interactionState = %s  " % ( str( event ), istyle.__class__.__name__, self.InteractionState )
 
 #        isKeyEvent = ( event in [ 'KeyPressEvent', 'CharEvent', 'KeyReleaseEvent' ] )
