@@ -48,7 +48,7 @@ class PM_CDMS_CDATUtilities( PersistentModule ):
     def executeTask( self, skipCompletedTasks, **args ):
         cdmsDataset = self.getInputValue( "dataset"  ) 
         tValue = args.get( 'timeValue', cdmsDataset.timeRange[2] )
-        self.timeValue = cdtime.reltime( float( tValue ), ReferenceTimeUnits )
+        self.timeValue = cdtime.reltime( float( tValue ), cdmsDataset.referenceTimeUnits )
         taskInputData = self.getInputValue( "task"  ) 
         taskMap =  deserializeTaskData( getItem( taskInputData ) ) if taskInputData else None   
         taskData =  taskMap.get( cdmsDataset.getDsetId(), None ) if taskMap else None
