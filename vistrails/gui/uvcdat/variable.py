@@ -7,7 +7,7 @@
 
 from PyQt4 import QtCore, QtGui
 
-import os
+import os, traceback
 import cdms2
 
 from esgf import QEsgfBrowser
@@ -284,10 +284,14 @@ class VariableProperties(QtGui.QDialog):
         self.originTabWidget.addTab(esgf,"ESGF")
 
     def createDataServicesTab(self):
-        from packages.vtDV3D.RemoteDataBrowser import RemoteDataBrowser
-        browser = RemoteDataBrowser()
-        self.connect( browser, RemoteDataBrowser.new_data_element, self.processDataAddress )
-        self.originTabWidget.addTab(browser,"Data Services")
+        try:
+            from packages.vtDV3D.RemoteDataBrowser import RemoteDataBrowser
+            browser = RemoteDataBrowser()
+            self.connect( browser, RemoteDataBrowser.new_data_element, self.processDataAddress )
+            self.originTabWidget.addTab(browser,"Data Services")
+        except Exception, err:
+            print>>sys.stderr, "Error Creating Data Services Tab: ", str(err)
+            traceback.print_exc()
         
     def processDataAddress( self, address ):
         self.originTabWidget.setCurrentIndex( 0 )
