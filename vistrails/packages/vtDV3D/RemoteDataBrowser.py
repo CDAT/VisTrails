@@ -10,6 +10,10 @@ try:    from irods import *
 except Exception, err: 
     iRODS_enabled = False
 
+#import irods    
+#print "IRODS API:\n", str( dir(irods) )
+#sys.stdout.flush()
+
 #        split_url = urlsplit(catalog_url) urlunsplit(split_url)
 
 #class HTMLState:
@@ -101,27 +105,28 @@ class NewServerDialog(QtGui.QDialog):
 
         if iRODS_enabled:
             envTup = getRodsEnv() if iRODS_enabled else ( None, None )
-            myEnv = envTup[0]
+            myEnv = envTup[1]
             iRODSTab = QtGui.QWidget()  
             iRODSTabLayout = QtGui.QGridLayout()        
             rodsHostLabel = QtGui.QLabel("iRods Host:", iRODSTab)
             iRODSTabLayout.addWidget( rodsHostLabel, 0, 0 )
-            self.RodsHost = QtGui.QLineEdit( myEnv.getRodsHost() if myEnv else "", iRODSTab )
+            print " Env methods: ", str( dir(myEnv) ); sys.stdout.flush()
+            self.RodsHost = QtGui.QLineEdit( myEnv.rodsHost if myEnv else "", iRODSTab )
             iRODSTabLayout.addWidget( self.RodsHost, 0, 1 )
             
             rodsPortLabel = QtGui.QLabel("iRods Port:", iRODSTab)
             iRODSTabLayout.addWidget( rodsPortLabel, 1, 0 )
-            self.RodsPort = QtGui.QLineEdit( str (myEnv.getRodsPort() ) if myEnv else "", iRODSTab )
+            self.RodsPort = QtGui.QLineEdit( str (myEnv.rodsPort) if myEnv else "", iRODSTab )
             iRODSTabLayout.addWidget( self.RodsPort, 1, 1 )
 
             rodsUserNameLabel = QtGui.QLabel("iRods User Name:", iRODSTab)
             iRODSTabLayout.addWidget( rodsUserNameLabel, 2, 0 )
-            self.RodsUserName = QtGui.QLineEdit( myEnv.getRodsUserName() if myEnv else "", iRODSTab )
+            self.RodsUserName = QtGui.QLineEdit( myEnv.rodsUserName if myEnv else "", iRODSTab )
             iRODSTabLayout.addWidget( self.RodsUserName, 2, 1 )
 
             rodsZoneLabel = QtGui.QLabel("iRods Zone:", iRODSTab)
             iRODSTabLayout.addWidget( rodsZoneLabel, 3, 0 )
-            self.RodsZone = QtGui.QLineEdit( myEnv.getRodsZone() if myEnv else "",  iRODSTab )
+            self.RodsZone = QtGui.QLineEdit( myEnv.rodsZone if myEnv else "",  iRODSTab )
             iRODSTabLayout.addWidget( self.RodsZone, 3, 1 )            
                    
             iRODSTab.setLayout( iRODSTabLayout )        
@@ -265,11 +270,13 @@ class iRodsCatalogNode( CatalogNode ):
     def getFileMetadata( self ): 
         if self.metadata == None:
             path = self.getIRodsPath()
-            f = iRodsOpen( self.server_conn, path, 'r' )
+            f = irodsOpen( self.server_conn, path, 'r' )
             if f:
 #                print "Reading Metadata for file", path
+                print "File Methods: \n", str( dir(f) )
                 strList = [] 
-                strList.append( "File Name = %s" % f.getDataName() )
+                strList.append( "File Name = %s" % f.getName() )
+                strList.append( "File Path = %s" % f.getPath() )
                 strList.append( "Owner Name = %s" % f.getOwnerName() )
                 strList.append( "Size = %s" % f.getSize() )
                 mdataList = getFileUserMetadata( self.server_conn, path ) 
@@ -333,15 +340,16 @@ class iRodsCatalogNode( CatalogNode ):
             if not os.path.isdir(dirname): print>>sys.stderr, "Error creating directory %s: %s " % ( dirname, str(err) )
     
     def getIRodsPath(self):
-        myEnv, status = getRodsEnv()
-        irods_path = myEnv.getRodsHome() + self.catalog_path 
+        status, myEnv = getRodsEnv()
+        irods_path = myEnv.rodsHome + self.catalog_path 
         return irods_path             
           
     def loadData( self ):
         status = -1
         if self.localFilePath and not os.path.exists( self.localFilePath ):
             dataObjInp = dataObjInp_t()
-            dataObjInp.setObjPath( self.getIRodsPath() )
+            print "Data Object Methods: \n", str( dir(dataObjInp) )
+            dataObjInp.objPath = self.getIRodsPath() 
             status = rcDataObjGet( self.server_conn, dataObjInp, self.localFilePath ) 
         return status
     
