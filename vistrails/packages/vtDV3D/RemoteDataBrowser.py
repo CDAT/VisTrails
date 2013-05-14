@@ -10,9 +10,17 @@ try:    from irods import *
 except Exception, err: 
     iRODS_enabled = False
 
-#import irods    
-#print "IRODS API:\n", str( dir(irods) )
-#sys.stdout.flush()
+import irods    
+print "IRODS API:\n", str( dir(irods) )
+sys.stdout.flush()
+
+def getIRodsEnv():
+    if not iRODS_enabled: return None
+    rvals = getRodsEnv()
+    for val in rvals:
+        if type(val) <> type(4):
+            return val
+
 
 #        split_url = urlsplit(catalog_url) urlunsplit(split_url)
 
@@ -104,29 +112,32 @@ class NewServerDialog(QtGui.QDialog):
         self.serverTypeTabbedWidget.addTab( opendapTab, ServerClass.getStr( ServerClass.OPENDAP ) ) 
 
         if iRODS_enabled:
-            envTup = getRodsEnv() if iRODS_enabled else ( None, None )
-            myEnv = envTup[1]
+            myEnv = getIRodsEnv() 
             iRODSTab = QtGui.QWidget()  
             iRODSTabLayout = QtGui.QGridLayout()        
             rodsHostLabel = QtGui.QLabel("iRods Host:", iRODSTab)
             iRODSTabLayout.addWidget( rodsHostLabel, 0, 0 )
             print " Env methods: ", str( dir(myEnv) ); sys.stdout.flush()
-            self.RodsHost = QtGui.QLineEdit( myEnv.rodsHost if myEnv else "", iRODSTab )
+            rhost = myEnv.rodsHost if hasattr(myEnv,'rodsHost') else myEnv.getRodsHost()
+            self.RodsHost = QtGui.QLineEdit( rhost, iRODSTab )
             iRODSTabLayout.addWidget( self.RodsHost, 0, 1 )
             
             rodsPortLabel = QtGui.QLabel("iRods Port:", iRODSTab)
             iRODSTabLayout.addWidget( rodsPortLabel, 1, 0 )
-            self.RodsPort = QtGui.QLineEdit( str (myEnv.rodsPort) if myEnv else "", iRODSTab )
+            rPort = myEnv.rodsPort if hasattr(myEnv,'rodsPort') else myEnv.getRodsPort()
+            self.RodsPort = QtGui.QLineEdit( str (rPort), iRODSTab )
             iRODSTabLayout.addWidget( self.RodsPort, 1, 1 )
 
             rodsUserNameLabel = QtGui.QLabel("iRods User Name:", iRODSTab)
             iRODSTabLayout.addWidget( rodsUserNameLabel, 2, 0 )
-            self.RodsUserName = QtGui.QLineEdit( myEnv.rodsUserName if myEnv else "", iRODSTab )
+            rUserName = myEnv.rodsUserName if hasattr(myEnv,'rodsUserName') else myEnv.getRodsUserName()
+            self.RodsUserName = QtGui.QLineEdit( rUserName, iRODSTab )
             iRODSTabLayout.addWidget( self.RodsUserName, 2, 1 )
 
             rodsZoneLabel = QtGui.QLabel("iRods Zone:", iRODSTab)
             iRODSTabLayout.addWidget( rodsZoneLabel, 3, 0 )
-            self.RodsZone = QtGui.QLineEdit( myEnv.rodsZone if myEnv else "",  iRODSTab )
+            rZone = myEnv.rodsZone if hasattr(myEnv,'rodsZone') else myEnv.getRodsZone()
+            self.RodsZone = QtGui.QLineEdit( rZone,  iRODSTab )
             iRODSTabLayout.addWidget( self.RodsZone, 3, 1 )            
                    
             iRODSTab.setLayout( iRODSTabLayout )        
@@ -270,10 +281,11 @@ class iRodsCatalogNode( CatalogNode ):
     def getFileMetadata( self ): 
         if self.metadata == None:
             path = self.getIRodsPath()
-            f = irodsOpen( self.server_conn, path, 'r' )
+            try:    f = irodsOpen( self.server_conn, path, 'r' )
+            except: f = iRodsOpen( self.server_conn, path, 'r' )
             if f:
 #                print "Reading Metadata for file", path
-                print "File Methods: \n", str( dir(f) )
+#                print "File Methods: \n", str( dir(f) )
                 strList = [] 
                 strList.append( "File Name = %s" % f.getName() )
                 strList.append( "File Path = %s" % f.getPath() )
@@ -284,6 +296,7 @@ class iRodsCatalogNode( CatalogNode ):
                     mdname = mdataItem[0].replace( '_', ' ' ).title()
                     if mdataItem[2]:    strList.append( "%s = %s (%s)" % ( mdname, mdataItem[1], mdataItem[2]) )
                     else:               strList.append( "%s = %s" % ( mdname, mdataItem[1] ) )
+                            
                 self.metadata = '<p>'.join(strList)
                 f.close()
             else: print>>sys.stderr, " Error, Can't open Data Object: ", path
@@ -338,17 +351,18 @@ class iRodsCatalogNode( CatalogNode ):
         try: os.makedirs( dirname )
         except OSError, err: 
             if not os.path.isdir(dirname): print>>sys.stderr, "Error creating directory %s: %s " % ( dirname, str(err) )
-    
+                
     def getIRodsPath(self):
-        status, myEnv = getRodsEnv()
-        irods_path = myEnv.rodsHome + self.catalog_path 
+        myEnv = getIRodsEnv()
+        rHome = myEnv.rodsHome if hasattr(myEnv,'rodsHome') else myEnv.getRodsHome()
+        irods_path = rHome + self.catalog_path 
         return irods_path             
           
     def loadData( self ):
         status = -1
         if self.localFilePath and not os.path.exists( self.localFilePath ):
             dataObjInp = dataObjInp_t()
-            print "Data Object Methods: \n", str( dir(dataObjInp) )
+#            print "Data Object Methods: \n", str( dir(dataObjInp) )
             dataObjInp.objPath = self.getIRodsPath() 
             status = rcDataObjGet( self.server_conn, dataObjInp, self.localFilePath ) 
         return status
