@@ -1143,7 +1143,7 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
         if titleParms: self.title = str( titleParms[0] )
         if not self.title: 
             pmod = self.getPersistentModule()
-            self.title = pmod.getTitle()
+            if pmod: self.title = pmod.getTitle()
         basemapParams = getFunctionParmStrValues( module, "enable_basemap" )
         if basemapParams: self.enableBasemap = bool( basemapParams[0] )
         basemapParams = getFunctionParmStrValues( module, "map_border_size" )
