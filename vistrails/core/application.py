@@ -361,6 +361,10 @@ The builder window can be accessed by a spreadsheet menu option.")
         
         # Redirect console output
         if self.temp_configuration.output != "":
+            #place in dotVistrails dir if no path detected
+            if os.path.split(self.temp_configuration.output)[0] == '':
+                self.temp_configuration.output = os.path.join(self.configuration.dotVistrails, 
+                                                              self.temp_configuration.output)
             try:
                 sys.stdout = sys.stderr = open(self.temp_configuration.output, "w")
             except (Exception):
