@@ -95,6 +95,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         self.currentTime = 0
         self.currentLevel = None
         self.timeIndex = 0
+        self.timeValue = None
         self.useTimeIndex = False
         self.timeAxis = None
         if self.outputType == CDMSDataType.Hoffmuller:
@@ -171,6 +172,45 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 elif matchesAxisType( axis, lon_axis_attr, lon_aliases ):
                     axis.designateLongitude()
                     print " --> Designating axis %s as a Longitude axis " % axis.id 
+
+    def setupTimeAxis( self, var, **args ):
+        self.nTimesteps = 1
+        self.timeRange = [ 0, self.nTimesteps, 0.0, 0.0 ]
+        self.timeAxis = var.getTime()
+        if self.timeAxis:
+            self.nTimesteps = len( self.timeAxis ) if self.timeAxis else 1
+            try:
+                comp_time_values = self.timeAxis.asComponentTime()
+                t0 = comp_time_values[0].torel(self.referenceTimeUnits).value
+                if (t0 < 0):
+                    self.referenceTimeUnits = self.timeAxis.units
+                    t0 = comp_time_values[0].torel(self.referenceTimeUnits).value
+                dt = 0.0
+                if self.nTimesteps > 1:
+                    t1 = comp_time_values[-1].torel(self.referenceTimeUnits).value
+                    dt = (t1-t0)/(self.nTimesteps-1)
+                    self.timeRange = [ 0, self.nTimesteps, t0, dt ]
+            except:
+                values = self.timeAxis.getValue()
+                t0 = values[0] if len(values) > 0 else 0
+                t1 = values[-1] if len(values) > 1 else t0
+                dt = ( values[1] - values[0] )/( len(values) - 1 ) if len(values) > 1 else 0
+                self.timeRange = [ 0, self.nTimesteps, t0, dt ]
+        self.setParameter( "timeRange" , self.timeRange )
+        self.cdmsDataset.timeRange = self.timeRange
+        self.cdmsDataset.referenceTimeUnits = self.referenceTimeUnits
+        self.timeLabels = self.cdmsDataset.getTimeValues()
+        timeData = args.get( 'timeData', [ self.cdmsDataset.timeRange[2], 0, False ] )
+        if timeData:
+            self.timeValue = cdtime.reltime( float(timeData[0]), self.referenceTimeUnits )
+            self.timeIndex = timeData[1]
+            self.useTimeIndex = timeData[2]
+        else:
+            self.timeValue = cdtime.reltime( t0, self.referenceTimeUnits )
+            self.timeIndex = 0
+            self.useTimeIndex = False
+#            print "Set Time [mid = %d]: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( self.moduleID, str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
+#            print "Time Step Labels: %s" % str( self.timeLabels )
            
     def execute(self, **args ):
         import api
@@ -186,38 +226,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self.newLayerConfiguration = self.newDataset
             self.datasetId = dsetId
             self.designateAxes(var)
-            self.nTimesteps = 1
-            self.timeRange = [ 0, self.nTimesteps, 0.0, 0.0 ]
-            self.timeAxis = var.getTime()
-            if self.timeAxis:
-                self.nTimesteps = len( self.timeAxis ) if self.timeAxis else 1
-                try:
-                    comp_time_values = self.timeAxis.asComponentTime()
-                    t0 = comp_time_values[0].torel(self.referenceTimeUnits).value
-                    if (t0 < 0):
-                        self.referenceTimeUnits = self.timeAxis.units
-                        t0 = comp_time_values[0].torel(self.referenceTimeUnits).value
-                    dt = 0.0
-                    if self.nTimesteps > 1:
-                        t1 = comp_time_values[-1].torel(self.referenceTimeUnits).value
-                        dt = (t1-t0)/(self.nTimesteps-1)
-                        self.timeRange = [ 0, self.nTimesteps, t0, dt ]
-                except:
-                    values = self.timeAxis.getValue()
-                    t0 = values[0] if len(values) > 0 else 0
-                    t1 = values[-1] if len(values) > 1 else t0
-                    dt = ( values[1] - values[0] )/( len(values) - 1 ) if len(values) > 1 else 0
-                    self.timeRange = [ 0, self.nTimesteps, t0, dt ]
-            self.setParameter( "timeRange" , self.timeRange )
-            self.cdmsDataset.timeRange = self.timeRange
-            self.cdmsDataset.referenceTimeUnits = self.referenceTimeUnits
-            self.timeLabels = self.cdmsDataset.getTimeValues()
-            timeData = args.get( 'timeData', [ self.cdmsDataset.timeRange[2], 0, False ] )
-            self.timeValue = cdtime.reltime( float(timeData[0]), self.referenceTimeUnits )
-            self.timeIndex = timeData[1]
-            self.useTimeIndex = timeData[2]
-#            print "Set Time [mid = %d]: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( self.moduleID, str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
-#            print "Time Step Labels: %s" % str( self.timeLabels )
+            self.setupTimeAxis( var, **args )
             intersectedRoi = self.cdmsDataset.gridBounds
             intersectedRoi = self.getIntersectedRoi( cdms_var, intersectedRoi )
             while( len(cdms_vars) ):
@@ -248,15 +257,16 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 self.datasetId = dsetId
                 ModuleStore.archiveCdmsDataset( self.datasetId, self.cdmsDataset )
                 self.timeRange = self.cdmsDataset.timeRange
-                timeData = args.get( 'timeData', [ self.cdmsDataset.timeRange[2], 0, False ] )
-                self.timeValue = cdtime.reltime( float(timeData[0]), self.referenceTimeUnits )
-                self.timeIndex = timeData[1]
-                self.useTimeIndex = timeData[2]
-                self.timeLabels = self.cdmsDataset.getTimeValues()
-                self.nTimesteps = self.timeRange[1]
+                timeData = args.get( 'timeData', None )
+                if timeData:
+                    self.timeValue = cdtime.reltime( float(timeData[0]), self.referenceTimeUnits )
+                    self.timeIndex = timeData[1]
+                    self.useTimeIndex = timeData[2]
+                    self.timeLabels = self.cdmsDataset.getTimeValues()
+                    self.nTimesteps = self.timeRange[1]
 #                print "Set Time: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
 #                print "Time Step Labels: %s" % str( self.timeLabels ) 
-                self.generateOutput()
+                self.generateOutput( **args )
 #                if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
  
             
@@ -355,7 +365,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 dsid = varNameComponents[0]
                 varName = varNameComponents[1]
             ds = self.cdmsDataset[ dsid ]
-            self.timeRange = self.cdmsDataset.timeRange
+            if ds:
+                var = ds.getVariable( varName )
+                self.setupTimeAxis( var, **args )
             portName = orec.name
             selectedLevel = orec.getSelectedLevel() if ( self.currentLevel == None ) else self.currentLevel
             ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
@@ -364,14 +376,14 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             self._max_scalar_value = getMaxScalarValue( scalar_dtype )
             self._range = [ 0.0, self._max_scalar_value ]  
             datatype = getDatatypeString( scalar_dtype )
-            iTimestep = 0 if varName == '__zeros__' else self.timeIndex if self.useTimeIndex else self.getTimestep()
-            varDataIdIndex = iTimestep
             if (self.outputType == CDMSDataType.Hoffmuller):
                 if ( selectedLevel == None ):
                     varDataIdIndex = 0
                 else:
                     varDataIdIndex = selectedLevel
-
+                    
+            iTimestep = self.timeIndex if ( varName <> '__zeros__' ) else 0
+            varDataIdIndex = iTimestep  
             roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] ) if self.cdmsDataset.gridBounds else ""
             varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), roiStr )
             varDataIds.append( varDataId )
@@ -772,6 +784,7 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
         self.outRecMgr = None
         self.refVar = None
         self.levelsAxis = None
+        self.variableList = None
         self.serializedPortData = ''
         self.datasetId = None
         DV3DConfigurationWidget.__init__(self, module, controller, 'CDMS Data Reader Configuration', parent)
@@ -781,12 +794,13 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
      
     def getParameters( self, module ):
         global PortDataVersion
+        ( self.variableList, self.datasetId, self.timeRange, self.refVar, self.levelsAxis ) =  DV3DConfigurationWidget.getVariableList( module.id )
         pmod = self.getPersistentModule()
-        ( self.variableList, self.datasetId, self.timeRange, self.refVar, self.levelsAxis ) =  DV3DConfigurationWidget.getVariableList( module.id ) 
-        portData = pmod.getPortData( dbmod=self.module, datasetId=self.datasetId ) # getFunctionParmStrValues( module, "portData" )
-        if portData and portData[0]: 
-             self.serializedPortData = portData[0]   
-             PortDataVersion = int( portData[1] )    
+        if pmod: 
+            portData = pmod.getPortData( dbmod=self.module, datasetId=self.datasetId ) # getFunctionParmStrValues( module, "portData" )
+            if portData and portData[0]: 
+                 self.serializedPortData = portData[0]   
+                 PortDataVersion = int( portData[1] )    
                                                   
     def createLayout(self):
         """ createEditor() -> None
@@ -968,11 +982,12 @@ class CDMSReaderConfigurationWidget(DV3DConfigurationWidget):
                         oRec.levelsCombo.clear()
                         levels = self.levelsAxis.getValue()
                         for level in levels: 
-                            oRec.levelsCombo.addItem( QString( str(level) ) )                     
-            for ( var, var_ndim ) in self.variableList:               
-                for oRec in self.outRecMgr.getOutputRecs( self.datasetId ):
-                    if (var_ndim == oRec.ndim) or ( (oRec.ndim == 4) and (var_ndim > 1) ) : 
-                        for varCombo in oRec.varComboList: varCombo.addItem( str(var) ) 
+                            oRec.levelsCombo.addItem( QString( str(level) ) ) 
+            if self.variableList:                    
+                for ( var, var_ndim ) in self.variableList:               
+                    for oRec in self.outRecMgr.getOutputRecs( self.datasetId ):
+                        if (var_ndim == oRec.ndim) or ( (oRec.ndim == 4) and (var_ndim > 1) ) : 
+                            for varCombo in oRec.varComboList: varCombo.addItem( str(var) ) 
                     
             for oRec in self.outRecMgr.getOutputRecs( self.datasetId ): 
                 if oRec.varSelections:

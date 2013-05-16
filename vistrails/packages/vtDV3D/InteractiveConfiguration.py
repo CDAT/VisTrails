@@ -742,7 +742,7 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         initValue = args.get( 'initValue', True ) 
         if initValue:
             initial_value = None if ( self.getValueHandler == None ) else self.getValueHandler()         
-            value = self.module.getInputValue( self.name, initial_value )  
+            value = self.module.getInputValue( self.name, initial_value ) if self.module else initial_value
             if value: self.setValue( value ) 
         
     def reset(self):
@@ -2067,9 +2067,25 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         return ModuleStore.getModule( self.moduleId ) 
 
     def persistParameterList( self, parameter_list, **args ):
+        import api
+        from core.db.action import create_action 
         pmod = self.getPersistentModule() 
-        if pmod: pmod.persistParameterList( parameter_list, **args )
-        return pmod
+        if pmod: 
+            pmod.persistParameterList( parameter_list, **args )
+            return pmod
+        elif parameter_list:
+            controller = api.get_current_controller()
+            module = controller.current_pipeline.modules[ self.moduleId ]
+            op_list = []
+            for parmRec in parameter_list:
+                parameter_name = parmRec[0]
+                output = parmRec[1]
+                param_values_str = [ str(x) for x in output ] if isList(output) else str( output )  
+                op_list.extend( controller.update_function_ops( module, parameter_name, param_values_str ) )
+            action = create_action( op_list ) 
+            controller.add_new_action(action)
+            controller.perform_action(action)
+
                         
 #    def queryLayerList( self, ndims=3 ):
 #        portName = 'volume' if ( ndims == 3 ) else 'slice'
