@@ -1,6 +1,6 @@
 import sys, os
 sys.path.append('/Developer/Projects/EclipseWorkspace/vistrails')
-from PyQt4 import QtGui
+from PyQt4 import QtGui, QtCore
 import gui.application
 from core.modules.module_registry import get_module_registry
 
@@ -22,18 +22,32 @@ def disable_lion_restore():
     os.system('defaults write org.vistrails NSQuitAlwaysKeepsWindows -bool false')
 
 
+class PlotType:
+    SLICER = 0
+    VOLUME_RENDER = 1
+    HOV_SLICER = 2
+    HOV_VOLUME_RENDER = 3
+    ISOSURFACE = 4
+    CURTAIN = 4
+
 class UVCDAT_API():
     
     def __init__(self):
-        disable_lion_restore()    
+        from core.requirements import MissingRequirement, check_all_vistrails_requirements
+        disable_lion_restore() 
         try:
-            v = gui.application.start_application()
-            if v != 0:
-                self.app = gui.application.get_vistrails_application()
-                if self.app: self.app.finishSession()
-                sys.exit(v)
-            self.app = gui.application.get_vistrails_application()
-            
+            check_all_vistrails_requirements()
+        except MissingRequirement, e:
+            msg = ("VisTrails requires %s to properly run.\n" % e.requirement)
+            debug.critical("Missing requirement", msg)
+            sys.exit(1)
+        self.dv3dpkg = 'gov.nasa.nccs.vtdv3d'
+        self.start()
+        
+    def start(self): 
+        try:
+            v =  gui.application.start_application()
+            self.app = gui.application.get_vistrails_application()                
         except SystemExit, e:
             self.app = gui.application.get_vistrails_application()
             if self.app: self.app.finishSession()
@@ -45,25 +59,38 @@ class UVCDAT_API():
             import traceback
             traceback.print_exc()
             sys.exit(255)
-    
-    def newModule(package_name, module_name):
+
+#    def start_application(self, optionsDict=None):
+#        from gui.application import VistrailsApplicationSingleton, get_vistrails_application, set_vistrails_application
+#        VistrailsApplication = get_vistrails_application()
+#        VistrailsApplication = VistrailsApplicationSingleton()
+#        set_vistrails_application(VistrailsApplication)
+#        x = VistrailsApplication.init(optionsDict)
+#        if x == True: return 0
+#        else:         return 1
+        
+    def newModule(self, module_name, **args ):
         registry = get_module_registry()
         controller = self.app.get_controller()
-        descriptor = registry.get_descriptor_by_name(package_name, module_name)
+        self.dv3dpkg
+        package_name = args.get('package', self.dv3dpkg )
+        namespace = args.get('ns', '' )
+        descriptor = registry.get_descriptor_by_name( package_name, module_name, namespace )
         return controller.create_module_from_descriptor(descriptor)
     
-    def newConnection(source, source_port, target, target_port):
+    def newConnection(self, source, source_port, target, target_port):
         controller = self.app.get_controller()
         c = controller.create_connection(source, source_port, target, target_port)
         return c
     
-    def setPortValue(module, port_name, value):
+    def setPortValue(self, module, port_name, value):
         controller = self.app.get_controller()
         function = controller.create_function(module, port_name, [str(value)])
         module.add_function(function)
         return
     
-    def addToPipeline(items, ops=[]):
+    def addToPipeline(self, items, ops=[]):
+        import core.db.action
         controller = self.app.get_controller()
         item_ops = [('add',item) for item in items]
         action = core.db.action.create_action(item_ops + ops)
@@ -71,11 +98,11 @@ class UVCDAT_API():
         version = controller.perform_action(action)
         controller.change_selected_version(version)
     
-    def layoutAndAdd(module, connections):
+    def layoutAndAdd(self, module, connections):
         controller = self.app.get_controller()
         if not isinstance(connections, list): connections = [connections]
         ops = controller.layout_modules_ops( preserve_order=True, no_gaps=True, new_modules=[module], new_connections=connections )
-        addToPipeline([module] + connections, ops)
+        self.addToPipeline([module] + connections, ops)
 
     def loadVistrail( self, vistrail_name, **kwargs ):
         resource_path = kwargs.get( 'dir', None )
@@ -92,24 +119,55 @@ class UVCDAT_API():
         print " Reading vistrail: ", vistrail_filename
         f = FileLocator(vistrail_filename)
         self.app.builderWindow.open_vistrail_without_prompt( f, version, True ) 
+        
+    def createPlot( self, **args ): 
+        type = args.get( 'type', PlotType.SLICER )   
+           
+        variable = self.newModule('CDMSVariable', package='gov.llnl.uvcdat.cdms' )
+        self.addToPipeline( [variable] )
 
+        if ( type == PlotType.HOV_VOLUME_RENDER ) or ( type == PlotType.HOV_SLICER ):
+            volumeReader = self.newModule('CDMS_HoffmullerReader', ns='cdms' )
+            variable_to_reader = self.newConnection(variable, 'self', volumeReader, 'variable')        
+        else:                 
+            volumeReader = self.newModule('CDMS_VolumeReader', ns='cdms' )
+            variable_to_reader = self.newConnection(variable, 'self', volumeReader, 'variable')   
+             
+        self.layoutAndAdd( volumeReader, variable_to_reader )
+        
+        if (type == PlotType.SLICER) or (type == PlotType.HOV_SLICER):
+            plotter = self.newModule('VolumeSlicer', ns='vtk' )
+            reader_to_plotter = self.newConnection(volumeReader, 'volume', plotter, 'volume')        
+        elif type == PlotType.VOLUME_RENDER or (type == PlotType.HOV_VOLUME_RENDER):
+            plotter = self.newModule('VolumeRenderer', ns='vtk' )
+            reader_to_plotter = self.newConnection(volumeReader, 'volume', plotter, 'volume')        
+        elif type == PlotType.ISOSURFACE:
+            plotter = self.newModule('LevelSurface', ns='vtk' )
+            reader_to_plotter = self.newConnection(volumeReader, 'volume', plotter, 'volume')        
+        elif type == PlotType.CURTAIN:
+            plotter = self.newModule('CurtainPlot', ns='vtk' )
+            reader_to_plotter = self.newConnection(volumeReader, 'volume', plotter, 'volume')        
+        else:
+            print>>sys.stderr, "Error, unrecognized plot type."
+            return
+
+        self.layoutAndAdd( plotter, reader_to_plotter )
+        
+        cell = self.newModule('MapCell3D', ns='spreadsheet' )
+        plotter_to_cell = self.newConnection( plotter, 'volume', cell, 'volume')
+        self.layoutAndAdd( cell, plotter_to_cell )
+        
     def run(self):
-        v = self.app.exec_()        
-
+        v = self.app.exec_()
+        gui.application.stop_application()        
+        
 if __name__ == '__main__':
     uvcdat_api = UVCDAT_API()
-    test_vt1 = os.path.expanduser( "~/Desktop/ConfigTest.vt" )
-    uvcdat_api.loadVistrailFile( test_vt1 )
+    uvcdat_api.createPlot()
+#    test_vt1 = os.path.expanduser( "~/Desktop/ConfigTest.vt" )
+#    uvcdat_api.loadVistrailFile( test_vt1 )
     uvcdat_api.run()
-
-    test_vt2 = os.path.expanduser( "~/Desktop/JetStreamVR.vt" )
-    uvcdat_api.loadVistrailFile( test_vt2 )
-    uvcdat_api.run()
-
-    gui.application.stop_application()
-    
-    
-    
+   
 
 ##============================ start script =====================================
 #

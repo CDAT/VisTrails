@@ -1055,6 +1055,7 @@ class PersistentModule( QObject ):
     def updateAnimation( self, animTimeData, textDisplay=None, restartingAnimation=False ):
         self.dvUpdate( timeData=animTimeData, animate=True, restarting=restartingAnimation )
         if textDisplay <> None:  self.updateTextDisplay( textDisplay )
+        QtCore.QCoreApplication.processEvents()
         
     def stopAnimation( self ):
         self.resetNavigation()
