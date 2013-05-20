@@ -61,6 +61,13 @@
     <file>resources/icons/binary-tree-icon.png</file>
     <file>resources/icons/floppy_disk_blue.ico</file>
     <file>resources/icons/db_add_256.ico</file>
+    <file>resources/icons/pan_up.gif</file>
+    <file>resources/icons/pan_left.gif</file>
+    <file>resources/icons/pan_down.gif</file>
+    <file>resources/icons/pan_right.gif</file>
+    <file>resources/icons/player_play.gif</file>
+    <file>resources/icons/player_pause.gif</file>
+    <file>resources/icons/player_stop.gif</file>
   </qresource>
   <qresource prefix="/images">
     <file>resources/images/clt_isofill.png</file>

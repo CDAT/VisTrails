@@ -68,7 +68,7 @@ class QAnimationView(QtGui.QWidget):
         grid = QtGui.QGridLayout()
         size=QtCore.QSize(40,40)
         ## UP button
-        icon=QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'up.ico'))
+        icon=QtGui.QIcon(':icons/resources/icons/pan_up.gif')
         b=QtGui.QToolButton()
         b.setIcon(icon)
         b.setIconSize(size)
@@ -78,7 +78,7 @@ class QAnimationView(QtGui.QWidget):
         self.upButton=b
         self.connect(self.upButton,QtCore.SIGNAL("clicked()"),self.up)
         ## Down button
-        icon=QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'down.ico'))
+        icon=QtGui.QIcon(':icons/resources/icons/pan_down.gif')
         b=QtGui.QToolButton()
         b.setIcon(icon)
         b.setIconSize(size)
@@ -88,7 +88,7 @@ class QAnimationView(QtGui.QWidget):
         self.downButton=b
         self.connect(self.downButton,QtCore.SIGNAL("clicked()"),self.down)
         ## Left button
-        icon=QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'back.ico'))
+        icon=QtGui.QIcon(':icons/resources/icons/pan_left.gif')
         b=QtGui.QToolButton()
         b.setIcon(icon)
         b.setIconSize(size)
@@ -98,7 +98,7 @@ class QAnimationView(QtGui.QWidget):
         self.leftButton=b
         self.connect(self.leftButton,QtCore.SIGNAL("clicked()"),self.left)
         ## Right button
-        icon=QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'forward.ico'))
+        icon=QtGui.QIcon(':icons/resources/icons/pan_right.gif')
         b=QtGui.QToolButton()
         b.setIcon(icon)
         b.setIconSize(size)
@@ -108,7 +108,7 @@ class QAnimationView(QtGui.QWidget):
         self.rightButton=b
         self.connect(self.rightButton,QtCore.SIGNAL("clicked()"),self.right)
         ## Play/Stop button
-        icon=QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'player_end.ico'))
+        icon=QtGui.QIcon(':icons/resources/icons/player_play.gif')
         b=QtGui.QToolButton()
         b.setIcon(icon)
         b.setIconSize(size)
@@ -179,7 +179,7 @@ class QAnimationView(QtGui.QWidget):
         self.player.setEnabled(True)
         self.setCursor(cursor)
     def run(self):
-        print 'hhahhahah'
+        ## ? Need to change player icon?
         self.animationFrame = 0
         if not self.animationTimer.isActive():
             self.animationTimer.start(100, self)
@@ -190,6 +190,7 @@ class QAnimationView(QtGui.QWidget):
         #self.canvas.animate.run()
         #self.setCursor(c)
     def stop(self):
+        # ??? need to change playe ricon?
         self.animationTimer.stop()
         ### stops generating animation
         #canvas=int(self.canvas.currentText())-1
