@@ -674,6 +674,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     moduleMap = {} 
     actionMenu = None
     plotIndexMap = {}
+    inputVariableMap = {}
     inputCounter = 0
     _config_mode = LevelingType.GUI
 
@@ -1006,7 +1007,19 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             for cell_address in cell_addresses: 
                 for mid in controller.current_pipeline.modules:   
                     DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )   
-                    
+    
+
+    @staticmethod
+    def clear_input_variables():
+        DV3DPipelineHelper.moduleMap = {}
+             
+    @staticmethod
+    def add_input_variable( id, inputVariable ):
+        DV3DPipelineHelper.moduleMap[ id ] =inputVariable
+
+    @staticmethod
+    def get_input_variable( id ):
+        return DV3DPipelineHelper.moduleMap.get( id, None )
      
     @staticmethod
     def add_additional_plot_to_pipeline( controller, version, plot, cell_addresses, component_index=0 ):
