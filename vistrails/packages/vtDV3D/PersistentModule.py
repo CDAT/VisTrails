@@ -1295,6 +1295,7 @@ class PersistentModule( QObject ):
             return controller.vistrail.getPipeline( current_version )
         except Exception, err:
             print>>sys.stderr, "Error getting current pipeline: %s " % str( err )
+            traceback.print_exc()
             return controller.current_pipeline       
 
     def change_parameters( self, parmRecList ):

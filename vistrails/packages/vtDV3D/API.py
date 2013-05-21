@@ -36,6 +36,7 @@ class UVCDAT_API():
         from core.requirements import MissingRequirement, check_all_vistrails_requirements
         disable_lion_restore() 
         self.inputId = 0
+        self.plotIndex = -1
         try:
             check_all_vistrails_requirements()
         except MissingRequirement, e:
@@ -128,20 +129,40 @@ class UVCDAT_API():
     def getNewInputId(self):
         self.inputId = self.inputId + 1
         return str( self.inputId )
+    
+    def getPlotName( self, type ):
+        if   type == PlotType.SLICER:               return "Slicer"
+        elif type == PlotType.VOLUME_RENDER:        return "Volume Render"
+        elif type == PlotType.HOV_SLICER:           return "Hovmoller Slicer"
+        elif type == PlotType.HOV_VOLUME_RENDER:    return "Hovmoller Volume"
+        elif type == PlotType.ISOSURFACE:           return "IsoSurface"
+        elif type == PlotType.CURTAIN:              return "Curtain Plot"
+        return ""
         
     def createPlot( self, **args ): 
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        from core.uvcdat.plot_registry import Plot          
         type = args.get( 'type', PlotType.SLICER )
         input = args.get( 'input', None ) 
         inputId = self.getNewInputId()
         name = args.get( 'name', "input-%s" % inputId ) 
         DV3DPipelineHelper.add_input_variable( inputId, input )
         
+        proj_controller = self.app.uvcdatWindow.get_current_project_controller()
+        controller = self.app.get_controller()
+        self.plotIndex = self.plotIndex + 1
+        sheetName = proj_controller.current_sheetName
+        row = self.plotIndex % 2
+        col = self.plotIndex / 2
+        cell_address = "%s%s" % ( chr(ord('A') + col ), row+1)
+        
         variableSource = self.newModule('CDMSVariableSource', ns='cdms' )
+        DV3DPipelineHelper.add_module( variableSource.id, sheetName, cell_address )
         self.setPortValue( variableSource, "inputId", inputId )
         self.addToPipeline( [variableSource] )
                      
         variable = self.newModule( 'CDMSTranisentVariable', ns='cdms' )
+        DV3DPipelineHelper.add_module( variable.id, sheetName, cell_address )
         self.setPortValue( variable, "name", name )
         source_to_variable = self.newConnection( variableSource, 'self', variable, 'source' )   
         source_to_variable_axes = self.newConnection( variableSource, 'axes', variable, 'axes' )   
@@ -153,7 +174,8 @@ class UVCDAT_API():
         else:                 
             volumeReader = self.newModule('CDMS_VolumeReader', ns='cdms' )
             variable_to_reader = self.newConnection(variable, 'self', volumeReader, 'variable')   
-             
+        
+        DV3DPipelineHelper.add_module( volumeReader.id, sheetName, cell_address )     
         self.layoutAndAdd( volumeReader, variable_to_reader )
         
         if (type == PlotType.SLICER) or (type == PlotType.HOV_SLICER):
@@ -172,17 +194,23 @@ class UVCDAT_API():
             print>>sys.stderr, "Error, unrecognized plot type."
             return
 
+        DV3DPipelineHelper.add_module( plotter.id, sheetName, cell_address ) 
         self.layoutAndAdd( plotter, reader_to_plotter )
         
         cellModule = self.newModule('MapCell3D', ns='spreadsheet' )
+        DV3DPipelineHelper.add_module( cellModule.id, sheetName, cell_address ) 
         plotter_to_cell = self.newConnection( plotter, 'volume', cellModule, 'volume')
         self.layoutAndAdd( cellModule, plotter_to_cell )
 
-        controller = self.app.get_controller()
-        proj_controller = self.app.uvcdatWindow.get_current_project_controller()
-#        cell.current_parent_version = controller.current_version
-        proj_controller.execute_plot( controller.current_version )
-#        proj_controller.update_plot_configure(sheetName, row, column)
+        plot = proj_controller.plot_registry.add_plot( self.getPlotName(type), 'DV3D', None, None ) # (name, plot_package, config_file, vt_file )
+        current_version = controller.current_version
+        proj_controller.plot_was_dropped( (plot, sheetName, row, col) )
+        proj_controller.execute_plot( current_version )
+        controller.change_selected_version( current_version )
+        proj_controller.update_plot_configure( sheetName, row, col )
+        cell = proj_controller.sheet_map[ sheetName ][ (row,col) ]
+        cell.current_parent_version = current_version
+        print ""
         
     def run(self):
         v = self.app.exec_()
