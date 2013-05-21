@@ -28,7 +28,7 @@ class PlotType:
     HOV_SLICER = 2
     HOV_VOLUME_RENDER = 3
     ISOSURFACE = 4
-    CURTAIN = 4
+    CURTAIN = 5
 
 class UVCDAT_API():
     
@@ -143,10 +143,6 @@ class UVCDAT_API():
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         from core.uvcdat.plot_registry import Plot          
         type = args.get( 'type', PlotType.SLICER )
-        input = args.get( 'input', None ) 
-        inputId = self.getNewInputId()
-        name = args.get( 'name', "input-%s" % inputId ) 
-        DV3DPipelineHelper.add_input_variable( inputId, input )
         
         proj_controller = self.app.uvcdatWindow.get_current_project_controller()
         controller = self.app.get_controller()
@@ -155,47 +151,60 @@ class UVCDAT_API():
         row = self.plotIndex % 2
         col = self.plotIndex / 2
         cell_address = "%s%s" % ( chr(ord('A') + col ), row+1)
-        
-        variableSource = self.newModule('CDMSVariableSource', ns='cdms' )
-        DV3DPipelineHelper.add_module( variableSource.id, sheetName, cell_address )
-        self.setPortValue( variableSource, "inputId", inputId )
-        self.addToPipeline( [variableSource] )
-                     
-        variable = self.newModule( 'CDMSTranisentVariable', ns='cdms' )
-        DV3DPipelineHelper.add_module( variable.id, sheetName, cell_address )
-        self.setPortValue( variable, "name", name )
-        source_to_variable = self.newConnection( variableSource, 'self', variable, 'source' )   
-        source_to_variable_axes = self.newConnection( variableSource, 'axes', variable, 'axes' )   
-        self.layoutAndAdd( variable, [ source_to_variable, source_to_variable_axes ] )
 
         if ( type == PlotType.HOV_VOLUME_RENDER ) or ( type == PlotType.HOV_SLICER ):
             volumeReader = self.newModule('CDMS_HoffmullerReader', ns='cdms' )
-            variable_to_reader = self.newConnection(variable, 'self', volumeReader, 'variable')        
         else:                 
             volumeReader = self.newModule('CDMS_VolumeReader', ns='cdms' )
-            variable_to_reader = self.newConnection(variable, 'self', volumeReader, 'variable')   
+        
+        input_list = args.get( 'inputs', [] ) 
+        variable_to_reader_con_list = []
+        for input in input_list:
+            inputId = self.getNewInputId()
+            name = args.get( 'name', input.id ) 
+            DV3DPipelineHelper.add_input_variable( inputId, input )
+    
+            variableSource = self.newModule('CDMSVariableSource', ns='cdms' )
+            DV3DPipelineHelper.add_module( variableSource.id, sheetName, cell_address )
+            self.setPortValue( variableSource, "inputId", inputId )
+            self.addToPipeline( [variableSource] )
+                         
+            variable = self.newModule( 'CDMSTranisentVariable', ns='cdms' )
+            DV3DPipelineHelper.add_module( variable.id, sheetName, cell_address )
+            self.setPortValue( variable, "name", name )
+            source_to_variable = self.newConnection( variableSource, 'self', variable, 'source' )   
+            source_to_variable_axes = self.newConnection( variableSource, 'axes', variable, 'axes' )   
+            self.layoutAndAdd( variable, [ source_to_variable, source_to_variable_axes ] )
+            
+            variable_to_reader = self.newConnection(variable, 'self', volumeReader, 'variable') 
+            variable_to_reader_con_list.append( variable_to_reader )       
         
         DV3DPipelineHelper.add_module( volumeReader.id, sheetName, cell_address )     
-        self.layoutAndAdd( volumeReader, variable_to_reader )
+        self.layoutAndAdd( volumeReader, variable_to_reader_con_list )
         
+        reader_to_plotter_cons = []
         if (type == PlotType.SLICER) or (type == PlotType.HOV_SLICER):
             plotter = self.newModule('VolumeSlicer', ns='vtk' )
-            reader_to_plotter = self.newConnection(volumeReader, 'volume', plotter, 'volume')        
+            reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'volume') )  
+            if len( input_list ) > 1: 
+                reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'contours') )      
         elif type == PlotType.VOLUME_RENDER or (type == PlotType.HOV_VOLUME_RENDER):
             plotter = self.newModule('VolumeRenderer', ns='vtk' )
-            reader_to_plotter = self.newConnection(volumeReader, 'volume', plotter, 'volume')        
+            reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'volume') )       
         elif type == PlotType.ISOSURFACE:
             plotter = self.newModule('LevelSurface', ns='vtk' )
-            reader_to_plotter = self.newConnection(volumeReader, 'volume', plotter, 'volume')        
+            reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'volume') )       
+            if len( input_list ) > 1: 
+                reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'texture') )      
         elif type == PlotType.CURTAIN:
             plotter = self.newModule('CurtainPlot', ns='vtk' )
-            reader_to_plotter = self.newConnection(volumeReader, 'volume', plotter, 'volume')        
+            reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'volume') )       
         else:
             print>>sys.stderr, "Error, unrecognized plot type."
             return
 
         DV3DPipelineHelper.add_module( plotter.id, sheetName, cell_address ) 
-        self.layoutAndAdd( plotter, reader_to_plotter )
+        self.layoutAndAdd( plotter, reader_to_plotter_cons )
         
         cellModule = self.newModule('MapCell3D', ns='spreadsheet' )
         DV3DPipelineHelper.add_module( cellModule.id, sheetName, cell_address ) 
@@ -218,11 +227,16 @@ class UVCDAT_API():
         
 if __name__ == '__main__':
     file_url = "/Developer/Data/AConaty/comp-ECMWF/ecmwf.xml"
-    varname = "Temperature"
+    Temp_var = "Temperature"
+    RH_var = "Relative_humidity"
     cdmsfile = cdms2.open( file_url )
-    input_var = cdmsfile( varname )
+    input_Temp = cdmsfile( Temp_var )
+    input_RH = cdmsfile( RH_var )
     uvcdat_api = UVCDAT_API()
-    uvcdat_api.createPlot( input=input_var )
+    uvcdat_api.createPlot( inputs=[ input_Temp, input_RH ], type=PlotType.SLICER )
+    uvcdat_api.createPlot( inputs=[ input_RH ], type=PlotType.VOLUME_RENDER )
+    uvcdat_api.createPlot( inputs=[ input_Temp, input_RH ], type=PlotType.ISOSURFACE )
+    uvcdat_api.createPlot( inputs=[ input_RH ], type=PlotType.CURTAIN )
     uvcdat_api.run()
    
 
