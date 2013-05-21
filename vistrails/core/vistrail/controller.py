@@ -3479,11 +3479,15 @@ class VistrailController(object):
         old_conns = self.get_connections_to(self.current_pipeline, old_ids)
         for conn in old_conns + new_connections:
             if conn.source.moduleId in module_info:
+                srcFields  = module_info[conn.source.moduleId]
+                destFields = module_info[conn.destination.moduleId]
+                sname = conn.source.name
+                dname = conn.destination.name
                 layoutPipeline.createConnection(
-                        module_info[conn.source.moduleId][1],
-                        module_info[conn.source.moduleId][3].index(conn.source.name),
-                        module_info[conn.destination.moduleId][1],
-                        module_info[conn.destination.moduleId][2].index(conn.destination.name))
+                        srcFields[1],
+                        srcFields[3].index(sname),
+                        destFields[1],
+                        destFields[2].index(dname))
             
         #set default module size function if needed
         paddedPortWidth = self.layoutTheme.PORT_WIDTH + self.layoutTheme.MODULE_PORT_SPACE

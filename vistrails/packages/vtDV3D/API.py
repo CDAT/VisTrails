@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, cdms2
 sys.path.append('/Developer/Projects/EclipseWorkspace/vistrails')
 from PyQt4 import QtGui, QtCore
 import gui.application
@@ -35,6 +35,7 @@ class UVCDAT_API():
     def __init__(self):
         from core.requirements import MissingRequirement, check_all_vistrails_requirements
         disable_lion_restore() 
+        self.inputId = 0
         try:
             check_all_vistrails_requirements()
         except MissingRequirement, e:
@@ -43,6 +44,10 @@ class UVCDAT_API():
             sys.exit(1)
         self.dv3dpkg = 'gov.nasa.nccs.vtdv3d'
         self.start()
+
+    def __del__(self ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
+        DV3DPipelineHelper.clear_input_variables()
         
     def start(self): 
         try:
@@ -120,11 +125,27 @@ class UVCDAT_API():
         f = FileLocator(vistrail_filename)
         self.app.builderWindow.open_vistrail_without_prompt( f, version, True ) 
         
+    def getNewInputId(self):
+        self.inputId = self.inputId + 1
+        return str( self.inputId )
+        
     def createPlot( self, **args ): 
-        type = args.get( 'type', PlotType.SLICER )   
-           
-        variable = self.newModule('CDMSVariable', package='gov.llnl.uvcdat.cdms' )
-        self.addToPipeline( [variable] )
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
+        type = args.get( 'type', PlotType.SLICER )
+        input = args.get( 'input', None ) 
+        inputId = self.getNewInputId()
+        name = args.get( 'name', "input-%s" % inputId ) 
+        DV3DPipelineHelper.add_input_variable( inputId, input )
+        
+        variableSource = self.newModule('CDMSVariableSource', ns='cdms' )
+        self.setPortValue( variableSource, "inputId", inputId )
+        self.addToPipeline( [variableSource] )
+                     
+        variable = self.newModule( 'CDMSTranisentVariable', ns='cdms' )
+        self.setPortValue( variable, "name", name )
+        source_to_variable = self.newConnection( variableSource, 'self', variable, 'source' )   
+        source_to_variable_axes = self.newConnection( variableSource, 'axes', variable, 'axes' )   
+        self.layoutAndAdd( variable, [ source_to_variable, source_to_variable_axes ] )
 
         if ( type == PlotType.HOV_VOLUME_RENDER ) or ( type == PlotType.HOV_SLICER ):
             volumeReader = self.newModule('CDMS_HoffmullerReader', ns='cdms' )
@@ -153,19 +174,27 @@ class UVCDAT_API():
 
         self.layoutAndAdd( plotter, reader_to_plotter )
         
-        cell = self.newModule('MapCell3D', ns='spreadsheet' )
-        plotter_to_cell = self.newConnection( plotter, 'volume', cell, 'volume')
-        self.layoutAndAdd( cell, plotter_to_cell )
+        cellModule = self.newModule('MapCell3D', ns='spreadsheet' )
+        plotter_to_cell = self.newConnection( plotter, 'volume', cellModule, 'volume')
+        self.layoutAndAdd( cellModule, plotter_to_cell )
+
+        controller = self.app.get_controller()
+        proj_controller = self.app.uvcdatWindow.get_current_project_controller()
+#        cell.current_parent_version = controller.current_version
+        proj_controller.execute_plot( controller.current_version )
+#        proj_controller.update_plot_configure(sheetName, row, column)
         
     def run(self):
         v = self.app.exec_()
         gui.application.stop_application()        
         
 if __name__ == '__main__':
+    file_url = "/Developer/Data/AConaty/comp-ECMWF/ecmwf.xml"
+    varname = "Temperature"
+    cdmsfile = cdms2.open( file_url )
+    input_var = cdmsfile( varname )
     uvcdat_api = UVCDAT_API()
-    uvcdat_api.createPlot()
-#    test_vt1 = os.path.expanduser( "~/Desktop/ConfigTest.vt" )
-#    uvcdat_api.loadVistrailFile( test_vt1 )
+    uvcdat_api.createPlot( input=input_var )
     uvcdat_api.run()
    
 
