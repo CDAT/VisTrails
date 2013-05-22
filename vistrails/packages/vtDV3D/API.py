@@ -164,6 +164,20 @@ class UVCDAT_API():
         cell = proj_controller.sheet_map[ self.sheetName ][ ( self.row, self.col ) ]
         cell.current_parent_version = current_version
         
+    def newVariableModule( self, cdmsVariable ):
+        name, inputId = self.initInput( cdmsVariable )
+            
+        variableSource = self.newModule('CDMSVariableSource', ns='cdms' )
+        self.setPortValue( variableSource, "inputId", inputId )
+        self.addToPipeline( [variableSource] )
+                     
+        variable = self.newModule( 'CDMSTranisentVariable', ns='cdms' )
+        self.setPortValue( variable, "name", name )
+        source_to_variable = self.newConnection( variableSource, 'self', variable, 'source' )   
+        source_to_variable_axes = self.newConnection( variableSource, 'axes', variable, 'axes' )   
+        self.layoutAndAdd( variable, [ source_to_variable, source_to_variable_axes ] )
+        return variable
+        
     def createPlot( self, **args ): 
 #        from core.uvcdat.plot_registry import Plot          
         type = args.get( 'type', PlotType.SLICER )
@@ -177,19 +191,8 @@ class UVCDAT_API():
         
         input_list = args.get( 'inputs', [] ) 
         variable_to_reader_con_list = []
-        for inputVariable in input_list:
-            name, inputId = self.initInput( inputVariable )
-                
-            variableSource = self.newModule('CDMSVariableSource', ns='cdms' )
-            self.setPortValue( variableSource, "inputId", inputId )
-            self.addToPipeline( [variableSource] )
-                         
-            variable = self.newModule( 'CDMSTranisentVariable', ns='cdms' )
-            self.setPortValue( variable, "name", name )
-            source_to_variable = self.newConnection( variableSource, 'self', variable, 'source' )   
-            source_to_variable_axes = self.newConnection( variableSource, 'axes', variable, 'axes' )   
-            self.layoutAndAdd( variable, [ source_to_variable, source_to_variable_axes ] )
-            
+        for cdmsVariable in input_list:
+            variable = self.newVariableModule( cdmsVariable )           
             variable_to_reader = self.newConnection(variable, 'self', volumeReader, 'variable') 
             variable_to_reader_con_list.append( variable_to_reader )       
             
