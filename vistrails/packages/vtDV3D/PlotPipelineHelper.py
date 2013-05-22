@@ -1085,8 +1085,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     @staticmethod
     def get_project_controller():
         from gui.application import get_vistrails_application
-        VistrailsApplication = get_vistrails_application()
-        return VistrailsApplication.uvcdatWindow.current_controller
+        vistrailsApp = get_vistrails_application()
+        return vistrailsApp.uvcdatWindow.get_current_project_controller()
     
     @staticmethod
     def getPlotIndex( mid, index ):
@@ -1465,6 +1465,22 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             print "Visualizations can't be loaded."            
 
     @staticmethod
+    def find_variables_connected_to_reader_module(controller, pipeline, reader_module_id, port_name="variable"):
+        conns1 = controller.get_connections_to( pipeline, [reader_module_id], port_name=port_name )
+        varlist = []
+        for conn in conns1:
+            varlist.append( pipeline.modules[conn.source.moduleId] )
+        return varlist
+
+    @staticmethod
+    def find_reader_modules_for_plot(controller, pipeline, plot_id, port_name="volume"):
+        conns = controller.get_connections_to(pipeline, [plot_id], port_name=port_name )
+        varlist = []
+        for conn in conns:
+            varlist.append( pipeline.modules[conn.source.moduleId] )
+        return varlist
+
+    @staticmethod
     def find_topo_sort_modules_by_types(pipeline, moduletypes):
         modules = []
         for m in pipeline.module_list:
@@ -1480,18 +1496,89 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return result
 
     @staticmethod
+    def find_module_by_name(pipeline, module_name):
+        for module in pipeline.module_list:
+            if module.name == module_name:
+                return module
+
+    @staticmethod
+    def find_plot_modules(pipeline):
+        #find plot modules in the order they appear in the Cell
+        res = []
+        cell = DV3DPipelineHelper.find_module_by_name(pipeline, 'MapCell3D')
+        if cell is not None:
+            plots = pipeline.get_inputPort_modules(cell.id,'volume')
+            for plot in plots:
+                res.append(pipeline.modules[plot])
+        return res
+
+    @staticmethod
+    def get_variable_name_from_module(module):
+        desc = module.module_descriptor.module
+        if issubclass(desc, CDMSVariable):
+            result = CDMSPipelineHelper.get_value_from_function(module, "name")
+        elif issubclass(desc, CDMSVariableOperation):
+            result = CDMSPipelineHelper.get_value_from_function(module, "varname")
+        else:
+            result = None
+        return result
+    
+    @staticmethod
+    def get_plot_type_from_module( module ):
+        if module.name == "VolumeSlicer": return "PlotType.SLICER"
+        if module.name == "CurtainPlot": return "PlotType.CURTAIN"
+        if module.name == "VolumeRenderer": return "PlotType.VOLUME_RENDER"
+        if module.name == "LevelSurface": return "PlotType.ISOSURFACE"
+        return "PlotType.SLICER"
+    
+    @staticmethod
+    def get_port_map_from_module( module ):
+        pmod = ModuleStore.getModule( module.id ) 
+        port_map = {}
+        ports = module.module_descriptor.port_specs.values()
+        for port in ports:
+            if ( port.type == 'input' ) and ( port.short_sigstring.find( 'Module' ) == -1 ):
+                port_value = pmod.getInputValue( port.name )
+                if port_value: port_map[ port.name ] = port_value  
+        return port_map
+    
+    @staticmethod
     def build_python_script_from_pipeline( controller, version, plot=None ):
-        from core.db.locator import ZIPFileLocator
-        snapshots_dir = os.path.join( os.path.expanduser('~'), '.vistrails', 'snapshots' ) 
-        if not os.path.exists(snapshots_dir): os.makedirs(snapshots_dir)
-        workflow_name = '-'.join( [ 'workflow', str( int( time.time() ) ) ] )
-        filename = os.path.join( snapshots_dir, '.'.join( [ workflow_name, 'vt' ] ) )
-        controller.write_vistrail( ZIPFileLocator( filename ) )
-        current_controller = api.get_current_controller()
-        print "Saving workflow to %s, version = %d, current version = %d, vistrails current version = %d" % ( filename, version, controller.current_version, current_controller.current_version )
-        sys.stdout.flush()
-        text =  "from uvcdat import execute_vistrail\n"
-        text += "execute_vistrail( '%s', dir='%s', version=%d )" % ( workflow_name, snapshots_dir, controller.current_version ) 
+        """build_python_script_from_pipeline(controller, version, plot_objs) -> str
+           
+           This will build the corresponding python script for the pipeline
+           identified by version in the controller. In this implementation,
+           plot_objs list is ignored.
+           
+        """
+        proj_controller = DV3DPipelineHelper.get_project_controller()
+        pipeline = controller.vistrail.getPipeline(version)
+        plots = DV3DPipelineHelper.find_plot_modules(pipeline)
+        text = "import cdms2, cdutil, genutil, sys, os\n"
+        text += "sys.path.append( os.path.dirname( os.path.dirname( os.path.dirname(os.path.abspath(__file__) ) )))"
+        text += "from packages.vtDV3D.API import UVCDAT_API\n\n"
+        text += "if __name__ == '__main__':\n"
+        text += "    uvcdat_api = UVCDAT_API()\n"
+        ident = '    '
+        
+        var_op_modules = DV3DPipelineHelper.find_topo_sort_modules_by_types(pipeline, [ CDMSVariable,  CDMSVariableOperation ] )
+        for m in var_op_modules:
+            desc = m.module_descriptor.module
+            mobj = desc.from_module(m)
+            text += mobj.to_python_script(ident=ident)
+                
+        reader_modules = DV3DPipelineHelper.find_topo_sort_modules_by_types( pipeline, [ CDMS_HoffmullerReader, CDMS_VolumeReader ] )
+        for mplot in plots:
+            plot_type = DV3DPipelineHelper.get_plot_type_from_module( mplot )
+            port_map = DV3DPipelineHelper.get_port_map_from_module( mplot )
+            text += ident + "port_map = %s\n" % str( port_map )
+            reader_modules = DV3DPipelineHelper.find_reader_modules_for_plot( controller, pipeline, mplot.id )
+            input_list = []
+            for reader_module in reader_modules:
+                for varm in DV3DPipelineHelper.find_variables_connected_to_reader_module( controller, pipeline, reader_module.id ):
+                    input_list.append( DV3DPipelineHelper.get_variable_name_from_module(varm) )
+            text += ident + "uvcdat_api.createPlot( inputs=[%s], type=%s, viz_parms=port_map )\n" % ( ','.join(input_list), plot_type ) 
+        text += '    uvcdat_api.run()\n'           
         return text
             
     @staticmethod

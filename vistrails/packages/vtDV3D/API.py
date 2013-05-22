@@ -1,5 +1,6 @@
 import sys, os, cdms2
-sys.path.append('/Developer/Projects/EclipseWorkspace/vistrails')
+#path_root = os.path.dirname( os.path.dirname( os.path.dirname(os.path.abspath(__file__))))
+#sys.path.append( path_root )
 from PyQt4 import QtGui, QtCore
 import gui.application
 from core.modules.module_registry import get_module_registry
@@ -80,6 +81,9 @@ class UVCDAT_API():
         descriptor = registry.get_descriptor_by_name( package_name, module_name, namespace )
         module = controller.create_module_from_descriptor(descriptor)
         DV3DPipelineHelper.add_module( module.id, self.sheetName, self.cell_address )
+        ports = args.get( 'ports', {} )
+        for portItem in ports.items():
+            self.setPortValue( module, portItem[0], portItem[1] )      
         return module
     
     def newConnection(self, source, source_port, target, target_port):
@@ -87,9 +91,10 @@ class UVCDAT_API():
         c = controller.create_connection(source, source_port, target, target_port)
         return c
     
-    def setPortValue(self, module, port_name, value):
+    def setPortValue(self, module, port_name, value_list):
         controller = self.app.get_controller()
-        function = controller.create_function(module, port_name, [str(value)])
+        str_value_list = [ str(val) for val in value_list ]
+        function = controller.create_function( module, port_name, str_value_list )
         module.add_function(function)
         return
     
@@ -181,7 +186,7 @@ class UVCDAT_API():
     def createPlot( self, **args ): 
 #        from core.uvcdat.plot_registry import Plot          
         type = args.get( 'type', PlotType.SLICER )
-        
+        viz_parms = args.get( 'viz_parms', {} )
         self.initPlot()
         
         if ( type == PlotType.HOV_VOLUME_RENDER ) or ( type == PlotType.HOV_SLICER ):
@@ -200,20 +205,20 @@ class UVCDAT_API():
         
         reader_to_plotter_cons = []
         if (type == PlotType.SLICER) or (type == PlotType.HOV_SLICER):
-            plotter = self.newModule('VolumeSlicer', ns='vtk' )
+            plotter = self.newModule('VolumeSlicer', ns='vtk', ports=viz_parms )
             reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'volume') )  
             if len( input_list ) > 1: 
                 reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'contours') )      
         elif type == PlotType.VOLUME_RENDER or (type == PlotType.HOV_VOLUME_RENDER):
-            plotter = self.newModule('VolumeRenderer', ns='vtk' )
+            plotter = self.newModule('VolumeRenderer', ns='vtk', ports=viz_parms )
             reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'volume') )       
         elif type == PlotType.ISOSURFACE:
-            plotter = self.newModule('LevelSurface', ns='vtk' )
+            plotter = self.newModule('LevelSurface', ns='vtk', ports=viz_parms )
             reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'volume') )       
             if len( input_list ) > 1: 
                 reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'texture') )      
         elif type == PlotType.CURTAIN:
-            plotter = self.newModule('CurtainPlot', ns='vtk' )
+            plotter = self.newModule('CurtainPlot', ns='vtk', ports=viz_parms )
             reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'volume') )       
         else:
             print>>sys.stderr, "Error, unrecognized plot type."
@@ -232,132 +237,35 @@ class UVCDAT_API():
         gui.application.stop_application()        
         
 if __name__ == '__main__':
-    file_url = "/Developer/Data/AConaty/comp-ECMWF/ecmwf.xml"
-    Temp_var = "Temperature"
-    RH_var = "Relative_humidity"
-    cdmsfile = cdms2.open( file_url )
-    input_Temp = cdmsfile( Temp_var )
-    input_RH = cdmsfile( RH_var )
+#    file_url = "/Developer/Data/AConaty/comp-ECMWF/ecmwf.xml"
+#    Temp_var = "Temperature"
+#    RH_var = "Relative_humidity"
+#    cdmsfile = cdms2.open( file_url )
+#    input_Temp = cdmsfile( Temp_var )
+#    input_RH = cdmsfile( RH_var )
+#    uvcdat_api = UVCDAT_API()
+#    uvcdat_api.createPlot( inputs=[ input_Temp, input_RH ], type=PlotType.SLICER )
+#    uvcdat_api.createPlot( inputs=[ input_RH ], type=PlotType.VOLUME_RENDER )
+#    uvcdat_api.createPlot( inputs=[ input_Temp, input_RH ], type=PlotType.ISOSURFACE )
+#    uvcdat_api.createPlot( inputs=[ input_RH ], type=PlotType.CURTAIN )
+#    uvcdat_api.run()
+    
     uvcdat_api = UVCDAT_API()
-    uvcdat_api.createPlot( inputs=[ input_Temp, input_RH ], type=PlotType.SLICER )
-    uvcdat_api.createPlot( inputs=[ input_RH ], type=PlotType.VOLUME_RENDER )
-    uvcdat_api.createPlot( inputs=[ input_Temp, input_RH ], type=PlotType.ISOSURFACE )
-    uvcdat_api.createPlot( inputs=[ input_RH ], type=PlotType.CURTAIN )
+    cdmsfile = cdms2.open('/Developer/Data/AConaty/comp-ECMWF/ecmwf.xml')
+    Temperature = cdmsfile('Temperature')
+    Temperature = Temperature(lat=(90.0, -90.0),isobaric=(1000.0, 10.0),lon=(0.0, 359.0),time=('2011-5-1 0:0:0.0', '2011-5-1 18:0:0.0'),)
+    axesOperations = eval("{'lat': 'def', 'isobaric': 'def', 'lon': 'def', 'time': 'def'}")
+    for axis in list(axesOperations):
+        if axesOperations[axis] == 'sum':
+            Temperature = cdutil.averager(Temperature, axis='(%s)'%axis, weight='equal', action='sum')
+        elif axesOperations[axis] == 'avg':
+            Temperature = cdutil.averager(Temperature, axis='(%s)'%axis, weight='equal')
+        elif axesOperations[axis] == 'wgt':
+            Temperature = cdutil.averager(Temperature, axis='(%s)'%axis)
+        elif axesOperations[axis] == 'gtm':
+            Temperature = genutil.statistics.geometricmean(Temperature, axis='(%s)'%axis)
+        elif axesOperations[axis] == 'std':
+            Temperature = genutil.statistics.std(Temperature, axis='(%s)'%axis)
+    port_map = {'zScale': [2.0, 4.0, 1, 0.0, 1.0], 'colormap': ['jet', 0, 0, 1], 'colorScale': [208.39464294433594, 304.16563934326172, 1, 0.0, 1.0]}
+    uvcdat_api.createPlot( inputs=[Temperature], type=PlotType.SLICER, viz_parms=port_map )
     uvcdat_api.run()
-   
-
-##============================ start script =====================================
-#
-##start with http file module
-#httpFA = newModule(httppkg, 'HTTPFile')
-#url = 'http://www.vistrails.org/download/download.php?type=DATA&id=gktbhFA.vtk'
-#setPortValue(httpFA, 'url', url)
-#
-##add to pipeline
-#addToPipeline([httpFA])
-#
-##create data set reader module for the gktbhFA.vtk file
-#dataFA = newModule(vtkpkg, 'vtkDataSetReader')
-#
-##connect modules
-#http_dataFA = newConnection(httpFA, 'file', dataFA, 'SetFile')
-#
-##layout new modules before adding
-#layoutAndAdd(dataFA, http_dataFA)
-#
-##add contour filter
-#contour = newModule(vtkpkg, 'vtkContourFilter')
-#setPortValue(contour, 'SetValue', (0,0.6))
-#dataFA_contour = newConnection(dataFA, 'GetOutputPort0',
-#                               contour, 'SetInputConnection0')
-#layoutAndAdd(contour, dataFA_contour)
-#
-##add normals, stripper, and probe filter
-#normals = newModule(vtkpkg, 'vtkPolyDataNormals') #GetOutputPort0
-#setPortValue(normals, 'SetFeatureAngle', 60.0)
-#contour_normals = newConnection(contour, 'GetOutputPort0', 
-#                                normals, 'SetInputConnection0')
-#layoutAndAdd(normals, contour_normals)
-#
-#stripper = newModule(vtkpkg, 'vtkStripper') #GetOutputPort0
-#normals_stripper = newConnection(normals, 'GetOutputPort0',
-#                                 stripper, 'SetInputConnection0')
-#layoutAndAdd(stripper, normals_stripper)
-#
-#probe = newModule(vtkpkg, 'vtkProbeFilter') #same
-#stripper_probe = newConnection(stripper, 'GetOutputPort0',
-#                               probe, 'SetInputConnection0')
-#layoutAndAdd(probe, stripper_probe)
-#
-##build other branch in reverse
-#colors = newModule(vtkpkg, 'vtkImageMapToColors')
-#setPortValue(colors, 'SetOutputFormatToRGBA', True)
-#colors_probe = newConnection(colors, 'GetOutputPort0',
-#                             probe, 'SetInputConnection1')
-#layoutAndAdd(colors, colors_probe)
-#
-#lookup = newModule(vtkpkg, 'vtkLookupTable')
-#setPortValue(lookup, 'SetHueRange', (0.0,0.8))
-#setPortValue(lookup, 'SetSaturationRange', (0.3,0.7))
-#setPortValue(lookup, 'SetValueRange', (1.0,1.0))
-#lookup_colors = newConnection(lookup, 'self',
-#                              colors, 'SetLookupTable')
-#layoutAndAdd(lookup, lookup_colors)
-#
-#dataL123 = newModule(vtkpkg, 'vtkDataSetReader')
-#dataL123_colors = newConnection(dataL123, 'GetOutputPort0',
-#                                colors, 'SetInputConnection0')
-#layoutAndAdd(dataL123, dataL123_colors)
-#
-#httpL123 = newModule(httppkg, 'HTTPFile')
-#url = 'http://www.vistrails.org/download/download.php?type=DATA&id=gktbhL123.vtk'
-#setPortValue(httpL123, 'url', url)
-#httpL123_dataL123 = newConnection(httpL123, 'file',
-#                                  dataL123, 'SetFile')
-#layoutAndAdd(httpL123, httpL123_dataL123)
-#
-##finish bottom section
-#mapper = newModule(vtkpkg, 'vtkPolyDataMapper')
-#setPortValue(mapper, 'ScalarVisibilityOn', True)
-#probe_mapper = newConnection(probe, 'GetOutputPort0',
-#                             mapper, 'SetInputConnection0')
-#layoutAndAdd(mapper, probe_mapper)
-#
-#actor = newModule(vtkpkg, 'vtkActor')
-#mapper_actor = newConnection(mapper, 'self',
-#                             actor, 'SetMapper')
-#layoutAndAdd(actor, mapper_actor)
-#
-#prop = newModule(vtkpkg, 'vtkProperty')
-#setPortValue(prop, 'SetDiffuseColor', (1.0,0.49,0.25))
-#setPortValue(prop, 'SetOpacity', 0.7)
-#setPortValue(prop, 'SetSpecular', 0.3)
-#setPortValue(prop, 'SetSpecularPower', 2.0)
-#prop_actor = newConnection(prop, 'self',
-#                           actor, 'SetProperty')
-#layoutAndAdd(prop, prop_actor)
-#
-#renderer = newModule(vtkpkg, 'vtkRenderer')
-#setPortValue(renderer, 'SetBackgroundWidget', 'white')
-#actor_renderer = newConnection(actor, 'self',
-#                               renderer, 'AddActor')
-#layoutAndAdd(renderer, actor_renderer)
-#
-#camera = newModule(vtkpkg, 'vtkCamera')
-#setPortValue(camera, 'SetFocalPoint', (15.666,40.421,39.991))
-#setPortValue(camera, 'SetPosition', (207.961,34.197,129.680))
-#setPortValue(camera, 'SetViewUp', (0.029, 1.0, 0.008))
-#camera_renderer = newConnection(camera, 'self',
-#                                renderer, 'SetActiveCamera')
-#layoutAndAdd(camera, camera_renderer)
-#
-##this is missing when running from script??
-## cell = newModule(vtkpkg, 'VTKCell')
-## cell = newModule(vtkpkg, 'vtkCell')
-## renderer_cell = newConnection(renderer, 'self',
-##                               cell, 'AddRenderer')
-## layoutAndAdd(cell, renderer_cell)
-#
-##write to file
-#locator = vistrails.core.db.locator.FileLocator('brain_no_gaps_preserve_order.vt')
-#controller.write_vistrail(locator)
