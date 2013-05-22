@@ -37,6 +37,10 @@ class UVCDAT_API():
         disable_lion_restore() 
         self.inputId = 0
         self.plotIndex = -1
+        self.sheetName = None
+        self.row = 0
+        self.col = 0
+        self.cell_address = "%s%s" % ( chr(ord('A') + self.col ), self.row+1)
         try:
             check_all_vistrails_requirements()
         except MissingRequirement, e:
@@ -65,24 +69,18 @@ class UVCDAT_API():
             import traceback
             traceback.print_exc()
             sys.exit(255)
-
-#    def start_application(self, optionsDict=None):
-#        from gui.application import VistrailsApplicationSingleton, get_vistrails_application, set_vistrails_application
-#        VistrailsApplication = get_vistrails_application()
-#        VistrailsApplication = VistrailsApplicationSingleton()
-#        set_vistrails_application(VistrailsApplication)
-#        x = VistrailsApplication.init(optionsDict)
-#        if x == True: return 0
-#        else:         return 1
         
     def newModule(self, module_name, **args ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         registry = get_module_registry()
         controller = self.app.get_controller()
         self.dv3dpkg
         package_name = args.get('package', self.dv3dpkg )
         namespace = args.get('ns', '' )
         descriptor = registry.get_descriptor_by_name( package_name, module_name, namespace )
-        return controller.create_module_from_descriptor(descriptor)
+        module = controller.create_module_from_descriptor(descriptor)
+        DV3DPipelineHelper.add_module( module.id, self.sheetName, self.cell_address )
+        return module
     
     def newConnection(self, source, source_port, target, target_port):
         controller = self.app.get_controller()
@@ -138,20 +136,40 @@ class UVCDAT_API():
         elif type == PlotType.ISOSURFACE:           return "IsoSurface"
         elif type == PlotType.CURTAIN:              return "Curtain Plot"
         return ""
+    
+    def initPlot(self):
+        proj_controller = self.app.uvcdatWindow.get_current_project_controller()
+        self.plotIndex = self.plotIndex + 1
+        self.inputId = 0
+        self.sheetName = proj_controller.current_sheetName
+        self.row = self.plotIndex % 2
+        self.col = self.plotIndex / 2
+        self.cell_address = "%s%s" % ( chr(ord('A') + self.col ), self.row+1)
         
-    def createPlot( self, **args ): 
+    def initInput( self, inputVariable ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
-        from core.uvcdat.plot_registry import Plot          
-        type = args.get( 'type', PlotType.SLICER )
-        
+        inputId = self.getNewInputId()
+        DV3DPipelineHelper.add_input_variable( inputId, inputVariable )
+        return inputVariable.id, inputId
+
+    def finalizePlot( self, plot_name ):
         proj_controller = self.app.uvcdatWindow.get_current_project_controller()
         controller = self.app.get_controller()
-        self.plotIndex = self.plotIndex + 1
-        sheetName = proj_controller.current_sheetName
-        row = self.plotIndex % 2
-        col = self.plotIndex / 2
-        cell_address = "%s%s" % ( chr(ord('A') + col ), row+1)
-
+        plot = proj_controller.plot_registry.add_plot( plot_name, 'DV3D', None, None )
+        current_version = controller.current_version
+        proj_controller.plot_was_dropped( (plot, self.sheetName, self.row, self.col) )
+        proj_controller.execute_plot( current_version )
+        controller.change_selected_version( current_version )
+        proj_controller.update_plot_configure( self.sheetName, self.row, self.col )
+        cell = proj_controller.sheet_map[ self.sheetName ][ ( self.row, self.col ) ]
+        cell.current_parent_version = current_version
+        
+    def createPlot( self, **args ): 
+#        from core.uvcdat.plot_registry import Plot          
+        type = args.get( 'type', PlotType.SLICER )
+        
+        self.initPlot()
+        
         if ( type == PlotType.HOV_VOLUME_RENDER ) or ( type == PlotType.HOV_SLICER ):
             volumeReader = self.newModule('CDMS_HoffmullerReader', ns='cdms' )
         else:                 
@@ -159,18 +177,14 @@ class UVCDAT_API():
         
         input_list = args.get( 'inputs', [] ) 
         variable_to_reader_con_list = []
-        for input in input_list:
-            inputId = self.getNewInputId()
-            name = args.get( 'name', input.id ) 
-            DV3DPipelineHelper.add_input_variable( inputId, input )
-    
+        for inputVariable in input_list:
+            name, inputId = self.initInput( inputVariable )
+                
             variableSource = self.newModule('CDMSVariableSource', ns='cdms' )
-            DV3DPipelineHelper.add_module( variableSource.id, sheetName, cell_address )
             self.setPortValue( variableSource, "inputId", inputId )
             self.addToPipeline( [variableSource] )
                          
             variable = self.newModule( 'CDMSTranisentVariable', ns='cdms' )
-            DV3DPipelineHelper.add_module( variable.id, sheetName, cell_address )
             self.setPortValue( variable, "name", name )
             source_to_variable = self.newConnection( variableSource, 'self', variable, 'source' )   
             source_to_variable_axes = self.newConnection( variableSource, 'axes', variable, 'axes' )   
@@ -178,8 +192,7 @@ class UVCDAT_API():
             
             variable_to_reader = self.newConnection(variable, 'self', volumeReader, 'variable') 
             variable_to_reader_con_list.append( variable_to_reader )       
-        
-        DV3DPipelineHelper.add_module( volumeReader.id, sheetName, cell_address )     
+            
         self.layoutAndAdd( volumeReader, variable_to_reader_con_list )
         
         reader_to_plotter_cons = []
@@ -203,23 +216,13 @@ class UVCDAT_API():
             print>>sys.stderr, "Error, unrecognized plot type."
             return
 
-        DV3DPipelineHelper.add_module( plotter.id, sheetName, cell_address ) 
         self.layoutAndAdd( plotter, reader_to_plotter_cons )
         
         cellModule = self.newModule('MapCell3D', ns='spreadsheet' )
-        DV3DPipelineHelper.add_module( cellModule.id, sheetName, cell_address ) 
         plotter_to_cell = self.newConnection( plotter, 'volume', cellModule, 'volume')
         self.layoutAndAdd( cellModule, plotter_to_cell )
-
-        plot = proj_controller.plot_registry.add_plot( self.getPlotName(type), 'DV3D', None, None ) # (name, plot_package, config_file, vt_file )
-        current_version = controller.current_version
-        proj_controller.plot_was_dropped( (plot, sheetName, row, col) )
-        proj_controller.execute_plot( current_version )
-        controller.change_selected_version( current_version )
-        proj_controller.update_plot_configure( sheetName, row, col )
-        cell = proj_controller.sheet_map[ sheetName ][ (row,col) ]
-        cell.current_parent_version = current_version
-        print ""
+        
+        self.finalizePlot( self.getPlotName(type) )
         
     def run(self):
         v = self.app.exec_()
