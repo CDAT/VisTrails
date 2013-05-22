@@ -157,18 +157,18 @@ class QAnimationView(QtGui.QWidget):
         ### Creates animation
         c = self.cursor()
         self.setCursor(QtCore.Qt.BusyCursor)
-        icon = QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'symbol_stop.ico'))
+        icon = QtGui.QIcon(":/icons/resources/icons/player_stop.gif")
         self.createButton.setIcon(icon)
         self.createButton.setText("Stop Creating Frames")
         #self.disconnect(self.createButton,QtCore.SIGNAL("clicked()"),self.create)
         self.connect(self.createButton,QtCore.SIGNAL("clicked()"),self.stop)
         #t=QThreadAnimationCreate(self,self.canvas,c)
         #t.start()
-        self.canvas.animate.create()
+        self.canvas.animate.create(thread_it=1)
         self.animationCreated(self.canvas, c)
         
     def animationCreated(self,canvas,cursor):
-        icon = QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'symbol_add.ico'))
+        icon = QtGui.QIcon(":/icons/resources/icons/player_play.gif")
         self.createButton.setIcon(icon)
         self.createButton.setText("Generate Animation")
         #self.disconnect(self.createButton,QtCore.SIGNAL("clicked()"),self.stop)
