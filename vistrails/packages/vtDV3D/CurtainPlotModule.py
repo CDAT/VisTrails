@@ -216,8 +216,16 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         if not self.editMode: self.spline.SetEnabled( False )
                    
     def toggleEditSpline( self, notify=True ):
+        
+#        if self.iren:
+#            keycode = QString('i').toLatin1()
+#            self.iren.SetKeyEventInformation( 0, 0, keycode[0], 0, "i" )     
+#            self.iren.InvokeEvent( vtk.vtkCommand.KeyPressEvent )
+
         self.editMode = not self.editMode 
         self.spline.SetEnabled( self.editMode )
+        if self.editMode: self.spline.On()
+        else: self.spline.Off()
         self.spline.SetProcessEvents( self.editMode ) 
         if self.editMode and self.firstEdit:
             if notify: displayMessage( " Click on the yellow curved line and then drag the handles (spheres) to modify the trajectory." )

@@ -664,6 +664,7 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         Initialize with a toolbar and a sheet widget
                                 
         """
+        
         QtGui.QWidget.__init__(self, None)
         StandardWidgetSheetTabInterface.__init__(self)
         #By default we will ignore the configuration parameters and use 

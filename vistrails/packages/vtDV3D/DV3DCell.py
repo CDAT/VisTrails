@@ -356,7 +356,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def processKeyEvent( self, key, caller=None, event=None ): 
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
         if (  key == 'k'  ):
-            if self.GetRenWinID() in DV3DPipelineHelper.getActiveRenWinIds():
+            active_cells = DV3DPipelineHelper.getActiveCellStrs()
+            if self.onCurrentPage() and (self.cell_location[-1] in active_cells):
                 self.captionManager.addCaption()
                 ( interactionState, persisted ) =  self.getInteractionState( key )
                 if interactionState <> None: self.updateInteractionState( interactionState, self.isAltMode  )                 
@@ -440,7 +441,6 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         cellLocation.colSpan = 1
         cell_coordinates = None
         ( sheetName, address ) = DV3DPipelineHelper.getCellCoordinates( moduleId )
-#        ( sheetName, address ) = DV3DPipelineHelper.getCellAddress( self.pipeline ) 
         if self.isClient:            
             cellLocation.sheetReference = StandardSheetReference()
             cellLocation.sheetReference.sheetName = HyperwallManager.getInstance().deviceName
@@ -538,7 +538,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.builtCellWidget = False                        
         
     def buildWidget(self): 
-        from packages.spreadsheet.spreadsheet_controller import spreadsheetController  
+        from packages.spreadsheet.spreadsheet_controller import spreadsheetController 
+        import api
         if not self.isBuilt():                     
             if self.renderers:
                 renderViews = []
@@ -573,8 +574,12 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                     print "  --- Error creating cellWidget --- "   
                     sys.stdout.flush()     
                 
-                cell_location = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )   
-                PersistentVisualizationModule.renderMap[ cell_location ] = self.iren
+                prj_controller = api.get_current_project_controller()
+                cell_location = [ prj_controller.name, prj_controller.current_sheetName, "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 ) ]
+                modules = prj_controller.vt_controller.current_pipeline.modules
+                for mid in modules.keys():
+                    pmod = ModuleStore.getModule( mid ) 
+                    if pmod: pmod.setCellLocation( cell_location )
                 self.builtCellWidget = True
                 
                 ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)

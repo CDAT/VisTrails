@@ -45,8 +45,8 @@ class ConfigPopupManager( QObject ):
             self.actionMap = {}
             
         for configFunc in module.configurableFunctions.values():
-            action_key = str( configFunc.label )
-            menuItem = self.menu.addAction( action_key )
+            action_key = str( configFunc.name )
+            menuItem = self.menu.addAction( configFunc.label )
             self.actionMap.setdefault( action_key, [] ).append( ( module, configFunc.key ) ) 
             self.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key: self.execAction( akey ) )
 
@@ -435,7 +435,7 @@ class ConfigurableFunction( QObject ):
         cfgFunctGlobalMap = ConfigurableFunction.ConfigurableFunctions
         cfgFunctionMap = cfgFunctGlobalMap.get( self.name, {} )
         self.activeFunctionList = []
-        valid_irens =  PersistentVisualizationModule.getValidIrens() 
+#        valid_irens =  PersistentVisualizationModule.getValidIrens() 
 #        print " ** N active_irens: %d " % len( active_irens )      
         for cfgFunction in cfgFunctionMap.values():
             if (cfgFunction <> self) and cfgFunction.module:
@@ -520,6 +520,22 @@ class ConfigurableFunction( QObject ):
             
 ################################################################################
 
+class ConfigurableBooleanFunction( ConfigurableFunction ):
+    
+    def __init__( self, name, function_args, key, **args ):
+        ConfigurableFunction.__init__( self, name, function_args, key, **args )
+        self.switchVal = args.get( 'initVal', False )
+        self.labels = args.get( 'labels', '|'.join([self.name]*2) ).split('|')
+        self.label = self.labels[ int(self.switchVal) ]
+    
+    
+    def open( self, state, alt = False ):
+        if( self.name == state ): 
+            self.altMode = alt
+            if ( self.openHandler != None ):
+                self.switchVal = not self.switchVal
+                self.label = self.labels[ int(self.switchVal) ]
+                self.openHandler( self.switchVal )
 
 ################################################################################
 
@@ -1339,15 +1355,18 @@ class IVModuleConfigurationDialog( QWidget ):
             cmd_list = DV3DPipelineHelper.getConfigCmd ( cfg_key )
             if cmd_list:
                 self.deactivate_current_command()
-                active_renwin_ids = DV3DPipelineHelper.getActiveRenWinIds()
+                active_cells = DV3DPipelineHelper.getActiveCellStrs()
+                active_module_located = False
                 for cmd_entry in cmd_list:
                     module = ModuleStore.getModule( cmd_entry[0] )
                     if module:
                         cfg_cmd = cmd_entry[1] 
-                        if cfg_cmd and cfg_cmd.guiEnabled:
+                        cell_loc = module.getCellLocation()
+                        if cfg_cmd and cell_loc and cfg_cmd.guiEnabled:
                             self.gui_cmds.append( cfg_cmd )
-                            if ( ( self.active_cfg_cmd == None ) or ( module.GetRenWinID() in active_renwin_ids ) ):
-                                self.active_cfg_cmd = cfg_cmd  
+                            if ( not active_module_located and ( ( self.active_cfg_cmd == None ) or ( cell_loc[-1] in active_cells ) ) ):
+                                self.active_cfg_cmd = cfg_cmd 
+                                if cell_loc[-1] == active_cells[0]: active_module_located = True
                 if self.active_cfg_cmd:                 
                     self.active_cfg_cmd.updateActiveFunctionList()
                     self.enable()
