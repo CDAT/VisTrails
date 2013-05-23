@@ -1543,6 +1543,49 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return port_map
     
     @staticmethod
+    def create_startup_script():
+        script_lines = [
+            "def disable_lion_restore():",
+            "    import platform",
+            "    if platform.system()!='Darwin': return",
+            "    release = platform.mac_ver()[0].split('.')",
+            "    if len(release)<2: return",
+            "    major = int(release[0])",
+            "    minor = int(release[1])",
+            "    if major*100+minor<107: return",
+            "    import os",
+            "    ssPath = os.path.expanduser('~/Library/Saved Application State/org.vistrails.savedState')",
+            "    if os.path.exists(ssPath):",
+            "        os.system('rm -rf \"%s\"' % ssPath)",
+            "    os.system('defaults write org.vistrails NSQuitAlwaysKeepsWindows -bool false')",
+            "",
+            "def startup_app():",
+            "    from core.requirements import MissingRequirement, check_all_vistrails_requirements",
+            "    import platform, os",
+            "",   
+            "    disable_lion_restore()",
+            "",
+            "    try:",
+            "        check_all_vistrails_requirements()",
+            "    except MissingRequirement, e:",
+            "        msg = ('VisTrails requires %s to properly run.' % e.requirement)",
+            "        debug.critical('Missing requirement', msg)",
+            "        sys.exit(1)",
+            "" ,   
+            "    try:",
+            "        v =  gui.application.start_application()",
+            "    except SystemExit, e:",
+            "        app = gui.application.get_vistrails_application()",
+            "        if app: app.finishSession()",
+            "        sys.exit(e)",
+            "    except Exception, e:",
+            "        app = gui.application.get_vistrails_application()",
+            "        if app: app.finishSession()",
+            "        print 'Uncaught exception on initialization: %s' % e",
+            "        sys.exit(255)" ]
+        return '\n'.join( script_lines )
+           
+    @staticmethod
     def build_python_script_from_pipeline( controller, version, plot=None ):
         """build_python_script_from_pipeline(controller, version, plot_objs) -> str
            
@@ -1555,9 +1598,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         pipeline = controller.vistrail.getPipeline(version)
         plots = DV3DPipelineHelper.find_plot_modules(pipeline)
         text = "import cdms2, cdutil, genutil, sys, os\n"
-        text += "sys.path.append( os.path.dirname( os.path.dirname( os.path.dirname(os.path.abspath(__file__) ) )))"
-        text += "from packages.vtDV3D.API import UVCDAT_API\n\n"
-        text += "if __name__ == '__main__':\n"
+        text += "import gui.application\n"
+        text += DV3DPipelineHelper.create_startup_script()
+        text += "\n\nif __name__ == '__main__':\n"
+        text += "    startup_app()\n"
+        text += "    from packages.vtDV3D.API import *\n\n"
         text += "    uvcdat_api = UVCDAT_API()\n"
         ident = '    '
         
