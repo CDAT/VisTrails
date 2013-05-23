@@ -22,6 +22,28 @@ def disable_lion_restore():
         os.system('rm -rf "%s"' % ssPath)
     os.system('defaults write org.vistrails NSQuitAlwaysKeepsWindows -bool false')
 
+def startup_app(): 
+    from core.requirements import MissingRequirement, check_all_vistrails_requirements
+    disable_lion_restore() 
+    try:
+        check_all_vistrails_requirements()
+    except MissingRequirement, e:
+        msg = ("VisTrails requires %s to properly run.\n" % e.requirement)
+        debug.critical("Missing requirement", msg)
+        sys.exit(1)
+    try:
+        v =  gui.application.start_application()
+    except SystemExit, e:
+        app = gui.application.get_vistrails_application()
+        if app: app.finishSession()
+        sys.exit(e)
+    except Exception, e:
+        app = gui.application.get_vistrails_application()
+        if app: app.finishSession()
+        print "Uncaught exception on initialization: %s" % e
+        import traceback
+        traceback.print_exc()
+        sys.exit(255)
 
 class PlotType:
     SLICER = 0
@@ -34,43 +56,19 @@ class PlotType:
 class UVCDAT_API():
     
     def __init__(self):
-        from core.requirements import MissingRequirement, check_all_vistrails_requirements
-        disable_lion_restore() 
         self.inputId = 0
         self.plotIndex = -1
         self.sheetName = None
         self.row = 0
         self.col = 0
         self.cell_address = "%s%s" % ( chr(ord('A') + self.col ), self.row+1)
-        try:
-            check_all_vistrails_requirements()
-        except MissingRequirement, e:
-            msg = ("VisTrails requires %s to properly run.\n" % e.requirement)
-            debug.critical("Missing requirement", msg)
-            sys.exit(1)
         self.dv3dpkg = 'gov.nasa.nccs.vtdv3d'
-        self.start()
+        self.app = gui.application.get_vistrails_application()                
 
     def __del__(self ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
         DV3DPipelineHelper.clear_input_variables()
-        
-    def start(self): 
-        try:
-            v =  gui.application.start_application()
-            self.app = gui.application.get_vistrails_application()                
-        except SystemExit, e:
-            self.app = gui.application.get_vistrails_application()
-            if self.app: self.app.finishSession()
-            sys.exit(e)
-        except Exception, e:
-            self.app = gui.application.get_vistrails_application()
-            if self.app: self.app.finishSession()
-            print "Uncaught exception on initialization: %s" % e
-            import traceback
-            traceback.print_exc()
-            sys.exit(255)
-        
+                
     def newModule(self, module_name, **args ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         registry = get_module_registry()
@@ -249,7 +247,8 @@ if __name__ == '__main__':
 #    uvcdat_api.createPlot( inputs=[ input_Temp, input_RH ], type=PlotType.ISOSURFACE )
 #    uvcdat_api.createPlot( inputs=[ input_RH ], type=PlotType.CURTAIN )
 #    uvcdat_api.run()
-    
+
+    startup_app()
     uvcdat_api = UVCDAT_API()
     cdmsfile = cdms2.open('/Developer/Data/AConaty/comp-ECMWF/ecmwf.xml')
     Temperature = cdmsfile('Temperature')
