@@ -73,7 +73,6 @@ class UVCDAT_API():
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         registry = get_module_registry()
         controller = self.app.get_controller()
-        self.dv3dpkg
         package_name = args.get('package', self.dv3dpkg )
         namespace = args.get('ns', '' )
         descriptor = registry.get_descriptor_by_name( package_name, module_name, namespace )
@@ -93,8 +92,9 @@ class UVCDAT_API():
         controller = self.app.get_controller()
         str_value_list = [ str(val) for val in value_list ]
         function = controller.create_function( module, port_name, str_value_list )
-        module.add_function(function)
-        return
+        module.add_function(function)  
+        op = controller.update_function_ops( module, port_name, str_value_list )      
+        self.port_ops.extend( op )
     
     def addToPipeline(self, items, ops=[]):
         import core.db.action
@@ -144,6 +144,8 @@ class UVCDAT_API():
         proj_controller = self.app.uvcdatWindow.get_current_project_controller()
         self.plotIndex = self.plotIndex + 1
         self.inputId = 0
+        self.variables = []
+        self.port_ops = []
         self.sheetName = proj_controller.current_sheetName
         self.row = self.plotIndex % 2
         self.col = self.plotIndex / 2
@@ -156,29 +158,47 @@ class UVCDAT_API():
         return inputVariable.id, inputId
 
     def finalizePlot( self, plot_name ):
+        from core.db.action import create_action
         proj_controller = self.app.uvcdatWindow.get_current_project_controller()
         controller = self.app.get_controller()
         plot = proj_controller.plot_registry.add_plot( plot_name, 'DV3D', None, None )
+        action = create_action( self.port_ops ) 
+        controller.add_new_action(action)
+        controller.perform_action(action)
+        controller.select_latest_version()
         current_version = controller.current_version
         proj_controller.plot_was_dropped( (plot, self.sheetName, self.row, self.col) )
         proj_controller.execute_plot( current_version )
         controller.change_selected_version( current_version )
         proj_controller.update_plot_configure( self.sheetName, self.row, self.col )
         cell = proj_controller.sheet_map[ self.sheetName ][ ( self.row, self.col ) ]
-        cell.current_parent_version = current_version
+        cell.current_parent_version = current_version  
+        
+        for ( name, var ) in self.variables:
+            proj_controller.defined_variables[ name ] = var.summon()
+#            proj_controller.computed_variables[ name ] = ( [ name ], 'transient variable', "name", name )
+      
+#        pipeline = controller.vistrail.getPipeline(current_version)
+#        proj_controller.search_and_emit_new_variables(cell)
+#        pipeline = controller.vistrail.getPipeline(current_version)
+        proj_controller.emit( QtCore.SIGNAL("update_cell"), self.sheetName, self.row, self.col, None, None, 'DV3D', current_version )
         
     def newVariableModule( self, cdmsVariable ):
         name, inputId = self.initInput( cdmsVariable )
             
-        variableSource = self.newModule('CDMSVariableSource', ns='cdms' )
-        self.setPortValue( variableSource, "inputId", inputId )
-        self.addToPipeline( [variableSource] )
+#        variableSource = self.newModule('CDMSVariableSource', ns='cdms' )
+#        self.setPortValue( variableSource, "inputId", inputId )
+#        self.addToPipeline( [variableSource] )
                      
-        variable = self.newModule( 'CDMSTranisentVariable', ns='cdms' )
-        self.setPortValue( variable, "name", name )
-        source_to_variable = self.newConnection( variableSource, 'self', variable, 'source' )   
-        source_to_variable_axes = self.newConnection( variableSource, 'axes', variable, 'axes' )   
-        self.layoutAndAdd( variable, [ source_to_variable, source_to_variable_axes ] )
+        variable = self.newModule( 'CDMSTransientVariable', ns='cdms' )
+        self.setPortValue( variable, "name", [ name ] )
+        self.setPortValue( variable, "inputId", [ inputId ] )
+#        source_to_variable = self.newConnection( variableSource, 'self', variable, 'source' )   
+#        source_to_variable_axes = self.newConnection( variableSource, 'axes', variable, 'axes' )   
+#        self.layoutAndAdd( variable, [ source_to_variable, source_to_variable_axes ] )
+        self.addToPipeline( [ variable ] )
+        self.app.uvcdatWindow.dockVariable.widget().addVariable( cdmsVariable )
+        self.variables.append( ( name, variable ) )
         return variable
         
     def createPlot( self, **args ): 

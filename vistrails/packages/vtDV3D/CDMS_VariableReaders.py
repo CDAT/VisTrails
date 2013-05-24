@@ -14,6 +14,7 @@ from packages.vtDV3D.WorkflowModule import WorkflowModule
 from packages.vtDV3D import ModuleStore
 from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.PersistentModule import *
+from packages.vtDV3D import identifier
 from packages.uvcdat.init import Variable, VariableSource
 import cdms2, cdtime, cdutil, MV2 
 PortDataVersion = 0
@@ -1101,13 +1102,17 @@ if __name__ == '__main__':
     var = dataset[ 'tmpu' ]
     pass
     
-class CDMSTranisentVariable(Variable):
-    _input_ports = expand_port_specs([("axes", "basic:String"),
+class CDMSTransientVariable(Variable):
+    _input_ports = expand_port_specs([("name", "basic:String"),
+                                      ("inputId", "basic:String"),
+                                      ("url", "basic:String"),
+                                      ("axes", "basic:String"),
                                       ("axesOperations", "basic:String"),
                                       ("attributes", "basic:Dictionary"),
                                       ("axisAttributes", "basic:Dictionary"),
                                       ("setTimeBounds", "basic:String")])
-#    _output_ports = expand_port_specs([("self", "CDMSTranisentVariable")])
+    
+#    _output_ports = expand_port_specs([("self", "CDMSTransientVariable")])
 
     def __init__(self, source=None, name=None, axes=None, axesOperations=None, attributes=None, axisAttributes=None, timeBounds=None):
         Variable.__init__( self, None, None, source, name, False )
@@ -1117,10 +1122,11 @@ class CDMSTranisentVariable(Variable):
         self.axisAttributes = axisAttributes
         self.timeBounds = timeBounds
         self.var = None
+        self.inputId = None
 
     def __copy__(self):
         """__copy__() -> CDMSVariable - Returns a clone of itself"""
-        cp = CDMSTranisentVariable()
+        cp = CDMSTransientVariable()
         cp.source = self.source
         cp.name = self.name
         cp.axes = self.axes
@@ -1128,11 +1134,20 @@ class CDMSTranisentVariable(Variable):
         cp.attributes = self.attributes
         cp.axisAttributes = self.axisAttributes
         cp.timeBounds = self.timeBounds
+        cp.inputId = self.inputId
         return cp
         
     def to_module(self, controller):
-        module = Variable.to_module(self, controller, identifier)
+        reg = get_module_registry()
+        desc = reg.get_descriptor_by_name( identifier, self.__class__.__name__, 'cdms' )
+        module = controller.create_module_from_descriptor( desc )
         functions = []
+        if self.url is not None:
+            functions.append(("url", [self.url]))
+        if self.name is not None:
+            functions.append(("name", [self.name]))
+        if self.inputId is not None:
+            functions.append(("inputId", [str(self.inputId)]))
         if self.axes is not None:
             functions.append(("axes", [self.axes]))
         if self.axesOperations is not None:
@@ -1149,7 +1164,16 @@ class CDMSTranisentVariable(Variable):
         return module        
     
     def to_python(self):
-        var = self.source.var        
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
+                 
+        if self.source:
+            var = self.source.var 
+        elif self.inputId:          
+            var = DV3DPipelineHelper.get_input_variable( self.inputId )
+        else: 
+            print>>sys.stderr, "Error, no Input to Pipeline"
+            return None
+      
         varName = self.name
             
         if self.axes is not None:
@@ -1245,11 +1269,13 @@ class CDMSTranisentVariable(Variable):
     
     @staticmethod
     def from_module(module):
-        from pipeline_helper import CDMSPipelineHelper
-        var = Variable.from_module(module)
+        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
+        var = CDMSTransientVariable()
+        var.url = CDMSPipelineHelper.get_value_from_function(module, 'url')
+        var.name = CDMSPipelineHelper.get_value_from_function(module, 'name')
+        var.inputId = CDMSPipelineHelper.get_value_from_function(module, 'inputId')
         var.axes = CDMSPipelineHelper.get_value_from_function(module, 'axes')
         var.axesOperations = CDMSPipelineHelper.get_value_from_function(module, 'axesOperations')
-        var.varNameInFile = CDMSPipelineHelper.get_value_from_function(module, 'varNameInFile')
         attrs = CDMSPipelineHelper.get_value_from_function(module, 'attributes')
         if attrs is not None:
             var.attributes = ast.literal_eval(attrs)
@@ -1274,6 +1300,12 @@ class CDMSTranisentVariable(Variable):
         self.get_port_values()
         self.var = self.to_python()
         self.setResult("self", self)
+
+    def get_port_values(self):
+        self.url = self.forceGetInputFromPort( "url", None )
+        self.source = self.forceGetInputFromPort( "source", None )
+        self.inputId = self.forceGetInputFromPort( "inputId", None )  
+        self.name = self.forceGetInputFromPort( "name", None )
 
     @staticmethod
     def applyAxesOperations(var, axesOperations):
