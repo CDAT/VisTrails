@@ -19,6 +19,7 @@ import commandsRecorderWidget
 import customizeUVCDAT
 import genutil,cdutil
 import preFunctionPopUpWidget
+import gui.uvcdat.regionExtractor
 from api import get_current_project_controller
 
 class QMenuWidget(QtGui.QWidget):
@@ -49,12 +50,12 @@ class QMenuWidget(QtGui.QWidget):
         self.editUndoAction = QtGui.QAction('Undo', self)
         self.editUndoAction.setEnabled(False)
         self.editUndoAction.setStatusTip("Undo last action for selected plot")
-        #self.editMenu.addAction(self.editUndoAction)
+        self.editMenu.addAction(self.editUndoAction)
         self.connect(self.editUndoAction, QtCore.SIGNAL('triggered()'), self.undo)
         self.editRedoAction = QtGui.QAction('Redo', self)
         self.editRedoAction.setEnabled(False)
         self.editRedoAction.setStatusTip("Redo last action for selected plot")
-        #self.editMenu.addAction(self.editRedoAction)
+        self.editMenu.addAction(self.editRedoAction)
         self.connect(self.editRedoAction, QtCore.SIGNAL('triggered()'), self.redo)
 
         #self.tools = parent.ui.menuTools
@@ -134,9 +135,17 @@ class QMenuWidget(QtGui.QWidget):
 #        print pu, '= regridMenu.addAction(self.regridPopup)'
 #        pu.triggered.connect(self.regridPopup.show)
 
+        self.spatial = self.pcmdiTools.addMenu("Spatial Tools")
+        extract = self.spatial.addMenu("Extract")
+        extract.addAction("Transcom Regions")
+        extract.addAction("Koeppen-Geiger")
+        extract.addAction("Dominant \"pure\" PFT")
+        extract.addAction("Vegetated Mask")
+        self.connect(extract,QtCore.SIGNAL("triggered(QAction *)"),self.extractRegions)
+
         stats = self.pcmdiTools.addMenu("Statistics")
         stats.setTearOffEnabled(True)
-        self.statsFuncs = {"Mean" : {"func":cdutil.averager,"nargsMin":1,"nargsMax":2},
+        self.statsFuncs = {"Mean" : {"func":cdutil.averager,"nargsMin":1,"nargsMax":2, "choices":[("action", ["average", "sum"])]},
                            "Variance" :{"func":genutil.statistics.variance,"nargsMin":1,"nargsMax":2,"choices":["centered","biased",],"entries":["max_pct_missing"]},
                            "Standard Deviation" : {"func":genutil.statistics.std,"nargsMin":1,"nargsMax":2,"choices":["centered","biased",],"entries":["max_pct_missing"]},
                            "Root Mean Square" : {"func":genutil.statistics.rms,"nargsMin":2,"nargsMax":3,"choices":["centered","biased",],"entries":["max_pct_missing"]},
@@ -310,8 +319,54 @@ class QMenuWidget(QtGui.QWidget):
             #send command to project controller to be stored as provenance
             prj_controller = get_current_project_controller()
             prj_controller.change_defined_variable_time_bounds(v.id, vtnm)
-
-
+        
+        
+    def extractRegions(self,action):
+        nm = str(action.text())
+        
+        import gui
+        rec = "## Computing"
+        if nm == "Transcom Regions":
+            func = gui.uvcdat.regionExtractor.REGIONS_1
+            funcnm = 'gui.uvcdat.regionExtractor.REGIONS_1'
+        elif nm == "Koeppen-Geiger":
+            func = gui.uvcdat.regionExtractor.REGIONS_2;
+            funcnm = 'gui.uvcdat.regionExtractor.REGIONS_2'
+        elif nm == "Dominant \"pure\" PFT":
+            func = gui.uvcdat.regionExtractor.REGIONS_3
+            funcnm = 'gui.uvcdat.regionExtractor.REGIONS_3'
+        elif nm == "Vegetated Mask":
+            func = gui.uvcdat.regionExtractor.REGIONS_4
+            funcnm = 'gui.uvcdat.regionExtractor.REGIONS_4'
+        self.bDialog = QtGui.QInputDialog()
+        
+        regions = func.getRegions();
+        region,ok = self.bDialog.getItem(self, nm, 'Choose Region: ', regions, editable=False);
+        if ok is False:
+            return
+        region = str(region)
+        vtdesc = nm
+        rec += nm.lower()
+        selectedVars=self.root.dockVariable.widget().getSelectedDefinedVariables()
+        for v in selectedVars:
+            #create new variable
+            tmp = func(v, region)
+            ext = "".join(region.lower().split())
+            newid = "%s_%s" % (v.id,ext)
+            tmp.id = newid
+            
+            #save new variable
+            self.root.dockVariable.widget().addVariable(tmp)
+            self.root.record(rec)
+            self.root.record("%s = %s(%s, '%s')" % (newid, funcnm, v.id, str(regions)))
+            
+            #send command to project controller to be stored as provenance
+            from api import get_current_project_controller
+            prj_controller = get_current_project_controller()
+            vtfuncnm = "%s(%s, '%s')"%(funcnm,v.id, region)
+            prj_controller.calculator_command([v.id], vtdesc, vtfuncnm, newid)
+            
+            
     def regridESMFPatch(self):
         self.regridFunc("'esmf'", "'Patch'")
 

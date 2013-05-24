@@ -233,22 +233,25 @@ class QEsgfCredentials(QtGui.QDialog):
             port = int(str(self.port.widget.text()))
             passphrase=str(self.password.widget.text())
             lifetime=int(str(self.lifetime.widget.text()))
- 	    cert_path=os.path.dirname(self.cert_file)
+            cert_path=os.path.dirname(self.cert_file)
             if not os.path.exists(cert_path):
-		try:
-		    os.makedirs(cert_path)
- 		except:
-		    pass
- 
+                try:
+                    os.makedirs(cert_path)
+                except:
+                    pass
+                
             myproxy_logon.myproxy_logon(host,username,passphrase,self.cert_file,lifetime=lifetime,port=port)
+            
             if self.key_file!=self.cert_file:
                 key_path=os.path.dirname(self.key_file)
+                
                 if not os.path.exists(key_path):
-		    try:
-		        os.makedirs(key_path)
- 		    except:
-		        pass
+                    try:
+                        os.makedirs(key_path)
+                    except:
+                        pass
                 myproxy_logon.myproxy_logon(host,username,passphrase,self.key_file,lifetime=lifetime,port=port)
+                
             self.hide()
         except Exception,err:
             m = QtGui.QMessageBox()
@@ -282,11 +285,11 @@ class QFacetButton(QDockPushButton):
  
 class QScrollArea2(QtGui.QScrollArea):
     def __init(self,parent=None):
- 	QtGui.QScrollArea.__init__(self,parent)
+        QtGui.QScrollArea.__init__(self,parent)
 
     def resizeEvent(*args):
-	args[0].F1.setMinimumWidth(args[0].size().width())
-	args[0].F1.setMaximumWidth(args[0].size().width())
+        args[0].F1.setMinimumWidth(args[0].size().width())
+        args[0].F1.setMaximumWidth(args[0].size().width())
         QtGui.QScrollArea.resizeEvent(*args)
 
 
@@ -320,7 +323,7 @@ class QEsgfBrowser(QtGui.QFrame):
             #(':/icons/resources/icons/db_add_256.ico', 'Add Gateway',self.userAddsGateway,True),
             (':/icons/resources/icons/binary-tree-icon.png', 'Edit Mapping',self.editMapping,True),
             (':/icons/resources/icons/floppy_disk_blue.ico', 'Save cache',self.userSaveCache,True),
-            (self.loginIcon, 'Get Credentials',self.clickedCredentials,True),
+            (':/icons/resources/icons/login.ico', 'Get Credentials',self.clickedCredentials,True),
             ]
         for info in actionInfo:
             if isinstance(info[0],str):
@@ -372,7 +375,7 @@ class QEsgfBrowser(QtGui.QFrame):
 
         self.facet_obj=cdms2.FacetConnection(host=str(self.root.preferences.host_url.currentText()))
         facet_xmlelement=self.facet_obj.get_xmlelement("replica=false")
-	self.facet_dict_of_dict={}
+        self.facet_dict_of_dict={}
         self.facet_dict=self.facet_obj.make_facet_dict(facet_xmlelement)
         self.data_nodelist=self.get_data_nodelist()
 
@@ -445,29 +448,29 @@ class QEsgfBrowser(QtGui.QFrame):
 
         self.facet_order_list=['project','institute','model','submodel','instrument','experiment_family','experiment','subexperiment','time_frequency','product','realm','variable','variable_long_name','cmor_table','cf_standard_name','ensemble']
 
-	scroll = QScrollArea2()
+        scroll = QScrollArea2()
         scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         scroll.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,QtGui.QSizePolicy.MinimumExpanding)
         scroll.F1 = F1 = QtGui.QFrame()
         QS=scroll.size()
         F1.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,QtGui.QSizePolicy.MinimumExpanding)
-	H1 = QtGui.QHBoxLayout()
+        H1 = QtGui.QHBoxLayout()
         F1.setLayout(H1)
 
         #self.vsp = QtGui.QVBoxLayout() # Facets, originally named V1
         self.vsp=QtGui.QSplitter(QtCore.Qt.Vertical)
-	self.add_facet_list_to_dict_of_dict(self.facet_order_list)
+        self.add_facet_list_to_dict_of_dict(self.facet_order_list)
         self.disable_unneeded_facet()
         H1.addWidget(self.vsp)
 
-	V2=QtGui.QVBoxLayout() 
-	#H1.addLayout(V2)
+        V2=QtGui.QVBoxLayout() 
+        #H1.addLayout(V2)
         F2=QtGui.QFrame()
         F2.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,QtGui.QSizePolicy.MinimumExpanding)
         F2.setLayout(V2)
         H1.addWidget(F2)
         
-	self.page_hbox=QtGui.QFrame() # Page, next, collapes,orignally named H2
+        self.page_hbox=QtGui.QFrame() # Page, next, collapes,orignally named H2
         self.page_hbox.setContentsMargins(QtCore.QMargins(0,0,0,0))
         self.page_hlayout=QtGui.QHBoxLayout()
         self.page_hbox.setLayout(self.page_hlayout)
@@ -507,7 +510,7 @@ class QEsgfBrowser(QtGui.QFrame):
         self.tree_btn_layout.addWidget(self.removeAll_tree_node_btn)
         self.tree_btn_layout.addWidget(self.collapseAll_tree_node_btn)
         self.tree_btn_hbox.hide()
-	V2.addWidget(self.page_hbox)
+        V2.addWidget(self.page_hbox)
         V2.addWidget(self.tree_btn_hbox) 
         V2.setSpacing(0)
         self.tree = QtGui.QTreeWidget()
@@ -515,8 +518,8 @@ class QEsgfBrowser(QtGui.QFrame):
         self.tree.setIconSize(QtCore.QSize(customizeUVCDAT.esgfTreeIconSize,customizeUVCDAT.esgfTreeIconSize))
         self.tree.connect(self.tree,QtCore.SIGNAL("itemSelectionChanged()"),self.tree_current_item_changed)
 
-	V2.addWidget(self.tree)
-	scroll.setWidget(F1)
+        V2.addWidget(self.tree)
+        scroll.setWidget(F1)
         vbox.addWidget(scroll)
 
         self.index=[]
@@ -528,7 +531,7 @@ class QEsgfBrowser(QtGui.QFrame):
 
         #hsp = QtGui.QSplitter(QtCore.Qt.Horizontal)
         #self.vsp=QtGui.QSplitter(QtCore.Qt.Vertical)
-	#self.add_facet_list_to_dict_of_dict(self.facet_order_list)
+        #self.add_facet_list_to_dict_of_dict(self.facet_order_list)
         #self.disable_unneeded_facet()
         #hsp.addWidget(self.vsp)
         
@@ -1435,7 +1438,7 @@ class QEsgfBrowser(QtGui.QFrame):
                 self.add_key_to_dict_of_dict(k)            
 
     def make_facet_nonupdated_list(self, selected_facet_key):
-	#get a facet list that need not be updated
+        #get a facet list that need not be updated
         nonupdated_list=[]
         for k in self.facet_order_list:
             if k != selected_facet_key:
@@ -1521,10 +1524,10 @@ class QEsgfBrowser(QtGui.QFrame):
             if service=="OPENDAP":
                 try:
                     if url[:-5] in CdmsCache.d:
-                        #print "Using cache for %s" % url[:5]
+                        #print "Using cache1 for %s" % url[:5]
                         f = CdmsCache.d[url[:-5]]
                     else:
-                        #print "Loading file %s" % url[:-5]
+                        #print "Loading file1 %s" % url[:-5]
                         f = CdmsCache.d[url[:-5]] = cdms2.open(url[:-5])
                     fvars = f.variables.keys()
                     for v in f.variables.keys():
@@ -1543,7 +1546,7 @@ class QEsgfBrowser(QtGui.QFrame):
                     index=-1
                     if self.root is not None:
                         self.root.varProp.fileEdit.setText(url[:-5])
-			self.root.varProp.fileEdit.emit(QtCore.SIGNAL('returnPressed()'))
+                        self.root.varProp.fileEdit.emit(QtCore.SIGNAL('returnPressed()'))
                         self.root.varProp.originTabWidget.setCurrentIndex(0)
                         #self.root.tabView.widget(0).fileWidget.widget.fileNameEdit.emit(QtCore.SIGNAL('returnPressed()'))
                         #for i in range(self.root.tabView.widget(0).fileWidget.widget.varCombo.count()):
@@ -1559,7 +1562,7 @@ class QEsgfBrowser(QtGui.QFrame):
                     m.setText("Couldn't open URL: %s (error: %s).Check credentials"%(url[:-5],err))
                     m.exec_()
             elif service == "HTTPServer":
-                fnm = QtGui.QFileDialog.getSaveFileName(self,"NetCDF File",filter="NetCDF Files (*.nc *.cdg *.NC *.CDF *.nc4 *.NC4) ;; All Files (*.*)",options=QtGui.QFileDialog.DontConfirmOverwrite)
+                fnm = QtGui.QFileDialog.getSaveFileName(self,"NetCDF File",url,filter="NetCDF Files (*.nc *.cdg *.NC *.CDF *.nc4 *.NC4) ;; All Files (*.*)",options=QtGui.QFileDialog.DontConfirmOverwrite)
                 if len(str(fnm))==0:
                     return
                 pipe = self.httpDownloadFile(url,fnm)
@@ -1645,8 +1648,8 @@ class QEsgfBrowser(QtGui.QFrame):
                     item.setIcon(0,self.foldersIcon)
                     item.setText(0,str(k))
                     if len(mapping)>0:
-                      item.setToolTip(0,mapping[0])
-                      item.setWhatsThis(0,mapping[0])
+                        item.setToolTip(0,mapping[0])
+                        item.setWhatsThis(0,mapping[0])
                     Item.addChild(item)
                 self.addTreeItems(item,dict[k],mapping[1:],textColor)
         ## for i in range(Item.columnCount()):
@@ -1663,8 +1666,10 @@ class QEsgfBrowser(QtGui.QFrame):
                 self.index.append(cdms2.esgfDataset(gateway,port=port,limit=limit,offset=offset,mapping=mapping,datasetids=datasetids,fileids=fileids,restPath=restPath))
                 #self.QIndex.addIndex("%s:%i" % (gateway,port))
             except Exception,err:
+                import traceback
+                traceback.print_last() #writes to session log or console
                 m = QtGui.QMessageBox()
-                m.setText(str(err))
+                m.setText("%s\n\nSee session log" % str(err))
                 m.exec_()
                 return            
 
@@ -1770,7 +1775,7 @@ class QEsgfBrowser(QtGui.QFrame):
             ## first we figure where this comes from
             #nm = "%s:%i" % (d.host,d.port)
             #commenting cache part for now
-	    """if d.id in self.cache.keys():
+            """if d.id in self.cache.keys():
                 d.resp=xml.etree.ElementTree.fromstring(self.cache[d.id][1])
                 ts = self.cache[d.id][0]
             else:
@@ -1886,4 +1891,3 @@ class QEsgfBrowser(QtGui.QFrame):
                         dialog.addDownload("",nm,self.httpDownloadFile(url,os.path.join(dirnm,nm)))
         if show:
             dialog.exec_()
-        

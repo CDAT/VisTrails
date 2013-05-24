@@ -42,7 +42,45 @@ def matchesAxisType( axis, axis_attr, axis_aliases ):
                 matches = True
                 break
     return matches
-    
+
+class AxisType:
+    NONE = 0
+    Time = 1
+    Longitude = 2
+    Latitude = 3
+    Level = 4
+    lev_aliases = [ 'bottom', 'top', 'zdim' ]
+    lev_axis_attr = [ 'z' ]
+    lat_aliases = [ 'north', 'south', 'ydim' ]
+    lat_axis_attr = [ 'y' ]
+    lon_aliases = [ 'east', 'west', 'xdim' ]
+    lon_axis_attr = [ 'x' ]
+
+def getAxisType( axis ):
+    if axis.isLevel() or matchesAxisType( axis, AxisType.lev_axis_attr, AxisType.lev_aliases ):
+        return AxisType.Level      
+    elif axis.isLatitude() or matchesAxisType( axis, AxisType.lat_axis_attr, AxisType.lat_aliases ):
+        return AxisType.Latitude                   
+    elif axis.isLongitude() or matchesAxisType( axis, AxisType.lon_axis_attr, AxisType.lon_aliases ):
+        return AxisType.Longitude     
+    elif axis.isTime():
+        return AxisType.Time
+    else: return  AxisType.NONE    
+
+def designateAxisType( self, axis ):
+    if not isDesignated( axis ):
+        if matchesAxisType( axis, AxisType.lev_axis_attr, AxisType.lev_aliases ):
+            axis.designateLevel() 
+            return AxisType.Level         
+        elif matchesAxisType( axis, AxisType.lat_axis_attr, AxisType.lat_aliases ):
+            axis.designateLatitude() 
+            return AxisType.Latitude                    
+        elif matchesAxisType( axis, AxisType.lon_axis_attr, AxisType.lon_aliases ):
+            axis.designateLongitude()
+            return AxisType.Longitude    
+    return getAxisType( axis )
+
+                   
 class PM_CDMSDataReader( PersistentVisualizationModule ):
     
     dataCache = {}
@@ -73,8 +111,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         for varDataSpecs in cls.dataCache.values():
             varDataMap = varDataSpecs.get('varData', None )
             if varDataMap:
-                dataArray = varDataMap.get('newDataArray', None )
-                if dataArray: del dataArray 
+                try:
+                    dataArray = varDataMap[ 'newDataArray']
+                    del dataArray 
+                except: pass
             del varDataSpecs
         cls.dataCache.clear()
         for imageDataMap in cls.imageDataCache.values():
@@ -153,10 +193,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 self.nTimesteps = len( self.timeAxis ) if self.timeAxis else 1
                 try:
                     comp_time_values = self.timeAxis.asComponentTime()
-                    t0 = comp_time_values[0].torel(ReferenceTimeUnits).value
+                    t0 = comp_time_values[0].torel(self.referenceTimeUnits).value
+                    if (t0 < 0):
+                        self.referenceTimeUnits = self.timeAxis.units
+                        t0 = comp_time_values[0].torel(self.referenceTimeUnits).value
                     dt = 0.0
                     if self.nTimesteps > 1:
-                        t1 = comp_time_values[-1].torel(ReferenceTimeUnits).value
+                        t1 = comp_time_values[-1].torel(self.referenceTimeUnits).value
                         dt = (t1-t0)/(self.nTimesteps-1)
                         self.timeRange = [ 0, self.nTimesteps, t0, dt ]
                 except:
@@ -167,9 +210,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     self.timeRange = [ 0, self.nTimesteps, t0, dt ]
             self.setParameter( "timeRange" , self.timeRange )
             self.cdmsDataset.timeRange = self.timeRange
+            self.cdmsDataset.referenceTimeUnits = self.referenceTimeUnits
             self.timeLabels = self.cdmsDataset.getTimeValues()
             timeData = args.get( 'timeData', [ self.cdmsDataset.timeRange[2], 0, False ] )
-            self.timeValue = cdtime.reltime( float(timeData[0]), ReferenceTimeUnits )
+            self.timeValue = cdtime.reltime( float(timeData[0]), self.referenceTimeUnits )
             self.timeIndex = timeData[1]
             self.useTimeIndex = timeData[2]
 #            print "Set Time [mid = %d]: %s, NTS: %d, Range: %s, Index: %d (use: %s)" % ( self.moduleID, str(self.timeValue), self.nTimesteps, str(self.timeRange), self.timeIndex, str(self.useTimeIndex) )
@@ -188,6 +232,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 if cdms_var2: 
                     iVar = iVar+1
                     self.addCDMSVariable( cdms_var2, iVar )
+                    intersectedRoi = self.getIntersectedRoi( cdms_var2, intersectedRoi )
                     
             self.generateOutput(roi=intersectedRoi)
 #            if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
@@ -204,7 +249,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 ModuleStore.archiveCdmsDataset( self.datasetId, self.cdmsDataset )
                 self.timeRange = self.cdmsDataset.timeRange
                 timeData = args.get( 'timeData', [ self.cdmsDataset.timeRange[2], 0, False ] )
-                self.timeValue = cdtime.reltime( float(timeData[0]), ReferenceTimeUnits )
+                self.timeValue = cdtime.reltime( float(timeData[0]), self.referenceTimeUnits )
                 self.timeIndex = timeData[1]
                 self.useTimeIndex = timeData[2]
                 self.timeLabels = self.cdmsDataset.getTimeValues()
@@ -288,8 +333,16 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         if len( varList ) == 0: return False
         varDataIds = []
         intersectedRoi = args.get('roi', None )
-        self.cdmsDataset.setRoi( intersectedRoi )
+        if intersectedRoi: self.cdmsDataset.setRoi( intersectedRoi )
         exampleVarDataSpecs = None
+        dsid = None
+        if (self.outputType == CDMSDataType.Vector ) and len(varList) < 3:
+            if len(varList) == 2: 
+                imageDataName = getItem( varList[0] )
+                dsid = imageDataName.split('*')[0]
+                varList.append( '*'.join( [ dsid, '__zeros__' ] ) )
+            else: 
+                print>>sys.stderr, "Not enough components for vector plot: %d" % len(varList)
 #        print " Get Image Data: varList = %s " % str( varList )
         for varRec in varList:
             range_min, range_max, scale, shift  = 0.0, 0.0, 1.0, 0.0   
@@ -319,7 +372,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 else:
                     varDataIdIndex = selectedLevel
 
-            roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] )
+            roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] ) if self.cdmsDataset.gridBounds else ""
             varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), roiStr )
             varDataIds.append( varDataId )
             varDataSpecs = self.getCachedData( varDataId ) 
@@ -338,15 +391,16 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         varDataSpecs = self.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale, self.outputType, ds )
                         if (exampleVarDataSpecs == None) and (varDataSpecs <> None): exampleVarDataSpecs = varDataSpecs
                         range_min = varData.min()
+                        if type( range_min ).__name__ == "MaskedConstant": range_min = 0.0
                         range_max = varData.max()
-                        print " Read volume data for variable %s, scalar range = [ %f, %f ]" % ( varName, range_min, range_max )
+                        if type( range_max ).__name__ == 'MaskedConstant': range_max = 0.0
                         newDataArray = varData
                                                           
                         if scalar_dtype == np.float:
                             newDataArray = newDataArray.filled( 1.0e-15 * range_min )
                         else:
                             shift = -range_min
-                            scale = ( self._max_scalar_value ) / ( range_max - range_min )            
+                            scale = ( self._max_scalar_value ) / ( range_max - range_min ) if  ( range_max > range_min ) else 1.0        
                             rescaledDataArray = ( ( newDataArray + shift ) * scale )
                             newDataArray = rescaledDataArray.astype(scalar_dtype) 
                             newDataArray = newDataArray.filled( 0 )
@@ -364,6 +418,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         md =  varDataSpecs['md']                 
                         md['datatype'] = datatype
                         md['timeValue']= self.timeValue.value
+                        md['timeUnits' ] = self.referenceTimeUnits
                         md[ 'attributes' ] = var_md
                         md[ 'plotType' ] = 'zyt' if (self.outputType == CDMSDataType.Hoffmuller) else 'xyz'
                                         
@@ -373,7 +428,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         cachedImageDataName = '-'.join( varDataIds )
         imageDataCache = self.getImageDataCache() 
         if not ( cachedImageDataName in imageDataCache ):
-            print 'Building Image for cache: %s ' % cachedImageDataName
+#            print 'Building Image for cache: %s ' % cachedImageDataName
             image_data = vtk.vtkImageData() 
             outputOrigin = varDataSpecs[ 'outputOrigin' ]
             outputExtent = varDataSpecs[ 'outputExtent' ]
@@ -451,7 +506,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     vtkdata.CopyComponent( iComp, fromArray, 0 )
                     if iComp == 0: 
                         md[ 'scalars'] = varName 
-                    iComp = iComp + 1
+                    iComp = iComp + 1                    
                 vtkdata.SetName( 'vectors' )
                 md[ 'vectors'] = ','.join( vars ) 
                 vtkdata.Modified()
@@ -528,15 +583,17 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 axis = None
                 if iCoord == 0: axis = tvar.getLongitude()
                 if iCoord == 1: axis = tvar.getLatitude()
-                if axis:
-                    axisvals = axis.getValue()          
-                    newRoi[ iCoord ] = axisvals[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
-                    newRoi[ 2+iCoord ] = axisvals[-1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
+                axisvals = axis.getValue()          
+                if ( len( axisvals.shape) > 1 ):
+#                    displayMessage( "Curvilinear grids not currently supported by DV3D.  Please regrid. ")
+                    return current_roi
+                newRoi[ iCoord ] = axisvals[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
+                newRoi[ 2+iCoord ] = axisvals[-1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]
             if ( current_roi_size == 0 ): return newRoi
             new_roi_size = getRoiSize( newRoi )
             return newRoi if ( ( current_roi_size > new_roi_size ) and ( new_roi_size > 0.0 ) ) else current_roi
         except:
-            print>>std.stderr, "Error getting ROI for input variable"
+            print>>sys.stderr, "Error getting ROI for input variable"
             traceback.print_exc()
             return current_roi
        
@@ -553,6 +610,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         domain = var.getDomain()
         self.lev = var.getLevel()
         axis_list = var.getAxisList()
+        isCurvilinear = False
         for axis in axis_list:
             size = len( axis )
             iCoord = self.getCoordType( axis, outputType )

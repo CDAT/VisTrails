@@ -16,7 +16,7 @@ from db.domain import DBModule, DBAnnotation
 from packages.vtDV3D import HyperwallManager
 from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
-ReferenceTimeUnits = "days since 1900-1-1"
+DefaultReferenceTimeUnits = "days since 1900-1-1"
 MIN_LINE_LEN = 50
 
 def getClassName( instance ):
@@ -139,6 +139,7 @@ class InputSpecs:
         self.scalarRange = None
         self.seriesScalarRange = None
         self.rangeBounds = None
+        self.referenceTimeUnits = None
         self.metadata = None
         self._input = None
         self.fieldData = None
@@ -338,7 +339,7 @@ class InputSpecs:
             if self.input() <> None:
                 fd = self.input().GetFieldData() 
                 self.input().Update()
-                self.fieldData = self.input().GetFieldData()             
+                self.fieldData = self.input().GetFieldData()         
             elif self.inputModule:
                 self.fieldData = self.inputModule.getFieldData() 
     
@@ -348,7 +349,8 @@ class InputSpecs:
                 self.rangeBounds = None              
                 self.datasetId = self.metadata.get( 'datasetId', None )                
                 tval = self.metadata.get( 'timeValue', 0.0 )
-                self.timeValue = cdtime.reltime( float( tval ), ReferenceTimeUnits )               
+                self.referenceTimeUnits = self.metadata.get( 'timeUnits', None )
+                self.timeValue = cdtime.reltime( float( tval ), self.referenceTimeUnits )               
                 dtype =  self.metadata.get( 'datatype', None )
                 scalars =  self.metadata.get( 'scalars', None )
                 self.rangeBounds = getRangeBounds( dtype )
@@ -395,7 +397,8 @@ class InputSpecs:
                 return mdList[ plotIndex ]
             else:
                 print>>sys.stderr, "Error, Metadata for input %d not found" % plotIndex
-                return mdList[ 0 ]
+                try: return mdList[ 0 ]
+                except: pass
         return {}
         
     def addMetadataObserver( self, caller, event ):
@@ -444,7 +447,9 @@ class PersistentModule( QObject ):
              
     def __init__( self, mid, **args ):
         QObject.__init__(self)
+        self.referenceTimeUnits = DefaultReferenceTimeUnits
         self.pipelineBuilt = False
+        self.update_proj_controller = True
         self.newLayerConfiguration = False
         self.activeLayer = None
         self.newDataset = False
@@ -474,11 +479,11 @@ class PersistentModule( QObject ):
         self.primaryInputPorts = [ 'slice' ] if (self.ndims == 2) else [ 'volume' ]
         self.documentation = None
         self.parameterCache = {}
-        self.timeValue = cdtime.reltime( 0.0, ReferenceTimeUnits ) 
+        self.timeValue = cdtime.reltime( 0.0, self.referenceTimeUnits ) 
         if self.createColormap:
             self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Colormap', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
 #        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
-        self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue, cellsOnly=True )
+        self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue, persist=False, cellsOnly=True )
         
 #        print "**********************************************************************"
 #        print "Create Module [%d] : %s (%x)" % ( self.moduleID, self.__class__.__name__, id(self) )
@@ -493,7 +498,7 @@ class PersistentModule( QObject ):
 #        return 0
 
     def __del__(self):
-        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
+#        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
         sys.stdout.flush()
 #        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
 #        IVModuleConfigurationDialog.reset()
@@ -516,7 +521,10 @@ class PersistentModule( QObject ):
         return [ self.activeLayer, ]
 
     def input( self, input_index=0 ):
-        ispec = self.inputSpecs[ input_index ] 
+        try:
+            ispec = self.inputSpecs[ input_index ]
+        except:
+            return None 
         return ispec.input()
 
     def intersectInputExtents( self ):
@@ -676,7 +684,7 @@ class PersistentModule( QObject ):
         return str( getClassName( self ) )
         
     def dvCompute( self, **args ):
-        print "  ***** Updating %s Module, id = %d ***** " % ( self.__class__.__name__, self.moduleID )
+#        print "  ***** Updating %s Module, id = %d ***** " % ( self.__class__.__name__, self.moduleID )
         self.initializeInputs( **args )     
         self.updateHyperwall()
         if self.input() or self.inputModuleList() or not self.requiresPrimaryInput:
@@ -817,6 +825,13 @@ class PersistentModule( QObject ):
             
     def getPrimaryInputPorts(self):
         return self.primaryInputPorts
+    
+    def intiTime(self, ispec, **args):
+        t = cdtime.reltime( 0, self.referenceTimeUnits)
+        if t.cmp( cdtime.reltime( 0, ispec.referenceTimeUnits ) ) == 1:
+            self.referenceTimeUnits = ispec.referenceTimeUnits 
+        tval = args.get( 'timeValue', None )
+        if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ispec.referenceTimeUnits )
 
     def initializeInputs( self, **args ):
         isAnimation = args.get( 'animate', False )
@@ -839,7 +854,8 @@ class PersistentModule( QObject ):
                 inMod = self.getPrimaryInput( port=inputPort, **args )
                 if inMod: ispec.inputModule = inMod
                 
-            if  ispec.initializeInput( inputIndex, self.moduleID ): 
+            if  ispec.initializeInput( inputIndex, self.moduleID ):
+                self.intiTime( ispec, **args )
                 
                 if inputIndex == 0:     
                     self.setParameter( 'metadata', ispec.metadata ) 
@@ -857,13 +873,7 @@ class PersistentModule( QObject ):
                 if self.roi == None:  
                     self.roi = ispec.metadata.get( 'bounds', None )  
                 if isAnimation:
-                    tval = args.get( 'timeValue', None )
-                    if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ReferenceTimeUnits )
                     ispec.fieldData = ispec.inputModule.getFieldData() 
-#                else:
-#                    if inputIndex == 0: 
-#                        scalars = ispec.metadata.get( 'scalars', None )
-#                        self.initializeLayers( scalars )
                                     
             elif ( ispec.fieldData == None ): 
                 ispec.initializeMetadata()
@@ -1273,10 +1283,11 @@ class PersistentModule( QObject ):
             ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
             proj_controller = api.get_current_project_controller()
             controller =  proj_controller.vt_controller 
-            pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
-            if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
-                proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
-            else: pcoords = None 
+            if self.update_proj_controller:
+                pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
+                if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
+                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+                else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
             controller.change_selected_version( current_version )
@@ -1300,13 +1311,16 @@ class PersistentModule( QObject ):
         try:
             ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
             proj_controller = api.get_current_project_controller()
+            if ( sheetName <> proj_controller.current_sheetName ): return
             controller =  proj_controller.vt_controller 
-            pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
-            if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
-                proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
-            else: pcoords = None 
+            if self.update_proj_controller:
+                pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
+                if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
+                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+                else: pcoords = None 
             cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
             current_version = cell.current_parent_version 
+            print " Change parameters, current version = %d, current_parent_version = %d " % ( controller.current_version, current_version )
             controller.change_selected_version( current_version )
             pipeline = controller.vistrail.getPipeline( current_version )
         except Exception, err:
@@ -1338,19 +1352,19 @@ class PersistentModule( QObject ):
             action = create_action( op_list ) 
             controller.add_new_action(action)
             controller.perform_action(action)
-            
+            controller.select_latest_version()
+          
             for config_fn in config_list:
                 config_fn.persisted = True
                 
-            if proj_controller:
+            if self.update_proj_controller and proj_controller:
                 proj_controller.cell_was_changed(action)
                 if pcoords:  proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
+            sys.stdout.flush()
                 
         except Exception, err:
             print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
             traceback.print_exc()
-
-
                
     def persistParameterList( self, parmRecList, **args ):
         if parmRecList and not self.isClient: 
@@ -1444,7 +1458,7 @@ class PersistentModule( QObject ):
         self.timeIndex = iTimeIndex
         try:
             relTimeValue = self.timeRange[ 2 ] + iTimeIndex* self.timeRange[ 3 ]
-            self.timeValue = cdtime.reltime( relTimeValue, ReferenceTimeUnits )
+            self.timeValue = cdtime.reltime( relTimeValue, self.referenceTimeUnits )
         except:
             pass
         self.onNewTimestep()
@@ -1867,6 +1881,11 @@ class PersistentVisualizationModule( PersistentModule ):
             if len(ds.transientVariables)>0:
                 if len(ds.transientVariables)>1: print 'Warning: this module has several transient Variables, plotting the first one.'
                 var = ds.transientVariables.values()[0]
+                if hasattr(var, 'long_name'):
+                    lensActor.SetTitle("Time vs. %s (%s)" % (var.long_name, var.id))
+                else:
+                    lensActor.SetTitle("Time vs.%s" % var.id)
+                lensActor.SetYTitle(var.id)
                 lensActor.SetYRange(var.min(), var.max())
 
         prop = lensActor.GetProperty()
@@ -2089,6 +2108,11 @@ class PersistentVisualizationModule( PersistentModule ):
                     if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                
                 HyperwallManager.getInstance().setInteractionState( state, False )                        
         return rcf
+
+    def invokeKeyEvent( self, keysym ):
+        ascii_key = QString(keysym).toLatin1()[0]
+        self.iren.SetKeyEventInformation( 0, 0, ascii_key, 0, keysym )
+        self.iren.KeyPressEvent()
                    
     def endInteraction( self, **args ):
         PersistentModule.endInteraction( self, **args  )

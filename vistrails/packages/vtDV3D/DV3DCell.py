@@ -490,6 +490,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def execute(self, **args ):
         if self.builtCellWidget:  self.builtCellWidget = args.get( 'animate', False )
         PersistentVisualizationModule.execute(self, **args)
+#        pipeline = self.getCurrentPipeline()
         self.recordCameraPosition()
 #        self.updateProject()
         
@@ -529,10 +530,9 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         if ( self.location.col <> col ) or  ( self.location.row <> row ): return
         cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )  
 #        print " --- Clearing Cell %s ---" % cell_address
-
         pipeline = DV3DPipelineHelper.getPipeline( cell_address, sheetName )
-#        pipeline = self.getCurrentPipeline() 
         if pipeline:  UVCDATGuiConfigFunction.clearModules( pipeline )
+        
         IVModuleConfigurationDialog.reset()
         self.cellWidget = None 
         self.builtCellWidget = False                        
@@ -596,7 +596,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
  
     def toggleStereo(self):
         iren = self.renWin.GetInteractor()
-        keycode = QString('3').unicode().toLatin1()
+        keycode = QString('3').toLatin1()
         iren.SetKeyEventInformation( 0, 0, keycode, 0, "3" )     
         iren.InvokeEvent( vtk.vtkCommand.KeyPressEvent )
 
@@ -952,6 +952,17 @@ class PM_MapCell3D( PM_DV3DCell ):
             self.baseMapActor.SetInput( baseImage )
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]        
             self.renderer.AddActor( self.baseMapActor )
+            
+#            self.testPlotUtils()
+
+
+#    def testPlotUtils(self):
+#        from api import get_current_project_controller
+#        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+#        pipeline = self.getCurrentPipeline()
+#        plot_modules = DV3DPipelineHelper.find_dv3d_plot_modules( pipeline )
+#        vars = DV3DPipelineHelper.find_variables_connected_to_plot_module( pipeline,  plot_modules[0] )
+#        print ""
 
 
     def ComputeCornerPosition( self ):

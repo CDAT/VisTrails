@@ -4,6 +4,7 @@ Created on Dec 11, 2010
 @author: tpmaxwel
 '''
 import vtk, sys, os, copy, time
+from collections import OrderedDict 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import core.modules.module_registry
@@ -81,31 +82,6 @@ def getDataRoot():
     hw_role = appConfig.hw_role if hasattr( appConfig, 'hw_role' ) else 'global'
     return os.path.expanduser( datasetConfig.get( hw_role, 'data_root' ) )
 
-def getComponentTimeValues( dataset ):
-    rv = None
-    dt = 0.0
-    if dataset <> None:
-        dims = dataset.axes.keys()
-        for dim in dims:
-            axis = dataset.getAxis( dim )
-            if axis.isTime():
-                if axis.calendar.lower() == 'gregorian': 
-                    cdtime.DefaultCalendar = cdtime.GregorianCalendar 
-                if hasattr( axis, 'partition' ):
-                    rv = []
-                    tvals = axis.asRelativeTime()
-                    for part in axis.partition:
-                        for iTime in range( part[0], part[1] ):
-                            rv.append( tvals[iTime].tocomp() )
-                    break
-                else:
-                    rv = axis.asComponentTime()
-        if rv and (len(rv) > 1):
-            rv0 = rv[0].torel(ReferenceTimeUnits)
-            rv1 = rv[1].torel(ReferenceTimeUnits)
-            dt = rv1.value - rv0.value
-    return rv, dt
-
 def getRelativeTimeValues( dataset ):
     rv = []
     dt = 0.0
@@ -124,12 +100,12 @@ def getRelativeTimeValues( dataset ):
                     for part in axis.partition:
                         for iTime in range( part[0], part[1] ):
                             rval = cdtime.reltime( axis[iTime], time_units )
-                            rv.append( rval.torel(ReferenceTimeUnits) )
+                            rv.append( rval.torel(time_units) )
                     break
                 else:
                     for tval in axis:
                         rval = cdtime.reltime( tval, time_units )
-                        rv.append( rval.torel(ReferenceTimeUnits) )
+                        rv.append( rval.torel(time_units) )
         if (len(rv) > 1):
             dt = rv[1].value - rv[0].value
     return rv, dt, time_units
@@ -164,20 +140,6 @@ class CDMSDatasetRecord():
                 elif levaxis.attributes.get( 'positive', '' ) == 'up' and not ascending_values: levbounds = slice( None, None, -1 )
         return levbounds
     
-#    def getVarData( self, varName ):
-#        varData = self.dataset[ varName ]
-#        order = varData.getOrder()
-#        args = {}
-#        timevalues, dt = getComponentTimeValues( self.dataset )
-#        levbounds = self.getLevBounds()
-#        if self.timeRange: args['time'] = ( timevalues[ self.timeRange[0] ], timevalues[ self.timeRange[1] ] )
-#        args['lon'] = slice( self.gridExtent[0], self.gridExtent[1] )
-#        args['lat'] = slice( self.gridExtent[2], self.gridExtent[3] )
-#        if levbounds: args['lev'] = levbounds
-#        args['order'] = 'xyz'
-#        print "Reading variable %s, axis order = %s, shape = %s, roi = %s " % ( varName, order, str(varData.shape), str(args) )
-#        return varData( **args )
-
     def getVarDataTimeSlice( self, varName, timeValue, gridBounds, decimation, referenceVar=None, referenceLev=None ):
         """
         This method extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).
@@ -392,8 +354,8 @@ class CDMSDatasetRecord():
 #            nodataMask = cdutil.WeightsMaker( source=self.cdmsFile, var=varName,  actions=[ MV2.not_equal ], values=[ nodata_value ] ) if nodata_value else None
             gridMaker = cdutil.WeightedGridMaker( flat=LatMin, flon=LonMin, nlat=int(nRefLat/decimationFactor), nlon=int(nRefLon/decimationFactor), dellat=(refDelLat*decimationFactor), dellon=(refDelLon*decimationFactor) ) # weightsMaker=nodataMask  )                    
                 
-            from packages.vtDV3D.CDMS_DatasetReaders import getRelativeTimeValues 
-            time_values, dt, time_units = getRelativeTimeValues ( cdms2.open( self.cdmsFile ) ) 
+#            from packages.vtDV3D.CDMS_DatasetReaders import getRelativeTimeValues 
+#            time_values, dt, time_units = getRelativeTimeValues ( cdms2.open( self.cdmsFile ) ) 
             
             vc = cdutil.VariableConditioner( source=self.cdmsFile, var=varName,  cdmsKeywords=args1, weightedGridMaker=gridMaker ) 
             print " regridded_var_slice(%s:%s): %s " % ( self.dataset.id, varName, str( args1 ) )
@@ -496,6 +458,7 @@ class CDMSDataset(Module):
         self.outputVariables = {}
         self.referenceVariable = None
         self.timeRange = None
+        self.referenceTimeUnits = None
         self.gridBounds = None
         self.decimation = DefaultDecimation
         self.zscale = 1.0
@@ -519,19 +482,20 @@ class CDMSDataset(Module):
     def setRoi( self, roi ): 
         if roi <> None: self.gridBounds = roi
 
-    def setBounds( self, timeRange, roi, zscale, decimation ): 
+    def setBounds( self, timeRange, time_units, roi, zscale, decimation ): 
         self.timeRange = timeRange
+        self.referenceTimeUnits = time_units
         self.gridBounds = roi
         self.zscale = zscale
         self.decimation = decimation
         
     def getTimeValues( self, asComp = True ):
         if self.timeRange == None: return None
-        start_rel_time = cdtime.reltime( float( self.timeRange[2] ), ReferenceTimeUnits )
+        start_rel_time = cdtime.reltime( float( self.timeRange[2] ), self.referenceTimeUnits )
         time_values = []
         for iTime in range( self.timeRange[0], self.timeRange[1]+1 ):
             rval = start_rel_time.value + iTime * self.timeRange[3]
-            tval = cdtime.reltime( float( rval ), ReferenceTimeUnits )
+            tval = cdtime.reltime( float( rval ), self.referenceTimeUnits )
             if asComp:   time_values.append( tval.tocomp() )
             else:        time_values.append( tval )
         return time_values
@@ -565,7 +529,7 @@ class CDMSDataset(Module):
         return self.referenceVariable.split("*")[0]
                                                              
     def getStartTime(self):
-        return cdtime.reltime( float( self.timeRange[2] ), ReferenceTimeUnits )
+        return cdtime.reltime( float( self.timeRange[2] ), self.referenceTimeUnits )
 
     def __del__( self ):
         for dsetRec in self.datasetRecs.values(): dsetRec.dataset.close()
@@ -573,9 +537,10 @@ class CDMSDataset(Module):
          
     def addTransientVariable( self, varName, variable, ndim = None ):
         if varName in self.transientVariables:
-            print>>sys.stderr, "Warning, transient variable %s already exists in dataset, overwriting!" % ( varName )
-        else:
-            self.transientVariables[ varName ] = variable
+            var = self.transientVariables[ varName ]
+            if id(var) <> id(variable): print>>sys.stderr, "Warning, transient variable %s already exists in dataset, overwriting!" % ( varName )
+            else: return
+        self.transientVariables[ varName ] = variable
 
     def getTransientVariable( self, varName ):
         return self.transientVariables.get( varName, None )
@@ -643,10 +608,18 @@ class CDMSDataset(Module):
             dsetRec = self.datasetRecs.get( dsid, None )
             if dsetRec:
                 if varName in dsetRec.dataset.variables:
-                    rv = dsetRec.getFileVarDataCube( varName, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]], refVar=self.referenceVariable, refLev=self.referenceLev )  
+                    args = { 'time':timeValues, 'lev':levelValues, 'refVar':self.referenceVariable, 'refLev':self.referenceLev }
+                    if self.gridBounds:
+                        args['lon'] = [self.gridBounds[0],self.gridBounds[2]] 
+                        args['lat'] = [self.gridBounds[1],self.gridBounds[3]] 
+                    rv = dsetRec.getFileVarDataCube( varName, self.decimation, **args )  
             elif varName in self.getTransientVariableNames():
                 tvar = self.getTransientVariable( varName ) 
-                rv = self.getTransVarDataCube( varName, tvar, self.decimation, time=timeValues, lev=levelValues, lon=[self.gridBounds[0],self.gridBounds[2]], lat=[self.gridBounds[1],self.gridBounds[3]] )  
+                args = { 'time':timeValues, 'lev':levelValues }
+                if self.gridBounds:
+                    args['lon'] = [self.gridBounds[0],self.gridBounds[2]] 
+                    args['lat'] = [self.gridBounds[1],self.gridBounds[3]] 
+                rv = self.getTransVarDataCube( varName, tvar, self.decimation, **args )  
         if (rv.id == "NULL") and (varName in self.outputVariables):
             rv = self.outputVariables[ varName ]
         if rv.id <> "NULL": 
@@ -707,8 +680,9 @@ class CDMSDataset(Module):
             lonAxis = transVar.getLongitude() 
             lonVals = lonBounds if lonBounds else lonAxis.getValue()
             varLonInt = lonAxis.mapIntervalExt( [ lonVals[0], lonVals[-1] ], 'ccn' )
-            if (decimationFactor > 1):  args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
-            else:                       args1['lon'] = slice( varLonInt[0], varLonInt[1] )
+            if varLonInt:
+                if (decimationFactor > 1):  args1['lon'] = slice( varLonInt[0], varLonInt[1], decimationFactor )
+                else:                       args1['lon'] = slice( varLonInt[0], varLonInt[1] )
            
             latAxis = transVar.getLatitude() 
             latVals = latAxis.getValue()
@@ -717,8 +691,9 @@ class CDMSDataset(Module):
                 if ( latVals[-1] > latVals[0] ):     latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] > latBounds[0]) else [ latBounds[-1], latBounds[0] ]
                 else:                                latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] < latBounds[0]) else [ latBounds[-1], latBounds[0] ]
             varLatInt = latAxis.mapIntervalExt( latRange, 'ccn' )
-            if (decimationFactor > 1):  args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
-            else:                       args1['lat'] = slice( varLatInt[0], varLatInt[1] )
+            if varLatInt:
+                if (decimationFactor > 1):  args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
+                else:                       args1['lat'] = slice( varLatInt[0], varLatInt[1] )
         
         args1['order'] = order
         if levaxis:
@@ -994,10 +969,10 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 if len(values) == 1: values = values[0].strip(' ').split(' ')
                 if type == 'time':
                     cval = getCompTime( values[0].strip(" ") )
-                    start_time = cval.torel(ReferenceTimeUnits).value
+                    start_time = cval.torel(self.referenceTimeUnits).value
                     cval = getCompTime( values[1].strip(" ") )
-                    end_time = cval.torel(ReferenceTimeUnits).value
-#                    print " TimeRange Specs: ", str( values ), str( start_time ), str( end_time ), str( ReferenceTimeUnits )
+                    end_time = cval.torel(self.referenceTimeUnits).value
+#                    print " TimeRange Specs: ", str( values ), str( start_time ), str( end_time ), str( self.referenceTimeUnits )
                 elif type.startswith('lat' ):
                     lat_bounds = [ float( values[0] ), float( values[1] ) ]
                     self.roi[1] = lat_bounds[0] if lat_bounds[0] < lat_bounds[1] else lat_bounds[1]
@@ -1046,31 +1021,31 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         serializedInputSpecs = getItem( self.getInputValue( "executionSpecs" ) )
         if serializedInputSpecs:
             inputSpecs = SerializedInterfaceSpecs( serializedInputSpecs ) if serializedInputSpecs else None
-            print " ** serializedInputSpecs: ", str( serializedInputSpecs ) 
-            print " ** InputSpecs: ", str( inputSpecs ) 
+#            print " ** serializedInputSpecs: ", str( serializedInputSpecs ) 
+#            print " ** InputSpecs: ", str( inputSpecs ) 
             self.idSpecs, self.fileSpecs, self.varSpecs, self.gridSpecs = [], [], [], []
             nInputs = inputSpecs.getNInputs() if inputSpecs else 0
             if nInputs: 
-                print " _____________________ File Reader _____________________ "    
+#                print " _____________________ File Reader _____________________ "    
                 for iInput in range( nInputs  ):
                     inputSpec = inputSpecs.getInput(  index=iInput )
-                    print " ** InputSpec: ", str( inputSpec ) 
+#                    print " ** InputSpec: ", str( inputSpec ) 
                     self.idSpecs.append( inputSpec[0] ) 
                     self.fileSpecs.append( inputSpec[1] )
                     self.varSpecs.append( inputSpec[2] )
                     if( not len(self.gridSpecs) and len(inputSpec[3]) ): 
                         self.gridSpecs = splitGridSpecs( inputSpec[3] )                   
-                        print " ** Grid Specs: ", str( self.gridSpecs )  
+#                        print " ** Grid Specs: ", str( self.gridSpecs )  
                 dsMapData = ';'.join( self.fileSpecs )   
                 self.computeGridFromSpecs()
-                print " ** ID Specs: ", str( self.idSpecs )
-                print " ** File Specs: ", str( self.fileSpecs )
-                print " ** Var Specs: ", str( self.varSpecs )            
-                print " ** dsMapData: ", str( dsMapData )
-                print " ** ROI: ", str( self.roi )
-                print " ** zscale: ", str( zscale )
-                print " ** decimation: ", str( decimation )
-                print " ________________________________________________________ "   
+#                print " ** ID Specs: ", str( self.idSpecs )
+#                print " ** File Specs: ", str( self.fileSpecs )
+#                print " ** Var Specs: ", str( self.varSpecs )            
+#                print " ** dsMapData: ", str( dsMapData )
+#                print " ** ROI: ", str( self.roi )
+#                print " ** zscale: ", str( zscale )
+#                print " ** decimation: ", str( decimation )
+#                print " ________________________________________________________ "   
                 self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
                 dsKeys = self.datasetMap.keys()
                 for iVar in range( len(self.varSpecs) ):
@@ -1087,7 +1062,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
                 self.datasetMap = deserializeFileMap( getItem( dsMapData ) )
                 self.ref_var = self.getInputValue( "grid"  )
             
-            self.datasetModule.setBounds( self.timeRange, self.roi, zscale, decimation ) 
+            self.datasetModule.setBounds( self.timeRange, self.referenceTimeUnits, self.roi, zscale, decimation ) 
             self.datasetModule.setCells( inputSpecs.cells )
       
             if self.datasetMap:             
@@ -1102,7 +1077,7 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
             self.datasetModule.setReferenceVariable( self.ref_var )
             if inputSpecs: self.persistDatasetParameters() 
             self.setResult( 'dataset', self.datasetModule )
-            print " ......  Start Workflow, dsid=%s, zscale = %.2f ......  " % ( self.datasetModule.getDsetId(), zscale )
+#            print " ......  Start Workflow, dsid=%s, zscale = %.2f ......  " % ( self.datasetModule.getDsetId(), zscale )
 
     def persistDatasetParameters( self ):
         parmRecList = []
@@ -1229,9 +1204,10 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         timeRangeParams = pmod.getInputValue( "timeRange"  ) # getFunctionParmStrValues( self.module, "timeRange"  )
         tRange = [ int(timeRangeParams[0]), int(timeRangeParams[1]) ] if timeRangeParams else None
         if tRange:
+            module = ModuleStore.getModule( self.moduleId )
             for iParam in range( 2, len(timeRangeParams) ): tRange.append( float(timeRangeParams[iParam] ) ) 
             self.timeRange = tRange
-            self.relativeStartTime = cdtime.reltime( float(tRange[2]), ReferenceTimeUnits)
+            self.relativeStartTime = cdtime.reltime( float(tRange[2]), module.referenceTimeUnits )
             self.relativeTimeStep = float(tRange[3])
             self.startCombo.setCurrentIndex( self.timeRange[0] ) 
             self.startIndexEdit.setText( str( self.timeRange[0] ) )  

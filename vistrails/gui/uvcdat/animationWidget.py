@@ -214,23 +214,29 @@ class QAnimationView(QtGui.QWidget):
         if self.zoomFactor==10:
             self.zoomInButton.setEnabled(False)
         self.zoomOutButton.setEnabled(True)
-        self.upButton.setEnabled(True)
-        self.downButton.setEnabled(True)
-        self.leftButton.setEnabled(True)
-        self.rightButton.setEnabled(True)
         #canvas=int(self.canvas.currentText())-1
+        self.panButtons()
         self.canvas.animate.zoom(self.zoomFactor)
     def zoomOut(self):
-        self.zoomFactor-=1
+        self.zoomFactor-=0.1
         self.zoomInButton.setEnabled(True)
-        if self.zoomFactor==0:
+        if self.zoomFactor==0.1:
             self.zoomOutButton.setEnabled(False)
+        self.panButtons()
+        #canvas=int(self.canvas.currentText())-1
+        self.canvas.animate.zoom(self.zoomFactor)
+    def panButtons(self):
+        if self.zoomFactor==1:
             self.upButton.setEnabled(False)
             self.downButton.setEnabled(False)
             self.leftButton.setEnabled(False)
             self.rightButton.setEnabled(False)
-        #canvas=int(self.canvas.currentText())-1
-        self.canvas.animate.zoom(self.zoomFactor)
+        else:
+            self.upButton.setEnabled(True)
+            self.downButton.setEnabled(True)
+            self.leftButton.setEnabled(True)
+            self.rightButton.setEnabled(True)
+
         
     def up(self):
         self.verticalFactor+=1

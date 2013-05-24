@@ -918,7 +918,8 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
                 if sheetName in proj_controller.sheet_map:
                     if (row,col) in proj_controller.sheet_map[sheetName]:
                         cell = proj_controller.sheet_map[sheetName][(row,col)]
-                        if not cell.acceptsPlotPackage(item.plot.package):
+                        if not cell.acceptsPlotPackage(item.plot.package) and \
+                                not cell.usingDefaultPlot:
                             if proj_controller.prompt_replace_plot():
                                 queuedVars = cell.variableQ[:]
                                 self.deleteCell(row, col)

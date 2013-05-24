@@ -1,5 +1,7 @@
 <RCC>
   <qresource prefix="/icons">
+    <file>resources/icons/undo.png</file>
+    <file>resources/icons/redo.png</file>
     <file>resources/icons/list_view.png</file>
     <file>resources/icons/delete.png</file>
     <file>resources/icons/edit_add.png</file>

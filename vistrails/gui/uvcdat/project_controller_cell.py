@@ -32,8 +32,11 @@
 ##
 ###############################################################################
 
-from core.uvcdat.plotmanager import get_plot_manager
 import sys
+from datetime import datetime
+
+import api
+from core.uvcdat.plotmanager import get_plot_manager
 
 class ControllerCell(object):
     
@@ -41,23 +44,31 @@ class ControllerCell(object):
         self.plots = plots
         self._current_version=current_parent_version
         
-        self.undoStack = []
-        self.redoStack = []
+        self.undoVersion = current_parent_version
+        self.redoVersion = current_parent_version
         
         self.variableQ = []
         self.templateQ = []
         
         for v in variables: self.add_variable(v)
         for t in templates: self.add_template(t)
+        
+        self.usingDefaultPlot = False
 
     def _get_current_parent_version(self):
         return self._current_version    
     def _set_current_parent_version( self, version ):
-        self._current_version = version
+        if version != self._current_version:
+            self.undoVersion = version
+            self.redoVersion = version
+            self._current_version = version
+            self.usingDefaultPlot = False
+
 #        print "\n ****************** Set Cell current_parent_version: %d ****************** \n" % version    
     current_parent_version = property( _get_current_parent_version, _set_current_parent_version ) 
-    
+        
     def add_variable(self, varname):
+        self.defaultPlotVersion = None
         for plot in self.plots:
             if len(plot.variables) < plot.varnum:
                 plot.variables.append(varname)
@@ -133,49 +144,93 @@ class ControllerCell(object):
         """
         return (len(self.plots) == 0 or self.plots[0].package == pkg)
     
+    DATE_FORMAT = "%d/%m/%y %H:%M:%S.%f"
     def pushUndoVersion(self, version = None):
-        """pushes an undo version onto the stack and clears redo stack"""
+        """adds timestamp annotation to mark this version as an undo point"""
         if version is None:
             version = self.current_parent_version
-        if len(self.undoStack) == 0 or version != self.undoStack[-1]:
-            self.undoStack.append(version)
-            self.redoStack = []
+        controller = api.get_current_controller()
+        controller.vistrail.set_action_annotation(version, 'uvcdat-last-visit',
+               datetime.strftime(datetime.now(), ControllerCell.DATE_FORMAT))
+#        print "Set undo version: %d" % version
+        
+
+        
+    def getUndoVersion(self):
+        """returns first ancestor that has uvcdat-last-visit annotation"""
+        try:
+            vistrail = api.get_current_controller().vistrail
+        except api.NoVistrail:
+            return None
+            
+        def _getParent(version):
+            if version != 0:
+                return vistrail.actionMap[version].parent
+            return None
+
+        parent = _getParent(self.current_parent_version)
+        while parent is not None:
+            if vistrail.get_action_annotation(parent,'uvcdat-last-visit'):
+#                print "Found undo version %d" % parent
+                return parent
+            parent = _getParent(parent)
+        return None
+        
+    def getRedoVersion(self):
+        """looks at all child versions, and returns that which has the most
+        recent uvcdat-last-visit annotation, if any """
+        try:
+            vistrail = api.get_current_controller().vistrail
+        except api.NoVistrail:
+            return None
+        
+        graph = vistrail.tree.getVersionTree()
+        
+        maxes = [datetime.min, None] #time, version
+        def _findMostRecent(version):
+            children = graph.edges_from(version)
+            for (child, _) in children:
+                annotation = vistrail.get_action_annotation(child,
+                        'uvcdat-last-visit')
+                if annotation is not None:
+                    time = datetime.strptime(annotation.value, 
+                                             ControllerCell.DATE_FORMAT)
+                    if time > maxes[0]:
+                        maxes[0] = time
+                        maxes[1] = child
+                else:
+                    _findMostRecent(child)
+        
+        _findMostRecent(self.current_parent_version)
+#        if maxes[1]:
+#            print "Found redo version: %d" % maxes[1]
+        return maxes[1]
             
     def canUndo(self):
-        return self._has_other(self.undoStack, self.current_parent_version)
+        """search up the version tree for undo points, and sets 
+        next undo version"""
+        if self.undoVersion == self.current_parent_version:
+            self.undoVersion = self.getUndoVersion()
+        return self.undoVersion is not None
     
     def canRedo(self):
-        return self._has_other(self.redoStack, self.current_parent_version)
-            
-    def _has_other(self, list, item):
-        """return true if list contains atleast one value other than item"""
-        for value in list:
-            if item != value:
-                return True
-        return False
+        """search down the version tree for undo points, and sets 
+        next redo version"""
+        if self.redoVersion == self.current_parent_version:
+            self.redoVersion = self.getRedoVersion()
+        return self.redoVersion is not None
             
     def undo(self):
-        """changes the current_parent_version and adjust the undo and
-        redo stacks accordingly, if possible"""
-        self._slide_stacks(self.undoStack, self.redoStack)
+        """changes the current_parent_version if possible, must call
+        canUndo prior"""
+        if self.undoVersion is not None:
+            self.redoVersion = self.current_parent_version
+            self._current_version = self.undoVersion
             
     def redo(self):
-        """changes the current_parent_version and adjust the undo and
-        redo stacks accordingly, if possible"""
-        self._slide_stacks(self.redoStack, self.undoStack)
-        
-    def _slide_stacks(self, fro, to):
-        """ sets current_parent_version to first item in stack 'fro' that isn't itself
-        and also places that item on the end of stack 'to' """
-        print "Before %s %d %s" % (str(fro),self.current_parent_version,str(to))
-        for i in reversed(range(len(fro))):
-            if self.current_parent_version != fro[i]:
-                self.current_parent_version = fro[i]
-                if len(fro) > i+1 and (len(to) == 0 or to[-1] != fro[i+1]):
-                    to.append(fro[i+1])
-                del fro[i+1:]
-                break
-        #ensure end of undo stack matches current version
-        if len(self.undoStack) > 0 and self.undoStack[-1] != self.current_parent_version:
-            self.undoStack.append(self.current_parent_version)
-        print "After %s %d %s" % (str(fro),self.current_parent_version,str(to))
+        """changes the current_parent_version and set uvcdat-last-visit 
+        annotation, if possible. Must call canRedo prior"""
+        if self.redoVersion is not None:
+            self.undoVersion = self.current_parent_version
+            self._current_version = self.redoVersion
+            self.pushUndoVersion()

@@ -143,8 +143,6 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.refinement = [ 0.0, 0.5 ]
         self.otf_data = None
         self.ctf_data = None
-        self.quickAndDirty = False
-        self.experimental = True
         self.updatingOTF = False
         self.configTime = None
         self.volRenderConfig = [ 'Default', 'False' ]

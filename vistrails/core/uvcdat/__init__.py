@@ -39,7 +39,7 @@ import core.requirements
 def uvcdat_version():
     """uvcdat_version() -> string - Returns the current UV-CDAT version."""
     # 1.0 alpha is the first version released
-    return '1.2.0'
+    return '1.3.1'
 
 def uvcdat_revision():
     """uvcdat_revision() -> str 
