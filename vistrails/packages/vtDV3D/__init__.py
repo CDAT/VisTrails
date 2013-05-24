@@ -77,7 +77,7 @@ from packages.vtDV3D.DV3DCell import *
 
 def initialize(*args, **keywords):
     import core.modules.module_registry
-    from packages.vtDV3D.CDMS_VariableReaders import CDMSVariableSource, CDMSTranisentVariable, CDMS_HoffmullerReader, CDMS_VolumeReader, CDMS_ChartDataReader, CDMS_SliceReader, CDMS_VectorReader, CDMS_HoffmullerReaderConfigurationWidget, CDMS_VolumeReaderConfigurationWidget, CDMS_ChartDataConfigurationWidget, CDMS_SliceReaderConfigurationWidget, CDMS_VectorReaderConfigurationWidget 
+    from packages.vtDV3D.CDMS_VariableReaders import CDMSVariableSource, CDMSTransientVariable, CDMS_HoffmullerReader, CDMS_VolumeReader, CDMS_ChartDataReader, CDMS_SliceReader, CDMS_VectorReader, CDMS_HoffmullerReaderConfigurationWidget, CDMS_VolumeReaderConfigurationWidget, CDMS_ChartDataConfigurationWidget, CDMS_SliceReaderConfigurationWidget, CDMS_VectorReaderConfigurationWidget 
     from packages.vtDV3D.VolumeSlicerModule import VolumeSlicer
     from packages.vtDV3D.VolumeRenderModule import VolumeRenderer
     from packages.vtDV3D.ParallelCoordinatesModule import ParallelCoordinateViewer
@@ -166,7 +166,8 @@ def initialize(*args, **keywords):
 #    reg.add_output_port( CDMS_VCDATInterface, "cellLocation1", [ ( String, 'cellLocation' ) ] ) 
 #    reg.add_output_port( CDMS_VCDATInterface, "cellLocation2", [ ( String, 'cellLocation' ) ] ) 
 
-    reg.add_module( CDMSTranisentVariable,  namespace='cdms' )
+    reg.add_module( CDMSTransientVariable,  namespace='cdms' )
+    reg.add_input_port(  CDMSTransientVariable, "inputId", String )      
 
     reg.add_module( CDMS_FileReader, configureWidgetType=CDMSDatasetConfigurationWidget, namespace='cdms' )
     reg.add_input_port(  CDMS_FileReader, "executionSpecs",    [ ( String, 'serializedConfiguration' ),  ], True ) 
