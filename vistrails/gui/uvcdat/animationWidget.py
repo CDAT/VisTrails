@@ -15,7 +15,7 @@ class QThreadAnimationCreate(QtCore.QThread):
         ## self.exiting=False
     def run(self):
         self.canvas.animate.create(thread_it=1)
-        self.parent.emit(QtCore.SIGNAL("animationCreated"),self.canvas,self.cursor)
+        self.parent.emit(QtCore.SIGNAL("animationCreated"),self.cursor)
     ## def __del__(self):
     ##     self.exiting=True
     ##     self.wait()
@@ -121,22 +121,30 @@ class QAnimationView(QtGui.QWidget):
         vbox.addLayout(grid)
         ## Horizontal Pan
         self.horizPan=QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.horizPan.setMinimum(-100)
+        self.horizPan.setMaximum(100)
         self.horizPan.setToolTip("Span Horizontally")
-        self.horizPan.setValue(50)
+        self.horizPan.setValue(0)
         vbox.addWidget(self.horizPan)
+        self.connect(self.horizPan,QtCore.SIGNAL("valueChanged(int)"),self.horizPanned)
 
         hbox=QtGui.QHBoxLayout()
         ## Vertical Pan
         self.vertPan=QtGui.QSlider(QtCore.Qt.Vertical)
+        self.vertPan.setMinimum(-100)
+        self.vertPan.setMaximum(100)
         self.vertPan.setToolTip("Span Vertically")
-        self.vertPan.setValue(50)
+        self.vertPan.setValue(0)
         hbox.addLayout(vbox)
         hbox.addWidget(self.vertPan)
+        self.connect(self.vertPan,QtCore.SIGNAL("valueChanged(int)"),self.vertPanned)
+
 
         self.player.vbox.addLayout(hbox)
         ## Frames Slider
         self.framesSlider=QtGui.QSlider(QtCore.Qt.Horizontal)
         self.framesSlider.setTickPosition(QtGui.QSlider.TicksAbove)
+        self.connect(self.framesSlider,QtCore.SIGNAL("valueChanged(int)"),self.changedFrame)
         self.player.newRow()
         self.FrameCount = self.player.addLabel("Frame: 0",align=QtCore.Qt.AlignCenter)
         self.player.addWidget(self.framesSlider,newRow=True)
@@ -149,10 +157,17 @@ class QAnimationView(QtGui.QWidget):
         self.animationTimer = QtCore.QBasicTimer()
         self.animationFrame = 0        
         
+    def horizPanned(self,value):
+        self.canvas.animate.horizontal(value)
+
+    def vertPanned(self,value):
+        self.canvas.animate.vertical(value)
 
     def setCanvas(self,canvas):
         self.canvas = canvas
-        
+    def changedFrame(self,value):
+        self.canvas.animate.frame(value)
+
     def create(self):
         ### Creates animation
         c = self.cursor()
@@ -165,19 +180,20 @@ class QAnimationView(QtGui.QWidget):
         #t=QThreadAnimationCreate(self,self.canvas,c)
         #t.start()
         self.canvas.animate.create(thread_it=1)
-        self.animationCreated(self.canvas, c)
-        
-    def animationCreated(self,canvas,cursor):
+        self.animationCreated(c)
+
+    def animationCreated(self,cursor):
         icon = QtGui.QIcon(":/icons/resources/icons/player_play.gif")
         self.createButton.setIcon(icon)
         self.createButton.setText("Generate Animation")
         #self.disconnect(self.createButton,QtCore.SIGNAL("clicked()"),self.stop)
         self.connect(self.createButton,QtCore.SIGNAL("clicked()"),self.create)
         ## All right now we need to prep the player
-        nframes=canvas.animate.number_of_frames()
+        nframes=self.canvas.animate.number_of_frames()
         self.framesSlider.setMaximum(nframes)
         self.player.setEnabled(True)
         self.setCursor(cursor)
+
     def run(self):
         ## ? Need to change player icon?
         self.animationFrame = 0
