@@ -1697,8 +1697,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         
         """
         from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper, CDMSPlotWidget
-        current_controller = api.get_current_controller()
-        pipeline = controller.vt_controller.vistrail.getPipeline(version) 
+#        current_controller = api.get_current_controller()
+#        pipeline = controller.vt_controller.vistrail.getPipeline(version) 
 #        print '-'*50      
 #        print 'New Configuration panel: version=%d, current_version=%d, pid=%d, modules=%s' % ( version, current_controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
 #        print '-'*50      
