@@ -364,7 +364,7 @@ class VariableProperties(QtGui.QDialog):
         self.updatingFile = True
         self.updateFile()
         
-    def updateFile(self):
+    def updateFile(self):   # FIXME: Support Remote Variables.
         self.cdmsFile = None
         fnm = self.fileEdit.text()
         fi = QtCore.QFileInfo(fnm)

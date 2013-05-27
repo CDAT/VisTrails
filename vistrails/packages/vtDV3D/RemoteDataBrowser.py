@@ -230,8 +230,8 @@ class OpenDAPCatalogNode( CatalogNode ):
     def __init__( self, **args ):
         self.server_class=ServerClass.OPENDAP
         self.parser = None
-        self.address = args.get( "server_address", None )
-        self.server_type = args.get( "server_type", ServerType.getType( self.address ) )
+        self.server_address = args.get( "server_address", None )
+        self.server_type = args.get( "server_type", ServerType.getType( self.server_address ) )
         CatalogNode.__init__( self, **args )
                                                   
     def retrieveContent(self): 
@@ -242,9 +242,9 @@ class OpenDAPCatalogNode( CatalogNode ):
                 elif   self.type() == ServerType.HYDRAX:    self.parser = HydraxDirectoryParser( self ) 
                 else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )
             else:
-                if     self.type() == ServerType.THREDDS:   self.parser = ThreddsDataElementParser( self.address ) 
-                elif   self.type() == ServerType.DODS:      self.parser = DodsDataElementParser( self.address ) 
-                elif   self.type() == ServerType.HYDRAX:    self.parser = HydraxDataElementParser( self.address ) 
+                if     self.type() == ServerType.THREDDS:   self.parser = ThreddsDataElementParser( self.server_address ) 
+                elif   self.type() == ServerType.DODS:      self.parser = DodsDataElementParser( self.server_address ) 
+                elif   self.type() == ServerType.HYDRAX:    self.parser = HydraxDataElementParser( self.server_address ) 
                 else:  displayMessage( "Error, unrecognized or unimplemented Server type."  )      
             if self.parser:
                 self.parser.execute() 
@@ -258,11 +258,12 @@ class OpenDAPCatalogNode( CatalogNode ):
         self.setNodeDisplay( text )               
     
     def getAddressLabel(self):
-        return self.address
+        return self.server_address
 
 class iRodsCatalogNode( CatalogNode ):
     Directory = 0
     DataObject = 1
+    Dataset = 2
     Style = None
 
     
@@ -277,6 +278,12 @@ class iRodsCatalogNode( CatalogNode ):
         self.collection = None
         self.metadata = None
         self.localFilePath = None
+
+    def setNodeDisplay( self, text ):
+        if self.node_type == self.Directory:  self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_DirIcon ) )
+        if self.node_type == self.DataObject: self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_FileIcon ) )
+        if self.node_type == self.Dataset: self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_DirLinkIcon ) )
+        self.setText( 0, text.strip('/') )
 
     def getFileMetadata( self ): 
         if self.metadata == None:
@@ -334,12 +341,20 @@ class iRodsCatalogNode( CatalogNode ):
                     resc_name = dataObjRef[1]
                     path = '/'.join( [ self.catalog_path, data_name] )
                     dataObj = self.collection.open( data_name, "r", resc_name )
-                    dataObjNode = iRodsCatalogNode( conn=self.server_conn, catalog_path=path, node_type=CatalogNode.DataObject )
+                    data_name_tokens = data_name.lower().split('.')
+                    node_type = iRodsCatalogNode.Dataset if ( data_name_tokens[-1] == 'xml' ) else iRodsCatalogNode.DataObject
+                    dataObjNode = iRodsCatalogNode( conn=self.server_conn, catalog_path=path, node_type=node_type )
                     dataObjNode.setLabel( data_name )
                     self.addChild ( dataObjNode )
                     self.collection.upCollection()
                 if self.collection: mdata = self.collection.getUserMetadata() 
             elif self.node_type == self.DataObject:
+                self.getLocaPath()
+                self.getFileMetadata()    
+            elif self.node_type == self.Dataset:
+                self.getLocaPath()
+                self.getFileMetadata()    
+            elif self.node_type == self.Dataset:
                 self.getLocaPath()
                 self.getFileMetadata()    
         return ( self.localFilePath, self.metadata )
@@ -784,7 +799,7 @@ class RemoteDataBrowser(QtGui.QFrame):
         nservers = self.treeWidget.topLevelItemCount() 
         for si in range( nservers ):
             serverItem = self.treeWidget.topLevelItem( si )
-            server_file.write( "%d,%s\n" % ( serverItem.server_class, serverItem.address )  )
+            server_file.write( "%d,%s\n" % ( serverItem.server_class, serverItem.server_address )  )
         server_file.close()
 
     def initServerFile( self ):
