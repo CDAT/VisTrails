@@ -14,8 +14,34 @@ from packages.vtDV3D.WorkflowModule import WorkflowModule
 from packages.vtDV3D import ModuleStore
 from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.PersistentModule import *
+from packages.vtDV3D import identifier
+from packages.uvcdat.init import Variable, VariableSource
 import cdms2, cdtime, cdutil, MV2 
 PortDataVersion = 0
+
+def get_value_from_function(module, fun):
+    for i in xrange(module.getNumFunctions()):
+        if fun == module.functions[i].name:
+            return module.functions[i].params[0].value()
+    return None
+
+def expand_port_specs(port_specs, pkg_identifier=None):
+    if pkg_identifier is None:
+        pkg_identifier = 'gov.nasa.nccs.vtdv3d'
+    reg = get_module_registry()
+    out_specs = []
+    for port_spec in port_specs:
+        if len(port_spec) == 2:
+            out_specs.append((port_spec[0],
+                              reg.expand_port_spec_string(port_spec[1],
+                                                          pkg_identifier)))
+        elif len(port_spec) == 3:
+            out_specs.append((port_spec[0],
+                              reg.expand_port_spec_string(port_spec[1],
+                                                          pkg_identifier),
+                              port_spec[2])) 
+    return out_specs
+
 
 def getRoiSize( roi ):
     if roi == None: return 0
@@ -765,6 +791,33 @@ class CDMS_VariableSpaceReader(WorkflowModule):
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args) 
 
+        
+class CDMSVariableSource( VariableSource ):
+      
+    def __init__( self, **args ):
+        VariableSource.__init__(self)  
+        self.var = None       
+
+    def compute(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper           
+        inputId = self.forceGetInputFromPort( "inputId", None ) 
+        self.var = DV3DPipelineHelper.get_input_variable( inputId )
+        self.setResult( "self", self )    
+        self.setResult( "axes", self.getAxes() ) 
+        
+    def getAxes(self):
+        strReps = []
+        axisList = self.var.getAxisList() 
+        for axis in axisList:
+            axisBoundsStr = None            
+            if axis.isLatitude() or axis.isLongitude() or axis.isLevel(): 
+                values = axis.getValue()   
+                axisBoundsStr = "%s=(%.3f,%.3f)" % ( axis.id, values[0], values[-1] )
+            elif axis.isTime():      
+                values = axis.asComponentTime()   
+                axisBoundsStr = "%s=('%s','%s')" % ( axis.id, str(values[0]), str(values[-1]) )
+            strReps.append( axisBoundsStr )
+        return ','.join( strReps )
                            
 class CDMSReaderConfigurationWidget(DV3DConfigurationWidget): 
     """
@@ -1055,4 +1108,252 @@ if __name__ == '__main__':
     var = dataset[ 'tmpu' ]
     pass
     
+class CDMSTransientVariable(Variable):
+    _input_ports = expand_port_specs([("name", "basic:String"),
+                                      ("inputId", "basic:String"),
+                                      ("url", "basic:String"),
+                                      ("axes", "basic:String"),
+                                      ("axesOperations", "basic:String"),
+                                      ("attributes", "basic:Dictionary"),
+                                      ("axisAttributes", "basic:Dictionary"),
+                                      ("setTimeBounds", "basic:String")])
+    
+#    _output_ports = expand_port_specs([("self", "CDMSTransientVariable")])
+
+    def __init__(self, source=None, name=None, axes=None, axesOperations=None, attributes=None, axisAttributes=None, timeBounds=None):
+        Variable.__init__( self, None, None, source, name, False )
+        self.axes = axes
+        self.axesOperations = axesOperations
+        self.attributes = attributes
+        self.axisAttributes = axisAttributes
+        self.timeBounds = timeBounds
+        self.var = None
+        self.inputId = None
+
+    def __copy__(self):
+        """__copy__() -> CDMSVariable - Returns a clone of itself"""
+        cp = CDMSTransientVariable()
+        cp.source = self.source
+        cp.name = self.name
+        cp.axes = self.axes
+        cp.axesOperations = self.axesOperations
+        cp.attributes = self.attributes
+        cp.axisAttributes = self.axisAttributes
+        cp.timeBounds = self.timeBounds
+        cp.inputId = self.inputId
+        return cp
+        
+    def to_module(self, controller):
+        reg = get_module_registry()
+        desc = reg.get_descriptor_by_name( identifier, self.__class__.__name__, 'cdms' )
+        module = controller.create_module_from_descriptor( desc )
+        functions = []
+        if self.url is not None:
+            functions.append(("url", [self.url]))
+        if self.name is not None:
+            functions.append(("name", [self.name]))
+        if self.inputId is not None:
+            functions.append(("inputId", [str(self.inputId)]))
+        if self.axes is not None:
+            functions.append(("axes", [self.axes]))
+        if self.axesOperations is not None:
+            functions.append(("axesOperations", [self.axesOperations]))
+        if self.attributes is not None:
+            functions.append(("attributes", [self.attributes]))
+        if self.axisAttributes is not None:
+            functions.append(("axisAttributes", [self.axisAttributes]))
+        if self.timeBounds is not None:
+            functions.append(("setTimeBounds", [self.timeBounds]))
+        functions = controller.create_functions(module, functions)
+        for f in functions:
+            module.add_function(f)
+        return module        
+    
+    def to_python(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
+                 
+        if self.source:
+            var = self.source.var 
+        elif self.inputId:          
+            var = DV3DPipelineHelper.get_input_variable( self.inputId )
+        else: 
+            print>>sys.stderr, "Error, no Input to Pipeline"
+            return None
+      
+        varName = self.name
+            
+        if self.axes is not None:
+            try:
+                var = eval("var.__call__(%s)"% self.axes)
+            except Exception, e:
+                raise ModuleError(self, "Invalid 'axes' specification: %s" % str(e))
+            
+        #make sure that var.id is the same as self.name
+        var.id = self.name
+        if self.attributes is not None:
+            for attr in self.attributes:
+                try:
+                    attValue=eval(str(self.attributes[attr]).strip())
+                except:
+                    attValue=str(self.attributes[attr]).strip()
+                setattr(var,attr, attValue) 
+                       
+        if self.axisAttributes is not None:
+            for axName in self.axisAttributes:
+                for attr in self.axisAttributes[axName]:
+                    try:
+                        attValue=eval(str(self.axisAttributes[axName][attr]).strip())
+                    except:
+                        attValue=str(self.axisAttributes[axName][attr]).strip()
+                    ax = var.getAxis(var.getAxisIndex(axName))
+                    setattr(ax,attr, attValue)
+                    
+        if self.timeBounds is not None:
+            var = self.applySetTimeBounds(var, self.timeBounds)
+                    
+        return var
+    
+    def to_python_script(self, include_imports=False, ident=""):
+        text = ''
+        if include_imports:
+            text += ident + "import cdms2, cdutil, genutil\n"
+        var = self.source.var
+        if self.axes is not None:
+            text += ident + "%s = %s(%s)\n"% (self.name, self.name, self.axes)
+        if self.axesOperations is not None:
+            text += ident + "axesOperations = eval(\"%s\")\n"%self.axesOperations
+            text += ident + "for axis in list(axesOperations):\n"
+            text += ident + "    if axesOperations[axis] == 'sum':\n"
+            text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis, weight='equal', action='sum')\n"% (self.name, self.name) 
+            text += ident + "    elif axesOperations[axis] == 'avg':\n"
+            text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis, weight='equal')\n"% (self.name, self.name)
+            text += ident + "    elif axesOperations[axis] == 'wgt':\n"
+            text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis)\n"% (self.name, self.name)
+            text += ident + "    elif axesOperations[axis] == 'gtm':\n"
+            text += ident + "        %s = genutil.statistics.geometricmean(%s, axis='(%%s)'%%axis)\n"% (self.name, self.name)
+            text += ident + "    elif axesOperations[axis] == 'std':\n"
+            text += ident + "        %s = genutil.statistics.std(%s, axis='(%%s)'%%axis)\n"% (self.name, self.name)
+       
+        if self.attributes is not None:
+            text += "\n" + ident + "#modifying variable attributes\n"
+            for attr in self.attributes:
+                text += ident + "%s.%s = %s\n" % (self.name, attr,
+                                                  repr(self.attributes[attr]))
+                
+        if self.axisAttributes is not None:
+            text += "\n" + ident + "#modifying axis attributes\n"
+            for axName in self.axisAttributes:
+                text += ident + "ax = %s.getAxis(%s.getAxisIndex('%s'))\n" % (self.name,self.name,axName)
+                for attr in self.axisAttributes[axName]:
+                    text += ident + "ax.%s = %s\n" % ( attr,
+                                        repr(self.axisAttributes[axName][attr]))
+        
+        if self.timeBounds is not None:
+            data = self.timeBounds.split(":")
+            if len(data) == 2:
+                timeBounds = data[0]
+                val = float(data[1])
+            else:
+                timeBounds = self.timeBounds
+            text += "\n" + ident + "#%s\n"%timeBounds
+            if timeBounds == "Set Bounds For Yearly Data":
+                text += ident + "cdutil.times.setTimeBoundsYearly(%s)\n"%self.name
+            elif timeBounds == "Set Bounds For Monthly Data":
+                text += ident + "cdutil.times.setTimeBoundsMonthly(%s)\n"%self.name
+            elif timeBounds == "Set Bounds For Daily Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s)\n"%self.name
+            elif timeBounds == "Set Bounds For Twice-daily Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s,2)\n"%self.name
+            elif timeBounds == "Set Bounds For 6-Hourly Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s,4)\n"%self.name
+            elif timeBounds == "Set Bounds For Hourly Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s,24)\n"%self.name
+            elif timeBounds == "Set Bounds For X-Daily Data":
+                text += ident + "cdutil.times.setTimeBoundsDaily(%s,%g)\n"%(self.name,val)
+                
+        return text
+
+        
+    @staticmethod
+    def from_module(module):
+        var = CDMSTransientVariable()
+        var.url = get_value_from_function(module, 'url')
+        var.name = get_value_from_function(module, 'name')
+        var.inputId = get_value_from_function(module, 'inputId')
+        var.axes = get_value_from_function(module, 'axes')
+        var.axesOperations = get_value_from_function(module, 'axesOperations')
+        attrs = get_value_from_function(module, 'attributes')
+        if attrs is not None:
+            var.attributes = ast.literal_eval(attrs)
+        else:
+            var.attributes = attrs
+            
+        axattrs = get_value_from_function(module, 'axisAttributes')
+        if axattrs is not None:
+            var.axisAttributes = ast.literal_eval(axattrs)
+        else:
+            var.axisAttributes = axattrs
+        var.timeBounds = get_value_from_function(module, 'setTimeBounds')
+#        var.__class__ = CDMSTransientVariable
+        return var
+        
+    def compute(self):
+        self.axes = self.forceGetInputFromPort("axes")
+        self.axesOperations = self.forceGetInputFromPort("axesOperations")
+        self.attributes = self.forceGetInputFromPort("attributes")
+        self.axisAttributes = self.forceGetInputFromPort("axisAttributes")
+        self.timeBounds = self.forceGetInputFromPort("setTimeBounds")
+        self.get_port_values()
+        self.var = self.to_python()
+        self.setResult("self", self)
+
+    def get_port_values(self):
+        self.url = self.forceGetInputFromPort( "url", None )
+        self.source = self.forceGetInputFromPort( "source", None )
+        self.inputId = self.forceGetInputFromPort( "inputId", None )  
+        self.name = self.forceGetInputFromPort( "name", None )
+
+    @staticmethod
+    def applyAxesOperations(var, axesOperations):
+        """ Apply axes operations to update the slab """
+        try:
+            axesOperations = ast.literal_eval(axesOperations)
+        except:
+            raise TypeError("Invalid string 'axesOperations': %s" % str(axesOperations) )
+
+        for axis in list(axesOperations):
+            if axesOperations[axis] == 'sum':
+                var = cdutil.averager(var, axis="(%s)" % axis, weight='equal',
+                                      action='sum')
+            elif axesOperations[axis] == 'avg':
+                var = cdutil.averager(var, axis="(%s)" % axis, weight='equal')
+            elif axesOperations[axis] == 'wgt':
+                var = cdutil.averager(var, axis="(%s)" % axis)
+            elif axesOperations[axis] == 'gtm':
+                var = genutil.statistics.geometricmean(var, axis="(%s)" % axis)
+            elif axesOperations[axis] == 'std':
+                var = genutil.statistics.std(var, axis="(%s)" % axis)
+        return var
+
+    @staticmethod
+    def applySetTimeBounds(var, timeBounds):
+        data = timeBounds.split(":")
+        if len(data) == 2:
+            timeBounds = data[0]
+            val = float(data[1])
+        if timeBounds == "Set Bounds For Yearly Data":
+            cdutil.times.setTimeBoundsYearly(var)
+        elif timeBounds == "Set Bounds For Monthly Data":
+            cdutil.times.setTimeBoundsMonthly(var)
+        elif timeBounds == "Set Bounds For Daily Data":
+            cdutil.times.setTimeBoundsDaily(var)
+        elif timeBounds == "Set Bounds For Twice-daily Data":
+            cdutil.times.setTimeBoundsDaily(var,2)
+        elif timeBounds == "Set Bounds For 6-Hourly Data":
+            cdutil.times.setTimeBoundsDaily(var,4)
+        elif timeBounds == "Set Bounds For Hourly Data":
+            cdutil.times.setTimeBoundsDaily(var,24)
+        elif timeBounds == "Set Bounds For X-Daily Data":
+            cdutil.times.setTimeBoundsDaily(var,val)
+        return var
 

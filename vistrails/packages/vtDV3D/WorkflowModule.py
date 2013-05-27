@@ -30,7 +30,6 @@ class WorkflowModule( NotCacheable,  Module ):
         self.getPersistentModule( invalidate=True )
         Module.clear( self )
         
-
     def compute(self):
         start_t = time.time() 
         DV3DConfigurationWidget.saveNewConfigurations()            

@@ -324,13 +324,32 @@ class PM_LevelSurface(PersistentVisualizationModule):
 
     def setInputZScale( self, zscale_data, **args  ):       
         texture_ispec = self.getInputSpec(  1 )                
+        sz = zscale_data[1]
         if texture_ispec and texture_ispec.input():
             textureInput = texture_ispec.input() 
             ix, iy, iz = textureInput.GetSpacing()
-            sz = zscale_data[1]
             textureInput.SetSpacing( ix, iy, sz )  
             textureInput.Modified() 
-        return PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args )
+        input = self.levelSetFilter.GetInput()
+        if input:
+            ix, iy, iz = input.GetSpacing()
+            input.SetSpacing( ix, iy, sz )  
+            input.Modified() 
+            
+##        rv = PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args )
+#        levelSetOutput = self.levelSetFilter.GetOutput() 
+#        if levelSetOutput: 
+#            self.levelSetFilter.Modified()  
+#            levelSetOutput.Update()           
+#            points = levelSetOutput.GetPoints()
+#            if points:
+#                input = self.levelSetFilter.GetInput()
+#                input_spacing = input.GetSpacing()
+#                print " Set input zscale -> %.3f " % input_spacing[2]
+#                sample_height = points.GetPoint(100)[2]
+#                print " ---- Sample Height: %.2f " % sample_height  
+#                sys.stdout.flush()
+#                if self.probeFilter: self.probeFilter.Modified()
         
     def setOpacityRange( self, opacity_range, **args  ):
 #        print "Update Opacity, range = %s" %  str( opacity_range )
@@ -430,7 +449,8 @@ class PM_LevelSurface(PersistentVisualizationModule):
         xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
         self.sliceCenter = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
         spacing = self.input().GetSpacing()
-        sx, sy, sz = spacing       
+        sx, sy, sz = spacing 
+#        self.input().SetSpacing( sx, sy, 5*sz )      
         origin = self.input().GetOrigin()
         ox, oy, oz = origin
         dataType = self.input().GetScalarTypeAsString()
@@ -473,17 +493,11 @@ class PM_LevelSurface(PersistentVisualizationModule):
             self.levelSetMapper.SetInputConnection( self.probeFilter.GetOutputPort() ) 
             self.levelSetMapper.SetScalarRange( textureRange )
             
-        if texture_ispec and texture_ispec.input():
-            colormapManager = self.getColormapManager( index=1 )     
-            colormapManager.setAlphaRange ( self.opacityRange ) 
-            self.levelSetMapper.SetLookupTable( colormapManager.lut ) 
-            self.levelSetMapper.UseLookupTableScalarRangeOn()
-        else:
-            colormapManager = self.getColormapManager()     
-            colormapManager.setAlphaRange ( self.opacityRange ) 
-            self.levelSetMapper.SetLookupTable( colormapManager.lut ) 
-            self.levelSetMapper.UseLookupTableScalarRangeOn()
-        
+        colormapManager = self.getColormapManager( index=1 ) if texture_ispec and texture_ispec.input() else self.getColormapManager()                  
+        colormapManager.setAlphaRange ( self.opacityRange ) 
+        self.levelSetMapper.SetLookupTable( colormapManager.lut ) 
+        self.levelSetMapper.UseLookupTableScalarRangeOn()
+       
         self.updateLevels()
           
 #        levelSetMapper.SetColorModeToMapScalars()  

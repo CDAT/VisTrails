@@ -1055,6 +1055,7 @@ class PersistentModule( QObject ):
     def updateAnimation( self, animTimeData, textDisplay=None, restartingAnimation=False ):
         self.dvUpdate( timeData=animTimeData, animate=True, restarting=restartingAnimation )
         if textDisplay <> None:  self.updateTextDisplay( textDisplay )
+        QtCore.QCoreApplication.processEvents()
         
     def stopAnimation( self ):
         self.resetNavigation()
@@ -1330,6 +1331,7 @@ class PersistentModule( QObject ):
             return controller.vistrail.getPipeline( current_version )
         except Exception, err:
             print>>sys.stderr, "Error getting current pipeline: %s " % str( err )
+            traceback.print_exc()
             return controller.current_pipeline       
 
     def change_parameters( self, parmRecList ):
