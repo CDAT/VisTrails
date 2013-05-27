@@ -19,6 +19,12 @@ from packages.uvcdat.init import Variable, VariableSource
 import cdms2, cdtime, cdutil, MV2 
 PortDataVersion = 0
 
+def get_value_from_function(module, fun):
+    for i in xrange(module.getNumFunctions()):
+        if fun == module.functions[i].name:
+            return module.functions[i].params[0].value()
+    return None
+
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
         pkg_identifier = 'gov.nasa.nccs.vtdv3d'
@@ -1266,29 +1272,29 @@ class CDMSTransientVariable(Variable):
                 text += ident + "cdutil.times.setTimeBoundsDaily(%s,%g)\n"%(self.name,val)
                 
         return text
-    
+
+        
     @staticmethod
     def from_module(module):
-        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
         var = CDMSTransientVariable()
-        var.url = CDMSPipelineHelper.get_value_from_function(module, 'url')
-        var.name = CDMSPipelineHelper.get_value_from_function(module, 'name')
-        var.inputId = CDMSPipelineHelper.get_value_from_function(module, 'inputId')
-        var.axes = CDMSPipelineHelper.get_value_from_function(module, 'axes')
-        var.axesOperations = CDMSPipelineHelper.get_value_from_function(module, 'axesOperations')
-        attrs = CDMSPipelineHelper.get_value_from_function(module, 'attributes')
+        var.url = get_value_from_function(module, 'url')
+        var.name = get_value_from_function(module, 'name')
+        var.inputId = get_value_from_function(module, 'inputId')
+        var.axes = get_value_from_function(module, 'axes')
+        var.axesOperations = get_value_from_function(module, 'axesOperations')
+        attrs = get_value_from_function(module, 'attributes')
         if attrs is not None:
             var.attributes = ast.literal_eval(attrs)
         else:
             var.attributes = attrs
             
-        axattrs = CDMSPipelineHelper.get_value_from_function(module, 'axisAttributes')
+        axattrs = get_value_from_function(module, 'axisAttributes')
         if axattrs is not None:
             var.axisAttributes = ast.literal_eval(axattrs)
         else:
             var.axisAttributes = axattrs
-        var.timeBounds = CDMSPipelineHelper.get_value_from_function(module, 'setTimeBounds')
-        var.__class__ = CDMSVariable
+        var.timeBounds = get_value_from_function(module, 'setTimeBounds')
+#        var.__class__ = CDMSTransientVariable
         return var
         
     def compute(self):

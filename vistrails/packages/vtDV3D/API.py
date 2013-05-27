@@ -158,6 +158,7 @@ class UVCDAT_API():
         return inputVariable.id, inputId
 
     def finalizePlot( self, plot_name ):
+        from packages.vtDV3D.CDMS_VariableReaders import CDMSTransientVariable
         from core.db.action import create_action
         proj_controller = self.app.uvcdatWindow.get_current_project_controller()
         controller = self.app.get_controller()
@@ -175,34 +176,21 @@ class UVCDAT_API():
         cell.current_parent_version = current_version  
         
         for ( name, var ) in self.variables:
-            proj_controller.defined_variables[ name ] = var.summon()
-#            proj_controller.computed_variables[ name ] = ( [ name ], 'transient variable', "name", name )
-      
-#        pipeline = controller.vistrail.getPipeline(current_version)
-#        proj_controller.search_and_emit_new_variables(cell)
-#        pipeline = controller.vistrail.getPipeline(current_version)
+            dvar = CDMSTransientVariable.from_module( var )
+            proj_controller.defined_variables[ name ] = dvar
         proj_controller.emit( QtCore.SIGNAL("update_cell"), self.sheetName, self.row, self.col, None, None, 'DV3D', current_version )
         
     def newVariableModule( self, cdmsVariable ):
-        name, inputId = self.initInput( cdmsVariable )
-            
-#        variableSource = self.newModule('CDMSVariableSource', ns='cdms' )
-#        self.setPortValue( variableSource, "inputId", inputId )
-#        self.addToPipeline( [variableSource] )
-                     
+        name, inputId = self.initInput( cdmsVariable )                     
         variable = self.newModule( 'CDMSTransientVariable', ns='cdms' )
         self.setPortValue( variable, "name", [ name ] )
         self.setPortValue( variable, "inputId", [ inputId ] )
-#        source_to_variable = self.newConnection( variableSource, 'self', variable, 'source' )   
-#        source_to_variable_axes = self.newConnection( variableSource, 'axes', variable, 'axes' )   
-#        self.layoutAndAdd( variable, [ source_to_variable, source_to_variable_axes ] )
         self.addToPipeline( [ variable ] )
         self.app.uvcdatWindow.dockVariable.widget().addVariable( cdmsVariable )
         self.variables.append( ( name, variable ) )
         return variable
         
     def createPlot( self, **args ): 
-#        from core.uvcdat.plot_registry import Plot          
         type = args.get( 'type', PlotType.SLICER )
         viz_parms = args.get( 'viz_parms', {} )
         self.initPlot()
@@ -255,22 +243,10 @@ class UVCDAT_API():
         gui.application.stop_application()        
         
 if __name__ == '__main__':
-#    file_url = "/Developer/Data/AConaty/comp-ECMWF/ecmwf.xml"
-#    Temp_var = "Temperature"
-#    RH_var = "Relative_humidity"
-#    cdmsfile = cdms2.open( file_url )
-#    input_Temp = cdmsfile( Temp_var )
-#    input_RH = cdmsfile( RH_var )
-#    uvcdat_api = UVCDAT_API()
-#    uvcdat_api.createPlot( inputs=[ input_Temp, input_RH ], type=PlotType.SLICER )
-#    uvcdat_api.createPlot( inputs=[ input_RH ], type=PlotType.VOLUME_RENDER )
-#    uvcdat_api.createPlot( inputs=[ input_Temp, input_RH ], type=PlotType.ISOSURFACE )
-#    uvcdat_api.createPlot( inputs=[ input_RH ], type=PlotType.CURTAIN )
-#    uvcdat_api.run()
-
     startup_app()
     uvcdat_api = UVCDAT_API()
-    cdmsfile = cdms2.open('/Developer/Data/AConaty/comp-ECMWF/ecmwf.xml')
+    cdmsfile = cdms2.open('~/data/AConaty/comp-ECMWF/ecmwf.xml')
+#    cdmsfile = cdms2.open('/Developer/Data/AConaty/comp-ECMWF/ecmwf.xml')
     Temperature = cdmsfile('Temperature')
     Temperature = Temperature(lat=(90.0, -90.0),isobaric=(1000.0, 10.0),lon=(0.0, 359.0),time=('2011-5-1 0:0:0.0', '2011-5-1 18:0:0.0'),)
     axesOperations = eval("{'lat': 'def', 'isobaric': 'def', 'lon': 'def', 'time': 'def'}")
