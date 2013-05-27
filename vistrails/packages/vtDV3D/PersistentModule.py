@@ -16,7 +16,7 @@ from db.domain import DBModule, DBAnnotation
 from packages.vtDV3D import HyperwallManager
 from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
-ReferenceTimeUnits = "days since 1900-1-1"
+DefaultReferenceTimeUnits = "days since 1900-1-1"
 MIN_LINE_LEN = 50
 
 def getClassName( instance ):
@@ -139,6 +139,7 @@ class InputSpecs:
         self.scalarRange = None
         self.seriesScalarRange = None
         self.rangeBounds = None
+        self.referenceTimeUnits = None
         self.metadata = None
         self._input = None
         self.fieldData = None
@@ -338,7 +339,7 @@ class InputSpecs:
             if self.input() <> None:
                 fd = self.input().GetFieldData() 
                 self.input().Update()
-                self.fieldData = self.input().GetFieldData()             
+                self.fieldData = self.input().GetFieldData()         
             elif self.inputModule:
                 self.fieldData = self.inputModule.getFieldData() 
     
@@ -348,7 +349,8 @@ class InputSpecs:
                 self.rangeBounds = None              
                 self.datasetId = self.metadata.get( 'datasetId', None )                
                 tval = self.metadata.get( 'timeValue', 0.0 )
-                self.timeValue = cdtime.reltime( float( tval ), ReferenceTimeUnits )               
+                self.referenceTimeUnits = self.metadata.get( 'timeUnits', None )
+                self.timeValue = cdtime.reltime( float( tval ), self.referenceTimeUnits )               
                 dtype =  self.metadata.get( 'datatype', None )
                 scalars =  self.metadata.get( 'scalars', None )
                 self.rangeBounds = getRangeBounds( dtype )
@@ -445,6 +447,7 @@ class PersistentModule( QObject ):
              
     def __init__( self, mid, **args ):
         QObject.__init__(self)
+        self.referenceTimeUnits = DefaultReferenceTimeUnits
         self.pipelineBuilt = False
         self.update_proj_controller = True
         self.newLayerConfiguration = False
@@ -476,7 +479,7 @@ class PersistentModule( QObject ):
         self.primaryInputPorts = [ 'slice' ] if (self.ndims == 2) else [ 'volume' ]
         self.documentation = None
         self.parameterCache = {}
-        self.timeValue = cdtime.reltime( 0.0, ReferenceTimeUnits ) 
+        self.timeValue = cdtime.reltime( 0.0, self.referenceTimeUnits ) 
         if self.createColormap:
             self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Colormap', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
 #        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
@@ -823,6 +826,13 @@ class PersistentModule( QObject ):
             
     def getPrimaryInputPorts(self):
         return self.primaryInputPorts
+    
+    def intiTime(self, ispec, **args):
+        t = cdtime.reltime( 0, self.referenceTimeUnits)
+        if t.cmp( cdtime.reltime( 0, ispec.referenceTimeUnits ) ) == 1:
+            self.referenceTimeUnits = ispec.referenceTimeUnits 
+        tval = args.get( 'timeValue', None )
+        if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ispec.referenceTimeUnits )
 
     def initializeInputs( self, **args ):
         isAnimation = args.get( 'animate', False )
@@ -845,7 +855,8 @@ class PersistentModule( QObject ):
                 inMod = self.getPrimaryInput( port=inputPort, **args )
                 if inMod: ispec.inputModule = inMod
                 
-            if  ispec.initializeInput( inputIndex, self.moduleID ): 
+            if  ispec.initializeInput( inputIndex, self.moduleID ):
+                self.intiTime( ispec, **args )
                 
                 if inputIndex == 0:     
                     self.setParameter( 'metadata', ispec.metadata ) 
@@ -863,13 +874,7 @@ class PersistentModule( QObject ):
                 if self.roi == None:  
                     self.roi = ispec.metadata.get( 'bounds', None )  
                 if isAnimation:
-                    tval = args.get( 'timeValue', None )
-                    if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ReferenceTimeUnits )
                     ispec.fieldData = ispec.inputModule.getFieldData() 
-#                else:
-#                    if inputIndex == 0: 
-#                        scalars = ispec.metadata.get( 'scalars', None )
-#                        self.initializeLayers( scalars )
                                     
             elif ( ispec.fieldData == None ): 
                 ispec.initializeMetadata()
@@ -1015,6 +1020,7 @@ class PersistentModule( QObject ):
     def updateAnimation( self, animTimeData, textDisplay=None, restartingAnimation=False ):
         self.dvUpdate( timeData=animTimeData, animate=True, restarting=restartingAnimation )
         if textDisplay <> None:  self.updateTextDisplay( textDisplay )
+        QtCore.QCoreApplication.processEvents()
         
     def stopAnimation( self ):
         self.resetNavigation()
@@ -1290,6 +1296,7 @@ class PersistentModule( QObject ):
             return controller.vistrail.getPipeline( current_version )
         except Exception, err:
             print>>sys.stderr, "Error getting current pipeline: %s " % str( err )
+            traceback.print_exc()
             return controller.current_pipeline       
 
     def change_parameters( self, parmRecList ):
@@ -1454,7 +1461,7 @@ class PersistentModule( QObject ):
         self.timeIndex = iTimeIndex
         try:
             relTimeValue = self.timeRange[ 2 ] + iTimeIndex* self.timeRange[ 3 ]
-            self.timeValue = cdtime.reltime( relTimeValue, ReferenceTimeUnits )
+            self.timeValue = cdtime.reltime( relTimeValue, self.referenceTimeUnits )
         except:
             pass
         self.onNewTimestep()

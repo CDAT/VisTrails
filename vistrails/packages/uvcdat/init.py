@@ -87,7 +87,7 @@ class Variable(Module):
              
     def get_port_values(self):
         if not self.hasInputFromPort("file") and not self.hasInputFromPort("url") and not self.hasInputFromPort("source"):
-            raise ModuleError('Must set one of "file", "url", "source".')
+            raise ModuleError( self, 'Must set one of "file", "url", "source".')
         if self.hasInputFromPort("file"):
             self.file = self.getInputFromPort("file").name
             self.filename = self.file

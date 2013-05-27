@@ -762,8 +762,6 @@ class vtkImageImportFromArray:
 
     def GetDataOrigin(self):
         return self.__import.GetDataOrigin()
-    
-
 
 #
 #class Timer(QtCore.QTimer):
