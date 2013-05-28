@@ -31,7 +31,7 @@ class QAnimationView(QtGui.QWidget):
         self.root=parent.root
         layout = QtGui.QVBoxLayout()
         self.setLayout(layout)
-        self.zoomFactor=0
+        self.zoomFactor=1
         self.horizontalFactor=0
         self.verticalFactor=0
         ## Missing options for: direction, cycling, pause, min/max
@@ -39,12 +39,13 @@ class QAnimationView(QtGui.QWidget):
         ## Saving
         saveFrame = uvcdatCommons.QFramedWidget("I/O")
         saveButton = saveFrame.addButton("Save:",newRow=False,buttonType="Push",icon=customizeUVCDAT.saveMovie)
-        saveLineEdit = saveFrame.addLabeledLineEdit("",newRow=False)
-        self.saveType = saveFrame.addRadioFrame("",["ras","mp4"],newRow=False)
-        b=self.saveType.buttons["ras"]
-        b.setChecked(True)
-        loadButton = saveFrame.addButton("Load:",newRow=True,buttonType="Push",icon=customizeUVCDAT.loadMovie)
-        loadLineEdit = saveFrame.addLabeledLineEdit("",newRow=False)
+        self.connect(saveButton,QtCore.SIGNAL("clicked()"),self.save)
+
+        #self.saveType = saveFrame.addRadioFrame("",["mp4",],newRow=False)
+        #b=self.saveType.buttons["mp4"]
+        #b.setChecked(True)
+        #loadButton = saveFrame.addButton("Load:",newRow=True,buttonType="Push",icon=customizeUVCDAT.loadMovie)
+        #loadLineEdit = saveFrame.addLabeledLineEdit("",newRow=False)
         layout.addWidget(saveFrame)
 
 
@@ -146,7 +147,7 @@ class QAnimationView(QtGui.QWidget):
         self.framesSlider.setTickPosition(QtGui.QSlider.TicksAbove)
         self.connect(self.framesSlider,QtCore.SIGNAL("valueChanged(int)"),self.changedFrame)
         self.player.newRow()
-        self.FrameCount = self.player.addLabel("Frame: 0",align=QtCore.Qt.AlignCenter)
+        self.frameCount = self.player.addLabel("Frame: 0",align=QtCore.Qt.AlignCenter)
         self.player.addWidget(self.framesSlider,newRow=True)
         self.player.setEnabled(False)
         controlsFrame.addWidget(self.player,newRow=True)
@@ -167,6 +168,7 @@ class QAnimationView(QtGui.QWidget):
         self.canvas = canvas
     def changedFrame(self,value):
         self.canvas.animate.frame(value)
+        self.frameCount.setText("Frame: %i" % value)
 
     def create(self):
         ### Creates animation
@@ -189,7 +191,7 @@ class QAnimationView(QtGui.QWidget):
         #self.disconnect(self.createButton,QtCore.SIGNAL("clicked()"),self.stop)
         self.connect(self.createButton,QtCore.SIGNAL("clicked()"),self.create)
         ## All right now we need to prep the player
-        nframes=self.canvas.animate.number_of_frames()
+        nframes=self.canvas.animate.number_of_frames()-1
         self.framesSlider.setMaximum(nframes)
         self.player.setEnabled(True)
         self.setCursor(cursor)
@@ -222,7 +224,8 @@ class QAnimationView(QtGui.QWidget):
 #            self.canvas.animate.vcs_self.canvas.put_png_on_canvas(fn)
             self.animationFrame += 1
     def save(self):
-        pass
+        self.canvas.animate.save(str(QtGui.QFileDialog.getSaveFileName(None,"MP4 file name...",filter="MP4 file (*.mp4, *.mpeg)")))
+
     def load(self):
         pass
     def zoomIn(self):
