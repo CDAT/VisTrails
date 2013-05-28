@@ -183,6 +183,7 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
     Style = None
     
     def __init__( self, **args ):
+         self.server_class = None
          self.node_type = args.get( 'node_type', None )
          widget = args.get( 'widget', None )
          if widget: 
@@ -225,14 +226,13 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
         return " %s Node: '%s' <%s>" % ( self.getNodeType(), str(self.text(0)), self.getAddressLabel() )
 
 class OpenDAPCatalogNode( CatalogNode ):
-    server_class = None
     
     def __init__( self, **args ):
-        self.server_class=ServerClass.OPENDAP
         self.parser = None
         self.server_address = args.get( "server_address", None )
         self.server_type = args.get( "server_type", ServerType.getType( self.server_address ) )
         CatalogNode.__init__( self, **args )
+        self.server_class=ServerClass.OPENDAP
                                                   
     def retrieveContent(self): 
         if self.parser == None:
@@ -268,10 +268,10 @@ class iRodsCatalogNode( CatalogNode ):
 
     
     def __init__( self, **args ):
-        self.server_class=ServerClass.IRODS
         self.server_type = ServerType.IRODS
         self.server_address = args.get('server_address',None)
         CatalogNode.__init__( self, **args )
+        self.server_class=ServerClass.IRODS
         self.catalog_path = args.get( 'catalog_path','' )   
         self.download_dir = args.get( 'download_dir','/tmp/' )        
         self.server_conn = args.get('conn',None)
@@ -377,8 +377,9 @@ class iRodsCatalogNode( CatalogNode ):
         status = -1
         if self.localFilePath and not os.path.exists( self.localFilePath ):
             dataObjInp = dataObjInp_t()
-#            print "Data Object Methods: \n", str( dir(dataObjInp) )
-            dataObjInp.objPath = self.getIRodsPath() 
+            print "Data Object Methods: \n", str( dir(dataObjInp) )
+            sys.stdout.flush( )
+            dataObjInp.setObjPath( self.getIRodsPath() )
             status = rcDataObjGet( self.server_conn, dataObjInp, self.localFilePath ) 
         return status
     
@@ -855,7 +856,7 @@ class RemoteDataBrowser(QtGui.QFrame):
            
     def loadData( self ):
         self.current_data_item.loadData()
-        self.emit(  self.new_data_element, self.data_element_address )
+        self.emit(  self.new_data_element, [ self.current_data_item.server_class, self.data_element_address ] )
         print "Loading URL: ", self.data_element_address
 
     def loadMetadata( self ):

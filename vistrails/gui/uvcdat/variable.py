@@ -293,10 +293,12 @@ class VariableProperties(QtGui.QDialog):
             print>>sys.stderr, "Error Creating Data Services Tab: ", str(err)
             traceback.print_exc()
         
-    def processDataAddress( self, address ):
+    def processDataAddress( self, node_specs ):
+        data_service = node_specs[0]
+        address = node_specs[1]
         self.originTabWidget.setCurrentIndex( 0 )
         self.fileEdit.setText( address )
-        self.updateFile()
+        self.updateFile( data_service=data_service )
 
     def createInfoTab(self):
         info = QtGui.QFrame()
@@ -364,7 +366,7 @@ class VariableProperties(QtGui.QDialog):
         self.updatingFile = True
         self.updateFile()
         
-    def updateFile(self):   # FIXME: Support Remote Variables.
+    def updateFile( self, **args ):  
         self.cdmsFile = None
         fnm = self.fileEdit.text()
         fi = QtCore.QFileInfo(fnm)
@@ -383,8 +385,8 @@ class VariableProperties(QtGui.QDialog):
             other_list = []
             for name, types in VariableProperties.FILETYPE.iteritems():
                 if ft in types:
-                    if name == 'CDAT':
-                        self.updateCDMSFile(str(fnm))
+                    if name == 'CDAT': 
+                        self.updateCDMSFile( str(fnm), **args )
 
                     if name not in other_list:
                         other_list.append(name)
@@ -437,7 +439,10 @@ class VariableProperties(QtGui.QDialog):
     def selectFromList(self,item):
         self.setFileName(str(item.text()))
 
-    def updateCDMSFile(self, fn):
+    def updateCDMSFile(self, fn, **args ):
+        from packages.vtDV3D.RemoteDataset import RemoteDataset
+        from packages.vtDV3D.RemoteDataBrowser import ServerClass
+        data_service = args.get( 'data_service', None )
         if fn[:7]=="http://":
             ## Maybe add something for my proxy errors here?
             if fn in CdmsCache.d:
@@ -455,7 +460,12 @@ class VariableProperties(QtGui.QDialog):
                 self.cdmsFile = CdmsCache.d[file_path]
             else:
                 #print "Loading file4 %s" % file_path
-                self.cdmsFile = CdmsCache.d[file_path] = cdms2.open(file_path)
+                if data_service == ServerClass.IRODS: 
+                    self.cdmsFile = CdmsCache.d[file_path] = RemoteDataset( file_path, data_service )
+                else: 
+                    self.cdmsFile = CdmsCache.d[file_path] = cdms2.open(file_path) 
+                print "CdmsFile: ", str( dir( self.cdmsFile ) ) 
+                sys.stdout.flush()
             self.root.record("## Open file: %s" % file_path)
             self.root.record("cdmsFile = cdms2.open('%s')" % file_path)
         self.updateVariableList()
