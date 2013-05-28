@@ -979,7 +979,7 @@ Please delete unused CDAT Cells in the spreadsheet.")
         k={}
         for d,i in zip(self.extraDimsNames,self.extraDimsIndex):
             if d in var.getAxisIds():
-                k[d]=slice(i,i+1)
+                k[d]=slice(i,None)
         return k
     
     def updateContents(self, inputPorts, fromToolBar=False):
@@ -1408,7 +1408,7 @@ class QCDATWidgetAnimation(QtGui.QAction):
                                "Animate",
                                parent)
         self.setStatusTip("Animate this plot")
-        self.setEnabled(False) # For now because it hangs
+        self.setEnabled(True) 
         
 
     def triggeredSlot(self, checked=False):

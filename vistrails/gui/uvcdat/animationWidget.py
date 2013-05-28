@@ -14,12 +14,12 @@ class QThreadAnimationCreate(QtCore.QThread):
         self.cursor=cursor
         ## self.exiting=False
     def run(self):
-        self.canvas.animate.create(thread_it=0)
-        self.parent.emit(QtCore.SIGNAL("animationCreated"),self.canvas,self.cursor)
+        self.canvas.animate.create(thread_it=1)
+        self.parent.emit(QtCore.SIGNAL("animationCreated"),self.cursor)
     ## def __del__(self):
     ##     self.exiting=True
     ##     self.wait()
-        
+    
     
 class QAnimationView(QtGui.QWidget):
     """ Widget containing plot options: plot button, plot type combobox, cell
@@ -31,7 +31,7 @@ class QAnimationView(QtGui.QWidget):
         self.root=parent.root
         layout = QtGui.QVBoxLayout()
         self.setLayout(layout)
-        self.zoomFactor=0
+        self.zoomFactor=1
         self.horizontalFactor=0
         self.verticalFactor=0
         ## Missing options for: direction, cycling, pause, min/max
@@ -39,12 +39,13 @@ class QAnimationView(QtGui.QWidget):
         ## Saving
         saveFrame = uvcdatCommons.QFramedWidget("I/O")
         saveButton = saveFrame.addButton("Save:",newRow=False,buttonType="Push",icon=customizeUVCDAT.saveMovie)
-        saveLineEdit = saveFrame.addLabeledLineEdit("",newRow=False)
-        self.saveType = saveFrame.addRadioFrame("",["ras","mp4"],newRow=False)
-        b=self.saveType.buttons["ras"]
-        b.setChecked(True)
-        loadButton = saveFrame.addButton("Load:",newRow=True,buttonType="Push",icon=customizeUVCDAT.loadMovie)
-        loadLineEdit = saveFrame.addLabeledLineEdit("",newRow=False)
+        self.connect(saveButton,QtCore.SIGNAL("clicked()"),self.save)
+
+        #self.saveType = saveFrame.addRadioFrame("",["mp4",],newRow=False)
+        #b=self.saveType.buttons["mp4"]
+        #b.setChecked(True)
+        #loadButton = saveFrame.addButton("Load:",newRow=True,buttonType="Push",icon=customizeUVCDAT.loadMovie)
+        #loadLineEdit = saveFrame.addLabeledLineEdit("",newRow=False)
         layout.addWidget(saveFrame)
 
 
@@ -68,7 +69,7 @@ class QAnimationView(QtGui.QWidget):
         grid = QtGui.QGridLayout()
         size=QtCore.QSize(40,40)
         ## UP button
-        icon=QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'up.ico'))
+        icon=QtGui.QIcon(':icons/resources/icons/pan_up.gif')
         b=QtGui.QToolButton()
         b.setIcon(icon)
         b.setIconSize(size)
@@ -78,7 +79,7 @@ class QAnimationView(QtGui.QWidget):
         self.upButton=b
         self.connect(self.upButton,QtCore.SIGNAL("clicked()"),self.up)
         ## Down button
-        icon=QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'down.ico'))
+        icon=QtGui.QIcon(':icons/resources/icons/pan_down.gif')
         b=QtGui.QToolButton()
         b.setIcon(icon)
         b.setIconSize(size)
@@ -88,7 +89,7 @@ class QAnimationView(QtGui.QWidget):
         self.downButton=b
         self.connect(self.downButton,QtCore.SIGNAL("clicked()"),self.down)
         ## Left button
-        icon=QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'back.ico'))
+        icon=QtGui.QIcon(':icons/resources/icons/pan_left.gif')
         b=QtGui.QToolButton()
         b.setIcon(icon)
         b.setIconSize(size)
@@ -98,7 +99,7 @@ class QAnimationView(QtGui.QWidget):
         self.leftButton=b
         self.connect(self.leftButton,QtCore.SIGNAL("clicked()"),self.left)
         ## Right button
-        icon=QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'forward.ico'))
+        icon=QtGui.QIcon(':icons/resources/icons/pan_right.gif')
         b=QtGui.QToolButton()
         b.setIcon(icon)
         b.setIconSize(size)
@@ -108,7 +109,7 @@ class QAnimationView(QtGui.QWidget):
         self.rightButton=b
         self.connect(self.rightButton,QtCore.SIGNAL("clicked()"),self.right)
         ## Play/Stop button
-        icon=QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'player_end.ico'))
+        icon=QtGui.QIcon(':icons/resources/icons/player_play.gif')
         b=QtGui.QToolButton()
         b.setIcon(icon)
         b.setIconSize(size)
@@ -121,24 +122,32 @@ class QAnimationView(QtGui.QWidget):
         vbox.addLayout(grid)
         ## Horizontal Pan
         self.horizPan=QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.horizPan.setMinimum(-100)
+        self.horizPan.setMaximum(100)
         self.horizPan.setToolTip("Span Horizontally")
-        self.horizPan.setValue(50)
+        self.horizPan.setValue(0)
         vbox.addWidget(self.horizPan)
+        self.connect(self.horizPan,QtCore.SIGNAL("valueChanged(int)"),self.horizPanned)
 
         hbox=QtGui.QHBoxLayout()
         ## Vertical Pan
         self.vertPan=QtGui.QSlider(QtCore.Qt.Vertical)
+        self.vertPan.setMinimum(-100)
+        self.vertPan.setMaximum(100)
         self.vertPan.setToolTip("Span Vertically")
-        self.vertPan.setValue(50)
+        self.vertPan.setValue(0)
         hbox.addLayout(vbox)
         hbox.addWidget(self.vertPan)
+        self.connect(self.vertPan,QtCore.SIGNAL("valueChanged(int)"),self.vertPanned)
+
 
         self.player.vbox.addLayout(hbox)
         ## Frames Slider
         self.framesSlider=QtGui.QSlider(QtCore.Qt.Horizontal)
         self.framesSlider.setTickPosition(QtGui.QSlider.TicksAbove)
+        self.connect(self.framesSlider,QtCore.SIGNAL("valueChanged(int)"),self.changedFrame)
         self.player.newRow()
-        self.FrameCount = self.player.addLabel("Frame: 0",align=QtCore.Qt.AlignCenter)
+        self.frameCount = self.player.addLabel("Frame: 0",align=QtCore.Qt.AlignCenter)
         self.player.addWidget(self.framesSlider,newRow=True)
         self.player.setEnabled(False)
         controlsFrame.addWidget(self.player,newRow=True)
@@ -146,72 +155,107 @@ class QAnimationView(QtGui.QWidget):
         layout.addWidget(controlsFrame)
 
         self.connect(self,QtCore.SIGNAL("animationCreated"),self.animationCreated)
+        self.animationTimer = QtCore.QBasicTimer()
+        self.animationFrame = 0        
         
+    def horizPanned(self,value):
+        self.canvas.animate.horizontal(value)
+
+    def vertPanned(self,value):
+        self.canvas.animate.vertical(value)
 
     def setCanvas(self,canvas):
         self.canvas = canvas
-        
+    def changedFrame(self,value):
+        self.canvas.animate.frame(value)
+        self.frameCount.setText("Frame: %i" % value)
+
     def create(self):
         ### Creates animation
         c = self.cursor()
         self.setCursor(QtCore.Qt.BusyCursor)
-        icon = QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'symbol_stop.ico'))
+        icon = QtGui.QIcon(":/icons/resources/icons/player_stop.gif")
         self.createButton.setIcon(icon)
         self.createButton.setText("Stop Creating Frames")
         #self.disconnect(self.createButton,QtCore.SIGNAL("clicked()"),self.create)
         self.connect(self.createButton,QtCore.SIGNAL("clicked()"),self.stop)
-        t=QThreadAnimationCreate(self,self.canvas,c)
-        t.start()
-    def animationCreated(self,canvas,cursor):
-        icon = QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'symbol_add.ico'))
+        #t=QThreadAnimationCreate(self,self.canvas,c)
+        #t.start()
+        self.canvas.animate.create(thread_it=1)
+        self.animationCreated(c)
+
+    def animationCreated(self,cursor):
+        icon = QtGui.QIcon(":/icons/resources/icons/player_play.gif")
         self.createButton.setIcon(icon)
         self.createButton.setText("Generate Animation")
         #self.disconnect(self.createButton,QtCore.SIGNAL("clicked()"),self.stop)
         self.connect(self.createButton,QtCore.SIGNAL("clicked()"),self.create)
         ## All right now we need to prep the player
-        nframes=canvas.animate.number_of_frames()
+        nframes=self.canvas.animate.number_of_frames()-1
         self.framesSlider.setMaximum(nframes)
         self.player.setEnabled(True)
         self.setCursor(cursor)
-        pass
-    
+
     def run(self):
+        ## ? Need to change player icon?
+        self.animationFrame = 0
+        if not self.animationTimer.isActive():
+            self.animationTimer.start(100, self)
         #c = self.cursor()
         #self.setCursor(QtCore.Qt.BusyCursor)
         #canvas=int(self.canvas.currentText())-1
-        self.canvas.animate.pause(99)
-        self.canvas.animate.run()
+        #self.canvas.animate.pause(99)
+        #self.canvas.animate.run()
         #self.setCursor(c)
     def stop(self):
+        # ??? need to change playe ricon?
+        self.animationTimer.stop()
         ### stops generating animation
         #canvas=int(self.canvas.currentText())-1
         self.canvas.animate.stop_create()
+    def timerEvent(self, event):
+        if self.animationFrame>=self.canvas.animate.number_of_frames():
+            self.animationTimer.stop()
+        else:
+            self.canvas.animate.draw(self.animationFrame)
+#            fn = self.canvas.animate.animation_files[self.animationFrame]
+#            print fn
+#            self.canvas.clear()
+#            self.canvas.animate.vcs_self.canvas.put_png_on_canvas(fn)
+            self.animationFrame += 1
     def save(self):
-        pass
+        self.canvas.animate.save(str(QtGui.QFileDialog.getSaveFileName(None,"MP4 file name...",filter="MP4 file (*.mp4, *.mpeg)")))
+
     def load(self):
         pass
     def zoomIn(self):
-        self.zoomFactor+=1
-        if self.zoomFactor==20:
+        self.zoomFactor+=0.1
+        if self.zoomFactor==10:
             self.zoomInButton.setEnabled(False)
         self.zoomOutButton.setEnabled(True)
-        self.upButton.setEnabled(True)
-        self.downButton.setEnabled(True)
-        self.leftButton.setEnabled(True)
-        self.rightButton.setEnabled(True)
         #canvas=int(self.canvas.currentText())-1
+        self.panButtons()
         self.canvas.animate.zoom(self.zoomFactor)
     def zoomOut(self):
-        self.zoomFactor-=1
+        self.zoomFactor-=0.1
         self.zoomInButton.setEnabled(True)
-        if self.zoomFactor==0:
+        if self.zoomFactor==0.1:
             self.zoomOutButton.setEnabled(False)
+        self.panButtons()
+        #canvas=int(self.canvas.currentText())-1
+        self.canvas.animate.zoom(self.zoomFactor)
+    def panButtons(self):
+        if self.zoomFactor==1:
             self.upButton.setEnabled(False)
             self.downButton.setEnabled(False)
             self.leftButton.setEnabled(False)
             self.rightButton.setEnabled(False)
-        #canvas=int(self.canvas.currentText())-1
-        self.canvas.animate.zoom(self.zoomFactor)
+        else:
+            self.upButton.setEnabled(True)
+            self.downButton.setEnabled(True)
+            self.leftButton.setEnabled(True)
+            self.rightButton.setEnabled(True)
+
         
     def up(self):
         self.verticalFactor+=1
