@@ -1,5 +1,5 @@
 
-import urllib2, sys, os, copy, time, httplib
+import urllib2, sys, os, copy, time, httplib, cdms2, traceback
 from HTMLParser import HTMLParser
 from urlparse import *
 from PyQt4 import QtCore, QtGui, QtWebKit
@@ -221,6 +221,9 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
     
     def getAddressLabel(self):
         return ""
+
+    def getAddress(self):
+        return ""
        
     def __repr__(self): 
         return " %s Node: '%s' <%s>" % ( self.getNodeType(), str(self.text(0)), self.getAddressLabel() )
@@ -260,11 +263,15 @@ class OpenDAPCatalogNode( CatalogNode ):
     def getAddressLabel(self):
         return self.server_address
 
+    def getAddress(self):
+        return self.server_address
+
 class iRodsCatalogNode( CatalogNode ):
     Directory = 0
     DataObject = 1
     Dataset = 2
     Style = None
+    DatasetFileExtensions = [ 'xml', 'ctl'  ]
 
     
     def __init__( self, **args ):
@@ -278,12 +285,68 @@ class iRodsCatalogNode( CatalogNode ):
         self.collection = None
         self.metadata = None
         self.localFilePath = None
+        self.vars = []
+        self.files = []
+
+    def getAddressLabel(self):
+        return self.server_address
+
+    def getAddress(self):
+        return self.server_address
 
     def setNodeDisplay( self, text ):
         if self.node_type == self.Directory:  self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_DirIcon ) )
         if self.node_type == self.DataObject: self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_FileIcon ) )
-        if self.node_type == self.Dataset: self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_DirLinkIcon ) )
+        if self.node_type == self.Dataset: self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_FileDialogContentsView ) )
         self.setText( 0, text.strip('/') )
+
+    def getDatasetMetadata( self ): 
+        excluded_attributes = [ 'cdms_filemap', 'History', 'history' ]
+        if self.metadata == None:
+            self.vars = []
+            if iRodsCatalogNode.isDatasetFile( self.localFilePath ):
+                self.dataset = cdms2.open( self.localFilePath )
+                md_lines = []
+                self.files = self.dataset.getPaths()
+                md_lines.append( " <h2> Dataset Attributes </h2>")
+                try:
+                    for attribute_item in self.dataset.attributes.items():
+                        if attribute_item[0] not in excluded_attributes: 
+                            md_lines.append( ': '.join( attribute_item ) )
+                except Exception, err:
+                    print>>sys.stderr, "Error getting attribute metadata: %s " % str( err )
+                    traceback.print_exc()
+                md_lines.append( " <h2> Dataset Axes </h2>")
+                try:
+                    for axis in self.dataset.axes.values():
+                        axis_data = axis.getValue()
+                        alen = len(axis)
+                        if alen > 2:
+                            md_lines.append( ' %s(%d): [%s,%s] %s ' % ( axis.id, alen, str(axis_data[0]), str(axis_data[1]), axis.units ) )
+                        else: 
+                            md_lines.append( ' %s(%d): %s %s ' % ( axis.id, alen, str(axis_data), axis.units ) )
+                except Exception, err:
+                    print>>sys.stderr, "Error getting axis metadata: %s " % str( err )
+                    traceback.print_exc()
+                md_lines.append( " <h2> Dataset Variables </h2>")
+                try:
+                    var_def_lines = [ '<DL>' ]
+                    for var in self.dataset.getVariables():
+                       var_def_lines.append( " <DT> <STRONG> Variable(%s) %s </STRONG> " % ( var.getOrder(), var.id ) )
+                       var_def_lines.append( " <DD> <UL> " )
+                       var_def_lines.append( "<LI> shape: %s " % str( var.getShape() ) )
+                       if hasattr( var, 'long_name' ): var_def_lines.append( "<LI> long_name: %s " % str( var.long_name ) )
+                       if hasattr( var, 'units' ): var_def_lines.append( "<LI> units: %s " % str( var.units ) )   
+                       var_def_lines.append( " </UL> " )                
+                       self.vars.append( var.id )
+                    var_def_lines.append( " </DL> " )  
+                    md_lines.append( '\n'.join( var_def_lines ) )
+                    self.metadata = '<P>'.join( md_lines )
+                except Exception, err:
+                    print>>sys.stderr, "Error getting variable metadata: %s " % str( err )
+                    traceback.print_exc()
+            else:
+                self.getFileMetadata()
 
     def getFileMetadata( self ): 
         if self.metadata == None:
@@ -306,7 +369,8 @@ class iRodsCatalogNode( CatalogNode ):
                             
                 self.metadata = '<p>'.join(strList)
                 f.close()
-            else: print>>sys.stderr, " Error, Can't open Data Object: ", path
+            else: 
+                print>>sys.stderr, " Error, Can't open Data Object: ", path
         
     def __del__(self):
         if self.server_conn:
@@ -323,49 +387,82 @@ class iRodsCatalogNode( CatalogNode ):
                 self.server_conn, errMsg = rcConnect( node_tokens[0], int(node_tokens[1]), node_tokens[2], node_tokens[3] )
                 status = clientLogin( self.server_conn )
             if self.node_type == self.Directory:
-                self.collection = irodsCollection( self.server_conn )
-                path_tokens = self.catalog_path.split('/')
-                for subCollection in path_tokens:
-                    if subCollection: self.collection.openCollection(subCollection)
-                subCollections = self.collection.getSubCollections()
-                for subCollection in subCollections:
-                    rv = self.collection.openCollection(subCollection)
-                    path = '/'.join( [ self.catalog_path, subCollection] )
-                    catalogNode = iRodsCatalogNode( conn=self.server_conn, catalog_path=path, node_type=CatalogNode.Directory )
-                    catalogNode.setLabel( subCollection )
-                    self.addChild ( catalogNode )
-                    self.collection.upCollection()
-                dataObjRefs = self.collection.getObjects()
-                for dataObjRef in dataObjRefs:
-                    data_name = dataObjRef[0]
-                    resc_name = dataObjRef[1]
-                    path = '/'.join( [ self.catalog_path, data_name] )
-                    dataObj = self.collection.open( data_name, "r", resc_name )
-                    data_name_tokens = data_name.lower().split('.')
-                    node_type = iRodsCatalogNode.Dataset if ( data_name_tokens[-1] == 'xml' ) else iRodsCatalogNode.DataObject
-                    dataObjNode = iRodsCatalogNode( conn=self.server_conn, catalog_path=path, node_type=node_type )
-                    dataObjNode.setLabel( data_name )
-                    self.addChild ( dataObjNode )
-                    self.collection.upCollection()
-                if self.collection: mdata = self.collection.getUserMetadata() 
+                self.openCollection()
+                self.addCollections()
+                self.addDataObjects( [ iRodsCatalogNode.Dataset ] )
+                self.metadata = self.collection.getUserMetadata() 
             elif self.node_type == self.DataObject:
                 self.getLocaPath()
                 self.getFileMetadata()    
             elif self.node_type == self.Dataset:
                 self.getLocaPath()
-                self.getFileMetadata()    
-            elif self.node_type == self.Dataset:
-                self.getLocaPath()
-                self.getFileMetadata()    
+                self.loadData()
+                self.getDatasetMetadata() 
+                self.openCollection()
+                self.addDataObjects( [ iRodsCatalogNode.DataObject ] )   
         return ( self.localFilePath, self.metadata )
     
+    def openCollection(self):
+        self.collection = irodsCollection( self.server_conn )
+        path_tokens = self.catalog_path.split('/')
+        for subCollection in path_tokens:
+            if subCollection and not iRodsCatalogNode.isDatasetFile( subCollection ): 
+                self.collection.openCollection(subCollection)
+     
+    @classmethod           
+    def isDatasetFile( cls, file_name ):
+       file_name_tok = file_name.lower().split('.') 
+       return ( file_name_tok[-1] in cls.DatasetFileExtensions )
+
+    @classmethod           
+    def getNodeTypeFromFile( cls, file_name ):
+       return iRodsCatalogNode.Dataset if iRodsCatalogNode.isDatasetFile(file_name) else iRodsCatalogNode.DataObject
+
+    def addCollections(self):    
+        subCollections = self.collection.getSubCollections()
+        for subCollection in subCollections:
+            rv = self.collection.openCollection(subCollection)
+            path = '/'.join( [ self.catalog_path, subCollection] )
+            catalogNode = iRodsCatalogNode( conn=self.server_conn, catalog_path=path, node_type=CatalogNode.Directory )
+            catalogNode.setLabel( subCollection )
+            self.addChild ( catalogNode )
+            self.collection.upCollection(  )
+            
+    def addDataObjects( self, types = None ):
+        dataObjRefs = self.collection.getObjects()
+        for dataObjRef in dataObjRefs:
+            data_name = dataObjRef[0]
+            resc_name = dataObjRef[1]
+            path = '/'.join( [ self.catalog_path, data_name] )
+            dataObj = self.collection.open( data_name, "r", resc_name )
+            node_type = iRodsCatalogNode.getNodeTypeFromFile(data_name)
+            if ( types == None ) or ( node_type in types ):
+                if ( node_type == iRodsCatalogNode.Dataset ) or ( data_name in self.files ):
+                    dataObjNode = iRodsCatalogNode( conn=self.server_conn, catalog_path=path, node_type=node_type )
+                    dataObjNode.setLabel( data_name )
+                    self.addChild ( dataObjNode )
+                    self.collection.upCollection()
+                    
+#     @classmethod           
+#     def removeDatasetFileExtensionsFromDirectoryNames( cls, irods_file_path ):
+#         irods_path_elems = irods_file_path.split('/')
+#         nElem = len( irods_path_elems )
+#         for iElem in range( 0, nElem-1 ):
+#             split_irods_path_elems = os.path.splitext( irods_path_elems[iElem] )
+#             if split_irods_path_elems[1] in cls.DatasetFileExtensions:
+#                 irods_path_elems[iElem] = split_irods_path_elems[0]
+#         scrubbed_irods_path = '/'.join( irods_path_elems )
+#         return scrubbed_irods_path
+        
     def getLocaPath(self):
         irods_path = self.getIRodsPath().strip('/')
-        self.localFilePath = os.path.join( self.download_dir, irods_path )
+        node_type_dir = 'metadata' if self.node_type == self.Dataset else 'data'
+        self.localFilePath = os.path.join( self.download_dir, node_type_dir, irods_path )
         dirname = os.path.dirname( self.localFilePath )
         try: os.makedirs( dirname )
         except OSError, err: 
-            if not os.path.isdir(dirname): print>>sys.stderr, "Error creating directory %s: %s " % ( dirname, str(err) )
+            if not os.path.isdir(dirname): 
+                print>>sys.stderr, "Error creating directory %s: %s " % ( dirname, str(err) )
                 
     def getIRodsPath(self):
         myEnv = getIRodsEnv()
@@ -461,14 +558,14 @@ class ThreddsDirectoryParser(HTMLCatalogParser):
 
     def execute(self):
         try:
-            response = urllib2.urlopen( self.root_node.address )
+            response = urllib2.urlopen( self.root_node.getAddress() )
             self.feed( response.read() )
         except Exception, err:
             displayMessage( "Error connecting to server:\n%s"  % str(err) )
 
     def dump(self):
-        print "Retreiving response from: ", self.root_node.address
-        response = urllib2.urlopen( self.root_node.address )
+        print "Retreiving response from: ", self.root_node.getAddressLabel()
+        response = urllib2.urlopen( self.root_node.getAddress() )
         self.debug_mode = True
         data = response.read()
         print data
@@ -481,7 +578,7 @@ class ThreddsDirectoryParser(HTMLCatalogParser):
     def process_start_tag( self, tag, attrs ):          
         if ( tag == 'a' ) and self.has_state( 'tr' ):
             address = self.get_attribute( 'href', attrs )
-            self.child_node = OpenDAPCatalogNode( server_address=urljoin( self.root_node.address, address ) )
+            self.child_node = OpenDAPCatalogNode( server_address=urljoin( self.root_node.getAddress(), address ) )
 
     def process_data( self,  data ): 
         if self.child_node and self.inCatalogEntry() and data:         
@@ -501,7 +598,7 @@ class DodsDirectoryParser(HTMLCatalogParser):
 
     def execute(self):
         try:
-            response = urllib2.urlopen( self.root_node.address )
+            response = urllib2.urlopen( self.root_node.getAddress() )
             self.feed( response.read() )
         except Exception, err:
             displayMessage( "Error connecting to server:\n%s"  % str(err) )
@@ -510,7 +607,7 @@ class DodsDirectoryParser(HTMLCatalogParser):
         if ( tag == 'a' ) :
             address = self.get_attribute( 'href', attrs )
             if address and self.current_data: 
-                child_node = OpenDAPCatalogNode( server_address=urljoin( self.root_node.address, address ) )
+                child_node = OpenDAPCatalogNode( server_address=urljoin( self.root_node.getAddress(), address ) )
                 child_node.setLabel( ' '.join( self.current_data ) )
                 self.root_node.addChild ( child_node )
 #                print "Adding Child:", str( child_node )
@@ -534,7 +631,7 @@ class HydraxDirectoryParser(HTMLCatalogParser):
 
     def execute(self):
         try:
-            response = urllib2.urlopen( self.root_node.address )
+            response = urllib2.urlopen( self.root_node.getAddress() )
             self.feed( response.read() )
         except Exception, err:
             displayMessage( "Error connecting to server:\n%s"  % str(err) )
@@ -548,7 +645,7 @@ class HydraxDirectoryParser(HTMLCatalogParser):
         data = data.strip().replace( '\n', ' ' )
         if self.current_address and data:
             if ( data.lower() not in self.excluded_links ): 
-                child_node = OpenDAPCatalogNode( server_address=urljoin( self.root_node.address, self.current_address ) )
+                child_node = OpenDAPCatalogNode( server_address=urljoin( self.root_node.getAddress(), self.current_address ) )
                 child_node.setLabel( data )
                 self.root_node.addChild( child_node )
             self.current_address = None
@@ -849,6 +946,7 @@ class RemoteDataBrowser(QtGui.QFrame):
             if self.metadata: self.view.setHtml( self.metadata )
         except Exception, err:
             print>>sys.stderr, "Error retrieving data item: %s\n Item: %s" % ( str(err), str(item) )
+            traceback.print_exc()
             (self.data_element_address, self.metadata) = ( None, None )
             self.current_data_item = None
         self.load_data_button.setEnabled ( self.data_element_address <> None ) 

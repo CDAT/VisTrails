@@ -245,10 +245,13 @@ class UVCDAT_API():
 if __name__ == '__main__':
     startup_app()
     uvcdat_api = UVCDAT_API()
-    cdmsfile = cdms2.open('~/data/AConaty/comp-ECMWF/ecmwf.xml')
+#    cdmsfile = cdms2.open('~/data/AConaty/comp-ECMWF/ecmwf.xml')
+    cdmsfile = cdms2.open('http://nomads.ncep.noaa.gov:80/dods/fens/fens20130528/fens001_12z')
 #    cdmsfile = cdms2.open('/Developer/Data/AConaty/comp-ECMWF/ecmwf.xml')
-    Temperature = cdmsfile('Temperature')
-    Temperature = Temperature(lat=(90.0, -90.0),isobaric=(1000.0, 10.0),lon=(0.0, 359.0),time=('2011-5-1 0:0:0.0', '2011-5-1 18:0:0.0'),)
+#    Temperature = cdmsfile('Temperature')
+    Temperature = cdmsfile('tmpprs')
+#    Temperature = Temperature(lat=(90.0, -90.0),isobaric=(1000.0, 10.0),lon=(0.0, 359.0),time=('2011-5-1 0:0:0.0', '2011-5-1 18:0:0.0'),)
+    Temperature = Temperature(lat=(90.0, -90.0),isobaric=(1000.0, 10.0),lon=(0.0, 359.0),)
     axesOperations = eval("{'lat': 'def', 'isobaric': 'def', 'lon': 'def', 'time': 'def'}")
     for axis in list(axesOperations):
         if axesOperations[axis] == 'sum':
