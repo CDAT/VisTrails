@@ -50,17 +50,42 @@ class RemoteVariable():
         return self.cdms_metadata.listall()
     
     def __call__( self, **args ):
-        import irods, inspect
-        irods_dir = dir( irods )
+        import irods
+        from packages.vtDV3D.RemoteDataBrowser import iRodsCatalogNode
         print "Processing Remote Data on server and retreiving:\n ----> args = ", str(args)
-        sys.stdout.flush()
-        exec_inp = irods.execMyRuleInp_t()
-        exec_inp.setAddr( self.server_address )
-        exec_inp.setMyRule( 'uvcdatGetVariable' )
-        exec_inp.setInpParamArray()
-#        exec_inp.setOutParamDesc()
-        exec_outp = irods.msParamArray_t()
-        irods.rcExecMyRule( exec_inp, exec_outp )
+        
+        execMyRuleInp = irods.execMyRuleInp_t()
+        msParamArray = irods.msParamArray_t()
+        
+        execMyRuleInp.getCondInput().setLen(0)
+        execMyRuleInp.setInpParamArray(msParamArray)
+        execMyRuleInp.setOutParamDesc("ruleExecOut")        
+        execMyRuleInp.setMyRule("testJerome(*str)")
+        
+        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*str", irods.STR_MS_T, "param value")
+                
+        outParamArray = irods.rcExecMyRule( iRodsCatalogNode.ServerConnection, execMyRuleInp )
+        
+        mP = outParamArray.getMsParamByLabel("ruleExecOut")
+        
+        if mP:
+            print mP.getExecCmdOut().getStdoutBuf()
+
+#         input_parm_array = irods.msParamArray_t()
+#         irods.addMsParamToArray( input_parm_array,'varname', type, 'Temperature' )
+#         varname_parm1 = input_parm_array.getMsParamByLabel( 'varname' )
+#         node_tokens = self.server_address.split(';')
+#         exec_inp = irods.execMyRuleInp_t()
+#         address = irods.rodsHostAddr_t()
+#         address.setHostAddr(node_tokens[0])
+#         address.setPortNum(int(node_tokens[1]))
+#         address.setZoneName(node_tokens[3])
+#         exec_inp.setAddr( address )
+#         exec_inp.setMyRule( 'uvcdatGetVariable' )
+#         exec_inp.setInpParamArray(input_parm_array)
+# #        exec_inp.setOutParamDesc()
+#         exec_outp = irods.msParamArray_t()
+#         irods.rcExecMyRule( exec_inp, exec_outp )
         return self.cdms_metadata
 
        

@@ -266,12 +266,13 @@ class OpenDAPCatalogNode( CatalogNode ):
     def getAddress(self):
         return self.server_address
 
-class iRodsCatalogNode( CatalogNode ):
+class iRodsCatalogNode( CatalogNode ): 
     Directory = 0
     DataObject = 1
     Dataset = 2
     Style = None
     DatasetFileExtensions = [ 'xml', 'ctl'  ]
+    ServerConnection = None
 
     
     def __init__( self, **args ):
@@ -282,7 +283,6 @@ class iRodsCatalogNode( CatalogNode ):
         self.catalog_path = args.get( 'catalog_path','' )   
         self.gui_path = args.get( 'gui_path','' )   
         self.download_dir = args.get( 'download_dir','/tmp/' )        
-        self.server_conn = args.get('conn',None)
         self.collection = None
         self.metadata = None
         self.localFilePath = None
@@ -352,8 +352,8 @@ class iRodsCatalogNode( CatalogNode ):
     def getFileMetadata( self ): 
         if self.metadata == None:
             path = self.getIRodsPath()
-            try:    f = irodsOpen( self.server_conn, path, 'r' )
-            except: f = iRodsOpen( self.server_conn, path, 'r' )
+            try:    f = irodsOpen( iRodsCatalogNode.ServerConnection, path, 'r' )
+            except: f = iRodsOpen( iRodsCatalogNode.ServerConnection, path, 'r' )
             if f:
 #                print "Reading Metadata for file", path
 #                print "File Methods: \n", str( dir(f) )
@@ -362,7 +362,7 @@ class iRodsCatalogNode( CatalogNode ):
                 strList.append( "File Path = %s" % f.getPath() )
                 strList.append( "Owner Name = %s" % f.getOwnerName() )
                 strList.append( "Size = %s" % f.getSize() )
-                mdataList = getFileUserMetadata( self.server_conn, path ) 
+                mdataList = getFileUserMetadata( iRodsCatalogNode.ServerConnection, path ) 
                 for mdataItem in mdataList:
                     mdname = mdataItem[0].replace( '_', ' ' ).title()
                     if mdataItem[2]:    strList.append( "%s = %s (%s)" % ( mdname, mdataItem[1], mdataItem[2]) )
@@ -373,20 +373,20 @@ class iRodsCatalogNode( CatalogNode ):
             else: 
                 print>>sys.stderr, " Error, Can't open Data Object: ", path
         
-    def __del__(self):
-        if self.server_conn:
-            print "Disconnecting."
-            self.server_conn.disconnect()
-            self.server_conn = None
+#     def __del__(self):
+#         if iRodsCatalogNode.ServerConnection:
+#             print "Disconnecting."
+#             iRodsCatalogNode.ServerConnection.disconnect()
+#             iRodsCatalogNode.ServerConnection = None
                                  
     def retrieveContent(self):
         mdata = None
         data_path = None
         if not self.collection:
-            if self.server_conn == None: 
+            if iRodsCatalogNode.ServerConnection == None: 
                 node_tokens = self.server_address.split(';')
-                self.server_conn, errMsg = rcConnect( node_tokens[0], int(node_tokens[1]), node_tokens[2], node_tokens[3] )
-                status = clientLogin( self.server_conn )
+                iRodsCatalogNode.ServerConnection, errMsg = rcConnect( node_tokens[0], int(node_tokens[1]), node_tokens[2], node_tokens[3] )
+                status = clientLogin( iRodsCatalogNode.ServerConnection )
             if self.node_type == self.Directory:
                 self.openCollection()
                 self.addCollections()
@@ -404,7 +404,7 @@ class iRodsCatalogNode( CatalogNode ):
         return ( self.localFilePath, self.metadata )
     
     def openCollection(self):
-        self.collection = irodsCollection( self.server_conn )
+        self.collection = irodsCollection( iRodsCatalogNode.ServerConnection )
         path_tokens = self.gui_path.split('/')
         for subCollection in path_tokens:
             if subCollection and not iRodsCatalogNode.isDatasetFile( subCollection ): 
@@ -425,7 +425,7 @@ class iRodsCatalogNode( CatalogNode ):
             rv = self.collection.openCollection(subCollection)
             gui_path = '/'.join( [ self.catalog_path, subCollection] )
             catalog_path = '/'.join( [ self.collection.getCollName(), subCollection] )
-            catalogNode = iRodsCatalogNode( conn=self.server_conn, server_address=self.server_address, catalog_path=catalog_path, gui_path=gui_path, node_type=CatalogNode.Directory )
+            catalogNode = iRodsCatalogNode( server_address=self.server_address, catalog_path=catalog_path, gui_path=gui_path, node_type=CatalogNode.Directory )
             catalogNode.setLabel( subCollection )
             self.addChild ( catalogNode )
             self.collection.upCollection(  )
@@ -442,7 +442,7 @@ class iRodsCatalogNode( CatalogNode ):
                     gui_path = '/'.join( [ self.catalog_path, data_name] )
                     catalog_path = '/'.join( [ coll_path, data_name] )
                     dataObj = self.collection.open( data_name, "r", resc_name ) 
-                    dataObjNode = iRodsCatalogNode( conn=self.server_conn, server_address=self.server_address, catalog_path=catalog_path, gui_path=gui_path, node_type=node_type )
+                    dataObjNode = iRodsCatalogNode( server_address=self.server_address, catalog_path=catalog_path, gui_path=gui_path, node_type=node_type )
                     dataObjNode.setLabel( data_name )
                     self.addChild ( dataObjNode )
                     self.collection.upCollection()
@@ -482,7 +482,7 @@ class iRodsCatalogNode( CatalogNode ):
             print "Data Object Methods: \n", str( dir(dataObjInp) )
             sys.stdout.flush( )
             dataObjInp.setObjPath( self.getIRodsPath() )
-            status = rcDataObjGet( self.server_conn, dataObjInp, self.localFilePath ) 
+            status = rcDataObjGet( iRodsCatalogNode.ServerConnection, dataObjInp, self.localFilePath ) 
         return status
     
     def getAddressLabel(self):
@@ -959,9 +959,7 @@ class RemoteDataBrowser(QtGui.QFrame):
            
     def loadData( self ):
         self.current_data_item.loadData()
-        conn_dir = dir( self.current_data_item.server_conn )
-        ditem_dir = dir( self.current_data_item )
-        self.emit(  self.new_data_element, [ self.current_data_item.server_class, self.data_element_address, self.server_address ] )
+        self.emit(  self.new_data_element, [ self.current_data_item.server_class, self.data_element_address, self.current_data_item.server_address ] )
         print "Loading URL: ", self.data_element_address
 
     def loadMetadata( self ):
