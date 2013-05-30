@@ -13,6 +13,7 @@ class RemoteDataset():
         self.file_type = file_path.split('.')[-1]
         self.data_service_type = data_service_type
         self.cdms_metadata = cdms2.open(file_path)
+        self.server_address = args.get( 'server_address', None )
         self.vars = {}
         
     @property
@@ -27,16 +28,17 @@ class RemoteDataset():
         var = self.vars.get( varName, None )
         if var == None:
             var_metadata = self.cdms_metadata[varName]
-            var = RemoteVariable( var_metadata, self.data_service_type )
+            var = RemoteVariable( var_metadata, self.data_service_type, self.server_address )
             self.vars[ varName ] = var
         return var
 
 
 class RemoteVariable():
     
-    def __init__(self, metadata, data_service_type, **args):
+    def __init__(self, metadata, data_service_type, server_address, **args):
         self.cdms_metadata = metadata
         self.data_service_type = data_service_type
+        self.server_address = server_address
         
     def getAxisList(self):
         return self.cdms_metadata.getAxisList()
@@ -48,8 +50,17 @@ class RemoteVariable():
         return self.cdms_metadata.listall()
     
     def __call__( self, **args ):
+        import irods, inspect
+        irods_dir = dir( irods )
         print "Processing Remote Data on server and retreiving:\n ----> args = ", str(args)
         sys.stdout.flush()
+        exec_inp = irods.execMyRuleInp_t()
+        exec_inp.setAddr( self.server_address )
+        exec_inp.setMyRule( 'uvcdatGetVariable' )
+        exec_inp.setInpParamArray()
+#        exec_inp.setOutParamDesc()
+        exec_outp = irods.msParamArray_t()
+        irods.rcExecMyRule( exec_inp, exec_outp )
         return self.cdms_metadata
 
        

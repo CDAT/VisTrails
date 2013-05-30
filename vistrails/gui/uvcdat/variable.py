@@ -295,10 +295,11 @@ class VariableProperties(QtGui.QDialog):
         
     def processDataAddress( self, node_specs ):
         data_service = node_specs[0]
-        address = node_specs[1]
+        data_address = node_specs[1]
+        server_address = node_specs[1]
         self.originTabWidget.setCurrentIndex( 0 )
-        self.fileEdit.setText( address )
-        self.updateFile( data_service=data_service )
+        self.fileEdit.setText( data_address )
+        self.updateFile( data_service=data_service, server_address=server_address )
 
     def createInfoTab(self):
         info = QtGui.QFrame()
@@ -461,7 +462,7 @@ class VariableProperties(QtGui.QDialog):
             else:
                 #print "Loading file4 %s" % file_path
                 if data_service == ServerClass.IRODS: 
-                    self.cdmsFile = CdmsCache.d[file_path] = RemoteDataset( file_path, data_service )
+                    self.cdmsFile = CdmsCache.d[file_path] = RemoteDataset( file_path, data_service, **args )
                 else: 
                     self.cdmsFile = CdmsCache.d[file_path] = cdms2.open(file_path) 
                 print "CdmsFile: ", str( dir( self.cdmsFile ) ) 

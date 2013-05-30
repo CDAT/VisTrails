@@ -425,7 +425,7 @@ class iRodsCatalogNode( CatalogNode ):
             rv = self.collection.openCollection(subCollection)
             gui_path = '/'.join( [ self.catalog_path, subCollection] )
             catalog_path = '/'.join( [ self.collection.getCollName(), subCollection] )
-            catalogNode = iRodsCatalogNode( conn=self.server_conn, catalog_path=catalog_path, gui_path=gui_path, node_type=CatalogNode.Directory )
+            catalogNode = iRodsCatalogNode( conn=self.server_conn, server_address=self.server_address, catalog_path=catalog_path, gui_path=gui_path, node_type=CatalogNode.Directory )
             catalogNode.setLabel( subCollection )
             self.addChild ( catalogNode )
             self.collection.upCollection(  )
@@ -442,7 +442,7 @@ class iRodsCatalogNode( CatalogNode ):
                     gui_path = '/'.join( [ self.catalog_path, data_name] )
                     catalog_path = '/'.join( [ coll_path, data_name] )
                     dataObj = self.collection.open( data_name, "r", resc_name ) 
-                    dataObjNode = iRodsCatalogNode( conn=self.server_conn, catalog_path=catalog_path, gui_path=gui_path, node_type=node_type )
+                    dataObjNode = iRodsCatalogNode( conn=self.server_conn, server_address=self.server_address, catalog_path=catalog_path, gui_path=gui_path, node_type=node_type )
                     dataObjNode.setLabel( data_name )
                     self.addChild ( dataObjNode )
                     self.collection.upCollection()
@@ -959,7 +959,9 @@ class RemoteDataBrowser(QtGui.QFrame):
            
     def loadData( self ):
         self.current_data_item.loadData()
-        self.emit(  self.new_data_element, [ self.current_data_item.server_class, self.data_element_address ] )
+        conn_dir = dir( self.current_data_item.server_conn )
+        ditem_dir = dir( self.current_data_item )
+        self.emit(  self.new_data_element, [ self.current_data_item.server_class, self.data_element_address, self.server_address ] )
         print "Loading URL: ", self.data_element_address
 
     def loadMetadata( self ):
