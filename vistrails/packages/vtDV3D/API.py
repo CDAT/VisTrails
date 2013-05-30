@@ -150,6 +150,13 @@ class UVCDAT_API():
         self.row = self.plotIndex % 2
         self.col = self.plotIndex / 2
         self.cell_address = "%s%s" % ( chr(ord('A') + self.col ), self.row+1)
+
+    def initVariables(self):
+        proj_controller = self.app.uvcdatWindow.get_current_project_controller()
+        self.plotIndex = self.plotIndex + 1
+        self.inputId = 0
+        self.variables = []
+        self.port_ops = []
         
     def initInput( self, inputVariable ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
@@ -179,6 +186,20 @@ class UVCDAT_API():
             dvar = CDMSTransientVariable.from_module( var )
             proj_controller.defined_variables[ name ] = dvar
         proj_controller.emit( QtCore.SIGNAL("update_cell"), self.sheetName, self.row, self.col, None, None, 'DV3D', current_version )
+
+    def finalizeVariables( self ):
+        from packages.vtDV3D.CDMS_VariableReaders import CDMSTransientVariable
+        from core.db.action import create_action
+        proj_controller = self.app.uvcdatWindow.get_current_project_controller()
+        controller = self.app.get_controller()
+        action = create_action( self.port_ops ) 
+        controller.add_new_action(action)
+        controller.perform_action(action)
+        controller.select_latest_version()
+        current_version = controller.current_version        
+        for ( name, var ) in self.variables:
+            dvar = CDMSTransientVariable.from_module( var )
+            proj_controller.defined_variables[ name ] = dvar
         
     def newVariableModule( self, cdmsVariable ):
         name, inputId = self.initInput( cdmsVariable )                     
@@ -237,14 +258,18 @@ class UVCDAT_API():
         self.layoutAndAdd( cellModule, plotter_to_cell )
         
         self.finalizePlot( self.getPlotName(type) )
+
+    def inputVariables( self, input_list ):
+        self.initVariables() 
+        for cdmsVariable in input_list:
+            variable = self.newVariableModule( cdmsVariable )  
+        self.finalizeVariables()          
         
     def run(self):
         v = self.app.exec_()
         gui.application.stop_application()        
         
 if __name__ == '__main__':
-    startup_app()
-    uvcdat_api = UVCDAT_API()
     cdmsfile = cdms2.open('~/data/AConaty/comp-ECMWF/ecmwf.xml')
 #    cdmsfile = cdms2.open('/Developer/Data/AConaty/comp-ECMWF/ecmwf.xml')
     Temperature = cdmsfile('Temperature')
@@ -262,5 +287,9 @@ if __name__ == '__main__':
         elif axesOperations[axis] == 'std':
             Temperature = genutil.statistics.std(Temperature, axis='(%s)'%axis)
     port_map = {'zScale': [2.0, 4.0, 1, 0.0, 1.0], 'colormap': ['jet', 0, 0, 1], 'colorScale': [208.39464294433594, 304.16563934326172, 1, 0.0, 1.0]}
-    uvcdat_api.createPlot( inputs=[Temperature], type=PlotType.SLICER, viz_parms=port_map )
+
+    startup_app()
+    uvcdat_api = UVCDAT_API()
+#    uvcdat_api.createPlot( inputs=[Temperature], type=PlotType.SLICER, viz_parms=port_map )  # This will create a plot for you
+    uvcdat_api.inputVariables( [Temperature] )    # This will import the variable into uvcdat without creating a plot for you
     uvcdat_api.run()
