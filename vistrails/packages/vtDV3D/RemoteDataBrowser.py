@@ -280,6 +280,7 @@ class iRodsCatalogNode( CatalogNode ):
         CatalogNode.__init__( self, **args )
         self.server_class=ServerClass.IRODS
         self.catalog_path = args.get( 'catalog_path','' )   
+        self.gui_path = args.get( 'gui_path','' )   
         self.download_dir = args.get( 'download_dir','/tmp/' )        
         self.server_conn = args.get('conn',None)
         self.collection = None
@@ -404,7 +405,7 @@ class iRodsCatalogNode( CatalogNode ):
     
     def openCollection(self):
         self.collection = irodsCollection( self.server_conn )
-        path_tokens = self.catalog_path.split('/')
+        path_tokens = self.gui_path.split('/')
         for subCollection in path_tokens:
             if subCollection and not iRodsCatalogNode.isDatasetFile( subCollection ): 
                 self.collection.openCollection(subCollection)
@@ -422,23 +423,26 @@ class iRodsCatalogNode( CatalogNode ):
         subCollections = self.collection.getSubCollections()
         for subCollection in subCollections:
             rv = self.collection.openCollection(subCollection)
-            path = '/'.join( [ self.catalog_path, subCollection] )
-            catalogNode = iRodsCatalogNode( conn=self.server_conn, catalog_path=path, node_type=CatalogNode.Directory )
+            gui_path = '/'.join( [ self.catalog_path, subCollection] )
+            catalog_path = '/'.join( [ self.collection.getCollName(), subCollection] )
+            catalogNode = iRodsCatalogNode( conn=self.server_conn, catalog_path=catalog_path, gui_path=gui_path, node_type=CatalogNode.Directory )
             catalogNode.setLabel( subCollection )
             self.addChild ( catalogNode )
             self.collection.upCollection(  )
             
     def addDataObjects( self, types = None ):
         dataObjRefs = self.collection.getObjects()
+        coll_path = self.collection.getCollName()
         for dataObjRef in dataObjRefs:
             data_name = dataObjRef[0]
             resc_name = dataObjRef[1]
-            path = '/'.join( [ self.catalog_path, data_name] )
-            dataObj = self.collection.open( data_name, "r", resc_name )
             node_type = iRodsCatalogNode.getNodeTypeFromFile(data_name)
             if ( types == None ) or ( node_type in types ):
                 if ( node_type == iRodsCatalogNode.Dataset ) or ( data_name in self.files ):
-                    dataObjNode = iRodsCatalogNode( conn=self.server_conn, catalog_path=path, node_type=node_type )
+                    gui_path = '/'.join( [ self.catalog_path, data_name] )
+                    catalog_path = '/'.join( [ coll_path, data_name] )
+                    dataObj = self.collection.open( data_name, "r", resc_name ) 
+                    dataObjNode = iRodsCatalogNode( conn=self.server_conn, catalog_path=catalog_path, gui_path=gui_path, node_type=node_type )
                     dataObjNode.setLabel( data_name )
                     self.addChild ( dataObjNode )
                     self.collection.upCollection()
@@ -465,10 +469,11 @@ class iRodsCatalogNode( CatalogNode ):
                 print>>sys.stderr, "Error creating directory %s: %s " % ( dirname, str(err) )
                 
     def getIRodsPath(self):
-        myEnv = getIRodsEnv()
-        rHome = myEnv.rodsHome if hasattr(myEnv,'rodsHome') else myEnv.getRodsHome()
-        irods_path = rHome + self.catalog_path 
-        return irods_path             
+        return self.catalog_path
+#         myEnv = getIRodsEnv()
+#         rHome = myEnv.rodsHome if hasattr(myEnv,'rodsHome') else myEnv.getRodsHome()
+#         irods_path = rHome + self.catalog_path 
+#         return irods_path             
           
     def loadData( self ):
         status = -1
