@@ -959,7 +959,7 @@ class RemoteDataBrowser(QtGui.QFrame):
            
     def loadData( self ):
         self.current_data_item.loadData()
-        self.emit(  self.new_data_element, [ self.current_data_item.server_class, self.data_element_address, self.current_data_item.server_address ] )
+        self.emit(  self.new_data_element, [ self.current_data_item.server_class, self.data_element_address, self.current_data_item.catalog_path ] )
         print "Loading URL: ", self.data_element_address
 
     def loadMetadata( self ):

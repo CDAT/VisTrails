@@ -296,10 +296,10 @@ class VariableProperties(QtGui.QDialog):
     def processDataAddress( self, node_specs ):
         data_service = node_specs[0]
         data_address = node_specs[1]
-        server_address = node_specs[1]
+        catalog_path = node_specs[2]
         self.originTabWidget.setCurrentIndex( 0 )
         self.fileEdit.setText( data_address )
-        self.updateFile( data_service=data_service, server_address=server_address )
+        self.updateFile( data_service=data_service, catalog_path=catalog_path )
 
     def createInfoTab(self):
         info = QtGui.QFrame()
