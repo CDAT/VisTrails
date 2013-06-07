@@ -77,11 +77,12 @@ class iRODS_RemoteVariable( RemoteVariable ):
         execMyRuleInp.setInpParamArray(msParamArray)
         
         execMyRuleInp.setOutParamDesc("ruleExecOut")        
-        execMyRuleInp.setMyRule("cdmsGetVariable(*ds,*var,*roi)")
+        execMyRuleInp.setMyRule("cdmsGetVariable(*ds,*var,*roi,*result)")
         
-        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*ds",  irods.STR_MS_T, self.dataset_catalog_path )
-        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*var", irods.STR_MS_T, self.cdms_metadata.id )
-        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*roi", irods.STR_MS_T, str(args) )
+        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*ds",   irods.STR_MS_T, self.dataset_catalog_path )
+        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*var",  irods.STR_MS_T, self.cdms_metadata.id )
+        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*roi",  irods.STR_MS_T, str(args) )
+        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*result", irods.NcGetVarOut_MS_T, None )
                 
         outParamArray = irods.rcExecMyRule( iRodsCatalogNode.ServerConnection, execMyRuleInp )
         
