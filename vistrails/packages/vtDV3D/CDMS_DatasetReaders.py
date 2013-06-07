@@ -483,12 +483,13 @@ class CDMSDataset(Module):
         return self.variableRecs.keys() 
 
     def setRoi( self, roi ): 
-        if roi <> None: self.gridBounds = roi
+        if roi <> None: 
+            self.gridBounds = list(roi)
 
     def setBounds( self, timeRange, time_units, roi, zscale, decimation ): 
         self.timeRange = timeRange
         self.referenceTimeUnits = time_units
-        self.gridBounds = roi
+        self.setRoi( roi )
         self.zscale = zscale
         self.decimation = decimation
         
@@ -641,6 +642,7 @@ class CDMSDataset(Module):
         This method returns a data slice with the correct axis ordering (returning a NumPy masked array).
         """ 
         invert_z = False
+        invert_y = False
         levaxis = transVar.getLevel() 
         timeaxis = transVar.getTime() 
         level = args.get( 'lev', None )
@@ -691,13 +693,15 @@ class CDMSDataset(Module):
             latVals = latAxis.getValue()
             latRange = [ latVals[0], latVals[-1] ]
             if latBounds:
-                if ( latVals[-1] > latVals[0] ):     latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] > latBounds[0]) else [ latBounds[-1], latBounds[0] ]
-                else:                                latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] < latBounds[0]) else [ latBounds[-1], latBounds[0] ]
+                if ( latVals[-1] > latVals[0] ):     
+                    latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] > latBounds[0]) else [ latBounds[-1], latBounds[0] ]
+                else:                                
+                    latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] < latBounds[0]) else [ latBounds[-1], latBounds[0] ]
+                    invert_y = True
             varLatInt = latAxis.mapIntervalExt( latRange, 'ccn' )
             if varLatInt:
-                if (decimationFactor > 1):  args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
-                else:                       args1['lat'] = slice( varLatInt[0], varLatInt[1] )
-        
+                if invert_y:    args1['lat'] = slice( varLatInt[1], varLatInt[0], -decimationFactor )
+                else:           args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )        
         args1['order'] = order
         if levaxis:
             if level: args1['lev'] = float( level )
