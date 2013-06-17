@@ -10,10 +10,6 @@ try:    from irods import *
 except Exception, err: 
     iRODS_enabled = False
 
-import irods    
-print "IRODS API:\n", str( dir(irods) )
-sys.stdout.flush()
-
 def getIRodsEnv():
     if not iRODS_enabled: return None
     rvals = getRodsEnv()

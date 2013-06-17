@@ -5,6 +5,7 @@ Created on May 28, 2013
 '''
 import sys, os, cdms2
 from packages.vtDV3D.RemoteDataBrowser import ServerClass
+NcGetVarOut_MS_T = "NcGetVarOut_PI"
 
 class RemoteDataset():
     
@@ -65,6 +66,36 @@ class iRODS_RemoteVariable( RemoteVariable ):
     def __init__(self, var_metadata, dset_catalog_path, **args):
         RemoteVariable.__init__( self, var_metadata, dset_catalog_path, **args)
     
+    def __call__result( self, **args ):
+        import irods
+        from packages.vtDV3D.RemoteDataBrowser import iRodsCatalogNode
+        print "Processing Remote Data on server and retreiving:\n ----> args = ", str(args)
+        
+        execMyRuleInp = irods.execMyRuleInp_t()
+        msParamArray = irods.msParamArray_t()
+        
+        execMyRuleInp.getCondInput().setLen(0)
+        execMyRuleInp.setInpParamArray(msParamArray)
+        
+        execMyRuleInp.setOutParamDesc("*result")        
+        execMyRuleInp.setMyRule("cdmsGetVariable(*ds,*var,*roi,*result)")
+        
+        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*ds",  irods.STR_MS_T, self.dataset_catalog_path )
+        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*var", irods.STR_MS_T, self.cdms_metadata.id )
+        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*roi", irods.STR_MS_T, str(args) )
+#        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*result", NcGetVarOut_MS_T, None )
+                
+        outParamArray = irods.rcExecMyRule( iRodsCatalogNode.ServerConnection, execMyRuleInp )
+        
+        mP = outParamArray.getMsParamByLabel("*result")
+        
+        if mP:
+            result = mP.getExecCmdOut().getStdoutBuf()
+            print result
+            sys.stdout.flush()
+
+        return self.cdms_metadata( **args )
+
     def __call__( self, **args ):
         import irods
         from packages.vtDV3D.RemoteDataBrowser import iRodsCatalogNode
@@ -82,6 +113,7 @@ class iRODS_RemoteVariable( RemoteVariable ):
         irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*ds",  irods.STR_MS_T, self.dataset_catalog_path )
         irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*var", irods.STR_MS_T, self.cdms_metadata.id )
         irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*roi", irods.STR_MS_T, str(args) )
+#        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*result", NcGetVarOut_MS_T, None )
                 
         outParamArray = irods.rcExecMyRule( iRodsCatalogNode.ServerConnection, execMyRuleInp )
         
