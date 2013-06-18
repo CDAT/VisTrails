@@ -122,6 +122,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         varProp.btnDefineClose.setVisible(False)
         varProp.btnDefineAs.setVisible(False)
         varProp.btnApplyEdits.setVisible(True)
+        varProp.btnSaveEditsAs.setVisible(True)
 #        varProp.btnApplyEdits.setEnabled(False)
         varProp.show()
 
