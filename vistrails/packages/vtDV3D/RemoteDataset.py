@@ -95,6 +95,9 @@ class iRODS_RemoteVariable( RemoteVariable ):
             sys.stdout.flush()
 
         return self.cdms_metadata( **args )
+    
+    def getFilePath( self, remote_path ):
+        return remote_path
 
     def __call__( self, **args ):
         import irods
@@ -107,24 +110,32 @@ class iRODS_RemoteVariable( RemoteVariable ):
         execMyRuleInp.getCondInput().setLen(0)
         execMyRuleInp.setInpParamArray(msParamArray)
         
-        execMyRuleInp.setOutParamDesc("ruleExecOut")        
-        execMyRuleInp.setMyRule("cdmsGetVariable(*ds,*var,*roi)")
-        
-        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*ds",  irods.STR_MS_T, self.dataset_catalog_path )
-        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*var", irods.STR_MS_T, self.cdms_metadata.id )
+        execMyRuleInp.setOutParamDesc("*objPath")        
+#        execMyRuleInp.setMyRule("cdmsTransferVariable(*dsetPath,*varName,*roi,*clientResc)")
+        execMyRuleInp.setMyRule("cdmsTransferVariable||msiPythonInitialize##msiTransferCDMSVariable( *dsetPath, *varName, *roi, *svrResc, *physPath, *objPath )##msiPhyPathReg(*objPath,*svrResc,*physPath,null,*Status)##msiDataObjPhymv(*objPath,*clientResc,*svrResc,\"0\",null,*Status)##msiPythonFinalize|nop")        
+        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*dsetPath",  irods.STR_MS_T, self.dataset_catalog_path )
+        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*varName", irods.STR_MS_T, self.cdms_metadata.id )
         irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*roi", irods.STR_MS_T, str(args) )
-#        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*result", NcGetVarOut_MS_T, None )
+        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*clientResc", irods.STR_MS_T, "clientResc" )
                 
         outParamArray = irods.rcExecMyRule( iRodsCatalogNode.ServerConnection, execMyRuleInp )
         
-        mP = outParamArray.getMsParamByLabel("ruleExecOut")
+        mP = outParamArray.getMsParamByLabel("*objPath")
         
         if mP:
-            result = mP.getExecCmdOut().getStdoutBuf()
-            print result
+            result_obj_path = mP.parseForStr()      # getExecCmdOut().getStdoutBuf( )
+            dataObjInp = irods.dataObjInp_t()
+            dataObjInp.setObjPath( result_obj_path )
+            ( rodsObjStatOut, status ) = irods.rcObjStat( iRodsCatalogNode.ServerConnection, dataObjInp )
+            stat_methods = dir( rodsObjStatOut )
+            filePath = self.getFilePath(  result_obj_path )
+            print " GetRemoteVariable result: %s (%s) " % ( result_obj_path, filePath )
+            ds = cdms2.open( filePath )
+            result_variable = ds( self.cdms_metadata.id )
             sys.stdout.flush()
+            return result_variable
 
-        return self.cdms_metadata( **args )
+        return None
 
        
 # irods Dataset attributes:  'Conventions', 'Generating_Process_or_Model', 'Originating_center', 'Product_Type', '___cdms_internals__', '__call__', '__cdms_internals__', '__class__', '__delattr__', '__dict__', '__doc__', '__format__', '__getattribute__', '__getitem__', '__hash__', '__init__', '__module__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', 
