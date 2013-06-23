@@ -115,7 +115,7 @@ def initialize(*args, **keywords):
     reg.add_input_port( MapCell3D, "map_border_size",  [ ( Float, 'border_in_degrees' ) ], optional=True  )
     reg.add_input_port( MapCell3D, "enable_basemap",  [ ( Boolean, 'enable' ) ], optional=True  )    
     reg.add_input_port( MapCell3D, "world_map", [ ( File, 'map_file' ), ( Integer, 'map_cut' ) ], optional=True  ) 
-    reg.add_input_port( MapCell3D, "opacity", [ ( Float, 'value' ) ], optional=True  ) 
+    reg.add_input_port( MapCell3D, "map_opacity", [ ( Float, 'value' ) ], optional=True  ) 
     reg.add_input_port( MapCell3D, "title", [ ( String, 'value' ) ], optional=True  ) 
     MapCell3D.registerConfigurableFunctions( reg )
 

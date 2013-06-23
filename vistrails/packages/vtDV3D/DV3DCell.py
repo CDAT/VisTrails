@@ -414,7 +414,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
         if not sheetName in proj_controller.sheet_map: proj_controller.sheet_map[sheetName] = {}
         ispec = self.inputSpecs[ 0 ]           
-        vars = ispec.metadata['vars']
+        vars1 = ispec.metadata['vars']
         vt_file = proj_controller.vt_controller.file_name
         plot_name = os.path.basename( vt_file )
         if plot_name: plot_name = os.path.splitext( plot_name )[0]
@@ -425,7 +425,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             if not plot in cell.plots: 
                 cell.add_plot(plot)  # TODO: replace plots.append with add_plot when available.
         else:
-            proj_controller.sheet_map[ sheetName ][ cell_coords ] = ControllerCell( variables=vars, plots=[plot], templates=[], current_parent_version=0L )  
+            proj_controller.sheet_map[ sheetName ][ cell_coords ] = ControllerCell( variables=vars1, plots=[plot], templates=[], current_parent_version=0L )  
                       
 #    def getPlot( self, proj_controller, cell_coords, plot_name, vt_file ): 
 #        plots =  proj_controller.sheet_map[ self.sheetName ][ cell_coords ].plots
@@ -661,7 +661,7 @@ class ChartCellConfigurationWidget(DV3DConfigurationWidget):
         if not self.title: self.title = pmod.getTitle()
         celllocParams = getFunctionParmStrValues( module, "cell_location" )
         if celllocParams:  self.cellAddress = str( celllocParams[0] )
-        opacityParams = getFunctionParmStrValues( module, "opacity" )
+        opacityParams = getFunctionParmStrValues( module, "map_opacity" )
         if opacityParams:  self.mapOpacity = float( opacityParams[0] )
 
     def createLayout(self):
@@ -727,7 +727,7 @@ class ChartCellConfigurationWidget(DV3DConfigurationWidget):
         parmRecList = []
         parmRecList.append( ( 'cell_location' , [ self.cellAddress ]  ), )  
         parmRecList.append( ( 'title' , [ self.title ]  ), )  
-        parmRecList.append( ( 'opacity' , [ float( self.opacitySlider.value() ) / SLIDER_MAX_VALUE ]  ), )  
+        parmRecList.append( ( 'map_opacity' , [ float( self.opacitySlider.value() ) / SLIDER_MAX_VALUE ]  ), )  
         self.persistParameterList( parmRecList )
         self.stateChanged(False)         
 
@@ -867,6 +867,8 @@ class PM_MapCell3D( PM_DV3DCell ):
         PM_DV3DCell.__init__( self, mid, **args)
         self.baseMapActor = None
         self.enableBasemap = True
+        self.map_opacity = [ 0.4, 0.4 ]
+        self.addConfigurableLevelingFunction( 'map_opacity', 'M', label='Base Map Opacity', rangeBounds=[ 0.0, 1.0 ],  setLevel=self.setMapOpacity, activeBound='min',  getLevel=self.getMapOpacity, isDataValue=False, layerDependent=True, bound = False )
 
     def updateModule( self, **args ):
 #        print "Update DV3D Cell, mid = %s, location = %s, time = %s" % ( str(self.moduleID), str((self.location.col,self.location.row)), str(self.timeIndex) )
@@ -876,7 +878,7 @@ class PM_MapCell3D( PM_DV3DCell ):
 
     def activateWidgets( self, iren ):
         if self.baseMapActor:
-            bounds = [ 0.0 for i in range(6) ]
+            bounds = [ 0.0 ]*6
             self.baseMapActor.GetBounds( bounds )
 
     def decimateImage( self, image, decx, decy ):
@@ -891,16 +893,26 @@ class PM_MapCell3D( PM_DV3DCell ):
             result = resample.GetOutput() 
             result.Update()
         return result
+
+    def getMapOpacity(self):
+        return self.map_opacity
+    
+    def setMapOpacity(self, opacity_vals, **args ):
+        self.map_opacity = opacity_vals
+        self.updateMapOpacity() 
+
+    def updateMapOpacity(self, cmap_index=0 ):
+        self.baseMapActor.SetOpacity( self.map_opacity[0] )
+        self.render()
         
     def buildRendering(self):
         PM_DV3DCell.buildRendering( self )
         self.enableBasemap = self.getInputValue( "enable_basemap", True )
         if self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
             if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
-            world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None
-            opacity =  self.getInputValue( "opacity",   0.4  ) #  wmod.forceGetInputFromPort( "opacity",   0.4  )  if wmod else 0.4  
+            world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None 
             map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
-            cell_location = self.getInputValue( "cell_location", "00"  )
+#            cell_location = self.getInputValue( "cell_location", "00"  )
                 
             self.y0 = -90.0  
             dataPosition = None
@@ -916,7 +928,7 @@ class PM_MapCell3D( PM_DV3DCell ):
             map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
             if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
             if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
-            data_origin = self.input().GetOrigin() if self.input() else [ 0, 0, 0 ]
+#            data_origin = self.input().GetOrigin() if self.input() else [ 0, 0, 0 ]
                       
             if self.world_cut == -1: 
                 if  (self.roi <> None): 
@@ -946,7 +958,7 @@ class PM_MapCell3D( PM_DV3DCell ):
             self.baseMapActor.SetOrigin( 0.0, 0.0, 0.0 )
             self.baseMapActor.SetScale( scale )
             self.baseMapActor.SetOrientation( 0.0, 0.0, 0.0 )
-            self.baseMapActor.SetOpacity( opacity )
+            self.baseMapActor.SetOpacity( self.map_opacity[0] )
     #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
 #            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
             mapCorner = [ self.x0, self.y0 ]
@@ -1150,7 +1162,7 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
         if basemapParams:  self.mapBorderSize = float( basemapParams[0] )
         celllocParams = getFunctionParmStrValues( module, "cell_location" )
         if celllocParams:  self.cellAddress = str( celllocParams[0] )
-        opacityParams = getFunctionParmStrValues( module, "opacity" )
+        opacityParams = getFunctionParmStrValues( module, "map_opacity" )
         if opacityParams:  self.mapOpacity = float( opacityParams[0] )
 
     def createLayout(self):
@@ -1199,12 +1211,12 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
         opacity_layout.addWidget( opacity_label )
         self.opacitySlider = QSlider( Qt.Horizontal )
         self.opacitySlider.setRange( 0, SLIDER_MAX_VALUE )
-        self.opacitySlider.setSliderPosition( int( self.mapOpacity * SLIDER_MAX_VALUE ) )
+        self.map_opacitySlider.setSliderPosition( int( self.mapOpacity * SLIDER_MAX_VALUE ) )
         self.connect(self.opacitySlider, SIGNAL('sliderMoved()'), self.stateChanged )
         opacity_layout.addWidget( self.opacitySlider )
         layout.addLayout( opacity_layout )
         
-        sheet_dims = HyperwallManager.getInstance().getDimensions()
+#        sheet_dims = HyperwallManager.getInstance().getDimensions()
 
         locationTab = QWidget()        
         self.tabbedWidget.addTab( locationTab, 'cell location' )                 
@@ -1240,7 +1252,7 @@ class MapCell3DConfigurationWidget(DV3DConfigurationWidget):
         parmRecList.append( ( 'map_border_size' , [ self.mapBorderSize ]  ), )  
         parmRecList.append( ( 'cell_location' , [ self.cellAddress ]  ), )  
         parmRecList.append( ( 'title' , [ self.title ]  ), )  
-        parmRecList.append( ( 'opacity' , [ float( self.opacitySlider.value() ) / SLIDER_MAX_VALUE ]  ), )  
+        parmRecList.append( ( 'map_opacity' , [ float( self.map_opacitySlider.value() ) / SLIDER_MAX_VALUE ]  ), )  
         self.persistParameterList( parmRecList )
         self.stateChanged(False)         
 
@@ -1299,7 +1311,7 @@ class QCellToolBarExportTimeSeries(QtGui.QAction):
 
     def createTimeSeriesPlot(self):
         # Get sheet name, column and row
-        cellWidget = self.toolBar.getSnappedWidget()
+#        cellWidget = self.toolBar.getSnappedWidget()
         row = self.toolBar.row
         col = self.toolBar.col
         sheet = self.toolBar.sheet
