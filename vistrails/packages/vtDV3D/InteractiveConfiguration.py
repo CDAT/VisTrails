@@ -2330,11 +2330,17 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                         relTime0 = relTimeRef.torel( timeAxis.units )
                         timeIndex = timeValues.searchsorted( relTime0.value ) 
                         if ( timeIndex >= len( timeValues ) ): timeIndex = len( timeValues ) - 1
-                        relTimeValue0 =  timeValues[ timeIndex ]
-                        r0 = cdtime.reltime( relTimeValue0, timeAxis.units )
+                        relTimeValue1 =  timeValues[ timeIndex ]
+                        if timeIndex > 0:
+                            timeIndex0 =  timeIndex-1
+                            relTimeValue0 =  timeValues[ timeIndex0 ]
+                            if abs( relTime0.value - relTimeValue0 ) < abs( relTimeValue1 - relTime0.value ):
+                                relTimeValue1 = relTimeValue0 
+                                timeIndex = timeIndex0
+                        r0 = cdtime.reltime( relTimeValue1, timeAxis.units )
                         relTimeRef = r0.torel( module.referenceTimeUnits )
                         relTimeValueRefAdj = relTimeRef.value
-        #                print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
+#                        print " ** Update Animation, timestep = %d, index = %d, timeValue = %.3f, useIndex = %d, timeRange = %s " % ( self.iTimeStep, timeIndex, relTimeValueRefAdj, self.uniformTimeRange, str( self.timeRange ) )
                         displayText = str( r0.tocomp() )
                         HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, timeIndex, self.uniformTimeRange, displayText ], False  )
     #                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
@@ -2402,8 +2408,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 iTS = self.timeRange[0]
         self.setTimestep( iTS, restart )  
         if self.running: 
-            delayTime = 0
-#            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
+#            delayTime = 0
+            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
  #           print " Animate step %d, delay time = %.2f msec" % ( iTS, delayTime )
             self.timer.start( delayTime ) 
 

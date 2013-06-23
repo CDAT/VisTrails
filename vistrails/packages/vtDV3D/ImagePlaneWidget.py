@@ -51,6 +51,7 @@ class ImagePlaneWidget:
         self.ResliceAxes   = vtk.vtkMatrix4x4()   
         self.ResliceAxes2   = vtk.vtkMatrix4x4()   
         self.ContourInputDims = 0;     
+        self.InputDims = 0;     
                         
         # Represent the plane's outline
         #
@@ -117,6 +118,9 @@ class ImagePlaneWidget:
 
     def GetCurrentButton(self): 
         return self.CurrentButton
+    
+    def HasThirdDimension(self):
+        return ( self.InputDims == 3 )
 
     def GetCurrentImageValue(self): 
         return self.CurrentImageValue
@@ -766,10 +770,11 @@ class ImagePlaneWidget:
 #            self.clipper.AddInput( self.ImageData2 )
 #            self.clipper.SetOutputWholeExtent( self.ImageData.GetWholeExtent() )
 #            self.Reslice2.SetInput( self.clipper.GetOutput() )
-#            dims = self.ImageData.GetDimensions()
+            dims = self.ImageData.GetDimensions()
             dims2 = self.ImageData2.GetDimensions()
             self.ContourInputDims = 3 if ( ( len(dims2) > 2 ) and ( dims2[2] > 1 ) ) else 2
-            
+            self.InputDims = 3 if ( ( len(dims) > 2 ) and ( dims[2] > 1 ) ) else 2
+           
             self.Reslice2.SetInput(self.ImageData2)
             self.Reslice2.Modified()
 #            self.Reslice2.SetInformationInput( self.ImageData )     
