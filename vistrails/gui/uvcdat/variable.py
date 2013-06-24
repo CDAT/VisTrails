@@ -6,6 +6,7 @@
 ###############################################################################
 
 from PyQt4 import QtCore, QtGui
+import uuid
 
 import os
 import cdms2
@@ -84,6 +85,9 @@ class VariableProperties(QtGui.QDialog):
         self.btnApplyEdits=QDockPushButton("Apply")
         self.btnApplyEdits.setVisible(False)
         h.addWidget(self.btnApplyEdits)
+        self.btnSaveEditsAs=QDockPushButton("Save As")
+        self.btnSaveEditsAs.setVisible(False)
+        h.addWidget(self.btnSaveEditsAs)
         self.btnCancel=QDockPushButton("Close")
 
         # defaults?
@@ -138,6 +142,7 @@ class VariableProperties(QtGui.QDialog):
         self.btnDefineAs.setVisible(True)
         self.btnDefineClose.setVisible(True)
         self.btnApplyEdits.setVisible(False)
+        self.btnSaveEditsAs.setVisible(False)
 
     def tabHasChanged(self,index):
         if (index==1) or (index==2):
@@ -179,6 +184,7 @@ class VariableProperties(QtGui.QDialog):
         self.btnDefineAs.clicked.connect(self.defineAsVarClicked)
         self.connect(self,QtCore.SIGNAL('definedVariableEvent'),self.root.dockVariable.widget().addVariable)
         self.btnApplyEdits.clicked.connect(self.applyEditsClicked)
+        self.btnSaveEditsAs.clicked.connect(self.saveEditsAsClicked)
         self.selectRoiButton.clicked.connect( self.selectRoi )
 
     def checkTargetVarName(self):
@@ -754,3 +760,6 @@ class VariableProperties(QtGui.QDialog):
         controller = _app.uvcdatWindow.get_current_project_controller()
         
         controller.variableEdited(varname)
+        
+    def saveEditsAsClicked(self):
+        self.defineAsVarClicked()
