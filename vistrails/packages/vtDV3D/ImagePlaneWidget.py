@@ -568,7 +568,7 @@ class ImagePlaneWidget:
 
 #----------------------------------------------------------------------------
 
-    def DoPick( self, X, Y ):  
+    def DoPick1( self, X, Y ):  
         self.PlanePicker.Pick( X, Y, 0.0, self.CurrentRenderer )
         path = self.PlanePicker.GetPath()        
         if path:
@@ -581,7 +581,7 @@ class ImagePlaneWidget:
                     return found                   
         return 0
 
-    def DoPickAny( self, X, Y ):  
+    def DoPick( self, X, Y ):  
         self.PlanePicker.Pick( X, Y, 0.0, self.CurrentRenderer )
         path = self.PlanePicker.GetPath()        
         found = 0;
