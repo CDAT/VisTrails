@@ -6,6 +6,7 @@ Created on May 28, 2013
 import sys, os, cdms2
 from packages.vtDV3D.RemoteDataBrowser import ServerClass
 NcGetVarOut_MS_T = "NcGetVarOut_PI"
+ClientVaultPath = os.environ.get("IRODS_CLIENT_VAULT","UNKNOWN")
 
 class RemoteDataset():
     
@@ -96,9 +97,13 @@ class iRODS_RemoteVariable( RemoteVariable ):
 
         return self.cdms_metadata( **args )
     
-    def getFilePath( self, remote_path ):
-        return remote_path
-
+    def getFilePath( self, irods_path ):
+#         import irCdmsClient as irUtil
+#         phys_path = irUtil.getPhysPath( irods_path )
+        irods_path_elems = irods_path.strip(" /").split('/')
+        irods_path_elems[0] = ClientVaultPath
+        return '/'.join( irods_path_elems )
+    
     def __call__( self, **args ):
         import irods
         from packages.vtDV3D.RemoteDataBrowser import iRodsCatalogNode
