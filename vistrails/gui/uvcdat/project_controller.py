@@ -876,6 +876,11 @@ class ProjectController(QtCore.QObject):
         cell = self.sheet_map[sheetName][(row,col)]
         helper = CDMSPipelineHelper
         # helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
+        
+        #reusing the workflow appears to be broken, getting 
+        #Pipeline Error, module not found: id=#
+        reuse_workflow = False
+        
         if not reuse_workflow:
             self.reset_workflow(cell)
         else:
