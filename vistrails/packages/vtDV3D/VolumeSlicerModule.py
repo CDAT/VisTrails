@@ -79,12 +79,15 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
     def __del__(self):
         print " **************************************** Deleting VolumeSlicer module, id = %d  **************************************** " % self.moduleID
+        sys.stdout.flush()
 #        self.planeWidgetX.RemoveAllObservers()
 #        self.planeWidgetY.RemoveAllObservers()
 #        self.planeWidgetZ.RemoveAllObservers()
         PersistentVisualizationModule.__del__(self)
 
     def clearReferrents(self):
+        print " **************************************** VolumeSlicer:clearReferrents, id = %d  **************************************** " % self.moduleID
+        sys.stdout.flush()
         PersistentVisualizationModule.clearReferrents(self)
         del VolumeSlicerModules[ self.moduleID ]
         del self.planeWidgetX
@@ -225,9 +228,11 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         useVtkImagePlaneWidget = False
         textureColormapManager = self.getColormapManager( index=0 )
         
+        picker  = vtk.vtkCellPicker()
+        picker.SetTolerance(0.005) #need some fluff
+        
         if self.planeWidgetZ == None:
-            self.planeWidgetZ = ImagePlaneWidget( self, 2 )
-            self.planeWidgetZ.SetPicker(picker)
+            self.planeWidgetZ = ImagePlaneWidget( self, picker, 2 )
             self.planeWidgetZ.SetRenderer( self.renderer )
             self.observerTargets.add( self.planeWidgetZ )
 #            self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
@@ -244,10 +249,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         
         if self.planeWidgetZ.HasThirdDimension(): 
             if (self.planeWidgetX == None): 
-                picker = vtk.vtkCellPicker()
-                picker.SetTolerance(0.005) 
-                self.planeWidgetX = ImagePlaneWidget( self, 0 )
-                self.planeWidgetX.SetPicker(picker)
+                self.planeWidgetX = ImagePlaneWidget( self, picker, 0 )
                 self.observerTargets.add( self.planeWidgetX )
                 self.planeWidgetX.SetRenderer( self.renderer )
                 prop1 = self.planeWidgetX.GetPlaneProperty()
@@ -268,8 +270,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     #        self.planeWidgetX.AddObserver( 'AnyEvent', self.TestObserver )
                     
             if self.planeWidgetY == None: 
-                self.planeWidgetY = ImagePlaneWidget( self, 1)
-                self.planeWidgetY.SetPicker(picker)
+                self.planeWidgetY = ImagePlaneWidget( self, picker, 1)
                 self.planeWidgetY.SetRenderer( self.renderer )
                 self.planeWidgetY.SetUserControlledLookupTable(1)
                 self.observerTargets.add( self.planeWidgetY )

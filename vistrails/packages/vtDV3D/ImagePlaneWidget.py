@@ -22,7 +22,7 @@ class ImagePlaneWidget:
     Moving = 3
     Outside  = 4
     
-    def __init__( self, actionHandler, planeIndex, **args ):  
+    def __init__( self, actionHandler, picker, planeIndex, **args ):  
         self.State  = ImagePlaneWidget.Start            
         self.Interaction  = 1
         self.PlaneIndex = planeIndex
@@ -98,8 +98,6 @@ class ImagePlaneWidget:
         # Manage the picking stuff
         #
         self.PlanePicker = None
-        picker  = vtk.vtkCellPicker()
-        picker.SetTolerance(0.005) #need some fluff
         self.SetPicker(picker)
             
         # Set up the initial properties
@@ -110,6 +108,10 @@ class ImagePlaneWidget:
         self.CursorProperty  = 0
         self.CreateDefaultProperties()                                              
         self.TextureVisibility = 1
+
+    def __del__(self):
+        print " **************************************** Deleting ImagePlaneWidget module, id = %d  **************************************** " % id(self)
+        sys.stdout.flush()
 
 #----------------------------------------------------------------------------
     def LookupTableObserver( self, caller=None, event = None ):
@@ -210,26 +212,26 @@ class ImagePlaneWidget:
         self.Interactor.RemoveAllObservers()
         self.RenderWindow.RemoveAllObservers()
 #        rc = self.Reslice.GetReferenceCount()
-        del self.Reslice
-        del self.Reslice2
-        del self.Interactor
-        del self.RenderWindow
-        del self.PlaneOutlineActor
-        del self.PlaneProperty
-        del self.ResliceAxes                             
-        del self.ResliceAxes2                             
-        del self.PlaneSource 
-        del self.PlaneOutlinePolyData 
-        del self.ColorMap
-        del self.Texture
-        del self.TexturePlaneActor  
-        del self.Transform    
-        del self.ImageData   
-        del self.ImageData2  
-        del self.LookupTable 
-        del self.InputBounds
-        del self.CursorPolyData 
-        del self.CursorActor    
+#        del self.Reslice
+#        del self.Reslice2
+#        del self.Interactor
+#        del self.RenderWindow
+#        del self.PlaneOutlineActor
+#        del self.PlaneProperty
+#        del self.ResliceAxes                             
+#        del self.ResliceAxes2                             
+#        del self.PlaneSource 
+#        del self.PlaneOutlinePolyData 
+#        del self.ColorMap
+#        del self.Texture
+#        del self.TexturePlaneActor  
+#        del self.Transform    
+#        del self.ImageData   
+#        del self.ImageData2  
+#        del self.LookupTable 
+#        del self.InputBounds
+#        del self.CursorPolyData 
+#        del self.CursorActor    
         
 #----------------------------------------------------------------------------
                                 
@@ -567,6 +569,19 @@ class ImagePlaneWidget:
 #----------------------------------------------------------------------------
 
     def DoPick( self, X, Y ):  
+        self.PlanePicker.Pick( X, Y, 0.0, self.CurrentRenderer )
+        path = self.PlanePicker.GetPath()        
+        if path:
+            path.InitTraversal()
+            nitems =  path.GetNumberOfItems()
+            for _ in range( nitems ):
+                node = path.GetNextNode()
+                if node: 
+                    found = ( node.GetViewProp() == self.TexturePlaneActor ) 
+                    return found                   
+        return 0
+
+    def DoPickAny( self, X, Y ):  
         self.PlanePicker.Pick( X, Y, 0.0, self.CurrentRenderer )
         path = self.PlanePicker.GetPath()        
         found = 0;
