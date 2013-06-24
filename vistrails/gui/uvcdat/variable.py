@@ -640,14 +640,15 @@ class VariableProperties(QtGui.QDialog):
                     continue
             cmds += "%s=%s," % (k, repr(kwargs[k]))
         cmds=cmds[:-1]
-        uvar=axisList.getVar()
-        if isinstance(uvar,cdms2.axis.FileAxis):
-            updatedVar = cdms2.MV2.array(uvar)
-        else:
-            updatedVar = uvar(**kwargs)
+#        uvar=axisList.getVar()
+#        if isinstance(uvar,cdms2.axis.FileAxis):
+#            updatedVar = cdms2.MV2.array(uvar)
+#        else:
+#            updatedVar = uvar(**kwargs)
 
         # Get the variable after carrying out the: def, sum, avg... operations
-        updatedVar = axisList.execAxesOperations(updatedVar)
+#        updatedVar = axisList.execAxesOperations(updatedVar)
+        updatedVar = axisList.getVar()
         self.root.record("## Defining variable in memory")
 
         if axisList.cdmsFile is None:
@@ -701,18 +702,31 @@ class VariableProperties(QtGui.QDialog):
         url = None
         if hasattr(self.cdmsFile, "uri"):
             url = self.cdmsFile.uri
+        cdmsVar = None
         if not computed_var:
             cdmsVar = CDMSVariable(filename=self.cdmsFile.id, url=url, name=targetId,
                                    varNameInFile=original_id,
                                    axes=get_kwargs_str(kwargs),
                                    axesOperations=str(axes_ops_dict))
-            self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))
             controller.add_defined_variable(cdmsVar)
         else:
-            self.emit(QtCore.SIGNAL('definedVariableEvent'),updatedVar)
             controller.copy_computed_variable(original_id, targetId,
                                               axes=get_kwargs_str(kwargs),
                                               axesOperations=str(axes_ops_dict))
+        
+        # HACK: pass dummy cell to get_var_module, it's only used to check
+        # (and update, which is harmless for this) current_parent_version
+        dummyCell = lambda: None
+        dummyCell.current_parent_version = 0L #VisTrails root
+        controller.vt_controller.change_selected_version(dummyCell.current_parent_version)
+        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
+        controller.get_var_module(targetId, dummyCell, CDMSPipelineHelper)
+        controller.vt_controller.execute_current_workflow()
+        
+        if not computed_var:
+            self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))
+        else:
+            self.emit(QtCore.SIGNAL('definedVariableEvent'),updatedVar)
 
         self.updateVarInfo(axisList)
         return updatedVar
