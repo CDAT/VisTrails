@@ -2204,6 +2204,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.iTimeStep = 0
         self.relTimeStart = None
         self.relTimeStep = 1.0
+        self.delayTime = 0
         self.uniformTimeRange = True
         self.maxSpeedIndex = 100
         self.maxDelaySec = args.get( "maxDelaySec", 1.0 )
@@ -2392,9 +2393,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 iTS = self.timeRange[0]
         self.setTimestep( iTS, restart )  
         if self.running: 
-#            delayTime = 0
             delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
- #           print " Animate step %d, delay time = %.2f msec" % ( iTS, delayTime )
             self.timer.start( delayTime ) 
 
     def finalizeConfig( self ):
@@ -2426,7 +2425,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 #            refresh = False
 ##            printTime( 'Finish Animation delay' )
                 
-#    def setDelay( self, dval  ):
+#     def setDelay( self, dval  ):
+#         self.delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
+#        self.delayTime = ( self.maxSpeedIndex - dval + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
 #        self.delay = delay_in_sec if ( delay_in_sec<>None ) else self.speedSlider.value()/100.0
         
         
