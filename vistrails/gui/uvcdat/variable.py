@@ -719,15 +719,8 @@ class VariableProperties(QtGui.QDialog):
             controller.copy_computed_variable(original_id, targetId,
                                               axes=get_kwargs_str(kwargs),
                                               axesOperations=str(axes_ops_dict))
-        
-        # HACK: pass dummy cell to get_var_module, it's only used to check
-        # (and update, which is harmless for this) current_parent_version
-        dummyCell = lambda: None
-        dummyCell.current_parent_version = 0L #VisTrails root
-        controller.vt_controller.change_selected_version(dummyCell.current_parent_version)
-        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
-        controller.get_var_module(targetId, dummyCell, CDMSPipelineHelper)
-        controller.vt_controller.execute_current_workflow()
+            
+        controller.create_exec_new_variable_pipeline(targetId)
         
         if not computed_var:
             self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))

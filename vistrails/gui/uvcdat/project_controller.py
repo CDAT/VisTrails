@@ -1090,3 +1090,12 @@ class ProjectController(QtCore.QObject):
             self.removeVarFromMainDict(name)
         for name in self.defined_variables:
             self.removeVarFromMainDict(name)
+            
+    def create_exec_new_variable_pipeline(self, targetId):
+        # pass dummy cell to get_var_module, it's only used to check
+        # (and update, which is harmless for this) current_parent_version
+        dummyCell = lambda: None
+        dummyCell.current_parent_version = 0L #VisTrails root
+        self.vt_controller.change_selected_version(dummyCell.current_parent_version)
+        self.get_var_module(targetId, dummyCell, CDMSPipelineHelper)
+        self.vt_controller.execute_current_workflow()

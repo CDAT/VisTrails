@@ -260,20 +260,26 @@ class QMenuWidget(QtGui.QWidget):
         rec += nm.lower()
         selectedVars=self.root.dockVariable.widget().getSelectedDefinedVariables()
         for v in selectedVars:
-            tmp = func(v)
+            #tmp = func(v)
             ext = "".join(nm.lower().split())
             newid = "%s_%s" % (v.id,ext)
             if menu != "Extract":
                 newid+=menu.lower()
-            tmp.id = newid
-            self.root.dockVariable.widget().addVariable(tmp)
+            #tmp.id = newid
+            #self.root.dockVariable.widget().addVariable(tmp)
             self.root.record(rec)
             self.root.record("%s = %s(%s)" % (newid,funcnm,v.id))
+            
             #send command to project controller to be stored as provenance
             from api import get_current_project_controller
             prj_controller = get_current_project_controller()
             vtfuncnm = "%s(%s)"%(funcnm,v.id)
             prj_controller.calculator_command([v.id], vtdesc, vtfuncnm, newid)
+            
+            prj_controller.create_exec_new_variable_pipeline(newid)
+            
+            res = self.root.stick_main_dict_into_defvar(None)
+            
 
 
     def setBounds(self,action):
