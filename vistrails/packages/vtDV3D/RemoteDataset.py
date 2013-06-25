@@ -67,7 +67,7 @@ class iRODS_RemoteVariable( RemoteVariable ):
     def __init__(self, var_metadata, dset_catalog_path, **args):
         RemoteVariable.__init__( self, var_metadata, dset_catalog_path, **args)
     
-    def __call__result( self, **args ):
+    def __call__( self, **args ):
         import irods
         from packages.vtDV3D.RemoteDataBrowser import iRodsCatalogNode
         print "Processing Remote Data on server and retreiving:\n ----> args = ", str(args)
@@ -79,10 +79,10 @@ class iRODS_RemoteVariable( RemoteVariable ):
         execMyRuleInp.setInpParamArray(msParamArray)
         
         execMyRuleInp.setOutParamDesc("*result")        
-        execMyRuleInp.setMyRule("cdmsGetVariable(*ds,*var,*roi,*result)")
+        execMyRuleInp.setMyRule("GetCDMSVariable||msiPythonInitialize##msiGetCDMSVariable( *dsetPath, *varName, *roi, *result )##msiPythonFinalize|nop")
         
-        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*ds",  irods.STR_MS_T, self.dataset_catalog_path )
-        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*var", irods.STR_MS_T, self.cdms_metadata.id )
+        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*dsetPath",  irods.STR_MS_T, self.dataset_catalog_path )
+        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*varName", irods.STR_MS_T, self.cdms_metadata.id )
         irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*roi", irods.STR_MS_T, str(args) )
 #        irods.addMsParamToArray( execMyRuleInp.getInpParamArray(), "*result", NcGetVarOut_MS_T, None )
                 
@@ -104,7 +104,7 @@ class iRODS_RemoteVariable( RemoteVariable ):
         irods_path_elems[0] = ClientVaultPath
         return '/'.join( irods_path_elems )
     
-    def __call__( self, **args ):
+    def __call__copy( self, **args ):
         import irods
         from packages.vtDV3D.RemoteDataBrowser import iRodsCatalogNode
         print "Processing Remote Data on server and retreiving:\n ----> args = ", str(args)
