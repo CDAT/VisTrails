@@ -568,7 +568,7 @@ class ImagePlaneWidget:
 
 #----------------------------------------------------------------------------
 
-    def DoPick( self, X, Y ):  
+    def DoPick1( self, X, Y ):  
         self.PlanePicker.Pick( X, Y, 0.0, self.CurrentRenderer )
         path = self.PlanePicker.GetPath()        
         if path:
@@ -581,7 +581,7 @@ class ImagePlaneWidget:
                     return found                   
         return 0
 
-    def DoPickAny( self, X, Y ):  
+    def DoPick( self, X, Y ):  
         self.PlanePicker.Pick( X, Y, 0.0, self.CurrentRenderer )
         path = self.PlanePicker.GetPath()        
         found = 0;
@@ -780,16 +780,16 @@ class ImagePlaneWidget:
             
         self.Reslice.SetInput(self.ImageData)
         self.Reslice.Modified()
-        if inputData2:
 #            self.clipper = vtk.vtkImageClip()
 #            self.clipper.AddInput( self.ImageData2 )
 #            self.clipper.SetOutputWholeExtent( self.ImageData.GetWholeExtent() )
 #            self.Reslice2.SetInput( self.clipper.GetOutput() )
-            dims = self.ImageData.GetDimensions()
+        dims = self.ImageData.GetDimensions()
+        self.InputDims = 3 if ( ( len(dims) > 2 ) and ( dims[2] > 1 ) ) else 2
+           
+        if inputData2:
             dims2 = self.ImageData2.GetDimensions()
             self.ContourInputDims = 3 if ( ( len(dims2) > 2 ) and ( dims2[2] > 1 ) ) else 2
-            self.InputDims = 3 if ( ( len(dims) > 2 ) and ( dims[2] > 1 ) ) else 2
-           
             self.Reslice2.SetInput(self.ImageData2)
             self.Reslice2.Modified()
 #            self.Reslice2.SetInformationInput( self.ImageData )     
