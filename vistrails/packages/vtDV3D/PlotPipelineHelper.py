@@ -1475,6 +1475,17 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             print "Visualizations can't be loaded."            
 
     @staticmethod
+    def find_input_modules(controller, pipeline, module_id ):
+        from packages.vtDV3D import ModuleStore
+        module = ModuleStore.getModule( module_id ) 
+        varlist = []
+        for port_name in module.primaryInputPorts:
+            conns1 = controller.get_connections_to( pipeline, [ module_id ], port_name=port_name )
+            for conn in conns1:
+                varlist.append( pipeline.modules[conn.source.moduleId] )
+        return varlist
+
+    @staticmethod
     def find_variables_connected_to_reader_module(controller, pipeline, reader_module_id, port_name="variable"):
         conns1 = controller.get_connections_to( pipeline, [reader_module_id], port_name=port_name )
         varlist = []
@@ -1483,11 +1494,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return varlist
 
     @staticmethod
-    def find_reader_modules_for_plot(controller, pipeline, plot_id, port_name="volume"):
-        conns = controller.get_connections_to(pipeline, [plot_id], port_name=port_name )
+    def find_reader_modules_for_plot(controller, pipeline, plot_id ):
+        from packages.vtDV3D import ModuleStore
+        module = ModuleStore.getModule( plot_id ) 
         varlist = []
-        for conn in conns:
-            varlist.append( pipeline.modules[conn.source.moduleId] )
+        for port_name in module.primaryInputPorts:
+            conns = controller.get_connections_to(pipeline, [plot_id], port_name=port_name )
+            for conn in conns:
+                varlist.append( pipeline.modules[conn.source.moduleId] )
         return varlist
 
     @staticmethod
@@ -1607,7 +1621,9 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         proj_controller = DV3DPipelineHelper.get_project_controller()
         pipeline = controller.vistrail.getPipeline(version)
         plots = DV3DPipelineHelper.find_plot_modules(pipeline)
+        vistrails_path = os.path.dirname( os.path.dirname( os.path.abspath( os.path.dirname(__file__) ) ) )
         text = "import cdms2, cdutil, genutil, sys, os\n"
+        text += "sys.path.append('%s')\n" % vistrails_path
         text += "import gui.application\n"
         text += DV3DPipelineHelper.create_startup_script()
         text += "\n\nif __name__ == '__main__':\n"
