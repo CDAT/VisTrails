@@ -90,7 +90,7 @@ class UVCDAT_API():
     
     def setPortValue(self, module, port_name, value_list):
         controller = self.app.get_controller()
-        str_value_list = [ str(val) for val in value_list ]
+        str_value_list = [ str(val) for val in value_list ] if ( type(value_list) in ( type([]), type(()) ) ) else [ str(value_list) ]
         function = controller.create_function( module, port_name, str_value_list )
         module.add_function(function)  
         op = controller.update_function_ops( module, port_name, str_value_list )      
