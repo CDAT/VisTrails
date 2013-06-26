@@ -42,6 +42,18 @@ def expand_port_specs(port_specs, pkg_identifier=None):
                               port_spec[2])) 
     return out_specs
 
+class DataCache():
+    
+    def __init__(self):
+        self.data = {}
+        self.cells = set()
+
+class CachedImageData():
+    
+    def __init__(self, image_data, cell_coords ):
+        self.data = image_data
+        self.cells = set()
+        self.cells.add( cell_coords )
 
 def getRoiSize( roi ):
     if roi == None: return 0
@@ -130,32 +142,48 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     def getTimeAxis(self):
         return self.timeAxis
        
-    def getImageDataCache(self):
-        return self.imageDataCache.setdefault( self.moduleID, {} )
+    def getCachedImageData( self, data_id, cell_coords ):
+        image_data = self.imageDataCache.get( data_id, None )
+        if image_data: 
+            image_data.cells.add( cell_coords )
+            return image_data.data
+        return None
+
+    def setCachedImageData( self, data_id, cell_coords, image_data ):
+        self.imageDataCache[data_id] = CachedImageData( image_data, cell_coords )
 
     @classmethod
-    def clearCache(cls):
-        for varDataSpecs in cls.dataCache.values():
-            varDataMap = varDataSpecs.get('varData', None )
-            if varDataMap:
-                try:
-                    dataArray = varDataMap[ 'newDataArray']
-                    del dataArray 
-                except: pass
-            del varDataSpecs
-        cls.dataCache.clear()
-        for imageDataMap in cls.imageDataCache.values():
-            for imageData in imageDataMap.values():
-                del imageData
-        cls.imageDataCache.clear()
+    def clearCache( cls, cell_coords ):
+        for dataCacheItems in cls.dataCache.items():
+            dataCacheKey = dataCacheItems[0]
+            dataCacheObj = dataCacheItems[1]
+            if cell_coords in dataCacheObj.cells:
+                dataCacheObj.cells.remove( cell_coords )
+                if len( dataCacheObj.cells ) == 0:
+                    varDataMap = dataCacheObj.data.get('varData', None )
+                    if varDataMap: varDataMap[ 'newDataArray'] = None 
+                    dataCacheObj.data['varData'] = None
+                    del cls.dataCache[ dataCacheKey ]
+#                    print "Removing Cached data: ", str( dataCacheKey )
+        for imageDataItem in cls.imageDataCache.items():
+            imageDataCacheKey = imageDataItem[0]
+            imageDataCacheObj = imageDataItem[1]
+            if cell_coords in imageDataCacheObj.cells:
+                imageDataCacheObj.cells.remove( cell_coords )
+                if len( imageDataCacheObj.cells ) == 0:
+                    imageDataCacheObj.data = None
+#                    print "Removing Cached image data: ", str( imageDataCacheKey )
         
-    def getCachedData( self, varDataId ):
-        varData = self.dataCache.setdefault( varDataId, {} )
-        return varData.get( 'varData', None )
+    def getCachedData( self, varDataId, cell_coords ):
+        dataCacheObj = self.dataCache.setdefault( varDataId, DataCache() )
+        data = dataCacheObj.data.get( 'varData', None )
+        if data: dataCacheObj.cells.add( cell_coords )
+        return data
 
-    def setCachedData(self, varDataId, varDataMap ):
-        varData = self.dataCache.setdefault( varDataId, {} )
-        varData[ 'varData' ] = varDataMap
+    def setCachedData(self, varDataId, cell_coords, varDataMap ):
+        dataCacheObj = self.dataCache.setdefault( varDataId, DataCache() )
+        dataCacheObj.data[ 'varData' ] = varDataMap
+        dataCacheObj.cells.add( cell_coords )
                 
     def getParameterDisplay( self, parmName, parmValue ):
         if parmName == 'timestep':
@@ -324,8 +352,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         return None
              
     def generateOutput( self, **args ): 
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
         oRecMgr = None 
         varRecs = self.cdmsDataset.getVarRecValues()
+        cell_coords = DV3DPipelineHelper.getCellCoordinates( self.moduleID ) 
         if len( varRecs ):
 #            print " VolumeReader->generateOutput, varSpecs: ", str(varRecs)
             oRecMgr = OutputRecManager() 
@@ -343,9 +373,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         for orec in orecs:
             cachedImageDataName = self.getImageData( orec, **args ) 
             if cachedImageDataName: 
-                imageDataCache = self.getImageDataCache()            
-                if   orec.ndim >= 3: self.set3DOutput( name=orec.name,  output=imageDataCache[cachedImageDataName] )
-                elif orec.ndim == 2: self.set2DOutput( name=orec.name,  output=imageDataCache[cachedImageDataName] )
+                cachedImageData = self.getCachedImageData( cachedImageDataName, cell_coords )            
+                if   orec.ndim >= 3: self.set3DOutput( name=orec.name,  output=cachedImageData )
+                elif orec.ndim == 2: self.set2DOutput( name=orec.name,  output=cachedImageData )
         self.currentTime = self.getTimestep()
      
     def getTimestep( self ):
@@ -356,6 +386,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         self.currentLevel = level
                
     def getImageData( self, orec, **args ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
         """
         This method converts cdat data into vtkImageData objects. The ds object is a CDMSDataset instance which wraps a CDAT CDMS Dataset object. 
         The ds.getVarDataCube method execution extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).   
@@ -407,13 +438,18 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     varDataIdIndex = 0
                 else:
                     varDataIdIndex = selectedLevel
+<<<<<<< HEAD
                     
             iTimestep = self.timeIndex if ( varName <> '__zeros__' ) else 0
             varDataIdIndex = iTimestep  
+=======
+
+            cell_coords = DV3DPipelineHelper.getCellCoordinates( self.moduleID ) 
+>>>>>>> uvcdat-dv3d-enable-2d-3d-slicer-merge
             roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] ) if self.cdmsDataset.gridBounds else ""
             varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), roiStr )
             varDataIds.append( varDataId )
-            varDataSpecs = self.getCachedData( varDataId ) 
+            varDataSpecs = self.getCachedData( varDataId, cell_coords ) 
             flatArray = None
             if varDataSpecs == None:
                 if varName == '__zeros__':
@@ -421,7 +457,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     newDataArray = np.zeros( npts, dtype=scalar_dtype ) 
                     varDataSpecs = copy.deepcopy( exampleVarDataSpecs )
                     varDataSpecs['newDataArray'] = newDataArray.ravel('F')  
-                    self.setCachedData( varName, varDataSpecs ) 
+                    self.setCachedData( varName, cell_coords, varDataSpecs ) 
                 else: 
                     tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue, iTimestep, self.useTimeIndex ] 
                     varData = self.cdmsDataset.getVarDataCube( dsid, varName, tval, selectedLevel )
@@ -460,12 +496,12 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         md[ 'attributes' ] = var_md
                         md[ 'plotType' ] = 'zyt' if (self.outputType == CDMSDataType.Hoffmuller) else 'xyz'
                                         
-                self.setCachedData( varDataId, varDataSpecs )  
+                self.setCachedData( varDataId, cell_coords, varDataSpecs )  
         
         if not varDataSpecs: return None            
         cachedImageDataName = '-'.join( varDataIds )
-        imageDataCache = self.getImageDataCache() 
-        if not ( cachedImageDataName in imageDataCache ):
+        image_data = self.getCachedImageData( cachedImageDataName, cell_coords ) 
+        if not image_data:
 #            print 'Building Image for cache: %s ' % cachedImageDataName
             image_data = vtk.vtkImageData() 
             outputOrigin = varDataSpecs[ 'outputOrigin' ]
@@ -483,9 +519,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             image_data.SetSpacing(  gridSpacing[0], gridSpacing[1], gridSpacing[2] )
 #            print " ********************* Create Image Data, extent = %s, spacing = %s ********************* " % ( str(extent), str(gridSpacing) )
 #            offset = ( -gridSpacing[0]*gridExtent[0], -gridSpacing[1]*gridExtent[2], -gridSpacing[2]*gridExtent[4] )
-            imageDataCache[ cachedImageDataName ] = image_data
+            self.setCachedImageData( cachedImageDataName, cell_coords, image_data )
                 
-        image_data = imageDataCache[ cachedImageDataName ]
         nVars = len( varList )
 #        npts = image_data.GetNumberOfPoints()
         pointData = image_data.GetPointData()
@@ -503,7 +538,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         vars = []      
         for varDataId in varDataIds:
             try: 
-                varDataSpecs = self.getCachedData( varDataId )   
+                varDataSpecs = self.getCachedData( varDataId, cell_coords )   
                 newDataArray = varDataSpecs.get( 'newDataArray', None )
                 md = varDataSpecs[ 'md' ] 
                 varName = varDataId.split(';')[1]
@@ -556,7 +591,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 dsid = varDataFields[0] 
                 varName = varDataFields[1] 
                 if varName <> '__zeros__':
-                    varDataSpecs = self.getCachedData( varDataId )
+                    varDataSpecs = self.getCachedData( varDataId, cell_coords )
                     vmd = varDataSpecs[ 'md' ] 
                     var_md = md[ 'attributes' ]               
 #                    vmd[ 'vars' ] = vars               

@@ -740,9 +740,13 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         from packages.vtDV3D.CDMS_VariableReaders import PM_CDMSDataReader
         DV3DPipelineHelper.reset()
-        PM_CDMSDataReader.clearCache() 
+        cleared_coords = set()
         if pipeline:   
-            for moduleId in pipeline.modules: 
+            for moduleId in pipeline.modules:
+                cell_coords = DV3DPipelineHelper.getCellCoordinates( moduleId ) 
+                if not cell_coords in cleared_coords:
+                    PM_CDMSDataReader.clearCache( cell_coords )  
+                    cleared_coords.add( cell_coords )
                 DV3DPipelineHelper.removeModuleFromActivationMap( moduleId ) 
                 ConfigurableFunction.clear( moduleId )
                 for (key, moduleList) in UVCDATGuiConfigFunction.connectedModules.items():
