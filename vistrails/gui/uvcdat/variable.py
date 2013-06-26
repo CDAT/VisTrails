@@ -672,7 +672,7 @@ class VariableProperties(QtGui.QDialog):
         ## Squeeze?
         if updatedVar.rank() !=0:
             if self.root.preferences.squeeze.isChecked():
-                updatedVar=updatedVar(squeeze=1)
+                #updatedVar=updatedVar(squeeze=1)
                 self.root.record("%s = %s(squeeze=1)" % (targetId,targetId))
                 kwargs['squeeze']=1
         else:
@@ -720,7 +720,7 @@ class VariableProperties(QtGui.QDialog):
                                               axes=get_kwargs_str(kwargs),
                                               axesOperations=str(axes_ops_dict))
             
-        controller.create_exec_new_variable_pipeline(targetId)
+        updatedVar = controller.create_exec_new_variable_pipeline(targetId)
         
         if not computed_var:
             self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))

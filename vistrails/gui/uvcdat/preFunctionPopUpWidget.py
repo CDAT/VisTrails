@@ -229,23 +229,23 @@ class preFuncPopUp(QtGui.QDialog):
         fnm = str(self.windowTitle())
         c = self.cursor()
         self.setCursor(QtCore.Qt.BusyCursor)
-        try:
-            tmp  = self.defs["func"](*args,**kargs)
-        except Exception, err:
-            self.parent.errorMsg.showMessage("The following exception was raised while runnning %s:\n%s" % (self.defs["func"].__name__,str(err)))
-            self.setCursor(c)
-            self.accept()
-            return
-        self.setCursor(c)
+#        try:
+#            tmp  = self.defs["func"](*args,**kargs)
+#        except Exception, err:
+#            self.parent.errorMsg.showMessage("The following exception was raised while runnning %s:\n%s" % (self.defs["func"].__name__,str(err)))
+#            self.setCursor(c)
+#            self.accept()
+#            return
 
-        resobjs = []
-        if isinstance(tmp,cdms2.tvariable.TransientVariable):
-            tmp.id="%s_%s" % (tmp.id,fnm.replace(".","_"))
-            self.root.dockVariable.widget().addVariable(tmp)
-            res = ", %s" % tmp.id
-            resobjs.append(tmp)
-        else:
-            res = self.processList(tmp,"%s_%s" % (args[0].id,fnm.replace(".","_")),"",resobjs)
+#        resobjs = []
+#        if isinstance(tmp,cdms2.tvariable.TransientVariable):
+#            tmp.id="%s_%s" % (tmp.id,fnm.replace(".","_"))
+#            self.root.dockVariable.widget().addVariable(tmp)
+#            res = ", %s" % tmp.id
+#            resobjs.append(tmp)
+#        else:
+#            res = self.processList(tmp,"%s_%s" % (args[0].id,fnm.replace(".","_")),"",resobjs)
+        varname = "%s_%s" % (args[0].id, fnm.replace(".","_"))
         self.root.record("## %s" % fnm)
         cargs=args[0].id
         for a in args[1:]:
@@ -253,24 +253,31 @@ class preFuncPopUp(QtGui.QDialog):
         ckargs = ""
         for k in kargs.keys():
             ckargs+=", %s=%s" % (k,repr(kargs[k]))
-        cmd="%s = %s(%s%s)" % (res[2:],fnm,cargs,ckargs)
+        cmd="%s = %s(%s%s)" % (varname,fnm,cargs,ckargs)
         
         self.root.record(cmd)
         #vistrails
-        newvars = []
-        for o in resobjs:
-            if isinstance(o,cdms2.tvariable.TransientVariable):
-                newvars.append(o.id)
+#        newvars = []
+#        for o in resobjs:
+#            if isinstance(o,cdms2.tvariable.TransientVariable):
+#                newvars.append(o.id)
         
         vtcmd = "%s(%s%s)"  % (fnm,cargs,ckargs)
         
-        if len(newvars) > 1:
-            debug.warning("Function: '%s' returns more than one variable and is not supported yet." %fnm)
-        else:
-            #send command to project controller to be stored as provenance
-            from api import get_current_project_controller
-            prj_controller = get_current_project_controller()
-            prj_controller.calculator_command(vtvars, fnm, vtcmd, newvars[0])
+#        if len(newvars) > 1:
+#            debug.warning("Function: '%s' returns more than one variable and is not supported yet." %fnm)
+#        else:
+
+        #send command to project controller to be stored as provenance
+        from api import get_current_project_controller
+        prj_controller = get_current_project_controller()
+        prj_controller.calculator_command(vtvars, fnm, vtcmd, varname)
+        
+        tmp = prj_controller.create_exec_new_variable_pipeline(varname)
+        tmp.id = varname
+        self.root.dockVariable.widget().addVariable(tmp)
+            
+        self.setCursor(c)
 
         self.accept()
 

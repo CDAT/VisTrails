@@ -193,17 +193,20 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         ops = []
         ops.append(('add', op_module))
         
+        conns = []
         for i, var in enumerate(vars):
             oport = CDMSPipelineHelper.get_output_port_name(
                 var.module_descriptor.module)
             iport = CDMSPipelineHelper.get_input_port_name(len(vars), i)
             conn = controller.create_connection(var, oport, op_module, iport)
             ops.append(('add', conn))
-            
-        print 'something'
-        for op in ops:
-            print op
-            print op[1].id
+            conns.append(conn)
+        
+        layout_ops = controller.layout_modules_ops(
+                preserve_order=True, 
+                no_gaps=True, 
+                new_modules=[op_module],
+                new_connections=conns)
 
         action = core.db.action.create_action(ops)
         controller.change_selected_version(version)
@@ -325,11 +328,6 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                 no_gaps=True, 
                 new_modules=var_modules + plot_modules + [cell_module, loc_module],
                 new_connections=conns + [loc_conn])
-
-        print 'something'
-        for op in ops:
-            print op
-            print op[1].id
             
         action = core.db.action.create_action(ops + layout_ops)
         controller.change_selected_version(version)

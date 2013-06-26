@@ -276,11 +276,9 @@ class QMenuWidget(QtGui.QWidget):
             vtfuncnm = "%s(%s)"%(funcnm,v.id)
             prj_controller.calculator_command([v.id], vtdesc, vtfuncnm, newid)
             
-            prj_controller.create_exec_new_variable_pipeline(newid)
-            
-            res = self.root.stick_main_dict_into_defvar(None)
-            
-
+            tmp = prj_controller.create_exec_new_variable_pipeline(newid)
+            tmp.id = newid
+            self.root.dockVariable.widget().addVariable(tmp)
 
     def setBounds(self,action):
         nm = str(action.text())
@@ -294,38 +292,39 @@ class QMenuWidget(QtGui.QWidget):
         for v in selectedVars:
             vtnm = nm
             if nm == "Set Bounds For Yearly Data":
-                cdutil.times.setTimeBoundsYearly(v)
+                #cdutil.times.setTimeBoundsYearly(v)
                 self.root.record("## Set Bounds For Yearly Data")
                 self.root.record("cdutil.times.setTimeBoundsYearly(%s)" % v.id)
             elif nm == "Set Bounds For Monthly Data":
-                cdutil.times.setTimeBoundsMonthly(v)
+                #cdutil.times.setTimeBoundsMonthly(v)
                 self.root.record("## Set Bounds For Monthly Data")
                 self.root.record("cdutil.times.setTimeBoundsMonthly(%s)" % v.id)
             elif nm == "Set Bounds For Daily Data":
-                cdutil.times.setTimeBoundsDaily(v)
+                #cdutil.times.setTimeBoundsDaily(v)
                 self.root.record("## Set Bounds For Daily Data")
                 self.root.record("cdutil.times.setTimeBoundDaily(%s)" % v.id)
             elif nm == "Set Bounds For Twice-daily Data":
-                cdutil.times.setTimeBoundsDaily(v,2)
+                #cdutil.times.setTimeBoundsDaily(v,2)
                 self.root.record("## Set Bounds For Twice-daily Data")
                 self.root.record("cdutil.times.setTimeBoundDaily(%s,2)" % v.id)
             elif nm == "Set Bounds For 6-Hourly Data":
-                cdutil.times.setTimeBoundsDaily(v,4)
+                #cdutil.times.setTimeBoundsDaily(v,4)
                 self.root.record("## Set Bounds For 6-Hourly Data")
                 self.root.record("cdutil.times.setTimeBoundDaily(%s,4)" % v.id)
             elif nm == "Set Bounds For Hourly Data":
-                cdutil.times.setTimeBoundsDaily(v,24)
+                #cdutil.times.setTimeBoundsDaily(v,24)
                 self.root.record("## Set Bounds For Hourly Data")
                 self.root.record("cdutil.times.setTimeBoundDaily(%s,24)" % v.id)
             elif nm == "Set Bounds For X-Daily Data":
-                cdutil.times.setTimeBoundsDaily(v,val)
+                #cdutil.times.setTimeBoundsDaily(v,val)
                 self.root.record("## Set Bounds For X-Daily Data")
                 self.root.record("cdutil.times.setTimeBoundDaily(%s,%g)" % (v.id,val))
                 vtnm = "%s:%g"%(nm,val)
             #send command to project controller to be stored as provenance
             prj_controller = get_current_project_controller()
             prj_controller.change_defined_variable_time_bounds(v.id, vtnm)
-        
+            
+            #prj_controller.create_exec_new_variable_pipeline(newid)
         
     def extractRegions(self,action):
         nm = str(action.text())
@@ -356,13 +355,13 @@ class QMenuWidget(QtGui.QWidget):
         selectedVars=self.root.dockVariable.widget().getSelectedDefinedVariables()
         for v in selectedVars:
             #create new variable
-            tmp = func(v, region)
+            #tmp = func(v, region)
             ext = "".join(region.lower().split())
             newid = "%s_%s" % (v.id,ext)
-            tmp.id = newid
+            #tmp.id = newid
             
             #save new variable
-            self.root.dockVariable.widget().addVariable(tmp)
+            #self.root.dockVariable.widget().addVariable(tmp)
             self.root.record(rec)
             self.root.record("%s = %s(%s, '%s')" % (newid, funcnm, v.id, str(regions)))
             
@@ -371,6 +370,10 @@ class QMenuWidget(QtGui.QWidget):
             prj_controller = get_current_project_controller()
             vtfuncnm = "%s(%s, '%s')"%(funcnm,v.id, region)
             prj_controller.calculator_command([v.id], vtdesc, vtfuncnm, newid)
+            
+            tmp = prj_controller.create_exec_new_variable_pipeline(newid)
+            tmp.id = newid
+            self.root.dockVariable.widget().addVariable(tmp)
             
             
     def regridESMFPatch(self):
@@ -432,12 +435,12 @@ class QMenuWidget(QtGui.QWidget):
         systemCommands.commandHistory.append(pycommand)
         systemCommands.command_num = 0
 
-        exec( "import MV2,genutil,cdms2,vcs,cdutil,numpy", __main__.__dict__ )
-        regridVar = eval(rhsCommand, __main__.__dict__)
-        res = self.root.stick_main_dict_into_defvar(None)
-        regridVar.id = varname
+        #exec( "import MV2,genutil,cdms2,vcs,cdutil,numpy", __main__.__dict__ )
+        #regridVar = eval(rhsCommand, __main__.__dict__)
+        #res = self.root.stick_main_dict_into_defvar(None)
+        #regridVar.id = varname
 
-        _app.uvcdatWindow.dockVariable.widget().addVariable(regridVar)
+        #_app.uvcdatWindow.dockVariable.widget().addVariable(regridVar)
 
         self.root.record("## Regrid command sent from PCMDITools->Regridding->%s>%s" % \
                                 (regridTool, regridMethod))
@@ -445,6 +448,10 @@ class QMenuWidget(QtGui.QWidget):
         prj_controller.process_typed_calculator_command(varname, rhsCommand)
         prj_controller.calculator_command(sV, "REGRID", varname, rhsCommand.strip())
         QLine.setFocus()
+            
+        tmp = prj_controller.create_exec_new_variable_pipeline(varname)
+        tmp.id = varname
+        _app.uvcdatWindow.dockVariable.widget().addVariable(tmp)
         
     def undo(self):
         get_current_project_controller().undo()

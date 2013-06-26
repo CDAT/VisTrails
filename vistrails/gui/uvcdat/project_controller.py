@@ -832,7 +832,9 @@ class ProjectController(QtCore.QObject):
         except KeyError, err:
             traceback.print_exc( 100, sys.stderr )
             
-    def get_var_module(self, varname, cell, helper, var_dict={}):
+    def get_var_module(self, varname, cell, helper, var_dict=None):
+        if var_dict is None:
+            var_dict = dict()
         if varname in var_dict:
             return var_dict[varname]
         if varname not in self.computed_variables:
@@ -1098,4 +1100,23 @@ class ProjectController(QtCore.QObject):
         dummyCell.current_parent_version = 0L #VisTrails root
         self.vt_controller.change_selected_version(dummyCell.current_parent_version)
         self.get_var_module(targetId, dummyCell, CDMSPipelineHelper)
-        self.vt_controller.execute_current_workflow()
+        result = self.vt_controller.execute_current_workflow()
+        #import pdb; pdb.set_trace()
+        
+        from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
+        modules = result[0][0].objects
+
+        for id, module in modules.iteritems():
+            print module
+            if isinstance(module, CDMSVariable):
+                print module.name
+                if module.name == targetId:
+                    return module.var
+            elif isinstance(module, CDMSVariableOperation):
+                print module.varname
+                if module.varname == targetId:
+                    return module.outvar.var
+                
+        # ideally this should never happen
+        raise Exception("Unable to find variable in pipeline output")
+        
