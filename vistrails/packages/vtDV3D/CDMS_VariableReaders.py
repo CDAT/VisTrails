@@ -437,15 +437,11 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 if ( selectedLevel == None ):
                     varDataIdIndex = 0
                 else:
-                    varDataIdIndex = selectedLevel
-<<<<<<< HEAD
-                    
+                    varDataIdIndex = selectedLevel  
+                                      
             iTimestep = self.timeIndex if ( varName <> '__zeros__' ) else 0
             varDataIdIndex = iTimestep  
-=======
-
             cell_coords = DV3DPipelineHelper.getCellCoordinates( self.moduleID ) 
->>>>>>> uvcdat-dv3d-enable-2d-3d-slicer-merge
             roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] ) if self.cdmsDataset.gridBounds else ""
             varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), roiStr )
             varDataIds.append( varDataId )
