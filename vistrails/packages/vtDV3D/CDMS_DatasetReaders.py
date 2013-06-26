@@ -953,9 +953,11 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         self.datasetModule = CDMSDataset()
         
     def clearDataCache(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         from packages.vtDV3D.CDMS_VariableReaders import PM_CDMSDataReader
+        cell_coords = DV3DPipelineHelper.getCellCoordinates( self.moduleID ) 
         self.datasetModule.clearDataCache()
-        PM_CDMSDataReader.clearCache() 
+        PM_CDMSDataReader.clearCache( cell_coords ) 
         
     def computeGridFromSpecs(self):
         start_time, end_time, min_dt  = -float('inf'), float('inf'), float('inf')

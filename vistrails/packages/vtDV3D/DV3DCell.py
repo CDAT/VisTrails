@@ -518,24 +518,25 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
     def clearWidget(self, sheetName, row, col ): 
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper      
         from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog, UVCDATGuiConfigFunction
-        ( cell_sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
-        if not sheetName: 
-            print>>sys.stderr, " ---> Vistrails error, no sheetName supplied in 'cell_deleted' signal"
-            return
-        elif not cell_sheetName: 
-            print>>sys.stderr, " ---> Vistrails error, no sheetName in DV3DCell"
-            return
-        elif ( sheetName <> cell_sheetName ): 
-            return
-        if ( self.location.col <> col ) or  ( self.location.row <> row ): return
-        cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )  
-#        print " --- Clearing Cell %s ---" % cell_address
-        pipeline = DV3DPipelineHelper.getPipeline( cell_address, sheetName )
-        if pipeline:  UVCDATGuiConfigFunction.clearModules( pipeline )
-        
-        IVModuleConfigurationDialog.reset()
-        self.cellWidget = None 
-        self.builtCellWidget = False                        
+        if ( self.location.row == row ) and ( self.location.col == col ):
+            ( cell_sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
+            if not sheetName: 
+                print>>sys.stderr, " ---> Vistrails error, no sheetName supplied in 'cell_deleted' signal"
+                return
+            elif not cell_sheetName: 
+                print>>sys.stderr, " ---> Vistrails error, no sheetName in DV3DCell"
+                return
+            elif ( sheetName <> cell_sheetName ): 
+                return
+            cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )  
+    #        print " --- Clearing Cell %s ---" % cell_address
+            pipeline = DV3DPipelineHelper.getPipeline( cell_address, sheetName )
+            if pipeline:  
+                UVCDATGuiConfigFunction.clearModules( pipeline )
+            
+            IVModuleConfigurationDialog.reset()
+            self.cellWidget = None 
+            self.builtCellWidget = False                        
         
     def buildWidget(self): 
         from packages.spreadsheet.spreadsheet_controller import spreadsheetController 

@@ -661,7 +661,7 @@ class ConnectionType:
     OUTPUT = 1
     BOTH = 2
 
-  
+ 
 class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     '''
     This will take care of pipeline manipulation for plots.
