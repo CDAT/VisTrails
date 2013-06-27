@@ -249,7 +249,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         plot_module = controller.create_module_from_descriptor(plot_descriptor)
         plot_functions =  [('graphicsMethodName', [plot_gm])]
         if plot_obj.template is not None:
-            plot_functions.append(('template', plot_obj.template))
+            plot_functions.append(('template', [plot_obj.template]))
         if order is not None:
             plot_functions.append(('plotOrder', [str(order)]))
 
