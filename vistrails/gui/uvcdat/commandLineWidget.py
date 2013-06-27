@@ -533,7 +533,13 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             #send command to project controller to be stored as provenance
             from api import get_current_project_controller
             prj_controller = get_current_project_controller()
-            prj_controller.calculator_command(vars, txt, orst, nm[:-3].strip())
+            varname = nm[:-3].strip()
+            prj_controller.calculator_command(vars, txt, orst, varname)
+            
+            tmp = prj_controller.create_exec_new_variable_pipeline(varname)
+            tmp.id = varname
+            self.root.dockVariable.widget().addVariable(tmp)
+            
         self.le.setFocus()
 
     def run_command(self,processed=False):
@@ -562,33 +568,37 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
         #-----------------------------------------------------------------------
         # execute the command and clear the line entry if no error occurs
         #-----------------------------------------------------------------------
-        results = "temp_results_holder"
-        acommand = "temp_results_holder = %s"  % command
-        exec( "import MV2,genutil,cdms2,vcs,cdutil,numpy", __main__.__dict__ )
-        self.le.clear()
-        try:
-            exec( command, __main__.__dict__ )
-        except Exception:
-            #print exception to the command window    
-            errorText = StringIO.StringIO()
-            errorText.write('Your command produced an error.\n')
-            errorText.write('-'*60+'\n')
-            traceback.print_exc(file=errorText)
-            errorText.write('-'*60)
-            self.te.insertPlainText(errorText.getvalue())
+#        results = "temp_results_holder"
+#        acommand = "temp_results_holder = %s"  % command
+#        exec( "import MV2,genutil,cdms2,vcs,cdutil,numpy", __main__.__dict__ )
+#        self.le.clear()
+#        try:
+#            exec( command, __main__.__dict__ )
+#        except Exception:
+#            #print exception to the command window    
+#            errorText = StringIO.StringIO()
+#            errorText.write('Your command produced an error.\n')
+#            errorText.write('-'*60+'\n')
+#            traceback.print_exc(file=errorText)
+#            errorText.write('-'*60)
+#            self.te.insertPlainText(errorText.getvalue())
 
-        res = self.root.stick_main_dict_into_defvar(None)
+#        res = self.root.stick_main_dict_into_defvar(None)
         #-----------------------------------------------------------------------
         # record the command for preproducibility
         #-----------------------------------------------------------------------
+        clist = command.split("=", 1)
+        varname = clist[0].strip()
+        
         self.root.record("## Command sent from prompt by user")
-        if res == command.split("=")[0] or res is None:
+        
+        if len(clist) > 1:
             self.root.record(command)
         else:
-            self.root.record("%s = %s" % (res,command))
-        clist = command.split("=", 1)
-        if not processed and len(clist) > 1 and isidentifier(clist[0]):
-            varname = clist[0].strip()
+            self.root.record("%s = %s" % (varname, command))
+            
+        
+        if not processed and len(clist) > 1 and isidentifier(varname):
             pycommand = clist[1].strip()
             # project controller will only capture the results that return 
             # a variable
@@ -596,4 +606,9 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             from api import get_current_project_controller
             prj_controller = get_current_project_controller()
             prj_controller.process_typed_calculator_command(varname,pycommand)
-        return res
+            
+            tmp = prj_controller.create_exec_new_variable_pipeline(varname)
+            tmp.id = varname
+            self.root.dockVariable.widget().addVariable(tmp)
+        self.le.clear()
+        return varname

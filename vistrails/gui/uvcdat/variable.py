@@ -645,14 +645,15 @@ class VariableProperties(QtGui.QDialog):
                     continue
             cmds += "%s=%s," % (k, repr(kwargs[k]))
         cmds=cmds[:-1]
-        uvar=axisList.getVar()
-        if isinstance(uvar,cdms2.axis.FileAxis):
-            updatedVar = cdms2.MV2.array(uvar)
-        else:
-            updatedVar = uvar(**kwargs)
+#        uvar=axisList.getVar()
+#        if isinstance(uvar,cdms2.axis.FileAxis):
+#            updatedVar = cdms2.MV2.array(uvar)
+#        else:
+#            updatedVar = uvar(**kwargs)
 
         # Get the variable after carrying out the: def, sum, avg... operations
-        updatedVar = axisList.execAxesOperations(updatedVar)
+#        updatedVar = axisList.execAxesOperations(updatedVar)
+        updatedVar = axisList.getVar()
         self.root.record("## Defining variable in memory")
 
         if axisList.cdmsFile is None:
@@ -670,7 +671,7 @@ class VariableProperties(QtGui.QDialog):
         ## Squeeze?
         if updatedVar.rank() !=0:
             if self.root.preferences.squeeze.isChecked():
-                updatedVar=updatedVar(squeeze=1)
+                #updatedVar=updatedVar(squeeze=1)
                 self.root.record("%s = %s(squeeze=1)" % (targetId,targetId))
                 kwargs['squeeze']=1
         else:
@@ -706,18 +707,24 @@ class VariableProperties(QtGui.QDialog):
         url = None
         if hasattr(self.cdmsFile, "uri"):
             url = self.cdmsFile.uri
+        cdmsVar = None
         if not computed_var:
             cdmsVar = CDMSVariable(filename=self.cdmsFile.id, url=url, name=targetId,
                                    varNameInFile=original_id,
                                    axes=get_kwargs_str(kwargs),
                                    axesOperations=str(axes_ops_dict))
-            self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))
             controller.add_defined_variable(cdmsVar)
         else:
-            self.emit(QtCore.SIGNAL('definedVariableEvent'),updatedVar)
             controller.copy_computed_variable(original_id, targetId,
                                               axes=get_kwargs_str(kwargs),
                                               axesOperations=str(axes_ops_dict))
+            
+        updatedVar = controller.create_exec_new_variable_pipeline(targetId)
+        
+        if not computed_var:
+            self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))
+        else:
+            self.emit(QtCore.SIGNAL('definedVariableEvent'),updatedVar)
 
         self.updateVarInfo(axisList)
         return updatedVar
