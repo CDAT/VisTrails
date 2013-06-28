@@ -726,6 +726,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
            
     @staticmethod                         
     def addAction( module, action_key, config_key, isActive=True ):
+#         if config_key == 'a':
+#             print "Adding action for module %d (%s), key = %s" % ( module.moduleID, module.__class__.__name__, config_key )
         if not DV3DPipelineHelper.hasConfigCommand( module.moduleID, config_key ):
             actionList = DV3DPipelineHelper.actionMap.setdefault( action_key[1], [] )
             fn = module.configurableFunctions.get( action_key[1], None )
@@ -1548,11 +1550,17 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return result
     
     @staticmethod
-    def get_plot_type_from_module( module ):
-        if module.name == "VolumeSlicer": return "PlotType.SLICER"
-        if module.name == "CurtainPlot": return "PlotType.CURTAIN"
-        if module.name == "VolumeRenderer": return "PlotType.VOLUME_RENDER"
-        if module.name == "LevelSurface": return "PlotType.ISOSURFACE"
+    def get_plot_type_from_module( plot_module, reader_module ):
+        lc_readername = reader_module.name.lower()
+        isHoff = ( lc_readername.find( "muller" ) > 0 ) or ( lc_readername.find( "moller" ) > 0 )
+        if plot_module.name == "VolumeSlicer": 
+            return "PlotType.HOV_SLICER" if isHoff else "PlotType.SLICER"
+        if plot_module.name == "CurtainPlot": 
+            return "PlotType.CURTAIN"
+        if plot_module.name == "VolumeRenderer": 
+            return "PlotType.HOV_VOLUME_RENDER" if isHoff else "PlotType.VOLUME_RENDER"
+        if plot_module.name == "LevelSurface": 
+            return "PlotType.ISOSURFACE"
         return "PlotType.SLICER"
     
     @staticmethod
@@ -1640,12 +1648,12 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 
         reader_modules = DV3DPipelineHelper.find_topo_sort_modules_by_types( pipeline, [ CDMS_HoffmullerReader, CDMS_VolumeReader ] )
         for mplot in plots:
-            plot_type = DV3DPipelineHelper.get_plot_type_from_module( mplot )
             port_map = DV3DPipelineHelper.get_port_map_from_module( mplot )
             text += ident + "port_map = %s\n" % str( port_map )
             reader_modules = DV3DPipelineHelper.find_reader_modules_for_plot( controller, pipeline, mplot.id )
             input_list = []
             for reader_module in reader_modules:
+                plot_type = DV3DPipelineHelper.get_plot_type_from_module( mplot, reader_module )
                 for varm in DV3DPipelineHelper.find_variables_connected_to_reader_module( controller, pipeline, reader_module.id ):
                     input_list.append( DV3DPipelineHelper.get_variable_name_from_module(varm) )
             text += ident + "uvcdat_api.createPlot( inputs=[%s], type=%s, viz_parms=port_map )\n" % ( ','.join(input_list), plot_type ) 
@@ -1725,8 +1733,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 action_key = ( str( configFunc.label ), str( configFunc.name ) )
                 config_key = configFunc.key 
                 pmod = configFunc.module
-                if pmod.renderer:
-                    isActive = ( id( pmod.renderer.GetRenderWindow() ) in active_renwin_ids ) 
+                cell_loc = pmod.getCellLocation()
+#                 if config_key == 'a':
+#                      print "--->> Config %s[%s]: pmod=%d " % ( str( configFunc.label ), str(cell_loc), pmod.moduleID )
+                if cell_loc:
+                    isActive = pmod.onCurrentPage() and ( cell_loc[-1] in active_cells )
                     DV3DPipelineHelper.addAction( pmod, action_key, config_key, isActive ) 
                     pmods.add(pmod)
                                         
