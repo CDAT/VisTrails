@@ -397,9 +397,9 @@ class InputSpecs:
             if plotIndex < len(mdList):
                 return mdList[ plotIndex ]
             else:
-                print>>sys.stderr, "Error, Metadata for input %d not found" % plotIndex
                 try: return mdList[ 0 ]
                 except: pass
+        print>>sys.stderr, "Error, Metadata for input %d not found" % plotIndex
         return {}
         
     def addMetadataObserver( self, caller, event ):
@@ -1368,14 +1368,10 @@ class PersistentModule( QObject ):
             current_version = controller.current_version
             cell_address = ( None, None )
             
-#        print '-'*50      
-#        print 'Persist parameter: coords=%s, version=%d, controller=%x, proj_controller=%x, controller version=%d, pid=%d, modules=%s' % ( str(cell_address), current_version, id(controller), id(proj_controller), controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
-#        print '-'*50      
-
         try:
             module = pipeline.modules[self.moduleID] 
         except KeyError:
-            print>>sys.stderr, "Error changing parameter in module %d, parm: %s: Module not in current controller pipeline." % ( self.moduleID, str(parmRecList) )  
+            print>>sys.stderr, "Error changing parameter in module %d (%s), parm: %s: Module not in current controller pipeline." % ( self.moduleID, self.__class__.__name__, str(parmRecList) )  
             return
         try:
             op_list = []
@@ -1383,10 +1379,11 @@ class PersistentModule( QObject ):
             for parmRec in parmRecList: 
                 op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
                 config_fn = self.getConfigFunction( parmRec[0] )
-                if config_fn: config_list.append( config_fn )
-                else: print>>sys.stderr, "Unrecognized config function %s in module %s" % ( parmRec[0], str(self.moduleID) )
-#                if parmRec[0] == 'colorScale':
-#                    print 'x'
+                if config_fn: 
+                    config_list.append( config_fn )
+                else: 
+                    pass
+#                    print>>sys.stderr, "Unrecognized config function %s in module %d (%s)" % ( parmRec[0], self.moduleID, self.__class__.__name__ )
             action = create_action( op_list ) 
             controller.add_new_action(action)
             controller.perform_action(action)
@@ -1401,7 +1398,7 @@ class PersistentModule( QObject ):
             sys.stdout.flush()
                 
         except Exception, err:
-            print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
+            print>>sys.stderr, "Error changing parameter in module %d (%s): parm: %s, error: %s" % ( self.moduleID, self.__class__.__name__, str(parmRecList), str(err) )
             traceback.print_exc()
                
     def persistParameterList( self, parmRecList, **args ):
