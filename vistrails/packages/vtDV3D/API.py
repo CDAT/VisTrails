@@ -165,6 +165,7 @@ class UVCDAT_API():
         return inputVariable.id, inputId
 
     def finalizePlot( self, plot_name ):
+        from packages.vtDV3D import ModuleStore
         from packages.vtDV3D.CDMS_VariableReaders import CDMSTransientVariable
         from core.db.action import create_action
         proj_controller = self.app.uvcdatWindow.get_current_project_controller()
@@ -180,7 +181,15 @@ class UVCDAT_API():
         controller.change_selected_version( current_version )
         proj_controller.update_plot_configure( self.sheetName, self.row, self.col )
         cell = proj_controller.sheet_map[ self.sheetName ][ ( self.row, self.col ) ]
-        cell.current_parent_version = current_version  
+        cell.current_parent_version = current_version
+          
+        cell_address = "%s%s" % ( chr(ord('A') + self.col ), self.row + 1 )
+        sheetName = proj_controller.current_sheetName
+        cell_location = [ proj_controller.name, sheetName, cell_address ]                
+        pipeline = controller.current_pipeline              
+        for mid in pipeline.modules.keys():
+            pmod = ModuleStore.getModule( mid ) 
+            if pmod: pmod.setCellLocation( cell_location )
         
         for ( name, var ) in self.variables:
             dvar = CDMSTransientVariable.from_module( var )
@@ -215,6 +224,7 @@ class UVCDAT_API():
         type = args.get( 'type', PlotType.SLICER )
         viz_parms = args.get( 'viz_parms', {} )
         self.initPlot()
+        auxVolumeReader = None
         
         if ( type == PlotType.HOV_VOLUME_RENDER ) or ( type == PlotType.HOV_SLICER ):
             volumeReader = self.newModule('CDMS_HoffmullerReader', ns='cdms' )
@@ -223,19 +233,31 @@ class UVCDAT_API():
         
         input_list = args.get( 'inputs', [] ) 
         variable_to_reader_con_list = []
-        for cdmsVariable in input_list:
-            variable = self.newVariableModule( cdmsVariable )           
-            variable_to_reader = self.newConnection(variable, 'self', volumeReader, 'variable') 
-            variable_to_reader_con_list.append( variable_to_reader )       
+        variable_to_aux_reader_con_list = []
+        for iVar in range( len( input_list ) ):
+            cdmsVariable = input_list[iVar]
+            variable = self.newVariableModule( cdmsVariable ) 
+            if ( (type == PlotType.SLICER) or (type == PlotType.HOV_SLICER) ):
+                if (iVar == 0) : 
+                    variable_to_reader = self.newConnection(variable, 'self', volumeReader, 'variable') 
+                    variable_to_reader_con_list.append( variable_to_reader ) 
+                else:
+                    auxVolumeReader = self.newModule('CDMS_HoffmullerReader', ns='cdms' ) if ( type == PlotType.HOV_SLICER ) else self.newModule('CDMS_VolumeReader', ns='cdms' )
+                    variable_to_reader = self.newConnection(variable, 'self', auxVolumeReader, 'variable') 
+                    variable_to_aux_reader_con_list.append( variable_to_reader ) 
+            else:      
+                variable_to_reader = self.newConnection(variable, 'self', volumeReader, 'variable') 
+                variable_to_reader_con_list.append( variable_to_reader ) 
             
         self.layoutAndAdd( volumeReader, variable_to_reader_con_list )
-        
+        if auxVolumeReader: self.layoutAndAdd( auxVolumeReader, variable_to_aux_reader_con_list )
+               
         reader_to_plotter_cons = []
         if (type == PlotType.SLICER) or (type == PlotType.HOV_SLICER):
             plotter = self.newModule('VolumeSlicer', ns='vtk', ports=viz_parms )
             reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'volume') )  
             if len( input_list ) > 1: 
-                reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'contours') )      
+                reader_to_plotter_cons.append( self.newConnection( auxVolumeReader, 'volume', plotter, 'contours') )      
         elif type == PlotType.VOLUME_RENDER or (type == PlotType.HOV_VOLUME_RENDER):
             plotter = self.newModule('VolumeRenderer', ns='vtk', ports=viz_parms )
             reader_to_plotter_cons.append( self.newConnection(volumeReader, 'volume', plotter, 'volume') )       

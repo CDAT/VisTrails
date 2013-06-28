@@ -380,7 +380,7 @@ class ConfigurableFunction( QObject ):
 
     @property
     def module(self):
-        return ModuleStore.getModule( self.moduleID ) if self.moduleID else None
+        return ModuleStore.getModule( self.moduleID ) if ( self.moduleID <> None ) else None
 
     def get_persisted(self):
         return self._persisted if self.persist else True
@@ -450,8 +450,6 @@ class ConfigurableFunction( QObject ):
         pass
 
     def init( self, module ):
-#        if self.name == 'colorScale':
-#            print "."
         self.moduleID = module.moduleID
         if self.units == 'data': 
             self.units = module.getUnits() 
@@ -2303,6 +2301,16 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                                 self.uniformTimeRange = False
                                 if timeRange[3] > timeRangeInput[3]:
                                     timeRange = timeRangeInput 
+        if timeRange == None:
+            for moduleID in self.modules:
+                if timeRange == None:
+                    pmod = ModuleStore.getModule( moduleID )
+                    pipeline = pmod.getCurrentPipeline()
+                    for moduleID in pipeline.modules:
+                        module = ModuleStore.getModule( moduleID )
+                        if  isinstance( module, PM_CDMSDataReader ):                  
+                            timeRange =  self.getConvertedTimeRange( module )  
+                            if timeRange: break                        
         if timeRange:                
             self.timeRange = [ int(timeRange[0]), int(timeRange[1]) ]
             if ( self.iTimeStep >= self.timeRange[1] ) or  ( self.iTimeStep < self.timeRange[0] ): self.iTimeStep = self.timeRange[0]
