@@ -575,12 +575,16 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                     print "  --- Error creating cellWidget --- "   
                     sys.stdout.flush()     
                 
+                cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )
+                PersistentVisualizationModule.renderMap[ cell_address ] = self.iren
                 prj_controller = api.get_current_project_controller()
-                cell_location = [ prj_controller.name, prj_controller.current_sheetName, "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 ) ]
-                modules = prj_controller.vt_controller.current_pipeline.modules
-                for mid in modules.keys():
+                sheetName = prj_controller.current_sheetName
+                cell_location = [ prj_controller.name, sheetName, cell_address ]
+                pipeline = self.getCurrentPipeline()             
+                for mid in pipeline.modules.keys():
                     pmod = ModuleStore.getModule( mid ) 
                     if pmod: pmod.setCellLocation( cell_location )
+                    
                 self.builtCellWidget = True
                 
                 ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
