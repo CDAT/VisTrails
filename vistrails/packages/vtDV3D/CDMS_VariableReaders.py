@@ -363,6 +363,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         The vtk data array is then attached as point data to a vtkImageData object, which is returned.
         The CDAT metadata is serialized, wrapped as a vtkStringArray, and then attached as field data to the vtkImageData object.  
         """
+        memoryLogger.log("Begin getImageData")
         varList = orec.varList
         npts = -1
         dataDebug = False
@@ -568,6 +569,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         except Exception, err:
             print>>sys.stderr, "Error encoding variable metadata: %s " % str(err)
             traceback.print_exc()
+        memoryLogger.log("End getImageData")
         return cachedImageDataName
 
 

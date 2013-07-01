@@ -607,6 +607,7 @@ class CDMSDataset(Module):
         """
         This method extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).
         """
+        memoryLogger.log("Begin getVarDataCube")
         rv = CDMSDataset.NullVariable
         if dsid:
             dsetRec = self.datasetRecs.get( dsid, None )
@@ -634,6 +635,7 @@ class CDMSDataset(Module):
 #                vc = cdutil.VariableConditioner( source=rv, weightedGridMaker=gridMaker )
 #                return vc.get( returnTuple=0 )
         print>>sys.stderr, "Error: can't find time slice data cube for variable %s in dataset" % varName
+        memoryLogger.log("End getVarDataCube")
         return rv
 
 

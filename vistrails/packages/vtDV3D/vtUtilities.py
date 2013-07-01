@@ -69,11 +69,22 @@ class MemoryLogger:
             self.logfile = None
         
     def log( self, label ):
-        import resource
-        mem_usage = 4*resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1000000.0
+        import shlex, subprocess
+#        resc_mem_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1024.0*1024.0)
+        args = ['ps', 'u', '-p', str(os.getpid())]
+        psout = subprocess.check_output( args ).split('\n')
+        ps_vals = psout[1].split()
+        try:
+            mem_usage = float( ps_vals[5] ) / 1024.0
+        except ValueError, err:
+            print>>sys.stderr, "Error parsing psout: ", str(err)
+            print>>sys.stderr, str(psout)
+            return
+                
         if self.logfile == None:
             self.logfile = open( "/tmp/dv3d-memory_usage.log", 'w' )
-        self.logfile.write(" %10.2f: %s\n", mem_usage, label )
+        self.logfile.write(" %10.2f: %s (%.2f)\n" % ( mem_usage, label, resc_mem_usage ) )
+        self.logfile.flush()
         
 memoryLogger = MemoryLogger()        
         
