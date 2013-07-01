@@ -124,6 +124,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         self.timeValue = None
         self.useTimeIndex = False
         self.timeAxis = None
+        memoryLogger.log("Init CDMSDataReader")
         if self.outputType == CDMSDataType.Hoffmuller:
             self.addUVCDATConfigGuiFunction( 'chooseLevel', LevelConfigurationDialog, 'L', label='Choose Level' ) 
             

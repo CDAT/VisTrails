@@ -315,9 +315,9 @@ class DV3DRangeConfigWidget(QFrame):
         DV3DPipelineHelper.setConfigMode( index )
         self.tabView.setCurrentIndex( index )
         
-    def __del__(self):
-        self.deactivate_current_command()
-        QFrame.__del__(self)
+#     def __del__(self):
+#         self.deactivate_current_command()
+#         QFrame.__del__(self)
         
     def initialize(self):
         self.active_cfg_cmd = None
@@ -936,6 +936,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         use those parameters.
          
         """ 
+        memoryLogger.log( " start update_plot_pipeline_action" )
         raise UnimplementedException    #  Raise this exception to run the fallback code (rebuild from scratch) because the following code doesn't work. 
         
         DV3DPipelineHelper.plotIndexMap = {}
@@ -1102,6 +1103,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
 #        ConfigurableFunction.clear()
+        memoryLogger.log( " start build_plot_pipeline_action" )
         controller.change_selected_version(version)
         DV3DPipelineHelper.plotIndexMap = {}
 #        print "[%d,%d] ~~~~~~~~~~~~~~~>> build_plot_pipeline_action, version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
@@ -1419,7 +1421,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         #based on the alias dictionary
 
 #        print "Loading vtdv3d pipeline in location %d %d" % (row,col)
-        
+        memoryLogger.log( " start load_pipeline_in_location" )
         cell_modules = PlotPipelineHelper.find_modules_by_type( pipeline, [ MapCell3D ] )
         for module in cell_modules:
             persistentCellModule = ModuleStore.getModule( module.id )  
@@ -1725,8 +1727,10 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        pipeline = controller.vt_controller.vistrail.getPipeline(version) 
 #        print '-'*50      
 #        print 'New Configuration panel: version=%d, current_version=%d, pid=%d, modules=%s' % ( version, current_controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
-#        print '-'*50      
+#        print '-'*50  
+           
         pmods = set()
+        memoryLogger.log( "show_configuration_widget" )
         DV3DPipelineHelper.reset()
         menu = DV3DPipelineHelper.startNewMenu()
         configFuncs = ConfigurableFunction.getActiveFunctionList( ) 

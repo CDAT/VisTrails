@@ -31,9 +31,6 @@ class HyperwallManagerSingleton(QtCore.QObject):
         self.opening_event = None
         self.intial_camera_pos = None
         
-#    def __del__(self):
-#        self.shutdown()
-
     def setInteractionState( self, levelingState, altMode=False ):
         if self.isServer:
             print " HyperwallManager- setInteractionState "

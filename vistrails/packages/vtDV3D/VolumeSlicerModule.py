@@ -77,13 +77,6 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         except api.NoVistrail:
             pass
 
-    def __del__(self):
-        print " **************************************** Deleting VolumeSlicer module, id = %d  **************************************** " % self.moduleID
-#        self.planeWidgetX.RemoveAllObservers()
-#        self.planeWidgetY.RemoveAllObservers()
-#        self.planeWidgetZ.RemoveAllObservers()
-        PersistentVisualizationModule.__del__(self)
-
     def clearReferrents(self):
         PersistentVisualizationModule.clearReferrents(self)
         del VolumeSlicerModules[ self.moduleID ]

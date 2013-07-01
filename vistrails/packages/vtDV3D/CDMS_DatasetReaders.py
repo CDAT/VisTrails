@@ -535,9 +535,8 @@ class CDMSDataset(Module):
     def getStartTime(self):
         return cdtime.reltime( float( self.timeRange[2] ), self.referenceTimeUnits )
 
-    def __del__( self ):
+    def close( self ):
         for dsetRec in self.datasetRecs.values(): dsetRec.dataset.close()
-        Module.__del__( self )
          
     def addTransientVariable( self, varName, variable, ndim = None ):
         if varName in self.transientVariables:

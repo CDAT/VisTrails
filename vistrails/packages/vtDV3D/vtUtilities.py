@@ -63,14 +63,14 @@ class MemoryLogger:
     def __init__( self ):
         self.logfile = None
         
-    def __del__(self):
+    def close(self):
         if self.logfile <> None: 
             self.logfile.close( )
             self.logfile = None
         
     def log( self, label ):
-        import shlex, subprocess
-#        resc_mem_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1024.0*1024.0)
+        import shlex, subprocess, gc
+        gc.collect()
         args = ['ps', 'u', '-p', str(os.getpid())]
         psout = subprocess.check_output( args ).split('\n')
         ps_vals = psout[1].split()
@@ -83,7 +83,7 @@ class MemoryLogger:
                 
         if self.logfile == None:
             self.logfile = open( "/tmp/dv3d-memory_usage.log", 'w' )
-        self.logfile.write(" %10.2f: %s (%.2f)\n" % ( mem_usage, label, resc_mem_usage ) )
+        self.logfile.write(" %10.2f: %s\n" % ( mem_usage, label ) )
         self.logfile.flush()
         
 memoryLogger = MemoryLogger()        

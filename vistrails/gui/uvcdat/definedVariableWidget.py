@@ -422,6 +422,8 @@ class QDefinedVariableWidget(QtGui.QWidget):
             self.deleteVariable(v.id)
 
     def newVariable(self):
+        from packages.vtDV3D.vtUtilities import memoryLogger
+        memoryLogger.log("start QDefinedVariableWidget.newVariable")
         varProp = self.root.varProp
         varProp.label.setText("Load From")
         for i in range(varProp.originTabWidget.count()):

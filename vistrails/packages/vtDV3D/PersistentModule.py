@@ -500,11 +500,6 @@ class PersistentModule( QObject ):
 #            if dataArray: return dataArray.GetValue(0)
 #        return 0
 
-    def __del__(self):
-#        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
-        sys.stdout.flush()
-#        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
-#        IVModuleConfigurationDialog.reset()
 
     def setCellLocation( self, cell_location ):
         self.cell_location = cell_location       
