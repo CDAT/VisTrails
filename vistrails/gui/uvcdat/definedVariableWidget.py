@@ -561,7 +561,7 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
         Update the variable string that is shown to the user in the list.
         format =  '-- variableName (shape)', where num is the selection number
         """
-        if num is None:
+        if num is None or num == -1:
             self.selectNum = -1
             numString = '--'
         else:
