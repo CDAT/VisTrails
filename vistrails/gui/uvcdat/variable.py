@@ -713,6 +713,10 @@ class VariableProperties(QtGui.QDialog):
             controller.copy_computed_variable(original_id, targetId,
                                               axes=get_kwargs_str(kwargs),
                                               axesOperations=str(axes_ops_dict))
+            
+        if(self.varEditArea.widget()):
+            self.varEditArea.widget().var = updatedVar
+            axisList.setVar(updatedVar)
 
         self.updateVarInfo(axisList)
         return updatedVar
