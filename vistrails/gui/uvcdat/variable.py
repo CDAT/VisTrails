@@ -726,6 +726,10 @@ class VariableProperties(QtGui.QDialog):
         else:
             self.emit(QtCore.SIGNAL('definedVariableEvent'),updatedVar)
 
+        if(self.varEditArea.widget()):
+            self.varEditArea.widget().var = updatedVar
+            axisList.setVar(updatedVar)
+
         self.updateVarInfo(axisList)
         return updatedVar
 
