@@ -520,9 +520,19 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             self.le.clear()
         else:
             st=txt
-
-
- 
+            
+        #make sure name is unique
+        newname = nm[:-3].strip()        
+        items = self.root.dockVariable.widget().getItems(project=False)
+        varNameSet = set([str(it.text()).split()[1] for it in items])
+        suffix = ""
+        if newname in varNameSet:
+            suffix = 1
+            while (newname + str(suffix)) in varNameSet:
+                suffix += 1
+            newname = newname + str(suffix)
+            nm = newname + nm[-3:]
+            
         if st!="":
             if pressEnter:
                 orst = st
