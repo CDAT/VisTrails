@@ -222,17 +222,25 @@ class QDefinedVariableWidget(QtGui.QWidget):
         a tab for the variable
         """
         cdmsVar = None
+        replaced = False
         if type_ == 'CDMS':
             if type(var) == tuple:
                 cdmsVar = var[1]
                 var = var[0]
 
             self.root.stick_defvar_into_main_dict(var)
-            item = QDefinedVariableItem(var,self.root,cdmsVar)
+            
+            
             for i in range(self.varList.count()-1,-1,-1):
                 if self.varList.item(i).getVarName() == var.id:
-                    self.varList.takeItem(i)
-        self.varList.addItem(item)
+                    replaced = True
+                    self.varList.item(i).setVariable(var)
+                    break
+                    
+        if not replaced:
+            item = QDefinedVariableItem(var,self.root,cdmsVar)
+            self.varList.addItem(item) 
+            
         # Recording define variable teaching command
 #        self.recordDefineVariableTeachingCommand(varName, var.id, file, axesArgString)
 
@@ -571,7 +579,7 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
         user in the list
         """
         self.variable = variable
-        self.updateVariableString()
+        self.updateVariableString(self.selectNum)
 
 class QDefVarWarningBox(QtGui.QDialog):
     """ Popup box to warn a user that a variable with same name is already
