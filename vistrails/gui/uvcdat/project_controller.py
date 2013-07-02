@@ -1112,22 +1112,27 @@ class ProjectController(QtCore.QObject):
         self.vt_controller.change_selected_version(dummyCell.current_parent_version)
         self.get_var_module(targetId, dummyCell, CDMSPipelineHelper)
         result = self.vt_controller.execute_current_workflow()
+        workflow_result = result[0][0]
+        
+        if len(workflow_result.errors) > 0:
+            QMessageBox.warning( None, "Workflow Error", 
+                                 "Variable pipeline had errors executing.");
+            return None
+        
         #import pdb; pdb.set_trace()
         
         from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
-        modules = result[0][0].objects
+        modules = workflow_result.objects
 
         for id, module in modules.iteritems():
-            print module
+            #print module
             if isinstance(module, CDMSVariable):
-                print module.name
+                #print module.name
                 if module.name == targetId:
                     return module.var
             elif isinstance(module, CDMSVariableOperation):
-                print module.varname
+                #print module.varname
                 if module.varname == targetId:
                     return module.outvar.var
                 
-        # ideally this should never happen
-        raise Exception("Unable to find variable in pipeline output")
-        
+        return None

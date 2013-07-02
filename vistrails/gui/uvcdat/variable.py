@@ -721,11 +721,18 @@ class VariableProperties(QtGui.QDialog):
                                               axesOperations=str(axes_ops_dict))
             
         updatedVar = controller.create_exec_new_variable_pipeline(targetId)
-        
+
+        if updatedVar is None:
+            return axisList.getVar()
+
         if not computed_var:
             self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))
         else:
             self.emit(QtCore.SIGNAL('definedVariableEvent'),updatedVar)
+
+        if(self.varEditArea.widget()):
+            self.varEditArea.widget().var = updatedVar
+            axisList.setVar(updatedVar)
 
         self.updateVarInfo(axisList)
         return updatedVar

@@ -221,6 +221,9 @@ class QDefinedVariableWidget(QtGui.QWidget):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
         """
+        if var is None:
+            return
+        
         cdmsVar = None
         if type_ == 'CDMS':
             if type(var) == tuple:
