@@ -152,6 +152,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         self.volRenderConfig = [ 'Default', 'False' ]
         self.transFunctGraphVisible = False
         self.transferFunctionConfig = None
+        self.required_dtype['volume'] = np.ushort
         self.setupTransferFunctionConfigDialog()
         self.addConfigurableLevelingFunction( 'colorScale',    'C', label='Colormap Scale', units='data', setLevel=self.generateCTF, getLevel=self.getSgnRangeBounds, layerDependent=True, adjustRangeInput=0 )
         self.addConfigurableLevelingFunction( 'functionScale', 'T', label='Transfer Function Scale', units='data', setLevel=self.generateOTF, getLevel=self.getAbsRangeBounds, layerDependent=True, adjustRangeInput=0, initRefinement=[ self.refinement[0], self.refinement[1] ], gui=self.transferFunctionConfig  )

@@ -626,14 +626,8 @@ class CDMSDataset(Module):
                 rv = self.getTransVarDataCube( varName, tvar, self.decimation, **args )  
         if (rv.id == "NULL") and (varName in self.outputVariables):
             rv = self.outputVariables[ varName ]
-        if rv.id <> "NULL": 
-            return rv 
-#            current_grid = rv.getGrid()
-#            if ( gridMaker == None ) or SameGrid( current_grid, gridMaker.grid ): return rv
-#            else:       
-#                vc = cdutil.VariableConditioner( source=rv, weightedGridMaker=gridMaker )
-#                return vc.get( returnTuple=0 )
-        print>>sys.stderr, "Error: can't find time slice data cube for variable %s in dataset" % varName
+        if rv.id == "NULL": 
+            print>>sys.stderr, "Error: can't find time slice data cube for variable %s in dataset" % varName
         memoryLogger.log("End getVarDataCube")
         return rv
 

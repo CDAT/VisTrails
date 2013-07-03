@@ -124,7 +124,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         self.timeValue = None
         self.useTimeIndex = False
         self.timeAxis = None
-        memoryLogger.log("Init CDMSDataReader")
+#        memoryLogger.log("Init CDMSDataReader")
         if self.outputType == CDMSDataType.Hoffmuller:
             self.addUVCDATConfigGuiFunction( 'chooseLevel', LevelConfigurationDialog, 'L', label='Choose Level' ) 
             
@@ -135,20 +135,29 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         return self.imageDataCache.setdefault( self.moduleID, {} )
 
     @classmethod
-    def clearCache(cls):
-        for varDataSpecs in cls.dataCache.values():
-            varDataMap = varDataSpecs.get('varData', None )
-            if varDataMap:
-                try:
-                    dataArray = varDataMap[ 'newDataArray']
-                    del dataArray 
-                except: pass
-            del varDataSpecs
-        cls.dataCache.clear()
-        for imageDataMap in cls.imageDataCache.values():
-            for imageData in imageDataMap.values():
-                del imageData
-        cls.imageDataCache.clear()
+    def clearCache( cls, cell_coords ):
+        for dataCacheItems in cls.dataCache.items():
+            dataCacheKey = dataCacheItems[0]
+            dataCacheObj = dataCacheItems[1]
+            if cell_coords in dataCacheObj.cells:
+                dataCacheObj.cells.remove( cell_coords )
+                if len( dataCacheObj.cells ) == 0:
+                    varDataMap = dataCacheObj.data.get('varData', None )
+                    if varDataMap: varDataMap[ 'newDataArray'] = None 
+                    dataCacheObj.data['varData'] = None
+                    del cls.dataCache[ dataCacheKey ]
+#                    print "Removing Cached data: ", str( dataCacheKey )
+        for imageDataItem in cls.imageDataCache.items():
+            imageDataCacheKey = imageDataItem[0]
+            imageDataCacheObj = imageDataItem[1]
+            if cell_coords in imageDataCacheObj.cells:
+                imageDataCacheObj.cells.remove( cell_coords )
+                if len( imageDataCacheObj.cells ) == 0:
+                    r = imageDataCacheObj.data
+                    rc0 = r.GetReferenceCount()
+                    imageDataCacheObj.data = None
+                    rc1 = r.GetReferenceCount()
+                    print "Removing Cached image data: ", str( imageDataCacheKey )
         
     def getCachedData( self, varDataId ):
         varData = self.dataCache.setdefault( varDataId, {} )
@@ -242,6 +251,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     def execute(self, **args ):
         import api
         from packages.vtDV3D.CDMS_DatasetReaders import CDMSDataset
+#        memoryLogger.log("start CDMS_DataReader:execute")
         cdms_vars = self.getInputValues( "variable"  ) 
         if cdms_vars and len(cdms_vars):
             iVar = 1
@@ -295,6 +305,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 #                print "Time Step Labels: %s" % str( self.timeLabels ) 
                 self.generateOutput( **args )
 #                if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
+#        memoryLogger.log("finished CDMS_DataReader:execute")
  
             
     def getParameterId(self):
@@ -367,7 +378,6 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         memoryLogger.log("Begin getImageData")
         varList = orec.varList
         npts = -1
-        dataDebug = False
         if len( varList ) == 0: return False
         varDataIds = []
         intersectedRoi = args.get('roi', None )
@@ -400,6 +410,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             selectedLevel = orec.getSelectedLevel() if ( self.currentLevel == None ) else self.currentLevel
             ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
             default_dtype = np.ushort if ( (self.outputType == CDMSDataType.Volume ) or (self.outputType == CDMSDataType.Hoffmuller ) )  else np.float 
+#            pipeline = self.getCurrentPipeline()
+#            default_dtype = DV3DPipelineHelper.getDownstreamRequiredDType( pipeline, self.moduleID, np.float )
             scalar_dtype = args.get( "dtype", default_dtype )
             self._max_scalar_value = getMaxScalarValue( scalar_dtype )
             self._range = [ 0.0, self._max_scalar_value ]  
@@ -434,27 +446,22 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         if type( range_min ).__name__ == "MaskedConstant": range_min = 0.0
                         range_max = varData.max()
                         if type( range_max ).__name__ == 'MaskedConstant': range_max = 0.0
-                        newDataArray = varData
+                        var_md = copy.copy( varData.attributes )
                                                           
                         if scalar_dtype == np.float:
-                            newDataArray = newDataArray.filled( 1.0e-15 * range_min )
+                            varData = varData.filled( 1.0e-15 * range_min ).ravel('F')
                         else:
                             shift = -range_min
                             scale = ( self._max_scalar_value ) / ( range_max - range_min ) if  ( range_max > range_min ) else 1.0        
-                            rescaledDataArray = ( ( newDataArray + shift ) * scale )
-                            newDataArray = rescaledDataArray.astype(scalar_dtype) 
-                            newDataArray = newDataArray.filled( 0 )
+                            varData = ( ( varData + shift ) * scale ).astype(scalar_dtype).filled( 0 ).ravel('F')
                         
-                        if dataDebug: self.dumpData( varName, newDataArray )
-                        flatArray = newDataArray.ravel('F') 
-                        array_size = flatArray.size
+                        array_size = varData.size
                         if npts == -1:  npts = array_size
                         else:           assert( npts == array_size )
                             
-                        var_md = copy.copy( varData.attributes )
                         var_md[ 'range' ] = ( range_min, range_max )
                         var_md[ 'scale' ] = ( shift, scale )   
-                        varDataSpecs['newDataArray'] = flatArray                     
+                        varDataSpecs['newDataArray'] = varData                     
                         md =  varDataSpecs['md']                 
                         md['datatype'] = datatype
                         md['timeValue']= self.timeValue.value
@@ -466,8 +473,14 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         
         if not varDataSpecs: return None            
         cachedImageDataName = '-'.join( varDataIds )
+<<<<<<< Updated upstream
         imageDataCache = self.getImageDataCache() 
         if not ( cachedImageDataName in imageDataCache ):
+=======
+        memoryLogger.log("getImageData:mid")     
+        image_data = self.getCachedImageData( cachedImageDataName, cell_coords ) 
+        if not image_data:
+>>>>>>> Stashed changes
 #            print 'Building Image for cache: %s ' % cachedImageDataName
             image_data = vtk.vtkImageData() 
             outputOrigin = varDataSpecs[ 'outputOrigin' ]
@@ -502,7 +515,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 #                print 'Remove fieldData Array: %s ' % aname
         extent = image_data.GetExtent()    
         scalars, nTup = None, 0
-        vars = []      
+        vars = [] 
         for varDataId in varDataIds:
             try: 
                 varDataSpecs = self.getCachedData( varDataId )   
@@ -529,9 +542,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             except Exception, err:
                 print>>sys.stderr, "Error creating variable metadata: %s " % str(err)
                 traceback.print_exc()
-        for iArray in range(2):
-            scalars = pointData.GetArray(iArray) 
-#            print "Add array %d to PointData: %s (%s)" % ( iArray, pointData.GetArrayName(iArray), scalars.GetName()  )       
+#         for iArray in range(2):
+#             scalars = pointData.GetArray(iArray) 
+# #            print "Add array %d to PointData: %s (%s)" % ( iArray, pointData.GetArrayName(iArray), scalars.GetName()  )       
         try:                           
             if (self.outputType == CDMSDataType.Vector ): 
                 vtkdata = getNewVtkDataArray( scalar_dtype )

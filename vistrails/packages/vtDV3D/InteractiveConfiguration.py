@@ -364,10 +364,7 @@ class ConfigurableFunction( QObject ):
         self.startHandler = args.get( 'start', None )       #    left click
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
         self.hasState = args.get( 'hasState', True )
-        
-#     def __del__(self):
-#         self.clearReferrents()
-                
+                        
     def clearReferrents(self):
         self.initHandler = None
         self.openHandler = None

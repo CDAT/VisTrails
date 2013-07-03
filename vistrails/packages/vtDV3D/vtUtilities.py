@@ -59,9 +59,12 @@ currentTime = 0
 dvDbgIO = DebugPrint()
 dvDbgIO.set_stream( sys.stderr )
 
+EnableMemoryLogging = True
+
 class MemoryLogger:
-    def __init__( self ):
+    def __init__( self, enabled = True ):
         self.logfile = None
+        self.enabled = enabled
         
     def close(self):
         if self.logfile <> None: 
@@ -70,23 +73,25 @@ class MemoryLogger:
         
     def log( self, label ):
         import shlex, subprocess, gc
-        gc.collect()
-        args = ['ps', 'u', '-p', str(os.getpid())]
-        psout = subprocess.check_output( args ).split('\n')
-        ps_vals = psout[1].split()
-        try:
-            mem_usage = float( ps_vals[5] ) / 1024.0
-        except ValueError, err:
-            print>>sys.stderr, "Error parsing psout: ", str(err)
-            print>>sys.stderr, str(psout)
-            return
-                
-        if self.logfile == None:
-            self.logfile = open( "/tmp/dv3d-memory_usage.log", 'w' )
-        self.logfile.write(" %10.2f: %s\n" % ( mem_usage, label ) )
-        self.logfile.flush()
+        if self.enabled:
+            gc.collect()
+            args = ['ps', 'u', '-p', str(os.getpid())]
+            psout = subprocess.check_output( args ).split('\n')
+            ps_vals = psout[1].split()
+            try:
+                mem_usage_MB = float( ps_vals[5] ) / 1024.0
+                mem_usage_GB = mem_usage_MB / 1024.0
+            except ValueError, err:
+                print>>sys.stderr, "Error parsing psout: ", str(err)
+                print>>sys.stderr, str(psout)
+                return
+                    
+            if self.logfile == None:
+                self.logfile = open( "/tmp/dv3d-memory_usage.log", 'w' )
+            self.logfile.write(" %10.2f (%6.3f): %s\n" % ( mem_usage_MB, mem_usage_GB, label ) )
+            self.logfile.flush()
         
-memoryLogger = MemoryLogger()        
+memoryLogger = MemoryLogger( EnableMemoryLogging )        
         
 def displayMessage( msg ):
     msgBox = QtGui.QMessageBox()
@@ -440,17 +445,21 @@ def getObjectMap( controller ):
     object_maps = vistrails_interpreter.find_persistent_entities( controller.current_pipeline )
     return object_maps[0] if object_maps else None
 
-def getDownstreamModules( controller,  mid ):  
-    # Under construction
+def getDownstreamModules( mid ):  
+    import api
+    controller = api.get_current_controller()
     pipeline = controller.current_pipeline
     current_module = pipeline.modules[ mid ]
     test_modules = [ current_module ]
-    output_modules = [ ]
+    downstream_modules = [ ]
     while len( test_modules ):
         test_mod = test_modules.pop()
         output_port_specs = test_mod.output_port_specs
-        for output_port in output_port_specs:
+        for output_port in output_port_specs:            
             out_modules = pipeline.get_outputPort_modules( test_mod.id, output_port.name )
+            downstream_modules.extend( out_modules )
+            test_modules.extend( out_modules )
+    return downstream_modules
             
 def getDesignatedConnections( controller,  mid, portName, isDestinationPort = True ):
     portType = "destination" if isDestinationPort else "source" 

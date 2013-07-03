@@ -936,7 +936,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         use those parameters.
          
         """ 
-        memoryLogger.log( " start update_plot_pipeline_action" )
+#        memoryLogger.log( " start update_plot_pipeline_action" )
         raise UnimplementedException    #  Raise this exception to run the fallback code (rebuild from scratch) because the following code doesn't work. 
         
         DV3DPipelineHelper.plotIndexMap = {}
@@ -1097,13 +1097,27 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return pi + index
 
     @staticmethod
+    def getDownstreamRequiredDType( pipeline, moduleID, default_dtype ):
+        current_module = pipeline.modules[ moduleID ]
+        test_modules = [ current_module ]
+        while len( test_modules ):
+            test_mod = test_modules.pop()
+            output_port_specs = test_mod.output_port_specs
+            for output_port in output_port_specs:            
+                out_modules = pipeline.get_outputPort_modules( test_mod.id, output_port.name )
+                for module in out_modules:
+                    pmod = ModuleStore.getModule( module.id ) 
+                test_modules.extend( out_modules )
+        return default_dtype
+    
+    @staticmethod
     def build_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col):
 #        project_controller =  DV3DPipelineHelper.get_project_controller()
 #        current_cell = project_controller.sheet_map[sheetName][(row,col)]
         
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
 #        ConfigurableFunction.clear()
-        memoryLogger.log( " start build_plot_pipeline_action" )
+#        memoryLogger.log( " start build_plot_pipeline_action" )
         controller.change_selected_version(version)
         DV3DPipelineHelper.plotIndexMap = {}
 #        print "[%d,%d] ~~~~~~~~~~~~~~~>> build_plot_pipeline_action, version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
@@ -1421,7 +1435,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         #based on the alias dictionary
 
 #        print "Loading vtdv3d pipeline in location %d %d" % (row,col)
-        memoryLogger.log( " start load_pipeline_in_location" )
+#        memoryLogger.log( " start load_pipeline_in_location" )
         cell_modules = PlotPipelineHelper.find_modules_by_type( pipeline, [ MapCell3D ] )
         for module in cell_modules:
             persistentCellModule = ModuleStore.getModule( module.id )  

@@ -93,6 +93,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             self.contours = None    
             del self.contourLineMapperer 
             self.contourLineMapperer = None
+        ispec = self.getInputSpec( 0 ) 
+        input0 = ispec.input() 
+        print " VolumeSlicer: Input refs = %d " % input0.GetReferenceCount()
+        sys.stdout.flush()
         
     def toggleOutlineMap( self, enabled ):
         self.showOutlineMap = enabled
