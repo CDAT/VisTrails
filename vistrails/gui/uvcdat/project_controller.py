@@ -339,9 +339,10 @@ class ProjectController(QtCore.QObject):
         from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
         _app = get_vistrails_application()
         if isinstance(var, CDMSVariable):
-            _app.uvcdatWindow.dockVariable.widget().addVariable(var.to_python())
+            varObj = self.create_exec_new_variable_pipeline(var.name)
+            _app.uvcdatWindow.dockVariable.widget().addVariable(varObj)
         elif isinstance(var, CDMSVariableOperation):
-            varObj = var.to_python()
+            varObj = self.create_exec_new_variable_pipeline(var.varname)
             if isinstance(varObj, cdms2.tvariable.TransientVariable):
                 _app.uvcdatWindow.dockVariable.widget().addVariable(varObj)
             
@@ -611,12 +612,12 @@ class ProjectController(QtCore.QObject):
                         #this means this operation uses another operation that
                         #was already processed. We need only to create a new variable
                         # and associate the computed cdms variable
-                        var =  CDMSVariable(filename=None,name=computed_ops[mv].varname) 
-                        var.var = computed_ops[mv].to_python()
+                        var =  CDMSVariable(filename=None,name=computed_ops[mv].varname)
+                        var.var = self.create_exec_new_variable_pipeline(var.name)
                     else:
                         #using a simple variable. Just recreate it
                         var = mv.module_descriptor.module.from_module(mv)
-                        var.var = var.to_python()
+                        var.var = self.create_exec_new_variable_pipeline(var.name)
                     opvars.append(var)
                 op.set_variables(opvars)
                 op_tuples.append((opm,op))
@@ -1116,22 +1117,27 @@ class ProjectController(QtCore.QObject):
         self.vt_controller.change_selected_version(dummyCell.current_parent_version)
         self.get_var_module(targetId, dummyCell, CDMSPipelineHelper)
         result = self.vt_controller.execute_current_workflow()
+        workflow_result = result[0][0]
+        
+        if len(workflow_result.errors) > 0:
+            QMessageBox.warning( None, "Workflow Error", 
+                                 "Variable pipeline had errors executing.");
+            return None
+        
         #import pdb; pdb.set_trace()
         
         from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
-        modules = result[0][0].objects
+        modules = workflow_result.objects
 
         for id, module in modules.iteritems():
-            print module
+            #print module
             if isinstance(module, CDMSVariable):
-                print module.name
+                #print module.name
                 if module.name == targetId:
                     return module.var
             elif isinstance(module, CDMSVariableOperation):
-                print module.varname
+                #print module.varname
                 if module.varname == targetId:
                     return module.outvar.var
                 
-        # ideally this should never happen
-        raise Exception("Unable to find variable in pipeline output")
-        
+        return None
