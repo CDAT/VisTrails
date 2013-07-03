@@ -255,6 +255,8 @@ class QDefinedVariableWidget(QtGui.QWidget):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
         """
+        from packages.vtDV3D.vtUtilities import memoryLogger
+        memoryLogger.log("start QDefinedVariableWidget.deleteVariable")
         for i in range(self.varList.count()-1,-1,-1):
             if self.varList.item(i).getVarName() == varid:
                 del(__main__.__dict__[varid])
@@ -264,6 +266,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
                     if controller:
                         controller.remove_defined_variable(varid)
                 self.varList.takeItem(i)
+        memoryLogger.log("finished QDefinedVariableWidget.deleteVariable")
 
         #iTab = self.root.tabView.widget(0).tabWidget.getTabIndexFromName(varid)
         #self.root.tabView.widget(0).tabWidget.removeTab(iTab)
@@ -434,6 +437,8 @@ class QDefinedVariableWidget(QtGui.QWidget):
             self.deleteVariable(v.id)
 
     def newVariable(self):
+        from packages.vtDV3D.vtUtilities import memoryLogger
+        memoryLogger.log("start QDefinedVariableWidget.newVariable")
         varProp = self.root.varProp
         varProp.label.setText("Load From")
         for i in range(varProp.originTabWidget.count()):

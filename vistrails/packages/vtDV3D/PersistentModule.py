@@ -483,6 +483,7 @@ class PersistentModule( QObject ):
         self.documentation = None
         self.parameterCache = {}
         self.timeValue = cdtime.reltime( 0.0, self.referenceTimeUnits ) 
+        self.required_dtype = {}
         if self.createColormap:
             self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Colormap', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
 #        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
@@ -500,11 +501,6 @@ class PersistentModule( QObject ):
 #            if dataArray: return dataArray.GetValue(0)
 #        return 0
 
-    def __del__(self):
-#        print " **************************************** Deleting persistent module, id = %d  **************************************** " % self.moduleID
-        sys.stdout.flush()
-#        from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog 
-#        IVModuleConfigurationDialog.reset()
 
     def setCellLocation( self, cell_location ):
         self.cell_location = cell_location       
@@ -1711,6 +1707,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return self.pipelineBuilt
 
     def execute(self, **args ):
+#        memoryLogger.log(" start %s:execute" % self.__class__.__name__ )
 #        print "Execute Module[ %s ]: %s " % ( str(self.moduleID), str( getClassName( self ) ) )
         initConfig = False
         isAnimation = args.get( 'animate', False )
@@ -1733,6 +1730,8 @@ class PersistentVisualizationModule( PersistentModule ):
                 self.initializeConfiguration()  
             else:   
                 self.applyConfiguration()
+#        memoryLogger.log("finished %s:execute" % self.__class__.__name__ )
+
         
     def buildPipeline(self): 
         pass 

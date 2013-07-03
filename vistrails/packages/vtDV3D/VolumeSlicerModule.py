@@ -77,14 +77,6 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         except api.NoVistrail:
             pass
 
-    def __del__(self):
-        print " **************************************** Deleting VolumeSlicer module, id = %d  **************************************** " % self.moduleID
-        sys.stdout.flush()
-#        self.planeWidgetX.RemoveAllObservers()
-#        self.planeWidgetY.RemoveAllObservers()
-#        self.planeWidgetZ.RemoveAllObservers()
-        PersistentVisualizationModule.__del__(self)
-
     def clearReferrents(self):
         print " **************************************** VolumeSlicer:clearReferrents, id = %d  **************************************** " % self.moduleID
         sys.stdout.flush()
@@ -103,6 +95,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             self.contours = None    
             del self.contourLineMapperer 
             self.contourLineMapperer = None
+        ispec = self.getInputSpec( 0 ) 
+        input0 = ispec.input() 
+        print " VolumeSlicer: Input refs = %d " % input0.GetReferenceCount()
+        sys.stdout.flush()
         
     def toggleOutlineMap( self, enabled ):
         self.showOutlineMap = enabled

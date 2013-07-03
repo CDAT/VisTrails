@@ -364,10 +364,7 @@ class ConfigurableFunction( QObject ):
         self.startHandler = args.get( 'start', None )       #    left click
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
         self.hasState = args.get( 'hasState', True )
-        
-    def __del__(self):
-        self.clearReferrents()
-                
+                        
     def clearReferrents(self):
         self.initHandler = None
         self.openHandler = None
@@ -729,10 +726,6 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         self.finalizeConfigurationObserver = args.get( 'finalize', None )
 #        print "create UVCDATGuiConfigFunction: %x" % ( id(self) )
         
-    def __del__(self):
-#        print "delete UVCDATGuiConfigFunction: %x" % ( id(self) )
-        ConfigurableFunction.__del__(self)
-
     @staticmethod
     def clearModules( pipeline ): 
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
@@ -1026,10 +1019,6 @@ class IVModuleConfigurationDialog( QWidget ):
         IVModuleConfigurationDialog.instances = {}
         IVModuleConfigurationDialog.activeModuleList = []
         
-#    def __del__(self):
-#        print "  -AAXX- Deleting %s[%s]: id = %x " % ( self.__class__.__name__, self.name, id( self ) )
-#        self.emit( SIGNAL('delete()') )
-
     def createGuiButtonLayout(self):
         if self.dialogButtonLayout <> None:
             self.layout().removeItem( self.dialogButtonLayout )
@@ -2233,10 +2222,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.timer.connect( self.timer, SIGNAL('timeout()'), self.animate )
         self.timer.setSingleShot( True )
         IVModuleConfigurationDialog.__init__( self, name, **args )
-        
-    def __del__(self):
-        print "Disposing of AnimationConfigurationDialog"
-                                  
+                                          
     @staticmethod   
     def getSignature():
         return [ ( Float, 'timeValue'), ]

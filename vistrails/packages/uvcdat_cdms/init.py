@@ -108,6 +108,7 @@ class CDMSVariable(Variable):
         return module        
     
     def to_python(self):
+        from packages.vtDV3D.vtUtilities import memoryLogger
         if self.source:
             cdmsfile = self.source.var
         elif self.url:
@@ -130,7 +131,7 @@ class CDMSVariable(Variable):
         varName = self.name
         if self.varNameInFile is not None:
             varName = self.varNameInFile
-            
+                   
         if self.axes is not None:
             try:
                 var = eval("cdmsfile.__call__(varName,%s)"% self.axes)
@@ -139,7 +140,7 @@ class CDMSVariable(Variable):
                                       str(e))
         else:
             var = cdmsfile.__call__(varName)
-            
+                        
         if self.axesOperations is not None:
             var = CDMSVariable.applyAxesOperations(var, self.axesOperations)
             
@@ -261,6 +262,8 @@ class CDMSVariable(Variable):
         return var
         
     def compute(self):
+        from packages.vtDV3D.vtUtilities import memoryLogger
+        memoryLogger.log("start CDMSVariable.compute")
         self.axes = self.forceGetInputFromPort("axes")
         self.axesOperations = self.forceGetInputFromPort("axesOperations")
         self.varNameInFile = self.forceGetInputFromPort("varNameInFile")
@@ -271,6 +274,7 @@ class CDMSVariable(Variable):
 #        print " ---> CDMSVariable-->compute: ", str(self.file), str(self.url), str(self.name)
         self.var = self.to_python()
         self.setResult("self", self)
+        memoryLogger.log("finished CDMSVariable.compute")
 
     @staticmethod
     def applyAxesOperations(var, axesOperations):

@@ -535,9 +535,8 @@ class CDMSDataset(Module):
     def getStartTime(self):
         return cdtime.reltime( float( self.timeRange[2] ), self.referenceTimeUnits )
 
-    def __del__( self ):
+    def close( self ):
         for dsetRec in self.datasetRecs.values(): dsetRec.dataset.close()
-        Module.__del__( self )
          
     def addTransientVariable( self, varName, variable, ndim = None ):
         if varName in self.transientVariables:
@@ -607,6 +606,7 @@ class CDMSDataset(Module):
         """
         This method extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).
         """
+        memoryLogger.log("Begin getVarDataCube")
         rv = CDMSDataset.NullVariable
         if dsid:
             dsetRec = self.datasetRecs.get( dsid, None )
@@ -626,14 +626,9 @@ class CDMSDataset(Module):
                 rv = self.getTransVarDataCube( varName, tvar, self.decimation, **args )  
         if (rv.id == "NULL") and (varName in self.outputVariables):
             rv = self.outputVariables[ varName ]
-        if rv.id <> "NULL": 
-            return rv 
-#            current_grid = rv.getGrid()
-#            if ( gridMaker == None ) or SameGrid( current_grid, gridMaker.grid ): return rv
-#            else:       
-#                vc = cdutil.VariableConditioner( source=rv, weightedGridMaker=gridMaker )
-#                return vc.get( returnTuple=0 )
-        print>>sys.stderr, "Error: can't find time slice data cube for variable %s in dataset" % varName
+        if rv.id == "NULL": 
+            print>>sys.stderr, "Error: can't find time slice data cube for variable %s in dataset" % varName
+        memoryLogger.log("End getVarDataCube")
         return rv
 
 

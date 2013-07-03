@@ -19,6 +19,34 @@ from packages.uvcdat.init import Variable, VariableSource
 import cdms2, cdtime, cdutil, MV2 
 PortDataVersion = 0
 
+def freeImageData( image_data ):
+    from packages.vtDV3D.vtUtilities import memoryLogger
+    memoryLogger.log("start freeImageData")
+    pointData = image_data.GetPointData()
+    for aIndex in range( pointData.GetNumberOfArrays() ):
+        array = pointData.GetArray( aIndex )
+        if array:
+            name = pointData.GetArrayName(aIndex)
+#             s0 = array.GetSize()
+#             r0 = array.GetReferenceCount()
+            array.Initialize()
+            array.Squeeze()
+#             s1 = array.GetSize()
+            pointData.RemoveArray( aIndex )
+#             r1 = array.GetReferenceCount()
+            print "---- freeImageData-> Removing array %s: %s" % ( name, array.__class__.__name__ )  
+    fieldData = image_data.GetFieldData()
+    for aIndex in range( fieldData.GetNumberOfArrays() ): 
+        aname = fieldData.GetArrayName(aIndex)
+        array = fieldData.GetArray( aname )
+        if array:
+#             print "---- freeImageData-> Removing field data: %s" % aname
+            array.Initialize()
+            array.Squeeze()
+            fieldData.RemoveArray( aname )
+    image_data.ReleaseData()
+    memoryLogger.log("finished freeImageData")
+    
 def get_value_from_function(module, fun):
     for i in xrange(module.getNumFunctions()):
         if fun == module.functions[i].name:
@@ -136,6 +164,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         self.timeValue = None
         self.useTimeIndex = False
         self.timeAxis = None
+#        memoryLogger.log("Init CDMSDataReader")
         if self.outputType == CDMSDataType.Hoffmuller:
             self.addUVCDATConfigGuiFunction( 'chooseLevel', LevelConfigurationDialog, 'L', label='Choose Level' ) 
             
@@ -171,8 +200,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             if cell_coords in imageDataCacheObj.cells:
                 imageDataCacheObj.cells.remove( cell_coords )
                 if len( imageDataCacheObj.cells ) == 0:
+                    freeImageData( imageDataCacheObj.data )
                     imageDataCacheObj.data = None
-#                    print "Removing Cached image data: ", str( imageDataCacheKey )
+                    print "Removing Cached image data: ", str( imageDataCacheKey )
         
     def getCachedData( self, varDataId, cell_coords ):
         dataCacheObj = self.dataCache.setdefault( varDataId, DataCache() )
@@ -269,6 +299,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
     def execute(self, **args ):
         import api
         from packages.vtDV3D.CDMS_DatasetReaders import CDMSDataset
+#        memoryLogger.log("start CDMS_DataReader:execute")
         cdms_vars = self.getInputValues( "variable"  ) 
         if cdms_vars and len(cdms_vars):
             iVar = 1
@@ -322,6 +353,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 #                print "Time Step Labels: %s" % str( self.timeLabels ) 
                 self.generateOutput( **args )
 #                if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
+#        memoryLogger.log("finished CDMS_DataReader:execute")
  
             
     def getParameterId(self):
@@ -394,9 +426,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         The vtk data array is then attached as point data to a vtkImageData object, which is returned.
         The CDAT metadata is serialized, wrapped as a vtkStringArray, and then attached as field data to the vtkImageData object.  
         """
+        memoryLogger.log("Begin getImageData")
         varList = orec.varList
         npts = -1
-        dataDebug = False
         if len( varList ) == 0: return False
         varDataIds = []
         intersectedRoi = args.get('roi', None )
@@ -429,6 +461,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             selectedLevel = orec.getSelectedLevel() if ( self.currentLevel == None ) else self.currentLevel
             ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
             default_dtype = np.ushort if ( (self.outputType == CDMSDataType.Volume ) or (self.outputType == CDMSDataType.Hoffmuller ) )  else np.float 
+#            pipeline = self.getCurrentPipeline()
+#            default_dtype = DV3DPipelineHelper.getDownstreamRequiredDType( pipeline, self.moduleID, np.float )
             scalar_dtype = args.get( "dtype", default_dtype )
             self._max_scalar_value = getMaxScalarValue( scalar_dtype )
             self._range = [ 0.0, self._max_scalar_value ]  
@@ -464,27 +498,22 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         if type( range_min ).__name__ == "MaskedConstant": range_min = 0.0
                         range_max = varData.max()
                         if type( range_max ).__name__ == 'MaskedConstant': range_max = 0.0
-                        newDataArray = varData
+                        var_md = copy.copy( varData.attributes )
                                                           
                         if scalar_dtype == np.float:
-                            newDataArray = newDataArray.filled( 1.0e-15 * range_min )
+                            varData = varData.filled( 1.0e-15 * range_min ).ravel('F')
                         else:
                             shift = -range_min
                             scale = ( self._max_scalar_value ) / ( range_max - range_min ) if  ( range_max > range_min ) else 1.0        
-                            rescaledDataArray = ( ( newDataArray + shift ) * scale )
-                            newDataArray = rescaledDataArray.astype(scalar_dtype) 
-                            newDataArray = newDataArray.filled( 0 )
+                            varData = ( ( varData + shift ) * scale ).astype(scalar_dtype).filled( 0 ).ravel('F')
                         
-                        if dataDebug: self.dumpData( varName, newDataArray )
-                        flatArray = newDataArray.ravel('F') 
-                        array_size = flatArray.size
+                        array_size = varData.size
                         if npts == -1:  npts = array_size
                         else: assert( npts == array_size )
                             
-                        var_md = copy.copy( varData.attributes )
                         var_md[ 'range' ] = ( range_min, range_max )
                         var_md[ 'scale' ] = ( shift, scale )   
-                        varDataSpecs['newDataArray'] = flatArray                     
+                        varDataSpecs['newDataArray'] = varData                     
                         md =  varDataSpecs['md']                 
                         md['datatype'] = datatype
                         md['timeValue']= self.timeValue.value
@@ -495,6 +524,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 self.setCachedData( varDataId, cell_coords, varDataSpecs )  
         
         if not varDataSpecs: return None            
+
         cachedImageDataName = '-'.join( varDataIds )
         image_data = self.getCachedImageData( cachedImageDataName, cell_coords ) 
         if not image_data:
@@ -531,7 +561,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 #                print 'Remove fieldData Array: %s ' % aname
         extent = image_data.GetExtent()    
         scalars, nTup = None, 0
-        vars = []      
+        vars = [] 
         for varDataId in varDataIds:
             try: 
                 varDataSpecs = self.getCachedData( varDataId, cell_coords )   
@@ -558,9 +588,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             except Exception, err:
                 print>>sys.stderr, "Error creating variable metadata: %s " % str(err)
                 traceback.print_exc()
-        for iArray in range(2):
-            scalars = pointData.GetArray(iArray) 
-#            print "Add array %d to PointData: %s (%s)" % ( iArray, pointData.GetArrayName(iArray), scalars.GetName()  )       
+#         for iArray in range(2):
+#             scalars = pointData.GetArray(iArray) 
+# #            print "Add array %d to PointData: %s (%s)" % ( iArray, pointData.GetArrayName(iArray), scalars.GetName()  )       
         try:                           
             if (self.outputType == CDMSDataType.Vector ): 
                 vtkdata = getNewVtkDataArray( scalar_dtype )
@@ -599,6 +629,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         except Exception, err:
             print>>sys.stderr, "Error encoding variable metadata: %s " % str(err)
             traceback.print_exc()
+        memoryLogger.log("End getImageData")
         return cachedImageDataName
 
 
