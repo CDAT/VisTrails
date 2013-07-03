@@ -436,6 +436,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             selectedLevel = orec.getSelectedLevel() if ( self.currentLevel == None ) else self.currentLevel
             ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
             default_dtype = np.ushort if ( (self.outputType == CDMSDataType.Volume ) or (self.outputType == CDMSDataType.Hoffmuller ) )  else np.float 
+            default_dtype = np.float 
 #            pipeline = self.getCurrentPipeline()
 #            default_dtype = DV3DPipelineHelper.getDownstreamRequiredDType( pipeline, self.moduleID, np.float )
             scalar_dtype = args.get( "dtype", default_dtype )
@@ -498,19 +499,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 self.setCachedData( varDataId, varDataSpecs )  
         
         if not varDataSpecs: return None            
-<<<<<<< Updated upstream
-        cachedImageDataName = '-'.join( varDataIds )
-<<<<<<< Updated upstream
-        imageDataCache = self.getImageDataCache() 
-        if not ( cachedImageDataName in imageDataCache ):
-=======
-        memoryLogger.log("getImageData:mid")     
-=======
-        cachedImageDataName = '-'.join( varDataIds )    
->>>>>>> Stashed changes
         image_data = self.getCachedImageData( cachedImageDataName, cell_coords ) 
         if not image_data:
->>>>>>> Stashed changes
 #            print 'Building Image for cache: %s ' % cachedImageDataName
             image_data = vtk.vtkImageData() 
             outputOrigin = varDataSpecs[ 'outputOrigin' ]
