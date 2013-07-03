@@ -590,6 +590,8 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
                         self.initLeveling( initRange = False ) 
  
     def initLeveling( self, **args ):
+        if self.name == 'colorScale':
+            print " "
         initRange = args.get( 'initRange', True )
         if self.range_bounds == None:
             self.range_bounds =   args.get( 'rangeBounds', None )
@@ -613,7 +615,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             self.widget.initLeveling( self.range )
             self.connect( self.widget, SIGNAL('update(QString)'), self.broadcastLevelingData )
 
-#        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
+        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
         
     def startLeveling( self, x, y ):
         if self.altMode:    self.windowRefiner.initRefinement( [ x, y ], self.range[3:5] )   
