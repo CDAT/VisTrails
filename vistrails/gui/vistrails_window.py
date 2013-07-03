@@ -839,7 +839,7 @@ class QVistrailsWindow(QVistrailViewWindow):
         QVistrailViewWindow.__init__(self, None, parent, f)
 
         self.stack = QtGui.QStackedWidget()
-        self.vistrail_to_widget = {}
+        self.vistrail_widgets = []
         self.setCentralWidget(self.stack)        
 
         self._previous_vt_view = None
@@ -889,7 +889,7 @@ class QVistrailsWindow(QVistrailViewWindow):
         from gui.collection.workspace import QWorkspaceWindow
         view = QVistrailView(vistrail, locator, abstraction_files,
                              thumbnail_files, mashups)
-        self.vistrail_to_widget[view.get_name()] = view
+        self.vistrail_widgets.append(view)
         index = self.stack.addWidget(view)
         self.stack.setCurrentIndex(index)
         self.view_notifications[view] = {}
@@ -1781,8 +1781,7 @@ class QVistrailsWindow(QVistrailViewWindow):
 
     def close_all_vistrails(self, quiet=False):
         self.current_view = None
-        for i in xrange(self.stack.count()):
-            view = self.stack.widget(i)
+        for view in [self.stack.widget(i) for i in xrange(self.stack.count())]:
             if not self.close_vistrail(view, quiet=quiet):
                 return False
         while len(self.windows) > 0:
