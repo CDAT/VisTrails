@@ -19,6 +19,34 @@ from packages.uvcdat.init import Variable, VariableSource
 import cdms2, cdtime, cdutil, MV2 
 PortDataVersion = 0
 
+def freeImageData( image_data ):
+    from packages.vtDV3D.vtUtilities import memoryLogger
+    memoryLogger.log("start freeImageData")
+    pointData = image_data.GetPointData()
+    for aIndex in range( pointData.GetNumberOfArrays() ):
+        array = pointData.GetArray( aIndex )
+        if array:
+            name = pointData.GetArrayName(aIndex)
+#             s0 = array.GetSize()
+#             r0 = array.GetReferenceCount()
+            array.Initialize()
+            array.Squeeze()
+#             s1 = array.GetSize()
+            pointData.RemoveArray( aIndex )
+#             r1 = array.GetReferenceCount()
+            print "---- freeImageData-> Removing array %s: %s" % ( name, array.__class__.__name__ )  
+    fieldData = image_data.GetFieldData()
+    for aIndex in range( fieldData.GetNumberOfArrays() ): 
+        aname = fieldData.GetArrayName(aIndex)
+        array = fieldData.GetArray( aname )
+        if array:
+#             print "---- freeImageData-> Removing field data: %s" % aname
+            array.Initialize()
+            array.Squeeze()
+            fieldData.RemoveArray( aname )
+    image_data.ReleaseData()
+    memoryLogger.log("finished freeImageData")
+    
 def get_value_from_function(module, fun):
     for i in xrange(module.getNumFunctions()):
         if fun == module.functions[i].name:
@@ -153,10 +181,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             if cell_coords in imageDataCacheObj.cells:
                 imageDataCacheObj.cells.remove( cell_coords )
                 if len( imageDataCacheObj.cells ) == 0:
-                    r = imageDataCacheObj.data
-                    rc0 = r.GetReferenceCount()
+                    freeImageData( imageDataCacheObj.data )
                     imageDataCacheObj.data = None
-                    rc1 = r.GetReferenceCount()
                     print "Removing Cached image data: ", str( imageDataCacheKey )
         
     def getCachedData( self, varDataId ):
@@ -472,12 +498,16 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 self.setCachedData( varDataId, varDataSpecs )  
         
         if not varDataSpecs: return None            
+<<<<<<< Updated upstream
         cachedImageDataName = '-'.join( varDataIds )
 <<<<<<< Updated upstream
         imageDataCache = self.getImageDataCache() 
         if not ( cachedImageDataName in imageDataCache ):
 =======
         memoryLogger.log("getImageData:mid")     
+=======
+        cachedImageDataName = '-'.join( varDataIds )    
+>>>>>>> Stashed changes
         image_data = self.getCachedImageData( cachedImageDataName, cell_coords ) 
         if not image_data:
 >>>>>>> Stashed changes
