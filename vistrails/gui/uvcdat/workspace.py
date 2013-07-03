@@ -509,6 +509,7 @@ class Workspace(QtGui.QDockWidget):
                 from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
                 from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
                 fullTree = view.controller.vistrail.tree.getVersionTree()
+                pipelinesToSearch = []
                 for version in fullTree.iter_vertices():
                     if fullTree.out_degree(version) == 0:
                         view.controller.change_selected_version(version)
@@ -528,7 +529,12 @@ class Workspace(QtGui.QDockWidget):
                                     break
                                 
                         if found:
-                            self.current_controller.search_and_emit_variables(pipeline, CDMSPipelineHelper)
+                            pipelinesToSearch.append(pipeline)
+                
+                #perform this outside above loop because it changes the version tree that 
+                #is being iterated over
+                for pipeline in pipelinesToSearch:
+                    self.current_controller.search_and_emit_variables(pipeline, CDMSPipelineHelper)
      
             if view.controller.locator:
                 name = view.controller.locator.short_name
