@@ -59,7 +59,7 @@ currentTime = 0
 dvDbgIO = DebugPrint()
 dvDbgIO.set_stream( sys.stderr )
 
-EnableMemoryLogging = True
+EnableMemoryLogging = False
 
 class MemoryLogger:
     def __init__( self, enabled = True ):
