@@ -86,7 +86,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         if item.isSelected():
             self.selectVariableFromListEvent(item)
             self.waitingForClick = False
-            ModuleStore.setActiveVariable( item.varName, item.variable.name, item.variable.id )
+            ModuleStore.setActiveVariable( item.varName )
         else:
             self.waitingForClick = True
             item.setSelected(True) # wait for click to deselect
@@ -235,7 +235,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 if self.varList.item(i).getVarName() == var.id:
                     self.varList.takeItem(i)
         self.varList.addItem(item)
-        ModuleStore.setActiveVariable( item.varName, item.variable.name, item.variable.id )
+        ModuleStore.addActiveVariable( item.varName, item.variable )
         # Recording define variable teaching command
 #        self.recordDefineVariableTeachingCommand(varName, var.id, file, axesArgString)
 
@@ -261,7 +261,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 self.varList.takeItem(i)
                 if( self.varList.count() > 0):
                     item=self.varList.item(0)
-                    ModuleStore.setActiveVariable( item.varName, item.variable.name, item.variable.id )
+                    ModuleStore.removeActiveVariable( item.varName )
         memoryLogger.log("finished QDefinedVariableWidget.deleteVariable")
 
         #iTab = self.root.tabView.widget(0).tabWidget.getTabIndexFromName(varid)

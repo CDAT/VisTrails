@@ -1898,21 +1898,23 @@ class PersistentVisualizationModule( PersistentModule ):
     def createData(self, coord):
         from paraview.vtk.dataset_adapter import numpyTovtkDataArray
 #        ds = self.getCDMSDataset()
-        (guiName, varName, varId ) = ModuleStore.getActiveVariable()
-        current_var = None
-        haveVar = False
-        for isIndex in range( len( self.inputSpecs ) ):
-            if not haveVar:
-                ispec = self.inputSpecs[ isIndex ] 
-                ds= ModuleStore.getCdmsDataset( ispec.datasetId )
-                tvars = ds.transientVariables.values()
-                for tvar in tvars:
-                    if (tvar.id == varId):
-                        current_var = tvar
-                        haveVar = True
-                        break
-         
-        if haveVar:               
+#        (guiName, varName, varId ) = 
+#        current_var = None
+#        haveVar = False
+#        for isIndex in range( len( self.inputSpecs ) ):
+#            if not haveVar:
+#                ispec = self.inputSpecs[ isIndex ] 
+#                ds= ModuleStore.getCdmsDataset( ispec.datasetId )
+#                tvars = ds.transientVariables.values()
+#                for tvar in tvars:
+#                    if (tvar.id == varId):
+#                        current_var = tvar
+#                        haveVar = True
+#                        break
+
+        try:
+            
+            current_var = ModuleStore.getActiveVariable()              
             newvar = current_var(lat=coord[1], lon=coord[0], lev=coord[2], squeeze=1)
             
             fieldData = vtk.vtkFieldData()
@@ -1923,6 +1925,9 @@ class PersistentVisualizationModule( PersistentModule ):
             dataobject = vtk.vtkDataObject()
             dataobject.SetFieldData(fieldData)
             return ( current_var, dataobject )
+        
+        except Exception, err:
+            print>>sys.stderr, "Error getting current variable data: ", str(err)
         
         return None
 
@@ -2001,7 +2006,6 @@ class PersistentVisualizationModule( PersistentModule ):
                 lensActor.SetYTitle(var.id)
                 lensActor.SetYRange(var.min(), var.max())
                 
-            if dataObjectInput <> None: 
                 lensActor.GetDataObjectInputList().RemoveAllItems()
                 lensActor.AddDataObjectInput( dataObjectInput )
                 lensActor.SetXValuesToValue()

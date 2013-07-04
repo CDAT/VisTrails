@@ -9,7 +9,8 @@ from packages.vtDV3D.vtUtilities import *
 from collections import OrderedDict 
 moduleStoreDatabase = {}
 cdmsStoreDatabase = {}
-activeVariable = ( None, None, None )
+activeVariables = {}
+activeVariable = None
 
 #cells = OrderedDict()
 
@@ -22,13 +23,25 @@ def getDatabase():
     except: pass
     return moduleStoreDatabase.setdefault( page_id, {} )
 
-def setActiveVariable( gui_varName, varName, varId ):
-    global activeVariable
-    activeVariable = ( gui_varName, varName, varId )
+def addActiveVariable( name, variable ):
+    global activeVariables, activeVariable
+    activeVariables[name] = variable
+    activeVariable = name
 
-def getActiveVariable(  ):
+def removeActiveVariable( name ):
+    global activeVariables, activeVariable
+    if name in activeVariables:
+        del activeVariables[name]
+        if len( activeVariables ) == 0: activeVariable = None
+        else: activeVariable = activeVariables.keys()[0]
+
+def setActiveVariable( name ):
     global activeVariable
-    return activeVariable    
+    activeVariable = name   
+
+def getActiveVariable():
+    global activeVariables, activeVariable
+    return activeVariables.get( activeVariable, None )    
 
 def getCdmsDatabase():
     import api
