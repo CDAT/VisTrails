@@ -446,7 +446,7 @@ class ConfigurableFunction( QObject ):
     def applyParameter( self, **args ):
         pass
 
-    def init( self, module ):
+    def init( self, module, **args ):
         self.moduleID = module.moduleID
         if self.units == 'data': 
             self.units = module.getUnits() 
@@ -593,6 +593,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         if self.name == 'colorScale':
             print " "
         initRange = args.get( 'initRange', True )
+# Dont't currently need these (But should be OK):
+#        units_src = args.get('units',None)
+#        input_index = args.get( 'input_index', 0 )
+#        ispec = self.module.ispec( input_index )
         if self.range_bounds == None:
             self.range_bounds =   args.get( 'rangeBounds', None )
         if initRange:
@@ -600,8 +604,6 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
                 self.initial_range =  [ 0.0, 1.0, 1 ] if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
             if self.range_bounds == None:
                 self.range_bounds = self.initial_range if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
-#            if self.name == 'colorScale':
-#                print 'x'
             input_range = self.module.getInputValue( self.name )
             if input_range == None:     input_range = self.initial_range
             else:                       self.manuallyAdjusted = True

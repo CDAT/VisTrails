@@ -82,9 +82,11 @@ class QDefinedVariableWidget(QtGui.QWidget):
         self.waitingForClick = False
         
     def myPressed(self, item):
+        from packages.vtDV3D import ModuleStore
         if item.isSelected():
             self.selectVariableFromListEvent(item)
             self.waitingForClick = False
+            ModuleStore.setActiveVariable( item.varName, item.variable.name, item.variable.id )
         else:
             self.waitingForClick = True
             item.setSelected(True) # wait for click to deselect
@@ -220,6 +222,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
         """
+        from packages.vtDV3D import ModuleStore
         cdmsVar = None
         if type_ == 'CDMS':
             if type(var) == tuple:
@@ -232,6 +235,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 if self.varList.item(i).getVarName() == var.id:
                     self.varList.takeItem(i)
         self.varList.addItem(item)
+        ModuleStore.setActiveVariable( item.varName, item.variable.name, item.variable.id )
         # Recording define variable teaching command
 #        self.recordDefineVariableTeachingCommand(varName, var.id, file, axesArgString)
 
@@ -243,6 +247,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
         """
+        from packages.vtDV3D import ModuleStore
         from packages.vtDV3D.vtUtilities import memoryLogger
         memoryLogger.log("start QDefinedVariableWidget.deleteVariable")
         for i in range(self.varList.count()-1,-1,-1):
@@ -254,6 +259,9 @@ class QDefinedVariableWidget(QtGui.QWidget):
                     if controller:
                         controller.remove_defined_variable(varid)
                 self.varList.takeItem(i)
+                if( self.varList.count() > 0):
+                    item=self.varList.item(0)
+                    ModuleStore.setActiveVariable( item.varName, item.variable.name, item.variable.id )
         memoryLogger.log("finished QDefinedVariableWidget.deleteVariable")
 
         #iTab = self.root.tabView.widget(0).tabWidget.getTabIndexFromName(varid)
