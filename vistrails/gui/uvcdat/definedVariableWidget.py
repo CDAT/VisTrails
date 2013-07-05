@@ -258,10 +258,9 @@ class QDefinedVariableWidget(QtGui.QWidget):
                     controller = self.root.get_project_controller_by_name(project)
                     if controller:
                         controller.remove_defined_variable(varid)
-                self.varList.takeItem(i)
-                if( self.varList.count() > 0):
-                    item=self.varList.item(0)
-                    ModuleStore.removeActiveVariable( item.varName )
+                self.varList.takeItem(i)                
+                item = self.varList.item(0) if( self.varList.count() > 0) else None
+                ModuleStore.removeActiveVariable( varid )
         memoryLogger.log("finished QDefinedVariableWidget.deleteVariable")
 
         #iTab = self.root.tabView.widget(0).tabWidget.getTabIndexFromName(varid)
