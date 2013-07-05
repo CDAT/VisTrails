@@ -13,11 +13,11 @@
 # Version:      6.0                                                           #
 #                                                                             #
 ###############################################################################
-import types
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import Qt
 import vcs
 import uvcdatCommons
+from uvcdatCommons import QSimpleMessageBox
 from gui.application import get_vistrails_application
 
 GM_LEGEND_TOOLTIP_TEXT = "Specify the desired legend labels.\nFor example:\n None -- Allow VCS to generate legend labels\n(), or [ ], or { } -- No legend  labels\n [0, 10, 20] or { 0:'0', 10:'10', 20:'20' }\n[ 0, 10 ] or { 0:'text', 10:'more text'}"
