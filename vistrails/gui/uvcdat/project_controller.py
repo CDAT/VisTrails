@@ -477,6 +477,12 @@ class ProjectController(QtCore.QObject):
     def variable_was_dropped(self, info):
         """variable_was_dropped(info: (varName, sheetName, row, col) """
         (varName, sheetName, row, col) = info
+        
+        from gui.application import get_vistrails_application
+        window = get_vistrails_application().uvcdatWindow
+        if window.preferences.deselect.isChecked():
+            window.dockVariable.widget().unselectVariableFromName(varName)
+        
         self.current_sheetName = sheetName
         self.current_cell_coords = (row, col)
         if sheetName in self.sheet_map:
@@ -500,12 +506,11 @@ class ProjectController(QtCore.QObject):
             
 
         if len(self.sheet_map[sheetName][(row,col)].plots) == 0:
-            from gui.application import get_vistrails_application
-            gui_app = get_vistrails_application()
-            defaultPlot = gui_app.uvcdatWindow.preferences.getDefaultPlot()
+            defaultPlot = window.preferences.getDefaultPlot()
             if defaultPlot is not None:
                 self.plot_was_dropped((defaultPlot, sheetName, row, col))
                 self.sheet_map[sheetName][(row,col)].usingDefaultPlot = True
+            
         
     def template_was_dropped(self, info):
         """template_was_dropped(info: (varName, sheetName, row, col) """
