@@ -42,6 +42,7 @@ import core.db.action
 from core.db.io import load_vistrail
 from core.db.locator import FileLocator
 from core import debug
+from core.interpreter.default import get_default_interpreter
 from core.modules.module_registry import get_module_registry
 from core.utils import InstanceObject, UnimplementedException
 from core.uvcdat.variable import VariableWrapper
@@ -159,6 +160,64 @@ class ProjectController(QtCore.QObject):
             
             #remove from global main dict
             self.removeVarFromMainDict(name)
+            self.delete_variable_module_from_cache(name)
+            
+            tmp = None
+            
+            #remove variable from cdms package global canvas object
+            from packages.uvcdat_cdms.init import get_canvas
+            canvas = get_canvas()
+            delete_indexes = []
+            for i, arg in enumerate(canvas.varglist):
+                if type(arg) is cdms2.tvariable.TransientVariable:
+                    if arg.id == name:
+                        print "found in varglist"
+                        delete_indexes.insert(0, i)
+                        tmp = arg
+                        
+            for i in delete_indexes:
+                del canvas.varglist[i]
+                
+            delete_indexes = []
+            for i, arg in enumerate(canvas.animate_info):
+                if type(arg) is tuple:
+                    for item in arg:
+                        if type(item) is cdms2.tvariable.TransientVariable:
+#                            delete_indexes.append(i)
+                            print "found item in animate_info"
+                            delete_indexes.insert(0, i)
+                            tmp = item
+                            
+            for i in delete_indexes:
+                del canvas.animate_info[i]
+                
+            delete_indexes = []
+            for i, arg in enumerate(canvas._animate_info):
+                if type(arg) is tuple:
+                    for item in arg:
+                        if type(item) is cdms2.tvariable.TransientVariable:
+#                            delete_indexes.append(i)
+                            print "found item in _animate_info"
+                            delete_indexes.insert(0, i)
+                            tmp = item
+                            
+            for i in delete_indexes:
+                del canvas._animate_info[i]
+                
+#            from packages import vtDV3D
+#            if 'CDMSDataset' in vtDV3D.__dict__:
+#                if hasattr(vtDV3D.__dict__['CDMSDataset'], 'NullVariable'):
+#                    vtDV3D.__dict__['CDMSDataset'].NullVariable = None
+#                del vtDV3D.__dict__['CDMSDataset']       
+#                
+#            import gc
+#            gc.collect()
+#                
+#            if tmp is not None:
+#                import objgraph 
+#                objgraph.show_backrefs([tmp], filename='sample-graph.png')
+                        
+                        
                                     
     def promt_delete_var_plots(self, name, force = False):
         """checks if var is being used by any plots, and if so prompts
@@ -297,7 +356,12 @@ class ProjectController(QtCore.QObject):
     def process_typed_calculator_command(self, varname, command):
         from packages.uvcdat_cdms.init import CDMSVariableOperation 
         
-        
+#        import objgraph, inspect
+#        objs = objgraph.by_type('TransientVariable')
+#        for i, obj  in enumerate(objs):
+#            fnm = 'chain%d.png' % i
+#            objgraph.show_chain(objgraph.find_backref_chain(obj, inspect.ismodule), filename=fnm)
+        #import pdb; pdb.set_trace()
         defnames = self.defined_variables.keys()
         compnames = self.computed_variables.keys()
         defnames.extend(compnames)
@@ -335,7 +399,6 @@ class ProjectController(QtCore.QObject):
             self.add_defined_variable(new_var)
                 
     def emit_defined_variable(self, var):
-        import cdms2
         from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
         _app = get_vistrails_application()
         if isinstance(var, CDMSVariable):
@@ -689,6 +752,9 @@ class ProjectController(QtCore.QObject):
                 self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col)
                 self.update_plot_configure(sheetName, row, col)
                 self.checkEnableUndoRedo(cell)
+                
+                from packages.uvcdat_cdms.init import get_canvas
+                get_canvas().clear()
 
     def sheetsize_was_changed(self, sheet, dim):
         self.emit(QtCore.SIGNAL("sheet_size_changed"), sheet, dim)
@@ -1073,7 +1139,38 @@ class ProjectController(QtCore.QObject):
             _app.uvcdatWindow.mainMenu.editRedoAction.setEnabled(canRedo)
         except: 
             print "Error in checkEnableUndoRedo: "
-            traceback.print_exc( 100, sys.stderr ) 
+            traceback.print_exc( 100, sys.stderr )
+            
+    def delete_variable_module_from_cache(self, variable_name):
+        interpreter = get_default_interpreter()
+        modules_to_clean = []
+        operation_types = ['Unary', 'Binary', 'Nary']
+        operation_set = set(['CDMS%sVariableOperation' % t 
+                             for t in operation_types])
+        for m_id, module in interpreter._persistent_pipeline.modules.iteritems():
+            # only care about modules of a specific type
+            function_name = None
+            if module.package == 'gov.llnl.uvcdat.cdms':
+                if module.name == 'CDMSVariable':
+                    function_name = 'name'
+                elif module.name in operation_set:
+                    function_name = 'varname'
+                else:
+                    continue
+            else:
+                continue
+            
+            # check if the function/parameter that stores 
+            # the variable name matches the one we're looking for
+            for f in module.functions:
+                if f.name == function_name:
+                    if f.parameters[0].strValue == variable_name:
+                        modules_to_clean.append(m_id)
+                        break
+                    
+#        interpreter.print_cache()
+        interpreter.clean_modules(modules_to_clean)
+#        interpreter.print_cache() 
 
         
     def removeVarFromMainDict(self, name):

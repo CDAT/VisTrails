@@ -93,6 +93,13 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
         for v in dependencies:
             self._persistent_pipeline.delete_module(v)
             del self._objects[v]
+                
+    def print_cache(self):
+        for m_id, module in self._persistent_pipeline.modules.iteritems():
+            print m_id, module.name, [(f.name,
+                                       [p.strValue for p in f.parameters])
+                                      for f in module.functions
+                                      if f.name == 'name' or f.name == 'varname']
 
     def clean_non_cacheable_modules(self):
         """clean_non_cacheable_modules() -> None
