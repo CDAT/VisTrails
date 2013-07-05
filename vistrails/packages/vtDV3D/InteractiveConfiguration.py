@@ -590,8 +590,6 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
                         self.initLeveling( initRange = False ) 
  
     def initLeveling( self, **args ):
-        if self.name == 'colorScale':
-            print " "
         initRange = args.get( 'initRange', True )
 # Dont't currently need these (But should be OK):
 #        units_src = args.get('units',None)
@@ -604,6 +602,8 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
                 self.initial_range =  [ 0.0, 1.0, 1 ] if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
             if self.range_bounds == None:
                 self.range_bounds = self.initial_range if ( self.getLevelDataHandler == None ) else self.getLevelDataHandler()
+#            if self.name == 'colorScale':
+#                print 'x'
             input_range = self.module.getInputValue( self.name )
             if input_range == None:     input_range = self.initial_range
             else:                       self.manuallyAdjusted = True
@@ -617,7 +617,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             self.widget.initLeveling( self.range )
             self.connect( self.widget, SIGNAL('update(QString)'), self.broadcastLevelingData )
 
-        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
+#        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
         
     def startLeveling( self, x, y ):
         if self.altMode:    self.windowRefiner.initRefinement( [ x, y ], self.range[3:5] )   
@@ -735,9 +735,13 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         from packages.vtDV3D.CDMS_VariableReaders import PM_CDMSDataReader
         DV3DPipelineHelper.reset()
-        PM_CDMSDataReader.clearCache() 
+        cleared_coords = set()
         if pipeline:   
-            for moduleId in pipeline.modules: 
+            for moduleId in pipeline.modules:
+                cell_coords = DV3DPipelineHelper.getCellCoordinates( moduleId ) 
+                if not cell_coords in cleared_coords:
+                    PM_CDMSDataReader.clearCache( cell_coords )  
+                    cleared_coords.add( cell_coords )
                 DV3DPipelineHelper.removeModuleFromActivationMap( moduleId ) 
                 ConfigurableFunction.clear( moduleId )
                 for (key, moduleList) in UVCDATGuiConfigFunction.connectedModules.items():
@@ -2211,6 +2215,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.iTimeStep = 0
         self.relTimeStart = None
         self.relTimeStep = 1.0
+        self.delayTime = 0
         self.uniformTimeRange = True
         self.maxSpeedIndex = 100
         self.maxDelaySec = args.get( "maxDelaySec", 1.0 )
@@ -2328,11 +2333,17 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                         relTime0 = relTimeRef.torel( timeAxis.units )
                         timeIndex = timeValues.searchsorted( relTime0.value ) 
                         if ( timeIndex >= len( timeValues ) ): timeIndex = len( timeValues ) - 1
-                        relTimeValue0 =  timeValues[ timeIndex ]
-                        r0 = cdtime.reltime( relTimeValue0, timeAxis.units )
+                        relTimeValue1 =  timeValues[ timeIndex ]
+                        if timeIndex > 0:
+                            timeIndex0 =  timeIndex-1
+                            relTimeValue0 =  timeValues[ timeIndex0 ]
+                            if abs( relTime0.value - relTimeValue0 ) < abs( relTimeValue1 - relTime0.value ):
+                                relTimeValue1 = relTimeValue0 
+                                timeIndex = timeIndex0
+                        r0 = cdtime.reltime( relTimeValue1, timeAxis.units )
                         relTimeRef = r0.torel( module.referenceTimeUnits )
                         relTimeValueRefAdj = relTimeRef.value
-        #                print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
+#                        print " ** Update Animation, timestep = %d, index = %d, timeValue = %.3f, useIndex = %d, timeRange = %s " % ( self.iTimeStep, timeIndex, relTimeValueRefAdj, self.uniformTimeRange, str( self.timeRange ) )
                         displayText = str( r0.tocomp() )
                         HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, timeIndex, self.uniformTimeRange, displayText ], False  )
     #                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
@@ -2400,9 +2411,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 iTS = self.timeRange[0]
         self.setTimestep( iTS, restart )  
         if self.running: 
-            delayTime = 0
-#            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
- #           print " Animate step %d, delay time = %.2f msec" % ( iTS, delayTime )
+            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
             self.timer.start( delayTime ) 
 
     def finalizeConfig( self ):
@@ -2434,7 +2443,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 #            refresh = False
 ##            printTime( 'Finish Animation delay' )
                 
-#    def setDelay( self, dval  ):
+#     def setDelay( self, dval  ):
+#         self.delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
+#        self.delayTime = ( self.maxSpeedIndex - dval + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
 #        self.delay = delay_in_sec if ( delay_in_sec<>None ) else self.speedSlider.value()/100.0
         
         
