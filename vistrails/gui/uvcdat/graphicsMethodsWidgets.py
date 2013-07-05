@@ -13,11 +13,11 @@
 # Version:      6.0                                                           #
 #                                                                             #
 ###############################################################################
-import types
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import Qt
 import vcs
 import uvcdatCommons
+from uvcdatCommons import QSimpleMessageBox
 from gui.application import get_vistrails_application
 
 def round_number( N ):
