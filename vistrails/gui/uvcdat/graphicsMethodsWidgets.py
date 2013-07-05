@@ -21,13 +21,13 @@ from uvcdatCommons import QSimpleMessageBox
 from gui.application import get_vistrails_application
 
 def round_number( N ):
-   import numpy
-   P = 10.0 ** ( numpy.floor(numpy.log10(abs(N) ) ) )
-   return( sign(N) * int( abs(N)/P + 0.5) * P )
+    import numpy
+    P = 10.0 ** ( numpy.floor(numpy.log10(abs(N) ) ) )
+    return( sign(N) * int( abs(N)/P + 0.5) * P )
 
 def sign ( N ):
-   if (N < 0): return -1
-   else: return 1
+    if (N < 0): return -1
+    else: return 1
 
 class VCSGMs():
     def saveOriginalValues(self):
@@ -39,7 +39,7 @@ class VCSGMs():
                 
             else:
                 self.originalValues[a] = getattr(self.gm,a)
-            
+                
     def restoreOriginalValues(self):
         for a in self.gmAttributes:
             if a.find(".")>-1:
@@ -242,8 +242,8 @@ class VCSGMs():
             gm.yaxisconvert = str(self.yaxisconvert.buttonGroup.button(self.yaxisconvert.buttonGroup.checkedId()).text())
 
     def saveChanges(self,click):
-       self.applyChanges()
-       self.root.record(self.changesString())
+        self.applyChanges()
+        self.root.record(self.changesString())
         
     def aspectClicked(self,checkState):
         self.aspectRatio.label.setEnabled(checkState == Qt.Unchecked)
@@ -261,7 +261,7 @@ class VCSGMs():
 class VCSGMs1D:
 
     def saveChanges(self,click):
-       self.applyChanges()
+        self.applyChanges()
     def setupLines(self, target):
         self.lineType = target.addLabeledComboBox('Type: ',
                                                   ["solid", "dash", "dot", "dash-dot", "long-dash"])
@@ -484,8 +484,9 @@ class VCSGMRanges:
 
         self.rangeLineEdit.setText(str(values))
         if self.allBlack.isChecked():
-           colors=[1,]
+            colors=[1,]
         self.colorsLineEdit.setText(str(colors))
+
     def clearCustomSettings(self):
         self.rangeLineEdit.setText('')
         self.colorsLineEdit.setText('')
@@ -527,13 +528,13 @@ class VCSGMRanges:
         if enable == True:
             self.expLineEdit.setToolTip("Smallest exponent for negative values")
             self.negDecadesLineEdit.setToolTip("Number of negative decades.")
-	    self.minValLineEdit.label.setText("Smallest Exponent for Positive Values:")
-	    self.minValLineEdit.setToolTip("Smallest exponent for positive values.")
-       	    self.maxValLineEdit.label.setText("Number of Positive Decades:")
-       	    self.maxValLineEdit.setToolTip("Number of Positive Decades:")
-	    self.nIntervals.label.setText("Levels per Decade:")
- 	    self.nIntervals.setToolTip ("Levels per Decade") 
-	else:
+            self.minValLineEdit.label.setText("Smallest Exponent for Positive Values:")
+            self.minValLineEdit.setToolTip("Smallest exponent for positive values.")
+            self.maxValLineEdit.label.setText("Number of Positive Decades:")
+            self.maxValLineEdit.setToolTip("Number of Positive Decades:")
+            self.nIntervals.label.setText("Levels per Decade:")
+            self.nIntervals.setToolTip ("Levels per Decade") 
+        else:
             self.expLineEdit.setToolTip("Disabled. Not in use for linear spacing.")
             self.negDecadesLineEdit.setToolTip("Disabled. Not in use for linear spacing.")            
             self.minValLineEdit.label.setText('Minimum Value:')
@@ -541,9 +542,9 @@ class VCSGMRanges:
             self.maxValLineEdit.label.setText('Maximum Value:')
             self.maxValLineEdit.setToolTip("The last level")
             self.nIntervals.label.setText('Number of Intervals:')
-	    self.nIntervals.setToolTip("The number of intervals between each contour level. Maximum number range [2 to 223].")
+            self.nIntervals.setToolTip("The number of intervals between each contour level. Maximum number range [2 to 223].")
 
-        
+
 ## class QGraphicsMethodAttributeWindow(QtGui.QWidget):
 
 ##     def __init__(self, canvas=None, parent=None):
@@ -880,7 +881,7 @@ class QTaylorDiagramEditor(VCSGMs,QtGui.QScrollArea):
             gm.cticlabels1 = eval(str(self.corLabels.text()))
             gm.cmtics1 = eval(str(self.corTicks.text()))
 
-            markersTab.applyChanges(gm)
+            self.markersTab.applyChanges(gm)
         
 
 class QTaylorMarkers(QtGui.QScrollArea):
@@ -1781,6 +1782,7 @@ class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         
 class QContourEditor():
     def contoursSettings(self, target):
+        frame = uvcdatCommons.QFramedWidget()
         
         frame.addWidget(QtGui.QLabel('Define iso level range values:'))
         self.includeZeroButtonGroup = frame.addRadioFrame('Include Zero:',
@@ -1811,6 +1813,7 @@ class QContourEditor():
         genRangesButton = frame.addButton('Generate Ranges')
         clearButton = frame.addButton('Clear All', newRow=False)
 
+        vbox = QtGui.QVBoxLayout()
         vbox.addWidget(frame)
         self.frame = frame
 
@@ -1922,14 +1925,14 @@ class QContourEditor():
         if enable == True:
             self.smallestExp.setToolTip("Smallest exponent for negative values")
             self.numNegDec.setToolTip("Number of negative decades.")
-	    self.minValLineEdit.label.setText("Smallest Exponent for Positive Values:")
-	    self.minValLineEdit.setToolTip("Smallest exponent for positive values.")
-       	    self.maxValLineEdit.label.setText("Number of Positive Decades:")
-       	    self.maxValLineEdit.setToolTip("Number of Positive Decades:")
-	    self.nIntervals.label.setText("Levels per Decade:")
- 	    self.nIntervals.setToolTip ("Levels per Decade") 
-	    self.update()
-	else:
+            self.minValLineEdit.label.setText("Smallest Exponent for Positive Values:")
+            self.minValLineEdit.setToolTip("Smallest exponent for positive values.")
+            self.maxValLineEdit.label.setText("Number of Positive Decades:")
+            self.maxValLineEdit.setToolTip("Number of Positive Decades:")
+            self.nIntervals.label.setText("Levels per Decade:")
+            self.nIntervals.setToolTip ("Levels per Decade") 
+            self.update()
+        else:
             self.smallestExp.setToolTip("Disabled. Not in use for linear spacing.")
             self.numNegDec.setToolTip("Disabled. Not in use for linear spacing.")            
             self.minValLineEdit.setText('Minimum Value:')
@@ -1937,7 +1940,7 @@ class QContourEditor():
             self.maxValLineEdit.label.setText('Maximum Value:')
             self.maxValLineEdit.setToolTip("The last level")
             self.nIntervals.label.setText('Number of Intervals:')
-	    self.nIntervals.setToolTip("The number of intervals between each contour level. Maximum number range [2 to 223].")
+            self.nIntervals.setToolTip("The number of intervals between each contour level. Maximum number range [2 to 223].")
 
     def setToolTips(self):
         self.ranges.setToolTip("The iso level range values. (e.g., 10, 20, 30, 40, 50).")
