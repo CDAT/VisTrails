@@ -1010,7 +1010,9 @@ Please delete unused CDAT Cells in the spreadsheet.")
             self.extraDimsNames=inputPorts[0][0].var.var.getAxisIds()[:-2]
             self.extraDimsIndex=[0,]*len(self.extraDimsNames)
             self.extraDimsLen=inputPorts[0][0].var.var.shape[:-2]
-            self.inputPorts = inputPorts
+            self.varAxisList = inputPorts[0][0].var.var.getAxisList()
+            self.varRank = inputPorts[0][0].var.var.rank()
+            #self.inputPorts = inputPorts
             if hasattr(self.parent(),"toolBar"):
                 t = self.parent().toolBar
                 if hasattr(t,"dimSelector"):
@@ -1144,7 +1146,7 @@ class QCDATWidgetToolBar(QCellToolBar):
         
         """
         cell = self.parent().getCell(self.parent().parentRow,self.parent().parentCol)
-        if cell.inputPorts[0][0].var.var.rank()>2:
+        if cell.varRank > 2:
             self.prevAction=QCDATWidgetPrev(self)
             self.prevAction.setEnabled(False)
             self.appendAction(self.prevAction)
@@ -1193,6 +1195,11 @@ class QCDATWidgetPrev(QtGui.QAction):
         Execute the action when the button is clicked
         
         """
+        #inputPorts is no longer stored on the cell to prevent
+        #memory leaks, it must be had from somewhere else to re-enable this
+        print "This has been disabled due to memory leaks"
+        return
+    
         #make sure we get the canvas object used in the cell
         cellWidget = self.toolBar.getSnappedWidget()
         selectedDim = str(self.parent().dimSelector.currentText())
@@ -1223,8 +1230,10 @@ class QCDATWidgetPrev(QtGui.QAction):
             self.setVisible(False)
 class QDimsSlider(QtGui.QWidget):
     def updateLabels(self,val=None,fromDimension=False):
-        selectedDim = str(self.parent().parent().parent().dimSelector.currentText())
-        for a in self.V.getAxisList():
+        toolBar = self.parent().parent().parent()
+        selectedDim = str(toolBar.dimSelector.currentText())
+        cell = toolBar.parent().getCell(toolBar.parent().parentRow,toolBar.parent().parentCol) 
+        for a in cell.varAxisList:
             if a.id == selectedDim:
                 break
         index = self.slider.value()
@@ -1249,9 +1258,9 @@ class QDimsSlider(QtGui.QWidget):
             pass
     def __init__(self,parent):
         super(QDimsSlider,self).__init__(parent)
-        toolBar = parent.parent().parent()
-        self.cell = toolBar.parent().getCell(toolBar.parent().parentRow,toolBar.parent().parentCol) 
-        self.V = self.cell.inputPorts[0][0].var.var
+#        toolBar = parent.parent().parent()
+#        self.cell = toolBar.parent().getCell(toolBar.parent().parentRow,toolBar.parent().parentCol) 
+#        self.V = self.cell.inputPorts[0][0].var.var
         l = QtGui.QVBoxLayout()
         self.current = QtGui.QLabel("Date")
         l.addWidget(self.current)
@@ -1306,6 +1315,12 @@ class QCDATWidgetNext(QtGui.QToolButton):
         Execute the action when the button is clicked
         
         """
+        
+        #inputPorts is no longer stored on the cell to prevent
+        #memory leaks, it must be had from somewhere else to re-enable this
+        print "This has been disabled due to memory leaks"
+        return
+        
         #make sure we get the canvas object used in the cell
         cellWidget = self.toolBar.getSnappedWidget()
         selectedDim = str(self.parent().dimSelector.currentText())
