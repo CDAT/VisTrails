@@ -122,6 +122,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         varProp.btnDefineClose.setVisible(False)
         varProp.btnDefineAs.setVisible(False)
         varProp.btnApplyEdits.setVisible(True)
+        varProp.btnSaveEditsAs.setVisible(True)
 #        varProp.btnApplyEdits.setEnabled(False)
         varProp.show()
 
@@ -220,6 +221,9 @@ class QDefinedVariableWidget(QtGui.QWidget):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
         """
+        if var is None:
+            return
+        
         cdmsVar = None
         if type_ == 'CDMS':
             if type(var) == tuple:

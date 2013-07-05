@@ -503,11 +503,45 @@ class Workspace(QtGui.QDockWidget):
                          item.sheetSizeChanged)
                 self.connect(item.controller, QtCore.SIGNAL("show_provenance"),
                              item.show_provenance)
+                
+                # add any variables that weren't automatically added above
+                # by checking leaf nodes of the version tree
+                from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
+                from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
+                fullTree = view.controller.vistrail.tree.getVersionTree()
+                pipelinesToSearch = []
+                for version in fullTree.iter_vertices():
+                    if fullTree.out_degree(version) == 0:
+                        view.controller.change_selected_version(version)
+                        pipeline = view.controller._get_current_pipeline()
+                        found = False
+                        for module in CDMSPipelineHelper.find_modules_by_type(
+                                pipeline, [CDMSVariable]):
+                            if module.name not in self.current_controller.defined_variables:
+                                found = True
+                                break
+                            
+                        if not found:
+                            for module in CDMSPipelineHelper.find_modules_by_type(
+                                    pipeline, [CDMSVariableOperation]):
+                                if module.varname not in self.current_controller.computed_variables:
+                                    found = True
+                                    break
+                                
+                        if found:
+                            pipelinesToSearch.append(pipeline)
+                
+                #perform this outside above loop because it changes the version tree that 
+                #is being iterated over
+                for pipeline in pipelinesToSearch:
+                    self.current_controller.search_and_emit_variables(pipeline, CDMSPipelineHelper)
      
             if view.controller.locator:
                 name = view.controller.locator.short_name
                 self.viewToItem[id(view)].setText(0, name)
             self.treeProjects.setCurrentItem(self.viewToItem[id(view)])
+            
+            
             
         except Exception, err:
             print "Error adding project: ", str(err)

@@ -6,6 +6,7 @@
 ###############################################################################
 
 from PyQt4 import QtCore, QtGui
+import uuid
 
 import os
 import cdms2
@@ -84,6 +85,9 @@ class VariableProperties(QtGui.QDialog):
         self.btnApplyEdits=QDockPushButton("Apply")
         self.btnApplyEdits.setVisible(False)
         h.addWidget(self.btnApplyEdits)
+        self.btnSaveEditsAs=QDockPushButton("Save As")
+        self.btnSaveEditsAs.setVisible(False)
+        h.addWidget(self.btnSaveEditsAs)
         self.btnCancel=QDockPushButton("Close")
 
         # defaults?
@@ -138,6 +142,7 @@ class VariableProperties(QtGui.QDialog):
         self.btnDefineAs.setVisible(True)
         self.btnDefineClose.setVisible(True)
         self.btnApplyEdits.setVisible(False)
+        self.btnSaveEditsAs.setVisible(False)
 
     def tabHasChanged(self,index):
         if (index==1) or (index==2):
@@ -179,6 +184,7 @@ class VariableProperties(QtGui.QDialog):
         self.btnDefineAs.clicked.connect(self.defineAsVarClicked)
         self.connect(self,QtCore.SIGNAL('definedVariableEvent'),self.root.dockVariable.widget().addVariable)
         self.btnApplyEdits.clicked.connect(self.applyEditsClicked)
+        self.btnSaveEditsAs.clicked.connect(self.saveEditsAsClicked)
         self.selectRoiButton.clicked.connect( self.selectRoi )
 
     def checkTargetVarName(self):
@@ -640,14 +646,15 @@ class VariableProperties(QtGui.QDialog):
                     continue
             cmds += "%s=%s," % (k, repr(kwargs[k]))
         cmds=cmds[:-1]
-        uvar=axisList.getVar()
-        if isinstance(uvar,cdms2.axis.FileAxis):
-            updatedVar = cdms2.MV2.array(uvar)
-        else:
-            updatedVar = uvar(**kwargs)
+#        uvar=axisList.getVar()
+#        if isinstance(uvar,cdms2.axis.FileAxis):
+#            updatedVar = cdms2.MV2.array(uvar)
+#        else:
+#            updatedVar = uvar(**kwargs)
 
         # Get the variable after carrying out the: def, sum, avg... operations
-        updatedVar = axisList.execAxesOperations(updatedVar)
+#        updatedVar = axisList.execAxesOperations(updatedVar)
+        updatedVar = axisList.getVar()
         self.root.record("## Defining variable in memory")
 
         if axisList.cdmsFile is None:
@@ -665,7 +672,7 @@ class VariableProperties(QtGui.QDialog):
         ## Squeeze?
         if updatedVar.rank() !=0:
             if self.root.preferences.squeeze.isChecked():
-                updatedVar=updatedVar(squeeze=1)
+                #updatedVar=updatedVar(squeeze=1)
                 self.root.record("%s = %s(squeeze=1)" % (targetId,targetId))
                 kwargs['squeeze']=1
         else:
@@ -701,18 +708,31 @@ class VariableProperties(QtGui.QDialog):
         url = None
         if hasattr(self.cdmsFile, "uri"):
             url = self.cdmsFile.uri
+        cdmsVar = None
         if not computed_var:
             cdmsVar = CDMSVariable(filename=self.cdmsFile.id, url=url, name=targetId,
                                    varNameInFile=original_id,
                                    axes=get_kwargs_str(kwargs),
                                    axesOperations=str(axes_ops_dict))
-            self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))
             controller.add_defined_variable(cdmsVar)
         else:
-            self.emit(QtCore.SIGNAL('definedVariableEvent'),updatedVar)
             controller.copy_computed_variable(original_id, targetId,
                                               axes=get_kwargs_str(kwargs),
                                               axesOperations=str(axes_ops_dict))
+            
+        updatedVar = controller.create_exec_new_variable_pipeline(targetId)
+
+        if updatedVar is None:
+            return axisList.getVar()
+
+        if not computed_var:
+            self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))
+        else:
+            self.emit(QtCore.SIGNAL('definedVariableEvent'),updatedVar)
+
+        if(self.varEditArea.widget()):
+            self.varEditArea.widget().var = updatedVar
+            axisList.setVar(updatedVar)
 
         self.updateVarInfo(axisList)
         return updatedVar
@@ -740,3 +760,6 @@ class VariableProperties(QtGui.QDialog):
         controller = _app.uvcdatWindow.get_current_project_controller()
         
         controller.variableEdited(varname)
+        
+    def saveEditsAsClicked(self):
+        self.defineAsVarClicked()

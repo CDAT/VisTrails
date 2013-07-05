@@ -140,6 +140,9 @@ class CDMSVariable(Variable):
         else:
             var = cdmsfile.__call__(varName)
             
+        if self.axesOperations is not None:
+            var = CDMSVariable.applyAxesOperations(var, self.axesOperations)
+            
         #make sure that var.id is the same as self.name
         var.id = self.name
         if self.attributes is not None:

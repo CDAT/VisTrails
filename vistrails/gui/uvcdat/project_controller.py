@@ -402,9 +402,10 @@ class ProjectController(QtCore.QObject):
         from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
         _app = get_vistrails_application()
         if isinstance(var, CDMSVariable):
-            _app.uvcdatWindow.dockVariable.widget().addVariable(var.to_python())
+            varObj = self.create_exec_new_variable_pipeline(var.name)
+            _app.uvcdatWindow.dockVariable.widget().addVariable(varObj)
         elif isinstance(var, CDMSVariableOperation):
-            varObj = var.to_python()
+            varObj = self.create_exec_new_variable_pipeline(var.varname)
             if isinstance(varObj, cdms2.tvariable.TransientVariable):
                 _app.uvcdatWindow.dockVariable.widget().addVariable(varObj)
             
@@ -639,6 +640,66 @@ class ProjectController(QtCore.QObject):
         self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, None,
                   plot_type, cell.current_parent_version)
         
+    def search_and_emit_variables(self, pipeline, helper, cell=None):
+        from packages.uvcdat.init import Variable
+        from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
+        var_modules = helper.find_modules_by_type(pipeline, 
+                                                  [Variable])
+        if len(var_modules) > 0:
+            if cell is None:
+                cell = lambda:None
+                cell.current_parent_version = 0L
+            self.load_variables_from_modules(var_modules, helper, cell)
+            
+        #pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
+        #this will give me the modules in topological order
+        #so when I try to reconstruct the operations they will be on the
+        #right order
+        
+        op_modules = helper.find_topo_sort_modules_by_types(pipeline, 
+                                                 [CDMSVariableOperation])
+        op_tuples = []
+        computed_ops = {}
+        if len(op_modules) > 0:
+            info = {}
+            op_info = {}
+            for opm in op_modules:
+                varname = helper.get_variable_name_from_module(opm)
+                mvars= helper.find_variables_connected_to_operation_module(self.vt_controller,
+                                                                           pipeline, opm.id)
+                ivars= [helper.get_variable_name_from_module(iv) for iv in mvars]
+                op = opm.module_descriptor.module.from_module(opm)
+                opvars = []
+                for mv in mvars:
+                    if mv in computed_ops:
+                        #this means this operation uses another operation that
+                        #was already processed. We need only to create a new variable
+                        # and associate the computed cdms variable
+                        var =  CDMSVariable(filename=None,name=computed_ops[mv].varname)
+                        var.var = self.create_exec_new_variable_pipeline(var.name)
+                    else:
+                        #using a simple variable. Just recreate it
+                        var = mv.module_descriptor.module.from_module(mv)
+                        var.var = self.create_exec_new_variable_pipeline(var.name)
+                    opvars.append(var)
+                op.set_variables(opvars)
+                op_tuples.append((opm,op))
+                computed_ops[opm] = op
+                txt = opm.get_annotation_by_key("__desc__").value
+                info[varname] = (ivars, txt, op.python_command, varname)
+                if (op.axes is not None or op.axesOperations is not None or
+                    op.attributes is not None or op.axisAttributes is not None or
+                    op.timeBounds is not None):
+                    #we store the attributes in a variable
+                    op_info[varname] = CDMSVariable(name=varname, axes=op.axes,
+                                           axesOperations=op.axesOperations,
+                                           attributes=op.attributes,
+                                           axisAttributes=op.axisAttributes,
+                                           timeBounds=op.timeBounds)
+            self.load_computed_variables_from_modules(op_tuples, info, op_info, 
+                                                      helper)
+        return var_modules
+        
     def search_and_emit_new_variables(self, cell):
         """search_and_emit_new_variables(cell) -> None
         It will go through the variables in the cell and define them if they are 
@@ -652,61 +713,12 @@ class ProjectController(QtCore.QObject):
 #            if var not in self.defined_variables:
 #                not_found = True
         if not_found:
-            from packages.uvcdat.init import Variable
-            from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
+            from packages.uvcdat_cdms.init import CDMSVariable
             helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
             pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
-            var_modules = helper.find_modules_by_type(pipeline, 
-                                                      [Variable])
-            if len(var_modules) > 0:
-                self.load_variables_from_modules(var_modules, helper, cell)
-                
-            pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
-            #this will give me the modules in topological order
-            #so when I try to reconstruct the operations they will be on the
-            #right order
-            op_modules = helper.find_topo_sort_modules_by_types(pipeline, 
-                                                     [CDMSVariableOperation])
-            op_tuples = []
-            computed_ops = {}
-            if len(op_modules) > 0:
-                info = {}
-                op_info = {}
-                for opm in op_modules:
-                    varname = helper.get_variable_name_from_module(opm)
-                    mvars= helper.find_variables_connected_to_operation_module(self.vt_controller,
-                                                                               pipeline, opm.id)
-                    ivars= [helper.get_variable_name_from_module(iv) for iv in mvars]
-                    op = opm.module_descriptor.module.from_module(opm)
-                    opvars = []
-                    for mv in mvars:
-                        if mv in computed_ops:
-                            #this means this operation uses another operation that
-                            #was already processed. We need only to create a new variable
-                            # and associate the computed cdms variable
-                            var =  CDMSVariable(filename=None,name=computed_ops[mv].varname) 
-                            var.var = computed_ops[mv].to_python()
-                        else:
-                            #using a simple variable. Just recreate it
-                            var = mv.module_descriptor.module.from_module(mv)
-                            var.var = var.to_python()
-                        opvars.append(var)
-                    op.set_variables(opvars)
-                    op_tuples.append((opm,op))
-                    computed_ops[opm] = op
-                    txt = opm.get_annotation_by_key("__desc__").value
-                    info[varname] = (ivars, txt, op.python_command, varname)
-                    if (op.axes is not None or op.axesOperations is not None or
-                        op.attributes is not None or op.axisAttributes is not None or
-                        op.timeBounds is not None):
-                        #we store the attributes in a variable
-                        op_info[varname] = CDMSVariable(name=varname, axes=op.axes,
-                                               axesOperations=op.axesOperations,
-                                               attributes=op.attributes,
-                                               axisAttributes=op.axisAttributes,
-                                               timeBounds=op.timeBounds)
-                self.load_computed_variables_from_modules(op_tuples, info, op_info, 
-                                                          helper)
+            
+            var_modules = self.search_and_emit_variables(pipeline, helper, cell)
+            
             if len(var_modules) == 0:
                 #when all workflows are updated to include the variable modules.
                 #they will be included in the case above. For now we need to 
@@ -898,7 +910,9 @@ class ProjectController(QtCore.QObject):
         except KeyError, err:
             traceback.print_exc( 100, sys.stderr )
             
-    def get_var_module(self, varname, cell, helper, var_dict={}):
+    def get_var_module(self, varname, cell, helper, var_dict=None):
+        if var_dict is None:
+            var_dict = dict()
         if varname in var_dict:
             return var_dict[varname]
         if varname not in self.computed_variables:
@@ -942,6 +956,11 @@ class ProjectController(QtCore.QObject):
         cell = self.sheet_map[sheetName][(row,col)]
         helper = CDMSPipelineHelper
         # helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
+        
+        #reusing the workflow appears to be broken, getting 
+        #Pipeline Error, module not found: id=#
+        reuse_workflow = False
+        
         if not reuse_workflow:
             self.reset_workflow(cell)
         else:
@@ -1196,3 +1215,36 @@ class ProjectController(QtCore.QObject):
             self.removeVarFromMainDict(name)
         for name in self.defined_variables:
             self.removeVarFromMainDict(name)
+            
+    def create_exec_new_variable_pipeline(self, targetId):
+        # pass dummy cell to get_var_module, it's only used to check
+        # (and update, which is harmless for this) current_parent_version
+        dummyCell = lambda: None
+        dummyCell.current_parent_version = 0L #VisTrails root
+        self.vt_controller.change_selected_version(dummyCell.current_parent_version)
+        self.get_var_module(targetId, dummyCell, CDMSPipelineHelper)
+        result = self.vt_controller.execute_current_workflow()
+        workflow_result = result[0][0]
+        
+        if len(workflow_result.errors) > 0:
+            QMessageBox.warning( None, "Workflow Error", 
+                                 "Variable pipeline had errors executing.");
+            return None
+        
+        #import pdb; pdb.set_trace()
+        
+        from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
+        modules = workflow_result.objects
+
+        for id, module in modules.iteritems():
+            #print module
+            if isinstance(module, CDMSVariable):
+                #print module.name
+                if module.name == targetId:
+                    return module.var
+            elif isinstance(module, CDMSVariableOperation):
+                #print module.varname
+                if module.varname == targetId:
+                    return module.outvar.var
+                
+        return None
