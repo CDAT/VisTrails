@@ -577,7 +577,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     nTup = newDataArray.size
                     vtkdata.SetNumberOfTuples( nTup )
                     vtkdata.SetNumberOfComponents( 1 )
-                    vtkdata.SetVoidArray( newDataArray, newDataArray.size, 1 )
+                    vtkdata.SetVoidArray( newDataArray, newDataArray.size, 0 )
                     vtkdata.SetName( varName )
                     vtkdata.Modified()
                     pointData.AddArray( vtkdata )
