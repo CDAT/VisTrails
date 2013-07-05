@@ -1141,7 +1141,20 @@ class ProjectController(QtCore.QObject):
             print "Error in checkEnableUndoRedo: "
             traceback.print_exc( 100, sys.stderr )
             
+            
     def delete_variable_module_from_cache(self, variable_name):
+        print 'trying to clean cache'
+        # by checking leaf nodes of the version tree for cache
+        from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
+        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
+        fullTree = self.vt_controller.vistrail.tree.getVersionTree()
+        for version in fullTree.iter_vertices():
+            self.vt_controller.change_selected_version(version)
+            self.delete_variable_module_from_cache_version(variable_name)
+            print 'clean cache for version %s' % str(version)
+                
+            
+    def delete_variable_module_from_cache_version(self, variable_name):
         interpreter = get_default_interpreter()
         modules_to_clean = []
         operation_types = ['Unary', 'Binary', 'Nary']
@@ -1165,6 +1178,7 @@ class ProjectController(QtCore.QObject):
             for f in module.functions:
                 if f.name == function_name:
                     if f.parameters[0].strValue == variable_name:
+                        print 'cleaning cache for %s' % variable_name
                         modules_to_clean.append(m_id)
                         break
                     
