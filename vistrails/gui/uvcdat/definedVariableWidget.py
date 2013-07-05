@@ -252,21 +252,24 @@ class QDefinedVariableWidget(QtGui.QWidget):
         ## self.emit(QtCore.SIGNAL('setupDefinedVariableAxes'), var)
 
     def deleteVariable(self, varid):
-        """ Add variable into dict / list & emit signal to create
-        a tab for the variable
+        """ Remove variable from dict and project
         """
         from packages.vtDV3D.vtUtilities import memoryLogger
         memoryLogger.log("start QDefinedVariableWidget.deleteVariable")
         for i in range(self.varList.count()-1,-1,-1):
             if self.varList.item(i).getVarName() == varid:
-                del(__main__.__dict__[varid])
+                success = True
                 #this will delete from all projects
                 for project in self.varList.item(i).projects:
                     controller = self.root.get_project_controller_by_name(project)
                     if controller:
-                        controller.remove_defined_variable(varid)
-                self.varList.takeItem(i)
-        memoryLogger.log("finished QDefinedVariableWidget.deleteVariable")
+                        if controller.remove_defined_variable(varid):
+                            self.varList.takeItem(i)
+                        else:
+                            success = False
+                if success:
+                    del __main__.__dict__[varid]
+        memoryLogger.log("finished QDefinedVariableWidget.deleteVariable (succeeded: %r)" % success)
 
         #iTab = self.root.tabView.widget(0).tabWidget.getTabIndexFromName(varid)
         #self.root.tabView.widget(0).tabWidget.removeTab(iTab)
