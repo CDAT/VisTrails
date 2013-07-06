@@ -1015,7 +1015,7 @@ class IVModuleConfigurationDialog( QWidget ):
         self.layout().setSpacing(5)
         self.createContent()
         self.tabbedWidget.setCurrentIndex(0)
-        self.disable()
+#        self.disable()
 #        print "  -AAXX- Creating %s[%s]: id = %x " % ( self.__class__.__name__, self.name, id( self ) )
 
     @staticmethod 
@@ -2222,6 +2222,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.running = False
         self.timeRange = None
         self.datasetId = None
+        self.delayTime = 0.0
         self.timer = QTimer()
         self.timer.connect( self.timer, SIGNAL('timeout()'), self.animate )
         self.timer.setSingleShot( True )
@@ -2411,8 +2412,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                 iTS = self.timeRange[0]
         self.setTimestep( iTS, restart )  
         if self.running: 
-            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
-            self.timer.start( delayTime ) 
+            self.timer.start( self.delayTime ) 
 
     def finalizeConfig( self ):
         self.stop()
@@ -2443,11 +2443,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 #            refresh = False
 ##            printTime( 'Finish Animation delay' )
                 
-#     def setDelay( self, dval  ):
-#         self.delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
-#        self.delayTime = ( self.maxSpeedIndex - dval + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
-#        self.delay = delay_in_sec if ( delay_in_sec<>None ) else self.speedSlider.value()/100.0
-        
+    def setDelay( self ):
+        self.delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )        
         
     def createContent(self ):
         """ createEditor() -> None
@@ -2468,7 +2465,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.speedSlider = QSlider( Qt.Horizontal )
         self.speedSlider.setRange( 0, self.maxSpeedIndex )
         self.speedSlider.setSliderPosition( self.maxSpeedIndex )
-#        self.connect(self.speedSlider, SIGNAL('valueChanged()'), self.setDelay )
+        self.connect(self.speedSlider, SIGNAL('sliderReleased()'), self.setDelay )        
         anim_label.setBuddy( self.speedSlider )
         label_layout.addWidget( self.speedSlider  ) 
         

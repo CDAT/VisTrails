@@ -461,6 +461,7 @@ class PersistentModule( QObject ):
     def __init__( self, mid, **args ):
         QObject.__init__(self)
         self.referenceTimeUnits = DefaultReferenceTimeUnits
+        self.debug = True
         self.pipelineBuilt = False
         self.update_proj_controller = True
         self.newLayerConfiguration = False
@@ -541,6 +542,7 @@ class PersistentModule( QObject ):
         return ( self.cell_location[0] == prj_controller.name ) and ( self.cell_location[1] == prj_controller.current_sheetName )
         
     def clearReferrents(self):
+        if self.debug: print inspect.stack()[0][3]
         for f in self.configurableFunctions.values(): 
             f.clearReferrents()
         self.configurableFunctions.clear()
@@ -598,6 +600,7 @@ class PersistentModule( QObject ):
         return ispec.inputModuleList
 
     def getConfigFunctions( self, types=None ):
+        if self.debug: print inspect.stack()[0][3]
         cmdList = []
         for items in self.configurableFunctions.items():
             cmd = items[1]
@@ -881,6 +884,7 @@ class PersistentModule( QObject ):
         if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ispec.referenceTimeUnits )
 
     def initializeInputs( self, **args ):
+        if self.debug: print inspect.stack()[0][3]
         isAnimation = args.get( 'animate', False )
         restarting = args.get( 'restarting', False )
         self.newDataset = False
@@ -1021,6 +1025,7 @@ class PersistentModule( QObject ):
         return self.configurableFunctions.get(name,None)
 
     def removeConfigurableFunction(self, name ):
+        if self.debug: print inspect.stack()[0][3]
         del self.configurableFunctions[name]
 
     def addConfigurableWidgetFunction(self, name, signature, widgetWrapper, key, **args):
@@ -1037,10 +1042,12 @@ class PersistentModule( QObject ):
         return ''.join( lines ) 
           
     def initializeConfiguration(self, **args):
+        if self.debug: print inspect.stack()[0][3]
         for configFunct in self.configurableFunctions.values():
             configFunct.init( self, **args )
             
     def applyConfiguration(self, **args ):
+        if self.debug: print inspect.stack()[0][3]
         for configFunct in self.configurableFunctions.values():
             configFunct.applyParameter( **args  )
             
@@ -1055,6 +1062,7 @@ class PersistentModule( QObject ):
         return self.configurableFunctions.get( self.InteractionState, None )
                             
     def startConfiguration( self, x, y, config_types ):
+        if self.debug: print inspect.stack()[0][3]
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
         if (self.InteractionState <> None) and not self.configuring and DV3DPipelineHelper.isLevelingConfigMode():
             configFunct = self.configurableFunctions[ self.InteractionState ]
@@ -1074,6 +1082,7 @@ class PersistentModule( QObject ):
         self.resetNavigation()
                
     def updateConfigurationObserver( self, parameter_name, new_parameter_value, *args ):
+        if self.debug: print inspect.stack()[0][3]
         try:
             if self.getActivation( parameter_name ):
 #                print " updateConfiguration[%s]: %s" % ( parameter_name, str(new_parameter_value) )
@@ -1094,6 +1103,7 @@ class PersistentModule( QObject ):
 #                self.persistParameter( configFunct.name, None )     
 
     def refreshParameters( self, useInitialValue = False ):
+        if self.debug: print inspect.stack()[0][3]
         if useInitialValue:
            for configFunct in self.configurableFunctions.values():
                if configFunct.isLayerDependent:
@@ -1116,6 +1126,7 @@ class PersistentModule( QObject ):
                 
 #            function = getFunction( configFunct.name, functionList )
     def persistParameters( self ):
+       if self.debug: print inspect.stack()[0][3]
        parmRecList = []
        for configFunct in self.configurableFunctions.values():
             value = self.getCachedParameter( configFunct.name ) 
@@ -1124,6 +1135,7 @@ class PersistentModule( QObject ):
        for configFunct in self.configurableFunctions.values(): configFunct.init( self ) 
 
     def persistLayerDependentParameters( self ):
+       if self.debug: print inspect.stack()[0][3]
        if self.newLayerConfiguration:
            parmRecList = []
            for configFunct in self.configurableFunctions.values():
@@ -1144,6 +1156,7 @@ class PersistentModule( QObject ):
         self.updateLeveling( x, y, wsize )
                 
     def updateLeveling( self, x, y, wsize, **args ):
+        if self.debug: print inspect.stack()[0][3]
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
         if self.configuring:
             configFunct = self.configurableFunctions[ self.InteractionState ]
@@ -2033,6 +2046,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return getClassName( iren.GetInteractorStyle() ) == getClassName( self.configurationInteractorStyle )
       
     def activateEvent( self, caller, event ):
+        if self.debug: print inspect.stack()[0][3]
         if self.renderer == None:
             print>>sys.stderr, "Error, no renderer available for activation."
         else:
@@ -2147,6 +2161,7 @@ class PersistentVisualizationModule( PersistentModule ):
         pass
                 
     def updateInteractionState( self, state, altMode ): 
+        if self.debug: print inspect.stack()[0][3]
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper    
         rcf = None
         if state == None: 
