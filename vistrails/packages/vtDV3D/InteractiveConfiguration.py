@@ -2204,6 +2204,22 @@ class CaptionConfigurationDialog( IVModuleConfigurationDialog ):
         self.resetButton.setMinimumHeight( 25 )
         self.buttonLayout.addWidget(self.resetButton)
         self.connect(self.resetButton, SIGNAL('clicked(bool)'), self.reset )
+
+class QAnimationThread( QThread ):
+    def __init__( self, animationMgr, **args ):
+        QtCore.QThread.__init__(self,parent=animationMgr)
+        self.animationMgr=animationMgr
+        self.runFree = args.get( 'run', False )
+        self.delayTime = args.get( 'delay', False )
+        
+    def run(self):
+        self.animationMgr.timestep()
+#        else:
+#            while self.animationMgr.running:
+#                self.animationMgr.timestep()
+#                self.sleep( self.delayTime )
+#                return
+#            self.animationMgr.stopAnimation()
         
 class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     """
@@ -2225,9 +2241,28 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.delayTime = 0.0
         self.timer = QTimer()
         self.timer.connect( self.timer, SIGNAL('timeout()'), self.animate )
-        self.timer.setSingleShot( True )
         IVModuleConfigurationDialog.__init__( self, name, **args )
-                                          
+        
+    def setVisible ( self, val ):
+        print " AnimationConfigurationDialog.setVisible: ", str( val )
+        QWidget.setVisible ( self, val )
+
+    def setDisabled ( self, val ):
+        print " AnimationConfigurationDialog.setDisabled: ", str( val )
+        QWidget.setDisabled ( self, val )
+
+    def setHidden ( self, val ):
+        print " AnimationConfigurationDialog.setHidden: ", str( val )
+        QWidget.setHidden ( self, val )
+
+    def close ( self ):
+        print " AnimationConfigurationDialog.close "
+        QWidget.close ( self )
+
+    def hide ( self ):
+        print " AnimationConfigurationDialog.hide "
+        QWidget.hide ( self )
+                                               
     @staticmethod   
     def getSignature():
         return [ ( Float, 'timeValue'), ]
@@ -2247,10 +2282,14 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 #            self.setTimestep( iTS ) 
 #            time.sleep( 0.01 ) 
 #            if not self.running: break
-                
+
     def step( self ):
         if not self.running:
             self.updateTimeRange()
+            anim_thread = QAnimationThread(self)
+            anim_thread.start()
+                
+    def timestep( self ):
             iTS =  int( self.iTimeStep ) + 1
             restart = False
             if self.timeRange:
@@ -2356,6 +2395,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     def stop(self):
         self.runButton.setText('Run')
         self.running = False 
+        
+    def stopAnimation(self):
         for moduleID in IVModuleConfigurationDialog.getActiveModules():
             module = ModuleStore.getModule( moduleID )
             module.stopAnimation()
@@ -2382,11 +2423,19 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.updateTimeRange()
         self.runButton.setText('Stop')
         self.running = True
-        self.timer.start()       
-        
+        self.animate()
+       
     def run( self ):
         if self.running: self.stop()           
         else: self.start()
+        
+    def animate(self):
+        if self.running: 
+            anim_thread = QAnimationThread(self)
+            anim_thread.start()
+            self.timer.singleShot( self.delayTime*1000, self.animate )
+        else:
+            self.stopAnimation()
         
 #            self.runButton.setText('Stop')
 #            executeWorkflow()
@@ -2403,16 +2452,16 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 #            self.runThread = threading.Thread( target=self.animate )
 #            self.runThread.start()
              
-    def animate(self):
-        iTS =  int( self.iTimeStep ) + 1
-        restart = False
-        if self.timeRange:
-            if ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ): 
-                restart = ( iTS >= self.timeRange[1] ) 
-                iTS = self.timeRange[0]
-        self.setTimestep( iTS, restart )  
-        if self.running: 
-            self.timer.start( self.delayTime ) 
+
+#        iTS =  int( self.iTimeStep ) + 1
+#        restart = False
+#        if self.timeRange:
+#            if ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ): 
+#                restart = ( iTS >= self.timeRange[1] ) 
+#                iTS = self.timeRange[0]
+#        self.setTimestep( iTS, restart )  
+#        if self.running: 
+#            self.timer.start( self.delayTime ) 
 
     def finalizeConfig( self ):
         self.stop()

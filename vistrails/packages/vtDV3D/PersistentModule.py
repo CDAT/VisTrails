@@ -461,7 +461,7 @@ class PersistentModule( QObject ):
     def __init__( self, mid, **args ):
         QObject.__init__(self)
         self.referenceTimeUnits = DefaultReferenceTimeUnits
-        self.debug = True
+        self.debug = False
         self.pipelineBuilt = False
         self.update_proj_controller = True
         self.newLayerConfiguration = False
@@ -1076,7 +1076,7 @@ class PersistentModule( QObject ):
     def updateAnimation( self, animTimeData, textDisplay=None, restartingAnimation=False ):
         self.dvUpdate( timeData=animTimeData, animate=True, restarting=restartingAnimation )
         if textDisplay <> None:  self.updateTextDisplay( textDisplay )
-        QtCore.QCoreApplication.processEvents()
+#        QtCore.QCoreApplication.processEvents()
         
     def stopAnimation( self ):
         self.resetNavigation()
