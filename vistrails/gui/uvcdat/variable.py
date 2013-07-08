@@ -167,7 +167,7 @@ class VariableProperties(QtGui.QDialog):
                          self.selectFromList)
             self.connect(self.bookmarksList, QtCore.SIGNAL('itemClicked(QListWidgetItem *)'),
                          self.selectFromList)
-            self.connect(self.varCombo, QtCore.SIGNAL('currentIndexChanged(const QString&)'),
+            self.connect(self.varCombo, QtCore.SIGNAL('activated(const QString&)'),
                          self.variableSelected)
             self.connect(self.bookmarksList,QtCore.SIGNAL("droppedInto"),self.droppedBookmark)
 
@@ -492,6 +492,9 @@ class VariableProperties(QtGui.QDialog):
 
             # By default, select first var
             self.varCombo.setCurrentIndex(1)
+            
+            # manually call this since we listen for activated now
+            self.variableSelected(self.varCombo.itemText(1))
 
     def variableSelected(self, varName):
         if varName == '':
