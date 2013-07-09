@@ -58,56 +58,11 @@ class QAnimationView(QtGui.QWidget):
 
         ##Player section
         self.player = uvcdatCommons.QFramedWidget("Player")
-        icon = QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'zoom_in_01.ico'))
-        self.zoomInButton = self.player.addButton("Zoom In",newRow=False,icon=icon,buttonType="Push")
-        self.connect(self.zoomInButton,QtCore.SIGNAL("clicked()"),self.zoomIn)
-        icon = QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, 'zoom_out_01.ico'))
-        self.zoomOutButton = self.player.addButton("Zoom Out",newRow=False,icon=icon,buttonType="Push")
-        self.zoomOutButton.setEnabled(False)
-        self.connect(self.zoomOutButton,QtCore.SIGNAL("clicked()"),self.zoomOut)
+        self.zoomButton = self.player.addLabeledSlider("Zoom",minimum=1,maximum=10,newRow=False)
+        self.connect(self.zoomButton,QtCore.SIGNAL("valueChanged(int)"),self.zoomIn)
         ## Player
         grid = QtGui.QGridLayout()
         size=QtCore.QSize(40,40)
-        ## UP button
-        icon=QtGui.QIcon(':icons/resources/icons/pan_up.gif')
-        b=QtGui.QToolButton()
-        b.setIcon(icon)
-        b.setIconSize(size)
-        b.setToolTip("Span Up")
-        b.setEnabled(False)
-        grid.addWidget(b,0,1)
-        self.upButton=b
-        self.connect(self.upButton,QtCore.SIGNAL("clicked()"),self.up)
-        ## Down button
-        icon=QtGui.QIcon(':icons/resources/icons/pan_down.gif')
-        b=QtGui.QToolButton()
-        b.setIcon(icon)
-        b.setIconSize(size)
-        b.setToolTip("Span Down")
-        b.setEnabled(False)
-        grid.addWidget(b,2,1)
-        self.downButton=b
-        self.connect(self.downButton,QtCore.SIGNAL("clicked()"),self.down)
-        ## Left button
-        icon=QtGui.QIcon(':icons/resources/icons/pan_left.gif')
-        b=QtGui.QToolButton()
-        b.setIcon(icon)
-        b.setIconSize(size)
-        b.setToolTip("Span Left")
-        b.setEnabled(False)
-        grid.addWidget(b,1,0)
-        self.leftButton=b
-        self.connect(self.leftButton,QtCore.SIGNAL("clicked()"),self.left)
-        ## Right button
-        icon=QtGui.QIcon(':icons/resources/icons/pan_right.gif')
-        b=QtGui.QToolButton()
-        b.setIcon(icon)
-        b.setIconSize(size)
-        b.setToolTip("Span Right")
-        b.setEnabled(False)
-        grid.addWidget(b,1,2)
-        self.rightButton=b
-        self.connect(self.rightButton,QtCore.SIGNAL("clicked()"),self.right)
         ## Play/Stop button
         icon=QtGui.QIcon(':icons/resources/icons/player_play.gif')
         b=QtGui.QToolButton()
@@ -183,6 +138,9 @@ class QAnimationView(QtGui.QWidget):
         #t.start()
         self.canvas.animate.create(thread_it=1)
         self.animationCreated(c)
+        self.connect(self,QtCore.SIGNAL("AnimationCreated"),self.finsihedd)
+    def finshedd(self,*args):
+        print "Done anim:",args
 
     def animationCreated(self,cursor):
         icon = QtGui.QIcon(":/icons/resources/icons/player_play.gif")
