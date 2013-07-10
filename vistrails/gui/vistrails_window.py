@@ -918,6 +918,7 @@ class QVistrailsWindow(QVistrailViewWindow):
         _app = get_vistrails_application()
         if _app.uvcdatWindow:
             _app.uvcdatWindow.workspace.remove_project(view)
+        self.current_view = None
 
     def view_triggered(self, action):
         #print "VIEW_TRIGGERED", action
