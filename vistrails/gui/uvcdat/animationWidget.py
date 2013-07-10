@@ -25,6 +25,14 @@ class QAnimationView(QtGui.QWidget):
     """ Widget containing plot options: plot button, plot type combobox, cell
     col and row selection combo box, and an options button """
     
+    def animAutoMinMax(self,value):
+        if value == 0:
+            self.animMin.setEnabled(True)
+            self.animMax.setEnabled(True)
+        else:
+            self.animMin.setEnabled(False)
+            self.animMax.setEnabled(False)
+
     def __init__(self, parent=None, canvas=None):
         QtGui.QWidget.__init__(self, parent)
         self.parent = parent
@@ -56,6 +64,13 @@ class QAnimationView(QtGui.QWidget):
         self.createButton = controlsFrame.addButton("Generate Animation",newRow=False,icon=icon,buttonType="Push")
         self.connect(self.createButton,QtCore.SIGNAL("clicked()"),self.create)
 
+        self.animMinMax = controlsFrame.addCheckBox("Auto Min/Max")
+        self.animMinMax.setChecked(True)
+        self.connect(self.animMinMax,QtCore.SIGNAL("stateChanged(int)"),self.animAutoMinMax)
+        self.animMin = controlsFrame.addLabeledLineEdit("Min:",newRow=False)
+        self.animMax = controlsFrame.addLabeledLineEdit("Max:",newRow=False)
+        self.animMin.setEnabled(False)
+        self.animMax.setEnabled(False)
         ##Player section
         self.player = uvcdatCommons.QFramedWidget("Player")
         self.zoomButton = self.player.addLabeledSlider("Zoom: x",minimum=4,maximum=40,newRow=False,divider=4)
@@ -94,7 +109,6 @@ class QAnimationView(QtGui.QWidget):
         hbox.addLayout(vbox)
         hbox.addWidget(self.vertPan)
         self.connect(self.vertPan,QtCore.SIGNAL("valueChanged(int)"),self.vertPanned)
-
 
         self.player.vbox.addLayout(hbox)
         ## Frames Slider
@@ -141,12 +155,23 @@ class QAnimationView(QtGui.QWidget):
         self.connect(self.createButton,QtCore.SIGNAL("clicked()"),self.stop)
         #t=QThreadAnimationCreate(self,self.canvas,c)
         #t.start()
-        C = self.canvas.animate.create(thread_it=1)
+        if self.animMinMax.isChecked():
+            min=None
+            max=None
+        else:
+            try:
+                min = eval(str(self.animMin.text()))
+            except:
+                min = None
+            try:
+                max = eval(str(self.animMax.text()))
+            except:
+                max = None
+        C = self.canvas.animate.create(thread_it=1,min=min,max=max)
         #self.connect(self,QtCore.SIGNAL("AnimationCreated"),self.animationCreated)
         self.connect(C,QtCore.SIGNAL("AnimationCreated"),self.animationCreated)
 
     def animationCreated(self,*args):
-        print "done creating:",args
         icon = QtGui.QIcon(":/icons/resources/icons/player_play.gif")
         self.createButton.setIcon(icon)
         self.createButton.setText("Generate Animation")
@@ -178,6 +203,7 @@ class QAnimationView(QtGui.QWidget):
         ### stops generating animation
         #canvas=int(self.canvas.currentText())-1
         self.canvas.animate.stop_create()
+
     def timerEvent(self, event):
         if self.animationFrame>=self.canvas.animate.number_of_frames():
             if self.doLoop.isChecked():
@@ -195,39 +221,10 @@ class QAnimationView(QtGui.QWidget):
 
     def load(self):
         pass
+
     def zoom(self,value):
         self.zoomFactor=value/4.
         #canvas=int(self.canvas.currentText())-1
         self.canvas.animate.zoom(self.zoomFactor)
         self.canvas.animate.frame(self.framesSlider.value())
-        
-    def up(self):
-        self.verticalFactor+=1
-        self.downButton.setEnabled(True)
-        if self.verticalFactor==100:
-            self.upButton.setEnabled(False)
-        #canvas=int(self.canvas.currentText())-1
-        self.canvas.animate.vertical(self.verticalFactor)
-    def down(self):
-        self.verticalFactor-=1
-        self.upButton.setEnabled(True)
-        if self.verticalFactor==-100:
-            self.downButton.setEnabled(False)
-        #canvas=int(self.canvas.currentText())-1
-        self.canvas.animate.vertical(self.verticalFactor)
-    def right(self):
-        self.horizontalFactor+=1
-        self.leftButton.setEnabled(True)
-        if self.horizontalFactor==100:
-            self.rightButton.setEnabled(False)
-        #canvas=int(self.canvas.currentText())-1
-        self.canvas.animate.horizontal(self.horizontalFactor)
-    def left(self):
-        self.horizontalFactor-=1
-        self.rightButton.setEnabled(True)
-        if self.horizontalFactor==-100:
-            self.leftButton.setEnabled(False)
-        #canvas=int(self.canvas.currentText())-1
-        self.canvas.animate.horizontal(self.horizontalFactor)
 
-            
