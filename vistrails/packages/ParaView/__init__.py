@@ -5,12 +5,7 @@ identifier = 'edu.utah.sci.eranders.ParaView'
 from configuration import configuration
 
 def package_dependencies():
-    import core.packagemanager
-    manager = core.packagemanager.get_package_manager()
-    if manager.has_package('edu.utah.sci.vistrails.spreadsheet'):
-        return ['edu.utah.sci.vistrails.spreadsheet']
-    else:
-        return []
+    return ['edu.utah.sci.vistrails.spreadsheet']
 
 def package_requirements():
     import core.requirements

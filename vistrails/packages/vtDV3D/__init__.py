@@ -29,7 +29,8 @@ except Exception, e:
     hasMatplotlib = False
 
 def package_dependencies():
-    return [ vtk_pkg_identifier, 'edu.utah.sci.vistrails.matplotlib' ]
+    return [vtk_pkg_identifier, 'edu.utah.sci.vistrails.matplotlib',
+            'edu.utah.sci.vistrails.spreadsheet']
 
 def package_requirements():
     import core.requirements
