@@ -64,6 +64,18 @@ class ConfigPopupManager( QObject ):
     def reset(self):
         self.resetActions = True
 
+DV3DGuiEventType =  QEvent.User + 12
+
+class DV3DGuiEvent( QEvent ):
+
+    def __init__( self, event_type, **args ):
+        QEvent.__init__( self, DV3DGuiEventType )
+        self.event_type = event_type
+        self.attributes = dict( **args )
+        
+    def getAttribute( self, key ):
+        return self.attributes.get( key, None )
+ 
 class WindowRefinementGenerator( QObject ):
 
     def __init__( self, **args ):
@@ -2288,6 +2300,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
             self.updateTimeRange()
             anim_thread = QAnimationThread(self)
             anim_thread.start()
+            diagnosticWriter.log( self, 'completed timestep'  )
                 
     def timestep( self ):
             iTS =  int( self.iTimeStep ) + 1
@@ -2430,12 +2443,14 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         else: self.start()
         
     def animate(self):
+        reset_stdio()
         if self.running: 
             anim_thread = QAnimationThread(self)
             anim_thread.start()
-            self.timer.singleShot( self.delayTime*1000, self.animate )
+            self.timer.singleShot( self.delayTime, self.animate )
         else:
             self.stopAnimation()
+        recover_redefined_stdio()
         
 #            self.runButton.setText('Stop')
 #            executeWorkflow()

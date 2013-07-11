@@ -20,6 +20,7 @@ DefaultReferenceTimeUnits = "days since 1900-1-1"
 MIN_LINE_LEN = 50
 ecount = 0
 
+
 def getClassName( instance ):
     return instance.__class__.__name__ if ( instance <> None ) else "None" 
 
@@ -435,8 +436,7 @@ class InputSpecs:
         else:
             enc_mdata = encodeToString( metadata )
             dataVector.InsertNextValue( enc_mdata  )
- 
-              
+       
 class PersistentModule( QObject ):
     '''
     <H2> Interactive Configuration</H2>
@@ -515,6 +515,7 @@ class PersistentModule( QObject ):
 #        return 0
 
 
+
     def setCellLocation( self, cell_location ):
         self.cell_location = cell_location       
         ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
@@ -542,7 +543,7 @@ class PersistentModule( QObject ):
         return ( self.cell_location[0] == prj_controller.name ) and ( self.cell_location[1] == prj_controller.current_sheetName )
         
     def clearReferrents(self):
-        if self.debug: print inspect.stack()[0][3]
+        
         for f in self.configurableFunctions.values(): 
             f.clearReferrents()
         self.configurableFunctions.clear()
@@ -600,7 +601,7 @@ class PersistentModule( QObject ):
         return ispec.inputModuleList
 
     def getConfigFunctions( self, types=None ):
-        if self.debug: print inspect.stack()[0][3]
+        
         cmdList = []
         for items in self.configurableFunctions.items():
             cmd = items[1]
@@ -670,7 +671,7 @@ class PersistentModule( QObject ):
         controller.current_pipeline_view.recreate_module( controller.current_pipeline, self.moduleID )
         pass
 
-    def updateTextDisplay( self, text = None ):
+    def updateTextDisplay( self, text = None, **args ):
         pass
     
     def setNewConfiguration(self, **args ):
@@ -727,7 +728,7 @@ class PersistentModule( QObject ):
     def is_cacheable(self):
         return False
     
-    def updateTextDisplay( self, text = None ):
+    def updateTextDisplay( self, text = None, **args ):
         pass
             
     def getName(self):
@@ -884,7 +885,7 @@ class PersistentModule( QObject ):
         if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ispec.referenceTimeUnits )
 
     def initializeInputs( self, **args ):
-        if self.debug: print inspect.stack()[0][3]
+        
         isAnimation = args.get( 'animate', False )
         restarting = args.get( 'restarting', False )
         self.newDataset = False
@@ -985,7 +986,11 @@ class PersistentModule( QObject ):
             outputModule = AlgorithmOutputModule( fieldData=fieldData, **args )
             output =  outputModule.getOutput() 
             fd = output.GetFieldData() 
-            fd.PassData( fieldData )                      
+            if fieldData:
+                fd = output.GetFieldData() 
+                fd.PassData( fieldData ) 
+            else:                     
+                diagnosticWriter.log( self, ' set2DOutput, NULL field data ' )    
             self.wmod.setResult( portName, outputModule ) 
         else: print " Missing wmod in %s.set2DOutput" % getClassName( self )
 
@@ -993,8 +998,11 @@ class PersistentModule( QObject ):
         if self.wmod:  
             fieldData = self.getFieldData()
             output =  outputModule.getOutput() 
-            fd = output.GetFieldData()  
-            fd.PassData( fieldData )                
+            if fieldData:
+                fd = output.GetFieldData()
+                fd.PassData( fieldData )                
+            else:                     
+                diagnosticWriter.log( self, ' setOutputModule, NULL field data ' )    
             self.wmod.setResult( portName, outputModule ) 
         else: print " Missing wmod in %s.set2DOutput" % getClassName( self )
          
@@ -1025,7 +1033,7 @@ class PersistentModule( QObject ):
         return self.configurableFunctions.get(name,None)
 
     def removeConfigurableFunction(self, name ):
-        if self.debug: print inspect.stack()[0][3]
+        
         del self.configurableFunctions[name]
 
     def addConfigurableWidgetFunction(self, name, signature, widgetWrapper, key, **args):
@@ -1042,12 +1050,12 @@ class PersistentModule( QObject ):
         return ''.join( lines ) 
           
     def initializeConfiguration(self, **args):
-        if self.debug: print inspect.stack()[0][3]
+        
         for configFunct in self.configurableFunctions.values():
             configFunct.init( self, **args )
             
     def applyConfiguration(self, **args ):
-        if self.debug: print inspect.stack()[0][3]
+        
         for configFunct in self.configurableFunctions.values():
             configFunct.applyParameter( **args  )
             
@@ -1062,7 +1070,7 @@ class PersistentModule( QObject ):
         return self.configurableFunctions.get( self.InteractionState, None )
                             
     def startConfiguration( self, x, y, config_types ):
-        if self.debug: print inspect.stack()[0][3]
+        
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
         if (self.InteractionState <> None) and not self.configuring and DV3DPipelineHelper.isLevelingConfigMode():
             configFunct = self.configurableFunctions[ self.InteractionState ]
@@ -1073,16 +1081,16 @@ class PersistentModule( QObject ):
                     self.haltNavigationInteraction()
                     if (configFunct.type == 'leveling'): self.getLabelActor().VisibilityOn()
     
-    def updateAnimation( self, animTimeData, textDisplay=None, restartingAnimation=False ):
+    def updateAnimation( self, animTimeData, textDisplay=None, restartingAnimation=False ):     
         self.dvUpdate( timeData=animTimeData, animate=True, restarting=restartingAnimation )
-        if textDisplay <> None:  self.updateTextDisplay( textDisplay )
+        if textDisplay <> None:  self.updateTextDisplay( textDisplay, worker_thread=True )
 #        QtCore.QCoreApplication.processEvents()
         
     def stopAnimation( self ):
         self.resetNavigation()
                
     def updateConfigurationObserver( self, parameter_name, new_parameter_value, *args ):
-        if self.debug: print inspect.stack()[0][3]
+        
         try:
             if self.getActivation( parameter_name ):
 #                print " updateConfiguration[%s]: %s" % ( parameter_name, str(new_parameter_value) )
@@ -1103,7 +1111,7 @@ class PersistentModule( QObject ):
 #                self.persistParameter( configFunct.name, None )     
 
     def refreshParameters( self, useInitialValue = False ):
-        if self.debug: print inspect.stack()[0][3]
+        
         if useInitialValue:
            for configFunct in self.configurableFunctions.values():
                if configFunct.isLayerDependent:
