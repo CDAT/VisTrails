@@ -758,24 +758,14 @@ class ImagePlaneWidget:
             
         self.Reslice.SetInput(self.ImageData)
         self.Reslice.Modified()
-<<<<<<< HEAD
-#            self.clipper = vtk.vtkImageClip()
-#            self.clipper.AddInput( self.ImageData2 )
-#            self.clipper.SetOutputWholeExtent( self.ImageData.GetWholeExtent() )
-#            self.Reslice2.SetInput( self.clipper.GetOutput() )
-=======
->>>>>>> uvcdat-dv3d-fix_scripting_api
         dims = self.ImageData.GetDimensions()
         self.InputDims = 3 if ( ( len(dims) > 2 ) and ( dims[2] > 1 ) ) else 2
            
         if inputData2:
             dims2 = self.ImageData2.GetDimensions()
             self.ContourInputDims = 3 if ( ( len(dims2) > 2 ) and ( dims2[2] > 1 ) ) else 2
-<<<<<<< HEAD
-=======
             self.Reslice2 = vtk.vtkImageReslice()
             self.Reslice2.TransformInputSamplingOff()
->>>>>>> uvcdat-dv3d-fix_scripting_api
             self.Reslice2.SetInput(self.ImageData2)
             self.Reslice2.Modified()
 #            self.Reslice2.SetInformationInput( self.ImageData )     
@@ -883,20 +873,6 @@ class ImagePlaneWidget:
         self.Reslice.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
         self.Reslice.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
         
-<<<<<<< HEAD
-        if self.ContourInputDims == 2: 
-            self.ResliceAxes2.DeepCopy( self.ResliceAxes )
-            self.ResliceAxes2.SetElement( 2, 3, 0.0 ) 
-            self.Reslice2.SetResliceAxes(self.ResliceAxes2) 
-        else: 
-            self.Reslice2.SetResliceAxes(self.ResliceAxes)
-        
-        self.Reslice2.SetOutputSpacing(outputSpacingX, outputSpacingY, 1)
-        self.Reslice2.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
-        self.Reslice2.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
-
-               
-=======
         if self.Reslice2:
             self.Reslice2.SetResliceAxes(self.ResliceAxes)
             if self.ContourInputDims == 2: 
@@ -910,19 +886,14 @@ class ImagePlaneWidget:
             self.Reslice2.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
             self.Reslice2.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
 
-              
->>>>>>> uvcdat-dv3d-fix_scripting_api
+
 #----------------------------------------------------------------------------
 
     def GetResliceOutput(self):             
         return self.Reslice.GetOutput()
 
     def GetReslice2Output(self):      
-<<<<<<< HEAD
-        return self.Reslice2.GetOutput()        
-=======
         return self.Reslice2.GetOutput() if self.Reslice2 else None      
->>>>>>> uvcdat-dv3d-fix_scripting_api
 
 #----------------------------------------------------------------------------
     def SetResliceInterpolate( self, i ):
