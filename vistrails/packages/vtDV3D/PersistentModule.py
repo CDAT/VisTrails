@@ -1694,11 +1694,17 @@ class PersistentVisualizationModule( PersistentModule ):
                         moduleIdList.append( moduleId )
         return rmodList
 
-    def updateTextDisplay( self, text = None ):
+    def updateTextDisplay( self, text = None, **args ):
+        worker_thread = args.get("worker_thread", False )
         if (text <> None) and (self.renderer <> None): 
-            self.labelBuff = str(text)
             if (self.ndims == 3):                
-                self.getLabelActor().VisibilityOn()
+                if worker_thread:
+                    app = QCoreApplication.instance()
+                    gui_event = DV3DGuiEvent( "label_text_update", text=text )
+                    app.postEvent( self, gui_event )
+                else:
+                    self.labelBuff = str(text)
+                    self.getLabelActor().VisibilityOn()    
                 
     def updateLensDisplay(self, screenPos, coord):
         if (screenPos <> None) and (self.renderer <> None) and self.showInteractiveLens: 
