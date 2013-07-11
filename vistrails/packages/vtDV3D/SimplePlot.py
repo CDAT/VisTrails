@@ -1,11 +1,10 @@
+#!/usr/bin/env python
 '''
 Created on Nov 4, 2011
 
 @author: tpmaxwel
 Based on PyQt example code by Riverbank Computing.
 '''
-
-#!/usr/bin/env python
 
 import math, time, sys, random
 from vtUtilities import *

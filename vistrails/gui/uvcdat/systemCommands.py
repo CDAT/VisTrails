@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #
 # The UV-CDAT GUI system commands and miscellaneous functions -  systemCommands module
 #

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 __version__ = "Time-stamp: <2012-02-21 15:52:15 ycopin>"
 __author__ = "Yannick Copin <yannick.copin-QFKgK+z4sOrR7s880joybQ@public.gmane.org>"
 
