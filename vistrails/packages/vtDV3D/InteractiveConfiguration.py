@@ -2226,6 +2226,7 @@ class QAnimationThread( QThread ):
         
     def run(self):
         self.animationMgr.timestep()
+        self.exit(0)
 #        else:
 #            while self.animationMgr.running:
 #                self.animationMgr.timestep()
@@ -2243,6 +2244,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.iTimeStep = 0
         self.relTimeStart = None
         self.relTimeStep = 1.0
+        self.anim_thread = None
         self.delayTime = 0
         self.uniformTimeRange = True
         self.maxSpeedIndex = 100
@@ -2292,9 +2294,10 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 
     def step( self ):
         if not self.running:
+            if self.anim_thread and self.anim_thread.isRunning(): return 
             self.updateTimeRange()
-            anim_thread = QAnimationThread(self)
-            anim_thread.start()
+            self.anim_thread = QAnimationThread(self)
+            self.anim_thread.start()
             diagnosticWriter.log( self, 'completed timestep'  )
                 
     def timestep( self ):
@@ -2439,9 +2442,10 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         
     def animate(self):
         reset_stdio()
-        if self.running: 
-            anim_thread = QAnimationThread(self)
-            anim_thread.start()
+        if self.running:
+            if ( self.anim_thread == None ) or self.anim_thread.isFinished(): 
+                self.anim_thread = QAnimationThread(self)
+                self.anim_thread.start()
             self.timer.singleShot( self.delayTime, self.animate )
         else:
             self.stopAnimation()
@@ -2489,8 +2493,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 #            delayTime =  ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.delayTimeScale    
 #            time.sleep( delayTime ) 
 #            refresh = False
-##            printTime( 'Finish Animation delay' )
-                
+##            printTime( 'Finish Animation delay' )                
+
     def setDelay( self ):
         self.delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )        
         
