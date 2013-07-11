@@ -345,6 +345,9 @@ class InputSpecs:
         return self.metadata.get( key, None ) if ( key and self.metadata )  else self.metadata
   
     def getFieldData( self ):
+        if self.fieldData == None:
+            diagnosticWriter.log( self, ' Uninitialized field data being accessed in ispec[%x]  ' % id(self)  ) 
+            self.initializeMetadata()
         return self.fieldData  
     
     def updateMetadata( self, plotIndex ):
@@ -356,6 +359,10 @@ class InputSpecs:
                 self.fieldData = self.input().GetFieldData()         
             elif self.inputModule:
                 self.fieldData = self.inputModule.getFieldData() 
+
+            if self.fieldData == None:
+                diagnosticWriter.log( self, ' NULL field data in updateMetadata: ispec[%x]  ' % id(self)  ) 
+                self.initializeMetadata() 
     
             self.metadata = self.computeMetadata( plotIndex )
             
@@ -413,8 +420,7 @@ class InputSpecs:
             else:
                 try: return mdList[ 0 ]
                 except: pass               
-        cell_coords = DV3DPipelineHelper.getCellCoordinates( self.moduleID ) 
-        print>>sys.stderr, "[%s]%s: Error, Metadata for input %d not found" % ( self.__class__.__name__, str(cell_coords[1]), plotIndex )
+        print>>sys.stderr, "[%s]: Error, Metadata for input %d not found in ispec[%x]  "  % ( self.__class__.__name__,  plotIndex, id(self) )
         return {}
         
     def addMetadataObserver( self, caller, event ):
@@ -427,6 +433,7 @@ class InputSpecs:
             self.fieldData = vtk.vtkDataSetAttributes()
             mdarray = getStringDataArray( 'metadata' )
             self.fieldData.AddArray( mdarray )
+#            diagnosticWriter.log( self, ' initialize field data in ispec[%x]  ' % id(self) )  
         except Exception, err:
             print>>sys.stderr, "Error initializing metadata"
 

@@ -74,9 +74,10 @@ class DiagnosticWriter:
      def log( self, pobj, msg, print_stack=False ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper       
         cell_coords = DV3DPipelineHelper.getCellCoordinates( pobj.moduleID ) if ( pobj and hasattr(pobj,'moduleID') ) else "xx"
+        mid = pobj.moduleID if ( pobj and hasattr(pobj,'moduleID') ) else 0
         if self.diagnostics_file == None:
            self.diagnostics_file = open( self.diagnostics_file_path, 'w' ) 
-        self.diagnostics_file.write( "---[%s]--- %s: %s\n" % ( str(cell_coords), pobj.__class__.__name__, msg ) )
+        self.diagnostics_file.write( "---%s--- %s[%d]: %s\n" % ( str(cell_coords), pobj.__class__.__name__, mid, msg ) )
         if print_stack:
             traceback.print_stack(file=self.diagnostics_file)
         self.diagnostics_file.flush()
