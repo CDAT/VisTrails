@@ -2491,16 +2491,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 #            refresh = False
 ##            printTime( 'Finish Animation delay' )
                 
-<<<<<<< HEAD
-#     def setDelay( self, dval  ):
-#         self.delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
-#        self.delayTime = ( self.maxSpeedIndex - dval + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
-#        self.delay = delay_in_sec if ( delay_in_sec<>None ) else self.speedSlider.value()/100.0
-        
-=======
     def setDelay( self ):
         self.delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )        
->>>>>>> uvcdat-dv3d-fix_scripting_api
         
     def createContent(self ):
         """ createEditor() -> None
