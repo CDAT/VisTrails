@@ -24,25 +24,17 @@ def freeImageData( image_data ):
     memoryLogger.log("start freeImageData")
     pointData = image_data.GetPointData()
     for aIndex in range( pointData.GetNumberOfArrays() ):
-        array = pointData.GetArray( aIndex )
-        if array:
-            name = pointData.GetArrayName(aIndex)
-#             s0 = array.GetSize()
-#             r0 = array.GetReferenceCount()
-            array.Initialize()
-            array.Squeeze()
-#             s1 = array.GetSize()
-            pointData.RemoveArray( aIndex )
-#             r1 = array.GetReferenceCount()
-            print "---- freeImageData-> Removing array %s: %s" % ( name, array.__class__.__name__ )  
+ #       array = pointData.GetArray( aIndex )
+        pointData.RemoveArray( aIndex )
+#        if array:
+#            name = pointData.GetArrayName(aIndex)            
+#            print "---- freeImageData-> Removing array %s: %s" % ( name, array.__class__.__name__ )  
     fieldData = image_data.GetFieldData()
     for aIndex in range( fieldData.GetNumberOfArrays() ): 
         aname = fieldData.GetArrayName(aIndex)
         array = fieldData.GetArray( aname )
         if array:
-#             print "---- freeImageData-> Removing field data: %s" % aname
             array.Initialize()
-            array.Squeeze()
             fieldData.RemoveArray( aname )
     image_data.ReleaseData()
     memoryLogger.log("finished freeImageData")
@@ -183,6 +175,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 
     @classmethod
     def clearCache( cls, cell_coords ):
+        from packages.vtDV3D.vtUtilities import memoryLogger
+        memoryLogger.log("start VolumeRader.clearCache")
         for dataCacheItems in cls.dataCache.items():
             dataCacheKey = dataCacheItems[0]
             dataCacheObj = dataCacheItems[1]
@@ -190,10 +184,17 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 dataCacheObj.cells.remove( cell_coords )
                 if len( dataCacheObj.cells ) == 0:
                     varDataMap = dataCacheObj.data.get('varData', None )
-                    if varDataMap: varDataMap[ 'newDataArray'] = None 
+                    if varDataMap:
+                        newDataArray = varDataMap.get( 'newDataArray', None  )
+                        try:
+                            varDataMap['newDataArray' ] = None
+                            del newDataArray
+                        except Exception, err:
+                            print>>sys.stderr, "Error releasing variable data: ", str(err)
                     dataCacheObj.data['varData'] = None
                     del cls.dataCache[ dataCacheKey ]
-#                    print "Removing Cached data: ", str( dataCacheKey )
+                    print "Removing Cached data: ", str( dataCacheKey )
+        memoryLogger.log(" finished clearing data cache ")
         for imageDataItem in cls.imageDataCache.items():
             imageDataCacheKey = imageDataItem[0]
             imageDataCacheObj = imageDataItem[1]
@@ -203,6 +204,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     freeImageData( imageDataCacheObj.data )
                     imageDataCacheObj.data = None
                     print "Removing Cached image data: ", str( imageDataCacheKey )
+        memoryLogger.log("finished clearing image cache")
         
     def getCachedData( self, varDataId, cell_coords ):
         dataCacheObj = self.dataCache.setdefault( varDataId, DataCache() )
@@ -460,9 +462,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             portName = orec.name
             selectedLevel = orec.getSelectedLevel() if ( self.currentLevel == None ) else self.currentLevel
             ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
-            default_dtype = np.ushort if ( (self.outputType == CDMSDataType.Volume ) or (self.outputType == CDMSDataType.Hoffmuller ) )  else np.float 
-#            pipeline = self.getCurrentPipeline()
-#            default_dtype = DV3DPipelineHelper.getDownstreamRequiredDType( pipeline, self.moduleID, np.float )
+            default_dtype = np.float
             scalar_dtype = args.get( "dtype", default_dtype )
             self._max_scalar_value = getMaxScalarValue( scalar_dtype )
             self._range = [ 0.0, self._max_scalar_value ]  
@@ -490,22 +490,23 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     self.setCachedData( varName, cell_coords, varDataSpecs ) 
                 else: 
                     tval = None if (self.outputType == CDMSDataType.Hoffmuller) else [ self.timeValue, iTimestep, self.useTimeIndex ] 
-                    varData = self.cdmsDataset.getVarDataCube( dsid, varName, tval, selectedLevel )
-                    if varData.id <> 'NULL':
-                        varDataSpecs = self.getGridSpecs( varData, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale, self.outputType, ds )
+                    varDataMasked = self.cdmsDataset.getVarDataCube( dsid, varName, tval, selectedLevel, cell=cell_coords )
+                    if varDataMasked.id <> 'NULL':
+                        varDataSpecs = self.getGridSpecs( varDataMasked, self.cdmsDataset.gridBounds, self.cdmsDataset.zscale, self.outputType, ds )
                         if (exampleVarDataSpecs == None) and (varDataSpecs <> None): exampleVarDataSpecs = varDataSpecs
-                        range_min = varData.min()
+                        range_min = varDataMasked.min()
                         if type( range_min ).__name__ == "MaskedConstant": range_min = 0.0
-                        range_max = varData.max()
+                        range_max = varDataMasked.max()
                         if type( range_max ).__name__ == 'MaskedConstant': range_max = 0.0
-                        var_md = copy.copy( varData.attributes )
+                        var_md = copy.copy( varDataMasked.attributes )
                                                           
                         if scalar_dtype == np.float:
-                            varData = varData.filled( 1.0e-15 * range_min ).ravel('F')
+                            varData = varDataMasked.filled( 1.0e-15 * range_min ).ravel('F')
                         else:
                             shift = -range_min
                             scale = ( self._max_scalar_value ) / ( range_max - range_min ) if  ( range_max > range_min ) else 1.0        
-                            varData = ( ( varData + shift ) * scale ).astype(scalar_dtype).filled( 0 ).ravel('F')
+                            varData = ( ( varDataMasked + shift ) * scale ).astype(scalar_dtype).filled( 0 ).ravel('F')                          
+                        del varDataMasked                          
                         
                         array_size = varData.size
                         if npts == -1:  npts = array_size
@@ -513,7 +514,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                             
                         var_md[ 'range' ] = ( range_min, range_max )
                         var_md[ 'scale' ] = ( shift, scale )   
-                        varDataSpecs['newDataArray'] = varData                     
+                        varDataSpecs['newDataArray'] = varData 
+#                        print " ** Allocated data array for %s, size = %.2f MB " % ( varDataId, (varData.nbytes /(1024.0*1024.0) ) )                    
                         md =  varDataSpecs['md']                 
                         md['datatype'] = datatype
                         md['timeValue']= self.timeValue.value
@@ -553,12 +555,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         for aname in range( pointData.GetNumberOfArrays() ): 
             pointData.RemoveArray( pointData.GetArrayName(aname) )
         fieldData = self.getFieldData()
-        na = fieldData.GetNumberOfArrays()
-        for ia in range(na):
-            aname = fieldData.GetArrayName(ia)
-            if aname.startswith('metadata'):
-                fieldData.RemoveArray(aname)
-#                print 'Remove fieldData Array: %s ' % aname
+        if fieldData:
+            na = fieldData.GetNumberOfArrays()
+            for ia in range(na):
+                aname = fieldData.GetArrayName(ia)
+                if (aname <> None) and aname.startswith('metadata'):
+                    fieldData.RemoveArray(aname)
+    #                print 'Remove fieldData Array: %s ' % aname
         extent = image_data.GetExtent()    
         scalars, nTup = None, 0
         vars = [] 
@@ -623,8 +626,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 #                    vmd[ 'vars' ] = vars               
                     vmd[ 'title' ] = getTitle( dsid, varName, var_md )                 
                     enc_mdata = encodeToString( vmd ) 
-                    if enc_mdata: fieldData.AddArray( getStringDataArray( 'metadata:%s' % varName,   [ enc_mdata ]  ) ) 
-            if enc_mdata: fieldData.AddArray( getStringDataArray( 'varlist',  vars  ) )                       
+                    if enc_mdata and fieldData: fieldData.AddArray( getStringDataArray( 'metadata:%s' % varName,   [ enc_mdata ]  ) ) 
+            if enc_mdata and fieldData: fieldData.AddArray( getStringDataArray( 'varlist',  vars  ) )                       
             image_data.Modified()
         except Exception, err:
             print>>sys.stderr, "Error encoding variable metadata: %s " % str(err)

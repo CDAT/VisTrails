@@ -3,7 +3,7 @@ Created on Dec 9, 2010
 
 @author: tpmaxwel
 '''
-import sys, vtk, StringIO, cPickle, time, os, ConfigParser, shutil
+import sys, vtk, StringIO, cPickle, time, os, ConfigParser, shutil, traceback
 import core.modules.module_registry
 from core.modules.vistrails_module import Module, ModuleError
 from core.modules.module_registry import get_module_registry
@@ -59,7 +59,42 @@ currentTime = 0
 dvDbgIO = DebugPrint()
 dvDbgIO.set_stream( sys.stderr )
 
-EnableMemoryLogging = True
+EnableMemoryLogging = False
+
+original_stdout = sys.stdout
+original_stderr = sys.stderr
+new_stdout = sys.stdout
+new_stderr = sys.stderr
+
+class DiagnosticWriter:
+     def __init__( self, **args ):
+         self.diagnostics_file = None
+         self.diagnostics_file_path = args.get( 'file_path', '/tmp/dv3d_diag_file.txt' )
+         
+     def log( self, pobj, msg, print_stack=False ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper       
+        cell_coords = DV3DPipelineHelper.getCellCoordinates( pobj.moduleID ) if ( pobj and hasattr(pobj,'moduleID') ) else "xx"
+        if self.diagnostics_file == None:
+           self.diagnostics_file = open( self.diagnostics_file_path, 'w' ) 
+        self.diagnostics_file.write( "---[%s]--- %s: %s\n" % ( str(cell_coords), pobj.__class__.__name__, msg ) )
+        if print_stack:
+            traceback.print_stack(file=self.diagnostics_file)
+        self.diagnostics_file.flush()
+        
+     def write( self, text ):
+         self.log( original_stdout, text)
+        
+diagnosticWriter = DiagnosticWriter()
+
+def reset_stdio():
+    new_stdout = sys.stdout
+    new_stderr = sys.stderr
+    sys.stdout = diagnosticWriter
+    sys.stderr = diagnosticWriter
+
+def recover_redefined_stdio():
+    sys.stdout = new_stdout 
+    sys.stderr = new_stderr 
 
 class MemoryLogger:
     def __init__( self, enabled = True ):

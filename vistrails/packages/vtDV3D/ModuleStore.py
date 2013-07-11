@@ -9,6 +9,9 @@ from packages.vtDV3D.vtUtilities import *
 from collections import OrderedDict 
 moduleStoreDatabase = {}
 cdmsStoreDatabase = {}
+activeVariables = {}
+activeVariable = None
+debug = False
 
 #cells = OrderedDict()
 
@@ -20,6 +23,30 @@ def getDatabase():
     try: page_id = prj_controller.name
     except: pass
     return moduleStoreDatabase.setdefault( page_id, {} )
+
+def addActiveVariable( name, variable ):
+    global activeVariables, activeVariable, debug
+    activeVariables[name] = variable
+    activeVariable = name
+    if debug: print "^^^^^^^^vvvvvvvvv add Active Variable: ", name
+
+def removeActiveVariable( name ):
+    global activeVariables, activeVariable, debug
+    if name in activeVariables:
+        del activeVariables[name]
+        if len( activeVariables ) == 0: activeVariable = None
+        else: activeVariable = activeVariables.keys()[0]
+        if debug: print "^^^^^^^^vvvvvvvvv remove Active Variable: %s, new: %s" % ( name, activeVariable )
+
+def setActiveVariable( name ):
+    global activeVariable, debug
+    activeVariable = name   
+    if debug: print "^^^^^^^^vvvvvvvvv set Active Variable: ", name
+
+def getActiveVariable():
+    global activeVariables, activeVariable, debug
+    if debug: print "^^^^^^^^vvvvvvvvv get Active Variable: ", activeVariable
+    return activeVariables.get( activeVariable, None )    
 
 def getCdmsDatabase():
     import api

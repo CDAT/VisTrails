@@ -11,7 +11,7 @@ Created on Feb 29, 2012
 '''
 
 
-import core.db.io, sys, os, traceback, api, time, copy
+import core.db.io, sys, os, traceback, api, time, copy, inspect
 import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
@@ -465,6 +465,7 @@ class DV3DConfigControlPanel(QWidget):
         self.proj_controller = controller
         self.controller = controller.vt_controller
         self.version = version
+        self.debug = True
         self.plot = plot_obj
 
 #        self.active_module = None

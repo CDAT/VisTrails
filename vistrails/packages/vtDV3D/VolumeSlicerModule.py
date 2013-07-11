@@ -567,7 +567,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #            self.updateSliceOutput()
 
     def initializeConfiguration( self, cmap_index=0 ):
-        PersistentModule.initializeConfiguration(self)
+        PersistentModule.initializeConfiguration(self, input_index=cmap_index )
         ispec = self.inputSpecs[ cmap_index ] 
         ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
 #        self.updateSliceOutput()
