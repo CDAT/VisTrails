@@ -540,7 +540,6 @@ class DV3DConfigControlPanel(QWidget):
         self.setLayout(main_layout)
         
     def askToSaveChanges(self):
-        if self.debug: print inspect.stack()[0][3]
         if self.configWidget: 
             self.configWidget.finalizeConfig( )
             self.configWidget.setVisible ( False )
@@ -586,7 +585,6 @@ class DV3DConfigControlPanel(QWidget):
         return None
         
     def init( self, configFunctionList ):
-        if self.debug: print inspect.stack()[0][3]
 #        print "Init DV3DConfigControlPanel: id = %x " % id( self )
         cfgWidget = self.getConfigWidget( configFunctionList )
         if cfgWidget:
@@ -603,7 +601,6 @@ class DV3DConfigControlPanel(QWidget):
         return self.configWidget.isEligibleCommand( cmd )
 
     def addActivePlot( self, moduleID, config_fn ):
-        if self.debug: print inspect.stack()[0][3]
         if self.showActivePlotsPanel and self.configWidget:
             active_cells = DV3DPipelineHelper.getActiveCellStrs()
             if self.configWidget.active_cfg_cmd <> None and self.configWidget.active_cfg_cmd.isCompatible( config_fn ):
@@ -634,18 +631,15 @@ class DV3DConfigControlPanel(QWidget):
                 DV3DPipelineHelper.activationMap[ moduleID ] = False
                     
     def  processPlotListEvent( self, list_item ): 
-        if self.debug: print inspect.stack()[0][3]
         DV3DPipelineHelper.setModulesActivation( list_item.moduleIDs, ( list_item.checkState() == Qt.Checked ) ) 
                            
     def startConfig(self, qs_action_key, qs_cfg_key ):
-        if self.debug: print inspect.stack()[0][3]
         self.plot_list.clear()
         self.modules_frame.setVisible(True)
         if self.configWidget:
             self.configWidget.startConfig( qs_action_key, qs_cfg_key )
 
     def stopConfig( self, module ):       
-        if self.debug: print inspect.stack()[0][3]
         ( interactionState, persisted ) = self.configWidget.getInteractionState()
         if not persisted:
             module.finalizeConfigurationObserver( interactionState, notifyHelper=False ) 
@@ -653,14 +647,12 @@ class DV3DConfigControlPanel(QWidget):
             self.configWidget.clearInteractionState()
         
     def persistParameter(self, module):
-        if self.debug: print inspect.stack()[0][3]
         ( interactionState, persisted ) = self.configWidget.getInteractionState()
         if not persisted:
             module.finalizeParameter( interactionState, notifyHelper=False )
             self.configWidget.clearInteractionState()
 
     def endConfig( self ):
-        if self.debug: print inspect.stack()[0][3]
         self.modules_frame.setVisible(False)
         if self.configWidget:
             self.configWidget.endConfig()

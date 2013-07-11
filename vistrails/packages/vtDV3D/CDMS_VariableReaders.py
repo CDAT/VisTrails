@@ -462,9 +462,6 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             portName = orec.name
             selectedLevel = orec.getSelectedLevel() if ( self.currentLevel == None ) else self.currentLevel
             ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
- #           default_dtype = np.ushort if ( (self.outputType == CDMSDataType.Volume ) or (self.outputType == CDMSDataType.Hoffmuller ) )  else np.float 
-            pipeline = self.getCurrentPipeline()
-#            default_dtype = DV3DPipelineHelper.getDownstreamRequiredDType( pipeline, self.moduleID, np.float )
             default_dtype = np.float
             scalar_dtype = args.get( "dtype", default_dtype )
             self._max_scalar_value = getMaxScalarValue( scalar_dtype )
@@ -518,7 +515,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         var_md[ 'range' ] = ( range_min, range_max )
                         var_md[ 'scale' ] = ( shift, scale )   
                         varDataSpecs['newDataArray'] = varData 
-                        print " ** Allocated data array for %s, size = %.2f MB " % ( varDataId, (varData.nbytes /(1024.0*1024.0) ) )                    
+#                        print " ** Allocated data array for %s, size = %.2f MB " % ( varDataId, (varData.nbytes /(1024.0*1024.0) ) )                    
                         md =  varDataSpecs['md']                 
                         md['datatype'] = datatype
                         md['timeValue']= self.timeValue.value
@@ -558,12 +555,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         for aname in range( pointData.GetNumberOfArrays() ): 
             pointData.RemoveArray( pointData.GetArrayName(aname) )
         fieldData = self.getFieldData()
-        na = fieldData.GetNumberOfArrays()
-        for ia in range(na):
-            aname = fieldData.GetArrayName(ia)
-            if aname.startswith('metadata'):
-                fieldData.RemoveArray(aname)
-#                print 'Remove fieldData Array: %s ' % aname
+        if fieldData:
+            na = fieldData.GetNumberOfArrays()
+            for ia in range(na):
+                aname = fieldData.GetArrayName(ia)
+                if (aname <> None) and aname.startswith('metadata'):
+                    fieldData.RemoveArray(aname)
+    #                print 'Remove fieldData Array: %s ' % aname
         extent = image_data.GetExtent()    
         scalars, nTup = None, 0
         vars = [] 
@@ -628,8 +626,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 #                    vmd[ 'vars' ] = vars               
                     vmd[ 'title' ] = getTitle( dsid, varName, var_md )                 
                     enc_mdata = encodeToString( vmd ) 
-                    if enc_mdata: fieldData.AddArray( getStringDataArray( 'metadata:%s' % varName,   [ enc_mdata ]  ) ) 
-            if enc_mdata: fieldData.AddArray( getStringDataArray( 'varlist',  vars  ) )                       
+                    if enc_mdata and fieldData: fieldData.AddArray( getStringDataArray( 'metadata:%s' % varName,   [ enc_mdata ]  ) ) 
+            if enc_mdata and fieldData: fieldData.AddArray( getStringDataArray( 'varlist',  vars  ) )                       
             image_data.Modified()
         except Exception, err:
             print>>sys.stderr, "Error encoding variable metadata: %s " % str(err)

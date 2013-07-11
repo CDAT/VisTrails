@@ -404,6 +404,7 @@ class InputSpecs:
         return layerList
     
     def computeMetadata( self, plotIndex ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
         if not self.fieldData: self.initializeMetadata() 
         if self.fieldData:
             mdList = extractMetadata( self.fieldData )
@@ -411,8 +412,9 @@ class InputSpecs:
                 return mdList[ plotIndex ]
             else:
                 try: return mdList[ 0 ]
-                except: pass
-        print>>sys.stderr, "Error, Metadata for input %d not found" % plotIndex
+                except: pass               
+        cell_coords = DV3DPipelineHelper.getCellCoordinates( self.moduleID ) 
+        print>>sys.stderr, "[%s]%s: Error, Metadata for input %d not found" % ( self.__class__.__name__, str(cell_coords[1]), plotIndex )
         return {}
         
     def addMetadataObserver( self, caller, event ):
@@ -1134,7 +1136,6 @@ class PersistentModule( QObject ):
                 
 #            function = getFunction( configFunct.name, functionList )
     def persistParameters( self ):
-       if self.debug: print inspect.stack()[0][3]
        parmRecList = []
        for configFunct in self.configurableFunctions.values():
             value = self.getCachedParameter( configFunct.name ) 
@@ -1143,7 +1144,6 @@ class PersistentModule( QObject ):
        for configFunct in self.configurableFunctions.values(): configFunct.init( self ) 
 
     def persistLayerDependentParameters( self ):
-       if self.debug: print inspect.stack()[0][3]
        if self.newLayerConfiguration:
            parmRecList = []
            for configFunct in self.configurableFunctions.values():
@@ -1164,7 +1164,6 @@ class PersistentModule( QObject ):
         self.updateLeveling( x, y, wsize )
                 
     def updateLeveling( self, x, y, wsize, **args ):
-        if self.debug: print inspect.stack()[0][3]
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
         if self.configuring:
             configFunct = self.configurableFunctions[ self.InteractionState ]
@@ -1670,7 +1669,11 @@ class PersistentVisualizationModule( PersistentModule ):
 #        print "Setting 3D output for port %s" % ( portName ) 
         if output <> None:
             fd = output.GetFieldData() 
-            fd.PassData( fieldData ) 
+            if fieldData:
+                fd = output.GetFieldData()
+                fd.PassData( fieldData )                
+            else:                     
+                diagnosticWriter.log( self, ' set3DOutput, NULL field data ' )    
         if self.wmod == None:
             print>>sys.stderr, "Missing wmod in set3DOutput for class %s" % ( getClassName( self ) )
         else:
@@ -2060,7 +2063,6 @@ class PersistentVisualizationModule( PersistentModule ):
         return getClassName( iren.GetInteractorStyle() ) == getClassName( self.configurationInteractorStyle )
       
     def activateEvent( self, caller, event ):
-        if self.debug: print inspect.stack()[0][3]
         if self.renderer == None:
             print>>sys.stderr, "Error, no renderer available for activation."
         else:
@@ -2175,7 +2177,6 @@ class PersistentVisualizationModule( PersistentModule ):
         pass
                 
     def updateInteractionState( self, state, altMode ): 
-        if self.debug: print inspect.stack()[0][3]
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper    
         rcf = None
         if state == None: 

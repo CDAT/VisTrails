@@ -2256,23 +2256,18 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         IVModuleConfigurationDialog.__init__( self, name, **args )
         
     def setVisible ( self, val ):
-        print " AnimationConfigurationDialog.setVisible: ", str( val )
         QWidget.setVisible ( self, val )
 
     def setDisabled ( self, val ):
-        print " AnimationConfigurationDialog.setDisabled: ", str( val )
         QWidget.setDisabled ( self, val )
 
     def setHidden ( self, val ):
-        print " AnimationConfigurationDialog.setHidden: ", str( val )
         QWidget.setHidden ( self, val )
 
     def close ( self ):
-        print " AnimationConfigurationDialog.close "
         QWidget.close ( self )
 
     def hide ( self ):
-        print " AnimationConfigurationDialog.hide "
         QWidget.hide ( self )
                                                
     @staticmethod   
