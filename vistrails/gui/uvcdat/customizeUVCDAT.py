@@ -57,31 +57,31 @@ fileBookmarks=[]
 scientificButtonsStyles = {"background-color":"qradialgradient(cx:0.3, cy:-0.4, radius:1.35, fx:.3, fy:-0.4, stop:0 white, stop:1 black)",
                            "color":"white",
                            "font":"bold ",
-                           "font-size":"16px",
+                           "font-size":"12px",
                            }
 
 validateButtonsStyles = {"background-color":"qradialgradient(cx:0.3, cy:-0.4, radius:1.35, fx:.3, fy:-0.4, stop:0 white, stop:1 #7C0404)",
                          "color":"white",
                          "font":"bold",
-                         "font-size":"18px",
+                         "font-size":"12px",
                          }
 
 numberButtonsStyles = {"background-color":"qradialgradient(cx:0.3, cy:-0.4, radius:1.35, fx:.3, fy:-0.4, stop:0 white, stop:1 #6491DA)",
                        "color":"white",
                        "font":"bold ",
-                       "font-size":"18px",
+                       "font-size":"12px",
                        }
 
 operatorButtonsStyles = {"background-color":"qradialgradient(cx:0.3, cy:-0.4, radius:1.35, fx:.3, fy:-0.4, stop:0 white, stop:1 #B79626)",
                             "color":"black",
                          "font":"bold ",
-                         "font-size":"18px",
+                         "font-size":"12px",
                          }
 
 constantsButtonStyles = {"background-color":"qradialgradient(cx:0.3, cy:-0.4, radius:1.35, fx:.3, fy:-0.4, stop:0 white, stop:1 #578038)",
                          "color":"black",
                          "font":"bold ",
-                         "font-size":"18px",
+                         "font-size":"12px",
                              }
 
 ## scientificButtonsStyles = {}

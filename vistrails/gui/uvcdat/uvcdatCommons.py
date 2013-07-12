@@ -7,7 +7,7 @@
 from PyQt4 import QtCore, QtGui
 import os
 
-debug = True
+debug = False
 ## Ned to turn that back on if coming from vistraisl
 useVistrails = False
 
