@@ -2221,18 +2221,17 @@ class QAnimationThread( QThread ):
     def __init__( self, animationMgr, **args ):
         QtCore.QThread.__init__(self,parent=animationMgr)
         self.animationMgr=animationMgr
-        self.runFree = args.get( 'run', False )
+        self.onestep = args.get( 'onestep', False )
         self.delayTime = args.get( 'delay', False )
         
     def run(self):
-        self.animationMgr.timestep()
+        if self.onestep:
+            self.animationMgr.timestep()
+        else:
+            while self.animationMgr.running:
+                self.animationMgr.timestep()
+                self.sleep( self.delayTime )
         self.exit(0)
-#        else:
-#            while self.animationMgr.running:
-#                self.animationMgr.timestep()
-#                self.sleep( self.delayTime )
-#                return
-#            self.animationMgr.stopAnimation()
         
 class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     """
@@ -2296,7 +2295,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         if not self.running:
             if self.anim_thread and self.anim_thread.isRunning(): return 
             self.updateTimeRange()
-            self.anim_thread = QAnimationThread(self)
+            self.anim_thread = QAnimationThread( self, onestep=True )
             self.anim_thread.start()
             diagnosticWriter.log( self, 'completed timestep'  )
                 
@@ -2440,71 +2439,24 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         if self.running: self.stop()           
         else: self.start()
         
-    def animate(self):
+    def animate( self, punctuated=True ):
         reset_stdio()
         if self.running:
             if ( self.anim_thread == None ) or self.anim_thread.isFinished(): 
-                self.anim_thread = QAnimationThread(self)
+                self.anim_thread = QAnimationThread( self, onestep=punctuated, delay=self.delayTime )
                 self.anim_thread.start()
-            self.timer.singleShot( self.delayTime, self.animate )
+            if punctuated: 
+                self.timer.singleShot( self.delayTime, self.animate )
         else:
             self.stopAnimation()
         recover_redefined_stdio()
         
-#            self.runButton.setText('Stop')
-#            executeWorkflow()
-#            self.getTimeRange()
-#            if inGuiThread:
-#                self.animate()
-#            else:
-#            self.running = True
-#            self.loadAnimation()
-#            self.getTimeRange()
-#            self.runButton.setDisabled(True)
-#            self.setValue( 0 )
-#            self.timer.start()
-#            self.runThread = threading.Thread( target=self.animate )
-#            self.runThread.start()
-             
-
-#        iTS =  int( self.iTimeStep ) + 1
-#        restart = False
-#        if self.timeRange:
-#            if ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ): 
-#                restart = ( iTS >= self.timeRange[1] ) 
-#                iTS = self.timeRange[0]
-#        self.setTimestep( iTS, restart )  
-#        if self.running: 
-#            self.timer.start( self.delayTime ) 
 
     def finalizeConfig( self ):
         self.stop()
         IVModuleConfigurationDialog.finalizeConfig( self )
 #        AnimationConfigurationDialog.iCurrentTimeStep = self.iTimeStep
                 
-#    def run1(self):
-#        if self.running:
-#            self.runButton.setText('Run')
-#            self.running = False
-#        else:
-#            self.runButton.setText('Stop')
-#            executeWorkflow()
-#            self.running = True
-#            self.runThread = threading.Thread( target=self.animate )
-#            self.runThread.start()
-#     
-#        
-#    def animate1(self):
-#        refresh = True
-#        while self.running:
-#            self.initiateParameterUpdate()
-#            self.setTimestep( self.iTimeStep + 1, refresh )
-#            while self.parameterUpdating():
-#                time.sleep(0.01)
-#            delayTime =  ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.delayTimeScale    
-#            time.sleep( delayTime ) 
-#            refresh = False
-##            printTime( 'Finish Animation delay' )                
 
     def setDelay( self ):
         self.delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )        
