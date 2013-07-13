@@ -459,7 +459,7 @@ class DV3DRangeConfigWidget(QFrame):
 
 class DV3DConfigControlPanel(QWidget):
     
-    def __init__( self, configMenu, optionsMenu, controller, version, plot_obj, parent=None):
+    def __init__( self, configMenuSpecs, controller, version, plot_obj, parent=None):
         QWidget.__init__(self,parent)
         self.showActivePlotsPanel = True
         self.proj_controller = controller
@@ -476,6 +476,11 @@ class DV3DConfigControlPanel(QWidget):
         button_layout.setMargin(1)
         button_layout.setSpacing(1)
 
+        cfg_label = QLabel("Configuration Commands:")
+        cfg_label.setFont( QFont( "Arial", 14, QFont.Bold ) )
+        cfg_label.setAlignment( Qt.AlignHCenter )
+        main_layout.addWidget(cfg_label)
+
         self.cfg_frame = QFrame()
         cfg_layout = QVBoxLayout() 
         cfg_layout.setMargin(2)
@@ -483,13 +488,6 @@ class DV3DConfigControlPanel(QWidget):
         self.cfg_frame.setFrameStyle( QFrame.StyledPanel | QFrame.Raised )
         self.cfg_frame.setLineWidth(2)
         self.cfg_frame.setLayout(cfg_layout)
-                
-        cfg_label = QLabel("Configuration Commands:")
-        cfg_label.setFont( QFont( "Arial", 14, QFont.Bold ) )
-        cfg_label.setAlignment( Qt.AlignHCenter )
-        cfg_layout.addWidget(cfg_label)
-        cfg_layout.addWidget( configMenu )
-        cfg_layout.addStretch()
 
         self.opt_frame = QFrame()
         opt_layout = QVBoxLayout() 
@@ -498,13 +496,17 @@ class DV3DConfigControlPanel(QWidget):
         self.opt_frame.setFrameStyle( QFrame.StyledPanel | QFrame.Raised )
         self.opt_frame.setLineWidth(2)
         self.opt_frame.setLayout(opt_layout)
-                
-        opt_label = QLabel("Options:")
-        opt_label.setFont( QFont( "Arial", 14, QFont.Bold ) )
-        opt_label.setAlignment( Qt.AlignHCenter )
-        opt_layout.addWidget(opt_label)
-        opt_layout.addWidget( optionsMenu )
-        opt_layout.addStretch()
+                        
+        for configMenuSpec in configMenuSpecs.items():
+            ( configGroupId, configMenu ) = configMenuSpec
+            layout = cfg_layout if (configGroupId % 2 == 0) else opt_layout
+            layout.addSpacing ( 1 )
+            cfg_label = QLabel( ConfigGroup.getConfigGroupName(configGroupId) )
+            cfg_label.setFont( QFont( "Helvetica", 10, QFont.Normal ) )
+            cfg_label.setAlignment( Qt.AlignLeft )
+            layout.addWidget(cfg_label)
+            layout.addWidget( configMenu )
+            layout.addStretch()
                
         button_layout.addWidget( self.cfg_frame )
         button_layout.addWidget( self.opt_frame )
@@ -672,7 +674,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     actionMap = {}
     activationMap = {}
     moduleMap = {} 
-    actionMenu = None
+    actionMenus = {}
     plotIndexMap = {}
     inputCounter = 0
     _config_mode = LevelingType.GUI
@@ -730,17 +732,18 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return module_id_list
            
     @staticmethod                         
-    def addAction( module, action_key, config_key, isActive=True ):
+    def addAction( group, module, action_key, config_key, isActive=True ):
+        actionMenu = DV3DPipelineHelper.getActionMenu( group )
         if not DV3DPipelineHelper.hasConfigCommand( module.moduleID, config_key ):
             actionList = DV3DPipelineHelper.actionMap.setdefault( action_key[1], [] )
             fn = module.configurableFunctions.get( action_key[1], None )
             actionList.append( ( module.moduleID, config_key, fn ) )
             DV3DPipelineHelper.addConfigCommand( module.moduleID, fn, config_key ) 
             if isActive:
-                actions = DV3DPipelineHelper.actionMenu.actions() 
+                actions = actionMenu.actions() 
                 for action in actions:
                     if str(action.text()) == str(action_key[0]): return
-                menuItem = DV3DPipelineHelper.actionMenu.addAction( action_key[0] )
+                menuItem = actionMenu.addAction( action_key[0] )
                 menuItem.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key[1]: DV3DPipelineHelper.execAction( akey ) )
     
     @staticmethod
@@ -847,9 +850,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         DV3DPipelineHelper.cfg_cmds.clear()
      
     @staticmethod          
-    def startNewMenu():
-        DV3DPipelineHelper.actionMenu = QMenu()
-        return DV3DPipelineHelper.actionMenu
+    def getActionMenu( group ):
+        return DV3DPipelineHelper.actionMenus.setdefault( group, QMenu() )
 
 #    @staticmethod
 #    def build_plot_pipeline_action(controller, version, var_modules, plot_obj, row, col, template=None):
@@ -1555,7 +1557,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        print '-'*50      
         pmods = set()
         DV3DPipelineHelper.reset()
-        menu = DV3DPipelineHelper.startNewMenu()
         configFuncs = ConfigurableFunction.getActiveFunctionList( ) 
         active_cells = DV3DPipelineHelper.getActiveCellStrs()
         for configFunc in configFuncs:
@@ -1567,16 +1568,15 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 if cell_loc:
                     isActive = pmod.onCurrentPage() and ( cell_loc[-1] in active_cells )
 #                    print "--->> Config %s[%s]: pmod=%d, active=%s " % ( str( configFunc.label ), cell_loc, pmod.moduleID, str(isActive) )
-                    DV3DPipelineHelper.addAction( pmod, action_key, config_key, isActive ) 
+                    DV3DPipelineHelper.addAction( configFunc.group, pmod, action_key, config_key, isActive ) 
                     pmods.add(pmod)
                                         
-        menu1 = DV3DPipelineHelper.startNewMenu() 
         for pmod in pmods:
-            DV3DPipelineHelper.addAction( pmod, [ 'Help', 'help' ], 'h' )
-            DV3DPipelineHelper.addAction( pmod, [ 'Show Colorbar', 'colorbar' ], 'l' )
-            DV3DPipelineHelper.addAction( pmod, [ 'Reset', 'reset' ], 'r' )
+            DV3DPipelineHelper.addAction( ConfigGroup.Utilities, pmod, [ 'Help', 'help' ], 'h' )
+            DV3DPipelineHelper.addAction( ConfigGroup.Color,     pmod, [ 'Show Colorbar', 'colorbar' ], 'l' )
+            DV3DPipelineHelper.addAction( ConfigGroup.Utilities, pmod, [ 'Reset', 'reset' ], 'r' )
         
-        DV3DPipelineHelper.config_widget = DV3DConfigControlPanel( menu, menu1, controller, version, plot_objs[0] )
+        DV3DPipelineHelper.config_widget = DV3DConfigControlPanel( DV3DPipelineHelper.actionMenus, controller, version, plot_objs[0] )
         for pmod in pmods:
             cmdList = pmod.getConfigFunctions( [ 'leveling', 'uvcdat-gui' ] )
             for cmd in cmdList:
