@@ -539,6 +539,9 @@ class DV3DConfigControlPanel(QWidget):
                     
         main_layout.addStretch()                       
         self.setLayout(main_layout)
+#        self.setMinimumSize ( 450, 450 )
+#        self.setSizePolicy( QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding )
+        self.setMinimumWidth( 450 )
         
     def askToSaveChanges(self):
         if self.configWidget: 
@@ -570,8 +573,7 @@ class DV3DConfigControlPanel(QWidget):
     def getVersion(self):
         return self.version
                         
-    def getConfigWidget( self, configFunctionList ):
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper    
+    def getConfigWidget( self, configFunctionList ):  
         if configFunctionList:
             active_cells = DV3DPipelineHelper.getActiveCellStrs()
             for configFunction in configFunctionList:
@@ -731,20 +733,20 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 module_id_list.append( module.id )
         return module_id_list
            
-    @staticmethod                         
-    def addAction( group, module, action_key, config_key, isActive=True ):
-        actionMenu = DV3DPipelineHelper.getActionMenu( group )
-        if not DV3DPipelineHelper.hasConfigCommand( module.moduleID, config_key ):
-            actionList = DV3DPipelineHelper.actionMap.setdefault( action_key[1], [] )
+    @classmethod                         
+    def addAction( cls, group, module, action_key, config_key, isActive=True ):
+        actionMenu = cls.getActionMenu( group )
+        if not cls.hasConfigCommand( module.moduleID, config_key ):
+            actionList = cls.actionMap.setdefault( action_key[1], [] )
             fn = module.configurableFunctions.get( action_key[1], None )
             actionList.append( ( module.moduleID, config_key, fn ) )
-            DV3DPipelineHelper.addConfigCommand( module.moduleID, fn, config_key ) 
+            cls.addConfigCommand( module.moduleID, fn, config_key ) 
             if isActive:
                 actions = actionMenu.actions() 
                 for action in actions:
                     if str(action.text()) == str(action_key[0]): return
                 menuItem = actionMenu.addAction( action_key[0] )
-                menuItem.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key[1]: DV3DPipelineHelper.execAction( akey ) )
+                menuItem.connect ( menuItem, SIGNAL("triggered()"), lambda akey=action_key[1]: cls.execAction( akey ) )
     
     @staticmethod
     def getConfigCmd( cfg_key ):   
@@ -782,10 +784,10 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 active_plots.append( moduleID )
         return active_plots
  
-    @staticmethod
-    def setModulesActivation( moduleIDs, isActive, updateConfig=True ):
+    @classmethod
+    def setModulesActivation( cls, moduleIDs, isActive, updateConfig=True ):
         for moduleID in moduleIDs:
-            DV3DPipelineHelper.activationMap[ moduleID ] = isActive 
+            cls.activationMap[ moduleID ] = isActive 
             if updateConfig and not isActive:
                 module = ModuleStore.getModule( moduleID ) 
                 config_fn = module.getCurrentConfigFunction()
@@ -793,19 +795,19 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     module.finalizeParameter( config_fn.name )
                     config_fn.persisted = True
                     
-    @staticmethod
-    def getConfigCmdType( key ):                
-        cmdRecList = DV3DPipelineHelper.cfg_cmds.get(key,[])
+    @classmethod
+    def getConfigCmdType( cls, key ):                
+        cmdRecList = cls.cfg_cmds.get(key,[])
         for cmdRec in cmdRecList:
             cmd = cmdRec[1]
             if cmd: return cmd.type
         return 'untyped'
              
-    @staticmethod
-    def execAction( action_key ):
+    @classmethod
+    def execAction( cls, action_key ):
 #        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule 
 #        print " execAction: ", action_key
-        currentActionList  =  DV3DPipelineHelper.actionMap[ action_key ]
+        currentActionList  =  cls.actionMap[ action_key ]
         
         actionList = [] 
         configFunctionList = []
@@ -816,105 +818,43 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 if fn <> None: configFunctionList.append( fn )
 
 #        DV3DPipelineHelper.actionMap[ action_key ] = actionList
-        w = DV3DPipelineHelper.config_widget.init( configFunctionList )
+        w = cls.config_widget.init( configFunctionList )
                                          
         for ( moduleID, key, f ) in actionList:
             module = ModuleStore.getModule( moduleID )
             module.processKeyEvent( key )
 
-        if  ( key in DV3DPipelineHelper.cfg_cmds ) and ( DV3DPipelineHelper.getConfigCmdType( key ) in [ 'leveling', 'uvcdat-gui' ] ): 
-            DV3DPipelineHelper.config_widget.startConfig( action_key, key )
+        if  ( key in DV3DPipelineHelper.cfg_cmds ) and ( cls.getConfigCmdType( key ) in [ 'leveling', 'uvcdat-gui' ] ): 
+            cls.config_widget.startConfig( action_key, key )
         
         for ( moduleID, key, f ) in actionList:
-            DV3DPipelineHelper.activationMap[ moduleID ] = True 
-            DV3DPipelineHelper.config_widget.addActivePlot( moduleID, f )
+            cls.activationMap[ moduleID ] = True 
+            cls.config_widget.addActivePlot( moduleID, f )
             
         if w: w.setVisible( True )
 
-    @staticmethod
-    def endInteraction():
-        if DV3DPipelineHelper.config_widget:
-            DV3DPipelineHelper.config_widget.endConfig()
+    @classmethod
+    def endInteraction(cls):
+        if cls.config_widget:
+            cls.config_widget.endConfig()
      
-    @staticmethod           
-    def reset( ):
-        if DV3DPipelineHelper.config_widget and DV3DPipelineHelper.config_widget.configWidget:
-            ( interactionState, persisted ) = DV3DPipelineHelper.config_widget.configWidget.getInteractionState()
+    @classmethod           
+    def reset( cls ):
+        if cls.config_widget and cls.config_widget.configWidget:
+            ( interactionState, persisted ) = cls.config_widget.configWidget.getInteractionState()
             if not persisted:
-                DV3DPipelineHelper.config_widget.configWidget.clearInteractionState()
-                for item in DV3DPipelineHelper.activationMap.items():
+                cls.config_widget.configWidget.clearInteractionState()
+                for item in cls.activationMap.items():
                     if item[1]: 
                         module =  ModuleStore.getModule( item[0] )         
                         module.finalizeParameter( interactionState, notifyHelper=False )
-        DV3DPipelineHelper.actionMap.clear()
-        DV3DPipelineHelper.cfg_cmds.clear()
+        cls.actionMap.clear()
+        cls.cfg_cmds.clear()
+        cls.actionMenus = {}
      
-    @staticmethod          
-    def getActionMenu( group ):
-        return DV3DPipelineHelper.actionMenus.setdefault( group, QMenu() )
-
-#    @staticmethod
-#    def build_plot_pipeline_action(controller, version, var_modules, plot_obj, row, col, template=None):
-#        if controller is None:
-#            controller = api.get_current_controller()
-#            version = 0L
-#        reg = get_module_registry()
-#        ops = []
-#
-#        plot_module = controller.create_module_from_descriptor(plot_descriptor)
-#        plot_functions =  [('graphicsMethodName', [plot_gm])]
-#        if template is not None:
-#            plot_functions.append(('template', [template]))
-#        initial_values = desc.get_initial_values(plot_gm)
-#        for attr in desc.gm_attributes:
-#            plot_functions.append((attr,[getattr(initial_values,attr)]))
-#            
-#        functions = controller.create_functions(plot_module,plot_functions)
-#        for f in functions:
-#            plot_module.add_function(f)
-#        if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
-#            ops.append(('add', var_modules[0]))
-#        ops.append(('add', plot_module)) 
-#        
-#        if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
-#            conn = controller.create_connection(var_modules[0], 'self',
-#                                                plot_module, 'variable')
-#        else:
-#            conn = controller.create_connection(var_modules[0], 'output_var',
-#                                                plot_module, 'variable')
-#        ops.append(('add', conn))
-#        if len(var_modules) > 1:
-#            if issubclass(var_modules[1].module_descriptor.module, CDMSVariable):
-#                conn2 = controller.create_connection(var_modules[1], 'self',
-#                                                     plot_module, 'variable2')
-#                ops.append(('add', var_modules[1]))
-#            else:
-#                conn2 = controller.create_connection(var_modules[1], 'output_var',
-#                                                     plot_module, 'variable')
-#            ops.append(('add', conn2))
-#             
-#        cell_module = controller.create_module_from_descriptor(
-#            reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 'CDMSCell'))
-#        cell_conn = controller.create_connection(plot_module, 'self',
-#                                                         cell_module, 'plot')
-#        loc_module = controller.create_module_from_descriptor(
-#            reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet', 
-#                                       'CellLocation'))
-#        functions = controller.create_functions(loc_module,
-#            [('Row', [str(row+1)]), ('Column', [str(col+1)])])
-#        for f in functions:
-#            loc_module.add_function(f)
-#        loc_conn = controller.create_connection(loc_module, 'self',
-#                                                        cell_module, 'Location')
-#        ops.extend([('add', cell_module),
-#                    ('add', cell_conn),
-#                    ('add', loc_module),
-#                    ('add', loc_conn)])
-#        action = core.db.action.create_action(ops)
-#        controller.change_selected_version(version)
-#        controller.add_new_action(action)
-#        controller.perform_action(action)
-#        return action
+    @classmethod          
+    def getActionMenu( cls, group ):
+        return cls.actionMenus.setdefault( group, QMenu() )
 
     @staticmethod
     def update_plot_pipeline_action(controller, version, var_modules, plot_objs, row, col, templates=[]):
