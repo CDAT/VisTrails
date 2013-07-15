@@ -3,7 +3,7 @@ Created on Dec 11, 2010
 
 @author: tpmaxwel
 '''
-import vtk, sys, os, copy, time
+import vtk, sys, os, copy, time, traceback
 from collections import OrderedDict 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -117,13 +117,16 @@ class CDMSDatasetRecord():
         self.lev = None
         self.dataset = dataset
         self.cdmsFile = dataFile
-        self.cachedFileVariables = {} 
+#        self.cachedFileVariables = {} 
 
     def getTimeValues( self, dsid ):
         return self.dataset['time'].getValue() 
     
-    def clearDataCache( self ):
-         self.cachedFileVariables = {} 
+    def getVariable(self, varName ):
+        return self.dataset[ varName ] 
+    
+#    def clearDataCache( self ):
+#         self.cachedFileVariables = {} 
     
     def getLevAxis(self ):
         for axis in self.dataset.axes.values():
@@ -144,11 +147,11 @@ class CDMSDatasetRecord():
         """
         This method extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).
         """        
-        cachedFileVariableRec = self.cachedFileVariables.get( varName )
-        if cachedFileVariableRec:
-            cachedTimeVal = cachedFileVariableRec[ 0 ]
-            if cachedTimeVal.value == timeValue.value:
-                return cachedFileVariableRec[ 1 ]
+#        cachedFileVariableRec = self.cachedFileVariables.get( varName )
+#        if cachedFileVariableRec:
+#            cachedTimeVal = cachedFileVariableRec[ 0 ]
+#            if cachedTimeVal.value == timeValue.value:
+#                return cachedFileVariableRec[ 1 ]
         
         rv = CDMSDataset.NullVariable
         varData = self.dataset[ varName ] 
@@ -235,7 +238,7 @@ class CDMSDatasetRecord():
 #            print " Regrid variable %s: max values = %s " % ( varName, str(max_values) )
             
             end_t = time.time() 
-            self.cachedFileVariables[ varName ] = ( timeValue, rv )
+#            self.cachedFileVariables[ varName ] = ( timeValue, rv )
 #            print  "Reading variable %s, shape = %s, base shape = %s, time = %s (%s), args = %s, slice duration = %.4f sec." % ( varName, str(rv.shape), str(varData.shape), str(timeValue), str(timeValue.tocomp()), str(args1), end_t-start_t  ) 
 #        except Exception, err:
 #            print>>sys.stderr, ' Exception getting var slice: %s ' % str( err )
@@ -260,11 +263,11 @@ class CDMSDatasetRecord():
 #        if nSliceDims <> 1:
 #            print "Error, Wrong number of data dimensions:  %d slice dims " %  nSliceDims
 #            return None
-        cachedFileVariableRec = self.cachedFileVariables.get( varName )
-        if cachedFileVariableRec:
-            cachedTimeVal = cachedFileVariableRec[ 0 ]
-            if cachedTimeVal.value == timeValue.value:
-                return cachedFileVariableRec[ 1 ]
+#        cachedFileVariableRec = self.cachedFileVariables.get( varName )
+#        if cachedFileVariableRec:
+#            cachedTimeVal = cachedFileVariableRec[ 0 ]
+#            if cachedTimeVal.value == timeValue.value:
+#                return cachedFileVariableRec[ 1 ]
         
         rv = CDMSDataset.NullVariable
         varData = self.dataset[ varName ] 
@@ -376,7 +379,7 @@ class CDMSDatasetRecord():
 #            print " Regrid variable %s: max values = %s " % ( varName, str(max_values) )
             
             end_t = time.time() 
-            self.cachedFileVariables[ varName ] = ( timeValue, rv )
+#            self.cachedFileVariables[ varName ] = ( timeValue, rv )
             print  "Reading variable %s, shape = %s, base shape = %s, args = %s" % ( varName, str(rv.shape), str(varData.shape), str(args1) ) 
 #        except Exception, err:
 #            print>>sys.stderr, ' Exception getting var slice: %s ' % str( err )
@@ -454,7 +457,7 @@ class CDMSDataset(Module):
         self.datasetRecs = {}
         self.variableRecs = {}
         self.transientVariables = {}
-        self.cachedTransVariables = {}
+#        self.cachedTransVariables = {}
         self.outputVariables = {}
         self.referenceVariable = None
         self.timeRange = None
@@ -480,12 +483,13 @@ class CDMSDataset(Module):
         return self.variableRecs.keys() 
 
     def setRoi( self, roi ): 
-        if roi <> None: self.gridBounds = roi
+        if roi <> None: 
+            self.gridBounds = list(roi)
 
     def setBounds( self, timeRange, time_units, roi, zscale, decimation ): 
         self.timeRange = timeRange
         self.referenceTimeUnits = time_units
-        self.gridBounds = roi
+        self.setRoi( roi )
         self.zscale = zscale
         self.decimation = decimation
         
@@ -531,9 +535,8 @@ class CDMSDataset(Module):
     def getStartTime(self):
         return cdtime.reltime( float( self.timeRange[2] ), self.referenceTimeUnits )
 
-    def __del__( self ):
+    def close( self ):
         for dsetRec in self.datasetRecs.values(): dsetRec.dataset.close()
-        Module.__del__( self )
          
     def addTransientVariable( self, varName, variable, ndim = None ):
         if varName in self.transientVariables:
@@ -577,6 +580,21 @@ class CDMSDataset(Module):
 
     def clearDataCache( self ):
         for dsetRec in self.datasetRecs.values(): dsetRec.clearDataCache()
+        
+#    def clearVariableCache( self, varName ):
+#        cachedData = self.cachedTransVariables.get( varName, None )
+#        if cachedData:
+#            ( timeValue, tvar ) = cachedData
+#            del self.cachedTransVariables[ varName]
+#            del tvar
+
+    def clearTransientVariable( self, varName ):
+        try:
+            tvar = self.transientVariables[ varName ]
+            del self.transientVariables[ varName]
+            del tvar
+        except Exception, err:
+            print>>sys.stderr, "Error releasing tvar: ", str(err)
 
     def getVarDataTimeSlice( self, dsid, varName, timeValue ):
         """
@@ -599,16 +617,18 @@ class CDMSDataset(Module):
         print>>sys.stderr, "Error: can't find time slice variable %s in dataset" % varName
         return rv
 
-    def getVarDataCube( self, dsid, varName, timeValues, levelValues = None ):
+    def getVarDataCube( self, dsid, varName, timeValues, levelValues = None, **kwargs ):
         """
         This method extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).
         """
+        memoryLogger.log("Begin getVarDataCube")
         rv = CDMSDataset.NullVariable
         if dsid:
             dsetRec = self.datasetRecs.get( dsid, None )
             if dsetRec:
                 if varName in dsetRec.dataset.variables:
                     args = { 'time':timeValues, 'lev':levelValues, 'refVar':self.referenceVariable, 'refLev':self.referenceLev }
+                    for item in kwargs.iteritems(): args[ item[0] ] = item[1]
                     if self.gridBounds:
                         args['lon'] = [self.gridBounds[0],self.gridBounds[2]] 
                         args['lat'] = [self.gridBounds[1],self.gridBounds[3]] 
@@ -616,20 +636,16 @@ class CDMSDataset(Module):
             elif varName in self.getTransientVariableNames():
                 tvar = self.getTransientVariable( varName ) 
                 args = { 'time':timeValues, 'lev':levelValues }
+                for item in kwargs.iteritems(): args[ item[0] ] = item[1]
                 if self.gridBounds:
                     args['lon'] = [self.gridBounds[0],self.gridBounds[2]] 
                     args['lat'] = [self.gridBounds[1],self.gridBounds[3]] 
                 rv = self.getTransVarDataCube( varName, tvar, self.decimation, **args )  
         if (rv.id == "NULL") and (varName in self.outputVariables):
             rv = self.outputVariables[ varName ]
-        if rv.id <> "NULL": 
-            return rv 
-#            current_grid = rv.getGrid()
-#            if ( gridMaker == None ) or SameGrid( current_grid, gridMaker.grid ): return rv
-#            else:       
-#                vc = cdutil.VariableConditioner( source=rv, weightedGridMaker=gridMaker )
-#                return vc.get( returnTuple=0 )
-        print>>sys.stderr, "Error: can't find time slice data cube for variable %s in dataset" % varName
+        if rv.id == "NULL": 
+            print>>sys.stderr, "Error: can't find time slice data cube for variable %s in dataset" % varName
+        memoryLogger.log("End getVarDataCube")
         return rv
 
 
@@ -637,12 +653,15 @@ class CDMSDataset(Module):
         """
         This method returns a data slice with the correct axis ordering (returning a NumPy masked array).
         """ 
+        memoryLogger.log("Begin getTransVarDataCube")
         invert_z = False
+        invert_y = False
         levaxis = transVar.getLevel() 
         timeaxis = transVar.getTime() 
         level = args.get( 'lev', None )
         lonBounds = args.get( 'lon', None )
         latBounds = args.get( 'lat', None )
+        cell_coords = args.get( 'cell', None )
 
         if levaxis:
             values = levaxis.getValue()
@@ -652,12 +671,12 @@ class CDMSDataset(Module):
         timeBounds = args.get( 'time', None )
         [ timeValue, timeIndex, useTimeIndex ] = timeBounds if timeBounds else [ None, None, None ]
 
-        cachedTransVariableRec = self.cachedTransVariables.get( varName )
-        if cachedTransVariableRec:
-            cachedTimeVal = cachedTransVariableRec[ 0 ]
-            if cachedTimeVal.value == timeValue.value:
-                print>>sys.stderr, "Returning cached trans var %s" % varName
-                return cachedTransVariableRec[ 1 ]
+#        cachedTransVariableRec = self.cachedTransVariables.get( varName )
+#        if cachedTransVariableRec:
+#            cachedTimeVal = cachedTransVariableRec[ 0 ]
+#            if cachedTimeVal.value == timeValue.value:
+#                print>>sys.stderr, "Returning cached trans var %s" % varName
+#                return cachedTransVariableRec[ 1 ]
         
         rv = CDMSDataset.NullVariable 
         currentLevel = transVar.getLevel()
@@ -688,27 +707,37 @@ class CDMSDataset(Module):
             latVals = latAxis.getValue()
             latRange = [ latVals[0], latVals[-1] ]
             if latBounds:
-                if ( latVals[-1] > latVals[0] ):     latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] > latBounds[0]) else [ latBounds[-1], latBounds[0] ]
-                else:                                latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] < latBounds[0]) else [ latBounds[-1], latBounds[0] ]
+                if ( latVals[-1] > latVals[0] ):     
+                    latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] > latBounds[0]) else [ latBounds[-1], latBounds[0] ]
+                else:                                
+                    latRange = [ latBounds[0], latBounds[-1] ] if (latBounds[-1] < latBounds[0]) else [ latBounds[-1], latBounds[0] ]
+                    invert_y = True
             varLatInt = latAxis.mapIntervalExt( latRange, 'ccn' )
             if varLatInt:
-                if (decimationFactor > 1):  args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )
-                else:                       args1['lat'] = slice( varLatInt[0], varLatInt[1] )
-        
+                if invert_y:    args1['lat'] = slice( varLatInt[1], varLatInt[0], -decimationFactor )
+                else:           args1['lat'] = slice( varLatInt[0], varLatInt[1], decimationFactor )   
+                     
         args1['order'] = order
         if levaxis:
             if level: args1['lev'] = float( level )
             elif invert_z:  args1['lev'] = slice( None, None, -1 )
+            
+        memoryLogger.log("Begin subsetting")
+        
         try:
-#            self.ensure3D( transVar ) 
             rv = transVar( **args1 )
         except Exception, err: 
             messageDialog.setWindowTitle( "Error Reading Variable" )
             messageDialog.showMessage( str(err) )
             return CDMSDataset.NullVariable
-        try: rv = MV2.masked_equal( rv, rv.fill_value )
-        except: pass          
-        self.cachedTransVariables[ varName ] = ( timeValue, rv )
+  
+        memoryLogger.log("Create Mask")
+      
+        try: 
+            rv = MV2.masked_equal( rv, rv.fill_value )
+        except: 
+            pass         
+ #       self.cachedTransVariables[ varName ] = ( timeValue, rvm )
         print  "Reading variable %s, shape = %s, base shape = %s, args = %s" % ( varName, str(rv.shape), str(transVar.shape), str(args1) ) 
         return rv
     
@@ -1201,7 +1230,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         
     def initTimeRange( self ):
         pmod = self.getPersistentModule() 
-        timeRangeParams = pmod.getInputValue( "timeRange"  ) # getFunctionParmStrValues( self.module, "timeRange"  )
+        timeRangeParams = pmod.getInputValue( "timeRange"  ) if pmod else None
         tRange = [ int(timeRangeParams[0]), int(timeRangeParams[1]) ] if timeRangeParams else None
         if tRange:
             module = ModuleStore.getModule( self.moduleId )
@@ -1216,14 +1245,14 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
 
     def initRoi( self ):
         pmod = self.getPersistentModule() 
-        roiParams = pmod.getInputValue( "roi" ) #getFunctionParmStrValues( self.module, "roi"  )self.getParameterId()
+        roiParams = pmod.getInputValue( "roi" ) if pmod else None
         if roiParams:  self.roi = [ float(rois) for rois in roiParams ]
         else: self.roi = self.fullRoi[ self.lonRangeType ] 
         self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
 
     def initDecimation( self ):
         pmod = self.getPersistentModule() 
-        decimationParams = pmod.getInputValue( "decimation" ) #getFunctionParmStrValues( self.module, "roi"  )self.getParameterId()
+        decimationParams = pmod.getInputValue( "decimation" ) if pmod else None
         if decimationParams:  self.decimation = [ int(dec) for dec in decimationParams ]
         else: self.decimation = DefaultDecimation
         self.clientDecimationCombo.setCurrentIndex( self.decimation[0] ) 
@@ -1231,7 +1260,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         
     def initZScale( self ):
         pmod = self.getPersistentModule() 
-        zsParams = pmod.getInputValue( "zscale" )
+        zsParams = pmod.getInputValue( "zscale" ) if pmod else None
         if zsParams:  self.zscale = float( getItem( zsParams ) )
         self.selectZScaleLineEdit.setText( "%.2f" % self.zscale)
 #        self.roiLabel.setText( "ROI: %s" % str( self.roi )  ) 
@@ -1242,17 +1271,17 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         if datasetMapParams: self.datasets = deserializeFileMap( datasetMapParams[0] )
         datasetParams = getFunctionParmStrValues( module, "datasetId" )
         if datasetParams:
-            pmod = self.getPersistentModule()  
             gridParams = getFunctionParmStrValues( module, "grid" )
             if gridParams:  self.selectedGrid = gridParams[0]
             self.currentDatasetId = datasetParams[0] 
-            pmod.datasetId = self.currentDatasetId
+            pmod = self.getPersistentModule()  
+            if pmod: pmod.datasetId = self.currentDatasetId
             if( len(datasetParams) > 1 ): DataSetVersion = int( datasetParams[1] )
 
     def setDatasetProperties(self, dataset, cdmsFile ):
-        pmod = self.getPersistentModule() 
         self.currentDatasetId = dataset.id  
-        pmod.datasetId = dataset.id 
+        pmod = self.getPersistentModule() 
+        if pmod: pmod.datasetId = dataset.id 
         relFilePath = getHomeRelativePath( cdmsFile )
         self.datasets[ self.currentDatasetId ] = relFilePath  
         self.metadataViewer.setDatasetProperties( dataset, cdmsFile ) 
@@ -1282,6 +1311,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
             dataset.close()
         except Exception, err:
             print>>sys.stderr, " Error initializing dataset '%s': %s " % ( str(relFilePath), str( err ) )
+            traceback.print_exc()
         return cdmsFile
          
     def selectFile(self):
@@ -1298,7 +1328,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
                     self.dsCombo.insertItem( 0, QString( self.currentDatasetId ) )  
                     self.dsCombo.setCurrentIndex( 0 )
                     pmod = self.getPersistentModule() 
-                    pmod.datasetId = '*'.join( self.datasets.keys() )
+                    if pmod: pmod.datasetId = '*'.join( self.datasets.keys() )
                     dataset.close()
                 except:
                     print "Error opening dataset: %s" % str(cdmsFile)
@@ -1318,7 +1348,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         else:
             self.dsCombo.setCurrentIndex(0) 
             pmod = self.getPersistentModule() 
-            pmod.datasetId = '*'.join( self.datasets.keys() )                         
+            if pmod: pmod.datasetId = '*'.join( self.datasets.keys() )                         
             self.registerCurrentDataset( id=self.dsCombo.currentText() )
         global DataSetVersion 
         DataSetVersion = DataSetVersion + 1 
@@ -1762,7 +1792,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
         executionSpecs = ';'.join( [ fileInputSpecs, varInputSpecs, gridInputSpecs, cellInputSpecs ] )
         parmRecList.append( ( 'executionSpecs' , [ executionSpecs, ]  ), )         
         pmod = self.persistParameterList( parmRecList ) 
-        pmod.clearDataCache()
+        if pmod: pmod.clearDataCache()
         self.stateChanged(False)
            
     def okTriggered(self, checked = False):

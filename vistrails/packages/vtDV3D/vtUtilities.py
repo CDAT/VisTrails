@@ -3,7 +3,7 @@ Created on Dec 9, 2010
 
 @author: tpmaxwel
 '''
-import sys, vtk, StringIO, cPickle, time, os, ConfigParser, shutil
+import sys, vtk, StringIO, cPickle, time, os, ConfigParser, shutil, traceback
 import core.modules.module_registry
 from core.modules.vistrails_module import Module, ModuleError
 from core.modules.module_registry import get_module_registry
@@ -59,6 +59,76 @@ currentTime = 0
 dvDbgIO = DebugPrint()
 dvDbgIO.set_stream( sys.stderr )
 
+EnableMemoryLogging = False
+
+original_stdout = sys.stdout
+original_stderr = sys.stderr
+new_stdout = sys.stdout
+new_stderr = sys.stderr
+
+class DiagnosticWriter:
+     def __init__( self, **args ):
+         self.diagnostics_file = None
+         self.diagnostics_file_path = args.get( 'file_path', '/tmp/dv3d_diag_file.txt' )
+         
+     def log( self, pobj, msg, print_stack=False ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper       
+        cell_coords = DV3DPipelineHelper.getCellCoordinates( pobj.moduleID ) if ( pobj and hasattr(pobj,'moduleID') ) else "xx"
+        mid = pobj.moduleID if ( pobj and hasattr(pobj,'moduleID') ) else 0
+        if self.diagnostics_file == None:
+           self.diagnostics_file = open( self.diagnostics_file_path, 'w' ) 
+        self.diagnostics_file.write( "---%s--- %s[%d]: %s\n" % ( str(cell_coords), pobj.__class__.__name__, mid, msg ) )
+        if print_stack:
+            traceback.print_stack(file=self.diagnostics_file)
+        self.diagnostics_file.flush()
+        
+     def write( self, text ):
+         self.log( original_stdout, text)
+        
+diagnosticWriter = DiagnosticWriter()
+
+def reset_stdio():
+    new_stdout = sys.stdout
+    new_stderr = sys.stderr
+    sys.stdout = diagnosticWriter
+    sys.stderr = diagnosticWriter
+
+def recover_redefined_stdio():
+    sys.stdout = new_stdout 
+    sys.stderr = new_stderr 
+
+class MemoryLogger:
+    def __init__( self, enabled = True ):
+        self.logfile = None
+        self.enabled = enabled
+        
+    def close(self):
+        if self.logfile <> None: 
+            self.logfile.close( )
+            self.logfile = None
+        
+    def log( self, label ):
+        import shlex, subprocess, gc
+        if self.enabled:
+            gc.collect()
+            args = ['ps', 'u', '-p', str(os.getpid())]
+            psout = subprocess.check_output( args ).split('\n')
+            ps_vals = psout[1].split()
+            try:
+                mem_usage_MB = float( ps_vals[5] ) / 1024.0
+                mem_usage_GB = mem_usage_MB / 1024.0
+            except ValueError, err:
+                print>>sys.stderr, "Error parsing psout: ", str(err)
+                print>>sys.stderr, str(psout)
+                return
+                    
+            if self.logfile == None:
+                self.logfile = open( "/tmp/dv3d-memory_usage.log", 'w' )
+            self.logfile.write(" %10.2f (%6.3f): %s\n" % ( mem_usage_MB, mem_usage_GB, label ) )
+            self.logfile.flush()
+        
+memoryLogger = MemoryLogger( EnableMemoryLogging )        
+        
 def displayMessage( msg ):
     msgBox = QtGui.QMessageBox()
     msgBox.setText( msg )
@@ -411,17 +481,21 @@ def getObjectMap( controller ):
     object_maps = vistrails_interpreter.find_persistent_entities( controller.current_pipeline )
     return object_maps[0] if object_maps else None
 
-def getDownstreamModules( controller,  mid ):  
-    # Under construction
+def getDownstreamModules( mid ):  
+    import api
+    controller = api.get_current_controller()
     pipeline = controller.current_pipeline
     current_module = pipeline.modules[ mid ]
     test_modules = [ current_module ]
-    output_modules = [ ]
+    downstream_modules = [ ]
     while len( test_modules ):
         test_mod = test_modules.pop()
         output_port_specs = test_mod.output_port_specs
-        for output_port in output_port_specs:
+        for output_port in output_port_specs:            
             out_modules = pipeline.get_outputPort_modules( test_mod.id, output_port.name )
+            downstream_modules.extend( out_modules )
+            test_modules.extend( out_modules )
+    return downstream_modules
             
 def getDesignatedConnections( controller,  mid, portName, isDestinationPort = True ):
     portType = "destination" if isDestinationPort else "source" 
@@ -762,8 +836,6 @@ class vtkImageImportFromArray:
 
     def GetDataOrigin(self):
         return self.__import.GetDataOrigin()
-    
-
 
 #
 #class Timer(QtCore.QTimer):

@@ -108,7 +108,7 @@ class VariableProperties(QtGui.QDialog):
         self.root = parent.root
         self.varNameInFile = None #store the name of the variable when loaded from file
         self.createFileTab()
-        self.createESGFTab()
+#        self.createESGFTab()
         self.createOpenDAPTab()
         self.createEditTab()
         self.createInfoTab()

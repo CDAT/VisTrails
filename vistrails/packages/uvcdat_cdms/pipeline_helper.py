@@ -155,10 +155,10 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 
     @staticmethod
     def get_output_port_name(module):
-        if issubclass(module, CDMSVariable):
-            return 'self'
-        else:
-            return 'output_var'
+        for port in module._output_ports:
+            if port[0] in [ 'self', 'output_var' ]:
+                return port[0]
+        return None
 
     @staticmethod
     def build_variable_operation_pipeline(controller, version, vars, txt, st, 

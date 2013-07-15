@@ -64,6 +64,18 @@ class ConfigPopupManager( QObject ):
     def reset(self):
         self.resetActions = True
 
+DV3DGuiEventType =  QEvent.User + 12
+
+class DV3DGuiEvent( QEvent ):
+
+    def __init__( self, event_type, **args ):
+        QEvent.__init__( self, DV3DGuiEventType )
+        self.event_type = event_type
+        self.attributes = dict( **args )
+        
+    def getAttribute( self, key ):
+        return self.attributes.get( key, None )
+ 
 class WindowRefinementGenerator( QObject ):
 
     def __init__( self, **args ):
@@ -364,10 +376,7 @@ class ConfigurableFunction( QObject ):
         self.startHandler = args.get( 'start', None )       #    left click
         self.updateHandler = args.get( 'update', None )     #    mouse drag or menu option choice
         self.hasState = args.get( 'hasState', True )
-        
-    def __del__(self):
-        self.clearReferrents()
-                
+                        
     def clearReferrents(self):
         self.initHandler = None
         self.openHandler = None
@@ -380,7 +389,7 @@ class ConfigurableFunction( QObject ):
 
     @property
     def module(self):
-        return ModuleStore.getModule( self.moduleID ) if self.moduleID else None
+        return ModuleStore.getModule( self.moduleID ) if ( self.moduleID <> None ) else None
 
     def get_persisted(self):
         return self._persisted if self.persist else True
@@ -449,9 +458,7 @@ class ConfigurableFunction( QObject ):
     def applyParameter( self, **args ):
         pass
 
-    def init( self, module ):
-#        if self.name == 'colorScale':
-#            print "."
+    def init( self, module, **args ):
         self.moduleID = module.moduleID
         if self.units == 'data': 
             self.units = module.getUnits() 
@@ -596,6 +603,10 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
  
     def initLeveling( self, **args ):
         initRange = args.get( 'initRange', True )
+# Dont't currently need these (But should be OK):
+#        units_src = args.get('units',None)
+#        input_index = args.get( 'input_index', 0 )
+#        ispec = self.module.ispec( input_index )
         if self.range_bounds == None:
             self.range_bounds =   args.get( 'rangeBounds', None )
         if initRange:
@@ -731,18 +742,18 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         self.finalizeConfigurationObserver = args.get( 'finalize', None )
 #        print "create UVCDATGuiConfigFunction: %x" % ( id(self) )
         
-    def __del__(self):
-#        print "delete UVCDATGuiConfigFunction: %x" % ( id(self) )
-        ConfigurableFunction.__del__(self)
-
     @staticmethod
     def clearModules( pipeline ): 
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         from packages.vtDV3D.CDMS_VariableReaders import PM_CDMSDataReader
         DV3DPipelineHelper.reset()
-        PM_CDMSDataReader.clearCache() 
+        cleared_coords = set()
         if pipeline:   
-            for moduleId in pipeline.modules: 
+            for moduleId in pipeline.modules:
+                cell_coords = DV3DPipelineHelper.getCellCoordinates( moduleId ) 
+                if not cell_coords in cleared_coords:
+                    PM_CDMSDataReader.clearCache( cell_coords )  
+                    cleared_coords.add( cell_coords )
                 DV3DPipelineHelper.removeModuleFromActivationMap( moduleId ) 
                 ConfigurableFunction.clear( moduleId )
                 for (key, moduleList) in UVCDATGuiConfigFunction.connectedModules.items():
@@ -758,7 +769,7 @@ class UVCDATGuiConfigFunction( ConfigurableFunction ):
         initValue = args.get( 'initValue', True ) 
         if initValue:
             initial_value = None if ( self.getValueHandler == None ) else self.getValueHandler()         
-            value = self.module.getInputValue( self.name, initial_value )  
+            value = self.module.getInputValue( self.name, initial_value ) if self.module else initial_value
             if value: self.setValue( value ) 
         
     def reset(self):
@@ -1016,7 +1027,7 @@ class IVModuleConfigurationDialog( QWidget ):
         self.layout().setSpacing(5)
         self.createContent()
         self.tabbedWidget.setCurrentIndex(0)
-        self.disable()
+#        self.disable()
 #        print "  -AAXX- Creating %s[%s]: id = %x " % ( self.__class__.__name__, self.name, id( self ) )
 
     @staticmethod 
@@ -1024,10 +1035,6 @@ class IVModuleConfigurationDialog( QWidget ):
         IVModuleConfigurationDialog.instances = {}
         IVModuleConfigurationDialog.activeModuleList = []
         
-#    def __del__(self):
-#        print "  -AAXX- Deleting %s[%s]: id = %x " % ( self.__class__.__name__, self.name, id( self ) )
-#        self.emit( SIGNAL('delete()') )
-
     def createGuiButtonLayout(self):
         if self.dialogButtonLayout <> None:
             self.layout().removeItem( self.dialogButtonLayout )
@@ -2086,9 +2093,25 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
         return ModuleStore.getModule( self.moduleId ) 
 
     def persistParameterList( self, parameter_list, **args ):
+        import api
+        from core.db.action import create_action 
         pmod = self.getPersistentModule() 
-        if pmod: pmod.persistParameterList( parameter_list, **args )
-        return pmod
+        if pmod: 
+            pmod.persistParameterList( parameter_list, **args )
+            return pmod
+        elif parameter_list:
+            controller = api.get_current_controller()
+            module = controller.current_pipeline.modules[ self.moduleId ]
+            op_list = []
+            for parmRec in parameter_list:
+                parameter_name = parmRec[0]
+                output = parmRec[1]
+                param_values_str = [ str(x) for x in output ] if isList(output) else str( output )  
+                op_list.extend( controller.update_function_ops( module, parameter_name, param_values_str ) )
+            action = create_action( op_list ) 
+            controller.add_new_action(action)
+            controller.perform_action(action)
+
                         
 #    def queryLayerList( self, ndims=3 ):
 #        portName = 'volume' if ( ndims == 3 ) else 'slice'
@@ -2193,6 +2216,22 @@ class CaptionConfigurationDialog( IVModuleConfigurationDialog ):
         self.resetButton.setMinimumHeight( 25 )
         self.buttonLayout.addWidget(self.resetButton)
         self.connect(self.resetButton, SIGNAL('clicked(bool)'), self.reset )
+
+class QAnimationThread( QThread ):
+    def __init__( self, animationMgr, **args ):
+        QtCore.QThread.__init__(self,parent=animationMgr)
+        self.animationMgr=animationMgr
+        self.onestep = args.get( 'onestep', False )
+        self.delayTime = args.get( 'delay', False )
+        
+    def run(self):
+        if self.onestep:
+            self.animationMgr.timestep()
+        else:
+            while self.animationMgr.running:
+                self.animationMgr.timestep()
+                self.sleep( self.delayTime )
+        self.exit(0)
         
 class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     """
@@ -2204,20 +2243,34 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.iTimeStep = 0
         self.relTimeStart = None
         self.relTimeStep = 1.0
+        self.anim_thread = None
+        self.delayTime = 0
         self.uniformTimeRange = True
         self.maxSpeedIndex = 100
         self.maxDelaySec = args.get( "maxDelaySec", 1.0 )
         self.running = False
         self.timeRange = None
         self.datasetId = None
+        self.delayTime = 0.0
         self.timer = QTimer()
         self.timer.connect( self.timer, SIGNAL('timeout()'), self.animate )
-        self.timer.setSingleShot( True )
         IVModuleConfigurationDialog.__init__( self, name, **args )
         
-    def __del__(self):
-        print "Disposing of AnimationConfigurationDialog"
-                                  
+    def setVisible ( self, val ):
+        QWidget.setVisible ( self, val )
+
+    def setDisabled ( self, val ):
+        QWidget.setDisabled ( self, val )
+
+    def setHidden ( self, val ):
+        QWidget.setHidden ( self, val )
+
+    def close ( self ):
+        QWidget.close ( self )
+
+    def hide ( self ):
+        QWidget.hide ( self )
+                                               
     @staticmethod   
     def getSignature():
         return [ ( Float, 'timeValue'), ]
@@ -2237,10 +2290,16 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
 #            self.setTimestep( iTS ) 
 #            time.sleep( 0.01 ) 
 #            if not self.running: break
-                
+
     def step( self ):
         if not self.running:
+            if self.anim_thread and self.anim_thread.isRunning(): return 
             self.updateTimeRange()
+            self.anim_thread = QAnimationThread( self, onestep=True )
+            self.anim_thread.start()
+            diagnosticWriter.log( self, 'completed timestep'  )
+                
+    def timestep( self ):
             iTS =  int( self.iTimeStep ) + 1
             restart = False
             if self.timeRange:
@@ -2287,6 +2346,16 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                                 self.uniformTimeRange = False
                                 if timeRange[3] > timeRangeInput[3]:
                                     timeRange = timeRangeInput 
+        if timeRange == None:
+            for moduleID in self.modules:
+                if timeRange == None:
+                    pmod = ModuleStore.getModule( moduleID )
+                    pipeline = pmod.getCurrentPipeline()
+                    for moduleID in pipeline.modules:
+                        module = ModuleStore.getModule( moduleID )
+                        if  isinstance( module, PM_CDMSDataReader ):                  
+                            timeRange =  self.getConvertedTimeRange( module )  
+                            if timeRange: break                        
         if timeRange:                
             self.timeRange = [ int(timeRange[0]), int(timeRange[1]) ]
             if ( self.iTimeStep >= self.timeRange[1] ) or  ( self.iTimeStep < self.timeRange[0] ): self.iTimeStep = self.timeRange[0]
@@ -2314,11 +2383,17 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
                         relTime0 = relTimeRef.torel( timeAxis.units )
                         timeIndex = timeValues.searchsorted( relTime0.value ) 
                         if ( timeIndex >= len( timeValues ) ): timeIndex = len( timeValues ) - 1
-                        relTimeValue0 =  timeValues[ timeIndex ]
-                        r0 = cdtime.reltime( relTimeValue0, timeAxis.units )
+                        relTimeValue1 =  timeValues[ timeIndex ]
+                        if timeIndex > 0:
+                            timeIndex0 =  timeIndex-1
+                            relTimeValue0 =  timeValues[ timeIndex0 ]
+                            if abs( relTime0.value - relTimeValue0 ) < abs( relTimeValue1 - relTime0.value ):
+                                relTimeValue1 = relTimeValue0 
+                                timeIndex = timeIndex0
+                        r0 = cdtime.reltime( relTimeValue1, timeAxis.units )
                         relTimeRef = r0.torel( module.referenceTimeUnits )
                         relTimeValueRefAdj = relTimeRef.value
-        #                print " ** Update Animation, timestep = %d, timeValue = %.3f, timeRange = %s " % ( self.iTimeStep, relTimeValueRefAdj, str( self.timeRange ) )
+#                        print " ** Update Animation, timestep = %d, index = %d, timeValue = %.3f, useIndex = %d, timeRange = %s " % ( self.iTimeStep, timeIndex, relTimeValueRefAdj, self.uniformTimeRange, str( self.timeRange ) )
                         displayText = str( r0.tocomp() )
                         HyperwallManager.getInstance().processGuiCommand( ['reltimestep', relTimeValueRefAdj, timeIndex, self.uniformTimeRange, displayText ], False  )
     #                    dvLog( module, " ** Update Animation, timestep = %d " % ( self.iTimeStep ) )
@@ -2330,6 +2405,8 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
     def stop(self):
         self.runButton.setText('Run')
         self.running = False 
+        
+    def stopAnimation(self):
         for moduleID in IVModuleConfigurationDialog.getActiveModules():
             module = ModuleStore.getModule( moduleID )
             module.stopAnimation()
@@ -2356,73 +2433,33 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.updateTimeRange()
         self.runButton.setText('Stop')
         self.running = True
-        self.timer.start()       
-        
+        self.animate()
+       
     def run( self ):
         if self.running: self.stop()           
         else: self.start()
         
-#            self.runButton.setText('Stop')
-#            executeWorkflow()
-#            self.getTimeRange()
-#            if inGuiThread:
-#                self.animate()
-#            else:
-#            self.running = True
-#            self.loadAnimation()
-#            self.getTimeRange()
-#            self.runButton.setDisabled(True)
-#            self.setValue( 0 )
-#            self.timer.start()
-#            self.runThread = threading.Thread( target=self.animate )
-#            self.runThread.start()
-             
-    def animate(self):
-        iTS =  int( self.iTimeStep ) + 1
-        restart = False
-        if self.timeRange:
-            if ( iTS >= self.timeRange[1] ) or  ( iTS < self.timeRange[0] ): 
-                restart = ( iTS >= self.timeRange[1] ) 
-                iTS = self.timeRange[0]
-        self.setTimestep( iTS, restart )  
-        if self.running: 
-            delayTime = 0
-#            delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )
- #           print " Animate step %d, delay time = %.2f msec" % ( iTS, delayTime )
-            self.timer.start( delayTime ) 
+    def animate( self, punctuated=True ):
+        reset_stdio()
+        if self.running:
+            if ( self.anim_thread == None ) or self.anim_thread.isFinished(): 
+                self.anim_thread = QAnimationThread( self, onestep=punctuated, delay=self.delayTime )
+                self.anim_thread.start()
+            if punctuated: 
+                self.timer.singleShot( self.delayTime, self.animate )
+        else:
+            self.stopAnimation()
+        recover_redefined_stdio()
+        
 
     def finalizeConfig( self ):
         self.stop()
         IVModuleConfigurationDialog.finalizeConfig( self )
 #        AnimationConfigurationDialog.iCurrentTimeStep = self.iTimeStep
                 
-#    def run1(self):
-#        if self.running:
-#            self.runButton.setText('Run')
-#            self.running = False
-#        else:
-#            self.runButton.setText('Stop')
-#            executeWorkflow()
-#            self.running = True
-#            self.runThread = threading.Thread( target=self.animate )
-#            self.runThread.start()
-#     
-#        
-#    def animate1(self):
-#        refresh = True
-#        while self.running:
-#            self.initiateParameterUpdate()
-#            self.setTimestep( self.iTimeStep + 1, refresh )
-#            while self.parameterUpdating():
-#                time.sleep(0.01)
-#            delayTime =  ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.delayTimeScale    
-#            time.sleep( delayTime ) 
-#            refresh = False
-##            printTime( 'Finish Animation delay' )
-                
-#    def setDelay( self, dval  ):
-#        self.delay = delay_in_sec if ( delay_in_sec<>None ) else self.speedSlider.value()/100.0
-        
+
+    def setDelay( self ):
+        self.delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )        
         
     def createContent(self ):
         """ createEditor() -> None
@@ -2443,7 +2480,7 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         self.speedSlider = QSlider( Qt.Horizontal )
         self.speedSlider.setRange( 0, self.maxSpeedIndex )
         self.speedSlider.setSliderPosition( self.maxSpeedIndex )
-#        self.connect(self.speedSlider, SIGNAL('valueChanged()'), self.setDelay )
+        self.connect(self.speedSlider, SIGNAL('sliderReleased()'), self.setDelay )        
         anim_label.setBuddy( self.speedSlider )
         label_layout.addWidget( self.speedSlider  ) 
         

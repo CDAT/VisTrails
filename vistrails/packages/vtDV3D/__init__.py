@@ -15,7 +15,7 @@ version = '0.2.0'
 #Configuration object
 import sys
 vtk_pkg_identifier = 'edu.utah.sci.vistrails.vtk'
-from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
+from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color, Dictionary
 from core.bundles import py_import
 hasMatplotlib = True
 try:
@@ -77,12 +77,13 @@ from packages.vtDV3D.DV3DCell import *
 
 def initialize(*args, **keywords):
     import core.modules.module_registry
-    from packages.vtDV3D.CDMS_VariableReaders import CDMS_HoffmullerReader, CDMS_VolumeReader, CDMS_ChartDataReader, CDMS_SliceReader, CDMS_VectorReader, CDMS_HoffmullerReaderConfigurationWidget, CDMS_VolumeReaderConfigurationWidget, CDMS_ChartDataConfigurationWidget, CDMS_SliceReaderConfigurationWidget, CDMS_VectorReaderConfigurationWidget 
+    from packages.vtDV3D.CDMS_VariableReaders import CDMSVariableSource, CDMSTransientVariable, CDMS_HoffmullerReader, CDMS_VolumeReader, CDMS_ChartDataReader, CDMS_SliceReader, CDMS_VectorReader, CDMS_HoffmullerReaderConfigurationWidget, CDMS_VolumeReaderConfigurationWidget, CDMS_ChartDataConfigurationWidget, CDMS_SliceReaderConfigurationWidget, CDMS_VectorReaderConfigurationWidget 
     from packages.vtDV3D.VolumeSlicerModule import VolumeSlicer
     from packages.vtDV3D.VolumeRenderModule import VolumeRenderer
     from packages.vtDV3D.ParallelCoordinatesModule import ParallelCoordinateViewer
     from packages.vtDV3D.WorldMapModule import WorldFrame
     from packages.vtDV3D.VoxelizerModule import Voxelizer
+    from packages.uvcdat.init import Variable, VariableSource
 #    from DemoDataModule import DemoData, DemoDataConfigurationWidget
 #    from packages.vtDV3D.InteractiveConfiguration import LayerConfigurationWidget
     from packages.vtDV3D.LevelSurfaceModule import LevelSurface 
@@ -165,6 +166,9 @@ def initialize(*args, **keywords):
 #    reg.add_output_port( CDMS_VCDATInterface, "cellLocation1", [ ( String, 'cellLocation' ) ] ) 
 #    reg.add_output_port( CDMS_VCDATInterface, "cellLocation2", [ ( String, 'cellLocation' ) ] ) 
 
+    reg.add_module( CDMSTransientVariable,  namespace='cdms' )
+    reg.add_input_port(  CDMSTransientVariable, "inputId", String )      
+
     reg.add_module( CDMS_FileReader, configureWidgetType=CDMSDatasetConfigurationWidget, namespace='cdms' )
     reg.add_input_port(  CDMS_FileReader, "executionSpecs",    [ ( String, 'serializedConfiguration' ),  ], True ) 
     reg.add_input_port( CDMS_FileReader, "datasets",    [ ( String, 'serializedDatasetMap' ) ], True ) 
@@ -177,16 +181,21 @@ def initialize(*args, **keywords):
     reg.add_output_port( CDMS_FileReader, "dataset", CDMSDataset ) 
     CDMS_FileReader.registerConfigurableFunctions( reg )
 
+    reg.add_module( CDMSVariableSource, namespace='cdms' )
+    reg.add_input_port(  CDMSVariableSource, "inputId", String )      
+    reg.add_output_port( CDMSVariableSource, "self", VariableSource )
+    reg.add_output_port( CDMSVariableSource, "axes", String )
+
     reg.add_module( CDMS_HoffmullerReader, configureWidgetType=CDMS_HoffmullerReaderConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_HoffmullerReader, "dataset", CDMSDataset )      
-    reg.add_input_port( CDMS_HoffmullerReader, "variable", CDMSVariable )      
+    reg.add_input_port( CDMS_HoffmullerReader, "variable", Variable )      
     reg.add_input_port( CDMS_HoffmullerReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( CDMS_HoffmullerReader, "volume", AlgorithmOutputModule3D ) 
     CDMS_HoffmullerReader.registerConfigurableFunctions( reg )
 
     reg.add_module( CDMS_VolumeReader, configureWidgetType=CDMS_VolumeReaderConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_VolumeReader, "dataset", CDMSDataset )      
-    reg.add_input_port( CDMS_VolumeReader, "variable", CDMSVariable )      
+    reg.add_input_port( CDMS_VolumeReader, "variable", Variable )      
     reg.add_input_port( CDMS_VolumeReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( CDMS_VolumeReader, "volume", AlgorithmOutputModule3D ) 
     CDMS_VolumeReader.registerConfigurableFunctions( reg )
@@ -205,10 +214,10 @@ def initialize(*args, **keywords):
 
     reg.add_module( CDMS_VectorReader, configureWidgetType=CDMS_VectorReaderConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_VectorReader, "dataset", CDMSDataset )        
-    reg.add_input_port( CDMS_VectorReader, "variable", CDMSVariable )          
-    reg.add_input_port( CDMS_VectorReader, "variable2", CDMSVariable )      
-    reg.add_input_port( CDMS_VectorReader, "variable3", CDMSVariable )      
-    reg.add_input_port( CDMS_VectorReader, "variable4", CDMSVariable )      
+    reg.add_input_port( CDMS_VectorReader, "variable", Variable )          
+    reg.add_input_port( CDMS_VectorReader, "variable2", Variable )      
+    reg.add_input_port( CDMS_VectorReader, "variable3", Variable )      
+    reg.add_input_port( CDMS_VectorReader, "variable4", Variable )      
     reg.add_input_port( CDMS_VectorReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( CDMS_VectorReader, "volume", AlgorithmOutputModule3D ) 
     CDMS_SliceReader.registerConfigurableFunctions( reg )
