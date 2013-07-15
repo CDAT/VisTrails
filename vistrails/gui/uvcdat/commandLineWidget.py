@@ -105,6 +105,7 @@ class QCommandLine(QtGui.QWidget):
         self.root=parent.root
         # create objects
         label = QtGui.QLabel("Enter CDAT command and press Return")
+        self.dumpToWindow = False
         self.le = QCommandLineType()
         self.te = QtGui.QTextEdit()
         self.te.setReadOnly(True)
@@ -114,15 +115,10 @@ class QCommandLine(QtGui.QWidget):
         # if stdout, then the text will be colored black, else if an 
         # error occurs (i.e., stderr), then show the text in red
         #-----------------------------------------------------------------------
-        if uvcdatCommons.debug:
-            sys.stdout = systemCommands.OutLog( self.te, None, sys.stdout )
-            sys.stderr = systemCommands.OutLog( self.te, 
+        sys.stdout = systemCommands.OutLog( self, self.te, None, sys.stdout )
+        sys.stderr = systemCommands.OutLog( self, self.te, 
                                                 customizeUVCDAT.errorColor, 
                                                 sys.stderr )
-        else:
-            sys.stdout = systemCommands.OutLog( self.te)
-            sys.stderr = systemCommands.OutLog( self.te, 
-                                                customizeUVCDAT.errorColor)
 
         #-----------------------------------------------------------------------
         # layout
@@ -421,7 +417,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                     pressEnter=True
             else:
                 st="MV2.absolute(,"
-        elif txt in ["SIN","ARCSIN","COS","ARCOS","TAN","ARCTAN"]:
+        elif txt in ["SIN","ARCSIN","COS","ARCCOS","TAN","ARCTAN"]:
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.%s(%s)" % (txt.lower(),selected[0].varName)
@@ -497,6 +493,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
         self.le.setFocus()
 
     def run_command(self,processed=False):
+        self.dumpToWindow = True
         """ Event that processes the CDAT/Python command and displays the 
         stdout or stderr in the text editor window. """
         #-----------------------------------------------------------------------
@@ -556,4 +553,5 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             from api import get_current_project_controller
             prj_controller = get_current_project_controller()
             prj_controller.process_typed_calculator_command(varname,pycommand)
+        self.dumpToWindow = False
         return res
