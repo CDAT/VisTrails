@@ -669,7 +669,10 @@ class VariableProperties(QtGui.QDialog):
         else:
             original_id = updatedVar.id
             computed_var = True
-        updatedVar.id = targetId
+        
+        #this used to be an actual transientvariable, now it's just a filevariable
+        #updatedVar.id = targetId
+        
         self.root.record("%s = %s(%s)" % (targetId,oid,cmds))
         ## Squeeze?
         if updatedVar.rank() !=0:

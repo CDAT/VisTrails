@@ -1128,6 +1128,9 @@ class ProjectController(QtCore.QObject):
         workflow_result = result[0][0]
         
         if len(workflow_result.errors) > 0:
+            import logging
+            for key in workflow_result.errors:
+                logging.exception(workflow_result.errors[key])
             QMessageBox.warning( None, "Workflow Error", 
                                  "Variable pipeline had errors executing.");
             return None
