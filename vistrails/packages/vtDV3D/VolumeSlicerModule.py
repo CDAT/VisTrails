@@ -438,14 +438,15 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             
             if self.generateContours:
                 slice_data = caller.GetReslice2Output()
-                slice_data.Update()                
-                self.contours.SetInput( slice_data )
-                self.contours.Modified()
-                origin = caller.GetOrigin()
-                contourLineActor = self.getContourActor( iAxis )
-                contourLineActor.SetPosition( origin[0], origin[1], origin[2] )
-#                contourLineActor.SetOrigin( origin[0], origin[1], origin[2] )
-                self.setVisibleContour( iAxis )
+                if slice_data:
+                    slice_data.Update()                
+                    self.contours.SetInput( slice_data )
+                    self.contours.Modified()
+                    origin = caller.GetOrigin()
+                    contourLineActor = self.getContourActor( iAxis )
+                    contourLineActor.SetPosition( origin[0], origin[1], origin[2] )
+    #                contourLineActor.SetOrigin( origin[0], origin[1], origin[2] )
+                    self.setVisibleContour( iAxis )
 #                print " Generate Contours, data dims = %s, origin = %s, pos = %s, extent = %s" % ( str( slice_data.GetDimensions() ), str(slice_data.GetOrigin()), str(origin), str(slice_data.GetExtent()) )
                 
             self.render()
@@ -567,7 +568,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #            self.updateSliceOutput()
 
     def initializeConfiguration( self, cmap_index=0 ):
-        PersistentModule.initializeConfiguration(self)
+        PersistentModule.initializeConfiguration(self, input_index=cmap_index )
         ispec = self.inputSpecs[ cmap_index ] 
         ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
 #        self.updateSliceOutput()

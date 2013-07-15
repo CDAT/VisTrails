@@ -20,6 +20,7 @@ DefaultReferenceTimeUnits = "days since 1900-1-1"
 MIN_LINE_LEN = 50
 ecount = 0
 
+
 def getClassName( instance ):
     return instance.__class__.__name__ if ( instance <> None ) else "None" 
 
@@ -148,6 +149,10 @@ class InputSpecs:
         self.inputModuleList = None
         self.datasetId = None
         self.clipper = None
+        self.dtype = None
+        
+    def isFloat(self):
+        return self.dtype == "Float"
 
     def setInputModule( self, module ): 
         self.inputModuleList = module
@@ -260,9 +265,13 @@ class InputSpecs:
             return axes[iAxis], ""
 
     def getRangeBounds( self ):
+        if self.dtype == "Float": 
+            return self.scalarRange
         return self.rangeBounds  
         
     def getDataRangeBounds(self):
+        if self.dtype == "Float":
+            return self.scalarRange
         if self.rangeBounds:
             range = self.getDataValues( self.rangeBounds[0:2] ) 
             if ( len( self.rangeBounds ) > 2 ): range.append( self.rangeBounds[2] ) 
@@ -278,6 +287,7 @@ class InputSpecs:
         raise ModuleError( self, msg )
 
     def getDataValue( self, image_value):
+        if self.isFloat(): return image_value
         if not self.scalarRange: 
             self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % getClassName( self ) )
         valueRange = self.scalarRange
@@ -287,6 +297,7 @@ class InputSpecs:
         return dataValue
                 
     def getDataValues( self, image_value_list ):
+        if self.isFloat(): return image_value_list
         if not self.scalarRange: 
             self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % getClassName( self ) )
         valueRange = self.scalarRange
@@ -308,6 +319,7 @@ class InputSpecs:
         return imageValue
 
     def getImageValues( self, data_value_list ):
+        if self.isFloat(): return data_value_list
         if not self.scalarRange: 
             self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % getClassName( self ) )
         valueRange = self.scalarRange
@@ -321,6 +333,7 @@ class InputSpecs:
         return imageValues
 
     def scaleToImage( self, data_value ):
+        if self.isFloat(): return data_value
         if not self.scalarRange: 
             self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % getClassName( self ) )
         dv = ( self.scalarRange[1] - self.scalarRange[0] )
@@ -332,6 +345,9 @@ class InputSpecs:
         return self.metadata.get( key, None ) if ( key and self.metadata )  else self.metadata
   
     def getFieldData( self ):
+        if self.fieldData == None:
+            diagnosticWriter.log( self, ' Uninitialized field data being accessed in ispec[%x]  ' % id(self)  ) 
+            self.initializeMetadata()
         return self.fieldData  
     
     def updateMetadata( self, plotIndex ):
@@ -343,6 +359,10 @@ class InputSpecs:
                 self.fieldData = self.input().GetFieldData()         
             elif self.inputModule:
                 self.fieldData = self.inputModule.getFieldData() 
+
+            if self.fieldData == None:
+                diagnosticWriter.log( self, ' NULL field data in updateMetadata: ispec[%x]  ' % id(self)  ) 
+                self.initializeMetadata() 
     
             self.metadata = self.computeMetadata( plotIndex )
             
@@ -352,9 +372,9 @@ class InputSpecs:
                 tval = self.metadata.get( 'timeValue', 0.0 )
                 self.referenceTimeUnits = self.metadata.get( 'timeUnits', None )
                 self.timeValue = cdtime.reltime( float( tval ), self.referenceTimeUnits )               
-                dtype =  self.metadata.get( 'datatype', None )
+                self.dtype =  self.metadata.get( 'datatype', None )
                 scalars =  self.metadata.get( 'scalars', None )
-                self.rangeBounds = getRangeBounds( dtype )
+                self.rangeBounds = getRangeBounds( self.dtype )
                 title = self.metadata.get( 'title', None )
                 if title:
                     targs = title.split(':')
@@ -391,6 +411,7 @@ class InputSpecs:
         return layerList
     
     def computeMetadata( self, plotIndex ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
         if not self.fieldData: self.initializeMetadata() 
         if self.fieldData:
             mdList = extractMetadata( self.fieldData )
@@ -398,8 +419,8 @@ class InputSpecs:
                 return mdList[ plotIndex ]
             else:
                 try: return mdList[ 0 ]
-                except: pass
-        print>>sys.stderr, "Error, Metadata for input %d not found" % plotIndex
+                except: pass               
+        print>>sys.stderr, "[%s]: Error, Metadata for input %d not found in ispec[%x]  "  % ( self.__class__.__name__,  plotIndex, id(self) )
         return {}
         
     def addMetadataObserver( self, caller, event ):
@@ -412,6 +433,7 @@ class InputSpecs:
             self.fieldData = vtk.vtkDataSetAttributes()
             mdarray = getStringDataArray( 'metadata' )
             self.fieldData.AddArray( mdarray )
+#            diagnosticWriter.log( self, ' initialize field data in ispec[%x]  ' % id(self) )  
         except Exception, err:
             print>>sys.stderr, "Error initializing metadata"
 
@@ -423,8 +445,7 @@ class InputSpecs:
         else:
             enc_mdata = encodeToString( metadata )
             dataVector.InsertNextValue( enc_mdata  )
- 
-              
+       
 class PersistentModule( QObject ):
     '''
     <H2> Interactive Configuration</H2>
@@ -449,6 +470,7 @@ class PersistentModule( QObject ):
     def __init__( self, mid, **args ):
         QObject.__init__(self)
         self.referenceTimeUnits = DefaultReferenceTimeUnits
+        self.debug = False
         self.pipelineBuilt = False
         self.update_proj_controller = True
         self.newLayerConfiguration = False
@@ -502,6 +524,7 @@ class PersistentModule( QObject ):
 #        return 0
 
 
+
     def setCellLocation( self, cell_location ):
         self.cell_location = cell_location       
         ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
@@ -529,6 +552,7 @@ class PersistentModule( QObject ):
         return ( self.cell_location[0] == prj_controller.name ) and ( self.cell_location[1] == prj_controller.current_sheetName )
         
     def clearReferrents(self):
+        
         for f in self.configurableFunctions.values(): 
             f.clearReferrents()
         self.configurableFunctions.clear()
@@ -548,6 +572,12 @@ class PersistentModule( QObject ):
 
     def getLayer( self ):
         return [ self.activeLayer, ]
+
+    def ispec( self, input_index=0 ):
+        try:
+            return self.inputSpecs[ input_index ]
+        except:
+            return None 
 
     def input( self, input_index=0 ):
         try:
@@ -580,6 +610,7 @@ class PersistentModule( QObject ):
         return ispec.inputModuleList
 
     def getConfigFunctions( self, types=None ):
+        
         cmdList = []
         for items in self.configurableFunctions.items():
             cmd = items[1]
@@ -649,7 +680,7 @@ class PersistentModule( QObject ):
         controller.current_pipeline_view.recreate_module( controller.current_pipeline, self.moduleID )
         pass
 
-    def updateTextDisplay( self, text = None ):
+    def updateTextDisplay( self, text = None, **args ):
         pass
     
     def setNewConfiguration(self, **args ):
@@ -706,7 +737,7 @@ class PersistentModule( QObject ):
     def is_cacheable(self):
         return False
     
-    def updateTextDisplay( self, text = None ):
+    def updateTextDisplay( self, text = None, **args ):
         pass
             
     def getName(self):
@@ -863,6 +894,7 @@ class PersistentModule( QObject ):
         if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ispec.referenceTimeUnits )
 
     def initializeInputs( self, **args ):
+        
         isAnimation = args.get( 'animate', False )
         restarting = args.get( 'restarting', False )
         self.newDataset = False
@@ -963,7 +995,11 @@ class PersistentModule( QObject ):
             outputModule = AlgorithmOutputModule( fieldData=fieldData, **args )
             output =  outputModule.getOutput() 
             fd = output.GetFieldData() 
-            fd.PassData( fieldData )                      
+            if fieldData:
+                fd = output.GetFieldData() 
+                fd.PassData( fieldData ) 
+            else:                     
+                diagnosticWriter.log( self, ' set2DOutput, NULL field data ' )    
             self.wmod.setResult( portName, outputModule ) 
         else: print " Missing wmod in %s.set2DOutput" % getClassName( self )
 
@@ -971,8 +1007,11 @@ class PersistentModule( QObject ):
         if self.wmod:  
             fieldData = self.getFieldData()
             output =  outputModule.getOutput() 
-            fd = output.GetFieldData()  
-            fd.PassData( fieldData )                
+            if fieldData:
+                fd = output.GetFieldData()
+                fd.PassData( fieldData )                
+            else:                     
+                diagnosticWriter.log( self, ' setOutputModule, NULL field data ' )    
             self.wmod.setResult( portName, outputModule ) 
         else: print " Missing wmod in %s.set2DOutput" % getClassName( self )
          
@@ -1003,6 +1042,7 @@ class PersistentModule( QObject ):
         return self.configurableFunctions.get(name,None)
 
     def removeConfigurableFunction(self, name ):
+        
         del self.configurableFunctions[name]
 
     def addConfigurableWidgetFunction(self, name, signature, widgetWrapper, key, **args):
@@ -1018,12 +1058,13 @@ class PersistentModule( QObject ):
         lines.append( '</table>' )
         return ''.join( lines ) 
           
-    def initializeConfiguration(self):
-        pass
+    def initializeConfiguration(self, **args):
+        
         for configFunct in self.configurableFunctions.values():
-            configFunct.init( self )
+            configFunct.init( self, **args )
             
     def applyConfiguration(self, **args ):
+        
         for configFunct in self.configurableFunctions.values():
             configFunct.applyParameter( **args  )
             
@@ -1038,6 +1079,7 @@ class PersistentModule( QObject ):
         return self.configurableFunctions.get( self.InteractionState, None )
                             
     def startConfiguration( self, x, y, config_types ):
+        
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
         if (self.InteractionState <> None) and not self.configuring and DV3DPipelineHelper.isLevelingConfigMode():
             configFunct = self.configurableFunctions[ self.InteractionState ]
@@ -1048,15 +1090,16 @@ class PersistentModule( QObject ):
                     self.haltNavigationInteraction()
                     if (configFunct.type == 'leveling'): self.getLabelActor().VisibilityOn()
     
-    def updateAnimation( self, animTimeData, textDisplay=None, restartingAnimation=False ):
+    def updateAnimation( self, animTimeData, textDisplay=None, restartingAnimation=False ):     
         self.dvUpdate( timeData=animTimeData, animate=True, restarting=restartingAnimation )
-        if textDisplay <> None:  self.updateTextDisplay( textDisplay )
-        QtCore.QCoreApplication.processEvents()
+        if textDisplay <> None:  self.updateTextDisplay( textDisplay, worker_thread=True )
+#        QtCore.QCoreApplication.processEvents()
         
     def stopAnimation( self ):
         self.resetNavigation()
                
     def updateConfigurationObserver( self, parameter_name, new_parameter_value, *args ):
+        
         try:
             if self.getActivation( parameter_name ):
 #                print " updateConfiguration[%s]: %s" % ( parameter_name, str(new_parameter_value) )
@@ -1077,6 +1120,7 @@ class PersistentModule( QObject ):
 #                self.persistParameter( configFunct.name, None )     
 
     def refreshParameters( self, useInitialValue = False ):
+        
         if useInitialValue:
            for configFunct in self.configurableFunctions.values():
                if configFunct.isLayerDependent:
@@ -1160,7 +1204,8 @@ class PersistentModule( QObject ):
     def finalizeLeveling( self ):
         if self.ndims == 3:
             self.getLabelActor().VisibilityOff()
-            self.getLensActor().VisibilityOff()
+            actor = self.getLensActor()
+            if actor: actor.VisibilityOff()
 
         if self.configuring: 
             print " ~~~~~~ Finalize Leveling: ndims = %d, interactionState = %s " % ( self.ndims, self.InteractionState )
@@ -1630,7 +1675,11 @@ class PersistentVisualizationModule( PersistentModule ):
 #        print "Setting 3D output for port %s" % ( portName ) 
         if output <> None:
             fd = output.GetFieldData() 
-            fd.PassData( fieldData ) 
+            if fieldData:
+                fd = output.GetFieldData()
+                fd.PassData( fieldData )                
+            else:                     
+                diagnosticWriter.log( self, ' set3DOutput, NULL field data ' )    
         if self.wmod == None:
             print>>sys.stderr, "Missing wmod in set3DOutput for class %s" % ( getClassName( self ) )
         else:
@@ -1654,15 +1703,22 @@ class PersistentVisualizationModule( PersistentModule ):
                         moduleIdList.append( moduleId )
         return rmodList
 
-    def updateTextDisplay( self, text = None ):
+    def updateTextDisplay( self, text = None, **args ):
+        worker_thread = args.get("worker_thread", False )
         if (text <> None) and (self.renderer <> None): 
-            self.labelBuff = str(text)
             if (self.ndims == 3):                
-                self.getLabelActor().VisibilityOn()
+                if worker_thread:
+                    app = QCoreApplication.instance()
+                    gui_event = DV3DGuiEvent( "label_text_update", text=text )
+                    app.postEvent( self, gui_event )
+                else:
+                    self.labelBuff = str(text)
+                    self.getLabelActor().VisibilityOn()    
                 
     def updateLensDisplay(self, screenPos, coord):
         if (screenPos <> None) and (self.renderer <> None) and self.showInteractiveLens: 
-            self.getLensActor(screenPos, coord).VisibilityOn()
+            actor = self.getLensActor( screenPos, coord )
+            if actor: actor.VisibilityOn()
     
     def displayInstructions( self, text ):
         if (self.renderer <> None): 
@@ -1877,26 +1933,39 @@ class PersistentVisualizationModule( PersistentModule ):
           
     def createData(self, coord):
         from paraview.vtk.dataset_adapter import numpyTovtkDataArray
-
 #        ds = self.getCDMSDataset()
-        ispec = self.inputSpecs[ 0 ] 
-        ds= ModuleStore.getCdmsDataset( ispec.datasetId )
-        
-        if len(ds.transientVariables)<>1:
-            print 'ERROR: this module has many variables'
-        var = ds.transientVariables.values()[0]
-        
-        newvar = var(lat=coord[1], lon=coord[0], lev=coord[2], squeeze=1)
-        
-        fieldData = vtk.vtkFieldData()
-        fieldData.AllocateArrays(2)
-        fieldData.AddArray(numpyTovtkDataArray(newvar.getTime()[:], name='x'))
-        fieldData.AddArray(numpyTovtkDataArray(newvar.filled(), name='y'))
+#        (guiName, varName, varId ) = 
+#        current_var = None
+#        haveVar = False
+#        for isIndex in range( len( self.inputSpecs ) ):
+#            if not haveVar:
+#                ispec = self.inputSpecs[ isIndex ] 
+#                ds= ModuleStore.getCdmsDataset( ispec.datasetId )
+#                tvars = ds.transientVariables.values()
+#                for tvar in tvars:
+#                    if (tvar.id == varId):
+#                        current_var = tvar
+#                        haveVar = True
+#                        break
 
-        dataobject = vtk.vtkDataObject()
-        dataobject.SetFieldData(fieldData)
-
-        return dataobject
+        try:
+            
+            current_var = ModuleStore.getActiveVariable()              
+            newvar = current_var(lat=coord[1], lon=coord[0], lev=coord[2], squeeze=1)
+            
+            fieldData = vtk.vtkFieldData()
+            fieldData.AllocateArrays(2)
+            fieldData.AddArray(numpyTovtkDataArray(newvar.getTime()[:], name='x'))
+            fieldData.AddArray(numpyTovtkDataArray(newvar.filled(), name='y'))
+    
+            dataobject = vtk.vtkDataObject()
+            dataobject.SetFieldData(fieldData)
+            return ( current_var, dataobject )
+        
+        except Exception, err:
+            print>>sys.stderr, "Error getting current variable data: ", str(err)
+        
+        return None
 
     def createLensActor(self, id_, pos):
         lensActor = vtk.vtkXYPlotActor();
@@ -1906,20 +1975,20 @@ class PersistentVisualizationModule( PersistentModule ):
         lensActor.SetBorder(1)
         lensActor.PlotPointsOn()
 
-#        ds = self.getCDMSDataset()
-        ispec = self.inputSpecs[ 0 ] 
-        ds= ModuleStore.getCdmsDataset( ispec.datasetId )
-        
-        if ds <> None:
-            if len(ds.transientVariables)>0:
-                if len(ds.transientVariables)>1: print 'Warning: this module has several transient Variables, plotting the first one.'
-                var = ds.transientVariables.values()[0]
-                if hasattr(var, 'long_name'):
-                    lensActor.SetTitle("Time vs. %s (%s)" % (var.long_name, var.id))
-                else:
-                    lensActor.SetTitle("Time vs.%s" % var.id)
-                lensActor.SetYTitle(var.id)
-                lensActor.SetYRange(var.min(), var.max())
+##        ds = self.getCDMSDataset()
+#        ispec = self.inputSpecs[ 0 ] 
+#        ds= ModuleStore.getCdmsDataset( ispec.datasetId )
+#        
+#        if ds <> None:
+#            if len(ds.transientVariables)>0:
+#                if len(ds.transientVariables)>1: print 'Warning: this module has several transient Variables, plotting the first one.'
+#                var = ds.transientVariables.values()[0]
+#                if hasattr(var, 'long_name'):
+#                    lensActor.SetTitle("Time vs. %s (%s)" % (var.long_name, var.id))
+#                else:
+#                    lensActor.SetTitle("Time vs.%s" % var.id)
+#                lensActor.SetYTitle(var.id)
+#                lensActor.SetYRange(var.min(), var.max())
 
         prop = lensActor.GetProperty()
         prop.SetColor( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] )
@@ -1955,22 +2024,29 @@ class PersistentVisualizationModule( PersistentModule ):
         return textActor
     
     def getLensActor(self, pos=None, coord=None):
-        id_ = 'lens'
-      
+        id_ = 'lens'        
         lensActor = self.getProp( 'vtkXYPlotActor', id_)
         if lensActor == None:
             lensActor = self.createLensActor(id_, pos)
             if self.renderer: 
                 self.renderer.AddViewProp( lensActor )
-          
-        # update data
+                
         if (coord<>None):
-            lensActor.GetDataObjectInputList().RemoveAllItems()
-            lensActor.AddDataObjectInput(self.createData(coord))
-
-        lensActor.SetXValuesToValue()
-        lensActor.SetDataObjectXComponent(0, 0)
-        lensActor.SetDataObjectYComponent(0, 1)
+            dataElements = self.createData(coord)
+            if dataElements <> None: 
+                ( var, dataObjectInput ) = dataElements 
+                if hasattr(var, 'long_name'):
+                    lensActor.SetTitle("Time vs. %s (%s)" % (var.long_name, var.id))
+                else:
+                    lensActor.SetTitle("Time vs.%s" % var.id)
+                lensActor.SetYTitle(var.id)
+                lensActor.SetYRange(var.min(), var.max())
+                
+                lensActor.GetDataObjectInputList().RemoveAllItems()
+                lensActor.AddDataObjectInput( dataObjectInput )
+                lensActor.SetXValuesToValue()
+                lensActor.SetDataObjectXComponent(0, 0)
+                lensActor.SetDataObjectYComponent(0, 1)
       
         # update position      
         if pos<>None:
@@ -2151,7 +2227,8 @@ class PersistentVisualizationModule( PersistentModule ):
         PersistentModule.endInteraction( self, **args  )
         if self.ndims == 3: 
             self.getLabelActor().VisibilityOff()              
-            self.getLensActor().VisibilityOff()
+            actor  = self.getLensActor()
+            if actor: actor.VisibilityOff()
 
     def onLeftButtonRelease( self, caller, event ):
 #        print " --- Persistent Module: LeftButtonRelease --- "

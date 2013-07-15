@@ -82,9 +82,11 @@ class QDefinedVariableWidget(QtGui.QWidget):
         self.waitingForClick = False
         
     def myPressed(self, item):
+        from packages.vtDV3D import ModuleStore
         if item.isSelected():
             self.selectVariableFromListEvent(item)
             self.waitingForClick = False
+            ModuleStore.setActiveVariable( item.varName )
         else:
             self.waitingForClick = True
             item.setSelected(True) # wait for click to deselect
@@ -221,29 +223,25 @@ class QDefinedVariableWidget(QtGui.QWidget):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
         """
+        from packages.vtDV3D import ModuleStore
         if var is None:
             return
-        
         cdmsVar = None
         replaced = False
         if type_ == 'CDMS':
             if type(var) == tuple:
                 cdmsVar = var[1]
                 var = var[0]
-
-            self.root.stick_defvar_into_main_dict(var)
-            
-            
+            self.root.stick_defvar_into_main_dict(var)            
             for i in range(self.varList.count()-1,-1,-1):
                 if self.varList.item(i).getVarName() == var.id:
                     replaced = True
                     self.varList.item(i).setVariable(var)
-                    break
-                    
+                    break                   
         if not replaced:
             item = QDefinedVariableItem(var,self.root,cdmsVar)
-            self.varList.addItem(item) 
-            
+            self.varList.addItem(item)            
+        ModuleStore.addActiveVariable( item.varName, item.variable )
         # Recording define variable teaching command
 #        self.recordDefineVariableTeachingCommand(varName, var.id, file, axesArgString)
 
@@ -254,6 +252,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
     def deleteVariable(self, varid):
         """ Remove variable from dict and project
         """
+        from packages.vtDV3D import ModuleStore
         from packages.vtDV3D.vtUtilities import memoryLogger
         memoryLogger.log("start QDefinedVariableWidget.deleteVariable")
         for i in range(self.varList.count()-1,-1,-1):
@@ -269,7 +268,8 @@ class QDefinedVariableWidget(QtGui.QWidget):
                             success = False
                 if success:
                     del __main__.__dict__[varid]
-        memoryLogger.log("finished QDefinedVariableWidget.deleteVariable (succeeded: %r)" % success)
+                    ModuleStore.removeActiveVariable( varid )                   
+                    memoryLogger.log("finished QDefinedVariableWidget.deleteVariable")
 
         #iTab = self.root.tabView.widget(0).tabWidget.getTabIndexFromName(varid)
         #self.root.tabView.widget(0).tabWidget.removeTab(iTab)

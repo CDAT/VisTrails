@@ -67,8 +67,7 @@ class ImagePlaneWidget:
 #        self.ContourFilter = vtk.vtkContourFilter
         self.Reslice = vtk.vtkImageReslice()
         self.Reslice.TransformInputSamplingOff()
-        self.Reslice2 = vtk.vtkImageReslice()
-        self.Reslice2.TransformInputSamplingOff()
+        self.Reslice2 = None        
         self.Texture = vtk.vtkTexture()
         self.TexturePlaneActor   = vtk.vtkActor()
         self.Transform     = vtk.vtkTransform()
@@ -211,28 +210,7 @@ class ImagePlaneWidget:
     def RemoveAllObservers( self ):
         self.Interactor.RemoveAllObservers()
         self.RenderWindow.RemoveAllObservers()
-#        rc = self.Reslice.GetReferenceCount()
-#        del self.Reslice
-#        del self.Reslice2
-#        del self.Interactor
-#        del self.RenderWindow
-#        del self.PlaneOutlineActor
-#        del self.PlaneProperty
-#        del self.ResliceAxes                             
-#        del self.ResliceAxes2                             
-#        del self.PlaneSource 
-#        del self.PlaneOutlinePolyData 
-#        del self.ColorMap
-#        del self.Texture
-#        del self.TexturePlaneActor  
-#        del self.Transform    
-#        del self.ImageData   
-#        del self.ImageData2  
-#        del self.LookupTable 
-#        del self.InputBounds
-#        del self.CursorPolyData 
-#        del self.CursorActor    
-        
+                
 #----------------------------------------------------------------------------
                                 
     def SetInteractor( self, iren ):
@@ -780,16 +758,14 @@ class ImagePlaneWidget:
             
         self.Reslice.SetInput(self.ImageData)
         self.Reslice.Modified()
-#            self.clipper = vtk.vtkImageClip()
-#            self.clipper.AddInput( self.ImageData2 )
-#            self.clipper.SetOutputWholeExtent( self.ImageData.GetWholeExtent() )
-#            self.Reslice2.SetInput( self.clipper.GetOutput() )
         dims = self.ImageData.GetDimensions()
         self.InputDims = 3 if ( ( len(dims) > 2 ) and ( dims[2] > 1 ) ) else 2
            
         if inputData2:
             dims2 = self.ImageData2.GetDimensions()
             self.ContourInputDims = 3 if ( ( len(dims2) > 2 ) and ( dims2[2] > 1 ) ) else 2
+            self.Reslice2 = vtk.vtkImageReslice()
+            self.Reslice2.TransformInputSamplingOff()
             self.Reslice2.SetInput(self.ImageData2)
             self.Reslice2.Modified()
 #            self.Reslice2.SetInformationInput( self.ImageData )     
@@ -897,25 +873,27 @@ class ImagePlaneWidget:
         self.Reslice.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
         self.Reslice.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
         
-        if self.ContourInputDims == 2: 
-            self.ResliceAxes2.DeepCopy( self.ResliceAxes )
-            self.ResliceAxes2.SetElement( 2, 3, 0.0 ) 
-            self.Reslice2.SetResliceAxes(self.ResliceAxes2) 
-        else: 
+        if self.Reslice2:
             self.Reslice2.SetResliceAxes(self.ResliceAxes)
-        
-        self.Reslice2.SetOutputSpacing(outputSpacingX, outputSpacingY, 1)
-        self.Reslice2.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
-        self.Reslice2.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
+            if self.ContourInputDims == 2: 
+                self.ResliceAxes2.DeepCopy( self.ResliceAxes )
+                self.ResliceAxes2.SetElement( 2, 3, 0.0 ) 
+                self.Reslice2.SetResliceAxes(self.ResliceAxes2) 
+            else: 
+                self.Reslice2.SetResliceAxes(self.ResliceAxes)
+            
+            self.Reslice2.SetOutputSpacing(outputSpacingX, outputSpacingY, 1)
+            self.Reslice2.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
+            self.Reslice2.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
 
-               
+
 #----------------------------------------------------------------------------
 
     def GetResliceOutput(self):             
         return self.Reslice.GetOutput()
 
     def GetReslice2Output(self):      
-        return self.Reslice2.GetOutput()        
+        return self.Reslice2.GetOutput() if self.Reslice2 else None      
 
 #----------------------------------------------------------------------------
     def SetResliceInterpolate( self, i ):
