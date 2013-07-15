@@ -105,6 +105,7 @@ class QCommandLine(QtGui.QWidget):
         self.root=parent.root
         # create objects
         label = QtGui.QLabel("Enter CDAT command and press Return")
+        self.dumpToWindow = False
         self.le = QCommandLineType()
         self.te = QtGui.QTextEdit()
         self.te.setReadOnly(True)
@@ -114,15 +115,10 @@ class QCommandLine(QtGui.QWidget):
         # if stdout, then the text will be colored black, else if an 
         # error occurs (i.e., stderr), then show the text in red
         #-----------------------------------------------------------------------
-        if uvcdatCommons.debug:
-            sys.stdout = systemCommands.OutLog( self.te, None, sys.stdout )
-            sys.stderr = systemCommands.OutLog( self.te, 
+        sys.stdout = systemCommands.OutLog( self, self.te, None, sys.stdout )
+        sys.stderr = systemCommands.OutLog( self, self.te, 
                                                 customizeUVCDAT.errorColor, 
                                                 sys.stderr )
-        else:
-            sys.stdout = systemCommands.OutLog( self.te)
-            sys.stderr = systemCommands.OutLog( self.te, 
-                                                customizeUVCDAT.errorColor)
 
         #-----------------------------------------------------------------------
         # layout
@@ -138,108 +134,68 @@ class QCommandLine(QtGui.QWidget):
 
 
         ## Scientifc Buttons
-        styles = customizeUVCDAT.scientificButtonsStyles
         self.topLay = QtGui.QGridLayout()
         self.Lay=self.topLay
         layout.addLayout(self.Lay)
         self.row=0
         self.col=0
-        self.direction = "row"
-        
+        self.direction = "col"
+
+        styles = customizeUVCDAT.scientificButtonsStyles
+        self.addButton(text='SIN', styles=styles)
+        self.addButton(text='COS', styles=styles)
+        self.addButton(text='TAN', styles=styles)
+        self.addButton(text='ABS',styles=styles)
+        self.newCol()
+
+        styles = customizeUVCDAT.scientificButtonsStyles
+        self.addButton(text='ARCSIN', styles=styles)
+        self.addButton(text='ARCCOS', styles=styles)
+        self.addButton(text='ARCTAN', styles=styles)
+        self.addButton(text='STD',styles=styles)
+        self.newCol()
+
+        styles = customizeUVCDAT.scientificButtonsStyles
         self.addButton(text='x^2',styles=styles)
         self.addButton(text='sqRT',styles=styles)
         self.addButton(text='1/x',styles=styles)
         self.addButton(text='x^y', styles=styles)
-        self.newRow()
+        self.newCol()
+
+        styles = customizeUVCDAT.scientificButtonsStyles
         self.addButton(text='LN', styles=styles)
         self.addButton(text='LOG', styles=styles)
         self.addButton(text='e^x', styles=styles)
         self.addButton(text='10^x', styles=styles)
-        self.newRow()
+        self.newCol()
+
+        styles = customizeUVCDAT.scientificButtonsStyles
         self.addButton(text='x<y', styles=styles)
         self.addButton(text='x>y', styles=styles)
         self.addButton(text='x<>y', styles=styles)
         self.addButton(text='x==y', styles=styles)
-        self.newRow()
-        self.addButton(text='SIN', styles=styles)
-        self.addButton(text='ARCSIN', styles=styles)
-        self.addButton(text='COS', styles=styles)
-        self.addButton(text='ARCCOS', styles=styles)
-        self.newRow()
-        self.addButton(text='TAN', styles=styles)
-        self.addButton(text='ARCTAN', styles=styles)
-        self.addButton(text='STD',styles=styles)
-        self.addButton(text='ABS',styles=styles)
-        self.newRow()
+        self.newCol()
+
+        styles = customizeUVCDAT.scientificButtonsStyles
         self.addButton(text='REGRID', 
-                       ## icon="regrid.gif",
                         tip='Spatially regrid the first selected Defined \
 Variable\nto the second selected Defined Variable.',styles=styles)
         self.addButton(text='MASK', 
-                          ## icon="mask.gif",
                           tip='Mask variable 2 where variable 1 is "true".',
                           styles=styles)
         self.addButton(text='GET_MASK',
-                          ## icon="getmask.gif",
                           tip='Get variable mask',styles=styles)
         self.addButton(text='GROWER', 
-                          ## icon="grower.gif",
                           tip='"Grows" variable 1 and variable 2 so that they \
 end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                        styles=styles)
+        self.newCol()
 
-
-        self.Lay = QtGui.QGridLayout()
-        layout.addLayout(self.Lay)
-        # Clear/Validate Buttons
-        styles = customizeUVCDAT.validateButtonsStyles
-        self.row=0
-        self.col=0
-        self.direction="col"
-        self.addButton(QtCore.Qt.Key_Clear,'Clear', styles=styles)
-        self.addButton(QtCore.Qt.Key_Delete, 'Del',styles=styles)
-        self.addButton(QtCore.Qt.Key_Enter, 'Enter',styles=styles)
-        self.addButton(QtCore.Qt.Key_Equal, 'Plot', styles=styles)
-
-        #Number Buttons
-        styles = customizeUVCDAT.numberButtonsStyles
-        self.col=1
-        self.row=0
-        self.direction="row"
-        self.addButton(QtCore.Qt.Key_7, '7', styles=styles)
-        self.addButton(QtCore.Qt.Key_8, '8', styles=styles)
-        self.addButton(QtCore.Qt.Key_9, '9', styles=styles)
-        self.newRow(col=1)
-        self.addButton(QtCore.Qt.Key_4, '4', styles=styles)
-        self.addButton(QtCore.Qt.Key_5, '5', styles=styles)
-        self.addButton(QtCore.Qt.Key_6, '6', styles=styles)
-        self.newRow(col=1)
-        self.addButton(QtCore.Qt.Key_1, '1', styles=styles)
-        self.addButton(QtCore.Qt.Key_2, '2', styles=styles)
-        self.addButton(QtCore.Qt.Key_3, '3', styles=styles)
-        self.newRow(col=1)
-        self.addButton(QtCore.Qt.Key_0, '0', styles=styles)
-        self.addButton(QtCore.Qt.Key_Period, '.',styles=styles)
-        self.addButton(QtCore.Qt.Key_plusminus, '+/-', styles=styles)
-
-        # Operators
         styles = customizeUVCDAT.operatorButtonsStyles
-        self.col=4
-        self.row=0
-        self.direction="col"
-        self.addButton(QtCore.Qt.Key_Asterisk, '*', styles=styles)
-        self.addButton(QtCore.Qt.Key_Slash, '/', styles=styles)
         self.addButton(QtCore.Qt.Key_Plus, '+', styles=styles)
         self.addButton(QtCore.Qt.Key_Minus, '-', styles=styles)
-
-        #pi and ()
-        self.newCol()
-        styles = customizeUVCDAT.constantsButtonStyles
-        self.addButton(text = '(', styles=styles)
-        self.addButton(text = ")", styles=styles)
-        self.addButton(text="PI", styles=styles)
-        self.addButton(text="e", styles=styles)
-
+        self.addButton(QtCore.Qt.Key_Asterisk, '*', styles=styles)
+        self.addButton(QtCore.Qt.Key_Slash, '/', styles=styles)
   
         #self.connect(self,QtCore.SIGNAL("keyRelease"),self.key)
         #-----------------------------------------------------------------------
@@ -461,7 +417,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                     pressEnter=True
             else:
                 st="MV2.absolute(,"
-        elif txt in ["SIN","ARCSIN","COS","ARCOS","TAN","ARCTAN"]:
+        elif txt in ["SIN","ARCSIN","COS","ARCCOS","TAN","ARCTAN"]:
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.%s(%s)" % (txt.lower(),selected[0].varName)
@@ -553,6 +509,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
         self.le.setFocus()
 
     def run_command(self,processed=False):
+        self.dumpToWindow = True
         """ Event that processes the CDAT/Python command and displays the 
         stdout or stderr in the text editor window. """
         #-----------------------------------------------------------------------
@@ -616,9 +573,9 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             from api import get_current_project_controller
             prj_controller = get_current_project_controller()
             prj_controller.process_typed_calculator_command(varname,pycommand)
-            
             tmp = prj_controller.create_exec_new_variable_pipeline(varname)
             tmp.id = varname
             self.root.dockVariable.widget().addVariable(tmp)
         self.le.clear()
+        self.dumpToWindow = False
         return varname
