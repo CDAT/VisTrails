@@ -146,6 +146,7 @@ class QAnimationView(QtGui.QWidget):
 
     def create(self):
         ### Creates animation
+        import pdb; pdb.set_trace();
         self.previousCursor = self.cursor()
         self.setCursor(QtCore.Qt.BusyCursor)
         icon = QtGui.QIcon(":/icons/resources/icons/player_stop.gif")
