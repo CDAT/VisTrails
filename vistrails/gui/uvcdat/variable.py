@@ -279,8 +279,8 @@ class VariableProperties(QtGui.QDialog):
           esgf = QEsgfBrowser(self)
           #esgf.addGateway(gateway=customizeUVCDAT.defaultEsgfNode)
           esgf.addGateway(gateway=str(self.root.preferences.host_url.currentText()))
-        except Exception:
-            esgf = QtGui.QLabel("No Internet?")
+        except Exception,err:
+            esgf = QtGui.QLabel("No Internet?\nError log: %s"%err)
         self.originTabWidget.addTab(esgf,"ESGF")
 
     def createOpenDAPTab(self):
