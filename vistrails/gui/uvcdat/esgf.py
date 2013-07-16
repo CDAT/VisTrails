@@ -138,7 +138,6 @@ class QMultiDownloadProgressBar(QtGui.QDialog):
         vbox.addWidget(self.b)
         scrollArea = QtGui.QScrollArea()
         scrollArea.setWidgetResizable(True)
-        scrollArea.setMinimumWidth(400)
         vbox.addWidget(scrollArea)
         f=QtGui.QFrame()
         self.downloads=QtGui.QVBoxLayout()
@@ -167,9 +166,10 @@ class QMultiDownloadProgressBar(QtGui.QDialog):
                 if w.pipe.poll() is None:
                     count+=1
                 else:
+                    time.sleep(0.05)
                     w.update()
             j+=1
-            self.lbl.setText("Downloading: %i Files (%i left)" % (N,count))
+            self.lbl.setText("Download: %i Files (%i left)" % (N,count))
             if count==0:
                 self.b.setDisabled(True)
             else:
