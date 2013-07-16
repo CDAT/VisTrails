@@ -51,9 +51,9 @@ class QDownloadProgressBar(QtGui.QWidget):
         hbox=QtGui.QHBoxLayout()
         self.setLayout(hbox)
         self.pipe=pipe
-        b=QtGui.QPushButton("Cancel")
-        hbox.addWidget(b)
-        self.connect(b,QtCore.SIGNAL("clicked()"),self.cancel)
+        self.b=QtGui.QPushButton("Cancel")
+        hbox.addWidget(self.b)
+        self.connect(self.b,QtCore.SIGNAL("clicked()"),self.cancel)
         lbl=QtGui.QLabel(target.split("/")[-1])
         hbox.addWidget(lbl)
         self.p=QtGui.QProgressBar()
@@ -70,13 +70,36 @@ class QDownloadProgressBar(QtGui.QWidget):
         self.isCanceled=False
     def cancel(self):
         self.isCanceled=True
-        self.pipe.terminate()
-        self.time.setText("Canceled")
+        try:
+            self.pipe.terminate()
+            self.time.setText("Canceled")
+        except Exception, err:
+            pass
     def update(self):
         if self.isCanceled:
             self.p.setValue(100)
             self.time.setText("Canceled")
             return
+        lines = self.pipe.stderr.readlines()
+        if len(lines) > 8:
+            try:
+                self.line=lines[7].strip()
+                self.done = int(self.line.split("%")[0].split()[-1])
+                self.p.setValue(self.done)
+                if (self.done==100):
+                    self.b.setDisabled(True)
+                else:
+                    self.b.setDisabled(False)
+                t = self.line.split()
+                if len(t)!=0:
+                    t=t[-1].split('=')[-1]
+                    lbl = "Estimated Time Left: "
+                    lbl+=t
+                    self.time.setText(lbl)
+            except Exception,err:
+                pass
+            QtGui.QApplication.processEvents()
+        """
         char = self.pipe.stderr.read(1)
         if char == "\n":
             try:
@@ -101,7 +124,7 @@ class QDownloadProgressBar(QtGui.QWidget):
             QtGui.QApplication.processEvents()
         else:
             self.line+=char
-        
+        """
 class QMultiDownloadProgressBar(QtGui.QDialog):
     def __init__(self,parent=None):
         QtGui.QDialog.__init__(self,parent)
@@ -111,16 +134,17 @@ class QMultiDownloadProgressBar(QtGui.QDialog):
         self.setLayout(vbox)
         self.lbl = QtGui.QLabel("Downloading")
         vbox.addWidget(self.lbl)
-        b=QtGui.QPushButton("Cancel ALL")
-        vbox.addWidget(b)
+        self.b=QtGui.QPushButton("Cancel ALL")
+        vbox.addWidget(self.b)
         scrollArea = QtGui.QScrollArea()
         scrollArea.setWidgetResizable(True)
+        scrollArea.setMinimumWidth(400)
         vbox.addWidget(scrollArea)
         f=QtGui.QFrame()
         self.downloads=QtGui.QVBoxLayout()
         f.setLayout(self.downloads)
         scrollArea.setWidget(f)
-        self.connect(b,QtCore.SIGNAL("clicked()"),self.cancel)
+        self.connect(self.b,QtCore.SIGNAL("clicked()"),self.cancel)
         self.connect(self,QtCore.SIGNAL("finished(int)"),self.cancel)
     def addDownload(self,url,target,pipe):
         self.downloads.addWidget(QDownloadProgressBar(parent=self,url=url,target=target,pipe=pipe))
@@ -142,8 +166,14 @@ class QMultiDownloadProgressBar(QtGui.QDialog):
                 w.update()
                 if w.pipe.poll() is None:
                     count+=1
+                else:
+                    w.update()
             j+=1
             self.lbl.setText("Downloading: %i Files (%i left)" % (N,count))
+            if count==0:
+                self.b.setDisabled(True)
+            else:
+                self.b.setDisabled(False)
         #self.hide()
 
         
@@ -555,8 +585,8 @@ class QEsgfBrowser(QtGui.QFrame):
         self.connect(self.root.preferences.host_url,QtCore.SIGNAL('currentIndexChanged(int)'),self.get_host_url)
     
     def facet_item_selected(self,idx):
-        k=self.facet_order_list[idx.row()]
         if not idx.parent().model():
+            k=self.facet_order_list[idx.row()]
             #Handle the case when the category is clicked and in this case, clicking = toggle
             if self.facet_dict_of_dict[k]['tree'].isExpanded():
                 self.facet_dict_of_dict[k]['tree'].setExpanded(False)
@@ -569,8 +599,9 @@ class QEsgfBrowser(QtGui.QFrame):
             parent_idx=idx.parent().row()
             if parent_idx < len(self.facet_order_list):
                 facet_selected_key=self.facet_order_list[parent_idx]
+                k=self.facet_order_list[parent_idx]
+                self.facet_dict_of_dict[k]['tree'].setExpanded(False)
             self.update_facet_selection(facet_selected_key)
-            self.facet_dict_of_dict[k]['tree'].setExpanded(False)
 
     def get_host_url(self, index):
         cur_text=self.root.preferences.host_url.currentText()
@@ -1522,9 +1553,11 @@ class QEsgfBrowser(QtGui.QFrame):
                 fnm = QtGui.QFileDialog.getSaveFileName(self,"NetCDF File",url,filter="NetCDF Files (*.nc *.cdg *.NC *.CDF *.nc4 *.NC4) ;; All Files (*.*)",options=QtGui.QFileDialog.DontConfirmOverwrite)
                 if len(str(fnm))==0:
                     return
-                pipe = self.httpDownloadFile(url,fnm)
+                wget_url="http://"+str(self.root.preferences.host_url.currentText())+"/esg-search/wget?url="+url
+                #print wget_url
+                pipe = self.httpDownloadFile(wget_url,fnm)
                 p=QMultiDownloadProgressBar(self)
-                p.addDownload(url,fnm,pipe)
+                p.addDownload(wget_url,fnm,pipe)
                 p.exec_()
             elif service == "GridFTP":
                 m=QtGui.QMessageBox()
@@ -1803,7 +1836,8 @@ class QEsgfBrowser(QtGui.QFrame):
                     url=sp[1].split()[0]
                     nm=url.split("/")[-1]
                     if service == "HTTPServer":
-                        dialog.addDownload("",nm,self.httpDownloadFile(url,os.path.join(dirnm,nm)))
+                        wget_url="http://"+str(self.root.preferences.host_url.currentText())+"/esg-search/wget?url="+url
+                        dialog.addDownload("",nm,self.httpDownloadFile(wget_url,os.path.join(dirnm,nm)))
             elif item.type()==3: #Service selected
                 txt=str(item.text(0))
                 sp=txt.split("@")
@@ -1811,7 +1845,8 @@ class QEsgfBrowser(QtGui.QFrame):
                 url=sp[1].split()[0]
                 nm=url.split("/")[-1]
                 if service == "HTTPServer":
-                    dialog.addDownload("",nm,self.httpDownloadFile(url,os.path.join(dirnm,nm)))
+                    wget_url="http://"+str(self.root.preferences.host_url.currentText())+"/esg-search/wget?url="+url
+                    dialog.addDownload("",nm,self.httpDownloadFile(wget_url,os.path.join(dirnm,nm)))
         dialog.exec_()
                 
                 
@@ -1845,6 +1880,7 @@ class QEsgfBrowser(QtGui.QFrame):
                     url=sp[1].split()[0]
                     nm=url.split("/")[-1]
                     if service == "HTTPServer":
-                        dialog.addDownload("",nm,self.httpDownloadFile(url,os.path.join(dirnm,nm)))
+                        wget_url="http://"+str(self.root.preferences.host_url.currentText())+"/esg-search/wget?url="+url
+                        dialog.addDownload("",nm,self.httpDownloadFile(wget_url,os.path.join(dirnm,nm)))
         if show:
             dialog.exec_()
