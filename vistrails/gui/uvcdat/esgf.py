@@ -1198,7 +1198,7 @@ class QEsgfBrowser(QtGui.QFrame):
                 node=self.get_facet_label_without_count(node)
                 if node.startswith('pcmdi') and node != 'pcmdi9.llnl.gov':
                     new_nodelist.remove(node)
-        #new_nodelist.append("pcmdi11.llnl.gov")
+        new_nodelist.append("pcmdi11.llnl.gov")
         return new_nodelist        
     
     def get_current_list_from_facet_combobox(self):
