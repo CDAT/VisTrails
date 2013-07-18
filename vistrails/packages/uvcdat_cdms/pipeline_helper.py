@@ -1,4 +1,10 @@
 import copy
+
+try:
+    import cPickle as pickle
+except:
+    import pickle
+
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from core.uvcdat.plot_registry import get_plot_registry
 from core.modules.module_registry import get_module_registry
@@ -247,7 +253,11 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 
         initial_values = desc.get_initial_values(plot_gm)
         for attr in desc.gm_attributes:
-            plot_functions.append((attr,[getattr(initial_values,attr)]))
+            if attr == 'Marker' and plot_type == 'Taylordiagram':
+                #pickle the marker object
+                plot_functions.append((attr,[pickle.dumps(getattr(initial_values,attr))]))
+            else:
+                plot_functions.append((attr,[getattr(initial_values,attr)]))
         
         functions = controller.create_functions(plot_module,plot_functions)
         for f in functions:

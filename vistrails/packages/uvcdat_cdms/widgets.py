@@ -1,4 +1,10 @@
 import ast
+
+try:
+    import cPickle as pickle
+except:
+    import pickle
+    
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import Qt
 from core.utils import InstanceObject
@@ -97,15 +103,19 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             
         #set aspect ratio
         self.ratio = self.getValueFromFunction('ratio')
-        if self.ratio is None or self.ratio == 'autot':
-            self.gmEditor.aspectAuto.setCheckState(Qt.Checked)
-        else:
-            #if the ratio cannot cast to float, check auto in gui
-            try:
-                self.gmEditor.aspectRatio.setText(str(float(self.ratio)))
-                self.gmEditor.aspectAuto.setCheckState(Qt.Unchecked)
-            except ValueError:
+        
+        #aspectAuto doesn't seem to exist for taylordiagram
+        plot_type = self.module.module_descriptor.module().plot_type
+        if plot_type != 'Taylordiagram':
+            if self.ratio is None or self.ratio == 'autot':
                 self.gmEditor.aspectAuto.setCheckState(Qt.Checked)
+            else:
+                #if the ratio cannot cast to float, check auto in gui
+                try:
+                    self.gmEditor.aspectRatio.setText(str(float(self.ratio)))
+                    self.gmEditor.aspectAuto.setCheckState(Qt.Unchecked)
+                except ValueError:
+                    self.gmEditor.aspectAuto.setCheckState(Qt.Checked)
         
     def getValueFromFunction(self, fun):
         if fun in self.fun_map:
@@ -113,7 +123,9 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             f = self.module.functions[fid]
             try:
                 value = f.params[0].value()
-            except:
+                if fun == 'Marker':
+                    value = pickle.loads(value)
+            except Exception, e:
                 value = ast.literal_eval(f.params[0].strValue)
             return value
         else:

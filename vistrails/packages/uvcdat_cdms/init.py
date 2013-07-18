@@ -1,5 +1,10 @@
 from PyQt4 import QtCore, QtGui
 
+try:
+    import cPickle as pickle
+except:
+    import pickle
+
 from cdatguiwrap import VCSQtManager
 import vcs
 import genutil
@@ -813,6 +818,8 @@ class CDMSPlot(Plot, NotCacheable):
         for attr in self.gm_attributes:
             if self.hasInputFromPort(attr):
                 setattr(self,attr,self.getInputFromPort(attr))
+                if attr == 'Marker':
+                    setattr(self, attr, pickle.loads(getattr(self, attr)))
             
         self.colorMap = None
         if self.hasInputFromPort('colorMap'):
@@ -840,7 +847,10 @@ class CDMSPlot(Plot, NotCacheable):
         if self.graphics_method_name != "default":
             functions.append(("graphicsMethodName", [self.graphicsMethodName]))
             for attr in self.gm_attributes:
-                functions.append((attr, [str(getattr(self,attr))]))
+                if attr == 'Marker':
+                    functions.append((attr, [pickle.dumps(getattr(self,attr))]))
+                else:
+                    functions.append((attr, [str(getattr(self,attr))]))
         if self.template != "starter":
             functions.append(("template", [self.template]))
             
@@ -1681,7 +1691,7 @@ def get_input_ports(plot_type):
                                   ]) 
     elif plot_type=="Taylordiagram":
         return expand_port_specs([('detail', 'basic:Integer', True),
-                                  ('max', 'basic:String', True),
+                                  ('max', 'basic:Integer', True),
                                   ('quadrans', 'basic:Integer', True),
                                   ('skillColor', 'basic:Integer', True),
                                   ('skillValues', 'basic:List', True),
@@ -1693,7 +1703,7 @@ def get_input_ports(plot_type):
                                   ('arrowbase', 'basic:Float', True),
                                   ('cmtics1', 'basic:String', True),
                                   ('cticlabels1', 'basic:String', True),
-                                  ('Marker', 'CDMSTDMarker', True),
+                                  ('Marker', 'basic:String', True),
                                   ]) 
     else:
         return []
@@ -1845,6 +1855,8 @@ def initialize(*args, **keywords):
                     attrs[attr] = 1
                 elif attr == 'marker' and attrs[attr] == None:
                     attrs[attr] = 'dot'
+                elif attr == 'max' and attrs[attr] == None:
+                    attrs[attr] = 1
             original_gm_attributes[plot_type][gmname] = InstanceObject(**attrs)
    
     
