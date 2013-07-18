@@ -131,7 +131,12 @@ class CDMSVariable(Variable):
         varName = self.name
         if self.varNameInFile is not None:
             varName = self.varNameInFile
-                   
+            
+        # get file var to see if it is axis or not
+        fvar = cdmsfile[varName]
+        if isinstance(fvar, cdms2.axis.FileAxis):
+            var = cdms2.MV2.array(fvar)
+
         if self.axes is not None:
             #convert string into kwargs
             #example axis string:
@@ -146,8 +151,16 @@ class CDMSVariable(Variable):
                 format = "Invalid 'axes' specification: %s\nProduced error: %s"
                 raise ModuleError(self, format % (self.axes, str(e)))
 
-            var = cdmsfile.__call__(varName, **kwargs)
-        else:
+            if isinstance(fvar, cdms2.axis.FileAxis):
+                try:
+                    var = var.__call__(**kwargs)
+                except Exception, e:
+                    format = "WARNING: axis variable %s subslice \
+                            failed with selector '%s'\nError: %s"
+                    print format % (varName, str(kwargs), str(e))
+            else:
+                var = cdmsfile.__call__(varName, **kwargs)
+        elif not isinstance(fvar, cdms2.axis.FileAxis):
             var = cdmsfile.__call__(varName)
                         
         if self.axesOperations is not None:
