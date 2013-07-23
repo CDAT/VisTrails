@@ -549,6 +549,8 @@ class QAxis(QtGui.QWidget):
                   'wgt weighted average of selected axis points',
                   'gtm geometrical mean of selected axis points',
                   'std standard deviation of selected axis points',]
+        if self.axis.getBounds() is None:
+            opDefs.pop(3)
         if self.virtual>0:
             opDefs = opDefs[:1]
         for op in opDefs:
