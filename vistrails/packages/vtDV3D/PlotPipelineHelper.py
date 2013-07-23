@@ -1507,7 +1507,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 cell_loc = pmod.getCellLocation()
                 if cell_loc:
                     isActive = pmod.onCurrentPage() and ( cell_loc[-1] in active_cells )
-#                    print "--->> Config %s[%s]: pmod=%d, active=%s " % ( str( configFunc.label ), cell_loc, pmod.moduleID, str(isActive) )
                     DV3DPipelineHelper.addAction( configFunc.group, pmod, action_key, config_key, isActive ) 
                     pmods.add(pmod)
                                         
