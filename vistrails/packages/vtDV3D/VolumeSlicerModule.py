@@ -118,25 +118,24 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         return [ 3.0, self.NumContours, 1 ]
     
     def setZScale( self, zscale_data, **args ):
-        if self.setInputZScale( zscale_data ):
-            if self.planeWidgetX <> None:
-                primaryInput = self.input()
-                bounds = list( primaryInput.GetBounds() ) 
-                if not self.planeWidgetX.MatchesBounds( bounds ):
-                    self.planeWidgetX.PlaceWidget( bounds )        
-                    self.planeWidgetY.PlaceWidget( bounds ) 
-                    self.render()               
+        self.setInputZScale( zscale_data )
+        if self.planeWidgetX <> None:
+            primaryInput = self.input()
+            bounds = list( primaryInput.GetBounds() ) 
+            if not self.planeWidgetX.MatchesBounds( bounds ):
+                self.planeWidgetX.PlaceWidget( bounds )        
+                self.planeWidgetY.PlaceWidget( bounds ) 
+                self.render()               
 
     def setInputZScale( self, zscale_data, **args  ):
         rv = PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args ) 
-        if rv:
-            ispec = self.getInputSpec(  1 )       
-            if (ispec <> None) and (ispec.input() <> None):
-                contourInput = ispec.input() 
-                ix, iy, iz = contourInput.GetSpacing()
-                sz = zscale_data[1]
-                contourInput.SetSpacing( ix, iy, sz )  
-                contourInput.Modified() 
+        ispec = self.getInputSpec(  1 )       
+        if (ispec <> None) and (ispec.input() <> None):
+            contourInput = ispec.input() 
+            ix, iy, iz = contourInput.GetSpacing()
+            sz = zscale_data[1]
+            contourInput.SetSpacing( ix, iy, sz )  
+            contourInput.Modified() 
         return rv
                 
     def getOpacity(self):
