@@ -60,6 +60,10 @@ class OutLog:
 
             if self.original_stream is not None:
                 self.original_stream.write(stdtext)
+                
+        #if not dumping to calc window, write to original stream
+        elif self.original_stream is not None:
+            self.original_stream.write(stdtext)
 
 
 #------------------------------------------------------------------------
