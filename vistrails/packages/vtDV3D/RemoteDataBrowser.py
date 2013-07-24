@@ -181,6 +181,7 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
     def __init__( self, **args ):
          self.server_class = None
          self.node_type = args.get( 'node_type', None )
+         self.catalog_path = None
          widget = args.get( 'widget', None )
          if widget: 
             QtGui.QTreeWidgetItem.__init__( self, widget, self.server_type  )
