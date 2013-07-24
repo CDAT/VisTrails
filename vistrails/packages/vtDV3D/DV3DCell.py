@@ -367,17 +367,18 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                         
     def adjustSheetDimensions(self, row, col ):
         sheetTabWidget = getSheetTabWidget()
-        ( rc, cc ) = sheetTabWidget.getDimension()
-        rowChanged, colChanged = False, False
-        if row >= rc: 
-            rc = row + 1
-            rowChanged = True
-        if col >= cc: 
-            cc = col + 1
-            colChanged = True
-        if rowChanged or colChanged:    sheetTabWidget.setDimension( rc, cc )
-        if rowChanged:                  sheetTabWidget.rowSpinBoxChanged()            
-        if colChanged:                  sheetTabWidget.colSpinBoxChanged()
+        if sheetTabWidget:
+            ( rc, cc ) = sheetTabWidget.getDimension()
+            rowChanged, colChanged = False, False
+            if row >= rc: 
+                rc = row + 1
+                rowChanged = True
+            if col >= cc: 
+                cc = col + 1
+                colChanged = True
+            if rowChanged or colChanged:    sheetTabWidget.setDimension( rc, cc )
+            if rowChanged:                  sheetTabWidget.rowSpinBoxChanged()            
+            if colChanged:                  sheetTabWidget.colSpinBoxChanged()
 
     def getSelectedCells(self):
         cells = []
@@ -961,18 +962,6 @@ class PM_MapCell3D( PM_DV3DCell ):
             self.baseMapActor.SetInput( baseImage )
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]        
             self.renderer.AddActor( self.baseMapActor )
-            
-#            self.testPlotUtils()
-
-
-#    def testPlotUtils(self):
-#        from api import get_current_project_controller
-#        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
-#        pipeline = self.getCurrentPipeline()
-#        plot_modules = DV3DPipelineHelper.find_dv3d_plot_modules( pipeline )
-#        vars = DV3DPipelineHelper.find_variables_connected_to_plot_module( pipeline,  plot_modules[0] )
-#        print ""
-
 
     def ComputeCornerPosition( self ):
         if (self.roi[0] >= -180) and (self.roi[1] <= 180) and (self.roi[1] > self.roi[0]):

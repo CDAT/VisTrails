@@ -1007,7 +1007,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 traceback.print_exc()
             
             sheetTabWidget = getSheetTabWidget()
-            sheetName = sheetTabWidget.getSheetName() 
+            sheetName = sheetTabWidget.getSheetName() if sheetTabWidget else "Sheet 1"
             for cell_address in cell_addresses: 
                 for mid in controller.current_pipeline.modules:   
                     DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )   
@@ -1074,7 +1074,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         controller.perform_action(action2)
 
         sheetTabWidget = getSheetTabWidget()
-        sheetName = sheetTabWidget.getSheetName()        
+        sheetName = sheetTabWidget.getSheetName()  if sheetTabWidget else "Sheet 1"       
         for cell_address in cell_addresses:
 #            if len( pipeline.module_list ) == 0:
 #                print "Attempt to add empty pipeline to %s " % ( str(( sheetName, cell_address )) )
@@ -1274,7 +1274,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 traceback.print_exc()
             
             sheetTabWidget = getSheetTabWidget()
-            sheetName = sheetTabWidget.getSheetName() 
+            sheetName = sheetTabWidget.getSheetName()  if sheetTabWidget else "Sheet 1"
             for cell_address in cell_addresses: 
                 for mid in controller.current_pipeline.modules:   
                     DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )   
@@ -1311,8 +1311,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         ( sheetName, cell_addr ) = DV3DPipelineHelper.moduleMap.get( mid, ( None, None ) )
         coords = ( int( cell_addr[1] ) - 1, ord(cell_addr[0])-ord('A') ) if cell_addr else None
         if sheetName == None:
-            sheetTabWidget = getSheetTabWidget()
-            sheetName = sheetTabWidget.getSheetName()          
+            try:
+                sheetTabWidget = getSheetTabWidget()
+                sheetName = sheetTabWidget.getSheetName()
+            except:
+                sheetName = "Sheet 1"        
         return ( sheetName, coords )
 
 #        for item in  DV3DPipelineHelper.pipelineMap.items():
@@ -1464,7 +1467,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                 cell_addresses.append( cell_spec )
 
             sheetTabWidget = getSheetTabWidget()
-            sheetName = sheetTabWidget.getSheetName()                  
+            sheetName = sheetTabWidget.getSheetName()  if sheetTabWidget else "Sheet 1"                 
             for cell_address in cell_addresses:
                 for mid in pipeline.modules:   
                     DV3DPipelineHelper.moduleMap[mid] = ( sheetName, cell_address )
@@ -1693,11 +1696,14 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     @staticmethod
     def getActiveCells():
         sheetTabWidget = getSheetTabWidget()
-        selected_cells = sheetTabWidget.getSelectedLocations() 
-        activeCell = sheetTabWidget.sheet.activeCell
-        active_cells = [ activeCell ]
-        for cell in selected_cells:
-            if not (  (cell[0] == activeCell[0]) and (cell[1] == activeCell[1]) ): active_cells.append( cell )
+        if sheetTabWidget:
+            selected_cells = sheetTabWidget.getSelectedLocations() 
+            activeCell = sheetTabWidget.sheet.activeCell
+            active_cells = [ activeCell ]
+            for cell in selected_cells:
+                if not (  (cell[0] == activeCell[0]) and (cell[1] == activeCell[1]) ): active_cells.append( cell )
+        else:
+            active_cells = [ cell for cell in selected_cells ]
         return active_cells
 
 
@@ -1705,27 +1711,6 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def getActiveCellStrs():
         active_cells = DV3DPipelineHelper.getActiveCells()
         return [ "%s%d" % ( chr(ord('A') + cell[1] ), cell[0]+1 ) for cell in active_cells ]
-
-#    @staticmethod
-#    def getActiveRens():
-#        from packages.vtDV3D.PersistentModule import PersistentVisualizationModule
-#        from api import get_current_project_controller
-#        rens = []
-#        prj_controller = get_current_project_controller() 
-#        for cell in DV3DPipelineHelper.getActiveCells():
-#            cell_spec = "%s:%s:%s%s" % ( prj_controller.name, prj_controller.current_sheetName, chr(ord('A') + cell[1] ), cell[0]+1 )
-#            winid = PersistentVisualizationModule.renderMap.get( cell_spec, None )
-#            print "Get Active winid for cell %s: %s[%s]" % ( cell_spec, str(cell), str(winid) )
-#            rens.append( winid )
-#        return rens
-
-#    @staticmethod
-#    def getActiveRenWinIds():
-#        rwins = []
-#        for iren in DV3DPipelineHelper.getActiveIrens():
-#            rw = iren.GetRenderWindow() if iren else None
-#            if rw: rwins.append( id(rw) )
-#        return rwins
     
     @staticmethod
     def show_configuration_widget( controller, version, plot_objs=[ None ] ):
@@ -1737,13 +1722,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         and, as a result, are not displayed in the configuration panel.    
         
         """
-        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper, CDMSPlotWidget
-#        current_controller = api.get_current_controller()
-#        pipeline = controller.vt_controller.vistrail.getPipeline(version) 
-#        print '-'*50      
-#        print 'New Configuration panel: version=%d, current_version=%d, pid=%d, modules=%s' % ( version, current_controller.current_version, pipeline.db_id, [ mid for mid in pipeline.modules ] )    
-#        print '-'*50  
-           
+        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper, CDMSPlotWidget           
         pmods = set()
         memoryLogger.log( "show_configuration_widget" )
         DV3DPipelineHelper.reset()

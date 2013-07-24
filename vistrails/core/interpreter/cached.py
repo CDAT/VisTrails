@@ -212,8 +212,9 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
                         errors[i] = err
                         to_delete.append(obj.id)
                     except Exception, e:
-                        err = ModuleError(self, 'Uncaught exception: "%s"' % \
-                                              p.strValue + str(e))
+                        import traceback
+                        traceback.print_exc()
+                        err = ModuleError(self, 'Uncaught exception: "%s"' %  str(e) )
                         errors[i] = err
                         to_delete.append(obj.id)
                 else:
@@ -234,8 +235,9 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
                             errors[i] = err
                             to_delete.append(obj.id)
                         except Exception, e:
-                            err = ModuleError(self, 'Uncaught exception: '
-                                              '"%s"' % p.strValue + str(e))
+                            import traceback
+                            traceback.print_exc()
+                            err = ModuleError(self, 'Uncaught exception:  "%s"' % str(e))
                             errors[i] = err
                             to_delete.append(obj.id)
                     connector = ModuleConnector(tupleModule, 'value')
