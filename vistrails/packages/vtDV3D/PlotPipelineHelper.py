@@ -1294,16 +1294,16 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             sheetTabWidget = getSheetTabWidget()
             sheetName = sheetTabWidget.getSheetName() 
         pipeline = None
-        proj_controller = api.get_current_project_controller()
-        controller =  proj_controller.vt_controller
-        cell_coords = get_coords_from_cell_address( cell_address[1], cell_address[0] ) if isStr( cell_address ) else cell_address
         try:
+            proj_controller = api.get_current_project_controller()
+            controller =  proj_controller.vt_controller
+            cell_coords = get_coords_from_cell_address( cell_address[1], cell_address[0] ) if isStr( cell_address ) else cell_address
             cell = proj_controller.sheet_map[ sheetName ][ ( cell_coords[1], cell_coords[0] ) ]
             current_version = cell.current_parent_version 
             controller.change_selected_version( current_version )
             pipeline = controller.vistrail.getPipeline( current_version )  
-        except KeyError:
-            print "Can't find sheet: ", sheetName
+        except Exception: 
+            print>>sys.stderr, "Can't get pipeline from cell address."
         return pipeline       
 
     @staticmethod

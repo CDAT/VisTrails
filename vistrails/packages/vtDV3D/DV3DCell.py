@@ -532,6 +532,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )  
 #        print " --- Clearing Cell %s ---" % cell_address
         pipeline = DV3DPipelineHelper.getPipeline( cell_address, sheetName )
+        if pipeline == None: pipeline = self.getCurrentPipeline()
         if pipeline:  UVCDATGuiConfigFunction.clearModules( pipeline )
         
         IVModuleConfigurationDialog.reset()
@@ -577,13 +578,17 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 
                 cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )
                 PersistentVisualizationModule.renderMap[ cell_address ] = self.iren
-                prj_controller = api.get_current_project_controller()
-                sheetName = prj_controller.current_sheetName
-                cell_location = [ prj_controller.name, sheetName, cell_address ]
-                pipeline = self.getCurrentPipeline()             
-                for mid in pipeline.modules.keys():
-                    pmod = ModuleStore.getModule( mid ) 
-                    if pmod: pmod.setCellLocation( cell_location )
+                prj_controller = self.get_current_project_controller()
+                if prj_controller:
+                    sheetName = prj_controller.current_sheetName
+                    cell_location = [ prj_controller.name, sheetName, cell_address ]
+                else:
+                    cell_location = [ "Project 1", "Sheet 1", cell_address ]
+                pipeline = self.getCurrentPipeline() 
+                if pipeline:            
+                    for mid in pipeline.modules.keys():
+                        pmod = ModuleStore.getModule( mid ) 
+                        if pmod: pmod.setCellLocation( cell_location )
                     
                 self.builtCellWidget = True
                 
