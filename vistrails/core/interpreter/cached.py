@@ -393,6 +393,7 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
             obj.change_parameter = make_change_parameter(obj)
             
             # Update object pipeline information
+            obj.moduleInfo['controller'] = controller
             obj.moduleInfo['locator'] = locator
             obj.moduleInfo['version'] = current_version
             obj.moduleInfo['moduleId'] = i
