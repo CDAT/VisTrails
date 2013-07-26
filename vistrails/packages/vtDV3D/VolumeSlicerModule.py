@@ -221,47 +221,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         picker = None
         useVtkImagePlaneWidget = False
         textureColormapManager = self.getColormapManager( index=0 )
-        
-#         if self.planeWidgetX == None: 
-#             picker = vtk.vtkCellPicker()
-#             picker.SetTolerance(0.005) 
-#             self.planeWidgetX = ImagePlaneWidget( self, 0 )
-#             self.planeWidgetX.SetPicker(picker)
-#             self.observerTargets.add( self.planeWidgetX )
-#             self.planeWidgetX.SetRenderer( self.renderer )
-#             prop1 = self.planeWidgetX.GetPlaneProperty()
-#             prop1.SetColor(1, 0, 0)
-#             self.planeWidgetX.SetUserControlledLookupTable(1)
-#             self.planeWidgetX.SetLookupTable( lut )
-#             
-# #            self.planeWidgetX.SetSliceIndex( self.slicePosition[0] )
-#         self.planeWidgetX.SetInput( primaryInput, contourInput )
-#         self.planeWidgetX.SetPlaneOrientationToXAxes()
-# #        self.planeWidgetX.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 0 ) )
-# #            self.planeWidgetX.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
-# #            self.planeWidgetX.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
-#         self.planeWidgetX.PlaceWidget( bounds )       
-# 
-# #        if bounds[0] < 0.0: self.planeWidgetX.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
-# #        self.planeWidgetX.SetOrigin( primaryInput.GetOrigin() )
-# #        self.planeWidgetX.AddObserver( 'AnyEvent', self.TestObserver )
-#                 
-#         if self.planeWidgetY == None: 
-#             self.planeWidgetY = ImagePlaneWidget( self, 1)
-#             self.planeWidgetY.SetPicker(picker)
-#             self.planeWidgetY.SetRenderer( self.renderer )
-#             self.planeWidgetY.SetUserControlledLookupTable(1)
-#             self.observerTargets.add( self.planeWidgetY )
-# #            self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
-#             prop2 = self.planeWidgetY.GetPlaneProperty()
-#             prop2.SetColor(1, 1, 0)
-#             self.planeWidgetY.SetUserControlledLookupTable(1)
-#             self.planeWidgetY.SetLookupTable( lut )
-        
-        self.planeWidgetY.SetInput( primaryInput, contourInput )
-        self.planeWidgetY.SetPlaneOrientationToYAxes()       
-        self.planeWidgetY.PlaceWidget(  bounds  ) 
-        
+
+        picker = vtk.vtkCellPicker()
+        picker.SetTolerance(0.005) 
+                
         if self.planeWidgetZ == None:
             self.planeWidgetZ = ImagePlaneWidget( self, 2 )
             self.planeWidgetZ.SetPicker(picker)
