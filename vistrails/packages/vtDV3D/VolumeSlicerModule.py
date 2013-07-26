@@ -222,41 +222,41 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         useVtkImagePlaneWidget = False
         textureColormapManager = self.getColormapManager( index=0 )
         
-        if self.planeWidgetX == None: 
-            picker = vtk.vtkCellPicker()
-            picker.SetTolerance(0.005) 
-            self.planeWidgetX = ImagePlaneWidget( self, 0 )
-            self.planeWidgetX.SetPicker(picker)
-            self.observerTargets.add( self.planeWidgetX )
-            self.planeWidgetX.SetRenderer( self.renderer )
-            prop1 = self.planeWidgetX.GetPlaneProperty()
-            prop1.SetColor(1, 0, 0)
-            self.planeWidgetX.SetUserControlledLookupTable(1)
-            self.planeWidgetX.SetLookupTable( lut )
-            
-#            self.planeWidgetX.SetSliceIndex( self.slicePosition[0] )
-        self.planeWidgetX.SetInput( primaryInput, contourInput )
-        self.planeWidgetX.SetPlaneOrientationToXAxes()
-#        self.planeWidgetX.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 0 ) )
-#            self.planeWidgetX.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
-#            self.planeWidgetX.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
-        self.planeWidgetX.PlaceWidget( bounds )       
-
-#        if bounds[0] < 0.0: self.planeWidgetX.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
-#        self.planeWidgetX.SetOrigin( primaryInput.GetOrigin() )
-#        self.planeWidgetX.AddObserver( 'AnyEvent', self.TestObserver )
-                
-        if self.planeWidgetY == None: 
-            self.planeWidgetY = ImagePlaneWidget( self, 1)
-            self.planeWidgetY.SetPicker(picker)
-            self.planeWidgetY.SetRenderer( self.renderer )
-            self.planeWidgetY.SetUserControlledLookupTable(1)
-            self.observerTargets.add( self.planeWidgetY )
-#            self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
-            prop2 = self.planeWidgetY.GetPlaneProperty()
-            prop2.SetColor(1, 1, 0)
-            self.planeWidgetY.SetUserControlledLookupTable(1)
-            self.planeWidgetY.SetLookupTable( lut )
+#         if self.planeWidgetX == None: 
+#             picker = vtk.vtkCellPicker()
+#             picker.SetTolerance(0.005) 
+#             self.planeWidgetX = ImagePlaneWidget( self, 0 )
+#             self.planeWidgetX.SetPicker(picker)
+#             self.observerTargets.add( self.planeWidgetX )
+#             self.planeWidgetX.SetRenderer( self.renderer )
+#             prop1 = self.planeWidgetX.GetPlaneProperty()
+#             prop1.SetColor(1, 0, 0)
+#             self.planeWidgetX.SetUserControlledLookupTable(1)
+#             self.planeWidgetX.SetLookupTable( lut )
+#             
+# #            self.planeWidgetX.SetSliceIndex( self.slicePosition[0] )
+#         self.planeWidgetX.SetInput( primaryInput, contourInput )
+#         self.planeWidgetX.SetPlaneOrientationToXAxes()
+# #        self.planeWidgetX.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 0 ) )
+# #            self.planeWidgetX.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
+# #            self.planeWidgetX.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
+#         self.planeWidgetX.PlaceWidget( bounds )       
+# 
+# #        if bounds[0] < 0.0: self.planeWidgetX.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
+# #        self.planeWidgetX.SetOrigin( primaryInput.GetOrigin() )
+# #        self.planeWidgetX.AddObserver( 'AnyEvent', self.TestObserver )
+#                 
+#         if self.planeWidgetY == None: 
+#             self.planeWidgetY = ImagePlaneWidget( self, 1)
+#             self.planeWidgetY.SetPicker(picker)
+#             self.planeWidgetY.SetRenderer( self.renderer )
+#             self.planeWidgetY.SetUserControlledLookupTable(1)
+#             self.observerTargets.add( self.planeWidgetY )
+# #            self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
+#             prop2 = self.planeWidgetY.GetPlaneProperty()
+#             prop2.SetColor(1, 1, 0)
+#             self.planeWidgetY.SetUserControlledLookupTable(1)
+#             self.planeWidgetY.SetLookupTable( lut )
         
         self.planeWidgetY.SetInput( primaryInput, contourInput )
         self.planeWidgetY.SetPlaneOrientationToYAxes()       
@@ -276,8 +276,44 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetZ.SetInput( primaryInput, contourInput )
         self.planeWidgetZ.SetPlaneOrientationToZAxes()
         self.planeWidgetZ.PlaceWidget( bounds )
-        outlineMap = self.buildOutlineMap()
-        if outlineMap: self.planeWidgetZ.SetOutlineMap( outlineMap )
+        self.createContours()      
+        
+        if self.planeWidgetZ.HasThirdDimension(): 
+            if (self.planeWidgetX == None): 
+                self.planeWidgetX = ImagePlaneWidget( self, picker, 0 )
+                self.observerTargets.add( self.planeWidgetX )
+                self.planeWidgetX.SetRenderer( self.renderer )
+                prop1 = self.planeWidgetX.GetPlaneProperty()
+                prop1.SetColor(1, 0, 0)
+                self.planeWidgetX.SetUserControlledLookupTable(1)
+                self.planeWidgetX.SetLookupTable( lut )
+                
+    #            self.planeWidgetX.SetSliceIndex( self.slicePosition[0] )
+            self.planeWidgetX.SetInput( primaryInput, contourInput )
+            self.planeWidgetX.SetPlaneOrientationToXAxes()
+    #        self.planeWidgetX.AddObserver( 'EndInteractionEvent', callbackWrapper( self.SliceObserver, 0 ) )
+    #            self.planeWidgetX.AddObserver( 'InteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
+    #            self.planeWidgetX.AddObserver( 'StartInteractionEvent', callbackWrapper( self.PickObserver, 0 ) )
+            self.planeWidgetX.PlaceWidget( bounds )       
+
+    #        if bounds[0] < 0.0: self.planeWidgetX.GetProp3D().AddPosition ( 360.0, 0.0, 0.0 )
+    #        self.planeWidgetX.SetOrigin( primaryInput.GetOrigin() )
+    #        self.planeWidgetX.AddObserver( 'AnyEvent', self.TestObserver )
+                    
+            if self.planeWidgetY == None: 
+                self.planeWidgetY = ImagePlaneWidget( self, picker, 1)
+                self.planeWidgetY.SetRenderer( self.renderer )
+                self.planeWidgetY.SetUserControlledLookupTable(1)
+                self.observerTargets.add( self.planeWidgetY )
+    #            self.planeWidgetY.SetSliceIndex( self.slicePosition[1] )
+                prop2 = self.planeWidgetY.GetPlaneProperty()
+                prop2.SetColor(1, 1, 0)
+                self.planeWidgetY.SetUserControlledLookupTable(1)
+                self.planeWidgetY.SetLookupTable( lut )
+            
+            self.planeWidgetY.SetInput( primaryInput, contourInput )
+            self.planeWidgetY.SetPlaneOrientationToYAxes()       
+            self.planeWidgetY.PlaceWidget(  bounds  ) 
 
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.updateOpacity() 
@@ -383,6 +419,19 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def getAxes(self):
         pass
 
+    def createContours( self, **args ):
+#        ispec = self.getInputSpec(0)  
+        from Shapefile import shapeFileReader     
+        rgb=args.get( 'rgb', [ 0, 0, 0 ] )
+        linewidth=args.get( 'linewidth', 1 )
+        type = args.get( 'type', 'coastline' ) 
+        textFilePath = os.path.join( os.path.dirname(__file__), "data", type, "index.txt" )
+        s=shapeFileReader()
+        s.setColors(rgb)
+        s.setWidth(linewidth)
+        self.polygonActor=s.getLine( self.roi, textFilePath )        
+        self.renderer.AddActor(self.polygonActor)
+        
     def ProcessIPWAction( self, caller, event, **args ):
         action = caller.State
         iAxis = caller.PlaneIndex
@@ -432,7 +481,11 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                     p1 = caller.GetPoint1()
 #                    print " >++++++++++++++++++> Slicing: Set Slice[%d], index=%d, pos=%.2f, " % ( iAxis, sliceIndex, p1[0] ), textDisplay
                 self.slicePosition[ iAxis ] = sliceIndex                  
-                self.updateTextDisplay( textDisplay ) 
+                self.updateTextDisplay( textDisplay )               
+                origin = caller.GetOrigin()
+                pos = self.polygonActor.GetPosition()
+                pos1 = [ pos[0], pos[1], origin[2] ]
+                self.polygonActor.SetPosition( pos1 )
             
             if self.generateContours:
                 slice_data = caller.GetReslice2Output()
