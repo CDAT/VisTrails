@@ -171,6 +171,22 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.showAboutMessageAct = QtGui.QAction("About UV-CDAT...", self,
                                 triggered=self.showAboutMessageActTriggered)
         
+        #print heapy output
+        def printHeapyOutput(*args, **kwargs):
+#            import guppy
+#            print guppy.hpy().heap()
+            
+#            from sizer import scanner
+#            from sizer import formatting
+#            from sizer import operations
+#            objs = scanner.Objects()
+#            formatting.printsizesop(operations.bytype(objs), threshold = 100000)
+#            import pdb; pdb.set_trace();
+            pass
+            
+        self.printHeapyOutputAct = QtGui.QAction("Print Heapy Output", self,
+                                                 triggered=printHeapyOutput)
+        
     def updateMenuActions(self):
         #menu File Actions
         self.ui.menuFile.addAction(self.workspace.btnNewProject)
@@ -194,6 +210,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.ui.menuVisTrails.addAction(self.showVistrailsConsoleAct)
         #About message
         self.ui.menuHelp.addAction(self.showAboutMessageAct)
+        self.ui.menuHelp.addAction(self.printHeapyOutputAct)
         
     def showBuilderWindowActTriggered(self):
         from gui.vistrails_window import _app
