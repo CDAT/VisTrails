@@ -444,11 +444,12 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                     p1 = caller.GetPoint1()
 #                    print " >++++++++++++++++++> Slicing: Set Slice[%d], index=%d, pos=%.2f, " % ( iAxis, sliceIndex, p1[0] ), textDisplay
                 self.slicePosition[ iAxis ] = sliceIndex                  
-                self.updateTextDisplay( textDisplay )               
-                origin = caller.GetOrigin()
-                pos = self.polygonActor.GetPosition()
-                pos1 = [ pos[0], pos[1], origin[2] ]
-                self.polygonActor.SetPosition( pos1 )
+                self.updateTextDisplay( textDisplay ) 
+                if iAxis == 2:              
+                    origin = caller.GetOrigin()
+                    pos = self.polygonActor.GetPosition()
+                    pos1 = [ pos[0], pos[1], origin[2] ]
+                    self.polygonActor.SetPosition( pos1 )
             
             if self.generateContours:
                 slice_data = caller.GetReslice2Output()
