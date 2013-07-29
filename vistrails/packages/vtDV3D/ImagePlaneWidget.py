@@ -22,7 +22,7 @@ class ImagePlaneWidget:
     Moving = 3
     Outside  = 4
     
-    def __init__( self, actionHandler, planeIndex, **args ):  
+    def __init__( self, actionHandler, picker, planeIndex, **args ):  
         self.State  = ImagePlaneWidget.Start            
         self.Interaction  = 1
         self.PlaneIndex = planeIndex
@@ -48,7 +48,10 @@ class ImagePlaneWidget:
         self.ConfigurationInteractorStyle = vtk.vtkInteractorStyleUser()
         self.Input2ExtentOffset = [0,0,0]        
         self.Input2OriginOffset = [0,0,0]
-        self.ResliceAxes   = vtk.vtkMatrix4x4()        
+        self.ResliceAxes   = vtk.vtkMatrix4x4()   
+        self.ResliceAxes2   = vtk.vtkMatrix4x4()   
+        self.ContourInputDims = 0;     
+        self.InputDims = 0;     
                         
         # Represent the plane's outline
         #
@@ -94,8 +97,6 @@ class ImagePlaneWidget:
         # Manage the picking stuff
         #
         self.PlanePicker = None
-        picker  = vtk.vtkCellPicker()
-        picker.SetTolerance(0.005) #need some fluff
         self.SetPicker(picker)
             
         # Set up the initial properties
@@ -107,6 +108,10 @@ class ImagePlaneWidget:
         self.CreateDefaultProperties()                                              
         self.TextureVisibility = 1
 
+    def __del__(self):
+        print " **************************************** Deleting ImagePlaneWidget module, id = %d  **************************************** " % id(self)
+        sys.stdout.flush()
+
 #----------------------------------------------------------------------------
     def LookupTableObserver( self, caller=None, event = None ):
         table_range = self.LookupTable.GetTableRange()
@@ -114,6 +119,9 @@ class ImagePlaneWidget:
 
     def GetCurrentButton(self): 
         return self.CurrentButton
+    
+    def HasThirdDimension(self):
+        return ( self.InputDims == 3 )
 
     def GetCurrentImageValue(self): 
         return self.CurrentImageValue
@@ -202,26 +210,6 @@ class ImagePlaneWidget:
     def RemoveAllObservers( self ):
         self.Interactor.RemoveAllObservers()
         self.RenderWindow.RemoveAllObservers()
-        rc = self.Reslice.GetReferenceCount()
-#         del self.Reslice
-#         del self.Reslice2
-#         del self.Interactor
-#         del self.RenderWindow
-#         del self.PlaneOutlineActor
-#         del self.PlaneProperty
-#         del self.ResliceAxes                             
-#         del self.PlaneSource 
-#         del self.PlaneOutlinePolyData 
-#         del self.ColorMap
-#         del self.Texture
-#         del self.TexturePlaneActor  
-#         del self.Transform    
-#         del self.ImageData   
-#         del self.ImageData2  
-#         del self.LookupTable 
-#         del self.InputBounds
-#         del self.CursorPolyData 
-#         del self.CursorActor    
         
 #----------------------------------------------------------------------------
                                 
@@ -562,6 +550,19 @@ class ImagePlaneWidget:
 
 #----------------------------------------------------------------------------
 
+    def DoPick1( self, X, Y ):  
+        self.PlanePicker.Pick( X, Y, 0.0, self.CurrentRenderer )
+        path = self.PlanePicker.GetPath()        
+        if path:
+            path.InitTraversal()
+            nitems =  path.GetNumberOfItems()
+            for _ in range( nitems ):
+                node = path.GetNextNode()
+                if node: 
+                    found = ( node.GetViewProp() == self.TexturePlaneActor ) 
+                    return found                   
+        return 0
+
     def DoPick( self, X, Y ):  
         self.PlanePicker.Pick( X, Y, 0.0, self.CurrentRenderer )
         path = self.PlanePicker.GetPath()        
@@ -763,15 +764,7 @@ class ImagePlaneWidget:
         self.Reslice.Modified()
         dims = self.ImageData.GetDimensions()
         self.InputDims = 3 if ( ( len(dims) > 2 ) and ( dims[2] > 1 ) ) else 2
-           
-        if inputData2:
-            dims2 = self.ImageData2.GetDimensions()
-            self.ContourInputDims = 3 if ( ( len(dims2) > 2 ) and ( dims2[2] > 1 ) ) else 2
-            self.Reslice2 = vtk.vtkImageReslice()
-            self.Reslice2.TransformInputSamplingOff()
-            self.Reslice2.SetInput(self.ImageData2)
-            self.Reslice2.Modified()
-#            self.Reslice2.SetInformationInput( self.ImageData )     
+             
         interpolate = self.ResliceInterpolate
         self.ResliceInterpolate = -1 # Force change
         self.SetResliceInterpolate(interpolate)
@@ -784,11 +777,6 @@ class ImagePlaneWidget:
 #        self.SetPlaneOrientation(self.PlaneOrientation)
         
 #----------------------------------------------------------------------------
-
-#     def SetOutlineMap(self, outlineMap):
-#         self.outlineMap = outlineMap
-
-
 
     def UpdatePlane(self):
         
@@ -854,8 +842,7 @@ class ImagePlaneWidget:
         
         self.ResliceAxes.SetElement(0,3,neworiginXYZW[0])
         self.ResliceAxes.SetElement(1,3,neworiginXYZW[1])
-        self.ResliceAxes.SetElement(2,3,neworiginXYZW[2])
-        
+        self.ResliceAxes.SetElement(2,3,neworiginXYZW[2])        
         self.Reslice.SetResliceAxes(self.ResliceAxes)
         
         spacingX = abs(planeAxis1[0]*spacing[0]) + abs(planeAxis1[1]*spacing[1]) + abs(planeAxis1[2]*spacing[2])   
@@ -876,6 +863,14 @@ class ImagePlaneWidget:
         self.Reslice.SetOutputSpacing(outputSpacingX, outputSpacingY, 1)
         self.Reslice.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
         self.Reslice.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
+
+        if self.ImageData2 and not self.Reslice2:
+            dims2 = self.ImageData2.GetDimensions()
+            self.ContourInputDims = 3 if ( ( len(dims2) > 2 ) and ( dims2[2] > 1 ) ) else 2
+            self.Reslice2 = vtk.vtkImageReslice()
+            self.Reslice2.TransformInputSamplingOff()
+            self.Reslice2.SetInput(self.ImageData2)
+            self.Reslice2.Modified()
         
         if self.Reslice2:
             self.Reslice2.SetResliceAxes(self.ResliceAxes)
@@ -886,6 +881,7 @@ class ImagePlaneWidget:
             else: 
                 self.Reslice2.SetResliceAxes(self.ResliceAxes)
             
+#            print " Set contour extent = %s, spacing = %s " % ( str( (extentX,extentY) ), str( (outputSpacingX,outputSpacingY) ) )
             self.Reslice2.SetOutputSpacing(outputSpacingX, outputSpacingY, 1)
             self.Reslice2.SetOutputOrigin(0.5*outputSpacingX, 0.5*outputSpacingY, 0)
             self.Reslice2.SetOutputExtent(0, extentX-1, 0, extentY-1, 0, 0)
@@ -893,8 +889,7 @@ class ImagePlaneWidget:
               
 #----------------------------------------------------------------------------
 
-    def GetResliceOutput(self):      
-        if (  not  self.Reslice ): return 0           
+    def GetResliceOutput(self):             
         return self.Reslice.GetOutput()
 
     def GetReslice2Output(self):      
@@ -1166,9 +1161,13 @@ class ImagePlaneWidget:
         if self.ImageData2:
             extent = self.ImageData2.GetExtent() 
             pos2 = [ (self.CurrentCursorPosition[i] - self.Input2ExtentOffset[i]) for i in range(3) ] 
-            if ( (pos2[0] >= extent[0]) and (pos2[0] <= extent[1]) and (pos2[1] >= extent[2]) and (pos2[1] <= extent[3]) and (pos2[2] >= extent[4]) and (pos2[2] <= extent[5]) ):
-                self.CurrentImageValue2 = self.ImageData2.GetScalarComponentAsDouble( pos2[0], pos2[1], pos2[2], 0 )
-            else: self.CurrentImageValue2 = None
+            self.CurrentImageValue2 = None
+            if self.ContourInputDims == 3:
+                if ( (pos2[0] >= extent[0]) and (pos2[0] <= extent[1]) and (pos2[1] >= extent[2]) and (pos2[1] <= extent[3]) and (pos2[2] >= extent[4]) and (pos2[2] <= extent[5]) ):
+                    self.CurrentImageValue2 = self.ImageData2.GetScalarComponentAsDouble( pos2[0], pos2[1], pos2[2], 0 )
+            else: 
+                if ( (pos2[0] >= extent[0]) and (pos2[0] <= extent[1]) and (pos2[1] >= extent[2]) and (pos2[1] <= extent[3]) ):
+                    self.CurrentImageValue2 = self.ImageData2.GetScalarComponentAsDouble( pos2[0], pos2[1], 0.0, 0 )
         return rq
 
 #----------------------------------------------------------------------------
@@ -1262,9 +1261,6 @@ class ImagePlaneWidget:
     
     def GetResliceOutputPort(self):       
         return self.Reslice.GetOutputPort()
-
-    def GetResliceOutput(self):       
-        return self.Reslice.GetOutput()
     
 #----------------------------------------------------------------------------
 

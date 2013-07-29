@@ -1133,24 +1133,28 @@ class shapeFileReader:
     
     #looks for resolution of the file, connects directory paths and then
     #creates a VTK model of land    
-    def getLine(self,roi, mrsDefFilePath ): 
-  
-        print(mrsDefFilePath + "MRSSSS")
+    def getPolyLines(self,roi, mrsDefFilePath ): 
         
         xr=roi[1]-roi[0]
         yr=roi[3]-roi[2]
         r=max(xr,yr)
 
-        ##checks roi and determines the resolution of requested file
-        if r<50:
-            resFile="high"
-        if r>=50 and r<=100:
-            resFile="medium"
-        else:
-            resFile="high"
-        print(resFile + "RESFILE")
+#         ##checks roi and determines the resolution of requested file
+#         if r<50:
+#             resFile="high"
+#         if r>=50 and r<=100:
+#             resFile="medium"
+#         else:
+            
+        resFile="high"
+            
         directory=self._reader.openFile(resFile,mrsDefFilePath)
+        lonWrap = ( xr > 359 )
+        if lonWrap:
+           roi[0] = roi[0] + 0.5 
+           roi[1] = roi[1] - 0.5 
    
+        print "Retreiving polylines from %s, resolution=%s" % ( mrsDefFilePath, resFile )
         #rel_coastFilePath=self._reader.read(resFile, mrsDefFilePath)
         root_path=os.path.abspath( os.path.dirname( mrsDefFilePath ) )
         #combines two directories together 
@@ -1186,10 +1190,12 @@ class shapeFileReader:
                     inBounds = ( ( pt[0] > roi[0] ) and ( pt[0] < roi[1] ) )
                 if inBounds:
                     if (pt[1]>roi[2]) and (pt[1]<roi[3] ):
-#                 if pt[0]>roi[0] and pt[0]<roi[1]: 
-#                     if pt[1]>roi[2] and pt[1]<roi[3]:
                         ptIndex=points.InsertNextPoint(pt[0], pt[1], 0.0 ) 
-                        idList.InsertNextId(ptIndex) 
+                        idList.InsertNextId(ptIndex)
+                    else: inBounds = False
+                if not inBounds:
+                    lines.InsertNextCell(idList)
+                    idList=vtk.vtkIdList()                 
             lines.InsertNextCell(idList)
         polygon = vtk.vtkPolyData()
         polygon.SetPoints(points)
