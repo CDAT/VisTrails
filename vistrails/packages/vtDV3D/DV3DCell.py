@@ -907,8 +907,9 @@ class PM_MapCell3D( PM_DV3DCell ):
         self.updateMapOpacity() 
 
     def updateMapOpacity(self, cmap_index=0 ):
-        self.baseMapActor.SetOpacity( self.map_opacity[0] )
-        self.render()
+        if self.baseMapActor:
+            self.baseMapActor.SetOpacity( self.map_opacity[0] )
+            self.render()
         
     def buildRendering(self):
         PM_DV3DCell.buildRendering( self )

@@ -241,7 +241,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         return var, dsetId
     
     def designateAxes(self,var):
-        lev_aliases = [ 'bottom', 'top', 'zdim' ]
+        lev_aliases = [ 'bottom', 'top', 'zdim', 'level' ]
         lev_axis_attr = [ 'z' ]
         lat_aliases = [ 'north', 'south', 'ydim' ]
         lat_axis_attr = [ 'y' ]

@@ -58,6 +58,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
         self.addUVCDATConfigGuiFunction( 'contourColormap', ColormapConfigurationDialog, 'K', label='Choose Contour Colormap', setValue=lambda data: self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasContours )
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
+        self.polygonActor = None
         self.opacity = [ 1.0, 1.0 ]
         self.iOrientation = 0
         self.updatingPlacement = False
@@ -81,11 +82,12 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             pass
 
     def setBasemapLineThickness( self, value ):
-        self.basemapLineThickness = value
-        npixels = int(round(self.basemapLineThickness[0]))
-        self.polygonActor.SetVisibility(npixels)
-        if npixels > 0: self.polygonActor.GetProperty().SetLineWidth( npixels )           
-        self.render()
+        if self.polygonActor:
+            self.basemapLineThickness = value
+            npixels = int(round(self.basemapLineThickness[0]))
+            self.polygonActor.SetVisibility(npixels)
+            if npixels > 0: self.polygonActor.GetProperty().SetLineWidth( npixels )           
+            self.render()
         
     def getBasemapLineThickness( self, value ):
         return self.basemapLineThickness
@@ -394,21 +396,24 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         pass
 
     def createBasemapPolylines( self, **args ):
-#        ispec = self.getInputSpec(0)  
-        from Shapefile import shapeFileReader     
-        rgb=args.get( 'rgb', [ 0, 0, 0 ] )
-        linewidth=args.get( 'linewidth', 1 )
-        type = args.get( 'type', 'coastline' ) 
-        textFilePath = os.path.join( os.path.dirname(__file__), "data", type, "index.txt" )
-        s=shapeFileReader()
-        s.setColors(rgb)
-        s.setWidth( int(self.basemapLineThickness[0]) )
-        self.polygonActor=s.getPolyLines( self.roi, textFilePath )        
-        self.renderer.AddActor(self.polygonActor)
-        origin = self.planeWidgetZ.GetOrigin()
-        pos = self.polygonActor.GetPosition()
-        pos1 = [ pos[0], pos[1], origin[2] ]
-        self.polygonActor.SetPosition( pos1 )
+        ispec = self.getInputSpec(0)  
+        md = ispec.getMetadata()
+        latLonGrid = md.get( 'latLonGrid', True )
+        if latLonGrid:
+            from Shapefile import shapeFileReader     
+            rgb=args.get( 'rgb', [ 0, 0, 0 ] )
+            linewidth=args.get( 'linewidth', 1 )
+            type = args.get( 'type', 'coastline' ) 
+            textFilePath = os.path.join( os.path.dirname(__file__), "data", type, "index.txt" )
+            s=shapeFileReader()
+            s.setColors(rgb)
+            s.setWidth( int(self.basemapLineThickness[0]) )
+            self.polygonActor=s.getPolyLines( self.roi, textFilePath )        
+            self.renderer.AddActor(self.polygonActor)
+            origin = self.planeWidgetZ.GetOrigin()
+            pos = self.polygonActor.GetPosition()
+            pos1 = [ pos[0], pos[1], origin[2] ]
+            self.polygonActor.SetPosition( pos1 )
         
     def ProcessIPWAction( self, caller, event, **args ):
         action = args.get( 'action', caller.State )
@@ -448,19 +453,21 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 self.updateLensDisplay(screenPos, coord)
                 
             if action == ImagePlaneWidget.Pushing: 
-                ispec = self.inputSpecs[ 0 ]  
+                ispec = self.inputSpecs[ 0 ] 
+                md = ispec.getMetadata()
+                latLonGrid = md.get( 'latLonGrid', True )
                 if not self.isSlicing:
                     HyperwallManager.getInstance().setInteractionState( 'VolumeSlicer.Slicing' )
                     self.isSlicing = True 
                 sliceIndex = caller.GetSliceIndex() 
-                axisName, spos = ispec.getWorldCoord( sliceIndex, iAxis )
+                axisName, spos = ispec.getWorldCoord( sliceIndex, iAxis, latLonGrid )
                 textDisplay = " %s = %s ." % ( axisName, spos )
                 if iAxis == 0:
                     p1 = caller.GetPoint1()
 #                    print " >++++++++++++++++++> Slicing: Set Slice[%d], index=%d, pos=%.2f, " % ( iAxis, sliceIndex, p1[0] ), textDisplay
                 self.slicePosition[ iAxis ] = sliceIndex                  
                 self.updateTextDisplay( textDisplay ) 
-                if iAxis == 2:              
+                if (iAxis == 2) and self.polygonActor:              
                     origin = caller.GetOrigin()
                     pos = self.polygonActor.GetPosition()
                     pos1 = [ pos[0], pos[1], origin[2] ]

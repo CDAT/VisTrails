@@ -246,9 +246,13 @@ class InputSpecs:
             gridOrigin = self.input().GetOrigin()
             world_coords = [ gridOrigin[i] + image_coords[i]*gridSpacing[i] for i in range(3) ]
         return world_coords
-    def getWorldCoord( self, image_coord, iAxis ):
-        plotType = self.metadata[ 'plotType' ]                   
-        axisNames = [ 'Longitude', 'Latitude', 'Time' ] if plotType == 'zyt'  else [ 'Longitude', 'Latitude', 'Level' ]
+    
+    def getWorldCoord( self, image_coord, iAxis, latLonGrid  ):
+        plotType = self.metadata[ 'plotType' ] 
+        if plotType == 'zyt':                  
+            axisNames = [ 'Longitude', 'Latitude', 'Time' ] if latLonGrid else [ 'X', 'Y', 'Time' ]
+        else:
+            axisNames =  [ 'Longitude', 'Latitude', 'Level' ] if latLonGrid else [ 'X', 'Y', 'Level' ]
         try:
             axes = [ 'lon', 'lat', 'time' ] if plotType == 'zyt'  else [ 'lon', 'lat', 'lev' ]
             world_coord = self.metadata[ axes[iAxis] ][ image_coord ]
