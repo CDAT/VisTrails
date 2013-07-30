@@ -898,8 +898,10 @@ class PM_MapCell3D( PM_DV3DCell ):
         
     def buildRendering(self):
         PM_DV3DCell.buildRendering( self )
+        md = self.getInputSpec().getMetadata()
+        latLonGrid = md.get( 'latLonGrid', True )
         self.enableBasemap = self.getInputValue( "enable_basemap", True )
-        if self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
+        if latLonGrid and self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
             if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
             world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None
             opacity =  self.getInputValue( "opacity",   0.4  ) #  wmod.forceGetInputFromPort( "opacity",   0.4  )  if wmod else 0.4  

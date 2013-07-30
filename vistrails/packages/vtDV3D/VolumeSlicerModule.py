@@ -86,6 +86,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetX = None
         self.planeWidgetY = None
         self.planeWidgetZ = None
+        self.latLonGrid = True
         del self.sliceOutput
         self.sliceOutput = None 
         if self.contours:
@@ -99,7 +100,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         sys.stdout.flush()
         
     def toggleOutlineMap( self, enabled ):
-        self.showOutlineMap = enabled
+        self.showOutlineMap = enabled if self.latLonGrid else False
         self.planeWidgetZ.planeActor.SetVisibility(self.showOutlineMap)
         self.render()
         
@@ -201,6 +202,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
         contourInput = contour_ispec.input() if contour_ispec <> None else None
         primaryInput = self.input()
+        md = self.getInputSpec().getMetadata()
+        self.latLonGrid = md.get( 'latLonGrid', True )
 
 #        self.contourInput = None if contourModule == None else contourModule.getOutput() 
         # The 3 image plane widgets are used to probe the dataset.    

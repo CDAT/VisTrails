@@ -247,6 +247,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         lat_axis_attr = [ 'y' ]
         lon_aliases = [ 'east', 'west', 'xdim' ]
         lon_axis_attr = [ 'x' ]
+        latLonGrid = True
         for axis in var.getAxisList():
             if not isDesignated( axis ):
                 if matchesAxisType( axis, lev_axis_attr, lev_aliases ):
@@ -254,10 +255,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     print " --> Designating axis %s as a Level axis " % axis.id            
                 elif matchesAxisType( axis, lat_axis_attr, lat_aliases ):
                     axis.designateLatitude()
-                    print " --> Designating axis %s as a Latitude axis " % axis.id                     
+                    print " --> Designating axis %s as a Latitude axis " % axis.id 
+                    latLonGrid = False                     
                 elif matchesAxisType( axis, lon_axis_attr, lon_aliases ):
                     axis.designateLongitude()
                     print " --> Designating axis %s as a Longitude axis " % axis.id 
+                    latLonGrid = False  
+        return latLonGrid
 
     def setupTimeAxis( self, var, **args ):
         self.nTimesteps = 1
@@ -312,7 +316,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             if self.newDataset: ModuleStore.archiveCdmsDataset( dsetId, self.cdmsDataset )
             self.newLayerConfiguration = self.newDataset
             self.datasetId = dsetId
-            self.designateAxes(var)
+            self.cdmsDataset.latLonGrid = self.designateAxes(var)
             self.setupTimeAxis( var, **args )
             intersectedRoi = self.cdmsDataset.gridBounds
             intersectedRoi = self.getIntersectedRoi( cdms_var, intersectedRoi )
@@ -519,6 +523,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         md =  varDataSpecs['md']                 
                         md['datatype'] = datatype
                         md['timeValue']= self.timeValue.value
+                        md['latLonGrid']= self.cdmsDataset.latLonGrid
                         md['timeUnits' ] = self.referenceTimeUnits
                         md[ 'attributes' ] = var_md
                         md[ 'plotType' ] = 'zyt' if (self.outputType == CDMSDataType.Hoffmuller) else 'xyz'
