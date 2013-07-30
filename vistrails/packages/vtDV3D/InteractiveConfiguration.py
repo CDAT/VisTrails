@@ -2457,10 +2457,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         IVModuleConfigurationDialog.finalizeConfig( self )
 #        AnimationConfigurationDialog.iCurrentTimeStep = self.iTimeStep
                 
-
     def setDelay( self ):
         self.delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )        
-        
+
     def createContent(self ):
         """ createEditor() -> None
         Configure sections       
