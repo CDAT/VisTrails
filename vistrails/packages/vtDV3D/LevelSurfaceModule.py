@@ -99,19 +99,21 @@ class PM_LevelSurface(PersistentVisualizationModule):
             else:                       self.clipOff() 
                  
     def clipOn(self):
-        if self.cropRegion == None:
-            cr = self.wmod.forceGetInputFromPort( "cropRegion", None  ) 
-            self.cropRegion = list(cr) if cr else self.getVolumeBounds()
-        self.clipper.PlaceWidget( self.cropRegion )
-        self.clipper.SetHandleSize( 0.005 )
-        self.clipper.SetEnabled( True )
-        self.clipper.On()
-        self.executeClip()
+        if not self.clipper.GetEnabled():
+            if self.cropRegion == None:
+                cr = self.wmod.forceGetInputFromPort( "cropRegion", None  ) 
+                self.cropRegion = list(cr) if cr else self.getVolumeBounds()
+            self.clipper.PlaceWidget( self.cropRegion )
+            self.clipper.SetHandleSize( 0.005 )
+            self.clipper.SetEnabled( True )
+            self.clipper.On()
+            self.executeClip()
 
     def clipOff(self):
-        self.clipper.SetEnabled( False )
-        self.clipper.Off()
-        self.persistCropRegion()
+        if self.clipper.GetEnabled():
+            self.clipper.SetEnabled( False )
+            self.clipper.Off()
+            self.persistCropRegion()
                    
     def toggleClipping(self):
         self.clipping_enabled = not self.clipping_enabled 
