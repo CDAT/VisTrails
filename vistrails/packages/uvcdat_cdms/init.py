@@ -47,7 +47,39 @@ def expand_port_specs(port_specs, pkg_identifier=None):
                               port_spec[2])) 
     return out_specs
 
+class StandardGrid():
+    cache={}
 
+    @classmethod
+    def clear_cache(cls): 
+        cls.cache={}  
+         
+    @classmethod
+    def regrid( cls, var ):
+        from api import get_current_project_controller
+        from standard_grid import standard_regrid 
+        
+        proj_controller = get_current_project_controller()
+        cdms_var = proj_controller.defined_variables[ var.id ]    
+        file_path = cdms_var.filename
+        cache_id = ':'.join( [ file_path, var.id ] )
+        cached_std_var = cls.cache.get( cache_id, None )
+        if id(cached_std_var) <> id(None): return cached_std_var 
+
+        file = None
+        if file_path:
+            file = CdmsCache.d.get( file_path, None )
+            if not file:
+                file = CdmsCache.d[file_path] = cdms2.open( file_path )
+    
+        if not file: return var
+               
+        regrid_var = standard_regrid( file, var, cls.cache ) 
+        
+        cls.cache[ cache_id ] = regrid_var
+        return regrid_var
+
+    
 class CDMSVariable(Variable):
     _input_ports = expand_port_specs([("axes", "basic:String"),
                                       ("axesOperations", "basic:String"),
@@ -170,7 +202,7 @@ class CDMSVariable(Variable):
                     
         if self.timeBounds is not None:
             var = self.applySetTimeBounds(var, self.timeBounds)
-                    
+                   
         return var
     
     def to_python_script(self, include_imports=False, ident=""):
