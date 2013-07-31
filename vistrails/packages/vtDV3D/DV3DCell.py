@@ -516,7 +516,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.render()  
         
     def clearWidget(self, sheetName, row, col ): 
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper      
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
+        from packages.uvcdat_cdms.init import StandardGrid    
         from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog, UVCDATGuiConfigFunction
         if ( self.location.row == row ) and ( self.location.col == col ):
             ( cell_sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
@@ -535,6 +536,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 UVCDATGuiConfigFunction.clearModules( pipeline )
             
             IVModuleConfigurationDialog.reset()
+            StandardGrid.clear_cache()
             self.cellWidget = None 
             self.builtCellWidget = False                        
         

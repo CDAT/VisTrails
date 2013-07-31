@@ -60,7 +60,8 @@ class StandardGrid():
         from standard_grid import standard_regrid 
         
         proj_controller = get_current_project_controller()
-        cdms_var = proj_controller.defined_variables[ var.id ]    
+        cdms_var = proj_controller.defined_variables[ var.id ]  
+#        cell_info = [ str(val) for val in proj_controller.get_current_cell_info() ]
         file_path = cdms_var.filename
         cache_id = ':'.join( [ file_path, var.id ] )
         cached_std_var = cls.cache.get( cache_id, None )
