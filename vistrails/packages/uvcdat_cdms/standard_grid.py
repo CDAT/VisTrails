@@ -10,7 +10,7 @@ Created on Jul 25, 2013
 @author: tpmaxwel
 '''
 
-import cdutil, genutil, sys, os, cdms2, MV2
+import cdutil, genutil, sys, os, cdms2, MV2, time
 
 def make_corners(lat,lon,fname=0):
     """
