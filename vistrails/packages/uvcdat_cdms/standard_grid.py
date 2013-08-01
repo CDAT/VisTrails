@@ -2,12 +2,8 @@
 Created on Jul 30, 2013
 
 @author: tpmaxwel
-'''
+Adapted from code by Peter Caldwell at LLNL (caldwell19@llnl.gov)
 
-'''
-Created on Jul 25, 2013
-
-@author: tpmaxwel
 '''
 
 import cdutil, genutil, sys, os, cdms2, MV2, time
@@ -258,12 +254,16 @@ def standard_regrid( file, var, product_cache, time_index=0 ):
     dlon = ( roi[1] - roi[0] ) / dims[0]
     lat0 = roi[2]
     dlat = ( roi[3] - roi[2] ) / dims[1]
+    
+    tr2 = time.clock()
         
+    lat_lon_grid = cdms2.createUniformGrid( lat0, dims[1], dlat, lon0, dims[0], dlon )  
+         
     tg0 = time.clock()    
-    lat_lon_grid = cdms2.createUniformGrid( lat0, dims[1], dlat, lon0, dims[0], dlon )       
     regrid_Var = tVar.regrid( lat_lon_grid, regridTool = 'libcf', regridMethod = 'linear' )
     tg1 = time.clock()
     print "Regrid required %.2f secs." % ( tg1-tg0 )
+    print "Grid setup %.2f secs, instantiation %.2f secs." % ( ( tr2-tr1 ), ( tg0-tr2 ) )
     print "WRF data processing required %.2f secs." % ( tg1-tr1 )
        
     return regrid_Var
