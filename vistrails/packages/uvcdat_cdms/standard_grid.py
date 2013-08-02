@@ -194,21 +194,6 @@ def isLevelAxisId( id ):
     if ( id.find('bottom') >= 0 ) and ( id.find('top') >= 0 ): return True
     return False
 
-def standard_regrid_dataset( args ):
-    import argparse
-    parser = argparse.ArgumentParser(description='Regrid WRF data files.')
-    parser.add_argument('files', metavar='F', type=file, nargs='+', help='WRF data files')
-    parser.add_argument('-V', dest='varnames', action='append', help='Variable name(s)')
-    
-    ns = parser.parse_args( args )
-    
-    print str( ns.varnames )
-    
-#     for file in ns.files:
-#         pass
-    
-
-
 def standard_regrid( file, var, product_cache, time_index=0 ):
     from cdms2.coord import TransientVirtualAxis, TransientAxis2D
     from cdms2.hgrid import TransientCurveGrid
@@ -283,7 +268,32 @@ def standard_regrid( file, var, product_cache, time_index=0 ):
        
     return regrid_Var
     
+ 
+def standard_regrid_dataset( args ):
+    import argparse
+    parser = argparse.ArgumentParser(description='Regrid WRF data files.')
+    parser.add_argument('files', nargs='*', help='WRF data files')
+    parser.add_argument('-V', dest='varnames', action='append', help='Variable name(s)')
     
+    ns = parser.parse_args( args )
+    
+    if ns.varnames == None:
+        print>>sys.stderr, "Error, No variable specified ( use -V <varname> )"
+        return
+
+    if ns.files == None:
+        print>>sys.stderr, "Error, No WRF data files specified."
+        return
+    
+    product_cache = {}
+    time_index = 0
+    for file in ns.files:
+        file = cdms2.open( file )
+        for varname in ns.varnames:
+            wrf_var = file( varname )
+            var = standard_regrid( file, wrf_var, product_cache, time_index )
+
+   
  #--------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     standard_regrid_dataset(sys.argv)   
