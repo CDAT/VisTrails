@@ -194,7 +194,7 @@ def isLevelAxisId( id ):
     if ( id.find('bottom') >= 0 ) and ( id.find('top') >= 0 ): return True
     return False
 
-def standard_regrid( file, var, product_cache, time_index=0 ):
+def standard_regrid( file, var, product_cache ):
     from cdms2.coord import TransientVirtualAxis, TransientAxis2D
     from cdms2.hgrid import TransientCurveGrid
     from gui.uvcdat.cdmsCache import CdmsCache
@@ -203,7 +203,7 @@ def standard_regrid( file, var, product_cache, time_index=0 ):
     tr0 = time.clock()  
 
     if ( len( var.shape ) == 4 ):     
-        Var = var[time_index,:,:,:]
+        Var = var[0,:,:,:]
         levaxis = Var.getLevel()
         if levaxis == None:
             domain = Var.getDomain()
@@ -212,7 +212,7 @@ def standard_regrid( file, var, product_cache, time_index=0 ):
                     levaxis = axis[0]
                     break
     else:
-        Var = var[time_index,:,:]
+        Var = var[0,:,:]
         
     tr1 = time.clock()
     print "Data read required %.2f secs." % ( tr1-tr0 )
@@ -267,34 +267,68 @@ def standard_regrid( file, var, product_cache, time_index=0 ):
     print "WRF data processing required %.2f secs." % ( tg1-tr1 )
        
     return regrid_Var
+
+def getTimestampFromFilename( fname ):
+    base_fname = os.path.splitext( os.path.basename( fname ) )[0]
+    
     
  
 def standard_regrid_dataset( args ):
     import argparse
+    default_outfile = '~/regridded_WRF-%d.nc' % int( time.time() )
     parser = argparse.ArgumentParser(description='Regrid WRF data files.')
-    parser.add_argument('files', nargs='*', help='WRF data files')
-    parser.add_argument('-V', dest='varnames', action='append', help='Variable name(s)')
+    parser.add_argument( '-f', '--files', dest='files', nargs='*', help='WRF data files')
+    parser.add_argument( '-r', '--result', dest='result', nargs='?', default=None, help='Resulting nc file (default: %s) ' % default_outfile)
+    parser.add_argument('-v', '--vars', dest='varnames', nargs='*', help='Variable name(s)')
+    parser.add_argument('-d', '--dir',  dest='directory', nargs='?', default=None, help='Data Directory')
+    parser.add_argument( 'FILE' )
+    
+    time_units = "hours since 2013-05-01"
+    dt = 1.0
+    t0 = 12.0
     
     ns = parser.parse_args( args )
     
     if ns.varnames == None:
-        print>>sys.stderr, "Error, No variable specified ( use -V <varname> )"
+        print>>sys.stderr, "Error, No variable specified ( use -v <varname> )"
         return
 
     if ns.files == None:
         print>>sys.stderr, "Error, No WRF data files specified."
         return
     
+    result_file = ns.result
+    if result_file == None:
+        result_file =   os.path.expanduser( default_outfile )
+    
     product_cache = {}
+    outfile = cdms2.createDataset( result_file )
+    time_axis = outfile.createAxis( 'Time', None, unlimited=1 )
+    time_axis.designateTime( persistent=1 )
+    time_axis.units = time_units
+    t = t0
     time_index = 0
-    for file in ns.files:
-        file = cdms2.open( file )
+    axis_lists = {}
+    time_values = []
+    for fname in ns.files:
+        fpath = os.path.expanduser( fname if ( ns.directory == None ) else os.path.join( ns.directory, fname ) )
+        cdms_file = cdms2.open( fpath )
         for varname in ns.varnames:
-            wrf_var = file( varname )
-            var = standard_regrid( file, wrf_var, product_cache, time_index )
+            wrf_var = cdms_file( varname )
+            var = standard_regrid( cdms_file, wrf_var, product_cache )
+            axis_list = axis_lists.get( varname )
+            if not axis_list:
+                axis_list = [ time_axis ]
+                axis_list.extend( var.getAxisList() )
+                axis_lists[ varname ] = axis_list
+            outfile.write( var, extend=1, axes=axis_list, index=time_index )
+        time_values.append( t )
+        time_index = time_index + 1
+        t = t + dt
+    time_axis[0:len(time_values)] = time_values
 
    
- #--------------------------------------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     standard_regrid_dataset(sys.argv)   
     
