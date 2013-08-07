@@ -81,7 +81,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         except api.NoVistrail:
             pass
 
-    def setBasemapLineThickness( self, value ):
+    def setBasemapLineThickness( self, value, **args ):
         if self.polygonActor:
             self.basemapLineThickness = value
             npixels = int(round(self.basemapLineThickness[0]))
