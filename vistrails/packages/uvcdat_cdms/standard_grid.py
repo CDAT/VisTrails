@@ -359,7 +359,8 @@ def standard_regrid_dataset_extend( args ):
             outfile.write( var, extend=1, axes=axis_list, index=time_index )
     return rv
 
-def standard_regrid_file( time_index, fname, varname, specs ): 
+def standard_regrid_file( args ): 
+    ( time_index, fname, varname, specs ) = args
     default_outfile = 'wrfout'
     t0 = specs.getFloat( 't0', 0.0 ) 
     dt = specs.getFloat( 'dt', 1.0 ) 
@@ -385,7 +386,7 @@ def standard_regrid_file( time_index, fname, varname, specs ):
     outfile.close()
     
 def standard_regrid_dataset_multi( args ):
-    from multiprocessing import Process, Queue
+    from multiprocessing import Process, Pool
     from core.application import VistrailsApplicationInterface
     import argparse
     tg0 = time.time() 
@@ -427,21 +428,26 @@ def standard_regrid_dataset_multi( args ):
     if not varnames:
         print>>sys.stderr, "Error, No variables specified"
         return
-        
-    proc_list = [ ]                
+
+   
+    proc_queue = [ ]                
     for time_index, fname in enumerate(files):
-        for varname in varnames: 
-            p = Process( target=standard_regrid_file, args=( time_index, fname, varname, specs ) )
-            proc_list.append(  p  )
-            p.start()
+        for varname in varnames:   
+            p = Process( target=standard_regrid_file, args=( ( time_index, fname, varname, specs), ) )
+            proc_queue.append(  p  )
             
+    run_list = []
     while True:
-        if len( proc_list ) == 0: break
-        for p in proc_list:
-            if not p.is_alive():
-               proc_list.remove( p ) 
-        time.sleep( 0.1 )
-        
+        while ( len( run_list ) < max_nproc ):
+            try: p = proc_queue.pop()
+            except: break
+            p.start()
+            run_list.append( p )
+        if len( run_list ) == 0: break
+        for pindex, p in enumerate( run_list ):
+            if not p.is_alive(): run_list.pop( pindex ) 
+        time.sleep( 0.1 )  
+            
     tg1 = time.time()
     print "Full Dataset Regrid required %.2f secs." % ( tg1-tg0 )
    
