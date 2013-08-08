@@ -194,13 +194,11 @@ def isLevelAxisId( id ):
     if ( id.find('bottom') >= 0 ) and ( id.find('top') >= 0 ): return True
     return False
 
-def standard_regrid( file, var, product_cache ):
+def standard_regrid( file, var, **args ):        
     from cdms2.coord import TransientVirtualAxis, TransientAxis2D
     from cdms2.hgrid import TransientCurveGrid
-    from gui.uvcdat.cdmsCache import CdmsCache
     isVolume = False
     levaxis = None
-    tr0 = time.clock()  
 
     if ( len( var.shape ) == 4 ):     
         Var = var[0,:,:,:]
@@ -213,9 +211,6 @@ def standard_regrid( file, var, product_cache ):
                     break
     else:
         Var = var[0,:,:]
-        
-    tr1 = time.clock()
-    print "Data read required %.2f secs." % ( tr1-tr0 )
                
     if hasattr( Var, "coordinates" ):
         axis_ids = Var.coordinates.strip().split(' ')
@@ -228,7 +223,7 @@ def standard_regrid( file, var, product_cache ):
     else:
         lat_d01 = file( "XLAT", squeeze=1 )  
         lon_d01 = file( "XLONG", squeeze=1 )
-    
+            
     lat_corners, lon_corners, roi = make_corners( lat_d01, lon_d01 )
     
     ni,nj = lat_d01.shape
@@ -254,18 +249,10 @@ def standard_regrid( file, var, product_cache ):
     dlon = ( roi[1] - roi[0] ) / dims[0]
     lat0 = roi[2]
     dlat = ( roi[3] - roi[2] ) / dims[1]
-    
-    tr2 = time.clock()
         
     lat_lon_grid = cdms2.createUniformGrid( lat0, dims[1], dlat, lon0, dims[0], dlon )  
-         
-    tg0 = time.clock()    
-    regrid_Var = tVar.regrid( lat_lon_grid, regridTool = 'esmf', regridMethod = 'conserve' )
-    tg1 = time.clock()
-    print "Regrid required %.2f secs." % ( tg1-tg0 )
-    print "Grid setup %.2f secs, instantiation %.2f secs." % ( ( tr2-tr1 ), ( tg0-tr2 ) )
-    print "WRF data processing required %.2f secs." % ( tg1-tr1 )
-       
+          
+    regrid_Var = tVar.regrid( lat_lon_grid, regridTool = 'esmf', regridMethod = 'conserve' )   
     return regrid_Var
 
 def getTimestampFromFilename( fname ):
@@ -306,6 +293,9 @@ class RegridDatasetSpecs:
         val = self.specs.get( name, default_val ) 
         if type( val ) == type( [] ): return val
         return [ val ]
+    
+    def put( self, name, val ):
+        self.specs[ name ] = str( val )
 
 def print_test_value( test_id, var ):
     sample_val = var[ var.shape[0]/2, var.shape[1]/2, var.shape[2]/2 ]
@@ -346,11 +336,8 @@ def standard_regrid_dataset_extend( args ):
     
     result_file = specs.getStr( 'outfile', os.path.expanduser( default_outfile ) )
     
-    product_cache = {}
     outfile = cdms2.createDataset( result_file )
     time_data = [ t0 + dt*istep for istep in range(len(files)) ]
-    
-#    time_axis = outfile.createAxis( 'Time', None, unlimited=1 )
     time_axis = cdms2.createAxis( time_data )    
     time_axis.designateTime()
     time_axis.id = "Time"
@@ -362,8 +349,7 @@ def standard_regrid_dataset_extend( args ):
         cdms_file = cdms2.open( fpath )
         for varname in varnames:
             wrf_var = cdms_file( varname )
-            var = standard_regrid( cdms_file, wrf_var, product_cache )
-            print_test_value( "regrid", var )
+            var = standard_regrid( cdms_file, wrf_var )
             axis_list = axis_lists.get( varname )
             if not axis_list:
                 axis_list = [ time_axis ]
@@ -373,69 +359,91 @@ def standard_regrid_dataset_extend( args ):
             outfile.write( var, extend=1, axes=axis_list, index=time_index )
     return rv
 
-def standard_regrid_dataset_multi( args ):
-    from core.application import VistrailsApplicationInterface
-    import argparse
-    default_outfile = 'regridded_WRF-%d' % int( time.time() )
-    spec_file = os.path.expanduser( "~/WRF_Dataset.txt" )
-    specs = RegridDatasetSpecs( spec_file )
-#     parser = argparse.ArgumentParser(description='Regrid WRF data files.')
-#     parser.add_argument( '-f', '--files', dest='files', nargs='*', help='WRF data files')
-#     parser.add_argument( '-r', '--result', dest='result', nargs='?', default=None, help='Resulting nc file (default: %s) ' % default_outfile)
-#     parser.add_argument('-v', '--vars', dest='varnames', nargs='*', help='Variable name(s)')
-#     parser.add_argument('-d', '--dir',  dest='directory', nargs='?', default=None, help='Data Directory')
-#     parser.add_argument( 'FILE' )    
-#     time_units = "hours since 2013-05-01"
-#     dt = 1.0
-#     t0 = 12.0
-#     ns = parser.parse_args( args )
-    
+def standard_regrid_file( time_index, fname, varname, specs ): 
+    default_outfile = 'wrfout'
     t0 = specs.getFloat( 't0', 0.0 ) 
     dt = specs.getFloat( 'dt', 1.0 ) 
+    result_file = specs.getStr( 'outfile', os.path.expanduser( default_outfile ) )    
     time_units = specs.getStr( 'time_units', 'hours since 2000-01-01' )
-    root_directory = specs.getStr( 'directory', '~' )
-    WRF_dataset_name = specs.getStr( 'name', 'WRFOUT' )
-    data_directory = os.path.expanduser( os.path.join( directory, "%s-%d" % ( WRF_dataset_name, int( time.time() ) ) ) ) 
+    data_directory = specs.getStr( 'data_directory', '~' ) 
+    output_dataset_directory = specs.getStr( 'output_dataset_directory', '~' ) 
+    fpath = os.path.join( data_directory, fname )
+    cdms_file = cdms2.open( fpath )
+    outfile = cdms2.createDataset( os.path.join( output_dataset_directory, "%s-%d.nc" % ( result_file, time_index ) ) )
+    time_data = [ t0 + dt*time_index ]
+    time_axis = cdms2.createAxis( time_data )    
+    time_axis.designateTime()
+    time_axis.id = "Time"
+    time_axis.units = time_units
+    wrf_var = cdms_file( varname )
+    var = standard_regrid( cdms_file, wrf_var, logfile='/tmp/regrid_log_%s_%d.txt' % (varname,time_index) )
+    axis_list = [ time_axis ]
+    axis_list.extend( var.getAxisList() )
+    var.coordinates = None
+    var.name = varname
+    outfile.write( var, extend=1, axes=axis_list, index=0 )
+    outfile.close()
+    
+def standard_regrid_dataset_multi( args ):
+    from multiprocessing import Process, Queue
+    from core.application import VistrailsApplicationInterface
+    import argparse
+    tg0 = time.time() 
+
+    parser = argparse.ArgumentParser(description='Regrid WRF data files.')
+    parser.add_argument( '-s', '--specs', dest='specfile', nargs='?', default=None, help='WRF regrid spec file')
+    parser.add_argument( 'FILE' )
+    ns = parser.parse_args( args )
+    
+    if ns.specfile == None:
+        print>>sys.stderr, "Error, Must specify a Regrid Spec File."
+        return 
+        
+    spec_file = os.path.expanduser( ns.specfile )
+    specs = RegridDatasetSpecs( spec_file )
+       
+    data_directory = specs.getStr( 'data_directory', '~' )
+    out_directory = specs.getStr( 'out_directory', '~' )
+    max_nproc = specs.getInt( 'max_nproc', 4 )
+    
+    WRF_dataset_name = specs.getStr( 'name', 'WRF' )
+    output_dataset_directory = os.path.expanduser( os.path.join( out_directory, "%s-%d" % ( WRF_dataset_name, int( time.time() ) ) ) ) 
     
     try:
-        os.mkdir(  data_directory )
+        os.mkdir(  output_dataset_directory )
     except OSError:
-        print>>sys.stderr, "Error, Can't create dagtaset directory: ", data_directory
+        print>>sys.stderr, "Error, Can't create dataset directory: ", data_directory
         return
     
-    varnames =  specs.getList( 'vars' ) 
-    if not varnames:
-        print>>sys.stderr, "Error, No variables specified"
-        return
-
+    print "Regridding WRF files to %s" % ( output_dataset_directory )
+    specs.put( 'output_dataset_directory', output_dataset_directory )
+    
     files = specs.getList( 'files') 
     if not files:
         print>>sys.stderr, "Error, No WRF data files specified."
         return
-    
-    result_file = specs.getStr( 'outfile', os.path.expanduser( default_outfile ) )    
-    product_cache = {}
-    time_index = 0
-    for time_index, fname in enumerate(files):
-        fpath = os.path.join( data_directory, fname )
-        cdms_file = cdms2.open( fpath )
-        outfile = cdms2.createDataset( "%s-%d.nc" % ( result_file, time_index ) )
-        time_data = [ t0 + dt*time_index ]
-        time_axis = cdms2.createAxis( time_data )    
-        time_axis.designateTime()
-        time_axis.id = "Time"
-        time_axis.units = time_units
-        for varname in varnames:
-            wrf_var = cdms_file( varname )
-            var = standard_regrid( cdms_file, wrf_var, product_cache )
-            print_test_value( "regrid", var )
-            axis_list = [ time_axis ]
-            axis_list.extend( var.getAxisList() )
-            var.coordinates = None
-            var.name = varname
-            outfile.write( var, extend=1, axes=axis_list, index=0 )
-        outfile.close()
 
+    varnames =  specs.getList( 'vars' ) 
+    if not varnames:
+        print>>sys.stderr, "Error, No variables specified"
+        return
+        
+    proc_list = [ ]                
+    for time_index, fname in enumerate(files):
+        for varname in varnames: 
+            p = Process( target=standard_regrid_file, args=( time_index, fname, varname, specs ) )
+            proc_list.append(  p  )
+            p.start()
+            
+    while True:
+        if len( proc_list ) == 0: break
+        for p in proc_list:
+            if not p.is_alive():
+               proc_list.remove( p ) 
+        time.sleep( 0.1 )
+        
+    tg1 = time.time()
+    print "Full Dataset Regrid required %.2f secs." % ( tg1-tg0 )
    
 #--------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
