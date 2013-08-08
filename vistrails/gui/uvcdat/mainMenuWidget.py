@@ -277,8 +277,9 @@ class QMenuWidget(QtGui.QWidget):
             prj_controller.calculator_command([v.id], vtdesc, vtfuncnm, newid)
             
             tmp = prj_controller.create_exec_new_variable_pipeline(newid)
-            tmp.id = newid
-            self.root.dockVariable.widget().addVariable(tmp)
+            if tmp is not None:
+                tmp.id = newid
+                self.root.dockVariable.widget().addVariable(tmp)
 
     def setBounds(self,action):
         nm = str(action.text())
@@ -372,8 +373,9 @@ class QMenuWidget(QtGui.QWidget):
             prj_controller.calculator_command([v.id], vtdesc, vtfuncnm, newid)
             
             tmp = prj_controller.create_exec_new_variable_pipeline(newid)
-            tmp.id = newid
-            self.root.dockVariable.widget().addVariable(tmp)
+            if tmp is not None:
+                tmp.id = newid
+                self.root.dockVariable.widget().addVariable(tmp)
             
             
     def regridESMFPatch(self):
@@ -450,8 +452,9 @@ class QMenuWidget(QtGui.QWidget):
         QLine.setFocus()
             
         tmp = prj_controller.create_exec_new_variable_pipeline(varname)
-        tmp.id = varname
-        _app.uvcdatWindow.dockVariable.widget().addVariable(tmp)
+        if tmp is not None:
+            tmp.id = varname
+            _app.uvcdatWindow.dockVariable.widget().addVariable(tmp)
         
     def undo(self):
         get_current_project_controller().undo()

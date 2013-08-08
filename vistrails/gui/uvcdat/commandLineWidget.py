@@ -537,8 +537,9 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             prj_controller.calculator_command(vars, txt, orst, varname)
             
             tmp = prj_controller.create_exec_new_variable_pipeline(varname)
-            tmp.id = varname
-            self.root.dockVariable.widget().addVariable(tmp)
+            if tmp is not None:
+                tmp.id = varname
+                self.root.dockVariable.widget().addVariable(tmp)
             
         self.le.setFocus()
 
@@ -608,7 +609,8 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             prj_controller.process_typed_calculator_command(varname,pycommand)
             
             tmp = prj_controller.create_exec_new_variable_pipeline(varname)
-            tmp.id = varname
-            self.root.dockVariable.widget().addVariable(tmp)
+            if tmp is not None:
+                tmp.id = varname
+                self.root.dockVariable.widget().addVariable(tmp)
         self.le.clear()
         return varname

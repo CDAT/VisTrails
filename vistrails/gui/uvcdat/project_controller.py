@@ -340,7 +340,8 @@ class ProjectController(QtCore.QObject):
         _app = get_vistrails_application()
         if isinstance(var, CDMSVariable):
             varObj = self.create_exec_new_variable_pipeline(var.name)
-            _app.uvcdatWindow.dockVariable.widget().addVariable(varObj)
+            if varObj is not None:
+                _app.uvcdatWindow.dockVariable.widget().addVariable(varObj)
         elif isinstance(var, CDMSVariableOperation):
             varObj = self.create_exec_new_variable_pipeline(var.varname)
             if isinstance(varObj, cdms2.tvariable.TransientVariable):
@@ -1120,7 +1121,7 @@ class ProjectController(QtCore.QObject):
             for key in workflow_result.errors:
                 logging.exception(workflow_result.errors[key])
             QMessageBox.warning( None, "Workflow Error", 
-                                 "Variable pipeline had errors executing.");
+                                 "Error executing variable pipeline. See log for details.");
             return None
         
         #import pdb; pdb.set_trace()

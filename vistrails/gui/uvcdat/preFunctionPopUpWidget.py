@@ -274,8 +274,9 @@ class preFuncPopUp(QtGui.QDialog):
         prj_controller.calculator_command(vtvars, fnm, vtcmd, varname)
         
         tmp = prj_controller.create_exec_new_variable_pipeline(varname)
-        tmp.id = varname
-        self.root.dockVariable.widget().addVariable(tmp)
+        if tmp is not None:
+            tmp.id = varname
+            self.root.dockVariable.widget().addVariable(tmp)
             
         self.setCursor(c)
 
