@@ -586,9 +586,10 @@ class CDMSUnaryVariableOperation(CDMSVariableOperation):
         res = None
         try:
             res = eval(self.python_command)
-        except Exception, e:
-            print "Exception evaluating %s" % self.python_command
-            raise e
+        except:
+            print "Exception evaluating python command '%s'\n" % self.python_command
+            raise
+            
         if type(res) == tuple:
             for r in res:
                 if isinstance(r,cdms2.tvariable.TransientVariable):
