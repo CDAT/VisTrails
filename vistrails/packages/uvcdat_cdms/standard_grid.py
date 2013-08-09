@@ -586,7 +586,7 @@ def standard_regrid_dataset_multi( args ):
         for varname in varnames:   
             arg_tuple_list.append( ( time_index, fname, varname, specs) )
             
-    exec_procs_pool( standard_regrid_file, arg_tuple_list, ncores )  
+    exec_procs( standard_regrid_file, arg_tuple_list, ncores )  
           
     tg1 = time.time()
     print "Full Dataset Regrid required %.2f secs." % ( tg1-tg0 )
