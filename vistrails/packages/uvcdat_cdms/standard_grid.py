@@ -460,7 +460,17 @@ def standard_regrid_dataset_extend( args ):
             outfile.write( var, extend=1, axes=axis_list, index=time_index )
     return rv
 
-def standard_regrid_file( args ): 
+def standard_regrid_queue( q ):
+    from multiprocessing import Queue
+    persistent_store = {}
+    try:
+        while True:
+            args = q.get_nowait() 
+            standard_regrid_file( args, persistent_store )
+    except Queue.Empty:
+        return
+    
+def standard_regrid_file( args, persistent_store = None ): 
     ( time_index, fname, varname, specs ) = args
     default_outfile = 'wrfout'
     t0 = specs.getFloat( 't0', 0.0 ) 
@@ -515,6 +525,21 @@ def exec_procs( exec_target, arg_tuple_list, ncores ):
         if len( run_list ) == 0: break
         for pindex, p in enumerate( run_list ):
             if not p.is_alive(): run_list.pop( pindex ) 
+        time.sleep( 0.1 )  
+
+def exec_procs_queue( exec_target, arg_tuple_list, ncores ):
+    from multiprocessing import Process, Queue
+    q = Queue()
+    for arg_tuple in arg_tuple_list:
+        q.put( arg_tuple )
+    proc_queue = [ ]                
+    for iP in range( ncores ):   
+        p = Process( target=exec_target, args=( q, ) )
+        proc_queue.append(  p  )
+    while True:
+        if len( proc_queue ) == 0: break
+        for pindex, p in enumerate( proc_queue ):
+            if not p.is_alive(): proc_queue.pop( pindex ) 
         time.sleep( 0.1 )  
 
 def exec_procs_pool( exec_target, arg_tuple_list, ncores ):
@@ -586,7 +611,9 @@ def standard_regrid_dataset_multi( args ):
         for varname in varnames:   
             arg_tuple_list.append( ( time_index, fname, varname, specs) )
             
-    exec_procs( standard_regrid_file, arg_tuple_list, ncores )  
+#    exec_procs( standard_regrid_file, arg_tuple_list, ncores )  
+    
+    exec_procs_queue( standard_regrid_queue, arg_tuple_list, ncores )
           
     tg1 = time.time()
     print "Full Dataset Regrid required %.2f secs." % ( tg1-tg0 )
