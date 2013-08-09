@@ -359,6 +359,7 @@ class RegridDatasetSpecs:
         self.specs = {}
         if spec_file_path:
             self.parse_specs( spec_file_path )
+        self.spec_directory = os.path.dirname( spec_file_path )
         
     def parse_specs( self, spec_file_path ):
         self.specs = {}
@@ -383,6 +384,11 @@ class RegridDatasetSpecs:
 
     def getStr(self, name, default_val = None ):
         return self.specs.get( name, default_val ) 
+
+    def getPath(self, name, default_val = None ):
+        value = self.specs.get( name, default_val ) 
+        if value == ".": value = self.spec_directory
+        return os.path.expanduser( os.path.expandvars( value ) )
 
     def getList(self, name, default_val = [] ):
         val = self.specs.get( name, default_val ) 
@@ -463,7 +469,7 @@ def standard_regrid_file( args ):
     result_file = specs.getStr( 'outfile', os.path.expanduser( default_outfile ) )    
     time_units = specs.getStr( 'time_units', 'hours since 2000-01-01' )
     data_location = specs.getStr( 'data_location', '~' ) 
-    output_dataset_directory = specs.getStr( 'output_dataset_directory', '~' ) 
+    output_dataset_directory = specs.getStr( 'output_dataset_directory', '.' ) 
     
     fpath = os.path.join( data_location, fname )   
     try:
@@ -547,8 +553,8 @@ def standard_regrid_dataset_multi( args ):
     spec_file = os.path.expanduser( ns.specfile )
     specs = RegridDatasetSpecs( spec_file )
        
-    data_location = specs.getStr( 'data_location', '~' )
-    out_directory = specs.getStr( 'out_directory', '~' )
+    data_location = specs.getPath( 'data_location', '~' )
+    out_directory = specs.getPath( 'out_directory', '.' )
     ncores = specs.getInt( 'ncores', 4 )
     
     WRF_dataset_name = specs.getStr( 'name', 'WRF' )
@@ -584,6 +590,8 @@ def standard_regrid_dataset_multi( args ):
           
     tg1 = time.time()
     print "Full Dataset Regrid required %.2f secs." % ( tg1-tg0 )
+    cmd = " cd '%s'; cdscan -x dataset.xml *.nc" % output_dataset_directory
+    os.system(cmd)
    
 #--------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
