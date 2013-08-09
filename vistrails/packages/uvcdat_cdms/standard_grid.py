@@ -7,6 +7,101 @@ Adapted from code by Peter Caldwell at LLNL (caldwell19@llnl.gov)
 '''
 
 import cdutil, genutil, sys, os, cdms2, MV2, time
+import urllib2, copy, httplib
+from HTMLParser import HTMLParser
+
+class HTMLCatalogParser(HTMLParser):
+   
+    def __init__( self, **args ):
+        HTMLParser.__init__( self )    
+        self.IgnoredTags = [ 'br', 'hr', 'p' ]
+        self.debug_mode = args.get( 'debug', False)
+        self.state_stack = [ 'root' ]
+        self.data_url = None
+        self.metadata = None
+        
+    def execute(self):
+        pass
+
+    def dump(self):
+        pass
+        
+    def state(self,frame=0):
+        return self.state_stack[ -1-frame ]
+    
+    def has_state( self, state ):
+        return state in self.state_stack        
+            
+    def handle_starttag(self, tag, attrs):
+        if tag not in self.IgnoredTags:
+            self.state_stack.append( tag )
+            if self.debug_mode: 
+                print " Start Tag %s: %s " % ( tag, str( attrs ) ) 
+            self.process_start_tag( tag, attrs )           
+    
+    @staticmethod           
+    def get_attribute( tag, attrs ):
+        for item in attrs:
+            if tag == item[0]: return item[1]
+        return None
+        
+    def handle_endtag(self, tag):
+        stack_backup = copy.deepcopy( self.state_stack )
+        if tag not in self.IgnoredTags:
+            while True: 
+                try:
+                    frame = self.state_stack.pop()
+                except Exception, err:
+                    print " <<<<<<<<<<<<<<<<<<< Parse error processing end tag: %s, state stack: %s >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" % ( tag, str(stack_backup) )
+                    self.state_stack = stack_backup
+                    return
+                if frame == tag: break
+            if self.debug_mode: print " End Tag %s " % ( tag )
+            self.process_end_tag( tag )              
+        
+    def handle_data( self, data ):
+        sdata = data.strip()
+        if self.debug_mode: print "                      State: %s, Data: %s " % ( str(self.state_stack), sdata )           
+        self.process_data( sdata )
+            
+    def process_start_tag( self, tag, attrs ):
+        pass   
+
+    def process_end_tag( self, tag ):
+        pass   
+
+    def process_data( self, data ):
+        pass   
+
+
+class ThreddsDirectoryParser(HTMLCatalogParser):
+    
+    def __init__( self, url, **args ):
+        HTMLCatalogParser.__init__( self, **args )    
+        self.child_node_list = []
+        self.child_node = None
+        self.url = url
+
+    def execute(self):
+        try:
+            response = urllib2.urlopen( self.url )
+            self.feed( response.read() )
+        except Exception, err:
+            print>>sys.stderr, "Error connecting to server:\n%s"  % str(err) 
+            
+    def inCatalogEntry(self):
+       return self.has_state( 'a' ) and self.has_state( 'tr' )
+        
+    def process_start_tag( self, tag, attrs ):          
+        if ( tag == 'a' ) and self.has_state( 'tr' ):
+            url = self.get_attribute( 'href', attrs )
+            self.child_node =  [ url, None ]
+
+    def process_data( self,  data ): 
+        if self.child_node and self.inCatalogEntry() and data:         
+            self.child_node[1] = data.strip() 
+            self.child_node_list.append ( self.child_node )
+            self.child_node = None
         
 def make_corners(lat,lon,fname=0):
     """
@@ -364,19 +459,32 @@ def standard_regrid_file( args ):
     default_outfile = 'wrfout'
     t0 = specs.getFloat( 't0', 0.0 ) 
     dt = specs.getFloat( 'dt', 1.0 ) 
+    time_data = [ t0 + dt*time_index ]
     result_file = specs.getStr( 'outfile', os.path.expanduser( default_outfile ) )    
     time_units = specs.getStr( 'time_units', 'hours since 2000-01-01' )
-    data_directory = specs.getStr( 'data_directory', '~' ) 
+    data_location = specs.getStr( 'data_location', '~' ) 
     output_dataset_directory = specs.getStr( 'output_dataset_directory', '~' ) 
-    fpath = os.path.join( data_directory, fname )
-    cdms_file = cdms2.open( fpath )
+    
+    fpath = os.path.join( data_location, fname )   
+    try:
+        cdms_file = cdms2.open( fpath )
+    except Exception:
+        print>>sys.stderr, "Can't read file %s " % ( fpath )
+        return
+    
+    try:
+        wrf_var = cdms_file( varname )
+    except Exception:
+        print>>sys.stderr, "Variable %s does not seem to exist in file %s " % ( varname, fpath )
+        return
+    
+    print "Regridding variable %s[%.2f] in file %s" % ( varname, time_data[0], fpath )
+
     outfile = cdms2.createDataset( os.path.join( output_dataset_directory, "%s-%d.nc" % ( result_file, time_index ) ) )
-    time_data = [ t0 + dt*time_index ]
     time_axis = cdms2.createAxis( time_data )    
     time_axis.designateTime()
     time_axis.id = "Time"
     time_axis.units = time_units
-    wrf_var = cdms_file( varname )
     var = standard_regrid( cdms_file, wrf_var, logfile='/tmp/regrid_log_%s_%d.txt' % (varname,time_index) )
     axis_list = [ time_axis ]
     axis_list.extend( var.getAxisList() )
@@ -407,8 +515,21 @@ def exec_procs_pool( exec_target, arg_tuple_list, ncores ):
     from multiprocessing import Pool
     pool = Pool(processes=ncores) 
     pool.map( exec_target, arg_tuple_list )
- 
-    
+
+def get_file_list( location, patterns ):
+    import fnmatch
+    file_list = []
+    if "thredds" in location:
+        location = os.path.join( location, "catalog.html" )
+        parser = ThreddsDirectoryParser( location )
+        parser.execute()
+        for file_rec in parser.child_node_list:
+            for pattern in patterns:
+                if fnmatch.fnmatch( file_rec[1], pattern ):
+                    file_list.append( file_rec[1] ) 
+                    break
+        return file_list        
+      
 def standard_regrid_dataset_multi( args ):
     from core.application import VistrailsApplicationInterface
     import argparse
@@ -426,7 +547,7 @@ def standard_regrid_dataset_multi( args ):
     spec_file = os.path.expanduser( ns.specfile )
     specs = RegridDatasetSpecs( spec_file )
        
-    data_directory = specs.getStr( 'data_directory', '~' )
+    data_location = specs.getStr( 'data_location', '~' )
     out_directory = specs.getStr( 'out_directory', '~' )
     ncores = specs.getInt( 'ncores', 4 )
     
@@ -436,22 +557,23 @@ def standard_regrid_dataset_multi( args ):
     try:
         os.mkdir(  output_dataset_directory )
     except OSError:
-        print>>sys.stderr, "Error, Can't create dataset directory: ", data_directory
+        print>>sys.stderr, "Error, Can't create output directory: ", output_dataset_directory
         return
     
     print "Regridding WRF files to %s" % ( output_dataset_directory )
     specs.put( 'output_dataset_directory', output_dataset_directory )
     
-    files = specs.getList( 'files') 
-    if not files:
+    filename_patterns = specs.getList( 'files') 
+    if not filename_patterns:
         print>>sys.stderr, "Error, No WRF data files specified."
         return
+    
+    files = get_file_list( data_location, filename_patterns )
 
     varnames =  specs.getList( 'vars' ) 
     if not varnames:
         print>>sys.stderr, "Error, No variables specified"
         return
-
    
     arg_tuple_list = [ ]                
     for time_index, fname in enumerate(files):
