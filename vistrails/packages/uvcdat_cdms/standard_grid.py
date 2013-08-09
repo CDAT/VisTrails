@@ -385,8 +385,31 @@ def standard_regrid_file( args ):
     outfile.write( var, extend=1, axes=axis_list, index=0 )
     outfile.close()
     
+def exec_procs( exec_target, arg_tuple_list, ncores ):
+    from multiprocessing import Process
+    proc_queue = [ ]                
+    for arg_tuple in arg_tuple_list:   
+        p = Process( target=exec_target, args=( arg_tuple, ) )
+        proc_queue.append(  p  )
+    run_list = []
+    while True:
+        while ( len( run_list ) < ncores ):
+            try: p = proc_queue.pop()
+            except: break
+            p.start()
+            run_list.append( p )
+        if len( run_list ) == 0: break
+        for pindex, p in enumerate( run_list ):
+            if not p.is_alive(): run_list.pop( pindex ) 
+        time.sleep( 0.1 )  
+
+def exec_procs_pool( exec_target, arg_tuple_list, ncores ):
+    from multiprocessing import Pool
+    pool = Pool(processes=ncores) 
+    pool.map( exec_target, arg_tuple_list )
+ 
+    
 def standard_regrid_dataset_multi( args ):
-    from multiprocessing import Process, Pool
     from core.application import VistrailsApplicationInterface
     import argparse
     tg0 = time.time() 
@@ -405,7 +428,7 @@ def standard_regrid_dataset_multi( args ):
        
     data_directory = specs.getStr( 'data_directory', '~' )
     out_directory = specs.getStr( 'out_directory', '~' )
-    max_nproc = specs.getInt( 'max_nproc', 4 )
+    ncores = specs.getInt( 'ncores', 4 )
     
     WRF_dataset_name = specs.getStr( 'name', 'WRF' )
     output_dataset_directory = os.path.expanduser( os.path.join( out_directory, "%s-%d" % ( WRF_dataset_name, int( time.time() ) ) ) ) 
@@ -430,24 +453,13 @@ def standard_regrid_dataset_multi( args ):
         return
 
    
-    proc_queue = [ ]                
+    arg_tuple_list = [ ]                
     for time_index, fname in enumerate(files):
         for varname in varnames:   
-            p = Process( target=standard_regrid_file, args=( ( time_index, fname, varname, specs), ) )
-            proc_queue.append(  p  )
+            arg_tuple_list.append( ( time_index, fname, varname, specs) )
             
-    run_list = []
-    while True:
-        while ( len( run_list ) < max_nproc ):
-            try: p = proc_queue.pop()
-            except: break
-            p.start()
-            run_list.append( p )
-        if len( run_list ) == 0: break
-        for pindex, p in enumerate( run_list ):
-            if not p.is_alive(): run_list.pop( pindex ) 
-        time.sleep( 0.1 )  
-            
+    exec_procs_pool( standard_regrid_file, arg_tuple_list, ncores )  
+          
     tg1 = time.time()
     print "Full Dataset Regrid required %.2f secs." % ( tg1-tg0 )
    
