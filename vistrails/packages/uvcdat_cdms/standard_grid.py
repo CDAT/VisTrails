@@ -512,6 +512,7 @@ def standard_regrid_file( args, product_cache = None ):
         time_axis.designateTime()
         time_axis.id = "Time"
         time_axis.units = time_units
+        print " P[%d]: Running standard regrid" % ( iproc ); sys.stdout.flush()
         var = standard_regrid( cdms_file, wrf_var, logfile='/tmp/regrid_log_%s_%d.txt' % (varname,time_index), cache = product_cache )
         axis_list = [ time_axis ]
         axis_list.extend( var.getAxisList() )
@@ -519,6 +520,7 @@ def standard_regrid_file( args, product_cache = None ):
         var.name = varname
         outfile.write( var, extend=1, axes=axis_list, index=0 )
         outfile.close()
+        print " P[%d]: Writing regridded data," % ( iproc ); sys.stdout.flush()
     except Exception, err:
         print>>sys.stderr, " P[%d]: Error regridding data: %s " % ( iproc, str(err ) ); sys.stderr.flush()
         
