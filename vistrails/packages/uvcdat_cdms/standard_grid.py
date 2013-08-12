@@ -467,21 +467,21 @@ def standard_regrid_dataset_extend( args ):
             outfile.write( var, extend=1, axes=axis_list, index=time_index )
     return rv
 
-def standard_regrid_queue( q ):
+def standard_regrid_queue( q, ip ):
     from Queue import Empty
     from multiprocessing import Queue
     product_cache = {}
     try:
         while True:
-            print " Get Args "; sys.stdout.flush()
-            args = q.get_nowait() 
-            print " standard_regrid_file "; sys.stdout.flush()
+            args = list( q.get_nowait() )
+            args.insert( 0, ip )
             standard_regrid_file( args, product_cache )
     except Empty:
+        print " Exiting standard_regrid_file "; sys.stdout.flush()
         return
     
 def standard_regrid_file( args, product_cache = None ): 
-    ( time_index, fname, varname, specs ) = args
+    ( iproc, time_index, fname, varname, specs ) = args
     default_outfile = 'wrfout'
     t0 = specs.getFloat( 't0', 0.0 ) 
     dt = specs.getFloat( 'dt', 1.0 ) 
@@ -504,7 +504,7 @@ def standard_regrid_file( args, product_cache = None ):
         print>>sys.stderr, "Variable %s does not seem to exist in file %s " % ( varname, fpath )
         return
     
-    print "Regridding variable %s[%.2f] in file %s" % ( varname, time_data[0], fpath )
+    print " P[%d]: Regridding variable %s[%.2f] in file %s" % ( iproc, varname, time_data[0], fpath ); sys.stdout.flush()
 
     try:
         outfile = cdms2.createDataset( os.path.join( output_dataset_directory, "%s-%d.nc" % ( result_file, time_index ) ) )
@@ -520,7 +520,7 @@ def standard_regrid_file( args, product_cache = None ):
         outfile.write( var, extend=1, axes=axis_list, index=0 )
         outfile.close()
     except Exception, err:
-        print>>sys.stderr, " Error regridding data: %s " % str(err ); sys.stderr.flush()
+        print>>sys.stderr, " P[%d]: Error regridding data: %s " % ( iproc, str(err ) ); sys.stderr.flush()
         
 def exec_procs( exec_target, arg_tuple_list, ncores ):
     from multiprocessing import Process
@@ -547,13 +547,16 @@ def exec_procs_queue( exec_target, arg_tuple_list, ncores ):
         q.put( arg_tuple )
     proc_queue = [ ]                
     for iP in range( ncores ):   
-        p = Process( target=exec_target, args=( q, ) )
+        p = Process( target=exec_target, args=( q, iP ) )
         proc_queue.append(  p  )
         p.start()
+    print " Running %d procs" % len( proc_queue ); sys.stdout.flush()
     while True:
         if len( proc_queue ) == 0: break
         for pindex, p in enumerate( proc_queue ):
-            if not p.is_alive(): proc_queue.pop( pindex ) 
+            if not p.is_alive(): 
+                proc_queue.pop( pindex ) 
+                print " Removing dead proc, nprocs = %d " % len( proc_queue ); sys.stdout.flush()
         time.sleep( 0.1 )  
 
 def exec_procs_pool( exec_target, arg_tuple_list, ncores ):
