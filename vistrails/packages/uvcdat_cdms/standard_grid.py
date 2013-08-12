@@ -355,12 +355,11 @@ def standard_regrid( file, var, **args ):
         
     lat_lon_grid = cdms2.createUniformGrid( lat0, dims[1], dlat, lon0, dims[0], dlon )  
     
-    print " P[%d]: Running conservative regrid" % ( iproc ); sys.stdout.flush()
-    print " P[%d]: tVar: %s" % ( iproc, str( tVar ) ); sys.stdout.flush()
-    print " P[%d]: lat_lon_grid: %s" % ( iproc, str( lat_lon_grid ) ); sys.stdout.flush()
+    print " P[%d]: Running regrid" % ( iproc ); sys.stdout.flush()
          
 #    regrid_Var = tVar.regrid( lat_lon_grid, regridTool = 'esmf', regridMethod = 'conserve' )   
-    regrid_Var = tVar.regrid( lat_lon_grid )   
+#    regrid_Var = tVar.regrid( lat_lon_grid )   
+    regrid_Var = tVar.regrid( lat_lon_grid, regridTool = 'libcf', regridMethod = 'linear' )   
     
     print " P[%d]: Finished regrid" % ( iproc ); sys.stdout.flush()
     
