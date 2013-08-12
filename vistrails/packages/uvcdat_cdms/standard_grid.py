@@ -354,15 +354,11 @@ def standard_regrid( file, var, **args ):
     dlat = ( roi[3] - roi[2] ) / dims[1]
         
     lat_lon_grid = cdms2.createUniformGrid( lat0, dims[1], dlat, lon0, dims[0], dlon )  
-    
-    print " P[%d]: Running regrid" % ( iproc ); sys.stdout.flush()
-         
+            
 #    regrid_Var = tVar.regrid( lat_lon_grid, regridTool = 'esmf', regridMethod = 'conserve' )   
 #    regrid_Var = tVar.regrid( lat_lon_grid )   
     regrid_Var = tVar.regrid( lat_lon_grid, regridTool = 'libcf', regridMethod = 'linear' )   
-    
-    print " P[%d]: Finished regrid" % ( iproc ); sys.stdout.flush()
-    
+       
     return regrid_Var
 
 def getTimestampFromFilename( fname ):
@@ -519,7 +515,6 @@ def standard_regrid_file( args, product_cache = None ):
         time_axis.designateTime()
         time_axis.id = "Time"
         time_axis.units = time_units
-        print " P[%d]: Running standard regrid" % ( iproc ); sys.stdout.flush()
         var = standard_regrid( cdms_file, wrf_var, logfile='/tmp/regrid_log_%s_%d.txt' % (varname,time_index), cache = product_cache, iproc = iproc )
         axis_list = [ time_axis ]
         axis_list.extend( var.getAxisList() )
