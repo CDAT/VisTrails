@@ -295,6 +295,7 @@ def standard_regrid( file, var, **args ):
     isVolume = False
     levaxis = None   
     product_cache = args.get( 'cache', None )
+    iproc = args.get( 'iproc', 0 )
 
     if ( len( var.shape ) == 4 ):     
         Var = var[0,:,:,:]
@@ -336,6 +337,8 @@ def standard_regrid( file, var, **args ):
     lonaxis = TransientAxis2D(lon_d01, axes=(iaxis, jaxis), bounds=lon_corners, attributes={'units':'degrees_north'}, id="longitude")
     grid = TransientCurveGrid( lataxis, lonaxis, id='WRF_inner' )
     
+    print " P[%d]: Create regrid variable " % ( iproc ); sys.stdout.flush()
+    
     if levaxis:
         levaxis.designateLevel() 
         tVar = cdms2.createVariable( Var, axes=( levaxis, grid ), id=var.id, typecode=Var.typecode() )
@@ -353,8 +356,13 @@ def standard_regrid( file, var, **args ):
     dlat = ( roi[3] - roi[2] ) / dims[1]
         
     lat_lon_grid = cdms2.createUniformGrid( lat0, dims[1], dlat, lon0, dims[0], dlon )  
+    
+    print " P[%d]: Running conservative regrid" % ( iproc ); sys.stdout.flush()
           
     regrid_Var = tVar.regrid( lat_lon_grid, regridTool = 'esmf', regridMethod = 'conserve' )   
+    
+    print " P[%d]: Finished regrid" % ( iproc ); sys.stdout.flush()
+    
     return regrid_Var
 
 def getTimestampFromFilename( fname ):
@@ -512,19 +520,16 @@ def standard_regrid_file( args, product_cache = None ):
         time_axis.id = "Time"
         time_axis.units = time_units
         print " P[%d]: Running standard regrid" % ( iproc ); sys.stdout.flush()
-        var = standard_regrid( cdms_file, wrf_var, logfile='/tmp/regrid_log_%s_%d.txt' % (varname,time_index), cache = product_cache )
+        var = standard_regrid( cdms_file, wrf_var, logfile='/tmp/regrid_log_%s_%d.txt' % (varname,time_index), cache = product_cache, iproc = iproc )
         axis_list = [ time_axis ]
         axis_list.extend( var.getAxisList() )
         var.coordinates = None
         var.name = varname
         outfile_path = os.path.join( output_dataset_directory, "%s-%d.nc" % ( result_file, time_index ) )
-        print " P[%d]: Creating outfile %s" % ( iproc, outfile_path ); sys.stdout.flush()
+        print " P[%d]: Writing to outfile %s" % ( iproc, outfile_path ); sys.stdout.flush()
         outfile = cdms2.createDataset( outfile_path )
-        print " P[%d]: Writing output to file" % ( iproc ); sys.stdout.flush()
         outfile.write( var, extend=1, axes=axis_list, index=0 )
-        print " P[%d]: Closing outfile" % ( iproc ); sys.stdout.flush()
         outfile.close()
-        print " P[%d]: finished standard_regrid_file" % ( iproc ); sys.stdout.flush()
     except Exception, err:
         print>>sys.stderr, " P[%d]: Error regridding data: %s " % ( iproc, str(err ) ); sys.stderr.flush()
         
