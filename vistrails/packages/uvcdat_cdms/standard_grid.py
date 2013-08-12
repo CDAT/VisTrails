@@ -293,7 +293,8 @@ def standard_regrid( file, var, **args ):
     from cdms2.coord import TransientVirtualAxis, TransientAxis2D
     from cdms2.hgrid import TransientCurveGrid
     isVolume = False
-    levaxis = None
+    levaxis = None   
+    product_cache = args.get( 'cache', None )
 
     if ( len( var.shape ) == 4 ):     
         Var = var[0,:,:,:]
@@ -318,8 +319,14 @@ def standard_regrid( file, var, **args ):
     else:
         lat_d01 = file( "XLAT", squeeze=1 )  
         lon_d01 = file( "XLONG", squeeze=1 )
-            
-    lat_corners, lon_corners, roi = make_corners( lat_d01, lon_d01 )
+        
+    corners_id = ".".join( [ lat_d01.id, lon_d01.id ] )
+    corners_data = product_cache.get( corners_id, None )
+    if corners_data:
+        ( lat_corners, lon_corners, roi ) = corners_data
+    else:           
+        lat_corners, lon_corners, roi = make_corners( lat_d01, lon_d01 )
+        product_cache[ corners_id ] = ( lat_corners, lon_corners, roi )
     
     ni,nj = lat_d01.shape
     iaxis = TransientVirtualAxis("i", ni)
@@ -461,16 +468,19 @@ def standard_regrid_dataset_extend( args ):
     return rv
 
 def standard_regrid_queue( q ):
+    from Queue import Empty
     from multiprocessing import Queue
-    persistent_store = {}
+    product_cache = {}
     try:
         while True:
+            print " Get Args "; sys.stdout.flush()
             args = q.get_nowait() 
-            standard_regrid_file( args, persistent_store )
-    except Queue.Empty:
+            print " standard_regrid_file "; sys.stdout.flush()
+            standard_regrid_file( args, product_cache )
+    except Empty:
         return
     
-def standard_regrid_file( args, persistent_store = None ): 
+def standard_regrid_file( args, product_cache = None ): 
     ( time_index, fname, varname, specs ) = args
     default_outfile = 'wrfout'
     t0 = specs.getFloat( 't0', 0.0 ) 
@@ -496,19 +506,22 @@ def standard_regrid_file( args, persistent_store = None ):
     
     print "Regridding variable %s[%.2f] in file %s" % ( varname, time_data[0], fpath )
 
-    outfile = cdms2.createDataset( os.path.join( output_dataset_directory, "%s-%d.nc" % ( result_file, time_index ) ) )
-    time_axis = cdms2.createAxis( time_data )    
-    time_axis.designateTime()
-    time_axis.id = "Time"
-    time_axis.units = time_units
-    var = standard_regrid( cdms_file, wrf_var, logfile='/tmp/regrid_log_%s_%d.txt' % (varname,time_index) )
-    axis_list = [ time_axis ]
-    axis_list.extend( var.getAxisList() )
-    var.coordinates = None
-    var.name = varname
-    outfile.write( var, extend=1, axes=axis_list, index=0 )
-    outfile.close()
-    
+    try:
+        outfile = cdms2.createDataset( os.path.join( output_dataset_directory, "%s-%d.nc" % ( result_file, time_index ) ) )
+        time_axis = cdms2.createAxis( time_data )    
+        time_axis.designateTime()
+        time_axis.id = "Time"
+        time_axis.units = time_units
+        var = standard_regrid( cdms_file, wrf_var, logfile='/tmp/regrid_log_%s_%d.txt' % (varname,time_index), cache = product_cache )
+        axis_list = [ time_axis ]
+        axis_list.extend( var.getAxisList() )
+        var.coordinates = None
+        var.name = varname
+        outfile.write( var, extend=1, axes=axis_list, index=0 )
+        outfile.close()
+    except Exception, err:
+        print>>sys.stderr, " Error regridding data: %s " % str(err ); sys.stderr.flush()
+        
 def exec_procs( exec_target, arg_tuple_list, ncores ):
     from multiprocessing import Process
     proc_queue = [ ]                
@@ -536,6 +549,7 @@ def exec_procs_queue( exec_target, arg_tuple_list, ncores ):
     for iP in range( ncores ):   
         p = Process( target=exec_target, args=( q, ) )
         proc_queue.append(  p  )
+        p.start()
     while True:
         if len( proc_queue ) == 0: break
         for pindex, p in enumerate( proc_queue ):
