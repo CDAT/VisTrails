@@ -507,7 +507,6 @@ def standard_regrid_file( args, product_cache = None ):
     print " P[%d]: Regridding variable %s[%.2f] in file %s" % ( iproc, varname, time_data[0], fpath ); sys.stdout.flush()
 
     try:
-        outfile = cdms2.createDataset( os.path.join( output_dataset_directory, "%s-%d.nc" % ( result_file, time_index ) ) )
         time_axis = cdms2.createAxis( time_data )    
         time_axis.designateTime()
         time_axis.id = "Time"
@@ -518,9 +517,14 @@ def standard_regrid_file( args, product_cache = None ):
         axis_list.extend( var.getAxisList() )
         var.coordinates = None
         var.name = varname
+        outfile_path = os.path.join( output_dataset_directory, "%s-%d.nc" % ( result_file, time_index ) )
+        print " P[%d]: Creating outfile %s" % ( iproc, outfile_path ); sys.stdout.flush()
+        outfile = cdms2.createDataset( outfile_path )
+        print " P[%d]: Writing output to file" % ( iproc ); sys.stdout.flush()
         outfile.write( var, extend=1, axes=axis_list, index=0 )
+        print " P[%d]: Closing outfile" % ( iproc ); sys.stdout.flush()
         outfile.close()
-        print " P[%d]: Writing regridded data," % ( iproc ); sys.stdout.flush()
+        print " P[%d]: finished standard_regrid_file" % ( iproc ); sys.stdout.flush()
     except Exception, err:
         print>>sys.stderr, " P[%d]: Error regridding data: %s " % ( iproc, str(err ) ); sys.stderr.flush()
         
