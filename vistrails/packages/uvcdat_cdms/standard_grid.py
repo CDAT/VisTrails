@@ -372,6 +372,9 @@ class RegridDatasetSpecs:
             self.parse_specs( spec_file_path )
         self.spec_directory = os.path.dirname( spec_file_path )
         
+    def __str__(self):
+        return str( self.specs )
+        
     def parse_specs( self, spec_file_path ):
         self.specs = {}
         context = None
@@ -550,7 +553,7 @@ def exec_procs( exec_target, arg_tuple_list, ncores, **args ):
     iPrestart = len( arg_tuple_list )
     while True:
         while ( len( run_list ) < ncores ):
-            try: ( iP, proc_args, p ) = proc_queue.pop()
+            try: ( iP, proc_args, p ) = proc_queue.pop(0)
             except: break
             p.start()
             run_list.append( ( iP, proc_args, p ) )
@@ -561,10 +564,10 @@ def exec_procs( exec_target, arg_tuple_list, ncores, **args ):
                 break
             elif p.exitcode <> None:
                 print>>sys.stderr, "\n ** Error executing proc %d, exitcode = %d - restarting! ** \n"  % ( iP, p.exitcode ); sys.stderr.flush()
-                print>>sys.stderr, " Args = %s " % str( proc_args )
-                p1 = Process( target=exec_target, args=( proc_args, ) )
+                print>>sys.stderr, " Args = %s %s" % str( proc_args[0:4], str( proc_args[4] ) )
                 proc_args[0] = iPrestart
-                proc_queue.append(  (iPrestart, proc_args, p1)  )
+                p1 = Process( target=exec_target, args=( proc_args, ) )
+                proc_queue.append( (iPrestart, proc_args, p1)  )
                 iPrestart = iPrestart + 1
         time.sleep( 0.1 )  
 
