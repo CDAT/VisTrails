@@ -560,7 +560,7 @@ def exec_procs( exec_target, arg_tuple_list, ncores, **args ):
                 run_list.pop( pindex ) 
                 break
             elif p.exitcode <> None:
-                print " Error executing proc %d, exitcode = %d - restarting!"  % ( iP, p.exitcode )
+                print>>sys.stderr, "\n ** Error executing proc %d, exitcode = %d - restarting! ** \n"  % ( iP, p.exitcode ); sys.stderr.flush()
                 p1 = Process( target=exec_target, args=( proc_args, ) )
                 proc_args[0] = iPrestart
                 proc_queue.append(  (iPrestart, proc_args, p1)  )
