@@ -556,19 +556,20 @@ def exec_procs( exec_target, arg_tuple_list, ncores, **args ):
             try: ( iP, proc_args, p ) = proc_queue.pop(0)
             except: break
             p.start()
-            run_list.append( ( iP, proc_args, p ) )
+            print "\n ** Starting proc %d, Args:  %s   "  % ( iP, str( proc_args[0:4] ) ); sys.stderr.flush()
+            run_list.append( ( iP, proc_args, p, 0 ) )
         if len( run_list ) == 0: break
-        for pindex, (iP, proc_args, p) in enumerate( run_list ):
-            if p.exitcode == 0: 
+        for pindex, ( iP, proc_args, p, iRestart ) in enumerate( run_list ):
+            if p.exitcode <> None:
+                if (p.exitcode <> 0) and (iRestart < maxNRestarts):
+                    print>>sys.stderr, "\n ** Error executing proc %d, exitcode = %d - restarting! ** "  % ( iP, p.exitcode ); sys.stderr.flush()
+                    print>>sys.stderr, " Proc Args:  %s   %s \n" % ( str( proc_args[0:4] ), str( proc_args[4] ) )
+                    proc_args[0] = iPrestart
+                    p1 = Process( target=exec_target, args=( proc_args, ) )
+                    proc_queue.insert( 0, (iPrestart, proc_args, p1, iRestart + 1)  )
+                    iPrestart = iPrestart + 1
                 run_list.pop( pindex ) 
                 break
-            elif p.exitcode <> None:
-                print>>sys.stderr, "\n ** Error executing proc %d, exitcode = %d - restarting! ** "  % ( iP, p.exitcode ); sys.stderr.flush()
-                print>>sys.stderr, " Proc Args:  %s   %s \n" % ( str( proc_args[0:4] ), str( proc_args[4] ) )
-                proc_args[0] = iPrestart
-                p1 = Process( target=exec_target, args=( proc_args, ) )
-                proc_queue.append( (iPrestart, proc_args, p1)  )
-                iPrestart = iPrestart + 1
         time.sleep( 0.1 )  
 
 def exec_procs_queue( exec_target, arg_tuple_list, ncores, **args ):
@@ -611,7 +612,8 @@ def get_file_list( location, patterns ):
                 if fnmatch.fnmatch( file_rec[1], pattern ):
                     file_list.append( file_rec[1] ) 
                     break
-        return file_list        
+        file_list.reverse()   
+        return file_list     
       
 def standard_regrid_dataset_multi( sys_args, **args ):
     from core.application import VistrailsApplicationInterface
