@@ -477,11 +477,11 @@ def standard_regrid_queue( q, ip ):
     product_cache = {}
     try:
         while True:
-            args = list( q.get_nowait() )
+            args = list( q.get( True, 1.0 ) )
             args.insert( 0, ip )
             standard_regrid_file( args, product_cache )
     except Empty:
-        print " Exiting standard_regrid_file "; sys.stdout.flush()
+        print "\n *** P[%d]:Exiting standard_regrid_file *** \n" % ip; sys.stdout.flush()
         return
     
 def standard_regrid_file( args, product_cache = None ): 
@@ -554,15 +554,16 @@ def exec_procs_queue( exec_target, arg_tuple_list, ncores ):
     proc_queue = [ ]                
     for iP in range( ncores ):   
         p = Process( target=exec_target, args=( q, iP ) )
-        proc_queue.append(  p  )
+        proc_queue.append( ( ip, p ) )
         p.start()
     print " Running %d procs" % len( proc_queue ); sys.stdout.flush()
     while True:
         if len( proc_queue ) == 0: break
-        for pindex, p in enumerate( proc_queue ):
+        for pindex, ( ip, p ) in enumerate( proc_queue ):
             if not p.is_alive(): 
                 proc_queue.pop( pindex ) 
-                print " Removing dead proc, nprocs = %d " % len( proc_queue ); sys.stdout.flush()
+                print "\n *** Removing dead proc %d, nprocs = %d *** \n" % ( ip, len( proc_queue ) ); sys.stdout.flush()
+                break
         time.sleep( 0.1 )  
 
 def exec_procs_pool( exec_target, arg_tuple_list, ncores ):
