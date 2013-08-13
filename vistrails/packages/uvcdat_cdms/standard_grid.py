@@ -6,7 +6,7 @@ Adapted from code by Peter Caldwell at LLNL (caldwell19@llnl.gov)
 
 '''
 
-import cdutil, genutil, sys, os, cdms2, MV2, time
+import cdutil, genutil, sys, os, cdms2, MV2, time, traceback
 import urllib2, copy, httplib
 from HTMLParser import HTMLParser
 
@@ -322,12 +322,12 @@ def standard_regrid( file, var, **args ):
         lon_d01 = file( "XLONG", squeeze=1 )
         
     corners_id = ".".join( [ lat_d01.id, lon_d01.id ] )
-    corners_data = product_cache.get( corners_id, None )
+    corners_data = product_cache.get( corners_id, None ) if product_cache else None
     if corners_data:
         ( lat_corners, lon_corners, roi ) = corners_data
     else:           
         lat_corners, lon_corners, roi = make_corners( lat_d01, lon_d01 )
-        product_cache[ corners_id ] = ( lat_corners, lon_corners, roi )
+        if product_cache : product_cache[ corners_id ] = ( lat_corners, lon_corners, roi )
     
     ni,nj = lat_d01.shape
     iaxis = TransientVirtualAxis("i", ni)
@@ -471,7 +471,7 @@ def standard_regrid_dataset_extend( args ):
             outfile.write( var, extend=1, axes=axis_list, index=time_index )
     return rv
 
-def standard_regrid_queue( q, ip, lock ):
+def standard_regrid_queue( q, ip = 0, lock = None ):
     from Queue import Empty
     from multiprocessing import Queue
     product_cache = {}
@@ -523,21 +523,26 @@ def standard_regrid_file( args, product_cache = None ):
         var.coordinates = None
         var.name = varname
         outfile_path = os.path.join( output_dataset_directory, "%s-%d.nc" % ( result_file, time_index ) )
-        lock.acquire()
+        if lock: lock.acquire()
         print " P[%d]: Writing to outfile %s" % ( iproc, outfile_path ); sys.stdout.flush()
         outfile = cdms2.createDataset( outfile_path )
         outfile.write( var, extend=1, axes=axis_list, index=0 )
         outfile.close()
-        print " P[%d]: Done writing to outfile" % ( iproc ); sys.stdout.flush()
-        lock.release()
+        if lock: lock.release()
     except Exception, err:
         print>>sys.stderr, " P[%d]: Error regridding data: %s " % ( iproc, str(err ) ); sys.stderr.flush()
+        traceback.print_exc()
         
-def exec_procs( exec_target, arg_tuple_list, ncores ):
-    from multiprocessing import Process
+def exec_procs( exec_target, arg_tuple_list, ncores, **args ):
+    from multiprocessing import Process, Lock
+    sync_write = args.get('sync_write', False)
+    write_lock = Lock() if sync_write else None
     proc_queue = [ ]                
-    for arg_tuple in arg_tuple_list:   
-        p = Process( target=exec_target, args=( arg_tuple, ) )
+    for iP, arg_tuple in enumerate( arg_tuple_list ): 
+        proc_args = list( arg_tuple ) 
+        proc_args.insert(0,iP)
+        proc_args.append( write_lock )
+        p = Process( target=exec_target, args=( proc_args, ) )
         proc_queue.append(  p  )
     run_list = []
     while True:
@@ -549,17 +554,19 @@ def exec_procs( exec_target, arg_tuple_list, ncores ):
         if len( run_list ) == 0: break
         for pindex, p in enumerate( run_list ):
             if not p.is_alive(): run_list.pop( pindex ) 
+            break
         time.sleep( 0.1 )  
 
-def exec_procs_queue( exec_target, arg_tuple_list, ncores ):
+def exec_procs_queue( exec_target, arg_tuple_list, ncores, **args ):
     from multiprocessing import Process, JoinableQueue, Lock
-    q = JoinableQueue()
-    lock = Lock()
+    sync_write = args.get('sync_write', False)
+    q = JoinableQueue() 
+    write_lock = Lock() if sync_write else None
     for arg_tuple in arg_tuple_list:
         q.put( arg_tuple )
     proc_queue = [ ]                
     for iP in range( ncores ):   
-        p = Process( target=exec_target, args=( q, iP, lock ) )
+        p = Process( target=exec_target, args=( q, iP, write_lock ) )
         proc_queue.append( ( iP, p ) )
         p.start()
     print " Running %d procs" % len( proc_queue ); sys.stdout.flush()
@@ -592,15 +599,16 @@ def get_file_list( location, patterns ):
                     break
         return file_list        
       
-def standard_regrid_dataset_multi( args ):
+def standard_regrid_dataset_multi( sys_args, **args ):
     from core.application import VistrailsApplicationInterface
     import argparse
     tg0 = time.time() 
+    use_queue = args.get('queue', False )
 
     parser = argparse.ArgumentParser(description='Regrid WRF data files.')
     parser.add_argument( '-s', '--specs', dest='specfile', nargs='?', default=None, help='WRF regrid spec file')
     parser.add_argument( 'FILE' )
-    ns = parser.parse_args( args )
+    ns = parser.parse_args( sys_args )
     
     if ns.specfile == None:
         print>>sys.stderr, "Error, Must specify a Regrid Spec File."
@@ -641,10 +649,11 @@ def standard_regrid_dataset_multi( args ):
     for time_index, fname in enumerate(files):
         for varname in varnames:   
             arg_tuple_list.append( ( time_index, fname, varname, specs) )
-            
-#    exec_procs( standard_regrid_file, arg_tuple_list, ncores )  
-    
-    exec_procs_queue( standard_regrid_queue, arg_tuple_list, ncores )
+              
+    if use_queue:
+        exec_procs_queue( standard_regrid_queue, arg_tuple_list, ncores )
+    else:
+        exec_procs( standard_regrid_file, arg_tuple_list, ncores )  
           
     tg1 = time.time()
     print "Full Dataset Regrid required %.2f secs." % ( tg1-tg0 )
@@ -655,7 +664,7 @@ def standard_regrid_dataset_multi( args ):
 if __name__ == '__main__':
 
     
-    standard_regrid_dataset_multi(sys.argv)  
+    standard_regrid_dataset_multi(sys.argv, queue=False)  
     
 #     if testPlot:
 #         try:
