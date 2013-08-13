@@ -473,19 +473,21 @@ def standard_regrid_dataset_extend( args ):
 
 def standard_regrid_queue( q, ip ):
     from Queue import Empty
-    from multiprocessing import Queue
+    from multiprocessing import Queue, Lock
     product_cache = {}
+    lock = Lock()
     try:
         while True:
             args = list( q.get( True, 1.0 ) )
             args.insert( 0, ip )
+            args.append( lock )
             standard_regrid_file( args, product_cache )
     except Empty:
         print "\n *** P[%d]:Exiting standard_regrid_file *** \n" % ip; sys.stdout.flush()
         return
     
 def standard_regrid_file( args, product_cache = None ): 
-    ( iproc, time_index, fname, varname, specs ) = args
+    ( iproc, time_index, fname, varname, specs, lock ) = args
     default_outfile = 'wrfout'
     t0 = specs.getFloat( 't0', 0.0 ) 
     dt = specs.getFloat( 'dt', 1.0 ) 
@@ -521,10 +523,13 @@ def standard_regrid_file( args, product_cache = None ):
         var.coordinates = None
         var.name = varname
         outfile_path = os.path.join( output_dataset_directory, "%s-%d.nc" % ( result_file, time_index ) )
+        lock.acquire()
         print " P[%d]: Writing to outfile %s" % ( iproc, outfile_path ); sys.stdout.flush()
         outfile = cdms2.createDataset( outfile_path )
         outfile.write( var, extend=1, axes=axis_list, index=0 )
         outfile.close()
+        print " P[%d]: Done writing to outfile" % ( iproc ); sys.stdout.flush()
+        lock.release()
     except Exception, err:
         print>>sys.stderr, " P[%d]: Error regridding data: %s " % ( iproc, str(err ) ); sys.stderr.flush()
         
