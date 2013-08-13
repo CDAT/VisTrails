@@ -554,7 +554,7 @@ def exec_procs_queue( exec_target, arg_tuple_list, ncores ):
     proc_queue = [ ]                
     for iP in range( ncores ):   
         p = Process( target=exec_target, args=( q, iP ) )
-        proc_queue.append( ( ip, p ) )
+        proc_queue.append( ( iP, p ) )
         p.start()
     print " Running %d procs" % len( proc_queue ); sys.stdout.flush()
     while True:
