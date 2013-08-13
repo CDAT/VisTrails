@@ -532,6 +532,8 @@ def standard_regrid_file( args, product_cache = None ):
     except Exception, err:
         print>>sys.stderr, " P[%d]: Error regridding data: %s " % ( iproc, str(err ) ); sys.stderr.flush()
         traceback.print_exc()
+        return 1
+    return 0
         
 def exec_procs( exec_target, arg_tuple_list, ncores, **args ):
     from multiprocessing import Process, Lock
@@ -543,18 +545,26 @@ def exec_procs( exec_target, arg_tuple_list, ncores, **args ):
         proc_args.insert(0,iP)
         proc_args.append( write_lock )
         p = Process( target=exec_target, args=( proc_args, ) )
-        proc_queue.append(  p  )
+        proc_queue.append(  (iP, proc_args, p)  )
     run_list = []
+    iPrestart = len( arg_tuple_list )
     while True:
         while ( len( run_list ) < ncores ):
-            try: p = proc_queue.pop()
+            try: ( iP, proc_args, p ) = proc_queue.pop()
             except: break
             p.start()
-            run_list.append( p )
+            run_list.append( ( iP, proc_args, p ) )
         if len( run_list ) == 0: break
-        for pindex, p in enumerate( run_list ):
-            if not p.is_alive(): run_list.pop( pindex ) 
-            break
+        for pindex, (iP, proc_args, p) in enumerate( run_list ):
+            if p.exitcode == 0: 
+                run_list.pop( pindex ) 
+                break
+            elif p.exitcode <> None:
+                print " Error executing proc %d, exitcode = %d - restarting!"  % ( iP, p.exitcode )
+                p1 = Process( target=exec_target, args=( proc_args, ) )
+                proc_args[0] = iPrestart
+                proc_queue.append(  (iPrestart, proc_args, p1)  )
+                iPrestart = iPrestart + 1
         time.sleep( 0.1 )  
 
 def exec_procs_queue( exec_target, arg_tuple_list, ncores, **args ):
