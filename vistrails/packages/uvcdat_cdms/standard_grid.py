@@ -327,8 +327,8 @@ def standard_regrid( file, var, **args ):
         ( lat_corners, lon_corners, roi ) = corners_data
     else:           
         lat_corners, lon_corners, roi = make_corners( lat_d01, lon_d01 )
-        if product_cache : product_cache[ corners_id ] = ( lat_corners, lon_corners, roi )
-    
+        if product_cache <> None: product_cache[ corners_id ] = ( lat_corners, lon_corners, roi )
+
     ni,nj = lat_d01.shape
     iaxis = TransientVirtualAxis("i", ni)
     jaxis = TransientVirtualAxis("j", nj)
@@ -680,7 +680,7 @@ def standard_regrid_dataset_multi( sys_args, **args ):
 if __name__ == '__main__':
 
     
-    standard_regrid_dataset_multi(sys.argv, queue=False)  
+    standard_regrid_dataset_multi(sys.argv, queue=True)  
     
 #     if testPlot:
 #         try:
