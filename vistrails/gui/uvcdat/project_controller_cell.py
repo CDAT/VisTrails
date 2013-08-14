@@ -165,7 +165,10 @@ class ControllerCell(object):
             
         def _getParent(version):
             if version != 0:
-                return vistrail.actionMap[version].parent
+                try:
+                    return vistrail.actionMap[version].parent
+                except KeyError, e:
+                    return None
             return None
 
         parent = _getParent(self.current_parent_version)
