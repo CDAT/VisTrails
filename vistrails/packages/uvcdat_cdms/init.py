@@ -30,7 +30,7 @@ import gui.uvcdat.regionExtractor #for certain toPython commands
 
 canvas = None
 original_gm_attributes = {}
-qcdatwindowholder = None
+reparentedVCSWindows = []
 
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
@@ -997,7 +997,7 @@ Please delete unused CDAT Cells in the spreadsheet.")
     
     def updateContents(self, inputPorts, fromToolBar=False):
         """ Get the vcs canvas, setup the cell's layout, and plot """      
-        global qcdatwindowholder
+        global reparentedVCSWindows
               
         spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         spreadsheetWindow.setUpdatesEnabled(False)
@@ -1015,9 +1015,8 @@ Please delete unused CDAT Cells in the spreadsheet.")
             self.layout().removeWidget(self.window)
             
         #get reparented window if it's there
-        if qcdatwindowholder is not None:
-            self.window = qcdatwindowholder
-            qcdatwindowholder = None
+        if len(reparentedVCSWindows) > 0:
+            self.window = reparentedVCSWindows.pop()
         else:
             self.window = VCSQtManager.window(self.windowId)
         self.layout().addWidget(self.window)
@@ -1102,14 +1101,14 @@ Please delete unused CDAT Cells in the spreadsheet.")
         deallocating. Overriding PyQt deleteLater to free up
         resources
         """
-        global qcdatwindowholder
+        global reparentedVCSWindows
         #we need to re-parent self.window or it will be deleted together with
         #this widget. We'll put it on the mainwindow
         _app = get_vistrails_application()
         if self.window is not None:
             self.window.setParent(_app.uvcdatWindow)
             self.window.setVisible(False)
-            qcdatwindowholder = self.window
+            reparentedVCSWindows.append(self.window)
         self.canvas = None
         self.window = None
         
