@@ -1091,6 +1091,10 @@ Please delete unused CDAT Cells in the spreadsheet.")
         spreadsheetWindow.setUpdatesEnabled(True)
         self.update()
         
+        #make sure reparented windows stay invisible
+        for window in reparentedVCSWindows:
+            window.setVisible(False)
+        
     def get_graphics_method(self, plotType, gmName):
         method_name = "get"+str(plotType).lower()
         return getattr(self.canvas,method_name)(gmName)
