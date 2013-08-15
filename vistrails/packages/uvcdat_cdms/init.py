@@ -75,7 +75,7 @@ class StandardGrid():
     
         if not file: return var
                
-        regrid_var = standard_regrid( file, var, cls.cache ) 
+        regrid_var = standard_regrid( file, var, cache=cls.cache ) 
         
         cls.cache[ cache_id ] = regrid_var
         return regrid_var
