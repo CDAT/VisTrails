@@ -23,12 +23,14 @@ from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
 from packages.uvcdat.init import Variable, Plot
+from gui.application import get_vistrails_application
 from gui.uvcdat.theme import UVCDATTheme
 from gui.uvcdat.cdmsCache import CdmsCache
 import gui.uvcdat.regionExtractor #for certain toPython commands
 
 canvas = None
 original_gm_attributes = {}
+qcdatwindowholder = None
 
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
@@ -994,7 +996,9 @@ Please delete unused CDAT Cells in the spreadsheet.")
         return k
     
     def updateContents(self, inputPorts, fromToolBar=False):
-        """ Get the vcs canvas, setup the cell's layout, and plot """        
+        """ Get the vcs canvas, setup the cell's layout, and plot """      
+        global qcdatwindowholder
+              
         spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         spreadsheetWindow.setUpdatesEnabled(False)
         # Set the canvas
@@ -1010,7 +1014,12 @@ Please delete unused CDAT Cells in the spreadsheet.")
         if self.window is not None:
             self.layout().removeWidget(self.window)
             
-        self.window = VCSQtManager.window(self.windowId)
+        #get reparented window if it's there
+        if qcdatwindowholder is not None:
+            self.window = qcdatwindowholder
+            qcdatwindowholder = None
+        else:
+            self.window = VCSQtManager.window(self.windowId)
         self.layout().addWidget(self.window)
         self.window.setVisible(True)    
         # Place the mainwindow that the plot will be displayed in, into this
@@ -1093,12 +1102,14 @@ Please delete unused CDAT Cells in the spreadsheet.")
         deallocating. Overriding PyQt deleteLater to free up
         resources
         """
+        global qcdatwindowholder
         #we need to re-parent self.window or it will be deleted together with
-        #this widget. The immediate parent is also deleted, so we will set to
-        # parent of the parent widget
+        #this widget. We'll put it on the mainwindow
+        _app = get_vistrails_application()
         if self.window is not None:
-            self.window.setParent(self.parent().parent())
+            self.window.setParent(_app.uvcdatWindow)
             self.window.setVisible(False)
+            qcdatwindowholder = self.window
         self.canvas = None
         self.window = None
         
