@@ -43,7 +43,8 @@ class ExecutionSpecs:
 
     def getBool(self, name, default_val = None ):
         val = self.specs.get( name, default_val )
-        return val.lower() in ( "yes", "true", "t", "1", "y" )
+        if ( type( val ) == type( "" ) ): return val.lower() in ( "yes", "true", "t", "1", "y" )
+        return bool( val )
 
     def getStr(self, name, default_val = None ):
         return self.specs.get( name, default_val ) 
