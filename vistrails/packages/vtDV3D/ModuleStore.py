@@ -19,8 +19,9 @@ def getDatabase():
     import api
     global moduleStoreDatabase
     page_id = 0
-    prj_controller = api.get_current_project_controller()
-    try: page_id = prj_controller.name
+    try: 
+        prj_controller = api.get_current_project_controller()
+        page_id = prj_controller.name
     except: pass
     return moduleStoreDatabase.setdefault( page_id, {} )
 
