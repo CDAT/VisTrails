@@ -53,9 +53,6 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'contourDensity', 'g', label='Contour Density', activeBound='max', setLevel=self.setContourDensity, getLevel=self.getContourDensity, layerDependent=True, windowing=False, rangeBounds=[ 3.0, 30.0, 1 ], bound=False, isValid=self.hasContours )
         self.addConfigurableLevelingFunction( 'contourColorScale', 'S', label='Contour Colormap Scale', units='data', setLevel=self.scaleContourColormap, getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRangeInput=1, isValid=self.hasContours )
         self.addConfigurableLevelingFunction( 'basemapLineThickness', 'm', label='Basemap Line Thickness', setLevel=self.setBasemapLineThickness, getLevel=self.getBasemapLineThickness, activeBound='min', layerDependent=False, rangeBounds=[ 0.0, 4.49 ], initRange=[ 1.0, 1.0, 1 ] )
-
-        #self.addConfigurableBooleanFunction('toggleOutlineMap', self.toggleOutlineMap, 'm', labels='Show Outline Map|Hide Outline Map', initVal=True )
-
         self.addUVCDATConfigGuiFunction( 'contourColormap', ColormapConfigurationDialog, 'K', label='Choose Contour Colormap', setValue=lambda data: self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasContours )
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
         self.polygonActor = None
