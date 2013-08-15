@@ -9,6 +9,7 @@ Adapted from code by Peter Caldwell at LLNL (caldwell19@llnl.gov)
 import cdutil, genutil, sys, os, cdms2, MV2, time, traceback
 import urllib2, copy, httplib
 from HTMLParser import HTMLParser
+from packages.uvcdat_cdms.multicore_process_executable import ExecutionTarget
 
 class HTMLCatalogParser(HTMLParser):
    
@@ -364,228 +365,169 @@ def standard_regrid( file, var, **args ):
 def getTimestampFromFilename( fname ):
     base_fname = os.path.splitext( os.path.basename( fname ) )[0]
 
-class RegridDatasetSpecs:
-    
-    def __init__( self, spec_file_path = None ):
-        self.specs = {}
-        if spec_file_path:
-            self.parse_specs( spec_file_path )
-        self.spec_directory = os.path.dirname( spec_file_path )
-        
-    def __str__(self):
-        return str( self.specs )
-        
-    def parse_specs( self, spec_file_path ):
-        self.specs = {}
-        context = None
-        spec_file = open( spec_file_path, "r" )  
-        for line in spec_file.readlines():
-            line_tokens = line.split('=')
-            spec_name = line_tokens[0].strip()
-            if spec_name:
-                if len( line_tokens ) > 0:
-                        values = [ elem.strip() for elem in line_tokens[1].split(',') ]
-                        self.specs[ spec_name ] = values[0] if ( len(values) == 1 ) else values
-                else:
-                    if spec_name[0] == '[':
-                        context = spec_name.strip('[]')
-                        
-    def getFloat(self, name, default_val = None ):
-        return float( self.specs.get( name, default_val ) )
-
-    def getInt(self, name, default_val = None ):
-        return int( self.specs.get( name, default_val ) )
-
-    def getStr(self, name, default_val = None ):
-        return self.specs.get( name, default_val ) 
-
-    def getPath(self, name, default_val = None ):
-        value = self.specs.get( name, default_val ) 
-        if value == ".": value = self.spec_directory
-        return os.path.expanduser( os.path.expandvars( value ) )
-
-    def getList(self, name, default_val = [] ):
-        val = self.specs.get( name, default_val ) 
-        if type( val ) == type( [] ): return val
-        return [ val ]
-    
-    def put( self, name, val ):
-        self.specs[ name ] = str( val )
-
 def print_test_value( test_id, var ):
     sample_val = var[ var.shape[0]/2, var.shape[1]/2, var.shape[2]/2 ]
     print " ---- VAR TEST %s: %f " % ( test_id, sample_val )
      
-def standard_regrid_dataset_extend( args ):
-    from core.application import VistrailsApplicationInterface
-    import argparse
-    default_outfile = '~/regridded_WRF-%d.nc' % int( time.time() )
-    spec_file = os.path.expanduser( "~/WRF_Dataset.txt" )
-    specs = RegridDatasetSpecs( spec_file )
-#     parser = argparse.ArgumentParser(description='Regrid WRF data files.')
-#     parser.add_argument( '-f', '--files', dest='files', nargs='*', help='WRF data files')
-#     parser.add_argument( '-r', '--result', dest='result', nargs='?', default=None, help='Resulting nc file (default: %s) ' % default_outfile)
-#     parser.add_argument('-v', '--vars', dest='varnames', nargs='*', help='Variable name(s)')
-#     parser.add_argument('-d', '--dir',  dest='directory', nargs='?', default=None, help='Data Directory')
-#     parser.add_argument( 'FILE' )    
-#     time_units = "hours since 2013-05-01"
-#     dt = 1.0
-#     t0 = 12.0
-#     ns = parser.parse_args( args )
-    
-    rv = None
-    t0 = specs.getFloat( 't0', 0.0 ) 
-    dt = specs.getFloat( 'dt', 1.0 ) 
-    time_units = specs.getStr( 'time_units', 'hours since 2000-01-01' )
-    directory = specs.getStr( 'directory', None )
-    
-    varnames =  specs.getList( 'vars' ) 
-    if not varnames:
-        print>>sys.stderr, "Error, No variables specified"
-        return
+#def standard_regrid_dataset_extend( args ):
+#    from core.application import VistrailsApplicationInterface
+#    import argparse
+#    default_outfile = '~/regridded_WRF-%d.nc' % int( time.time() )
+#    spec_file = os.path.expanduser( "~/WRF_Dataset.txt" )
+#    specs = RegridDatasetSpecs( spec_file )
+##     parser = argparse.ArgumentParser(description='Regrid WRF data files.')
+##     parser.add_argument( '-f', '--files', dest='files', nargs='*', help='WRF data files')
+##     parser.add_argument( '-r', '--result', dest='result', nargs='?', default=None, help='Resulting nc file (default: %s) ' % default_outfile)
+##     parser.add_argument('-v', '--vars', dest='varnames', nargs='*', help='Variable name(s)')
+##     parser.add_argument('-d', '--dir',  dest='directory', nargs='?', default=None, help='Data Directory')
+##     parser.add_argument( 'FILE' )    
+##     time_units = "hours since 2013-05-01"
+##     dt = 1.0
+##     t0 = 12.0
+##     ns = parser.parse_args( args )
+#    
+#    rv = None
+#    t0 = specs.getFloat( 't0', 0.0 ) 
+#    dt = specs.getFloat( 'dt', 1.0 ) 
+#    time_units = specs.getStr( 'time_units', 'hours since 2000-01-01' )
+#    directory = specs.getStr( 'directory', None )
+#    
+#    varnames =  specs.getList( 'vars' ) 
+#    if not varnames:
+#        print>>sys.stderr, "Error, No variables specified"
+#        return
+#
+#    files = specs.getList( 'files') 
+#    if not files:
+#        print>>sys.stderr, "Error, No WRF data files specified."
+#        return
+#    
+#    result_file = specs.getStr( 'outfile', os.path.expanduser( default_outfile ) )
+#    
+#    outfile = cdms2.createDataset( result_file )
+#    time_data = [ t0 + dt*istep for istep in range(len(files)) ]
+#    time_axis = cdms2.createAxis( time_data )    
+#    time_axis.designateTime()
+#    time_axis.id = "Time"
+#    time_axis.units = time_units
+#    time_index = 0
+#    axis_lists = {}
+#    for time_index, fname in enumerate(files):
+#        fpath = os.path.expanduser( fname if ( directory == None ) else os.path.join( directory, fname ) )
+#        cdms_file = cdms2.open( fpath )
+#        for varname in varnames:
+#            wrf_var = cdms_file( varname )
+#            var = standard_regrid( cdms_file, wrf_var )
+#            axis_list = axis_lists.get( varname )
+#            if not axis_list:
+#                axis_list = [ time_axis ]
+#                axis_list.extend( var.getAxisList() )
+#                axis_lists[ varname ] = axis_list
+#                rv = var
+#            outfile.write( var, extend=1, axes=axis_list, index=time_index )
+#    return rv
 
-    files = specs.getList( 'files') 
-    if not files:
-        print>>sys.stderr, "Error, No WRF data files specified."
-        return
-    
-    result_file = specs.getStr( 'outfile', os.path.expanduser( default_outfile ) )
-    
-    outfile = cdms2.createDataset( result_file )
-    time_data = [ t0 + dt*istep for istep in range(len(files)) ]
-    time_axis = cdms2.createAxis( time_data )    
-    time_axis.designateTime()
-    time_axis.id = "Time"
-    time_axis.units = time_units
-    time_index = 0
-    axis_lists = {}
-    for time_index, fname in enumerate(files):
-        fpath = os.path.expanduser( fname if ( directory == None ) else os.path.join( directory, fname ) )
-        cdms_file = cdms2.open( fpath )
-        for varname in varnames:
-            wrf_var = cdms_file( varname )
-            var = standard_regrid( cdms_file, wrf_var )
-            axis_list = axis_lists.get( varname )
-            if not axis_list:
-                axis_list = [ time_axis ]
-                axis_list.extend( var.getAxisList() )
-                axis_lists[ varname ] = axis_list
-                rv = var
-            outfile.write( var, extend=1, axes=axis_list, index=time_index )
-    return rv
 
-def standard_regrid_queue( q, ip = 0, lock = None ):
-    from Queue import Empty
-    from multiprocessing import Queue
-    product_cache = {}
-    try:
-        while True:
-            args = list( q.get( True, 1.0 ) )
-            args.insert( 0, ip )
-            args.append( lock )
-            standard_regrid_file( args, product_cache )
-            q.task_done()
-    except Empty:
-        print "\n *** P[%d]:Exiting standard_regrid_file *** \n" % ip; sys.stdout.flush()
-        return
+class RegridExecutionTarget(ExecutionTarget):
     
-def standard_regrid_file( args, product_cache = None ): 
-    ( iproc, time_index, fname, varname, specs, lock ) = args
-    default_outfile = 'wrfout'
-    t0 = specs.getFloat( 't0', 0.0 ) 
-    dt = specs.getFloat( 'dt', 1.0 ) 
-    time_data = [ t0 + dt*time_index ]
-    result_file = specs.getStr( 'outfile', os.path.expanduser( default_outfile ) )    
-    time_units = specs.getStr( 'time_units', 'hours since 2000-01-01' )
-    data_location = specs.getStr( 'data_location', '~' ) 
-    output_dataset_directory = specs.getStr( 'output_dataset_directory', '.' ) 
-    
-    fpath = os.path.join( data_location, fname )   
-    try:
-        cdms_file = cdms2.open( fpath )
-    except Exception:
-        print>>sys.stderr, "Can't read file %s " % ( fpath )
-        return
-    
-    try:
-        wrf_var = cdms_file( varname )
-    except Exception:
-        print>>sys.stderr, "Variable %s does not seem to exist in file %s " % ( varname, fpath )
-        return
-    
-    print " P[%d]: Regridding variable %s[%.2f] in file %s" % ( iproc, varname, time_data[0], fpath ); sys.stdout.flush()
-
-    try:
-        time_axis = cdms2.createAxis( time_data )    
-        time_axis.designateTime()
-        time_axis.id = "Time"
-        time_axis.units = time_units
-        var = standard_regrid( cdms_file, wrf_var, logfile='/tmp/regrid_log_%s_%d.txt' % (varname,time_index), cache = product_cache, iproc = iproc )
-        axis_list = [ time_axis ]
-        axis_list.extend( var.getAxisList() )
-        var.coordinates = None
-        var.name = varname
-        outfile_path = os.path.join( output_dataset_directory, "%s-%d.nc" % ( result_file, time_index ) )
-        if lock: lock.acquire()
-        print " P[%d]: Writing to outfile %s" % ( iproc, outfile_path ); sys.stdout.flush()
-        outfile = cdms2.createDataset( outfile_path )
-        outfile.write( var, extend=1, axes=axis_list, index=0 )
-        outfile.close()
-        if lock: lock.release()
-    except Exception, err:
-        print>>sys.stderr, " P[%d]: Error regridding data: %s " % ( iproc, str(err ) ); sys.stderr.flush()
-        traceback.print_exc()
-        return 1
-    return 0
+    def execute( self, args ): 
+        ( time_index, fname, varname, specs ) = args
+        default_outfile = 'wrfout'
+        t0 = specs.getFloat( 't0', 0.0 ) 
+        dt = specs.getFloat( 'dt', 1.0 ) 
+        time_data = [ t0 + dt*time_index ]
+        result_file = specs.getStr( 'outfile', os.path.expanduser( default_outfile ) )    
+        time_units = specs.getStr( 'time_units', 'hours since 2000-01-01' )
+        data_location = specs.getStr( 'data_location', '~' ) 
+        output_dataset_directory = specs.getStr( 'output_dataset_directory', '.' ) 
         
-def exec_procs( exec_target, arg_tuple_list, ncores, **args ):
-    from multiprocessing import Process, Lock
-    sync_write = args.get('sync_write', False)
-    write_lock = Lock() if sync_write else None
-    proc_queue = [ ]                
-    for iP, arg_tuple in enumerate( arg_tuple_list ): 
-        proc_args = list( arg_tuple ) 
-        proc_args.insert(0,iP)
-        proc_args.append( write_lock )
-        p = Process( target=exec_target, args=( proc_args, ) )
-        proc_queue.append(  (iP, proc_args, p)  )
-    run_list = []
-    iPrestart = len( arg_tuple_list )
-    while True:
-        while ( len( run_list ) < ncores ):
-            try: ( iP, proc_args, p ) = proc_queue.pop(0)
-            except: break
-            p.start()
-            print "\n ** Starting proc %d, Args:  %s   "  % ( iP, str( proc_args[0:4] ) ); sys.stderr.flush()
-            run_list.append( ( iP, proc_args, p, 0 ) )
-        if len( run_list ) == 0: break
-        for pindex, ( iP, proc_args, p, iRestart ) in enumerate( run_list ):
-            if p.exitcode <> None:
-                if (p.exitcode <> 0) and (iRestart < maxNRestarts):
-                    print>>sys.stderr, "\n ** Error executing proc %d, exitcode = %d - restarting! ** "  % ( iP, p.exitcode ); sys.stderr.flush()
-                    print>>sys.stderr, " Proc Args:  %s   %s \n" % ( str( proc_args[0:4] ), str( proc_args[4] ) )
-                    proc_args[0] = iPrestart
-                    p1 = Process( target=exec_target, args=( proc_args, ) )
-                    proc_queue.insert( 0, (iPrestart, proc_args, p1, iRestart + 1)  )
-                    iPrestart = iPrestart + 1
-                run_list.pop( pindex ) 
-                break
-        time.sleep( 0.1 )  
-
-def exec_procs_queue( exec_target, arg_tuple_list, ncores, **args ):
-    from multiprocessing import Process, JoinableQueue, Lock
-    sync_write = args.get('sync_write', False)
-    q = JoinableQueue() 
-    write_lock = Lock() if sync_write else None
-    for arg_tuple in arg_tuple_list:
-        q.put( arg_tuple )
-    proc_queue = [ ]                
-    for iP in range( ncores ):   
-        p = Process( target=exec_target, args=( q, iP, write_lock ) )
-        proc_queue.append( ( iP, p ) )
-        p.start()
-    print " Running %d procs" % len( proc_queue ); sys.stdout.flush()
-    q.join()
+        fpath = os.path.join( data_location, fname )   
+        try:
+            print " P[%d]: opening file: %s " % ( self.proc_index, fpath ); sys.stdout.flush()
+            cdms_file = cdms2.open( fpath )
+        except Exception:
+            print>>sys.stderr, "Can't read file %s " % ( fpath )
+            return
+        
+        try:
+            print " P[%d]: opening var: %s. " % ( self.proc_index, varname ); sys.stdout.flush()
+            wrf_var = cdms_file( varname )
+            print " P[%d]: Done read. " % ( self.proc_index ); sys.stdout.flush()
+        except Exception:
+            print>>sys.stderr, "Variable %s does not seem to exist in file %s " % ( varname, fpath )
+            return
+        
+        print " P[%d]: Regridding variable %s[%.2f] in file %s" % ( self.proc_index, varname, time_data[0], fpath ); sys.stdout.flush()
+    
+        try:
+            time_axis = cdms2.createAxis( time_data )    
+            time_axis.designateTime()
+            time_axis.id = "Time"
+            time_axis.units = time_units
+            var = standard_regrid( cdms_file, wrf_var, logfile='/tmp/regrid_log_%s_%d.txt' % (varname,time_index), cache = self.product_cache, iproc = self.proc_index )
+            axis_list = [ time_axis ]
+            axis_list.extend( var.getAxisList() )
+            var.coordinates = None
+            var.name = varname
+            outfile_path = os.path.join( output_dataset_directory, "%s-%d.nc" % ( result_file, time_index ) )
+            print " P[%d]: Writing to outfile %s" % ( self.proc_index, outfile_path ); sys.stdout.flush()
+            outfile = cdms2.createDataset( outfile_path )
+            outfile.write( var, extend=1, axes=axis_list, index=0 )
+            outfile.close()
+        except Exception, err:
+            print>>sys.stderr, " P[%d]: Error regridding data: %s " % ( self.proc_index, str(err ) ); sys.stderr.flush()
+            traceback.print_exc()
+            return 1
+        return 0
+        
+#def exec_procs( exec_target, arg_tuple_list, ncores, **args ):
+#    from multiprocessing import Process, Lock
+#    sync_write = args.get('sync_write', False)
+#    write_lock = Lock() if sync_write else None
+#    proc_queue = [ ]                
+#    for iP, arg_tuple in enumerate( arg_tuple_list ): 
+#        proc_args = list( arg_tuple ) 
+#        proc_args.insert(0,iP)
+#        proc_args.append( write_lock )
+#        p = Process( target=exec_target, args=( proc_args, ) )
+#        proc_queue.append(  (iP, proc_args, p)  )
+#    run_list = []
+#    iPrestart = len( arg_tuple_list )
+#    while True:
+#        while ( len( run_list ) < ncores ):
+#            try: ( iP, proc_args, p ) = proc_queue.pop(0)
+#            except: break
+#            p.start()
+#            print "\n ** Starting proc %d, Args:  %s   "  % ( iP, str( proc_args[0:4] ) ); sys.stderr.flush()
+#            run_list.append( ( iP, proc_args, p, 0 ) )
+#        if len( run_list ) == 0: break
+#        for pindex, ( iP, proc_args, p, iRestart ) in enumerate( run_list ):
+#            if p.exitcode <> None:
+#                if (p.exitcode <> 0) and (iRestart < maxNRestarts):
+#                    print>>sys.stderr, "\n ** Error executing proc %d, exitcode = %d - restarting! ** "  % ( iP, p.exitcode ); sys.stderr.flush()
+#                    print>>sys.stderr, " Proc Args:  %s   %s \n" % ( str( proc_args[0:4] ), str( proc_args[4] ) )
+#                    proc_args[0] = iPrestart
+#                    p1 = Process( target=exec_target, args=( proc_args, ) )
+#                    proc_queue.insert( 0, (iPrestart, proc_args, p1, iRestart + 1)  )
+#                    iPrestart = iPrestart + 1
+#                run_list.pop( pindex ) 
+#                break
+#        time.sleep( 0.1 )  
+#
+#def exec_procs_queue( exec_target, arg_tuple_list, ncores, **args ):
+#    from multiprocessing import Process, JoinableQueue, Lock
+#    sync_write = args.get('sync_write', False)
+#    q = JoinableQueue() 
+#    write_lock = Lock() if sync_write else None
+#    for arg_tuple in arg_tuple_list:
+#        q.put( arg_tuple )
+#    proc_queue = [ ]                
+#    for iP in range( ncores ):   
+#        p = Process( target=exec_target, args=( q, iP, write_lock ) )
+#        proc_queue.append( ( iP, p ) )
+#        p.start()
+#    print " Running %d procs" % len( proc_queue ); sys.stdout.flush()
+#    q.join()
 #     while True:
 #         if len( proc_queue ) == 0: break
 #         for pindex, ( ip, p ) in enumerate( proc_queue ):
@@ -595,10 +537,10 @@ def exec_procs_queue( exec_target, arg_tuple_list, ncores, **args ):
 #                 break
 #         time.sleep( 0.1 )  
 
-def exec_procs_pool( exec_target, arg_tuple_list, ncores ):
-    from multiprocessing import Pool
-    pool = Pool(processes=ncores) 
-    pool.map( exec_target, arg_tuple_list )
+#def exec_procs_pool( exec_target, arg_tuple_list, ncores ):
+#    from multiprocessing import Pool
+#    pool = Pool(processes=ncores) 
+#    pool.map( exec_target, arg_tuple_list )
 
 def get_file_list( location, patterns ):
     import fnmatch
@@ -615,23 +557,25 @@ def get_file_list( location, patterns ):
         file_list.reverse()   
         return file_list     
       
-def standard_regrid_dataset_multi( sys_args, **args ):
+   
+#--------------------------------------------------------------------------------------------------------------------------
+if __name__ == '__main__':   
     from core.application import VistrailsApplicationInterface
+    from packages.uvcdat_cdms.multicore_process_executable import ExecutionSpecs, MulticoreExecutable
     import argparse
     tg0 = time.time() 
-    use_queue = args.get('queue', False )
 
     parser = argparse.ArgumentParser(description='Regrid WRF data files.')
     parser.add_argument( '-s', '--specs', dest='specfile', nargs='?', default=None, help='WRF regrid spec file')
     parser.add_argument( 'FILE' )
-    ns = parser.parse_args( sys_args )
+    ns = parser.parse_args( sys.argv )
     
     if ns.specfile == None:
         print>>sys.stderr, "Error, Must specify a Regrid Spec File."
-        return 
+        sys.exit(1) 
         
     spec_file = os.path.expanduser( ns.specfile )
-    specs = RegridDatasetSpecs( spec_file )
+    specs = ExecutionSpecs( spec_file )
        
     data_location = specs.getPath( 'data_location', '~' )
     out_directory = specs.getPath( 'out_directory', '.' )
@@ -644,7 +588,7 @@ def standard_regrid_dataset_multi( sys_args, **args ):
         os.mkdir(  output_dataset_directory )
     except OSError:
         print>>sys.stderr, "Error, Can't create output directory: ", output_dataset_directory
-        return
+        sys.exit(2) 
     
     print "Regridding WRF files to %s" % ( output_dataset_directory )
     specs.put( 'output_dataset_directory', output_dataset_directory )
@@ -652,44 +596,27 @@ def standard_regrid_dataset_multi( sys_args, **args ):
     filename_patterns = specs.getList( 'files') 
     if not filename_patterns:
         print>>sys.stderr, "Error, No WRF data files specified."
-        return
+        sys.exit(3) 
     
     files = get_file_list( data_location, filename_patterns )
 
     varnames =  specs.getList( 'vars' ) 
     if not varnames:
         print>>sys.stderr, "Error, No variables specified"
-        return
+        sys.exit(4) 
    
     arg_tuple_list = [ ]                
     for time_index, fname in enumerate(files):
         for varname in varnames:   
             arg_tuple_list.append( ( time_index, fname, varname, specs) )
-              
-    if use_queue:
-        exec_procs_queue( standard_regrid_queue, arg_tuple_list, ncores )
-    else:
-        exec_procs( standard_regrid_file, arg_tuple_list, ncores )  
+     
+    multicore_exec = MulticoreExecutable( RegridExecutionTarget, ncores=ncores ) 
+    multicore_exec.execute( arg_tuple_list )      
           
     tg1 = time.time()
     print "Full Dataset Regrid required %.2f secs." % ( tg1-tg0 )
     cmd = " cd '%s'; cdscan -x dataset.xml *.nc" % output_dataset_directory
     os.system(cmd)
-   
-#--------------------------------------------------------------------------------------------------------------------------
-if __name__ == '__main__':
 
     
-    standard_regrid_dataset_multi(sys.argv, queue=True)  
-    
-#     if testPlot:
-#         try:
-#             startup_app()
-#             from packages.vtDV3D.API import UVCDAT_API, PlotType
-#             uvcdat_api = UVCDAT_API()
-#             uvcdat_api.createPlot( inputs=[ var ], type=PlotType.SLICER ) # , viz_parms=port_map )
-#             uvcdat_api.run()
-#         except Exception, err:
-#             print str(err)
- 
     
