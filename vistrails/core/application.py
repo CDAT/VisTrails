@@ -186,6 +186,10 @@ The builder window can be accessed by a spreadsheet menu option.")
              help=("Set output log filename (empty string for stdout e.g. -o \"\")"))
         add ("-N", "--noErrorReporting", action="store_true",
              help=("Do not prompt to send anonymous error information."))
+        add ("-C", "--testUVCDAT", action="store_true",
+             help=("Run the UVCDAT tests to be used by CTest"))
+        add ("-A", "--cdatSourceDir", action="store", type="string", dest="cdatSourceDir",
+             default="", help=("Set the cdat source dir (Used when running uvcdat tests"))
         
         command_line.CommandLineParser.parse_options()
 
@@ -285,6 +289,10 @@ The builder window can be accessed by a spreadsheet menu option.")
             self.temp_configuration.noDebugPopups = bool(get('noDebugPopups'))
         if get('time')!=None:
             self.temp_configuration.time = get("time")
+        if get('testUVCDAT')!=None:
+            self.temp_configuration.testUVCDAT = bool(get("testUVCDAT"))
+        if get('cdatSourceDir')!=None:
+            self.temp_configuration.cdatSourceDir = get("cdatSourceDir")
         if get('output')!=None:
             self.temp_configuration.output = get("output")
         if get('noErrorReporting')!=None:

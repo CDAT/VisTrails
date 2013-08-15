@@ -213,6 +213,16 @@ parameters from other instances")
             QtCore.QTimer().singleShot(self.temp_configuration.time*1000, 
                                        self.uvcdatWindow.quit)
         
+        if self.temp_configuration.testUVCDAT:
+           from tests.uvcdat.test_manager import UVCDATTestManager
+           cdat_source_dir = self.temp_configuration.cdatSourceDir
+           testManager = UVCDATTestManager(cdat_source_dir, self.uvcdatWindow)
+           failCount = testManager.run_tests()
+           
+           #use a single shot timer to ensure _exec has ran before trying to quit
+           quit_function = lambda: QtCore.QCoreApplication.exit(failCount)
+           QtCore.QTimer().singleShot(0, quit_function)
+        
         self.uvcdatWindow.preferences.setupDefaultPlotOptions()
             
         
