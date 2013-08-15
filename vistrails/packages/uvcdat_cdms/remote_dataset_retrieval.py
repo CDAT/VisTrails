@@ -100,7 +100,7 @@ class ThreddsDirectoryParser(HTMLCatalogParser):
             self.child_node_list.append ( self.child_node )
             self.child_node = None
 
-class DatasetRetriever:
+class DatasetCatalogRetriever:
     
     def __init__( self, location, **args ):
        self.parser = None

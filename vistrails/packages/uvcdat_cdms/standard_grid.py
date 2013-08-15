@@ -450,7 +450,7 @@ class RegridExecutionTarget(ExecutionTarget):
 #--------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':   
     from packages.uvcdat_cdms.multicore_process_executable import ExecutionSpecs, MulticoreExecutable
-    from packages.uvcdat_cdms.remote_dataset_retrieval import DatasetRetriever
+    from packages.uvcdat_cdms.remote_dataset_retrieval import DatasetCatalogRetriever
     import argparse
     tg0 = time.time() 
 
@@ -468,6 +468,7 @@ if __name__ == '__main__':
        
     data_location = specs.getPath( 'data_location', '~' )
     out_directory = specs.getPath( 'out_directory', '.' )
+    run_cdscan = specs.getBool( 'run_cdscan', False )
     ncores = specs.getInt( 'ncores', 4 )
     
     WRF_dataset_name = specs.getStr( 'name', 'WRF' )
@@ -487,8 +488,8 @@ if __name__ == '__main__':
         print>>sys.stderr, "Error, No WRF data files specified."
         sys.exit(3) 
     
-    dset_retriever = DatasetRetriever( data_location )
-    files = dset_retriever.get_file_list( filename_patterns )
+    remote_dset_cat = DatasetCatalogRetriever( data_location )
+    files = remote_dset_cat.get_file_list( filename_patterns )
 
     varnames =  specs.getList( 'vars' ) 
     if not varnames:
@@ -505,8 +506,10 @@ if __name__ == '__main__':
           
     tg1 = time.time()
     print "Full Dataset Regrid required %.2f secs." % ( tg1-tg0 )
-    cmd = " cd '%s'; cdscan -x dataset.xml *.nc" % output_dataset_directory
-    os.system(cmd)
+    
+    if run_cdscan:
+        cmd = " cd '%s'; cdscan -x dataset.xml *.nc" % output_dataset_directory
+        os.system(cmd)
 
     
     

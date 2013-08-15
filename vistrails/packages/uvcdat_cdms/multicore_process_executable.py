@@ -41,6 +41,10 @@ class ExecutionSpecs:
     def getInt(self, name, default_val = None ):
         return int( self.specs.get( name, default_val ) )
 
+    def getBool(self, name, default_val = None ):
+        val = self.specs.get( name, default_val )
+        return val.lower() in ( "yes", "true", "t", "1", "y" )
+
     def getStr(self, name, default_val = None ):
         return self.specs.get( name, default_val ) 
 
