@@ -537,6 +537,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             if pipeline: UVCDATGuiConfigFunction.clearModules( pipeline )
             
             IVModuleConfigurationDialog.reset()
+            StandardGrid.clear_cache()
             self.cellWidget = None 
             self.builtCellWidget = False                                 
         
@@ -913,13 +914,16 @@ class PM_MapCell3D( PM_DV3DCell ):
         self.updateMapOpacity() 
 
     def updateMapOpacity(self, cmap_index=0 ):
-        self.baseMapActor.SetOpacity( self.map_opacity[0] )
-        self.render()
+        if self.baseMapActor:
+            self.baseMapActor.SetOpacity( self.map_opacity[0] )
+            self.render()
         
     def buildRendering(self):
         PM_DV3DCell.buildRendering( self )
+        md = self.getInputSpec().getMetadata()
+        latLonGrid = md.get( 'latLonGrid', True )
         self.enableBasemap = self.getInputValue( "enable_basemap", True )
-        if self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
+        if latLonGrid and self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
             if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
             world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None 
             map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
