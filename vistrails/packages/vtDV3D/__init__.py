@@ -20,7 +20,8 @@ from core.bundles import py_import
 
 def package_dependencies():
     from core.packagemanager import get_package_manager
-    dependencies = [vtk_pkg_identifier, 'edu.utah.sci.vistrails.spreadsheet']
+    dependencies = [vtk_pkg_identifier, 'edu.utah.sci.vistrails.spreadsheet',
+                    'gov.llnl.uvcdat', 'gov.llnl.uvcdat.cdms']
     if get_package_manager().has_package('edu.utah.sci.vistrails.matplotlib'):
         dependencies.append('edu.utah.sci.vistrails.matplotlib')
     return dependencies
