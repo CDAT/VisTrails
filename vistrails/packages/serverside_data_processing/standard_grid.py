@@ -7,7 +7,7 @@ Adapted from code by Peter Caldwell at LLNL (caldwell19@llnl.gov)
 '''
 
 import cdutil, genutil, sys, os, cdms2, MV2, time, traceback
-from packages.uvcdat_cdms.multicore_process_executable import ExecutionTarget
+from multicore_process_executable import ExecutionTarget
         
 def make_corners(lat,lon,fname=0):
     """
@@ -449,8 +449,8 @@ class RegridExecutionTarget(ExecutionTarget):
    
 #--------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':   
-    from packages.uvcdat_cdms.multicore_process_executable import ExecutionSpecs, MulticoreExecutable
-    from packages.uvcdat_cdms.remote_dataset_retrieval import DatasetCatalogRetriever
+    from multicore_process_executable import ExecutionSpecs, MulticoreExecutable
+    from remote_dataset_retrieval import DatasetCatalogRetriever
     import argparse
     tg0 = time.time() 
 
