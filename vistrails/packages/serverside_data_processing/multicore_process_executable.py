@@ -21,19 +21,24 @@ class ExecutionSpecs:
     def parse_specs( self, spec_file_path ):
         self.specs = {}
         context = None
-        spec_file = open( spec_file_path, "r" )  
-        for line in spec_file.readlines():
-            line = line.strip()
-            if line and (line[0] <> '#'):
-                line_tokens = line.split('=')
-                spec_name = line_tokens[0].strip()
-                if spec_name:
-                    if len( line_tokens ) > 0:
-                            values = [ elem.strip() for elem in line_tokens[1].split(',') ]
-                            self.specs[ spec_name ] = values[0] if ( len(values) == 1 ) else values
-                    else:
-                        if spec_name[0] == '[':
-                            context = spec_name.strip('[]')
+        try:
+            spec_file = open( spec_file_path, "r" )  
+            for line in spec_file.readlines():
+                line = line.strip()
+                if line and (line[0] <> '#'):
+                    if '=' in line:      line_tokens = line.split('=')
+                    elif ':' in line:    line_tokens = line.split(':')
+                    else:                line_tokens = [ line ]
+                    spec_name = line_tokens[0].strip()
+                    if spec_name:
+                        if len( line_tokens ) > 1:
+                                values = [ elem.strip() for elem in line_tokens[1].split(',') ]
+                                self.specs[ spec_name ] = values[0] if ( len(values) == 1 ) else values
+                        else:
+                            if spec_name[0] == '[':
+                                context = spec_name.strip('[]')
+        except Exception, err:
+            print>>sys.stderr, "Error parsing spec file %s:\n %s " % ( spec_file_path, str(err) )
                         
     def getFloat(self, name, default_val = None ):
         return float( self.specs.get( name, default_val ) )
