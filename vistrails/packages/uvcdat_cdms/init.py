@@ -57,7 +57,7 @@ class StandardGrid():
     @classmethod
     def regrid( cls, var ):
         from api import get_current_project_controller
-        from standard_grid import standard_regrid 
+        from packages.serverside_data_processing.standard_grid import standard_regrid 
         
         proj_controller = get_current_project_controller()
         cdms_var = proj_controller.defined_variables[ var.id ]  
