@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'diagnosticsDockWidget.ui'
 #
-# Created: Wed Aug  7 13:32:50 2013
+# Created: Fri Aug 16 09:27:08 2013
 #      by: PyQt4 UI code generator 4.10
 #
 # WARNING! All changes made in this file will be lost!
@@ -31,20 +31,27 @@ class Ui_DiagnosticDockWidget(object):
         self.dockWidgetContents.setObjectName(_fromUtf8("dockWidgetContents"))
         self.verticalLayout_2 = QtGui.QVBoxLayout(self.dockWidgetContents)
         self.verticalLayout_2.setObjectName(_fromUtf8("verticalLayout_2"))
-        self.horizontalLayout = QtGui.QHBoxLayout()
-        self.horizontalLayout.setObjectName(_fromUtf8("horizontalLayout"))
-        spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
-        self.horizontalLayout.addItem(spacerItem)
-        self.labelType = QtGui.QLabel(self.dockWidgetContents)
-        self.labelType.setObjectName(_fromUtf8("labelType"))
-        self.horizontalLayout.addWidget(self.labelType)
-        self.comboBox = QtGui.QComboBox(self.dockWidgetContents)
-        self.comboBox.setObjectName(_fromUtf8("comboBox"))
-        self.horizontalLayout.addWidget(self.comboBox)
-        self.verticalLayout_2.addLayout(self.horizontalLayout)
+        self.gridLayout = QtGui.QGridLayout()
+        self.gridLayout.setObjectName(_fromUtf8("gridLayout"))
+        self.comboBoxVariable = QtGui.QComboBox(self.dockWidgetContents)
+        self.comboBoxVariable.setObjectName(_fromUtf8("comboBoxVariable"))
+        self.gridLayout.addWidget(self.comboBoxVariable, 1, 0, 1, 1)
+        self.comboBoxType = QtGui.QComboBox(self.dockWidgetContents)
+        self.comboBoxType.setObjectName(_fromUtf8("comboBoxType"))
+        self.gridLayout.addWidget(self.comboBoxType, 0, 0, 1, 1)
+        self.comboBoxObservation = QtGui.QComboBox(self.dockWidgetContents)
+        self.comboBoxObservation.setObjectName(_fromUtf8("comboBoxObservation"))
+        self.gridLayout.addWidget(self.comboBoxObservation, 0, 1, 1, 1)
+        self.comboBoxSeason = QtGui.QComboBox(self.dockWidgetContents)
+        self.comboBoxSeason.setObjectName(_fromUtf8("comboBoxSeason"))
+        self.gridLayout.addWidget(self.comboBoxSeason, 1, 1, 1, 1)
+        self.verticalLayout_2.addLayout(self.gridLayout)
         self.treeWidget = QtGui.QTreeWidget(self.dockWidgetContents)
+        self.treeWidget.setAlternatingRowColors(True)
+        self.treeWidget.setTextElideMode(QtCore.Qt.ElideRight)
         self.treeWidget.setObjectName(_fromUtf8("treeWidget"))
         self.treeWidget.headerItem().setText(0, _fromUtf8("1"))
+        self.treeWidget.header().setVisible(False)
         self.verticalLayout_2.addWidget(self.treeWidget)
         self.buttonBox = QtGui.QDialogButtonBox(self.dockWidgetContents)
         self.buttonBox.setStandardButtons(QtGui.QDialogButtonBox.Apply|QtGui.QDialogButtonBox.Cancel)
@@ -57,5 +64,4 @@ class Ui_DiagnosticDockWidget(object):
 
     def retranslateUi(self, DiagnosticDockWidget):
         DiagnosticDockWidget.setWindowTitle(_translate("DiagnosticDockWidget", "Diagnostics", None))
-        self.labelType.setText(_translate("DiagnosticDockWidget", "Diagnostic", None))
 

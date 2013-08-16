@@ -15,7 +15,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         self.setupUi(self)
         
         #initialize data
-        #@todo: move data to external file to be read in
+        #@todo: maybe move data to external file to be read in
         self.groups = {'AMWG': {'AMWG Group 1': ['Diagnostics 1', 
                                                  'Diagnostics 2', 
                                                  'Diagnostics 3'],
@@ -35,8 +35,12 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
                                                  'Diagnostics 17', 
                                                  'Diagnostics 18',]}}
         
+        self.variables = ['Variable 1', 'Variable 2', 'Variable 3']
+        self.observations = ['Obs 1', 'Obs 2', 'Obs 3']
+        self.seasons = ['DJF', 'JJA', 'MJJ', 'ASO', 'ANN']
+        
         #setup signals
-        self.comboBox.currentIndexChanged.connect(self.setupDiagnosticTree)
+        self.comboBoxType.currentIndexChanged.connect(self.setupDiagnosticTree)
         self.buttonBox.clicked.connect(self.buttonClicked)
         self.treeWidget.itemChanged.connect(self.itemChecked)
         
@@ -45,7 +49,10 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         
         self.setupDiagnosticsMenu()
         
-        self.comboBox.addItems(DiagnosticsDockWidget.Types)
+        self.comboBoxType.addItems(DiagnosticsDockWidget.Types)
+        self.comboBoxVariable.addItems(self.variables)
+        self.comboBoxObservation.addItems(self.observations)
+        self.comboBoxSeason.addItems(self.seasons)
         
     def setupDiagnosticsMenu(self):
         menu = self.parent().menuBar().addMenu('&Diagnostics')
@@ -63,13 +70,13 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             menu.addAction(action)
             
     def diagnosticTriggered(self, diagnosticType):
-        index = self.comboBox.findText(diagnosticType)
-        self.comboBox.setCurrentIndex(index)
+        index = self.comboBoxType.findText(diagnosticType)
+        self.comboBoxType.setCurrentIndex(index)
         self.show()
         self.raise_()
         
     def setupDiagnosticTree(self, index):
-        diagnosticType = str(self.comboBox.itemText(index))
+        diagnosticType = str(self.comboBoxType.itemText(index))
         self.treeWidget.clear()
         for groupName, groupValues in self.groups[diagnosticType].items():
             groupItem = QtGui.QTreeWidgetItem(self.treeWidget, [groupName])
@@ -81,9 +88,27 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
     def buttonClicked(self, button):
         role = self.buttonBox.buttonRole(button) 
         if role == QtGui.QDialogButtonBox.ApplyRole:
-            pass
+            self.applyClicked()
         elif role == QtGui.QDialogButtonBox.RejectRole:
-            self.close()
+            self.cancelClicked()
+            
+    def applyClicked(self):
+        diagnostic = str(self.checkedItem.text(0))
+        group = str(self.checkedItem.parent().text(0))
+        type = str(self.comboBoxType.currentText())
+        observation = str(self.comboBoxObservation.currentText())
+        variable = str(self.comboBoxVariable.currentText())
+        season = str(self.comboBoxSeason.currentText())
+        
+        print "diagnostic: %s" % diagnostic
+        print "group: %s" % group
+        print "type: %s" % type
+        print "observation: %s" % observation
+        print "variable: %s" % variable
+        print "season: %s" % season
+        
+    def cancelClicked(self):
+        self.close()
             
     def itemChecked(self, item, column):
         if item.checkState(column) == Qt.Checked:
