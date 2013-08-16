@@ -466,7 +466,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             portName = orec.name
             selectedLevel = orec.getSelectedLevel() if ( self.currentLevel == None ) else self.currentLevel
             ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
-            default_dtype = np.float
+            default_dtype = np.float32
             scalar_dtype = args.get( "dtype", default_dtype )
             self._max_scalar_value = getMaxScalarValue( scalar_dtype )
             self._range = [ 0.0, self._max_scalar_value ]  
@@ -504,8 +504,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         if type( range_max ).__name__ == 'MaskedConstant': range_max = 0.0
                         var_md = copy.copy( varDataMasked.attributes )
                                                           
-                        if scalar_dtype == np.float:
-                            varData = varDataMasked.filled( 1.0e-15 * range_min ).ravel('F')
+                        if ( scalar_dtype == np.float32 ) or ( scalar_dtype == np.float64 ):
+                            varData = varDataMasked.filled( 1.0e-15 * range_min ).astype(scalar_dtype).ravel('F')
                         else:
                             shift = -range_min
                             scale = ( self._max_scalar_value ) / ( range_max - range_min ) if  ( range_max > range_min ) else 1.0        
@@ -542,7 +542,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             gridSpacing = varDataSpecs[ 'gridSpacing' ]
             if   scalar_dtype == np.ushort: image_data.SetScalarTypeToUnsignedShort()
             elif scalar_dtype == np.ubyte:  image_data.SetScalarTypeToUnsignedChar()
-            elif scalar_dtype == np.float:  image_data.SetScalarTypeToFloat()
+            elif scalar_dtype == np.float32:  image_data.SetScalarTypeToFloat()
+            elif scalar_dtype == np.float64:  image_data.SetScalarTypeToDouble()
             image_data.SetOrigin( outputOrigin[0], outputOrigin[1], outputOrigin[2] )
 #            image_data.SetOrigin( 0.0, 0.0, 0.0 )
             if ndim == 3: extent = [ outputExtent[0], outputExtent[1], outputExtent[2], outputExtent[3], outputExtent[4], outputExtent[5] ]   
