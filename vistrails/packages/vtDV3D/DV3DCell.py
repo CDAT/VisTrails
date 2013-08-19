@@ -873,7 +873,7 @@ class PM_MapCell3D( PM_DV3DCell ):
         self.baseMapActor = None
         self.enableBasemap = True
         self.map_opacity = [ 0.4, 0.4 ]
-        self.addConfigurableLevelingFunction( 'map_opacity', 'M', label='Base Map Opacity', rangeBounds=[ 0.0, 1.0 ],  setLevel=self.setMapOpacity, activeBound='min',  getLevel=self.getMapOpacity, isDataValue=False, layerDependent=True, bound = False )
+        self.addConfigurableLevelingFunction( 'map_opacity', 'M', label='Base Map Opacity', rangeBounds=[ 0.0, 1.0 ],  setLevel=self.setMapOpacity, activeBound='min',  getLevel=self.getMapOpacity, isDataValue=False, layerDependent=True, group=ConfigGroup.BaseMap, bound = False )
 
     def updateModule( self, **args ):
 #        print "Update DV3D Cell, mid = %s, location = %s, time = %s" % ( str(self.moduleID), str((self.location.col,self.location.row)), str(self.timeIndex) )

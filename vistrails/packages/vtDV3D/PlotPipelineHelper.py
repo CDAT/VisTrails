@@ -186,11 +186,11 @@ class DV3DRangeConfigTab(QWidget):
     def revertConfig(self):
         self.controller.revertConfig()
 
-    def enable(self, minEnabled, maxEnabled ): 
+    def enable(self, minEnabled, maxEnabled, labels = [ 'Range Min: ', 'Range Max: ' ]  ): 
         self.rangeMinEditor.enable( minEnabled )
-        self.rangeMinEditor.setLabel( 'Value: ' if not maxEnabled else 'Range Min: ' )
+        self.rangeMinEditor.setLabel( 'Value: ' if not maxEnabled else  labels[0] )
         self.rangeMaxEditor.enable( maxEnabled )
-        self.rangeMaxEditor.setLabel( 'Value: ' if not minEnabled else 'Range Max: ' )
+        self.rangeMaxEditor.setLabel( 'Value: ' if not minEnabled else  labels[1] )
 
     def setTitle(self, title ):
         self.cfg_action_label.setText( title )
@@ -239,11 +239,11 @@ class DV3DRangeDisplayTab(QWidget):
         gui_layout.addStretch()  
         self.setLayout(gui_layout) 
 
-    def enable(self, minEnabled, maxEnabled ): 
+    def enable(self, minEnabled, maxEnabled, labels = [ 'Range Min: ', 'Range Max: ' ] ): 
         self.rangeMinEditor.enable( minEnabled )
-        self.rangeMinEditor.setLabel( 'Value: ' if not maxEnabled else 'Range Min: ' )
+        self.rangeMinEditor.setLabel( 'Value: ' if not maxEnabled else labels[0] )
         self.rangeMaxEditor.enable( maxEnabled )
-        self.rangeMaxEditor.setLabel( 'Value: ' if not minEnabled else 'Range Max: ' )
+        self.rangeMaxEditor.setLabel( 'Value: ' if not minEnabled else labels[1]  )
 
     def setTitle(self, title ):
         self.cfg_action_label.setText( title )
@@ -376,7 +376,8 @@ class DV3DRangeConfigWidget(QFrame):
         self.setVisible(True)
         maxEnabled = self.active_cfg_cmd and self.active_cfg_cmd.activeBound in [ 'both', 'max' ]
         minEnabled = self.active_cfg_cmd and self.active_cfg_cmd.activeBound in [ 'both', 'min' ]
-        self.getConfigTab().enable( minEnabled, maxEnabled )
+        cfgTab = self.getConfigTab()
+        cfgTab.enable( minEnabled, maxEnabled, self.active_cfg_cmd.sliderLabels )
 
 
     def disable(self): 

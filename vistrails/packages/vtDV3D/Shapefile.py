@@ -1133,7 +1133,7 @@ class shapeFileReader:
     
     #looks for resolution of the file, connects directory paths and then
     #creates a VTK model of land    
-    def getPolyLines(self,roi, mrsDefFilePath ): 
+    def getPolyLines(self,roi, mrsDefFilePath, resFile="high" ): 
         
         xr=roi[1]-roi[0]
         yr=roi[3]-roi[2]
@@ -1145,14 +1145,12 @@ class shapeFileReader:
 #         if r>=50 and r<=100:
 #             resFile="medium"
 #         else:
-            
-        resFile="high"
-            
+                       
         directory=self._reader.openFile(resFile,mrsDefFilePath)
-        lonWrap = ( xr > 359 )
-        if lonWrap:
-           roi[0] = roi[0] + 0.5 
-           roi[1] = roi[1] - 0.5 
+#         lonWrap = ( xr > 359 )
+#         if lonWrap:
+#            roi[0] = roi[0] + 0.5 
+#            roi[1] = roi[1] - 0.5 
    
         print "Retreiving polylines from %s, resolution=%s" % ( mrsDefFilePath, resFile )
         #rel_coastFilePath=self._reader.read(resFile, mrsDefFilePath)
@@ -1178,8 +1176,14 @@ class shapeFileReader:
         for x in range(len(shapes)):
             shape =  shapes[x] 
             nPts = len( shape.points )
-            idList=vtk.vtkIdList()
+            parts_queue = [ iPart for iPart in shape.parts ]
+            idList = None
             for iPt in range(nPts):
+                if len( parts_queue ) and ( iPt == parts_queue[0] ):
+                    if idList: lines.InsertNextCell(idList) 
+                    idList=vtk.vtkIdList()
+                    parts_queue.pop(0)
+                    pt0 = None
                 pt = shape.points[iPt]
                 inBounds = ( ( pt[0] > roi[0] ) and ( pt[0] < roi[1] ) )
                 if not inBounds and (pt[0] < 0.0):
@@ -1190,12 +1194,18 @@ class shapeFileReader:
                     inBounds = ( ( pt[0] > roi[0] ) and ( pt[0] < roi[1] ) )
                 if inBounds:
                     if (pt[1]>roi[2]) and (pt[1]<roi[3] ):
+                        if pt0 <> None:
+                            plen = abs( pt0[0]-pt[0] ) + abs( pt0[1]-pt[1] )
+                            if plen > 100:
+                                lines.InsertNextCell(idList)
+                                idList=vtk.vtkIdList()                
                         ptIndex=points.InsertNextPoint(pt[0], pt[1], 0.0 ) 
                         idList.InsertNextId(ptIndex)
+                        pt0 = pt
                     else: inBounds = False
                 if not inBounds:
                     lines.InsertNextCell(idList)
-                    idList=vtk.vtkIdList()                 
+                    idList=vtk.vtkIdList()                                          
             lines.InsertNextCell(idList)
         polygon = vtk.vtkPolyData()
         polygon.SetPoints(points)
