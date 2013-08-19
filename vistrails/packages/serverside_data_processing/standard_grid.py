@@ -374,7 +374,7 @@ class RegridExecutionTarget(ExecutionTarget):
             axis_list.extend( var.getAxisList() )
             var.coordinates = None
             var.name = varname
-            outfile_path = os.path.join( output_dataset_directory, "%s-%d.nc" % ( result_file, time_index ) )
+            outfile_path = os.path.join( output_dataset_directory, "%s-%s-%d.nc" % ( result_file, varname, time_index ) )
             print " P[%d]: Writing to outfile %s" % ( self.proc_index, outfile_path ); sys.stdout.flush()
             outfile = cdms2.createDataset( outfile_path )
             outfile.write( var, extend=1, axes=axis_list, index=0 )
