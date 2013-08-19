@@ -16,15 +16,22 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         
         #initialize data
         #@todo: maybe move data to external file to be read in
-        self.groups = {'AMWG': {'AMWG Group 1': ['Diagnostics 1', 
-                                                 'Diagnostics 2', 
-                                                 'Diagnostics 3'],
-                                'AMWG Group 2': ['Diagnostics 4',
-                                                 'Diagnostics 5', 
-                                                 'Diagnostics 6',],
-                                'AMWG Group 3': ['Diagnostics 7',
-                                                 'Diagnostics 8', 
-                                                 'Diagnostics 9',]},
+        self.groups = {'AMWG': {'Tables': ['1 Global and Regional Means and RMS Error', ],
+                                'Line Plots': ['2 Annual Implied Northward Transport',
+                                                 '3 Zonal Means', ],
+                                'Contour Plots': ['4 Vertical Zonal Means',
+                                                 '4a Vertical (XZ) Meridional Means', 
+                                                 '5 Horizontal Means',
+                                                 '7 Polar means',],
+                                'Vector Plots' : ['6 Horizontal Means',],
+                                'Other Plots': ['8 Annual Cycle of Zonal Means ',
+                                                 '9 Horizontal DJF-JJA Differences', 
+                                                 '10 Annual Cycle Linoe Plots of Global Mean',
+                                                 '11 Pacific Annual Cycle, scatter Plots',
+                                                 '12 Vertical Profile from 17 Selected Stations',
+                                                 '13 Coloud Simulators',
+                                                 '14 Taylor diagrams',
+                                                 '15 Annual Cycle at Select Stations',]},
                        'LMWG': {'LMWG Group 1': ['Diagnostics 10', 
                                                  'Diagnostics 11', 
                                                  'Diagnostics 12'],
@@ -35,7 +42,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
                                                  'Diagnostics 17', 
                                                  'Diagnostics 18',]}}
         
-        self.variables = ['Variable 1', 'Variable 2', 'Variable 3']
+        self.variables = ['TREFHT', 'Willmott', 'TREFHT', 'Legates', 'PRECT', 'TREFHT', 'JRA25', 'PREH2O', 'PSL', 'SHFLX', 'LHFLX', 'TREFHT', 'ERA-Interim', 'PREH2O', 'PSL', 'ERA40', 'LHFLX', 'PREH2O', 'MODIS', 'PREH2O', 'TGCLDLWP', 'NVAP', 'PREH2O', 'TGCLDLWP', 'AIRS', 'PREH2O', 'Woods', 'LHFLX', 'QFLX', 'GPCP', 'PRECT', 'CMAP', 'PRECT', 'UWisc', 'TGCLDLWP', 'SSM/I', 'PRECT', 'PREH2O', 'TRMM', 'PRECT', 'Large-Yeager', 'SHFLX', 'QFLX', 'FLNS', 'FSNS', 'CERES-EBAF', 'FLUT', 'FLUTC', 'FSNTOA', 'FSNTOAC', 'LWCF', 'SWCF', 'CERES', 'FLUT', 'FLUTC', 'FSNTOA', 'FSNTOAC', 'LWCF', 'SWCF', 'ERBE', 'FLUT', 'FLUTC', 'FSNTOA', 'FSNTOAC', 'LWCF', 'SWCF', 'ISCCP', 'FLDS', 'FLDSC', 'FLNS', 'FLNSC', 'FSDS', 'FSDSC', 'FSNS', 'FSNSC', 'LWCFSRF', 'SWCFSRF', 'ISCCP', 'CLDHGH', 'CLDHGH', 'CLDLOW', 'CLDLOW', 'CLDMED', 'CLDMED', 'CLDTOT', 'CLDTOT', 'Warren', 'CLDLOW', 'CLDTOT', 'CLOUDSAT', 'CLDTOT', 'CLDLOW', 'CLDMED', 'CLDHGH', 'CFMIP', 'CALIPSO', 'CLDTOT_CAL', 'CLDLOW_CAL', 'CLDMED_CAL', 'CLDHGH_CAL', 'ISCCP-COSP', 'CLDTOT_ISCCPCOSP', 'CLDTHICK_ISCCPCOSP', 'MISR', 'CLDTOT_MISR', 'CLDTHICK_MISR', 'MODIS-COSP', 'CLDTOT_MODIS', 'CLDTHICK_MODIS', 'Additional', 'CALIPSO', 'CLDTOT_CAL', 'CLDLOW_CAL', 'CLDMED_CAL', 'CLDHGH_CAL', 'CLOUDSAT-COSP', 'CLDTOT_CS2', 'ISCCP-COSP', 'CLDTOT_ISCCPCOSP', 'CLDLOW_ISCCPCOSP', 'CLDMED_ISCCPCOSP', 'CLDHGH_ISCCPCOSP', 'CLDTHICK_ISCCPCOSP', 'MEANPTOP_ISCCPCOSP', 'MEANCLDALB_ISCCPCOSP', 'MISR', 'CLDTOT_MISR', 'CLDLOW_MISR', 'CLDMED_MISR', 'CLDHGH_MISR', 'CLDTHICK_MISR', 'MODIS-COSP', 'CLDTOT_MODIS', 'CLDLOW_MODIS', 'CLDMED_MODIS', 'CLDHGH_MODIS', 'CLDTHICK_MODIS', 'CLIMODIS', 'CLWMODIS', 'IWPMODIS', 'LWPMODIS', 'PCTMODIS', 'REFFCLIMODIS', 'REFFCLWMODIS', 'TAUILOGMODIS', 'TAUWLOGMODIS', 'TAUTLOGMODIS', 'TAUIMODIS', 'TAUWMODIS', 'TAUTMODIS']
         self.observations = ['Obs 1', 'Obs 2', 'Obs 3']
         self.seasons = ['DJF', 'JJA', 'MJJ', 'ASO', 'ANN']
         
