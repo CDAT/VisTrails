@@ -101,25 +101,25 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         except IndexError:
             print>>sys.stderr, " setBasemapLineSpecs: Density too large: %d " % density
 
-    def setBasemapCoastlineLineSpecs( self, value ):
+    def setBasemapCoastlineLineSpecs( self, value, **args ):
         self.setBasemapLineSpecs('coastline', value )
 
-    def setBasemapStatesLineSpecs( self, value ):
+    def setBasemapStatesLineSpecs( self, value, **args ):
         self.setBasemapLineSpecs('states', value )
         
-    def setBasemapCountriesLineSpecs( self, value ):
+    def setBasemapCountriesLineSpecs( self, value, **args ):
         self.setBasemapLineSpecs('countries', value )
 
     def getBasemapLineSpecs( self, shapefile_type ):
         return self.basemapLineSpecs.get( shapefile_type, None )
         
-    def getBasemapCoastlineLineSpecs( self ):
+    def getBasemapCoastlineLineSpecs( self, **args ):
         return self.getBasemapLineSpecs('coastline' )
         
-    def getBasemapStatesLineSpecs( self ):
+    def getBasemapStatesLineSpecs( self, **args ):
         return self.getBasemapLineSpecs('states' )
 
-    def getBasemapCountriesLineSpecs( self ):
+    def getBasemapCountriesLineSpecs( self, **args ):
         return self.getBasemapLineSpecs('countries' )
         
     def clearReferrents(self):
