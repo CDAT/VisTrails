@@ -440,7 +440,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             pos1 = [ pos[0], pos[1], origin[2] ]
             polys.SetPosition( pos1 )
             polys_list = self.shapefilePolylineActors.get( type, [ None, None, None, None ] ) 
-            polys_list[ thickness ] = polys
+            polys_list[ density ] = polys
             self.shapefilePolylineActors[ type ] = polys_list
 
 #     def createBasemapPolylines( self, **args ):
