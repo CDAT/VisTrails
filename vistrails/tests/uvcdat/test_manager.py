@@ -2,7 +2,7 @@ import logging
 import os
 import tempfile
 
-from db.services.locator import ZIPFileLocator
+from core.db.locator import FileLocator
 
 # decorator
 def UVCDATTest(func):
@@ -48,7 +48,7 @@ class UVCDATTestManager:
         #just load the first variable and close load widget
         loadVariableWidget.defineVarCloseClicked()
         
-    def simulate_variable_drag_and_drop(self, varname_or_index=0, sheet="Sheet 1", col=1, row=1):
+    def simulate_variable_drag_and_drop(self, varname_or_index=0, sheet="Sheet 1", col=0, row=0):
         definedVariableWidget = self.uvcdat_window.dockVariable.widget()
         if isinstance( varname_or_index, ( int, long ) ):
             variableItems = definedVariableWidget.getItems()
@@ -59,8 +59,8 @@ class UVCDATTestManager:
         projectController.variable_was_dropped(dropInfo)
         
     def simulate_plot_drag_and_drop(self, package="VCS", name="Boxfill", 
-                                    method="ASD", sheet="Sheet 1", col=1, 
-                                    row=1):
+                                    method="ASD", sheet="Sheet 1", col=0, 
+                                    row=0):
         """
         @param method: Only used if package is VCS
         """
@@ -75,17 +75,19 @@ class UVCDATTestManager:
             
         dropInfo = (plot, sheet, col, row)
         
-        # this is causing segfault, somewhere in vcs lib
-        #projectController.plot_was_dropped(dropInfo)
+        projectController.plot_was_dropped(dropInfo)
         
     def simulate_save_project(self, filepath):
         
         projectController = self.uvcdat_window.get_current_project_controller()
-        projectController.vt_controller.locator = ZIPFileLocator(filepath)
+        projectController.vt_controller.locator = FileLocator(filepath)
+        projectController.vt_controller.locator.clean_temporaries()
         self.uvcdat_window.workspace.saveProject(False)
+        projectController.vt_controller.locator.clean_temporaries()
         
     def simulate_open_project(self, filepath):
-        locator = ZIPFileLocator(filepath)
+        locator = FileLocator(filepath)
+        locator.clean_temporaries()
         
         from gui.vistrails_window import _app
         _app.open_vistrail_without_prompt(locator)
@@ -93,11 +95,12 @@ class UVCDATTestManager:
     @UVCDATTest
     def test_save_open_close_vcs_project(self):
         
-        self.simulate_load_variable()
-        self.simulate_variable_drag_and_drop()
+        projectController = self.uvcdat_window.get_current_project_controller()
+        projectController.vt_controller.disable_autosave()
         
-        #@todo: fix this method
+        self.simulate_load_variable()
         self.simulate_plot_drag_and_drop()
+        self.simulate_variable_drag_and_drop()
         
         #is deleted upon closing
         temp_save_file = tempfile.NamedTemporaryFile(suffix=".vt", delete=True)
@@ -105,11 +108,13 @@ class UVCDATTestManager:
         self.simulate_save_project(temp_save_file.name)
         self.uvcdat_window.workspace.closeProject(False)
         
-#        self.simulate_open_project(temp_save_file.name)
-#        self.uvcdat_window.workspace.closeProject(False)
+        self.simulate_open_project(temp_save_file.name)
+        projectController = self.uvcdat_window.get_current_project_controller()
+        projectController.vt_controller.disable_autosave()
+        self.uvcdat_window.workspace.closeProject(False)
         
-#        self.simulate_open_project(temp_save_file.name)
-#        self.uvcdat_window.workspace.closeProject(False)
+        self.simulate_open_project(temp_save_file.name)
+        self.uvcdat_window.workspace.closeProject(False)
         
         temp_save_file.close()
         
