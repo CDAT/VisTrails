@@ -348,6 +348,7 @@ class ConfigGroup:
     Rendering = 1
     Display = 2
     Utilities = 3
+    BaseMap = 4
     
     @classmethod
     def getConfigGroupName( cls, groupId ):
@@ -355,6 +356,7 @@ class ConfigGroup:
         if groupId == cls.Utilities: return "Utilities"
         if groupId == cls.Rendering: return "Rendering"
         if groupId == cls.Display:   return "Display"
+        if groupId == cls.BaseMap:   return "Base Map"
         return None
     
 class ConfigurableFunction( QObject ):
@@ -377,6 +379,7 @@ class ConfigurableFunction( QObject ):
         self.functionID = -1 
         self.isLayerDependent = args.get( 'layerDependent', False )
         self.activeBound = args.get( 'activeBound', 'both' )
+        self.sliderLabels = args.get( 'sliderLabels', [ 'Range Min', 'Range Max' ] )
         self.active = args.get( 'active', True )
         self.activeFunctionList = []
         self.moduleID = None
