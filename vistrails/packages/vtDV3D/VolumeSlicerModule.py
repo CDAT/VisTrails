@@ -440,11 +440,11 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         return ( 0, 0, 0 )
     
     def createBasemapPolyline( self, type, **args ):
-        from Shapefile import shapeFileReader     
         ispec = self.getInputSpec(0)  
         md = ispec.getMetadata()
         latLonGrid = md.get( 'latLonGrid', True )
         if latLonGrid:
+            from Shapefile import shapeFileReader     
             line_specs = self.basemapLineSpecs.get( type, None )
             thickness = int( round( line_specs[0] ) ) if line_specs else 0
             density = int( round( line_specs[1] ) ) if line_specs else 1
