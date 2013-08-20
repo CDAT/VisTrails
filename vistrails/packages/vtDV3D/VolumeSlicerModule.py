@@ -498,7 +498,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 #                    print " >++++++++++++++++++> Slicing: Set Slice[%d], index=%d, pos=%.2f, " % ( iAxis, sliceIndex, p1[0] ), textDisplay
                 self.slicePosition[ iAxis ] = sliceIndex                  
                 self.updateTextDisplay( textDisplay ) 
-                if iAxis == 2:              
+
+                if (iAxis == 2):              
                     origin = caller.GetOrigin()
                     for type in ( 'coastline', 'countries', 'states' ): 
                         line_specs = self.basemapLineSpecs.get( type, None )
