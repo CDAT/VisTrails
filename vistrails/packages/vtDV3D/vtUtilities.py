@@ -274,8 +274,10 @@ def getNewVtkDataArray( scalar_dtype ):
         return vtk.vtkUnsignedShortArray() 
     if scalar_dtype == np.ubyte:
         return vtk.vtkUnsignedCharArray() 
-    if scalar_dtype == np.float:
+    if scalar_dtype == np.float32:
         return vtk.vtkFloatArray() 
+    if scalar_dtype == np.float64:
+        return vtk.vtkDoubleArray() 
     return None
 
 def getDatatypeString( scalar_dtype ):
@@ -283,8 +285,10 @@ def getDatatypeString( scalar_dtype ):
         return 'UShort' 
     if scalar_dtype == np.ubyte:
         return 'UByte' 
-    if scalar_dtype == np.float:
+    if scalar_dtype == np.float32:
         return 'Float' 
+    if scalar_dtype == np.float64:
+        return 'Double' 
     return None
 
 def printSample3D( label, dataArray, size=10, offset=10 ):
@@ -300,8 +304,11 @@ def getMaxScalarValue( scalar_dtype ):
         return 65535.0
     if scalar_dtype == np.ubyte:
         return 255.0 
-    if scalar_dtype == np.float:
-        f = np.finfo(float) 
+    if scalar_dtype == np.float32:
+        f = np.finfo(np.float32) 
+        return f.max
+    if scalar_dtype == np.float64:
+        f = np.finfo(np.float64) 
         return f.max
     return None
 

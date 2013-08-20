@@ -241,12 +241,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         return var, dsetId
     
     def designateAxes(self,var):
-        lev_aliases = [ 'bottom', 'top', 'zdim' ]
+        lev_aliases = [ 'bottom', 'top', 'zdim', 'level' ]
         lev_axis_attr = [ 'z' ]
         lat_aliases = [ 'north', 'south', 'ydim' ]
         lat_axis_attr = [ 'y' ]
         lon_aliases = [ 'east', 'west', 'xdim' ]
         lon_axis_attr = [ 'x' ]
+        latLonGrid = True
         for axis in var.getAxisList():
             if not isDesignated( axis ):
                 if matchesAxisType( axis, lev_axis_attr, lev_aliases ):
@@ -254,10 +255,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     print " --> Designating axis %s as a Level axis " % axis.id            
                 elif matchesAxisType( axis, lat_axis_attr, lat_aliases ):
                     axis.designateLatitude()
-                    print " --> Designating axis %s as a Latitude axis " % axis.id                     
+                    print " --> Designating axis %s as a Latitude axis " % axis.id 
+                    latLonGrid = False                     
                 elif matchesAxisType( axis, lon_axis_attr, lon_aliases ):
                     axis.designateLongitude()
                     print " --> Designating axis %s as a Longitude axis " % axis.id 
+                    latLonGrid = False  
+        return latLonGrid
 
     def setupTimeAxis( self, var, **args ):
         self.nTimesteps = 1
@@ -312,7 +316,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             if self.newDataset: ModuleStore.archiveCdmsDataset( dsetId, self.cdmsDataset )
             self.newLayerConfiguration = self.newDataset
             self.datasetId = dsetId
-            self.designateAxes(var)
+            self.cdmsDataset.latLonGrid = self.designateAxes(var)
             self.setupTimeAxis( var, **args )
             intersectedRoi = self.cdmsDataset.gridBounds
             intersectedRoi = self.getIntersectedRoi( cdms_var, intersectedRoi )
@@ -462,7 +466,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             portName = orec.name
             selectedLevel = orec.getSelectedLevel() if ( self.currentLevel == None ) else self.currentLevel
             ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
-            default_dtype = np.float
+            default_dtype = np.float32
             scalar_dtype = args.get( "dtype", default_dtype )
             self._max_scalar_value = getMaxScalarValue( scalar_dtype )
             self._range = [ 0.0, self._max_scalar_value ]  
@@ -500,8 +504,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         if type( range_max ).__name__ == 'MaskedConstant': range_max = 0.0
                         var_md = copy.copy( varDataMasked.attributes )
                                                           
-                        if scalar_dtype == np.float:
-                            varData = varDataMasked.filled( 1.0e-15 * range_min ).ravel('F')
+                        if ( scalar_dtype == np.float32 ) or ( scalar_dtype == np.float64 ):
+                            varData = varDataMasked.filled( 1.0e-15 * range_min ).astype(scalar_dtype).ravel('F')
                         else:
                             shift = -range_min
                             scale = ( self._max_scalar_value ) / ( range_max - range_min ) if  ( range_max > range_min ) else 1.0        
@@ -519,6 +523,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         md =  varDataSpecs['md']                 
                         md['datatype'] = datatype
                         md['timeValue']= self.timeValue.value
+                        md['latLonGrid']= self.cdmsDataset.latLonGrid
                         md['timeUnits' ] = self.referenceTimeUnits
                         md[ 'attributes' ] = var_md
                         md[ 'plotType' ] = 'zyt' if (self.outputType == CDMSDataType.Hoffmuller) else 'xyz'
@@ -537,7 +542,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             gridSpacing = varDataSpecs[ 'gridSpacing' ]
             if   scalar_dtype == np.ushort: image_data.SetScalarTypeToUnsignedShort()
             elif scalar_dtype == np.ubyte:  image_data.SetScalarTypeToUnsignedChar()
-            elif scalar_dtype == np.float:  image_data.SetScalarTypeToFloat()
+            elif scalar_dtype == np.float32:  image_data.SetScalarTypeToFloat()
+            elif scalar_dtype == np.float64:  image_data.SetScalarTypeToDouble()
             image_data.SetOrigin( outputOrigin[0], outputOrigin[1], outputOrigin[2] )
 #            image_data.SetOrigin( 0.0, 0.0, 0.0 )
             if ndim == 3: extent = [ outputExtent[0], outputExtent[1], outputExtent[2], outputExtent[3], outputExtent[4], outputExtent[5] ]   
