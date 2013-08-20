@@ -16,22 +16,22 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         
         #initialize data
         #@todo: maybe move data to external file to be read in
-        self.groups = {'AMWG': {'Tables': ['1 Global and Regional Means and RMS Error', ],
-                                'Line Plots': ['2 Annual Implied Northward Transport',
-                                                 '3 Zonal Means', ],
-                                'Contour Plots': ['4 Vertical Zonal Means',
-                                                 '4a Vertical (XZ) Meridional Means', 
-                                                 '5 Horizontal Means',
-                                                 '7 Polar means',],
-                                'Vector Plots' : ['6 Horizontal Means',],
-                                'Other Plots': ['8 Annual Cycle of Zonal Means ',
-                                                 '9 Horizontal DJF-JJA Differences', 
-                                                 '10 Annual Cycle Linoe Plots of Global Mean',
-                                                 '11 Pacific Annual Cycle, scatter Plots',
-                                                 '12 Vertical Profile from 17 Selected Stations',
-                                                 '13 Coloud Simulators',
-                                                 '14 Taylor diagrams',
-                                                 '15 Annual Cycle at Select Stations',]},
+        self.groups = {'AMWG': ['1- Table of Global and Regional Means and RMS Error',
+                                '2- Line Plots of Annual Implied Northward Transport',
+                                '3- Line Plots of  Zonal Means',
+                                '4- Vertical Contour Plots Zonal Means',
+                                '4a- Vertical (XZ) Contour Plots Meridional Means', 
+                                '5- Horizontal Contour Plots of Seasonal Means',
+                                '6- Horizontal Vector Plots of Seasonal Means',
+                                '7- Polar Contour and Vector Plots of Seasonal Means',
+                                '8- Annual Cycle Contour Plots of Zonal Means ',
+                                '9- Horizontal Contour Plots of DJF-JJA Differences', 
+                                '10- Annual Cycle Line Plots of Global Mean',
+                                '11- Pacific Annual Cycle, Scatter Plots',
+                                '12- Vertical Profile from 17 Selected Stations',
+                                '13- Cloud Simulators plots',
+                                '14- Taylor diagrams',
+                                '15- Annual Cycle at Select Stations Plots',],
                        'LMWG': {'LMWG Group 1': ['Diagnostics 10', 
                                                  'Diagnostics 11', 
                                                  'Diagnostics 12'],
@@ -85,10 +85,17 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
     def setupDiagnosticTree(self, index):
         diagnosticType = str(self.comboBoxType.itemText(index))
         self.treeWidget.clear()
-        for groupName, groupValues in self.groups[diagnosticType].items():
-            groupItem = QtGui.QTreeWidgetItem(self.treeWidget, [groupName])
-            for diagnostic in groupValues:
-                diagnosticItem = QtGui.QTreeWidgetItem(groupItem, [diagnostic])
+        print "Got: ",diagnosticType,self.groups[diagnosticType]
+        if isinstance(self.groups[diagnosticType],dict):
+            for groupName, groupValues in self.groups[diagnosticType].items():
+                groupItem = QtGui.QTreeWidgetItem(self.treeWidget, [groupName])
+                for diagnostic in groupValues:
+                    diagnosticItem = QtGui.QTreeWidgetItem(groupItem, [diagnostic])
+                    diagnosticItem.setFlags(diagnosticItem.flags() & (~Qt.ItemIsSelectable))
+                    diagnosticItem.setCheckState(0, Qt.Unchecked)
+        else:
+            for diagnostic in self.groups[diagnosticType]:
+                diagnosticItem = QtGui.QTreeWidgetItem(self.treeWidget, [diagnostic])
                 diagnosticItem.setFlags(diagnosticItem.flags() & (~Qt.ItemIsSelectable))
                 diagnosticItem.setCheckState(0, Qt.Unchecked)
         
