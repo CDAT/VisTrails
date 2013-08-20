@@ -441,25 +441,29 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     
     def createBasemapPolyline( self, type, **args ):
         from Shapefile import shapeFileReader     
-        line_specs = self.basemapLineSpecs.get( type, None )
-        thickness = int( round( line_specs[0] ) ) if line_specs else 0
-        density = int( round( line_specs[1] ) ) if line_specs else 1
-        resTypes = [ "invisible", "low", "medium", "high" ]
-        if (thickness > 0) and ( density > 0 ):
-            rgb=self.getLayerColor( type ) 
-            textFilePath = os.path.join( os.path.dirname(__file__), "data", type, "index.txt" )
-            s=shapeFileReader()
-            s.setColors(rgb)
-            s.setWidth( thickness )
-            polys=s.getPolyLines( self.roi, textFilePath, resTypes[ density ] )        
-            self.renderer.AddActor(polys)
-            origin = self.planeWidgetZ.GetOrigin()
-            pos = polys.GetPosition()
-            pos1 = [ pos[0], pos[1], origin[2] ]
-            polys.SetPosition( pos1 )
-            polys_list = self.shapefilePolylineActors.get( type, [ None, None, None, None, None ] ) 
-            polys_list[ density ] = polys
-            self.shapefilePolylineActors[ type ] = polys_list
+        ispec = self.getInputSpec(0)  
+        md = ispec.getMetadata()
+        latLonGrid = md.get( 'latLonGrid', True )
+        if latLonGrid:
+            line_specs = self.basemapLineSpecs.get( type, None )
+            thickness = int( round( line_specs[0] ) ) if line_specs else 0
+            density = int( round( line_specs[1] ) ) if line_specs else 1
+            resTypes = [ "invisible", "low", "medium", "high" ]
+            if (thickness > 0) and ( density > 0 ):
+                rgb=self.getLayerColor( type ) 
+                textFilePath = os.path.join( os.path.dirname(__file__), "data", type, "index.txt" )
+                s=shapeFileReader()
+                s.setColors(rgb)
+                s.setWidth( thickness )
+                polys=s.getPolyLines( self.roi, textFilePath, resTypes[ density ] )        
+                self.renderer.AddActor(polys)
+                origin = self.planeWidgetZ.GetOrigin()
+                pos = polys.GetPosition()
+                pos1 = [ pos[0], pos[1], origin[2] ]
+                polys.SetPosition( pos1 )
+                polys_list = self.shapefilePolylineActors.get( type, [ None, None, None, None, None ] ) 
+                polys_list[ density ] = polys
+                self.shapefilePolylineActors[ type ] = polys_list
 
 #     def createBasemapPolylines( self, **args ):
 #         for type in ( 'coastline', 'countries', 'states' ): 
