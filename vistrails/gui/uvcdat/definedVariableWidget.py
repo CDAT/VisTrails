@@ -82,9 +82,11 @@ class QDefinedVariableWidget(QtGui.QWidget):
         self.waitingForClick = False
         
     def myPressed(self, item):
+        from packages.vtDV3D import ModuleStore
         if item.isSelected():
             self.selectVariableFromListEvent(item)
             self.waitingForClick = False
+            ModuleStore.setActiveVariable( item.varName )
         else:
             self.waitingForClick = True
             item.setSelected(True) # wait for click to deselect
@@ -122,6 +124,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         varProp.btnDefineClose.setVisible(False)
         varProp.btnDefineAs.setVisible(False)
         varProp.btnApplyEdits.setVisible(True)
+        varProp.btnSaveEditsAs.setVisible(True)
 #        varProp.btnApplyEdits.setEnabled(False)
         varProp.show()
 
@@ -220,6 +223,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
         """
+        from packages.vtDV3D import ModuleStore
         cdmsVar = None
         replaced = False
         if type_ == 'CDMS':
@@ -227,15 +231,14 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 cdmsVar = var[1]
                 var = var[0]
 
-            self.root.stick_defvar_into_main_dict(var)
-            
-            
-            for i in range(self.varList.count()-1,-1,-1):
-                if self.varList.item(i).getVarName() == var.id:
-                    replaced = True
-                    self.varList.item(i).setVariable(var)
-                    break
-                    
+        self.root.stick_defvar_into_main_dict(var)
+        
+        for i in range(self.varList.count()-1,-1,-1):
+            if self.varList.item(i).getVarName() == var.id:
+                replaced = True
+                self.varList.item(i).setVariable(var)
+                break
+                
         if not replaced:
             item = QDefinedVariableItem(var,self.root,cdmsVar)
             self.varList.addItem(item) 
@@ -251,6 +254,9 @@ class QDefinedVariableWidget(QtGui.QWidget):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
         """
+        from packages.vtDV3D import ModuleStore
+        from packages.vtDV3D.vtUtilities import memoryLogger
+        memoryLogger.log("start QDefinedVariableWidget.deleteVariable")
         for i in range(self.varList.count()-1,-1,-1):
             if self.varList.item(i).getVarName() == varid:
                 del(__main__.__dict__[varid])
@@ -259,7 +265,10 @@ class QDefinedVariableWidget(QtGui.QWidget):
                     controller = self.root.get_project_controller_by_name(project)
                     if controller:
                         controller.remove_defined_variable(varid)
-                self.varList.takeItem(i)
+                self.varList.takeItem(i)                
+                item = self.varList.item(0) if( self.varList.count() > 0) else None
+                ModuleStore.removeActiveVariable( varid )
+        memoryLogger.log("finished QDefinedVariableWidget.deleteVariable")
 
         #iTab = self.root.tabView.widget(0).tabWidget.getTabIndexFromName(varid)
         #self.root.tabView.widget(0).tabWidget.removeTab(iTab)
@@ -430,6 +439,8 @@ class QDefinedVariableWidget(QtGui.QWidget):
             self.deleteVariable(v.id)
 
     def newVariable(self):
+        from packages.vtDV3D.vtUtilities import memoryLogger
+        memoryLogger.log("start QDefinedVariableWidget.newVariable")
         varProp = self.root.varProp
         varProp.label.setText("Load From")
         for i in range(varProp.originTabWidget.count()):

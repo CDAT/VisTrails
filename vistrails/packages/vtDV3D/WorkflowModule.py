@@ -20,17 +20,16 @@ class WorkflowModule( NotCacheable,  Module ):
     def __init__( self, **args ):
         Module.__init__(self) 
         
-    def __del__( self ):
-        print " $$$$$$$$$$$$$$$$$$$$$$ deleting WorkflowModule, id = %d $$$$$$$$$$$$$$$$$$$$$$ " % ( self.moduleInfo['moduleId'] )
-        self.getPersistentModule( invalidate=True )
-        Module.__del__( self )
+#     def __del__( self ):
+#         print " $$$$$$$$$$$$$$$$$$$$$$ deleting WorkflowModule, id = %d $$$$$$$$$$$$$$$$$$$$$$ " % ( self.moduleInfo['moduleId'] )
+#         self.getPersistentModule( invalidate=True )
+#         Module.__del__( self )
 
     def clear( self ):
         print " -------------------------------- clearing WorkflowModule, id = %d -------------------------------- " % ( self.moduleInfo['moduleId'] )
         self.getPersistentModule( invalidate=True )
         Module.clear( self )
         
-
     def compute(self):
         start_t = time.time() 
         DV3DConfigurationWidget.saveNewConfigurations()            
