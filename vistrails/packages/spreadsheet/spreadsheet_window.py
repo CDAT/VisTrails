@@ -302,20 +302,19 @@ class SpreadsheetWindow(QtGui.QMainWindow):
             if self.visApp.temp_configuration.multiHeads and desktop.numScreens()>1:
                 builderScreen = desktop.screenNumber(self.visApp.builderWindow)
                 r = desktop.availableGeometry(builderScreen)
-                self.visApp.builderWindow.ensurePolished()
-                self.visApp.builderWindow.updateGeometry()
-                frame = self.visApp.builderWindow.frameGeometry()
-                rect = self.visApp.builderWindow.rect()
-                frameDiff = QtCore.QPoint((frame.width()-rect.width())/2,
-                                          (frame.height()-rect.height())/2)
-                self.visApp.builderWindow.move(
-                    frame.topLeft()+r.center()-frame.center())
-                for i in xrange(desktop.numScreens()):
-                    if i!=builderScreen:
-                        r = desktop.availableGeometry(i)
-                        self.adjustSize()
-                        self.move(r.center()-self.rect().center()-frameDiff)
-                        break
+                if self.visApp.builderWindow:
+                    self.visApp.builderWindow.ensurePolished()
+                    self.visApp.builderWindow.updateGeometry()
+                    frame = self.visApp.builderWindow.frameGeometry()
+                    rect = self.visApp.builderWindow.rect()
+                    frameDiff = QtCore.QPoint((frame.width()-rect.width())/2, (frame.height()-rect.height())/2)
+                    self.visApp.builderWindow.move( frame.topLeft()+r.center()-frame.center() )
+                    for i in xrange(desktop.numScreens()):
+                        if i!=builderScreen:
+                            r = desktop.availableGeometry(i)
+                            self.adjustSize()
+                            self.move(r.center()-self.rect().center()-frameDiff)
+                            break
             if not self.visApp.temp_configuration.interactiveMode:
                 self.shownConfig = True
                 if show:
