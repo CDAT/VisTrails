@@ -1,0 +1,3 @@
+high=high/ne_10m_admin_0_boundary_lines_land.shp
+medium=medium/ne_50m_admin_0_boundary_lines_land.shp
+low=low/ne_110m_admin_0_boundary_lines_land.shp
