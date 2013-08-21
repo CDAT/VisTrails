@@ -112,7 +112,7 @@ class VariableProperties(QtGui.QDialog):
         self.root = parent.root
         self.varNameInFile = None #store the name of the variable when loaded from file
         self.createFileTab()
-#        self.createESGFTab()
+        self.createESGFTab()
         self.createOpenDAPTab()
         self.createEditTab()
         self.createInfoTab()
@@ -285,8 +285,8 @@ class VariableProperties(QtGui.QDialog):
           esgf = QEsgfBrowser(self)
           #esgf.addGateway(gateway=customizeUVCDAT.defaultEsgfNode)
           esgf.addGateway(gateway=str(self.root.preferences.host_url.currentText()))
-        except Exception:
-            esgf = QtGui.QLabel("No Internet?")
+        except Exception,err:
+            esgf = QtGui.QLabel("No Internet?\nError log: %s"%err)
         self.originTabWidget.addTab(esgf,"ESGF")
 
     def createOpenDAPTab(self):
