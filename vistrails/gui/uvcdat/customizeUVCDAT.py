@@ -45,6 +45,7 @@ levelAliases=[]
 longitudeAliases=[]
 latitudeAliases=[]
 squeezeVariables=True
+deselectVariables=True
 ncShuffle=cdms2.getNetcdfShuffleFlag()
 ncDeflate=cdms2.getNetcdfDeflateFlag()
 ncDeflateLevel=cdms2.getNetcdfDeflateLevelFlag()
