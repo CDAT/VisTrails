@@ -1151,7 +1151,8 @@ class shapeFileReader:
 #         if lonWrap:
 #            roi[0] = roi[0] + 0.5 
 #            roi[1] = roi[1] - 0.5 
-   
+        if directory == None: return None
+        
         print "Retreiving polylines from %s, resolution=%s" % ( mrsDefFilePath, resFile )
         #rel_coastFilePath=self._reader.read(resFile, mrsDefFilePath)
         root_path=os.path.abspath( os.path.dirname( mrsDefFilePath ) )
@@ -1228,10 +1229,12 @@ class multiRoiShape:
         
         
      def openFile( self, res, textFilePath ):
-         if(not(self.FileMap.has_key(textFilePath))):
-             self.FileMap[textFilePath]=self.read(textFilePath)
-             
-         self.FileMap[textFilePath] = self.read( textFilePath)
+         if not self.FileMap.has_key(textFilePath):
+             try:
+                 self.FileMap[textFilePath]=self.read(textFilePath)
+             except Exception, err:
+                 print>>sys.stderr, "Error reading shapefile specs file %s: %s" % ( textFilePath, str(err) )
+                 return None
          resDict =  self.FileMap[textFilePath]
          return resDict[res]
          
@@ -1241,8 +1244,8 @@ class multiRoiShape:
         lines=f.readlines()
         for line in lines:
             lineE=line.split('=')
-            print str(lineE[1]).strip()
-            resDict[ lineE[0].strip() ]  = lineE[1].strip()  
+            if len( lineE ) > 1:
+                resDict[ lineE[0].strip() ]  = lineE[1].strip()  
         return resDict
         
 
