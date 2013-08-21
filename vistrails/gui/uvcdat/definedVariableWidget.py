@@ -236,12 +236,15 @@ class QDefinedVariableWidget(QtGui.QWidget):
         for i in range(self.varList.count()-1,-1,-1):
             if self.varList.item(i).getVarName() == var.id:
                 replaced = True
-                self.varList.item(i).setVariable(var)
+                item = self.varList.item(i)
+                item.setVariable(var)
+                ModuleStore.addActiveVariable( item.varName, item.variable )
                 break
                 
         if not replaced:
             item = QDefinedVariableItem(var,self.root,cdmsVar)
             self.varList.addItem(item) 
+            ModuleStore.addActiveVariable( item.varName, item.variable )
             
         # Recording define variable teaching command
 #        self.recordDefineVariableTeachingCommand(varName, var.id, file, axesArgString)
