@@ -53,7 +53,7 @@ import gui.theme
 import os.path
 import getpass
 import sys
-
+import gui.uvcdat.anonymous
 ################################################################################
 
 class VistrailsApplicationSingleton(VistrailsApplicationInterface,
@@ -664,6 +664,7 @@ parameters from other instances")
 def start_application(optionsDict=None):
     """Initializes the application singleton."""
     VistrailsApplication = get_vistrails_application()
+
     if VistrailsApplication:
         debug.critical("Application already started.")
         return
@@ -677,6 +678,7 @@ def start_application(optionsDict=None):
                e.requirement)
         debug.critical("Missing requirement", msg)
         sys.exit(1)
+    gui.uvcdat.anonymous.check()
     x = VistrailsApplication.init(optionsDict)
     if x == True:
         return 0
