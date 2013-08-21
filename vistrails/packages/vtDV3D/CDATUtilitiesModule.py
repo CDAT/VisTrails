@@ -3,7 +3,7 @@ Created on Mar 22, 2011
 
 @author: tpmaxwel
 '''
-import vtk, sys, os, copy, time
+
 from packages.vtDV3D.InteractiveConfiguration import *
 from core.modules.vistrails_module import Module, ModuleError
 from packages.vtDV3D.WorkflowModule import WorkflowModule 
@@ -302,6 +302,3 @@ class CDATUtilitiesModuleConfigurationWidget(DV3DConfigurationWidget):
         self.stateChanged( False ) 
         pmod.setLabel( task )
 #        self.close()
-
-if __name__ == '__main__':
-    executeVistrail( 'TestPipeline1', 'TestPipeline2' )

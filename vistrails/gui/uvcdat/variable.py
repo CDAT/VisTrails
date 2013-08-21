@@ -6,6 +6,7 @@
 ###############################################################################
 
 from PyQt4 import QtCore, QtGui
+import uuid
 
 import os
 import cdms2
@@ -84,6 +85,9 @@ class VariableProperties(QtGui.QDialog):
         self.btnApplyEdits=QDockPushButton("Apply")
         self.btnApplyEdits.setVisible(False)
         h.addWidget(self.btnApplyEdits)
+        self.btnSaveEditsAs=QDockPushButton("Save As")
+        self.btnSaveEditsAs.setVisible(False)
+        h.addWidget(self.btnSaveEditsAs)
         self.btnCancel=QDockPushButton("Close")
 
         # defaults?
@@ -108,7 +112,7 @@ class VariableProperties(QtGui.QDialog):
         self.root = parent.root
         self.varNameInFile = None #store the name of the variable when loaded from file
         self.createFileTab()
-        self.createESGFTab()
+#        self.createESGFTab()
         self.createOpenDAPTab()
         self.createEditTab()
         self.createInfoTab()
@@ -138,6 +142,7 @@ class VariableProperties(QtGui.QDialog):
         self.btnDefineAs.setVisible(True)
         self.btnDefineClose.setVisible(True)
         self.btnApplyEdits.setVisible(False)
+        self.btnSaveEditsAs.setVisible(False)
 
     def tabHasChanged(self,index):
         if (index==1) or (index==2):
@@ -167,7 +172,7 @@ class VariableProperties(QtGui.QDialog):
                          self.selectFromList)
             self.connect(self.bookmarksList, QtCore.SIGNAL('itemClicked(QListWidgetItem *)'),
                          self.selectFromList)
-            self.connect(self.varCombo, QtCore.SIGNAL('currentIndexChanged(const QString&)'),
+            self.connect(self.varCombo, QtCore.SIGNAL('activated(const QString&)'),
                          self.variableSelected)
             self.connect(self.bookmarksList,QtCore.SIGNAL("droppedInto"),self.droppedBookmark)
 
@@ -179,6 +184,7 @@ class VariableProperties(QtGui.QDialog):
         self.btnDefineAs.clicked.connect(self.defineAsVarClicked)
         self.connect(self,QtCore.SIGNAL('definedVariableEvent'),self.root.dockVariable.widget().addVariable)
         self.btnApplyEdits.clicked.connect(self.applyEditsClicked)
+        self.btnSaveEditsAs.clicked.connect(self.saveEditsAsClicked)
         self.selectRoiButton.clicked.connect( self.selectRoi )
 
     def checkTargetVarName(self):
@@ -492,6 +498,9 @@ class VariableProperties(QtGui.QDialog):
 
             # By default, select first var
             self.varCombo.setCurrentIndex(1)
+            
+            # manually call this since we listen for activated now
+            self.variableSelected(self.varCombo.itemText(1))
 
     def variableSelected(self, varName):
         if varName == '':
@@ -713,6 +722,10 @@ class VariableProperties(QtGui.QDialog):
             controller.copy_computed_variable(original_id, targetId,
                                               axes=get_kwargs_str(kwargs),
                                               axesOperations=str(axes_ops_dict))
+            
+        if(self.varEditArea.widget()):
+            self.varEditArea.widget().var = updatedVar
+            axisList.setVar(updatedVar)
 
         self.updateVarInfo(axisList)
         return updatedVar
@@ -740,3 +753,6 @@ class VariableProperties(QtGui.QDialog):
         controller = _app.uvcdatWindow.get_current_project_controller()
         
         controller.variableEdited(varname)
+        
+    def saveEditsAsClicked(self):
+        self.defineAsVarClicked()
