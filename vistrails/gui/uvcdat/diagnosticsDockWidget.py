@@ -6,8 +6,8 @@ from ui_diagnosticsDockWidget import Ui_DiagnosticDockWidget
 
 class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
     
-    Types = ["AMWG", "LMWG"]
-    DisabledTypes = ["OMWG", "PCWG", "MPAS", "Metrics"]
+    Types = ["AMWG", ]
+    DisabledTypes = ["LMWG","OMWG", "PCWG", "MPAS", "WGNE", "Metrics"]
     AllTypes = Types + DisabledTypes
 
     def __init__(self, parent=None):
@@ -107,20 +107,52 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             self.cancelClicked()
             
     def applyClicked(self):
+
         diagnostic = str(self.checkedItem.text(0))
-        group = str(self.checkedItem.parent().text(0))
-        type = str(self.comboBoxType.currentText())
+        #group = str(self.checkedItem.parent().text(0))
+        #Never name something 'type', it's a reserved word! type = str(self.comboBoxType.currentText())
         observation = str(self.comboBoxObservation.currentText())
         variable = str(self.comboBoxVariable.currentText())
         season = str(self.comboBoxSeason.currentText())
-        
         print "diagnostic: %s" % diagnostic
-        print "group: %s" % group
-        print "type: %s" % type
         print "observation: %s" % observation
         print "variable: %s" % variable
         print "season: %s" % season
-        
+        # initial test, first cut:
+        # This stuff should go elsewhere...
+        import os
+        from metrics.amwg import setup_filetable, get_plot_data
+        # The paths have to be chosen by the user, unless we know something about the system...
+        path1 = '/export/painter1/cam_output/b30.009.cam2.h0.06.xml'
+        path2 = '/export/painter1/metrics/src/python/obs_data/'
+        filt2="filt=f_startswith('LEGATES')"
+        filetable1 = setup_filetable(path1,os.environ['HOME']+'/tmp')
+        filetable2 = setup_filetable(path2,os.environ['HOME']+'/tmp',search_filter=filt2)
+        #
+        plot_set = diagnostic[0:diagnostic.find('-')] # e.g. '3','4a', etc.
+        ps = get_plot_data( plot_set, filetable1, filetable2, variable, season )
+        if ps is None:
+            return None
+        res = ps.results()
+        if res is None:
+            return None
+        # Note: it would be useful to get some immediate feedback as to whether the code is
+        # busy, or finished with the current task.
+        # For now, print the first result.  Really, we want to plot them all...
+        if type(res) is list:
+            res30 = res[0]
+        else:
+            res30 = res
+            pvars = res30.vars
+            labels = res30.labels
+            title = res30.title
+            presentation = res30.presentation
+            print "pvars:",pvars
+            print "labels:",labels
+            print "title:",title
+            print "presentation:",presentation
+            
+
     def cancelClicked(self):
         self.close()
             

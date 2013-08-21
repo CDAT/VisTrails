@@ -143,7 +143,6 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         #self.workspace.addProject()
         self.dockCalculator = DockCalculator(self)
         self.plotProp = PlotProperties.instance(self)
-        self.diagnosticsWidget = DiagnosticsDockWidget(self)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.workspace)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.dockTemplate)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.dockAnimate)
@@ -152,15 +151,21 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.workspace.raise_()
         self.varProp.hide()
         self.plotProp.hide()
-        self.diagnosticsWidget.hide()
         self.dockAnimate.hide()
 
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockVariable)
         #self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.varProp)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockCalculator)
-        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.diagnosticsWidget)
         self.tabifyDockWidget(self.dockCalculator, self.plotProp) 
-        self.tabifyDockWidget(self.plotProp, self.diagnosticsWidget)
+        try:
+            # For now only puts the diagnostics widget if the metrics module is present
+            import metrics
+            self.diagnosticsWidget = DiagnosticsDockWidget(self)
+            self.diagnosticsWidget.hide()
+            self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.diagnosticsWidget)
+            self.tabifyDockWidget(self.plotProp, self.diagnosticsWidget)
+        except:
+            pass
 
 
     def createActions(self):
