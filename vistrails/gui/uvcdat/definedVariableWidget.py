@@ -253,7 +253,6 @@ class QDefinedVariableWidget(QtGui.QWidget):
         memoryLogger.log("start QDefinedVariableWidget.deleteVariable")
         for i in range(self.varList.count()-1,-1,-1):
             if self.varList.item(i).getVarName() == varid:
-                del(__main__.__dict__[varid])
                 #this will delete from all projects
                 for project in self.varList.item(i).projects:
                     controller = self.root.get_project_controller_by_name(project)
@@ -262,6 +261,10 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 self.varList.takeItem(i)                
                 item = self.varList.item(0) if( self.varList.count() > 0) else None
                 ModuleStore.removeActiveVariable( varid )
+        
+        if varid in __main__.__dict__: 
+            del __main__.__dict__[varid]
+                
         memoryLogger.log("finished QDefinedVariableWidget.deleteVariable")
 
         #iTab = self.root.tabView.widget(0).tabWidget.getTabIndexFromName(varid)

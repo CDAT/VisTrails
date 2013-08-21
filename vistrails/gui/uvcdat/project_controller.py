@@ -183,7 +183,10 @@ class ProjectController(QtCore.QObject):
         
         found = False
         
+        workspace = get_vistrails_application().uvcdatWindow.workspace
+        
         for sheetName, sheet in self.sheet_map.iteritems():
+            tabController = workspace.currentProject.sheet_to_tab[sheetName]
             for (row,col), cell in sheet.iteritems():
                 cell_plot_count = len(cell.plots)
                 for i in reversed(range(cell_plot_count)):
@@ -195,7 +198,8 @@ class ProjectController(QtCore.QObject):
                         cell_changed = True
                         cell.remove_plot(cell.plots[i])
                 if len(cell.plots) < cell_plot_count:
-                    self.clear_cell(sheetName, row, col)
+                    tabController.deleteCell(row, col)
+                    #self.clear_cell(sheetName, row, col)
                     #self.check_update_cell(sheetName, row, col, True)
                     #cell.pushUndoVersion()
                     
