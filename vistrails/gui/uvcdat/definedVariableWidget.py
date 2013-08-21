@@ -79,7 +79,10 @@ class QDefinedVariableWidget(QtGui.QWidget):
                      self.myPressed)
         self.connect(self.varList, QtCore.SIGNAL('itemClicked( QListWidgetItem *)'),
                      self.myClicked)
+        self.connect(self.varList, QtCore.SIGNAL('itemSelectionChanged()'), 
+                     self.selectionChanged)
         self.waitingForClick = False
+        self.selectingAll = False
         
     def myPressed(self, item):
         from packages.vtDV3D import ModuleStore
@@ -294,11 +297,16 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 break
 
     def selectAllVariables(self):
-        selected = self.varList.selectedItems()
+        selectedItems = self.varList.selectedItems()
+        selected = len(selectedItems) < self.varList.count()
+        self.selectingAll = True
         for i in range(self.varList.count()):
             it = self.varList.item(i)
-            if not it in selected:
-                self.selectVariableFromName(it.varName)
+            if it.isSelected() != selected:
+                it.setSelected(selected)
+                self.selectVariableFromListEvent(it)
+        self.selectingAll = False
+        self.selectionChanged()
 
     def selectVariableFromListEvent(self, item):
         """ Update the number next to the selected defined variable and
@@ -310,7 +318,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         # If the item is unselected then change the selection str back to '--'
         # and decrement all the numbers of the other selected vars that are
         # less than the number of the item that was unselected
-        if item not in selectedItems:
+        if not item.isSelected():
             unselectedNum = item.getSelectNum()
             item.updateVariableString(None)
 
@@ -456,6 +464,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         # Create options bar
         self.toolBar = QtGui.QToolBar()
         self.toolBar.setIconSize(QtCore.QSize(customizeUVCDAT.iconsize,customizeUVCDAT.iconsize))
+        self.toolBarActions = {}
         actionInfo = [
             (UVCDATTheme.VARIABLE_ADD_ICON, "add",'Add variable(s).',self.newVariable),
             (UVCDATTheme.VARIABLE_DELETE_ICON, "del",'Delete selected defined variable(s) from all projects.',self.trashVariable),
@@ -473,6 +482,9 @@ class QDefinedVariableWidget(QtGui.QWidget):
             action.setStatusTip(info[2])
             action.setToolTip(info[2])
             self.connect(action,QtCore.SIGNAL("triggered()"),info[3])
+            self.toolBarActions[info[1]] = action
+            
+        self.toolBarActions['recycle'].setCheckable(True)
 
         ## self.toolBar.addSeparator()
 
@@ -528,6 +540,15 @@ class QDefinedVariableWidget(QtGui.QWidget):
         ## self.connect(self.opButton, QtCore.SIGNAL('clicked(bool)'), self.opButton.showMenu)
 
         ## self.toolBar.addWidget(self.opButton)
+        
+    def selectionChanged(self):
+        if not self.selectingAll:
+            for i in range(self.varList.count()):
+                item = self.varList.item(i)
+                if not item.isSelected():
+                    self.toolBarActions['recycle'].setChecked(False)
+                    return
+            self.toolBarActions['recycle'].setChecked(True)
 
 class QDefinedVariableItem(QtGui.QListWidgetItem):
     """ Item to be stored by QDefinedVariable's list widget
