@@ -56,6 +56,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'coastlines_Line', 'm0', label='Coastline Line', setLevel=self.setBasemapCoastlineLineSpecs, getLevel=self.getBasemapCoastlineLineSpecs, sliderLabels=[ 'Thickness', 'Density' ], layerDependent=False, rangeBounds=[ 0.0, 3.49 ], initRange=[ 1.0, 1.0, 1 ], group=ConfigGroup.BaseMap )
         self.addConfigurableLevelingFunction( 'countries_Line', 'm1', label='Countries Line', setLevel=self.setBasemapCountriesLineSpecs, getLevel=self.getBasemapCountriesLineSpecs, sliderLabels=[ 'Thickness', 'Density' ], layerDependent=False, rangeBounds=[ 0.0, 3.49 ], initRange=[ 0.0, 1.0, 0 ], group=ConfigGroup.BaseMap )
         self.addConfigurableLevelingFunction( 'states_Line', 'm2', label='States Line', setLevel=self.setBasemapStatesLineSpecs, getLevel=self.getBasemapStatesLineSpecs, sliderLabels=[ 'Thickness', 'Density' ], layerDependent=False, rangeBounds=[ 0.0, 3.49 ], initRange=[ 0.0, 1.0, 0 ], group=ConfigGroup.BaseMap )
+        self.addConfigurableLevelingFunction( 'lakes_Line', 'm3', label='Lakes Line', setLevel=self.setBasemapLakesLineSpecs, getLevel=self.getBasemapLakesLineSpecs, sliderLabels=[ 'Thickness', 'Density' ], layerDependent=False, rangeBounds=[ 0.0, 3.49 ], initRange=[ 0.0, 1.0, 0 ], group=ConfigGroup.BaseMap )
         self.addUVCDATConfigGuiFunction( 'contourColormap', ColormapConfigurationDialog, 'K', label='Choose Contour Colormap', setValue=lambda data: self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasContours, group=ConfigGroup.Color )
 
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
@@ -86,7 +87,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.basemapLineSpecs[shapefile_type] = value
         npixels = int( round( value[0] ) )
         density = int( round( value[1] ) )
-        polys_list = self.shapefilePolylineActors.get( shapefile_type, [ None, None, None, None ] ) 
+        polys_list = self.shapefilePolylineActors.get( shapefile_type, [ None, None, None, None, None ] ) 
         try:
             selected_polys = polys_list[ density ]
             if not selected_polys:
@@ -106,6 +107,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
     def setBasemapStatesLineSpecs( self, value, **args ):
         self.setBasemapLineSpecs('states', value )
+
+    def setBasemapLakesLineSpecs( self, value, **args ):
+        self.setBasemapLineSpecs('lakes', value )
         
     def setBasemapCountriesLineSpecs( self, value, **args ):
         self.setBasemapLineSpecs('countries', value )
@@ -118,6 +122,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         
     def getBasemapStatesLineSpecs( self, **args ):
         return self.getBasemapLineSpecs('states' )
+
+    def getBasemapLakesLineSpecs( self, **args ):
+        return self.getBasemapLineSpecs('lakes' )
 
     def getBasemapCountriesLineSpecs( self, **args ):
         return self.getBasemapLineSpecs('countries' )
@@ -421,27 +428,42 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def getAxes(self):
         pass
     
+    def getLayerColor( self, type ):
+        if type == 'coastline':
+            return ( 0, 0, 0 )
+        if type == 'countries':
+            return ( 0.7, 0.2, 0.2 )
+        if type == 'states':
+            return ( 0.5, 0.5, 0.3 )
+        if type == 'lakes':
+            return ( 0, 0, 0.6 )
+        return ( 0, 0, 0 )
+    
     def createBasemapPolyline( self, type, **args ):
-        from Shapefile import shapeFileReader     
-        line_specs = self.basemapLineSpecs.get( type, None )
-        thickness = int( round( line_specs[0] ) ) if line_specs else 0
-        density = int( round( line_specs[1] ) ) if line_specs else 1
-        resTypes = [ "invisible", "low", "medium", "high" ]
-        if (thickness > 0) and ( density > 0 ):
-            rgb=args.get( 'rgb', [ 0, 0, 0 ] )
-            textFilePath = os.path.join( os.path.dirname(__file__), "data", type, "index.txt" )
-            s=shapeFileReader()
-            s.setColors(rgb)
-            s.setWidth( thickness )
-            polys=s.getPolyLines( self.roi, textFilePath, resTypes[ density ] )        
-            self.renderer.AddActor(polys)
-            origin = self.planeWidgetZ.GetOrigin()
-            pos = polys.GetPosition()
-            pos1 = [ pos[0], pos[1], origin[2] ]
-            polys.SetPosition( pos1 )
-            polys_list = self.shapefilePolylineActors.get( type, [ None, None, None, None ] ) 
-            polys_list[ density ] = polys
-            self.shapefilePolylineActors[ type ] = polys_list
+        ispec = self.getInputSpec(0)  
+        md = ispec.getMetadata()
+        latLonGrid = md.get( 'latLonGrid', True )
+        if latLonGrid:
+            from Shapefile import shapeFileReader     
+            line_specs = self.basemapLineSpecs.get( type, None )
+            thickness = int( round( line_specs[0] ) ) if line_specs else 0
+            density = int( round( line_specs[1] ) ) if line_specs else 1
+            resTypes = [ "invisible", "low", "medium", "high" ]
+            if (thickness > 0) and ( density > 0 ):
+                rgb=self.getLayerColor( type ) 
+                textFilePath = os.path.join( os.path.dirname(__file__), "data", type, "index.txt" )
+                s=shapeFileReader()
+                s.setColors(rgb)
+                s.setWidth( thickness )
+                polys=s.getPolyLines( self.roi, textFilePath, resTypes[ density ] )        
+                self.renderer.AddActor(polys)
+                origin = self.planeWidgetZ.GetOrigin()
+                pos = polys.GetPosition()
+                pos1 = [ pos[0], pos[1], origin[2] ]
+                polys.SetPosition( pos1 )
+                polys_list = self.shapefilePolylineActors.get( type, [ None, None, None, None, None ] ) 
+                polys_list[ density ] = polys
+                self.shapefilePolylineActors[ type ] = polys_list
 
 #     def createBasemapPolylines( self, **args ):
 #         for type in ( 'coastline', 'countries', 'states' ): 
@@ -501,7 +523,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
                 if (iAxis == 2):              
                     origin = caller.GetOrigin()
-                    for type in ( 'coastline', 'countries', 'states' ): 
+                    for type in ( 'coastline', 'countries', 'states', 'lakes' ): 
                         line_specs = self.basemapLineSpecs.get( type, None )
                         polys_list = self.shapefilePolylineActors.get( type, None )
                         density = int( round( line_specs[1] ) ) if line_specs else 1
