@@ -303,23 +303,23 @@ class QMenuWidget(QtGui.QWidget):
             elif nm == "Set Bounds For Daily Data":
                 #cdutil.times.setTimeBoundsDaily(v)
                 self.root.record("## Set Bounds For Daily Data")
-                self.root.record("cdutil.times.setTimeBoundDaily(%s)" % v.id)
+                self.root.record("cdutil.times.setTimeBoundsDaily(%s)" % v.id)
             elif nm == "Set Bounds For Twice-daily Data":
                 #cdutil.times.setTimeBoundsDaily(v,2)
                 self.root.record("## Set Bounds For Twice-daily Data")
-                self.root.record("cdutil.times.setTimeBoundDaily(%s,2)" % v.id)
+                self.root.record("cdutil.times.setTimeBoundsDaily(%s,2)" % v.id)
             elif nm == "Set Bounds For 6-Hourly Data":
                 #cdutil.times.setTimeBoundsDaily(v,4)
                 self.root.record("## Set Bounds For 6-Hourly Data")
-                self.root.record("cdutil.times.setTimeBoundDaily(%s,4)" % v.id)
+                self.root.record("cdutil.times.setTimeBoundsDaily(%s,4)" % v.id)
             elif nm == "Set Bounds For Hourly Data":
                 #cdutil.times.setTimeBoundsDaily(v,24)
                 self.root.record("## Set Bounds For Hourly Data")
-                self.root.record("cdutil.times.setTimeBoundDaily(%s,24)" % v.id)
+                self.root.record("cdutil.times.setTimeBoundsDaily(%s,24)" % v.id)
             elif nm == "Set Bounds For X-Daily Data":
                 #cdutil.times.setTimeBoundsDaily(v,val)
                 self.root.record("## Set Bounds For X-Daily Data")
-                self.root.record("cdutil.times.setTimeBoundDaily(%s,%g)" % (v.id,val))
+                self.root.record("cdutil.times.setTimeBoundsDaily(%s,%g)" % (v.id,val))
                 vtnm = "%s:%g"%(nm,val)
             #send command to project controller to be stored as provenance
             prj_controller = get_current_project_controller()
