@@ -70,6 +70,8 @@ class ProjectController(QtCore.QObject):
         self.defined_variables = {}
         self.computed_variables = {}
         self.computed_variables_ops = {}
+        self.grower_varname = {}
+        self.grower_varname2 = {}
         self.sheet_map = {}
         self.plot_registry = get_plot_registry()
         self.plot_manager = get_plot_manager()
@@ -132,6 +134,12 @@ class ProjectController(QtCore.QObject):
                     del self.computed_variables_ops[oldname]
                     var.name = newname
                     self.computed_variables_ops[newname] = var
+                if oldname in self.grower_varname:
+                    self.grower_varname[newname] = self.grower_varname[oldname]
+                    del self.grower_varname[oldname]
+                elif oldname in self.grower_varname2:
+                    self.grower_varname2[newname] = self.grower_varname2[oldname]
+                    del self.grower_varname2[oldname]
             else:
                 debug.warning("Variable was not renamed: name '%s' already used." %newname)
         else:
@@ -278,6 +286,10 @@ class ProjectController(QtCore.QObject):
             var.timeBounds = timebounds
            
     def calculator_command(self, vars, txt, st, varname):
+        #varname may be tuple
+        varnames = varname.split(',')
+        varname = varnames[0].strip()
+        
         if varname in self.defined_variables:
             if varname in vars:
                 #if the variable was already defined, this means that the user
@@ -293,6 +305,23 @@ class ProjectController(QtCore.QObject):
                 #we can just remove it as it is not used to compute this variable
                 self.remove_defined_variable(varname)
         self.computed_variables[varname] = (vars, txt, st, varname)
+        
+        if len(varnames) == 2:
+            varname2 = varnames[1].strip()
+            if varname2 in self.defined_variables:
+                if varname2 in vars:
+                    newname = "var" + str(uuid.uuid1())[:8]
+                    self.rename_defined_variable(varname2, newname)
+                    st = st.replace(varname2,newname)
+                    i = vars.index(varname2)
+                    vars[i] = newname
+                else:
+                    self.remove_defined_variable(varname2)
+            self.computed_variables[varname2] = ([varname], txt, varname, varname2)
+            self.grower_varname[varname2] = varname
+            self.grower.varname2[varname] = varname2
+        elif len(varnames) > 2:
+            print "Warning: more than 2 variables in calculator command"
         
     def process_typed_calculator_command(self, varname, command):
         from packages.uvcdat_cdms.init import CDMSVariableOperation 

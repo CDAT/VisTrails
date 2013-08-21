@@ -377,7 +377,8 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 st="genutil.grower(%s,%s)" % (
                                      selected[0].varName,selected[1].varName)
                 self.root.dockVariable.widget().unselectItems(selected)
-                nm=selected[0].varName+", "+selected[1].varName+" = "
+                nm= "%s_grown_to_%s, %s_grown_to_%s = " % (
+                                               vars[0], vars[1], vars[1], vars[0])
                 if str(self.le.text())=="" :
                     pressEnter=True
         # ! variable only
