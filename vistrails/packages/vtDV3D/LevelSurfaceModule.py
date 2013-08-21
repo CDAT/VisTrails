@@ -56,13 +56,13 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.visualizationInteractionEnabled = True
         self.removeConfigurableFunction( 'colormap' )
 #        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.setColorScale, getLevel=self.getColorScale, layerDependent=True, adjustRangeInput=0, units='data'  )
-        self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', label='Isosurface Level Range', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True, units='data', adjustRangeInput=0 )
-        self.addConfigurableLevelingFunction( 'isoOpacity', 'p', label='Isosurface Opacity', activeBound='min', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True )
-        self.addUVCDATConfigGuiFunction( 'nLevels', NLevelConfigurationWidget, 'n', label='# Isosurface Levels', setValue=self.setNumberOfLevels, getValue=self.getNumberOfLevels, layerDependent=True )
-        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
-        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Texture Colormap Scale', units='data', setLevel=lambda data, **args:self.setColorScale(data,1,**args), getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRangeInput=1, isValid=self.hasTexture )
-        self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Texture Colormap', setValue=lambda data:self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasTexture )
-        self.addConfigurableMethod( 'cropRegion', self.toggleClipping, 'X', label='Cropping', signature=[ ( Float, 'xmin'), ( Float, 'xmax'), ( Float, 'ymin'), ( Float, 'ymax'), ( Float, 'zmin'), ( Float, 'zmax') ] )
+        self.addConfigurableLevelingFunction( 'levelRangeScale', 'L', label='Isosurface Level Range', setLevel=self.setLevelRange, getLevel=self.getDataRangeBounds, layerDependent=True, units='data', adjustRangeInput=0, group=ConfigGroup.Rendering )
+        self.addConfigurableLevelingFunction( 'isoOpacity', 'p', label='Isosurface Opacity', activeBound='min', setLevel=self.setOpacityRange, getLevel=self.getOpacityRange, layerDependent=True, group=ConfigGroup.Rendering )
+        self.addUVCDATConfigGuiFunction( 'nLevels', NLevelConfigurationWidget, 'n', label='# Isosurface Levels', setValue=self.setNumberOfLevels, getValue=self.getNumberOfLevels, layerDependent=True, group=ConfigGroup.Rendering )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ], group=ConfigGroup.Display )
+        self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Texture Colormap Scale', units='data', setLevel=lambda data, **args:self.setColorScale(data,1,**args), getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRangeInput=1, isValid=self.hasTexture, group=ConfigGroup.Color )
+        self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Texture Colormap', setValue=lambda data:self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasTexture, group=ConfigGroup.Color )
+        self.addConfigurableMethod( 'cropRegion', self.toggleClipping, 'X', label='Cropping', signature=[ ( Float, 'xmin'), ( Float, 'xmax'), ( Float, 'ymin'), ( Float, 'ymax'), ( Float, 'zmin'), ( Float, 'zmax') ], group=ConfigGroup.Display )
 
     def resetCamera(self):
         self.cropRegion = self.getVolumeBounds()
@@ -324,13 +324,32 @@ class PM_LevelSurface(PersistentVisualizationModule):
 
     def setInputZScale( self, zscale_data, **args  ):       
         texture_ispec = self.getInputSpec(  1 )                
+        sz = zscale_data[1]
         if texture_ispec and texture_ispec.input():
             textureInput = texture_ispec.input() 
             ix, iy, iz = textureInput.GetSpacing()
-            sz = zscale_data[1]
             textureInput.SetSpacing( ix, iy, sz )  
             textureInput.Modified() 
-        return PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args )
+        input = self.levelSetFilter.GetInput()
+        if input:
+            ix, iy, iz = input.GetSpacing()
+            input.SetSpacing( ix, iy, sz )  
+            input.Modified() 
+            
+##        rv = PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args )
+#        levelSetOutput = self.levelSetFilter.GetOutput() 
+#        if levelSetOutput: 
+#            self.levelSetFilter.Modified()  
+#            levelSetOutput.Update()           
+#            points = levelSetOutput.GetPoints()
+#            if points:
+#                input = self.levelSetFilter.GetInput()
+#                input_spacing = input.GetSpacing()
+#                print " Set input zscale -> %.3f " % input_spacing[2]
+#                sample_height = points.GetPoint(100)[2]
+#                print " ---- Sample Height: %.2f " % sample_height  
+#                sys.stdout.flush()
+#                if self.probeFilter: self.probeFilter.Modified()
         
     def setOpacityRange( self, opacity_range, **args  ):
 #        print "Update Opacity, range = %s" %  str( opacity_range )
@@ -430,7 +449,8 @@ class PM_LevelSurface(PersistentVisualizationModule):
         xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
         self.sliceCenter = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
         spacing = self.input().GetSpacing()
-        sx, sy, sz = spacing       
+        sx, sy, sz = spacing 
+#        self.input().SetSpacing( sx, sy, 5*sz )      
         origin = self.input().GetOrigin()
         ox, oy, oz = origin
         dataType = self.input().GetScalarTypeAsString()
@@ -473,17 +493,11 @@ class PM_LevelSurface(PersistentVisualizationModule):
             self.levelSetMapper.SetInputConnection( self.probeFilter.GetOutputPort() ) 
             self.levelSetMapper.SetScalarRange( textureRange )
             
-        if texture_ispec and texture_ispec.input():
-            colormapManager = self.getColormapManager( index=1 )     
-            colormapManager.setAlphaRange ( self.opacityRange ) 
-            self.levelSetMapper.SetLookupTable( colormapManager.lut ) 
-            self.levelSetMapper.UseLookupTableScalarRangeOn()
-        else:
-            colormapManager = self.getColormapManager()     
-            colormapManager.setAlphaRange ( self.opacityRange ) 
-            self.levelSetMapper.SetLookupTable( colormapManager.lut ) 
-            self.levelSetMapper.UseLookupTableScalarRangeOn()
-        
+        colormapManager = self.getColormapManager( index=1 ) if texture_ispec and texture_ispec.input() else self.getColormapManager()                  
+        colormapManager.setAlphaRange ( self.opacityRange ) 
+        self.levelSetMapper.SetLookupTable( colormapManager.lut ) 
+        self.levelSetMapper.UseLookupTableScalarRangeOn()
+       
         self.updateLevels()
           
 #        levelSetMapper.SetColorModeToMapScalars()  
