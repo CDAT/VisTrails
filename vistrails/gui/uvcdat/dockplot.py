@@ -30,7 +30,7 @@ class DockPlot(QtGui.QDockWidget):
         ## self.ui = Ui_DockPlot()
         ## self.ui.setupUi(self)
         self.root=parent.root
-        self.setWindowTitle("Plots and Analyses")
+        self.setWindowTitle("Plots")
         self.plot_bars = {}
         self.plotTree = PlotTreeWidget(self)
         self.setWidget(self.plotTree)
