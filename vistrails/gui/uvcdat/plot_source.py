@@ -2,12 +2,12 @@ from PyQt4 import QtCore, QtGui
 from gui.modules.python_source_configure import PythonEditor
 from gui.common_widgets import QDockPushButton
 
-class PlotSource(QtGui.QDockWidget):
+class PlotSource(QtGui.QDialog):
     def __init__(self, parent=None):
         super(PlotSource, self).__init__(parent)
-        self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+        #self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowTitle("Visualization Source")
-        self.main_widget = QtGui.QWidget()
+        #self.main_widget = QtGui.QWidget()
         self.btn_copy_to_clipboard = QDockPushButton("Copy to clipboard")
         self.btn_save_to_file = QDockPushButton("Save to file")
         btnlayout = QtGui.QHBoxLayout()
@@ -20,8 +20,9 @@ class PlotSource(QtGui.QDockWidget):
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.tabWidget)
         layout.addLayout(btnlayout)
-        self.main_widget.setLayout(layout)
-        self.setWidget(self.main_widget)
+        self.setLayout(layout)
+#        self.main_widget.setLayout(layout)
+#        self.setWidget(self.main_widget)
         self.btn_copy_to_clipboard.clicked.connect(self.copyToClipboard)
         self.btn_save_to_file.clicked.connect(self.saveToFile)
         self.tabWidget.tabCloseRequested.connect(self.closeTab)

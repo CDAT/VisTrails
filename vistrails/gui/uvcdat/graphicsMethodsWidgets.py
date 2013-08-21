@@ -20,6 +20,8 @@ import vcs
 import uvcdatCommons
 from gui.application import get_vistrails_application
 
+GM_LEGEND_TOOLTIP_TEXT = "Specify the desired legend labels.\nFor example:\n None -- Allow VCS to generate legend labels\n(), or [ ], or { } -- No legend  labels\n [0, 10, 20] or { 0:'0', 10:'10', 20:'20' }\n[ 0, 10 ] or { 0:'text', 10:'more text'}"
+
 def round_number( N ):
    import numpy
    P = 10.0 ** ( numpy.floor(numpy.log10(abs(N) ) ) )
@@ -28,6 +30,35 @@ def round_number( N ):
 def sign ( N ):
    if (N < 0): return -1
    else: return 1
+   
+def setGMLegend(gm, lineEdit):
+    def set_legend_none_alert():
+        gm.legend = 'None'
+        format = "Invalid legend '%s', using 'None' instead.\n\n%s"
+        msg = format % (lineEdit.text(), GM_LEGEND_TOOLTIP_TEXT)
+        QtGui.QMessageBox.information( None, "Plot Legend", msg )
+        lineEdit.setText("'None'")
+        
+    def check_valid_values(value):
+        return isinstance(value, (list, dict, tuple)) or value is None
+        
+    try:
+        result = eval(str(lineEdit.text()))
+        if isinstance(result, basestring):
+            try:
+                value = eval(result)
+                if check_valid_values(value):
+                    gm.legend = result
+                else:
+                    set_legend_none_alert()
+            except Exception, e:
+                set_legend_none_alert()
+        elif check_valid_values(result):
+            gm.legend = str(lineEdit.text())
+        else:
+            set_legend_none_alert()
+    except Exception, e:
+        set_legend_none_alert()
 
 class VCSGMs():
     def saveOriginalValues(self):
@@ -1571,7 +1602,7 @@ class QMeshfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
             gm = self.gm
         if gm:
             self.applyCommonChanges(gm)
-            gm.legend = eval(str(self.legendLineEdit.text()))
+            setGMLegend(gm, self.legendLineEdit)
             gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
             gm.ext_2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
             gm.missing = eval(str(self.missingLineEdit.text()))
@@ -1585,7 +1616,7 @@ class QMeshfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.missingLineEdit.setToolTip("Set the missing color index value. The colormap\nranges from 0 to 255, enter the desired color index value 0\nthrough 255.")
         self.ext1ButtonGroup.setToolTip("Turn on 1st arrow on legend")
         self.ext2ButtonGroup.setToolTip("Turn on 2nd arrow on legend")
-        self.legendLineEdit.setToolTip("Specify the desired legend labels.\nFor example:\n None -- Allow VCS to generate legend labels\n(), or [ ], or { } -- No legend  labels\n [0, 10, 20] or { 0:'0', 10:'10', 20:'20' }\n[ 0, 10 ] or { 0:'text', 10:'more text'}")
+        self.legendLineEdit.setToolTip(GM_LEGEND_TOOLTIP_TEXT)
         self.xWrap.setToolTip("Set the wrapping along X axis, 0 means no wrapping")
         self.yWrap.setToolTip("Set the wrapping along Y axis, 0 means no wrapping")
 
@@ -1664,13 +1695,12 @@ class QIsofillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.missingLineEdit.setToolTip("Set the missing color index value. The colormap\nranges from 0 to 255, enter the desired color index value 0\nthrough 255.")
         self.ext1ButtonGroup.setToolTip("Turn on 1st arrow on legend")
         self.ext2ButtonGroup.setToolTip("Turn on 2nd arrow on legend")
-        self.legendLineEdit.setToolTip("Specify the desired legend labels.\nFor example:\n None -- Allow VCS to generate legend labels\n(), or [ ], or { } -- No legend  labels\n [0, 10, 20] or { 0:'0', 10:'10', 20:'20' }\n[ 0, 10 ] or { 0:'text', 10:'more text'}")
+        self.legendLineEdit.setToolTip(GM_LEGEND_TOOLTIP_TEXT)
     def applyChanges(self, gm=None):
         if gm is None:
             gm = self.gm
         self.applyCommonChanges(gm)
-        
-        gm.legend = eval(str(self.legendLineEdit.text()))
+        setGMLegend(gm, self.legendLineEdit)
         gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
         gm.ext_2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
         gm.missing = eval(str(self.missingLineEdit.text()))
@@ -1949,7 +1979,7 @@ class QContourEditor():
         self.arrowSpacing.setToolTip("Spacing factor for arrows")
         self.angle.setToolTip("Angle of Arrows heads")
         self.labelButtonGroup.setToolTip("Toggle 'Isoline Labels' on or off.")
-        self.legendLabels.setToolTip("Specify the desired legend labels.\nFor example:\nNone -- Allow VCS to generate legend labels\n( ), or [ ], or { } -- No legend labels\n[ 0, 10, 20 ]  or  { 0:'0', 10:'10', 20:'20' }\n[ 0, 10 ]  or  { 0:'text', 10:'more text' }")
+        self.legendLabels.setToolTip(GM_LEGEND_TOOLTIP_TEXT)
         self.minVal.setToolTip("The minimum contour level.")
         self.maxVal.setToolTip("The maximum contour level.")
         self.nIntervals.setToolTip("The number of intervals between each contour level. Maximum number range [2 to 223].")
@@ -2104,7 +2134,7 @@ class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
             gm.level_2 = eval(str(self.level2LineEdit.text()))
             gm.color_1 = eval(str(self.color1LineEdit.text()))
             gm.color_2 = eval(str(self.color2LineEdit.text()))
-            gm.legend = eval(str(self.legendLineEdit.text()))
+            setGMLegend(gm, self.legendLineEdit)
             gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
             gm.ext_2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
             gm.missing = eval(str(self.missingLineEdit.text()))
@@ -2160,7 +2190,7 @@ class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.missingLineEdit.setToolTip("Set the missing color index value. The colormap\nranges from 0 to 255, enter the desired color index value 0\nthrough 255.")
         self.ext1ButtonGroup.setToolTip("Turn on 1st arrow on legend")
         self.ext2ButtonGroup.setToolTip("Turn on 2nd arrow on legend")
-        self.legendLineEdit.setToolTip("Specify the desired legend labels.\nFor example:\n None -- Allow VCS to generate legend labels\n(), or [ ], or { } -- No legend  labels\n [0, 10, 20] or { 0:'0', 10:'10', 20:'20' }\n[ 0, 10 ] or { 0:'text', 10:'more text'}")
+        self.legendLineEdit.setToolTip(GM_LEGEND_TOOLTIP_TEXT)
         self.level1LineEdit.setToolTip("The minimum data value. If level 1 is set to '1e+20',\nthen VCS will select the level.")
         self.level2LineEdit.setToolTip("The maximum data value. If level 2 is set to '1e+20',\nthen VCS will select the level.")
         self.color1LineEdit.setToolTip("The minimum color range index value. The colormap\nranges from 0 to 255, but only color indices 0\nthrough 239 can be changed.")
