@@ -30,7 +30,7 @@ import gui.uvcdat.regionExtractor #for certain toPython commands
 
 canvas = None
 original_gm_attributes = {}
-reparentedVCSWindows = []
+reparentedVCSWindows = {}
 
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
@@ -1015,10 +1015,12 @@ Please delete unused CDAT Cells in the spreadsheet.")
             self.layout().removeWidget(self.window)
             
         #get reparented window if it's there
-        if len(reparentedVCSWindows) > 0:
-            self.window = reparentedVCSWindows.pop()
+        if self.windowId in reparentedVCSWindows:
+            self.window = reparentedVCSWindows[self.windowId]
+            del reparentedVCSWindows[self.windowId]
         else:
             self.window = VCSQtManager.window(self.windowId)
+            
         self.layout().addWidget(self.window)
         self.window.setVisible(True)    
         # Place the mainwindow that the plot will be displayed in, into this
@@ -1092,8 +1094,8 @@ Please delete unused CDAT Cells in the spreadsheet.")
         self.update()
         
         #make sure reparented windows stay invisible
-        for window in reparentedVCSWindows:
-            window.setVisible(False)
+        for windowId in reparentedVCSWindows:
+            reparentedVCSWindows[windowId].setVisible(False)
         
     def get_graphics_method(self, plotType, gmName):
         method_name = "get"+str(plotType).lower()
@@ -1112,7 +1114,7 @@ Please delete unused CDAT Cells in the spreadsheet.")
         if self.window is not None:
             self.window.setParent(_app.uvcdatWindow)
             self.window.setVisible(False)
-            reparentedVCSWindows.append(self.window)
+            reparentedVCSWindows[self.windowId] = self.window
         self.canvas = None
         self.window = None
         
