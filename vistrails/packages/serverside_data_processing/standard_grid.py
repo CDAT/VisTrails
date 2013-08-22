@@ -423,6 +423,7 @@ class CAM_CS_RestructureExecutionTarget(ExecutionTarget):
         npts_tile = npts_tot / nTiles
         dim = int( math.sqrt( npts_tile ) )    
         iOffset =  4*dim
+        npts_tile = dim*dim
         iStart = 1 + iOffset + npts_tile * iTile
         iEnd = iStart + npts_tile
         time_axis = var.getAxisList('time')
@@ -433,11 +434,14 @@ class CAM_CS_RestructureExecutionTarget(ExecutionTarget):
         y_axis.id = 'y'
         y_axis.axis = 'Y'
         
-        axes =[ y_axis,  x_axis ] 
+        axes =[ y_axis, x_axis ] 
         if ndims == 3:
             var_data = var[ 0, 0:nlev, iStart : iEnd  ]
             levaxis = var.getLevel()
-            if levaxis == None: levaxis = cdms2.createAxis( range(nlev) )
+            if levaxis == None: 
+                levaxis = cdms2.createAxis( range(nlev) )
+                y_axis.id = 'z'
+                y_axis.axis = 'Z'
             axes.insert( 0, levaxis )
             new_shape = [ nlev, dim, dim ]    
         else:
@@ -449,12 +453,92 @@ class CAM_CS_RestructureExecutionTarget(ExecutionTarget):
             new_shape.insert( 0, 1 ) 
             
         var_data = var_data.reshape( new_shape ) 
-        tVar = cdms2.createVariable( var_data, axes=axes, id=var.id, typecode=var.typecode() )
+        tVar = cdms2.createVariable( var_data, axes=axes, id=var.id, typecode=var.typecode(), order='C' )
         outfile_path = os.path.join( output_dataset_directory, "%s-%s-%d.nc" % ( result_file, varname, time_index ) )
         print " P[%d]: Writing to outfile %s" % ( self.proc_index, outfile_path ); sys.stdout.flush()
         outfile = cdms2.createDataset( outfile_path )
         outfile.write( tVar )
         outfile.close()
+   
+#--------------------------------------------------------------------------------------------------------------------------
+if __name__ == '__main__':   
+    from multicore_process_executable import ExecutionSpecs, MulticoreExecutable
+    from remote_dataset_retrieval import DatasetCatalogRetriever
+    import argparse
+    tg0 = time.time() 
+
+    parser = argparse.ArgumentParser(description='Regrid WRF data files.')
+    parser.add_argument( '-s', '--specs', dest='specfile', nargs='?', default=None, help='WRF regrid spec file')
+    parser.add_argument( 'FILE' )
+    ns = parser.parse_args( sys.argv )
+    
+    if ns.specfile == None:
+        print>>sys.stderr, "Error, Must specify a Regrid Spec File."
+        sys.exit(1) 
+        
+    spec_file = os.path.expanduser( ns.specfile )
+    specs = ExecutionSpecs( spec_file )
+       
+    service = specs.getPath( 'service', 'WRF-regrid' )
+    data_location = specs.getPath( 'data_location', '~' )
+    out_directory = specs.getPath( 'out_directory', '~' )
+    run_cdscan = specs.getBool( 'run_cdscan', False )
+    ncores = specs.getInt( 'ncores', 4 )
+    
+    dataset_name = specs.getStr( 'name', '.' )
+    if dataset_name == '.':     
+        output_dataset_directory = os.path.expanduser( out_directory ) 
+    else:                       
+        output_dataset_directory = os.path.expanduser( os.path.join( out_directory, "%s-%d" % ( WRF_dataset_name, int( time.time() ) ) ) )     
+        try:
+            os.mkdir(  output_dataset_directory )
+        except OSError:
+            print>>sys.stderr, "Error, Can't create output directory: ", output_dataset_directory
+            sys.exit(2) 
+    
+    print "Regridding WRF files to %s" % ( output_dataset_directory )
+    specs.put( 'output_dataset_directory', output_dataset_directory )
+    
+    filename_patterns = specs.getList( 'files') 
+    if not filename_patterns:
+        print>>sys.stderr, "Error, No WRF data files specified."
+        sys.exit(3) 
+    
+    remote_dset_cat = DatasetCatalogRetriever( data_location )
+    files = remote_dset_cat.get_file_list( filename_patterns )
+    print "Processing files: ", str( files )
+
+    varnames =  specs.getList( 'vars' ) 
+    if not varnames:
+        print>>sys.stderr, "Error, No variables specified"
+        sys.exit(4) 
+   
+    arg_tuple_list = [ ]                
+    for time_index, fname in enumerate(files):
+        for varname in varnames:   
+            arg_tuple_list.append( ( time_index, fname, varname, specs) )
+    
+    multicore_exec = None 
+    if service == 'WRF-regrid':                  multicore_exec = MulticoreExecutable( WRF_RegridExecutionTarget, ncores=ncores ) 
+    elif service == 'CAM_CS-restructure':        multicore_exec = MulticoreExecutable( CAM_CS_RestructureExecutionTarget, ncores=ncores )  
+    
+    if not multicore_exec:
+        
+        print>>sys.stderr,  "Unrecognized service: ", service
+
+    else:
+    
+        multicore_exec.execute( arg_tuple_list )      
+              
+        tg1 = time.time()
+        print "Full Dataset processing required %.2f secs." % ( tg1-tg0 )
+        
+        if run_cdscan:
+            cmd = " cd '%s'; cdscan -x dataset.xml *.nc" % output_dataset_directory
+            os.system(cmd)
+
+    
+
 
            
 #def exec_procs( exec_target, arg_tuple_list, ncores, **args ):
@@ -517,82 +601,4 @@ class CAM_CS_RestructureExecutionTarget(ExecutionTarget):
 #def exec_procs_pool( exec_target, arg_tuple_list, ncores ):
 #    from multiprocessing import Pool
 #    pool = Pool(processes=ncores) 
-#    pool.map( exec_target, arg_tuple_list )
-   
-#--------------------------------------------------------------------------------------------------------------------------
-if __name__ == '__main__':   
-    from multicore_process_executable import ExecutionSpecs, MulticoreExecutable
-    from remote_dataset_retrieval import DatasetCatalogRetriever
-    import argparse
-    tg0 = time.time() 
-
-    parser = argparse.ArgumentParser(description='Regrid WRF data files.')
-    parser.add_argument( '-s', '--specs', dest='specfile', nargs='?', default=None, help='WRF regrid spec file')
-    parser.add_argument( 'FILE' )
-    ns = parser.parse_args( sys.argv )
-    
-    if ns.specfile == None:
-        print>>sys.stderr, "Error, Must specify a Regrid Spec File."
-        sys.exit(1) 
-        
-    spec_file = os.path.expanduser( ns.specfile )
-    specs = ExecutionSpecs( spec_file )
-       
-    service = specs.getPath( 'service', 'WRF-regrid' )
-    data_location = specs.getPath( 'data_location', '~' )
-    out_directory = specs.getPath( 'out_directory', '.' )
-    run_cdscan = specs.getBool( 'run_cdscan', False )
-    ncores = specs.getInt( 'ncores', 4 )
-    
-    WRF_dataset_name = specs.getStr( 'name', 'WRF' )
-    output_dataset_directory = os.path.expanduser( os.path.join( out_directory, "%s-%d" % ( WRF_dataset_name, int( time.time() ) ) ) ) 
-    
-    try:
-        os.mkdir(  output_dataset_directory )
-    except OSError:
-        print>>sys.stderr, "Error, Can't create output directory: ", output_dataset_directory
-        sys.exit(2) 
-    
-    print "Regridding WRF files to %s" % ( output_dataset_directory )
-    specs.put( 'output_dataset_directory', output_dataset_directory )
-    
-    filename_patterns = specs.getList( 'files') 
-    if not filename_patterns:
-        print>>sys.stderr, "Error, No WRF data files specified."
-        sys.exit(3) 
-    
-    remote_dset_cat = DatasetCatalogRetriever( data_location )
-    files = remote_dset_cat.get_file_list( filename_patterns )
-    print "Processing files: ", str( files )
-
-    varnames =  specs.getList( 'vars' ) 
-    if not varnames:
-        print>>sys.stderr, "Error, No variables specified"
-        sys.exit(4) 
-   
-    arg_tuple_list = [ ]                
-    for time_index, fname in enumerate(files):
-        for varname in varnames:   
-            arg_tuple_list.append( ( time_index, fname, varname, specs) )
-    
-    multicore_exec = None 
-    if service == 'WRF-regrid':                  multicore_exec = MulticoreExecutable( WRF_RegridExecutionTarget, ncores=ncores ) 
-    elif service == 'CAM_CS-restructure':        multicore_exec = MulticoreExecutable( CAM_CS_RestructureExecutionTarget, ncores=ncores )  
-    
-    if not multicore_exec:
-        
-        print>>sys.stderr,  "Unrecognized service: ", service
-
-    else:
-    
-        multicore_exec.execute( arg_tuple_list )      
-              
-        tg1 = time.time()
-        print "Full Dataset Regrid required %.2f secs." % ( tg1-tg0 )
-        
-        if run_cdscan:
-            cmd = " cd '%s'; cdscan -x dataset.xml *.nc" % output_dataset_directory
-            os.system(cmd)
-
-    
-    
+#    pool.map( exec_target, arg_tuple_list )    

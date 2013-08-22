@@ -102,7 +102,8 @@ class MulticoreExecutable :
             if block: self.block()
         else:
             target=self.executionTargetSubclass(0)
-            target.execute( arg_tuple_list[0] )
+            for arg_tuple in arg_tuple_list:
+                target.execute( arg_tuple )
                     
     def terminated(self):
         for p in self.proc_queue:
