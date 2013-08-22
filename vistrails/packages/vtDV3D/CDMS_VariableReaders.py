@@ -260,7 +260,10 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 elif matchesAxisType( axis, lon_axis_attr, lon_aliases ):
                     axis.designateLongitude()
                     print " --> Designating axis %s as a Longitude axis " % axis.id 
-                    latLonGrid = False  
+                    latLonGrid = False 
+            elif ( axis.isLatitude() or axis.isLongitude() ):
+                if ( axis.id.lower()[0] == 'x' ) or ( axis.id.lower()[0] == 'y' ):
+                    latLonGrid = False 
         return latLonGrid
 
     def setupTimeAxis( self, var, **args ):

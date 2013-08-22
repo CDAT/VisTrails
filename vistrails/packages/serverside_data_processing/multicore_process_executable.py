@@ -86,19 +86,24 @@ class MulticoreExecutable :
             print>>sys.stderr, " MulticoreExecutable error: processes currently running.  "
             return
         self.ncores = args.get('ncores', self.ncores )
-        self.nlocks = args.get('nlocks', self.nlocks )
-        block = args.get('block', True )
-        self.locks = [ Lock() for iLock in range(self.nlocks) ]
-        self.arg_queue = JoinableQueue() 
-        for arg_tuple in arg_tuple_list:
-            self.arg_queue.put( arg_tuple )
-        for iP in range( self.ncores ):   
-            p = Process( target=self.executionTargetSubclass(iP), args=( self.arg_queue, self.locks  ) )
-            self.proc_queue.append( ( iP, p ) )
-            p.start()
-        print " Running %d procs" % len( self.proc_queue ); sys.stdout.flush()
-        if block: self.block()
-        
+        if self.ncores > 1:
+            self.nlocks = args.get('nlocks', self.nlocks )
+            block = args.get('block', True )
+            self.locks = [ Lock() for iLock in range(self.nlocks) ]
+            self.arg_queue = JoinableQueue() 
+            for arg_tuple in arg_tuple_list:
+                self.arg_queue.put( arg_tuple )
+            
+            for iP in range( self.ncores ):   
+                p = Process( target=self.executionTargetSubclass(iP), args=( self.arg_queue, self.locks  ) )
+                self.proc_queue.append( ( iP, p ) )
+                p.start()
+            print " Running %d procs" % len( self.proc_queue ); sys.stdout.flush()
+            if block: self.block()
+        else:
+            target=self.executionTargetSubclass(0)
+            target.execute( arg_tuple_list[0] )
+                    
     def terminated(self):
         for p in self.proc_queue:
             if p.is_alive(): return False

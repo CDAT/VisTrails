@@ -6,9 +6,9 @@ Adapted from code by Peter Caldwell at LLNL (caldwell19@llnl.gov)
 
 '''
 
-import cdutil, genutil, sys, os, cdms2, MV2, time, traceback
+import cdutil, genutil, sys, os, cdms2, MV2, time, traceback, math
 from multicore_process_executable import ExecutionTarget
-        
+              
 def make_corners(lat,lon,fname=0):
     """
     This func computes corners by extrapolating cell center positions.
@@ -333,8 +333,8 @@ def print_test_value( test_id, var ):
 #    return rv
 
 
-class RegridExecutionTarget(ExecutionTarget):
-    
+class WRF_RegridExecutionTarget(ExecutionTarget):
+        
     def execute( self, args ): 
         ( time_index, fname, varname, specs ) = args
         default_outfile = 'wrfout'
@@ -384,7 +384,79 @@ class RegridExecutionTarget(ExecutionTarget):
             traceback.print_exc()
             return 1
         return 0
+
+class CAM_CS_RestructureExecutionTarget(ExecutionTarget):
         
+    def execute( self, args ): 
+        ( time_index, fname, varname, specs ) = args
+        default_outfile = 'cam_cs'
+        result_file = specs.getStr( 'outfile', os.path.expanduser( default_outfile ) )    
+        time_units = specs.getStr( 'time_units', 'hours since 2000-01-01' )
+        data_location = specs.getStr( 'data_location', '~' ) 
+        output_dataset_directory = specs.getStr( 'output_dataset_directory', '.' ) 
+        
+        fpath = os.path.join( data_location, fname )   
+        try:
+            print " P[%d]: opening file: %s " % ( self.proc_index, fpath ); sys.stdout.flush()
+            cdms_file = cdms2.open( fpath )
+        except Exception:
+            print>>sys.stderr, "Can't read file %s " % ( fpath )
+            return
+        
+        try:
+            print " P[%d]: opening var: %s. " % ( self.proc_index, varname ); sys.stdout.flush()
+            var = cdms_file( varname )
+            print " P[%d]: Done read. " % ( self.proc_index ); sys.stdout.flush()
+        except Exception:
+            print>>sys.stderr, "Variable %s does not seem to exist in file %s " % ( varname, fpath )
+            return
+
+        nTiles = 6
+        iTile = 3
+        ndims = len( var.shape )
+        if ndims == 3:
+            npts_tot = var.shape[2]
+            nlev = var.shape[1]
+        else:
+            npts_tot = var.shape[1]
+            nlev = 1
+        npts_tile = npts_tot / nTiles
+        dim = int( math.sqrt( npts_tile ) )    
+        iOffset =  4*dim
+        iStart = 1 + iOffset + npts_tile * iTile
+        iEnd = iStart + npts_tile
+        time_axis = var.getAxisList('time')
+        x_axis = cdms2.createAxis( range(dim) )
+        x_axis.id = 'x'
+        x_axis.axis = 'X'
+        y_axis = cdms2.createAxis( range(dim) )
+        y_axis.id = 'y'
+        y_axis.axis = 'Y'
+        
+        axes =[ y_axis,  x_axis ] 
+        if ndims == 3:
+            var_data = var[ 0, 0:nlev, iStart : iEnd  ]
+            levaxis = var.getLevel()
+            if levaxis == None: levaxis = cdms2.createAxis( range(nlev) )
+            axes.insert( 0, levaxis )
+            new_shape = [ nlev, dim, dim ]    
+        else:
+            var_data = var[ 0, iStart : iEnd  ]
+            new_shape = [ dim, dim ]   
+        
+        if len( time_axis ): 
+            axes.insert( 0, time_axis[0] ) 
+            new_shape.insert( 0, 1 ) 
+            
+        var_data = var_data.reshape( new_shape ) 
+        tVar = cdms2.createVariable( var_data, axes=axes, id=var.id, typecode=var.typecode() )
+        outfile_path = os.path.join( output_dataset_directory, "%s-%s-%d.nc" % ( result_file, varname, time_index ) )
+        print " P[%d]: Writing to outfile %s" % ( self.proc_index, outfile_path ); sys.stdout.flush()
+        outfile = cdms2.createDataset( outfile_path )
+        outfile.write( tVar )
+        outfile.close()
+
+           
 #def exec_procs( exec_target, arg_tuple_list, ncores, **args ):
 #    from multiprocessing import Process, Lock
 #    sync_write = args.get('sync_write', False)
@@ -466,6 +538,7 @@ if __name__ == '__main__':
     spec_file = os.path.expanduser( ns.specfile )
     specs = ExecutionSpecs( spec_file )
        
+    service = specs.getPath( 'service', 'WRF-regrid' )
     data_location = specs.getPath( 'data_location', '~' )
     out_directory = specs.getPath( 'out_directory', '.' )
     run_cdscan = specs.getBool( 'run_cdscan', False )
@@ -490,6 +563,7 @@ if __name__ == '__main__':
     
     remote_dset_cat = DatasetCatalogRetriever( data_location )
     files = remote_dset_cat.get_file_list( filename_patterns )
+    print "Processing files: ", str( files )
 
     varnames =  specs.getList( 'vars' ) 
     if not varnames:
@@ -500,16 +574,25 @@ if __name__ == '__main__':
     for time_index, fname in enumerate(files):
         for varname in varnames:   
             arg_tuple_list.append( ( time_index, fname, varname, specs) )
-     
-    multicore_exec = MulticoreExecutable( RegridExecutionTarget, ncores=ncores ) 
-    multicore_exec.execute( arg_tuple_list )      
-          
-    tg1 = time.time()
-    print "Full Dataset Regrid required %.2f secs." % ( tg1-tg0 )
     
-    if run_cdscan:
-        cmd = " cd '%s'; cdscan -x dataset.xml *.nc" % output_dataset_directory
-        os.system(cmd)
+    multicore_exec = None 
+    if service == 'WRF-regrid':                  multicore_exec = MulticoreExecutable( WRF_RegridExecutionTarget, ncores=ncores ) 
+    elif service == 'CAM_CS-restructure':        multicore_exec = MulticoreExecutable( CAM_CS_RestructureExecutionTarget, ncores=ncores )  
+    
+    if not multicore_exec:
+        
+        print>>sys.stderr,  "Unrecognized service: ", service
+
+    else:
+    
+        multicore_exec.execute( arg_tuple_list )      
+              
+        tg1 = time.time()
+        print "Full Dataset Regrid required %.2f secs." % ( tg1-tg0 )
+        
+        if run_cdscan:
+            cmd = " cd '%s'; cdscan -x dataset.xml *.nc" % output_dataset_directory
+            os.system(cmd)
 
     
     

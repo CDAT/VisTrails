@@ -104,6 +104,7 @@ class DatasetCatalogRetriever:
     
     def __init__( self, location, **args ):
        self.parser = None
+       self.address = location
 #       location = args.get('address',None)
        if location:
            self.set_dataset_address( location )
@@ -118,12 +119,15 @@ class DatasetCatalogRetriever:
         file_list = []
         if self.parser:
             self.parser.execute()
-            for file_rec in self.parser.child_node_list:
-                for pattern in patterns:
-                    if fnmatch.fnmatch( file_rec[1], pattern ):
-                        file_list.append( file_rec[1] ) 
-                        break
-            file_list.reverse()  
+            child_node_list =[file_rec[1] for file_rec in self.parser.child_node_list ]
         else:
-            print>>sys.stderr, "Error, no recognizable dataset address supplied." 
+            child_node_list = [ f for f in os.listdir( self.address ) if os.path.isfile( os.path.join( self.address, f ) ) ]
+
+        for child_node in child_node_list:
+            for pattern in patterns:
+                if fnmatch.fnmatch( child_node, pattern ):
+                    file_list.append( child_node ) 
+                    break
+
+        file_list.reverse()  
         return file_list     
