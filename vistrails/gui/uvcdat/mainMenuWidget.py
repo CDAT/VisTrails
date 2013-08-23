@@ -14,7 +14,7 @@
 #                                                                             #
 ###############################################################################
 from PyQt4 import QtGui, QtCore
-import os
+import os, sys
 import commandsRecorderWidget
 import customizeUVCDAT
 import genutil,cdutil
@@ -274,7 +274,6 @@ class QMenuWidget(QtGui.QWidget):
             prj_controller = get_current_project_controller()
             vtfuncnm = "%s(%s)"%(funcnm,v.id)
             prj_controller.calculator_command([v.id], vtdesc, vtfuncnm, newid)
-
 
     def setBounds(self,action):
         nm = str(action.text())
