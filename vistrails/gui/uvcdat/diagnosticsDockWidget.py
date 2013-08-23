@@ -3,6 +3,7 @@ from PyQt4.QtCore import Qt, QString
 from PyQt4.QtGui import QListWidgetItem
      
 from ui_diagnosticsDockWidget import Ui_DiagnosticDockWidget
+import tempfile
 
 class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
     
@@ -59,6 +60,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         self.comboBoxType.addItems(DiagnosticsDockWidget.Types)
         self.comboBoxVariable.addItems(self.variables)
         #self.comboBoxVariable.set("TREFHT")
+        i = self.comboBoxVariable.findText("TREFHT")
+        self.comboBoxVariable.setCurrentIndex(i)
         self.comboBoxObservation.addItems(self.observations)
         self.comboBoxSeason.addItems(self.seasons)
         
@@ -126,9 +129,12 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         # The paths have to be chosen by the user, unless we know something about the system...
         path1 = os.path.join(os.environ["HOME"],'cam_output/b30.009.cam2.h0.06.xml')
         path2 = os.path.join(os.environ["HOME"],'obs_data')
+        tmppth = os.path.join(os.environ['HOME'],"tmp")
+        if not os.path.exists(tmppth):
+            os.makedirs(tmppth)
         filt2="filt=f_startswith('NCEP')"
-        filetable1 = setup_filetable(path1,os.environ['HOME']+'/tmp')
-        filetable2 = setup_filetable(path2,os.environ['HOME']+'/tmp',search_filter=filt2)
+        filetable1 = setup_filetable(path1,tmppth)
+        filetable2 = setup_filetable(path2,tmppth,search_filter=filt2)
         #
         plot_set = diagnostic[0:diagnostic.find('-')] # e.g. '3','4a', etc.
         ps = get_plot_data( plot_set, filetable1, filetable2, variable, season )
@@ -155,6 +161,53 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         print "labels:",labels
         print "title:",title
         print "presentation:",presentation
+        #define where to drag and drop
+        sheet = "Sheet 1"
+        row = 0
+        col = 0
+        import cdms2
+        from packages.uvcdat_cdms.init import CDMSVariable
+        for V in pvars:
+            # Until I know better storing vars in tempfile....
+            f = tempfile.NamedTemporaryFile()
+            filename = f.name
+            f.close()
+            fd = cdms2.open(filename,"w")
+            fd.write(V)
+            fd.close()
+            cdmsFile = cdms2.open(filename)
+            #define name of variable to appear in var widget
+            name_in_var_widget = V.id
+            #get uri if exists
+            url = None
+            if hasattr(cdmsFile, 'uri'):
+                url = cdmsFile.uri
+            #create vistrails module
+            cdmsVar = CDMSVariable(filename=cdmsFile.id, url=url, name=name_in_var_widget,
+                                    varNameInFile=V.id)
+
+            #get variable widget and project controller
+            definedVariableWidget = self.parent().dockVariable.widget()
+            projectController = self.parent().get_current_project_controller()
+            #add variable to display widget and controller
+            definedVariableWidget.addVariable(V)
+            projectController.add_defined_variable(cdmsVar)
+
+            # simulate drop variable
+            varDropInfo = (name_in_var_widget, sheet, col, row)
+            projectController.variable_was_dropped(varDropInfo)
+
+            # Trying to add method to plot list....
+            #from gui.application import get_vistrails_application
+            #_app = get_vistrails_application()
+            #d = _app.uvcdatWindow.dockPlot
+            # simulate drop plot
+            #plot = projectController.plot_manager.new_plot('VCS', res30.type, res30.presentation )
+            plot = projectController.plot_manager.new_plot('VCS', res30.type, "default" )
+            plotDropInfo = (plot, sheet, col, row)
+            projectController.plot_was_dropped(plotDropInfo)
+
+
         print "Finished"
             
 
