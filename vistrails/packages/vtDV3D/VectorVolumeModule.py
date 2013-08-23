@@ -27,17 +27,17 @@ class PM_VectorVolume(PersistentVisualizationModule):
     """    
     def __init__( self, mid, **args ):
         PersistentVisualizationModule.__init__( self, mid, **args )
-        self.glyphScaleBounds = [ 0.02, 0.5 ] 
+        self.glyphScaleBounds = [ 0.02, 1.0 ] 
         self.glyphScale = [ 0.0, 0.5 ] 
         self.glyphRange = None
-        self.glyphDecimationFactor = [ 20.0, 2.0 ]
-        self.glyphDecimationFactorBounds = [ 1.0, 20.0 ]
+        self.glyphDecimationFactor = [ 2.0, 20.0 ]
+        self.glyphDecimationFactorBounds = [ 1.0, 50.0 ]
         self.primaryInputPorts = [ 'volume' ]
         self.resample = None
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0 )
         self.addConfigurableLevelingFunction( 'glyphScale', 'Z', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, activeBound='max', layerDependent=True, bound=False )
-        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False )
-        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
+        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', sliderLabels=["Vertical Sample Spacing", "Horizontal Sample Spacing"], setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setInputZScale, getLevel=self.getScaleBounds, activeBound='max', windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
       
     def scaleColormap( self, ctf_data, cmap_index=0, **args ):
         colormapManager = self.getColormapManager( index=cmap_index )
@@ -160,7 +160,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.set3DOutput(wmod=self.wmod)
         
     def ApplyGlyphDecimationFactor(self):
-        sampleRate = [ int( round( abs( self.glyphDecimationFactor[0] ) )  ), int( round( abs( self.glyphDecimationFactor[1] ) ) )  ]
+        sampleRate = [ int( round( abs( self.glyphDecimationFactor[1] ) )  ), int( round( abs( self.glyphDecimationFactor[0] ) ) )  ]
 #        print "Sample rate: %s " % str( sampleRate )
         self.resample.SetSampleRate( sampleRate[0], sampleRate[0], sampleRate[1] )
     
