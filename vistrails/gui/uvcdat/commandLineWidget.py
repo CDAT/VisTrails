@@ -295,8 +295,15 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 if str(self.le.text())=="" :
                     pressEnter=True
         elif txt == "REGRID":
-            if len(selected)!=2:
-                st=".regrid("
+            if len(selected)==0:
+                st=".regrid(" 
+            if len(selected)==1:
+                vars = [selected[0].varName]
+                st="StandardGrid.regrid(%s)" % ( selected[0].varName )
+                self.root.dockVariable.widget().unselectItems(selected)
+                nm="regrid_"+selected[0].varName +" = "
+                if str(self.le.text())=="" :
+                    pressEnter=True
             else:
                 vars = [selected[0].varName,selected[1].varName]
                 st="%s.regrid(%s.getGrid())" % (
@@ -536,6 +543,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
         #-----------------------------------------------------------------------
         # execute the command and clear the line entry if no error occurs
         #-----------------------------------------------------------------------
+
 #        results = "temp_results_holder"
 #        acommand = "temp_results_holder = %s"  % command
 #        exec( "import MV2,genutil,cdms2,vcs,cdutil,numpy", __main__.__dict__ )
@@ -550,7 +558,6 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
 #            traceback.print_exc(file=errorText)
 #            errorText.write('-'*60)
 #            self.te.insertPlainText(errorText.getvalue())
-
 #        res = self.root.stick_main_dict_into_defvar(None)
         #-----------------------------------------------------------------------
         # record the command for preproducibility
