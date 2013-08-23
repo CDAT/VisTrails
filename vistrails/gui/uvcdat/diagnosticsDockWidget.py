@@ -42,7 +42,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
                                                  'Diagnostics 17', 
                                                  'Diagnostics 18',]}}
         
-        self.variables = sorted(['TREFHT', 'Willmott', 'TREFHT', 'Legates', 'PRECT', 'TREFHT', 'JRA25', 'PREH2O', 'PSL', 'SHFLX', 'LHFLX', 'TREFHT', 'ERA-Interim', 'PREH2O', 'PSL', 'ERA40', 'LHFLX', 'PREH2O', 'MODIS', 'PREH2O', 'TGCLDLWP', 'NVAP', 'PREH2O', 'TGCLDLWP', 'AIRS', 'PREH2O', 'Woods', 'LHFLX', 'QFLX', 'GPCP', 'PRECT', 'CMAP', 'PRECT', 'UWisc', 'TGCLDLWP', 'SSM/I', 'PRECT', 'PREH2O', 'TRMM', 'PRECT', 'Large-Yeager', 'SHFLX', 'QFLX', 'FLNS', 'FSNS', 'CERES-EBAF', 'FLUT', 'FLUTC', 'FSNTOA', 'FSNTOAC', 'LWCF', 'SWCF', 'CERES', 'FLUT', 'FLUTC', 'FSNTOA', 'FSNTOAC', 'LWCF', 'SWCF', 'ERBE', 'FLUT', 'FLUTC', 'FSNTOA', 'FSNTOAC', 'LWCF', 'SWCF', 'ISCCP', 'FLDS', 'FLDSC', 'FLNS', 'FLNSC', 'FSDS', 'FSDSC', 'FSNS', 'FSNSC', 'LWCFSRF', 'SWCFSRF', 'ISCCP', 'CLDHGH', 'CLDHGH', 'CLDLOW', 'CLDLOW', 'CLDMED', 'CLDMED', 'CLDTOT', 'CLDTOT', 'Warren', 'CLDLOW', 'CLDTOT', 'CLOUDSAT', 'CLDTOT', 'CLDLOW', 'CLDMED', 'CLDHGH', 'CFMIP', 'CALIPSO', 'CLDTOT_CAL', 'CLDLOW_CAL', 'CLDMED_CAL', 'CLDHGH_CAL', 'ISCCP-COSP', 'CLDTOT_ISCCPCOSP', 'CLDTHICK_ISCCPCOSP', 'MISR', 'CLDTOT_MISR', 'CLDTHICK_MISR', 'MODIS-COSP', 'CLDTOT_MODIS', 'CLDTHICK_MODIS', 'Additional', 'CALIPSO', 'CLDTOT_CAL', 'CLDLOW_CAL', 'CLDMED_CAL', 'CLDHGH_CAL', 'CLOUDSAT-COSP', 'CLDTOT_CS2', 'ISCCP-COSP', 'CLDTOT_ISCCPCOSP', 'CLDLOW_ISCCPCOSP', 'CLDMED_ISCCPCOSP', 'CLDHGH_ISCCPCOSP', 'CLDTHICK_ISCCPCOSP', 'MEANPTOP_ISCCPCOSP', 'MEANCLDALB_ISCCPCOSP', 'MISR', 'CLDTOT_MISR', 'CLDLOW_MISR', 'CLDMED_MISR', 'CLDHGH_MISR', 'CLDTHICK_MISR', 'MODIS-COSP', 'CLDTOT_MODIS', 'CLDLOW_MODIS', 'CLDMED_MODIS', 'CLDHGH_MODIS', 'CLDTHICK_MODIS', 'CLIMODIS', 'CLWMODIS', 'IWPMODIS', 'LWPMODIS', 'PCTMODIS', 'REFFCLIMODIS', 'REFFCLWMODIS', 'TAUILOGMODIS', 'TAUWLOGMODIS', 'TAUTLOGMODIS', 'TAUIMODIS', 'TAUWMODIS', 'TAUTMODIS'])
+        self.variables = sorted(set(['T','TREFHT', 'Willmott', 'TREFHT', 'Legates', 'PRECT', 'TREFHT', 'JRA25', 'PREH2O', 'PSL', 'SHFLX', 'LHFLX', 'TREFHT', 'ERA-Interim', 'PREH2O', 'PSL', 'ERA40', 'LHFLX', 'PREH2O', 'MODIS', 'PREH2O', 'TGCLDLWP', 'NVAP', 'PREH2O', 'TGCLDLWP', 'AIRS', 'PREH2O', 'Woods', 'LHFLX', 'QFLX', 'GPCP', 'PRECT', 'CMAP', 'PRECT', 'UWisc', 'TGCLDLWP', 'SSM/I', 'PRECT', 'PREH2O', 'TRMM', 'PRECT', 'Large-Yeager', 'SHFLX', 'QFLX', 'FLNS', 'FSNS', 'CERES-EBAF', 'FLUT', 'FLUTC', 'FSNTOA', 'FSNTOAC', 'LWCF', 'SWCF', 'CERES', 'FLUT', 'FLUTC', 'FSNTOA', 'FSNTOAC', 'LWCF', 'SWCF', 'ERBE', 'FLUT', 'FLUTC', 'FSNTOA', 'FSNTOAC', 'LWCF', 'SWCF', 'ISCCP', 'FLDS', 'FLDSC', 'FLNS', 'FLNSC', 'FSDS', 'FSDSC', 'FSNS', 'FSNSC', 'LWCFSRF', 'SWCFSRF', 'ISCCP', 'CLDHGH', 'CLDHGH', 'CLDLOW', 'CLDLOW', 'CLDMED', 'CLDMED', 'CLDTOT', 'CLDTOT', 'Warren', 'CLDLOW', 'CLDTOT', 'CLOUDSAT', 'CLDTOT', 'CLDLOW', 'CLDMED', 'CLDHGH', 'CFMIP', 'CALIPSO', 'CLDTOT_CAL', 'CLDLOW_CAL', 'CLDMED_CAL', 'CLDHGH_CAL', 'ISCCP-COSP', 'CLDTOT_ISCCPCOSP', 'CLDTHICK_ISCCPCOSP', 'MISR', 'CLDTOT_MISR', 'CLDTHICK_MISR', 'MODIS-COSP', 'CLDTOT_MODIS', 'CLDTHICK_MODIS', 'Additional', 'CALIPSO', 'CLDTOT_CAL', 'CLDLOW_CAL', 'CLDMED_CAL', 'CLDHGH_CAL', 'CLOUDSAT-COSP', 'CLDTOT_CS2', 'ISCCP-COSP', 'CLDTOT_ISCCPCOSP', 'CLDLOW_ISCCPCOSP', 'CLDMED_ISCCPCOSP', 'CLDHGH_ISCCPCOSP', 'CLDTHICK_ISCCPCOSP', 'MEANPTOP_ISCCPCOSP', 'MEANCLDALB_ISCCPCOSP', 'MISR', 'CLDTOT_MISR', 'CLDLOW_MISR', 'CLDMED_MISR', 'CLDHGH_MISR', 'CLDTHICK_MISR', 'MODIS-COSP', 'CLDTOT_MODIS', 'CLDLOW_MODIS', 'CLDMED_MODIS', 'CLDHGH_MODIS', 'CLDTHICK_MODIS', 'CLIMODIS', 'CLWMODIS', 'IWPMODIS', 'LWPMODIS', 'PCTMODIS', 'REFFCLIMODIS', 'REFFCLWMODIS', 'TAUILOGMODIS', 'TAUWLOGMODIS', 'TAUTLOGMODIS', 'TAUIMODIS', 'TAUWMODIS', 'TAUTMODIS']))
         self.observations = ['Obs 1', 'Obs 2', 'Obs 3']
         self.seasons = ['DJF', 'JJA', 'MJJ', 'ASO', 'ANN']
         
@@ -58,6 +58,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         
         self.comboBoxType.addItems(DiagnosticsDockWidget.Types)
         self.comboBoxVariable.addItems(self.variables)
+        #self.comboBoxVariable.set("TREFHT")
         self.comboBoxObservation.addItems(self.observations)
         self.comboBoxSeason.addItems(self.seasons)
         
@@ -123,34 +124,38 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         import os
         from metrics.amwg import setup_filetable, get_plot_data
         # The paths have to be chosen by the user, unless we know something about the system...
-        path1 = '/export/painter1/cam_output/b30.009.cam2.h0.06.xml'
-        path2 = '/export/painter1/metrics/src/python/obs_data/'
-        filt2="filt=f_startswith('LEGATES')"
+        path1 = os.path.join(os.environ["HOME"],'cam_output/b30.009.cam2.h0.06.xml')
+        path2 = os.path.join(os.environ["HOME"],'obs_data')
+        filt2="filt=f_startswith('NCEP')"
         filetable1 = setup_filetable(path1,os.environ['HOME']+'/tmp')
         filetable2 = setup_filetable(path2,os.environ['HOME']+'/tmp',search_filter=filt2)
         #
         plot_set = diagnostic[0:diagnostic.find('-')] # e.g. '3','4a', etc.
         ps = get_plot_data( plot_set, filetable1, filetable2, variable, season )
         if ps is None:
+            print "I got back a None!!!!"
             return None
         res = ps.results()
         if res is None:
+            print "Results were None!"
             return None
         # Note: it would be useful to get some immediate feedback as to whether the code is
         # busy, or finished with the current task.
         # For now, print the first result.  Really, we want to plot them all...
         if type(res) is list:
+            print "res was list nothing more happens!"
             res30 = res[0]
         else:
             res30 = res
-            pvars = res30.vars
-            labels = res30.labels
-            title = res30.title
-            presentation = res30.presentation
-            print "pvars:",pvars
-            print "labels:",labels
-            print "title:",title
-            print "presentation:",presentation
+        pvars = res30.vars
+        labels = res30.labels
+        title = res30.title
+        presentation = res30.presentation
+        print "pvars:",pvars
+        print "labels:",labels
+        print "title:",title
+        print "presentation:",presentation
+        print "Finished"
             
 
     def cancelClicked(self):
