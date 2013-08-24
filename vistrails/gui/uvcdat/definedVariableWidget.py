@@ -236,20 +236,21 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 cdmsVar = var[1]
                 var = var[0]
 
-            self.root.stick_defvar_into_main_dict(var)
-            
-            for i in range(self.varList.count()-1,-1,-1):
-                if self.varList.item(i).getVarName() == var.id:
-                    replaced = True
-                    item = self.varList.item(i)
-                    item.setVariable(var)
-                    ModuleStore.addActiveVariable( item.varName, item.variable )
-                    break
-                    
-            if not replaced:
-                item = QDefinedVariableItem(var,self.root,cdmsVar)
-                self.varList.addItem(item) 
+        self.root.stick_defvar_into_main_dict(var)
+        
+        for i in range(self.varList.count()-1,-1,-1):
+            if self.varList.item(i).getVarName() == var.id:
+                replaced = True
+                item = self.varList.item(i)
+                item.setVariable(var)
                 ModuleStore.addActiveVariable( item.varName, item.variable )
+                break
+                
+        if not replaced:
+            item = QDefinedVariableItem(var,self.root,cdmsVar)
+            self.varList.addItem(item) 
+            ModuleStore.addActiveVariable( item.varName, item.variable )
+            
         # Recording define variable teaching command
 #        self.recordDefineVariableTeachingCommand(varName, var.id, file, axesArgString)
 
@@ -578,7 +579,7 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
         Update the variable string that is shown to the user in the list.
         format =  '-- variableName (shape)', where num is the selection number
         """
-        if num is None:
+        if num is None or num == -1:
             self.selectNum = -1
             numString = '--'
         else:
