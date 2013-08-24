@@ -144,9 +144,9 @@ class CDMSVariable(Variable):
                                       str(e))
         else:
             var = cdmsfile.__call__(varName)
-            
+
         memoryLogger.log("finish cdms variable read")    
-            
+
         if self.axesOperations is not None:
             var = CDMSVariable.applyAxesOperations(var, self.axesOperations)
             
