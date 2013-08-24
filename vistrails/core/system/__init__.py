@@ -219,14 +219,14 @@ def default_options_file():
     Returns vistrails default options file
 
     """
-    return os.path.join(home_directory(), ".vistrailsrc")
+    return os.path.join(home_directory(), ".uvcdatsrc")
 
 def default_dot_vistrails():
     """ default_dot_vistrails() -> str 
     Returns VisTrails per-user directory.
 
     """
-    return os.path.join(home_directory(), '.vistrails')
+    return os.path.join(home_directory(), '.uvcdat')
 def default_connections_file():
     """ default_connections_file() -> str
     Returns default Vistrails per-user connections file
