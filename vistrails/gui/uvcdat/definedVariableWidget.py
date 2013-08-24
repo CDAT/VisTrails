@@ -230,18 +230,26 @@ class QDefinedVariableWidget(QtGui.QWidget):
         from packages.vtDV3D import ModuleStore
 
         cdmsVar = None
+        replaced = False
         if type_ == 'CDMS':
             if type(var) == tuple:
                 cdmsVar = var[1]
                 var = var[0]
 
             self.root.stick_defvar_into_main_dict(var)
-            item = QDefinedVariableItem(var,self.root,cdmsVar)
+            
             for i in range(self.varList.count()-1,-1,-1):
                 if self.varList.item(i).getVarName() == var.id:
-                    self.varList.takeItem(i)
-        self.varList.addItem(item)
-        ModuleStore.addActiveVariable( item.varName, item.variable )
+                    replaced = True
+                    item = self.varList.item(i)
+                    item.setVariable(var)
+                    ModuleStore.addActiveVariable( item.varName, item.variable )
+                    break
+                    
+            if not replaced:
+                item = QDefinedVariableItem(var,self.root,cdmsVar)
+                self.varList.addItem(item) 
+                ModuleStore.addActiveVariable( item.varName, item.variable )
         # Recording define variable teaching command
 #        self.recordDefineVariableTeachingCommand(varName, var.id, file, axesArgString)
 
@@ -588,7 +596,7 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
         user in the list
         """
         self.variable = variable
-        self.updateVariableString()
+        self.updateVariableString(self.selectNum)
 
 class QDefVarWarningBox(QtGui.QDialog):
     """ Popup box to warn a user that a variable with same name is already
