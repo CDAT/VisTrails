@@ -133,20 +133,42 @@ class CDMSVariable(Variable):
         varName = self.name
         if self.varNameInFile is not None:
             varName = self.varNameInFile
+            
+        # get file var to see if it is axis or not
+        fvar = cdmsfile[varName]
+        if isinstance(fvar, cdms2.axis.FileAxis):
+            var = cdms2.MV2.array(fvar)
         
         memoryLogger.log("start cdms variable read") 
-           
+
         if self.axes is not None:
+            #convert string into kwargs
+            #example axis string:
+            #lon=(0.0, 358.5),lev=(3.54, 992.55),time=('301-1-1 0:0:0.0', '301-2-1 0:0:0.0'),lat=(-88.92, 88.92),squeeze=1,
+            
+            def getKWArgs(**kwargs):
+                return kwargs
+            
             try:
-                var = eval("cdmsfile.__call__(varName,%s)"% self.axes)
+                kwargs = eval('getKWArgs(%s)' % self.axes)
             except Exception, e:
-                raise ModuleError(self, "Invalid 'axes' specification: %s" % \
-                                      str(e))
-        else:
+                format = "Invalid 'axes' specification: %s\nProduced error: %s"
+                raise ModuleError(self, format % (self.axes, str(e)))
+
+            if isinstance(fvar, cdms2.axis.FileAxis):
+                try:
+                    var = var.__call__(**kwargs)
+                except Exception, e:
+                    format = "WARNING: axis variable %s subslice \
+                            failed with selector '%s'\nError: %s"
+                    print format % (varName, str(kwargs), str(e))
+            else:
+                var = cdmsfile.__call__(varName, **kwargs)
+        elif not isinstance(fvar, cdms2.axis.FileAxis):
             var = cdmsfile.__call__(varName)
-
+            
         memoryLogger.log("finish cdms variable read")    
-
+            
         if self.axesOperations is not None:
             var = CDMSVariable.applyAxesOperations(var, self.axesOperations)
             
@@ -571,7 +593,13 @@ class CDMSUnaryVariableOperation(CDMSVariableOperation):
         self.python_command = self.replace_variable_in_command(self.python_command,
                                                                self.var.name, 
                                                                "self.var.var")
-        res = eval(self.python_command)
+        res = None
+        try:
+            res = eval(self.python_command)
+        except:
+            print "Exception evaluating python command '%s'\n" % self.python_command
+            raise
+            
         if type(res) == tuple:
             for r in res:
                 if isinstance(r,cdms2.tvariable.TransientVariable):

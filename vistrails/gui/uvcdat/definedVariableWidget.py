@@ -223,7 +223,12 @@ class QDefinedVariableWidget(QtGui.QWidget):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
         """
+
+        if var is None:
+            return
+
         from packages.vtDV3D import ModuleStore
+
         cdmsVar = None
         if type_ == 'CDMS':
             if type(var) == tuple:
