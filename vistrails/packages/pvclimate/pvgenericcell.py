@@ -92,7 +92,7 @@ class QPVIsoSurfaceWidget(QVTKWidget):
 
             # Load the uvcdat logo and use it for overlay
             logoPath = (system.vistrails_root_directory() +
-                        "/gui/uvcdat/resources/images/splash.png")
+                        "/gui/uvcdat/resources/images/uvcdat_logo_transparent.png")
             reader = vtk.vtkPNGReader()
             reader.SetFileName(logoPath)
             reader.Update()
