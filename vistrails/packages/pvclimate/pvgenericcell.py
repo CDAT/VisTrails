@@ -24,8 +24,9 @@ import core.modules.basic_modules as basic_modules
 import csv
 import StringIO
 
-#// PVRepresentation
+#// Import PVClimate modules
 from pvrepresentationbase import *
+from pvlogo import *
 
 from packages.uvcdat_cdms.init import CDMSVariable
 
@@ -77,6 +78,7 @@ class QPVIsoSurfaceWidget(QVTKWidget):
     def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
         QVTKWidget.__init__(self, parent, f)
         self.view = None
+        self.overlay = PVLogo(self)
 
     def updateContents(self, inputPorts):
         if self.view==None:
