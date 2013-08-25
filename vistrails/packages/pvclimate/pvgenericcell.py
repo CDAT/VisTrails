@@ -1,7 +1,10 @@
 
 #//
 from PyQt4 import QtCore
+
 from core.modules.module_registry import get_module_registry
+from core import system
+
 from packages.vtk.vtkcell import QVTKWidget
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.spreadsheet.spreadsheet_cell import QCellWidget
@@ -26,7 +29,6 @@ import StringIO
 
 #// Import PVClimate modules
 from pvrepresentationbase import *
-from pvlogo import *
 
 from packages.uvcdat_cdms.init import CDMSVariable
 
@@ -40,7 +42,7 @@ class PVGenericCell(SpreadsheetCell):
     def compute(self):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
-        """        
+        """
 
         # Fetch slice offset from input port
         if self.hasInputFromPort("location"):
@@ -78,7 +80,6 @@ class QPVIsoSurfaceWidget(QVTKWidget):
     def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
         QVTKWidget.__init__(self, parent, f)
         self.view = None
-        self.overlay = PVLogo(self)
 
     def updateContents(self, inputPorts):
         if self.view==None:
@@ -89,11 +90,31 @@ class QPVIsoSurfaceWidget(QVTKWidget):
             iren.SetNonInteractiveRenderDelay(0)
             iren.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
 
+            # Load the uvcdat logo and use it for overlay
+            logoPath = (system.vistrails_root_directory() +
+                        "/gui/uvcdat/resources/images/splash.png")
+            reader = vtk.vtkPNGReader()
+            reader.SetFileName(logoPath)
+            reader.Update()
+
+            imageActor = vtk.vtkImageActor()
+            imageActor.SetInput(reader.GetOutput())
+
+            self.overlayRenderer = vtk.vtkRenderer()
+            self.overlayRenderer.AddActor(imageActor)
+
+            renWin.SetNumberOfLayers(renWin.GetNumberOfLayers() + 1)
+            self.overlayRenderer.SetLayer(renWin.GetNumberOfLayers() - 1)
+            renWin.AddRenderer(self.overlayRenderer)
+
+            self.overlayRenderer.SetViewport(0, 0, 0.3, 0.3)
+
+
         del self.view.Representations[:]
 
         # Fetch variables from the input port
         (location, representations) = inputPorts
-        
+
         for rep in representations:
             rep.set_view(self.view)
             rep.execute()
