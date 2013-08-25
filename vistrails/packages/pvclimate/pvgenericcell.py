@@ -107,7 +107,7 @@ class QPVIsoSurfaceWidget(QVTKWidget):
             self.overlayRenderer.SetLayer(renWin.GetNumberOfLayers() - 1)
             renWin.AddRenderer(self.overlayRenderer)
 
-            self.overlayRenderer.SetViewport(0, 0, 0.3, 0.3)
+            self.overlayRenderer.SetViewport(0.7, 0, 1.0, 0.3)
 
 
         del self.view.Representations[:]
@@ -121,7 +121,7 @@ class QPVIsoSurfaceWidget(QVTKWidget):
 
         # Set view specific properties
         self.view.CenterAxesVisibility = 0
-        self.view.Background = [0.5, 0.5, 0.5]
+        self.view.Background = [0.6, 0.6, 0.6]
 
         self.view.ResetCamera()
         self.view.StillRender()
