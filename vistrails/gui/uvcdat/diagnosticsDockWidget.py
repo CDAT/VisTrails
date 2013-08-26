@@ -151,7 +151,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         # busy, or finished with the current task.
         # For now, print the first result.  Really, we want to plot them all...
         if type(res) is list:
-            print "res was list nothing more happens!"
+            print "res was list nothing more will happen!"
             res30 = res[0]
         else:
             res30 = res
