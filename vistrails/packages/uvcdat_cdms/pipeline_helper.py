@@ -13,7 +13,7 @@ from PyQt4.QtCore import pyqtSlot, pyqtSignal
 from PyQt4.QtGui import QApplication
 from init import CDMSPlot, CDMSVariable, CDMSCell, CDMSVariableOperation, \
        CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, \
-       CDMSNaryVariableOperation
+       CDMSNaryVariableOperation, CDMSGrowerOperation
 from widgets import GraphicsMethodConfigurationWidget
 from gui.theme import CurrentTheme
 from gui.common_widgets import QDockPushButton

@@ -569,6 +569,7 @@ class CDMSUnaryVariableOperation(CDMSVariableOperation):
         self.python_command = self.replace_variable_in_command(self.python_command,
                                                                self.var.name, 
                                                                "self.var.var")
+        
         res = eval(self.python_command)
         if type(res) == tuple:
             for r in res:
@@ -686,6 +687,9 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
         return module
             
 class CDMSGrowerOperation(CDMSBinaryVariableOperation):
+    
+    _input_ports = expand_port_specs([("varname2", "basic:String")])
+    
     _output_ports = expand_port_specs([("output_var", "CDMSVariable"),
                                       ("output_var2", "CDMSVariable")
                                       ])
@@ -1634,7 +1638,7 @@ class QCDATWidgetExport(QtGui.QAction):
 
 _modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
             CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, 
-            CDMSNaryVariableOperation, CDMSColorMap]
+            CDMSNaryVariableOperation, CDMSColorMap, CDMSGrowerOperation]
 
 def get_input_ports(plot_type):
     if plot_type == "Boxfill":

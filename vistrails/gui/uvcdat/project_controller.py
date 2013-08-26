@@ -317,9 +317,9 @@ class ProjectController(QtCore.QObject):
                     vars[i] = newname
                 else:
                     self.remove_defined_variable(varname2)
-            self.computed_variables[varname2] = ([varname], txt, varname, varname2)
+            self.computed_variables[varname2] = ([varname], txt, varname2, varname2)
             self.grower_varname[varname2] = varname
-            self.grower.varname2[varname] = varname2
+            self.grower_varname2[varname] = varname2
         elif len(varnames) > 2:
             print "Warning: more than 2 variables in calculator command"
         
