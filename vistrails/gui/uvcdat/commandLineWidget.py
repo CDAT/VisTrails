@@ -548,10 +548,19 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             varname = nm[:-3].strip()
             prj_controller.calculator_command(vars, txt, orst, varname)
             
+            varnames = varname.split(',')
+            varname = varnames[0].strip()
             tmp = prj_controller.create_exec_new_variable_pipeline(varname)
             if tmp is not None:
                 tmp.id = varname
                 self.root.dockVariable.widget().addVariable(tmp)
+                
+            if len(varnames) == 2:
+                varname2 = varnames[1].strip()
+                tmp2 = prj_controller.create_exec_new_variable_pipeline(varname2)
+                if tmp2 is not None:
+                    tmp2.id = varname2
+                    self.root.dockVariable.widget().addVariable(tmp2)
             
         self.le.setFocus()
 
