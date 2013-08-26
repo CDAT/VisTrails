@@ -13,7 +13,7 @@ from PyQt4.QtCore import pyqtSlot, pyqtSignal
 from PyQt4.QtGui import QApplication
 from init import CDMSPlot, CDMSVariable, CDMSCell, CDMSVariableOperation, \
        CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, \
-       CDMSNaryVariableOperation
+       CDMSNaryVariableOperation, CDMSGrowerOperation
 from widgets import GraphicsMethodConfigurationWidget
 from gui.theme import CurrentTheme
 from gui.common_widgets import QDockPushButton
@@ -176,10 +176,14 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             axisAttributes = varop.axisAttributes
             timeBounds = varop.timeBounds
             
+        uvcdat_ctrl = controller.uvcdat_controller
         if len(vars) == 1:
             op_class = CDMSUnaryVariableOperation
         elif len(vars) == 2:
-            op_class = CDMSBinaryVariableOperation
+            if varname in uvcdat_ctrl.grower_varname2:
+                op_class = CDMSGrowerOperation
+            else:
+                op_class = CDMSBinaryVariableOperation
         else:
             op_class = CDMSNaryVariableOperation
         op_class_inst = op_class(varname=varname,
@@ -189,6 +193,11 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                                  attributes=attributes,
                                  axisAttributes=axisAttributes,
                                  timeBounds=timeBounds)
+        
+        
+        if varname in uvcdat_ctrl.grower_varname2:
+            op_class_inst.varname2 = uvcdat_ctrl.grower_varname2[varname]
+        
         op_module = op_class_inst.to_module(controller)
         ops = []
         ops.append(('add', op_module))
@@ -197,6 +206,8 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         for i, var in enumerate(vars):
             oport = CDMSPipelineHelper.get_output_port_name(
                 var.module_descriptor.module)
+            if varname in uvcdat_ctrl.grower_varname:
+                oport = 'output_var2'
             iport = CDMSPipelineHelper.get_input_port_name(len(vars), i)
             conn = controller.create_connection(var, oport, op_module, iport)
             ops.append(('add', conn))
