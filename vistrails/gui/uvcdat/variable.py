@@ -112,7 +112,7 @@ class VariableProperties(QtGui.QDialog):
         self.root = parent.root
         self.varNameInFile = None #store the name of the variable when loaded from file
         self.createFileTab()
-#        self.createESGFTab()
+        self.createESGFTab()
         self.createOpenDAPTab()
         self.createEditTab()
         self.createInfoTab()
@@ -172,7 +172,7 @@ class VariableProperties(QtGui.QDialog):
                          self.selectFromList)
             self.connect(self.bookmarksList, QtCore.SIGNAL('itemClicked(QListWidgetItem *)'),
                          self.selectFromList)
-            self.connect(self.varCombo, QtCore.SIGNAL('currentIndexChanged(const QString&)'),
+            self.connect(self.varCombo, QtCore.SIGNAL('activated(const QString&)'),
                          self.variableSelected)
             self.connect(self.bookmarksList,QtCore.SIGNAL("droppedInto"),self.droppedBookmark)
 
@@ -285,8 +285,8 @@ class VariableProperties(QtGui.QDialog):
           esgf = QEsgfBrowser(self)
           #esgf.addGateway(gateway=customizeUVCDAT.defaultEsgfNode)
           esgf.addGateway(gateway=str(self.root.preferences.host_url.currentText()))
-        except Exception:
-            esgf = QtGui.QLabel("No Internet?")
+        except Exception,err:
+            esgf = QtGui.QLabel("No Internet?\nError log: %s"%err)
         self.originTabWidget.addTab(esgf,"ESGF")
 
     def createOpenDAPTab(self):
@@ -498,6 +498,9 @@ class VariableProperties(QtGui.QDialog):
 
             # By default, select first var
             self.varCombo.setCurrentIndex(1)
+            
+            # manually call this since we listen for activated now
+            self.variableSelected(self.varCombo.itemText(1))
 
     def variableSelected(self, varName):
         if varName == '':
@@ -646,14 +649,15 @@ class VariableProperties(QtGui.QDialog):
                     continue
             cmds += "%s=%s," % (k, repr(kwargs[k]))
         cmds=cmds[:-1]
-        uvar=axisList.getVar()
-        if isinstance(uvar,cdms2.axis.FileAxis):
-            updatedVar = cdms2.MV2.array(uvar)
-        else:
-            updatedVar = uvar(**kwargs)
+#        uvar=axisList.getVar()
+#        if isinstance(uvar,cdms2.axis.FileAxis):
+#            updatedVar = cdms2.MV2.array(uvar)
+#        else:
+#            updatedVar = uvar(**kwargs)
 
         # Get the variable after carrying out the: def, sum, avg... operations
-        updatedVar = axisList.execAxesOperations(updatedVar)
+#        updatedVar = axisList.execAxesOperations(updatedVar)
+        updatedVar = axisList.getVar()
         self.root.record("## Defining variable in memory")
 
         if axisList.cdmsFile is None:
@@ -666,12 +670,15 @@ class VariableProperties(QtGui.QDialog):
         else:
             original_id = updatedVar.id
             computed_var = True
-        updatedVar.id = targetId
+        
+        #this used to be an actual transientvariable, now it's just a filevariable
+        #updatedVar.id = targetId
+        
         self.root.record("%s = %s(%s)" % (targetId,oid,cmds))
         ## Squeeze?
         if updatedVar.rank() !=0:
             if self.root.preferences.squeeze.isChecked():
-                updatedVar=updatedVar(squeeze=1)
+                #updatedVar=updatedVar(squeeze=1)
                 self.root.record("%s = %s(squeeze=1)" % (targetId,targetId))
                 kwargs['squeeze']=1
         else:
@@ -707,18 +714,31 @@ class VariableProperties(QtGui.QDialog):
         url = None
         if hasattr(self.cdmsFile, "uri"):
             url = self.cdmsFile.uri
+        cdmsVar = None
         if not computed_var:
             cdmsVar = CDMSVariable(filename=self.cdmsFile.id, url=url, name=targetId,
                                    varNameInFile=original_id,
                                    axes=get_kwargs_str(kwargs),
                                    axesOperations=str(axes_ops_dict))
-            self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))
             controller.add_defined_variable(cdmsVar)
         else:
-            self.emit(QtCore.SIGNAL('definedVariableEvent'),updatedVar)
             controller.copy_computed_variable(original_id, targetId,
                                               axes=get_kwargs_str(kwargs),
                                               axesOperations=str(axes_ops_dict))
+
+        updatedVar = controller.create_exec_new_variable_pipeline(targetId)
+
+        if updatedVar is None:
+            return axisList.getVar()
+
+        if not computed_var:
+            self.emit(QtCore.SIGNAL('definedVariableEvent'),(updatedVar,cdmsVar))
+        else:
+            self.emit(QtCore.SIGNAL('definedVariableEvent'),updatedVar)
+
+        if(self.varEditArea.widget()):
+            self.varEditArea.widget().var = updatedVar
+            axisList.setVar(updatedVar)
 
         self.updateVarInfo(axisList)
         return updatedVar

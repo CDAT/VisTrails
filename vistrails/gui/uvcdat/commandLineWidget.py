@@ -303,7 +303,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                     st+=txt+s.varName
                     nm+="_%s" % s.varName
                 nm+=" = "
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 #vistrails
                 for s in selected:
                     vars.append(s.varName)
@@ -325,7 +325,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 if txt[1:-1]=="==":
                     nm="equal_"
                 nm+=selected[0].varName+"_"+selected[1].varName+" = "
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 if str(self.le.text())=="" :
                     pressEnter=True
         elif txt == "x^y":
@@ -334,7 +334,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             else:
                 vars = [selected[0].varName,selected[1].varName]
                 st="MV2.power(%s,%s)" % (selected[0].varName,selected[1].varName)
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="power_"+selected[0].varName+"_"+selected[1].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -345,7 +345,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 vars = [selected[0].varName,selected[1].varName]
                 st="%s.regrid(%s.getGrid())" % (
                                      selected[0].varName,selected[1].varName)
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="regrid_"+selected[0].varName+"_"+selected[1].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -356,7 +356,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 vars = [selected[0].varName,selected[1].varName]
                 st="MV2.masked_where(%s,%s)" % (
                                     selected[0].varName,selected[1].varName)
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="maskedwhere_"+selected[0].varName+"_"+selected[1].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -376,9 +376,10 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 vars = [selected[0].varName,selected[1].varName]
                 st="genutil.grower(%s,%s)" % (
                                      selected[0].varName,selected[1].varName)
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm= "%s_grown_to_%s, %s_grown_to_%s = " % (
                                                vars[0], vars[1], vars[1], vars[0])
+
                 if str(self.le.text())=="" :
                     pressEnter=True
         # ! variable only
@@ -386,7 +387,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="%s**2" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="square_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -396,7 +397,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.sqrt(%s)" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="sqrt_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -406,7 +407,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="1/%s" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="invert_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -416,7 +417,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.log(%s)" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="ln_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -426,7 +427,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.log10(%s)" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="log10_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -436,7 +437,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.exp(%s)" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="exp_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -446,7 +447,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.power(10,%s)" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="power10_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -456,7 +457,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.absolute(%s)" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="abs_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -466,7 +467,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.%s(%s)" % (txt.lower(),selected[0].varName)
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm=txt.lower()+"_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -477,7 +478,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 vars = [selected[0].varName]
                 st="genutil.statistics.std(%s)" % (
                                              txt.lower(),selected[0].varName)
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="std_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -501,7 +502,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
         elif txt == "=":
             if len(selected)==1:
                 st = "%s =" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
             else:
                 st="="
         elif txt == "PI":
@@ -515,15 +516,25 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             else:
                 if len(st)==0 and len(selected)==1:
                     st = "-%s" % selected[0].varName
-                    self.root.dockVariable.widget().unselectItems(selected)
+                    #self.root.dockVariable.widget().unselectItems(selected)
                 else:
                     st="-(%s)" % st
             self.le.clear()
         else:
             st=txt
-
-
- 
+            
+        #make sure name is unique
+        newname = nm[:-3].strip()        
+        items = self.root.dockVariable.widget().getItems(project=False)
+        varNameSet = set([str(it.text()).split()[1] for it in items])
+        suffix = ""
+        if newname in varNameSet:
+            suffix = 1
+            while (newname + str(suffix)) in varNameSet:
+                suffix += 1
+            newname = newname + str(suffix)
+            nm = newname + nm[-3:]
+            
         if st!="":
             if pressEnter:
                 orst = st
@@ -534,7 +545,14 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             #send command to project controller to be stored as provenance
             from api import get_current_project_controller
             prj_controller = get_current_project_controller()
-            prj_controller.calculator_command(vars, txt, orst, nm[:-3].strip())
+            varname = nm[:-3].strip()
+            prj_controller.calculator_command(vars, txt, orst, varname)
+            
+            tmp = prj_controller.create_exec_new_variable_pipeline(varname)
+            if tmp is not None:
+                tmp.id = varname
+                self.root.dockVariable.widget().addVariable(tmp)
+            
         self.le.setFocus()
 
     def run_command(self,processed=False):
@@ -563,33 +581,37 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
         #-----------------------------------------------------------------------
         # execute the command and clear the line entry if no error occurs
         #-----------------------------------------------------------------------
-        results = "temp_results_holder"
-        acommand = "temp_results_holder = %s"  % command
-        exec( "import MV2,genutil,cdms2,vcs,cdutil,numpy", __main__.__dict__ )
-        self.le.clear()
-        try:
-            exec( command, __main__.__dict__ )
-        except Exception:
-            #print exception to the command window    
-            errorText = StringIO.StringIO()
-            errorText.write('Your command produced an error.\n')
-            errorText.write('-'*60+'\n')
-            traceback.print_exc(file=errorText)
-            errorText.write('-'*60)
-            self.te.insertPlainText(errorText.getvalue())
+#        results = "temp_results_holder"
+#        acommand = "temp_results_holder = %s"  % command
+#        exec( "import MV2,genutil,cdms2,vcs,cdutil,numpy", __main__.__dict__ )
+#        self.le.clear()
+#        try:
+#            exec( command, __main__.__dict__ )
+#        except Exception:
+#            #print exception to the command window    
+#            errorText = StringIO.StringIO()
+#            errorText.write('Your command produced an error.\n')
+#            errorText.write('-'*60+'\n')
+#            traceback.print_exc(file=errorText)
+#            errorText.write('-'*60)
+#            self.te.insertPlainText(errorText.getvalue())
 
-        res = self.root.stick_main_dict_into_defvar(None)
+#        res = self.root.stick_main_dict_into_defvar(None)
         #-----------------------------------------------------------------------
         # record the command for preproducibility
         #-----------------------------------------------------------------------
+        clist = command.split("=", 1)
+        varname = clist[0].strip()
+        
         self.root.record("## Command sent from prompt by user")
-        if res == command.split("=")[0] or res is None:
+        
+        if len(clist) > 1:
             self.root.record(command)
         else:
-            self.root.record("%s = %s" % (res,command))
-        clist = command.split("=", 1)
-        if not processed and len(clist) > 1 and isidentifier(clist[0]):
-            varname = clist[0].strip()
+            self.root.record("%s = %s" % (varname, command))
+            
+        
+        if not processed and len(clist) > 1 and isidentifier(varname):
             pycommand = clist[1].strip()
             # project controller will only capture the results that return 
             # a variable
@@ -597,4 +619,10 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             from api import get_current_project_controller
             prj_controller = get_current_project_controller()
             prj_controller.process_typed_calculator_command(varname,pycommand)
-        return res
+            
+            tmp = prj_controller.create_exec_new_variable_pipeline(varname)
+            if tmp is not None:
+                tmp.id = varname
+                self.root.dockVariable.widget().addVariable(tmp)
+        self.le.clear()
+        return varname

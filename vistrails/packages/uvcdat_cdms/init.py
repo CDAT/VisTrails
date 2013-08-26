@@ -23,12 +23,14 @@ from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
 from packages.uvcdat.init import Variable, Plot
+from gui.application import get_vistrails_application
 from gui.uvcdat.theme import UVCDATTheme
 from gui.uvcdat.cdmsCache import CdmsCache
 import gui.uvcdat.regionExtractor #for certain toPython commands
 
 canvas = None
 original_gm_attributes = {}
+reparentedVCSWindows = []
 
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
@@ -131,16 +133,38 @@ class CDMSVariable(Variable):
         varName = self.name
         if self.varNameInFile is not None:
             varName = self.varNameInFile
+            
+        # get file var to see if it is axis or not
+        fvar = cdmsfile[varName]
+        if isinstance(fvar, cdms2.axis.FileAxis):
+            var = cdms2.MV2.array(fvar)
         
         memoryLogger.log("start cdms variable read") 
-           
+
         if self.axes is not None:
+            #convert string into kwargs
+            #example axis string:
+            #lon=(0.0, 358.5),lev=(3.54, 992.55),time=('301-1-1 0:0:0.0', '301-2-1 0:0:0.0'),lat=(-88.92, 88.92),squeeze=1,
+            
+            def getKWArgs(**kwargs):
+                return kwargs
+            
             try:
-                var = eval("cdmsfile.__call__(varName,%s)"% self.axes)
+                kwargs = eval('getKWArgs(%s)' % self.axes)
             except Exception, e:
-                raise ModuleError(self, "Invalid 'axes' specification: %s" % \
-                                      str(e))
-        else:
+                format = "Invalid 'axes' specification: %s\nProduced error: %s"
+                raise ModuleError(self, format % (self.axes, str(e)))
+
+            if isinstance(fvar, cdms2.axis.FileAxis):
+                try:
+                    var = var.__call__(**kwargs)
+                except Exception, e:
+                    format = "WARNING: axis variable %s subslice \
+                            failed with selector '%s'\nError: %s"
+                    print format % (varName, str(kwargs), str(e))
+            else:
+                var = cdmsfile.__call__(varName, **kwargs)
+        elif not isinstance(fvar, cdms2.axis.FileAxis):
             var = cdmsfile.__call__(varName)
             
         memoryLogger.log("finish cdms variable read")    
@@ -569,8 +593,14 @@ class CDMSUnaryVariableOperation(CDMSVariableOperation):
         self.python_command = self.replace_variable_in_command(self.python_command,
                                                                self.var.name, 
                                                                "self.var.var")
-        
-        res = eval(self.python_command)
+
+        res = None
+        try:
+            res = eval(self.python_command)
+        except:
+            print "Exception evaluating python command '%s'\n" % self.python_command
+            raise
+
         if type(res) == tuple:
             for r in res:
                 if isinstance(r,cdms2.tvariable.TransientVariable):
@@ -1079,7 +1109,9 @@ Please delete unused CDAT Cells in the spreadsheet.")
         return k
     
     def updateContents(self, inputPorts, fromToolBar=False):
-        """ Get the vcs canvas, setup the cell's layout, and plot """        
+        """ Get the vcs canvas, setup the cell's layout, and plot """      
+        global reparentedVCSWindows
+              
         spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         spreadsheetWindow.setUpdatesEnabled(False)
         # Set the canvas
@@ -1095,7 +1127,11 @@ Please delete unused CDAT Cells in the spreadsheet.")
         if self.window is not None:
             self.layout().removeWidget(self.window)
             
-        self.window = VCSQtManager.window(self.windowId)
+        #get reparented window if it's there
+        if len(reparentedVCSWindows) > 0:
+            self.window = reparentedVCSWindows.pop()
+        else:
+            self.window = VCSQtManager.window(self.windowId)
         self.layout().addWidget(self.window)
         self.window.setVisible(True)    
         # Place the mainwindow that the plot will be displayed in, into this
@@ -1168,6 +1204,10 @@ Please delete unused CDAT Cells in the spreadsheet.")
         spreadsheetWindow.setUpdatesEnabled(True)
         self.update()
         
+        #make sure reparented windows stay invisible
+        for window in reparentedVCSWindows:
+            window.setVisible(False)
+        
     def get_graphics_method(self, plotType, gmName):
         method_name = "get"+str(plotType).lower()
         return getattr(self.canvas,method_name)(gmName)
@@ -1178,12 +1218,14 @@ Please delete unused CDAT Cells in the spreadsheet.")
         deallocating. Overriding PyQt deleteLater to free up
         resources
         """
+        global reparentedVCSWindows
         #we need to re-parent self.window or it will be deleted together with
-        #this widget. The immediate parent is also deleted, so we will set to
-        # parent of the parent widget
+        #this widget. We'll put it on the mainwindow
+        _app = get_vistrails_application()
         if self.window is not None:
-            self.window.setParent(self.parent().parent())
+            self.window.setParent(_app.uvcdatWindow)
             self.window.setVisible(False)
+            reparentedVCSWindows.append(self.window)
         self.canvas = None
         self.window = None
         

@@ -223,20 +223,34 @@ class QDefinedVariableWidget(QtGui.QWidget):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
         """
+
+        if var is None:
+            return
+
         from packages.vtDV3D import ModuleStore
+
         cdmsVar = None
+        replaced = False
         if type_ == 'CDMS':
             if type(var) == tuple:
                 cdmsVar = var[1]
                 var = var[0]
 
-            self.root.stick_defvar_into_main_dict(var)
+        self.root.stick_defvar_into_main_dict(var)
+        
+        for i in range(self.varList.count()-1,-1,-1):
+            if self.varList.item(i).getVarName() == var.id:
+                replaced = True
+                item = self.varList.item(i)
+                item.setVariable(var)
+                ModuleStore.addActiveVariable( item.varName, item.variable )
+                break
+                
+        if not replaced:
             item = QDefinedVariableItem(var,self.root,cdmsVar)
-            for i in range(self.varList.count()-1,-1,-1):
-                if self.varList.item(i).getVarName() == var.id:
-                    self.varList.takeItem(i)
-        self.varList.addItem(item)
-        ModuleStore.addActiveVariable( item.varName, item.variable )
+            self.varList.addItem(item) 
+            ModuleStore.addActiveVariable( item.varName, item.variable )
+            
         # Recording define variable teaching command
 #        self.recordDefineVariableTeachingCommand(varName, var.id, file, axesArgString)
 
@@ -565,7 +579,7 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
         Update the variable string that is shown to the user in the list.
         format =  '-- variableName (shape)', where num is the selection number
         """
-        if num is None:
+        if num is None or num == -1:
             self.selectNum = -1
             numString = '--'
         else:
@@ -583,7 +597,7 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
         user in the list
         """
         self.variable = variable
-        self.updateVariableString()
+        self.updateVariableString(self.selectNum)
 
 class QDefVarWarningBox(QtGui.QDialog):
     """ Popup box to warn a user that a variable with same name is already
