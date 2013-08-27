@@ -188,9 +188,9 @@ class DV3DRangeConfigTab(QWidget):
 
     def enable(self, minEnabled, maxEnabled, labels = [ 'Range Min: ', 'Range Max: ' ]  ): 
         self.rangeMinEditor.enable( minEnabled )
-        self.rangeMinEditor.setLabel( 'Value: ' if not maxEnabled else  labels[0] )
+        self.rangeMinEditor.setLabel( 'Value: ' if ( not maxEnabled and (labels[0] == 'Range Min: ') ) else  labels[0] )
         self.rangeMaxEditor.enable( maxEnabled )
-        self.rangeMaxEditor.setLabel( 'Value: ' if not minEnabled else  labels[1] )
+        self.rangeMaxEditor.setLabel( 'Value: ' if ( not maxEnabled and (labels[1] == 'Range Max: ') ) else  labels[1] )
 
     def setTitle(self, title ):
         self.cfg_action_label.setText( title )

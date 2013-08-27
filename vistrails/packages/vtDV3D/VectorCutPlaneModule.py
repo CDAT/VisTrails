@@ -98,8 +98,8 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
 
         self.setRangeBounds(  list( vectorsArray.GetRange(-1) ) )
         self.nComponents = vectorsArray.GetNumberOfComponents()
-        for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
-        for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
+#        for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
+#        for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
         
         picker = vtk.vtkCellPicker()
         picker.SetTolerance(0.005) 
@@ -265,7 +265,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
             if np > 0:
 #                resampleOutput = self.resample.GetOutput()
 #                ptData = resampleOutput.GetPointData()
-#                print " UpdateCut, Points: %s " % '  '.join( [ str( points.GetPoint(id) ) for id in range(5) ]  )
+                print " UpdateCut, Points: %s " % '  '.join( [ str( points.GetPoint(id) ) for id in range(5) ]  )
                 pointData = cutterOutput.GetPointData()
                 ptScalarsArray = pointData.GetVectors()
                 self.glyph.SetScaleFactor( self.glyphScale[1] )
@@ -311,9 +311,9 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.planeWidget = None    
         self.primaryInputPorts = [ 'volume' ]
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0, units='data' )
-        self.addConfigurableLevelingFunction( 'glyphScale', 'Z', label='Glyph Size', setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, windowing=False, bound=False, activeBound='max'   )
-        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False, activeBound='min'   )
-        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
+        self.addConfigurableLevelingFunction( 'glyphScale', 'Z', label='Glyph Size', sliderLabels=[ "", "Glyph Scale (inverse size)" ], setLevel=self.setGlyphScale, getLevel=self.getGlyphScale, layerDependent=True, windowing=False, bound=False, activeBound='max'   )
+        self.addConfigurableLevelingFunction( 'glyphDensity', 'G', label='Glyph Density', sliderLabels=[ "Sample Spacing", "Sample Spacing" ], setLevel=self.setGlyphDensity, getLevel=self.getGlyphDensity, layerDependent=True, windowing=False, bound=False, activeBound='min'   )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), activeBound='max', initRange=[ 2.0, 2.0, 1 ] )
 
     def setZScale( self, zscale_data, **args ):
         if self.setInputZScale( zscale_data ):
@@ -389,8 +389,8 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
 
         self.setRangeBounds( list( vectorsArray.GetRange(-1) ) )
         self.nComponents = vectorsArray.GetNumberOfComponents()
-        for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
-        for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
+#        for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
+#        for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
         
         picker = vtk.vtkCellPicker()
         picker.SetTolerance(0.005) 
@@ -595,8 +595,25 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.cutter.SetCutFunction ( self.plane  )
         if self.glyph: self.glyph.Update()
         else: self.glyphMapper.Update()
+        z, units = self.getPlaneHeightCoord()
+        textDisplay = "Level: %.2f %s" % ( z, units )
+        self.updateTextDisplay( textDisplay ) 
         self.render()
         
+
+    def getPlaneHeightCoord( self ):
+        z = 0.0
+        units = ""
+        try:
+            cpos = self.plane.GetOrigin() 
+            ispec = self.inputSpecs[ 0 ] 
+            gridSpacing = ispec.input().GetSpacing()
+            lev = ispec.metadata[ 'lev' ]       
+            z = lev[ int( round( cpos[2] / gridSpacing[2] ) ) ] 
+            units = lev.units 
+        except Exception, err:
+            print " Error in getPlaneHeightCoord: %s " % str( err )
+        return z, units
         
 #        self.cutterInput.Update()
 #        if self.colorInputModule <> None:
@@ -659,8 +676,8 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.planeWidget = None
         self.primaryInputPorts = [ 'volume' ]
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0, units='data' )
-        self.addConfigurableLevelingFunction( 'streamerScale', 'Z', label='Streamer Scale', setLevel=self.setStreamerScale, activeBound='max', getLevel=self.getStreamerScale, layerDependent=True, windowing=False, bound=False )
-        self.addConfigurableLevelingFunction( 'streamerDensity', 'G', label='Streamer Density', activeBound='max', setLevel=self.setStreamerDensity, getLevel=self.getStreamerDensity, layerDependent=True, windowing=False, bound=False )
+        self.addConfigurableLevelingFunction( 'streamerScale', 'Z', label='Streamer Scale', sliderLabels=[ "", "Streamline Length" ], setLevel=self.setStreamerScale, activeBound='max', getLevel=self.getStreamerScale, layerDependent=True, windowing=False, bound=False )
+        self.addConfigurableLevelingFunction( 'streamerDensity', 'G', label='Streamer Density', sliderLabels=[ "", "Sample Spacing" ], activeBound='max', setLevel=self.setStreamerDensity, getLevel=self.getStreamerDensity, layerDependent=True, windowing=False, bound=False )
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', activeBound='max', setLevel=self.setZScale, getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ] )
 
     def setZScale( self, zscale_data, **args ):
@@ -732,8 +749,8 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
 
         self.setRangeBounds( list( vectorsArray.GetRange(-1) ) )
         self.nComponents = vectorsArray.GetNumberOfComponents()
-        for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
-        for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
+#        for iC in range(-1,3): print "Value Range %d: %s " % ( iC, str( vectorsArray.GetRange( iC ) ) )
+#        for iV in range(10): print "Value[%d]: %s " % ( iV, str( vectorsArray.GetTuple3( iV ) ) )
         
         picker = vtk.vtkCellPicker()
         picker.SetTolerance(0.005) 
