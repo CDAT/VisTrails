@@ -28,8 +28,8 @@ class QAnonymousMessageBox(QtGui.QDialog):
         self.storeAnonymous()
     def storeAnonymous(self):
         fanom = os.path.join(os.environ["HOME"],".uvcdat",".anonymouslog")
-        if not os.path.exists(os.environ["HOME"],".uvcdat"):
-            os.makedirs(os.environ["HOME"],".uvcdat")
+        if not os.path.exists(os.path.join(os.environ["HOME"],".uvcdat")):
+            os.makedirs(os.path.join(os.environ["HOME"],".uvcdat"))
         try:
             f=open(fanom,"w")
             print >>f, "#Store information about allowing UVCDAT anonymous logging"
