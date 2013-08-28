@@ -536,7 +536,7 @@ class QEsgfBrowser(QtGui.QFrame):
 
         self.index=[]
         self.nsearches=0
-        self.cacheDir=os.path.join(os.environ["HOME"],"PCMDI_GRAPHICS")
+        self.cacheDir=os.path.join(os.environ["HOME"],".uvcdat")
         self.cache={}
         self.loadCache(self.cacheDir)
               

@@ -79,7 +79,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         
     def initCustomize(self,customPath,styles):
         if customPath is None:
-            customPath=os.path.join(os.environ["HOME"],"PCMDI_GRAPHICS","customizeUVCDAT.py")
+            customPath=os.path.join(os.environ["HOME"],".uvcdat","customizeUVCDAT.py")
             
         if os.path.exists(customPath):
             execfile(customPath,customizeUVCDAT.__dict__,customizeUVCDAT.__dict__)
