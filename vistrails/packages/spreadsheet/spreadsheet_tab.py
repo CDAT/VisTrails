@@ -725,7 +725,10 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
 
     def getSheetName(self):
         w = self.tabWidget.indexOf(self)
-        return str(self.tabWidget.tabText(w))
+        if w >= 0:
+            return str(self.tabWidget.tabText(w))
+        else:
+            return str(self.windowTitle())
     
     ### Belows are API Wrappers to connect to self.sheet
 
