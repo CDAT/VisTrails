@@ -153,10 +153,16 @@ class UVCDATTestManager:
         tabWidget = tabController.floatingTabWidgets[0].widget()
         tabWidget.requestPlotConfigure(0, 0)
         
+        #hide plot properties
+        self.uvcdat_window.plotProp.hide()
+        
+        #close floating sheet, placing it back in main window
+        tabWidget.close()
+        
         self.close_project()
         
         
-    failCount = 0
+    innerFail = False
         
     def run_tests(self):
         """
@@ -168,12 +174,13 @@ class UVCDATTestManager:
         
         #setup special exception hook due to some exceptions not being thrown
         def test_exception_hook(exctype, value, tb):
-            UVCDATTestManager.failCount += 1
+            UVCDATTestManager.innerFail = True
             print "Failed Test"
             print ''.join(traceback.format_exception(exctype, value, tb))
             
         sys.excepthook = test_exception_hook
             
+        failCount = 0
         for attribute in dir(self):
             if not hasattr(self, attribute):continue
             function = getattr(self, attribute)
@@ -187,14 +194,22 @@ class UVCDATTestManager:
             try:
                 function()
             except Exception, e:
-                UVCDATTestManager.failCount += 1
+                failCount += 1
                 print "Failed test %s" % attribute
                 logging.exception(e)
+            else:
+                if UVCDATTestManager.innerFail:
+                    failCount +=1
+                    UVCDATTestManager.innerFail = False
+                    
+                    
+        #restore default exception hook
+        sys.excepthook = sys.__excepthook__
             
         plural = "s"
-        if UVCDATTestManager.failCount == 1:
+        if failCount == 1:
             plural = ""
-        print "%d test%s failed." % (UVCDATTestManager.failCount, plural)
-        return UVCDATTestManager.failCount
+        print "%d test%s failed." % (failCount, plural)
+        return failCount
                 
         
