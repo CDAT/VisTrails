@@ -1,6 +1,8 @@
 import logging
 import os
+import sys
 import tempfile
+import traceback
 
 from core.db.locator import FileLocator
 
@@ -48,24 +50,28 @@ class UVCDATTestManager:
         #just load the first variable and close load widget
         loadVariableWidget.defineVarCloseClicked()
         
-    def simulate_variable_drag_and_drop(self, varname_or_index=0, sheet="Sheet 1", col=0, row=0):
+    def simulate_variable_drag_and_drop(self, varname_or_index=0, 
+                                        sheet="Sheet 1", col=0, row=0, 
+                                        projectController=None):
         definedVariableWidget = self.uvcdat_window.dockVariable.widget()
         if isinstance( varname_or_index, ( int, long ) ):
             variableItems = definedVariableWidget.getItems()
             varname_or_index = variableItems[0].getVarName()
         dropInfo = (varname_or_index, sheet, col, row)
         
-        projectController = self.uvcdat_window.get_current_project_controller()
+        if projectController is None:
+            projectController = self.get_project_controller()
         projectController.variable_was_dropped(dropInfo)
         
     def simulate_plot_drag_and_drop(self, package="VCS", name="Boxfill", 
                                     method="ASD", sheet="Sheet 1", col=0, 
-                                    row=0):
+                                    row=0, projectController=None):
         """
         @param method: Only used if package is VCS
         """
         
-        projectController = self.uvcdat_window.get_current_project_controller()
+        if projectController is None:
+            projectController = self.get_project_controller()
         
         plot = None
         if package == 'VCS':
@@ -77,13 +83,13 @@ class UVCDATTestManager:
         
         projectController.plot_was_dropped(dropInfo)
         
-    def simulate_save_project(self, filepath):
-        
-        projectController = self.uvcdat_window.get_current_project_controller()
+    def simulate_save_project(self, filepath, projectController=None):
+        if projectController is None:
+            projectController = self.get_project_controller()
         projectController.vt_controller.locator = FileLocator(filepath)
-        projectController.vt_controller.locator.clean_temporaries()
+        #projectController.vt_controller.locator.clean_temporaries()
         self.uvcdat_window.workspace.saveProject(False)
-        projectController.vt_controller.locator.clean_temporaries()
+        #projectController.vt_controller.locator.clean_temporaries()
         
     def simulate_open_project(self, filepath):
         locator = FileLocator(filepath)
@@ -91,32 +97,72 @@ class UVCDATTestManager:
         
         from gui.vistrails_window import _app
         _app.open_vistrail_without_prompt(locator)
+        
+        self.disable_autosave()
+        
+    def get_project_controller(self):
+        return self.uvcdat_window.get_current_project_controller()
+    
+    def disable_autosave(self, projectController=None):
+        if projectController is None:
+            projectController = self.get_project_controller()
+        projectController.vt_controller.disable_autosave()
+    
+    def simulate_default_vcs_boxfill(self):
+        self.simulate_load_variable()
+        self.simulate_plot_drag_and_drop()
+        self.simulate_variable_drag_and_drop()
+        
+    def close_project(self):
+        from gui.vistrails_window import _app
+        _app.close_vistrail(None, True)
     
     @UVCDATTest
     def test_save_open_close_vcs_project(self):
         
-        projectController = self.uvcdat_window.get_current_project_controller()
-        projectController.vt_controller.disable_autosave()
+        #all tests should call this very first
+        self.disable_autosave()
         
-        self.simulate_load_variable()
-        self.simulate_plot_drag_and_drop()
-        self.simulate_variable_drag_and_drop()
+        self.simulate_default_vcs_boxfill()
         
         #is deleted upon closing
         temp_save_file = tempfile.NamedTemporaryFile(suffix=".vt", delete=True)
         
         self.simulate_save_project(temp_save_file.name)
-        self.uvcdat_window.workspace.closeProject(False)
+        self.close_project()
         
         self.simulate_open_project(temp_save_file.name)
-        projectController = self.uvcdat_window.get_current_project_controller()
-        projectController.vt_controller.disable_autosave()
-        self.uvcdat_window.workspace.closeProject(False)
+        self.close_project()
         
         self.simulate_open_project(temp_save_file.name)
-        self.uvcdat_window.workspace.closeProject(False)
+        self.close_project()
         
         temp_save_file.close()
+        
+    @UVCDATTest
+    def test_detach_sheet_open_plot_properties(self):
+        self.disable_autosave()
+        self.simulate_default_vcs_boxfill()
+        
+        #undock sheet
+        spreadSheetWindow = self.uvcdat_window.centralWidget()
+        tabController = spreadSheetWindow.get_current_tab_controller()
+        tabController.splitTab(0)
+        
+        #show plot properties
+        tabWidget = tabController.floatingTabWidgets[0].widget()
+        tabWidget.requestPlotConfigure(0, 0)
+        
+        #hide plot properties
+        self.uvcdat_window.plotProp.hide()
+        
+        #close floating sheet, placing it back in main window
+        tabWidget.close()
+        
+        self.close_project()
+        
+        
+    innerFail = False
         
     def run_tests(self):
         """
@@ -126,6 +172,14 @@ class UVCDATTestManager:
         import datetime
         print "Running tests. Timestamp: %s" % str(datetime.datetime.now())
         
+        #setup special exception hook due to some exceptions not being thrown
+        def test_exception_hook(exctype, value, tb):
+            UVCDATTestManager.innerFail = True
+            print "Failed Test"
+            print ''.join(traceback.format_exception(exctype, value, tb))
+            
+        sys.excepthook = test_exception_hook
+            
         failCount = 0
         for attribute in dir(self):
             if not hasattr(self, attribute):continue
@@ -135,12 +189,22 @@ class UVCDATTestManager:
             if not hasattr(function, 'isUVCDATTest'): continue
             if not function.isUVCDATTest: continue
 
+            print "Running test %s" % attribute
+
             try:
                 function()
             except Exception, e:
                 failCount += 1
                 print "Failed test %s" % attribute
                 logging.exception(e)
+            else:
+                if UVCDATTestManager.innerFail:
+                    failCount +=1
+                    UVCDATTestManager.innerFail = False
+                    
+                    
+        #restore default exception hook
+        sys.excepthook = sys.__excepthook__
             
         plural = "s"
         if failCount == 1:
