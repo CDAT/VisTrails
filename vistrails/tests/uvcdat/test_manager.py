@@ -1,6 +1,8 @@
 import logging
 import os
+import sys
 import tempfile
+import traceback
 
 from core.db.locator import FileLocator
 
@@ -144,11 +146,17 @@ class UVCDATTestManager:
         
         #undock sheet
         spreadSheetWindow = self.uvcdat_window.centralWidget()
-        spreadSheetWindow.get_current_tab_controller().splitTab(0)
+        tabController = spreadSheetWindow.get_current_tab_controller()
+        tabController.splitTab(0)
         
         #show plot properties
-        self.uvcdat_window.showPlotProperties()
+        tabWidget = tabController.floatingTabWidgets[0].widget()
+        tabWidget.requestPlotConfigure(0, 0)
+        
         self.close_project()
+        
+        
+    failCount = 0
         
     def run_tests(self):
         """
@@ -158,7 +166,14 @@ class UVCDATTestManager:
         import datetime
         print "Running tests. Timestamp: %s" % str(datetime.datetime.now())
         
-        failCount = 0
+        #setup special exception hook due to some exceptions not being thrown
+        def test_exception_hook(exctype, value, tb):
+            UVCDATTestManager.failCount += 1
+            print "Failed Test"
+            print ''.join(traceback.format_exception(exctype, value, tb))
+            
+        sys.excepthook = test_exception_hook
+            
         for attribute in dir(self):
             if not hasattr(self, attribute):continue
             function = getattr(self, attribute)
@@ -168,17 +183,18 @@ class UVCDATTestManager:
             if not function.isUVCDATTest: continue
 
             print "Running test %s" % attribute
+
             try:
                 function()
             except Exception, e:
-                failCount += 1
+                UVCDATTestManager.failCount += 1
                 print "Failed test %s" % attribute
                 logging.exception(e)
             
         plural = "s"
-        if failCount == 1:
+        if UVCDATTestManager.failCount == 1:
             plural = ""
-        print "%d test%s failed." % (failCount, plural)
-        return failCount
+        print "%d test%s failed." % (UVCDATTestManager.failCount, plural)
+        return UVCDATTestManager.failCount
                 
         
