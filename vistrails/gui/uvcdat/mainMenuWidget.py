@@ -14,7 +14,7 @@
 #                                                                             #
 ###############################################################################
 from PyQt4 import QtGui, QtCore
-import os
+import os, sys
 import commandsRecorderWidget
 import customizeUVCDAT
 import genutil,cdutil
@@ -274,8 +274,7 @@ class QMenuWidget(QtGui.QWidget):
             from api import get_current_project_controller
             prj_controller = get_current_project_controller()
             vtfuncnm = "%s(%s)"%(funcnm,v.id)
-            prj_controller.calculator_command([v.id], vtdesc, vtfuncnm, newid)
-            
+            prj_controller.calculator_command([v.id], vtdesc, vtfuncnm, newid)            
             tmp = prj_controller.create_exec_new_variable_pipeline(newid)
             if tmp is not None:
                 tmp.id = newid
