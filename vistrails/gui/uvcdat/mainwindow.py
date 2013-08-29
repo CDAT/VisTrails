@@ -19,6 +19,8 @@ import cdms2
 import vcs
 import __main__
 
+from core.configuration import get_vistrails_configuration
+
 from gui.uvcdat.ui_mainwindow import Ui_MainWindow
 from gui.uvcdat.workspace import Workspace
 from gui.uvcdat.docktemplate import DockTemplate
@@ -370,3 +372,8 @@ class UVCDATMainWindow(QtGui.QMainWindow):
     
     def link_registry(self):
         self.dockPlot.link_registry()
+        
+    def warning(self, msg):
+        print "WARNING: %s" % msg
+        if not get_vistrails_configuration().noDebugPopups:
+            QtGui.QMessageBox.warning(self, "Warning", msg)

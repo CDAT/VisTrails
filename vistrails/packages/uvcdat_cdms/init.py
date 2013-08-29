@@ -1113,8 +1113,12 @@ Please delete unused CDAT Cells in the spreadsheet.")
                     #see vcs.Canvas.setcolorcell
                     self.canvas.canvas.updateVCSsegments(self.canvas.mode) # pass down self and mode to _vcs module
                     self.canvas.flush() # update the canvas by processing all the X events
-                
-            self.canvas.plot(cgm,*args,**kwargs)
+            
+            try:
+                self.canvas.plot(cgm,*args,**kwargs)
+            except Exception, e:
+                spreadsheetWindow.setUpdatesEnabled(True)
+                raise e
             
         spreadsheetWindow.setUpdatesEnabled(True)
         self.update()
