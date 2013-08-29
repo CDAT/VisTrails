@@ -29,11 +29,11 @@ class UVCDATTestManager:
         
         self.uvcdat_window = uvcdat_window
         
-    def simulate_load_variable(self, path_or_url=None, varname_or_index=None):
+    def simulate_load_variable(self, path_or_url=None, varname_or_index=1):
         """
         @param path_or_url: If ommited or None, uses testnc.nc from libcdms
         @param varname_or_index: Name of variable, or the index in the 
-          variable combobox. If ommited or None, the first variable is used
+          variable combobox. If ommited, the first variable is used
         """
         
         #open load variable widget
@@ -46,8 +46,21 @@ class UVCDATTestManager:
         loadVariableWidget.fileEdit.setText(path_or_url)
         loadVariableWidget.updateFile()
         
-        #@todo: load variable based on varname or index
-        #just load the first variable and close load widget
+        if isinstance(varname_or_index, basestring):
+            for i in range(loadVariableWidget.varCombo.count()):
+                itemText = loadVariableWidget.varCombo.itemText(i)
+                if varname_or_index == str(itemText).split()[0]:
+                    loadVariableWidget.varCombo.setCurrentIndex(i)
+                    loadVariableWidget.variableSelected(itemText)
+                    break
+        elif isinstance(varname_or_index, (int, long)):
+            itemText = loadVariableWidget.varCombo.itemText(varname_or_index)
+            loadVariableWidget.varCombo.setCurrentIndex(varname_or_index)
+            loadVariableWidget.variableSelected(itemText)
+        else:
+            msg = "Invalid varname_or_index: %s" % str(varname_or_index)
+            raise Exception(msg)
+            
         loadVariableWidget.defineVarCloseClicked()
         
     def simulate_variable_drag_and_drop(self, varname_or_index=0, 
@@ -120,9 +133,6 @@ class UVCDATTestManager:
     @UVCDATTest
     def test_save_open_close_vcs_project(self):
         
-        #all tests should call this very first
-        self.disable_autosave()
-        
         self.simulate_default_vcs_boxfill()
         
         #is deleted upon closing
@@ -141,7 +151,6 @@ class UVCDATTestManager:
         
     @UVCDATTest
     def test_detach_sheet_open_plot_properties(self):
-        self.disable_autosave()
         self.simulate_default_vcs_boxfill()
         
         #undock sheet
@@ -159,8 +168,19 @@ class UVCDATTestManager:
         #close floating sheet, placing it back in main window
         tabWidget.close()
         
-        self.close_project()
+    @UVCDATTest
+    def test_1D_isofill_plot(self):
+
+        self.simulate_load_variable(varname_or_index='longitude')
+        self.simulate_plot_drag_and_drop(name="Isofill")
+        self.simulate_variable_drag_and_drop()
         
+        #ensure that the variable wasn't added to the plot
+        projectController = self.get_project_controller()
+        cellController = projectController.sheet_map['Sheet 1'][(0,0)]
+        if len(cellController.plots[0].variables) > 0:
+            raise Exception("1D variable longitude should have been prevented "
+                            "from being added to Isofill plot")
         
     innerFail = False
         
@@ -170,37 +190,43 @@ class UVCDATTestManager:
         exceptions, and returns number of fails.
         """
         import datetime
-        print "Running tests. Timestamp: %s" % str(datetime.datetime.now())
+        print "RUNNING TESTS. Timestamp: %s" % str(datetime.datetime.now())
         
         #setup special exception hook due to some exceptions not being thrown
         def test_exception_hook(exctype, value, tb):
             UVCDATTestManager.innerFail = True
-            print "Failed Test"
+            print "FAILED TEST"
             print ''.join(traceback.format_exception(exctype, value, tb))
             
         sys.excepthook = test_exception_hook
             
         failCount = 0
         for attribute in dir(self):
-            if not hasattr(self, attribute):continue
-            function = getattr(self, attribute)
+            if not hasattr(self, attribute): continue
+            testFunction = getattr(self, attribute)
             
-            if not hasattr(function, '__call__'): continue
-            if not hasattr(function, 'isUVCDATTest'): continue
-            if not function.isUVCDATTest: continue
+            if not hasattr(testFunction, '__call__'): continue
+            if not hasattr(testFunction, 'isUVCDATTest'): continue
+            if not testFunction.isUVCDATTest: continue
 
-            print "Running test %s" % attribute
+            print "RUNNING TEST %s" % attribute
 
+            self.disable_autosave()
+            
             try:
-                function()
+                testFunction()
             except Exception, e:
                 failCount += 1
-                print "Failed test %s" % attribute
+                print "FAILED TEST %s" % attribute
                 logging.exception(e)
             else:
                 if UVCDATTestManager.innerFail:
                     failCount +=1
                     UVCDATTestManager.innerFail = False
+                      
+            #close all open projects so each test starts with clean slate
+            for _ in range(self.uvcdat_window.workspace.numProjects):
+                self.close_project()
                     
                     
         #restore default exception hook
@@ -209,7 +235,7 @@ class UVCDATTestManager:
         plural = "s"
         if failCount == 1:
             plural = ""
-        print "%d test%s failed." % (failCount, plural)
+        print "TEST RESULTS: %d test%s failed." % (failCount, plural)
         return failCount
                 
         
