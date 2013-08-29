@@ -554,7 +554,6 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
         #-----------------------------------------------------------------------
         # execute the command and clear the line entry if no error occurs
         #-----------------------------------------------------------------------
-
 #        results = "temp_results_holder"
 #        acommand = "temp_results_holder = %s"  % command
 #        exec( "import MV2,genutil,cdms2,vcs,cdutil,numpy", __main__.__dict__ )
