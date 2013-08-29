@@ -58,8 +58,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.addConfigurableLevelingFunction( 'states_Line', 'm2', label='States Line', setLevel=self.setBasemapStatesLineSpecs, getLevel=self.getBasemapStatesLineSpecs, sliderLabels=[ 'Thickness', 'Density' ], layerDependent=False, rangeBounds=[ 0.0, 3.49 ], initRange=[ 0.0, 1.0, 0 ], group=ConfigGroup.BaseMap )
         self.addConfigurableLevelingFunction( 'lakes_Line', 'm3', label='Lakes Line', setLevel=self.setBasemapLakesLineSpecs, getLevel=self.getBasemapLakesLineSpecs, sliderLabels=[ 'Thickness', 'Density' ], layerDependent=False, rangeBounds=[ 0.0, 3.49 ], initRange=[ 0.0, 1.0, 0 ], group=ConfigGroup.BaseMap )
         self.addUVCDATConfigGuiFunction( 'contourColormap', ColormapConfigurationDialog, 'K', label='Choose Contour Colormap', setValue=lambda data: self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasContours, group=ConfigGroup.Color )
-
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
+        self.polygonActor = None
         self.opacity = [ 1.0, 1.0 ]
         self.iOrientation = 0
         self.updatingPlacement = False
@@ -140,6 +140,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         self.planeWidgetX = None
         self.planeWidgetY = None
         self.planeWidgetZ = None
+        self.latLonGrid = True
         del self.sliceOutput
         self.sliceOutput = None 
         if self.contours:
@@ -151,7 +152,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         input0 = ispec.input() 
         print " VolumeSlicer: Input refs = %d " % input0.GetReferenceCount()
         sys.stdout.flush()
-                
+
     def scaleContourColormap(self, data, **args ):
         return self.scaleColormap( data, 1, **args )
         
@@ -249,6 +250,8 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
 
         contourInput = contour_ispec.input() if contour_ispec <> None else None
         primaryInput = self.input()
+        md = self.getInputSpec().getMetadata()
+        self.latLonGrid = md.get( 'latLonGrid', True )
 
 #        self.contourInput = None if contourModule == None else contourModule.getOutput() 
         # The 3 image plane widgets are used to probe the dataset.    
@@ -464,11 +467,6 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 polys_list = self.shapefilePolylineActors.get( type, [ None, None, None, None, None ] ) 
                 polys_list[ density ] = polys
                 self.shapefilePolylineActors[ type ] = polys_list
-
-#     def createBasemapPolylines( self, **args ):
-#         for type in ( 'coastline', 'countries', 'states' ): 
-#             polys = self.shapefilePolylineActors.get(type)
-#             if not polys: self.createBasemapPolyline( type, **args )
         
     def ProcessIPWAction( self, caller, event, **args ):
         action = args.get( 'action', caller.State )
@@ -508,12 +506,14 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 self.updateLensDisplay(screenPos, coord)
                 
             if action == ImagePlaneWidget.Pushing: 
-                ispec = self.inputSpecs[ 0 ]  
+                ispec = self.inputSpecs[ 0 ] 
+                md = ispec.getMetadata()
+                latLonGrid = md.get( 'latLonGrid', True )
                 if not self.isSlicing:
                     HyperwallManager.getInstance().setInteractionState( 'VolumeSlicer.Slicing' )
                     self.isSlicing = True 
                 sliceIndex = caller.GetSliceIndex() 
-                axisName, spos = ispec.getWorldCoord( sliceIndex, iAxis )
+                axisName, spos = ispec.getWorldCoord( sliceIndex, iAxis, latLonGrid )
                 textDisplay = " %s = %s ." % ( axisName, spos )
                 if iAxis == 0:
                     p1 = caller.GetPoint1()
@@ -667,9 +667,6 @@ class VolumeSlicer(WorkflowModule):
     
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args)    
-              
-if __name__ == '__main__':
-    executeVistrail( 'VolumeSlicerDemo' )
     
     
     

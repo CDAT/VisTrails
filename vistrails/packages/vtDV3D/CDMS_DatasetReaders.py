@@ -466,6 +466,7 @@ class CDMSDataset(Module):
         self.decimation = DefaultDecimation
         self.zscale = 1.0
         self.cells = []
+        self.latLonGrid = True
         
     def setCells( self, cells ):
         self.cells[:] = cells[:]
