@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-
-
 #
 # The Ultra-scale Visual Climate Data Analysis Tools (UV-CDAT) 
 # - commandLind Widget
