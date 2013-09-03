@@ -145,10 +145,10 @@ class ProjectController(QtCore.QObject):
         """
         (res, cvars) = self.var_used_in_computed_variable(name)
         if res:
-            msg = name + " is used to derive other variables. Delete those first."
+            msg = "%s is used to derive other variables. Delete those first." % name
             if not force:
-                QMessageBox(msg)._exec()
-            return
+                QMessageBox.critical(None, "Can't delete variable", msg)
+            return False
         if self.promt_delete_var_plots(name, force):
             if name in self.defined_variables:
                 del self.defined_variables[name]
@@ -156,10 +156,13 @@ class ProjectController(QtCore.QObject):
                 del self.computed_variables[name]
                 if name in self.computed_variables_ops:
                     del self.computed_variables_ops[name]
-            
+
             #remove from global main dict
             self.removeVarFromMainDict(name)
-                                    
+            return True
+        else:
+            return False
+
     def promt_delete_var_plots(self, name, force = False):
         """checks if var is being used by any plots, and if so prompts
         user to delete said plots. Returns true if user agrees to delete plots,
