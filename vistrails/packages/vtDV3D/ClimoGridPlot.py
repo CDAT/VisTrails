@@ -60,22 +60,21 @@ class GridLevel:
         self.actor.GetProperty().SetPointSize( point_size )         
 
     def computeSphericalPoints( self, **args ):
-        lon_data = args['lon'] 
-        lat_data = args['lat'] 
+        self.lon_data = args.get( 'lon', self.lon_data ) 
+        self.lat_data = args.get( 'lat', self.lat_data ) 
         radian_scaling = math.pi / 180.0 
-        theta =  ( 90.0 - lat_data ) * radian_scaling
-        phi = lon_data * radian_scaling
-        r = numpy.empty( lon_data.shape, lon_data.dtype )      
+        theta =  ( 90.0 - self.lat_data ) * radian_scaling
+        phi = self.lon_data * radian_scaling
+        r = numpy.empty( self.lon_data.shape, self.lon_data.dtype )      
         r.fill(  self.earth_radius )
-        points_data = numpy.dstack( ( r, theta, phi ) ).flatten()
-        vtk_points_data = numpy_support.numpy_to_vtk( points_data )    
-        vtk_points_data.SetNumberOfComponents( 3 )
-        vtk_points_data.SetNumberOfTuples( lon_data.shape[0] )     
-        vtk_raw_points = vtk.vtkPoints()
-        vtk_raw_points.SetData( vtk_points_data )
-        vtk_points = vtk.vtkPoints()
-        self.shperical_to_xyz_trans.TransformPoints( vtk_raw_points, vtk_points )
-        self.vtk_spherical_points = vtk_points
+        self.points_data = numpy.dstack( ( r, theta, phi ) ).flatten()
+        self.vtk_points_data = numpy_support.numpy_to_vtk( self.points_data )    
+        self.vtk_points_data.SetNumberOfComponents( 3 )
+        self.vtk_points_data.SetNumberOfTuples( self.lon_data.shape[0] )     
+        self.vtk_raw_points = vtk.vtkPoints()
+        self.vtk_raw_points.SetData( self.vtk_points_data )
+        self.vtk_spherical_points = vtk.vtkPoints()
+        self.shperical_to_xyz_trans.TransformPoints( self.vtk_raw_points, self.vtk_spherical_points )
 
     def computePlanarPoints( self, **args ):
         self.lon_data = args.get( 'lon', self.lon_data ) 
@@ -195,7 +194,8 @@ class GridTest:
         self.vtk_spherical_points = None
         self.vtk_planar_points = None
         self.grid_levels = {}
-        self.labelBuff = "NA                          "
+        self.labelBuff = "NA                                    "
+        self.cameraOrientation = {}
 
     def get_LUT( self, **args ):
         lut = vtk.vtkLookupTable()
@@ -264,11 +264,14 @@ class GridTest:
                 self.updateTextDisplay( text )
             
     def ToggleTopo(self):
+        self.recordCamera()
         self.topo = ( self.topo + 1 ) % 2
         for glev in self.grid_levels.values():
             if glev.setTopo( self.topo, lon=self.lon_data, lat=self.lat_data ):
                 self.resetCamera()
-                self.renderer.ResetCamera( glev.getBounds() )
+#                self.renderer.ResetCamera( glev.getBounds() )
+                self.renderer.ResetCameraClippingRange()
+                self.printCameraPos( 'renderer reset Camera' )
         self.renderWindow.Render()
 
     def onKeyPress(self, caller, event):
@@ -331,19 +334,19 @@ class GridTest:
         for glev in self.grid_levels.values():
             if glev.setVisiblity( self.iLevel ) and ( self.iLevel >= 0 ):
 #                self.setFocalPoint( [ self.xcenter, 0.0, glev.zvalue ] )
-                self.renderer.ResetCamera( glev.getBounds() )
+                self.renderer.ResetCameraClippingRange() # ResetCamera( glev.getBounds() )
         self.renderWindow.Render()
          
-    def updateLevel(self):
-        if len( self.var.shape ) == 3:
-            self.var_data = self.level_cache.get( self.iLevel, None )
-            if id(self.var_data) == id(None):
-                self.var_data = self.var[ 0, self.iLevel, 0:self.npoints ].raw_data()
-                self.level_cache[ self.iLevel ] = self.var_data
-            self.vtk_color_data = numpy_support.numpy_to_vtk( self.var_data ) 
-            self.polydata.GetPointData().SetScalars( self.vtk_color_data )
-            self.renderWindow.Render()
-            print " Setting Level value to %.2f %s" % ( self.lev[ self.iLevel ], self.lev.units )
+#     def updateLevel(self):
+#         if len( self.var.shape ) == 3:
+#             self.var_data = self.level_cache.get( self.iLevel, None )
+#             if id(self.var_data) == id(None):
+#                 self.var_data = self.var[ 0, self.iLevel, 0:self.npoints ].raw_data()
+#                 self.level_cache[ self.iLevel ] = self.var_data
+#             self.vtk_color_data = numpy_support.numpy_to_vtk( self.var_data ) 
+#             self.polydata.GetPointData().SetScalars( self.vtk_color_data )
+#             self.renderWindow.Render()
+#             print " Setting Level value to %.2f %s" % ( self.lev[ self.iLevel ], self.lev.units )
             
     def updatePointSize(self):
         for glev in self.grid_levels.values():
@@ -375,6 +378,8 @@ class GridTest:
         xmax, xmin = self.lon_data.max(), self.lon_data.min()
         self.xcenter =  ( xmax + xmin ) / 2.0       
         self.xwidth =  ( xmax - xmin )        
+        self.cameraOrientation[ PlotType.Spherical ] = (  (  0.0, 0.0, 900.0 ),  (  0.0, 0.0, 0.0 ), (  0.0, 1.0, 0.0 )   )
+        self.cameraOrientation[ PlotType.Planar ] = (  (  self.xcenter, 0.0, 900.0 ),  (  self.xcenter, 0.0, 0.0 ), (  0.0, 1.0, 0.0 )   )
                          
         self.var = df[ varname ]
         
@@ -402,7 +407,8 @@ class GridTest:
             self.grid_levels[ glev.actor ] = glev
                                                                      
         self.createRenderer()        
-        if (self.topo == PlotType.Spherical): self.CreateMap()                       
+        if (self.topo == PlotType.Spherical): self.CreateMap() 
+        self.printCameraPos( ' init ' )                      
         self.startEventLoop()
 
     def CreateMap(self):        
@@ -465,29 +471,31 @@ class GridTest:
     def startEventLoop(self):
         self.renderWindowInteractor.Start()
 
+    def recordCamera( self ):
+        c = self.renderer.GetActiveCamera()
+        self.cameraOrientation[ self.topo ] = ( c.GetPosition(), c.GetFocalPoint(), c.GetViewUp() )
+        self.printCameraPos( 'record Camera' )
+
     def resetCamera(self):
-        if (self.topo == PlotType.Spherical):
-            self.renderer.GetActiveCamera().SetPosition(  0.0, 0.0, 900.0 )
-            self.renderer.GetActiveCamera().SetFocalPoint(  0.0, 0.0, 0.0 )
-            self.renderer.GetActiveCamera().SetViewUp(  0.0, 1.0, 0.0 )       
-        if (self.topo == PlotType.Planar):
-            self.renderer.GetActiveCamera().SetPosition(  self.xcenter, 0.0, 900.0 ) # self.xwidth * 3 )
-            self.renderer.GetActiveCamera().SetFocalPoint(  self.xcenter, 0.0, 0.0 )
-            self.renderer.GetActiveCamera().SetViewUp(  0.0, 1.0, 0.0 )       
-        
+        cdata = self.cameraOrientation[ self.topo ]
+        self.renderer.GetActiveCamera().SetPosition( *cdata[0] )
+        self.renderer.GetActiveCamera().SetFocalPoint( *cdata[1] )
+        self.renderer.GetActiveCamera().SetViewUp( *cdata[2] )       
+        self.printCameraPos( 'reset Camera' )
+         
     def getCamera(self):
         return self.renderer.GetActiveCamera()
     
     def setFocalPoint( self, fp ):
         self.renderer.GetActiveCamera().SetFocalPoint( *fp )
         
-    def printCameraPos( self ):
+    def printCameraPos( self, label = "" ):
         cam = self.getCamera()
         cpos = cam.GetPosition()
         cfol = cam.GetFocalPoint()
         cup = cam.GetViewUp()
         camera_pos = (cpos,cfol,cup)
-        print "Camera: " , str(camera_pos)
+        print "%s: Camera => %s " % ( label, str(camera_pos) )
 
     def getProp( self, ptype, id = None ):
       try:
