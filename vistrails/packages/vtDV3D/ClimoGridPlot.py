@@ -114,19 +114,19 @@ class GridLevel:
         ncells_cutoff = args.get( 'max_cells', -1 )
             
         if geometry == PlotType.Mesh:
-            self.quad_corners = args[ 'quads' ]
-            self.indexing = args.get( 'indexing', 'C' )
+            quad_corners = args[ 'quads' ]
+            indexing = args.get( 'indexing', 'C' )
             
             self.ncells = self.quad_corners.shape[1] if ncells_cutoff <= 0 else ncells_cutoff
-            self.element_corners_data = self.quad_corners[:,0:self.ncells].raw_data().astype( numpy.int64 )
-            if self.indexing == 'F': self.element_corners_data = self.element_corners_data - 1
-            self.np_cell_size_data = numpy.empty( [ self.ncells ], numpy.int64 )
-            self.np_cell_size_data.fill(4)
-            self.np_cell_data = numpy.vstack( [ self.np_cell_size_data, self.element_corners_data ] ).flatten('F')
+            element_corners_data = quad_corners[:,0:self.ncells].raw_data().astype( numpy.int64 )
+            if self.indexing == 'F': element_corners_data = element_corners_data - 1
+            np_cell_size_data = numpy.empty( [ self.ncells ], numpy.int64 )
+            np_cell_size_data.fill(4)
+            self.np_cell_data = numpy.vstack( [ np_cell_size_data, element_corners_data ] ).flatten('F')
         else:
-            self.np_index_seq = numpy.arange( 0, self.ncells ) # numpy.array( xrange( ncells ) )
-            self.cell_sizes   = numpy.ones_like( self.np_index_seq )
-            self.np_cell_data = numpy.dstack( ( self.cell_sizes, self.np_index_seq ) ).flatten() 
+            np_index_seq = numpy.arange( 0, self.ncells ) # numpy.array( xrange( ncells ) )
+            cell_sizes   = numpy.ones_like( np_index_seq )
+            self.np_cell_data = numpy.dstack( ( cell_sizes, np_index_seq ) ).flatten() 
         
         self.vtk_cell_data = numpy_support.numpy_to_vtkIdTypeArray( self.np_cell_data ) 
         vertices.SetCells( self.ncells, self.vtk_cell_data )
