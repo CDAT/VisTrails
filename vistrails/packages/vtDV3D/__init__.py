@@ -17,19 +17,14 @@ import sys
 vtk_pkg_identifier = 'edu.utah.sci.vistrails.vtk'
 from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color, Dictionary
 from core.bundles import py_import
-hasMatplotlib = True
-try:
-    mpl_dict = {'linux-ubuntu': 'python-matplotlib', 'linux-fedora': 'python-matplotlib'}
-    matplotlib = py_import('matplotlib', mpl_dict)
-    pylab = py_import('pylab', mpl_dict)
-    from SlicePlotModule import SlicePlotCell, SlicePlotConfigurationWidget
-except Exception, e:
-    print>>sys.stderr, "Matplotlib import Exception: %s" % e
-    print "Matplotlib dependent features will be disabled."
-    hasMatplotlib = False
 
 def package_dependencies():
-    return [ vtk_pkg_identifier, 'edu.utah.sci.vistrails.matplotlib' ]
+    from core.packagemanager import get_package_manager
+    dependencies = [vtk_pkg_identifier, 'edu.utah.sci.vistrails.spreadsheet',
+                    'gov.llnl.uvcdat', 'gov.llnl.uvcdat.cdms']
+    if get_package_manager().has_package('edu.utah.sci.vistrails.matplotlib'):
+        dependencies.append('edu.utah.sci.vistrails.matplotlib')
+    return dependencies
 
 def package_requirements():
     import core.requirements
@@ -93,7 +88,6 @@ def initialize(*args, **keywords):
     from packages.vtDV3D.CDATUtilitiesModule import CDMS_CDATUtilities, CDATUtilitiesModuleConfigurationWidget
     from packages.vtDV3D.GradientModule import  Gradient
     from packages.vtDV3D.WorkflowModule import WorkflowModule
-#        from packages.pylab.init import MplFigureManager
     from packages.vtDV3D.VectorCutPlaneModule import GlyphArrayCutPlane, StreamlineCutPlane 
     from packages.vtDV3D.VectorVolumeModule import VectorVolume 
     from packages.spreadsheet.basic_widgets import CellLocation
@@ -302,14 +296,22 @@ def initialize(*args, **keywords):
 #    reg.add_input_port( LevelSurface, "layer",   [ ( String, 'activeLayerName' ) ]   ) 
     LevelSurface.registerConfigurableFunctions( reg )
 
-    if hasMatplotlib:
+    from core.packagemanager import get_package_manager
+    if get_package_manager().has_package('edu.utah.sci.vistrails.matplotlib'):
+        mpl_dict = {'linux-ubuntu': 'python-matplotlib', 'linux-fedora': 'python-matplotlib'}
+        matplotlib = py_import('matplotlib', mpl_dict)
+        pylab = py_import('pylab', mpl_dict)
+        from SlicePlotModule import SlicePlotCell, SlicePlotConfigurationWidget
+
         reg.add_module( SlicePlotCell, namespace='spreadsheet', configureWidgetType=SlicePlotConfigurationWidget  )
         reg.add_input_port(  SlicePlotCell, "Location", CellLocation)
         reg.add_input_port(  SlicePlotCell, "slice", AlgorithmOutputModule  )
         reg.add_input_port(  SlicePlotCell, "plotType", [ ( String, 'fillType' ), ( String, 'contourType' ), ( Integer, 'numContours' ), ( Integer, 'version' ) ], True   )
         reg.add_output_port( SlicePlotCell, 'File', File)
         SlicePlotCell.registerConfigurableFunctions( reg )
-    
+    else:
+        print "Matplotlib dependent features will be disabled."
+
 
 def executeVistrail( *args, **kwargs ):
     import core.requirements, os
