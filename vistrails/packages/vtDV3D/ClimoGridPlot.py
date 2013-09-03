@@ -33,6 +33,16 @@ class PlotType:
     Points = 0
     Mesh = 1
     
+    @classmethod
+    def validCoords( cls, lat, lon ):
+        return ( id(lat) <> id(None) ) and ( id(lon) <> id(None) )
+    
+    @classmethod
+    def isLevelAxis( cls, id ):
+        if ( id.find('level')  >= 0 ): return True
+        if ( id.find('bottom') >= 0 ) and ( id.find('top') >= 0 ): return True
+        return False    
+    
 class GridLevel:
     
     def __init__( self, level_index, level_value ):
@@ -108,6 +118,9 @@ class GridLevel:
         if isVisible: self.polydata.SetPoints( self.getPoints() ) 
         self.actor.SetVisibility( isVisible  )
         return isVisible
+    
+    def isVisible(self):
+        return self.actor.GetVisibility()
         
     def getBounds( self, **args ):
         topo = args.get( 'topo', self.topo )
@@ -269,9 +282,7 @@ class GridTest:
         for glev in self.grid_levels.values():
             if glev.setTopo( self.topo, lon=self.lon_data, lat=self.lat_data ):
                 self.resetCamera()
-#                self.renderer.ResetCamera( glev.getBounds() )
                 self.renderer.ResetCameraClippingRange()
-                self.printCameraPos( 'renderer reset Camera' )
         self.renderWindow.Render()
 
     def onKeyPress(self, caller, event):
@@ -279,7 +290,7 @@ class GridTest:
         keysym = caller.GetKeySym()
         shift = caller.GetShiftKey()
         alt = not key and keysym.startswith("Alt")
-        print " KeyPress %s %s " % ( str(key), str(keysym) ) 
+#        print " KeyPress %s %s " % ( str(key), str(keysym) ) 
         new_level = None
         if keysym == "Up": new_level = (self.iLevel - 1) if self.inverted_levels else (self.iLevel + 1) 
         if keysym == "Down": new_level = (self.iLevel + 1) if self.inverted_levels else (self.iLevel - 1) 
@@ -354,6 +365,78 @@ class GridTest:
         self.renderWindow.Render()
         print " Setting Point Size: %d" % ( self.point_size )
         
+    def processCoordinates( self, lat, lon ):
+        self.npoints = lon.shape[0] 
+        self.lat_data = lat[0:self.npoints].raw_data()
+        self.lon_data = lon[0:self.npoints].raw_data()
+        xmax, xmin = self.lon_data.max(), self.lon_data.min()
+        self.xcenter =  ( xmax + xmin ) / 2.0       
+        self.xwidth =  ( xmax - xmin )        
+        self.cameraOrientation[ PlotType.Spherical ] = (  (  0.0, 0.0, 900.0 ),  (  0.0, 0.0, 0.0 ), (  0.0, 1.0, 0.0 )   )
+        self.cameraOrientation[ PlotType.Planar ] = (  (  self.xcenter, 0.0, 900.0 ),  (  self.xcenter, 0.0, 0.0 ), (  0.0, 1.0, 0.0 )   )
+        return lon, lat
+       
+    def getLatLon( self, data_file, varname, grid_file = None ):
+        if grid_file:
+            lat = grid_file['lat']
+            lon = grid_file['lon']
+            if PlotType.validCoords( lat, lon ): 
+                return  self.processCoordinates( lat, lon )
+        Var = data_file[ varname ]
+        if hasattr( Var, "coordinates" ):
+            axis_ids = Var.coordinates.strip().split(' ')
+            lat = data_file( axis_ids[1], squeeze=1 )  
+            lon = data_file( axis_ids[0], squeeze=1 )
+            if PlotType.validCoords( lat, lon ): 
+                return  self.processCoordinates( lat, lon )
+        elif hasattr( Var, "stagger" ):
+            stagger = Var.stagger.strip()
+            lat = data_file( "XLAT_%s" % stagger, squeeze=1 )  
+            lon = data_file( "XLONG_%s" % stagger, squeeze=1 )
+            if PlotType.validCoords( lat, lon ): 
+                return  self.processCoordinates( lat, lon )
+
+        lat = Var.getLatitude()  
+        lon = Var.getLongitude()
+        if PlotType.validCoords( lat, lon ): 
+            return  self.processCoordinates( lat, lon )
+        
+        lat = data_file( "XLAT", squeeze=1 )  
+        lon = data_file( "XLONG", squeeze=1 )
+        if PlotType.validCoords( lat, lon ): 
+            return  self.processCoordinates( lat, lon )
+        
+        return None, None
+    
+    def getDataFormat( self, df ):
+        source = df.attributes.get( 'source', None )
+        if source and ('CAM' in source ): return 'CAM'
+        title = df.attributes.get( 'TITLE', None )
+        if title and ('WRF' in title): return 'WRF'
+        return 'UNK'
+    
+    def getDataBlock(self):
+        if self.lev == None:
+            if len( self.var.shape ) == 2:
+                np_var_data_block = self.var[0,:].raw_data()
+            elif len( self.var.shape ) == 3:
+                np_var_data_block = self.var[0,:,:].raw_data()
+                np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0] * np_var_data_block.shape[1], ] )
+            self.nLevels = 1
+        else:
+            self.nLevels = self.var.shape[1]
+            if hasattr( self.lev, 'positive' ) and self.lev.positive == "down": 
+                if self.iLevel == 0:
+                    self.iLevel = self.nLevels - 1 
+                self.inverted_levels = True 
+            if len( self.var.shape ) == 3:               
+                np_var_data_block = self.var[0,:,:].raw_data()
+            elif len( self.var.shape ) == 4:
+                np_var_data_block = self.var[0,:,:,:].raw_data()
+                np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0], np_var_data_block.shape[1] * np_var_data_block.shape[2] ] )
+            
+        return np_var_data_block
+                
     def plot( self, data_file, grid_file, varname, **args ): 
         color_index = args.get( 'color_index', -1 )
         self.point_size = args.get( 'point_size', 2 )
@@ -365,35 +448,22 @@ class GridTest:
         ncells_cutoff = args.get( 'max_ncells', -1 )
         self.iVizLevel = args.get( 'level', 0 )
         
-        gf = cdms2.open( grid_file )
-        lat = gf['lat']
-        lon = gf['lon']
-        quad_corners = gf['element_corners']
-        df = cdms2.open( data_file )  
-     
-#        print " Shapes, lat: %s lon: %s corners: %s, cell data: %s  " % ( str(lat.shape), str(lon.shape), str(element_corners.shape), str( vtk_cell_data[0:20] ) )
-        self.npoints = lon.shape[0] if ( npts_cutoff <= 0 ) else npts_cutoff
-        self.lat_data = lat[0:self.npoints].raw_data()
-        self.lon_data = lon[0:self.npoints].raw_data()
-        xmax, xmin = self.lon_data.max(), self.lon_data.min()
-        self.xcenter =  ( xmax + xmin ) / 2.0       
-        self.xwidth =  ( xmax - xmin )        
-        self.cameraOrientation[ PlotType.Spherical ] = (  (  0.0, 0.0, 900.0 ),  (  0.0, 0.0, 0.0 ), (  0.0, 1.0, 0.0 )   )
-        self.cameraOrientation[ PlotType.Planar ] = (  (  self.xcenter, 0.0, 900.0 ),  (  self.xcenter, 0.0, 0.0 ), (  0.0, 1.0, 0.0 )   )
-                         
+        gf = cdms2.open( grid_file ) if grid_file else None
+        df = cdms2.open( data_file )       
+        lon, lat = self.getLatLon( df, varname, gf )
+        data_format = args.get( 'data_format', self.getDataFormat( df ) )
+                              
         self.var = df[ varname ]
-        
-        if len( self.var.shape ) == 2:
-            np_var_data_block = self.var[0,0:self.npoints].raw_data()
-            self.nLevels = 1
-        elif len( self.var.shape ) == 3:
-            self.lev = self.var.getLevel()
-            self.nLevels = self.var.shape[1]
-            if self.lev.positive == "down": 
-                if self.iLevel == 0:
-                    self.iLevel = self.nLevels - 1 
-                self.inverted_levels = True                
-            np_var_data_block = self.var[0,:,0:self.npoints].raw_data()
+        self.time = self.var.getTime()
+        self.lev = self.var.getLevel()
+        if self.lev == None:
+            domain = self.var.getDomain()
+            for axis in domain:
+                if PlotType.isLevelAxis( axis[0].id.lower() ):
+                    self.lev = axis[0]
+                    break
+                
+        np_var_data_block = self.getDataBlock()
 
         for iLev in range( self.nLevels ):
             glev = GridLevel( iLev, self.lev[iLev] )                 
@@ -401,14 +471,13 @@ class GridTest:
             glev.createPolydata( ( iLev == self.iLevel ), lon=self.lon_data, lat=self.lat_data )
             lut = self.get_LUT( invert = True, number_of_colors = 1024 )
             glev.setVarData( var_data, lut )          
-            glev.createVertices( geometry, quads = quad_corners, indexing = 'F' )
+            glev.createVertices( geometry ) # quads = quad_corners, indexing = 'F' )
             glev.setVisiblity( self.iLevel )
             glev.setPointSize( self.point_size )
             self.grid_levels[ glev.actor ] = glev
                                                                      
         self.createRenderer()        
-        if (self.topo == PlotType.Spherical): self.CreateMap() 
-        self.printCameraPos( ' init ' )                      
+        if (self.topo == PlotType.Spherical): self.CreateMap()                  
         self.startEventLoop()
 
     def CreateMap(self):        
@@ -474,15 +543,19 @@ class GridTest:
     def recordCamera( self ):
         c = self.renderer.GetActiveCamera()
         self.cameraOrientation[ self.topo ] = ( c.GetPosition(), c.GetFocalPoint(), c.GetViewUp() )
-        self.printCameraPos( 'record Camera' )
 
-    def resetCamera(self):
-        cdata = self.cameraOrientation[ self.topo ]
-        self.renderer.GetActiveCamera().SetPosition( *cdata[0] )
-        self.renderer.GetActiveCamera().SetFocalPoint( *cdata[1] )
-        self.renderer.GetActiveCamera().SetViewUp( *cdata[2] )       
-        self.printCameraPos( 'reset Camera' )
-         
+    def resetCamera( self, useBounds = False ):
+        if useBounds:
+            for glev in self.grid_levels.values():
+                if glev.isVisible():
+                    self.renderer.ResetCamera( glev.getBounds() )
+                    return
+        else:
+            cdata = self.cameraOrientation[ self.topo ]
+            self.renderer.GetActiveCamera().SetPosition( *cdata[0] )
+            self.renderer.GetActiveCamera().SetFocalPoint( *cdata[1] )
+            self.renderer.GetActiveCamera().SetViewUp( *cdata[2] )       
+             
     def getCamera(self):
         return self.renderer.GetActiveCamera()
     
@@ -540,11 +613,18 @@ class GridTest:
         self.getLabelActor().VisibilityOn()    
                        
 if __name__ == '__main__':
+    data_type = "WRF"
     data_dir = "/Users/tpmaxwel/data" 
-    CAM_file = os.path.join( data_dir, "CAM/f1850c5_t2_ANN_climo-native.nc" )
-    grid_file = os.path.join( data_dir, "CAM/ne120np4_latlon.nc" )
-    varname = "U"
+    
+    if data_type == "WRF":
+        data_file = os.path.join( data_dir, "WRF/wrfout_d01_2013-05-01_00-00-00.nc" )
+        grid_file = None
+        varname = "U"        
+    elif data_type == "CAM":
+        data_file = os.path.join( data_dir, "CAM/f1850c5_t2_ANN_climo-native.nc" )
+        grid_file = os.path.join( data_dir, "CAM/ne120np4_latlon.nc" )
+        varname = "U"
 #    varname = "PS"
 
     g = GridTest()
-    g.plot( CAM_file, grid_file, varname, topo=PlotType.Planar, grid=PlotType.Points, indexing='F', max_npts=-1, max_ncells=-1, level = 0 )
+    g.plot( data_file, grid_file, varname, topo=PlotType.Planar, grid=PlotType.Points, indexing='F', max_npts=-1, max_ncells=-1, level = 0, data_format = data_type )
