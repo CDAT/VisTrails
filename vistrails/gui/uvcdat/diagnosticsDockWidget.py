@@ -127,7 +127,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         # initial test, first cut:
         # This stuff should go elsewhere...
         import os
-        from metrics.amwg import setup_filetable, get_plot_data
+        from metrics.frontend.uvcdat import setup_filetable, get_plot_data
         # The paths have to be chosen by the user, unless we know something about the system...
         path1 = os.path.join(os.environ["HOME"],'cam_output/b30.009.cam2.h0.06.xml')
         path2 = os.path.join(os.environ["HOME"],'obs_data')
