@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ###############################################################################
 ##
 ## Copyright (C) 2006-2011, University of Utah. 
@@ -32,7 +33,6 @@
 ##
 ###############################################################################
 
-#!/usr/bin/env python
 from PyQt4 import QtCore, QtGui
 import cdms2, vcs
 from cdatguiwrap import VCSQtManager
