@@ -38,8 +38,8 @@ import core.requirements
 
 def uvcdat_version():
     """uvcdat_version() -> string - Returns the current UV-CDAT version."""
-    # 1.0 alpha is the first version released
-    return '1.3.1'
+    import cdat_info
+    return cdat_info.Version
 
 def uvcdat_revision():
     """uvcdat_revision() -> str 
@@ -48,11 +48,12 @@ def uvcdat_revision():
 
     """
     git_dir = os.path.join(vistrails_root_directory(), '..')
+    release=""
     with Chdir(git_dir):
         release = "<update_before_release>"
         if core.requirements.executable_file_exists('git'):
             lines = []
-            result = execute_cmdline(['git', 'describe', '--always', '--abbrev=12'],
+            result = execute_cmdline(['git', 'describe', '--tags', ],
                                      lines)
             if len(lines) == 1:
                 if result == 0:

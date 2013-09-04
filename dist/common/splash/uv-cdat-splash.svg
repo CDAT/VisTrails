@@ -850,10 +850,10 @@
 </g>
 <text
    transform="translate(605,158.9082)"
-   font-size="39.3298"
+   font-size="${FONT1}"
    id="text300"
-   style="font-size:39.32979965px;fill:#f2623c;font-family:MyriadPro-Bold">${UVCDAT-VERSION}</text>
-
+   style="font-size:${FONT1}px;fill:#f2623c;font-family:MyriadPro-Bold">${UVCDAT-VERSION}</text>
+${VISTRAILS-VERSION}
 <g
    id="g302">
 	<g

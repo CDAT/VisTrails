@@ -505,9 +505,39 @@ parameters from other instances")
         
         """
         if self.temp_configuration.check('showSplash'):
-            splashPath = (system.vistrails_root_directory() +
-                          "/gui/uvcdat/resources/images/splash.png")
-            splashPath = ( "/lgm/uvcdat/latest/vistrails/dist/common/splash/uv-cdat-splash.svg")
+            from core.system import vistrails_root_directory
+            import tempfile
+            import cdat_info
+            import core.uvcdat
+            splashPath = os.path.join(vistrails_root_directory(),"..","dist","common","splash","uv-cdat-splash.svg")
+            f,nm = tempfile.mkstemp()
+            f=open(splashPath)
+            s=f.read().replace("${UVCDAT-VERSION}",cdat_info.Version)
+            if isinstance(cdat_info.version()[-1],int):
+                fsize=39
+                vtxt=""
+            else:
+                fsize=22
+                vtxt = """
+<text
+   transform="translate(605,187)"
+   font-size="18"
+   id="text300"
+   style="font-size:12px;fill:#00ff00;font-family:MyriadPro-Bold">Vistrails</text>
+<text
+   transform="translate(625,205)"
+   font-size="18"
+   id="text300"
+   style="font-size:12px;fill:#00ff00;font-family:MyriadPro-Bold">%s</text>
+                """ % core.uvcdat.uvcdat_revision().replace("uvcdat-","")
+            s=s.replace("${VISTRAILS-VERSION",vtxt)
+            s=s.replace("${FONT1}",str(fsize))
+            f.close()
+            f=open(nm,"w")
+            f.write(s)
+            f.close()
+            splashPath=nm
+
             pixmap = QtGui.QPixmap(splashPath)
             self.splashScreen = QtGui.QSplashScreen(pixmap, QtCore.Qt.WindowStaysOnTopHint)
             self.splashScreen.setFont(gui.theme.CurrentTheme.SPLASH_SCREEN_FONT)
