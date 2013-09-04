@@ -20,18 +20,55 @@ from vtk.util import numpy_support
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
 VTK_CONTROL_MODIFIER    = 2        
-VTK_BACKGROUND_COLOR = ( 0.0, 0.0, 0.0 )
+VTK_BACKGROUND_COLOR = ( 0.5, 0.5, 0.5 )
 VTK_FOREGROUND_COLOR = ( 1.0, 1.0, 1.0 )
 VTK_TITLE_SIZE = 14
 VTK_NOTATION_SIZE = 14
 VTK_INSTRUCTION_SIZE = 24
 MIN_LINE_LEN = 50
 
+def dump_array( a, label=None ):
+    print "\n-------------------------------------------------------------------------------------------------"
+    if label: print label
+    npts = a.shape[0]/3
+    nrows = 20
+    iSkip = npts/nrows
+    for ir in range(nrows):
+        iPt = iSkip*ir
+        ioff = iPt*3
+        print "Pt[%d]: %.2f %.2f, %.2f " % ( iPt, a[ ioff ], a[ ioff+1 ], a[ ioff+2 ] )
+    print "-------------------------------------------------------------------------------------------------\n"
+    for ir in range(nrows):
+        iPt =  npts/2 + ir
+        ioff = iPt*3
+        print "Pt[%d]: %.2f %.2f, %.2f " % ( iPt, a[ ioff ], a[ ioff+1 ], a[ ioff+2 ] )
+    print "-------------------------------------------------------------------------------------------------\n"
+    
+def dump_points( pts, label=None ):
+    print "\n-------------------------------------------------------------------------------------------------"
+    npts = pts.GetNumberOfPoints()
+    if label: print label
+    nrows = 20
+    iSkip = npts/nrows
+    for ir in range(nrows):
+        iPt = iSkip*ir
+        pt = pts.GetPoint( iPt )
+        print "Pt[%d]: %.2f %.2f, %.2f " % ( iPt, pt[ 0 ], pt[ 1 ], pt[ 2 ] )
+    print "-------------------------------------------------------------------------------------------------\n"
+    for ir in range(nrows):
+        iPt =  npts/2 + ir
+        pt = pts.GetPoint( iPt )
+        print "Pt[%d]: %.2f %.2f, %.2f " % ( iPt, pt[ 0 ], pt[ 1 ], pt[ 2 ] )
+    print "-------------------------------------------------------------------------------------------------\n"
+       
 class PlotType:
     Planar = 0
     Spherical = 1
     Points = 0
     Mesh = 1
+    List = 0
+    Grid = 1
+    LevelAliases = [ 'isobaric' ]
     
     @classmethod
     def validCoords( cls, lat, lon ):
@@ -41,9 +78,13 @@ class PlotType:
     def isLevelAxis( cls, id ):
         if ( id.find('level')  >= 0 ): return True
         if ( id.find('bottom') >= 0 ) and ( id.find('top') >= 0 ): return True
+        if id in cls.LevelAliases: return True
         return False    
     
-class GridLevel:
+class GridLevel: 
+    
+    shperical_to_xyz_trans = vtk.vtkSphericalTransform()
+    radian_scaling = math.pi / 180.0 
     
     def __init__( self, level_index, level_value ):
         self.iLevel = level_index
@@ -52,48 +93,84 @@ class GridLevel:
         self.vtk_spherical_points = None
         self.vtk_color_data = None
         self.earth_radius = 100.0
-        self.shperical_to_xyz_trans = vtk.vtkSphericalTransform()
-        self.xyz_to_shperical_trans = self.shperical_to_xyz_trans.GetInverse()
         self.topo = PlotType.Planar
         self.lon_data = None
         self.lat_data = None
+    
+    @classmethod    
+    def getXYZPoint( cls, lon, lat, r = None ):
+        theta =  ( 90.0 - lat ) * cls.radian_scaling
+        phi = lon * cls.radian_scaling
+        spherical_coords = ( r, theta, phi )
+        return cls.shperical_to_xyz_trans.TransformDoublePoint( *spherical_coords )
 
     def setTopo( self, topo, **args ):
         if topo <> self.topo:
             self.topo = topo
             if self.actor.GetVisibility():
-                self.polydata.SetPoints( self.getPoints( **args ) ) 
-                return True
-        return False 
+                pts = self.getPoints( **args )
+                self.polydata.SetPoints( pts ) 
+                nverts = self.polydata.GetNumberOfVerts ()
+                ncells = self.polydata.GetNumberOfCells()
+                print str( [nverts,ncells] )
+#                 for irow in range(10):
+#                     ptlist = []
+#                     for ipt in range(10):
+#                         pt = pts.GetPoint(irow*10+ipt)
+#                         ptlist.append( pt )
+#                     print str( ptlist )
+                return pts
+        return None 
     
     def setPointSize( self, point_size ):
         self.actor.GetProperty().SetPointSize( point_size )         
 
     def computeSphericalPoints( self, **args ):
+        point_layout = args.get( 'point_layout', PlotType.Grid )
         self.lon_data = args.get( 'lon', self.lon_data ) 
         self.lat_data = args.get( 'lat', self.lat_data ) 
         radian_scaling = math.pi / 180.0 
         theta =  ( 90.0 - self.lat_data ) * radian_scaling
         phi = self.lon_data * radian_scaling
-        r = numpy.empty( self.lon_data.shape, self.lon_data.dtype )      
-        r.fill(  self.earth_radius )
-        self.points_data = numpy.dstack( ( r, theta, phi ) ).flatten()
-        self.vtk_points_data = numpy_support.numpy_to_vtk( self.points_data )    
+        if point_layout == PlotType.List:
+            r = numpy.empty( self.lon_data.shape, self.lon_data.dtype )      
+            r.fill(  self.earth_radius )
+            self.points_data = numpy.dstack( ( r, theta, phi ) ).flatten()
+            self.vtk_points_data = numpy_support.numpy_to_vtk( self.points_data ) 
+        elif point_layout == PlotType.Grid:
+            r = numpy.empty( [self.lon_data.shape[0]*self.lat_data.shape[0]], self.lon_data.dtype ) 
+            r.fill(  self.earth_radius )
+            thetaB = theta.reshape( [ theta.shape[0], 1 ] )  
+            phiB = phi.reshape( [ 1, phi.shape[0] ] )
+            grid_data = numpy.array( [ v for v in numpy.broadcast(thetaB,phiB) ] ).transpose() 
+            self.points_data = numpy.vstack( ( r, grid_data ) ).flatten('F') 
+            self.vtk_points_data = numpy_support.numpy_to_vtk( self.points_data ) 
         self.vtk_points_data.SetNumberOfComponents( 3 )
-        self.vtk_points_data.SetNumberOfTuples( self.lon_data.shape[0] )     
+        self.vtk_points_data.SetNumberOfTuples( r.shape[0] )     
         self.vtk_raw_points = vtk.vtkPoints()
         self.vtk_raw_points.SetData( self.vtk_points_data )
         self.vtk_spherical_points = vtk.vtkPoints()
         self.shperical_to_xyz_trans.TransformPoints( self.vtk_raw_points, self.vtk_spherical_points )
+        dump_points( self.vtk_raw_points, r.shape[0] )               
 
     def computePlanarPoints( self, **args ):
+        point_layout = args.get( 'point_layout', PlotType.Grid )
         self.lon_data = args.get( 'lon', self.lon_data ) 
         self.lat_data = args.get( 'lat', self.lat_data ) 
         level_spacing = args.get( 'level_spacing', 10.0 )
-        self.z_data = numpy.empty( self.lon_data.shape, self.lon_data.dtype ) 
-        self.zvalue =  self.iLevel * level_spacing  
-        self.z_data.fill( self.zvalue )
-        self.np_points_data = numpy.dstack( ( self.lon_data, self.lat_data, self.z_data ) ).flatten()     
+        if point_layout == PlotType.List:
+            z_data = numpy.empty( self.lon_data.shape, self.lon_data.dtype ) 
+            self.zvalue =  self.iLevel * level_spacing  
+            z_data.fill( self.zvalue )
+            self.np_points_data = numpy.dstack( ( self.lon_data, self.lat_data, z_data ) ).flatten() 
+        elif point_layout == PlotType.Grid: 
+            z_data = numpy.empty( [self.lon_data.shape[0]*self.lat_data.shape[0]], self.lon_data.dtype ) 
+            self.zvalue =  self.iLevel * level_spacing  
+            z_data.fill( self.zvalue )
+            latB = self.lat_data.reshape( [ self.lat_data.shape[0], 1 ] )  
+            lonB = self.lon_data.reshape( [ 1, self.lon_data.shape[0] ] )
+            grid_data = numpy.array( [ v for v in numpy.broadcast(lonB,latB) ] ).transpose() 
+            self.np_points_data = numpy.vstack( ( grid_data, z_data ) ).flatten('F') 
         self.vtk_points_data = numpy_support.numpy_to_vtk( self.np_points_data )    
         self.vtk_points_data.SetNumberOfComponents( 3 )
         self.vtk_points_data.SetNumberOfTuples( len( self.np_points_data ) / 3 )     
@@ -169,7 +246,7 @@ class GridLevel:
             self.createColormap( lut )
             self.polydata.GetPointData().SetScalars( self.vtk_color_data )                     
 
-    def createVertices( self, geometry, **args ): 
+    def createVertices1( self, geometry, **args ): 
         vertices = vtk.vtkCellArray()
         ncells_cutoff = args.get( 'max_cells', -1 )
             
@@ -196,6 +273,74 @@ class GridLevel:
         else:
             self.polydata.SetVerts(vertices)
 
+    def createVertices( self, geometry, **args ): 
+        vertices = vtk.vtkCellArray()
+        index_data = range( self.ncells )
+        index_data.insert( 0, self.ncells )            
+        self.np_cell_data = numpy.array( index_data, dtype=numpy.int64 )       
+        self.vtk_cell_data = numpy_support.numpy_to_vtkIdTypeArray( self.np_cell_data ) 
+        vertices.SetCells( 1, self.vtk_cell_data )
+        self.polydata.SetVerts(vertices)
+
+class TextDisplayMgr:
+    
+    def __init__( self, renderer ):
+        self.renderer = renderer
+    
+    def setTextPosition(self, textActor, pos, size=[400,30] ):
+        vpos = [ 2, 2 ] 
+        vp = self.renderer.GetSize()
+        vpos = [ pos[i]*vp[i] for i in [0,1] ]
+        textActor.GetPositionCoordinate().SetValue( vpos[0], vpos[1] )      
+        textActor.GetPosition2Coordinate().SetValue( vpos[0] + size[0], vpos[1] + size[1] )      
+  
+    def getTextActor( self, id, text, pos, **args ):
+        textActor = self.getProp( 'vtkTextActor', id  )
+        if textActor == None:
+            textActor = self.createTextActor( id, **args  )
+            self.renderer.AddViewProp( textActor )
+        self.setTextPosition( textActor, pos )
+        text_lines = text.split('\n')
+        linelen = len(text_lines[-1])
+        if linelen < MIN_LINE_LEN: text += (' '*(MIN_LINE_LEN-linelen)) 
+        text += '.'
+        textActor.SetInput( text )
+        textActor.Modified()
+        return textActor
+
+    def getProp( self, ptype, id = None ):
+        try:
+          props = self.renderer.GetViewProps()
+          nitems = props.GetNumberOfItems()
+          for iP in range(nitems):
+              prop = props.GetItemAsObject(iP)
+              if prop.IsA( ptype ):
+                  if not id or (prop.id == id):
+                      return prop
+        except: 
+          pass
+        return None
+  
+    def createTextActor( self, id, **args ):
+        textActor = vtk.vtkTextActor()  
+        textActor.SetTextScaleMode( vtk.vtkTextActor.TEXT_SCALE_MODE_PROP )  
+#        textActor.SetMaximumLineHeight( 0.4 )       
+        textprop = textActor.GetTextProperty()
+        textprop.SetColor( *args.get( 'color', ( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] ) ) )
+        textprop.SetOpacity ( args.get( 'opacity', 1.0 ) )
+        textprop.SetFontSize( args.get( 'size', 10 ) )
+        if args.get( 'bold', False ): textprop.BoldOn()
+        else: textprop.BoldOff()
+        textprop.ItalicOff()
+        textprop.ShadowOff()
+        textprop.SetJustificationToLeft()
+        textprop.SetVerticalJustificationToBottom()        
+        textActor.GetPositionCoordinate().SetCoordinateSystemToDisplay()
+        textActor.GetPosition2Coordinate().SetCoordinateSystemToDisplay() 
+        textActor.VisibilityOff()
+        textActor.id = id
+        return textActor 
+    
 class GridTest:
     
     def __init__(self):
@@ -209,6 +354,13 @@ class GridTest:
         self.grid_levels = {}
         self.labelBuff = "NA                                    "
         self.cameraOrientation = {}
+
+    def getLabelActor(self):
+        return self.textDisplayMgr.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
+
+    def updateTextDisplay( self, text ):
+        self.labelBuff = str(text)
+        self.getLabelActor().VisibilityOn()    
 
     def get_LUT( self, **args ):
         lut = vtk.vtkLookupTable()
@@ -270,7 +422,7 @@ class GridTest:
                 glev = self.grid_levels.get( actor, None )                  
                 dval = str( glev.getPointValue( iPt ) ) if glev else "NULL"
                 if self.topo == PlotType.Spherical:
-                    pick_pos = [ self.lon_data[ iPt ], self.lat_data[ iPt ] ]
+                    pick_pos = glev.vtk_points_data.GetPoint( iPt )
                 else:
                     pick_pos = picker.GetPickPosition()                       
                 text = " Point[%d] ( %.2f, %.2f ): %s " % ( iPt, pick_pos[0], pick_pos[1], dval )
@@ -280,8 +432,9 @@ class GridTest:
         self.recordCamera()
         self.topo = ( self.topo + 1 ) % 2
         for glev in self.grid_levels.values():
-            if glev.setTopo( self.topo, lon=self.lon_data, lat=self.lat_data ):
-                self.resetCamera()
+            pts =  glev.setTopo( self.topo, lon=self.lon_data, lat=self.lat_data )
+            if pts:
+                self.resetCamera( pts )
                 self.renderer.ResetCameraClippingRange()
         self.renderWindow.Render()
 
@@ -367,13 +520,18 @@ class GridTest:
         
     def processCoordinates( self, lat, lon ):
         self.npoints = lon.shape[0] 
-        self.lat_data = lat[0:self.npoints].raw_data()
-        self.lon_data = lon[0:self.npoints].raw_data()
+        self.lat_data = lat[0:self.npoints]
+        self.lon_data = lon[0:self.npoints]
+        if self.lon_data.__class__.__name__ == "TransientVariable":
+            self.lat_data = self.lat_data.raw_data()
+            self.lon_data = self.lon_data.raw_data()        
         xmax, xmin = self.lon_data.max(), self.lon_data.min()
         self.xcenter =  ( xmax + xmin ) / 2.0       
-        self.xwidth =  ( xmax - xmin )        
-        self.cameraOrientation[ PlotType.Spherical ] = (  (  0.0, 0.0, 900.0 ),  (  0.0, 0.0, 0.0 ), (  0.0, 1.0, 0.0 )   )
-        self.cameraOrientation[ PlotType.Planar ] = (  (  self.xcenter, 0.0, 900.0 ),  (  self.xcenter, 0.0, 0.0 ), (  0.0, 1.0, 0.0 )   )
+        self.xwidth =  ( xmax - xmin ) 
+#         for plotType in [ PlotType.Spherical, PlotType.Planar ]:
+#             position = GridLevel.getXYZPoint( self.xcenter, 0.0, 900.0 ) if PlotType.Spherical else (  self.xcenter, 0.0, 900.0 ) 
+#             focal_point =  (  0.0, 0.0, 0.0 ) if PlotType.Spherical else (  self.xcenter, 0.0, 0.0 )
+#             self.cameraOrientation[ plotType ] = ( position,  focal_point, (  0.0, 1.0, 0.0 )   )            
         return lon, lat
        
     def getLatLon( self, data_file, varname, grid_file = None ):
@@ -383,6 +541,9 @@ class GridTest:
             if PlotType.validCoords( lat, lon ): 
                 return  self.processCoordinates( lat, lon )
         Var = data_file[ varname ]
+        if id(Var) == id(None):
+            print>>sys.stderr, "Error, can't find variable '%s' in data file." % ( varname )
+            return None, None
         if hasattr( Var, "coordinates" ):
             axis_ids = Var.coordinates.strip().split(' ')
             lat = data_file( axis_ids[1], squeeze=1 )  
@@ -399,7 +560,7 @@ class GridTest:
         lat = Var.getLatitude()  
         lon = Var.getLongitude()
         if PlotType.validCoords( lat, lon ): 
-            return  self.processCoordinates( lat, lon )
+            return  self.processCoordinates( lat.getValue(), lon.getValue() )
         
         lat = data_file( "XLAT", squeeze=1 )  
         lon = data_file( "XLONG", squeeze=1 )
@@ -436,7 +597,15 @@ class GridTest:
                 np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0], np_var_data_block.shape[1] * np_var_data_block.shape[2] ] )
             
         return np_var_data_block
-                
+    
+    def getPointsLayout( self, var, lon, lat ):
+        hgrid = var.getGrid()
+        if hgrid <> None:
+            if (hgrid.__class__.__name__ == "RectGrid"): 
+                return PlotType.Grid
+        return PlotType.List
+
+                    
     def plot( self, data_file, grid_file, varname, **args ): 
         color_index = args.get( 'color_index', -1 )
         self.point_size = args.get( 'point_size', 2 )
@@ -456,6 +625,7 @@ class GridTest:
         self.var = df[ varname ]
         self.time = self.var.getTime()
         self.lev = self.var.getLevel()
+        points_layout = self.getPointsLayout( self.var, lon, lat )
         if self.lev == None:
             domain = self.var.getDomain()
             for axis in domain:
@@ -468,7 +638,7 @@ class GridTest:
         for iLev in range( self.nLevels ):
             glev = GridLevel( iLev, self.lev[iLev] )                 
             var_data = np_var_data_block[:] if ( self.nLevels == 1 ) else np_var_data_block[iLev,:]                                
-            glev.createPolydata( ( iLev == self.iLevel ), lon=self.lon_data, lat=self.lat_data )
+            glev.createPolydata( ( iLev == self.iLevel ), point_layout=points_layout, lon=self.lon_data, lat=self.lat_data )
             lut = self.get_LUT( invert = True, number_of_colors = 1024 )
             glev.setVarData( var_data, lut )          
             glev.createVertices( geometry ) # quads = quad_corners, indexing = 'F' )
@@ -497,25 +667,6 @@ class GridTest:
         self.earth_actor.GetProperty().SetColor(0,0,0)
         self.renderer.AddActor( self.earth_actor )
 
-    def createTextActor( self, id, **args ):
-        textActor = vtk.vtkTextActor()  
-        textActor.SetTextScaleMode( vtk.vtkTextActor.TEXT_SCALE_MODE_PROP )  
-#        textActor.SetMaximumLineHeight( 0.4 )       
-        textprop = textActor.GetTextProperty()
-        textprop.SetColor( *args.get( 'color', ( VTK_FOREGROUND_COLOR[0], VTK_FOREGROUND_COLOR[1], VTK_FOREGROUND_COLOR[2] ) ) )
-        textprop.SetOpacity ( args.get( 'opacity', 1.0 ) )
-        textprop.SetFontSize( args.get( 'size', 10 ) )
-        if args.get( 'bold', False ): textprop.BoldOn()
-        else: textprop.BoldOff()
-        textprop.ItalicOff()
-        textprop.ShadowOff()
-        textprop.SetJustificationToLeft()
-        textprop.SetVerticalJustificationToBottom()        
-        textActor.GetPositionCoordinate().SetCoordinateSystemToDisplay()
-        textActor.GetPosition2Coordinate().SetCoordinateSystemToDisplay() 
-        textActor.VisibilityOff()
-        textActor.id = id
-        return textActor
                 
     def createRenderer(self, **args ):
         background_color = args.get( 'background_color', VTK_BACKGROUND_COLOR )
@@ -528,7 +679,8 @@ class GridTest:
         self.renderWindowInteractor.SetInteractorStyle(style)
         self.renderWindowInteractor.SetRenderWindow( self.renderWindow )
         self.renderWindowInteractor.AddObserver( 'CharEvent', self.onKeyPress )       
-        self.renderWindowInteractor.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )               
+        self.renderWindowInteractor.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )  
+        self.textDisplayMgr = TextDisplayMgr( self.renderer )             
         pointPicker = vtk.vtkPointPicker()
         pointPicker.PickFromListOn()    
         self.renderWindowInteractor.SetPicker(pointPicker) 
@@ -544,17 +696,19 @@ class GridTest:
         c = self.renderer.GetActiveCamera()
         self.cameraOrientation[ self.topo ] = ( c.GetPosition(), c.GetFocalPoint(), c.GetViewUp() )
 
-    def resetCamera( self, useBounds = False ):
-        if useBounds:
-            for glev in self.grid_levels.values():
-                if glev.isVisible():
-                    self.renderer.ResetCamera( glev.getBounds() )
-                    return
-        else:
-            cdata = self.cameraOrientation[ self.topo ]
+    def resetCamera( self, pts = None ):
+        cdata = self.cameraOrientation.get( self.topo, None )
+        if cdata:
             self.renderer.GetActiveCamera().SetPosition( *cdata[0] )
             self.renderer.GetActiveCamera().SetFocalPoint( *cdata[1] )
             self.renderer.GetActiveCamera().SetViewUp( *cdata[2] )       
+        elif pts:
+            self.renderer.ResetCamera( pts.GetBounds() )
+        else:
+            for glev in self.grid_levels.values():
+                if glev.isVisible():
+                    self.renderer.ResetCamera( glev.getBounds() )
+                    break
              
     def getCamera(self):
         return self.renderer.GetActiveCamera()
@@ -569,51 +723,9 @@ class GridTest:
         cup = cam.GetViewUp()
         camera_pos = (cpos,cfol,cup)
         print "%s: Camera => %s " % ( label, str(camera_pos) )
-
-    def getProp( self, ptype, id = None ):
-      try:
-          props = self.renderer.GetViewProps()
-          nitems = props.GetNumberOfItems()
-          for iP in range(nitems):
-              prop = props.GetItemAsObject(iP)
-              if prop.IsA( ptype ):
-                  if not id or (prop.id == id):
-                      return prop
-      except: 
-          pass
-      return None
-
-    def setTextPosition(self, textActor, pos, size=[400,30] ):
-        vpos = [ 2, 2 ]
-        if self.renderer: 
-            vp = self.renderer.GetSize()
-            vpos = [ pos[i]*vp[i] for i in [0,1] ]
-        textActor.GetPositionCoordinate().SetValue( vpos[0], vpos[1] )      
-        textActor.GetPosition2Coordinate().SetValue( vpos[0] + size[0], vpos[1] + size[1] )      
-  
-    def getTextActor( self, id, text, pos, **args ):
-        textActor = self.getProp( 'vtkTextActor', id  )
-        if textActor == None:
-            textActor = self.createTextActor( id, **args  )
-            if self.renderer: self.renderer.AddViewProp( textActor )
-        self.setTextPosition( textActor, pos )
-        text_lines = text.split('\n')
-        linelen = len(text_lines[-1])
-        if linelen < MIN_LINE_LEN: text += (' '*(MIN_LINE_LEN-linelen)) 
-        text += '.'
-        textActor.SetInput( text )
-        textActor.Modified()
-        return textActor
-
-    def getLabelActor(self):
-        return self.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
-
-    def updateTextDisplay( self, text ):
-        self.labelBuff = str(text)
-        self.getLabelActor().VisibilityOn()    
-                       
+                     
 if __name__ == '__main__':
-    data_type = "WRF"
+    data_type = "CAM"
     data_dir = "/Users/tpmaxwel/data" 
     
     if data_type == "WRF":
@@ -624,6 +736,10 @@ if __name__ == '__main__':
         data_file = os.path.join( data_dir, "CAM/f1850c5_t2_ANN_climo-native.nc" )
         grid_file = os.path.join( data_dir, "CAM/ne120np4_latlon.nc" )
         varname = "U"
+    elif data_type == "ECMWF":
+        data_file = os.path.join( data_dir, "AConaty/comp-ECMWF/ecmwf.xml" )
+        grid_file = None
+        varname = "U_velocity"        
 #    varname = "PS"
 
     g = GridTest()
