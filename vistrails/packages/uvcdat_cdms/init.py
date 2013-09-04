@@ -626,13 +626,14 @@ class CDMSUnaryVariableOperation(CDMSVariableOperation):
         self.python_command = self.replace_variable_in_command(self.python_command,
                                                                self.var.name, 
                                                                "self.var.var")
+
         res = None
         try:
             res = eval(self.python_command)
         except:
             print "Exception evaluating python command '%s'\n" % self.python_command
             raise
-            
+
         if type(res) == tuple:
             for r in res:
                 if isinstance(r,cdms2.tvariable.TransientVariable):
@@ -747,6 +748,90 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
     def to_module(self, controller, pkg_identifier=None):
         module = CDMSVariableOperation.to_module(self, controller)
         return module
+            
+class CDMSGrowerOperation(CDMSBinaryVariableOperation):
+    
+    _input_ports = expand_port_specs([("varname2", "basic:String")])
+    
+    _output_ports = expand_port_specs([("output_var", "CDMSVariable"),
+                                      ("output_var2", "CDMSVariable")
+                                      ])
+    
+    def compute(self):
+        if not self.hasInputFromPort('input_var1'):
+            raise ModuleError(self, "'input_var1' is mandatory.")
+        
+        if not self.hasInputFromPort('input_var2'):
+            raise ModuleError(self, "'input_var2' is mandatory.")
+        
+        self.var1 = self.getInputFromPort('input_var1')
+        self.var2 = self.getInputFromPort('input_var2')
+        self.get_port_values()
+        self.outvar = CDMSVariable(filename=None,name=self.varname)
+        self.outvar2 = CDMSVariable(filename=None,name=self.varname2)
+        self.outvar.var = self.to_python()
+        self.outvar2.var = self.result2
+        self.setResult("output_var", self.outvar)
+        self.setResult("output_var2", self.outvar2)
+    
+    def get_port_values(self):
+        if not self.hasInputFromPort("varname"):
+            raise ModuleError(self, "'varname' is mandatory.")
+        if not self.hasInputFromPort("varname2"):
+            raise ModuleError(self, "'varname2' is mandatory.")
+        if not self.hasInputFromPort("python_command"):
+            raise ModuleError(self, "'python_command' is mandatory.")
+        self.varname = self.forceGetInputFromPort("varname")
+        self.varname2 = self.forceGetInputFromPort("varname2")
+        self.python_command = self.getInputFromPort("python_command")
+        self.axes = self.forceGetInputFromPort("axes")
+        self.axesOperations = self.forceGetInputFromPort("axesOperations")
+        self.attributes = self.forceGetInputFromPort("attributes")
+        self.axisAttributes = self.forceGetInputFromPort("axisAttributes")
+        self.timeBounds = self.forceGetInputFromPort("timeBounds")
+        
+    def to_python(self):
+        replace_map = {self.var1.name: "self.var1.var",
+                       self.var2.name: "self.var2.var"}
+        
+        vars = [self.var1,self.var2]
+        for v in vars:
+            self.python_command = self.replace_variable_in_command(self.python_command,
+                                                                   v.name, replace_map[v.name])
+
+        res = eval(self.python_command)
+        if type(res) != tuple:
+            raise ModuleError("Expecting tuple output from grower, got %s instead." % str(type(res)))
+        elif len(res) != 2:
+            raise ModuleError("Expecting 2 outputs from grower, got %s instead." % str(len(res)))
+        
+        var = res[0]
+        var.id = self.varname
+        var = self.applyOperations(var)
+        
+        self.result2 = res[1]
+        self.result2.id = self.varname2
+        self.result2 = self.applyOperations(self.result2)
+        
+        return var
+    
+    @staticmethod
+    def from_module(module):
+        op = CDMSVariableOperation.from_module(module)
+        op.__class__ = CDMSGrowerOperation
+        op.var1 = None
+        op.var2 = None
+        return op
+
+    def to_module(self, controller):
+        module = CDMSBinaryVariableOperation.to_module(self, controller)
+        functions = []
+        if self.varname2 is not None:
+            functions.append(("varname2", [self.varname2]))
+        functions = controller.create_functions(module, functions)
+        for f in functions:
+            module.add_function(f)
+        return module        
         
 class CDMSNaryVariableOperation(CDMSVariableOperation):
     _input_ports = expand_port_specs([("input_vars", "CDMSVariable"),
@@ -1630,7 +1715,7 @@ class QCDATWidgetExport(QtGui.QAction):
 
 _modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
             CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, 
-            CDMSNaryVariableOperation, CDMSColorMap]
+            CDMSNaryVariableOperation, CDMSColorMap, CDMSGrowerOperation]
 
 def get_input_ports(plot_type):
     if plot_type == "Boxfill":
