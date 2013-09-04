@@ -363,7 +363,7 @@ class QPreferencesDialog(QtGui.QDialog):
             cdms2.setNetcdfDeflateLevelFlag(self.ncDeflateLevel.value())
 
     def saveState(self):
-        fnm=os.path.join(os.environ["HOME"],"PCMDI_GRAPHICS","customizeUVCDAT.py")
+        fnm=os.path.join(os.environ["HOME"],".uvcdat","customizeUVCDAT.py")
         f=open(fnm,"w")
         customizeUVCDAT.defaultPlot = self.defaultPlot.currentText()
         customizeUVCDAT.squeezeVariables=self.squeeze.isChecked()
