@@ -525,11 +525,16 @@ parameters from other instances")
    id="text300"
    style="font-size:12px;fill:#00ff00;font-family:MyriadPro-Bold">Vistrails</text>
 <text
-   transform="translate(625,205)"
+   transform="translate(615,205)"
    font-size="18"
    id="text300"
-   style="font-size:12px;fill:#00ff00;font-family:MyriadPro-Bold">%s</text>
-                """ % core.uvcdat.uvcdat_revision().replace("uvcdat-","")
+   style="font-size:10px;fill:#00ff00;font-family:MyriadPro-Bold">%s</text>
+<text
+   transform="translate(615,225)"
+   font-size="18"
+   id="text300"
+   style="font-size:10px;fill:#00ff00;font-family:MyriadPro-Bold">%s</text>
+                """ % (core.uvcdat.uvcdat_vistrails_branch(),core.uvcdat.uvcdat_revision().replace("uvcdat-",""))
             s=s.replace("${VISTRAILS-VERSION",vtxt)
             s=s.replace("${FONT1}",str(fsize))
             f.close()

@@ -48,7 +48,6 @@ def uvcdat_revision():
 
     """
     git_dir = os.path.join(vistrails_root_directory(), '..')
-    release=""
     with Chdir(git_dir):
         release = "<update_before_release>"
         if core.requirements.executable_file_exists('git'):
@@ -57,7 +56,19 @@ def uvcdat_revision():
                                      lines)
             if len(lines) == 1:
                 if result == 0:
-                    release = lines[0].strip(" \n")
+                    release = lines[0].strip()
+    return release
+def uvcdat_vistrails_branch():
+    git_dir = os.path.join(vistrails_root_directory(), '..')
+    with Chdir(git_dir):
+        release = "<update_before_release>"
+        if core.requirements.executable_file_exists('git'):
+            lines = []
+            result = execute_cmdline(['git', 'rev-parse', '--abbrev-ref', 'HEAD' ],
+                                     lines)
+            if len(lines) == 1:
+                if result == 0:
+                    release = lines[0].strip()
     return release
 
 def short_about_string():
