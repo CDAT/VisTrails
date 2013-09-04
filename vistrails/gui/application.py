@@ -507,6 +507,7 @@ parameters from other instances")
         if self.temp_configuration.check('showSplash'):
             splashPath = (system.vistrails_root_directory() +
                           "/gui/uvcdat/resources/images/splash.png")
+            splashPath = ( "/lgm/uvcdat/latest/vistrails/dist/common/splash/uv-cdat-splash.svg")
             pixmap = QtGui.QPixmap(splashPath)
             self.splashScreen = QtGui.QSplashScreen(pixmap, QtCore.Qt.WindowStaysOnTopHint)
             self.splashScreen.setFont(gui.theme.CurrentTheme.SPLASH_SCREEN_FONT)
