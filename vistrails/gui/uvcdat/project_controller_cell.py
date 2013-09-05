@@ -37,6 +37,7 @@ from datetime import datetime
 
 import api
 from core.uvcdat.plotmanager import get_plot_manager
+from gui.uvcdat.mainMenuWidget import set_status_message
 
 class ControllerCell(object):
     
@@ -73,10 +74,13 @@ class ControllerCell(object):
             if len(plot.variables) < plot.varnum:
                 if plot.acceptsVariable(varname):
                     plot.variables.append(varname)
+                    set_status_message("Added %s to plot %s" % (varname, plot.name))
+                    return len(plot.variables) == plot.varnum
                 else:
+                    set_status_message("Plot %s does not accept %s" % (plot.name, varname))
                     return False
-                return len(plot.variables) == plot.varnum
             
+        set_status_message("Added %s to cell's variable queue" % varname)
         self.variableQ.append(varname)
         return False
     
@@ -84,8 +88,11 @@ class ControllerCell(object):
         for plot in self.plots:
             if plot.template is None:
                 plot.template = template
+                set_status_message("Added template %s to plot %s" % \
+                                   (template, plot.name))
                 return len(plot.variables) == plot.varnum
             
+        set_status_message("Added %s to cell's template queue" % template)
         self.templateQ.append(template)
         return False
     
@@ -105,7 +112,12 @@ class ControllerCell(object):
             else:
                 break
             
-        return len(plot.variables) == plot.varnum
+        if len(plot.variables) == plot.varnum:
+            set_status_message("Plot %s" % plot.name)
+            return True
+        else:
+            set_status_message("Added %s to cell's plot queue" % plot.name)
+            return False
             
     def is_ready(self):
         for p in self.plots:

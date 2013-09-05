@@ -22,6 +22,10 @@ import preFunctionPopUpWidget
 import gui.uvcdat.regionExtractor
 from api import get_current_project_controller
 
+def set_status_message(msg, time=0):
+    from gui.application import get_vistrails_application
+    get_vistrails_application().uvcdatWindow.ui.statusbar.showMessage(msg, time)
+
 class QMenuWidget(QtGui.QWidget):
     def __init__(self, parent=None):
         QtGui.QWidget.__init__(self,parent)
