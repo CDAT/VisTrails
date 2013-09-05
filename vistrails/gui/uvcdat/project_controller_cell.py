@@ -108,6 +108,7 @@ class ControllerCell(object):
             
         if len(plot.variables) == plot.varnum:
             set_status_message("Plot %s" % plot.name)
+            return True
         else:
             set_status_message("Added %s to cell's plot queue" % plot.name)
             return False
