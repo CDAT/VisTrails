@@ -551,6 +551,28 @@ class Plot(object):
             controller.perform_action(action)
         return action
     
+    def acceptsVariable(self, varname):
+        """Checks whether the passed variable is plottable by this plot
+        """
+        
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
+        definedVariableWidget = _app.uvcdatWindow.dockVariable.widget()
+        variable = definedVariableWidget.getVariable(varname)
+        
+        package1D = ['VCS']
+        parent1D = ['Isofill', 'Isoline', 'Outfill','Outline']
+        
+        if self.package in package1D:
+            if self.parent in parent1D:
+                if len(variable.shape) < 2:
+                    fmt = "%s - %s cannot plot 1D variables"
+                    msg = fmt % (self.package, self.parent)
+                    _app.uvcdatWindow.warning(msg)
+                    return False
+        
+        return True
+    
 class Cell(object):
     def __init__(self, type=None, row_name=None, col_name=None, address_name=None):
         self.type = type

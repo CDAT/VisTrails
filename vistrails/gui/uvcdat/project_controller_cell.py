@@ -72,9 +72,13 @@ class ControllerCell(object):
         self.defaultPlotVersion = None
         for plot in self.plots:
             if len(plot.variables) < plot.varnum:
-                plot.variables.append(varname)
-                set_status_message("Added %s to plot %s" % (varname, plot.name))
-                return len(plot.variables) == plot.varnum
+                if plot.acceptsVariable(varname):
+                    plot.variables.append(varname)
+                    set_status_message("Added %s to plot %s" % (varname, plot.name))
+                    return len(plot.variables) == plot.varnum
+                else:
+                    set_status_message("Plot %s does not accept %s" % (plot.name, varname))
+                    return False
             
         set_status_message("Added %s to cell's variable queue" % varname)
         self.variableQ.append(varname)
@@ -102,7 +106,9 @@ class ControllerCell(object):
         #add vars from queue
         for i in range(plot.varnum - len(plot.variables)):
             if len(self.variableQ) > 0:
-                plot.variables.append(self.variableQ.pop(0))
+                varname = self.variableQ.pop(0)
+                if plot.acceptsVariable(varname):
+                    plot.variables.append(varname)
             else:
                 break
             
