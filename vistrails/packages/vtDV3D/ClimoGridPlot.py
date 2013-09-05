@@ -27,7 +27,7 @@ VTK_NOTATION_SIZE = 14
 VTK_INSTRUCTION_SIZE = 24
 MIN_LINE_LEN = 50
 
-def dump_array( a, label=None ):
+def dump_np_array( a, label=None ):
     print "\n-------------------------------------------------------------------------------------------------"
     if label: print label
     npts = a.shape[0]/3
@@ -42,6 +42,23 @@ def dump_array( a, label=None ):
         iPt =  npts/2 + ir
         ioff = iPt*3
         print "Pt[%d]: %.2f %.2f, %.2f " % ( iPt, a[ ioff ], a[ ioff+1 ], a[ ioff+2 ] )
+    print "-------------------------------------------------------------------------------------------------\n"
+
+def dump_vtk_array( a, label=None ):
+    print "\n-------------------------------------------------------------------------------------------------"
+    if label: print label
+    npts = a.GetNumberOfTuples()
+    nrows = 20
+    iSkip = npts/nrows
+    for ir in range(nrows):
+        iPt = iSkip*ir
+        pt = a.GetTuple(iPt)
+        print "Pt[%d]: %.2f %.2f, %.2f " % ( iPt, pt[ 0 ], pt[ 1 ], pt[ 2 ] )
+    print "-------------------------------------------------------------------------------------------------\n"
+    for ir in range(nrows):
+        iPt =  npts/2 + ir
+        pt = a.GetTuple(iPt)
+        print "Pt[%d]: %.2f %.2f, %.2f " % ( iPt, pt[ 0 ], pt[ 1 ], pt[ 2 ] )
     print "-------------------------------------------------------------------------------------------------\n"
     
 def dump_points( pts, label=None ):
@@ -86,9 +103,10 @@ class GridLevel:
     shperical_to_xyz_trans = vtk.vtkSphericalTransform()
     radian_scaling = math.pi / 180.0 
     
-    def __init__( self, level_index, level_value ):
+    def __init__( self, level_index, level_value, grid = None ):
         self.iLevel = level_index
         self.levValue = level_value
+        self.grid = grid
         self.vtk_planar_points = None
         self.vtk_spherical_points = None
         self.vtk_color_data = None
@@ -110,51 +128,47 @@ class GridLevel:
             if self.actor.GetVisibility():
                 pts = self.getPoints( **args )
                 self.polydata.SetPoints( pts ) 
-                nverts = self.polydata.GetNumberOfVerts ()
-                ncells = self.polydata.GetNumberOfCells()
-                print str( [nverts,ncells] )
-#                 for irow in range(10):
-#                     ptlist = []
-#                     for ipt in range(10):
-#                         pt = pts.GetPoint(irow*10+ipt)
-#                         ptlist.append( pt )
-#                     print str( ptlist )
                 return pts
         return None 
-    
-    def setPointSize( self, point_size ):
-        self.actor.GetProperty().SetPointSize( point_size )         
 
+    def getPointsLayout( self ):
+        if self.grid <> None:
+            if (self.grid.__class__.__name__ == "RectGrid"): 
+                return PlotType.Grid
+        return PlotType.List   
+     
+    def setPointSize( self, point_size ):
+        self.actor.GetProperty().SetPointSize( point_size )                
+       
     def computeSphericalPoints( self, **args ):
-        point_layout = args.get( 'point_layout', PlotType.Grid )
+        point_layout = self.getPointsLayout()
         self.lon_data = args.get( 'lon', self.lon_data ) 
         self.lat_data = args.get( 'lat', self.lat_data ) 
         radian_scaling = math.pi / 180.0 
         theta =  ( 90.0 - self.lat_data ) * radian_scaling
         phi = self.lon_data * radian_scaling
         if point_layout == PlotType.List:
+            npts = self.lon_data.shape[0]
             r = numpy.empty( self.lon_data.shape, self.lon_data.dtype )      
             r.fill(  self.earth_radius )
-            self.points_data = numpy.dstack( ( r, theta, phi ) ).flatten()
-            self.vtk_points_data = numpy_support.numpy_to_vtk( self.points_data ) 
+            self.np_sp_grid_data = numpy.dstack( ( r, theta, phi ) ).flatten()
+            self.vtk_sp_grid_data = numpy_support.numpy_to_vtk( self.np_sp_grid_data ) 
         elif point_layout == PlotType.Grid:
-            r = numpy.empty( [self.lon_data.shape[0]*self.lat_data.shape[0]], self.lon_data.dtype ) 
-            r.fill(  self.earth_radius )
             thetaB = theta.reshape( [ theta.shape[0], 1 ] )  
             phiB = phi.reshape( [ 1, phi.shape[0] ] )
-            grid_data = numpy.array( [ v for v in numpy.broadcast(thetaB,phiB) ] ).transpose() 
-            self.points_data = numpy.vstack( ( r, grid_data ) ).flatten('F') 
-            self.vtk_points_data = numpy_support.numpy_to_vtk( self.points_data ) 
-        self.vtk_points_data.SetNumberOfComponents( 3 )
-        self.vtk_points_data.SetNumberOfTuples( r.shape[0] )     
-        self.vtk_raw_points = vtk.vtkPoints()
-        self.vtk_raw_points.SetData( self.vtk_points_data )
+            grid_data = numpy.array( [ ( self.earth_radius, t, p ) for (t,p) in numpy.broadcast(thetaB,phiB) ] )
+            sp_points_data = grid_data.flatten() 
+            vtk_sp_grid_data = numpy_support.numpy_to_vtk( sp_points_data )             
+            npts = len( sp_points_data ) / 3            
+        vtk_sp_grid_data.SetNumberOfComponents( 3 )
+        vtk_sp_grid_data.SetNumberOfTuples( npts )   
+        vtk_sp_grid_points = vtk.vtkPoints()
+        vtk_sp_grid_points.SetData( vtk_sp_grid_data )
         self.vtk_spherical_points = vtk.vtkPoints()
-        self.shperical_to_xyz_trans.TransformPoints( self.vtk_raw_points, self.vtk_spherical_points )
-        dump_points( self.vtk_raw_points, r.shape[0] )               
+        self.shperical_to_xyz_trans.TransformPoints( vtk_sp_grid_points, self.vtk_spherical_points ) 
 
     def computePlanarPoints( self, **args ):
-        point_layout = args.get( 'point_layout', PlotType.Grid )
+        point_layout = self.getPointsLayout()
         self.lon_data = args.get( 'lon', self.lon_data ) 
         self.lat_data = args.get( 'lat', self.lat_data ) 
         level_spacing = args.get( 'level_spacing', 10.0 )
@@ -164,19 +178,16 @@ class GridLevel:
             z_data.fill( self.zvalue )
             self.np_points_data = numpy.dstack( ( self.lon_data, self.lat_data, z_data ) ).flatten() 
         elif point_layout == PlotType.Grid: 
-            z_data = numpy.empty( [self.lon_data.shape[0]*self.lat_data.shape[0]], self.lon_data.dtype ) 
             self.zvalue =  self.iLevel * level_spacing  
-            z_data.fill( self.zvalue )
             latB = self.lat_data.reshape( [ self.lat_data.shape[0], 1 ] )  
             lonB = self.lon_data.reshape( [ 1, self.lon_data.shape[0] ] )
-            grid_data = numpy.array( [ v for v in numpy.broadcast(lonB,latB) ] ).transpose() 
-            self.np_points_data = numpy.vstack( ( grid_data, z_data ) ).flatten('F') 
+            grid_data = numpy.array( [ (x,y,self.zvalue) for (x,y) in numpy.broadcast(lonB,latB) ] )
+            self.np_points_data = grid_data.flatten() 
         self.vtk_points_data = numpy_support.numpy_to_vtk( self.np_points_data )    
         self.vtk_points_data.SetNumberOfComponents( 3 )
         self.vtk_points_data.SetNumberOfTuples( len( self.np_points_data ) / 3 )     
-        vtk_raw_points = vtk.vtkPoints()
-        vtk_raw_points.SetData( self.vtk_points_data )
-        self.vtk_planar_points = vtk_raw_points
+        self.vtk_planar_points = vtk.vtkPoints()
+        self.vtk_planar_points.SetData( self.vtk_points_data )
         self.planar_bounds = self.vtk_planar_points.GetBounds()
     
     def getPoints( self, **args ):
@@ -421,10 +432,11 @@ class GridTest:
             if iPt >= 0:
                 glev = self.grid_levels.get( actor, None )                  
                 dval = str( glev.getPointValue( iPt ) ) if glev else "NULL"
-                if self.topo == PlotType.Spherical:
-                    pick_pos = glev.vtk_points_data.GetPoint( iPt )
-                else:
-                    pick_pos = picker.GetPickPosition()                       
+                pick_pos = glev.vtk_planar_points.GetPoint( iPt )
+#                 if self.topo == PlotType.Spherical:
+#                     pick_pos = glev.vtk_points_data.GetPoint( iPt )
+#                 else:
+#                     pick_pos = picker.GetPickPosition()                       
                 text = " Point[%d] ( %.2f, %.2f ): %s " % ( iPt, pick_pos[0], pick_pos[1], dval )
                 self.updateTextDisplay( text )
             
@@ -597,13 +609,6 @@ class GridTest:
                 np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0], np_var_data_block.shape[1] * np_var_data_block.shape[2] ] )
             
         return np_var_data_block
-    
-    def getPointsLayout( self, var, lon, lat ):
-        hgrid = var.getGrid()
-        if hgrid <> None:
-            if (hgrid.__class__.__name__ == "RectGrid"): 
-                return PlotType.Grid
-        return PlotType.List
 
                     
     def plot( self, data_file, grid_file, varname, **args ): 
@@ -625,7 +630,6 @@ class GridTest:
         self.var = df[ varname ]
         self.time = self.var.getTime()
         self.lev = self.var.getLevel()
-        points_layout = self.getPointsLayout( self.var, lon, lat )
         if self.lev == None:
             domain = self.var.getDomain()
             for axis in domain:
@@ -636,9 +640,9 @@ class GridTest:
         np_var_data_block = self.getDataBlock()
 
         for iLev in range( self.nLevels ):
-            glev = GridLevel( iLev, self.lev[iLev] )                 
+            glev = GridLevel( iLev, self.lev[iLev], self.var.getGrid() )                 
             var_data = np_var_data_block[:] if ( self.nLevels == 1 ) else np_var_data_block[iLev,:]                                
-            glev.createPolydata( ( iLev == self.iLevel ), point_layout=points_layout, lon=self.lon_data, lat=self.lat_data )
+            glev.createPolydata( ( iLev == self.iLevel ), lon=self.lon_data, lat=self.lat_data )
             lut = self.get_LUT( invert = True, number_of_colors = 1024 )
             glev.setVarData( var_data, lut )          
             glev.createVertices( geometry ) # quads = quad_corners, indexing = 'F' )
@@ -725,7 +729,7 @@ class GridTest:
         print "%s: Camera => %s " % ( label, str(camera_pos) )
                      
 if __name__ == '__main__':
-    data_type = "CAM"
+    data_type = "ECMWF"
     data_dir = "/Users/tpmaxwel/data" 
     
     if data_type == "WRF":
