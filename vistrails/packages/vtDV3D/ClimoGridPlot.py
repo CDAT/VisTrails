@@ -103,7 +103,7 @@ class GridLevel:
     shperical_to_xyz_trans = vtk.vtkSphericalTransform()
     radian_scaling = math.pi / 180.0 
     
-    def __init__( self, level_index, level_value, grid = None ):
+    def __init__( self, level_index, level_value, grid = None, zvalue = 0.0 ):
         self.iLevel = level_index
         self.levValue = level_value
         self.grid = grid
@@ -114,6 +114,7 @@ class GridLevel:
         self.topo = PlotType.Planar
         self.lon_data = None
         self.lat_data = None
+        self.zvalue = zvalue
     
     @classmethod    
     def getXYZPoint( cls, lon, lat, r = None ):
@@ -151,8 +152,8 @@ class GridLevel:
             npts = self.lon_data.shape[0]
             r = numpy.empty( self.lon_data.shape, self.lon_data.dtype )      
             r.fill(  self.earth_radius )
-            self.np_sp_grid_data = numpy.dstack( ( r, theta, phi ) ).flatten()
-            self.vtk_sp_grid_data = numpy_support.numpy_to_vtk( self.np_sp_grid_data ) 
+            np_sp_grid_data = numpy.dstack( ( r, theta, phi ) ).flatten()
+            vtk_sp_grid_data = numpy_support.numpy_to_vtk( np_sp_grid_data ) 
         elif point_layout == PlotType.Grid:
             thetaB = theta.reshape( [ theta.shape[0], 1 ] )  
             phiB = phi.reshape( [ 1, phi.shape[0] ] )
@@ -171,14 +172,11 @@ class GridLevel:
         point_layout = self.getPointsLayout()
         self.lon_data = args.get( 'lon', self.lon_data ) 
         self.lat_data = args.get( 'lat', self.lat_data ) 
-        level_spacing = args.get( 'level_spacing', 10.0 )
         if point_layout == PlotType.List:
             z_data = numpy.empty( self.lon_data.shape, self.lon_data.dtype ) 
-            self.zvalue =  self.iLevel * level_spacing  
             z_data.fill( self.zvalue )
             self.np_points_data = numpy.dstack( ( self.lon_data, self.lat_data, z_data ) ).flatten() 
-        elif point_layout == PlotType.Grid: 
-            self.zvalue =  self.iLevel * level_spacing  
+        elif point_layout == PlotType.Grid:               
             latB = self.lat_data.reshape( [ self.lat_data.shape[0], 1 ] )  
             lonB = self.lon_data.reshape( [ 1, self.lon_data.shape[0] ] )
             grid_data = numpy.array( [ (x,y,self.zvalue) for (x,y) in numpy.broadcast(lonB,latB) ] )
@@ -248,14 +246,13 @@ class GridLevel:
     def getPointValue( self, iPt ):
         return self.var_data[ iPt ]
 
-    def setVarData( self, vardata, lut ):
+    def setVarData( self, vardata, lut = None ):
         self.var_data = vardata
         self.vrange = ( self.var_data.min(), self.var_data.max() )
         self.ncells = len( self.var_data )
-        if lut:
-            self.vtk_color_data = numpy_support.numpy_to_vtk( self.var_data ) 
-            self.createColormap( lut )
-            self.polydata.GetPointData().SetScalars( self.vtk_color_data )                     
+        if lut: self.createColormap( lut )
+        self.vtk_color_data = numpy_support.numpy_to_vtk( self.var_data )         
+        self.polydata.GetPointData().SetScalars( self.vtk_color_data )                     
 
     def createVertices1( self, geometry, **args ): 
         vertices = vtk.vtkCellArray()
@@ -365,6 +362,7 @@ class GridTest:
         self.grid_levels = {}
         self.labelBuff = "NA                                    "
         self.cameraOrientation = {}
+        self.iTimeStep = 0
 
     def getLabelActor(self):
         return self.textDisplayMgr.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
@@ -440,7 +438,7 @@ class GridTest:
                 text = " Point[%d] ( %.2f, %.2f ): %s " % ( iPt, pick_pos[0], pick_pos[1], dval )
                 self.updateTextDisplay( text )
             
-    def ToggleTopo(self):
+    def toggleTopo(self):
         self.recordCamera()
         self.topo = ( self.topo + 1 ) % 2
         for glev in self.grid_levels.values():
@@ -470,7 +468,9 @@ class GridTest:
             self.point_size  =  new_point_size
             self.updatePointSize() 
             
-        if keysym == "t":  self.ToggleTopo()
+        if keysym == "s":  self.toggleTopo()
+        if keysym == "t":  self.stepTime()
+        if keysym == "T":  self.stepTime( False )
         if keysym == "c":  self.printCameraPos()
 
 #         nc = self.vtk_color_data.GetNumberOfComponents()  
@@ -511,6 +511,9 @@ class GridTest:
             if glev.setVisiblity( self.iLevel ) and ( self.iLevel >= 0 ):
 #                self.setFocalPoint( [ self.xcenter, 0.0, glev.zvalue ] )
                 self.renderer.ResetCameraClippingRange() # ResetCamera( glev.getBounds() )
+                if self.lev:
+                    lval = self.lev[ self.iLevel ]
+                    self.updateTextDisplay( "Level: %.2f, %s " % ( lval, self.lev.units ) )
         self.renderWindow.Render()
          
 #     def updateLevel(self):
@@ -528,8 +531,26 @@ class GridTest:
         for glev in self.grid_levels.values():
             glev.setPointSize( self.point_size )
         self.renderWindow.Render()
-        print " Setting Point Size: %d" % ( self.point_size )
-        
+
+    def stepTime( self, forward = True ):
+        ntimes = len(self.time) if self.time else 1
+        self.iTimeStep = self.iTimeStep + 1 if forward else self.iTimeStep - 1
+        if self.iTimeStep < 0: self.iTimeStep = ntimes - 1
+        if self.iTimeStep >= ntimes: self.iTimeStep = 0
+        try:
+            tvals = self.time.asComponentTime()
+            tvalue = str( tvals[ self.iTimeStep ] )
+            self.updateTextDisplay( "Time: %s " % tvalue )
+        except Exception, err:
+            print>>sys.stderr, "Can't understand time metadata."
+        np_var_data_block = self.getDataBlock()
+        for glev in self.grid_levels.values():
+            if glev.isVisible():
+                var_data = np_var_data_block[:] if ( self.nLevels == 1 ) else np_var_data_block[ glev.iLevel, : ]    
+                glev.setVarData( var_data ) 
+        self.renderWindow.Render()
+
+      
     def processCoordinates( self, lat, lon ):
         self.npoints = lon.shape[0] 
         self.lat_data = lat[0:self.npoints]
@@ -588,12 +609,12 @@ class GridTest:
         if title and ('WRF' in title): return 'WRF'
         return 'UNK'
     
-    def getDataBlock(self):
+    def getDataBlock( self ):
         if self.lev == None:
             if len( self.var.shape ) == 2:
-                np_var_data_block = self.var[0,:].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, : ].raw_data()
             elif len( self.var.shape ) == 3:
-                np_var_data_block = self.var[0,:,:].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, :, : ].raw_data()
                 np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0] * np_var_data_block.shape[1], ] )
             self.nLevels = 1
         else:
@@ -603,9 +624,9 @@ class GridTest:
                     self.iLevel = self.nLevels - 1 
                 self.inverted_levels = True 
             if len( self.var.shape ) == 3:               
-                np_var_data_block = self.var[0,:,:].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, :, : ].raw_data()
             elif len( self.var.shape ) == 4:
-                np_var_data_block = self.var[0,:,:,:].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, :, :, : ].raw_data()
                 np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0], np_var_data_block.shape[1] * np_var_data_block.shape[2] ] )
             
         return np_var_data_block
@@ -621,6 +642,7 @@ class GridTest:
         npts_cutoff = args.get( 'max_npts', -1 )
         ncells_cutoff = args.get( 'max_ncells', -1 )
         self.iVizLevel = args.get( 'level', 0 )
+        z_spacing = args.get( 'z_spacing', 5.0 )
         
         gf = cdms2.open( grid_file ) if grid_file else None
         df = cdms2.open( data_file )       
@@ -640,8 +662,9 @@ class GridTest:
         np_var_data_block = self.getDataBlock()
 
         for iLev in range( self.nLevels ):
-            glev = GridLevel( iLev, self.lev[iLev], self.var.getGrid() )                 
-            var_data = np_var_data_block[:] if ( self.nLevels == 1 ) else np_var_data_block[iLev,:]                                
+            zvalue = ( self.nLevels - 1 - iLev ) * z_spacing if self.inverted_levels else iLev * z_spacing                              
+            glev = GridLevel( iLev, self.lev[iLev], self.var.getGrid(), zvalue )                 
+            var_data = np_var_data_block[:] if ( self.nLevels == 1 ) else np_var_data_block[iLev,:] 
             glev.createPolydata( ( iLev == self.iLevel ), lon=self.lon_data, lat=self.lat_data )
             lut = self.get_LUT( invert = True, number_of_colors = 1024 )
             glev.setVarData( var_data, lut )          
@@ -670,7 +693,6 @@ class GridTest:
         self.earth_actor.SetMapper( self.earth_mapper )
         self.earth_actor.GetProperty().SetColor(0,0,0)
         self.renderer.AddActor( self.earth_actor )
-
                 
     def createRenderer(self, **args ):
         background_color = args.get( 'background_color', VTK_BACKGROUND_COLOR )
@@ -729,7 +751,7 @@ class GridTest:
         print "%s: Camera => %s " % ( label, str(camera_pos) )
                      
 if __name__ == '__main__':
-    data_type = "ECMWF"
+    data_type = "WRF"
     data_dir = "/Users/tpmaxwel/data" 
     
     if data_type == "WRF":
@@ -743,8 +765,11 @@ if __name__ == '__main__':
     elif data_type == "ECMWF":
         data_file = os.path.join( data_dir, "AConaty/comp-ECMWF/ecmwf.xml" )
         grid_file = None
-        varname = "U_velocity"        
-#    varname = "PS"
+        varname = "U_velocity"   
+    elif data_type == "GEOS5":
+        data_file = "/Developer/Data/AConaty/comp-ECMWF/ac-comp1-geos5.xml" 
+        grid_file = None
+        varname = "uwnd"   
 
     g = GridTest()
     g.plot( data_file, grid_file, varname, topo=PlotType.Planar, grid=PlotType.Points, indexing='F', max_npts=-1, max_ncells=-1, level = 0, data_format = data_type )
