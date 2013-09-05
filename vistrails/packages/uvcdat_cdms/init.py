@@ -1262,7 +1262,10 @@ Please delete unused CDAT Cells in the spreadsheet.")
         #this widget. We'll put it on the mainwindow
         _app = get_vistrails_application()
         if self.window is not None:
-            self.window.setParent(_app.uvcdatWindow)
+            if hasattr(_app, 'uvcdatWindow'):
+                self.window.setParent(_app.uvcdatWindow)
+            else: #uvcdatWindow is not setup when running in batch mode
+                self.window.setParent(QtGui.QApplication.activeWindow())
             self.window.setVisible(False)
             reparentedVCSWindows[self.windowId] = self.window
         self.canvas = None
