@@ -252,7 +252,7 @@ class QWorkflowItem(QtGui.QTreeWidgetItem):
         self.plotType = plot_type
         icon = UVCDATTheme.WORKSPACE_PIPELINE_ICON
         self.setIcon(0, icon)
-        self.setFlags(self.flags() | QtCore.Qt.ItemIsDragEnabled)
+        #self.setFlags(self.flags() | QtCore.Qt.ItemIsDragEnabled)
 
 
     def update_title(self):
@@ -408,7 +408,7 @@ class Workspace(QtGui.QDockWidget):
         self.treeProjects.setRootIsDecorated(True)
         self.treeProjects.setExpandsOnDoubleClick(False)
         self.treeProjects.header().setVisible(False)
-        self.treeProjects.setDragEnabled(True)
+        #self.treeProjects.setDragEnabled(True)
 
         self.verticalLayout.addWidget(self.treeProjects)
         Workspace.setWidget(self.dockWidgetContents)
