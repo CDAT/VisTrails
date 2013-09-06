@@ -77,7 +77,7 @@ def dump_vtk_points( pts, label=None ):
         pt = pts.GetPoint( iPt )
         print "Pt[%d]: %.2f %.2f, %.2f " % ( iPt, pt[ 0 ], pt[ 1 ], pt[ 2 ] )
     print "-------------------------------------------------------------------------------------------------\n"
-       
+   
 class PlotType:
     Planar = 0
     Spherical = 1
@@ -126,6 +126,7 @@ class GridLevel:
     def setTopo( self, topo, **args ):
         if topo <> self.topo:
             self.topo = topo
+            self.clearClipping()
             if self.actor.GetVisibility():
                 pts = self.getPoints( **args )
                 self.polydata.SetPoints( pts ) 
@@ -187,7 +188,6 @@ class GridLevel:
         self.vtk_points_data.SetNumberOfTuples( len( self.np_points_data ) / 3 )     
         self.vtk_planar_points = vtk.vtkPoints()
         self.vtk_planar_points.SetData( self.vtk_points_data )
-        self.planar_bounds = self.vtk_planar_points.GetBounds()
     
     def getPoints( self, **args ):
         topo = args.get( 'topo', self.topo )
@@ -214,7 +214,17 @@ class GridLevel:
         if topo == PlotType.Spherical:
             return [ -self.earth_radius, self.earth_radius, -self.earth_radius, self.earth_radius, -self.earth_radius, self.earth_radius ]
         else:
-            return self.planar_bounds
+            b = list( self.vtk_planar_points.GetBounds() )
+            if (b[4] == b[5]):
+                b[4] = b[4] - 100.0
+                b[5] = b[5] + 100.0
+            return b
+                
+    def setClipping( self, clippingPlanes ):
+        self.mapper.SetClippingPlanes( clippingPlanes )
+        
+    def clearClipping( self ):
+        self.mapper.RemoveAllClippingPlanes()    
 
     def createPolydata( self, create_points, **args  ):
         self.lon_data = args.get( 'lon', self.lon_data ) 
@@ -364,6 +374,7 @@ class GridTest:
         self.labelBuff = "NA                                    "
         self.cameraOrientation = {}
         self.iTimeStep = 0
+        self.cropRegion = None
 
     def getLabelActor(self):
         return self.textDisplayMgr.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
@@ -449,6 +460,22 @@ class GridTest:
                 self.renderer.ResetCameraClippingRange()
         self.renderWindow.Render()
 
+    def toggleClipping(self):
+        if self.clipper.GetEnabled():   self.clipOff()
+        else:                           self.clipOn()
+        
+    def clipOn(self):
+        self.clipper.PlaceWidget( self.cropRegion )
+        self.clipper.SetHandleSize( 0.005 )
+        self.clipper.SetEnabled( True )
+        self.clipper.InsideOutOn()     
+        self.clipper.On()
+        self.executeClip()
+
+    def clipOff(self):
+        self.clipper.SetEnabled( False )
+        self.clipper.Off()
+
     def onKeyPress(self, caller, event):
         key = caller.GetKeyCode() 
         keysym = caller.GetKeySym()
@@ -472,7 +499,7 @@ class GridTest:
         if keysym == "s":  self.toggleTopo()
         if keysym == "t":  self.stepTime()
         if keysym == "T":  self.stepTime( False )
-        if keysym == "c":  self.printCameraPos()
+        if keysym == "c":  self.toggleClipping()
 
 #         nc = self.vtk_color_data.GetNumberOfComponents()  
 #         nt = self.vtk_color_data.GetNumberOfTuples()    
@@ -632,7 +659,14 @@ class GridTest:
             
         return np_var_data_block
 
-                    
+
+    def executeClip( self, caller=None, event=None ):
+        planes = vtk.vtkPlanes(); np = 6
+        self.clipper.GetPlanes( planes )
+        for glev in self.grid_levels.values():
+            glev.setClipping( planes )
+        self.renderWindow.Render()
+                            
     def plot( self, data_file, grid_file, varname, **args ): 
         color_index = args.get( 'color_index', -1 )
         self.point_size = args.get( 'point_size', 2 )
@@ -643,7 +677,7 @@ class GridTest:
         npts_cutoff = args.get( 'max_npts', -1 )
         ncells_cutoff = args.get( 'max_ncells', -1 )
         self.iVizLevel = args.get( 'level', 0 )
-        z_spacing = args.get( 'z_spacing', 5.0 )
+        z_spacing = args.get( 'z_spacing', 2.0 )
         
         gf = cdms2.open( grid_file ) if grid_file else None
         df = cdms2.open( data_file )       
@@ -670,8 +704,10 @@ class GridTest:
             lut = self.get_LUT( invert = True, number_of_colors = 1024 )
             glev.setVarData( var_data, lut )          
             glev.createVertices( geometry ) # quads = quad_corners, indexing = 'F' )
-            glev.setVisiblity( self.iLevel )
-            glev.setPointSize( self.point_size )
+            if glev.setVisiblity( self.iLevel ):
+                if self.cropRegion == None: 
+                    self.cropRegion = glev.getBounds()
+            glev.setPointSize( self.point_size )          
             self.grid_levels[ glev.actor ] = glev
                                                                      
         self.createRenderer()        
@@ -711,6 +747,15 @@ class GridTest:
         pointPicker = vtk.vtkPointPicker()
         pointPicker.PickFromListOn()    
         self.renderWindowInteractor.SetPicker(pointPicker) 
+        self.clipper = vtk.vtkBoxWidget()
+        self.clipper.RotationEnabledOff()
+        self.clipper.SetPlaceFactor( 1.0 ) 
+        self.clipper.KeyPressActivationOff()
+        self.clipper.SetInteractor( self.renderWindowInteractor )    
+#        self.clipper.AddObserver( 'StartInteractionEvent', self.startClip )
+#        self.clipper.AddObserver( 'EndInteractionEvent', self.endClip )
+        self.clipper.AddObserver( 'InteractionEvent', self.executeClip )
+        self.clipOff()
         for glev in self.grid_levels.values():           
             self.renderer.AddActor( glev.actor )
             pointPicker.AddPickList( glev.actor )               
