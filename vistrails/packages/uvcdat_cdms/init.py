@@ -1693,7 +1693,7 @@ def get_input_ports(plot_type):
         return expand_port_specs([('detail', 'basic:Integer', True),
                                   ('max', 'basic:Integer', True),
                                   ('quadrans', 'basic:Integer', True),
-                                  ('skillColor', 'basic:Integer', True),
+                                  ('skillColor', 'basic:String', True),
                                   ('skillValues', 'basic:List', True),
                                   ('skillDrawLabels', 'basic:String', True),
                                   ('skillCoefficient', 'basic:List', True),

@@ -122,11 +122,17 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             fid = self.fun_map[fun]
             f = self.module.functions[fid]
             try:
-                value = f.params[0].value()
-                if fun == 'Marker':
-                    value = pickle.loads(value)
+                if fun == "skillColor":
+                    value = int(f.params[0].strValue)
+                else:
+                    value = f.params[0].value()
+                    if fun == 'Marker':
+                        value = pickle.loads(value)
             except Exception, e:
-                value = ast.literal_eval(f.params[0].strValue)
+                if fun == "skillColor":
+                    value = f.params[0].strValue
+                else:
+                    value = ast.literal_eval(f.params[0].strValue)
             return value
         else:
             return None
