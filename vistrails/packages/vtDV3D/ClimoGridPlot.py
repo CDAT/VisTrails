@@ -7,6 +7,7 @@ Created on Aug 29, 2013
 import sys
 import getopt
 import numpy
+import numpy.ma as ma
 import string
 import cdtime
 import os.path
@@ -27,7 +28,22 @@ VTK_NOTATION_SIZE = 14
 VTK_INSTRUCTION_SIZE = 24
 MIN_LINE_LEN = 50
 
-def dump_np_array( a, label=None ):
+def dump_np_array1( a, label=None ):
+    print "\n-------------------------------------------------------------------------------------------------"
+    if label: print label
+    npts = a.shape[0]
+    nrows = 20
+    iSkip = npts/nrows
+    for ir in range(nrows):
+        iPt = iSkip*ir
+        print "Pt[%d]: %f  " % ( iPt, a[ iPt ])
+    print "-------------------------------------------------------------------------------------------------\n"
+    for ir in range(nrows):
+        iPt =  npts/2 + ir
+        print "Pt[%d]: %f " % ( iPt, a[ iPt ] )
+    print "-------------------------------------------------------------------------------------------------\n"
+
+def dump_np_array3( a, label=None ):
     print "\n-------------------------------------------------------------------------------------------------"
     if label: print label
     npts = a.shape[0]/3
@@ -44,7 +60,7 @@ def dump_np_array( a, label=None ):
         print "Pt[%d]: %.2f %.2f, %.2f " % ( iPt, a[ ioff ], a[ ioff+1 ], a[ ioff+2 ] )
     print "-------------------------------------------------------------------------------------------------\n"
 
-def dump_vtk_array( a, label=None ):
+def dump_vtk_array3( a, label=None ):
     print "\n-------------------------------------------------------------------------------------------------"
     if label: print label
     npts = a.GetNumberOfTuples()
@@ -59,6 +75,23 @@ def dump_vtk_array( a, label=None ):
         iPt =  npts/2 + ir
         pt = a.GetTuple(iPt)
         print "Pt[%d]: %.2f %.2f, %.2f " % ( iPt, pt[ 0 ], pt[ 1 ], pt[ 2 ] )
+    print "-------------------------------------------------------------------------------------------------\n"
+
+def dump_vtk_array1( a, label=None ):
+    print "\n-------------------------------------------------------------------------------------------------"
+    if label: print label
+    npts = a.GetSize()
+    nrows = 20
+    iSkip = npts/nrows
+    for ir in range(nrows):
+        iPt = iSkip*ir
+        v = a.GetValue(iPt)
+        print "Pt[%d]: %.2f  " % ( iPt, v )
+    print "-------------------------------------------------------------------------------------------------\n"
+    for ir in range(nrows):
+        iPt =  npts/2 + ir
+        v = a.GetValue(iPt)
+        print "Pt[%d]: %.2f " % ( iPt, v )
     print "-------------------------------------------------------------------------------------------------\n"
     
 def dump_vtk_points( pts, label=None ):
@@ -135,7 +168,7 @@ class GridLevel:
 
     def getPointsLayout( self ):
         if self.grid <> None:
-            if (self.grid.__class__.__name__ == "RectGrid"): 
+            if (self.grid.__class__.__name__ in ( "RectGrid", "FileRectGrid") ): 
                 return PlotType.Grid
         return PlotType.List   
      
@@ -154,7 +187,6 @@ class GridLevel:
             r.fill(  self.earth_radius )
             np_sp_grid_data = numpy.dstack( ( r, theta, phi ) ).flatten()
             vtk_sp_grid_data = numpy_support.numpy_to_vtk( np_sp_grid_data ) 
-            dump_np_array( np_sp_grid_data, 'np_sp_grid_data' )
         elif point_layout == PlotType.Grid:
             thetaB = theta.reshape( [ theta.shape[0], 1 ] )  
             phiB = phi.reshape( [ 1, phi.shape[0] ] )
@@ -168,7 +200,6 @@ class GridLevel:
         vtk_sp_grid_points.SetData( vtk_sp_grid_data )
         self.vtk_spherical_points = vtk.vtkPoints()
         self.shperical_to_xyz_trans.TransformPoints( vtk_sp_grid_points, self.vtk_spherical_points ) 
-        dump_vtk_points( self.vtk_spherical_points, 'self.vtk_spherical_points' )
 
     def computePlanarPoints( self, **args ):
         point_layout = self.getPointsLayout()
@@ -263,8 +294,10 @@ class GridLevel:
         self.ncells = len( self.var_data )
         if lut: self.createColormap( lut )
         self.vtk_color_data = numpy_support.numpy_to_vtk( self.var_data )         
-        self.polydata.GetPointData().SetScalars( self.vtk_color_data )                     
-
+        self.polydata.GetPointData().SetScalars( self.vtk_color_data )  
+        dump_np_array1( vardata, 'vardata')                
+        dump_vtk_array1( self.vtk_color_data, 'self.vtk_color_data')
+ 
     def createVertices1( self, geometry, **args ): 
         vertices = vtk.vtkCellArray()
         ncells_cutoff = args.get( 'max_cells', -1 )
@@ -687,6 +720,7 @@ class GridTest:
         self.var = df[ varname ]
         self.time = self.var.getTime()
         self.lev = self.var.getLevel()
+        missing_value = self.var.attributes.get( 'missing_value', None )
         if self.lev == None:
             domain = self.var.getDomain()
             for axis in domain:
@@ -700,6 +734,7 @@ class GridTest:
             zvalue = ( self.nLevels - 1 - iLev ) * z_spacing if self.inverted_levels else iLev * z_spacing                              
             glev = GridLevel( iLev, self.lev[iLev], self.var.getGrid(), zvalue )                 
             var_data = np_var_data_block[:] if ( self.nLevels == 1 ) else np_var_data_block[iLev,:] 
+            if missing_value: var_data = numpy.ma.masked_equal( var_data, missing_value, False )
             glev.createPolydata( ( iLev == self.iLevel ), lon=self.lon_data, lat=self.lat_data )
             lut = self.get_LUT( invert = True, number_of_colors = 1024 )
             glev.setVarData( var_data, lut )          
@@ -797,7 +832,7 @@ class GridTest:
         print "%s: Camera => %s " % ( label, str(camera_pos) )
                      
 if __name__ == '__main__':
-    data_type = "ECMWF"
+    data_type = "MMF"
     data_dir = "/Users/tpmaxwel/data" 
     
     if data_type == "WRF":
@@ -816,6 +851,10 @@ if __name__ == '__main__':
         data_file = "/Developer/Data/AConaty/comp-ECMWF/ac-comp1-geos5.xml" 
         grid_file = None
         varname = "uwnd"   
+    elif data_type == "MMF":
+        data_file = os.path.join( data_dir, "MMF/diag_prs.20080101.nc" )
+        grid_file = None
+        varname = "u"   
 
     g = GridTest()
     g.plot( data_file, grid_file, varname, topo=PlotType.Planar, grid=PlotType.Points, indexing='F', max_npts=-1, max_ncells=-1, level = 0, data_format = data_type )
