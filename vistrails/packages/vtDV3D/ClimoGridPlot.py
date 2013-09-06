@@ -61,7 +61,7 @@ def dump_vtk_array( a, label=None ):
         print "Pt[%d]: %.2f %.2f, %.2f " % ( iPt, pt[ 0 ], pt[ 1 ], pt[ 2 ] )
     print "-------------------------------------------------------------------------------------------------\n"
     
-def dump_points( pts, label=None ):
+def dump_vtk_points( pts, label=None ):
     print "\n-------------------------------------------------------------------------------------------------"
     npts = pts.GetNumberOfPoints()
     if label: print label
@@ -149,24 +149,25 @@ class GridLevel:
         theta =  ( 90.0 - self.lat_data ) * radian_scaling
         phi = self.lon_data * radian_scaling
         if point_layout == PlotType.List:
-            npts = self.lon_data.shape[0]
             r = numpy.empty( self.lon_data.shape, self.lon_data.dtype )      
             r.fill(  self.earth_radius )
             np_sp_grid_data = numpy.dstack( ( r, theta, phi ) ).flatten()
             vtk_sp_grid_data = numpy_support.numpy_to_vtk( np_sp_grid_data ) 
+            dump_np_array( np_sp_grid_data, 'np_sp_grid_data' )
         elif point_layout == PlotType.Grid:
             thetaB = theta.reshape( [ theta.shape[0], 1 ] )  
             phiB = phi.reshape( [ 1, phi.shape[0] ] )
             grid_data = numpy.array( [ ( self.earth_radius, t, p ) for (t,p) in numpy.broadcast(thetaB,phiB) ] )
             sp_points_data = grid_data.flatten() 
-            vtk_sp_grid_data = numpy_support.numpy_to_vtk( sp_points_data )             
-            npts = len( sp_points_data ) / 3            
+            vtk_sp_grid_data = numpy_support.numpy_to_vtk( sp_points_data ) 
+        size = vtk_sp_grid_data.GetSize()                    
         vtk_sp_grid_data.SetNumberOfComponents( 3 )
-        vtk_sp_grid_data.SetNumberOfTuples( npts )   
+        vtk_sp_grid_data.SetNumberOfTuples( size/3 )   
         vtk_sp_grid_points = vtk.vtkPoints()
         vtk_sp_grid_points.SetData( vtk_sp_grid_data )
         self.vtk_spherical_points = vtk.vtkPoints()
         self.shperical_to_xyz_trans.TransformPoints( vtk_sp_grid_points, self.vtk_spherical_points ) 
+        dump_vtk_points( self.vtk_spherical_points, 'self.vtk_spherical_points' )
 
     def computePlanarPoints( self, **args ):
         point_layout = self.getPointsLayout()
@@ -751,7 +752,7 @@ class GridTest:
         print "%s: Camera => %s " % ( label, str(camera_pos) )
                      
 if __name__ == '__main__':
-    data_type = "WRF"
+    data_type = "ECMWF"
     data_dir = "/Users/tpmaxwel/data" 
     
     if data_type == "WRF":
