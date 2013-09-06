@@ -130,7 +130,9 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
                         value = pickle.loads(value)
             except Exception, e:
                 if fun == "skillColor":
-                    value = f.params[0].strValue
+                    #if skillColor failed to parse as int, it should be string
+                    from init import get_canvas
+                    value = get_canvas().match_color(f.params[0].strValue)
                 else:
                     value = ast.literal_eval(f.params[0].strValue)
             return value
