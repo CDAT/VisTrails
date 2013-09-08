@@ -114,7 +114,9 @@ class QAnimationView(QtGui.QWidget):
         ## Frames Slider
         self.framesSlider=QtGui.QSlider(QtCore.Qt.Horizontal)
         self.framesSlider.setTickPosition(QtGui.QSlider.TicksAbove)
-        self.connect(self.framesSlider,QtCore.SIGNAL("valueChanged(int)"),self.changedFrame)
+        self.connect(self.framesSlider,QtCore.SIGNAL("sliderPressed()"),self.stop)
+        self.connect(self.framesSlider,QtCore.SIGNAL("sliderMoved(int)"),self.changedFrame)
+        #self.connect(self.framesSlider,QtCore.SIGNAL("valueChanged(int)"),self.changedFrame)
         self.player.newRow()
         self.frameCount = self.player.addLabel("Frame: 0",align=QtCore.Qt.AlignCenter)
         self.player.addWidget(self.framesSlider,newRow=True)
@@ -127,7 +129,7 @@ class QAnimationView(QtGui.QWidget):
 
         self.connect(self,QtCore.SIGNAL("animationCreated"),self.animationCreated)
         self.animationTimer = QtCore.QBasicTimer()
-        self.animationFrame = 0        
+        self.animationFrame = 0
         
     def horizPanned(self,value):
         self.canvas.animate.horizontal(value)
@@ -183,8 +185,8 @@ class QAnimationView(QtGui.QWidget):
         self.framesSlider.setMaximum(nframes)
         self.player.setEnabled(True)
         self.setCursor(self.previousCursor)
-        self.framesSlider.setValue(0)
-        self.changedFrame(0) #in case the tick was already on 0
+        #self.framesSlider.setValue(0)
+        #self.changedFrame(0) #in case the tick was already on 0
 
 
     def run(self):
@@ -203,7 +205,7 @@ class QAnimationView(QtGui.QWidget):
         self.animationTimer.stop()
         ### stops generating animation
         #canvas=int(self.canvas.currentText())-1
-        self.canvas.animate.stop_create()
+        #self.canvas.animate.stop_create()
 
     def timerEvent(self, event):
         if self.animationFrame>=self.canvas.animate.number_of_frames():
