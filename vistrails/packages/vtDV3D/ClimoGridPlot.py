@@ -130,7 +130,14 @@ class PlotType:
         if ( id.find('bottom') >= 0 ) and ( id.find('top') >= 0 ): return True
         if id in cls.LevelAliases: return True
         return False    
-    
+
+    @classmethod
+    def getPointsLayout( cls, grid ):
+        if grid <> None:
+            if (grid.__class__.__name__ in ( "RectGrid", "FileRectGrid") ): 
+                return cls.Grid
+        return cls.List  
+        
 class GridLevel: 
     
     shperical_to_xyz_trans = vtk.vtkSphericalTransform()
@@ -167,10 +174,7 @@ class GridLevel:
         return None 
 
     def getPointsLayout( self ):
-        if self.grid <> None:
-            if (self.grid.__class__.__name__ in ( "RectGrid", "FileRectGrid") ): 
-                return PlotType.Grid
-        return PlotType.List   
+        return PlotType.getPointsLayout( self.grid )
      
     def setPointSize( self, point_size ):
         self.actor.GetProperty().SetPointSize( point_size )                
@@ -231,9 +235,12 @@ class GridLevel:
                 self.computePlanarPoints( **args )
             return self.vtk_planar_points
         
+    def updatePoints(self):
+        self.polydata.SetPoints( self.getPoints() ) 
+        
     def setVisiblity(self, visibleLevelIndex ):
         isVisible = ( visibleLevelIndex < 0 ) or ( visibleLevelIndex == self.iLevel )
-        if isVisible: self.polydata.SetPoints( self.getPoints() ) 
+        if isVisible: self.updatePoints()
         self.actor.SetVisibility( isVisible  )
         return isVisible
     
@@ -242,11 +249,16 @@ class GridLevel:
         
     def getBounds( self, **args ):
         topo = args.get( 'topo', self.topo )
+        lev = args.get( 'lev', None )
         if topo == PlotType.Spherical:
             return [ -self.earth_radius, self.earth_radius, -self.earth_radius, self.earth_radius, -self.earth_radius, self.earth_radius ]
         else:
             b = list( self.vtk_planar_points.GetBounds() )
-            if (b[4] == b[5]):
+            if lev:
+                lev_bounds = ( lev[0], lev[-1] )
+                b[4] = lev_bounds[0] if ( lev_bounds[0] < lev_bounds[1] ) else lev_bounds[1]
+                b[5] = lev_bounds[1] if ( lev_bounds[0] < lev_bounds[1] ) else lev_bounds[0]
+            elif ( b[4] == b[5] ):
                 b[4] = b[4] - 100.0
                 b[5] = b[5] + 100.0
             return b
@@ -285,6 +297,9 @@ class GridLevel:
         self.mapper.SetColorModeToMapScalars()
         self.mapper.SetLookupTable( lut )
         
+    def getLUT(self):
+        return self.mapper.GetLookupTable()
+        
     def getPointValue( self, iPt ):
         return self.var_data[ iPt ]
 
@@ -295,8 +310,6 @@ class GridLevel:
         if lut: self.createColormap( lut )
         self.vtk_color_data = numpy_support.numpy_to_vtk( self.var_data )         
         self.polydata.GetPointData().SetScalars( self.vtk_color_data )  
-        dump_np_array1( vardata, 'vardata')                
-        dump_vtk_array1( self.vtk_color_data, 'self.vtk_color_data')
  
     def createVertices1( self, geometry, **args ): 
         vertices = vtk.vtkCellArray()
@@ -408,6 +421,11 @@ class GridTest:
         self.cameraOrientation = {}
         self.iTimeStep = 0
         self.cropRegion = None
+        self.slice_actor = None
+        self.sliceStepSize = 1.0
+        self.sliceIndex = [ 0, 0 ]
+        self.sliceThickness = [ 1.0, 1.0 ]
+        self.sliceOrientation = None
 
     def getLabelActor(self):
         return self.textDisplayMgr.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
@@ -499,15 +517,28 @@ class GridTest:
         
     def clipOn(self):
         self.clipper.PlaceWidget( self.cropRegion )
-        self.clipper.SetHandleSize( 0.005 )
-        self.clipper.SetEnabled( True )
-        self.clipper.InsideOutOn()     
         self.clipper.On()
         self.executeClip()
 
     def clipOff(self):
-        self.clipper.SetEnabled( False )
         self.clipper.Off()
+        
+    def moveSlicePlane( self, distance = 0 ):
+        if self.sliceOrientation == 'x': 
+            self.sliceIndex[0] = self.sliceIndex[0] + distance
+            if self.sliceIndex[0] < 0: self.sliceIndex[0] = 0
+            if self.getPointsLayout() == PlotType.Grid:
+                if self.sliceIndex[0] >= len(self.lon_data): self.sliceIndex[0] = len(self.lon_data) - 1
+                position = self.lon_data[ self.sliceIndex[0] ]
+        if self.sliceOrientation == 'y': 
+            self.sliceIndex[1] = self.sliceIndex[1] + distance
+            if self.sliceIndex[1] < 0: self.sliceIndex[1] = 0
+            if self.getPointsLayout() == PlotType.Grid:
+                if self.sliceIndex[1] >= len(self.lat_data): self.sliceIndex[1] = len(self.lat_data) - 1
+                position = self.lat_data[ self.sliceIndex[1] ]
+                
+        self.setSliceMapBounds( position ) 
+        if distance <> 0: self.renderWindow.Render()       
 
     def onKeyPress(self, caller, event):
         key = caller.GetKeyCode() 
@@ -523,8 +554,13 @@ class GridTest:
             self.updateLevelVisibility() 
 
         new_point_size = None
-        if keysym == "Left":  new_point_size = (self.point_size - 1)
-        if keysym == "Right": new_point_size = (self.point_size + 1)
+        slicing = self.slice_actor and self.slice_actor.GetVisibility()    
+        if keysym == "Left": 
+            if slicing: self.moveSlicePlane( -1 )    
+            else:       new_point_size = (self.point_size - 1)
+        if keysym == "Right": 
+            if slicing: self.moveSlicePlane( 1 )        
+            else:       new_point_size = (self.point_size + 1)
         if new_point_size and ( new_point_size > 0 ):
             self.point_size  =  new_point_size
             self.updatePointSize() 
@@ -533,6 +569,7 @@ class GridTest:
         if keysym == "t":  self.stepTime()
         if keysym == "T":  self.stepTime( False )
         if keysym == "c":  self.toggleClipping()
+        if keysym == "p":  self.toggleSlicerVisibility()
 
 #         nc = self.vtk_color_data.GetNumberOfComponents()  
 #         nt = self.vtk_color_data.GetNumberOfTuples()    
@@ -576,7 +613,14 @@ class GridTest:
                     lval = self.lev[ self.iLevel ]
                     self.updateTextDisplay( "Level: %.2f, %s " % ( lval, self.lev.units ) )
         self.renderWindow.Render()
-         
+        
+    def updateAllLevels(self):
+        t0 = time.clock()
+        for glev in self.grid_levels.values():
+            glev.updatePoints()
+        t1 = time.clock()
+#        print " updateAllLevels required %.4f seconds. " % ( (t1-t0), )
+        
 #     def updateLevel(self):
 #         if len( self.var.shape ) == 3:
 #             self.var_data = self.level_cache.get( self.iLevel, None )
@@ -681,9 +725,10 @@ class GridTest:
         else:
             self.nLevels = self.var.shape[1]
             if hasattr( self.lev, 'positive' ) and self.lev.positive == "down": 
-                if self.iLevel == 0:
-                    self.iLevel = self.nLevels - 1 
-                self.inverted_levels = True 
+                if self.lev[0] < self.lev[1]:
+                    if self.iLevel == 0:
+                        self.iLevel = self.nLevels - 1 
+                    self.inverted_levels = True 
             if len( self.var.shape ) == 3:               
                 np_var_data_block = self.var[ self.iTimeStep, :, : ].raw_data()
             elif len( self.var.shape ) == 4:
@@ -692,13 +737,15 @@ class GridTest:
             
         return np_var_data_block
 
-
     def executeClip( self, caller=None, event=None ):
         planes = vtk.vtkPlanes(); np = 6
         self.clipper.GetPlanes( planes )
         for glev in self.grid_levels.values():
             glev.setClipping( planes )
         self.renderWindow.Render()
+    
+    def getPointsLayout(self):    
+        return PlotType.getPointsLayout( self.var.getGrid() )
                             
     def plot( self, data_file, grid_file, varname, **args ): 
         color_index = args.get( 'color_index', -1 )
@@ -710,7 +757,8 @@ class GridTest:
         npts_cutoff = args.get( 'max_npts', -1 )
         ncells_cutoff = args.get( 'max_ncells', -1 )
         self.iVizLevel = args.get( 'level', 0 )
-        z_spacing = args.get( 'z_spacing', 2.0 )
+        self.z_spacing = args.get( 'z_spacing', 2.0 )
+        self.roi = args.get( 'roi', None )
         
         gf = cdms2.open( grid_file ) if grid_file else None
         df = cdms2.open( data_file )       
@@ -729,13 +777,19 @@ class GridTest:
                     break
                 
         np_var_data_block = self.getDataBlock()
+        
+        point_layout = self.getPointsLayout()
+        if point_layout == PlotType.Grid:
+            self.sliceThickness =[ (self.lon_data[1]-self.lon_data[0])/2.0, (self.lat_data[1]-self.lat_data[0])/2.0 ]
 
+        self.appendLayers = vtk.vtkAppendPolyData()
         for iLev in range( self.nLevels ):
-            zvalue = ( self.nLevels - 1 - iLev ) * z_spacing if self.inverted_levels else iLev * z_spacing                              
+            zvalue = ( self.nLevels - 1 - iLev ) * self.z_spacing if self.inverted_levels else iLev * self.z_spacing                              
             glev = GridLevel( iLev, self.lev[iLev], self.var.getGrid(), zvalue )                 
             var_data = np_var_data_block[:] if ( self.nLevels == 1 ) else np_var_data_block[iLev,:] 
             if missing_value: var_data = numpy.ma.masked_equal( var_data, missing_value, False )
             glev.createPolydata( ( iLev == self.iLevel ), lon=self.lon_data, lat=self.lat_data )
+            self.appendLayers.AddInput( glev.polydata )
             lut = self.get_LUT( invert = True, number_of_colors = 1024 )
             glev.setVarData( var_data, lut )          
             glev.createVertices( geometry ) # quads = quad_corners, indexing = 'F' )
@@ -744,11 +798,110 @@ class GridTest:
                     self.cropRegion = glev.getBounds()
             glev.setPointSize( self.point_size )          
             self.grid_levels[ glev.actor ] = glev
-                                                                     
-        self.createRenderer()        
+                                                                                
+        self.createRenderer() 
         if (self.topo == PlotType.Spherical): self.CreateMap()                  
         self.startEventLoop()
+        
+    def setSliceColormap( self, glev ):
+        self.slice_mapper.SetScalarRange( glev.vrange[0], glev.vrange[1] ) 
+        self.slice_mapper.SetScalarModeToUsePointData()
+        self.slice_mapper.SetColorModeToMapScalars()
+        self.slice_mapper.SetLookupTable( glev.getLUT() )    
+   
+#     def createProbeSlicer(self):
+#         self.probe = vtk.vtkProbeFilter()
+#         self.planeSource = vtk.vtkPlaneSource()
+#         self.probe.SetSource( self.appendLayers.GetOutput() )
+#         self.probe.SetInput( self.planeSource.GetOutput() )
+#         self.slice_mapper = vtk.vtkPolyDataMapper()
+#         
+#         if vtk.VTK_MAJOR_VERSION <= 5:
+#             self.slice_mapper.SetInput( self.probe.GetOutput() )
+#         else:
+#             self.slice_mapper.SetInputData( self.probe.GetOutput )
+#                  
+#         self.slice_actor = vtk.vtkActor()
+#         self.slice_actor.SetMapper( self.slice_mapper )
+#         self.renderer.AddActor( self.slice_actor )
+#         self.slice_actor.SetVisibility( False )
+#         self.planeSource.SetResolution( 100, len( self.lev ) )
+#         self.setSlicePlaneOrientation()
+#         for glev in self.grid_levels.values():
+#             if glev.setVisiblity( self.iLevel ):
+#                 self.setSliceColormap( glev )
 
+    def createSliceMapper(self):
+        self.slice_mapper = vtk.vtkPolyDataMapper()
+        self.clippingPlanes = vtk.vtkPlanes()
+        self.slice_mapper.SetClippingPlanes( self.clippingPlanes )
+        
+        if vtk.VTK_MAJOR_VERSION <= 5:
+            self.slice_mapper.SetInput( self.appendLayers.GetOutput() )
+        else:
+            self.slice_mapper.SetInputData( self.appendLayers.GetOutput() )
+                 
+        self.slice_actor = vtk.vtkActor()
+        self.slice_actor.SetMapper( self.slice_mapper )
+        self.pointPicker.AddPickList( self.slice_actor )  
+        self.renderer.AddActor( self.slice_actor )
+        self.slice_actor.SetVisibility( False )
+        for glev in self.grid_levels.values():
+            if glev.setVisiblity( self.iLevel ):
+                self.setSliceColormap( glev )
+        
+#     def setSlicePlaneOrientation( self, orientation='x' ):
+#         if self.lev == None: return
+#         lev_bounds = [ 0, len( self.lev  ) * self.z_spacing ]
+#         for glev in self.grid_levels.values():
+#             if glev.vtk_planar_points:
+#                 bounds = glev.getBounds( lev = lev_bounds )
+#                 break
+#         self.planeSource.SetOrigin( bounds[0], bounds[2], bounds[4] )
+#         if orientation == 'x':  
+#             self.planeSource.SetPoint1( bounds[0], bounds[2], bounds[5] )
+#             self.planeSource.SetPoint2( bounds[0], bounds[3], bounds[4] )
+#         if orientation == 'y':  
+#             self.planeSource.SetPoint1( bounds[0], bounds[2], bounds[5] )
+#             self.planeSource.SetPoint2( bounds[1], bounds[2], bounds[4] )
+
+    def setSliceMapBounds( self, slicePosition = 0.0 ):
+        if self.lev == None: return
+        lev_bounds = [ 0, len( self.lev  ) * self.z_spacing ]
+        for glev in self.grid_levels.values():
+            if glev.vtk_planar_points:
+                bounds = glev.getBounds()
+                break
+        mapperBounds = None
+        if self.sliceOrientation == 'x':
+            mapperBounds = [ slicePosition-self.sliceThickness[0],  slicePosition+self.sliceThickness[0], bounds[2], bounds[3], lev_bounds[0], lev_bounds[1]  ]
+        if self.sliceOrientation == 'y':
+            mapperBounds = [ bounds[0], bounds[1], slicePosition - self.sliceThickness[1],  slicePosition + self.sliceThickness[1], lev_bounds[0], lev_bounds[1]  ]
+        if mapperBounds:
+            print "Setting clip planes: %s " % str( mapperBounds )
+            self.clipper.PlaceWidget( mapperBounds )
+            self.clipper.GetPlanes( self.clippingPlanes )
+            self.slice_mapper.SetClippingPlanes( self.clippingPlanes )
+            self.slice_mapper.Modified()
+       
+    def toggleSlicerVisibility( self ):
+        if not self.slice_actor: 
+            self.createSliceMapper()
+        self.updateAllLevels()
+        self.slice_actor.GetProperty().SetPointSize( self.point_size )
+        if self.sliceOrientation == None:
+            self.sliceOrientation = 'x'
+            self.moveSlicePlane()
+            self.slice_actor.SetVisibility( True  )  
+        elif self.sliceOrientation == 'x':
+            self.sliceOrientation = 'y'
+            self.moveSlicePlane()
+            self.slice_actor.SetVisibility( True  )  
+        else:
+            self.sliceOrientation = None
+            self.slice_actor.SetVisibility( False  )  
+        self.renderWindow.Render()   
+     
     def CreateMap(self):        
         earth_source = vtk.vtkEarthSource()
         earth_source.SetRadius( self.earth_radius + .01 )
@@ -779,21 +932,24 @@ class GridTest:
         self.renderWindowInteractor.AddObserver( 'CharEvent', self.onKeyPress )       
         self.renderWindowInteractor.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )  
         self.textDisplayMgr = TextDisplayMgr( self.renderer )             
-        pointPicker = vtk.vtkPointPicker()
-        pointPicker.PickFromListOn()    
-        self.renderWindowInteractor.SetPicker(pointPicker) 
+        self.pointPicker = vtk.vtkPointPicker()
+        self.pointPicker.PickFromListOn()    
+        self.renderWindowInteractor.SetPicker(self.pointPicker) 
         self.clipper = vtk.vtkBoxWidget()
         self.clipper.RotationEnabledOff()
         self.clipper.SetPlaceFactor( 1.0 ) 
         self.clipper.KeyPressActivationOff()
         self.clipper.SetInteractor( self.renderWindowInteractor )    
+        self.clipper.SetHandleSize( 0.005 )
+        self.clipper.SetEnabled( True )
+        self.clipper.InsideOutOn()     
 #        self.clipper.AddObserver( 'StartInteractionEvent', self.startClip )
 #        self.clipper.AddObserver( 'EndInteractionEvent', self.endClip )
         self.clipper.AddObserver( 'InteractionEvent', self.executeClip )
         self.clipOff()
         for glev in self.grid_levels.values():           
             self.renderer.AddActor( glev.actor )
-            pointPicker.AddPickList( glev.actor )               
+            self.pointPicker.AddPickList( glev.actor )               
         self.renderWindow.Render()
         
     def startEventLoop(self):
@@ -832,7 +988,7 @@ class GridTest:
         print "%s: Camera => %s " % ( label, str(camera_pos) )
                      
 if __name__ == '__main__':
-    data_type = "MMF"
+    data_type = "GEOS5"
     data_dir = "/Users/tpmaxwel/data" 
     
     if data_type == "WRF":
@@ -857,4 +1013,4 @@ if __name__ == '__main__':
         varname = "u"   
 
     g = GridTest()
-    g.plot( data_file, grid_file, varname, topo=PlotType.Planar, grid=PlotType.Points, indexing='F', max_npts=-1, max_ncells=-1, level = 0, data_format = data_type )
+    g.plot( data_file, grid_file, varname, topo=PlotType.Planar, roi=(0, 180, 0, 90), grid=PlotType.Points, indexing='F', max_npts=-1, max_ncells=-1, level = 0, data_format = data_type )
