@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-
-
 #
 # The Ultra-scale Visual Climate Data Analysis Tools (UV-CDAT) 
 # - commandLind Widget
@@ -105,6 +102,7 @@ class QCommandLine(QtGui.QWidget):
         self.root=parent.root
         # create objects
         label = QtGui.QLabel("Enter CDAT command and press Return")
+        self.dumpToWindow = False
         self.le = QCommandLineType()
         self.te = QtGui.QTextEdit()
         self.te.setReadOnly(True)
@@ -114,15 +112,10 @@ class QCommandLine(QtGui.QWidget):
         # if stdout, then the text will be colored black, else if an 
         # error occurs (i.e., stderr), then show the text in red
         #-----------------------------------------------------------------------
-        if uvcdatCommons.debug:
-            sys.stdout = systemCommands.OutLog( self.te, None, sys.stdout )
-            sys.stderr = systemCommands.OutLog( self.te, 
+        sys.stdout = systemCommands.OutLog( self, self.te, None, sys.stdout )
+        sys.stderr = systemCommands.OutLog( self, self.te, 
                                                 customizeUVCDAT.errorColor, 
                                                 sys.stderr )
-        else:
-            sys.stdout = systemCommands.OutLog( self.te)
-            sys.stderr = systemCommands.OutLog( self.te, 
-                                                customizeUVCDAT.errorColor)
 
         #-----------------------------------------------------------------------
         # layout
@@ -138,108 +131,68 @@ class QCommandLine(QtGui.QWidget):
 
 
         ## Scientifc Buttons
-        styles = customizeUVCDAT.scientificButtonsStyles
         self.topLay = QtGui.QGridLayout()
         self.Lay=self.topLay
         layout.addLayout(self.Lay)
         self.row=0
         self.col=0
-        self.direction = "row"
-        
+        self.direction = "col"
+
+        styles = customizeUVCDAT.scientificButtonsStyles
+        self.addButton(text='SIN', styles=styles)
+        self.addButton(text='COS', styles=styles)
+        self.addButton(text='TAN', styles=styles)
+        self.addButton(text='ABS',styles=styles)
+        self.newCol()
+
+        styles = customizeUVCDAT.scientificButtonsStyles
+        self.addButton(text='ARCSIN', styles=styles)
+        self.addButton(text='ARCCOS', styles=styles)
+        self.addButton(text='ARCTAN', styles=styles)
+        self.addButton(text='STD',styles=styles)
+        self.newCol()
+
+        styles = customizeUVCDAT.scientificButtonsStyles
         self.addButton(text='x^2',styles=styles)
         self.addButton(text='sqRT',styles=styles)
         self.addButton(text='1/x',styles=styles)
         self.addButton(text='x^y', styles=styles)
-        self.newRow()
+        self.newCol()
+
+        styles = customizeUVCDAT.scientificButtonsStyles
         self.addButton(text='LN', styles=styles)
         self.addButton(text='LOG', styles=styles)
         self.addButton(text='e^x', styles=styles)
         self.addButton(text='10^x', styles=styles)
-        self.newRow()
+        self.newCol()
+
+        styles = customizeUVCDAT.scientificButtonsStyles
         self.addButton(text='x<y', styles=styles)
         self.addButton(text='x>y', styles=styles)
         self.addButton(text='x<>y', styles=styles)
         self.addButton(text='x==y', styles=styles)
-        self.newRow()
-        self.addButton(text='SIN', styles=styles)
-        self.addButton(text='ARCSIN', styles=styles)
-        self.addButton(text='COS', styles=styles)
-        self.addButton(text='ARCCOS', styles=styles)
-        self.newRow()
-        self.addButton(text='TAN', styles=styles)
-        self.addButton(text='ARCTAN', styles=styles)
-        self.addButton(text='STD',styles=styles)
-        self.addButton(text='ABS',styles=styles)
-        self.newRow()
+        self.newCol()
+
+        styles = customizeUVCDAT.scientificButtonsStyles
         self.addButton(text='REGRID', 
-                       ## icon="regrid.gif",
                         tip='Spatially regrid the first selected Defined \
 Variable\nto the second selected Defined Variable.',styles=styles)
         self.addButton(text='MASK', 
-                          ## icon="mask.gif",
                           tip='Mask variable 2 where variable 1 is "true".',
                           styles=styles)
         self.addButton(text='GET_MASK',
-                          ## icon="getmask.gif",
                           tip='Get variable mask',styles=styles)
         self.addButton(text='GROWER', 
-                          ## icon="grower.gif",
                           tip='"Grows" variable 1 and variable 2 so that they \
 end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                        styles=styles)
+        self.newCol()
 
-
-        self.Lay = QtGui.QGridLayout()
-        layout.addLayout(self.Lay)
-        # Clear/Validate Buttons
-        styles = customizeUVCDAT.validateButtonsStyles
-        self.row=0
-        self.col=0
-        self.direction="col"
-        self.addButton(QtCore.Qt.Key_Clear,'Clear', styles=styles)
-        self.addButton(QtCore.Qt.Key_Delete, 'Del',styles=styles)
-        self.addButton(QtCore.Qt.Key_Enter, 'Enter',styles=styles)
-        self.addButton(QtCore.Qt.Key_Equal, 'Plot', styles=styles)
-
-        #Number Buttons
-        styles = customizeUVCDAT.numberButtonsStyles
-        self.col=1
-        self.row=0
-        self.direction="row"
-        self.addButton(QtCore.Qt.Key_7, '7', styles=styles)
-        self.addButton(QtCore.Qt.Key_8, '8', styles=styles)
-        self.addButton(QtCore.Qt.Key_9, '9', styles=styles)
-        self.newRow(col=1)
-        self.addButton(QtCore.Qt.Key_4, '4', styles=styles)
-        self.addButton(QtCore.Qt.Key_5, '5', styles=styles)
-        self.addButton(QtCore.Qt.Key_6, '6', styles=styles)
-        self.newRow(col=1)
-        self.addButton(QtCore.Qt.Key_1, '1', styles=styles)
-        self.addButton(QtCore.Qt.Key_2, '2', styles=styles)
-        self.addButton(QtCore.Qt.Key_3, '3', styles=styles)
-        self.newRow(col=1)
-        self.addButton(QtCore.Qt.Key_0, '0', styles=styles)
-        self.addButton(QtCore.Qt.Key_Period, '.',styles=styles)
-        self.addButton(QtCore.Qt.Key_plusminus, '+/-', styles=styles)
-
-        # Operators
         styles = customizeUVCDAT.operatorButtonsStyles
-        self.col=4
-        self.row=0
-        self.direction="col"
-        self.addButton(QtCore.Qt.Key_Asterisk, '*', styles=styles)
-        self.addButton(QtCore.Qt.Key_Slash, '/', styles=styles)
         self.addButton(QtCore.Qt.Key_Plus, '+', styles=styles)
         self.addButton(QtCore.Qt.Key_Minus, '-', styles=styles)
-
-        #pi and ()
-        self.newCol()
-        styles = customizeUVCDAT.constantsButtonStyles
-        self.addButton(text = '(', styles=styles)
-        self.addButton(text = ")", styles=styles)
-        self.addButton(text="PI", styles=styles)
-        self.addButton(text="e", styles=styles)
-
+        self.addButton(QtCore.Qt.Key_Asterisk, '*', styles=styles)
+        self.addButton(QtCore.Qt.Key_Slash, '/', styles=styles)
   
         #self.connect(self,QtCore.SIGNAL("keyRelease"),self.key)
         #-----------------------------------------------------------------------
@@ -303,7 +256,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                     st+=txt+s.varName
                     nm+="_%s" % s.varName
                 nm+=" = "
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 #vistrails
                 for s in selected:
                     vars.append(s.varName)
@@ -325,7 +278,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 if txt[1:-1]=="==":
                     nm="equal_"
                 nm+=selected[0].varName+"_"+selected[1].varName+" = "
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 if str(self.le.text())=="" :
                     pressEnter=True
         elif txt == "x^y":
@@ -334,18 +287,25 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             else:
                 vars = [selected[0].varName,selected[1].varName]
                 st="MV2.power(%s,%s)" % (selected[0].varName,selected[1].varName)
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="power_"+selected[0].varName+"_"+selected[1].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
         elif txt == "REGRID":
-            if len(selected)!=2:
-                st=".regrid("
+            if len(selected)==0:
+                st=".regrid(" 
+            if len(selected)==1:
+                vars = [selected[0].varName]
+                st="StandardGrid.regrid(%s)" % ( selected[0].varName )
+                self.root.dockVariable.widget().unselectItems(selected)
+                nm="regrid_"+selected[0].varName +" = "
+                if str(self.le.text())=="" :
+                    pressEnter=True
             else:
                 vars = [selected[0].varName,selected[1].varName]
                 st="%s.regrid(%s.getGrid())" % (
                                      selected[0].varName,selected[1].varName)
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="regrid_"+selected[0].varName+"_"+selected[1].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -356,7 +316,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 vars = [selected[0].varName,selected[1].varName]
                 st="MV2.masked_where(%s,%s)" % (
                                     selected[0].varName,selected[1].varName)
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="maskedwhere_"+selected[0].varName+"_"+selected[1].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -376,8 +336,10 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 vars = [selected[0].varName,selected[1].varName]
                 st="genutil.grower(%s,%s)" % (
                                      selected[0].varName,selected[1].varName)
-                self.root.dockVariable.widget().unselectItems(selected)
-                nm=selected[0].varName+", "+selected[1].varName+" = "
+                #self.root.dockVariable.widget().unselectItems(selected)
+                nm= "%s_grown_to_%s, %s_grown_to_%s = " % (
+                                               vars[0], vars[1], vars[1], vars[0])
+
                 if str(self.le.text())=="" :
                     pressEnter=True
         # ! variable only
@@ -385,7 +347,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="%s**2" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="square_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -395,7 +357,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.sqrt(%s)" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="sqrt_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -405,7 +367,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="1/%s" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="invert_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -415,7 +377,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.log(%s)" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="ln_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -425,7 +387,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.log10(%s)" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="log10_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -435,7 +397,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.exp(%s)" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="exp_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -445,7 +407,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.power(10,%s)" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="power10_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -455,17 +417,17 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.absolute(%s)" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="abs_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
             else:
                 st="MV2.absolute(,"
-        elif txt in ["SIN","ARCSIN","COS","ARCOS","TAN","ARCTAN"]:
+        elif txt in ["SIN","ARCSIN","COS","ARCCOS","TAN","ARCTAN"]:
             if len(selected)==1:
                 vars = [selected[0].varName]
                 st="MV2.%s(%s)" % (txt.lower(),selected[0].varName)
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm=txt.lower()+"_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -476,7 +438,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
                 vars = [selected[0].varName]
                 st="genutil.statistics.std(%s)" % (
                                              txt.lower(),selected[0].varName)
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
                 nm="std_"+selected[0].varName+" = "
                 if str(self.le.text())=="" :
                     pressEnter=True
@@ -500,7 +462,7 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
         elif txt == "=":
             if len(selected)==1:
                 st = "%s =" % selected[0].varName
-                self.root.dockVariable.widget().unselectItems(selected)
+                #self.root.dockVariable.widget().unselectItems(selected)
             else:
                 st="="
         elif txt == "PI":
@@ -514,15 +476,25 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             else:
                 if len(st)==0 and len(selected)==1:
                     st = "-%s" % selected[0].varName
-                    self.root.dockVariable.widget().unselectItems(selected)
+                    #self.root.dockVariable.widget().unselectItems(selected)
                 else:
                     st="-(%s)" % st
             self.le.clear()
         else:
             st=txt
-
-
- 
+            
+        #make sure name is unique
+        newname = nm[:-3].strip()        
+        items = self.root.dockVariable.widget().getItems(project=False)
+        varNameSet = set([str(it.text()).split()[1] for it in items])
+        suffix = ""
+        if newname in varNameSet:
+            suffix = 1
+            while (newname + str(suffix)) in varNameSet:
+                suffix += 1
+            newname = newname + str(suffix)
+            nm = newname + nm[-3:]
+            
         if st!="":
             if pressEnter:
                 orst = st
@@ -533,10 +505,27 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             #send command to project controller to be stored as provenance
             from api import get_current_project_controller
             prj_controller = get_current_project_controller()
-            prj_controller.calculator_command(vars, txt, orst, nm[:-3].strip())
+            varname = nm[:-3].strip()
+            prj_controller.calculator_command(vars, txt, orst, varname)
+            
+            varnames = varname.split(',')
+            varname = varnames[0].strip()
+            tmp = prj_controller.create_exec_new_variable_pipeline(varname)
+            if tmp is not None:
+                tmp.id = varname
+                self.root.dockVariable.widget().addVariable(tmp)
+                
+            if len(varnames) == 2:
+                varname2 = varnames[1].strip()
+                tmp2 = prj_controller.create_exec_new_variable_pipeline(varname2)
+                if tmp2 is not None:
+                    tmp2.id = varname2
+                    self.root.dockVariable.widget().addVariable(tmp2)
+            
         self.le.setFocus()
 
     def run_command(self,processed=False):
+        self.dumpToWindow = True
         """ Event that processes the CDAT/Python command and displays the 
         stdout or stderr in the text editor window. """
         #-----------------------------------------------------------------------
@@ -562,33 +551,37 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
         #-----------------------------------------------------------------------
         # execute the command and clear the line entry if no error occurs
         #-----------------------------------------------------------------------
-        results = "temp_results_holder"
-        acommand = "temp_results_holder = %s"  % command
-        exec( "import MV2,genutil,cdms2,vcs,cdutil,numpy", __main__.__dict__ )
-        self.le.clear()
-        try:
-            exec( command, __main__.__dict__ )
-        except Exception:
-            #print exception to the command window    
-            errorText = StringIO.StringIO()
-            errorText.write('Your command produced an error.\n')
-            errorText.write('-'*60+'\n')
-            traceback.print_exc(file=errorText)
-            errorText.write('-'*60)
-            self.te.insertPlainText(errorText.getvalue())
+#        results = "temp_results_holder"
+#        acommand = "temp_results_holder = %s"  % command
+#        exec( "import MV2,genutil,cdms2,vcs,cdutil,numpy", __main__.__dict__ )
+#        self.le.clear()
+#        try:
+#            exec( command, __main__.__dict__ )
+#        except Exception:
+#            #print exception to the command window    
+#            errorText = StringIO.StringIO()
+#            errorText.write('Your command produced an error.\n')
+#            errorText.write('-'*60+'\n')
+#            traceback.print_exc(file=errorText)
+#            errorText.write('-'*60)
+#            self.te.insertPlainText(errorText.getvalue())
 
-        res = self.root.stick_main_dict_into_defvar(None)
+#        res = self.root.stick_main_dict_into_defvar(None)
         #-----------------------------------------------------------------------
         # record the command for preproducibility
         #-----------------------------------------------------------------------
+        clist = command.split("=", 1)
+        varname = clist[0].strip()
+        
         self.root.record("## Command sent from prompt by user")
-        if res == command.split("=")[0] or res is None:
+        
+        if len(clist) > 1:
             self.root.record(command)
         else:
-            self.root.record("%s = %s" % (res,command))
-        clist = command.split("=", 1)
-        if not processed and len(clist) > 1 and isidentifier(clist[0]):
-            varname = clist[0].strip()
+            self.root.record("%s = %s" % (varname, command))
+            
+        
+        if not processed and len(clist) > 1 and isidentifier(varname):
             pycommand = clist[1].strip()
             # project controller will only capture the results that return 
             # a variable
@@ -596,4 +589,11 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             from api import get_current_project_controller
             prj_controller = get_current_project_controller()
             prj_controller.process_typed_calculator_command(varname,pycommand)
-        return res
+            
+            tmp = prj_controller.create_exec_new_variable_pipeline(varname)
+            if tmp is not None:
+                tmp.id = varname
+                self.root.dockVariable.widget().addVariable(tmp)
+        self.le.clear()
+        self.dumpToWindow = False
+        return varname

@@ -343,7 +343,22 @@ class OutputRec:
 
 ###############################################################################   
 
-  
+class ConfigGroup:
+    Color = 0
+    Rendering = 1
+    Display = 2
+    Utilities = 3
+    BaseMap = 4
+    
+    @classmethod
+    def getConfigGroupName( cls, groupId ):
+        if groupId == cls.Color:     return "Color"
+        if groupId == cls.Utilities: return "Utilities"
+        if groupId == cls.Rendering: return "Rendering"
+        if groupId == cls.Display:   return "Display"
+        if groupId == cls.BaseMap:   return "Base Map"
+        return None
+    
 class ConfigurableFunction( QObject ):
     
     ConfigurableFunctions = {}    
@@ -359,10 +374,12 @@ class ConfigurableFunction( QObject ):
         self.kwargs = args
         self.label = args.get( 'label', self.name )
         self.units = args.get( 'units', '' ).strip().lower()
+        self.group = args.get( 'group', ConfigGroup.Display )  
         self.key = key
         self.functionID = -1 
         self.isLayerDependent = args.get( 'layerDependent', False )
         self.activeBound = args.get( 'activeBound', 'both' )
+        self.sliderLabels = args.get( 'sliderLabels', [ 'Range Min', 'Range Max' ] )
         self.active = args.get( 'active', True )
         self.activeFunctionList = []
         self.moduleID = None
@@ -2457,10 +2474,9 @@ class AnimationConfigurationDialog( IVModuleConfigurationDialog ):
         IVModuleConfigurationDialog.finalizeConfig( self )
 #        AnimationConfigurationDialog.iCurrentTimeStep = self.iTimeStep
                 
-
     def setDelay( self ):
         self.delayTime = ( self.maxSpeedIndex - self.speedSlider.value() + 1 ) * self.maxDelaySec * ( 1000.0 /  self.maxSpeedIndex )        
-        
+
     def createContent(self ):
         """ createEditor() -> None
         Configure sections       

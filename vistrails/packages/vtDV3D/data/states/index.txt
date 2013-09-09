@@ -1,0 +1,3 @@
+high=high/ne_10m_admin_1_states_provinces_lines_shp.shp
+medium=medium/ne_50m_admin_1_states_provinces_lines.shp
+low=low/ne_110m_admin_1_states_provinces_lines.shp

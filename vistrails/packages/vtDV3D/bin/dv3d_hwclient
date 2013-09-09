@@ -1,5 +1,3 @@
-
-
 #!/bin/csh -xf
 
 setenv VT_DIR /Developer/Projects/EclipseWorkspace/VisTrails/vistrails/

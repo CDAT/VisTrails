@@ -524,7 +524,7 @@ class QCommandsFileWidget(QtGui.QDialog):
 def getAvailablePrinters():
     plist = []
     try:
-        fn = os.path.join(os.environ['HOME'],'PCMDI_GRAPHICS','HARD_COPY')
+        fn = os.path.join(os.environ['HOME'],'.uvcdat','HARD_COPY')
     except:
         return plist
     try:

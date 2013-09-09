@@ -71,7 +71,10 @@ class ControllerCell(object):
         self.defaultPlotVersion = None
         for plot in self.plots:
             if len(plot.variables) < plot.varnum:
-                plot.variables.append(varname)
+                if plot.acceptsVariable(varname):
+                    plot.variables.append(varname)
+                else:
+                    return False
                 return len(plot.variables) == plot.varnum
             
         self.variableQ.append(varname)
@@ -96,9 +99,12 @@ class ControllerCell(object):
         #add vars from queue
         for i in range(plot.varnum - len(plot.variables)):
             if len(self.variableQ) > 0:
-                plot.variables.append(self.variableQ.pop(0))
+                varname = self.variableQ.pop(0)
+                if plot.acceptsVariable(varname):
+                    plot.variables.append(varname)
             else:
-                return False
+                break
+            
         return len(plot.variables) == plot.varnum
             
     def is_ready(self):
@@ -165,7 +171,10 @@ class ControllerCell(object):
             
         def _getParent(version):
             if version != 0:
-                return vistrail.actionMap[version].parent
+                try:
+                    return vistrail.actionMap[version].parent
+                except KeyError, e:
+                    return None
             return None
 
         parent = _getParent(self.current_parent_version)

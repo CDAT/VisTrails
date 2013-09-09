@@ -79,7 +79,10 @@ class QDefinedVariableWidget(QtGui.QWidget):
                      self.myPressed)
         self.connect(self.varList, QtCore.SIGNAL('itemClicked( QListWidgetItem *)'),
                      self.myClicked)
+        self.connect(self.varList, QtCore.SIGNAL('itemSelectionChanged()'), 
+                     self.selectionChanged)
         self.waitingForClick = False
+        self.selectingAll = False
         
     def myPressed(self, item):
         from packages.vtDV3D import ModuleStore
@@ -124,6 +127,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         varProp.btnDefineClose.setVisible(False)
         varProp.btnDefineAs.setVisible(False)
         varProp.btnApplyEdits.setVisible(True)
+        varProp.btnSaveEditsAs.setVisible(True)
 #        varProp.btnApplyEdits.setEnabled(False)
         varProp.show()
 
@@ -222,20 +226,34 @@ class QDefinedVariableWidget(QtGui.QWidget):
         """ Add variable into dict / list & emit signal to create
         a tab for the variable
         """
+
+        if var is None:
+            return
+
         from packages.vtDV3D import ModuleStore
+
         cdmsVar = None
+        replaced = False
         if type_ == 'CDMS':
             if type(var) == tuple:
                 cdmsVar = var[1]
                 var = var[0]
 
-            self.root.stick_defvar_into_main_dict(var)
+        self.root.stick_defvar_into_main_dict(var)
+        
+        for i in range(self.varList.count()-1,-1,-1):
+            if self.varList.item(i).getVarName() == var.id:
+                replaced = True
+                item = self.varList.item(i)
+                item.setVariable(var)
+                ModuleStore.addActiveVariable( item.varName, item.variable )
+                break
+                
+        if not replaced:
             item = QDefinedVariableItem(var,self.root,cdmsVar)
-            for i in range(self.varList.count()-1,-1,-1):
-                if self.varList.item(i).getVarName() == var.id:
-                    self.varList.takeItem(i)
-        self.varList.addItem(item)
-        ModuleStore.addActiveVariable( item.varName, item.variable )
+            self.varList.addItem(item) 
+            ModuleStore.addActiveVariable( item.varName, item.variable )
+            
         # Recording define variable teaching command
 #        self.recordDefineVariableTeachingCommand(varName, var.id, file, axesArgString)
 
@@ -244,23 +262,27 @@ class QDefinedVariableWidget(QtGui.QWidget):
         ## self.emit(QtCore.SIGNAL('setupDefinedVariableAxes'), var)
 
     def deleteVariable(self, varid):
-        """ Add variable into dict / list & emit signal to create
-        a tab for the variable
+        """ Remove variable from dict and project
         """
         from packages.vtDV3D import ModuleStore
         from packages.vtDV3D.vtUtilities import memoryLogger
         memoryLogger.log("start QDefinedVariableWidget.deleteVariable")
         for i in range(self.varList.count()-1,-1,-1):
             if self.varList.item(i).getVarName() == varid:
-                del(__main__.__dict__[varid])
+                success = True
                 #this will delete from all projects
                 for project in self.varList.item(i).projects:
                     controller = self.root.get_project_controller_by_name(project)
                     if controller:
-                        controller.remove_defined_variable(varid)
-                self.varList.takeItem(i)                
-                item = self.varList.item(0) if( self.varList.count() > 0) else None
+                        if controller.remove_defined_variable(varid):
+                            self.varList.takeItem(i)
+                        else:
+                            success = False
                 ModuleStore.removeActiveVariable( varid )
+
+                if success and varid in __main__.__dict__:
+                    del __main__.__dict__[varid]
+
         memoryLogger.log("finished QDefinedVariableWidget.deleteVariable")
 
         #iTab = self.root.tabView.widget(0).tabWidget.getTabIndexFromName(varid)
@@ -290,11 +312,16 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 break
 
     def selectAllVariables(self):
-        selected = self.varList.selectedItems()
+        selectedItems = self.varList.selectedItems()
+        selected = len(selectedItems) < self.varList.count()
+        self.selectingAll = True
         for i in range(self.varList.count()):
             it = self.varList.item(i)
-            if not it in selected:
-                self.selectVariableFromName(it.varName)
+            if it.isSelected() != selected:
+                it.setSelected(selected)
+                self.selectVariableFromListEvent(it)
+        self.selectingAll = False
+        self.selectionChanged()
 
     def selectVariableFromListEvent(self, item):
         """ Update the number next to the selected defined variable and
@@ -306,7 +333,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         # If the item is unselected then change the selection str back to '--'
         # and decrement all the numbers of the other selected vars that are
         # less than the number of the item that was unselected
-        if item not in selectedItems:
+        if not item.isSelected():
             unselectedNum = item.getSelectNum()
             item.updateVariableString(None)
 
@@ -452,6 +479,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         # Create options bar
         self.toolBar = QtGui.QToolBar()
         self.toolBar.setIconSize(QtCore.QSize(customizeUVCDAT.iconsize,customizeUVCDAT.iconsize))
+        self.toolBarActions = {}
         actionInfo = [
             (UVCDATTheme.VARIABLE_ADD_ICON, "add",'Add variable(s).',self.newVariable),
             (UVCDATTheme.VARIABLE_DELETE_ICON, "del",'Delete selected defined variable(s) from all projects.',self.trashVariable),
@@ -469,6 +497,9 @@ class QDefinedVariableWidget(QtGui.QWidget):
             action.setStatusTip(info[2])
             action.setToolTip(info[2])
             self.connect(action,QtCore.SIGNAL("triggered()"),info[3])
+            self.toolBarActions[info[1]] = action
+            
+        self.toolBarActions['recycle'].setCheckable(True)
 
         ## self.toolBar.addSeparator()
 
@@ -524,6 +555,15 @@ class QDefinedVariableWidget(QtGui.QWidget):
         ## self.connect(self.opButton, QtCore.SIGNAL('clicked(bool)'), self.opButton.showMenu)
 
         ## self.toolBar.addWidget(self.opButton)
+        
+    def selectionChanged(self):
+        if not self.selectingAll:
+            for i in range(self.varList.count()):
+                item = self.varList.item(i)
+                if not item.isSelected():
+                    self.toolBarActions['recycle'].setChecked(False)
+                    return
+            self.toolBarActions['recycle'].setChecked(True)
 
 class QDefinedVariableItem(QtGui.QListWidgetItem):
     """ Item to be stored by QDefinedVariable's list widget
@@ -564,7 +604,7 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
         Update the variable string that is shown to the user in the list.
         format =  '-- variableName (shape)', where num is the selection number
         """
-        if num is None:
+        if num is None or num == -1:
             self.selectNum = -1
             numString = '--'
         else:
@@ -582,7 +622,7 @@ class QDefinedVariableItem(QtGui.QListWidgetItem):
         user in the list
         """
         self.variable = variable
-        self.updateVariableString()
+        self.updateVariableString(self.selectNum)
 
 class QDefVarWarningBox(QtGui.QDialog):
     """ Popup box to warn a user that a variable with same name is already

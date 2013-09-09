@@ -28,12 +28,14 @@ from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
 from packages.uvcdat.init import Variable, Plot
+from gui.application import get_vistrails_application
 from gui.uvcdat.theme import UVCDATTheme
 from gui.uvcdat.cdmsCache import CdmsCache
 import gui.uvcdat.regionExtractor #for certain toPython commands
 
 canvas = None
 original_gm_attributes = {}
+reparentedVCSWindows = {}
 
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
@@ -52,7 +54,40 @@ def expand_port_specs(port_specs, pkg_identifier=None):
                               port_spec[2])) 
     return out_specs
 
+class StandardGrid():
+    cache={}
 
+    @classmethod
+    def clear_cache(cls): 
+        cls.cache={}  
+         
+    @classmethod
+    def regrid( cls, var ):
+        from api import get_current_project_controller
+        from packages.serverside_data_processing.standard_grid import standard_regrid 
+        
+        proj_controller = get_current_project_controller()
+        cdms_var = proj_controller.defined_variables[ var.id ]  
+#        cell_info = [ str(val) for val in proj_controller.get_current_cell_info() ]
+        file_path = cdms_var.filename
+        cache_id = ':'.join( [ file_path, var.id ] )
+        cached_std_var = cls.cache.get( cache_id, None )
+        if id(cached_std_var) <> id(None): return cached_std_var 
+
+        file = None
+        if file_path:
+            file = CdmsCache.d.get( file_path, None )
+            if not file:
+                file = CdmsCache.d[file_path] = cdms2.open( file_path )
+    
+        if not file: return var
+               
+        regrid_var = standard_regrid( file, var, cache=cls.cache ) 
+        
+        cls.cache[ cache_id ] = regrid_var
+        return regrid_var
+
+    
 class CDMSVariable(Variable):
     _input_ports = expand_port_specs([("axes", "basic:String"),
                                       ("axesOperations", "basic:String"),
@@ -136,16 +171,38 @@ class CDMSVariable(Variable):
         varName = self.name
         if self.varNameInFile is not None:
             varName = self.varNameInFile
+            
+        # get file var to see if it is axis or not
+        fvar = cdmsfile[varName]
+        if isinstance(fvar, cdms2.axis.FileAxis):
+            var = cdms2.MV2.array(fvar)
         
         memoryLogger.log("start cdms variable read") 
-           
+
         if self.axes is not None:
+            #convert string into kwargs
+            #example axis string:
+            #lon=(0.0, 358.5),lev=(3.54, 992.55),time=('301-1-1 0:0:0.0', '301-2-1 0:0:0.0'),lat=(-88.92, 88.92),squeeze=1,
+            
+            def getKWArgs(**kwargs):
+                return kwargs
+            
             try:
-                var = eval("cdmsfile.__call__(varName,%s)"% self.axes)
+                kwargs = eval('getKWArgs(%s)' % self.axes)
             except Exception, e:
-                raise ModuleError(self, "Invalid 'axes' specification: %s" % \
-                                      str(e))
-        else:
+                format = "Invalid 'axes' specification: %s\nProduced error: %s"
+                raise ModuleError(self, format % (self.axes, str(e)))
+
+            if isinstance(fvar, cdms2.axis.FileAxis):
+                try:
+                    var = var.__call__(**kwargs)
+                except Exception, e:
+                    format = "WARNING: axis variable %s subslice \
+                            failed with selector '%s'\nError: %s"
+                    print format % (varName, str(kwargs), str(e))
+            else:
+                var = cdmsfile.__call__(varName, **kwargs)
+        elif not isinstance(fvar, cdms2.axis.FileAxis):
             var = cdmsfile.__call__(varName)
             
         memoryLogger.log("finish cdms variable read")    
@@ -175,7 +232,7 @@ class CDMSVariable(Variable):
                     
         if self.timeBounds is not None:
             var = self.applySetTimeBounds(var, self.timeBounds)
-                    
+                   
         return var
     
     def to_python_script(self, include_imports=False, ident=""):
@@ -574,7 +631,14 @@ class CDMSUnaryVariableOperation(CDMSVariableOperation):
         self.python_command = self.replace_variable_in_command(self.python_command,
                                                                self.var.name, 
                                                                "self.var.var")
-        res = eval(self.python_command)
+
+        res = None
+        try:
+            res = eval(self.python_command)
+        except:
+            print "Exception evaluating python command '%s'\n" % self.python_command
+            raise
+
         if type(res) == tuple:
             for r in res:
                 if isinstance(r,cdms2.tvariable.TransientVariable):
@@ -689,6 +753,90 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
     def to_module(self, controller, pkg_identifier=None):
         module = CDMSVariableOperation.to_module(self, controller)
         return module
+            
+class CDMSGrowerOperation(CDMSBinaryVariableOperation):
+    
+    _input_ports = expand_port_specs([("varname2", "basic:String")])
+    
+    _output_ports = expand_port_specs([("output_var", "CDMSVariable"),
+                                      ("output_var2", "CDMSVariable")
+                                      ])
+    
+    def compute(self):
+        if not self.hasInputFromPort('input_var1'):
+            raise ModuleError(self, "'input_var1' is mandatory.")
+        
+        if not self.hasInputFromPort('input_var2'):
+            raise ModuleError(self, "'input_var2' is mandatory.")
+        
+        self.var1 = self.getInputFromPort('input_var1')
+        self.var2 = self.getInputFromPort('input_var2')
+        self.get_port_values()
+        self.outvar = CDMSVariable(filename=None,name=self.varname)
+        self.outvar2 = CDMSVariable(filename=None,name=self.varname2)
+        self.outvar.var = self.to_python()
+        self.outvar2.var = self.result2
+        self.setResult("output_var", self.outvar)
+        self.setResult("output_var2", self.outvar2)
+    
+    def get_port_values(self):
+        if not self.hasInputFromPort("varname"):
+            raise ModuleError(self, "'varname' is mandatory.")
+        if not self.hasInputFromPort("varname2"):
+            raise ModuleError(self, "'varname2' is mandatory.")
+        if not self.hasInputFromPort("python_command"):
+            raise ModuleError(self, "'python_command' is mandatory.")
+        self.varname = self.forceGetInputFromPort("varname")
+        self.varname2 = self.forceGetInputFromPort("varname2")
+        self.python_command = self.getInputFromPort("python_command")
+        self.axes = self.forceGetInputFromPort("axes")
+        self.axesOperations = self.forceGetInputFromPort("axesOperations")
+        self.attributes = self.forceGetInputFromPort("attributes")
+        self.axisAttributes = self.forceGetInputFromPort("axisAttributes")
+        self.timeBounds = self.forceGetInputFromPort("timeBounds")
+        
+    def to_python(self):
+        replace_map = {self.var1.name: "self.var1.var",
+                       self.var2.name: "self.var2.var"}
+        
+        vars = [self.var1,self.var2]
+        for v in vars:
+            self.python_command = self.replace_variable_in_command(self.python_command,
+                                                                   v.name, replace_map[v.name])
+
+        res = eval(self.python_command)
+        if type(res) != tuple:
+            raise ModuleError("Expecting tuple output from grower, got %s instead." % str(type(res)))
+        elif len(res) != 2:
+            raise ModuleError("Expecting 2 outputs from grower, got %s instead." % str(len(res)))
+        
+        var = res[0]
+        var.id = self.varname
+        var = self.applyOperations(var)
+        
+        self.result2 = res[1]
+        self.result2.id = self.varname2
+        self.result2 = self.applyOperations(self.result2)
+        
+        return var
+    
+    @staticmethod
+    def from_module(module):
+        op = CDMSVariableOperation.from_module(module)
+        op.__class__ = CDMSGrowerOperation
+        op.var1 = None
+        op.var2 = None
+        return op
+
+    def to_module(self, controller):
+        module = CDMSBinaryVariableOperation.to_module(self, controller)
+        functions = []
+        if self.varname2 is not None:
+            functions.append(("varname2", [self.varname2]))
+        functions = controller.create_functions(module, functions)
+        for f in functions:
+            module.add_function(f)
+        return module        
         
 class CDMSNaryVariableOperation(CDMSVariableOperation):
     _input_ports = expand_port_specs([("input_vars", "CDMSVariable"),
@@ -1004,7 +1152,9 @@ Please delete unused CDAT Cells in the spreadsheet.")
         return k
     
     def updateContents(self, inputPorts, fromToolBar=False):
-        """ Get the vcs canvas, setup the cell's layout, and plot """        
+        """ Get the vcs canvas, setup the cell's layout, and plot """      
+        global reparentedVCSWindows
+              
         spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         spreadsheetWindow.setUpdatesEnabled(False)
         # Set the canvas
@@ -1020,7 +1170,13 @@ Please delete unused CDAT Cells in the spreadsheet.")
         if self.window is not None:
             self.layout().removeWidget(self.window)
             
-        self.window = VCSQtManager.window(self.windowId)
+        #get reparented window if it's there
+        if self.windowId in reparentedVCSWindows:
+            self.window = reparentedVCSWindows[self.windowId]
+            del reparentedVCSWindows[self.windowId]
+        else:
+            self.window = VCSQtManager.window(self.windowId)
+            
         self.layout().addWidget(self.window)
         self.window.setVisible(True)    
         # Place the mainwindow that the plot will be displayed in, into this
@@ -1087,11 +1243,19 @@ Please delete unused CDAT Cells in the spreadsheet.")
                     #see vcs.Canvas.setcolorcell
                     self.canvas.canvas.updateVCSsegments(self.canvas.mode) # pass down self and mode to _vcs module
                     self.canvas.flush() # update the canvas by processing all the X events
-                
-            self.canvas.plot(cgm,*args,**kwargs)
+            
+            try:
+                self.canvas.plot(cgm,*args,**kwargs)
+            except Exception, e:
+                spreadsheetWindow.setUpdatesEnabled(True)
+                raise e
             
         spreadsheetWindow.setUpdatesEnabled(True)
         self.update()
+        
+        #make sure reparented windows stay invisible
+        for windowId in reparentedVCSWindows:
+            reparentedVCSWindows[windowId].setVisible(False)
         
     def get_graphics_method(self, plotType, gmName):
         method_name = "get"+str(plotType).lower()
@@ -1103,12 +1267,17 @@ Please delete unused CDAT Cells in the spreadsheet.")
         deallocating. Overriding PyQt deleteLater to free up
         resources
         """
+        global reparentedVCSWindows
         #we need to re-parent self.window or it will be deleted together with
-        #this widget. The immediate parent is also deleted, so we will set to
-        # parent of the parent widget
+        #this widget. We'll put it on the mainwindow
+        _app = get_vistrails_application()
         if self.window is not None:
-            self.window.setParent(self.parent().parent())
+            if hasattr(_app, 'uvcdatWindow'):
+                self.window.setParent(_app.uvcdatWindow)
+            else: #uvcdatWindow is not setup when running in batch mode
+                self.window.setParent(QtGui.QApplication.activeWindow())
             self.window.setVisible(False)
+            reparentedVCSWindows[self.windowId] = self.window
         self.canvas = None
         self.window = None
         
@@ -1563,7 +1732,7 @@ class QCDATWidgetExport(QtGui.QAction):
 
 _modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
             CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, 
-            CDMSNaryVariableOperation, CDMSColorMap]
+            CDMSNaryVariableOperation, CDMSColorMap, CDMSGrowerOperation]
 
 def get_input_ports(plot_type):
     if plot_type == "Boxfill":

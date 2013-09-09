@@ -1,4 +1,4 @@
-#!/usr/bin/python2.5
+#!/usr/bin/env python
 
 import os, sys, argparse
 versionString = "v 0.0.1"

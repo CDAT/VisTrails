@@ -1,7 +1,10 @@
 
 #//
 from PyQt4 import QtCore
+
 from core.modules.module_registry import get_module_registry
+from core import system
+
 from packages.vtk.vtkcell import QVTKWidget
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.spreadsheet.spreadsheet_cell import QCellWidget
@@ -24,7 +27,7 @@ import core.modules.basic_modules as basic_modules
 import csv
 import StringIO
 
-#// PVRepresentation
+#// Import PVClimate modules
 from pvrepresentationbase import *
 
 from packages.uvcdat_cdms.init import CDMSVariable
@@ -39,7 +42,7 @@ class PVGenericCell(SpreadsheetCell):
     def compute(self):
         """ compute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
-        """        
+        """
 
         # Fetch slice offset from input port
         if self.hasInputFromPort("location"):
@@ -87,18 +90,38 @@ class QPVIsoSurfaceWidget(QVTKWidget):
             iren.SetNonInteractiveRenderDelay(0)
             iren.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
 
+            # Load the uvcdat logo and use it for overlay
+            logoPath = (system.vistrails_root_directory() +
+                        "/gui/uvcdat/resources/images/uvcdat_logo_transparent.png")
+            reader = vtk.vtkPNGReader()
+            reader.SetFileName(logoPath)
+            reader.Update()
+
+            imageActor = vtk.vtkImageActor()
+            imageActor.SetInput(reader.GetOutput())
+
+            self.overlayRenderer = vtk.vtkRenderer()
+            self.overlayRenderer.AddActor(imageActor)
+
+            renWin.SetNumberOfLayers(renWin.GetNumberOfLayers() + 1)
+            self.overlayRenderer.SetLayer(renWin.GetNumberOfLayers() - 1)
+            renWin.AddRenderer(self.overlayRenderer)
+
+            self.overlayRenderer.SetViewport(0.7, 0, 1.0, 0.3)
+
+
         del self.view.Representations[:]
 
         # Fetch variables from the input port
         (location, representations) = inputPorts
-        
+
         for rep in representations:
             rep.set_view(self.view)
             rep.execute()
 
         # Set view specific properties
         self.view.CenterAxesVisibility = 0
-        self.view.Background = [0.5, 0.5, 0.5]
+        self.view.Background = [0.6, 0.6, 0.6]
 
         self.view.ResetCamera()
         self.view.StillRender()

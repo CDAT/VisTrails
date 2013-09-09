@@ -75,11 +75,11 @@ class editVariableWidget(QtGui.QWidget):
 
         ## Axes section
         faxes = QtGui.QGroupBox("Axes Attributes")
-        laxes = QtGui.QVBoxLayout()
-        faxes.setLayout(laxes)
+        self.axisGroup = QtGui.QVBoxLayout()
+        faxes.setLayout(self.axisGroup)
         fa1 = QtGui.QFrame()
         fa1l=QtGui.QHBoxLayout()
-        laxes.addWidget(fa1)
+        self.axisGroup.addWidget(fa1)
         fa1.setLayout(fa1l)
         lb = QtGui.QLabel("Axis:")
         fa1l.addWidget(lb)
@@ -91,7 +91,7 @@ class editVariableWidget(QtGui.QWidget):
         self.axisFrame = QtGui.QFrame()
         self.axisComboBox.addItems(items)
 
-        laxes.addWidget(self.axisFrame)
+        self.axisGroup.addWidget(self.axisFrame)
         l.addWidget(faxes)
         
     def checkedProject(self,b):
@@ -121,14 +121,14 @@ class editVariableWidget(QtGui.QWidget):
 
     def selAxis(self,*args):
         nm = self.axisComboBox.currentText()
-        self.axisFrame.destroy()
-        self.layout().removeWidget(self.axisFrame)
+        self.axisGroup.removeWidget(self.axisFrame)
+        self.axisFrame.deleteLater()
         ax = self.var.getAxis(self.var.getAxisIndex(str(self.axisComboBox.currentText())))
 
         self.axisFrame,self.axComboBox,self.axAttributeValue,self.newAxAttributeName = self.attributeEditor("Axis Attributes",self.selAxAttribute,self.modAxAttribute,self.addAxAttribute,self.delAxAttribute)
         items = sorted(list(set(ax.attributes.keys()+['id',])))
         self.axComboBox.addItems(items)
-        self.layout().addWidget(self.axisFrame)
+        self.axisGroup.addWidget(self.axisFrame)
 
     def modifiedOn(self):
         txt = str(self.title.text())

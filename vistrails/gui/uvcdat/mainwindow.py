@@ -19,6 +19,8 @@ import cdms2
 import vcs
 import __main__
 
+from core.configuration import get_vistrails_configuration
+
 from gui.uvcdat.ui_mainwindow import Ui_MainWindow
 from gui.uvcdat.workspace import Workspace
 from gui.uvcdat.docktemplate import DockTemplate
@@ -78,7 +80,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         
     def initCustomize(self,customPath,styles):
         if customPath is None:
-            customPath=os.path.join(os.environ["HOME"],"PCMDI_GRAPHICS","customizeUVCDAT.py")
+            customPath=os.path.join(os.environ["HOME"],".uvcdat","customizeUVCDAT.py")
             
         if os.path.exists(customPath):
             execfile(customPath,customizeUVCDAT.__dict__,customizeUVCDAT.__dict__)
@@ -131,7 +133,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.dockAnimate = QtGui.QDockWidget(self)
         self.dockAnimate.setWidget(animate)
         self.dockAnimate.setWindowTitle("Animation")
-        self.dockTemplate = DockTemplate(self)
+        #self.dockTemplate = DockTemplate(self)
         self.dockPlot = DockPlot(self)
         self.dockVariable = DockVariable(self)
         self.workspace = Workspace(self)
@@ -143,10 +145,11 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.dockCalculator = DockCalculator(self)
         self.plotProp = PlotProperties.instance(self)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.workspace)
-        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.dockTemplate)
+        #self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.dockTemplate)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.dockAnimate)
         #self.tabifyDockWidget(self.workspace, self.dockTemplate)
-        self.tabifyDockWidget(self.dockTemplate, self.dockPlot)
+        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.dockPlot)
+        #self.tabifyDockWidget(self.dockTemplate, self.dockPlot)
         self.workspace.raise_()
         self.varProp.hide()
         self.plotProp.hide()
@@ -184,7 +187,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.ui.menuFile.addAction(self.actionExit)
         #menu View Actions
         self.ui.menuView.addAction(self.workspace.toggleViewAction())
-        self.ui.menuView.addAction(self.dockTemplate.toggleViewAction())
+        #self.ui.menuView.addAction(self.dockTemplate.toggleViewAction())
         self.ui.menuView.addAction(self.dockPlot.toggleViewAction())
         self.ui.menuView.addAction(self.dockVariable.toggleViewAction())
         self.ui.menuView.addAction(self.dockCalculator.toggleViewAction())
@@ -370,3 +373,8 @@ class UVCDATMainWindow(QtGui.QMainWindow):
     
     def link_registry(self):
         self.dockPlot.link_registry()
+        
+    def warning(self, msg):
+        print "WARNING: %s" % msg
+        if not get_vistrails_configuration().noDebugPopups:
+            QtGui.QMessageBox.warning(self, "Warning", msg)

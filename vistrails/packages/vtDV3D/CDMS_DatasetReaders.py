@@ -3,7 +3,7 @@ Created on Dec 11, 2010
 
 @author: tpmaxwel
 '''
-import vtk, sys, os, copy, time, traceback
+import vtk, sys, os, copy, time, traceback, collections
 from collections import OrderedDict 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -454,11 +454,11 @@ class CDMSDataset(Module):
 
     def __init__( self ):
         Module.__init__(self)
-        self.datasetRecs = {}
-        self.variableRecs = {}
-        self.transientVariables = {}
+        self.datasetRecs = collections.OrderedDict()
+        self.variableRecs = collections.OrderedDict()
+        self.transientVariables = collections.OrderedDict()
 #        self.cachedTransVariables = {}
-        self.outputVariables = {}
+        self.outputVariables = collections.OrderedDict()
         self.referenceVariable = None
         self.timeRange = None
         self.referenceTimeUnits = None
@@ -466,6 +466,7 @@ class CDMSDataset(Module):
         self.decimation = DefaultDecimation
         self.zscale = 1.0
         self.cells = []
+        self.latLonGrid = True
         
     def setCells( self, cells ):
         self.cells[:] = cells[:]
@@ -982,9 +983,11 @@ class PM_CDMS_FileReader( PersistentVisualizationModule ):
         self.datasetModule = CDMSDataset()
         
     def clearDataCache(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         from packages.vtDV3D.CDMS_VariableReaders import PM_CDMSDataReader
+        cell_coords = DV3DPipelineHelper.getCellCoordinates( self.moduleID ) 
         self.datasetModule.clearDataCache()
-        PM_CDMSDataReader.clearCache() 
+        PM_CDMSDataReader.clearCache( cell_coords ) 
         
     def computeGridFromSpecs(self):
         start_time, end_time, min_dt  = -float('inf'), float('inf'), float('inf')

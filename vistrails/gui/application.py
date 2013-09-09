@@ -53,7 +53,7 @@ import gui.theme
 import os.path
 import getpass
 import sys
-
+import gui.uvcdat.anonymous
 ################################################################################
 
 class VistrailsApplicationSingleton(VistrailsApplicationInterface,
@@ -212,6 +212,16 @@ parameters from other instances")
         if self.temp_configuration.time > 0:
             QtCore.QTimer().singleShot(self.temp_configuration.time*1000, 
                                        self.uvcdatWindow.quit)
+        
+        if self.temp_configuration.testUVCDAT:
+           from tests.uvcdat.test_manager import UVCDATTestManager
+           cdat_source_dir = self.temp_configuration.cdatSourceDir
+           testManager = UVCDATTestManager(cdat_source_dir, self.uvcdatWindow)
+           failCount = testManager.run_tests()
+           
+           #use a single shot timer to ensure _exec has ran before trying to quit
+           quit_function = lambda: QtCore.QCoreApplication.exit(failCount)
+           QtCore.QTimer().singleShot(0, quit_function)
         
         self.uvcdatWindow.preferences.setupDefaultPlotOptions()
             
@@ -664,6 +674,7 @@ parameters from other instances")
 def start_application(optionsDict=None):
     """Initializes the application singleton."""
     VistrailsApplication = get_vistrails_application()
+
     if VistrailsApplication:
         debug.critical("Application already started.")
         return
@@ -677,6 +688,7 @@ def start_application(optionsDict=None):
                e.requirement)
         debug.critical("Missing requirement", msg)
         sys.exit(1)
+    gui.uvcdat.anonymous.check()
     x = VistrailsApplication.init(optionsDict)
     if x == True:
         return 0

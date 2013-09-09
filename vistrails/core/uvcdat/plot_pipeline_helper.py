@@ -5,6 +5,7 @@ Created on Nov 30, 2011
 '''
 import core.db.io, sys
 import core.modules.basic_modules
+from core.modules.module_registry import get_module_registry
 from core.utils import unimplemented
 
 class PlotPipelineHelper(object):
@@ -248,6 +249,110 @@ class PlotPipelineHelper(object):
         from gui.uvcdat.plot_configuration import AliasesPlotWidget
         #FIXME: This will create the widget for the first plot object
         return AliasesPlotWidget(controller,version,plot_objs[0])
-            
-
     
+    @staticmethod
+    def create_plot_workflow_items(workflow, controller, row, col):
+        """Creates new modules and connections to mimic the workflow
+        and adds the location module, and finds the ports that accept
+        CDMSVariable modules. Caller should use these to match up
+        variables with plot inputs.
+        
+        returns (module_list, connection_list), [(module, portSpec)]
+        """
+        
+        from packages.spreadsheet.basic_widgets import SpreadsheetCell  
+        
+        #keep a map between new and old modules so we can make sure
+        #our new connections connect the correct modules
+        new_modules = {}
+        
+        cell_module = None
+        
+        cdms_ports = []
+        
+        #create new modules, map based on original id
+        for module in workflow.module_list:
+            new_module = module.do_copy(True, controller.vistrail.idScope, {})
+            
+            #find cell module
+            if issubclass(new_module.module_descriptor.module, SpreadsheetCell):
+                if cell_module is not None:
+                    print "Warning: found multiple cell modules in workflow"
+                else:
+                    cell_module = new_module
+                    
+            #check input ports for those accepting CDMSVariable
+            for port_spec in new_module.module_descriptor.port_specs_list + new_module.port_spec_list:
+                if port_spec.short_sigstring == '(CDMSVariable)' and port_spec.type == 'input':
+                    cdms_ports.append((new_module, port_spec))
+            
+            #map based on original id
+            new_modules[module.id] = new_module
+        
+        #create connections
+        connections = []
+        for connection in workflow.connection_list:
+            connections.append(controller.create_connection(
+                    new_modules[connection.sourceId],
+                    connection.source.spec,
+                    new_modules[connection.destinationId],
+                    connection.destination.spec))
+            
+        #create location module
+        reg = get_module_registry()
+        location_module = controller.create_module_from_descriptor(
+            reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet', 
+                                       'CellLocation'))
+        functions = controller.create_functions(location_module,
+                [('Row', [str(row+1)]), ('Column', [str(col+1)])])
+        for f in functions:
+            location_module.add_function(f)
+            
+        #create location-to-cell connection
+        location_connection = controller.create_connection(location_module,
+                'self' ,cell_module, 'Location')
+            
+        return (new_modules.values() + [location_module], 
+                connections + [location_connection]), cdms_ports
+        
+    @staticmethod
+    def finish_plot_workflow(controller, pipeline_items, variable_matches, version):
+        """Creates connections for the variable_matches and
+        adds all pipeline_items to the vistrail
+    
+        Arguments:
+        pipeline_items -- tuple of (modules, connections), usually from
+            the create_plot_workflow_items function
+        variable_matches -- list of tuples, each containing a variable-port
+            pair for which connections will be made
+            variable -- vistrails module
+            port -- tuple of moduleId, portSpec
+        """
+                
+        #create variable connections
+        for module, (in_module, in_port_spec) in variable_matches:
+            out_port_spec = module.module_descriptor.port_specs[('self', 'output')]
+            connection = controller.create_connection(module,
+                                                      out_port_spec,
+                                                      in_module,
+                                                      in_port_spec)
+            pipeline_items[1].append(connection)
+            
+        #create add operations
+        operations = []
+        for item in pipeline_items[0] + pipeline_items[1]:
+            operations.append(('add', item))
+            
+        #create layout operations
+        #there appear to be issues with PythonSource and the layout algorithm
+#        layout_operations = controller.layout_modules_ops(
+#                preserve_order=True, 
+#                no_gaps=True, 
+#                new_modules=pipeline_items[0],
+#                new_connections=pipeline_items[1])
+            
+        action = core.db.action.create_action(operations)# + layout_operations)
+        controller.change_selected_version(version)
+        controller.add_new_action(action)
+        controller.perform_action(action)
+        return action
