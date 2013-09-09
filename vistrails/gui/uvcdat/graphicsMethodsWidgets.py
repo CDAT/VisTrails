@@ -281,6 +281,8 @@ class VCSGMs():
         self.aspectRatio.setEnabled(checkState == Qt.Unchecked)
         
     def getAspectRatio(self):
+        if not hasattr(self, 'aspectAuto'):
+            return
         if self.aspectAuto.checkState() == Qt.Checked:
             return 'autot'
         try:
