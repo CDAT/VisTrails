@@ -104,9 +104,8 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         #set aspect ratio
         self.ratio = self.getValueFromFunction('ratio')
         
-        #aspectAuto doesn't seem to exist for taylordiagram
-        plot_type = self.module.module_descriptor.module().plot_type
-        if plot_type != 'Taylordiagram':
+        #taylor diagram does not have aspectAuto
+        if hasattr(self.gmEditor, 'aspectAuto'):
             if self.ratio is None or self.ratio == 'autot':
                 self.gmEditor.aspectAuto.setCheckState(Qt.Checked)
             else:
@@ -176,16 +175,17 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
                 self.attributes[attr] = newval
         
         #continents
-        gui_continent = self.gmEditor.continents.currentIndex() + 1
-        if self.continents is None:
-            func_obj = self.controller.create_function(self.module, 
-                                                       'continents', 
-                                                       [str(gui_continent)])
-            action1 = self.controller.add_function_action(self.module, func_obj)
-            self.continents = gui_continent
-        elif gui_continent != self.continents:
-            functions.append(('continents',[str(gui_continent)]))
-            self.continents = gui_continent
+        if hasattr(self.gmEditor, 'continents') :
+            gui_continent = self.gmEditor.continents.currentIndex() + 1
+            if self.continents is None:
+                func_obj = self.controller.create_function(self.module, 
+                                                           'continents', 
+                                                           [str(gui_continent)])
+                action1 = self.controller.add_function_action(self.module, func_obj)
+                self.continents = gui_continent
+            elif gui_continent != self.continents:
+                functions.append(('continents',[str(gui_continent)]))
+                self.continents = gui_continent
             
         # aspect ratio
         gui_ratio = self.gmEditor.getAspectRatio()
@@ -218,7 +218,7 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
                     break
         
         #check if continents or ratios changed
-        if not changed:
+        if not changed and hasattr(self.gmEditor, 'continents'):
             if self.continents is None:
                 if self.gmEditor.continents.currentIndex() != 0:
                     changed = True
