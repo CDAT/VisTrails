@@ -49,7 +49,7 @@ def uvcdat_revision():
     """
     git_dir = os.path.join(vistrails_root_directory(), '..')
     with Chdir(git_dir):
-        release = "<update_before_release>"
+        release = "update_before_release"
         if core.requirements.executable_file_exists('git'):
             lines = []
             result = execute_cmdline(['git', 'describe', '--tags', ],
@@ -61,7 +61,7 @@ def uvcdat_revision():
 def uvcdat_vistrails_branch():
     git_dir = os.path.join(vistrails_root_directory(), '..')
     with Chdir(git_dir):
-        release = "<update_before_release>"
+        release = "update_before_release"
         if core.requirements.executable_file_exists('git'):
             lines = []
             result = execute_cmdline(['git', 'rev-parse', '--abbrev-ref', 'HEAD' ],
