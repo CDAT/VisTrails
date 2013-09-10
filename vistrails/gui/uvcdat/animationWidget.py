@@ -69,6 +69,7 @@ class QAnimationView(QtGui.QWidget):
         self.connect(self.animMinMax,QtCore.SIGNAL("stateChanged(int)"),self.animAutoMinMax)
         self.animMin = controlsFrame.addLabeledLineEdit("Min:",newRow=False)
         self.animMax = controlsFrame.addLabeledLineEdit("Max:",newRow=False)
+        self.animMax.setText("200")
         self.animMin.setEnabled(False)
         self.animMax.setEnabled(False)
         ##Player section
@@ -85,6 +86,7 @@ class QAnimationView(QtGui.QWidget):
         b.setIconSize(size)
         b.setToolTip("Play")
         self.connect(b,QtCore.SIGNAL("clicked()"),self.run)
+        self.playstop=b
         grid.addWidget(b,1,1)
 
         
@@ -191,6 +193,9 @@ class QAnimationView(QtGui.QWidget):
 
     def run(self):
         ## ? Need to change player icon?
+        self.connect(self.playstop,QtCore.SIGNAL("clicked()"),self.stop)
+        icon = QtGui.QIcon(':icons/resources/icons/player_stop.gif')
+        self.playstop.setIcon(icon)
         self.animationFrame = 0
         if not self.animationTimer.isActive():
             self.animationTimer.start(100, self)
@@ -203,6 +208,9 @@ class QAnimationView(QtGui.QWidget):
     def stop(self):
         # ??? need to change playe ricon?
         self.animationTimer.stop()
+        self.connect(self.playstop,QtCore.SIGNAL("clicked()"),self.run)
+        icon = QtGui.QIcon(':icons/resources/icons/player_play.gif')
+        self.playstop.setIcon(icon)
         ### stops generating animation
         #canvas=int(self.canvas.currentText())-1
         #self.canvas.animate.stop_create()
@@ -219,6 +227,7 @@ class QAnimationView(QtGui.QWidget):
             self.canvas.animate.draw(self.animationFrame)
             self.framesSlider.setValue(self.animationFrame)
             self.animationFrame += 1
+        self.frameCount.setText("Frame: %i" % self.animationFrame)
     def save(self):
         self.canvas.animate.save(str(QtGui.QFileDialog.getSaveFileName(None,"MP4 file name...",filter="MP4 file (*.mp4, *.mpeg)")))
 
