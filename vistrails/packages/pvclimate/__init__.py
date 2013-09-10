@@ -4,14 +4,12 @@ version = '0.1.4'
 
 def package_dependencies():
     import core.packagemanager
-    dependencies = ["gov.llnl.uvcdat"]
+    dependencies = ["gov.llnl.uvcdat", "gov.llnl.uvcdat.cdms"]
     manager = core.packagemanager.get_package_manager()    
-    if manager.has_package('edu.utah.sci.vistrails.spreadsheet'):
-        dependencies.append('edu.utah.sci.vistrails.spreadsheet')    
-    if manager.has_package('edu.utah.sci.vistrails.vtk'):
+    if (manager.has_package('edu.utah.sci.vistrails.spreadsheet') and
+            manager.has_package('edu.utah.sci.vistrails.vtk')):
+        dependencies.append('edu.utah.sci.vistrails.spreadsheet')
         dependencies.append('edu.utah.sci.vistrails.vtk')
-    if manager.has_package('edu.utah.sci.vistrails.paraview'):
-        dependencies.append('edu.utah.sci.vistrails.paraview')
     return dependencies
 
 def package_requirements():

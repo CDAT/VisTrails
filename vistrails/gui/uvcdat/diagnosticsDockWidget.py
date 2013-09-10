@@ -169,6 +169,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         col = 0
         import cdms2
         from packages.uvcdat_cdms.init import CDMSVariable
+        projectController = self.parent().get_current_project_controller()
+        #Clear the cell
+        projectController.clear_cell(sheet,col,row)
         for V in pvars:
             # Until I know better storing vars in tempfile....
             f = tempfile.NamedTemporaryFile()
@@ -190,7 +193,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
             #get variable widget and project controller
             definedVariableWidget = self.parent().dockVariable.widget()
-            projectController = self.parent().get_current_project_controller()
+
             #add variable to display widget and controller
             definedVariableWidget.addVariable(V)
             projectController.add_defined_variable(cdmsVar)

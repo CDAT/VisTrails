@@ -1,10 +1,9 @@
+#!/usr/bin/env python
 '''
 Created on Mar 30, 2011
 
 @author: tpmaxwel
 '''
-
-#!/usr/bin/env python
 
 from __future__ import division
 import functools
