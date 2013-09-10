@@ -59,7 +59,7 @@
    </widget>
    <widget class="QMenu" name="menuPCMDITools">
     <property name="title">
-     <string>&amp;PCMDITools</string>
+     <string>&amp;Climate Tools</string>
     </property>
    </widget>
    <widget class="QMenu" name="menuHelp">
