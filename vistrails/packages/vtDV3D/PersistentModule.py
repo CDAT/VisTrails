@@ -1536,13 +1536,15 @@ class PersistentVisualizationModule( PersistentModule ):
     def setInputZScale( self, zscale_data, input_index=0, **args  ):
         ispec = self.inputSpecs[ input_index ] 
         if ispec.input() <> None:
-            spacing = ispec.input().GetSpacing()
+            input = ispec.input()
+            ns = input.GetNumberOfScalarComponents()
+            spacing = input.GetSpacing()
             ix, iy, iz = spacing
             sz = zscale_data[1]
             if iz <> sz:
 #                print " PVM >---------------> Change input zscale: %.4f -> %.4f" % ( iz, sz )
-                ispec.input().SetSpacing( ix, iy, sz )  
-                ispec.input().Modified() 
+                input.SetSpacing( ix, iy, sz )  
+                input.Modified() 
                 self.processScaleChange( spacing, ( ix, iy, sz ) )
                 return True
         return False
