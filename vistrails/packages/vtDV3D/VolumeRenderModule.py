@@ -177,6 +177,8 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
                 self.cropRegion[ib] = ( origin[ib/2] + new_spacing[ib/2]*extent[ib-4] ) 
             if self.volumeMapper.GetCropping():
                 self.cropVolume( False ) 
+#         self.volume.Modified()
+#         self.updateModule()
          
     def activateEvent( self, caller, event ):
         PersistentVisualizationModule.activateEvent( self, caller, event )
