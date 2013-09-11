@@ -5,6 +5,8 @@ from PyQt4.QtGui import QListWidgetItem
 from ui_diagnosticsDockWidget import Ui_DiagnosticDockWidget
 import tempfile
 
+import metrics.frontend.uvcdat
+
 class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
     
     Types = ["AMWG", ]
@@ -14,7 +16,18 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
     def __init__(self, parent=None):
         super(DiagnosticsDockWidget, self).__init__(parent)
         self.setupUi(self)
-        
+       
+        import metrics.frontend.uvcdat
+        import os
+        # The paths have to be chosen by the user, unless we know something about the system...
+        self.path1 = os.path.join(os.environ["HOME"],'cam_output/b30.009.cam2.h0.06.xml')
+        self.path2 = os.path.join(os.environ["HOME"],'obs_data')
+        self.tmppth = os.path.join(os.environ['HOME'],"tmp")
+        if not os.path.exists(self.tmppth):
+            os.makedirs(self.tmppth)
+        self.filetable1 = metrics.frontend.uvcdat.setup_filetable(self.path1,self.tmppth)
+        self.filetable2 = []
+
         #initialize data
         #@todo: maybe move data to external file to be read in
         self.groups = {'AMWG': ['1- Table of Global and Regional Means and RMS Error',
@@ -43,7 +56,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
                                                  'Diagnostics 17', 
                                                  'Diagnostics 18',]}}
         
-        self.variables = sorted(set(['T','TREFHT', 'Willmott', 'TREFHT', 'Legates', 'PRECT', 'TREFHT', 'JRA25', 'PREH2O', 'PSL', 'SHFLX', 'LHFLX', 'TREFHT', 'ERA-Interim', 'PREH2O', 'PSL', 'ERA40', 'LHFLX', 'PREH2O', 'MODIS', 'PREH2O', 'TGCLDLWP', 'NVAP', 'PREH2O', 'TGCLDLWP', 'AIRS', 'PREH2O', 'Woods', 'LHFLX', 'QFLX', 'GPCP', 'PRECT', 'CMAP', 'PRECT', 'UWisc', 'TGCLDLWP', 'SSM/I', 'PRECT', 'PREH2O', 'TRMM', 'PRECT', 'Large-Yeager', 'SHFLX', 'QFLX', 'FLNS', 'FSNS', 'CERES-EBAF', 'FLUT', 'FLUTC', 'FSNTOA', 'FSNTOAC', 'LWCF', 'SWCF', 'CERES', 'FLUT', 'FLUTC', 'FSNTOA', 'FSNTOAC', 'LWCF', 'SWCF', 'ERBE', 'FLUT', 'FLUTC', 'FSNTOA', 'FSNTOAC', 'LWCF', 'SWCF', 'ISCCP', 'FLDS', 'FLDSC', 'FLNS', 'FLNSC', 'FSDS', 'FSDSC', 'FSNS', 'FSNSC', 'LWCFSRF', 'SWCFSRF', 'ISCCP', 'CLDHGH', 'CLDHGH', 'CLDLOW', 'CLDLOW', 'CLDMED', 'CLDMED', 'CLDTOT', 'CLDTOT', 'Warren', 'CLDLOW', 'CLDTOT', 'CLOUDSAT', 'CLDTOT', 'CLDLOW', 'CLDMED', 'CLDHGH', 'CFMIP', 'CALIPSO', 'CLDTOT_CAL', 'CLDLOW_CAL', 'CLDMED_CAL', 'CLDHGH_CAL', 'ISCCP-COSP', 'CLDTOT_ISCCPCOSP', 'CLDTHICK_ISCCPCOSP', 'MISR', 'CLDTOT_MISR', 'CLDTHICK_MISR', 'MODIS-COSP', 'CLDTOT_MODIS', 'CLDTHICK_MODIS', 'Additional', 'CALIPSO', 'CLDTOT_CAL', 'CLDLOW_CAL', 'CLDMED_CAL', 'CLDHGH_CAL', 'CLOUDSAT-COSP', 'CLDTOT_CS2', 'ISCCP-COSP', 'CLDTOT_ISCCPCOSP', 'CLDLOW_ISCCPCOSP', 'CLDMED_ISCCPCOSP', 'CLDHGH_ISCCPCOSP', 'CLDTHICK_ISCCPCOSP', 'MEANPTOP_ISCCPCOSP', 'MEANCLDALB_ISCCPCOSP', 'MISR', 'CLDTOT_MISR', 'CLDLOW_MISR', 'CLDMED_MISR', 'CLDHGH_MISR', 'CLDTHICK_MISR', 'MODIS-COSP', 'CLDTOT_MODIS', 'CLDLOW_MODIS', 'CLDMED_MODIS', 'CLDHGH_MODIS', 'CLDTHICK_MODIS', 'CLIMODIS', 'CLWMODIS', 'IWPMODIS', 'LWPMODIS', 'PCTMODIS', 'REFFCLIMODIS', 'REFFCLWMODIS', 'TAUILOGMODIS', 'TAUWLOGMODIS', 'TAUTLOGMODIS', 'TAUIMODIS', 'TAUWMODIS', 'TAUTMODIS']))
+        self.variables = ['N/A',]
         self.observations = ['AIRS', 'ARM', 'CALIPSOCOSP', 'CERES', 'CERES-EBAF', 'CERES2', 'CLOUDSAT', 'CLOUDSATCOSP', 'CRU', 'ECMWF', 'EP.ERAI', 'ERA40', 'ERAI', 'ERBE', 'ERS', 'GPCP', 'HadISST', 'ISCCP', 'ISCCPCOSP', 'ISCCPD1', 'ISCCPFD', 'JRA25', 'LARYEA', 'LEGATES', 'MISRCOSP', 'MODIS', 'MODISCOSP', 'NCEP', 'NVAP', 'SHEBA', 'SSMI', 'TRMM', 'UWisc', 'WARREN', 'WHOI', 'WILLMOTT', 'XIEARKIN']
         self.seasons = ['DJF', 'JJA', 'MJJ', 'ASO', 'ANN']
         
@@ -58,10 +71,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         self.setupDiagnosticsMenu()
         
         self.comboBoxType.addItems(DiagnosticsDockWidget.Types)
-        self.comboBoxVariable.addItems(self.variables)
-        #self.comboBoxVariable.set("TREFHT")
-        i = self.comboBoxVariable.findText("TREFHT")
-        self.comboBoxVariable.setCurrentIndex(i)
+        i=self.comboBoxType.findText("3- Line Plots of  Zonal Means")
+        if i>-1:
+            self.comboBoxType.setCurrentindex(i)
         self.comboBoxObservation.addItems(self.observations)
         i = self.comboBoxObservation.findText("NCEP")
         self.comboBoxObservation.setCurrentIndex(i)
@@ -88,10 +100,22 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         self.show()
         self.raise_()
         
+    def plotsetchanged(self,item,column):
+        txt = item.text(item.columnCount()-1)
+        self.variables = metrics.frontend.uvcdat.list_variables(self.filetable1, diagnostic_set=txt)
+        for i in range(self.comboBoxVariable.count()):
+            self.comboBoxVariable.removeItem(0)
+
+        self.comboBoxVariable.addItems(self.variables)
+        i = self.comboBoxVariable.findText("TREFHT")
+        if i>-1:
+            self.comboBoxVariable.setCurrentIndex(i)
+        
+
     def setupDiagnosticTree(self, index):
         diagnosticType = str(self.comboBoxType.itemText(index))
         self.treeWidget.clear()
-        print "Got: ",diagnosticType,self.groups[diagnosticType]
+        self.treeWidget.itemChanged.connect(self.plotsetchanged)
         if isinstance(self.groups[diagnosticType],dict):
             for groupName, groupValues in self.groups[diagnosticType].items():
                 groupItem = QtGui.QTreeWidgetItem(self.treeWidget, [groupName])
@@ -114,6 +138,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             
     def applyClicked(self):
 
+        from metrics.frontend.uvcdat import setup_filetable, get_plot_data
+
         diagnostic = str(self.checkedItem.text(0))
         #group = str(self.checkedItem.parent().text(0))
         #Never name something 'type', it's a reserved word! type = str(self.comboBoxType.currentText())
@@ -127,19 +153,11 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         # initial test, first cut:
         # This stuff should go elsewhere...
         import os
-        from metrics.frontend.uvcdat import setup_filetable, get_plot_data
-        # The paths have to be chosen by the user, unless we know something about the system...
-        path1 = os.path.join(os.environ["HOME"],'cam_output/b30.009.cam2.h0.06.xml')
-        path2 = os.path.join(os.environ["HOME"],'obs_data')
-        tmppth = os.path.join(os.environ['HOME'],"tmp")
-        if not os.path.exists(tmppth):
-            os.makedirs(tmppth)
         filt2="filt=f_startswith('%s')" % observation
-        filetable1 = setup_filetable(path1,tmppth)
-        filetable2 = setup_filetable(path2,tmppth,search_filter=filt2)
+        self.filetable2 = setup_filetable(self.path2,self.tmppth,search_filter=filt2)
         #
         plot_set = diagnostic[0:diagnostic.find('-')] # e.g. '3','4a', etc.
-        ps = get_plot_data( plot_set, filetable1, filetable2, variable, season )
+        ps = get_plot_data( plot_set, self.filetable1, self.filetable2, variable, season )
         if ps is None:
             print "I got back a None!!!!"
             return None
