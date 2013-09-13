@@ -21,7 +21,7 @@ from vtk.util import numpy_support
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
 VTK_CONTROL_MODIFIER    = 2        
-VTK_BACKGROUND_COLOR = ( 0.5, 0.5, 0.5 )
+VTK_BACKGROUND_COLOR = ( 0.0, 0.0, 0.0 )
 VTK_FOREGROUND_COLOR = ( 1.0, 1.0, 1.0 )
 VTK_TITLE_SIZE = 14
 VTK_NOTATION_SIZE = 14
