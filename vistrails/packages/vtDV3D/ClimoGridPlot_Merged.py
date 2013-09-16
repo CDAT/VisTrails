@@ -21,6 +21,7 @@ from PyQt4 import QtCore, QtGui
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from packages.serverside_data_processing.multicore_process_executable import ExecutionTarget, MulticoreExecutable
 
+
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
 VTK_CONTROL_MODIFIER    = 2        
@@ -113,7 +114,7 @@ def dump_vtk_points( pts, label=None ):
         pt = pts.GetPoint( iPt )
         print "Pt[%d]: %.2f %.2f, %.2f " % ( iPt, pt[ 0 ], pt[ 1 ], pt[ 2 ] )
     print "-------------------------------------------------------------------------------------------------\n"
-           
+
 class PlotType:
     Planar = 0
     Spherical = 1
@@ -418,6 +419,7 @@ class GridTest:
     shperical_to_xyz_trans = vtk.vtkSphericalTransform()
     radian_scaling = math.pi / 180.0 
     
+
     def __init__( self, vtk_render_window, **args ):
         self.initial_cell_index = 0
         self.step_count = 0
@@ -594,12 +596,9 @@ class GridTest:
         self.polydata = vtk.vtkPolyData()
         vtk_pts = self.getPoints( **args )
         self.polydata.SetPoints( vtk_pts )                     
-        self.slice_filter = vtk.vtkExtractPolyDataGeometry()
-        self.slice_filter.SetInput( self.polydata )
-        self.clipBox = vtk.vtkBox()
-        self.slice_filter.SetImplicitFunction( self.clipBox )
-        self.slice_filter.ExtractInsideOn()
+        self.mapper = vtk.vtkPolyDataMapper()
         self.createPointsActor(  self.slice_filter.GetOutput() )
+
 
     def createThresholdedPolydata( self, **args  ):
         self.lon_data = args.get( 'lon', self.lon_data ) 
@@ -608,18 +607,7 @@ class GridTest:
         self.polydata = vtk.vtkPolyData()
         vtk_pts = self.getPoints( **args )
         self.polydata.SetPoints( vtk_pts )                     
-        self.downsize_mapper = vtk.vtkPolyDataMapper()
-        downsizeFactor = 1        
-        self.pointMask = vtk.vtkMaskPoints()
-        self.pointMask.SetInput( self.polydata )
-        self.pointMask.SetOnRatio( downsizeFactor )
-        self.pointMask.RandomModeOff() 
-        self.pointMask.GenerateVerticesOn()
-        self.pointMask.SingleVertexPerCellOn ()
-        
-        self.threshold_filter = vtk.vtkThreshold()
-        self.threshold_filter.SetInput( self.pointMask.GetOutput() )
-        self.geometry_filter = vtk.vtkGeometryFilter()
+        self.mapper = vtk.vtkPolyDataMapper()
         self.geometry_filter.SetInput( self.threshold_filter.GetOutput() )        
         self.createPointsActor( self.geometry_filter.GetOutput() )
         
@@ -1233,12 +1221,13 @@ class GridTest:
         self.earth_actor.SetMapper( self.earth_mapper )
         self.earth_actor.GetProperty().SetColor(0,0,0)
         self.renderer.AddActor( self.earth_actor )
- 
+
                 
     def createRenderer(self, **args ):
         background_color = args.get( 'background_color', VTK_BACKGROUND_COLOR )
         self.renderer = vtk.vtkRenderer()
         self.renderer.SetBackground(*background_color)
+
         self.renderWindow.AddRenderer( self.renderer )
         self.renderWindowInteractor.AddObserver( 'CharEvent', self.onKeyPress )       
         self.renderWindowInteractor.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )  
@@ -1270,7 +1259,7 @@ class GridTest:
         c = self.renderer.GetActiveCamera()
         self.cameraOrientation[ self.topo ] = ( c.GetPosition(), c.GetFocalPoint(), c.GetViewUp() )
 
-    def resetCamera( self, pts = None ):   
+    def resetCamera( self, pts = None ):
         cdata = self.cameraOrientation.get( self.topo, None )
         if cdata:
             self.renderer.GetActiveCamera().SetPosition( *cdata[0] )
@@ -1286,6 +1275,7 @@ class GridTest:
         self.renderer.GetActiveCamera().SetFocalPoint( self.xcenter, 0, 0 )
         self.renderer.GetActiveCamera().SetViewUp( 0, 1, 0 )  
         self.renderer.ResetCameraClippingRange()     
+
              
     def getCamera(self):
         return self.renderer.GetActiveCamera()
