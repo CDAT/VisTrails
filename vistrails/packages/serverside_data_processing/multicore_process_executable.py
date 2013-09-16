@@ -4,7 +4,7 @@ Created on Aug 14, 2013
 @author: tpmaxwell
 '''
 import os, sys
-from multiprocessing import Process, JoinableQueue, Lock
+from multiprocessing import Process, JoinableQueue, Queue, Lock
       
 
 class ExecutionSpecs:
@@ -86,25 +86,20 @@ class MulticoreExecutable :
             print>>sys.stderr, " MulticoreExecutable error: processes currently running.  "
             return
         self.ncores = args.get('ncores', self.ncores )
-        if self.ncores > 1:
-            self.nlocks = args.get('nlocks', self.nlocks )
-            block = args.get('block', True )
-            self.locks = [ Lock() for iLock in range(self.nlocks) ]
-            self.arg_queue = JoinableQueue() 
-            for arg_tuple in arg_tuple_list:
-                self.arg_queue.put( arg_tuple )
-            
-            for iP in range( self.ncores ):   
-                p = Process( target=self.executionTargetSubclass(iP), args=( self.arg_queue, self.locks  ) )
-                self.proc_queue.append( ( iP, p ) )
-                p.start()
-            print " Running %d procs" % len( self.proc_queue ); sys.stdout.flush()
-            if block: self.block()
-        else:
-            target=self.executionTargetSubclass(0)
-            for arg_tuple in arg_tuple_list:
-                target.execute( arg_tuple )
-                    
+        self.nlocks = args.get('nlocks', self.nlocks )
+        block = args.get('block', True )
+        self.locks = [ Lock() for iLock in range(self.nlocks) ]
+        self.arg_queue = JoinableQueue() 
+        self.result_queue = Queue() 
+        for arg_tuple in arg_tuple_list:
+            self.arg_queue.put( arg_tuple )
+        for iP in range( self.ncores ):   
+            p = Process( target=self.executionTargetSubclass(iP), args=( self.arg_queue, self.result_queue, self.locks  ) )
+            self.proc_queue.append( ( iP, p ) )
+            p.start()
+        print " Running %d procs" % len( self.proc_queue ); sys.stdout.flush()
+        if block: self.block()
+        
     def terminated(self):
         for p in self.proc_queue:
             if p.is_alive(): return False
@@ -121,6 +116,11 @@ class MulticoreExecutable :
             p.terminate()
         self.reset_queues()
         
+    def get_result( self, block = False ):
+        try:
+            return self.result_queue.get( block )
+        except Queue.Empty:
+            return None        
 
 class ExecutionTarget:
     
