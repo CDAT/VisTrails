@@ -799,6 +799,7 @@ class GridTest:
             if missing_value: var_data = numpy.ma.masked_equal( var_data, missing_value, False )
             glev.createPolydata( ( iLev == self.iLevel ), lon=self.lon_data, lat=self.lat_data )
             self.appendLayers.AddInput( glev.polydata )
+            self.updateAllLevels()
             lut = self.get_LUT( invert = True, number_of_colors = 1024 )
             glev.setVarData( var_data, lut )          
             glev.createVertices( geometry ) # quads = quad_corners, indexing = 'F' )
@@ -1025,4 +1026,4 @@ if __name__ == '__main__':
         varname = "u"   
 
     g = GridTest()
-    g.plot( data_file, grid_file, varname, topo=PlotType.Planar, roi=(0, 180, 0, 90), grid=PlotType.Points, indexing='F', max_npts=-1, max_ncells=-1, level = 0, data_format = data_type )
+    g.plot( data_file, grid_file, varname, topo=PlotType.Planar, roi=(0, 180, 0, 90), grid=PlotType.Points, indexing='F', max_npts=-1, max_ncells=1000, data_format = data_type )
