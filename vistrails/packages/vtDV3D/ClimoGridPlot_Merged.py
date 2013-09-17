@@ -630,7 +630,7 @@ class GridTest:
  
     def createVertices( self, **args ): 
         iCore = args.get( 'icore', 0 )
-        np_index_seq = proc_exec.get_result( iCore, True )
+        np_index_seq = self.proc_exec.get_result( iCore, True )
         vertices = vtk.vtkCellArray()  
         cell_sizes   = numpy.ones_like( np_index_seq )
         np_cell_data = numpy.dstack( ( cell_sizes, np_index_seq ) ).flatten()         
