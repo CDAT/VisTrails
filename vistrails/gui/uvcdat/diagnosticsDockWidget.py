@@ -5,7 +5,7 @@ from PyQt4.QtGui import QListWidgetItem
 from ui_diagnosticsDockWidget import Ui_DiagnosticDockWidget
 import tempfile
 
-import metrics.frontend.uvcdat
+#import metrics.frontend.uvcdat
 
 class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
     
@@ -101,6 +101,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         self.raise_()
         
     def plotsetchanged(self,item,column):
+        import metrics.frontend.uvcdat
         txt = item.text(item.columnCount()-1)
         self.variables = metrics.frontend.uvcdat.list_variables(self.filetable1, diagnostic_set=txt)
         for i in range(self.comboBoxVariable.count()):
