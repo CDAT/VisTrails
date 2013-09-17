@@ -425,6 +425,13 @@ class GridTest:
         self.xwidth = 360.0
         self.xcenter =  self.xwidth / 2.0
         self.z_spacing = 1.0
+        self.points_actors = {}
+        self.core_var_data = {}
+
+    def getPolydata( self, iCore ):
+        actor = self.points_actors[ iCore ]
+        mapper = actor.GetMapper()
+        return mapper.GetInput()
         
     @classmethod    
     def getXYZPoint( cls, lon, lat, r = None ):
@@ -473,39 +480,22 @@ class GridTest:
         self.shperical_to_xyz_trans.TransformPoints( vtk_sp_grid_points, self.vtk_spherical_points ) 
 
     def computePlanarPoints( self, **args ):
-        point_layout = self.getPointsLayout()
-        self.lon_data = args.get( 'lon', self.lon_data ) 
-        self.lat_data = args.get( 'lat', self.lat_data ) 
-        self.np_points_data = args.get( 'point_data', None ) 
-        if self.np_points_data == None:
-            np_points_data_list = []
-            for iz in range( len( self.lev ) ):
-                zvalue = iz * self.z_spacing
-                if point_layout == PlotType.List:
-                    z_data = numpy.empty( self.lon_data.shape, self.lon_data.dtype ) 
-                    z_data.fill( zvalue )
-                    np_points_data_list.append( numpy.dstack( ( self.lon_data, self.lat_data, z_data ) ).flatten() )            
-                elif point_layout == PlotType.Grid: 
-                    latB = self.lat_data.reshape( [ self.lat_data.shape[0], 1 ] )  
-                    lonB = self.lon_data.reshape( [ 1, self.lon_data.shape[0] ] )
-                    grid_data = numpy.array( [ (x,y,zvalue) for (x,y) in numpy.broadcast(lonB,latB) ] )
-                    np_points_data_list.append( grid_data.flatten() ) 
-            self.np_points_data = numpy.concatenate( np_points_data_list )       
-        self.point_data_arrays['x'] = self.np_points_data[0::3].astype( numpy.float32 ) 
-        self.point_data_arrays['y'] = self.np_points_data[1::3].astype( numpy.float32 ) 
-        self.point_data_arrays['z'] = self.np_points_data[2::3].astype( numpy.float32 ) 
-        self.vtk_points_data = numpy_support.numpy_to_vtk( self.np_points_data )    
-        self.vtk_points_data.SetNumberOfComponents( 3 )
-        self.vtk_points_data.SetNumberOfTuples( self.getNumberOfPoints() )     
-        self.vtk_planar_points = vtk.vtkPoints()
-        self.vtk_planar_points.SetData( self.vtk_points_data )
-        self.grid_bounds = list( self.vtk_planar_points.GetBounds() )
-        if point_layout == PlotType.Grid: 
-            self.lon_slice_positions = self.lon_data              
-            self.lat_slice_positions = self.lat_data              
-        else:
-            self.lon_slice_positions = numpy.linspace( self.grid_bounds[0], self.grid_bounds[1], 100 )           
-            self.lat_slice_positions = numpy.linspace( self.grid_bounds[2], self.grid_bounds[3], 100 )
+        iCore = args.get( 'icore', 0 )
+        icore_pts_data = self.proc_exec.get_result( iCore, True )
+        self.np_points_data[iCore] = icore_pts_data
+        vtk_points_data = numpy_support.numpy_to_vtk( icore_pts_data )    
+        vtk_points_data.SetNumberOfComponents( 3 )
+        vtk_points_data.SetNumberOfTuples( len( icore_pts_data ) / 3 )     
+        vtk_planar_points = vtk.vtkPoints()
+        vtk_planar_points.SetData( vtk_points_data )
+        return vtk_planar_points
+#        self.grid_bounds = list( self.vtk_planar_points.GetBounds() )
+#         if point_layout == PlotType.Grid: 
+#             self.lon_slice_positions = self.lon_data              
+#             self.lat_slice_positions = self.lat_data              
+#         else:
+#             self.lon_slice_positions = numpy.linspace( self.grid_bounds[0], self.grid_bounds[1], 100 )           
+#             self.lat_slice_positions = numpy.linspace( self.grid_bounds[2], self.grid_bounds[3], 100 )
             
     def getNumberOfPoints(self): 
         return len( self.np_points_data ) / 3             
@@ -555,45 +545,48 @@ class GridTest:
     def clearClipping( self ):
         self.mapper.RemoveAllClippingPlanes()    
 
-    def createClippedPolydata( self, **args  ):
-        self.lon_data = args.get( 'lon', self.lon_data ) 
-        self.lat_data = args.get( 'lat', self.lat_data ) 
-        topo = args.get( 'topo', self.topo )
-        self.polydata = vtk.vtkPolyData()
-        vtk_pts = self.getPoints( **args )
-        self.polydata.SetPoints( vtk_pts )                     
-        self.mapper = vtk.vtkPolyDataMapper()
-        self.createPointsActor(  self.slice_filter.GetOutput() )
-
-
-    def createThresholdedPolydata( self, **args  ):
-        self.lon_data = args.get( 'lon', self.lon_data ) 
-        self.lat_data = args.get( 'lat', self.lat_data ) 
-        topo = args.get( 'topo', self.topo )
-        self.polydata = vtk.vtkPolyData()
-        vtk_pts = self.getPoints( **args )
-        self.polydata.SetPoints( vtk_pts )                     
-        self.mapper = vtk.vtkPolyDataMapper()
-        self.geometry_filter.SetInput( self.threshold_filter.GetOutput() )        
-        self.createPointsActor( self.geometry_filter.GetOutput() )
+#     def createClippedPolydata( self, **args  ):
+#         self.lon_data = args.get( 'lon', self.lon_data ) 
+#         self.lat_data = args.get( 'lat', self.lat_data ) 
+#         topo = args.get( 'topo', self.topo )
+#         self.polydata = vtk.vtkPolyData()
+#         vtk_pts = self.getPoints( **args )
+#         self.polydata.SetPoints( vtk_pts )                     
+#         self.mapper = vtk.vtkPolyDataMapper()
+#         self.createPointsActor(  self.slice_filter.GetOutput() )
+# 
+# 
+#     def createThresholdedPolydata( self, **args  ):
+#         self.lon_data = args.get( 'lon', self.lon_data ) 
+#         self.lat_data = args.get( 'lat', self.lat_data ) 
+#         topo = args.get( 'topo', self.topo )
+#         self.polydata = vtk.vtkPolyData()
+#         vtk_pts = self.getPoints( **args )
+#         self.polydata.SetPoints( vtk_pts )                     
+#         self.mapper = vtk.vtkPolyDataMapper()
+#         self.geometry_filter.SetInput( self.threshold_filter.GetOutput() )        
+#         self.createPointsActor( self.geometry_filter.GetOutput() )
 
     def createPolydata( self, **args  ):
-        self.lon_data = args.get( 'lon', self.lon_data ) 
-        self.lat_data = args.get( 'lat', self.lat_data ) 
         topo = args.get( 'topo', self.topo )
-        self.polydata = vtk.vtkPolyData()
+        polydata = vtk.vtkPolyData()
         vtk_pts = self.getPoints( **args )
-        self.polydata.SetPoints( vtk_pts )                         
-        self.createPointsActor( self.polydata, args )
+        polydata.SetPoints( vtk_pts )                         
+        self.createPointsActor( polydata, **args )
         
-    def createPointsActor( self, polydata, metadata ):
-        self.mapper = vtk.vtkPolyDataMapper()
-        self.mapper.SetInput( polydata )                 
+    def createPointsActor( self, polydata, **args ):
+        icore = args.get( 'icore', 0 )
+        lut = args.get( 'lut', None )
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInput( polydata ) 
+        mapper.SetScalarModeToUsePointData()
+        mapper.SetColorModeToMapScalars()
+        if lut: mapper.SetLookupTable( lut )                
         actor = vtk.vtkActor()
-        actor.SetMapper( self.mapper )
-        self.points_actor = actor
-        vrange = metadata.get('vrange',None)
-        if vrange: self.mapper.SetScalarRange( vrange[0], vrange[1] ) 
+        actor.SetMapper( mapper )
+        self.points_actors[icore] = actor
+        vrange = args.get('vrange',None)
+        if vrange:mapper.SetScalarRange( vrange[0], vrange[1] ) 
                    
     def refreshResolution( self ):
         self.setPointSize( self.raw_point_size )
@@ -604,7 +597,8 @@ class GridTest:
         self.geometry_filter.Modified()
                 
     def setPointSize( self, point_size ):
-        self.points_actor.GetProperty().SetPointSize( point_size )
+        for points_actor in self.points_actors:
+            points_actor.GetProperty().SetPointSize( point_size )
             
     def createColormap( self, lut ):
         self.mapper.SetScalarRange( self.vrange[0], self.vrange[1] ) 
@@ -618,34 +612,31 @@ class GridTest:
     def getPointValue( self, iPt ):
         return self.var_data[ iPt ]
 
-    def setVarData( self, vardata, lut = None ):
-        self.var_data = vardata.flatten()
-        self.vrange = ( self.var_data.min(), self.var_data.max() )
-        self.ncells = len( self.var_data )
-        if lut: self.createColormap( lut )
-        self.vtk_color_data = numpy_support.numpy_to_vtk( self.var_data ) 
-        self.vtk_color_data.SetName( 'vardata' )        
-        self.polydata.GetPointData().SetScalars( self.vtk_color_data )
+    def setVarData( self, **args ):
+        iCore = args.get('icore',0)
+        var_data = self.proc_exec.get_result(iCore,True)
+        self.core_var_data[ iCore ] = var_data
+#        vrange = ( var_data.min(), var_data.max() )
+        vtk_color_data = numpy_support.numpy_to_vtk( var_data ) 
+        vtk_color_data.SetName( 'vardata' ) 
+        polydata = self.getPolydata( iCore )       
+        polydata.GetPointData().SetScalars( vtk_color_data )
         
-        for pd_item in self.point_data_arrays.items():       
-            vtk_data = numpy_support.numpy_to_vtk( pd_item[1] )
-            vtk_data.SetName( pd_item[0] )
-            self.polydata.GetPointData().AddArray( vtk_data )  
+#         for pd_item in self.point_data_arrays.items():       
+#             vtk_data = numpy_support.numpy_to_vtk( pd_item[1] )
+#             vtk_data.SetName( pd_item[0] )
+#             self.polydata.GetPointData().AddArray( vtk_data )  
  
     def createVertices( self, **args ): 
+        iCore = self.get( 'icore', 0 )
+        np_index_seq = proc_exec.get_result( iCore, True )
         vertices = vtk.vtkCellArray()  
-        index_array = args.get( 'index_array', None ) 
-        if id(index_array) <> id(None): 
-            self.ncells = len( index_array ) 
-            np_index_seq = index_array
-        else:    
-            index_range = args.get( 'index_range', ( 0, self.ncells ) ) 
-            np_index_seq = numpy.arange( index_range[0], index_range[1], dtype=numpy.int64 ) 
         cell_sizes   = numpy.ones_like( np_index_seq )
-        self.np_cell_data = numpy.dstack( ( cell_sizes, np_index_seq ) ).flatten()         
-        self.vtk_cell_data = numpy_support.numpy_to_vtkIdTypeArray( self.np_cell_data ) 
+        np_cell_data = numpy.dstack( ( cell_sizes, np_index_seq ) ).flatten()         
+        self.vtk_cell_data = numpy_support.numpy_to_vtkIdTypeArray( np_cell_data ) 
         vertices.SetCells( cell_sizes.size, self.vtk_cell_data )
         self.polydata.SetVerts(vertices)
+        self.core_index_arrays[ iCore ] = np_cell_data
 #         if index_range[0] <> 0:
 #             self.polydata.Update()
 #             print "After Vertex Filter: %d, %d " % ( self.polydata.GetNumberOfPoints(), self.polydata.GetNumberOfCells() )
@@ -1037,6 +1028,7 @@ class GridTest:
         self.time = self.var.getTime()
         self.lev = self.var.getLevel()
         self.grid = self.var.getGrid()
+        self.proc_exec = proc_exec
         
         if self.lev == None:
             domain = self.var.getDomain()
@@ -1044,11 +1036,12 @@ class GridTest:
                 if PlotType.isLevelAxis( axis[0].id.lower() ):
                     self.lev = axis[0]
                     break
-                
-        self.createPolydata( lon=self.lon_data, lat=self.lat_data, point_data=proc_exec.get_result(0,True) )
+        
         lut = self.get_LUT( invert = True, number_of_colors = 1024 )
-        self.setVarData( proc_exec.get_result(0,True), lut )          
-        self.createVertices( index_array=proc_exec.get_result(0,True) )
+        for iCore in range(proc_exec.ncores):        
+            self.createPolydata( icore=iCore, lut=lut )
+            self.setVarData( icore=iCore )          
+            self.createVertices( icore=iCore )
         self.setPointSize( self.point_size )                                                                                     
         self.createRenderer( **args )
 
@@ -1249,9 +1242,10 @@ class GridTest:
 #        self.clipper.AddObserver( 'StartInteractionEvent', self.startClip )
 #        self.clipper.AddObserver( 'EndInteractionEvent', self.endClip )
         self.clipper.AddObserver( 'InteractionEvent', self.executeClip )
-        self.clipOff()         
-        self.renderer.AddActor( self.points_actor )
-        self.pointPicker.AddPickList( self.points_actor ) 
+        self.clipOff() 
+        for points_actor in  self.points_actors:     
+            self.renderer.AddActor( points_actor )
+            self.pointPicker.AddPickList( points_actor ) 
         self.initCamera( )              
         self.renderWindow.Render()
         
