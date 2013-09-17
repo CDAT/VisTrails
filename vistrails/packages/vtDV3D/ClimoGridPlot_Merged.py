@@ -427,6 +427,7 @@ class GridTest:
         self.z_spacing = 1.0
         self.points_actors = {}
         self.core_var_data = {}
+        self.np_points_data = {}
 
     def getPolydata( self, iCore ):
         actor = self.points_actors[ iCore ]
