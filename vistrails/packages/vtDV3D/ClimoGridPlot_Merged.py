@@ -19,7 +19,7 @@ import vtk, cdms2, time, random, math
 from vtk.util import numpy_support
 from PyQt4 import QtCore, QtGui
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from packages.serverside_data_processing.multicore_process_executable import ExecutionTarget, MulticoreExecutable
+from packages.serverside_data_processing.multicore_process_executable import ExecutionTarget, MultiQueueExecutable
 
 
 VTK_NO_MODIFIER         = 0
@@ -206,68 +206,42 @@ class TextDisplayMgr:
 
 class PointIngestExecutionTarget(ExecutionTarget):
 
-    def __init__( self, proc_index ):
-        ExecutionTarget.__init__( self, proc_index )
+    def __init__( self, proc_index, nproc, wait_for_input=False, init_args=None ):
+        self.iTimeStep = 0
+        self.point_data_arrays = {} 
         self.vtk_planar_points = None                                  
         self.cameraOrientation = {}
-        self.iTimeStep = 0
-        self.sliceThickness = [ 1.0, 1.0 ]
-        self.sliceOrientation = 'z'
-        self.vtk_planar_points = None
         self.topo = PlotType.Planar
         self.lon_data = None
         self.lat_data = None 
-        self.point_data_arrays = {} 
         self.z_spacing = 1.0 
         self.metadata = {}
-        
+        ExecutionTarget.__init__( self, proc_index, nproc, wait_for_input, init_args )
+       
     def getDataBlock( self ):
         if self.lev == None:
             if len( self.var.shape ) == 2:
-                np_var_data_block = self.var[ self.iTimeStep, self.istart::self.istep ].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, self.istart::self.istep ].data
             elif len( self.var.shape ) == 3:
-                np_var_data_block = self.var[ self.iTimeStep, :, self.istart::self.istep ].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, :, self.istart::self.istep ].data
                 np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0] * np_var_data_block.shape[1], ] )
             self.nLevels = 1
         else:
             if len( self.var.shape ) == 3:               
-                np_var_data_block = self.var[ self.iTimeStep, :, self.istart::self.istep ].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, :, self.istart::self.istep ].data
             elif len( self.var.shape ) == 4:
-                np_var_data_block = self.var[ self.iTimeStep, :, :, self.istart::self.istep ].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, :, :, self.istart::self.istep ].data
                 np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0], np_var_data_block.shape[1] * np_var_data_block.shape[2] ] )
-            
+
         return np_var_data_block
     
-    def setVarData( self, vardata ):
-        self.var_data = vardata.flatten()
-        self.vrange = ( self.var_data.min(), self.var_data.max() )
-        self.ncells = len( self.var_data )
-        self.vtk_color_data = numpy_support.numpy_to_vtk( self.var_data ) 
-        self.vtk_color_data.SetName( 'vardata' )        
-        self.polydata.GetPointData().SetScalars( self.vtk_color_data )
-        
-        for pd_item in self.point_data_arrays.items():       
-            vtk_data = numpy_support.numpy_to_vtk( pd_item[1] )
-            vtk_data.SetName( pd_item[0] )
-            self.polydata.GetPointData().AddArray( vtk_data )  
- 
-    def createVertices( self, **args ): 
-        vertices = vtk.vtkCellArray()  
-        index_range = args.get( 'index_range', ( 0, self.ncells ) )         
-        np_index_seq = numpy.arange( index_range[0], index_range[1], dtype=numpy.int64 ) # numpy.array( xrange( ncells ) )
-        cell_sizes   = numpy.ones_like( np_index_seq )
-        self.np_cell_data = numpy.dstack( ( cell_sizes, np_index_seq ) ).flatten()         
-        self.vtk_cell_data = numpy_support.numpy_to_vtkIdTypeArray( self.np_cell_data ) 
-        vertices.SetCells( cell_sizes.size, self.vtk_cell_data )
-        self.polydata.SetVerts(vertices)
-
     def processCoordinates( self, lat, lon ):
         point_layout = self.getPointsLayout()
         self.lat_data = lat[self.istart::self.istep] if ( point_layout == PlotType.List ) else lat[::]
         self.lon_data = lon[self.istart::self.istep] 
         if self.lon_data.__class__.__name__ == "TransientVariable":
-            self.lat_data = self.lat_data.raw_data()
-            self.lon_data = self.lon_data.raw_data()        
+            self.lat_data = self.lat_data.data
+            self.lon_data = self.lon_data.data        
         xmax, xmin = self.lon_data.max(), self.lon_data.min()
         self.xcenter =  ( xmax + xmin ) / 2.0       
         self.xwidth =  ( xmax - xmin ) 
@@ -294,15 +268,11 @@ class PointIngestExecutionTarget(ExecutionTarget):
                 lonB = self.lon_data.reshape( [ 1, self.lon_data.shape[0] ] )
                 grid_data = numpy.array( [ (x,y,zvalue) for (x,y) in numpy.broadcast(lonB,latB) ] )
                 np_points_data_list.append( grid_data.flatten() ) 
-        self.np_points_data = numpy.concatenate( np_points_data_list )
-        self.vtk_points_data = numpy_support.numpy_to_vtk( self.np_points_data )    
-        self.vtk_points_data.SetNumberOfComponents( 3 )
-        self.vtk_points_data.SetNumberOfTuples( self.getNumberOfPoints() )     
-        self.vtk_planar_points = vtk.vtkPoints()
-        self.vtk_planar_points.SetData( self.vtk_points_data )
-        self.point_data_arrays['x'] = self.np_points_data[0::3].astype( numpy.float32 ) 
-        self.point_data_arrays['y'] = self.np_points_data[1::3].astype( numpy.float32 ) 
-        self.point_data_arrays['z'] = self.np_points_data[2::3].astype( numpy.float32 ) 
+        np_points_data = numpy.concatenate( np_points_data_list )
+        self.point_data_arrays['x'] = np_points_data[0::3].astype( numpy.float32 ) 
+        self.point_data_arrays['y'] = np_points_data[1::3].astype( numpy.float32 ) 
+        self.point_data_arrays['z'] = np_points_data[2::3].astype( numpy.float32 ) 
+        self.results.put( np_points_data )         
 
     def getPointsLayout( self ):
         return PlotType.getPointsLayout( self.grid )
@@ -341,18 +311,16 @@ class PointIngestExecutionTarget(ExecutionTarget):
             return  self.processCoordinates( lat, lon )
         
         return None, None
-            
-    def execute( self, args ): 
-        ( grid_file, data_file, varname, istart, istep ) = args
+
+    def initialize( self, args ): 
+        ( grid_file, data_file, varname ) = args
         gf = cdms2.open( grid_file ) if grid_file else None
         df = cdms2.open( data_file )       
         self.var = df[ varname ]
         self.grid = self.var.getGrid()
-#        self.data_format = args.get( 'data_format', self.getDataFormat( df ) )
-        self.istart = istart
-        self.istep = istep
-        self.lon, self.lat = self.getLatLon( df, varname, gf )
-                              
+        self.istart = self.proc_index
+        self.istep = self.nproc
+        self.lon, self.lat = self.getLatLon( df, varname, gf )                              
         self.time = self.var.getTime()
         self.lev = self.var.getLevel()
         missing_value = self.var.attributes.get( 'missing_value', None )
@@ -362,57 +330,53 @@ class PointIngestExecutionTarget(ExecutionTarget):
                 if PlotType.isLevelAxis( axis[0].id.lower() ):
                     self.lev = axis[0]
                     break
-
-        np_var_data_block = self.getDataBlock()
-        if missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, missing_value, False )
-        else: var_data = np_var_data_block
                 
         self.computePoints()
-        self.computeThresholdedPoints()
-        self.setVarData( var_data )          
-        self.createVertices()
-        self.setVolumeRenderBounds( 0.4, 0.6 )
-        product = self.getProduct()
-        product.Update()
-        self.results.put( product )
-
-    def setVolumeRenderBounds( self, rmin, rmax ):
-        if self.lev == None: return
-        self.setThresholdingArray( 'vardata' )
+        np_var_data_block = self.getDataBlock().flatten()
+        self.results.put( np_var_data_block )     
+        if missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, missing_value, False )
+        else: var_data = np_var_data_block
+        self.point_data_arrays['vardata'] = var_data
+        self.vrange = ( var_data.min(), var_data.max() ) 
+                    
+    def execute( self, args, **kwargs ): 
+        ( threshold_target, rmin, rmax ) = args
         dv = self.vrange[1] - self.vrange[0]
         vmin = self.vrange[0] + rmin * dv
         vmax = self.vrange[0] + rmax * dv
-        self.threshold_filter.ThresholdBetween( vmin, vmax )
-        self.threshold_filter.Modified()
-        self.geometry_filter.Modified()
-        self.metadata['vrange'] = ( vmin, vmax )
-         
-    def computeThresholdedPoints( self, **args  ):
-        topo = args.get( 'topo', self.topo )
-        self.polydata = vtk.vtkPolyData()
-        self.polydata.SetPoints( self.vtk_planar_points )                             
-        self.threshold_filter = vtk.vtkThreshold()
-        self.threshold_filter.SetInput( self.polydata )
-        self.geometry_filter = vtk.vtkGeometryFilter()
-        self.geometry_filter.SetInput( self.threshold_filter.GetOutput() )
+        var_data = self.point_data_arrays.get( threshold_target, None)
+        if id(var_data) <> id(None):
+            threshold_mask = numpy.logical_and( numpy.greater( var_data, vmin ), numpy.less( var_data, vmax ) ) 
+            index_array = numpy.arange( 0, len(var_data) )
+            selected_index_array = index_array[ threshold_mask ]
+            self.results.put( selected_index_array )       
         
-    def getProduct(self):
-        return self.geometry_filter.GetOutput()
-                          
-    def setThresholdingArray( self, aname ):
-        self.threshold_filter.SetInputArrayToProcess( 0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, aname )
-
-    def setSliceThresholdBounds( self, slicePosition = 0.0 ):
-        if self.lev == None: return
-        sliceThickness = None
-        self.setThresholdingArray( self.sliceOrientation )
-        if    self.sliceOrientation == 'x': sliceThickness = self.sliceThickness[0]
-        elif  self.sliceOrientation == 'y': sliceThickness = self.sliceThickness[1]
-        elif  self.sliceOrientation == 'z': sliceThickness = self.z_spacing/2
-        if sliceThickness:
-            self.threshold_filter.ThresholdBetween( slicePosition-sliceThickness,  slicePosition+sliceThickness )
-            self.threshold_filter.Modified()
-            self.geometry_filter.Modified()
+#     def computeThresholdedPoints( self, **args  ):
+#         topo = args.get( 'topo', self.topo )
+#         self.polydata = vtk.vtkPolyData()
+#         self.polydata.SetPoints( self.vtk_planar_points )                             
+#         self.threshold_filter = vtk.vtkThreshold()
+#         self.threshold_filter.SetInput( self.polydata )
+#         self.geometry_filter = vtk.vtkGeometryFilter()
+#         self.geometry_filter.SetInput( self.threshold_filter.GetOutput() )
+        
+#     def getProduct(self):
+#         return self.geometry_filter.GetOutput()
+#                           
+#     def setThresholdingArray( self, aname ):
+#         self.threshold_filter.SetInputArrayToProcess( 0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, aname )
+# 
+#     def setSliceThresholdBounds( self, slicePosition = 0.0 ):
+#         if self.lev == None: return
+#         sliceThickness = None
+#         self.setThresholdingArray( self.sliceOrientation )
+#         if    self.sliceOrientation == 'x': sliceThickness = self.sliceThickness[0]
+#         elif  self.sliceOrientation == 'y': sliceThickness = self.sliceThickness[1]
+#         elif  self.sliceOrientation == 'z': sliceThickness = self.z_spacing/2
+#         if sliceThickness:
+#             self.threshold_filter.ThresholdBetween( slicePosition-sliceThickness,  slicePosition+sliceThickness )
+#             self.threshold_filter.Modified()
+#             self.geometry_filter.Modified()
         
 class GridTest:
 
@@ -512,19 +476,21 @@ class GridTest:
         point_layout = self.getPointsLayout()
         self.lon_data = args.get( 'lon', self.lon_data ) 
         self.lat_data = args.get( 'lat', self.lat_data ) 
-        np_points_data_list = []
-        for iz in range( len( self.lev ) ):
-            zvalue = iz * self.z_spacing
-            if point_layout == PlotType.List:
-                z_data = numpy.empty( self.lon_data.shape, self.lon_data.dtype ) 
-                z_data.fill( zvalue )
-                np_points_data_list.append( numpy.dstack( ( self.lon_data, self.lat_data, z_data ) ).flatten() )            
-            elif point_layout == PlotType.Grid: 
-                latB = self.lat_data.reshape( [ self.lat_data.shape[0], 1 ] )  
-                lonB = self.lon_data.reshape( [ 1, self.lon_data.shape[0] ] )
-                grid_data = numpy.array( [ (x,y,zvalue) for (x,y) in numpy.broadcast(lonB,latB) ] )
-                np_points_data_list.append( grid_data.flatten() ) 
-        self.np_points_data = numpy.concatenate( np_points_data_list )
+        self.np_points_data = args.get( 'point_data', None ) 
+        if self.np_points_data == None:
+            np_points_data_list = []
+            for iz in range( len( self.lev ) ):
+                zvalue = iz * self.z_spacing
+                if point_layout == PlotType.List:
+                    z_data = numpy.empty( self.lon_data.shape, self.lon_data.dtype ) 
+                    z_data.fill( zvalue )
+                    np_points_data_list.append( numpy.dstack( ( self.lon_data, self.lat_data, z_data ) ).flatten() )            
+                elif point_layout == PlotType.Grid: 
+                    latB = self.lat_data.reshape( [ self.lat_data.shape[0], 1 ] )  
+                    lonB = self.lon_data.reshape( [ 1, self.lon_data.shape[0] ] )
+                    grid_data = numpy.array( [ (x,y,zvalue) for (x,y) in numpy.broadcast(lonB,latB) ] )
+                    np_points_data_list.append( grid_data.flatten() ) 
+            self.np_points_data = numpy.concatenate( np_points_data_list )       
         self.point_data_arrays['x'] = self.np_points_data[0::3].astype( numpy.float32 ) 
         self.point_data_arrays['y'] = self.np_points_data[1::3].astype( numpy.float32 ) 
         self.point_data_arrays['z'] = self.np_points_data[2::3].astype( numpy.float32 ) 
@@ -610,6 +576,15 @@ class GridTest:
         self.mapper = vtk.vtkPolyDataMapper()
         self.geometry_filter.SetInput( self.threshold_filter.GetOutput() )        
         self.createPointsActor( self.geometry_filter.GetOutput() )
+
+    def createPolydata( self, **args  ):
+        self.lon_data = args.get( 'lon', self.lon_data ) 
+        self.lat_data = args.get( 'lat', self.lat_data ) 
+        topo = args.get( 'topo', self.topo )
+        self.polydata = vtk.vtkPolyData()
+        vtk_pts = self.getPoints( **args )
+        self.polydata.SetPoints( vtk_pts )                         
+        self.createPointsActor( self.polydata, args )
         
     def createPointsActor( self, polydata, metadata ):
         self.mapper = vtk.vtkPolyDataMapper()
@@ -659,17 +634,22 @@ class GridTest:
  
     def createVertices( self, **args ): 
         vertices = vtk.vtkCellArray()  
-        index_range = args.get( 'index_range', ( 0, self.ncells ) )         
-        np_index_seq = numpy.arange( index_range[0], index_range[1], dtype=numpy.int64 ) # numpy.array( xrange( ncells ) )
+        index_array = args.get( 'index_array', None ) 
+        if id(index_array) <> id(None): 
+            self.ncells = len( index_array ) 
+            np_index_seq = index_array
+        else:    
+            index_range = args.get( 'index_range', ( 0, self.ncells ) ) 
+            np_index_seq = numpy.arange( index_range[0], index_range[1], dtype=numpy.int64 ) 
         cell_sizes   = numpy.ones_like( np_index_seq )
         self.np_cell_data = numpy.dstack( ( cell_sizes, np_index_seq ) ).flatten()         
         self.vtk_cell_data = numpy_support.numpy_to_vtkIdTypeArray( self.np_cell_data ) 
         vertices.SetCells( cell_sizes.size, self.vtk_cell_data )
         self.polydata.SetVerts(vertices)
-        if index_range[0] <> 0:
-            self.polydata.Update()
-            print "After Vertex Filter: %d, %d " % ( self.polydata.GetNumberOfPoints(), self.polydata.GetNumberOfCells() )
-            self.render()
+#         if index_range[0] <> 0:
+#             self.polydata.Update()
+#             print "After Vertex Filter: %d, %d " % ( self.polydata.GetNumberOfPoints(), self.polydata.GetNumberOfCells() )
+#             self.render()
 
     def createVertices_oneCell( self, geometry, **args ): 
         vertices = vtk.vtkCellArray()
@@ -917,8 +897,8 @@ class GridTest:
         self.lat_data = lat[0:self.npoints]
         self.lon_data = lon[0:self.npoints]
         if self.lon_data.__class__.__name__ == "TransientVariable":
-            self.lat_data = self.lat_data.raw_data()
-            self.lon_data = self.lon_data.raw_data()        
+            self.lat_data = self.lat_data.data
+            self.lon_data = self.lon_data.data       
         xmax, xmin = self.lon_data.max(), self.lon_data.min()
         self.xcenter =  ( xmax + xmin ) / 2.0       
         self.xwidth =  ( xmax - xmin ) 
@@ -973,9 +953,9 @@ class GridTest:
     def getDataBlock( self ):
         if self.lev == None:
             if len( self.var.shape ) == 2:
-                np_var_data_block = self.var[ self.iTimeStep, : ].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, : ].data
             elif len( self.var.shape ) == 3:
-                np_var_data_block = self.var[ self.iTimeStep, :, : ].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, :, : ].data
                 np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0] * np_var_data_block.shape[1], ] )
             self.nLevels = 1
         else:
@@ -986,9 +966,9 @@ class GridTest:
                         self.iLevel = self.nLevels - 1 
                     self.inverted_levels = True 
             if len( self.var.shape ) == 3:               
-                np_var_data_block = self.var[ self.iTimeStep, :, : ].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, :, : ].data
             elif len( self.var.shape ) == 4:
-                np_var_data_block = self.var[ self.iTimeStep, :, :, : ].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, :, :, : ].data
                 np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0], np_var_data_block.shape[1] * np_var_data_block.shape[2] ] )
             
         return np_var_data_block
@@ -1048,6 +1028,29 @@ class GridTest:
         self.createRenderer( **args )
         self.moveSlicePlane() 
         if (self.topo == PlotType.Spherical): self.CreateMap()               
+
+    def plotPoints( self, proc_exec, data_file, grid_file, varname, **args ):
+        gf = cdms2.open( grid_file ) if grid_file else None
+        df = cdms2.open( data_file )       
+        lon, lat = self.getLatLon( df, varname, gf )  
+        self.var = df[ varname ]
+        self.time = self.var.getTime()
+        self.lev = self.var.getLevel()
+        self.grid = self.var.getGrid()
+        
+        if self.lev == None:
+            domain = self.var.getDomain()
+            for axis in domain:
+                if PlotType.isLevelAxis( axis[0].id.lower() ):
+                    self.lev = axis[0]
+                    break
+                
+        self.createPolydata( lon=self.lon_data, lat=self.lat_data, point_data=proc_exec.get_result(0,True) )
+        lut = self.get_LUT( invert = True, number_of_colors = 1024 )
+        self.setVarData( proc_exec.get_result(0,True), lut )          
+        self.createVertices( index_array=proc_exec.get_result(0,True) )
+        self.setPointSize( self.point_size )                                                                                     
+        self.createRenderer( **args )
 
     def plotProduct( self, data_file, grid_file, varname, **args ): 
         gf = cdms2.open( grid_file ) if grid_file else None
@@ -1324,18 +1327,17 @@ if __name__ == '__main__':
     istart = 0
     istep = 4
     arg_tuple_list = [ ]    
-    arg_tuple_list.append( ( grid_file, data_file, varname, istart, istep ) )     
-    multicore_exec = MulticoreExecutable( PointIngestExecutionTarget, ncores=4 )     
-    multicore_exec.execute( arg_tuple_list )      
+    arg_tuple_list.append( ( 'vardata', 0.4, 0.6 ) ) 
+    init_args = ( grid_file, data_file, varname )    
+    multicore_exec = MultiQueueExecutable( PointIngestExecutionTarget, ncores=4 )     
+    multicore_exec.execute( arg_tuple_list, init_args )      
 
     g = GridTest( widget.GetRenderWindow() )
 #    g.plot( data_file, grid_file, varname, topo=PlotType.Planar, roi=(0, 180, 0, 90), max_npts=-1, max_ncells=-1, data_format = data_type )
-    while( True ):
-        product = multicore_exec.get_result()
-        if product == None:     time.sleep(0.1)
-        else:                   break
-    g.createPointsActor( product, testExec.metadata )
-    g.plotProduct( data_file, grid_file, varname )
+        
+    g.plotPoints( multicore_exec, data_file, grid_file, varname )
+#     g.createPointsActor( product, testExec.metadata )
+#     g.plotProduct( data_file, grid_file, varname )
 
     widget.show()   
     app.exec_()    

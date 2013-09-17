@@ -73,6 +73,7 @@ class MulticoreExecutable :
     def __init__( self, executionTargetSubclass, **args ):
         self.nlocks = args.get('nlocks', 0 )
         self.ncores = args.get('ncores', 4 )
+        self.wait_for_input = args.get('wait_for_input', False )
         self.executionTargetSubclass = executionTargetSubclass
         self.reset_queues()
         
@@ -81,7 +82,7 @@ class MulticoreExecutable :
         self.proc_queue = [ ]
         self.locks = []  
     
-    def execute( self, arg_tuple_list, **args ):
+    def execute( self, arg_tuple_list, init_args=None, **args ):
         if self.arg_queue <> None:
             print>>sys.stderr, " MulticoreExecutable error: processes currently running.  "
             return
@@ -93,8 +94,9 @@ class MulticoreExecutable :
         self.result_queue = Queue() 
         for arg_tuple in arg_tuple_list:
             self.arg_queue.put( arg_tuple )
-        for iP in range( self.ncores ):   
-            p = Process( target=self.executionTargetSubclass(iP), args=( self.arg_queue, self.result_queue, self.locks  ) )
+        for iP in range( self.ncores ):
+            exec_target =  self.executionTargetSubclass( iP, self.ncores, self.wait_for_input, init_args ) 
+            p = Process( target=exec_target, args=( self.arg_queue, self.result_queue, self.locks  ) )
             self.proc_queue.append( ( iP, p ) )
             p.start()
         print " Running %d procs" % len( self.proc_queue ); sys.stdout.flush()
@@ -119,22 +121,79 @@ class MulticoreExecutable :
     def get_result( self, block = False ):
         try:
             return self.result_queue.get( block )
-        except Queue.Empty:
+        except Exception:
+            return None        
+
+class MultiQueueExecutable:
+
+    def __init__( self, executionTargetSubclass, **args ):
+        self.nlocks = args.get('nlocks', 0 )
+        self.ncores = args.get('ncores', 4 )
+        self.wait_for_input = args.get('wait_for_input', True )
+        self.executionTargetSubclass = executionTargetSubclass
+        self.reset_queues()
+        
+    def reset_queues(self):              
+        self.arg_queues = [ ]
+        self.proc_queue = [ ]
+        self.locks = []  
+    
+    def execute( self, arg_tuple_list, init_args=None, **args ):
+        self.ncores = args.get('ncores', self.ncores )
+        self.nlocks = args.get('nlocks', self.nlocks )
+        broadcast_tasks = args.get('broadcast_tasks', True )
+        self.locks = [ Lock() for iLock in range(self.nlocks) ]
+        self.arg_queues = [ JoinableQueue() for iQ in range( self.ncores ) ]
+        self.result_queues = [ Queue() for iQ in range( self.ncores ) ]
+        if broadcast_tasks:
+            for iQ in range( self.ncores ):
+                for arg_tuple in arg_tuple_list:
+                    self.arg_queues[iQ].put( arg_tuple )
+        else: 
+            for iArg in range( len( arg_tuple_list ) ): 
+                self.arg_queues[ iArg % self.ncores ].put( arg_tuple_list[ iArg ] )
+        for iP in range( self.ncores ):
+            exec_target =  self.executionTargetSubclass( iP, self.ncores, self.wait_for_input, init_args ) 
+            p = Process( target=exec_target, args=( self.arg_queues[iP], self.result_queues[iP], self.locks  ) )
+            self.proc_queue.append( ( iP, p ) )
+            p.start()
+        print " Running %d procs" % len( self.proc_queue ); sys.stdout.flush()
+        
+    def terminated(self):
+        for p in self.proc_queue:
+            if p.is_alive(): return False
+        self.reset_queues()   
+        return True           
+        
+    def terminate(self):
+        for p in self.proc_queue:
+            p.terminate()
+        self.reset_queues()
+        
+    def get_result( self, iP, block = False ):
+        try:
+            return self.result_queues[iP].get( block )
+        except Exception:
             return None        
 
 class ExecutionTarget:
     
-    def __init__( self, proc_index ):
+    def __init__( self, proc_index, nproc, wait_for_input=False, init_args=None ):
         self.product_cache = {}
         self.proc_index = proc_index
+        self.nproc = nproc
         self.sync_locks = []
+        self.wait_for_input = wait_for_input
+        self.init_args = init_args
             
-    def __call__( self, args_queue, sync_locks = [] ):
+    def __call__( self, args_queue, result_queue, sync_locks = [] ):
         from Queue import Empty
         self.sync_locks = sync_locks
+        self.results = result_queue
+        self.initialize( self.init_args )
         try:
             while True:
-                args = list( args_queue.get( False ) )
+                args = list( args_queue.get( self.wait_for_input ) )
                 self.execute( args )
                 args_queue.task_done()
         except Empty:
@@ -142,6 +201,9 @@ class ExecutionTarget:
             return
         
     def execute( self, args ):
+        pass
+
+    def initialize( self, args ):
         pass
 
 if __name__ == '__main__':
