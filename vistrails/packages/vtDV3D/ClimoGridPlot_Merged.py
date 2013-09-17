@@ -629,7 +629,7 @@ class GridTest:
 #             self.polydata.GetPointData().AddArray( vtk_data )  
  
     def createVertices( self, **args ): 
-        iCore = self.get( 'icore', 0 )
+        iCore = args.get( 'icore', 0 )
         np_index_seq = proc_exec.get_result( iCore, True )
         vertices = vtk.vtkCellArray()  
         cell_sizes   = numpy.ones_like( np_index_seq )
