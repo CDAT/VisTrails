@@ -428,6 +428,7 @@ class GridTest:
         self.points_actors = {}
         self.core_var_data = {}
         self.np_points_data = {}
+        self.core_index_arrays = {}
 
     def getPolydata( self, iCore ):
         actor = self.points_actors[ iCore ]
@@ -598,7 +599,7 @@ class GridTest:
         self.geometry_filter.Modified()
                 
     def setPointSize( self, point_size ):
-        for points_actor in self.points_actors:
+        for points_actor in self.points_actors.values():
             points_actor.GetProperty().SetPointSize( point_size )
             
     def createColormap( self, lut ):
@@ -636,7 +637,8 @@ class GridTest:
         np_cell_data = numpy.dstack( ( cell_sizes, np_index_seq ) ).flatten()         
         self.vtk_cell_data = numpy_support.numpy_to_vtkIdTypeArray( np_cell_data ) 
         vertices.SetCells( cell_sizes.size, self.vtk_cell_data )
-        self.polydata.SetVerts(vertices)
+        polydata = self.getPolydata( iCore )       
+        polydata.SetVerts(vertices)
         self.core_index_arrays[ iCore ] = np_cell_data
 #         if index_range[0] <> 0:
 #             self.polydata.Update()
@@ -1244,7 +1246,7 @@ class GridTest:
 #        self.clipper.AddObserver( 'EndInteractionEvent', self.endClip )
         self.clipper.AddObserver( 'InteractionEvent', self.executeClip )
         self.clipOff() 
-        for points_actor in  self.points_actors:     
+        for points_actor in  self.points_actors.values():     
             self.renderer.AddActor( points_actor )
             self.pointPicker.AddPickList( points_actor ) 
         self.initCamera( )              
@@ -1319,21 +1321,23 @@ if __name__ == '__main__':
         grid_file = None
         varname = "u"
 
-    istart = 0
-    istep = 4
     arg_tuple_list = [ ]    
     arg_tuple_list.append( ( 'vardata', 0.4, 0.6 ) ) 
-    init_args = ( grid_file, data_file, varname )    
-    multicore_exec = MultiQueueExecutable( PointIngestExecutionTarget, ncores=4 )     
+    init_args = ( grid_file, data_file, varname )
+    ncores = 2
+    g = GridTest( widget.GetRenderWindow() )
+     
+    multicore_exec = MultiQueueExecutable( PointIngestExecutionTarget, ncores=ncores )     
     multicore_exec.execute( arg_tuple_list, init_args )      
 
-    g = GridTest( widget.GetRenderWindow() )
 #    g.plot( data_file, grid_file, varname, topo=PlotType.Planar, roi=(0, 180, 0, 90), max_npts=-1, max_ncells=-1, data_format = data_type )
-        
+    
     g.plotPoints( multicore_exec, data_file, grid_file, varname )
 #     g.createPointsActor( product, testExec.metadata )
 #     g.plotProduct( data_file, grid_file, varname )
 
+    app.connect( app, QtCore.SIGNAL("aboutToQuit()"), multicore_exec.terminate()  ) 
     widget.show()   
-    app.exec_()    
+    app.exec_() 
+    multicore_exec.terminate()  
 

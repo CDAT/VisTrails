@@ -152,11 +152,16 @@ class MultiQueueExecutable:
         else: 
             for iArg in range( len( arg_tuple_list ) ): 
                 self.arg_queues[ iArg % self.ncores ].put( arg_tuple_list[ iArg ] )
+                
         for iP in range( self.ncores ):
             exec_target =  self.executionTargetSubclass( iP, self.ncores, self.wait_for_input, init_args ) 
-            p = Process( target=exec_target, args=( self.arg_queues[iP], self.result_queues[iP], self.locks  ) )
-            self.proc_queue.append( ( iP, p ) )
-            p.start()
+            if self.ncores > 1:
+                p = Process( target=exec_target, args=( self.arg_queues[iP], self.result_queues[iP], self.locks  ) )
+                self.proc_queue.append( ( iP, p ) )
+                p.start()
+            else:
+                self.target = exec_target( self.arg_queues[iP], self.result_queues[iP], self.locks  )
+                
         print " Running %d procs" % len( self.proc_queue ); sys.stdout.flush()
         
     def terminated(self):
@@ -185,12 +190,13 @@ class ExecutionTarget:
         self.sync_locks = []
         self.wait_for_input = wait_for_input
         self.init_args = init_args
+        self.results = Queue()
             
     def __call__( self, args_queue, result_queue, sync_locks = [] ):
         from Queue import Empty
         self.sync_locks = sync_locks
         self.results = result_queue
-        self.initialize( self.init_args )
+        self.initialize()
         try:
             while True:
                 args = list( args_queue.get( self.wait_for_input ) )
