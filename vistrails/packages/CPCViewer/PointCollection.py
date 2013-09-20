@@ -4,18 +4,8 @@ Created on Sep 18, 2013
 @author: tpmaxwel
 '''
 import sys
-import getopt
 import numpy
-import numpy.ma as ma
-import string
-import cdtime
-import os.path
-import pprint
-import copy
-import types
-import re
-import vtk, cdms2, time, random, math
-from vtk.util import numpy_support
+import cdms2
 
 class PlotType:
     Planar = 0
@@ -29,10 +19,10 @@ class PlotType:
         return ( id(lat) <> id(None) ) and ( id(lon) <> id(None) )
     
     @classmethod
-    def isLevelAxis( cls, id ):
-        if ( id.find('level')  >= 0 ): return True
-        if ( id.find('bottom') >= 0 ) and ( id.find('top') >= 0 ): return True
-        if id in cls.LevelAliases: return True
+    def isLevelAxis( cls, pid ):
+        if ( pid.find('level')  >= 0 ): return True
+        if ( pid.find('bottom') >= 0 ) and ( pid.find('top') >= 0 ): return True
+        if pid in cls.LevelAliases: return True
         return False    
 
     @classmethod
@@ -56,6 +46,8 @@ class PointCollection():
         self.metadata = {}
         self.istart = 0
         self.istep = 1
+        self.point_data_arrays = {}
+        self.thresholded_range = [ 0, 0 ]
        
     def getDataBlock( self ):
         if self.lev == None:
@@ -104,9 +96,9 @@ class PointCollection():
                 grid_data = numpy.array( [ (x,y,zvalue) for (x,y) in numpy.broadcast(lonB,latB) ] )
                 np_points_data_list.append( grid_data.flatten() ) 
         self.np_points_data = numpy.concatenate( np_points_data_list )
-        self.point_data_arrays['x'] = np_points_data[0::3].astype( numpy.float32 ) 
-        self.point_data_arrays['y'] = np_points_data[1::3].astype( numpy.float32 ) 
-        self.point_data_arrays['z'] = np_points_data[2::3].astype( numpy.float32 )         
+        self.point_data_arrays['x'] = self.np_points_data[0::3].astype( numpy.float32 ) 
+        self.point_data_arrays['y'] = self.np_points_data[1::3].astype( numpy.float32 ) 
+        self.point_data_arrays['z'] = self.np_points_data[2::3].astype( numpy.float32 )         
 
     def getPointsLayout( self ):
         return PlotType.getPointsLayout( self.grid )
@@ -171,7 +163,7 @@ class PointCollection():
         if missing_value: self.var_data = numpy.ma.masked_equal( np_var_data_block, missing_value, False )
         else: self.var_data = np_var_data_block
         self.point_data_arrays['vardata'] = self.var_data
-        self.vrange = ( var_data.min(), var_data.max() ) 
+        self.vrange = ( self.var_data.min(), self.var_data.max() ) 
         
     def getPoints(self):
         return self.np_points_data
@@ -184,12 +176,16 @@ class PointCollection():
 
     def getVarDataRange(self):
         return self.vrange
+
+    def getThresholdedRange(self):
+        return self.thresholded_range
                     
     def execute( self, args, **kwargs ): 
         ( threshold_target, rmin, rmax ) = args
         dv = self.vrange[1] - self.vrange[0]
         vmin = self.vrange[0] + rmin * dv
         vmax = self.vrange[0] + rmax * dv
+        self.thresholded_range = [ vmin, vmax ]
         var_data = self.point_data_arrays.get( threshold_target, None)
         if id(var_data) <> id(None):
             threshold_mask = numpy.logical_and( numpy.greater( var_data, vmin ), numpy.less( var_data, vmax ) ) 
