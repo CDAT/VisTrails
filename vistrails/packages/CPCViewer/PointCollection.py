@@ -7,6 +7,9 @@ import sys
 import numpy
 import cdms2
 
+def isNone(obj):
+    return ( id(obj) == id(None) )
+
 class PlotType:
     Planar = 0
     Spherical = 1
@@ -48,6 +51,11 @@ class PointCollection():
         self.istep = 1
         self.point_data_arrays = {}
         self.thresholded_range = [ 0, 0 ]
+        self.point_layout = None
+        self.axis_bounds = {}
+        
+    def getGridType(self):
+        return self.point_layout
        
     def getDataBlock( self ):
         if self.lev == None:
@@ -67,13 +75,15 @@ class PointCollection():
         return np_var_data_block
     
     def processCoordinates( self, lat, lon ):
-        point_layout = self.getPointsLayout()
-        self.lat_data = lat[self.istart::self.istep] if ( point_layout == PlotType.List ) else lat[::]
+        self.point_layout = self.getPointsLayout()
+        self.lat_data = lat[self.istart::self.istep] if ( self.point_layout == PlotType.List ) else lat[::]
         self.lon_data = lon[self.istart::self.istep] 
         if self.lon_data.__class__.__name__ == "TransientVariable":
             self.lat_data = self.lat_data.data
             self.lon_data = self.lon_data.data        
         xmax, xmin = self.lon_data.max(), self.lon_data.min()
+        self.axis_bounds[ 'x' ] = ( xmin, xmax )
+        self.axis_bounds[ 'y' ] = ( self.lat_data.min(), self.lat_data.max() )
         self.xcenter =  ( xmax + xmin ) / 2.0       
         self.xwidth =  ( xmax - xmin ) 
         return lon, lat
@@ -82,15 +92,14 @@ class PointCollection():
         return len( self.np_points_data ) / 3   
               
     def computePoints( self, **args ):
-        point_layout = self.getPointsLayout()
         np_points_data_list = []
         for iz in range( len( self.lev ) ):
             zvalue = iz * self.z_spacing
-            if point_layout == PlotType.List:
+            if self.point_layout == PlotType.List:
                 z_data = numpy.empty( self.lon_data.shape, self.lon_data.dtype ) 
                 z_data.fill( zvalue )
                 np_points_data_list.append( numpy.dstack( ( self.lon_data, self.lat_data, z_data ) ).flatten() )            
-            elif point_layout == PlotType.Grid: 
+            elif self.point_layout == PlotType.Grid: 
                 latB = self.lat_data.reshape( [ self.lat_data.shape[0], 1 ] )  
                 lonB = self.lon_data.reshape( [ 1, self.lon_data.shape[0] ] )
                 grid_data = numpy.array( [ (x,y,zvalue) for (x,y) in numpy.broadcast(lonB,latB) ] )
@@ -98,7 +107,8 @@ class PointCollection():
         self.np_points_data = numpy.concatenate( np_points_data_list )
         self.point_data_arrays['x'] = self.np_points_data[0::3].astype( numpy.float32 ) 
         self.point_data_arrays['y'] = self.np_points_data[1::3].astype( numpy.float32 ) 
-        self.point_data_arrays['z'] = self.np_points_data[2::3].astype( numpy.float32 )         
+        self.point_data_arrays['z'] = self.np_points_data[2::3].astype( numpy.float32 ) 
+        self.axis_bounds[ 'z' ] = ( 0.0, self.z_spacing * len( self.lev ) )        
 
     def getPointsLayout( self ):
         return PlotType.getPointsLayout( self.grid )
@@ -110,7 +120,7 @@ class PointCollection():
             if PlotType.validCoords( lat, lon ): 
                 return  self.processCoordinates( lat, lon )
         Var = data_file[ varname ]
-        if id(Var) == id(None):
+        if isNone(Var):
             print>>sys.stderr, "Error, can't find variable '%s' in data file." % ( varname )
             return None, None
         if hasattr( Var, "coordinates" ):
@@ -156,8 +166,7 @@ class PointCollection():
             for axis in domain:
                 if PlotType.isLevelAxis( axis[0].id.lower() ):
                     self.lev = axis[0]
-                    break
-                
+                    break        
         self.computePoints()
         np_var_data_block = self.getDataBlock().flatten()     
         if missing_value: self.var_data = numpy.ma.masked_equal( np_var_data_block, missing_value, False )
@@ -179,15 +188,28 @@ class PointCollection():
 
     def getThresholdedRange(self):
         return self.thresholded_range
-                    
-    def execute( self, args, **kwargs ): 
+    
+    def computeThresholdRange( self, args ):
         ( threshold_target, rmin, rmax ) = args
-        dv = self.vrange[1] - self.vrange[0]
-        vmin = self.vrange[0] + rmin * dv
-        vmax = self.vrange[0] + rmax * dv
-        self.thresholded_range = [ vmin, vmax ]
         var_data = self.point_data_arrays.get( threshold_target, None)
-        if id(var_data) <> id(None):
+        if not isNone(var_data):
+            arange = self.axis_bounds.get( threshold_target )
+            if arange:
+                dv = arange[1] - arange[0]
+                vmin = arange[0] + rmin * dv
+                vmax = arange[0] + rmax * dv  
+            elif threshold_target == 'vardata':
+                dv = self.vrange[1] - self.vrange[0]
+                vmin = self.vrange[0] + rmin * dv
+                vmax = self.vrange[0] + rmax * dv
+            if vmin:
+                self.thresholded_range = [ vmin, vmax ]
+                return var_data, vmin, vmax
+        return None, None, None
+                    
+    def execute( self, args, **kwargs ):       
+        var_data, vmin, vmax = self.computeThresholdRange( args )
+        if not isNone(var_data):
             threshold_mask = numpy.logical_and( numpy.greater( var_data, vmin ), numpy.less( var_data, vmax ) ) 
             index_array = numpy.arange( 0, len(var_data) )
             self.selected_index_array = index_array[ threshold_mask ]      

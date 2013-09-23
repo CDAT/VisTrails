@@ -4,15 +4,16 @@ Created on Sep 18, 2013
 @author: tpmaxwel
 '''
 
-import sys
+import sys, os
 import numpy
 import vtk,  time,  math
 from vtk.util import numpy_support
-from PointCollection import PointCollection, PlotType
+from PointCollection import PointCollection, PlotType, isNone
 from multiprocessing import Process, Queue
 from PyQt4.QtCore import SIGNAL, QObject
 
 class ExecutionDataPacket:
+    NONE = -1
     POINTS = 0
     INDICES = 1
     VARDATA = 2
@@ -64,6 +65,7 @@ class PointCollectionExecutionTarget:
         self.point_collection.setDataSlice( self.collection_index, self.ncollections )
         data_packet = ExecutionDataPacket( ExecutionDataPacket.VARDATA, self.collection_index, self.point_collection.getVarData() )
         data_packet[ 'vrange' ] = self.point_collection.getVarDataRange() 
+        data_packet[ 'grid' ] = self.point_collection.getGridType()  
         self.results.put( data_packet )
         data_packet = ExecutionDataPacket( ExecutionDataPacket.POINTS, self.collection_index, self.point_collection.getPoints() )
         self.results.put( data_packet )
@@ -92,7 +94,10 @@ class vtkPointCloud(QObject):
         self.result_queue = Queue() # JoinableQueue()
         self.earth_radius = 100.0
         self.vtk_planar_points = None
+        self.vtk_spherical_points = None
         self.np_points_data = None
+        self.topo = PlotType.Planar
+        self.grid = None
        
     def getPoint( self, iPt ):
         dval = self.vardata[ iPt ]
@@ -112,6 +117,7 @@ class vtkPointCloud(QObject):
         if result.type == ExecutionDataPacket.VARDATA:
             self.vardata = result.data 
             self.vrange = result['vrange']
+            self.grid = result['grid']
 #            self.printLogMessage( " update vrange %s " % str(self.vrange) )      
         elif result.type == ExecutionDataPacket.INDICES:
             self.np_index_seq = result.data 
@@ -119,17 +125,39 @@ class vtkPointCloud(QObject):
         elif result.type == ExecutionDataPacket.POINTS:
             self.np_points_data = result.data 
         return True
+
+    def processResults( self ):
+        try:
+            result = self.result_queue.get( False )
+        except Exception:
+            return ExecutionDataPacket.NONE
+        if result.type == ExecutionDataPacket.VARDATA:
+            self.vardata = result.data 
+            self.vrange = result['vrange']
+            self.grid = result['grid']
+            self.updateScalars()   
+        elif result.type == ExecutionDataPacket.INDICES:
+            self.np_index_seq = result.data 
+            self.trange = result['trange']
+            self.updateVertices()  
+        elif result.type == ExecutionDataPacket.POINTS:
+            self.np_points_data = result.data 
+            self.initPoints()  
+        return True
+    
+    def getGrid(self):
+        return self.grid
+    
+    def hasResultWaiting(self):
+        return False
     
     def getThresholdingRange(self):
         return self.trange
     
-    def generateSubset(self, subset_spec, block = False ):
-        self.actor.VisibilityOff()
+    def generateSubset(self, subset_spec ):
         self.np_index_seq = None
 #        self.printLogMessage( " Push on Arg queue: %s " % str( subset_spec ) )
-        self.arg_queue.put( subset_spec,  block )
-        self.updateVertices()     
-        self.emit( SIGNAL('doneSubsetting'), self.pcIndex )
+        self.arg_queue.put( subset_spec,  False ) 
     
     def getData( self, dtype ):
         if dtype == ExecutionDataPacket.VARDATA:
@@ -141,7 +169,8 @@ class vtkPointCloud(QObject):
    
     def updateVertices( self, **args ): 
         self.vertices = vtk.vtkCellArray()  
-        self.waitForData( ExecutionDataPacket.INDICES )
+        if isNone(self.np_index_seq): 
+            self.waitForData( ExecutionDataPacket.INDICES )
         cell_sizes   = numpy.ones_like( self.np_index_seq )
         self.np_cell_data = numpy.dstack( ( cell_sizes, self.np_index_seq ) ).flatten()         
         self.vtk_cell_data = numpy_support.numpy_to_vtkIdTypeArray( self.np_cell_data ) 
@@ -153,19 +182,21 @@ class vtkPointCloud(QObject):
         self.actor.Modified()
         
     def waitForData( self, dtype ):
-#        self.printLogMessage( " waitForData type %d" % ( dtype ) )   
+        self.printLogMessage( " waitForData type %d" % ( dtype ) )   
         while( self.getData( dtype ) == None ):
             self.getResults(True)
             time.sleep(0.05)
                                              
     def updateScalars( self, **args ):
-        self.waitForData( ExecutionDataPacket.VARDATA )
+        if isNone(self.vardata): 
+            self.waitForData( ExecutionDataPacket.VARDATA )
         vtk_color_data = numpy_support.numpy_to_vtk( self.vardata ) 
         vtk_color_data.SetName( 'vardata' )       
         self.polydata.GetPointData().SetScalars( vtk_color_data )
         
     def initPoints( self, **args ):
-        self.waitForData( ExecutionDataPacket.POINTS )
+        if isNone(self.np_points_data):
+            self.waitForData( ExecutionDataPacket.POINTS )
         vtk_points_data = numpy_support.numpy_to_vtk( self.np_points_data )    
         vtk_points_data.SetNumberOfComponents( 3 )
         vtk_points_data.SetNumberOfTuples( len( self.np_points_data ) / 3 )     
@@ -173,26 +204,23 @@ class vtkPointCloud(QObject):
         self.vtk_planar_points.SetData( vtk_points_data )
         
     def createPolydata( self, **args  ):
-        topo = args.get( 'topo', PlotType.Planar )
         self.polydata = vtk.vtkPolyData()
-        vtk_pts = self.getPoints( topo )
+        vtk_pts = self.getPoints()
         self.polydata.SetPoints( vtk_pts )                         
         self.createPointsActor( self.polydata, **args )
 
     def computeSphericalPoints( self, **args ):
-        self.waitForData( ExecutionDataPacket.POINTS )
-        point_layout = self.getPointsLayout()
         lon_data = self.np_points_data[0::3]
         lat_data = self.np_points_data[1::3]
         radian_scaling = math.pi / 180.0 
         theta =  ( 90.0 - lat_data ) * radian_scaling
         phi = lon_data * radian_scaling
-        if point_layout == PlotType.List:
+        if self.grid == PlotType.List:
             r = numpy.empty( lon_data.shape, lon_data.dtype )      
             r.fill(  self.earth_radius )
             np_sp_grid_data = numpy.dstack( ( r, theta, phi ) ).flatten()
             vtk_sp_grid_data = numpy_support.numpy_to_vtk( np_sp_grid_data ) 
-        elif point_layout == PlotType.Grid:
+        elif self.grid == PlotType.Grid:
             thetaB = theta.reshape( [ theta.shape[0], 1 ] )  
             phiB = phi.reshape( [ 1, phi.shape[0] ] )
             grid_data = numpy.array( [ ( self.earth_radius, t, p ) for (t,p) in numpy.broadcast(thetaB,phiB) ] )
@@ -231,12 +259,12 @@ class vtkPointCloud(QObject):
     def getNumberOfPoints(self): 
         return len( self.np_points_data ) / 3             
     
-    def getPoints( self, topo=PlotType.Planar ):
-        if topo == PlotType.Spherical:
+    def getPoints( self, **args ):
+        if self.topo == PlotType.Spherical:
             if not self.vtk_spherical_points:
                 self.computeSphericalPoints()
             return self.vtk_spherical_points
-        if topo == PlotType.Planar:
+        if self.topo == PlotType.Planar:
             if not self.vtk_planar_points: 
                 self.initPoints()
             return self.vtk_planar_points
@@ -260,10 +288,6 @@ class vtkPointCloud(QObject):
                 self.polydata.SetPoints( pts ) 
                 return pts
         return None 
-
-    def getPointsLayout( self ):
-        return PlotType.getPointsLayout( self.grid )
-            
         
     def setVisiblity(self, visibleLevelIndex ):
         isVisible = ( visibleLevelIndex < 0 ) or ( visibleLevelIndex == self.iLevel )
@@ -275,7 +299,6 @@ class vtkPointCloud(QObject):
         return self.actor.GetVisibility()
     
     def hide(self):
-        self.printLogMessage( 'hide' )
         self.actor.VisibilityOff()
 
     def show(self):
@@ -342,24 +365,40 @@ class vtkPartitionedPointCloud( QObject ):
         self.point_clouds = {}
         self.point_cloud_map = {}
         self.nPartitions = nPartitions
-        self.nActiveCollections = 1
+        self.nActiveCollections = ( nPartitions / 2 ) if self.nPartitions > 3 else 1
+        self.current_subset_spec = None
         for pcIndex in range( nPartitions ):
             pc = vtkPointCloud( pcIndex, nPartitions )
             pc.start_subprocess( init_args )
             self.point_clouds[ pcIndex ] = pc
-            self.connect( pc, SIGNAL('doneSubsetting'), self.newSubset )
         for pc in self.point_clouds.values():
             pc.createPolydata()
             pc.updateScalars()
             self.point_cloud_map[ pc.actor ] = pc
             
+    def startCheckingProcQueues(self):
+        self.startTimer(100)
+        
+    def timerEvent( self, event ):
+        self.checkProcQueues()
+        
+    def checkProcQueues(self):
+        for pc_item in self.point_clouds.items():
+            rv = pc_item[1].processResults()
+            if rv <> ExecutionDataPacket.NONE:
+                self.emit( SIGNAL('newDataAvailable'), pc_item[0], rv )
+                pc_item[1].show()
+            
     def updateNumActiveCollections( self, ncollections_inc ):
         self.nActiveCollections = max( self.nActiveCollections + ncollections_inc, 1 )
         self.nActiveCollections = min( self.nActiveCollections, self.nPartitions )
+        self.generateSubset()
+        print " --> updateNumActiveCollections: %d " % self.nActiveCollections; sys.stdout.flush()
             
-    def clear(self):
-        for pc in self.point_clouds.values():
-            pc.hide()
+    def clear(self, activePCIndex = -1 ):
+        for pc_item in self.point_clouds.items():
+            if pc_item[0] <> activePCIndex:
+                pc_item[1].hide()
             
     def getPoint( self, actor, iPt ):
         pc = self.point_cloud_map.get( actor, None )
@@ -373,15 +412,11 @@ class vtkPartitionedPointCloud( QObject ):
     def getActors(self):
         return [ pc.actor for pc in self.point_clouds.values() ]
     
-    def generateSubset(self, subset_spec ):
+    def generateSubset(self, subset_spec = None ):
+        if subset_spec: self.current_subset_spec = subset_spec
         for pc_item in self.point_clouds.items():
-            if pc_item[0] <= self.nActiveCollections:
-                pc_item[1].generateSubset( subset_spec )
-            
-    def newSubset(self, pcIndex ):
-        self.emit( SIGNAL('newSubset'), pcIndex )
-        pc = self.getPointCloud(pcIndex)
-        pc.show()
+            if pc_item[0] < self.nActiveCollections:
+                pc_item[1].generateSubset( self.current_subset_spec )
                 
     def getPointCloud(self, pcIndex ):
         return self.point_clouds.get( pcIndex, None )
@@ -392,6 +427,25 @@ class vtkPartitionedPointCloud( QObject ):
     
     def values(self):
         return self.point_clouds.values()
+    
+    def setTopo( self, topo, **args ):
+        pts = None
+        for pc_item in self.point_clouds.items():
+            if pc_item[0] < self.nActiveCollections:
+                pts = pc_item[1].setTopo( topo, **args )
+        return pts
+    
+    
+if __name__ == '__main__':
+#                                              Cleanup abandoned processes
+    import subprocess, signal    
+    proc_specs = subprocess.check_output('ps').split('\n')
+    for proc_spec in proc_specs:
+        if 'CPCViewer' in proc_spec:
+            pid = proc_spec.split()[0]
+            os.kill( int(pid), signal.SIGKILL )
+            print "Killing proc: ", proc_spec
+    
         
         
             

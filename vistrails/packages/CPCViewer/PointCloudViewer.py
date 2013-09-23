@@ -6,7 +6,7 @@ Created on Aug 29, 2013
 
 import sys
 import os.path
-import vtk, time
+import vtk, time, math
 from PyQt4 import QtCore, QtGui
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from DistributedPointCollections import vtkPartitionedPointCloud
@@ -371,7 +371,9 @@ class TextDisplayMgr:
 ##             self.threshold_filter.Modified()
 #             self.geometry_filter.Modified()
         
-class GridTest(QtCore.QObject):    
+class CPCPlot(QtCore.QObject):  
+    
+    sliceAxes = [ 'x', 'y', 'z' ]  
 
     def __init__( self, vtk_render_window, **args ):
         QtCore.QObject.__init__( self )
@@ -384,51 +386,22 @@ class GridTest(QtCore.QObject):
         self.xcenter = 100.0
         self.xwidth = 300.0
         self.windowPosition = 0.5
-        self.windowPositionSensitivity = 0.1
-        self.windowWidth = 0.05
+        self.windowPositionSensitivity = 0.05
+        self.windowWidth = 0.03
         self.windowWidthSensitivity = 0.05
+        self.isValid = True
+        self.point_size = 1
+        self.cameraOrientation = {}
+        self.topo = PlotType.Planar
+        self.sliceAxisIndex = 0
+        self.slicePosition = [ 0.5, 0.5, 0.5 ]
+        self.sliceWidth = [ 0.01, 0.01, 0.01 ]
+        self.sliceWidthSensitivity = 0.005
+        self.slicePositionSensitivity = 0.025
+        
+    def invalidate(self):
+        self.isValid = False
        
-#        self.initial_cell_index = 0
-#        self.step_count = 0
-#        self.recolored_points = []
-#        self.iLevel = 0
-#        self.level_cache = {}
-#        self.vtk_spherical_points = None
-#        self.vtk_planar_points = None
-#        self.grid_levels = {}
-#        self.labelBuff = "NA                                    "
-#        self.cameraOrientation = {}
-#        self.iTimeStep = 0
-#        self.cropRegion = None
-#        self.slice_actor = None
-#        self.sliceStepSize = 1.0
-#        self.sliceIndex = [ 0, 0 ]
-#        self.sliceThickness = [ 1.0, 1.0 ]
-#        self.sliceOrientation = 'z'
-#        self.vtk_planar_points = None
-#        self.vtk_spherical_points = None
-#        self.vtk_color_data = None
-#        self.earth_radius = 100.0
-#        self.topo = PlotType.Planar
-#        self.lon_data = None
-#        self.lat_data = None
-#        self.lon_slice_positions = None          
-#        self.lat_slice_positions = None  
-#        self.point_data_arrays = {}  
-#        self.downsizeNPointsTarget = 100000 
-#        self.raw_point_size =  2
-#        self.point_size = self.raw_point_size
-#        self.reduced_point_sizes = { ProcessMode.Slicing:3, ProcessMode.Thresholding:3 }
-#        self.downsizeLevel = 0
-#        self.process_mode = ProcessMode.Default
-#        self.xwidth = 360.0
-#        self.xcenter =  self.xwidth / 2.0
-#        self.z_spacing = 1.0
-#        self.points_actors = {}
-#        self.core_var_data = {}
-#        self.np_points_data = {}
-#        self.core_index_arrays = {}
-
                    
 #    def refreshResolution( self ):
 #        self.setPointSize( self.raw_point_size )
@@ -442,9 +415,10 @@ class GridTest(QtCore.QObject):
     def getLabelActor(self):
         return self.textDisplayMgr.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
 
-    def updateTextDisplay( self, text ):
+    def updateTextDisplay( self, text, render=False ):
         self.labelBuff = str(text)
-        self.getLabelActor().VisibilityOn()    
+        self.getLabelActor().VisibilityOn() 
+        if render: self.render()     
     
 #    def recolorPoint3(self, iPtIndex, color ):
 #        if iPtIndex < self.npoints:
@@ -472,7 +446,8 @@ class GridTest(QtCore.QObject):
 #        self.vtk_color_data.SetValue( iPtIndex, 0 )   
 
     def onRightButtonPress( self, caller, event ):
-#        shift = caller.GetShiftKey()
+        shift = caller.GetShiftKey()
+        if not shift: return
         x, y = caller.GetEventPosition()
         picker = caller.GetPicker()
         picker.Pick( x, y, 0, self.renderer )
@@ -491,7 +466,7 @@ class GridTest(QtCore.QObject):
     def toggleTopo(self):
         self.recordCamera()
         self.topo = ( self.topo + 1 ) % 2
-        pts =  self.setTopo( self.topo, lon=self.lon_data, lat=self.lat_data )
+        pts =  self.partitioned_point_cloud.setTopo( self.topo )
         if pts:
             self.resetCamera( pts )
             self.renderer.ResetCameraClippingRange()
@@ -550,7 +525,7 @@ class GridTest(QtCore.QObject):
         shift = mods & QtCore.Qt.ShiftModifier
         ctrl = mods & QtCore.Qt.ControlModifier
         alt = mods & QtCore.Qt.AltModifier
-        print " KeyPress %x '%s' %d %d %d" % ( key, keysym, shift, ctrl, alt ) 
+#        print " KeyPress %x '%s' %d %d %d" % ( key, keysym, shift, ctrl, alt ) 
         sys.stdout.flush()
         upArrow = QtCore.Qt.Key_Up
         if key == upArrow:
@@ -558,11 +533,15 @@ class GridTest(QtCore.QObject):
                 self.shiftThresholding( 1, 0 )  
             elif self.process_mode == ProcessMode.Resolution:
                 self.shiftResolution( 1, 0 )  
+            elif self.process_mode == ProcessMode.Slicing: 
+                self.shiftSlice( 1, 0 )
         if key == QtCore.Qt.Key_Down:
             if self.process_mode == ProcessMode.Thresholding:
                 self.shiftThresholding( -1, 0 ) 
             elif self.process_mode == ProcessMode.Resolution:
                 self.shiftResolution( -1, 0 )  
+            elif self.process_mode == ProcessMode.Slicing: 
+                self.shiftSlice( -1, 0 )
                 
 #            distance = -1 if self.inverted_levels else 1
 #         if distance:
@@ -573,33 +552,59 @@ class GridTest(QtCore.QObject):
             if self.process_mode == ProcessMode.Thresholding:
                 self.shiftThresholding( 0, -1 )
             elif self.process_mode == ProcessMode.Resolution: 
-                self.shiftResolution( 0, -1 ) 
+                self.shiftResolution( 0, -1 )
+            elif self.process_mode == ProcessMode.Slicing: 
+                self.shiftSlice( 0, -1 )
         if key == QtCore.Qt.Key_Right:       
             if self.process_mode == ProcessMode.Thresholding:
                 self.shiftThresholding( 0, 1 )
             elif self.process_mode == ProcessMode.Resolution: 
                 self.shiftResolution( 0, 1 ) 
+            elif self.process_mode == ProcessMode.Slicing: 
+                self.shiftSlice( 0, 1 )
             
         if   keysym == "s":  self.toggleTopo()
         elif keysym == "t":  self.stepTime()
         elif keysym == "T":  self.stepTime( False )
         elif keysym == "c":  self.toggleClipping()
-        elif keysym == "p":  
-            self.process_mode = ProcessMode.Slicing 
-            self.updateTextDisplay( "Mode: Slicing" )
+        elif keysym == "p":
+            if self.process_mode == ProcessMode.Slicing:
+                self.sliceAxisIndex =  ( self.sliceAxisIndex + 1 ) % 3   
+            else:
+                self.process_mode = ProcessMode.Slicing                          
+            self.updateTextDisplay( "Mode: Slicing", True )
+            self.shiftSlice( 0, 0 )
         elif keysym == "r":  
             self.process_mode = ProcessMode.Resolution
-            self.updateTextDisplay( "Mode: Resolution" ) 
+            self.updateTextDisplay( "Mode: Resolution", True ) 
         elif keysym == "v":
-            self.updateTextDisplay( "Mode: Thresholding" ) 
+            self.updateTextDisplay( "Mode: Thresholding", True )
             self.process_mode = ProcessMode.Thresholding   
         elif keysym == "i":  self.setPointIndexBounds( 5000, 7000 )
-        
+    
+    def shiftSlice( self, position_inc, width_inc ): 
+        if position_inc <> 0:
+            self.slicePosition[self.sliceAxisIndex] = self.slicePosition[self.sliceAxisIndex] + position_inc * self.slicePositionSensitivity
+        if width_inc <> 0:
+            if self.sliceWidth[self.sliceAxisIndex] < 2 * self.sliceWidthSensitivity:
+                self.sliceWidth[self.sliceAxisIndex]  *  2.0**width_inc 
+            else:
+                self.sliceWidth[self.sliceAxisIndex] = self.sliceWidth[self.sliceAxisIndex] + width_inc * self.sliceWidthSensitivity
+                
+        pmin = max( self.slicePosition[self.sliceAxisIndex] - self.sliceWidth[self.sliceAxisIndex], 0.0 )
+        pmin = min( pmin, 1.0 - self.sliceWidth[self.sliceAxisIndex] )
+        pmax = min( self.slicePosition[self.sliceAxisIndex] + self.sliceWidth[self.sliceAxisIndex], 1.0 )
+        pmax = max( pmax, self.sliceWidth[self.sliceAxisIndex] )
+        self.updateSlicing( self.sliceAxisIndex, pmin, pmax )
+                      
     def shiftThresholding( self, position_inc, width_inc ):
         if position_inc <> 0:
             self.windowPosition = self.windowPosition + position_inc * self.windowPositionSensitivity
         if width_inc <> 0:
-            self.windowWidth = self.windowWidth + width_inc * self.windowWidthSensitivity
+            if self.windowWidth < 2 * self.windowWidthSensitivity:
+                self.windowWidth = self.windowWidth *  2.0**width_inc 
+            else:
+                self.windowWidth = self.windowWidth + width_inc * self.windowWidthSensitivity
         rmin = max( self.windowPosition - self.windowWidth, 0.0 )
         rmin = min( rmin, 1.0 - self.windowWidth )
         rmax = min( self.windowPosition + self.windowWidth, 1.0 )
@@ -614,11 +619,19 @@ class GridTest(QtCore.QObject):
         
     def updateThresholding( self, target, rmin, rmax ):
         subset_spec = ( target, rmin, rmax )
-        self.partitioned_point_cloud.clear()
-        self.render()
+        self.invalidate()
         self.partitioned_point_cloud.generateSubset( subset_spec )
         print " setVolumeRenderBounds: %s " % str( subset_spec )
         sys.stdout.flush()
+
+    def updateSlicing( self, sliceIndex, rmin, rmax ):
+        subset_spec = ( self.sliceAxes[sliceIndex], rmin, rmax )
+        self.invalidate()
+        self.partitioned_point_cloud.generateSubset( subset_spec )
+        print " setThresholdingBounds: %s " % str( subset_spec )
+        sys.stdout.flush()
+        
+    
       
 #    def print_grid_coords( self, npoints ):
 #        origin = [ self.lon_data[0], self.lat_data[0] ]
@@ -890,21 +903,30 @@ class GridTest(QtCore.QObject):
         
     def initCollections( self, nCollections, init_args ):
         self.partitioned_point_cloud = vtkPartitionedPointCloud( nCollections, init_args )
-        self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('newSubset'), self.newSubset )
+        self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('newDataAvailable'), self.newDataAvailable )
         self.createRenderer()
+        self.partitioned_point_cloud.startCheckingProcQueues()  
         for point_cloud in  self.partitioned_point_cloud.values():     
             self.renderer.AddActor( point_cloud.actor )
-        self.initCamera( )  
+        self.initCamera( )
         
-    def newSubset( self, pcIndex ): 
+    def reset( self, pcIndex ):
+        if not self.isValid:
+            self.partitioned_point_cloud.clear( pcIndex )
+            self.isValid = True
+        
+    def newDataAvailable( self, pcIndex, data_type ): 
         pc = self.partitioned_point_cloud.getPointCloud( pcIndex )
-        self.pointPicker.AddPickList( pc.actor ) 
-        text = " Thresholding Range: %s " % ( str( pc.getThresholdingRange() ) )
+        if self.pointPicker.GetPickList().GetNumberOfItems() == 0: 
+            self.pointPicker.AddPickList( pc.actor ) 
+        text = " Thresholding Range[%d]: %s " % ( pcIndex, str( pc.getThresholdingRange() ) )
         self.updateTextDisplay( text )
+#        print text; sys.stdout.flush()
+        self.reset( pcIndex )
         self.render()    
                 
     def generateSubset(self, subset_spec ):
-        self.pointPicker.GetPickList().RemoveAllItems()
+#        self.pointPicker.GetPickList().RemoveAllItems()
         self.partitioned_point_cloud.generateSubset( subset_spec )
         
     def terminate(self):
@@ -917,9 +939,9 @@ class GridTest(QtCore.QObject):
     def init(self, **args ):
         init_args = args[ 'init_args' ]      
         nCollections = args.get( 'nCollections', 1 )    
-        point_size = args.get( 'point_size', 2 )    
+        self.point_size = args.get( 'point_size', self.point_size )    
         self.initCollections( nCollections, init_args )
-        self.setPointSize( point_size )
+        self.setPointSize( self.point_size )
         subset_spec =  ( 'vardata', 0.4, 0.6 ) 
         self.generateSubset( subset_spec )
  
@@ -964,7 +986,7 @@ if __name__ == '__main__':
     widget.Initialize()
     widget.Start()        
     point_size = 1
-    nCollections = 4
+    nCollections = 16
     
     if data_type == "WRF":
         data_file = os.path.join( data_dir, "WRF/wrfout_d01_2013-05-01_00-00-00.nc" )
@@ -987,7 +1009,7 @@ if __name__ == '__main__':
         grid_file = None
         varname = "u"
         
-    g = GridTest( widget.GetRenderWindow() ) 
+    g = CPCPlot( widget.GetRenderWindow() ) 
     widget.connect( widget, QtCore.SIGNAL('event'), g.processEvent )  
     g.init( init_args = ( grid_file, data_file, varname ), nCollections=nCollections )
     
