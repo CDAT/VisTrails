@@ -53,6 +53,7 @@ class PointCollection():
         self.thresholded_range = [ 0, 0 ]
         self.point_layout = None
         self.axis_bounds = {}
+        self.threshold_target = None
         
     def getGridType(self):
         return self.point_layout
@@ -189,16 +190,22 @@ class PointCollection():
     def getThresholdedRange(self):
         return self.thresholded_range
     
+    def getThresholdTarget(self):
+        return self.threshold_target
+    
+    def getNLevels(self):
+        return len( self.lev )
+    
     def computeThresholdRange( self, args ):
-        ( threshold_target, rmin, rmax ) = args
-        var_data = self.point_data_arrays.get( threshold_target, None)
+        ( self.threshold_target, rmin, rmax ) = args
+        var_data = self.point_data_arrays.get( self.threshold_target, None)
         if not isNone(var_data):
-            arange = self.axis_bounds.get( threshold_target )
+            arange = self.axis_bounds.get( self.threshold_target )
             if arange:
                 dv = arange[1] - arange[0]
                 vmin = arange[0] + rmin * dv
                 vmax = arange[0] + rmax * dv  
-            elif threshold_target == 'vardata':
+            elif self.threshold_target == 'vardata':
                 dv = self.vrange[1] - self.vrange[0]
                 vmin = self.vrange[0] + rmin * dv
                 vmax = self.vrange[0] + rmax * dv

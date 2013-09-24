@@ -21,9 +21,6 @@ VTK_NOTATION_SIZE = 14
 VTK_INSTRUCTION_SIZE = 24
 MIN_LINE_LEN = 50
 
-def postSubprocessEvent( receiver, event ):
-    QtCore.QCoreApplication.postEvent( receiver, event ) 
-
 def dump_np_array1( a, label=None ):
     print "\n-------------------------------------------------------------------------------------------------"
     if label: print label
@@ -137,6 +134,7 @@ class ProcessMode:
     Slicing = 1
     Thresholding = 2
     Resolution = 3
+    ColorScale = 4
  
 class TextDisplayMgr:
     
@@ -395,9 +393,16 @@ class CPCPlot(QtCore.QObject):
         self.topo = PlotType.Planar
         self.sliceAxisIndex = 0
         self.slicePosition = [ 0.5, 0.5, 0.5 ]
-        self.sliceWidth = [ 0.01, 0.01, 0.01 ]
-        self.sliceWidthSensitivity = 0.005
-        self.slicePositionSensitivity = 0.025
+        self.sliceWidth = [ 0.005, 0.005, 0.005 ]
+        self.sliceWidthSensitivity = [ 0.005, 0.005, 0.005 ]
+        self.slicePositionSensitivity = [ 0.025, 0.025, 0.025 ]
+        self.currentScalarRange = None
+        self.updatedScalarRange = None
+        self.nlevels = None
+        self.colorWindowPosition = 0.5
+        self.colorWindowWidth = 1.0
+        self.windowWidthSensitivity = 0.1 
+        self.colorWindowPositionSensitivity = 0.1 
         
     def invalidate(self):
         self.isValid = False
@@ -535,6 +540,8 @@ class CPCPlot(QtCore.QObject):
                 self.shiftResolution( 1, 0 )  
             elif self.process_mode == ProcessMode.Slicing: 
                 self.shiftSlice( 1, 0 )
+            elif self.process_mode == ProcessMode.ColorScale: 
+                self.shiftColorScale( 1, 0 )            
         if key == QtCore.Qt.Key_Down:
             if self.process_mode == ProcessMode.Thresholding:
                 self.shiftThresholding( -1, 0 ) 
@@ -542,6 +549,8 @@ class CPCPlot(QtCore.QObject):
                 self.shiftResolution( -1, 0 )  
             elif self.process_mode == ProcessMode.Slicing: 
                 self.shiftSlice( -1, 0 )
+            elif self.process_mode == ProcessMode.ColorScale: 
+                self.shiftColorScale( -1, 0 )            
                 
 #            distance = -1 if self.inverted_levels else 1
 #         if distance:
@@ -555,6 +564,8 @@ class CPCPlot(QtCore.QObject):
                 self.shiftResolution( 0, -1 )
             elif self.process_mode == ProcessMode.Slicing: 
                 self.shiftSlice( 0, -1 )
+            elif self.process_mode == ProcessMode.ColorScale: 
+                self.shiftColorScale( 0, -1 )            
         if key == QtCore.Qt.Key_Right:       
             if self.process_mode == ProcessMode.Thresholding:
                 self.shiftThresholding( 0, 1 )
@@ -562,6 +573,8 @@ class CPCPlot(QtCore.QObject):
                 self.shiftResolution( 0, 1 ) 
             elif self.process_mode == ProcessMode.Slicing: 
                 self.shiftSlice( 0, 1 )
+            elif self.process_mode == ProcessMode.ColorScale: 
+                self.shiftColorScale( 0, 1 )            
             
         if   keysym == "s":  self.toggleTopo()
         elif keysym == "t":  self.stepTime()
@@ -577,25 +590,48 @@ class CPCPlot(QtCore.QObject):
         elif keysym == "r":  
             self.process_mode = ProcessMode.Resolution
             self.updateTextDisplay( "Mode: Resolution", True ) 
+        elif keysym == "C":  
+            self.process_mode = ProcessMode.ColorScale
+            self.updateTextDisplay( "Mode: ColorScale", True ) 
         elif keysym == "v":
             self.updateTextDisplay( "Mode: Thresholding", True )
-            self.process_mode = ProcessMode.Thresholding   
+            self.process_mode = ProcessMode.Thresholding 
+            self.shiftThresholding( 0, 0 )  
         elif keysym == "i":  self.setPointIndexBounds( 5000, 7000 )
     
     def shiftSlice( self, position_inc, width_inc ): 
         if position_inc <> 0:
-            self.slicePosition[self.sliceAxisIndex] = self.slicePosition[self.sliceAxisIndex] + position_inc * self.slicePositionSensitivity
+            self.slicePosition[self.sliceAxisIndex] = self.slicePosition[self.sliceAxisIndex] + position_inc * self.slicePositionSensitivity[self.sliceAxisIndex]
         if width_inc <> 0:
-            if self.sliceWidth[self.sliceAxisIndex] < 2 * self.sliceWidthSensitivity:
+            if self.sliceWidth[self.sliceAxisIndex] < 2 * self.sliceWidthSensitivity[self.sliceAxisIndex]:
                 self.sliceWidth[self.sliceAxisIndex]  *  2.0**width_inc 
             else:
-                self.sliceWidth[self.sliceAxisIndex] = self.sliceWidth[self.sliceAxisIndex] + width_inc * self.sliceWidthSensitivity
-                
-        pmin = max( self.slicePosition[self.sliceAxisIndex] - self.sliceWidth[self.sliceAxisIndex], 0.0 )
+                self.sliceWidth[self.sliceAxisIndex] = self.sliceWidth[self.sliceAxisIndex] + width_inc * self.sliceWidthSensitivity[self.sliceAxisIndex]
+         
+        slice_radius = self.sliceWidth[self.sliceAxisIndex]/2.0      
+        pmin = max( self.slicePosition[self.sliceAxisIndex] - slice_radius, 0.0 )
         pmin = min( pmin, 1.0 - self.sliceWidth[self.sliceAxisIndex] )
-        pmax = min( self.slicePosition[self.sliceAxisIndex] + self.sliceWidth[self.sliceAxisIndex], 1.0 )
+        pmax = min( self.slicePosition[self.sliceAxisIndex] + slice_radius, 1.0 )
         pmax = max( pmax, self.sliceWidth[self.sliceAxisIndex] )
         self.updateSlicing( self.sliceAxisIndex, pmin, pmax )
+
+    def shiftColorScale( self, position_inc, width_inc ):
+        if position_inc <> 0:
+            self.colorWindowPosition = self.colorWindowPosition + position_inc * self.colorWindowPositionSensitivity
+        if width_inc <> 0:
+            if self.colorWindowWidth < 2 * self.windowWidthSensitivity:
+                self.colorWindowWidth = self.colorWindowWidth *  2.0**width_inc 
+            else:
+                self.colorWindowWidth = self.colorWindowWidth + width_inc * self.windowWidthSensitivity
+        window_radius = self.colorWindowWidth/2.0    
+        rmin = max( self.colorWindowPosition - window_radius, 0.0 )
+        rmin = min( rmin, 1.0 - self.windowWidth )
+        rmax = min( self.colorWindowPosition + window_radius, 1.0 )
+        rmax = max( rmax, self.windowWidth )
+        ds = self.currentScalarRange[1] - self.currentScalarRange[0]
+        smin = self.currentScalarRange[0] + ds * rmin
+        smax = self.currentScalarRange[0] + ds * rmax
+        self.setScalarRange( ( smin, smax ) )
                       
     def shiftThresholding( self, position_inc, width_inc ):
         if position_inc <> 0:
@@ -605,9 +641,10 @@ class CPCPlot(QtCore.QObject):
                 self.windowWidth = self.windowWidth *  2.0**width_inc 
             else:
                 self.windowWidth = self.windowWidth + width_inc * self.windowWidthSensitivity
-        rmin = max( self.windowPosition - self.windowWidth, 0.0 )
+        window_radius = self.windowWidth/2.0    
+        rmin = max( self.windowPosition - window_radius, 0.0 )
         rmin = min( rmin, 1.0 - self.windowWidth )
-        rmax = min( self.windowPosition + self.windowWidth, 1.0 )
+        rmax = min( self.windowPosition + window_radius, 1.0 )
         rmax = max( rmax, self.windowWidth )
         self.updateThresholding( 'vardata', rmin, rmax )
 
@@ -621,15 +658,15 @@ class CPCPlot(QtCore.QObject):
         subset_spec = ( target, rmin, rmax )
         self.invalidate()
         self.partitioned_point_cloud.generateSubset( subset_spec )
-        print " setVolumeRenderBounds: %s " % str( subset_spec )
-        sys.stdout.flush()
+#         print " setVolumeRenderBounds: %s " % str( subset_spec )
+#         sys.stdout.flush()
 
     def updateSlicing( self, sliceIndex, rmin, rmax ):
         subset_spec = ( self.sliceAxes[sliceIndex], rmin, rmax )
         self.invalidate()
         self.partitioned_point_cloud.generateSubset( subset_spec )
-        print " setThresholdingBounds: %s " % str( subset_spec )
-        sys.stdout.flush()
+#         print " setThresholdingBounds: %s " % str( subset_spec )
+#         sys.stdout.flush()
         
     
       
@@ -904,29 +941,65 @@ class CPCPlot(QtCore.QObject):
     def initCollections( self, nCollections, init_args ):
         self.partitioned_point_cloud = vtkPartitionedPointCloud( nCollections, init_args )
         self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('newDataAvailable'), self.newDataAvailable )
+        self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('updateScaling'), self.updateScaling )        
         self.createRenderer()
-        self.partitioned_point_cloud.startCheckingProcQueues()  
         for point_cloud in  self.partitioned_point_cloud.values():     
             self.renderer.AddActor( point_cloud.actor )
         self.initCamera( )
+        
+    def updateScaling(self):
+        self.applyScalarRangeUpdate()
+        
+    def applyScalarRangeUpdate(self):
+        if self.updatedScalarRange and ( self.updatedScalarRange <> self.currentScalarRange ):
+            self.setScalarRange( self.updatedScalarRange )
+            self.currentScalarRange = self.updatedScalarRange
+        
+    def setScalarRange( self, scalar_range ):
+        self.partitioned_point_cloud.setScalarRange(scalar_range )
+        self.render()
         
     def reset( self, pcIndex ):
         if not self.isValid:
             self.partitioned_point_cloud.clear( pcIndex )
             self.isValid = True
+            
+    def updateScalarRange( self, scalar_range ):
+        if self.updatedScalarRange == None:
+            self.updatedScalarRange = list( scalar_range )
+        else:
+            self.updatedScalarRange[0] = min( self.updatedScalarRange[0], scalar_range[0] )
+            self.updatedScalarRange[1] = max( self.updatedScalarRange[1], scalar_range[1] )
+
+#        print " updateScalarRange: %s " % str( self.updatedScalarRange ); sys.stdout.flush()
         
+    def updateZRange( self, pc ):
+        nlev = pc.getNLevels()
+        if nlev <> self.nlevels:
+            self.nlevels = nlev
+            self.sliceWidth[2] = 1.0/(self.nlevels)
+            slice_index = round( self.slicePosition[2] / self.sliceWidth[2] ) 
+            self.slicePosition[2] = slice_index * self.sliceWidth[2]
+            self.sliceWidthSensitivity[2] = self.sliceWidth[2]
+            self.slicePositionSensitivity[2] = self.sliceWidth[2]
+               
     def newDataAvailable( self, pcIndex, data_type ): 
         pc = self.partitioned_point_cloud.getPointCloud( pcIndex )
+        self.partitioned_point_cloud.postDataQueueEvent()
+        sr = pc.getScalarRange() 
+        if sr: self.updateScalarRange( sr )
+        self.updateZRange( pc )
         if self.pointPicker.GetPickList().GetNumberOfItems() == 0: 
             self.pointPicker.AddPickList( pc.actor ) 
         text = " Thresholding Range[%d]: %s " % ( pcIndex, str( pc.getThresholdingRange() ) )
         self.updateTextDisplay( text )
 #        print text; sys.stdout.flush()
         self.reset( pcIndex )
-        self.render()    
-                
+        self.render() 
+                          
     def generateSubset(self, subset_spec ):
 #        self.pointPicker.GetPickList().RemoveAllItems()
+        if (subset_spec[0] == 'vardata'): self.updatedScalarRange = None
         self.partitioned_point_cloud.generateSubset( subset_spec )
         
     def terminate(self):
