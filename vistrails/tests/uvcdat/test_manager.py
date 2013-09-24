@@ -77,7 +77,7 @@ class UVCDATTestManager:
         projectController.variable_was_dropped(dropInfo)
         
     def simulate_plot_drag_and_drop(self, package="VCS", name="Boxfill", 
-                                    method="ASD", sheet="Sheet 1", col=0, 
+                                    method="default", sheet="Sheet 1", col=0, 
                                     row=0, projectController=None):
         """
         @param method: Only used if package is VCS
