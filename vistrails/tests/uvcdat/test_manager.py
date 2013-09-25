@@ -63,13 +63,22 @@ class UVCDATTestManager:
             
         loadVariableWidget.defineVarCloseClicked()
         
+    def varname_from_index(self, index):
+        """Variable name based on it's index in the defined variables widget
+        """
+        definedVariableWidget = self.uvcdat_window.dockVariable.widget()
+        variableItems = definedVariableWidget.getItems()
+        return variableItems[index].getVarName()
+    
+    def selectVariable(self, varname):
+        definedVariableWidget = self.uvcdat_window.dockVariable.widget()
+        definedVariableWidget.selectVariableFromName(varname)
+        
     def simulate_variable_drag_and_drop(self, varname_or_index=0, 
                                         sheet="Sheet 1", col=0, row=0, 
                                         projectController=None):
-        definedVariableWidget = self.uvcdat_window.dockVariable.widget()
         if isinstance( varname_or_index, ( int, long ) ):
-            variableItems = definedVariableWidget.getItems()
-            varname_or_index = variableItems[0].getVarName()
+            varname_or_index = self.varname_from_index(varname_or_index)
         dropInfo = (varname_or_index, sheet, col, row)
         
         if projectController is None:
@@ -126,6 +135,22 @@ class UVCDATTestManager:
         self.simulate_plot_drag_and_drop()
         self.simulate_variable_drag_and_drop()
         
+    def simulate_calculator_command(self, command):
+        self.uvcdat_window.dockCalculator.widget().le.setText(command)
+        self.uvcdat_window.dockCalculator.widget().run_command()
+
+    def simulate_set_monthly_bounds(self, varname):
+        self.selectVariable(varname)
+        
+        class dummyAction:
+            def text(self):
+                return "Set Bounds For Monthly Data"
+            
+        self.uvcdat_window.mainMenu.setBounds(dummyAction())
+        
+    def simulate_mean_operation(self, varname):
+        
+        
     def close_project(self):
         from gui.vistrails_window import _app
         _app.close_vistrail(None, True)
@@ -181,6 +206,15 @@ class UVCDATTestManager:
         if len(cellController.plots[0].variables) > 0:
             raise Exception("1D variable longitude should have been prevented "
                             "from being added to Isofill plot")
+            
+    @UVCDATTest
+    def test_time_bounds_computed_vars(self):
+        
+        self.simulate_load_variable()
+        varname = self.varname_from_index(0)
+        self.simulate_calculator_command("computed_var=%s*2" % varname)
+        self.simulate_set_monthly_bounds("computed_var")
+        self.simulate_mean_operation("computed_var")
         
     innerFail = False
         
