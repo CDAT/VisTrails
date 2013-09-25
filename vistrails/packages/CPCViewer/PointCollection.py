@@ -219,5 +219,6 @@ class PointCollection():
         if not isNone(var_data):
             threshold_mask = numpy.logical_and( numpy.greater( var_data, vmin ), numpy.less( var_data, vmax ) ) 
             index_array = numpy.arange( 0, len(var_data) )
-            self.selected_index_array = index_array[ threshold_mask ]      
+            self.selected_index_array = index_array[ threshold_mask ]  
+        return vmin, vmax   
 

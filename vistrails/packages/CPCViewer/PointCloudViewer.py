@@ -6,10 +6,10 @@ Created on Aug 29, 2013
 
 import sys
 import os.path
-import vtk, time, math
+import vtk, time
 from PyQt4 import QtCore, QtGui
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from DistributedPointCollections import vtkPartitionedPointCloud
+from DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud
 
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
@@ -135,6 +135,9 @@ class ProcessMode:
     Thresholding = 2
     Resolution = 3
     ColorScale = 4
+    HighRes = 0
+    LowRes = 1
+    AnyRes = 3
  
 class TextDisplayMgr:
     
@@ -195,179 +198,6 @@ class TextDisplayMgr:
         textActor.id = aid
         return textActor 
 
-#class PointIngestExecutionTarget(ExecutionTarget):
-#
-#    def __init__( self, proc_index, nproc, wait_for_input=False, init_args=None ):
-#        self.iTimeStep = 0
-#        self.point_data_arrays = {} 
-#        self.vtk_planar_points = None                                  
-#        self.cameraOrientation = {}
-#        self.topo = PlotType.Planar
-#        self.lon_data = None
-#        self.lat_data = None 
-#        self.z_spacing = 1.0 
-#        self.metadata = {}
-#        ExecutionTarget.__init__( self, proc_index, nproc, wait_for_input, init_args )
-#       
-#    def getDataBlock( self ):
-#        if self.lev == None:
-#            if len( self.var.shape ) == 2:
-#                np_var_data_block = self.var[ self.iTimeStep, self.istart::self.istep ].data
-#            elif len( self.var.shape ) == 3:
-#                np_var_data_block = self.var[ self.iTimeStep, :, self.istart::self.istep ].data
-#                np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0] * np_var_data_block.shape[1], ] )
-#            self.nLevels = 1
-#        else:
-#            if len( self.var.shape ) == 3:               
-#                np_var_data_block = self.var[ self.iTimeStep, :, self.istart::self.istep ].data
-#            elif len( self.var.shape ) == 4:
-#                np_var_data_block = self.var[ self.iTimeStep, :, :, self.istart::self.istep ].data
-#                np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0], np_var_data_block.shape[1] * np_var_data_block.shape[2] ] )
-#
-#        return np_var_data_block
-#    
-#    def processCoordinates( self, lat, lon ):
-#        point_layout = self.getPointsLayout()
-#        self.lat_data = lat[self.istart::self.istep] if ( point_layout == PlotType.List ) else lat[::]
-#        self.lon_data = lon[self.istart::self.istep] 
-#        if self.lon_data.__class__.__name__ == "TransientVariable":
-#            self.lat_data = self.lat_data.data
-#            self.lon_data = self.lon_data.data        
-#        xmax, xmin = self.lon_data.max(), self.lon_data.min()
-#        self.xcenter =  ( xmax + xmin ) / 2.0       
-#        self.xwidth =  ( xmax - xmin ) 
-##         for plotType in [ PlotType.Spherical, PlotType.Planar ]:
-##             position = GridLevel.getXYZPoint( self.xcenter, 0.0, 900.0 ) if PlotType.Spherical else (  self.xcenter, 0.0, 900.0 ) 
-##             focal_point =  (  0.0, 0.0, 0.0 ) if PlotType.Spherical else (  self.xcenter, 0.0, 0.0 )
-##             self.cameraOrientation[ plotType ] = ( position,  focal_point, (  0.0, 1.0, 0.0 )   )            
-#        return lon, lat
-#    
-#    def getNumberOfPoints(self): 
-#        return len( self.np_points_data ) / 3   
-#              
-#    def computePoints( self, **args ):
-#        point_layout = self.getPointsLayout()
-#        np_points_data_list = []
-#        for iz in range( len( self.lev ) ):
-#            zvalue = iz * self.z_spacing
-#            if point_layout == PlotType.List:
-#                z_data = numpy.empty( self.lon_data.shape, self.lon_data.dtype ) 
-#                z_data.fill( zvalue )
-#                np_points_data_list.append( numpy.dstack( ( self.lon_data, self.lat_data, z_data ) ).flatten() )            
-#            elif point_layout == PlotType.Grid: 
-#                latB = self.lat_data.reshape( [ self.lat_data.shape[0], 1 ] )  
-#                lonB = self.lon_data.reshape( [ 1, self.lon_data.shape[0] ] )
-#                grid_data = numpy.array( [ (x,y,zvalue) for (x,y) in numpy.broadcast(lonB,latB) ] )
-#                np_points_data_list.append( grid_data.flatten() ) 
-#        np_points_data = numpy.concatenate( np_points_data_list )
-#        self.point_data_arrays['x'] = np_points_data[0::3].astype( numpy.float32 ) 
-#        self.point_data_arrays['y'] = np_points_data[1::3].astype( numpy.float32 ) 
-#        self.point_data_arrays['z'] = np_points_data[2::3].astype( numpy.float32 ) 
-#        self.results.put( np_points_data )         
-#
-#    def getPointsLayout( self ):
-#        return PlotType.getPointsLayout( self.grid )
-#
-#    def getLatLon( self, data_file, varname, grid_file = None ):
-#        if grid_file:
-#            lat = grid_file['lat']
-#            lon = grid_file['lon']
-#            if PlotType.validCoords( lat, lon ): 
-#                return  self.processCoordinates( lat, lon )
-#        Var = data_file[ varname ]
-#        if id(Var) == id(None):
-#            print>>sys.stderr, "Error, can't find variable '%s' in data file." % ( varname )
-#            return None, None
-#        if hasattr( Var, "coordinates" ):
-#            axis_ids = Var.coordinates.strip().split(' ')
-#            lat = data_file( axis_ids[1], squeeze=1 )  
-#            lon = data_file( axis_ids[0], squeeze=1 )
-#            if PlotType.validCoords( lat, lon ): 
-#                return  self.processCoordinates( lat, lon )
-#        elif hasattr( Var, "stagger" ):
-#            stagger = Var.stagger.strip()
-#            lat = data_file( "XLAT_%s" % stagger, squeeze=1 )  
-#            lon = data_file( "XLONG_%s" % stagger, squeeze=1 )
-#            if PlotType.validCoords( lat, lon ): 
-#                return  self.processCoordinates( lat, lon )
-#
-#        lat = Var.getLatitude()  
-#        lon = Var.getLongitude()
-#        if PlotType.validCoords( lat, lon ): 
-#            return  self.processCoordinates( lat.getValue(), lon.getValue() )
-#        
-#        lat = data_file( "XLAT", squeeze=1 )  
-#        lon = data_file( "XLONG", squeeze=1 )
-#        if PlotType.validCoords( lat, lon ): 
-#            return  self.processCoordinates( lat, lon )
-#        
-#        return None, None
-#
-#    def initialize( self, args ): 
-#        ( grid_file, data_file, varname ) = args
-#        gf = cdms2.open( grid_file ) if grid_file else None
-#        df = cdms2.open( data_file )       
-#        self.var = df[ varname ]
-#        self.grid = self.var.getGrid()
-#        self.istart = self.proc_index
-#        self.istep = self.nproc
-#        self.lon, self.lat = self.getLatLon( df, varname, gf )                              
-#        self.time = self.var.getTime()
-#        self.lev = self.var.getLevel()
-#        missing_value = self.var.attributes.get( 'missing_value', None )
-#        if self.lev == None:
-#            domain = self.var.getDomain()
-#            for axis in domain:
-#                if PlotType.isLevelAxis( axis[0].id.lower() ):
-#                    self.lev = axis[0]
-#                    break
-#                
-#        self.computePoints()
-#        np_var_data_block = self.getDataBlock().flatten()
-#        self.results.put( np_var_data_block )     
-#        if missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, missing_value, False )
-#        else: var_data = np_var_data_block
-#        self.point_data_arrays['vardata'] = var_data
-#        self.vrange = ( var_data.min(), var_data.max() ) 
-#                    
-#    def execute( self, args, **kwargs ): 
-#        ( threshold_target, rmin, rmax ) = args
-#        dv = self.vrange[1] - self.vrange[0]
-#        vmin = self.vrange[0] + rmin * dv
-#        vmax = self.vrange[0] + rmax * dv
-#        var_data = self.point_data_arrays.get( threshold_target, None)
-#        if id(var_data) <> id(None):
-#            threshold_mask = numpy.logical_and( numpy.greater( var_data, vmin ), numpy.less( var_data, vmax ) ) 
-#            index_array = numpy.arange( 0, len(var_data) )
-#            selected_index_array = index_array[ threshold_mask ]
-#            self.results.put( selected_index_array )       
-#        
-##     def computeThresholdedPoints( self, **args  ):
-##         topo = args.get( 'topo', self.topo )
-##         self.polydata = vtk.vtkPolyData()
-##         self.polydata.SetPoints( self.vtk_planar_points )                             
-##         self.threshold_filter = vtk.vtkThreshold()
-##         self.threshold_filter.SetInput( self.polydata )
-##         self.geometry_filter = vtk.vtkGeometryFilter()
-##         self.geometry_filter.SetInput( self.threshold_filter.GetOutput() )
-#        
-##     def getProduct(self):
-##         return self.geometry_filter.GetOutput()
-##                           
-##     def setThresholdingArray( self, aname ):
-##         self.threshold_filter.SetInputArrayToProcess( 0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, aname )
-## 
-##     def setSliceThresholdBounds( self, slicePosition = 0.0 ):
-##         if self.lev == None: return
-##         sliceThickness = None
-##         self.setThresholdingArray( self.sliceOrientation )
-##         if    self.sliceOrientation == 'x': sliceThickness = self.sliceThickness[0]
-##         elif  self.sliceOrientation == 'y': sliceThickness = self.sliceThickness[1]
-##         elif  self.sliceOrientation == 'z': sliceThickness = self.z_spacing/2
-##         if sliceThickness:
-##             self.threshold_filter.ThresholdBetween( slicePosition-sliceThickness,  slicePosition+sliceThickness )
-##             self.threshold_filter.Modified()
-#             self.geometry_filter.Modified()
         
 class CPCPlot(QtCore.QObject):  
     
@@ -402,12 +232,33 @@ class CPCPlot(QtCore.QObject):
         self.colorWindowPosition = 0.5
         self.colorWindowWidth = 1.0
         self.windowWidthSensitivity = 0.1 
-        self.colorWindowPositionSensitivity = 0.1 
-        
+        self.colorWindowPositionSensitivity = 0.1
+        self.render_mode = ProcessMode.HighRes
+       
     def invalidate(self):
         self.isValid = False
+        
+    def toggleRenderMode( self ):     
+        new_render_mode = ( self.render_mode + 1 ) % 2 
+        self.setRenderMode( new_render_mode )
+        self.render()
+        
+    def getPointCloud(self):
+        return self.partitioned_point_cloud if ( self.render_mode ==  ProcessMode.HighRes ) else self.point_cloud_overview 
+
+    def getPointClouds(self):
+        return [ self.partitioned_point_cloud, self.point_cloud_overview ]
        
-                   
+    def setRenderMode( self, render_mode ): 
+        self.render_mode = render_mode
+        if render_mode ==  ProcessMode.HighRes:
+            self.low_res_actor.VisibilityOff() 
+            self.partitioned_point_cloud.show()      
+        else: 
+            self.partitioned_point_cloud.clear()
+            self.low_res_actor.VisibilityOn()
+            self.shiftThresholding( 0, 0 ) 
+        self.setScalarRange( self.currentScalarRange )   
 #    def refreshResolution( self ):
 #        self.setPointSize( self.raw_point_size )
 #        downsizeFactor = int( math.ceil( self.getNumberOfPoints() / float( self.downsizeNPointsTarget ) ) ) 
@@ -471,14 +322,16 @@ class CPCPlot(QtCore.QObject):
     def toggleTopo(self):
         self.recordCamera()
         self.topo = ( self.topo + 1 ) % 2
-        pts =  self.partitioned_point_cloud.setTopo( self.topo )
-        if pts:
-            self.resetCamera( pts )
-            self.renderer.ResetCameraClippingRange()
+        pts =  [  self.partitioned_point_cloud.setTopo( self.topo ),
+                  self.point_cloud_overview.setTopo( self.topo)    ] 
+        if pts[self.render_mode]:
+            self.resetCamera( pts[self.render_mode] )
+            self.renderer.ResetCameraClippingRange()   
         self.render()
         
-    def render(self):
-        self.renderWindow.Render()
+    def render( self, onMode = ProcessMode.AnyRes ):
+        if (onMode == ProcessMode.AnyRes) or ( onMode == self.render_mode ):
+            self.renderWindow.Render()
 
     def toggleClipping(self):
         if self.clipper.GetEnabled():   self.clipOff()
@@ -580,6 +433,7 @@ class CPCPlot(QtCore.QObject):
         elif keysym == "t":  self.stepTime()
         elif keysym == "T":  self.stepTime( False )
         elif keysym == "c":  self.toggleClipping()
+        elif keysym == "m":  self.toggleRenderMode()
         elif keysym == "p":
             if self.process_mode == ProcessMode.Slicing:
                 self.sliceAxisIndex =  ( self.sliceAxisIndex + 1 ) % 3   
@@ -657,14 +511,18 @@ class CPCPlot(QtCore.QObject):
     def updateThresholding( self, target, rmin, rmax ):
         subset_spec = ( target, rmin, rmax )
         self.invalidate()
-        self.partitioned_point_cloud.generateSubset( subset_spec )
+        for pc in self.getPointClouds():
+            pc.generateSubset( subset_spec )
+        self.render( ProcessMode.LowRes )
 #         print " setVolumeRenderBounds: %s " % str( subset_spec )
 #         sys.stdout.flush()
 
     def updateSlicing( self, sliceIndex, rmin, rmax ):
         subset_spec = ( self.sliceAxes[sliceIndex], rmin, rmax )
         self.invalidate()
-        self.partitioned_point_cloud.generateSubset( subset_spec )
+        for pc in self.getPointClouds():
+            pc.generateSubset( subset_spec )
+        self.render( ProcessMode.LowRes )
 #         print " setThresholdingBounds: %s " % str( subset_spec )
 #         sys.stdout.flush()
         
@@ -943,6 +801,8 @@ class CPCPlot(QtCore.QObject):
         self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('newDataAvailable'), self.newDataAvailable )
         self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('updateScaling'), self.updateScaling )        
         self.createRenderer()
+        self.low_res_actor = self.point_cloud_overview.actor
+        self.renderer.AddActor( self.low_res_actor )
         for point_cloud in  self.partitioned_point_cloud.values():     
             self.renderer.AddActor( point_cloud.actor )
         self.initCamera( )
@@ -956,7 +816,7 @@ class CPCPlot(QtCore.QObject):
             self.currentScalarRange = self.updatedScalarRange
         
     def setScalarRange( self, scalar_range ):
-        self.partitioned_point_cloud.setScalarRange(scalar_range )
+        self.getPointCloud().setScalarRange(scalar_range )
         self.render()
         
     def reset( self, pcIndex ):
@@ -999,20 +859,22 @@ class CPCPlot(QtCore.QObject):
                           
     def generateSubset(self, subset_spec ):
 #        self.pointPicker.GetPickList().RemoveAllItems()
-        if (subset_spec[0] == 'vardata'): self.updatedScalarRange = None
-        self.partitioned_point_cloud.generateSubset( subset_spec )
+        if (subset_spec[0] == 'vardata'): self.updatedScalarRange = None       
+        self.getPointCloud().generateSubset( subset_spec )        
         
     def terminate(self):
         for point_cloud in self.partitioned_point_cloud.values(): 
             point_cloud.terminate()  
           
     def setPointSize( self, point_size ) :  
-        self.partitioned_point_cloud.setPointSize( point_size )    
+        self.getPointCloud().setPointSize( point_size )    
       
     def init(self, **args ):
         init_args = args[ 'init_args' ]      
         nCollections = args.get( 'nCollections', 1 )    
         self.point_size = args.get( 'point_size', self.point_size )    
+        self.point_cloud_overview = vtkLocalPointCloud( 0, 100 ) 
+        self.point_cloud_overview.initialize( init_args )
         self.initCollections( nCollections, init_args )
         self.setPointSize( self.point_size )
         subset_spec =  ( 'vardata', 0.4, 0.6 ) 
