@@ -217,7 +217,8 @@ parameters from other instances")
            from tests.uvcdat.test_manager import UVCDATTestManager
            cdat_source_dir = self.temp_configuration.cdatSourceDir
            testManager = UVCDATTestManager(cdat_source_dir, self.uvcdatWindow)
-           failCount = testManager.run_tests()
+           specificTest = self.temp_configuration.specificTest
+           failCount = testManager.run_tests(specificTest)
            
            #use a single shot timer to ensure _exec has ran before trying to quit
            quit_function = lambda: QtCore.QCoreApplication.exit(failCount)
