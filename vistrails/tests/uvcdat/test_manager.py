@@ -73,7 +73,12 @@ class UVCDATTestManager:
     def selectVariable(self, varname):
         definedVariableWidget = self.uvcdat_window.dockVariable.widget()
         definedVariableWidget.selectVariableFromName(varname)
-        
+    
+    def deselectVariables(self):
+        definedVariableWidget = self.uvcdat_window.dockVariable.widget()
+        selectedItems = definedVariableWidget.getSelectedItems()
+        definedVariableWidget.unselectItems(selectedItems)
+
     def simulate_variable_drag_and_drop(self, varname_or_index=0, 
                                         sheet="Sheet 1", col=0, row=0, 
                                         projectController=None):
@@ -138,17 +143,39 @@ class UVCDATTestManager:
     def simulate_calculator_command(self, command):
         self.uvcdat_window.dockCalculator.widget().le.setText(command)
         self.uvcdat_window.dockCalculator.widget().run_command()
-
-    def simulate_set_monthly_bounds(self, varname):
-        self.selectVariable(varname)
         
-        class dummyAction:
-            def text(self):
-                return "Set Bounds For Monthly Data"
-            
-        self.uvcdat_window.mainMenu.setBounds(dummyAction())
+    def get_sub_menu(self, menu, name):
+        """Retrieves the subMenu by name from menu 
+        """
+        for subMenu in menu.children()[1:]:
+            if subMenu.menuAction().text() == name:
+                return subMenu
+        
+    def get_menu_action(self, menu, name):
+        """Retrieves the action by name from menu 
+        """
+        for action in menu.actions():
+            if action.text() == name:
+                return action
+        
+    def trigger_pcmdi_menu_action(self, *args):
+        """Takes a list of ordered strings representing the menu path
+        
+        e.g. ['Statistics','Mean']
+        """
+        menu = self.uvcdat_window.mainMenu.pcmdiTools
+        for i in range(len(args)-1):
+            menu = self.get_sub_menu(menu, args[i])
+        
+        #the last arg should be an action, not another menu  
+        action = self.get_menu_action(menu, args[-1])
+        action.trigger()
         
     def simulate_mean_operation(self, varname):
+        self.deselectVariables()
+        self.selectVariable(varname)
+        
+        self.trigger_pcmdi_menu_action(['Statistics', 'Mean'])
         
         
     def close_project(self):
@@ -210,11 +237,33 @@ class UVCDATTestManager:
     @UVCDATTest
     def test_time_bounds_computed_vars(self):
         
+        #load test variable
         self.simulate_load_variable()
+        
+        #do a simple computation (x*2)
         varname = self.varname_from_index(0)
         self.simulate_calculator_command("computed_var=%s*2" % varname)
-        self.simulate_set_monthly_bounds("computed_var")
-        self.simulate_mean_operation("computed_var")
+        
+        #select the new compute var
+        self.deselectVariables()
+        self.selectVariable("computed_var")
+        
+        #set monthly time bounds
+        menuPath = ['Time Tools', 'Bounds Set', 'Set Bounds For Monthly Data']
+        self.trigger_pcmdi_menu_action(*menuPath)
+        
+        #perform mean
+        self.trigger_pcmdi_menu_action('Statistics', 'Mean')
+        
+        #set the action to 'sum' on the popup widget
+        from gui.uvcdat.uvcdatCommons import QRadioButtonFrame
+        for choice in self.uvcdat_window.mainMenu.pop.choices:
+            if (isinstance(choice, QRadioButtonFrame) and
+                    choice.label.text() == 'action'):
+                choice.setChecked("'average'")
+                
+        #trigger ok on pop up widget
+        self.uvcdat_window.mainMenu.pop.ok()
         
     innerFail = False
         
