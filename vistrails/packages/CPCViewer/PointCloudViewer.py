@@ -234,6 +234,9 @@ class CPCPlot(QtCore.QObject):
         self.windowWidthSensitivity = 0.1 
         self.colorWindowPositionSensitivity = 0.1
         self.render_mode = ProcessMode.HighRes
+        self.planeWidget = None
+        self.render_mode_point_sizes = [ 4, 10 ]
+        self.colorRange = 0 
        
     def invalidate(self):
         self.isValid = False
@@ -251,14 +254,15 @@ class CPCPlot(QtCore.QObject):
        
     def setRenderMode( self, render_mode ): 
         self.render_mode = render_mode
+        self.getPointCloud().refresh(True)
+        self.refreshPointSize()          
+        self.setScalarRange( self.currentScalarRange )   
         if render_mode ==  ProcessMode.HighRes:
             self.low_res_actor.VisibilityOff() 
             self.partitioned_point_cloud.show()      
         else: 
             self.partitioned_point_cloud.clear()
             self.low_res_actor.VisibilityOn()
-            self.shiftThresholding( 0, 0 ) 
-        self.setScalarRange( self.currentScalarRange )   
 #    def refreshResolution( self ):
 #        self.setPointSize( self.raw_point_size )
 #        downsizeFactor = int( math.ceil( self.getNumberOfPoints() / float( self.downsizeNPointsTarget ) ) ) 
@@ -433,12 +437,14 @@ class CPCPlot(QtCore.QObject):
         elif keysym == "t":  self.stepTime()
         elif keysym == "T":  self.stepTime( False )
         elif keysym == "c":  self.toggleClipping()
+        elif keysym == "R":  self.toggleColorRange()
         elif keysym == "m":  self.toggleRenderMode()
         elif keysym == "p":
             if self.process_mode == ProcessMode.Slicing:
                 self.sliceAxisIndex =  ( self.sliceAxisIndex + 1 ) % 3   
             else:
                 self.process_mode = ProcessMode.Slicing                          
+            self.planeWidgetOn( )
             self.updateTextDisplay( "Mode: Slicing", True )
             self.shiftSlice( 0, 0 )
         elif keysym == "r":  
@@ -452,23 +458,59 @@ class CPCPlot(QtCore.QObject):
             self.process_mode = ProcessMode.Thresholding 
             self.shiftThresholding( 0, 0 )  
         elif keysym == "i":  self.setPointIndexBounds( 5000, 7000 )
-    
-    def shiftSlice( self, position_inc, width_inc ): 
-        if position_inc <> 0:
-            self.slicePosition[self.sliceAxisIndex] = self.slicePosition[self.sliceAxisIndex] + position_inc * self.slicePositionSensitivity[self.sliceAxisIndex]
-        if width_inc <> 0:
-            if self.sliceWidth[self.sliceAxisIndex] < 2 * self.sliceWidthSensitivity[self.sliceAxisIndex]:
-                self.sliceWidth[self.sliceAxisIndex]  *  2.0**width_inc 
-            else:
-                self.sliceWidth[self.sliceAxisIndex] = self.sliceWidth[self.sliceAxisIndex] + width_inc * self.sliceWidthSensitivity[self.sliceAxisIndex]
-         
-        slice_radius = self.sliceWidth[self.sliceAxisIndex]/2.0      
-        pmin = max( self.slicePosition[self.sliceAxisIndex] - slice_radius, 0.0 )
-        pmin = min( pmin, 1.0 - self.sliceWidth[self.sliceAxisIndex] )
-        pmax = min( self.slicePosition[self.sliceAxisIndex] + slice_radius, 1.0 )
-        pmax = max( pmax, self.sliceWidth[self.sliceAxisIndex] )
-        self.updateSlicing( self.sliceAxisIndex, pmin, pmax )
+        
+    def planeWidgetOn(self):
+        self.initPlaneWidget()
+        if self.sliceAxisIndex   == 0:
+            self.planeWidget.SetNormal( 1.0, 0.0, 0.0 )
+            self.planeWidget.NormalToXAxisOn()
+        elif self.sliceAxisIndex == 1: 
+            self.planeWidget.SetNormal( 0.0, 1.0, 0.0 )
+            self.planeWidget.NormalToYAxisOn()
+        elif self.sliceAxisIndex == 2: 
+            self.planeWidget.SetNormal( 0.0, 0.0, 1.0 )
+            self.planeWidget.NormalToZAxisOn()            
+        o = list( self.planeWidget.GetOrigin() )
+        o[ self.sliceAxisIndex ] = self.getCurrentSlicePosition()
+        self.planeWidget.SetOrigin(o) 
+        if not self.planeWidget.GetEnabled( ):
+            self.planeWidget.SetEnabled( 1 )   
 
+    def refreshPointSize( self ):
+        self.point_size = self.render_mode_point_sizes[ self.render_mode ]
+        self.setPointSize( self.point_size )
+                
+    def initPlaneWidget(self):
+        if self.planeWidget == None:
+            self.planeWidget = vtk.vtkImplicitPlaneWidget()
+            self.planeWidget.SetInteractor( self.renderWindowInteractor )
+            self.planeWidget.SetPlaceFactor( 1.5 )
+            self.planeWidget.SetInput( self.point_cloud_overview.getPolydata() )
+            self.planeWidget.AddObserver("StartInteractionEvent", self.processStartInteractionEvent )
+            self.planeWidget.AddObserver("EndInteractionEvent", self.processEndInteractionEvent )
+            self.planeWidget.AddObserver("InteractionEvent", self.processInteractionEvent )
+            self.planeWidget.KeyPressActivationOff()
+            self.planeWidget.OutlineTranslationOff()
+            self.planeWidget.ScaleEnabledOff()
+            self.planeWidget.OutsideBoundsOn() 
+            self.planeWidget.OriginTranslationOff()
+            self.planeWidget.SetDiagonalRatio( 0.0 )                         
+            self.planeWidget.DrawPlaneOff()
+            self.planeWidget.TubingOff() 
+            self.planeWidget.GetNormalProperty().SetOpacity(0.0)
+            self.planeWidget.SetInteractor( self.renderWindowInteractor )
+            self.planeWidget.KeyPressActivationOff()
+            self.planeWidget.PlaceWidget( self.point_cloud_overview.getBounds() )
+ 
+    def toggleColorRange(self):
+        self.colorRange =  ( self.colorRange + 1 ) % 2
+        self.applyColorRange()
+        self.render()
+        
+    def applyColorRange(self):
+        scalar_range = self.partitioned_point_cloud.applyColorRange( self.colorRange )
+        self.point_cloud_overview.setScalarRange( scalar_range )
+                
     def shiftColorScale( self, position_inc, width_inc ):
         if position_inc <> 0:
             self.colorWindowPosition = self.colorWindowPosition + position_inc * self.colorWindowPositionSensitivity
@@ -501,6 +543,35 @@ class CPCPlot(QtCore.QObject):
         rmax = min( self.windowPosition + window_radius, 1.0 )
         rmax = max( rmax, self.windowWidth )
         self.updateThresholding( 'vardata', rmin, rmax )
+        
+    def getCurrentSlicePosition(self):
+        bounds = self.point_cloud_overview.getBounds()
+        sindex = 2*self.sliceAxisIndex 
+        return bounds[sindex] + self.slicePosition[self.sliceAxisIndex] * ( bounds[sindex+1] - bounds[sindex] )
+    
+    def execCurrentSlice(self):
+        slice_radius = self.sliceWidth[self.sliceAxisIndex]/2.0      
+        pmin = max( self.slicePosition[self.sliceAxisIndex] - slice_radius, 0.0 )
+        pmin = min( pmin, 1.0 - self.sliceWidth[self.sliceAxisIndex] )
+        pmax = min( self.slicePosition[self.sliceAxisIndex] + slice_radius, 1.0 )
+        pmax = max( pmax, self.sliceWidth[self.sliceAxisIndex] )
+        self.updateSlicing( self.sliceAxisIndex, pmin, pmax )
+    
+    def pushSlice( self, slice_pos ):
+        bounds = self.point_cloud_overview.getBounds()
+        sindex = 2*self.sliceAxisIndex  
+        self.slicePosition[self.sliceAxisIndex] = ( slice_pos - bounds[sindex] ) / ( bounds[sindex+1] - bounds[sindex] )
+        self.execCurrentSlice()
+
+    def shiftSlice( self, position_inc, width_inc ): 
+        if position_inc <> 0:
+            self.slicePosition[self.sliceAxisIndex] = self.slicePosition[self.sliceAxisIndex] + position_inc * self.slicePositionSensitivity[self.sliceAxisIndex]
+        if width_inc <> 0:
+            if self.sliceWidth[self.sliceAxisIndex] < 2 * self.sliceWidthSensitivity[self.sliceAxisIndex]:
+                self.sliceWidth[self.sliceAxisIndex]  *  2.0**width_inc 
+            else:
+                self.sliceWidth[self.sliceAxisIndex] = self.sliceWidth[self.sliceAxisIndex] + width_inc * self.sliceWidthSensitivity[self.sliceAxisIndex]        
+        self.execCurrentSlice()
 
     def shiftResolution( self, ncollections_inc, ptsize_inc ):
         if ncollections_inc <> 0:
@@ -751,12 +822,30 @@ class CPCPlot(QtCore.QObject):
         self.clipper.SetInteractor( self.renderWindowInteractor )    
         self.clipper.SetHandleSize( 0.005 )
         self.clipper.SetEnabled( True )
-        self.clipper.InsideOutOn()     
+        self.clipper.InsideOutOn()  
+           
 #        self.clipper.AddObserver( 'StartInteractionEvent', self.startClip )
 #        self.clipper.AddObserver( 'EndInteractionEvent', self.endClip )
 #        self.clipper.AddObserver( 'InteractionEvent', self.executeClip )
         self.clipOff() 
 
+     
+    def processInteractionEvent( self, obj, event ): 
+        if self.process_mode == ProcessMode.Slicing:
+            o = list( self.planeWidget.GetOrigin() )
+            slice_pos = o[ self.sliceAxisIndex ]
+            self.pushSlice( slice_pos )         
+#        print " Interaction Event: %s %s " % ( str(object), str( event ) ); sys.stdout.flush()
+
+    def processStartInteractionEvent( self, obj, event ):  
+#        print " start Interaction: %s %s " % ( str(object), str( event ) ); sys.stdout.flush()
+        if self.process_mode == ProcessMode.Slicing:
+            self.setRenderMode( ProcessMode.LowRes )
+
+    def processEndInteractionEvent( self, obj, event ):  
+#        print " end Interaction: %s %s " % ( str(object), str( event ) ); sys.stdout.flush()
+        if self.process_mode == ProcessMode.Slicing:
+            self.setRenderMode( ProcessMode.HighRes )
         
     def startEventLoop(self):
         self.renderWindowInteractor.Start()
@@ -873,7 +962,7 @@ class CPCPlot(QtCore.QObject):
         init_args = args[ 'init_args' ]      
         nCollections = args.get( 'nCollections', 1 )    
         self.point_size = args.get( 'point_size', self.point_size )    
-        self.point_cloud_overview = vtkLocalPointCloud( 0, 100 ) 
+        self.point_cloud_overview = vtkLocalPointCloud( 0, 20 ) 
         self.point_cloud_overview.initialize( init_args )
         self.initCollections( nCollections, init_args )
         self.setPointSize( self.point_size )

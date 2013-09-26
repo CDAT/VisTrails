@@ -54,6 +54,7 @@ class PointCollection():
         self.point_layout = None
         self.axis_bounds = {}
         self.threshold_target = None
+        self.bounds = None
         
     def getGridType(self):
         return self.point_layout
@@ -109,7 +110,12 @@ class PointCollection():
         self.point_data_arrays['x'] = self.np_points_data[0::3].astype( numpy.float32 ) 
         self.point_data_arrays['y'] = self.np_points_data[1::3].astype( numpy.float32 ) 
         self.point_data_arrays['z'] = self.np_points_data[2::3].astype( numpy.float32 ) 
-        self.axis_bounds[ 'z' ] = ( 0.0, self.z_spacing * len( self.lev ) )        
+        self.axis_bounds[ 'z' ] = ( 0.0, self.z_spacing * len( self.lev ) )  
+        
+    def getBounds(self):
+        if not self.bounds:
+            self.bounds = self.axis_bounds[ 'x' ] + self.axis_bounds[ 'y' ] + self.axis_bounds[ 'z' ] 
+        return self.bounds
 
     def getPointsLayout( self ):
         return PlotType.getPointsLayout( self.grid )

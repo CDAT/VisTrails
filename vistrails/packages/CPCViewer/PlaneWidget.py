@@ -4,8 +4,8 @@ Created on Sep 25, 2013
 @author: tpmaxwel
 '''
 
-
 import vtk, sys
+from PyQt4 import QtCore
 
 VTK_NEAREST_RESLICE = 0
 VTK_LINEAR_RESLICE  = 1
@@ -27,11 +27,10 @@ class cpcPlaneWidget:
     Moving = 3
     Outside  = 4
     
-    def __init__( self, actionHandler, picker, planeIndex, **args ):  
+    def __init__( self, planeIndex, **args ):  
         self.State  = cpcPlaneWidget.Start            
         self.Interaction  = 1
         self.PlaneIndex = planeIndex
-        self.ActionHandler = actionHandler
         self.Interactor = None
         self.Enabled = False
         self.VisualizationInteractionEnabled = True
@@ -44,6 +43,7 @@ class cpcPlaneWidget:
         self.PlaceFactor  = 1.0
         self.NavigationInteractorStyle = None
         self.ConfigurationInteractorStyle = vtk.vtkInteractorStyleUser()
+        self.TexturePlaneActor   = vtk.vtkActor()
                          
         # Represent the plane's outline
         #
@@ -109,9 +109,11 @@ class cpcPlaneWidget:
     
 #----------------------------------------------------------------------------
 
-    def SetRenderer( self, value ):
-        self.CurrentRenderer = value
+    def SetRenderer( self, renderer ):
+        self.CurrentRenderer = renderer
         if self.CurrentRenderer: self.CurrentRenderer.AddObserver( 'ModifiedEvent', self.ActivateEvent )
+        renwin = renderer.GetRenderWindow()
+        self.SetInteractor( renwin.GetInteractor() )  
 
 #----------------------------------------------------------------------------
 
@@ -231,7 +233,7 @@ class cpcPlaneWidget:
 #----------------------------------------------------------------------------
 
     def ProcessEvent( self, event, **args ):
-        self.ActionHandler.ProcessIPWAction( self, event, **args )
+        self.emit( QtCore.SIGNAL("SliceEvent"), event, args )
         
 #----------------------------------------------------------------------------
 
@@ -306,7 +308,20 @@ class cpcPlaneWidget:
 #            print "No image plane found: %s " % str( (X,Y) )
             self.State  = cpcPlaneWidget.Outside
             self.HighlightPlane(0)                 
-    
+
+    def DoPick( self, X, Y ):  
+        self.PlanePicker.Pick( X, Y, 0.0, self.CurrentRenderer )
+        path = self.PlanePicker.GetPath()        
+        found = 0;
+        if path:
+            path.InitTraversal()
+            for _ in range( path.GetNumberOfItems() ):
+                node = path.GetNextNode()
+                if node and (node.GetViewProp() == self.TexturePlaneActor):
+                    found = 1
+                    break
+        return found
+        
 #----------------------------------------------------------------------------
     def StopSliceMotion(self):     
         if ( self.State == cpcPlaneWidget.Outside or self.State == cpcPlaneWidget.Start ): return
@@ -431,45 +446,32 @@ class cpcPlaneWidget:
     
 #----------------------------------------------------------------------------
 
-    def SetPlaneOrientation( self, i ):
+    def SetPlaneOrientation( self, i, bounds = None ):
+        if not bounds: bounds = self.InputBounds
 
         # Generate a XY plane if i = 2, z-normal
         # or a YZ plane if i = 0, x-normal
         # or a ZX plane if i = 1, y-normal
         #
         self.PlaneOrientation = i
-        
-        # This method must be called _after_ SetInput
-        #
-        self.ImageData  = self.Reslice.GetInput()
-        if ( not self.ImageData ):        
-            print>>sys.stderr, "SetInput() before setting plane orientation."
-            return
-               
-        self.ImageData.UpdateInformation()
-        extent = self.ImageData.GetWholeExtent()
-        origin = self.ImageData.GetOrigin()
-        spacing = self.ImageData.GetSpacing()
-        
+                
         # Prevent obscuring voxels by offsetting the plane geometry
         #
-        xbounds = [ origin[0] + spacing[0] * (extent[0] - 0.5), origin[0] + spacing[0] * (extent[1] + 0.5) ]
-        ybounds = [ origin[1] + spacing[1] * (extent[2] - 0.5), origin[1] + spacing[1] * (extent[3] + 0.5) ]
-        zbounds = [ origin[2] + spacing[2] * (extent[4] - 0.5), origin[2] + spacing[2] * (extent[5] + 0.5) ]
+        ( xbounds, ybounds, zbounds ) = bounds
         
-        if ( spacing[0] < 0.0 ):
+        if ( xbounds[1] < xbounds[0] ):
             
             t = xbounds[0]
             xbounds[0] = xbounds[1]
             xbounds[1] = t
             
-        if ( spacing[1] < 0.0 ):
+        if ( ybounds[1] < ybounds[0] ):
             
             t = ybounds[0]
             ybounds[0] = ybounds[1]
             ybounds[1] = t
             
-        if ( spacing[2] < 0.0 ):
+        if ( zbounds[1] < zbounds[0] ):
             
             t = zbounds[0]
             zbounds[0] = zbounds[1]
@@ -502,19 +504,9 @@ class cpcPlaneWidget:
         
 #----------------------------------------------------------------------------
 
-    def UpdatePlane(self):
-        
-        self.ImageData  =self.Reslice.GetInput()
-        if (  not self.Reslice or not self.ImageData ): return
-           
-        # Calculate appropriate pixel spacing for the reslicing
-        #
-        self.ImageData.UpdateInformation()
-        spacing = self.ImageData.GetSpacing()
-        origin = self.ImageData.GetOrigin()
-        extent = self.ImageData.GetWholeExtent()        
-        bounds = [ origin[0] + spacing[0]*extent[0], origin[0] + spacing[0]*extent[1],  origin[1] + spacing[1]*extent[2],  origin[1] + spacing[1]*extent[3],  origin[2] + spacing[2]*extent[4],  origin[2] + spacing[2]*extent[5] ]    
-        
+    def UpdatePlane( self, bounds = None ):
+        if not bounds: bounds = self.InputBounds
+                
         for j in range( 3 ): 
             i = 2*j   
             if ( bounds[i] > bounds[i+1] ):
@@ -636,22 +628,9 @@ class cpcPlaneWidget:
         return self.PlaneSource.GetNormal()
 
 #----------------------------------------------------------------------------
-    def GetPolyData(self, pd):
-        pd.ShallowCopy(self.PlaneSource.GetOutput())
-
-
-#----------------------------------------------------------------------------
-    def GetPolyDataAlgorithm(self):
-        return self.PlaneSource
-
-#----------------------------------------------------------------------------
     def UpdatePlacement(self):
         self.UpdatePlane()
         self.BuildRepresentation()
-
-#----------------------------------------------------------------------------
-    def GetTexture(self):
-        return self.Texture
 
 #----------------------------------------------------------------------------
 
@@ -703,9 +682,27 @@ class cpcPlaneWidget:
         planeOutlineMapper.SetInput( self.PlaneOutlinePolyData )
         planeOutlineMapper.SetResolveCoincidentTopologyToPolygonOffset()
         self.PlaneOutlineActor.SetMapper(planeOutlineMapper)
-        self.PlaneOutlineActor.PickableOff()    
-
+        self.PlaneOutlineActor.PickableOff()
+        
         
 if __name__ == '__main__': 
-    ipw =   cpcPlaneWidget()     
+    VTK_BACKGROUND_COLOR = ( 0.0, 0.0, 0.0 )
+    ren = vtk.vtkRenderer()
+    renWin = vtk.vtkRenderWindow()
+    renWin.AddRenderer(ren)
+    iren = vtk.vtkRenderWindowInteractor()
+    iren.SetRenderWindow(renWin)
+    ren.SetBackground(*VTK_BACKGROUND_COLOR)
+    style = vtk.vtkInteractorStyleTrackballCamera()
+    iren.SetInteractorStyle(style)
+    
+    bounds = ( 0.0, 100.0, 0.0, 100.0, 0.0, 100.0 )
+    ipw = cpcPlaneWidget( 0 )
+    ipw.SetRenderer( ren )
+    ipw.PlaceWidget( bounds )  
+        
+    iren.Initialize()
+    renWin.Render()
+    iren.Start()
+  
 
