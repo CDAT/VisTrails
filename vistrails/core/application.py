@@ -190,6 +190,8 @@ The builder window can be accessed by a spreadsheet menu option.")
              help=("Run the UVCDAT tests to be used by CTest"))
         add ("-A", "--cdatSourceDir", action="store", type="string", dest="cdatSourceDir",
              default="", help=("Set the cdat source dir (Used when running uvcdat tests"))
+        add ("-Z", "--specificTest", action="store", type="string", dest="specificTest",
+             default=None, help=("Select a specific test to run"))
         
         command_line.CommandLineParser.parse_options()
 
@@ -293,6 +295,7 @@ The builder window can be accessed by a spreadsheet menu option.")
             self.temp_configuration.testUVCDAT = bool(get("testUVCDAT"))
         if get('cdatSourceDir')!=None:
             self.temp_configuration.cdatSourceDir = get("cdatSourceDir")
+        self.temp_configuration.specificTest = get("specificTest")
         if get('output')!=None:
             self.temp_configuration.output = get("output")
         if get('noErrorReporting')!=None:

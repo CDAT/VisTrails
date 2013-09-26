@@ -267,7 +267,7 @@ class UVCDATTestManager:
         
     innerFail = False
         
-    def run_tests(self):
+    def run_tests(self, specificTest=None):
         """
         Executes all @UVCDATTest decorated functions defined on self, prints
         exceptions, and returns number of fails.
@@ -291,6 +291,8 @@ class UVCDATTestManager:
             if not hasattr(testFunction, '__call__'): continue
             if not hasattr(testFunction, 'isUVCDATTest'): continue
             if not testFunction.isUVCDATTest: continue
+            if specificTest is not None and attribute != specificTest:
+                continue
 
             print "RUNNING TEST %s" % attribute
 
