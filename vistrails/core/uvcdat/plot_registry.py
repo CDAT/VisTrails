@@ -563,7 +563,7 @@ class Plot(object):
         package1D = ['VCS']
         parent1D = ['Isofill', 'Isoline', 'Outfill','Outline']
         
-        if self.package in package1D:
+        if variable is not None and self.package in package1D:
             if self.parent in parent1D:
                 if len(variable.shape) < 2:
                     fmt = "%s - %s cannot plot 1D variables"
