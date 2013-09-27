@@ -12,6 +12,10 @@ from PointCollection import PointCollection, PlotType, isNone
 from multiprocessing import Process, Queue
 from PyQt4 import QtCore # import SIGNAL, QObject
 
+class ScalarRangeType:         
+    Full = 0
+    Thresholded = 1
+
 class ExecutionDataPacket:
     NONE = -1
     POINTS = 0
@@ -132,8 +136,8 @@ class vtkPointCloud(QtCore.QObject):
         return self.trange if ( self.threshold_target == "vardata" ) else self.crange
     
     def getValueRange( self, range_type ):
-        return self.vrange if range_type == 0 else self.trange
-    
+        return self.vrange if ( range_type == ScalarRangeType.Full ) else self.trange
+   
     def generateSubset(self, subset_spec ):
         pass
     
@@ -164,7 +168,7 @@ class vtkPointCloud(QtCore.QObject):
         self.polydata.Modified()
         self.mapper.Modified()
         self.actor.Modified()
-        self.emit( "NewSubset", self.pcIndex )
+#        self.emit( "NewSubset", self.pcIndex )
         
     def getPolydata(self):
         return self.polydata
@@ -557,8 +561,8 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
             if pc_item[0] < self.nActiveCollections:
                 pc_item[1].clearQueues()
                 
-    def setNewSubsetCallback( self, callback ):
-        'NewSubset'
+#    def setNewSubsetCallback( self, callback ):
+#        'NewSubset'
                        
     def getPointCloud(self, pcIndex ):
         return self.point_clouds.get( pcIndex, None )

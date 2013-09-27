@@ -9,7 +9,7 @@ import os.path
 import vtk, time
 from PyQt4 import QtCore, QtGui
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud
+from DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType
 
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
@@ -104,7 +104,7 @@ def dump_vtk_points( pts, label=None ):
         print "Pt[%d]: %.2f %.2f, %.2f " % ( iPt, pt[ 0 ], pt[ 1 ], pt[ 2 ] )
     print "-------------------------------------------------------------------------------------------------\n"
 
-class PlotType:
+class PlotType: 
     Planar = 0
     Spherical = 1
     List = 0
@@ -201,12 +201,17 @@ class TextDisplayMgr:
 class Counter(): 
     
     def __init__( self, maxvalue = 0, minvalue = 0 ):
-        self.reset()
         self.floor = minvalue
         self.ceiling = maxvalue
+        self.index = self.ceiling 
+        self.active = True
         
     def reset(self):
         self.index = self.ceiling 
+        self.active = True
+        
+    def isActive(self):
+        return self.active
         
     def setFloor(self, minvalue):
         self.floor = minvalue
@@ -214,13 +219,52 @@ class Counter():
     def setCeiling(self, maxvalue):
         self.ceiling = maxvalue
         
-    def decrement(self, autoreset = True ):
+    def value(self):
+        return self.index
+        
+    def decrement(self ):
         self.index = self.index - 1
-        if self.index >= self.floor:
-            if autoreset: self.reset() 
+        if self.index <= self.floor:
+            self.active = False
             return True
         return False
-             
+
+class ScalarRange(QtCore.QObject): 
+    
+    def __init__( self, **args ): 
+        QtCore.QObject.__init__( self )
+        self.current = None
+        self.updated = None
+        self.fixed = False
+   
+    def setSubRange(self, rmin, rmax ):
+        ds = self.current[1] - self.current[0]
+        smin = self.current[0] + ds * rmin
+        smax = self.current[0] + ds * rmax
+        self.current = ( smin, smax )
+        self.fixed = True
+        return ( smin, smax ) 
+    
+    def isFixed( self ): 
+        return self.fixed
+ 
+    def applyUpdate(self):
+        if self.updated and ( self.updated <> self.current ):
+            self.current = self.updated
+            return self.updated
+        return None
+
+    def update( self, scalar_range, fixed = None ):
+        if self.updated == None:
+            self.updated = list( scalar_range )
+        else:
+            self.updated[0] = min( self.updated[0], scalar_range[0] )
+            self.updated[1] = max( self.updated[1], scalar_range[1] )
+        if fixed <> None: self.fixed = fixed
+            
+    def invalidate(self):
+        self.updated = None
+            
 class CPCPlot(QtCore.QObject):  
     
     sliceAxes = [ 'x', 'y', 'z' ]  
@@ -248,8 +292,6 @@ class CPCPlot(QtCore.QObject):
         self.sliceWidth = [ 0.005, 0.005, 0.005 ]
         self.sliceWidthSensitivity = [ 0.005, 0.005, 0.005 ]
         self.slicePositionSensitivity = [ 0.025, 0.025, 0.025 ]
-        self.currentScalarRange = None
-        self.updatedScalarRange = None
         self.nlevels = None
         self.colorWindowPosition = 0.5
         self.colorWindowWidth = 1.0
@@ -259,6 +301,7 @@ class CPCPlot(QtCore.QObject):
         self.planeWidget = None
         self.render_mode_point_sizes = [ 4, 10 ]
         self.colorRange = 0 
+        self.scalarRange = ScalarRange()
        
     def invalidate(self):
         self.isValid = False
@@ -272,13 +315,14 @@ class CPCPlot(QtCore.QObject):
         return self.partitioned_point_cloud if ( self.render_mode ==  ProcessMode.HighRes ) else self.point_cloud_overview 
 
     def getPointClouds(self):
-        return [ self.partitioned_point_cloud, self.point_cloud_overview ]
+        return [ self.point_cloud_overview, self.partitioned_point_cloud ]
        
     def setRenderMode( self, render_mode ): 
         self.render_mode = render_mode
         self.getPointCloud().refresh(True)
-        self.refreshPointSize()          
-        self.setScalarRange( self.currentScalarRange )   
+        self.refreshPointSize()         
+        if not self.scalarRange.isFixed():
+            self.setScalarRange( self.scalarRange.current )   
         if render_mode ==  ProcessMode.HighRes:
             self.resolutionCounter.reset() 
         else: 
@@ -352,6 +396,8 @@ class CPCPlot(QtCore.QObject):
         if pts[self.render_mode]:
             self.resetCamera( pts[self.render_mode] )
             self.renderer.ResetCameraClippingRange()   
+        if ( self.topo == PlotType.Spherical ):             self.planeWidgetOff()
+        elif self.process_mode == ProcessMode.Slicing:  self.planeWidgetOn()
         self.render()
         
     def render( self, onMode = ProcessMode.AnyRes ):
@@ -363,7 +409,6 @@ class CPCPlot(QtCore.QObject):
         else:                           self.clipOn()
         
     def clipOn(self):
-        self.clipper.PlaceWidget( self.cropRegion )
         self.clipper.On()
         self.executeClip()
 
@@ -477,6 +522,7 @@ class CPCPlot(QtCore.QObject):
         elif keysym == "v":
             self.updateTextDisplay( "Mode: Thresholding", True )
             self.process_mode = ProcessMode.Thresholding 
+            self.planeWidgetOff()
             self.shiftThresholding( 0, 0 )  
         elif keysym == "i":  self.setPointIndexBounds( 5000, 7000 )
         
@@ -496,6 +542,10 @@ class CPCPlot(QtCore.QObject):
         self.planeWidget.SetOrigin(o) 
         if not self.planeWidget.GetEnabled( ):
             self.planeWidget.SetEnabled( 1 )   
+
+    def planeWidgetOff(self):
+        if self.planeWidget:
+            self.planeWidget.SetEnabled( 0 )   
 
     def refreshPointSize( self ):
         self.point_size = self.render_mode_point_sizes[ self.render_mode ]
@@ -530,6 +580,7 @@ class CPCPlot(QtCore.QObject):
         
     def applyColorRange(self):
         scalar_range = self.partitioned_point_cloud.applyColorRange( self.colorRange )
+        self.scalarRange.update( scalar_range, ( self.colorRange == ScalarRangeType.Thresholded ) ) 
         self.point_cloud_overview.setScalarRange( scalar_range )
                 
     def shiftColorScale( self, position_inc, width_inc ):
@@ -545,10 +596,10 @@ class CPCPlot(QtCore.QObject):
         rmin = min( rmin, 1.0 - self.windowWidth )
         rmax = min( self.colorWindowPosition + window_radius, 1.0 )
         rmax = max( rmax, self.windowWidth )
-        ds = self.currentScalarRange[1] - self.currentScalarRange[0]
-        smin = self.currentScalarRange[0] + ds * rmin
-        smax = self.currentScalarRange[0] + ds * rmax
-        self.setScalarRange( ( smin, smax ) )
+        subrange = self.scalarRange.setSubRange( rmin, rmax )
+        self.setScalarRange( subrange )
+        text = "Set Colormap range: %s " % str( subrange )
+        self.updateTextDisplay( text )
                       
     def shiftThresholding( self, position_inc, width_inc ):
         if position_inc <> 0:
@@ -571,14 +622,18 @@ class CPCPlot(QtCore.QObject):
         return bounds[sindex] + self.slicePosition[self.sliceAxisIndex] * ( bounds[sindex+1] - bounds[sindex] )
     
     def execCurrentSlice(self):
-        slice_radius = self.sliceWidth[self.sliceAxisIndex]/2.0      
-        pmin = max( self.slicePosition[self.sliceAxisIndex] - slice_radius, 0.0 )
-        pmin = min( pmin, 1.0 - self.sliceWidth[self.sliceAxisIndex] )
-        pmax = min( self.slicePosition[self.sliceAxisIndex] + slice_radius, 1.0 )
-        pmax = max( pmax, self.sliceWidth[self.sliceAxisIndex] )
-        self.updateSlicing( self.sliceAxisIndex, pmin, pmax )
+        slice_bounds = []
+        for iRes in [1,2]:
+            slice_radius = self.sliceWidth[self.sliceAxisIndex]/(iRes)     
+            pmin = max( self.slicePosition[self.sliceAxisIndex] - slice_radius, 0.0 )
+            pmin = min( pmin, 1.0 - self.sliceWidth[self.sliceAxisIndex] )
+            pmax = min( self.slicePosition[self.sliceAxisIndex] + slice_radius, 1.0 )
+            pmax = max( pmax, self.sliceWidth[self.sliceAxisIndex] )
+            slice_bounds.append( (pmin,pmax) )
+        self.updateSlicing( self.sliceAxisIndex, slice_bounds )
     
     def pushSlice( self, slice_pos ):
+        self.updateTextDisplay( " Slice Position: %s " % str( slice_pos ) )
         bounds = self.point_cloud_overview.getBounds()
         sindex = 2*self.sliceAxisIndex  
         self.slicePosition[self.sliceAxisIndex] = ( slice_pos - bounds[sindex] ) / ( bounds[sindex+1] - bounds[sindex] )
@@ -609,11 +664,11 @@ class CPCPlot(QtCore.QObject):
 #         print " setVolumeRenderBounds: %s " % str( subset_spec )
 #         sys.stdout.flush()
 
-    def updateSlicing( self, sliceIndex, rmin, rmax ):
-        subset_spec = ( self.sliceAxes[sliceIndex], rmin, rmax )
+    def updateSlicing( self, sliceIndex, slice_bounds ):
         self.invalidate()
-        for pc in self.getPointClouds():
-            pc.generateSubset( subset_spec )
+        for iRes, pc in enumerate( self.getPointClouds() ):
+            ( rmin, rmax ) = slice_bounds[iRes]
+            pc.generateSubset( ( self.sliceAxes[sliceIndex], rmin, rmax ) )
         self.render( ProcessMode.LowRes )
 #         print " setThresholdingBounds: %s " % str( subset_spec )
 #         sys.stdout.flush()
@@ -918,13 +973,9 @@ class CPCPlot(QtCore.QObject):
         self.initCamera( )
         
     def updateScaling(self):
-        self.applyScalarRangeUpdate()
-        
-    def applyScalarRangeUpdate(self):
-        if self.updatedScalarRange and ( self.updatedScalarRange <> self.currentScalarRange ):
-            self.setScalarRange( self.updatedScalarRange )
-            self.currentScalarRange = self.updatedScalarRange
-        
+        sr = self.scalarRange.applyUpdate()
+        if sr: self.setScalarRange( sr )
+                
     def setScalarRange( self, scalar_range ):
         self.getPointCloud().setScalarRange(scalar_range )
         self.render()
@@ -933,16 +984,7 @@ class CPCPlot(QtCore.QObject):
         if not self.isValid:
             self.partitioned_point_cloud.clear( pcIndex )
             self.isValid = True
-            
-    def updateScalarRange( self, scalar_range ):
-        if self.updatedScalarRange == None:
-            self.updatedScalarRange = list( scalar_range )
-        else:
-            self.updatedScalarRange[0] = min( self.updatedScalarRange[0], scalar_range[0] )
-            self.updatedScalarRange[1] = max( self.updatedScalarRange[1], scalar_range[1] )
-
-#        print " updateScalarRange: %s " % str( self.updatedScalarRange ); sys.stdout.flush()
-        
+                    
     def updateZRange( self, pc ):
         nlev = pc.getNLevels()
         if nlev <> self.nlevels:
@@ -952,12 +994,23 @@ class CPCPlot(QtCore.QObject):
             self.slicePosition[2] = slice_index * self.sliceWidth[2]
             self.sliceWidthSensitivity[2] = self.sliceWidth[2]
             self.slicePositionSensitivity[2] = self.sliceWidth[2]
-               
+            
+    def decrementOverviewResolution( self ):
+        if self.resolutionCounter.isActive(): # self.point_cloud_overview.isVisible():
+            isBottomedOut = self.resolutionCounter.decrement()
+            psize = self.resolutionCounter.value()
+#            print "Decrement point size: %d, isBottomedOut: %s " % ( psize, str(isBottomedOut) ); sys.stdout.flush()
+            self.point_cloud_overview.setPointSize( psize )
+            if isBottomedOut: self.point_cloud_overview.hide()
+             
     def newDataAvailable( self, pcIndex, data_type ): 
         pc = self.partitioned_point_cloud.getPointCloud( pcIndex )
+        pc.show()
+        self.decrementOverviewResolution()
         self.partitioned_point_cloud.postDataQueueEvent()
-        sr = pc.getScalarRange() 
-        if sr: self.updateScalarRange( sr )
+        if not self.scalarRange.isFixed():
+            sr = pc.getScalarRange() 
+            if sr: self.scalarRange.update( sr )
         self.updateZRange( pc )
         if self.pointPicker.GetPickList().GetNumberOfItems() == 0: 
             self.pointPicker.AddPickList( pc.actor ) 
@@ -969,7 +1022,7 @@ class CPCPlot(QtCore.QObject):
                           
     def generateSubset(self, subset_spec ):
 #        self.pointPicker.GetPickList().RemoveAllItems()
-        if (subset_spec[0] == 'vardata'): self.updatedScalarRange = None       
+        if (subset_spec[0] == 'vardata'): self.scalarRange.invalidate()    
         self.getPointCloud().generateSubset( subset_spec )        
         
     def terminate(self):
