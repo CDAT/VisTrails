@@ -198,7 +198,29 @@ class TextDisplayMgr:
         textActor.id = aid
         return textActor 
 
+class Counter(): 
+    
+    def __init__( self, maxvalue = 0, minvalue = 0 ):
+        self.reset()
+        self.floor = minvalue
+        self.ceiling = maxvalue
         
+    def reset(self):
+        self.index = self.ceiling 
+        
+    def setFloor(self, minvalue):
+        self.floor = minvalue
+
+    def setCeiling(self, maxvalue):
+        self.ceiling = maxvalue
+        
+    def decrement(self, autoreset = True ):
+        self.index = self.index - 1
+        if self.index >= self.floor:
+            if autoreset: self.reset() 
+            return True
+        return False
+             
 class CPCPlot(QtCore.QObject):  
     
     sliceAxes = [ 'x', 'y', 'z' ]  
@@ -258,8 +280,7 @@ class CPCPlot(QtCore.QObject):
         self.refreshPointSize()          
         self.setScalarRange( self.currentScalarRange )   
         if render_mode ==  ProcessMode.HighRes:
-            self.low_res_actor.VisibilityOff() 
-            self.partitioned_point_cloud.show()      
+            self.resolutionCounter.reset() 
         else: 
             self.partitioned_point_cloud.clear()
             self.low_res_actor.VisibilityOn()
@@ -968,6 +989,7 @@ class CPCPlot(QtCore.QObject):
         self.setPointSize( self.point_size )
         subset_spec =  ( 'vardata', 0.4, 0.6 ) 
         self.generateSubset( subset_spec )
+        self.resolutionCounter = Counter( self.render_mode_point_sizes[1], max( self.render_mode_point_sizes[1]-nCollections, self.render_mode_point_sizes[0] ) )
  
     def update(self):
         pass
@@ -1033,7 +1055,7 @@ if __name__ == '__main__':
         grid_file = None
         varname = "u"
         
-    g = CPCPlot( widget.GetRenderWindow() ) 
+    g = CPCPlot( widget.GetRenderWindow(),  ) 
     widget.connect( widget, QtCore.SIGNAL('event'), g.processEvent )  
     g.init( init_args = ( grid_file, data_file, varname ), nCollections=nCollections )
     

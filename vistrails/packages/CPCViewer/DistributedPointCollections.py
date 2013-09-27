@@ -164,6 +164,7 @@ class vtkPointCloud(QtCore.QObject):
         self.polydata.Modified()
         self.mapper.Modified()
         self.actor.Modified()
+        self.emit( "NewSubset", self.pcIndex )
         
     def getPolydata(self):
         return self.polydata
@@ -545,7 +546,7 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
     def generateSubset(self, subset_spec = None, force=False ):
         if subset_spec: self.current_subset_spec = subset_spec
         self.clearProcQueues()
-#        print " generateSubset: subset_spec = %s " % str( self.current_subset_spec )
+#        print " generateSubset: subset_spec = %s " % str( self.current_subset_spec )R
         for pc_item in self.point_clouds.items():
             if pc_item[0] < self.nActiveCollections:
                 pc_item[1].generateSubset( self.current_subset_spec, force )
@@ -555,6 +556,9 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
         for pc_item in self.point_clouds.items():
             if pc_item[0] < self.nActiveCollections:
                 pc_item[1].clearQueues()
+                
+    def setNewSubsetCallback( self, callback ):
+        'NewSubset'
                        
     def getPointCloud(self, pcIndex ):
         return self.point_clouds.get( pcIndex, None )
