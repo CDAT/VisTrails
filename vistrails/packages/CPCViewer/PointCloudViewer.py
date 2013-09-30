@@ -10,6 +10,7 @@ import vtk, time
 from PyQt4 import QtCore, QtGui
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType
+from ControlPanel import CPCConfigDialog, LevelingSliderControl
 
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
@@ -600,6 +601,13 @@ class CPCPlot(QtCore.QObject):
         self.setScalarRange( subrange )
         text = "Set Colormap range: %s " % str( subrange )
         self.updateTextDisplay( text )
+        
+    def processColorScaleCommand( self, args ):
+        iParmIndex = int(args[0])
+        fParmValue = float(args[1])
+        range = [ 0, 0 ]
+        print "processColorScaleCommand[%d]: range = %s " % ( iParmIndex, str( range ) )
+        self.setScalarRange( range )
                       
     def shiftThresholding( self, position_inc, width_inc ):
         if position_inc <> 0:
@@ -663,6 +671,10 @@ class CPCPlot(QtCore.QObject):
         self.render( ProcessMode.LowRes )
 #         print " setVolumeRenderBounds: %s " % str( subset_spec )
 #         sys.stdout.flush()
+
+    def processConfigCmd( self, args ):
+        if args[0] =='Color Scale':
+            self.processColorScaleCommand( args[1:] )
 
     def updateSlicing( self, sliceIndex, slice_bounds ):
         self.invalidate()
@@ -1116,6 +1128,13 @@ if __name__ == '__main__':
 #     pointCollectionMgrThread.init()
 #    pointCollectionMgrThread.start()
 
+    configDialog = CPCConfigDialog()
+    iColorCatIndex = configDialog.addCategory( 'Color' )
+    configDialog.addConfigControl( iColorCatIndex, LevelingSliderControl("Color Scale") )
+    configDialog.connect( configDialog, QtCore.SIGNAL("ConfigCmd"), g.processConfigCmd )
+    
+    configDialog.show()
+    app.connect( app, QtCore.SIGNAL("aboutToQuit()"), configDialog.cancel ) 
     app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
     widget.show()   
     app.exec_() 
