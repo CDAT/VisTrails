@@ -655,7 +655,6 @@ class ProjectController(QtCore.QObject):
                         #was already processed. We need only to create a new variable
                         # and associate the computed cdms variable
                         var =  CDMSVariable(filename=None,name=computed_ops[mv].varname)
-                        var.var = self.create_exec_new_variable_pipeline(var.name)
                     else:
                         #using a simple variable. Just recreate it
                         var = mv.module_descriptor.module.from_module(mv)
