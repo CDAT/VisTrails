@@ -67,13 +67,13 @@ class PointCollectionExecutionTarget:
     def initialize( self ):
         self.point_collection.initialize( self.init_args )
         self.point_collection.setDataSlice( self.collection_index, self.ncollections )
+        data_packet = ExecutionDataPacket( ExecutionDataPacket.POINTS, self.collection_index, self.point_collection.getPoints() )
+        self.results.put( data_packet )
         data_packet = ExecutionDataPacket( ExecutionDataPacket.VARDATA, self.collection_index, self.point_collection.getVarData() )
         data_packet[ 'vrange' ] = self.point_collection.getVarDataRange() 
         data_packet[ 'grid' ] = self.point_collection.getGridType()  
         data_packet[ 'nlevels' ] = self.point_collection.getNLevels()
         data_packet[ 'bounds' ] = self.point_collection.getBounds()
-        self.results.put( data_packet )
-        data_packet = ExecutionDataPacket( ExecutionDataPacket.POINTS, self.collection_index, self.point_collection.getPoints() )
         self.results.put( data_packet )
 
     def execute( self, args ):
@@ -112,6 +112,11 @@ class vtkPointCloud(QtCore.QObject):
         self.nlevels  = None
         self.current_subset_specs = None
         self.updated_subset_specs = None
+        self.mapper = vtk.vtkPolyDataMapper()
+        self.mapper.SetScalarModeToUsePointData()
+        self.mapper.SetColorModeToMapScalars()
+        self.actor = vtk.vtkActor()
+        self.actor.SetMapper( self.mapper )
       
     def getPoint( self, iPt ):
         dval = self.vardata[ iPt ]
@@ -124,6 +129,8 @@ class vtkPointCloud(QtCore.QObject):
         sys.stdout.flush() 
         
     def getNLevels(self): 
+#        if self.nlevels == None: 
+#            print>>sys.stderr, " Undefined nlevels in getNLevels, proc %d " % self.pcIndex
         return self.nlevels    
     
     def getGrid(self):
@@ -174,18 +181,27 @@ class vtkPointCloud(QtCore.QObject):
         return self.polydata
         
     def setScalarRange( self, scalar_range ):
-        self.mapper.SetScalarRange( scalar_range[0], scalar_range[1] )
-#        self.printLogMessage(  " Set Scalar Range: %s " % str( scalar_range ) )
-        self.mapper.Modified()
-        self.actor.Modified()
-        self.current_scalar_range = scalar_range
+        try:
+            self.mapper.SetScalarRange( scalar_range[0], scalar_range[1] )
+            self.printLogMessage(  " Set Scalar Range: %s " % str( scalar_range ) )
+            self.mapper.Modified()
+            self.actor.Modified()
+            self.current_scalar_range = scalar_range
+        except TypeError: 
+            pass
         
     def getScalarRange( self ):
         return self.current_scalar_range
+    
+    def getUnscaledRange( self, srange ):
+        dv = self.vrange[1] - self.vrange[0]
+        vmin = self.vrange[0] + srange[0] * dv
+        vmax = self.vrange[0] + srange[1] * dv
+        return ( vmin, vmax )
                                              
     def updateScalars( self, **args ):
         if isNone(self.vardata):
-            wait = args.get( 'wait', False ) 
+            wait = args.get( 'wait', True ) 
             if wait: self.waitForData( ExecutionDataPacket.VARDATA )
             else: return
         vtk_color_data = numpy_support.numpy_to_vtk( self.vardata ) 
@@ -202,12 +218,13 @@ class vtkPointCloud(QtCore.QObject):
         vtk_points_data.SetNumberOfTuples( len( self.np_points_data ) / 3 )     
         self.vtk_planar_points = vtk.vtkPoints()
         self.vtk_planar_points.SetData( vtk_points_data )
+        self.createPolydata()
         
     def createPolydata( self, **args  ):
         self.polydata = vtk.vtkPolyData()
         vtk_pts = self.getPoints()
         self.polydata.SetPoints( vtk_pts )                         
-        self.createPointsActor( self.polydata, **args )
+        self.initializePointsActor( self.polydata, **args )
 
     def computeSphericalPoints( self, **args ):
         lon_data = self.np_points_data[0::3]
@@ -234,16 +251,11 @@ class vtkPointCloud(QtCore.QObject):
         self.vtk_spherical_points = vtk.vtkPoints()
         self.shperical_to_xyz_trans.TransformPoints( vtk_sp_grid_points, self.vtk_spherical_points ) 
                 
-    def createPointsActor( self, polydata, **args ):
+    def initializePointsActor( self, polydata, **args ):
         lut = args.get( 'lut', self.create_LUT() )
-        self.mapper = vtk.vtkPolyDataMapper()
         self.mapper.SetInput( self.polydata ) 
-        self.mapper.SetScalarModeToUsePointData()
-        self.mapper.SetColorModeToMapScalars()
         if lut: 
             self.mapper.SetLookupTable( lut )                
-        self.actor = vtk.vtkActor()
-        self.actor.SetMapper( self.mapper )
         if self.vrange:
             self.mapper.SetScalarRange( self.vrange[0], self.vrange[1] ) 
             self.printLogMessage( " init scalar range %s " % str(self.vrange) )    
@@ -295,7 +307,8 @@ class vtkPointCloud(QtCore.QObject):
         self.actor.VisibilityOff()
 
     def show(self):
-        self.actor.VisibilityOn()
+        if not self.actor.GetVisibility():
+            self.actor.VisibilityOn()
         
     def getBounds( self, **args ):
         topo = args.get( 'topo', self.topo )
@@ -364,6 +377,7 @@ class vtkSubProcPointCloud( vtkPointCloud ):
             self.clearQueues()
             self.threshold_target = subset_spec[0]
             self.np_index_seq = None
+#            self.printLogMessage( " --->> Generate subset: %s " % str(subset_spec) )
             self.arg_queue.put( subset_spec,  False ) 
             self.updated_subset_specs = subset_spec
         
@@ -401,6 +415,7 @@ class vtkSubProcPointCloud( vtkPointCloud ):
             self.nlevels = result['nlevels']
             self.grid_bounds = result['bounds']
             self.updateScalars()   
+#            print " processResults[ %d ] : VARDATA" % self.pcIndex; sys.stdout.flush()
         elif result.type == ExecutionDataPacket.INDICES:
             self.np_index_seq = result.data 
             self.threshold_target = result['target']
@@ -410,9 +425,11 @@ class vtkSubProcPointCloud( vtkPointCloud ):
                 self.crange = result['crange']                
             if self.pcIndex == 1: self.printLogMessage(  " vtkSubProcPointCloud-> Process Results, Args: %s " % str(result['args']) )
             self.updateVertices()  
+#            print " processResults[ %d ] : INDICES" % self.pcIndex; sys.stdout.flush()
         elif result.type == ExecutionDataPacket.POINTS:
             self.np_points_data = result.data 
             self.initPoints()  
+#            print " processResults[ %d ] : POINTS" % self.pcIndex; sys.stdout.flush()
         return True
         
     def waitForData( self, dtype ):
@@ -489,7 +506,7 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
             pc.createPolydata()
             pc.updateScalars()
             self.point_cloud_map[ pc.actor ] = pc
-        self.scalingTimer = self.startTimer(1000)
+#        self.scalingTimer = self.startTimer(1000)
             
     def startCheckingProcQueues(self):
         self.dataQueueTimer = self.startTimer(100)
@@ -503,7 +520,7 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
         
     def timerEvent( self, event ):
         if event.timerId() == self.dataQueueTimer: self.checkProcQueues()
-        if event.timerId() == self.scalingTimer: self.emit( QtCore.SIGNAL('updateScaling') )
+#        if event.timerId() == self.scalingTimer: self.emit( QtCore.SIGNAL('updateScaling') )
         
     def processProcQueue(self):
         for pc_item in self.point_clouds.items():
@@ -603,16 +620,22 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
     def postDataQueueEvent( self ):
         QtCore.QCoreApplication.postEvent( self, QtCore.QTimerEvent( self.dataQueueTimer ) ) 
     
-    
-if __name__ == '__main__':
+
+def destroy_all_monsters():
 #                                              Cleanup abandoned processes
     import subprocess, signal    
     proc_specs = subprocess.check_output('ps').split('\n')
     for proc_spec in proc_specs:
         if 'CPCViewer' in proc_spec:
-            pid = proc_spec.split()[0]
-            os.kill( int(pid), signal.SIGKILL )
-            print "Killing proc: ", proc_spec
+            pid = int( proc_spec.split()[0] )
+            if pid <> os.getpid():
+                os.kill( pid, signal.SIGKILL )
+                print "Killing proc: ", proc_spec
+      
+if __name__ == '__main__':
+    
+    destroy_all_monsters()
+
     
         
         

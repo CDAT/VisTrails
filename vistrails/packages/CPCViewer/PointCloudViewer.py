@@ -9,8 +9,8 @@ import os.path
 import vtk, time
 from PyQt4 import QtCore, QtGui
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType
-from ControlPanel import CPCConfigDialog, LevelingSliderControl
+from DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType, destroy_all_monsters
+from ControlPanel import CPCConfigDialog, LevelingRange
 
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
@@ -246,10 +246,13 @@ class ScalarRange(QtCore.QObject):
         self.fixed = True
         return ( smin, smax ) 
     
+    def getValue(self):
+        return self.current if self.current else self.updated
+    
     def isFixed( self ): 
         return self.fixed
  
-    def applyUpdate(self):
+    def applyUpdate( self ):
         if self.updated and ( self.updated <> self.current ):
             self.current = self.updated
             return self.updated
@@ -273,6 +276,7 @@ class CPCPlot(QtCore.QObject):
     def __init__( self, vtk_render_window, **args ):
         QtCore.QObject.__init__( self )
         self.partitioned_point_cloud = None
+        self.point_cloud_overview = None
         self.renderWindow = vtk_render_window
         self.renderWindowInteractor = self.renderWindow.GetInteractor()
         style = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
@@ -280,10 +284,8 @@ class CPCPlot(QtCore.QObject):
         self.process_mode = ProcessMode.Default
         self.xcenter = 100.0
         self.xwidth = 300.0
-        self.windowPosition = 0.5
-        self.windowPositionSensitivity = 0.05
-        self.windowWidth = 0.03
-        self.windowWidthSensitivity = 0.05
+        self.volumeThresholdRange = LevelingRange()
+
         self.isValid = True
         self.point_size = 1
         self.cameraOrientation = {}
@@ -298,7 +300,7 @@ class CPCPlot(QtCore.QObject):
         self.colorWindowWidth = 1.0
         self.windowWidthSensitivity = 0.1 
         self.colorWindowPositionSensitivity = 0.1
-        self.render_mode = ProcessMode.HighRes
+        self.render_mode = ProcessMode.LowRes
         self.planeWidget = None
         self.render_mode_point_sizes = [ 4, 10 ]
         self.colorRange = 0 
@@ -323,12 +325,12 @@ class CPCPlot(QtCore.QObject):
         self.getPointCloud().refresh(True)
         self.refreshPointSize()         
         if not self.scalarRange.isFixed():
-            self.setScalarRange( self.scalarRange.current )   
+            self.setScalarRange( self.scalarRange.getValue() )   
         if render_mode ==  ProcessMode.HighRes:
             self.resolutionCounter.reset() 
         else: 
             self.partitioned_point_cloud.clear()
-            self.low_res_actor.VisibilityOn()
+            self.low_res_actor.VisibilityOn()   
 #    def refreshResolution( self ):
 #        self.setPointSize( self.raw_point_size )
 #        downsizeFactor = int( math.ceil( self.getNumberOfPoints() / float( self.downsizeNPointsTarget ) ) ) 
@@ -446,6 +448,9 @@ class CPCPlot(QtCore.QObject):
     def processEvent(self, eventArgs ):
         if eventArgs[0] == "KeyEvent":
             self.onKeyEvent( eventArgs[1:])
+        print " -- Event: %s " % str( eventArgs )
+        
+#        self.emit( QtCore.SIGNAL('Close')  )
             
     def onKeyEvent(self, eventArgs ):
         key = eventArgs[0]
@@ -508,12 +513,8 @@ class CPCPlot(QtCore.QObject):
         elif keysym == "m":  self.toggleRenderMode()
         elif keysym == "p":
             if self.process_mode == ProcessMode.Slicing:
-                self.sliceAxisIndex =  ( self.sliceAxisIndex + 1 ) % 3   
-            else:
-                self.process_mode = ProcessMode.Slicing                          
-            self.planeWidgetOn( )
-            self.updateTextDisplay( "Mode: Slicing", True )
-            self.shiftSlice( 0, 0 )
+                self.sliceAxisIndex =  ( self.sliceAxisIndex + 1 ) % 3 
+            self.enableSlicing()  
         elif keysym == "r":  
             self.process_mode = ProcessMode.Resolution
             self.updateTextDisplay( "Mode: Resolution", True ) 
@@ -526,6 +527,12 @@ class CPCPlot(QtCore.QObject):
             self.planeWidgetOff()
             self.shiftThresholding( 0, 0 )  
         elif keysym == "i":  self.setPointIndexBounds( 5000, 7000 )
+        
+    def enableSlicing( self ):
+        self.process_mode = ProcessMode.Slicing                          
+        self.planeWidgetOn( )
+        self.updateTextDisplay( "Mode: Slicing", True )
+        self.shiftSlice( 0, 0 )
         
     def planeWidgetOn(self):
         self.initPlaneWidget()
@@ -602,27 +609,68 @@ class CPCPlot(QtCore.QObject):
         text = "Set Colormap range: %s " % str( subrange )
         self.updateTextDisplay( text )
         
+    def processConfigClose( self, isOK ):
+        if isOK: 
+            self.scalarRange.applyUpdate()
+            self.partitioned_point_cloud.setScalarRange( self.scalarRange.getValue() )
+        self.setRenderMode( ProcessMode.HighRes )
+        self.partitioned_point_cloud.show()
+        self.point_cloud_overview.hide()
+        self.render()
+        
+    def processCategorySelectionCommand( self, args ):
+        op = args[0]
+        if op == 'Slicer':
+            self.enableSlicing()
+        if op == 'Volume':
+            self.enableThresholding() 
+            
+    def processSlicePlaneCommand( self, args ):
+        op = args[0]
+        if op == 'SliceWidth':
+            slider_index = args[1]
+            value = args[2]
+            print "Process SliceWidth[%d]: %f " % ( slider_index, value )
+        if op == 'SelectSlice':
+            self.sliceAxisIndex =  args[1]
+            self.enableSlicing() 
+            
+    def processThresholdRangeCommand( self, args ):
+        scaled_range = args[0]
+        self.volumeThresholdRange.setRange( scaled_range[0], scaled_range[1] ) 
+        if self.process_mode <> ProcessMode.Thresholding:
+            self.enableThresholding()
+        else:
+            print " --> Update Thresholding: %s " % str( scaled_range )
+            self.updateThresholding( 'vardata', scaled_range[0], scaled_range[1] )
+        
+    def enableThresholding( self, args = None ):
+        self.updateTextDisplay( "Mode: Thresholding", True )
+        self.process_mode = ProcessMode.Thresholding 
+        self.planeWidgetOff()
+        range = self.volumeThresholdRange.getRange()
+        self.updateThresholding( 'vardata', range[0], range[1] )
+                   
     def processColorScaleCommand( self, args ):
-        iParmIndex = int(args[0])
-        fParmValue = float(args[1])
-        range = [ 0, 0 ]
-        print "processColorScaleCommand[%d]: range = %s " % ( iParmIndex, str( range ) )
-        self.setScalarRange( range )
-                      
+        srange = args[0]
+        if self.render_mode ==  ProcessMode.HighRes:
+            self.setRenderMode( ProcessMode.LowRes )
+            self.scalarRange.invalidate()
+        print "processColorScaleCommand: range = %s " % ( str( srange ) )
+#        if self.render_mode ==  ProcessMode.HighRes:
+#            self.render_mode = ProcessMode.LowRes
+##            self.getPointCloud().refresh(True)
+##            self.refreshPointSize()         
+#            self.partitioned_point_cloud.clear()
+        urange = self.point_cloud_overview.getUnscaledRange( srange )
+        self.scalarRange.update( urange, True )
+        self.point_cloud_overview.setScalarRange( urange )
+        self.render()
+                     
     def shiftThresholding( self, position_inc, width_inc ):
-        if position_inc <> 0:
-            self.windowPosition = self.windowPosition + position_inc * self.windowPositionSensitivity
-        if width_inc <> 0:
-            if self.windowWidth < 2 * self.windowWidthSensitivity:
-                self.windowWidth = self.windowWidth *  2.0**width_inc 
-            else:
-                self.windowWidth = self.windowWidth + width_inc * self.windowWidthSensitivity
-        window_radius = self.windowWidth/2.0    
-        rmin = max( self.windowPosition - window_radius, 0.0 )
-        rmin = min( rmin, 1.0 - self.windowWidth )
-        rmax = min( self.windowPosition + window_radius, 1.0 )
-        rmax = max( rmax, self.windowWidth )
-        self.updateThresholding( 'vardata', rmin, rmax )
+        self.volumeThresholdRange.shiftWindow(position_inc, width_inc) 
+        range = self.volumeThresholdRange.getRange()
+        self.updateThresholding( 'vardata', range[0], range[1] )
         
     def getCurrentSlicePosition(self):
         bounds = self.point_cloud_overview.getBounds()
@@ -675,6 +723,38 @@ class CPCPlot(QtCore.QObject):
     def processConfigCmd( self, args ):
         if args[0] =='Color Scale':
             self.processColorScaleCommand( args[1:] )
+        elif args[0] =='Slice Planes':
+            self.processSlicePlaneCommand( args[1:] )
+        elif args[0] =='Threshold Range':
+            self.processThresholdRangeCommand( args[1:] )
+        elif args[0] =='CategorySelected':
+            self.processCategorySelectionCommand( args[1:] )
+        elif args[0] =='Close':
+            self.processConfigClose( args[1] )
+        elif args[0] =='Close':
+            self.processConfigClose( args[1] )
+        elif args[0] =='InitParm':
+            self.processsInitParameter( args[1], eval(args[2]) )
+
+    def processsInitParameter( self, parameterPath, parameterVals ):
+        print 'InitParm %s: %s ' % ( parameterPath, str( parameterVals ) )
+        paramKeys = parameterPath.split(':')
+        if paramKeys.pop(0) == 'Slicer':
+            if paramKeys.pop(0) == 'Slice Planes':
+                if paramKeys.pop(0) == 'Position':
+                    self.slicePosition[0] = parameterVals['x']
+                    self.slicePosition[1] = parameterVals['x']
+                    self.slicePosition[2] = parameterVals['x']
+        elif paramKeys.pop(0) == 'Color':
+            if paramKeys.pop(0) == 'Color Scale':
+                maxval = parameterVals['max']
+                minval = parameterVals['max'] 
+                self.scalarRange.update( ( minval, maxval), True ) 
+                self.scalarRange.applyUpdate()                  
+        elif paramKeys.pop(0) == 'Volume':
+            if paramKeys.pop(0) == 'Threshold Range':
+                maxval = parameterVals['max']
+                minval = parameterVals['max']                    
 
     def updateSlicing( self, sliceIndex, slice_bounds ):
         self.invalidate()
@@ -682,45 +762,6 @@ class CPCPlot(QtCore.QObject):
             ( rmin, rmax ) = slice_bounds[iRes]
             pc.generateSubset( ( self.sliceAxes[sliceIndex], rmin, rmax ) )
         self.render( ProcessMode.LowRes )
-#         print " setThresholdingBounds: %s " % str( subset_spec )
-#         sys.stdout.flush()
-        
-    
-      
-#    def print_grid_coords( self, npoints ):
-#        origin = [ self.lon_data[0], self.lat_data[0] ]
-#        for iPt in range( npoints ):
-#            lat = self.lat_data[iPt]
-#            lon = self.lon_data[iPt]
-#            x = ( lon - origin[0] ) * 5
-#            y = ( lat - origin[1] ) * 5 
-#            print " Point[%d]: ( %.2f, %.2f )" % ( iPt, x, y )
-
-#    def print_cell_coords( self, npoints ):
-#        for iPt in range( npoints ):
-#            corners = self.element_corners_data[:,iPt]
-#            print " Quad[%d]: %s" % ( iPt, str(corners) )
-#            
-#    def updateLevelVisibility(self):
-#        if self.setVisiblity( self.iLevel ) and ( self.iLevel >= 0 ):
-#            self.renderer.ResetCameraClippingRange() # ResetCamera( glev.getBounds() )
-#            if self.lev:
-#                lval = self.lev[ self.iLevel ]
-#                self.updateTextDisplay( "Level: %.2f, %s " % ( lval, self.lev.units ) )
-#        self.renderWindow.Render()
-        
-#        print " updateAllLevels required %.4f seconds. " % ( (t1-t0), )
-        
-#     def updateLevel(self):
-#         if len( self.var.shape ) == 3:
-#             self.var_data = self.level_cache.get( self.iLevel, None )
-#             if id(self.var_data) == id(None):
-#                 self.var_data = self.var[ 0, self.iLevel, 0:self.npoints ].raw_data()
-#                 self.level_cache[ self.iLevel ] = self.var_data
-#             self.vtk_color_data = numpy_support.numpy_to_vtk( self.var_data ) 
-#             self.polydata.GetPointData().SetScalars( self.vtk_color_data )
-#             self.renderWindow.Render()
-#             print " Setting Level value to %.2f %s" % ( self.lev[ self.iLevel ], self.lev.units )
             
     def updatePointSize( self, point_size_inc=0):
         self.point_size = self.point_size + point_size_inc
@@ -855,24 +896,7 @@ class CPCPlot(QtCore.QObject):
 ##             self.clipper.GetPlanes( self.clippingPlanes )
 ##             self.mapper.SetClippingPlanes( self.clippingPlanes )
 #            self.mapper.Modified()
-#            
-#            
-#    def setProcessMode( self, mode ):
-#        self.process_mode = mode
-#        self.setPointSize( self.reduced_point_sizes[mode] )
-#       
-#    def toggleSlicerVisibility( self ):
-#        if self.sliceOrientation == 'y':
-#            self.sliceOrientation = 'z'
-#            self.moveSlicePlane()
-#            self.slice_actor.SetVisibility( True  )  
-#        if self.sliceOrientation == 'z':
-#            self.sliceOrientation = 'x'
-#            self.moveSlicePlane()
-#        elif self.sliceOrientation == 'x':
-#            self.sliceOrientation = 'y'
-#            self.moveSlicePlane() 
-#        self.renderWindow.Render()   
+
      
     def CreateMap(self):        
         earth_source = vtk.vtkEarthSource()
@@ -999,7 +1023,7 @@ class CPCPlot(QtCore.QObject):
                     
     def updateZRange( self, pc ):
         nlev = pc.getNLevels()
-        if nlev <> self.nlevels:
+        if nlev and (nlev <> self.nlevels):
             self.nlevels = nlev
             self.sliceWidth[2] = 1.0/(self.nlevels)
             slice_index = round( self.slicePosition[2] / self.sliceWidth[2] ) 
@@ -1023,10 +1047,12 @@ class CPCPlot(QtCore.QObject):
         if not self.scalarRange.isFixed():
             sr = pc.getScalarRange() 
             if sr: self.scalarRange.update( sr )
+        else:
+            pc.setScalarRange( self.scalarRange.getValue() )
         self.updateZRange( pc )
         if self.pointPicker.GetPickList().GetNumberOfItems() == 0: 
             self.pointPicker.AddPickList( pc.actor ) 
-        text = " Thresholding Range[%d]: %s " % ( pcIndex, str( pc.getThresholdingRange() ) )
+        text = " Thresholding Range[%d]: %s \n Colormap Range: %s, Fixed: %s " % ( pcIndex, str( pc.getThresholdingRange() ), str( self.scalarRange.getValue() ), str( self.scalarRange.isFixed() ) )
         self.updateTextDisplay( text )
 #        print text; sys.stdout.flush()
         self.reset( pcIndex )
@@ -1052,8 +1078,6 @@ class CPCPlot(QtCore.QObject):
         self.point_cloud_overview.initialize( init_args )
         self.initCollections( nCollections, init_args )
         self.setPointSize( self.point_size )
-        subset_spec =  ( 'vardata', 0.4, 0.6 ) 
-        self.generateSubset( subset_spec )
         self.resolutionCounter = Counter( self.render_mode_point_sizes[1], max( self.render_mode_point_sizes[1]-nCollections, self.render_mode_point_sizes[0] ) )
  
     def update(self):
@@ -1071,6 +1095,10 @@ class QVTKAdaptor( QVTKRenderWindowInteractor ):
         self.emit( QtCore.SIGNAL('event'), ( 'KeyEvent', qevent.key(), str( qevent.text() ), qevent.modifiers() ) )
 #        print " QVTKAdaptor keyPressEvent: %x [%s] " % ( qevent.key(), str( qevent.text() ) )
 #        sys.stdout.flush()
+
+    def closeEvent( self, event ):
+        self.emit( QtCore.SIGNAL('Close') )
+        QVTKRenderWindowInteractor.closeEvent( self, event )
     
 class QPointCollectionMgrThread( QtCore.QThread ):
     
@@ -1090,37 +1118,45 @@ class QPointCollectionMgrThread( QtCore.QThread ):
         self.exit(0)       
                              
 if __name__ == '__main__':
-    data_type = "CAM"
-    data_dir = "/Users/tpmaxwel/data" 
+    import argparse
+    parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
+    parser.add_argument( 'PATH' )
+    parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
+    parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CAM", help='input data type')
+    ns = parser.parse_args( sys.argv )
+    
+    destroy_all_monsters()
+
     app = QtGui.QApplication(['Point Cloud Plotter'])
     widget = QVTKAdaptor()
     widget.Initialize()
     widget.Start()        
     point_size = 1
-    nCollections = 16
+    nCollections = 10
+    data_dir = os.path.expanduser( ns.data_dir )
     
-    if data_type == "WRF":
+    if ns.data_type == "WRF":
         data_file = os.path.join( data_dir, "WRF/wrfout_d01_2013-05-01_00-00-00.nc" )
         grid_file = None
         varname = "U"        
-    elif data_type == "CAM":
+    elif ns.data_type == "CAM":
         data_file = os.path.join( data_dir, "CAM/f1850c5_t2_ANN_climo-native.nc" )
         grid_file = os.path.join( data_dir, "CAM/ne120np4_latlon.nc" )
         varname = "U"
-    elif data_type == "ECMWF":
+    elif ns.data_type == "ECMWF":
         data_file = os.path.join( data_dir, "AConaty/comp-ECMWF/ecmwf.xml" )
         grid_file = None
         varname = "U_velocity"   
-    elif data_type == "GEOS5":
+    elif ns.data_type == "GEOS5":
         data_file = "/Developer/Data/AConaty/comp-ECMWF/ac-comp1-geos5.xml" 
         grid_file = None
         varname = "uwnd"   
-    elif data_type == "MMF":
+    elif ns.data_type == "MMF":
         data_file = os.path.join( data_dir, "MMF/diag_prs.20080101.nc" )
         grid_file = None
         varname = "u"
         
-    g = CPCPlot( widget.GetRenderWindow(),  ) 
+    g = CPCPlot( widget.GetRenderWindow() ) 
     widget.connect( widget, QtCore.SIGNAL('event'), g.processEvent )  
     g.init( init_args = ( grid_file, data_file, varname ), nCollections=nCollections )
     
@@ -1129,13 +1165,12 @@ if __name__ == '__main__':
 #    pointCollectionMgrThread.start()
 
     configDialog = CPCConfigDialog()
-    iColorCatIndex = configDialog.addCategory( 'Color' )
-    configDialog.addConfigControl( iColorCatIndex, LevelingSliderControl("Color Scale") )
+    configDialog.build()   
     configDialog.connect( configDialog, QtCore.SIGNAL("ConfigCmd"), g.processConfigCmd )
+    configDialog.activate()
     
-    configDialog.show()
-    app.connect( app, QtCore.SIGNAL("aboutToQuit()"), configDialog.cancel ) 
     app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
+    app.connect( widget, QtCore.SIGNAL("Close"), configDialog.closeDialog ) 
     widget.show()   
     app.exec_() 
     g.terminate()  
