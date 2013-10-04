@@ -142,7 +142,7 @@ class vtkPointCloud(QtCore.QObject):
     def getThresholdingRange(self):       
         return self.trange if ( self.threshold_target == "vardata" ) else self.crange
     
-    def getValueRange( self, range_type ):
+    def getValueRange( self, range_type = ScalarRangeType.Full ):
         return self.vrange if ( range_type == ScalarRangeType.Full ) else self.trange
    
     def generateSubset(self, subset_spec ):
@@ -180,20 +180,21 @@ class vtkPointCloud(QtCore.QObject):
     def getPolydata(self):
         return self.polydata
         
-    def setScalarRange( self, scalar_range ):
-        try:
-            self.mapper.SetScalarRange( scalar_range[0], scalar_range[1] )
-            self.printLogMessage(  " Set Scalar Range: %s " % str( scalar_range ) )
-            self.mapper.Modified()
-            self.actor.Modified()
-            self.current_scalar_range = scalar_range
-        except TypeError: 
-            pass
+    def setNormalizedScalarRange( self, normalized_scalar_range ):
+        self.setScalarRange( self.getScaledRange( normalized_scalar_range ) )
+        return self.current_scalar_range
+
+    def setScalarRange( self, scalar_range=None ):
+        if scalar_range: self.current_scalar_range = scalar_range
+        self.mapper.SetScalarRange( self.current_scalar_range[0], self.current_scalar_range[1] )
+#        self.printLogMessage(  " Set Scalar Range: %s " % str( self.current_scalar_range ) )
+        self.mapper.Modified()
+        self.actor.Modified()
         
     def getScalarRange( self ):
         return self.current_scalar_range
     
-    def getUnscaledRange( self, srange ):
+    def getScaledRange( self, srange ):
         dv = self.vrange[1] - self.vrange[0]
         vmin = self.vrange[0] + srange[0] * dv
         vmax = self.vrange[0] + srange[1] * dv
@@ -254,11 +255,10 @@ class vtkPointCloud(QtCore.QObject):
     def initializePointsActor( self, polydata, **args ):
         lut = args.get( 'lut', self.create_LUT() )
         self.mapper.SetInput( self.polydata ) 
-        if lut: 
-            self.mapper.SetLookupTable( lut )                
-        if self.vrange:
-            self.mapper.SetScalarRange( self.vrange[0], self.vrange[1] ) 
-            self.printLogMessage( " init scalar range %s " % str(self.vrange) )    
+        if lut:  self.mapper.SetLookupTable( lut )                
+#        if self.vrange:
+#            self.mapper.SetScalarRange( self.vrange[0], self.vrange[1] ) 
+#            self.printLogMessage( " init scalar range %s " % str(self.vrange) )    
 
     def getNumberOfPoints(self): 
         return len( self.np_points_data ) / 3             

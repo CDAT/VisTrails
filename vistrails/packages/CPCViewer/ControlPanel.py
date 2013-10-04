@@ -18,6 +18,10 @@ class LevelingRange( QtCore.QObject ):
         self.computeRange()
         self.windowPositionSensitivity = args.get( 'pos_s', 0.05 )
         self.windowWidthSensitivity = args.get( 'width_s', 0.05 )
+        self.scaling_bounds = None
+        
+    def setScalingBounds( self, sbounds ):
+        self.scaling_bounds = sbounds
 
     def shiftWindow( self, position_inc, width_inc ):
         if position_inc <> 0:
@@ -44,6 +48,10 @@ class LevelingRange( QtCore.QObject ):
         
     def getRange(self):
         return ( self.rmin, self.rmax )
+
+    def getScaledRange(self):
+        ds = self.scaling_bounds[1] - self.scaling_bounds[0]
+        return ( self.scaling_bounds[0] + self.rmin * ds, self.scaling_bounds[0] + self.rmax * ds )
 
     def getWindow(self):
         return ( self.windowPosition, self.windowWidth )
