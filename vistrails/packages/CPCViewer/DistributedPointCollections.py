@@ -148,9 +148,9 @@ class vtkPointCloud(QtCore.QObject):
     def generateSubset(self, subset_spec ):
         pass
     
-    def refresh(self, force=False ):
+    def refresh( self ):
         if self.current_subset_specs and (self.current_subset_specs <> self.updated_subset_specs):
-            self.generateSubset( self.current_subset_specs, force )
+            self.generateSubset( self.current_subset_specs )
             self.updated_subset_specs = self.current_subset_specs
     
     def getData( self, dtype ):
@@ -334,6 +334,9 @@ class vtkPointCloud(QtCore.QObject):
 
     def setPointSize( self, point_size ):
         self.actor.GetProperty().SetPointSize( point_size )
+
+    def getPointSize( self ):
+        return self.actor.GetProperty().GetPointSize()
         
     def getLUT(self):
         return self.mapper.GetLookupTable()
@@ -371,15 +374,14 @@ class vtkSubProcPointCloud( vtkPointCloud ):
         self.arg_queue = Queue() # JoinableQueue() 
         self.result_queue = Queue() # JoinableQueue()
 
-    def generateSubset(self, subset_spec, force=False ):
+    def generateSubset(self, subset_spec ):
         self.current_subset_specs = subset_spec
-        if force or self.actor.GetVisibility():
-            self.clearQueues()
-            self.threshold_target = subset_spec[0]
-            self.np_index_seq = None
+        self.clearQueues()
+        self.threshold_target = subset_spec[0]
+        self.np_index_seq = None
 #            self.printLogMessage( " --->> Generate subset: %s " % str(subset_spec) )
-            self.arg_queue.put( subset_spec,  False ) 
-            self.updated_subset_specs = subset_spec
+        self.arg_queue.put( subset_spec,  False ) 
+        self.updated_subset_specs = subset_spec
         
     def getResults( self, block = False ):
         try:
@@ -463,19 +465,18 @@ class vtkLocalPointCloud( vtkPointCloud ):
         self.point_collection = PointCollection()
         self.point_collection.setDataSlice( istart, istep )
 
-    def generateSubset(self, subset_spec, force=False ):
+    def generateSubset(self, subset_spec ):
         self.current_subset_specs = subset_spec
         self.threshold_target = subset_spec[0]
-        if force or self.actor.GetVisibility():
-            vmin, vmax = self.point_collection.execute( subset_spec )       
-            self.np_index_seq = self.point_collection.selected_index_array
-            if subset_spec == "vardata": self.trange = ( vmin, vmax )
-            else: self.crange = ( vmin, vmax )
-            self.grid = self.point_collection.getGridType()
-            self.nlevels = self.point_collection.getNLevels()
-            self.current_scalar_range = self.vrange
-            self.updateVertices() 
-            self.updated_subset_specs = subset_spec
+        vmin, vmax = self.point_collection.execute( subset_spec )       
+        self.np_index_seq = self.point_collection.selected_index_array
+        if subset_spec == "vardata": self.trange = ( vmin, vmax )
+        else: self.crange = ( vmin, vmax )
+        self.grid = self.point_collection.getGridType()
+        self.nlevels = self.point_collection.getNLevels()
+        self.current_scalar_range = self.vrange
+        self.updateVertices() 
+        self.updated_subset_specs = subset_spec
         
     def initialize(self, init_args ):
         self.point_collection.initialize( init_args )
@@ -511,9 +512,9 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
     def startCheckingProcQueues(self):
         self.dataQueueTimer = self.startTimer(100)
     
-    def refresh( self, force=False ): 
+    def refresh( self ): 
         for pc in self.point_clouds.values():
-            pc.refresh( force )
+            pc.refresh()
 
     def stopCheckingProcQueues(self):
         if self.timerId: self.killTimer( self.dataQueueTimer )
@@ -564,13 +565,13 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
     def getActors(self):
         return [ pc.actor for pc in self.point_clouds.values() ]
     
-    def generateSubset(self, subset_spec = None, force=False ):
+    def generateSubset(self, subset_spec = None ):
         if subset_spec: self.current_subset_spec = subset_spec
         self.clearProcQueues()
 #        print " generateSubset: subset_spec = %s " % str( self.current_subset_spec )R
         for pc_item in self.point_clouds.items():
             if pc_item[0] < self.nActiveCollections:
-                pc_item[1].generateSubset( self.current_subset_spec, force )
+                pc_item[1].generateSubset( self.current_subset_spec )
         self.startCheckingProcQueues()
         
     def clearProcQueues(self):
@@ -606,6 +607,10 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
     def setPointSize( self, point_size ) :  
         for pc in self.point_clouds.values():
             pc.setPointSize( point_size )
+
+    def getPointSize( self ) :  
+        pclist = self.point_clouds.values()
+        return pclist[0].getPointSize()
     
     def values(self):
         return self.point_clouds.values()
