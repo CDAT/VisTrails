@@ -662,11 +662,17 @@ class CPCPlot(QtCore.QObject):
         self.updateThresholding( 'vardata', range[0], range[1] )
                    
     def processColorScaleCommand( self, args ):
-        norm_range = args[0]
-        self.scalarRange.setRange( norm_range[0], norm_range[1] )        
-        if self.render_mode ==  ProcessMode.HighRes:
-            self.setRenderMode( ProcessMode.LowRes )
-        self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )
+        if args[0] == "ButtonClick":
+            if args[1] == "Reset":
+                print "Reset"
+            elif args[1] == "Match Threshold Range":
+                print "Match Threshold Range"
+        else:
+            norm_range = args[0]
+            self.scalarRange.setRange( norm_range[0], norm_range[1] )        
+            if self.render_mode ==  ProcessMode.HighRes:
+                self.setRenderMode( ProcessMode.LowRes )
+            self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )
 #            self.scalarRange.invalidate()
 #        print "processColorScaleCommand: range = %s " % ( str( norm_range ) )
 #        if self.render_mode ==  ProcessMode.HighRes:

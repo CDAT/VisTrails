@@ -114,6 +114,10 @@ class ConfigControl(QtGui.QWidget):
         
     def getParameters(self):
         return self.parameters.values()
+    
+    def getTabLayout(self, tab_index ):
+        return self.tabWidget.widget(tab_index).layout() 
+        
         
     def addTab( self, tabname ):
         self.tabWidget.setEnabled(True)
@@ -222,6 +226,18 @@ class TabbedControl( ConfigControl ):
         self.connect( slider, QtCore.SIGNAL("SliderMoved"), self.sliderMoved )
         return slider_index
     
+    def addButtonBox(self, button_list, layout, **args ):
+        button_layout = QtGui.QHBoxLayout()
+        layout.addLayout( button_layout )
+        
+        for btnName in button_list:        
+            button = QtGui.QPushButton( btnName )
+            button_layout.addWidget( button )
+            self.connect( button, QtCore.SIGNAL('clicked(bool)'), lambda bval, bName=btnName: self.buttonClicked(bName) )
+            
+    def buttonClicked( self, btnName ):
+        self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.title, "ButtonClick", btnName ) )
+           
     def sliderMoved( self, slider_index, value ):
         self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.title, slider_index, value ) )
         
@@ -279,6 +295,16 @@ class LevelingSliderControl( TabbedControl ):
     def sliderMoved( self, slider_index, value ):
         scaled_range = self.getScaledRange( slider_index, value )
         self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.title, scaled_range ) )
+
+class ColorScaleControl( LevelingSliderControl ):
+ 
+    def __init__(self, title, maxval_init, minval_init, **args ):  
+        super( ColorScaleControl, self ).__init__( title, maxval_init, minval_init, **args )
+
+    def build(self):
+        super( ColorScaleControl, self ).build()
+        layout = self.getTabLayout( self.minmax_tab_index )
+        self.addButtonBox( [ "Match Threshold Range", "Reset"], layout )
         
 class VolumeControl( LevelingSliderControl ):
  
@@ -456,7 +482,7 @@ class CPCConfigDialog(QtGui.QDialog):
         
     def build(self):
         self.iColorCatIndex = self.addCategory( 'Color' )
-        self.addConfigControl( self.iColorCatIndex, LevelingSliderControl("Color Scale", 0.5, 1.0 ) )
+        self.addConfigControl( self.iColorCatIndex, ColorScaleControl("Color Scale", 0.5, 1.0 ) )
         self.iSlicerCatIndex = self.addCategory( 'Slicer' )
         self.addConfigControl( self.iSlicerCatIndex, SlicerControl("Slice Planes", 0.5, 0.5, 0.5 ) )
         self.iThresholdingCatIndex = self.addCategory( 'Volume' )
