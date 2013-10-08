@@ -218,6 +218,12 @@ class QAnimationView(QtGui.QWidget):
     def animationCreated(self):
         self.stopCreating()
         self.setCanvas(self.canvas) #sets up widgets based on animation object
+        
+        #update toolbar
+        controller = self.root.get_current_project_controller()
+        sheet = controller.get_sheet_widget(controller.current_sheetName)
+        coords = controller.current_cell_coords
+        sheet.getCellToolBar(coords[0], coords[1]).snapTo(coords[0], coords[1])
 
     def playStopClicked(self):
         if self.canvas.animate.create_flg == 1:

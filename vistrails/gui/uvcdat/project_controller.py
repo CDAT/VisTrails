@@ -839,13 +839,10 @@ class ProjectController(QtCore.QObject):
         animationWidget = _app.uvcdatWindow.dockAnimate.widget()
         
         #get cell widget
-        ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
-        tabController = ssheetWindow.get_current_tab_controller()
         cellWidget = None
-        for i in range(tabController.count()):
-            if tabController.tabText(i) == sheetName:
-                cellWidget = tabController.widget(i).getCell(row, col)
-                break
+        sheetWidget = self.get_sheet_widget(sheetName)
+        if sheetWidget is not None:
+            cellWidget = sheetWidget.getCell(row, col)
 
         if (cellWidget is not None and
                 hasattr(cellWidget, 'canvas') and
@@ -853,6 +850,13 @@ class ProjectController(QtCore.QObject):
             animationWidget.setCanvas(cellWidget.canvas)
         else:
             animationWidget.setCanvas(None)
+            
+    def get_sheet_widget(self, sheetName):
+        ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+        tabController = ssheetWindow.get_current_tab_controller()
+        for i in range(tabController.count()):
+            if tabController.tabText(i) == sheetName:
+                return tabController.widget(i)
                 
     def get_python_script(self, sheetName, row, col):
         script = None

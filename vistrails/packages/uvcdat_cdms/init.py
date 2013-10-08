@@ -1349,6 +1349,15 @@ class QCDATWidgetToolBar(QCellToolBar):
         self.appendAction(QCDATWidgetExport(self))
         self.appendAction(QCDATWidgetColormap(self))
         self.appendAction(QCDATWidgetAnimation(self))
+        
+    def updateStatus(self, cellWidget):
+        if (cellWidget is not None and
+                hasattr(cellWidget, 'canvas') and
+                hasattr(cellWidget.canvas, 'animate') and
+                cellWidget.canvas.animate.create_flg == 1):
+            self.prevAction.setEnabled(False)
+            self.nextAction.setEnabled(False)
+            self.dimSelector.setEnabled(False)
 
 class QCDATDimSelector(QtGui.QComboBox):
     """ list of dims to put here"""
@@ -1411,6 +1420,9 @@ class QCDATWidgetPrev(QtGui.QAction):
                 self.setVisible(True)
         else:
             self.setVisible(False)
+        
+        self.parent().updateStatus(cellWidget)    
+        
 class QDimsSlider(QtGui.QWidget):
     def updateLabels(self,val=None,fromDimension=False):
         selectedDim = str(self.parent().parent().parent().dimSelector.currentText())
