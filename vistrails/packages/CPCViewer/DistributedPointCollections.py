@@ -570,6 +570,9 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
     def getActors(self):
         return [ pc.actor for pc in self.point_clouds.values() ]
     
+    def getSubsetSpecs(self):
+        return self.current_subset_spec
+    
     def generateSubset(self, subset_spec = None ):
         if subset_spec: self.current_subset_spec = subset_spec
         self.clearProcQueues()

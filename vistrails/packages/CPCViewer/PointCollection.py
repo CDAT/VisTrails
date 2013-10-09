@@ -213,8 +213,11 @@ class PointCollection():
                 vmax = arange[0] + rmax * dv  
             elif self.threshold_target == 'vardata':
                 dv = self.vrange[1] - self.vrange[0]
-                vmin = self.vrange[0] + rmin * dv
-                vmax = self.vrange[0] + rmax * dv
+                try:
+                    vmin = self.vrange[0] + rmin * dv
+                    vmax = self.vrange[0] + rmax * dv
+                except TypeError, err:
+                    pass
             if vmin:
                 self.thresholded_range = [ vmin, vmax ]
                 return var_data, vmin, vmax

@@ -246,7 +246,8 @@ class LabeledSliderWidget( QtGui.QWidget ):
             self.initValue = int( round( self.minValue + fvalue * ( self.maxValue - self.minValue ) ) )
         self.slider.setValue( int( self.initValue ) )
         self.connect( self.slider, QtCore.SIGNAL('sliderMoved(int)'), self.sliderMoved )
-#        self.connect( self.slider, QtCore.SIGNAL('sliderPressed(int)'), self.sliderPressed )
+        self.connect( self.slider, QtCore.SIGNAL('sliderPressed()'), self.configStart )
+        self.connect( self.slider, QtCore.SIGNAL('sliderReleased()'), self.configEnd )
         slider_label.setBuddy( self.slider )
         slider_layout.addWidget( self.slider  ) 
         self.value_pane = QtGui.QLabel( str( self.getSliderValue() ) )         
@@ -267,11 +268,17 @@ class LabeledSliderWidget( QtGui.QWidget ):
     def sliderMoved( self, raw_slider_value ):
         scaled_slider_value = self.getSliderValue( raw_slider_value )
         self.value_pane.setText( str( scaled_slider_value ) )
-        self.emit( QtCore.SIGNAL('SliderMoved'), self.slider_index, raw_slider_value, scaled_slider_value )
+        self.emit( QtCore.SIGNAL('ConfigCmd'), 'Moved', self.slider_index, ( raw_slider_value, scaled_slider_value ) )
         return scaled_slider_value
     
     def isTracking(self):
         return self.slider.isSliderDown()
+    
+    def configStart( self ):
+        self.emit( QtCore.SIGNAL('ConfigCmd'), 'Start', self.slider_index ) 
+
+    def configEnd( self ):
+        self.emit( QtCore.SIGNAL('ConfigCmd'), 'End', self.slider_index ) 
 
 class TabbedControl( ConfigControl ):
     
@@ -283,7 +290,7 @@ class TabbedControl( ConfigControl ):
     def addSlider(self, label, layout, **args ):
         slider_index = len( self.sliders ) 
         slider = LabeledSliderWidget( slider_index, label, cparm=self.cparm, **args )
-        self.connect( slider, QtCore.SIGNAL('SliderMoved'), self.sliderMoved )
+        self.connect( slider, QtCore.SIGNAL('ConfigCmd'), self.processSliderConfigCmd )
         layout.addWidget( slider  ) 
         self.sliders[slider_index] = slider
         return slider_index
@@ -291,6 +298,11 @@ class TabbedControl( ConfigControl ):
     def sliderMoved(self, slider_index, raw_slider_value, scaled_slider_value):
         self.cparm[ slider_index ] = scaled_slider_value
         self.cparm[ "CurrentIndex" ] = slider_index
+        
+    def processSliderConfigCmd(self, cmd, slider_index, values=None ):
+        if cmd == 'Moved': self.sliderMoved( slider_index, values[0], values[1] )
+        if cmd == 'Start': self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), "StartConfig", slider_index ) )
+        if cmd == 'End': self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), "EndConfig", slider_index ) )
 
     def build(self):
         super( TabbedControl, self ).build()
@@ -298,7 +310,9 @@ class TabbedControl( ConfigControl ):
         if cats:
             for category_spec in cats:
                 tab_index, tab_layout = self.addTab( category_spec[0] )
-                self.addSlider( category_spec[1], tab_layout, max_value=category_spec[3], min_value=category_spec[2], init_value=category_spec[4], **self.args )
+                init_value = category_spec[4] 
+                self.addSlider( category_spec[1], tab_layout, max_value=category_spec[3], min_value=category_spec[2], init_value=init_value, **self.args )
+                self.cparm.setValue( tab_index, init_value )
     
     def addButtonBox(self, button_list, layout, **args ):
         button_layout = QtGui.QHBoxLayout()
