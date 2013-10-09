@@ -148,8 +148,8 @@ class vtkPointCloud(QtCore.QObject):
     def generateSubset(self, subset_spec ):
         pass
     
-    def refresh( self ):
-        if self.current_subset_specs and (self.current_subset_specs <> self.updated_subset_specs):
+    def refresh( self, force = False ):
+        if force or (self.current_subset_specs and (self.current_subset_specs <> self.updated_subset_specs)):
             self.generateSubset( self.current_subset_specs )
             self.updated_subset_specs = self.current_subset_specs
     
@@ -175,6 +175,7 @@ class vtkPointCloud(QtCore.QObject):
         self.polydata.Modified()
         self.mapper.Modified()
         self.actor.Modified()
+        self.actor.SetVisibility( True  )
 #        self.emit( "NewSubset", self.pcIndex )
         
     def getPolydata(self):
@@ -296,7 +297,8 @@ class vtkPointCloud(QtCore.QObject):
         
     def setVisiblity(self, visibleLevelIndex ):
         isVisible = ( visibleLevelIndex < 0 ) or ( visibleLevelIndex == self.iLevel )
-        if isVisible: self.updatePoints()
+        if isVisible: 
+            self.updatePoints()
         self.actor.SetVisibility( isVisible  )
         return isVisible
     
@@ -333,13 +335,13 @@ class vtkPointCloud(QtCore.QObject):
         self.mapper.RemoveAllClippingPlanes()    
 
     def setPointSize( self, point_size ):
-        self.actor.GetProperty().SetPointSize( point_size )
+        try:
+            self.actor.GetProperty().SetPointSize( point_size )
+        except TypeError:
+            print>>sys.stderr, "Error setting point size: value = %s " % str( point_size )
 
     def getPointSize( self ):
         return self.actor.GetProperty().GetPointSize()
-        
-    def getLUT(self):
-        return self.mapper.GetLookupTable()
         
     def getPointValue( self, iPt ):
         return self.var_data[ iPt ]
@@ -379,7 +381,8 @@ class vtkSubProcPointCloud( vtkPointCloud ):
         self.clearQueues()
         self.threshold_target = subset_spec[0]
         self.np_index_seq = None
-#            self.printLogMessage( " --->> Generate subset: %s " % str(subset_spec) )
+        if self.pcIndex == 1: 
+            self.printLogMessage( " vtkSubProcPointCloud --->> Generate subset: %s " % str(subset_spec) )
         self.arg_queue.put( subset_spec,  False ) 
         self.updated_subset_specs = subset_spec
         
@@ -400,7 +403,8 @@ class vtkSubProcPointCloud( vtkPointCloud ):
             self.np_index_seq = result.data 
             self.trange = result['trange']
             self.threshold_target = result['target']
-            if self.pcIndex == 1: self.printLogMessage(  " vtkSubProcPointCloud-> Get Results, Args: %s " % str(result['args']) )
+            if self.pcIndex == 1: 
+                self.printLogMessage(  " vtkSubProcPointCloud --->> Get Results, Args: %s " % str(result['args']) )
         elif result.type == ExecutionDataPacket.POINTS:
             self.np_points_data = result.data 
         return True
@@ -425,7 +429,8 @@ class vtkSubProcPointCloud( vtkPointCloud ):
                 self.trange = result['trange']
             else:
                 self.crange = result['crange']                
-            if self.pcIndex == 1: self.printLogMessage(  " vtkSubProcPointCloud-> Process Results, Args: %s " % str(result['args']) )
+            if self.pcIndex == 1:
+                self.printLogMessage(  " vtkSubProcPointCloud --->> Process Results, Args: %s " % str(result['args']) )
             self.updateVertices()  
 #            print " processResults[ %d ] : INDICES" % self.pcIndex; sys.stdout.flush()
         elif result.type == ExecutionDataPacket.POINTS:
@@ -512,9 +517,9 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
     def startCheckingProcQueues(self):
         self.dataQueueTimer = self.startTimer(100)
     
-    def refresh( self ): 
+    def refresh( self, force = False ): 
         for pc in self.point_clouds.values():
-            pc.refresh()
+            pc.refresh( force )
 
     def stopCheckingProcQueues(self):
         if self.timerId: self.killTimer( self.dataQueueTimer )
@@ -556,7 +561,7 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
     def getPoint( self, actor, iPt ):
         pc = self.point_cloud_map.get( actor, None )
         if pc: return pc.getPoint( iPt )
-        else: return ( "", "" ), ""
+        else: return None, None
 
     def printLogMessage(self, msg_str ):
         print " vtkPartitionedPointCloud: %s" % ( msg_str )
