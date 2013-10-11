@@ -3,6 +3,7 @@ import os.path
 import vtk, time
 from PyQt4 import QtCore, QtGui
 from compiler.ast import Name
+from ColorMapManager import ColorMapManager
 POS_VECTOR_COMP = [ 'xpos', 'ypos', 'zpos' ]
 
 
@@ -43,11 +44,11 @@ class ConfigParameter( QtCore.QObject ):
     def serialize( self ):
         return str( self.values )
 
-    def getValue( self, index ):
-        return self.values.get( index, None )
+    def getValue( self, key, default_value=None ):
+        return self.values.get( key, default_value )
 
-    def setValue( self, index, val ):
-        self.values[ index ] = val
+    def setValue( self, key, val ):
+        self.values[ key ] = val
 
     def incrementValue( self, index, inc ):
         self.values[ index ] = self.values[ index ] + inc
@@ -172,6 +173,12 @@ class ConfigControl(QtGui.QWidget):
         tabContents.setLayout(layout)
         tab_index = self.tabWidget.addTab( tabContents, tabname )
         return tab_index, layout
+
+    def addControlRow( self, tab_index ):
+        layout = self.getTabLayout( tab_index )
+        widget_layout = QtGui.QHBoxLayout()
+        layout.addLayout( widget_layout )
+        return widget_layout
     
     def addButtonLayout(self):
         self.buttonLayout = QtGui.QHBoxLayout()
@@ -285,24 +292,71 @@ class TabbedControl( ConfigControl ):
     def __init__(self, cparm, **args ):  
         ConfigControl.__init__( self, cparm, **args )
         self.args = args
-        self.sliders = {}
-        
+        self.widgets = {}
+       
     def addSlider(self, label, layout, **args ):
-        slider_index = len( self.sliders ) 
+        slider_index = len( self.widgets ) 
         slider = LabeledSliderWidget( slider_index, label, cparm=self.cparm, **args )
         self.connect( slider, QtCore.SIGNAL('ConfigCmd'), self.processSliderConfigCmd )
         layout.addWidget( slider  ) 
-        self.sliders[slider_index] = slider
+        self.widgets[slider_index] = slider
         return slider_index
+
+    def addCheckbox(self, label, layout, **args ):
+        cbox_index = len( self.widgets ) 
+        checkBox = QtGui.QCheckBox(label)
+        layout.addWidget( checkBox )
+        self.connect( checkBox, QtCore.SIGNAL("stateChanged(int)"), lambda cbvalue, cbname=label: self.processWidgetConfigCmd(str(cbname),cbvalue) ) 
+        ival = self.cparm.getValue( label, False )
+        checkBox.setCheckState( QtCore.Qt.Checked if ival else QtCore.Qt.Unchecked )
+        self.widgets[cbox_index] = checkBox
+        return cbox_index
+    
+    def addRadioButtons(self, label_list, layout, **args):
+        init_index = args.get( 'init_index', 0 )
+        for rbindex, label in enumerate( label_list ):
+            rbutton = QtGui.QRadioButton ( label, self )
+            layout.addWidget( rbutton )
+            self.connect( rbutton, QtCore.SIGNAL("pressed()"), lambda rbname=label: self.processWidgetConfigCmd(str(rbname)) ) 
+            if rbindex == init_index: rbutton.setChecked(True)
+                
+    def addListSelection(self, label, list_items, layout ):
+        list_index = len( self.widgets ) 
+        list_layout = QtGui.QHBoxLayout()
+        layout.addLayout( list_layout )
+        list_label = QtGui.QLabel( label )
+        list_layout.addWidget( list_label ) 
+        listCombo =  QtGui.QComboBox ( self.parent() )
+        list_label.setBuddy( listCombo )
+        listCombo.setMaximumHeight( 30 )
+        list_layout.addWidget( listCombo )
+        for item in list_items: listCombo.addItem( str(item) )
+        try:
+            ival = self.cparm.getValue( label, "None" )
+            current_index = list_items.index( ival )
+            listCombo.setCurrentIndex ( current_index )
+        except Exception, err: 
+            print>>sys.stderr, "Can't find initial colormap: %s " % ival
+        self.connect( listCombo, QtCore.SIGNAL("currentIndexChanged(QString)"), lambda lvalue, listname=label: self.processWidgetConfigCmd( str(listname), str(lvalue) ) )  
+        self.widgets[list_index] = listCombo
+        return list_index
     
     def sliderMoved(self, slider_index, raw_slider_value, scaled_slider_value):
+        self.cparm.setValue( "CurrentIndex", slider_index )
         self.cparm[ slider_index ] = scaled_slider_value
-        self.cparm[ "CurrentIndex" ] = slider_index
         
     def processSliderConfigCmd(self, cmd, slider_index, values=None ):
         if cmd == 'Moved': self.sliderMoved( slider_index, values[0], values[1] )
         if cmd == 'Start': self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), "StartConfig", slider_index ) )
         if cmd == 'End': self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), "EndConfig", slider_index ) )
+
+    def processWidgetConfigCmd(self, widget_name, widget_value=None ):
+        if widget_value == None:
+            self.cparm[ "selected" ] = widget_name
+        else:
+            self.cparm[ widget_name ] = widget_value
+#        self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), cbox_name, cbox_value ) )
+
 
     def build(self):
         super( TabbedControl, self ).build()
@@ -314,6 +368,11 @@ class TabbedControl( ConfigControl ):
                 self.addSlider( category_spec[1], tab_layout, max_value=category_spec[3], min_value=category_spec[2], init_value=init_value, **self.args )
                 self.cparm.setValue( tab_index, init_value )
     
+    def addWidgetBox( self, layout ):
+        widget_layout = QtGui.QHBoxLayout()
+        layout.addLayout( widget_layout )
+        return widget_layout
+               
     def addButtonBox(self, button_list, layout, **args ):
         button_layout = QtGui.QHBoxLayout()
         layout.addLayout( button_layout )
@@ -326,6 +385,50 @@ class TabbedControl( ConfigControl ):
     def buttonClicked( self, btnName ):
         self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), "ButtonClick", btnName ) )
 
+class RadioButtonSelectionControl( TabbedControl ):
+
+    def __init__(self, cparm, **args ):
+        super( RadioButtonSelectionControl, self ).__init__( cparm, **args )
+
+    def build(self):
+        super( RadioButtonSelectionControl, self ).build()
+        tab_index, tab_layout = self.addTab( '' )   
+        choices = self.cparm.getValue( 'choices', [] ) 
+        init_selection_index = self.cparm.getValue( 'init_index', 0 ) 
+        self.addRadioButtons( choices, tab_layout, init_index=init_selection_index )                         
+
+class ColormapControl( TabbedControl ):   
+
+       
+    def __init__(self, cparm, **args ):
+        TabbedControl.__init__( self, cparm, **args )
+                
+#    def getValue(self):
+#        checkState = 1 if ( self.invertCheckBox.checkState() == QtCore.Qt.Checked ) else 0
+#        stereoState = 1 if ( self.stereoCheckBox.checkState() == QtCore.Qt.Checked ) else 0
+#        smoothState = 1 if ( self.smoothCheckBox.checkState() == QtCore.Qt.Checked ) else 0
+#        return [ str( self.colormapCombo.currentText() ), checkState, stereoState, smoothState ]
+#
+#    def setValue( self, value ):
+#        colormap_name = str( value[0] )
+#        check_state = QtCore.Qt.Checked if int(float(value[1])) else QtCore.Qt.Unchecked
+#        stereo_state = QtCore.Qt.Checked if int(float(value[2])) else QtCore.Qt.Unchecked
+#        smooth_state = QtCore.Qt.Unchecked if ( len(value) > 3 ) and ( int(float(value[3])) == 0 ) else QtCore.Qt.Checked
+#        itemIndex = self.colormapCombo.findText( colormap_name, QtCore.Qt.MatchFixedString )
+#        if itemIndex >= 0: self.colormapCombo.setCurrentIndex( itemIndex )
+#        else: print>>sys.stderr, " Can't find colormap: %s " % colormap_name
+#        self.invertCheckBox.setCheckState( check_state )
+#        self.stereoCheckBox.setCheckState( stereo_state )
+#        self.smoothCheckBox.setCheckState( smooth_state )
+                
+    def build(self):
+        super( ColormapControl, self ).build()
+        tab_index, tab_layout = self.addTab( '' )      
+        self.addListSelection( "Colormap", ColorMapManager.getColormapNames(), tab_layout )                         
+        cbox_layout = self.addWidgetBox( tab_layout )
+        self.addCheckbox( 'Invert', cbox_layout  )
+        self.addCheckbox( 'Stereo', cbox_layout  )
+        self.addCheckbox( 'Smooth', cbox_layout  )
             
 class IndexedSlicerControl( TabbedControl ):
 
@@ -333,7 +436,7 @@ class IndexedSlicerControl( TabbedControl ):
         super( IndexedSlicerControl, self ).__init__( cparm, **args )  
 
     def sliderMoved(self, slider_index, raw_slider_value, scaled_slider_value):
-        self.cparm[ slider_index ] = int( raw_slider_value )
+        self.cparm.setValue( slider_index, int( raw_slider_value ) )
         self.cparm[ "CurrentIndex" ] = slider_index
 
     def build(self):
@@ -381,8 +484,8 @@ class LevelingSliderControl( TabbedControl ):
         self.updateTabPanel()
             
     def updateLevelingSliders(self):
-        wpSlider = self.sliders[ self.wsIndex ]
-        wsSlider = self.sliders[ self.wpIndex ]
+        wpSlider = self.widgets[ self.wsIndex ]
+        wsSlider = self.widgets[ self.wpIndex ]
         if not wpSlider.isTracking() and not wsSlider.isTracking():
             ( wpos, wsize ) = self.cparm.getWindow()
             print "Update Leveling sliders: %s " % str( ( wpos, wsize ) ); sys.stdout.flush()
@@ -390,8 +493,8 @@ class LevelingSliderControl( TabbedControl ):
             wpSlider.setSliderValue( wpos )
 
     def updateMinMaxSliders(self):
-        minSlider = self.sliders[ self.minvIndex ]
-        maxSlider = self.sliders[ self.maxvIndex ]
+        minSlider = self.widgets[ self.minvIndex ]
+        maxSlider = self.widgets[ self.maxvIndex ]
         if not minSlider.isTracking() and not maxSlider.isTracking():
             ( rmin, rmax )  = self.cparm.getRange()
             print "Update Min Max sliders: %s " % str( ( rmin, rmax ) ); sys.stdout.flush()
@@ -400,21 +503,21 @@ class LevelingSliderControl( TabbedControl ):
                 
     def getScaledRange(self, slider_index, value ):
         if ( slider_index == self.wsIndex ) or  ( slider_index == self.wpIndex ):
-            wsize = self.sliders[self.wsIndex].getSliderValue() if slider_index <> self.wsIndex else value
-            wpos  = self.sliders[self.wpIndex].getSliderValue() if slider_index <> self.wpIndex else value
+            wsize = self.widgets[self.wsIndex].getSliderValue() if slider_index <> self.wsIndex else value
+            wpos  = self.widgets[self.wpIndex].getSliderValue() if slider_index <> self.wpIndex else value
             smin, smax = self.getMinMax( wpos, wsize )
         else:
-            smin = self.sliders[self.minvIndex].getSliderValue() if slider_index <> self.minvIndex else value
-            smax = self.sliders[self.maxvIndex].getSliderValue() if slider_index <> self.maxvIndex else value
+            smin = self.widgets[self.minvIndex].getSliderValue() if slider_index <> self.minvIndex else value
+            smax = self.widgets[self.maxvIndex].getSliderValue() if slider_index <> self.maxvIndex else value
         return ( smin, smax )
 
     def getLevelingRange(self, slider_index, value ):
         if ( slider_index == self.wsIndex ) or  ( slider_index == self.wpIndex ):
-            wsize = self.sliders[self.wsIndex].getSliderValue() if slider_index <> self.wsIndex else value
-            wpos  = self.sliders[self.wpIndex].getSliderValue() if slider_index <> self.wpIndex else value
+            wsize = self.widgets[self.wsIndex].getSliderValue() if slider_index <> self.wsIndex else value
+            wpos  = self.widgets[self.wpIndex].getSliderValue() if slider_index <> self.wpIndex else value
         else:
-            smin = self.sliders[self.minvIndex].getSliderValue() if slider_index <> self.minvIndex else value
-            smax = self.sliders[self.maxvIndex].getSliderValue() if slider_index <> self.maxvIndex else value
+            smin = self.widgets[self.minvIndex].getSliderValue() if slider_index <> self.minvIndex else value
+            smax = self.widgets[self.maxvIndex].getSliderValue() if slider_index <> self.maxvIndex else value
             wsize =  ( smax - smin )
             wpos =  ( smax + smin ) / 2.0
         return ( wsize, wpos )
@@ -469,22 +572,39 @@ class ConfigControlList(QtGui.QWidget):
         self.setLayout( QtGui.QVBoxLayout() )
         self.buttonBox = QtGui.QGridLayout()
         self.layout().addLayout( self.buttonBox )
-        self.num_button_cols = 4
+        self.current_control_row = 0
+        self.current_control_col = 0
         self.controls = {}
-        self.scrollArea = QtGui.QScrollArea(self) 
-        self.layout().addWidget(self.scrollArea)
+#        self.scrollArea = QtGui.QScrollArea(self) 
+#        self.layout().addWidget(self.scrollArea)
+        self.stackedWidget =   QtGui.QStackedWidget( self )
+        self.layout().addWidget( self.stackedWidget )
+        self.blank_widget = QtGui.QWidget() 
+        self.blankWidgetIndex = self.stackedWidget.addWidget( self.blank_widget )
+        
+    def clear(self):
+        self.stackedWidget.setCurrentIndex ( self.blankWidgetIndex )
+        
+    def addControlRow(self):
+        self.current_control_row = self.current_control_row + 1
+        self.current_control_col = 0
 
     def addControl( self, iCatIndex, config_ctrl ):
         control_name = config_ctrl.getName()
-        control_index = len( self.controls )
-        self.controls[ control_name ] = config_ctrl 
-        self.buttonBox.addWidget( config_ctrl.getButton(), control_index % self.num_button_cols, control_index / self.num_button_cols ) 
+        control_index = self.stackedWidget.addWidget( config_ctrl )
+        self.controls[ control_name ] = config_ctrl
+        self.buttonBox.addWidget( config_ctrl.getButton(), self.current_control_row, self.current_control_col ) 
         self.connect( config_ctrl,  QtCore.SIGNAL('ConfigCmd'), self.configOp )
+        self.current_control_col = self.current_control_col + 1
+        self.clear()
         
     def configOp( self, args ):
         if  args[0] == "Open":
-            config_ctrl = self.controls[  args[1] ] 
-            self.scrollArea.setWidget( config_ctrl )
+            config_ctrl = self.controls.get(  args[1], None  )
+            if config_ctrl: self.stackedWidget.setCurrentWidget ( config_ctrl )
+            else: print>>sys.stderr, "ConfigControlList Can't find control: %s " % args[1]
+            self.updateGeometry()
+#            self.scrollArea.updateGeometry()
     
 class ConfigControlContainer(QtGui.QWidget):
     
@@ -536,7 +656,7 @@ class ConfigurationGui(QtGui.QDialog):
         self.scrollArea.setSizePolicy( QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding )
         self.layout().addWidget(self.scrollArea)       
         self.connect( self.configContainer, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
-        self.resize(600, 600)
+        self.resize(600, 450)
 
     def addControl( self, iCatIndex, config_ctrl ):
         config_list = self.configContainer.getCategoryConfigList( iCatIndex )
@@ -559,7 +679,11 @@ class ConfigurationGui(QtGui.QDialog):
 
     def addCategory(self, categoryName ):
         return self.configContainer.addCategory( categoryName )
-    
+
+    def addControlRow( self, tab_index ):
+        cfgList = self.configContainer.getCategoryConfigList( tab_index )
+        cfgList.addControlRow()
+   
     def activate(self):
         self.initParameters()
         self.configContainer.selectCategory( self.iSlicerCatIndex )
@@ -614,23 +738,37 @@ class CPCConfigGui( ConfigurationGui ):
     def build(self):
         self.iColorCatIndex = self.addCategory( 'Color' )
         cparm = self.addParameter( self.iColorCatIndex, "Color Scale", wpos=0.5, wsize=1.0, ctype = 'Leveling' )
-        self.addConfigControl( self.iColorCatIndex, ColorScaleControl( cparm ) )
+        self.addConfigControl( self.iColorCatIndex, ColorScaleControl( cparm ) )       
+        cparm = self.addParameter( self.iColorCatIndex, "Color Map", Colormap="jet", Invert=True, Stereo=False, Smooth=True  )
+        self.addConfigControl( self.iColorCatIndex, ColormapControl( cparm ) )  
+#        self.addControlRow( self.iColorCatIndex )
+             
         self.iSlicerCatIndex = self.addCategory( 'Slicer' )
         cparm = self.addParameter( self.iSlicerCatIndex, "Slice Planes",  xpos=0.5, ypos=0.5, zpos=0.5 )
         self.addConfigControl( self.iSlicerCatIndex, SlicerControl( cparm ) )
+#        self.addControlRow( self.iSlicerCatIndex )
+        
         self.iThresholdingCatIndex = self.addCategory( 'Volume' )
         cparm = self.addParameter( self.iThresholdingCatIndex, "Threshold Range", wpos=0.5, wsize=0.2, ctype = 'Leveling' )
         self.addConfigControl( self.iThresholdingCatIndex, VolumeControl( cparm ) )
+#        self.addControlRow( self.iThresholdingCatIndex )
+        
         self.iPointsCatIndex = self.addCategory( 'Points' )
         cparm = self.addParameter( self.iPointsCatIndex, "Point Size",  cats = [ ("Low Res", "# Pixels", 1, 20, 10 ), ( "High Res", "# Pixels",  1, 10, 3 ) ] )
         self.addConfigControl( self.iPointsCatIndex, PointSizeSlicerControl( cparm ) )
+#        self.addControlRow( self.iPointsCatIndex )
+
+        self.GeometryCatIndex = self.addCategory( 'Geometry' )
+        cparm = self.addParameter( self.GeometryCatIndex, "Projection", choices = [ "Lat/Lon", "Spherical" ], init_index=0 )
+        self.addConfigControl( self.GeometryCatIndex, RadioButtonSelectionControl( cparm ) )
+#        self.addControlRow( self.iPointsCatIndex )
         
 if __name__ == '__main__':
     app = QtGui.QApplication(['CPC Config Dialog'])
     
     configDialog = CPCConfigGui()
     configDialog.build()   
-    configDialog.show()
+    configDialog.activate()
     
     app.connect( app, QtCore.SIGNAL("aboutToQuit()"), configDialog.closeDialog ) 
     app.exec_() 

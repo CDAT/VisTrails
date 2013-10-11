@@ -180,6 +180,7 @@ class PointCollection():
         else: self.var_data = np_var_data_block
         self.point_data_arrays['vardata'] = self.var_data
         self.vrange = ( self.var_data.min(), self.var_data.max() ) 
+        print "Read %d points." % self.getNumberOfPoints(); sys.stdout.flush()
         
     def getPoints(self):
         return self.np_points_data

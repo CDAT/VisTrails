@@ -9,14 +9,14 @@ import os.path
 import vtk, time
 from PyQt4 import QtCore, QtGui
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType, destroy_all_monsters
+from DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType, kill_all_zombies
 from ControlPanel import CPCConfigGui, LevelingConfigParameter, POS_VECTOR_COMP
+from ColorMapManager import *
+from MapManager import MapManager
 
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
 VTK_CONTROL_MODIFIER    = 2        
-VTK_BACKGROUND_COLOR = ( 0.0, 0.0, 0.0 )
-VTK_FOREGROUND_COLOR = ( 1.0, 1.0, 1.0 )
 VTK_TITLE_SIZE = 14
 VTK_NOTATION_SIZE = 14
 VTK_INSTRUCTION_SIZE = 24
@@ -259,10 +259,10 @@ class CPCPlot(QtCore.QObject):
         self.sliceWidthSensitivity = [ 0.005, 0.005, 0.005 ]
         self.slicePositionSensitivity = [ 0.025, 0.025, 0.025 ]
         self.nlevels = None
-        self.colorWindowPosition = 0.5
-        self.colorWindowWidth = 1.0
-        self.windowWidthSensitivity = 0.1 
-        self.colorWindowPositionSensitivity = 0.1
+#        self.colorWindowPosition = 0.5
+#        self.colorWindowWidth = 1.0
+#        self.windowWidthSensitivity = 0.1 
+#        self.colorWindowPositionSensitivity = 0.1
         self.render_mode = ProcessMode.HighRes
         self.planeWidget = None
 #        self.render_mode_point_sizes = [ 4, 10 ]
@@ -270,7 +270,63 @@ class CPCPlot(QtCore.QObject):
         self.thresholdCmdIndex = 0
         self.thresholdingSkipFactor = 2
         self.resolutionCounter = Counter()
-       
+        self.colormapManagers= {}
+        self.stereoEnabled = 0
+
+    def getLUT( self, cmap_index=0  ):
+        colormapManager = self.getColormapManager( index=cmap_index )
+        return colormapManager.lut
+    
+    def getColormapManager( self, **args ):
+        cmap_index = args.get('index',0)
+        name = args.get('name',None)
+        invert = args.get('invert',None)
+        smooth = args.get('smooth',None)
+        cmap_mgr = self.colormapManagers.get( cmap_index, None )
+        if cmap_mgr == None:
+            lut = vtk.vtkLookupTable()
+            cmap_mgr = ColorMapManager( lut ) 
+            self.colormapManagers[cmap_index] = cmap_mgr
+        if (invert <> None): cmap_mgr.invertColormap = invert
+        if (smooth <> None): cmap_mgr.smoothColormap = smooth
+        if name:   cmap_mgr.load_lut( name )
+        return cmap_mgr
+        
+    def setColormap( self, data, **args ):
+        colormapName = str(data[0])
+        invertColormap = int( data[1] )
+        enableStereo = int( data[2] )
+        smoothColormap = int( data[3] ) if ( len( data ) > 3 ) else 1 
+        cmap_index = args.get( 'index', 0 )
+        cm_title = args.get( 'title', '' )
+        self.updateStereo( enableStereo )
+        colormapManager = self.getColormapManager( name=colormapName, invert=invertColormap, smooth=smoothColormap, index=cmap_index, units=self.getUnits(cmap_index) )
+        if( colormapManager.colorBarActor == None ): 
+            cmap_pos = [ 0.9, 0.2 ] if (cmap_index==0) else [ 0.02, 0.2 ]
+            units = self.getUnits( cmap_index )
+            self.renderer.AddActor( colormapManager.createActor( pos=cmap_pos, title=cm_title ) )
+        self.render() 
+        return True
+        return False 
+    
+    def getUnits(self, var_index ):
+        return ""
+    
+
+    def updateStereo( self, enableStereo ):   
+        if enableStereo:
+            self.renderWindow.StereoRenderOn()
+            self.stereoEnabled = 1
+        else:
+            self.renderWindow.StereoRenderOff()
+            self.stereoEnabled = 0
+
+            
+    def getColormap(self, cmap_index = 0 ):
+        colormapManager = self.getColormapManager( index=cmap_index )
+        return [ colormapManager.colormapName, colormapManager.invertColormap, self.stereoEnabled ]
+ 
+         
     def invalidate(self):
         self.isValid = False
         
@@ -369,8 +425,11 @@ class CPCPlot(QtCore.QObject):
                 self.updateTextDisplay( text )
             
     def toggleTopo(self):
-        self.recordCamera()
         self.topo = ( self.topo + 1 ) % 2
+        self.updateProjection()
+        
+    def updateProjection(self):
+        self.recordCamera()
         pts =  [  self.partitioned_point_cloud.setTopo( self.topo ),
                   self.point_cloud_overview.setTopo( self.topo)    ] 
         if pts[self.render_mode]:
@@ -743,6 +802,10 @@ class CPCPlot(QtCore.QObject):
                 self.scalarRange.setScalingBounds( self.point_cloud_overview.getValueRange()  )  
                 self.connect( self.scalarRange, QtCore.SIGNAL('ValueChanged'), self.processColorScaleCommand ) 
                 self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )       
+            elif paramKeys[1] == 'Color Map':
+                self.colorMapCfg = config_param 
+                self.connect( self.colorMapCfg, QtCore.SIGNAL('ValueChanged'), self.processColorMapCommand ) 
+                self.processColorMapCommand()
         elif paramKeys[0] == 'Volume':
             if paramKeys[1] == 'Threshold Range':
                 self.volumeThresholdRange = config_param                 
@@ -755,6 +818,23 @@ class CPCPlot(QtCore.QObject):
                 for ires in [ ProcessMode.LowRes, ProcessMode.HighRes ]:
                     pc = self.getPointCloud(ires)  
                     pc.setPointSize( config_param.getValue(ires) )                                 
+        elif paramKeys[0] == 'Geometry':
+            if paramKeys[1] == 'Projection':
+                self.projection = config_param   
+                self.connect( self.projection, QtCore.SIGNAL('ValueChanged'), self.processProjectionCommand ) 
+                
+    def processProjectionCommand( self, args=None ):
+        if args == None: args = [ self.projection.getValue('selected') ]
+        projections = self.projection.getValue('choices',[])
+        try:
+            self.topo = projections.index( args[0] )
+            self.updateProjection()
+        except ValueError:
+            print>>sys.stderr, "Can't find projection: %s " % str(args[0])
+
+    def processColorMapCommand( self, args=None ):
+        if args == None: args = [ self.colorMapCfg.getValue('Colormap'), self.colorMapCfg.getValue('Invert'), self.colorMapCfg.getValue('Stereo'), self.colorMapCfg.getValue('Smooth') ]
+        self.setColormap( args )  
 
     def updateSlicing( self, sliceIndex, slice_bounds ):
         self.invalidate()
@@ -999,8 +1079,8 @@ class CPCPlot(QtCore.QObject):
         camera_pos = (cpos,cfol,cup)
         print "%s: Camera => %s " % ( label, str(camera_pos) )
         
-    def initCollections( self, nCollections, init_args ):
-        self.partitioned_point_cloud = vtkPartitionedPointCloud( nCollections, init_args )
+    def initCollections( self, nCollections, init_args, **args ):
+        self.partitioned_point_cloud = vtkPartitionedPointCloud( nCollections, init_args, **args )
         self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('newDataAvailable'), self.newDataAvailable )
 #        self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('updateScaling'), self.updateScaling )        
         self.createRenderer()
@@ -1010,7 +1090,9 @@ class CPCPlot(QtCore.QObject):
         for point_cloud in  self.partitioned_point_cloud.values():     
             self.renderer.AddActor( point_cloud.actor )
             self.pointPicker.AddPickList( point_cloud.actor )
-
+            
+        self.mapManager = MapManager( roi = self.point_cloud_overview.getBounds() )
+        self.renderer.AddActor( self.mapManager.getBaseMapActor() )
         self.initCamera( )
         
     def reset( self, pcIndex ):
@@ -1067,8 +1149,9 @@ class CPCPlot(QtCore.QObject):
         init_args = args[ 'init_args' ]      
         nCollections = args.get( 'nCollections', 1 )      
         self.point_cloud_overview = vtkLocalPointCloud( 0, 50 ) 
-        self.point_cloud_overview.initialize( init_args )
-        self.initCollections( nCollections, init_args )
+        lut = self.getLUT()
+        self.point_cloud_overview.initialize( init_args, lut = lut )
+        self.initCollections( nCollections, init_args, lut = lut )
  
     def update(self):
         pass
@@ -1115,7 +1198,7 @@ if __name__ == '__main__':
     parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CAM", help='input data type')
     ns = parser.parse_args( sys.argv )
     
-    destroy_all_monsters()
+    kill_all_zombies()
 
     app = QtGui.QApplication(['Point Cloud Plotter'])
     widget = QVTKAdaptor()

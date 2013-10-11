@@ -94,6 +94,7 @@ class vtkPointCloud(QtCore.QObject):
     def __init__( self, pcIndex=0, nPartitions=1 ):
         QtCore.QObject.__init__( self )
         self.nPartitions = nPartitions
+        self.polydata = None
         self.vardata = None
         self.vrange = None
         self.trange = None
@@ -220,13 +221,14 @@ class vtkPointCloud(QtCore.QObject):
         vtk_points_data.SetNumberOfTuples( len( self.np_points_data ) / 3 )     
         self.vtk_planar_points = vtk.vtkPoints()
         self.vtk_planar_points.SetData( vtk_points_data )
-        self.createPolydata()
+        self.createPolydata( **args )
         
     def createPolydata( self, **args  ):
-        self.polydata = vtk.vtkPolyData()
-        vtk_pts = self.getPoints()
-        self.polydata.SetPoints( vtk_pts )                         
-        self.initializePointsActor( self.polydata, **args )
+        if self.polydata == None:
+            self.polydata = vtk.vtkPolyData()
+            vtk_pts = self.getPoints()
+            self.polydata.SetPoints( vtk_pts )                         
+            self.initializePointsActor( self.polydata, **args )
 
     def computeSphericalPoints( self, **args ):
         lon_data = self.np_points_data[0::3]
@@ -245,6 +247,9 @@ class vtkPointCloud(QtCore.QObject):
             grid_data = numpy.array( [ ( self.earth_radius, t, p ) for (t,p) in numpy.broadcast(thetaB,phiB) ] )
             sp_points_data = grid_data.flatten() 
             vtk_sp_grid_data = numpy_support.numpy_to_vtk( sp_points_data ) 
+        else:
+            print>>sys.stderr, "Unrecognized grid type: %s " % str( self.grid )
+            return        
         size = vtk_sp_grid_data.GetSize()                    
         vtk_sp_grid_data.SetNumberOfComponents( 3 )
         vtk_sp_grid_data.SetNumberOfTuples( size/3 )   
@@ -254,7 +259,8 @@ class vtkPointCloud(QtCore.QObject):
         self.shperical_to_xyz_trans.TransformPoints( vtk_sp_grid_points, self.vtk_spherical_points ) 
                 
     def initializePointsActor( self, polydata, **args ):
-        lut = args.get( 'lut', self.create_LUT() )
+        lut = args.get( 'lut', None )
+        if lut == None: lut = self.create_LUT() 
         self.mapper.SetInput( self.polydata ) 
         if lut:  self.mapper.SetLookupTable( lut )                
 #        if self.vrange:
@@ -272,7 +278,7 @@ class vtkPointCloud(QtCore.QObject):
             return self.vtk_spherical_points
         if self.topo == PlotType.Planar:
             if not self.vtk_planar_points: 
-                self.initPoints()
+                self.initPoints( **args )
             return self.vtk_planar_points
         
     def updatePoints(self):
@@ -483,12 +489,12 @@ class vtkLocalPointCloud( vtkPointCloud ):
         self.updateVertices() 
         self.updated_subset_specs = subset_spec
         
-    def initialize(self, init_args ):
+    def initialize(self, init_args, **args ):
         self.point_collection.initialize( init_args )
         self.np_points_data = self.point_collection.np_points_data
         self.vrange = self.point_collection.vrange
-        self.initPoints() 
-        self.createPolydata()
+        self.initPoints( **args ) 
+        self.createPolydata( **args )
         self.vardata = self.point_collection.var_data
         self.updateScalars() 
         self.grid_bounds = self.point_collection.getBounds()
@@ -496,7 +502,7 @@ class vtkLocalPointCloud( vtkPointCloud ):
           
 class vtkPartitionedPointCloud( QtCore.QObject ):
     
-    def __init__( self, nPartitions, init_args  ):
+    def __init__( self, nPartitions, init_args, **args  ):
         QtCore.QObject.__init__( self )
         self.point_clouds = {}
         self.point_cloud_map = {}
@@ -509,7 +515,7 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
             pc.start_subprocess( init_args )
             self.point_clouds[ pcIndex ] = pc
         for pc in self.point_clouds.values():
-            pc.createPolydata()
+            pc.createPolydata( **args )
             pc.updateScalars()
             self.point_cloud_map[ pc.actor ] = pc
 #        self.scalingTimer = self.startTimer(1000)
@@ -634,7 +640,7 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
         QtCore.QCoreApplication.postEvent( self, QtCore.QTimerEvent( self.dataQueueTimer ) ) 
     
 
-def destroy_all_monsters():
+def kill_all_zombies():
 #                                              Cleanup abandoned processes
     import subprocess, signal    
     proc_specs = subprocess.check_output('ps').split('\n')
@@ -647,7 +653,7 @@ def destroy_all_monsters():
       
 if __name__ == '__main__':
     
-    destroy_all_monsters()
+    kill_all_zombies()
 
     
         
