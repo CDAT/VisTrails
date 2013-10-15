@@ -44,7 +44,7 @@ class ConfigParameter( QtCore.QObject ):
     def serialize( self ):
         return str( self.values )
 
-    def getValue( self, key, default_value=None ):
+    def getValue( self, key='value', default_value=None ):
         return self.values.get( key, default_value )
 
     def setValue( self, key, val ):
@@ -429,23 +429,40 @@ class ColormapControl( TabbedControl ):
         self.addCheckbox( 'Invert', cbox_layout  )
         self.addCheckbox( 'Stereo', cbox_layout  )
         self.addCheckbox( 'Smooth', cbox_layout  )
-            
-class IndexedSlicerControl( TabbedControl ):
+
+class SliderControl( TabbedControl ):
 
     def __init__(self, cparm, **args ):
-        super( IndexedSlicerControl, self ).__init__( cparm, **args )  
+        super( SliderControl, self ).__init__( cparm, **args )  
+
+    def sliderMoved(self, slider_index, raw_slider_value, scaled_slider_value):
+        self.cparm[ "value" ] = scaled_slider_value 
+        self.cparm[ "CurrentIndex" ] = slider_index
+
+    def build(self):
+        super( SliderControl, self ).build()
+        ival = self.cparm.getValue( "value" , 0.5 )
+        label = self.cparm.getValue( "label" , "Value:" )
+        tab_name = self.cparm.getValue( "tab" , "" )
+        self.leveling_tab_index, tab_layout = self.addTab( tab_name )
+        self.sIndex = self.addSlider( label, tab_layout, scaled_init_value=ival, **self.args )
+            
+class IndexedSliderControl( TabbedControl ):
+
+    def __init__(self, cparm, **args ):
+        super( IndexedSliderControl, self ).__init__( cparm, **args )  
 
     def sliderMoved(self, slider_index, raw_slider_value, scaled_slider_value):
         self.cparm.setValue( slider_index, int( raw_slider_value ) )
         self.cparm[ "CurrentIndex" ] = slider_index
 
     def build(self):
-        super( IndexedSlicerControl, self ).build()
+        super( IndexedSliderControl, self ).build()
 
-class PointSizeSlicerControl( IndexedSlicerControl ):
+class PointSizeSliderControl( IndexedSliderControl ):
 
     def __init__(self, cparm, **args ):
-        super( PointSizeSlicerControl, self ).__init__( cparm, **args )  
+        super( PointSizeSliderControl, self ).__init__( cparm, **args )  
            
 class LevelingSliderControl( TabbedControl ):
     
@@ -484,8 +501,8 @@ class LevelingSliderControl( TabbedControl ):
         self.updateTabPanel()
             
     def updateLevelingSliders(self):
-        wpSlider = self.widgets[ self.wsIndex ]
-        wsSlider = self.widgets[ self.wpIndex ]
+        wsSlider = self.widgets[ self.wsIndex ]
+        wpSlider = self.widgets[ self.wpIndex ]
         if not wpSlider.isTracking() and not wsSlider.isTracking():
             ( wpos, wsize ) = self.cparm.getWindow()
             print "Update Leveling sliders: %s " % str( ( wpos, wsize ) ); sys.stdout.flush()
@@ -735,7 +752,7 @@ class CPCConfigGui( ConfigurationGui ):
     def __init__(self, parent=None): 
         super( CPCConfigGui, self ).__init__( parent )   
         
-    def build(self):
+    def build( self, **args ):
         self.iColorCatIndex = self.addCategory( 'Color' )
         cparm = self.addParameter( self.iColorCatIndex, "Color Scale", wpos=0.5, wsize=1.0, ctype = 'Leveling' )
         self.addConfigControl( self.iColorCatIndex, ColorScaleControl( cparm ) )       
@@ -755,13 +772,20 @@ class CPCConfigGui( ConfigurationGui ):
         
         self.iPointsCatIndex = self.addCategory( 'Points' )
         cparm = self.addParameter( self.iPointsCatIndex, "Point Size",  cats = [ ("Low Res", "# Pixels", 1, 20, 10 ), ( "High Res", "# Pixels",  1, 10, 3 ) ] )
-        self.addConfigControl( self.iPointsCatIndex, PointSizeSlicerControl( cparm ) )
+        self.addConfigControl( self.iPointsCatIndex, PointSizeSliderControl( cparm ) )
 #        self.addControlRow( self.iPointsCatIndex )
 
         self.GeometryCatIndex = self.addCategory( 'Geometry' )
         cparm = self.addParameter( self.GeometryCatIndex, "Projection", choices = [ "Lat/Lon", "Spherical" ], init_index=0 )
         self.addConfigControl( self.GeometryCatIndex, RadioButtonSelectionControl( cparm ) )
+        cparm = self.addParameter( self.GeometryCatIndex, "Vertical Scaling", value=0.5 )
+        self.addConfigControl( self.GeometryCatIndex, SliderControl( cparm ) )
+        vertical_vars = args.get( 'vertical_vars', [] )
+        vertical_vars.insert( 0, "Levels" )
+        cparm = self.addParameter( self.GeometryCatIndex, "Vertical Variable", choices = vertical_vars, init_index=0  )
+        self.addConfigControl( self.GeometryCatIndex, RadioButtonSelectionControl( cparm ) )
 #        self.addControlRow( self.iPointsCatIndex )
+
         
 if __name__ == '__main__':
     app = QtGui.QApplication(['CPC Config Dialog'])

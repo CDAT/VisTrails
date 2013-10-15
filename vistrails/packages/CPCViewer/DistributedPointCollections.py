@@ -46,12 +46,13 @@ class ExecutionDataPacket:
 
 class PointCollectionExecutionTarget:
 
-    def __init__( self, collection_index, ncollections, init_args=None ):
+    def __init__( self, collection_index, ncollections, init_args=None, **cfg_args ):
         self.point_collection = PointCollection() 
-        self.point_collection.setDataSlice( collection_index, ncollections )
+        self.point_collection.setDataSlice( collection_index, istep=ncollections )
         self.collection_index = collection_index
         self.ncollections = ncollections
         self.init_args = init_args
+        self.cfg_args = cfg_args
 
     def printLogMessage(self, msg_str ):
         print " PointCollectionExecutionTarget %d: %s" % ( self.collection_index, msg_str )
@@ -65,8 +66,8 @@ class PointCollectionExecutionTarget:
             self.execute( args )
                 
     def initialize( self ):
-        self.point_collection.initialize( self.init_args )
-        self.point_collection.setDataSlice( self.collection_index, self.ncollections )
+        self.point_collection.initialize( self.init_args, **self.cfg_args )
+        self.point_collection.setDataSlice( self.collection_index, istrp=self.ncollections )
         data_packet = ExecutionDataPacket( ExecutionDataPacket.POINTS, self.collection_index, self.point_collection.getPoints() )
         self.results.put( data_packet )
         data_packet = ExecutionDataPacket( ExecutionDataPacket.VARDATA, self.collection_index, self.point_collection.getVarData() )
@@ -78,11 +79,14 @@ class PointCollectionExecutionTarget:
 
     def execute( self, args ):
         self.point_collection.execute( args )
-        data_packet = ExecutionDataPacket( ExecutionDataPacket.INDICES, self.collection_index, self.point_collection.getPointIndices() )
-        target = self.point_collection.getThresholdTarget()
-        range_type = 'trange' if ( target == "vardata" ) else "crange"
-        data_packet[ range_type ] = self.point_collection.getThresholdedRange() 
-        data_packet[ 'target' ] = target
+        if args[0] == 'indices':
+            data_packet = ExecutionDataPacket( ExecutionDataPacket.INDICES, self.collection_index, self.point_collection.getPointIndices() )
+            target = self.point_collection.getThresholdTarget()
+            range_type = 'trange' if ( target == "vardata" ) else "crange"
+            data_packet[ range_type ] = self.point_collection.getThresholdedRange() 
+            data_packet[ 'target' ] = target
+        elif args[0] == 'points':
+            data_packet = ExecutionDataPacket( ExecutionDataPacket.POINTS, self.collection_index, self.point_collection.getPointHeights() )
         data_packet[ 'args' ] = args
         self.results.put( data_packet )
 
@@ -325,13 +329,13 @@ class vtkPointCloud(QtCore.QObject):
             return [ -self.earth_radius, self.earth_radius, -self.earth_radius, self.earth_radius, -self.earth_radius, self.earth_radius ]
         else:
             b = list( self.grid_bounds )
-            if lev:
-                lev_bounds = ( lev[0], lev[-1] )
-                b[4] = lev_bounds[0] if ( lev_bounds[0] < lev_bounds[1] ) else lev_bounds[1]
-                b[5] = lev_bounds[1] if ( lev_bounds[0] < lev_bounds[1] ) else lev_bounds[0]
-            elif ( b[4] == b[5] ):
-                b[4] = b[4] - 100.0
-                b[5] = b[5] + 100.0
+#            if lev:
+#                lev_bounds = ( lev[0], lev[-1] )
+#                b[4] = lev_bounds[0] if ( lev_bounds[0] < lev_bounds[1] ) else lev_bounds[1]
+#                b[5] = lev_bounds[1] if ( lev_bounds[0] < lev_bounds[1] ) else lev_bounds[0]
+#            elif ( b[4] == b[5] ):
+#                b[4] = b[4] - 100.0
+#                b[5] = b[5] + 100.0
             return b
                 
     def setClipping( self, clippingPlanes ):
@@ -389,8 +393,14 @@ class vtkSubProcPointCloud( vtkPointCloud ):
         self.np_index_seq = None
         if self.pcIndex == 1: 
             self.printLogMessage( " vtkSubProcPointCloud --->> Generate subset: %s " % str(subset_spec) )
-        self.arg_queue.put( subset_spec,  False ) 
+        op_specs = [ 'indices' ] + list(subset_spec)
+        self.arg_queue.put( op_specs,  False ) 
         self.updated_subset_specs = subset_spec
+
+    def generateZScaling(self, subset_spec ):
+        self.clearQueues()
+        op_specs = [ 'points' ] + list(subset_spec)
+        self.arg_queue.put( op_specs,  False ) 
         
     def getResults( self, block = False ):
         try:
@@ -471,15 +481,20 @@ class vtkSubProcPointCloud( vtkPointCloud ):
         
 class vtkLocalPointCloud( vtkPointCloud ):
 
-    def __init__( self, istart=0, istep=1 ):
-        vtkPointCloud.__init__( self, istart, istep )
+    def __init__( self, istart, **args ):
+        vtkPointCloud.__init__( self )
         self.point_collection = PointCollection()
-        self.point_collection.setDataSlice( istart, istep )
+        self.point_collection.setDataSlice( istart, **args )
+
+    def generateZScaling(self, subset_spec ):
+        op_specs = [ 'points' ] + subset_spec
+        self.point_collection.execute( op_specs )       
 
     def generateSubset(self, subset_spec ):
         self.current_subset_specs = subset_spec
         self.threshold_target = subset_spec[0]
-        vmin, vmax = self.point_collection.execute( subset_spec )       
+        op_specs = [ 'indices' ] + list(subset_spec)
+        vmin, vmax = self.point_collection.execute( op_specs )       
         self.np_index_seq = self.point_collection.selected_index_array
         if subset_spec == "vardata": self.trange = ( vmin, vmax )
         else: self.crange = ( vmin, vmax )
@@ -489,13 +504,20 @@ class vtkLocalPointCloud( vtkPointCloud ):
         self.updateVertices() 
         self.updated_subset_specs = subset_spec
         
+    def getNumberOfInputPoints(self): 
+        return self.point_collection.getNumberOfInputPoints()
+    
+
+    def getSkipIndex(self): 
+        return self.point_collection.istep
+        
     def initialize(self, init_args, **args ):
-        self.point_collection.initialize( init_args )
-        self.np_points_data = self.point_collection.np_points_data
+        self.point_collection.initialize( init_args, **args )
+        self.np_points_data = self.point_collection.getPoints()
         self.vrange = self.point_collection.vrange
         self.initPoints( **args ) 
         self.createPolydata( **args )
-        self.vardata = self.point_collection.var_data
+        self.vardata = self.point_collection.getVarData()
         self.updateScalars() 
         self.grid_bounds = self.point_collection.getBounds()
         self.actor.VisibilityOff()
@@ -586,6 +608,13 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
         for pc_item in self.point_clouds.items():
             if pc_item[0] < self.nActiveCollections:
                 pc_item[1].generateSubset( self.current_subset_spec )
+        self.startCheckingProcQueues()
+
+    def generateZScaling(self, subset_spec = None ):
+        self.clearProcQueues()
+        for pc_item in self.point_clouds.items():
+            if pc_item[0] < self.nActiveCollections:
+                pc_item[1].generateZScaling( self.current_subset_spec )
         self.startCheckingProcQueues()
         
     def clearProcQueues(self):

@@ -4,7 +4,7 @@ Created on Aug 29, 2013
 @author: tpmaxwel
 '''
 
-import sys
+import sys, cdms2
 import os.path
 import vtk, time
 from PyQt4 import QtCore, QtGui
@@ -272,7 +272,8 @@ class CPCPlot(QtCore.QObject):
         self.resolutionCounter = Counter()
         self.colormapManagers= {}
         self.stereoEnabled = 0
-
+        self.maxStageHeight = 100.0
+        
     def getLUT( self, cmap_index=0  ):
         colormapManager = self.getColormapManager( index=cmap_index )
         return colormapManager.lut
@@ -337,7 +338,7 @@ class CPCPlot(QtCore.QObject):
         
     def getPointCloud( self, ires = -1 ):
         if ires == -1: ires = self.render_mode
-        return self.partitioned_point_cloud if ( ires ==  ProcessMode.HighRes ) else self.point_cloud_overview 
+        return self.partitioned_point_cloud if ( ( ires ==  ProcessMode.HighRes ) and ( self.partitioned_point_cloud <> None ) ) else self.point_cloud_overview 
 
     def getPointClouds(self):
         return [ self.point_cloud_overview, self.partitioned_point_cloud ]
@@ -348,12 +349,15 @@ class CPCPlot(QtCore.QObject):
         if render_mode ==  ProcessMode.HighRes:
             if immediate: 
                 self.low_res_actor.VisibilityOff()
-                self.resolutionCounter.reset( 0 )   
+                if self.partitioned_point_cloud:  
+                    self.resolutionCounter.reset( 0 )   
             else:
-                psize = self.pointSize.getValue( ProcessMode.LowRes )
-                self.resolutionCounter.reset( min( psize, self.partitioned_point_cloud.nPartitions ) ) 
+                if self.partitioned_point_cloud: 
+                    psize = self.pointSize.getValue( ProcessMode.LowRes )
+                    self.resolutionCounter.reset( min( psize, self.partitioned_point_cloud.nPartitions ) ) 
         else: 
-            self.partitioned_point_cloud.clear()
+            if self.partitioned_point_cloud: 
+                self.partitioned_point_cloud.clear()
             self.refreshPointSize()
             self.low_res_actor.VisibilityOn()  
             
@@ -435,8 +439,11 @@ class CPCPlot(QtCore.QObject):
         if pts[self.render_mode]:
             self.resetCamera( pts[self.render_mode] )
             self.renderer.ResetCameraClippingRange()   
-        if ( self.topo == PlotType.Spherical ):             self.planeWidgetOff()
+        if ( self.topo == PlotType.Spherical ):             
+            self.planeWidgetOff()
+            self.setFocalPoint( [0,0,0] )
         elif self.process_mode == ProcessMode.Slicing:  self.planeWidgetOn()
+        self.mapManager.setMapVisibility( self.topo == PlotType.Planar )
         self.render()
         
     def render( self, onMode = ProcessMode.AnyRes ):
@@ -538,7 +545,8 @@ class CPCPlot(QtCore.QObject):
         
     def enableSlicing( self ):
         self.process_mode = ProcessMode.Slicing 
-        self.setRenderMode( ProcessMode.HighRes )                         
+        if self.render_mode ==  ProcessMode.LowRes:
+            self.setRenderMode( ProcessMode.HighRes )                         
         self.planeWidgetOn( )
         self.updateTextDisplay( "Mode: Slicing", True )
         self.shiftSlice( 0, 0 )
@@ -584,7 +592,8 @@ class CPCPlot(QtCore.QObject):
             self.planeWidget.GetNormalProperty().SetOpacity(0.0)
             self.planeWidget.SetInteractor( self.renderWindowInteractor )
             self.planeWidget.KeyPressActivationOff()
-            self.planeWidget.PlaceWidget( self.point_cloud_overview.getBounds() )
+            pcbounds = self.point_cloud_overview.getBounds()
+            self.planeWidget.PlaceWidget( pcbounds )
 
     def processConfigOpen( self, cfgName ):
         pass
@@ -593,7 +602,7 @@ class CPCPlot(QtCore.QObject):
         self.setRenderMode( ProcessMode.HighRes )
         if isOK:
             if (self.process_mode == ProcessMode.Slicing):  
-                self.partitioned_point_cloud.setScalarRange( self.scalarRange.getScaledRange() )
+                self.getPointCloud().setScalarRange( self.scalarRange.getScaledRange() )
             if self.process_mode == ProcessMode.Thresholding: 
                 self.updateThresholding( 'vardata', self.volumeThresholdRange.getRange() )                
         self.render()
@@ -631,7 +640,8 @@ class CPCPlot(QtCore.QObject):
             if self.render_mode ==  ProcessMode.HighRes:
                 self.setRenderMode( ProcessMode.LowRes, True )
 #            self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )               
-            self.point_cloud_overview.generateSubset( self.partitioned_point_cloud.getSubsetSpecs() )
+            if self.partitioned_point_cloud:
+                self.point_cloud_overview.generateSubset( self.partitioned_point_cloud.getSubsetSpecs() )
             if self.process_mode <> ProcessMode.Thresholding:
                 self.enableThresholding()
         
@@ -662,24 +672,27 @@ class CPCPlot(QtCore.QObject):
                    
     def processColorScaleCommand( self, args = None ):
         if args and args[0] == "ButtonClick":
+            pc =  self.getPointCloud()      
             if args[1] == "Reset":
                 self.scalarRange.setRange( self.point_cloud_overview.getValueRange()  )  
-                self.partitioned_point_cloud.setScalarRange( self.scalarRange.getScaledRange() ) 
+                pc.setScalarRange( self.scalarRange.getScaledRange() ) 
 #                self.partitioned_point_cloud.refresh(True)     
             elif args[1] == "Match Threshold Range":
                 self.scalarRange.setRange( self.volumeThresholdRange.getRange()  )  
-                self.partitioned_point_cloud.setScalarRange( self.scalarRange.getScaledRange() ) 
+                pc.setScalarRange( self.scalarRange.getScaledRange() ) 
 #                self.partitioned_point_cloud.refresh(True)     
         elif args and args[0] == "StartConfig":
             if self.render_mode ==  ProcessMode.HighRes:
                 self.setRenderMode( ProcessMode.LowRes )
             self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )               
-            self.point_cloud_overview.generateSubset( self.partitioned_point_cloud.getSubsetSpecs() )
+            if self.partitioned_point_cloud: 
+                self.point_cloud_overview.generateSubset( self.partitioned_point_cloud.getSubsetSpecs() )
         elif args and args[0] == "EndConfig":
             if self.render_mode ==  ProcessMode.LowRes:
-                self.setRenderMode( ProcessMode.HighRes )                
-            self.partitioned_point_cloud.setScalarRange( self.scalarRange.getScaledRange() )  
-            self.partitioned_point_cloud.refresh(True)                  
+                self.setRenderMode( ProcessMode.HighRes ) 
+                pc =  self.getPointCloud()             
+                pc.setScalarRange( self.scalarRange.getScaledRange() )  
+                pc.refresh(True)                  
         else:
             if args:
                 norm_range = args[0]
@@ -734,7 +747,7 @@ class CPCPlot(QtCore.QObject):
         self.execCurrentSlice()
 
     def shiftResolution( self, ncollections_inc, ptsize_inc ):
-        if ncollections_inc <> 0:
+        if (ncollections_inc <> 0) and ( self.partitioned_point_cloud <> None ):
             self.partitioned_point_cloud.updateNumActiveCollections( ncollections_inc )
         if ptsize_inc <> 0:
             self.updatePointSize( ptsize_inc )
@@ -774,10 +787,12 @@ class CPCPlot(QtCore.QObject):
             render_mode = arg[1]
             self.setRenderMode( render_mode )
             if render_mode == ProcessMode.HighRes: 
-                self.partitioned_point_cloud.refresh(True)
+                if self.partitioned_point_cloud:
+                    self.partitioned_point_cloud.refresh(True)
             else:
-                self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )               
-                self.point_cloud_overview.generateSubset( self.partitioned_point_cloud.getSubsetSpecs() )
+                self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() ) 
+                if self.partitioned_point_cloud:              
+                    self.point_cloud_overview.generateSubset( self.partitioned_point_cloud.getSubsetSpecs() )
             self.render()
             return
         elif arg[0] == 'StartConfig':
@@ -822,6 +837,22 @@ class CPCPlot(QtCore.QObject):
             if paramKeys[1] == 'Projection':
                 self.projection = config_param   
                 self.connect( self.projection, QtCore.SIGNAL('ValueChanged'), self.processProjectionCommand ) 
+            if paramKeys[1] == 'Vertical Scaling':
+                self.vscale = config_param   
+                self.connect( self.vscale, QtCore.SIGNAL('ValueChanged'), self.processVerticalScalingCommand ) 
+            if paramKeys[1] == 'Vertical Variable':
+                self.vertVar = config_param   
+                self.connect( self.vertVar, QtCore.SIGNAL('ValueChanged'), self.processVerticalVariableCommand ) 
+                
+    def processVerticalScalingCommand(self, args=None ):
+        scaling_spec = ( self.vertVar.getValue(), self.vscale.getValue() )
+        self.invalidate()
+        pc = self.getPointCloud()
+        pc.generateZScaling( scaling_spec )
+        self.render( self.render_mode )
+        
+    def processVerticalVariableCommand(self, args=None ):
+        pass
                 
     def processProjectionCommand( self, args=None ):
         if args == None: args = [ self.projection.getValue('selected') ]
@@ -1080,23 +1111,26 @@ class CPCPlot(QtCore.QObject):
         print "%s: Camera => %s " % ( label, str(camera_pos) )
         
     def initCollections( self, nCollections, init_args, **args ):
-        self.partitioned_point_cloud = vtkPartitionedPointCloud( nCollections, init_args, **args )
-        self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('newDataAvailable'), self.newDataAvailable )
+        if nCollections > 1:
+            self.partitioned_point_cloud = vtkPartitionedPointCloud( nCollections, init_args, **args )
+            self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('newDataAvailable'), self.newDataAvailable )
 #        self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('updateScaling'), self.updateScaling )        
         self.createRenderer()
         self.low_res_actor = self.point_cloud_overview.actor
         self.renderer.AddActor( self.low_res_actor )
         self.pointPicker.AddPickList( self.low_res_actor )
-        for point_cloud in  self.partitioned_point_cloud.values():     
-            self.renderer.AddActor( point_cloud.actor )
-            self.pointPicker.AddPickList( point_cloud.actor )
+        
+        if self.partitioned_point_cloud:
+            for point_cloud in  self.partitioned_point_cloud.values():     
+                self.renderer.AddActor( point_cloud.actor )
+                self.pointPicker.AddPickList( point_cloud.actor )
             
         self.mapManager = MapManager( roi = self.point_cloud_overview.getBounds() )
         self.renderer.AddActor( self.mapManager.getBaseMapActor() )
         self.initCamera( )
         
     def reset( self, pcIndex ):
-        if not self.isValid:
+        if not self.isValid and ( self.partitioned_point_cloud <> None ):
             self.partitioned_point_cloud.clear( pcIndex )
             self.isValid = True
                     
@@ -1121,37 +1155,42 @@ class CPCPlot(QtCore.QObject):
     def refreshPointSize(self):
         self.point_cloud_overview.setPointSize( self.pointSize.getValue( ProcessMode.LowRes ) )
              
-    def newDataAvailable( self, pcIndex, data_type ): 
-        pc = self.partitioned_point_cloud.getPointCloud( pcIndex )
-        pc.show()
-        self.decrementOverviewResolution()
-        self.partitioned_point_cloud.postDataQueueEvent()
-        pc.setScalarRange( self.scalarRange.getScaledRange() )
-        self.updateZRange( pc ) 
-        text = " Thresholding Range[%d]: %s \n Colormap Range: %s " % ( pcIndex, str( pc.getThresholdingRange() ), str( self.scalarRange.getRange() ) )
-        self.updateTextDisplay( text )
-#        print " Subproc[%d]--> new Thresholding Data Available: %s " % ( pcIndex, str( pc.getThresholdingRange() ) ); sys.stdout.flush()
-#        self.reset( ) # pcIndex )
-        self.render() 
+    def newDataAvailable( self, pcIndex, data_type ):
+        if ( self.partitioned_point_cloud <> None ): 
+            pc = self.partitioned_point_cloud.getPointCloud( pcIndex )
+            pc.show()
+            self.decrementOverviewResolution()
+            self.partitioned_point_cloud.postDataQueueEvent()
+            pc.setScalarRange( self.scalarRange.getScaledRange() )
+            self.updateZRange( pc ) 
+            text = " Thresholding Range[%d]: %s \n Colormap Range: %s " % ( pcIndex, str( pc.getThresholdingRange() ), str( self.scalarRange.getRange() ) )
+            self.updateTextDisplay( text )
+    #        print " Subproc[%d]--> new Thresholding Data Available: %s " % ( pcIndex, str( pc.getThresholdingRange() ) ); sys.stdout.flush()
+    #        self.reset( ) # pcIndex )
+            self.render() 
                           
     def generateSubset(self, subset_spec ):
 #        self.pointPicker.GetPickList().RemoveAllItems() 
         self.getPointCloud().generateSubset( subset_spec )        
         
     def terminate(self):
-        for point_cloud in self.partitioned_point_cloud.values(): 
-            point_cloud.terminate()  
+        if ( self.partitioned_point_cloud <> None ):
+            for point_cloud in self.partitioned_point_cloud.values(): 
+                point_cloud.terminate()  
           
     def setPointSize( self, point_size ) :  
         self.getPointCloud().setPointSize( point_size )    
       
     def init(self, **args ):
         init_args = args[ 'init_args' ]      
-        nCollections = args.get( 'nCollections', 1 )      
-        self.point_cloud_overview = vtkLocalPointCloud( 0, 50 ) 
+        n_overview_points = args.get( 'n_overview_points', 500000 )    
+        n_subproc_points = args.get( 'n_subproc_points', 1000000 )    
+        self.point_cloud_overview = vtkLocalPointCloud( 0, max_points=n_overview_points ) 
         lut = self.getLUT()
-        self.point_cloud_overview.initialize( init_args, lut = lut )
-        self.initCollections( nCollections, init_args, lut = lut )
+        self.point_cloud_overview.initialize( init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
+        nCollections = min( self.point_cloud_overview.getNumberOfInputPoints() / n_subproc_points, 10  )
+        print " Init PCViewer, n_overview_points = %d, n_subproc_points = %d, nCollections = %d, overview skip index = %s" % ( n_overview_points, n_subproc_points, nCollections, self.point_cloud_overview.getSkipIndex() )
+        self.initCollections( nCollections, init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
  
     def update(self):
         pass
@@ -1205,23 +1244,26 @@ if __name__ == '__main__':
     widget.Initialize()
     widget.Start()        
     point_size = 1
-    nCollections = 10
+    n_overview_points = 500000
+    height_varname = None
     data_dir = os.path.expanduser( ns.data_dir )
+    height_varnames = []
     
     if ns.data_type == "WRF":
-        data_file = os.path.join( data_dir, "WRF/wrfout_d01_2013-05-01_00-00-00.nc" )
+        data_file = os.path.join( data_dir, "WRF/wrfout_d01_2013-05-01_12-00-00.nc" )
         grid_file = None
         varname = "U"        
     elif ns.data_type == "CAM":
         data_file = os.path.join( data_dir, "CAM/f1850c5_t2_ANN_climo-native.nc" )
         grid_file = os.path.join( data_dir, "CAM/ne120np4_latlon.nc" )
         varname = "U"
+        height_varnames = [ "Z3" ]
     elif ns.data_type == "ECMWF":
         data_file = os.path.join( data_dir, "AConaty/comp-ECMWF/ecmwf.xml" )
         grid_file = None
         varname = "U_velocity"   
     elif ns.data_type == "GEOS5":
-        data_file = "/Developer/Data/AConaty/comp-ECMWF/ac-comp1-geos5.xml" 
+        data_file = os.path.join( data_dir, "AConaty/comp-ECMWF/ac-comp1-geos5.xml" )
         grid_file = None
         varname = "uwnd"   
     elif ns.data_type == "MMF":
@@ -1231,14 +1273,14 @@ if __name__ == '__main__':
         
     g = CPCPlot( widget.GetRenderWindow() ) 
     widget.connect( widget, QtCore.SIGNAL('event'), g.processEvent )  
-    g.init( init_args = ( grid_file, data_file, varname ), nCollections=nCollections )
+    g.init( init_args = ( grid_file, data_file, varname, height_varname ), n_overview_points=n_overview_points )
     
 #     pointCollectionMgrThread = QPointCollectionMgrThread( g, init_args = ( grid_file, data_file, varname ), nCollections=nCollections )
 #     pointCollectionMgrThread.init()
 #    pointCollectionMgrThread.start()
 
     configDialog = CPCConfigGui()
-    configDialog.build()   
+    configDialog.build( vertical_vars=height_varnames )   
     configDialog.connect( configDialog, QtCore.SIGNAL("ConfigCmd"), g.processConfigCmd )
     configDialog.activate()
     

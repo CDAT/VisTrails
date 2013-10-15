@@ -102,7 +102,10 @@ class MapManager( QtCore.QObject ):
             
     def getBaseMapActor(self):
         if self.baseMapActor == None: self.build()  
-        return self.baseMapActor    
+        return self.baseMapActor 
+    
+    def setMapVisibility( self, isVisible  ):
+        self.baseMapActor.SetVisibility( isVisible )  
             
     def ComputeCornerPosition( self ):
         if (self.roi[0] >= -180) and (self.roi[1] <= 180) and (self.roi[1] > self.roi[0]):
