@@ -346,9 +346,12 @@ class TabbedControl( ConfigControl ):
         self.cparm[ slider_index ] = scaled_slider_value
         
     def processSliderConfigCmd(self, cmd, slider_index, values=None ):
-        if cmd == 'Moved': self.sliderMoved( slider_index, values[0], values[1] )
-        if cmd == 'Start': self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), "StartConfig", slider_index ) )
-        if cmd == 'End': self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), "EndConfig", slider_index ) )
+        if cmd == 'Moved': 
+            self.sliderMoved( slider_index, values[0], values[1] )
+        if cmd == 'Start': 
+            self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), "StartConfig", slider_index ) )
+        if cmd == 'End': 
+            self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), "EndConfig", slider_index ) )
 
     def processWidgetConfigCmd(self, widget_name, widget_value=None ):
         if widget_value == None:

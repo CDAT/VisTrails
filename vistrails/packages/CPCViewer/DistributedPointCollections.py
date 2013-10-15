@@ -226,6 +226,15 @@ class vtkPointCloud(QtCore.QObject):
         self.vtk_planar_points = vtk.vtkPoints()
         self.vtk_planar_points.SetData( vtk_points_data )
         self.createPolydata( **args )
+
+    def setPoints( self, pts ):
+        self.np_points_data =  pts
+        vtk_points_data = numpy_support.numpy_to_vtk( self.np_points_data )    
+        vtk_points_data.SetNumberOfComponents( 3 )
+        vtk_points_data.SetNumberOfTuples( len( self.np_points_data ) / 3 )     
+        self.vtk_planar_points.SetData( vtk_points_data )
+        self.vtk_planar_points.Modified()
+        self.polydata.Modified()
         
     def createPolydata( self, **args  ):
         if self.polydata == None:
@@ -487,8 +496,9 @@ class vtkLocalPointCloud( vtkPointCloud ):
         self.point_collection.setDataSlice( istart, **args )
 
     def generateZScaling(self, subset_spec ):
-        op_specs = [ 'points' ] + subset_spec
-        self.point_collection.execute( op_specs )       
+        op_specs = [ 'points' ] + list( subset_spec )
+        self.point_collection.execute( op_specs ) 
+        self.setPoints( self.point_collection.getPoints()  )   
 
     def generateSubset(self, subset_spec ):
         self.current_subset_specs = subset_spec
@@ -611,6 +621,8 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
         self.startCheckingProcQueues()
 
     def generateZScaling(self, subset_spec = None ):
+        if subset_spec <> None: 
+            self.current_subset_spec = subset_spec
         self.clearProcQueues()
         for pc_item in self.point_clouds.items():
             if pc_item[0] < self.nActiveCollections:

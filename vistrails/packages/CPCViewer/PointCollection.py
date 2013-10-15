@@ -112,6 +112,7 @@ class PointCollection():
         height_varname = args.get( 'height_var', None )
         z_scaling = args.get( 'z_scale', 1.0 )
         self.data_height = args.get( 'data_height', None )
+        print " setPointHeights: %s " % str( args ); sys.stdout.flush()
         ascending = True
         if self.lev.attributes.get('positive',None) == "down": ascending = False
         

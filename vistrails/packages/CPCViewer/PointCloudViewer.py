@@ -650,6 +650,8 @@ class CPCPlot(QtCore.QObject):
 #            self.partitioned_point_cloud.setScalarRange( self.scalarRange.getScaledRange() )  
             self.updateThresholding( 'vardata', self.volumeThresholdRange.getRange() ) 
         
+        elif args and args[0] == "UpdateTabPanel":
+            pass
         else:                     
             if args:
                 norm_range = args[0] 
@@ -692,7 +694,9 @@ class CPCPlot(QtCore.QObject):
                 self.setRenderMode( ProcessMode.HighRes ) 
                 pc =  self.getPointCloud()             
                 pc.setScalarRange( self.scalarRange.getScaledRange() )  
-                pc.refresh(True)                  
+                pc.refresh(True) 
+        elif args and args[0] == "UpdateTabPanel":
+            pass                 
         else:
             if args:
                 norm_range = args[0]
@@ -779,6 +783,8 @@ class CPCPlot(QtCore.QObject):
             self.processsInitParameter( args[1], args[2] )
         elif args[0] =='Point Size':
             self.processPointSizeCommand( args[1:] )
+        elif args[0] =='Vertical Scaling':
+            self.processVerticalScalingCommand( args[1:] )
 
     def processPointSizeCommand( self, arg = None ):
         if arg == None:
@@ -837,20 +843,27 @@ class CPCPlot(QtCore.QObject):
             if paramKeys[1] == 'Projection':
                 self.projection = config_param   
                 self.connect( self.projection, QtCore.SIGNAL('ValueChanged'), self.processProjectionCommand ) 
-            if paramKeys[1] == 'Vertical Scaling':
+            elif paramKeys[1] == 'Vertical Scaling':
                 self.vscale = config_param   
                 self.connect( self.vscale, QtCore.SIGNAL('ValueChanged'), self.processVerticalScalingCommand ) 
-            if paramKeys[1] == 'Vertical Variable':
+            elif paramKeys[1] == 'Vertical Variable':
                 self.vertVar = config_param   
                 self.connect( self.vertVar, QtCore.SIGNAL('ValueChanged'), self.processVerticalVariableCommand ) 
                 
     def processVerticalScalingCommand(self, args=None ):
-        scaling_spec = ( self.vertVar.getValue(), self.vscale.getValue() )
-        self.invalidate()
-        pc = self.getPointCloud()
-        pc.generateZScaling( scaling_spec )
-        self.render( self.render_mode )
-        
+        if args and args[0] == "StartConfig":
+            if self.render_mode ==  ProcessMode.HighRes:
+                self.setRenderMode( ProcessMode.LowRes, True )        
+        elif args and args[0] == "EndConfig":
+            self.setRenderMode( ProcessMode.HighRes ) 
+        elif args and args[0] == "UpdateTabPanel":
+            pass                     
+        else:                     
+            scaling_spec = ( self.vertVar.getValue(), self.vscale.getValue() )
+            pc = self.getPointCloud()
+            pc.generateZScaling( scaling_spec )
+            self.render()
+            
     def processVerticalVariableCommand(self, args=None ):
         pass
                 
