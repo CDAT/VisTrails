@@ -832,6 +832,31 @@ class ProjectController(QtCore.QObject):
             plot_prop.set_controller(None)
             plot_prop.updateProperties(None, sheetName,row,col)
         self.checkEnableUndoRedo(cell)
+        
+        #update animation widget
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
+        animationWidget = _app.uvcdatWindow.dockAnimate.widget()
+        
+        #get cell widget
+        cellWidget = None
+        sheetWidget = self.get_sheet_widget(sheetName)
+        if sheetWidget is not None:
+            cellWidget = sheetWidget.getCell(row, col)
+
+        if (cellWidget is not None and
+                hasattr(cellWidget, 'canvas') and
+                hasattr(cellWidget.canvas, 'animate')):
+            animationWidget.setCanvas(cellWidget.canvas)
+        else:
+            animationWidget.setCanvas(None)
+            
+    def get_sheet_widget(self, sheetName):
+        ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+        tabController = ssheetWindow.get_current_tab_controller()
+        for i in range(tabController.count()):
+            if tabController.tabText(i) == sheetName:
+                return tabController.widget(i)
                 
     def get_python_script(self, sheetName, row, col):
         script = None
