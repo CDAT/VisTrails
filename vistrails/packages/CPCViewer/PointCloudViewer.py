@@ -853,15 +853,20 @@ class CPCPlot(QtCore.QObject):
     def processVerticalScalingCommand(self, args=None ):
         if args and args[0] == "StartConfig":
             if self.render_mode ==  ProcessMode.HighRes:
-                self.setRenderMode( ProcessMode.LowRes, True )        
+                self.setRenderMode( ProcessMode.LowRes )        
         elif args and args[0] == "EndConfig":
-            self.setRenderMode( ProcessMode.HighRes ) 
+#            scaling_spec = ( self.vertVar.getValue(), self.vscale.getValue() )
+#            self.partitioned_point_cloud.generateZScaling( scaling_spec )
+            self.setRenderMode( ProcessMode.HighRes )
+            self.render() 
         elif args and args[0] == "UpdateTabPanel":
             pass                     
         else:                     
             scaling_spec = ( self.vertVar.getValue(), self.vscale.getValue() )
-            pc = self.getPointCloud()
-            pc.generateZScaling( scaling_spec )
+            self.point_cloud_overview.generateZScaling( scaling_spec )
+            pcbounds = self.point_cloud_overview.getBounds()
+            self.planeWidget.PlaceWidget( pcbounds )
+            vis = self.low_res_actor.GetVisibility()
             self.render()
             
     def processVerticalVariableCommand(self, args=None ):

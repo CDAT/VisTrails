@@ -330,7 +330,7 @@ class vtkPointCloud(QtCore.QObject):
     def show(self):
         if not self.actor.GetVisibility():
             self.actor.VisibilityOn()
-        
+       
     def getBounds( self, **args ):
         topo = args.get( 'topo', self.topo )
         lev = args.get( 'lev', None )
@@ -499,9 +499,16 @@ class vtkLocalPointCloud( vtkPointCloud ):
         op_specs = [ 'points' ] + list( subset_spec )
         self.point_collection.execute( op_specs ) 
         self.setPoints( self.point_collection.getPoints()  )   
+        self.grid_bounds = self.point_collection.getBounds()
+        self.generateSubset()
+        self.polydata.Modified()
+        self.mapper.Modified()
+        self.actor.Modified()
+        self.actor.SetVisibility( True  )
 
-    def generateSubset(self, subset_spec ):
-        self.current_subset_specs = subset_spec
+    def generateSubset(self, subset_spec = None ):
+        if subset_spec: self.current_subset_specs = subset_spec
+        else: subset_spec = self.current_subset_specs
         self.threshold_target = subset_spec[0]
         op_specs = [ 'indices' ] + list(subset_spec)
         vmin, vmax = self.point_collection.execute( op_specs )       
@@ -517,7 +524,6 @@ class vtkLocalPointCloud( vtkPointCloud ):
     def getNumberOfInputPoints(self): 
         return self.point_collection.getNumberOfInputPoints()
     
-
     def getSkipIndex(self): 
         return self.point_collection.istep
         
@@ -531,7 +537,7 @@ class vtkLocalPointCloud( vtkPointCloud ):
         self.updateScalars() 
         self.grid_bounds = self.point_collection.getBounds()
         self.actor.VisibilityOff()
-          
+                  
 class vtkPartitionedPointCloud( QtCore.QObject ):
     
     def __init__( self, nPartitions, init_args, **args  ):
