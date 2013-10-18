@@ -345,6 +345,8 @@ class CPCPlot(QtCore.QObject):
         return [ self.point_cloud_overview, self.partitioned_point_cloud ]
        
     def setRenderMode( self, render_mode, immediate = False ): 
+        if (render_mode == ProcessMode.HighRes) and (self.partitioned_point_cloud == None) or not self.partitioned_point_cloud.hasActiveCollections():
+            return
         self.render_mode = render_mode    
 #        self.setScalarRange()   
         if render_mode ==  ProcessMode.HighRes:
@@ -547,8 +549,9 @@ class CPCPlot(QtCore.QObject):
     def enableSlicing( self ):
         self.process_mode = ProcessMode.Slicing 
         if self.render_mode ==  ProcessMode.LowRes:
-            self.setRenderMode( ProcessMode.HighRes )                         
-        self.planeWidgetOn( )
+            self.setRenderMode( ProcessMode.HighRes )  
+        if self.topo == PlotType.Planar:                       
+            self.planeWidgetOn( )
         self.updateTextDisplay( "Mode: Slicing", True )
         self.shiftSlice( 0, 0 )
         
@@ -562,12 +565,15 @@ class CPCPlot(QtCore.QObject):
             self.planeWidget.NormalToYAxisOn()
         elif self.sliceAxisIndex == 2: 
             self.planeWidget.SetNormal( 0.0, 0.0, 1.0 )
-            self.planeWidget.NormalToZAxisOn()            
+            self.planeWidget.NormalToZAxisOn()  
+        self.updatePlaneWidget()          
+        if not self.planeWidget.GetEnabled( ):
+            self.planeWidget.SetEnabled( 1 )  
+            
+    def updatePlaneWidget(self): 
         o = list( self.planeWidget.GetOrigin() )
         o[ self.sliceAxisIndex ] = self.getCurrentSlicePosition()
         self.planeWidget.SetOrigin(o) 
-        if not self.planeWidget.GetEnabled( ):
-            self.planeWidget.SetEnabled( 1 )   
 
     def planeWidgetOff(self):
         if self.planeWidget:
@@ -626,11 +632,17 @@ class CPCPlot(QtCore.QObject):
         self.config_mode = ConfigMode.Points            
             
     def processSlicePlaneCommand( self, args ):
+#        print "Process Slice Plane Command: %s " % str( args )
         op = args[0]
-        if op == 'SliceWidth':
-            slider_index = args[1]
-            value = args[2]
-            print "Process SliceWidth[%d]: %f " % ( slider_index, value )
+        if op == 'High Res Slice Width:':
+            pass
+        elif op == 'Low Res Slice Width:':
+            pass
+        elif op == 'Slice Position:':
+            spos = args[3]
+            self.setSlicePosition( spos )
+            self.updatePlaneWidget()          
+            self.execCurrentSlice()
         if op == 'SelectSlice':
             self.sliceAxisIndex =  args[1]
             self.enableSlicing()            
@@ -643,7 +655,7 @@ class CPCPlot(QtCore.QObject):
 #            self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )               
             if self.partitioned_point_cloud:
                 self.current_subset_specs = self.partitioned_point_cloud.getSubsetSpecs()
-                self.point_cloud_overview.generateSubset( self.current_subset_specs )
+                self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )
             if self.process_mode <> ProcessMode.Thresholding:
                 self.enableThresholding()
         
@@ -691,7 +703,7 @@ class CPCPlot(QtCore.QObject):
             self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )               
             if self.partitioned_point_cloud: 
                 self.current_subset_specs = self.partitioned_point_cloud.getSubsetSpecs()
-                self.point_cloud_overview.generateSubset( self.current_subset_specs )
+                self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )
         elif args and args[0] == "EndConfig":
             if self.render_mode ==  ProcessMode.LowRes:
                 self.setRenderMode( ProcessMode.HighRes ) 
@@ -763,13 +775,13 @@ class CPCPlot(QtCore.QObject):
         self.current_subset_specs = ( target, trange[0], trange[1] )
         self.invalidate()
         pc = self.getPointCloud()
-        pc.generateSubset( self.current_subset_specs )
+        pc.generateSubset( spec=self.current_subset_specs )
         self.render( self.render_mode )
 #        print " Update Thresholding: spec = %s, render mode = %d " % ( str( subset_spec ), self.render_mode )
         sys.stdout.flush()
 
     def processConfigCmd( self, args ):
-        print " processConfigCmd: %s " % str(args)
+#        print " processConfigCmd: %s " % str(args); sys.stdout.flush()
         if args[0] =='Color Scale':
             self.processColorScaleCommand( args[1:] )
         elif args[0] =='Slice Planes':
@@ -802,7 +814,7 @@ class CPCPlot(QtCore.QObject):
                 self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() ) 
                 if self.partitioned_point_cloud:
                     self.current_subset_specs = self.partitioned_point_cloud.getSubsetSpecs()             
-                    self.point_cloud_overview.generateSubset( self.current_subset_specs )
+                    self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )
             self.render()
             return
         elif arg[0] == 'StartConfig':
@@ -843,6 +855,9 @@ class CPCPlot(QtCore.QObject):
                 for ires in [ ProcessMode.LowRes, ProcessMode.HighRes ]:
                     pc = self.getPointCloud(ires)  
                     pc.setPointSize( config_param.getValue(ires) )                                 
+            elif paramKeys[1] == 'Max Resolution':
+                self.maxRes = config_param   
+                self.connect( self.maxRes, QtCore.SIGNAL('ValueChanged'), self.processMaxResolutionCommand ) 
         elif paramKeys[0] == 'Geometry':
             if paramKeys[1] == 'Projection':
                 self.projection = config_param   
@@ -852,24 +867,31 @@ class CPCPlot(QtCore.QObject):
                 self.connect( self.vscale, QtCore.SIGNAL('ValueChanged'), self.processVerticalScalingCommand ) 
             elif paramKeys[1] == 'Vertical Variable':
                 self.vertVar = config_param   
-                self.connect( self.vertVar, QtCore.SIGNAL('ValueChanged'), self.processVerticalVariableCommand ) 
+                self.connect( self.vertVar, QtCore.SIGNAL('ValueChanged'), self.processVerticalVariableCommand )
+                
+    def processMaxResolutionCommand(self, args=None ):
+        max_res_spec =  self.maxRes.getValue() 
+        self.partitioned_point_cloud.setResolution( max_res_spec )
+        if not self.partitioned_point_cloud.hasActiveCollections():
+            self.render_mode = ProcessMode.LowRes
+        self.render()
                 
     def processVerticalScalingCommand(self, args=None ):
         if args and args[0] == "StartConfig":
             if self.render_mode ==  ProcessMode.HighRes:
                 self.setRenderMode( ProcessMode.LowRes ) 
-                self.point_cloud_overview.generateSubset( self.current_subset_specs )
+                self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )
                 self.render( self.render_mode )   
         elif args and args[0] == "EndConfig":
             scaling_spec = ( self.vertVar.getValue(), self.vscale.getValue() )
-            self.partitioned_point_cloud.generateZScaling( scaling_spec )
+            self.partitioned_point_cloud.generateZScaling( spec=scaling_spec )
             self.setRenderMode( ProcessMode.HighRes )
             self.render() 
         elif args and args[0] == "UpdateTabPanel":
             pass
         else:                     
             scaling_spec = ( self.vertVar.getValue(), self.vscale.getValue() )
-            self.point_cloud_overview.generateZScaling( scaling_spec )
+            self.point_cloud_overview.generateZScaling( spec=scaling_spec )
             pcbounds = self.point_cloud_overview.getBounds()
             self.planeWidget.PlaceWidget( pcbounds )
 #            vis = self.low_res_actor.GetVisibility()
@@ -894,9 +916,9 @@ class CPCPlot(QtCore.QObject):
     def updateSlicing( self, sliceIndex, slice_bounds ):
         self.invalidate()
         ( rmin, rmax ) = slice_bounds[ self.render_mode ]
-        pc = self.getPointCloud( self.render_mode )
         self.current_subset_specs = ( self.sliceAxes[sliceIndex], rmin, rmax )
-        pc.generateSubset( self.current_subset_specs )
+        self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )
+        self.partitioned_point_cloud.generateSubset( spec=self.current_subset_specs, allow_processing=False )
         self.render( self.render_mode )
 
 #    def updateSlicing1( self, sliceIndex, slice_bounds ):
@@ -1193,9 +1215,9 @@ class CPCPlot(QtCore.QObject):
     #        self.reset( ) # pcIndex )
             self.render() 
                           
-    def generateSubset(self, subset_spec ):
+    def generateSubset(self, **args ):
 #        self.pointPicker.GetPickList().RemoveAllItems() 
-        self.getPointCloud().generateSubset( subset_spec )        
+        self.getPointCloud().generateSubset( **args  )        
         
     def terminate(self):
         if ( self.partitioned_point_cloud <> None ):

@@ -260,6 +260,9 @@ class LabeledSliderWidget( QtGui.QWidget ):
         self.value_pane = QtGui.QLabel( str( self.getSliderValue() ) )         
         slider_layout.addWidget( self.value_pane  )  
         
+    def getTitle(self):
+        return self.title
+        
     def setSliderValue( self, normailzed_slider_value ): 
         index_value = int( round( self.minValue + normailzed_slider_value * ( self.maxValue - self.minValue ) ) )
         scaled_slider_value = self.scaledMinValue + normailzed_slider_value * ( self.scaledMaxValue - self.scaledMinValue )
@@ -301,6 +304,10 @@ class TabbedControl( ConfigControl ):
         layout.addWidget( slider  ) 
         self.widgets[slider_index] = slider
         return slider_index
+
+    def getTitle( self, widget_index ):
+        w = self.widgets[widget_index]
+        return w.getTitle()
 
     def addCheckbox(self, label, layout, **args ):
         cbox_index = len( self.widgets ) 
@@ -571,16 +578,19 @@ class SlicerControl( TabbedControl ):
         self.x_tab_index, tab_layout = self.addTab('x')
         self.xhsw = self.addSlider( "High Res Slice Width:", tab_layout, scaled_init_value=0.005, **self.args )
         self.xlsw = self.addSlider( "Low Res Slice Width:", tab_layout, scaled_init_value=0.01, **self.args )
+        self.xsp  = self.addSlider( "Slice Position:", tab_layout, scaled_init_value=0.5, **self.args )
         self.y_tab_index, tab_layout = self.addTab('y')
         self.yhsw = self.addSlider( "High Res Slice Width:", tab_layout, scaled_init_value=0.005, **self.args )
         self.ylsw = self.addSlider( "Low Res Slice Width:", tab_layout, scaled_init_value=0.01, **self.args )
+        self.ysp  = self.addSlider( "Slice Position:", tab_layout, scaled_init_value=0.5, **self.args )
         self.z_tab_index, tab_layout = self.addTab('z')
         self.zhsw = self.addSlider( "High Res Slice Width:", tab_layout, scaled_init_value=0.005, **self.args )
         self.zlsw = self.addSlider( "Low Res Slice Width:", tab_layout , scaled_init_value=0.01, **self.args)
+        self.zsp  = self.addSlider( "Slice Position:", tab_layout, scaled_init_value=0.5, **self.args )
         self.connect( self.tabWidget, QtCore.SIGNAL("currentChanged(int)"), self.sliceSelected )
                         
-    def sliderMoved( self, slider_index, value ):
-        self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), 'SliceWidth', slider_index, value ) )        
+    def sliderMoved( self, slider_index, raw_val, norm_val ):
+        self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), self.getTitle( slider_index ),  slider_index, raw_val, norm_val ) )        
 
     def sliceSelected( self, slice_index ):
         self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), 'SelectSlice', slice_index ) )        
@@ -776,6 +786,8 @@ class CPCConfigGui( ConfigurationGui ):
         self.iPointsCatIndex = self.addCategory( 'Points' )
         cparm = self.addParameter( self.iPointsCatIndex, "Point Size",  cats = [ ("Low Res", "# Pixels", 1, 20, 10 ), ( "High Res", "# Pixels",  1, 10, 3 ) ] )
         self.addConfigControl( self.iPointsCatIndex, PointSizeSliderControl( cparm ) )
+        cparm = self.addParameter( self.iPointsCatIndex, "Max Resolution", value=1.0 )
+        self.addConfigControl( self.iPointsCatIndex, SliderControl( cparm ) )
 #        self.addControlRow( self.iPointsCatIndex )
 
         self.GeometryCatIndex = self.addCategory( 'Geometry' )
