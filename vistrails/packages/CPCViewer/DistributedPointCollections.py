@@ -69,6 +69,7 @@ class PointCollectionExecutionTarget:
         self.point_collection.initialize( self.init_args, **self.cfg_args )
         self.point_collection.setDataSlice( self.collection_index, istrp=self.ncollections )
         data_packet = ExecutionDataPacket( ExecutionDataPacket.POINTS, self.collection_index, self.point_collection.getPoints() )
+        data_packet['event'] = 'init'
         self.results.put( data_packet )
         data_packet = ExecutionDataPacket( ExecutionDataPacket.VARDATA, self.collection_index, self.point_collection.getVarData() )
         data_packet[ 'vrange' ] = self.point_collection.getVarDataRange() 
@@ -87,6 +88,8 @@ class PointCollectionExecutionTarget:
             data_packet[ 'target' ] = target
         elif args[0] == 'points':
             data_packet = ExecutionDataPacket( ExecutionDataPacket.POINTS, self.collection_index, self.point_collection.getPointHeights() )
+            data_packet[ 'bounds' ] = self.point_collection.getBounds()
+            data_packet['event'] = 'config'
         data_packet[ 'args' ] = args
         self.results.put( data_packet )
 
@@ -227,8 +230,8 @@ class vtkPointCloud(QtCore.QObject):
         self.vtk_planar_points.SetData( vtk_points_data )
         self.createPolydata( **args )
 
-    def setPoints( self, pts ):
-        self.np_points_data =  pts
+    def setPointHeights( self, ptheights ):
+        self.np_points_data[2::3] =  ptheights
         vtk_points_data = numpy_support.numpy_to_vtk( self.np_points_data )    
         vtk_points_data.SetNumberOfComponents( 3 )
         vtk_points_data.SetNumberOfTuples( len( self.np_points_data ) / 3 )     
@@ -431,7 +434,8 @@ class vtkSubProcPointCloud( vtkPointCloud ):
             if self.pcIndex == 1: 
                 self.printLogMessage(  " vtkSubProcPointCloud --->> Get Results, Args: %s " % str(result['args']) )
         elif result.type == ExecutionDataPacket.POINTS:
-            self.np_points_data = result.data 
+            if result['event'] == 'init':
+                self.np_points_data = result.data
         return True
 
     def processResults( self ):
@@ -459,8 +463,9 @@ class vtkSubProcPointCloud( vtkPointCloud ):
             self.updateVertices()  
 #            print " processResults[ %d ] : INDICES" % self.pcIndex; sys.stdout.flush()
         elif result.type == ExecutionDataPacket.POINTS:
-            self.np_points_data = result.data 
-            self.initPoints()  
+            if result['event'] == 'config':
+                self.setPointHeights( result.data )
+                self.grid_bounds = result['bounds']
 #            print " processResults[ %d ] : POINTS" % self.pcIndex; sys.stdout.flush()
         return True
         
@@ -498,13 +503,12 @@ class vtkLocalPointCloud( vtkPointCloud ):
     def generateZScaling(self, subset_spec ):
         op_specs = [ 'points' ] + list( subset_spec )
         self.point_collection.execute( op_specs ) 
-        self.setPoints( self.point_collection.getPoints()  )   
+        self.setPointHeights( self.point_collection.getPointHeights()  )   
         self.grid_bounds = self.point_collection.getBounds()
-        self.generateSubset()
-        self.polydata.Modified()
-        self.mapper.Modified()
-        self.actor.Modified()
-        self.actor.SetVisibility( True  )
+#         self.polydata.Modified()
+#         self.mapper.Modified()
+#         self.actor.Modified()
+#         self.actor.SetVisibility( True  )
 
     def generateSubset(self, subset_spec = None ):
         if subset_spec: self.current_subset_specs = subset_spec

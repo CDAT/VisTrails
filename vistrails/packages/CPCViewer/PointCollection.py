@@ -112,7 +112,7 @@ class PointCollection():
         height_varname = args.get( 'height_var', None )
         z_scaling = args.get( 'z_scale', 1.0 )
         self.data_height = args.get( 'data_height', None )
-        print " setPointHeights: %s " % str( args ); sys.stdout.flush()
+#        print " setPointHeights: %s " % str( args ); sys.stdout.flush()
         ascending = True
         if self.lev.attributes.get('positive',None) == "down": ascending = False
         
@@ -333,7 +333,7 @@ class PointCollection():
                 self.selected_index_array = index_array[ threshold_mask ]  
             return vmin, vmax   
         elif op == 'points': 
-            print " Process points request, args = %s " % str( args ); sys.stdout.flush()
+#            print " Process points request, args = %s " % str( args ); sys.stdout.flush()
             self.setPointHeights( height_var=args[1], z_scale=args[2] )  
             
 
