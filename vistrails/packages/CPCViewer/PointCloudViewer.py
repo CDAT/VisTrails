@@ -274,6 +274,8 @@ class CPCPlot(QtCore.QObject):
         self.stereoEnabled = 0
         self.maxStageHeight = 100.0
         self.current_subset_specs = None
+        self.scalarRange = None
+        self.volumeThresholdRange = None
         
     def getLUT( self, cmap_index=0  ):
         colormapManager = self.getColormapManager( index=cmap_index )
@@ -446,7 +448,7 @@ class CPCPlot(QtCore.QObject):
             self.planeWidgetOff()
             self.setFocalPoint( [0,0,0] )
         elif self.process_mode == ProcessMode.Slicing:  self.planeWidgetOn()
-        self.mapManager.setMapVisibility( self.topo == PlotType.Planar )
+        self.mapManager.setMapVisibility( self.topo )
         self.render()
         
     def render( self, onMode = ProcessMode.AnyRes ):
@@ -616,10 +618,8 @@ class CPCPlot(QtCore.QObject):
         
     def processCategorySelectionCommand( self, args ):
         op = args[0]
-        if op == 'Slicer':
+        if op == 'Subsets':
             self.enableSlicing()
-        elif op == 'Volume':
-            self.enableThresholding() 
         elif op == 'Color':
             self.enableColorConfig() 
         elif op == 'Points':
@@ -632,20 +632,33 @@ class CPCPlot(QtCore.QObject):
         self.config_mode = ConfigMode.Points            
             
     def processSlicePlaneCommand( self, args ):
-#        print "Process Slice Plane Command: %s " % str( args )
-        op = args[0]
-        if op == 'High Res Slice Width:':
-            pass
-        elif op == 'Low Res Slice Width:':
-            pass
-        elif op == 'Slice Position:':
-            spos = args[3]
-            self.setSlicePosition( spos )
-            self.updatePlaneWidget()          
+        if args and args[0] == "StartConfig":
+            if self.render_mode ==  ProcessMode.HighRes:
+                self.setRenderMode( ProcessMode.LowRes, True )
+#            self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )               
+            if self.partitioned_point_cloud:
+                self.current_subset_specs = self.partitioned_point_cloud.getSubsetSpecs()
+                self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )        
+        elif args and args[0] == "EndConfig":
+            self.setRenderMode( ProcessMode.HighRes )                 
             self.execCurrentSlice()
-        if op == 'SelectSlice':
-            self.sliceAxisIndex =  args[1]
-            self.enableSlicing()            
+        
+        elif args and args[0] == "UpdateTabPanel":
+            self.enableSlicing()
+        else:                     
+            op = args[0]
+            if op == 'High Res Slice Width:':
+                pass
+            elif op == 'Low Res Slice Width:':
+                pass
+            elif op == 'Slice Position:':
+                spos = args[3]
+                self.setSlicePosition( spos )
+                self.updatePlaneWidget()          
+                self.execCurrentSlice()
+            if op == 'SelectSlice':
+                self.sliceAxisIndex =  args[1]
+                self.enableSlicing()            
     
     def processThresholdRangeCommand( self, args = None ):
             
@@ -665,7 +678,7 @@ class CPCPlot(QtCore.QObject):
             self.updateThresholding( 'vardata', self.volumeThresholdRange.getRange() ) 
         
         elif args and args[0] == "UpdateTabPanel":
-            pass
+            self.enableThresholding()
         else:                     
             if args:
                 norm_range = args[0] 
@@ -683,8 +696,10 @@ class CPCPlot(QtCore.QObject):
         self.planeWidgetOff()
         if self.render_mode ==  ProcessMode.LowRes:
             self.setRenderMode( ProcessMode.HighRes, True )
-        self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )
-        self.updateThresholding( 'vardata', self.volumeThresholdRange.getRange() )
+        if self.scalarRange <> None:
+            self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )
+        if self.volumeThresholdRange <> None:
+            self.updateThresholding( 'vardata', self.volumeThresholdRange.getRange() )
                    
     def processColorScaleCommand( self, args = None ):
         if args and args[0] == "ButtonClick":
@@ -830,10 +845,7 @@ class CPCPlot(QtCore.QObject):
 
     def processsInitParameter( self, parameter_key, config_param ):
         paramKeys = parameter_key.split(':') 
-        if paramKeys[0] == 'Slicer':
-            if paramKeys[1] == 'Slice Planes':
-                self.slicePosition = config_param
-        elif paramKeys[0] == 'Color':
+        if paramKeys[0] == 'Color':
             if paramKeys[1] == 'Color Scale':
                 self.scalarRange = config_param  
                 self.scalarRange.setScalingBounds( self.point_cloud_overview.getValueRange()  )  
@@ -843,11 +855,15 @@ class CPCPlot(QtCore.QObject):
                 self.colorMapCfg = config_param 
                 self.connect( self.colorMapCfg, QtCore.SIGNAL('ValueChanged'), self.processColorMapCommand ) 
                 self.processColorMapCommand()
-        elif paramKeys[0] == 'Volume':
-            if paramKeys[1] == 'Threshold Range':
+        elif paramKeys[0] == 'Subsets':
+            if paramKeys[1] == 'Slice Planes':
+                self.slicePosition = config_param
+#                self.enableSlicing()
+            elif paramKeys[1] == 'Threshold Range':
                 self.volumeThresholdRange = config_param                 
                 self.volumeThresholdRange.setScalingBounds( self.point_cloud_overview.getValueRange()  ) 
                 self.connect( self.volumeThresholdRange, QtCore.SIGNAL('ValueChanged'), self.processThresholdRangeCommand )      
+#                self.enableThresholding()
         elif paramKeys[0] == 'Points':
             if paramKeys[1] == 'Point Size':
                 self.pointSize = config_param   
@@ -1173,6 +1189,7 @@ class CPCPlot(QtCore.QObject):
             
         self.mapManager = MapManager( roi = self.point_cloud_overview.getBounds() )
         self.renderer.AddActor( self.mapManager.getBaseMapActor() )
+        self.renderer.AddActor( self.mapManager.getSphericalMap() )
         self.initCamera( )
         
     def reset( self, pcIndex ):

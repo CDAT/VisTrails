@@ -138,6 +138,7 @@ class PointCollection():
                 z_data.fill( zvalue )
                 if ascending: np_points_data_list.append( z_data )
                 else: np_points_data_list.insert( 0, z_data )
+#            print "Sample z data value: %s" % str( np_points_data_list[0][0] )
             self.point_data_arrays['z'] = numpy.concatenate( np_points_data_list ).astype( numpy.float32 ) 
             self.vertical_bounds =  ( 0.0, stage_height )  
         self.axis_bounds[ 'z' ] = self.vertical_bounds
@@ -303,7 +304,11 @@ class PointCollection():
         return len( self.lev )
     
     def computeThresholdRange( self, args ):
-        ( self.threshold_target, rmin, rmax ) = args
+        try:
+            ( self.threshold_target, rmin, rmax ) = args
+        except ValueError:
+            print>>sys.stderr, "Error Unpacking thresholding data: %s " % str( args )
+            return 
         var_data = self.point_data_arrays.get( self.threshold_target, None)
         if not isNone(var_data):
             arange = self.axis_bounds.get( self.threshold_target )

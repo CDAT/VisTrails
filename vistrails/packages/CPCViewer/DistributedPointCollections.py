@@ -110,6 +110,7 @@ class vtkPointCloud(QtCore.QObject):
         self.points = None
         self.pcIndex = pcIndex
         self.earth_radius = 100.0
+        self.spherical_scaling = 0.4
         self.vtk_planar_points = None
         self.vtk_spherical_points = None
         self.np_points_data = None
@@ -231,12 +232,27 @@ class vtkPointCloud(QtCore.QObject):
         self.createPolydata( **args )
 
     def setPointHeights( self, ptheights ):
-        self.np_points_data[2::3] =  ptheights
-        vtk_points_data = numpy_support.numpy_to_vtk( self.np_points_data )    
-        vtk_points_data.SetNumberOfComponents( 3 )
-        vtk_points_data.SetNumberOfTuples( len( self.np_points_data ) / 3 )     
-        self.vtk_planar_points.SetData( vtk_points_data )
-        self.vtk_planar_points.Modified()
+        if self.topo == PlotType.Planar:   
+            self.np_points_data[2::3] =  ptheights
+            vtk_points_data = numpy_support.numpy_to_vtk( self.np_points_data ) 
+            vtk_points_data.SetNumberOfComponents( 3 )
+            vtk_points_data.SetNumberOfTuples( len( self.np_points_data ) / 3 )  
+            self.vtk_planar_points.SetData( vtk_points_data )
+            self.vtk_planar_points.Modified()
+        elif self.topo == PlotType.Spherical:
+            self.np_sp_grid_data[0::3] =  self.spherical_scaling * ptheights + self.earth_radius
+            vtk_sp_grid_data = numpy_support.numpy_to_vtk( self.np_sp_grid_data ) 
+            size = vtk_sp_grid_data.GetSize()                    
+            vtk_sp_grid_data.SetNumberOfComponents( 3 )
+            vtk_sp_grid_data.SetNumberOfTuples( size/3 )   
+            vtk_sp_grid_points = vtk.vtkPoints()
+            vtk_sp_grid_points.SetData( vtk_sp_grid_data )
+            self.vtk_spherical_points = vtk.vtkPoints()
+            self.shperical_to_xyz_trans.TransformPoints( vtk_sp_grid_points, self.vtk_spherical_points ) 
+            pt0 = self.vtk_spherical_points.GetPoint(0)
+#            print "VTK Set point Heights, samples: %s %s %s " % ( str( ptheights[0] ), str( self.np_sp_grid_data[0] ), str( pt0 ) )
+            self.polydata.SetPoints( self.vtk_spherical_points ) 
+            self.vtk_spherical_points.Modified()
         self.polydata.Modified()
         
     def createPolydata( self, **args  ):
@@ -249,20 +265,22 @@ class vtkPointCloud(QtCore.QObject):
     def computeSphericalPoints( self, **args ):
         lon_data = self.np_points_data[0::3]
         lat_data = self.np_points_data[1::3]
+        z_data = self.np_points_data[2::3]
         radian_scaling = math.pi / 180.0 
         theta =  ( 90.0 - lat_data ) * radian_scaling
         phi = lon_data * radian_scaling
         if self.grid == PlotType.List:
-            r = numpy.empty( lon_data.shape, lon_data.dtype )      
-            r.fill(  self.earth_radius )
-            np_sp_grid_data = numpy.dstack( ( r, theta, phi ) ).flatten()
-            vtk_sp_grid_data = numpy_support.numpy_to_vtk( np_sp_grid_data ) 
+#             r = numpy.empty( lon_data.shape, lon_data.dtype )      
+#             r.fill(  self.earth_radius )
+            r = z_data * self.spherical_scaling + self.earth_radius
+            self.np_sp_grid_data = numpy.dstack( ( r, theta, phi ) ).flatten()
+            vtk_sp_grid_data = numpy_support.numpy_to_vtk( self.np_sp_grid_data ) 
         elif self.grid == PlotType.Grid:
             thetaB = theta.reshape( [ theta.shape[0], 1 ] )  
             phiB = phi.reshape( [ 1, phi.shape[0] ] )
             grid_data = numpy.array( [ ( self.earth_radius, t, p ) for (t,p) in numpy.broadcast(thetaB,phiB) ] )
-            sp_points_data = grid_data.flatten() 
-            vtk_sp_grid_data = numpy_support.numpy_to_vtk( sp_points_data ) 
+            self.np_sp_grid_data = grid_data.flatten() 
+            vtk_sp_grid_data = numpy_support.numpy_to_vtk( self.np_sp_grid_data ) 
         else:
             print>>sys.stderr, "Unrecognized grid type: %s " % str( self.grid )
             return        

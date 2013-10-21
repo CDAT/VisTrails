@@ -716,7 +716,7 @@ class ConfigurationGui(QtGui.QDialog):
    
     def activate(self):
         self.initParameters()
-        self.configContainer.selectCategory( self.iSlicerCatIndex )
+        self.configContainer.selectCategory( self.iSubsetCatIndex )
         self.show()
             
     def closeDialog( self ):
@@ -771,24 +771,22 @@ class CPCConfigGui( ConfigurationGui ):
         self.addConfigControl( self.iColorCatIndex, ColorScaleControl( cparm ) )       
         cparm = self.addParameter( self.iColorCatIndex, "Color Map", Colormap="jet", Invert=True, Stereo=False, Smooth=True  )
         self.addConfigControl( self.iColorCatIndex, ColormapControl( cparm ) )  
-#        self.addControlRow( self.iColorCatIndex )
              
-        self.iSlicerCatIndex = self.addCategory( 'Slicer' )
-        cparm = self.addParameter( self.iSlicerCatIndex, "Slice Planes",  xpos=0.5, ypos=0.5, zpos=0.5 )
-        self.addConfigControl( self.iSlicerCatIndex, SlicerControl( cparm ) )
-#        self.addControlRow( self.iSlicerCatIndex )
+        self.iSubsetCatIndex = self.addCategory( 'Subsets' )
+        cparm = self.addParameter( self.iSubsetCatIndex, "Slice Planes",  xpos=0.5, ypos=0.5, zpos=0.5 )
+        self.addConfigControl( self.iSubsetCatIndex, SlicerControl( cparm ) )
+        cparm = self.addParameter( self.iSubsetCatIndex, "Threshold Range", wpos=0.5, wsize=0.2, ctype = 'Leveling' )
+        self.addConfigControl( self.iSubsetCatIndex, VolumeControl( cparm ) )
         
-        self.iThresholdingCatIndex = self.addCategory( 'Volume' )
-        cparm = self.addParameter( self.iThresholdingCatIndex, "Threshold Range", wpos=0.5, wsize=0.2, ctype = 'Leveling' )
-        self.addConfigControl( self.iThresholdingCatIndex, VolumeControl( cparm ) )
-#        self.addControlRow( self.iThresholdingCatIndex )
+#        cparm = self.addParameter( self.AnimationCatIndex, "Vertical Variable", choices = vertical_vars, init_index=0  )
+#        self.addConfigControl( self.GeometryCatIndex, RadioButtonSelectionControl( cparm ) )
         
         self.iPointsCatIndex = self.addCategory( 'Points' )
         cparm = self.addParameter( self.iPointsCatIndex, "Point Size",  cats = [ ("Low Res", "# Pixels", 1, 20, 10 ), ( "High Res", "# Pixels",  1, 10, 3 ) ] )
         self.addConfigControl( self.iPointsCatIndex, PointSizeSliderControl( cparm ) )
         cparm = self.addParameter( self.iPointsCatIndex, "Max Resolution", value=1.0 )
         self.addConfigControl( self.iPointsCatIndex, SliderControl( cparm ) )
-#        self.addControlRow( self.iPointsCatIndex )
+
 
         self.GeometryCatIndex = self.addCategory( 'Geometry' )
         cparm = self.addParameter( self.GeometryCatIndex, "Projection", choices = [ "Lat/Lon", "Spherical" ], init_index=0 )
@@ -799,7 +797,6 @@ class CPCConfigGui( ConfigurationGui ):
         vertical_vars.insert( 0, "Levels" )
         cparm = self.addParameter( self.GeometryCatIndex, "Vertical Variable", choices = vertical_vars, init_index=0  )
         self.addConfigControl( self.GeometryCatIndex, RadioButtonSelectionControl( cparm ) )
-#        self.addControlRow( self.iPointsCatIndex )
 
         
 if __name__ == '__main__':

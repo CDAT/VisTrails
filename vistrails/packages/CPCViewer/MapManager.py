@@ -10,6 +10,7 @@ import vtk, time
 from PyQt4 import QtCore, QtGui
 import numpy as np
 import os, vtk
+from PointCollection import PlotType
 
 packagePath = os.path.dirname( __file__ )  
 defaultMapDir = os.path.join( packagePath, 'data' )
@@ -25,6 +26,7 @@ class MapManager( QtCore.QObject ):
     def __init__(self, **args ):
         super( MapManager, self ).__init__()  
         self.baseMapActor = None
+        self.sphereActor = None
         self.map_opacity = args.get('opacity',0.5)
         self.map_border_size = args.get( "map_border_size", 20  ) 
         self.roi = args.get( "roi", [ 0.0, 360.0, -90.0, 90.0 ] )
@@ -36,13 +38,63 @@ class MapManager( QtCore.QObject ):
         return self.map_opacity
     
     def setMapOpacity(self, opacity_vals, **args ):
-        self.map_opacity = opacity_vals
+        self.map_opacity = opacity_vals[0]
         self.updateMapOpacity() 
+        
+    def getSphericalMap( self, **args ):
+        thetaResolution = args.get( "thetaRes", 64 )
+        phiResolution = args.get( "phiRes", 64 )
+        radius = args.get( "radius", 100 )
+        lon_range = args.get( "lon_range", [ -180.0, 180.0 ] )
+        lat_range = args.get( "lat_range", [ 90.0, -90.0 ] )
+        if self.sphereActor == None: 
+            self.sphere = vtk.vtkSphereSource()
+            self.sphere.SetThetaResolution( thetaResolution )
+            self.sphere.SetPhiResolution( phiResolution )
+            self.sphere.SetRadius( radius )
+#             self.sphere.SetStartTheta( lon_range[0] )        
+#             self.sphere.SetEndTheta( lon_range[1] ) 
+#             self.sphere.SetStartPhi( lat_range[0] )        
+#             self.sphere.SetEndPhi( lat_range[1] )        
+       
+            mesh = self.sphere.GetOutput()
+            
+            self.sphereTexmapper = vtk.vtkTextureMapToSphere()
+            self.sphereTexmapper.SetInput(mesh)
+            self.sphereTexmapper.PreventSeamOff()
+            
+            self.sphereMapper = vtk.vtkPolyDataMapper()
+            self.sphereMapper.SetInput(self.sphereTexmapper.GetOutput())
+           
+#             imageFlipper = vtk.vtkImageReslice()
+#             imageFlipper.SetInput( self.baseImage )
+#             resliceAxes = vtk.vtkMatrix4x4()
+#             resliceAxes.Identity()
+#             resliceAxes.SetElement( 1, 1, -1 )
+#             imageFlipper.SetResliceAxesOrigin( 0, 0, 0 )              
+#             imageFlipper.SetResliceAxes( resliceAxes )
+                        
+            imageFlipper = vtk.vtkImageFlip()
+            imageFlipper.SetInput( self.baseImage )
+            imageFlipper.SetFilteredAxis( 1 ) 
+            
+            self.sphereTexture = vtk.vtkTexture()
+            self.sphereTexture.SetInput( imageFlipper.GetOutput()  )
+            
+            self.sphereActor = vtk.vtkActor()
+            self.sphereActor.SetMapper(self.sphereMapper)
+            self.sphereActor.SetTexture(self.sphereTexture)
+#            self.sphereActor.GetProperty().SetOpacity( self.map_opacity )
+            self.sphereActor.SetVisibility( False )  
 
+        return self.sphereActor
+  
     def updateMapOpacity(self, cmap_index=0 ):
         if self.baseMapActor:
-            self.baseMapActor.SetOpacity( self.map_opacity[0] )
-            self.render()
+            self.baseMapActor.SetOpacity( self.map_opacity )
+#         if self.sphereActor:
+#             self.sphereActor.GetProperty().SetOpacity( self.map_opacity )
+        self.render()
         
     def build( self, **args ):
         if self.enableBasemap:              
@@ -72,16 +124,16 @@ class MapManager( QtCore.QObject ):
                     self.world_cut = self.map_cut
             
             self.imageInfo = vtk.vtkImageChangeInformation()        
-            image_reader = vtk.vtkJPEGReader()      
-            image_reader.SetFileName(  self.map_file )
-            baseImage = image_reader.GetOutput() 
+            self.image_reader = vtk.vtkJPEGReader()      
+            self.image_reader.SetFileName(  self.map_file )
+            self.baseImage = self.image_reader.GetOutput() 
             new_dims, scale = None, None
             if dataPosition == None:    
-                baseImage = self.RollMap( baseImage ) 
-                new_dims = baseImage.GetDimensions()
+                self.baseImage = self.RollMap( self.baseImage ) 
+                new_dims = self.baseImage.GetDimensions()
                 scale = [ 360.0/new_dims[0], 180.0/new_dims[1], 1 ]
             else:                       
-                baseImage, new_dims = self.getBoundedMap( baseImage, dataPosition, map_cut_size, self.map_border_size )             
+                self.baseImage, new_dims = self.getBoundedMap( self.baseImage, dataPosition, map_cut_size, self.map_border_size )             
                 scale = [ map_cut_size[0]/new_dims[0], map_cut_size[1]/new_dims[1], 1 ]
     #        printArgs( " baseMap: ", extent=baseImage.GetExtent(), spacing=baseImage.GetSpacing(), origin=baseImage.GetOrigin() )        
                               
@@ -91,21 +143,30 @@ class MapManager( QtCore.QObject ):
             self.baseMapActor.SetOrientation( 0.0, 0.0, 0.0 )
             self.baseMapActor.SetOpacity( self.map_opacity )
     #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
-#            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
+            print "Positioning map at location %s" % ( str( ( self.x0, self.y0) )  ) 
             mapCorner = [ self.x0, self.y0 ]
 #            if ( ( self.roi[0]-map_border_size ) < 0.0 ): mapCorner[0] = mapCorner[0] - 360.0
 #            print " DV3DCell, mapCorner = %s, dataPosition = %s, cell_location = %s " % ( str(mapCorner), str(dataPosition), cell_location )
                     
             self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
-            self.baseMapActor.SetInput( baseImage )
+            self.baseMapActor.SetInput( self.baseImage )
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]  
             
     def getBaseMapActor(self):
         if self.baseMapActor == None: self.build()  
         return self.baseMapActor 
     
-    def setMapVisibility( self, isVisible  ):
-        self.baseMapActor.SetVisibility( isVisible )  
+    def setMapVisibility( self, topo  ):
+        if topo == PlotType.Planar:
+            mapCorner = [ self.x0, self.y0 ]
+            self.baseMapActor.SetOrigin( 0.0, 0.0, 0.0 )
+            self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
+            self.baseMapActor.SetVisibility( True )  
+            self.sphereActor.SetVisibility( False )  
+            print "Positioning map at location %s" % ( str( ( self.x0, self.y0) )  ) 
+        elif topo == PlotType.Spherical:
+            self.baseMapActor.SetVisibility( False )  
+            self.sphereActor.SetVisibility( True )  
             
     def ComputeCornerPosition( self ):
         if (self.roi[0] >= -180) and (self.roi[1] <= 180) and (self.roi[1] > self.roi[0]):
