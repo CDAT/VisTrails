@@ -35,7 +35,10 @@ class ConfigParameter( QtCore.QObject ):
 
     def __call__(self, **args ):
         self.values.update( args )
-        self.emit( QtCore.SIGNAL("ValueChanged"), args )
+        args1 = [ self.name ]
+        for item in args.items():
+            args1.extend( list(item) )
+        self.emit( QtCore.SIGNAL("ValueChanged"), args1 )
          
     def getName(self):
         return self.name
@@ -71,6 +74,7 @@ class LevelingConfigParameter( ConfigParameter ):
     @rmin.setter
     def rmin(self, value):
         self['rmin'] = value
+        self.computeWindow()
         
     @property
     def rmax(self):
@@ -79,6 +83,7 @@ class LevelingConfigParameter( ConfigParameter ):
     @rmax.setter
     def rmax(self, value):
         self['rmax'] = value
+        self.computeWindow()
 
     @property
     def wpos(self):
@@ -87,6 +92,7 @@ class LevelingConfigParameter( ConfigParameter ):
     @wpos.setter
     def wpos(self, value):
         self['wpos'] = value
+        self.computeRange()  
         
     @property
     def wsize(self):
@@ -95,6 +101,7 @@ class LevelingConfigParameter( ConfigParameter ):
     @wsize.setter
     def wsize(self, value):
         self['wsize'] = value
+        self.computeRange()  
         
     def setScalingBounds( self, sbounds ):
         self.scaling_bounds = sbounds
@@ -135,12 +142,10 @@ class LevelingConfigParameter( ConfigParameter ):
     def setRange(self, range ):
         self.rmin = min( max( range[0], 0.0 ), 1.0 )
         self.rmax = max( min( range[1], 1.0 ), 0.0 )
-        self.computeWindow()
         
     def setWindow( self, wpos, wwidth ):
         self.wpos =   min( max( wpos, 0.0 ), 1.0 )
-        self.wsize =      max( min( wwidth, 1.0 ), 0.0 )
-        self.computeRange()        
+        self.wsize =      max( min( wwidth, 1.0 ), 0.0 )      
 
     def getWindow(self):
         return ( self.wpos, self.wsize )
@@ -361,9 +366,9 @@ class TabbedControl( ConfigControl ):
         if cmd == 'Moved': 
             self.sliderMoved( slider_index, values[0], values[1] )
         if cmd == 'Start': 
-            self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), "StartConfig", slider_index ) )
+            self.emit( QtCore.SIGNAL("ConfigCmd"),  [ self.getName(), "StartConfig", slider_index, self.getId(slider_index) ] )
         if cmd == 'End': 
-            self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), "EndConfig", slider_index ) )
+            self.emit( QtCore.SIGNAL("ConfigCmd"),  [ self.getName(), "EndConfig", slider_index, self.getId(slider_index) ]  )
 
     def processWidgetConfigCmd(self, widget_name, widget_value=None ):
         if widget_value == None:
@@ -373,6 +378,9 @@ class TabbedControl( ConfigControl ):
 #        self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), cbox_name, cbox_value ) )
 
 
+    def getId( self, slider_index ):
+        return self.widgets[slider_index].getTitle() 
+    
     def build(self):
         super( TabbedControl, self ).build()
         cats = self.cparm[ 'cats' ]
@@ -485,6 +493,7 @@ class LevelingSliderControl( TabbedControl ):
         super( LevelingSliderControl, self ).__init__( cparm, **args )
         self.leveling_tab_index = None
         self.minmax_tab_index = None
+        self.updatingTabPanel = False
         
     def getMinMax(self, wpos, wsize):
         smin = max( wpos - wsize/2.0, 0.0 ) 
@@ -504,6 +513,7 @@ class LevelingSliderControl( TabbedControl ):
         self.maxvIndex = self.addSlider( "Max Value:", tab_layout, scaled_init_value=smax, **self.args )
         
     def updateTabPanel(self, current_tab_index = -1 ): 
+        self.updatingTabPanel = True
         if current_tab_index == -1: 
             current_tab_index = self.tabWidget.currentIndex()
 #        print "tabChanged: %s" % str( ( current_tab_index, self.leveling_tab_index, self.minmax_tab_index ) ); sys.stdout.flush()
@@ -511,9 +521,11 @@ class LevelingSliderControl( TabbedControl ):
             self.updateLevelingSliders()
         if ( self.minmax_tab_index <> None )  and ( current_tab_index == self.minmax_tab_index ):
             self.updateMinMaxSliders()
+        self.updatingTabPanel = False
             
     def configValueChanged(self): 
-        self.updateTabPanel()
+        if not self.updatingTabPanel:
+            self.updateTabPanel()
             
     def updateLevelingSliders(self):
         wsSlider = self.widgets[ self.wsIndex ]
@@ -587,26 +599,44 @@ class SlicerControl( TabbedControl ):
     
     def __init__(self, cparm, **args ):  
         super( SlicerControl, self ).__init__( cparm, **args )
+        self.wrange = args.get( 'wrange', [ 0.0001, 0.02 ])
         
     def build(self):
         super( SlicerControl, self ).build()
         self.x_tab_index, tab_layout = self.addTab('x')
-        self.xhsw = self.addSlider( "High Res Slice Width:", tab_layout, scaled_init_value=0.005, **self.args )
-        self.xlsw = self.addSlider( "Low Res Slice Width:", tab_layout, scaled_init_value=0.01, **self.args )
-        self.xsp  = self.addSlider( "Slice Position:", tab_layout, scaled_init_value=0.5, **self.args )
+        self.xhsw = self.addSlider( "High Res Slice Width:", tab_layout, scaled_init_value=self.cparm['xhrwidth'], scaled_min_value= self.wrange[0], scaled_max_value= self.wrange[1], **self.args )
+        self.xlsw = self.addSlider( "Low Res Slice Width:", tab_layout, scaled_init_value=self.cparm['xlrwidth'], scaled_min_value= self.wrange[0], scaled_max_value= self.wrange[1], **self.args )
+        self.xsp  = self.addSlider( "Slice Position:", tab_layout, scaled_init_value=self.cparm['xpos'], **self.args )
         self.y_tab_index, tab_layout = self.addTab('y')
-        self.yhsw = self.addSlider( "High Res Slice Width:", tab_layout, scaled_init_value=0.005, **self.args )
-        self.ylsw = self.addSlider( "Low Res Slice Width:", tab_layout, scaled_init_value=0.01, **self.args )
-        self.ysp  = self.addSlider( "Slice Position:", tab_layout, scaled_init_value=0.5, **self.args )
+        self.yhsw = self.addSlider( "High Res Slice Width:", tab_layout, scaled_init_value=self.cparm['yhrwidth'], scaled_min_value= self.wrange[0], scaled_max_value= self.wrange[1], **self.args )
+        self.ylsw = self.addSlider( "Low Res Slice Width:", tab_layout, scaled_init_value=self.cparm['ylrwidth'], scaled_min_value= self.wrange[0], scaled_max_value= self.wrange[1], **self.args )
+        self.ysp  = self.addSlider( "Slice Position:", tab_layout, scaled_init_value=self.cparm['ypos'], **self.args )
         self.z_tab_index, tab_layout = self.addTab('z')
-        self.zhsw = self.addSlider( "High Res Slice Width:", tab_layout, scaled_init_value=0.005, **self.args )
-        self.zlsw = self.addSlider( "Low Res Slice Width:", tab_layout , scaled_init_value=0.01, **self.args)
+#         self.zhsw = self.addSlider( "High Res Slice Width:", tab_layout, scaled_init_value=0.005, **self.args )
+#         self.zlsw = self.addSlider( "Low Res Slice Width:", tab_layout , scaled_init_value=0.01, **self.args)
         self.zsp  = self.addSlider( "Slice Position:", tab_layout, scaled_init_value=0.5, **self.args )
         self.connect( self.tabWidget, QtCore.SIGNAL("currentChanged(int)"), self.sliceSelected )
                         
     def sliderMoved( self, slider_index, raw_val, norm_val ):
-        self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), self.getTitle( slider_index ),  slider_index, raw_val, norm_val ) )        
+#        self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), self.getTitle( slider_index ),  slider_index, raw_val, norm_val ) )  
+        id = self.getId( slider_index )       
+        self.cparm[id] = norm_val
 
+    def getId( self, slider_index ):
+        if   slider_index == self.xhsw: return 'xhrwidth'
+        elif slider_index == self.xlsw: return 'xlrwidth'
+        elif slider_index == self.xsp:  return 'xpos'
+        elif slider_index == self.yhsw: return 'yhrwidth'
+        elif slider_index == self.ylsw: return 'ylrwidth'
+        elif slider_index == self.ysp:  return 'ypos'
+        elif slider_index == self.zsp:  return 'zpos'
+        
+#         slice_specs = self.cparm.getValue('specs',{})
+#         slice_specs[ slider_index ] = norm_val
+        
+#         elif slider_index == self.zhsw: self.cparm['zhrwidth'] = raw_val
+#         elif slider_index == self.zlsw: self.cparm['zlrwidth'] = raw_val
+        
     def sliceSelected( self, slice_index ):
         self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), 'SelectSlice', slice_index ) ) 
         
@@ -622,7 +652,9 @@ class SlicerControl( TabbedControl ):
 
     def configValueChanged( self, args ): 
         super( SlicerControl, self ).configValueChanged( args )
-        self.setSlicePosition( args[2] )
+        op = args[1]
+        if op in POS_VECTOR_COMP:
+            self.setSlicePosition( args[2] )
               
 class ConfigControlList(QtGui.QWidget):
 
@@ -817,8 +849,8 @@ class CPCConfigGui( ConfigurationGui ):
         self.addConfigControl( self.iColorCatIndex, ColormapControl( cparm ) )  
              
         self.iSubsetCatIndex = self.addCategory( 'Subsets' )
-        cparm = self.addParameter( self.iSubsetCatIndex, "Slice Planes",  xpos=0.5, ypos=0.5, zpos=0.5, xhrwidth=0.01, xlrwidth=0.01, yhrwidth=0.01, ylrwidth=0.01, zhrwidth=0.01, zlrwidth=0.01 )
-        self.addConfigControl( self.iSubsetCatIndex, SlicerControl( cparm ) ) # , "SlicerControl" )
+        cparm = self.addParameter( self.iSubsetCatIndex, "Slice Planes",  xpos=0.5, ypos=0.5, zpos=0.5, xhrwidth=0.0025, xlrwidth=0.005, yhrwidth=0.0025, ylrwidth=0.005 )
+        self.addConfigControl( self.iSubsetCatIndex, SlicerControl( cparm, wrange=[ 0.0001, 0.02 ] ) ) # , "SlicerControl" )
         cparm = self.addParameter( self.iSubsetCatIndex, "Threshold Range", wpos=0.5, wsize=0.2, ctype = 'Leveling' )
         self.addConfigControl( self.iSubsetCatIndex, VolumeControl( cparm ) )
         

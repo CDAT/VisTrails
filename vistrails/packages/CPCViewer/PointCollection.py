@@ -328,6 +328,7 @@ class PointCollection():
         except ValueError:
             print>>sys.stderr, "Error Unpacking thresholding data: %s " % str( args )
             return 
+        vmin = None
         var_data = self.point_data_arrays.get( self.threshold_target, None)
         if not isNone(var_data):
             arange = self.axis_bounds.get( self.threshold_target )
@@ -342,7 +343,7 @@ class PointCollection():
                     vmax = self.vrange[0] + rmax * dv
                 except TypeError, err:
                     pass
-            if vmin:
+            if vmin <> None:
                 self.thresholded_range = [ vmin, vmax ]
                 return var_data, vmin, vmax
         return None, None, None

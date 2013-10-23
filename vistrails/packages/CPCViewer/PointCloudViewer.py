@@ -5,7 +5,7 @@ Created on Aug 29, 2013
 '''
 
 import sys, cdms2
-import os.path
+import os.path, traceback
 import vtk, time
 from PyQt4 import QtCore, QtGui
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
@@ -486,24 +486,24 @@ class CPCPlot(QtCore.QObject):
         if key == upArrow:
             if self.process_mode == ProcessMode.Thresholding:
                 self.shiftThresholding( 1, 0 )  
-            elif self.process_mode == ProcessMode.Slicing: 
-                self.shiftSlice( 1, 0 )           
+#             elif self.process_mode == ProcessMode.Slicing: 
+#                 self.shiftSlice( 1, 0 )           
         if key == QtCore.Qt.Key_Down:
             if self.process_mode == ProcessMode.Thresholding:
                 self.shiftThresholding( -1, 0 )  
-            elif self.process_mode == ProcessMode.Slicing: 
-                self.shiftSlice( -1, 0 )
+#             elif self.process_mode == ProcessMode.Slicing: 
+#                 self.shiftSlice( -1, 0 )
     
         if key == QtCore.Qt.Key_Left:   
             if self.process_mode == ProcessMode.Thresholding:
                 self.shiftThresholding( 0, -1 )
-            elif self.process_mode == ProcessMode.Slicing: 
-                self.shiftSlice( 0, -1 )
+#             elif self.process_mode == ProcessMode.Slicing: 
+#                 self.shiftSlice( 0, -1 )
         if key == QtCore.Qt.Key_Right:       
             if self.process_mode == ProcessMode.Thresholding:
                 self.shiftThresholding( 0, 1 )
-            elif self.process_mode == ProcessMode.Slicing: 
-                self.shiftSlice( 0, 1 )
+#             elif self.process_mode == ProcessMode.Slicing: 
+#                 self.shiftSlice( 0, 1 )
             
         if   keysym == "s":  self.toggleTopo()
         elif keysym == "t":  self.stepTime()
@@ -528,7 +528,7 @@ class CPCPlot(QtCore.QObject):
         if self.topo == PlotType.Planar:                       
             self.planeWidgetOn( )
         self.updateTextDisplay( "Mode: Slicing", True )
-        self.shiftSlice( 0, 0 )
+        self.execCurrentSlice()
         
     def planeWidgetOn(self):
         self.initPlaneWidget()
@@ -620,9 +620,12 @@ class CPCPlot(QtCore.QObject):
 
             
     def processSlicePlaneCommand( self, args ):
+        print " processSlicePlaneCommand: %s " % str( args )
         if args and args[0] == "StartConfig":
             if self.render_mode ==  ProcessMode.HighRes:
-                self.setRenderMode( ProcessMode.LowRes, True )
+                title = args[2]
+                if not (title in SLICE_WIDTH_HR_COMP):
+                    self.setRenderMode( ProcessMode.LowRes, True )
 #            self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )               
             if self.partitioned_point_cloud:
                 self.current_subset_specs = self.partitioned_point_cloud.getSubsetSpecs()
@@ -638,23 +641,11 @@ class CPCPlot(QtCore.QObject):
             self.setRenderMode( ProcessMode.HighRes )
             if isOK: self.getPointCloud().setScalarRange( self.scalarRange.getScaledRange() )              
             self.render()
-        else:                     
-            op = args[0]
-            if op == 'High Res Slice Width:':
-                pass
-            elif op == 'Low Res Slice Width:':
-                pass
-            elif op == 'Slice Position:':
-                spos = args[3]
-                self.setSlicePosition( spos )
-                self.updatePlaneWidget()          
-                self.execCurrentSlice()
-            if op == 'SelectSlice':
-                self.sliceAxisIndex =  args[1]
-                self.enableSlicing()            
+        elif args and args[0] == "SelectSlice":
+            self.sliceAxisIndex =  args[1]
+            self.enableSlicing()            
     
     def processThresholdRangeCommand( self, args = None ):
-            
         if args and args[0] == "StartConfig":
             if self.render_mode ==  ProcessMode.HighRes:
                 self.setRenderMode( ProcessMode.LowRes, True )
@@ -677,16 +668,11 @@ class CPCPlot(QtCore.QObject):
             self.setRenderMode( ProcessMode.HighRes )
             if isOK: self.updateThresholding( 'vardata', self.volumeThresholdRange.getRange() )                
             self.render()
-        else:                     
-            if args:
-                norm_range = args[0] 
-                self.volumeThresholdRange.setRange( norm_range ) 
-            else: 
-                norm_range = self.volumeThresholdRange.getRange()
+        elif args and args[0] == "Threshold Range":
+            norm_range = self.volumeThresholdRange.getRange()
             if ( self.thresholdCmdIndex % self.thresholdingSkipFactor ) == 0:
                 self.updateThresholding( 'vardata', norm_range )
-            self.thresholdCmdIndex = self.thresholdCmdIndex + 1
-        
+                    
     def enableThresholding( self, args = None ):
         self.updateTextDisplay( "Mode: Thresholding", True )
         self.thresholdCmdIndex = 0
@@ -725,11 +711,9 @@ class CPCPlot(QtCore.QObject):
                 pc.refresh(True) 
         elif args and args[0] == "UpdateTabPanel":
             pass                 
-        else:
-            if args:
-                norm_range = args[0]
-                self.scalarRange.setRange( norm_range ) 
-            self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )          
+        elif args and args[0] == "Color Scale":
+            norm_range = self.scalarRange.getScaledRange() 
+            self.point_cloud_overview.setScalarRange( norm_range )          
         self.render()
 
                      
@@ -739,8 +723,8 @@ class CPCPlot(QtCore.QObject):
 
     def getSliceWidth(self, res, slice_index = -1  ):
         if slice_index == -1: slice_index = self.sliceAxisIndex
-        if res == 0: return self.sliceProperties[ SLICE_WIDTH_LR_COMP[ slice_index ] ]
-        if res == 1: return self.sliceProperties[ SLICE_WIDTH_HR_COMP[ slice_index ] ]
+        if res == ProcessMode.LowRes:  return self.sliceProperties[ SLICE_WIDTH_LR_COMP[ slice_index ] ]
+        if res == ProcessMode.HighRes: return self.sliceProperties[ SLICE_WIDTH_HR_COMP[ slice_index ] ]
        
     def getSlicePosition(self, slice_index = -1 ):
         if slice_index == -1: slice_index = self.sliceAxisIndex
@@ -757,12 +741,12 @@ class CPCPlot(QtCore.QObject):
     
     def execCurrentSlice( self, **args ):
         slice_bounds = []
-        for iRes in [1,2]:
-            slice_radius = self.sliceWidth[self.sliceAxisIndex]/(iRes)     
+        for iRes in [ ProcessMode.LowRes, ProcessMode.HighRes ]:
+            slice_radius = self.getSliceWidth( iRes ) # self.sliceWidth[self.sliceAxisIndex]/(iRes)     
             pmin = max( self.getSlicePosition() - slice_radius, 0.0 )
-            pmin = min( pmin, 1.0 - self.sliceWidth[self.sliceAxisIndex] )
+            pmin = min( pmin, 1.0 - slice_radius )
             pmax = min( self.getSlicePosition() + slice_radius, 1.0 )
-            pmax = max( pmax, self.sliceWidth[self.sliceAxisIndex] )
+            pmax = max( pmax, slice_radius )
             slice_bounds.append( (pmin,pmax) )
         self.updateSlicing( self.sliceAxisIndex, slice_bounds, **args )
     
@@ -773,15 +757,15 @@ class CPCPlot(QtCore.QObject):
         self.setSlicePosition( ( slice_pos - bounds[sindex] ) / ( bounds[sindex+1] - bounds[sindex] ) )
         self.execCurrentSlice()
 
-    def shiftSlice( self, position_inc, width_inc ): 
-        if position_inc <> 0:
-            self.setSlicePosition( self.getSlicePosition() + position_inc * self.slicePositionSensitivity[self.sliceAxisIndex] )
-        if width_inc <> 0:
-            if self.sliceWidth[self.sliceAxisIndex] < 2 * self.sliceWidthSensitivity[self.sliceAxisIndex]:
-                self.sliceWidth[self.sliceAxisIndex]  *  2.0**width_inc 
-            else:
-                self.sliceWidth[self.sliceAxisIndex] = self.sliceWidth[self.sliceAxisIndex] + width_inc * self.sliceWidthSensitivity[self.sliceAxisIndex]        
-        self.execCurrentSlice()
+#     def shiftSlice( self, position_inc, width_inc ): 
+#         if position_inc <> 0:
+#             self.setSlicePosition( self.getSlicePosition() + position_inc * self.slicePositionSensitivity[self.sliceAxisIndex] )
+#         if width_inc <> 0:
+#             if self.sliceWidth[self.sliceAxisIndex] < 2 * self.sliceWidthSensitivity[self.sliceAxisIndex]:
+#                 self.sliceWidth[self.sliceAxisIndex]  *  2.0**width_inc 
+#             else:
+#                 self.sliceWidth[self.sliceAxisIndex] = self.sliceWidth[self.sliceAxisIndex] + width_inc * self.sliceWidthSensitivity[self.sliceAxisIndex]        
+#         self.execCurrentSlice()
 
     def shiftResolution( self, ncollections_inc, ptsize_inc ):
         if (ncollections_inc <> 0) and ( self.partitioned_point_cloud <> None ):
@@ -833,19 +817,30 @@ class CPCPlot(QtCore.QObject):
                     self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )
             self.render()
             return
+        elif arg[0] == 'Open':
+            return
         elif arg[0] == 'StartConfig':
             return
         elif arg[0] == 'EndConfig':
             return
-        else:
-            point_size = arg[0]              
-        pc = self.getPointCloud()
-        if point_size and (point_size <> pc.getPointSize()):
-            pc.setPointSize( point_size )
-            self.render( self.render_mode )
+        elif arg[0] == 'Point Size':
+            point_size = self.pointSize.getValue( self.render_mode )      
+            pc = self.getPointCloud()
+            if point_size and (point_size <> pc.getPointSize()):
+                pc.setPointSize( point_size )
+                self.render( self.render_mode )
             
     def processSlicePropertiesCommand( self, args ):
-        print "ProcessSlicePropertiesCommand: ", str(args)
+        op = args[1]
+        if op in SLICE_WIDTH_HR_COMP:  
+            self.setRenderMode( ProcessMode.HighRes )                 
+            self.execCurrentSlice()
+        elif op in SLICE_WIDTH_LR_COMP: 
+            self.setRenderMode( ProcessMode.LowRes )                 
+            self.execCurrentSlice()
+        elif op in POS_VECTOR_COMP: 
+            self.updatePlaneWidget()          
+            self.execCurrentSlice()      
 
     def processsInitParameter( self, parameter_key, config_param ):
         paramKeys = parameter_key.split(':') 
@@ -922,17 +917,17 @@ class CPCPlot(QtCore.QObject):
         pass
                 
     def processProjectionCommand( self, args=None ):
-        if args == None: args = [ self.projection.getValue('selected') ]
+        seleted_projection = self.projection.getValue('selected')
         projections = self.projection.getValue('choices',[])
         try:
-            self.topo = projections.index( args[0] )
+            self.topo = projections.index( seleted_projection )
             self.updateProjection()
         except ValueError:
-            print>>sys.stderr, "Can't find projection: %s " % str(args[0])
+            print>>sys.stderr, "Can't find projection: %s " % str( seleted_projection )
 
     def processColorMapCommand( self, args=None ):
-        if args == None: args = [ self.colorMapCfg.getValue('Colormap'), self.colorMapCfg.getValue('Invert'), self.colorMapCfg.getValue('Stereo'), self.colorMapCfg.getValue('Smooth') ]
-        self.setColormap( args )  
+        colorCfg = [ self.colorMapCfg.getValue('Colormap'), self.colorMapCfg.getValue('Invert'), self.colorMapCfg.getValue('Stereo'), self.colorMapCfg.getValue('Smooth') ]
+        self.setColormap( colorCfg )  
 
     def updateSlicing( self, sliceIndex, slice_bounds, **args ):
         self.invalidate()

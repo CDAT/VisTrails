@@ -21,6 +21,7 @@ class ExecutionDataPacket:
     POINTS = 0
     INDICES = 1
     VARDATA = 2
+    HEIGHTS = 3
     
     def __init__( self, msg_type, node_index, data_object  ):
         self.type = msg_type
@@ -68,35 +69,44 @@ class PointCollectionExecutionTarget:
     def initialize( self ):
         self.point_collection.initialize( self.init_args, **self.cfg_args )
         self.point_collection.setDataSlice( self.collection_index, istrp=self.ncollections )
-        data_packet = ExecutionDataPacket( ExecutionDataPacket.POINTS, self.collection_index, self.point_collection.getPoints() )
-        data_packet['event'] = 'init'
+        self.results.put( self.packPointsData() )
+        self.results.put( self.packVarData() )
+                       
+    def execute( self, args ):
+        self.point_collection.execute( args )
+        if args[0] == 'indices':
+            data_packet = self.packIndexData()
+        elif args[0] == 'points':
+            data_packet = self.packPointHeightsData()
+        elif args[0] == 'timestep':
+            data_packet = self.packVarData()
+        data_packet[ 'args' ] = args
         self.results.put( data_packet )
-        self.sendVarData()
-               
-    def sendVarData(self):
+
+    def packVarData(self):
         data_packet = ExecutionDataPacket( ExecutionDataPacket.VARDATA, self.collection_index, self.point_collection.getVarData() )
         data_packet[ 'vrange' ] = self.point_collection.getVarDataRange() 
         data_packet[ 'grid' ] = self.point_collection.getGridType()  
         data_packet[ 'nlevels' ] = self.point_collection.getNLevels()
         data_packet[ 'bounds' ] = self.point_collection.getBounds()
-        self.results.put( data_packet )
+        return data_packet
 
-    def execute( self, args ):
-        self.point_collection.execute( args )
-        if args[0] == 'indices':
-            data_packet = ExecutionDataPacket( ExecutionDataPacket.INDICES, self.collection_index, self.point_collection.getPointIndices() )
-            target = self.point_collection.getThresholdTarget()
-            range_type = 'trange' if ( target == "vardata" ) else "crange"
-            data_packet[ range_type ] = self.point_collection.getThresholdedRange() 
-            data_packet[ 'target' ] = target
-        elif args[0] == 'points':
-            data_packet = ExecutionDataPacket( ExecutionDataPacket.POINTS, self.collection_index, self.point_collection.getPointHeights() )
-            data_packet[ 'bounds' ] = self.point_collection.getBounds()
-            data_packet['event'] = 'config'
-        elif args[0] == 'timestep':
-            self.sendVarData()
-        data_packet[ 'args' ] = args
-        self.results.put( data_packet )
+    def packPointsData( self ):
+        data_packet = ExecutionDataPacket( ExecutionDataPacket.POINTS, self.collection_index, self.point_collection.getPoints() )
+        return data_packet
+
+    def packPointHeightsData( self ):
+        data_packet = ExecutionDataPacket( ExecutionDataPacket.HEIGHTS, self.collection_index, self.point_collection.getPointHeights() )
+        data_packet[ 'bounds' ] = self.point_collection.getBounds()
+        return data_packet
+
+    def packIndexData( self ):
+        data_packet = ExecutionDataPacket( ExecutionDataPacket.INDICES, self.collection_index, self.point_collection.getPointIndices() )
+        target = self.point_collection.getThresholdTarget()
+        range_type = 'trange' if ( target == "vardata" ) else "crange"
+        data_packet[ range_type ] = self.point_collection.getThresholdedRange() 
+        data_packet[ 'target' ] = target
+        return data_packet
 
 class vtkPointCloud(QtCore.QObject):
 
@@ -173,6 +183,8 @@ class vtkPointCloud(QtCore.QObject):
         elif dtype == ExecutionDataPacket.INDICES:
             return self.np_index_seq 
         elif dtype == ExecutionDataPacket.POINTS:
+            return self.np_points_data 
+        elif dtype == ExecutionDataPacket.HEIGHTS:
             return self.np_points_data 
    
     def updateVertices( self, **args ): 
@@ -469,8 +481,7 @@ class vtkSubProcPointCloud( vtkPointCloud ):
 #             if self.pcIndex == 1: 
 #                 self.printLogMessage(  " vtkSubProcPointCloud --->> Get Results, Args: %s " % str(result['args']) )
         elif result.type == ExecutionDataPacket.POINTS:
-            if result['event'] == 'init':
-                self.np_points_data = result.data
+            self.np_points_data = result.data
         return True
     
 
@@ -498,10 +509,9 @@ class vtkSubProcPointCloud( vtkPointCloud ):
 #                 self.printLogMessage(  " vtkSubProcPointCloud --->> Process Results, Args: %s " % str(result['args']) )
             self.updateVertices()  
 #            print " processResults[ %d ] : INDICES" % self.pcIndex; sys.stdout.flush()
-        elif result.type == ExecutionDataPacket.POINTS:
-            if result['event'] == 'config':
-                self.setPointHeights( result.data )
-                self.grid_bounds = result['bounds']
+        elif result.type == ExecutionDataPacket.HEIGHTS:
+            self.setPointHeights( result.data )
+            self.grid_bounds = result['bounds']
 #            print " processResults[ %d ] : POINTS" % self.pcIndex; sys.stdout.flush()
         return True
         
