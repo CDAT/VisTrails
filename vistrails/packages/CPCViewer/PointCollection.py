@@ -56,6 +56,7 @@ class PointCollection():
         self.threshold_target = None
         self.vertical_bounds = None
         self.maxStageHeight = 100.0
+        self.var_data_cache = {}
         
     def configure(self, **args ):
         self.maxStageHeight = args.get('maxStageHeight', self.maxStageHeight )
@@ -251,31 +252,49 @@ class PointCollection():
                     break
         return lev
 
+    def stepTime( self, **args ):
+        process = args.get( 'process', True )
+        self.iTimeStep = self.iTimeStep + 1
+        print " PC[%d/%d]: stepTime[%d]: %s  " % ( self.istart, self.istep, self.iTimeStep, str( process ) )
+        if self.iTimeStep >= self.time.shape[0]:
+            self.iTimeStep = 0
+        if process:
+            var_data = self.var_data_cache.get( self.iTimeStep, None ) 
+            if var_data == None:
+                np_var_data_block = self.getDataBlock(self.var).flatten()     
+                if self.missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False )
+                else: var_data = np_var_data_block
+                self.point_data_arrays['vardata'] = var_data
+                self.vrange = ( var_data.min(), var_data.max() ) 
+                self.var_data_cache[ self.iTimeStep ] = var_data
+        return process
+
     def initialize( self, args, **cfg_args ): 
         self.configure( **cfg_args )
         ( grid_file, data_file, varname, height_varname ) = args
         self.gf = cdms2.open( grid_file ) if grid_file else None
         self.df = cdms2.open( data_file )       
-        var = self.df[ varname ]
-        self.grid = var.getGrid()
-        self.lev = self.getLevel(var)
+        self.var = self.df[ varname ]
+        self.grid = self.var.getGrid()
+        self.lev = self.getLevel(self.var)
         lon, lat = self.getLatLon( varname )                              
-        self.time = var.getTime()
+        self.time = self.var.getTime()
         z_scale = 0.5
-        self.missing_value = var.attributes.get( 'missing_value', None )
+        self.missing_value = self.var.attributes.get( 'missing_value', None )
         if self.lev == None:
-            domain = var.getDomain()
+            domain = self.var.getDomain()
             for axis in domain:
                 if PlotType.isLevelAxis( axis[0].id.lower() ):
                     self.lev = axis[0]
                     break        
         self.computePoints()
         self.setPointHeights( height_var=height_varname, z_scale=z_scale )
-        np_var_data_block = self.getDataBlock(var).flatten()     
+        np_var_data_block = self.getDataBlock(self.var).flatten()     
         if self.missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False )
         else: var_data = np_var_data_block
         self.point_data_arrays['vardata'] = var_data
         self.vrange = ( var_data.min(), var_data.max() ) 
+        self.var_data_cache[ self.iTimeStep ] = var_data
         print "Read %d points." % self.getNumberOfPoints(); sys.stdout.flush()
         
     def getPoints(self):
@@ -341,4 +360,6 @@ class PointCollection():
 #            print " Process points request, args = %s " % str( args ); sys.stdout.flush()
             self.setPointHeights( height_var=args[1], z_scale=args[2] )  
             
+        elif op == 'timestep': 
+            self.stepTime( **kwargs )  
 

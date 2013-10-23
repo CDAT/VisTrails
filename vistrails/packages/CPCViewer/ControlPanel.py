@@ -5,6 +5,8 @@ from PyQt4 import QtCore, QtGui
 from compiler.ast import Name
 from ColorMapManager import ColorMapManager
 POS_VECTOR_COMP = [ 'xpos', 'ypos', 'zpos' ]
+SLICE_WIDTH_LR_COMP = [ 'xlrwidth', 'ylrwidth', 'zlrwidth' ]
+SLICE_WIDTH_HR_COMP = [ 'xhrwidth', 'yhrwidth', 'zhrwidth' ]
 
 
 class ConfigParameter( QtCore.QObject ):
@@ -29,11 +31,11 @@ class ConfigParameter( QtCore.QObject ):
 
     def __setitem__(self, key, value ):
         self.values[key] = value 
-        self.emit( QtCore.SIGNAL("ValueChanged") )
+        self.emit( QtCore.SIGNAL("ValueChanged"), ( self.name, key, value ) )
 
     def __call__(self, **args ):
         self.values.update( args )
-        self.emit( QtCore.SIGNAL("ValueChanged") )
+        self.emit( QtCore.SIGNAL("ValueChanged"), args )
          
     def getName(self):
         return self.name
@@ -154,7 +156,7 @@ class ConfigControl(QtGui.QWidget):
         self.tabWidget = None 
         self.connect( cparm, QtCore.SIGNAL('ValueChanged'), self.configValueChanged )
         
-    def configValueChanged(self): 
+    def configValueChanged( self, args ): 
         pass
         
     def getName(self):
@@ -173,6 +175,9 @@ class ConfigControl(QtGui.QWidget):
         tabContents.setLayout(layout)
         tab_index = self.tabWidget.addTab( tabContents, tabname )
         return tab_index, layout
+    
+    def getCurrentTabIndex(self):
+        return self.tabWidget.currentIndex() 
 
     def addControlRow( self, tab_index ):
         layout = self.getTabLayout( tab_index )
@@ -217,14 +222,14 @@ class ConfigControl(QtGui.QWidget):
         return self.control_button
         
     def open( self, bval ):
-        self.emit( QtCore.SIGNAL("ConfigCmd"), ( "Open", self.getName() ) )
+        self.emit( QtCore.SIGNAL("ConfigCmd"), ( self.getName(), "Open" ) )
         self.updateTabPanel()
         
     def ok(self):
-        self.emit( QtCore.SIGNAL("ConfigCmd"), ( "Close", True ) )
+        self.emit( QtCore.SIGNAL("ConfigCmd"), ( self.getName(), "Close", True ) )
          
     def cancel(self):
-        self.emit( QtCore.SIGNAL("ConfigCmd"), ( "Close", False ) )
+        self.emit( QtCore.SIGNAL("ConfigCmd"), ( self.getName(), "Close", False ) )
       
 class LabeledSliderWidget( QtGui.QWidget ):
     
@@ -562,7 +567,17 @@ class ColorScaleControl( LevelingSliderControl ):
         super( ColorScaleControl, self ).build()
         layout = self.getTabLayout( self.minmax_tab_index )
         self.addButtonBox( [ "Match Threshold Range", "Reset"], layout )
-        
+
+class AnimationControl( TabbedControl ):
+ 
+    def __init__(self, cparm, **args ):  
+        super( AnimationControl, self ).__init__( cparm, **args )
+
+    def build(self):
+        super( AnimationControl, self ).build()
+        self.x_tab_index, tab_layout = self.addTab('Run Controls')
+        self.addButtonBox( [ "Run", "Step", "Stop" ], tab_layout )
+                
 class VolumeControl( LevelingSliderControl ):
  
     def __init__(self, cparm, **args ):  
@@ -593,7 +608,21 @@ class SlicerControl( TabbedControl ):
         self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), self.getTitle( slider_index ),  slider_index, raw_val, norm_val ) )        
 
     def sliceSelected( self, slice_index ):
-        self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), 'SelectSlice', slice_index ) )        
+        self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), 'SelectSlice', slice_index ) ) 
+        
+    def setSlicePosition( self, pos ): 
+        tab_index = self.getCurrentTabIndex()
+        slider_index = -1 
+        if   tab_index==self.x_tab_index: slider_index = self.xsp           
+        elif tab_index==self.y_tab_index: slider_index = self.ysp           
+        elif tab_index==self.z_tab_index: slider_index = self.zsp           
+        if slider_index >= 0:   
+            slicer = self.widgets[slider_index] 
+            slicer.setSliderValue( pos )  
+
+    def configValueChanged( self, args ): 
+        super( SlicerControl, self ).configValueChanged( args )
+        self.setSlicePosition( args[2] )
               
 class ConfigControlList(QtGui.QWidget):
 
@@ -629,8 +658,8 @@ class ConfigControlList(QtGui.QWidget):
         self.clear()
         
     def configOp( self, args ):
-        if  args[0] == "Open":
-            config_ctrl = self.controls.get(  args[1], None  )
+        if ( len(args) > 1 ) and ( args[1] == "Open"):
+            config_ctrl = self.controls.get(  args[0], None  )
             if config_ctrl: self.stackedWidget.setCurrentWidget ( config_ctrl )
             else: print>>sys.stderr, "ConfigControlList Can't find control: %s " % args[1]
             self.updateGeometry()
@@ -671,6 +700,7 @@ class ConfigurationGui(QtGui.QDialog):
 
         self.cfgFile = None
         self.cfgDir = None
+        self.tagged_controls = {}
                 
         self.setWindowFlags(QtCore.Qt.Window)
         self.setModal(False)
@@ -688,21 +718,30 @@ class ConfigurationGui(QtGui.QDialog):
         self.connect( self.configContainer, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
         self.resize(600, 450)
 
-    def addControl( self, iCatIndex, config_ctrl ):
+    def addControl( self, iCatIndex, config_ctrl, id = None ):
         config_list = self.configContainer.getCategoryConfigList( iCatIndex )
         config_list.addControl( iCatIndex, config_ctrl )
+        self.tagged_controls[ id ] = config_ctrl
 
     def addParameter( self, iCatIndex, config_name, **args ):
         categoryName = self.configContainer.getCategoryName( iCatIndex )
         cparm = ConfigParameter.getParameter( config_name, **args )
         key = ':'.join( [ categoryName, config_name ] )
         self.config_params[ key ] = cparm
+        self.connect( cparm, QtCore.SIGNAL("ValueChanged"), self.parameterValueChanged )
         return cparm
+    
+    def parameterValueChanged( self, args ):
+        pass
+#        print "parameterValueChanged", str(args)
         
-    def addConfigControl(self, iCatIndex, config_ctrl ):
+    def addConfigControl(self, iCatIndex, config_ctrl, id = None ):
         config_ctrl.build()
-        self.addControl( iCatIndex, config_ctrl )
+        self.addControl( iCatIndex, config_ctrl, id )
         self.connect( config_ctrl, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
+        
+    def getConfigControl( self, id ):
+        return self.tagged_controls.get( id, None )
         
     def configTriggered( self, args ):
         self.emit( QtCore.SIGNAL("ConfigCmd"), args )
@@ -764,6 +803,11 @@ class CPCConfigGui( ConfigurationGui ):
 
     def __init__(self, parent=None): 
         super( CPCConfigGui, self ).__init__( parent )   
+
+#    def externalUpdate( self, args ):   
+#        if args[0] == "SetSlicePosition":
+#            slicerCtrl = self.getConfigControl( "SlicerControl" )
+#            slicerCtrl.setSlicePosition( args[1] )
         
     def build( self, **args ):
         self.iColorCatIndex = self.addCategory( 'Color' )
@@ -773,8 +817,8 @@ class CPCConfigGui( ConfigurationGui ):
         self.addConfigControl( self.iColorCatIndex, ColormapControl( cparm ) )  
              
         self.iSubsetCatIndex = self.addCategory( 'Subsets' )
-        cparm = self.addParameter( self.iSubsetCatIndex, "Slice Planes",  xpos=0.5, ypos=0.5, zpos=0.5 )
-        self.addConfigControl( self.iSubsetCatIndex, SlicerControl( cparm ) )
+        cparm = self.addParameter( self.iSubsetCatIndex, "Slice Planes",  xpos=0.5, ypos=0.5, zpos=0.5, xhrwidth=0.01, xlrwidth=0.01, yhrwidth=0.01, ylrwidth=0.01, zhrwidth=0.01, zlrwidth=0.01 )
+        self.addConfigControl( self.iSubsetCatIndex, SlicerControl( cparm ) ) # , "SlicerControl" )
         cparm = self.addParameter( self.iSubsetCatIndex, "Threshold Range", wpos=0.5, wsize=0.2, ctype = 'Leveling' )
         self.addConfigControl( self.iSubsetCatIndex, VolumeControl( cparm ) )
         
@@ -798,6 +842,9 @@ class CPCConfigGui( ConfigurationGui ):
         cparm = self.addParameter( self.GeometryCatIndex, "Vertical Variable", choices = vertical_vars, init_index=0  )
         self.addConfigControl( self.GeometryCatIndex, RadioButtonSelectionControl( cparm ) )
 
+        self.AnalysisCatIndex = self.addCategory( 'Analysis' )
+        cparm = self.addParameter( self.AnalysisCatIndex, "Animation" )
+        self.addConfigControl( self.AnalysisCatIndex, AnimationControl( cparm ) )
         
 if __name__ == '__main__':
     app = QtGui.QApplication(['CPC Config Dialog'])

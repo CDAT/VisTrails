@@ -10,7 +10,7 @@ import vtk, time
 from PyQt4 import QtCore, QtGui
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType, kill_all_zombies
-from ControlPanel import CPCConfigGui, LevelingConfigParameter, POS_VECTOR_COMP
+from ControlPanel import CPCConfigGui, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP
 from ColorMapManager import *
 from MapManager import MapManager
 
@@ -464,34 +464,7 @@ class CPCPlot(QtCore.QObject):
         self.executeClip()
 
     def clipOff(self):
-        self.clipper.Off()
- 
-           
-#    def moveSlicePlane( self, distance = 0 ):
-#        self.setProcessMode( ProcessMode.Slicing )      
-#        if( distance <> 0 ): self.toggleResolution( 1 )
-#        if self.sliceOrientation == 'x': 
-#            self.sliceIndex[0] = self.sliceIndex[0] + distance
-#            if self.sliceIndex[0] < 0: self.sliceIndex[0] = 0
-#            if self.sliceIndex[0] >= len(self.lon_slice_positions): self.sliceIndex[0] = len(self.lon_slice_positions) - 1
-#            position = self.lon_slice_positions[ self.sliceIndex[0] ]
-#        if self.sliceOrientation == 'y': 
-#            self.sliceIndex[1] = self.sliceIndex[1] + distance
-#            if self.sliceIndex[1] < 0: self.sliceIndex[1] = 0
-#            if self.sliceIndex[1] >= len(self.lat_slice_positions): self.sliceIndex[1] = len(self.lat_slice_positions) - 1
-#            position = self.lat_slice_positions[ self.sliceIndex[1] ]
-#        if self.sliceOrientation == 'z': 
-#            self.sliceIndex[1] = self.sliceIndex[1] + distance
-#            if self.sliceIndex[1] < 0: self.sliceIndex[1] = 0
-#            if self.sliceIndex[1] >= len(self.lev): self.sliceIndex[1] = len(self.lev) - 1
-#            position = self.sliceIndex[1] * self.z_spacing
-#                
-#        self.setSliceThresholdBounds( position ) 
-#        if distance <> 0: self.renderWindow.Render() 
-#        print "Initial # points, cells: %d, %d " % ( self.polydata.GetNumberOfPoints(), self.polydata.GetNumberOfCells() )
-#        print "After Mask: %d, %d " % ( self.pointMask.GetOutput().GetNumberOfPoints(), self.pointMask.GetOutput().GetNumberOfCells() )
-#        print "After Threshold: %d, %d " % ( self.threshold_filter.GetOutput().GetNumberOfPoints(), self.threshold_filter.GetOutput().GetNumberOfCells() )
-      
+        self.clipper.Off()      
 
     def processEvent(self, eventArgs ):
         if eventArgs[0] == "KeyEvent":
@@ -603,19 +576,7 @@ class CPCPlot(QtCore.QObject):
             self.planeWidget.KeyPressActivationOff()
             pcbounds = self.point_cloud_overview.getBounds()
             self.planeWidget.PlaceWidget( pcbounds )
-
-    def processConfigOpen( self, cfgName ):
-        pass
-        
-    def processConfigClose( self, isOK ):
-        self.setRenderMode( ProcessMode.HighRes )
-        if isOK:
-            if (self.process_mode == ProcessMode.Slicing):  
-                self.getPointCloud().setScalarRange( self.scalarRange.getScaledRange() )
-            if self.process_mode == ProcessMode.Thresholding: 
-                self.updateThresholding( 'vardata', self.volumeThresholdRange.getRange() )                
-        self.render()
-        
+                
     def processCategorySelectionCommand( self, args ):
         op = args[0]
         if op == 'Subsets':
@@ -630,6 +591,33 @@ class CPCPlot(QtCore.QObject):
 
     def enablePointConfig(self):
         self.config_mode = ConfigMode.Points            
+
+    def processAnimationCommand( self, args ):
+        if args and args[0] == "ButtonClick":
+            if args[1]   == "Run":
+                pass
+            elif args[1] == "Step":
+                self.partitioned_point_cloud.stepTime()
+                self.point_cloud_overview.stepTime(process=False)
+            elif args[1] == "Stop":
+                pass
+
+#    def stepTime( self, forward = True ):
+#        ntimes = len(self.time) if self.time else 1
+#        self.iTimeStep = self.iTimeStep + 1 if forward else self.iTimeStep - 1
+#        if self.iTimeStep < 0: self.iTimeStep = ntimes - 1
+#        if self.iTimeStep >= ntimes: self.iTimeStep = 0
+#        try:
+#            tvals = self.time.asComponentTime()
+#            tvalue = str( tvals[ self.iTimeStep ] )
+#            self.updateTextDisplay( "Time: %s " % tvalue )
+#        except Exception, err:
+#            print>>sys.stderr, "Can't understand time metadata."
+#        np_var_data_block = self.getDataBlock()
+#        var_data = np_var_data_block[:] if ( self.nLevels == 1 ) else np_var_data_block[ :, : ]    
+#        self.setVarData( var_data ) 
+#        self.renderWindow.Render()
+
             
     def processSlicePlaneCommand( self, args ):
         if args and args[0] == "StartConfig":
@@ -643,8 +631,13 @@ class CPCPlot(QtCore.QObject):
             self.setRenderMode( ProcessMode.HighRes )                 
             self.execCurrentSlice()
         
-        elif args and args[0] == "UpdateTabPanel":
+        elif args and args[0] == "Open":
             self.enableSlicing()
+        elif args and args[0] == "Close":
+            isOK = args[1]
+            self.setRenderMode( ProcessMode.HighRes )
+            if isOK: self.getPointCloud().setScalarRange( self.scalarRange.getScaledRange() )              
+            self.render()
         else:                     
             op = args[0]
             if op == 'High Res Slice Width:':
@@ -677,8 +670,13 @@ class CPCPlot(QtCore.QObject):
 #            self.partitioned_point_cloud.setScalarRange( self.scalarRange.getScaledRange() )  
             self.updateThresholding( 'vardata', self.volumeThresholdRange.getRange() ) 
         
-        elif args and args[0] == "UpdateTabPanel":
+        elif args and args[0] == "Open":
             self.enableThresholding()
+        elif args and args[0] == "Close":
+            isOK = args[1]
+            self.setRenderMode( ProcessMode.HighRes )
+            if isOK: self.updateThresholding( 'vardata', self.volumeThresholdRange.getRange() )                
+            self.render()
         else:                     
             if args:
                 norm_range = args[0] 
@@ -738,21 +736,26 @@ class CPCPlot(QtCore.QObject):
     def shiftThresholding( self, position_inc, width_inc ):
         self.volumeThresholdRange.shiftWindow(position_inc, width_inc) 
         self.updateThresholding( 'vardata', self.volumeThresholdRange.getRange() )
-        
+
+    def getSliceWidth(self, res, slice_index = -1  ):
+        if slice_index == -1: slice_index = self.sliceAxisIndex
+        if res == 0: return self.sliceProperties[ SLICE_WIDTH_LR_COMP[ slice_index ] ]
+        if res == 1: return self.sliceProperties[ SLICE_WIDTH_HR_COMP[ slice_index ] ]
+       
     def getSlicePosition(self, slice_index = -1 ):
         if slice_index == -1: slice_index = self.sliceAxisIndex
-        return self.slicePosition[ POS_VECTOR_COMP[ slice_index ] ]
+        return self.sliceProperties[ POS_VECTOR_COMP[ slice_index ] ]
 
     def setSlicePosition(self, slice_pos, slice_index = -1 ):
         if slice_index == -1: slice_index = self.sliceAxisIndex
-        self.slicePosition[ POS_VECTOR_COMP[ slice_index ] ] = slice_pos
+        self.sliceProperties[ POS_VECTOR_COMP[ slice_index ] ] = slice_pos
                 
     def getCurrentSlicePosition(self):
         bounds = self.point_cloud_overview.getBounds()
         sindex = 2*self.sliceAxisIndex 
         return bounds[sindex] + self.getSlicePosition() * ( bounds[sindex+1] - bounds[sindex] )
     
-    def execCurrentSlice(self):
+    def execCurrentSlice( self, **args ):
         slice_bounds = []
         for iRes in [1,2]:
             slice_radius = self.sliceWidth[self.sliceAxisIndex]/(iRes)     
@@ -761,7 +764,7 @@ class CPCPlot(QtCore.QObject):
             pmax = min( self.getSlicePosition() + slice_radius, 1.0 )
             pmax = max( pmax, self.sliceWidth[self.sliceAxisIndex] )
             slice_bounds.append( (pmin,pmax) )
-        self.updateSlicing( self.sliceAxisIndex, slice_bounds )
+        self.updateSlicing( self.sliceAxisIndex, slice_bounds, **args )
     
     def pushSlice( self, slice_pos ):
         self.updateTextDisplay( " Slice Position: %s " % str( slice_pos ) )
@@ -799,16 +802,14 @@ class CPCPlot(QtCore.QObject):
 #        print " processConfigCmd: %s " % str(args); sys.stdout.flush()
         if args[0] =='Color Scale':
             self.processColorScaleCommand( args[1:] )
+        elif args[0] =='Animation':
+            self.processAnimationCommand( args[1:] )
         elif args[0] =='Slice Planes':
             self.processSlicePlaneCommand( args[1:] )
         elif args[0] =='Threshold Range':
             self.processThresholdRangeCommand( args[1:] )
         elif args[0] =='CategorySelected':
             self.processCategorySelectionCommand( args[1:] )
-        elif args[0] =='Close':
-            self.processConfigClose( args[1] )
-        elif args[0] =='Open':
-            self.processConfigOpen( args[1] )
         elif args[0] =='InitParm':
             self.processsInitParameter( args[1], args[2] )
         elif args[0] =='Point Size':
@@ -842,6 +843,9 @@ class CPCPlot(QtCore.QObject):
         if point_size and (point_size <> pc.getPointSize()):
             pc.setPointSize( point_size )
             self.render( self.render_mode )
+            
+    def processSlicePropertiesCommand( self, args ):
+        print "ProcessSlicePropertiesCommand: ", str(args)
 
     def processsInitParameter( self, parameter_key, config_param ):
         paramKeys = parameter_key.split(':') 
@@ -857,7 +861,8 @@ class CPCPlot(QtCore.QObject):
                 self.processColorMapCommand()
         elif paramKeys[0] == 'Subsets':
             if paramKeys[1] == 'Slice Planes':
-                self.slicePosition = config_param
+                self.sliceProperties = config_param
+                self.connect( self.sliceProperties, QtCore.SIGNAL('ValueChanged'), self.processSlicePropertiesCommand )  
 #                self.enableSlicing()
             elif paramKeys[1] == 'Threshold Range':
                 self.volumeThresholdRange = config_param                 
@@ -912,7 +917,7 @@ class CPCPlot(QtCore.QObject):
             self.planeWidget.PlaceWidget( pcbounds )
 #            vis = self.low_res_actor.GetVisibility()
             self.render()
-            
+                        
     def processVerticalVariableCommand(self, args=None ):
         pass
                 
@@ -929,12 +934,15 @@ class CPCPlot(QtCore.QObject):
         if args == None: args = [ self.colorMapCfg.getValue('Colormap'), self.colorMapCfg.getValue('Invert'), self.colorMapCfg.getValue('Stereo'), self.colorMapCfg.getValue('Smooth') ]
         self.setColormap( args )  
 
-    def updateSlicing( self, sliceIndex, slice_bounds ):
+    def updateSlicing( self, sliceIndex, slice_bounds, **args ):
         self.invalidate()
         ( rmin, rmax ) = slice_bounds[ self.render_mode ]
         self.current_subset_specs = ( self.sliceAxes[sliceIndex], rmin, rmax )
-        self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )
-        self.partitioned_point_cloud.generateSubset( spec=self.current_subset_specs, allow_processing=False )
+        if self.render_mode ==  ProcessMode.HighRes:
+            self.partitioned_point_cloud.generateSubset( spec=self.current_subset_specs, allow_processing=True )
+        else:
+            self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )
+            self.partitioned_point_cloud.generateSubset( spec=self.current_subset_specs, allow_processing=False )
         self.render( self.render_mode )
 
 #    def updateSlicing1( self, sliceIndex, slice_bounds ):
@@ -943,25 +951,7 @@ class CPCPlot(QtCore.QObject):
 #            ( rmin, rmax ) = slice_bounds[iRes]
 #            pc.generateSubset( ( self.sliceAxes[sliceIndex], rmin, rmax ) )
 #        self.render( ProcessMode.LowRes )
-            
-
-#    def stepTime( self, forward = True ):
-#        ntimes = len(self.time) if self.time else 1
-#        self.iTimeStep = self.iTimeStep + 1 if forward else self.iTimeStep - 1
-#        if self.iTimeStep < 0: self.iTimeStep = ntimes - 1
-#        if self.iTimeStep >= ntimes: self.iTimeStep = 0
-#        try:
-#            tvals = self.time.asComponentTime()
-#            tvalue = str( tvals[ self.iTimeStep ] )
-#            self.updateTextDisplay( "Time: %s " % tvalue )
-#        except Exception, err:
-#            print>>sys.stderr, "Can't understand time metadata."
-#        np_var_data_block = self.getDataBlock()
-#        var_data = np_var_data_block[:] if ( self.nLevels == 1 ) else np_var_data_block[ :, : ]    
-#        self.setVarData( var_data ) 
-#        self.renderWindow.Render()
-
-      
+                  
 #                            
 #    def plot( self, data_file, grid_file, varname, **args ): 
 #        color_index = args.get( 'color_index', -1 )
@@ -1050,19 +1040,19 @@ class CPCPlot(QtCore.QObject):
 #                    break                                                                             
 #        self.createRenderer( **args )          
 #
-#    def setSliceClipBounds( self, slicePosition = 0.0 ):
+#    def setSliceClipBounds( self, sliceProperties = 0.0 ):
 #        if self.lev == None: return
 #        bounds = self.getBounds()
 #        mapperBounds = None
 #        if self.sliceOrientation == 'x':
 #            lev_bounds = [ 0, len( self.lev  ) * self.z_spacing ]
-#            mapperBounds = [ slicePosition-self.sliceThickness[0],  slicePosition+self.sliceThickness[0], bounds[2], bounds[3], lev_bounds[0], lev_bounds[1]  ]
+#            mapperBounds = [ sliceProperties-self.sliceThickness[0],  sliceProperties+self.sliceThickness[0], bounds[2], bounds[3], lev_bounds[0], lev_bounds[1]  ]
 #        if self.sliceOrientation == 'y':
 #            lev_bounds = [ 0, len( self.lev  ) * self.z_spacing ]
-#            mapperBounds = [ bounds[0], bounds[1], slicePosition - self.sliceThickness[1],  slicePosition + self.sliceThickness[1], lev_bounds[0], lev_bounds[1]  ]
+#            mapperBounds = [ bounds[0], bounds[1], sliceProperties - self.sliceThickness[1],  sliceProperties + self.sliceThickness[1], lev_bounds[0], lev_bounds[1]  ]
 #        if self.sliceOrientation == 'z':
 #            sliceThickness = self.z_spacing/2
-#            mapperBounds = [ bounds[0], bounds[1], bounds[2], bounds[3], slicePosition - sliceThickness,  slicePosition + sliceThickness  ]
+#            mapperBounds = [ bounds[0], bounds[1], bounds[2], bounds[3], sliceProperties - sliceThickness,  sliceProperties + sliceThickness  ]
 #        if mapperBounds:
 #            print "Setting clip planes: %s " % str( mapperBounds )
 #            self.clipBox.SetBounds( mapperBounds )
@@ -1133,6 +1123,8 @@ class CPCPlot(QtCore.QObject):
         if self.process_mode == ProcessMode.Slicing:
             self.setRenderMode( ProcessMode.HighRes )
             self.execCurrentSlice()
+            self.setSlicePosition( self.getSlicePosition() )
+#            self.emit(QtCore.SIGNAL("UpdateGui"), ( "SetSlicePosition", self.getSlicePosition() ) ) 
         
     def startEventLoop(self):
         self.renderWindowInteractor.Start()
@@ -1345,11 +1337,12 @@ if __name__ == '__main__':
     configDialog = CPCConfigGui()
     configDialog.build( vertical_vars=height_varnames )   
     configDialog.connect( configDialog, QtCore.SIGNAL("ConfigCmd"), g.processConfigCmd )
+#    configDialog.connect( g, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )
     configDialog.activate()
     
     app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
     app.connect( widget, QtCore.SIGNAL("Close"), configDialog.closeDialog ) 
     widget.show()  
     app.exec_() 
-    g.terminate()  
-
+    g.terminate() 
+    

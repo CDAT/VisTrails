@@ -71,6 +71,9 @@ class PointCollectionExecutionTarget:
         data_packet = ExecutionDataPacket( ExecutionDataPacket.POINTS, self.collection_index, self.point_collection.getPoints() )
         data_packet['event'] = 'init'
         self.results.put( data_packet )
+        self.sendVarData()
+               
+    def sendVarData(self):
         data_packet = ExecutionDataPacket( ExecutionDataPacket.VARDATA, self.collection_index, self.point_collection.getVarData() )
         data_packet[ 'vrange' ] = self.point_collection.getVarDataRange() 
         data_packet[ 'grid' ] = self.point_collection.getGridType()  
@@ -90,6 +93,8 @@ class PointCollectionExecutionTarget:
             data_packet = ExecutionDataPacket( ExecutionDataPacket.POINTS, self.collection_index, self.point_collection.getPointHeights() )
             data_packet[ 'bounds' ] = self.point_collection.getBounds()
             data_packet['event'] = 'config'
+        elif args[0] == 'timestep':
+            self.sendVarData()
         data_packet[ 'args' ] = args
         self.results.put( data_packet )
 
@@ -218,6 +223,7 @@ class vtkPointCloud(QtCore.QObject):
         vtk_color_data = numpy_support.numpy_to_vtk( self.vardata ) 
         vtk_color_data.SetName( 'vardata' )       
         self.polydata.GetPointData().SetScalars( vtk_color_data )
+        self.polydata.Modified()
         
     def initPoints( self, **args ):
         if isNone(self.np_points_data):
@@ -415,6 +421,11 @@ class vtkSubProcPointCloud( vtkPointCloud ):
         vtkPointCloud.__init__( self, pcIndex, nPartitions )
         self.arg_queue = Queue() # JoinableQueue() 
         self.result_queue = Queue() # JoinableQueue()
+        
+    def runProcess(self, procName, **args):
+        if   procName == "generateSubset":    self.generateSubset( **args )
+        elif procName == "generateZScaling":  self.generateZScaling( **args )
+        elif procName == "stepTime":          self.stepTime( **args )
 
     def generateSubset(self, **args ):
         self.current_subset_specs = args.get( 'spec', self.current_subset_specs )
@@ -432,6 +443,10 @@ class vtkSubProcPointCloud( vtkPointCloud ):
         z_subset_spec = args.get('spec', None )
         self.clearQueues()
         op_specs = [ 'points' ] + list(z_subset_spec)
+        self.arg_queue.put( op_specs,  False ) 
+
+    def stepTime( self, **args ):
+        op_specs = [ 'timestep' ]
         self.arg_queue.put( op_specs,  False ) 
         
     def getResults( self, block = False ):
@@ -457,6 +472,7 @@ class vtkSubProcPointCloud( vtkPointCloud ):
             if result['event'] == 'init':
                 self.np_points_data = result.data
         return True
+    
 
     def processResults( self ):
         try:
@@ -561,6 +577,11 @@ class vtkLocalPointCloud( vtkPointCloud ):
         self.updateScalars() 
         self.grid_bounds = self.point_collection.getBounds()
         self.actor.VisibilityOff()
+    
+    def stepTime(self, **args): 
+        if self.point_collection.stepTime( **args ):
+            self.vardata = self.point_collection.getVarData()
+            self.updateScalars() 
                   
 class vtkPartitionedPointCloud( QtCore.QObject ):
     
@@ -661,18 +682,7 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
     def getSubsetSpecs(self):
         return self.current_subset_spec
     
-    def generateSubset(self, **args ):
-        self.current_subset_spec = args.get( 'spec', self.current_subset_spec )
-        pc_base_index = args.get( 'pc_base_index', 0 )
-        if self.nActiveCollections > pc_base_index:
-            self.clearProcQueues()
-    #        print " generateSubset: subset_spec = %s " % str( self.current_subset_spec )R
-            for pc_item in self.point_clouds.items():
-                process = ( pc_item[0] < self.nActiveCollections ) and ( pc_item[0] >= pc_base_index )
-                pc_item[1].generateSubset( spec=self.current_subset_spec, process=process )
-            self.startCheckingProcQueues()
-
-    def generateZScaling(self, **args ):
+    def runProcess(self, procName, **args):
         self.current_subset_spec = args.get( 'spec', self.current_subset_spec )
         pc_base_index = args.get( 'pc_base_index', 0 )
         allow_processing =  args.get( 'allow_processing', True )
@@ -680,9 +690,18 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
             self.clearProcQueues()
             for pc_item in self.point_clouds.items():
                 process = allow_processing and ( pc_item[0] < self.nActiveCollections ) and ( pc_item[0] >= pc_base_index )
-                pc_item[1].generateZScaling( spec=self.current_subset_spec, process=process )
+                pc_item[1].runProcess( procName, spec=self.current_subset_spec, process=process )
             self.startCheckingProcQueues()
-        
+    
+    def generateSubset(self, **args ):
+        self.runProcess( 'generateSubset', **args )
+ 
+    def generateZScaling(self, **args ):
+        self.runProcess( 'generateZScaling', **args )
+ 
+    def stepTime(self, **args ):
+        self.runProcess( 'stepTime', **args )
+      
     def clearProcQueues(self):
         for pc_item in self.point_clouds.items():
             if pc_item[0] < self.nActiveCollections:
