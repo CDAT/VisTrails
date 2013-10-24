@@ -853,10 +853,7 @@ class CPCConfigGui( ConfigurationGui ):
         self.addConfigControl( self.iSubsetCatIndex, SlicerControl( cparm, wrange=[ 0.0001, 0.02 ] ) ) # , "SlicerControl" )
         cparm = self.addParameter( self.iSubsetCatIndex, "Threshold Range", wpos=0.5, wsize=0.2, ctype = 'Leveling' )
         self.addConfigControl( self.iSubsetCatIndex, VolumeControl( cparm ) )
-        
-#        cparm = self.addParameter( self.AnimationCatIndex, "Vertical Variable", choices = vertical_vars, init_index=0  )
-#        self.addConfigControl( self.GeometryCatIndex, RadioButtonSelectionControl( cparm ) )
-        
+                
         self.iPointsCatIndex = self.addCategory( 'Points' )
         cparm = self.addParameter( self.iPointsCatIndex, "Point Size",  cats = [ ("Low Res", "# Pixels", 1, 20, 10 ), ( "High Res", "# Pixels",  1, 10, 3 ) ] )
         self.addConfigControl( self.iPointsCatIndex, PointSizeSliderControl( cparm ) )

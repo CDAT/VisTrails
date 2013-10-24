@@ -255,7 +255,7 @@ class CPCPlot(QtCore.QObject):
         self.cameraOrientation = {}
         self.topo = PlotType.Planar
         self.sliceAxisIndex = 0
-        self.sliceWidth = [ 0.005, 0.005, 0.005 ]
+        self.zSliceWidth = 0.005
         self.sliceWidthSensitivity = [ 0.005, 0.005, 0.005 ]
         self.slicePositionSensitivity = [ 0.025, 0.025, 0.025 ]
         self.nlevels = None
@@ -273,10 +273,20 @@ class CPCPlot(QtCore.QObject):
         self.colormapManagers= {}
         self.stereoEnabled = 0
         self.maxStageHeight = 100.0
-        self.current_subset_specs = None
+        self._current_subset_specs = None
         self.scalarRange = None
         self.volumeThresholdRange = None
-        
+
+    @property
+    def current_subset_specs(self):
+        return self._current_subset_specs
+
+    @current_subset_specs.setter
+    def current_subset_specs(self, value):
+        if value[0] == 'Z3':
+            print "Setting current_subset_specs to %s " % str( value )
+        self._current_subset_specs = value
+                
     def getLUT( self, cmap_index=0  ):
         colormapManager = self.getColormapManager( index=cmap_index )
         return colormapManager.lut
@@ -347,8 +357,9 @@ class CPCPlot(QtCore.QObject):
         return [ self.point_cloud_overview, self.partitioned_point_cloud ]
        
     def setRenderMode( self, render_mode, immediate = False ): 
-        if (render_mode == ProcessMode.HighRes) and (self.partitioned_point_cloud == None) or not self.partitioned_point_cloud.hasActiveCollections():
-            return
+        if (render_mode == ProcessMode.HighRes):
+            if ( self.partitioned_point_cloud == None ): return 
+            if not self.partitioned_point_cloud.hasActiveCollections(): return            
         self.render_mode = render_mode    
 #        self.setScalarRange()   
         if render_mode ==  ProcessMode.HighRes:
@@ -423,8 +434,11 @@ class CPCPlot(QtCore.QObject):
         actor = picker.GetActor()
         if actor:
             iPt = picker.GetPointId()
-            if iPt >= 0:                
-                pick_pos, dval = self.partitioned_point_cloud.getPoint( actor, iPt ) 
+            if iPt >= 0:
+                if self.partitioned_point_cloud and self.partitioned_point_cloud.hasActiveCollections():                
+                    pick_pos, dval = self.partitioned_point_cloud.getPoint( actor, iPt ) 
+                else:
+                    pick_pos, dval = self.point_cloud_overview.getPoint( iPt ) 
 #                 if self.topo == PlotType.Spherical:
 #                     pick_pos = glev.vtk_points_data.GetPoint( iPt )
 #                 else:
@@ -439,7 +453,7 @@ class CPCPlot(QtCore.QObject):
         
     def updateProjection(self):
         self.recordCamera()
-        pts =  [  self.partitioned_point_cloud.setTopo( self.topo ),
+        pts =  [  self.partitioned_point_cloud.setTopo( self.topo ) if self.partitioned_point_cloud else False,
                   self.point_cloud_overview.setTopo( self.topo)    ] 
         if pts[self.render_mode]:
             self.resetCamera( pts[self.render_mode] )
@@ -597,8 +611,13 @@ class CPCPlot(QtCore.QObject):
             if args[1]   == "Run":
                 pass
             elif args[1] == "Step":
-                self.partitioned_point_cloud.stepTime()
-                self.point_cloud_overview.stepTime(process=False)
+                if self.partitioned_point_cloud: 
+                    self.partitioned_point_cloud.stepTime()
+                    self.point_cloud_overview.stepTime( process= not self.partitioned_point_cloud.hasActiveCollections() )
+                else:
+                    self.point_cloud_overview.stepTime(process=True)
+                    
+                self.render() 
             elif args[1] == "Stop":
                 pass
 
@@ -620,7 +639,7 @@ class CPCPlot(QtCore.QObject):
 
             
     def processSlicePlaneCommand( self, args ):
-        print " processSlicePlaneCommand: %s " % str( args )
+#        print " processSlicePlaneCommand: %s " % str( args )
         if args and args[0] == "StartConfig":
             if self.render_mode ==  ProcessMode.HighRes:
                 title = args[2]
@@ -723,8 +742,10 @@ class CPCPlot(QtCore.QObject):
 
     def getSliceWidth(self, res, slice_index = -1  ):
         if slice_index == -1: slice_index = self.sliceAxisIndex
-        if res == ProcessMode.LowRes:  return self.sliceProperties[ SLICE_WIDTH_LR_COMP[ slice_index ] ]
-        if res == ProcessMode.HighRes: return self.sliceProperties[ SLICE_WIDTH_HR_COMP[ slice_index ] ]
+        if slice_index == 2: return self.zSliceWidth
+        else:
+            if res == ProcessMode.LowRes:  return self.sliceProperties[ SLICE_WIDTH_LR_COMP[ slice_index ] ]
+            if res == ProcessMode.HighRes: return self.sliceProperties[ SLICE_WIDTH_HR_COMP[ slice_index ] ]
        
     def getSlicePosition(self, slice_index = -1 ):
         if slice_index == -1: slice_index = self.sliceAxisIndex
@@ -887,7 +908,8 @@ class CPCPlot(QtCore.QObject):
                 
     def processMaxResolutionCommand(self, args=None ):
         max_res_spec =  self.maxRes.getValue() 
-        self.partitioned_point_cloud.setResolution( max_res_spec )
+        if self.partitioned_point_cloud:
+            self.partitioned_point_cloud.setResolution( max_res_spec )
         if not self.partitioned_point_cloud.hasActiveCollections():
             self.render_mode = ProcessMode.LowRes
         self.render()
@@ -900,7 +922,8 @@ class CPCPlot(QtCore.QObject):
                 self.render( self.render_mode )   
         elif args and args[0] == "EndConfig":
             scaling_spec = ( self.vertVar.getValue(), self.vscale.getValue() )
-            self.partitioned_point_cloud.generateZScaling( spec=scaling_spec )
+            if self.partitioned_point_cloud:
+                self.partitioned_point_cloud.generateZScaling( spec=scaling_spec )
             self.setRenderMode( ProcessMode.HighRes )
             self.render() 
         elif args and args[0] == "UpdateTabPanel":
@@ -914,7 +937,12 @@ class CPCPlot(QtCore.QObject):
             self.render()
                         
     def processVerticalVariableCommand(self, args=None ):
-        pass
+        scaling_spec = ( self.vertVar['selected'], self.vscale.getValue() )
+        if self.partitioned_point_cloud:
+            self.partitioned_point_cloud.generateZScaling( spec=scaling_spec )
+        self.point_cloud_overview.generateZScaling( spec=scaling_spec )
+        self.setRenderMode( ProcessMode.HighRes )
+        self.render() 
                 
     def processProjectionCommand( self, args=None ):
         seleted_projection = self.projection.getValue('selected')
@@ -937,7 +965,8 @@ class CPCPlot(QtCore.QObject):
             self.partitioned_point_cloud.generateSubset( spec=self.current_subset_specs, allow_processing=True )
         else:
             self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )
-            self.partitioned_point_cloud.generateSubset( spec=self.current_subset_specs, allow_processing=False )
+            if self.partitioned_point_cloud:
+                self.partitioned_point_cloud.generateSubset( spec=self.current_subset_specs, allow_processing=False )
         self.render( self.render_mode )
 
 #    def updateSlicing1( self, sliceIndex, slice_bounds ):
@@ -1163,6 +1192,8 @@ class CPCPlot(QtCore.QObject):
         if nCollections > 1:
             self.partitioned_point_cloud = vtkPartitionedPointCloud( nCollections, init_args, **args )
             self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('newDataAvailable'), self.newDataAvailable )
+        else:
+            self.render_mode = ProcessMode.LowRes
 #        self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('updateScaling'), self.updateScaling )        
         self.createRenderer()
         self.low_res_actor = self.point_cloud_overview.actor
@@ -1188,11 +1219,11 @@ class CPCPlot(QtCore.QObject):
         nlev = pc.getNLevels()
         if nlev and (nlev <> self.nlevels):
             self.nlevels = nlev
-            self.sliceWidth[2] = 1.0/(self.nlevels)
-            slice_index = round( self.getSlicePosition(2) / self.sliceWidth[2] ) 
-            self.setSlicePosition( slice_index * self.sliceWidth[2], 2 )
-            self.sliceWidthSensitivity[2] = self.sliceWidth[2]
-            self.slicePositionSensitivity[2] = self.sliceWidth[2]
+            self.zSliceWidth = 1.0/(self.nlevels)
+            slice_index = round( self.getSlicePosition(2) / self.zSliceWidth ) 
+            self.setSlicePosition( slice_index * self.zSliceWidth, 2 )
+            self.sliceWidthSensitivity[2] = self.zSliceWidth
+            self.slicePositionSensitivity[2] = self.zSliceWidth
             
     def decrementOverviewResolution( self ):
         if self.resolutionCounter.isActive(): # self.point_cloud_overview.isVisible():
@@ -1239,7 +1270,7 @@ class CPCPlot(QtCore.QObject):
         lut = self.getLUT()
         self.point_cloud_overview.initialize( init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
         nCollections = min( self.point_cloud_overview.getNumberOfInputPoints() / n_subproc_points, 10  )
-        print " Init PCViewer, n_overview_points = %d, n_subproc_points = %d, nCollections = %d, overview skip index = %s" % ( n_overview_points, n_subproc_points, nCollections, self.point_cloud_overview.getSkipIndex() )
+#        print " Init PCViewer, n_overview_points = %d, n_subproc_points = %d, nCollections = %d, overview skip index = %s" % ( n_overview_points, n_subproc_points, nCollections, self.point_cloud_overview.getSkipIndex() )
         self.initCollections( nCollections, init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
  
     def update(self):
