@@ -5,12 +5,16 @@ from PyQt4.QtGui import QListWidgetItem
 from ui_diagnosticsDockWidget import Ui_DiagnosticDockWidget
 import tempfile
 
-#import metrics.frontend.uvcdat
+import metrics.frontend.uvcdat
+import metrics.io.findfiles
+import metrics.diagnostic_groups
 
 class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
     
-    Types = ["AMWG", ]
-    DisabledTypes = ["LMWG","OMWG", "PCWG", "MPAS", "WGNE", "Metrics"]
+    dg_menu = metrics.diagnostic_groups.diagnostics_menu()  # typical item: 'AMWG':AMWG
+    Types = dg_menu.keys()
+    standard_alltypes = ["AMWG","LMWG","OMWG", "PCWG", "MPAS", "WGNE", "Metrics"]
+    DisabledTypes = list( set(standard_alltypes) - set(Types) )
     AllTypes = Types + DisabledTypes
 
     def __init__(self, parent=None):
@@ -25,11 +29,14 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         self.tmppth = os.path.join(os.environ['HOME'],"tmp")
         if not os.path.exists(self.tmppth):
             os.makedirs(self.tmppth)
-        self.filetable1 = metrics.frontend.uvcdat.setup_filetable(self.path1,self.tmppth)
+        datafiles = metrics.io.findfiles.dirtree_datafiles( self.path1 )
+        self.filetable1 = datafiles.setup_filetable( self.tmppth, "model" )
+        # ...was self.filetable1 = metrics.frontend.uvcdat.setup_filetable(self.path1,self.tmppth)
         self.filetable2 = []
 
         #initialize data
         #@todo: maybe move data to external file to be read in
+        """ formerly was...
         self.groups = {'AMWG': ['1- Table of Global and Regional Means and RMS Error',
                                 '2- Line Plots of Annual Implied Northward Transport',
                                 '3- Line Plots of  Zonal Means',
@@ -55,10 +62,14 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
                                 'LMWG Group 3': ['Diagnostics 16',
                                                  'Diagnostics 17', 
                                                  'Diagnostics 18',]}}
+        """
         
+        self.DiagnosticGroup = None
+        self.diagnostic_set = None
         self.variables = ['N/A',]
         self.observations = ['AIRS', 'ARM', 'CALIPSOCOSP', 'CERES', 'CERES-EBAF', 'CERES2', 'CLOUDSAT', 'CLOUDSATCOSP', 'CRU', 'ECMWF', 'EP.ERAI', 'ERA40', 'ERAI', 'ERBE', 'ERS', 'GPCP', 'HadISST', 'ISCCP', 'ISCCPCOSP', 'ISCCPD1', 'ISCCPFD', 'JRA25', 'LARYEA', 'LEGATES', 'MISRCOSP', 'MODIS', 'MODISCOSP', 'NCEP', 'NVAP', 'SHEBA', 'SSMI', 'TRMM', 'UWisc', 'WARREN', 'WHOI', 'WILLMOTT', 'XIEARKIN']
-        self.seasons = ['DJF', 'JJA', 'MJJ', 'ASO', 'ANN']
+        self.seasons = None # will be set when DiagnosticGroup is made
+        #...was self.seasons = ['DJF', 'JJA', 'MJJ', 'ASO', 'ANN']
         
         #setup signals
         self.comboBoxType.currentIndexChanged.connect(self.setupDiagnosticTree)
@@ -103,7 +114,17 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
     def plotsetchanged(self,item,column):
         import metrics.frontend.uvcdat
         txt = item.text(item.columnCount()-1)
-        self.variables = metrics.frontend.uvcdat.list_variables(self.filetable1, diagnostic_set=txt)
+
+        self.observation = str(self.comboBoxObservation.currentText())
+        filt2="filt=f_startswith('%s')" % self.observation
+        datafiles = metrics.io.findfiles.dirtree_datafiles( self.path2, filt2 )
+        self.filetable2 = datafiles.setup_filetable( self.tmppth, "obs" )
+
+        # formerly was:
+        # self.variables = metrics.frontend.uvcdat.list_variables(self.filetable1, diagnostic_set=txt)
+        self.diagnostic_set_name = "Not implemented"
+        self.variables = self.DiagnosticGroup.list_variables( self.filetable1, self.filetable2,
+                                                              self.diagnostic_set_name )
         for i in range(self.comboBoxVariable.count()):
             self.comboBoxVariable.removeItem(0)
 
@@ -117,6 +138,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         diagnosticType = str(self.comboBoxType.itemText(index))
         self.treeWidget.clear()
         self.treeWidget.itemChanged.connect(self.plotsetchanged)
+        self.DiagnosticGroup = DiagnosticsDockWidget.dg_menu[diagnosticType]()
+        """ formerly was:
         if isinstance(self.groups[diagnosticType],dict):
             for groupName, groupValues in self.groups[diagnosticType].items():
                 groupItem = QtGui.QTreeWidgetItem(self.treeWidget, [groupName])
@@ -129,6 +152,18 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
                 diagnosticItem = QtGui.QTreeWidgetItem(self.treeWidget, [diagnostic])
                 diagnosticItem.setFlags(diagnosticItem.flags() & (~Qt.ItemIsSelectable))
                 diagnosticItem.setCheckState(0, Qt.Unchecked)
+          """
+        # ds_menu and seasons depend on self.DiagnosticGroup (only), so they are best
+        # set right after self.DiagnosticGroup is set...
+        self.ds_menu = self.DiagnosticGroup.list_diagnostic_sets()
+        self.seasons = self.DiagnosticGroup.list_seasons()
+        # Note that the following loop calls plotsetchanged()
+        for diagnostic_set in sorted(self.ds_menu.keys()):
+            diagnosticItem = QtGui.QTreeWidgetItem(self.treeWidget, [diagnostic_set])
+            diagnosticItem.setFlags(diagnosticItem.flags() & (~Qt.ItemIsSelectable))
+            diagnosticItem.setCheckState(0, Qt.Unchecked)
+
+
         
     def buttonClicked(self, button):
         role = self.buttonBox.buttonRole(button) 
@@ -138,33 +173,34 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             self.cancelClicked()
             
     def applyClicked(self):
-
         from metrics.frontend.uvcdat import setup_filetable, get_plot_data
 
         diagnostic = str(self.checkedItem.text(0))
         #group = str(self.checkedItem.parent().text(0))
         #Never name something 'type', it's a reserved word! type = str(self.comboBoxType.currentText())
-        observation = str(self.comboBoxObservation.currentText())
         variable = str(self.comboBoxVariable.currentText())
         season = str(self.comboBoxSeason.currentText())
         print "diagnostic: %s" % diagnostic
-        print "observation: %s" % observation
+        print "observation: %s" % self.observation
         print "variable: %s" % variable
         print "season: %s" % season
         # initial test, first cut:
         # This stuff should go elsewhere...
         import os
-        filt2="filt=f_startswith('%s')" % observation
-        self.filetable2 = setup_filetable(self.path2,self.tmppth,search_filter=filt2)
-        #
-        plot_set = diagnostic[0:diagnostic.find('-')] # e.g. '3','4a', etc.
-        ps = get_plot_data( plot_set, self.filetable1, self.filetable2, variable, season )
+        #...was self.filetable2 = setup_filetable(self.path2,self.tmppth,search_filter=filt2)
+        # ( replacement moved to setupDiagnosticTree)
+        self.plot_set = self.ds_menu[diagnostic](
+            self.filetable1, self.filetable2, variable, season )
+        ps = self.plot_set
+        #...was:
+        #plot_set = diagnostic[0:diagnostic.find('-')] # e.g. '3','4a', etc.
+        #ps = get_plot_data( plot_set, self.filetable1, self.filetable2, variable, season )
         if ps is None:
-            print "I got back a None!!!!"
+            print "Can't plot, plot_set is None!!!!"
             return None
         res = ps.results()
         if res is None:
-            print "Results were None!"
+            print "Can't plot, plot_set results were None!"
             return None
         # Note: it would be useful to get some immediate feedback as to whether the code is
         # busy, or finished with the current task.
