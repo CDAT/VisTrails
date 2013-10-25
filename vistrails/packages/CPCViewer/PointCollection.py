@@ -10,6 +10,10 @@ import cdms2
 def isNone(obj):
     return ( id(obj) == id(None) )
 
+def lsize( axis ):
+    try:     return axis.size()
+    except:  return axis.size
+
 class PlotType:
     Planar = 0
     Spherical = 1
@@ -86,15 +90,18 @@ class PointCollection():
     def processCoordinates( self, lat, lon ):
         self.point_layout = self.getPointsLayout()
         nz = len( self.lev ) 
-        self.n_input_points = lat.shape[0] * nz if ( self.point_layout == PlotType.List ) else lat.shape[0] * lon.shape[0] * nz
+        self.n_input_points = lsize(lat) * nz if ( self.point_layout == PlotType.List ) else lsize(lat) * lsize(lon) * nz
         if self.istep <= 0: self.istep = max( self.n_input_points / self.max_points, 1 )
         if len( lat.shape ) == 1:
             self.lat_data = lat[self.istart::self.istep] if ( self.point_layout == PlotType.List ) else lat[::]
             self.lon_data = lon[self.istart::self.istep] 
            
         else:
-            self.lat_data = lat.flat[self.istart::self.istep] if ( self.point_layout == PlotType.List ) else lat.flat[::]
-            self.lon_data = lon.flat[self.istart::self.istep] 
+            self.latf = lat.flatten(order='C')
+            self.lonf = lon.flatten(order='C')
+            self.lat_data = self.latf[self.istart::self.istep] if ( self.point_layout == PlotType.List ) else lat.flat[::]
+            self.lon_data = self.lonf[self.istart::self.istep] 
+#            print " processCoordinates: n_input_points=%d, istep=%d, point_layout=%d, nz=%d, max_points=%d, latf shape = %s, lat_data shape = %s  " %  ( self.n_input_points, self.istep, self.point_layout, nz, self.max_points, str(latf.shape), str(self.lat_data.shape)  )
         if self.lon_data.__class__.__name__ == "TransientVariable":
             self.lat_data = self.lat_data.data
             self.lon_data = self.lon_data.data        

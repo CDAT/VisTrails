@@ -461,7 +461,8 @@ class CPCPlot(QtCore.QObject):
         if ( self.topo == PlotType.Spherical ):             
             self.planeWidgetOff()
             self.setFocalPoint( [0,0,0] )
-        elif self.process_mode == ProcessMode.Slicing:  self.planeWidgetOn()
+        elif self.process_mode == ProcessMode.Slicing:  
+            self.planeWidgetOn()
         self.mapManager.setMapVisibility( self.topo )
         self.render()
         
@@ -561,7 +562,9 @@ class CPCPlot(QtCore.QObject):
             
     def updatePlaneWidget(self): 
         o = list( self.planeWidget.GetOrigin() )
-        o[ self.sliceAxisIndex ] = self.getCurrentSlicePosition()
+        spos = self.getCurrentSlicePosition()
+        o[ self.sliceAxisIndex ] = spos
+        print " Update Plane Widget: Set Origin[%d] = %.2f " % ( self.sliceAxisIndex, spos )
         self.planeWidget.SetOrigin(o) 
 
     def planeWidgetOff(self):
@@ -588,8 +591,8 @@ class CPCPlot(QtCore.QObject):
             self.planeWidget.GetNormalProperty().SetOpacity(0.0)
             self.planeWidget.SetInteractor( self.renderWindowInteractor )
             self.planeWidget.KeyPressActivationOff()
-            pcbounds = self.point_cloud_overview.getBounds()
-            self.planeWidget.PlaceWidget( pcbounds )
+            self.widget_bounds = self.point_cloud_overview.getBounds()
+            self.planeWidget.PlaceWidget( self.widget_bounds )
                 
     def processCategorySelectionCommand( self, args ):
         op = args[0]
@@ -637,6 +640,7 @@ class CPCPlot(QtCore.QObject):
 #        self.setVarData( var_data ) 
 #        self.renderWindow.Render()
 
+
             
     def processSlicePlaneCommand( self, args ):
 #        print " processSlicePlaneCommand: %s " % str( args )
@@ -655,6 +659,12 @@ class CPCPlot(QtCore.QObject):
         
         elif args and args[0] == "Open":
             self.enableSlicing()
+        elif args and args[0] == "UpdateTabPanel":
+            axis_index = args[1]
+            if axis_index == 2:
+                slice_index = round( self.getSlicePosition(2) / self.zSliceWidth ) 
+                self.setSlicePosition( slice_index * self.zSliceWidth, 2 )   
+                self.execCurrentSlice()           
         elif args and args[0] == "Close":
             isOK = args[1]
             self.setRenderMode( ProcessMode.HighRes )
@@ -932,7 +942,8 @@ class CPCPlot(QtCore.QObject):
             scaling_spec = ( self.vertVar.getValue(), self.vscale.getValue() )
             self.point_cloud_overview.generateZScaling( spec=scaling_spec )
             pcbounds = self.point_cloud_overview.getBounds()
-            self.planeWidget.PlaceWidget( pcbounds )
+            self.widget_bounds[4:6] = pcbounds[4:6]
+            self.planeWidget.PlaceWidget( self.widget_bounds )
 #            vis = self.low_res_actor.GetVisibility()
             self.render()
                         
@@ -1204,6 +1215,8 @@ class CPCPlot(QtCore.QObject):
             for point_cloud in  self.partitioned_point_cloud.values():     
                 self.renderer.AddActor( point_cloud.actor )
                 self.pointPicker.AddPickList( point_cloud.actor )
+        else:
+            self.updateZRange( self.point_cloud_overview )
             
         self.mapManager = MapManager( roi = self.point_cloud_overview.getBounds() )
         self.renderer.AddActor( self.mapManager.getBaseMapActor() )
@@ -1220,8 +1233,6 @@ class CPCPlot(QtCore.QObject):
         if nlev and (nlev <> self.nlevels):
             self.nlevels = nlev
             self.zSliceWidth = 1.0/(self.nlevels)
-            slice_index = round( self.getSlicePosition(2) / self.zSliceWidth ) 
-            self.setSlicePosition( slice_index * self.zSliceWidth, 2 )
             self.sliceWidthSensitivity[2] = self.zSliceWidth
             self.slicePositionSensitivity[2] = self.zSliceWidth
             
@@ -1269,8 +1280,9 @@ class CPCPlot(QtCore.QObject):
         self.point_cloud_overview = vtkLocalPointCloud( 0, max_points=n_overview_points ) 
         lut = self.getLUT()
         self.point_cloud_overview.initialize( init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
-        nCollections = min( self.point_cloud_overview.getNumberOfInputPoints() / n_subproc_points, 10  )
-#        print " Init PCViewer, n_overview_points = %d, n_subproc_points = %d, nCollections = %d, overview skip index = %s" % ( n_overview_points, n_subproc_points, nCollections, self.point_cloud_overview.getSkipIndex() )
+        nInputPoints = self.point_cloud_overview.getNumberOfInputPoints()
+        nCollections = min( nInputPoints / n_subproc_points, 10  )
+        print " Init PCViewer, nInputPoints = %d, n_overview_points = %d, n_subproc_points = %d, nCollections = %d, overview skip index = %s" % ( nInputPoints, n_overview_points, n_subproc_points, nCollections, self.point_cloud_overview.getSkipIndex() )
         self.initCollections( nCollections, init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
  
     def update(self):
@@ -1315,7 +1327,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
     parser.add_argument( 'PATH' )
     parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
-    parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CAM", help='input data type')
+    parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="GEOS5", help='input data type')
     ns = parser.parse_args( sys.argv )
     
     kill_all_zombies()
@@ -1331,7 +1343,7 @@ if __name__ == '__main__':
     height_varnames = []
     
     if ns.data_type == "WRF":
-        data_file = os.path.join( data_dir, "WRF/wrfout_d01_2013-05-01_12-00-00.nc" )
+        data_file = os.path.join( data_dir, "WRF/wrfout_d01_2013-07-01_00-00-00.nc" )
         grid_file = None
         varname = "U"        
     elif ns.data_type == "CAM":

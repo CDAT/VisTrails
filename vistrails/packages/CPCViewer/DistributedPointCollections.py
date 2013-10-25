@@ -33,6 +33,15 @@ class ExecutionDataPacket:
         self.data = data_object
         self.node_index = node_index
         self.metadata = {}
+        print "ExecutionDataPacket[%d]: type=%s, shape=%s" % ( node_index, self.getTypeStr(msg_type), str(data_object.shape) )
+    
+    @classmethod    
+    def getTypeStr( cls, type ):
+        if ( type == cls.NONE ): return "NONE"
+        if ( type == cls.POINTS ): return "POINTS"
+        if ( type == cls.INDICES ): return "INDICES"
+        if ( type == cls.VARDATA ): return "VARDATA"
+        if ( type == cls.HEIGHTS ): return "HEIGHTS"
 
     def printLogMessage(self, msg_str ):
         print " DataPacket %d: %s" % ( self.node_index, msg_str )
@@ -459,7 +468,7 @@ class vtkSubProcPointCloud( vtkPointCloud ):
 
     def generateSubset(self, **args ):
         self.current_subset_specs = args.get( 'spec', self.current_subset_specs )
-        print " vtkSubProcPointCloud: current_subset_specs: %s (%s) " % ( self.current_subset_specs, str(args) )
+#        print " vtkSubProcPointCloud: current_subset_specs: %s (%s) " % ( self.current_subset_specs, str(args) )
         process = args.get( 'process', True )
         if process:
             self.clearQueues()
@@ -579,8 +588,8 @@ class vtkLocalPointCloud( vtkPointCloud ):
 
     def generateSubset(self, **args ):
         self.current_subset_specs = args.get('spec', self.current_subset_specs)
-        if self.current_subset_specs[0] == 'Z3':
-            print " vtkLocalPointCloud[%d]: current_subset_specs: %s (%s) " % ( self.pcIndex, self.current_subset_specs, str(args) )
+#         if self.current_subset_specs[0] == 'Z3':
+#             print " vtkLocalPointCloud[%d]: current_subset_specs: %s (%s) " % ( self.pcIndex, self.current_subset_specs, str(args) )
         self.threshold_target = self.current_subset_specs[0]
         op_specs = [ 'indices' ] + list(self.current_subset_specs)
         vmin, vmax = self.point_collection.execute( op_specs )       
@@ -588,7 +597,6 @@ class vtkLocalPointCloud( vtkPointCloud ):
         if self.threshold_target == "vardata": self.trange = ( vmin, vmax )
         else: self.crange = ( vmin, vmax )
         self.grid = self.point_collection.getGridType()
-        self.nlevels = self.point_collection.getNLevels()
         self.current_scalar_range = self.vrange
         self.updateVertices() 
         self.updated_subset_specs = self.current_subset_specs
@@ -608,6 +616,7 @@ class vtkLocalPointCloud( vtkPointCloud ):
         self.vardata = self.point_collection.getVarData()
         self.updateScalars() 
         self.grid_bounds = self.point_collection.getBounds()
+        self.nlevels = self.point_collection.getNLevels()
         self.actor.VisibilityOff()
     
     def stepTime(self, **args): 
