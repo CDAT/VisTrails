@@ -75,7 +75,7 @@ class MapManager( QtCore.QObject ):
 #             imageFlipper.SetResliceAxes( resliceAxes )
                         
             imageFlipper = vtk.vtkImageFlip()
-            imageFlipper.SetInput( self.baseImage )
+            imageFlipper.SetInput( self.sphericalBaseImage )
             imageFlipper.SetFilteredAxis( 1 ) 
             
             self.sphereTexture = vtk.vtkTexture()
@@ -126,28 +126,23 @@ class MapManager( QtCore.QObject ):
             self.imageInfo = vtk.vtkImageChangeInformation()        
             self.image_reader = vtk.vtkJPEGReader()      
             self.image_reader.SetFileName(  self.map_file )
-            self.baseImage = self.image_reader.GetOutput() 
+            world_image = self.image_reader.GetOutput() 
+            self.sphericalBaseImage = self.RollMap( world_image )  
             new_dims, scale = None, None
             if dataPosition == None:    
-                self.baseImage = self.RollMap( self.baseImage ) 
+                self.baseImage = self.RollMap( world_image ) 
                 new_dims = self.baseImage.GetDimensions()
                 scale = [ 360.0/new_dims[0], 180.0/new_dims[1], 1 ]
             else:                       
-                self.baseImage, new_dims = self.getBoundedMap( self.baseImage, dataPosition, map_cut_size, self.map_border_size )             
+                self.baseImage, new_dims = self.getBoundedMap( world_image, dataPosition, map_cut_size, self.map_border_size )             
                 scale = [ map_cut_size[0]/new_dims[0], map_cut_size[1]/new_dims[1], 1 ]
-    #        printArgs( " baseMap: ", extent=baseImage.GetExtent(), spacing=baseImage.GetSpacing(), origin=baseImage.GetOrigin() )        
                               
             self.baseMapActor = vtk.vtkImageActor()
             self.baseMapActor.SetOrigin( 0.0, 0.0, 0.0 )
             self.baseMapActor.SetScale( scale )
             self.baseMapActor.SetOrientation( 0.0, 0.0, 0.0 )
             self.baseMapActor.SetOpacity( self.map_opacity )
-    #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
-            print "Positioning map at location %s" % ( str( ( self.x0, self.y0) )  ) 
             mapCorner = [ self.x0, self.y0 ]
-#            if ( ( self.roi[0]-map_border_size ) < 0.0 ): mapCorner[0] = mapCorner[0] - 360.0
-#            print " DV3DCell, mapCorner = %s, dataPosition = %s, cell_location = %s " % ( str(mapCorner), str(dataPosition), cell_location )
-                    
             self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
             self.baseMapActor.SetInput( self.baseImage )
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]  

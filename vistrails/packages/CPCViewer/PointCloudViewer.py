@@ -250,6 +250,8 @@ class CPCPlot(QtCore.QObject):
         self.config_mode = ConfigMode.Default
         self.xcenter = 100.0
         self.xwidth = 300.0
+        self.ycenter = 0.0
+        self.ywidth = 180.0
 
         self.isValid = True
         self.cameraOrientation = {}
@@ -564,7 +566,7 @@ class CPCPlot(QtCore.QObject):
         o = list( self.planeWidget.GetOrigin() )
         spos = self.getCurrentSlicePosition()
         o[ self.sliceAxisIndex ] = spos
-        print " Update Plane Widget: Set Origin[%d] = %.2f " % ( self.sliceAxisIndex, spos )
+#        print " Update Plane Widget: Set Origin[%d] = %.2f " % ( self.sliceAxisIndex, spos )
         self.planeWidget.SetOrigin(o) 
 
     def planeWidgetOff(self):
@@ -1180,8 +1182,9 @@ class CPCPlot(QtCore.QObject):
             self.renderer.ResetCamera( self.getBounds() )
             
     def initCamera(self):
-        self.renderer.GetActiveCamera().SetPosition( self.xcenter, 0, self.xwidth*2 ) 
-        self.renderer.GetActiveCamera().SetFocalPoint( self.xcenter, 0, 0 )
+        fp = self.point_cloud_overview.getCenter() 
+        self.renderer.GetActiveCamera().SetPosition( fp[0], fp[1], fp[0]*2 )
+        self.renderer.GetActiveCamera().SetFocalPoint( fp[0], fp[1], 0 )
         self.renderer.GetActiveCamera().SetViewUp( 0, 1, 0 )  
         self.renderer.ResetCameraClippingRange()     
             
@@ -1366,7 +1369,7 @@ if __name__ == '__main__':
         
     g = CPCPlot( widget.GetRenderWindow() ) 
     widget.connect( widget, QtCore.SIGNAL('event'), g.processEvent )  
-    g.init( init_args = ( grid_file, data_file, varname, height_varname ), n_overview_points=n_overview_points )
+    g.init( init_args = ( grid_file, data_file, varname, height_varname ), n_overview_points=n_overview_points ) # , n_subproc_points=100000000 )
     
 #     pointCollectionMgrThread = QPointCollectionMgrThread( g, init_args = ( grid_file, data_file, varname ), nCollections=nCollections )
 #     pointCollectionMgrThread.init()

@@ -33,7 +33,7 @@ class ExecutionDataPacket:
         self.data = data_object
         self.node_index = node_index
         self.metadata = {}
-        print "ExecutionDataPacket[%d]: type=%s, shape=%s" % ( node_index, self.getTypeStr(msg_type), str(data_object.shape) )
+#        print "ExecutionDataPacket[%d]: type=%s, shape=%s" % ( node_index, self.getTypeStr(msg_type), str(data_object.shape) )
     
     @classmethod    
     def getTypeStr( cls, type ):
@@ -548,7 +548,7 @@ class vtkSubProcPointCloud( vtkPointCloud ):
         
     def waitForData( self, dtype ):
 #        self.printLogMessage( " waitForData type %d" % ( dtype ) )   
-        while( self.getData( dtype ) == None ):
+        while( id(self.getData( dtype ) ) == id( None ) ):
             self.getResults(True)
             time.sleep(0.05)
                                              
@@ -622,6 +622,9 @@ class vtkLocalPointCloud( vtkPointCloud ):
 #        print "initialize: Set grid bounds: %s " % str( self.grid_bounds )
         self.nlevels = self.point_collection.getNLevels()
         self.actor.VisibilityOff()
+        
+    def getCenter(self):
+        return ( self.point_collection.xcenter, self.point_collection.ycenter, self.point_collection.xwidth, self.point_collection.ywidth )
     
     def stepTime(self, **args): 
         if self.point_collection.stepTime( **args ):

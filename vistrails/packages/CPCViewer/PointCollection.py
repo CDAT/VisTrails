@@ -81,8 +81,10 @@ class PointCollection():
             if len( var.shape ) == 3:               
                 np_var_data_block = var[ self.iTimeStep, :, self.istart::self.istep ].data
             elif len( var.shape ) == 4:
-                np_var_data_block = var[ self.iTimeStep, :, :, self.istart::self.istep ].data
-                np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0], np_var_data_block.shape[1] * np_var_data_block.shape[2] ] )
+                lev_data_arrays = []
+                for ilev in range( var.shape[1] ):
+                    lev_data_arrays.append( var[ self.iTimeStep, ilev ].flatten()[self.istart::self.istep] )
+                np_var_data_block = numpy.concatenate( lev_data_arrays ).astype( numpy.float32 )     
 #            print " GetDataBlock, var.shape = %s, grid = %s, ts = %d, newshape = %s " % ( str(var.shape), str((self.istart,self.istep)), self.iTimeStep, str(np_var_data_block.shape) )
 
         return np_var_data_block
@@ -92,24 +94,23 @@ class PointCollection():
         nz = len( self.lev ) 
         self.n_input_points = lsize(lat) * nz if ( self.point_layout == PlotType.List ) else lsize(lat) * lsize(lon) * nz
         if self.istep <= 0: self.istep = max( self.n_input_points / self.max_points, 1 )
-        if len( lat.shape ) == 1:
+        if lon.__class__.__name__ == "TransientVariable":
+            self.lat_data = lat.flatten()[self.istart::self.istep] if ( self.point_layout == PlotType.List ) else lat.flatten()[::]
+            self.lon_data = lon.flatten()[self.istart::self.istep] 
+        else:
             self.lat_data = lat[self.istart::self.istep] if ( self.point_layout == PlotType.List ) else lat[::]
             self.lon_data = lon[self.istart::self.istep] 
-           
-        else:
-            self.latf = lat.flatten(order='C')
-            self.lonf = lon.flatten(order='C')
-            self.lat_data = self.latf[self.istart::self.istep] if ( self.point_layout == PlotType.List ) else lat.flat[::]
-            self.lon_data = self.lonf[self.istart::self.istep] 
-#            print " processCoordinates: n_input_points=%d, istep=%d, point_layout=%d, nz=%d, max_points=%d, latf shape = %s, lat_data shape = %s  " %  ( self.n_input_points, self.istep, self.point_layout, nz, self.max_points, str(latf.shape), str(self.lat_data.shape)  )
-        if self.lon_data.__class__.__name__ == "TransientVariable":
+        if self.lat_data.__class__.__name__ == "TransientVariable":
             self.lat_data = self.lat_data.data
             self.lon_data = self.lon_data.data        
         xmax, xmin = self.lon_data.max(), self.lon_data.min()
+        ymax, ymin = self.lat_data.max(), self.lat_data.min()
         self.axis_bounds[ 'x' ] = ( xmin, xmax )
         self.axis_bounds[ 'y' ] = ( self.lat_data.min(), self.lat_data.max() )
         self.xcenter =  ( xmax + xmin ) / 2.0       
         self.xwidth =  ( xmax - xmin ) 
+        self.ycenter =  ( ymax + ymin ) / 2.0       
+        self.ywidth =  ( ymax - ymin ) 
         return lon, lat
 
     def getNumberOfInputPoints(self): 
@@ -153,8 +154,8 @@ class PointCollection():
                     elif self.point_layout == PlotType.Grid: 
                         z_data = numpy.empty( [ self.lon_data.shape[0] * self.lat_data.shape[0] ], self.lon_data.dtype ) 
                     z_data.fill( zvalue )
-                    if ascending: np_points_data_list.append( z_data )
-                    else: np_points_data_list.insert( 0, z_data )
+                    if ascending: np_points_data_list.append( z_data.flat )
+                    else: np_points_data_list.insert( 0, z_data.flat )
     #            print "Sample z data value: %s" % str( np_points_data_list[0][0] )
                 self.point_data_arrays['z'] = numpy.concatenate( np_points_data_list ).astype( numpy.float32 ) 
                 self.vertical_bounds =  ( 0.0, stage_height )  
@@ -275,7 +276,7 @@ class PointCollection():
         print "Read %d points." % self.getNumberOfPoints(); sys.stdout.flush()
         
     def getPoints(self):
-        point_comps = [ self.point_data_arrays[comp] for comp in [ 'x', 'y', 'z'] ]
+        point_comps = [ self.point_data_arrays[comp].flat for comp in [ 'x', 'y', 'z'] ]
         return numpy.dstack( point_comps ).flatten()
 
     def getPointIndices(self):
@@ -306,7 +307,7 @@ class PointCollection():
             print>>sys.stderr, "Error Unpacking thresholding data: %s " % str( args )
             return None, None, None
         vmin = None
-        var_data = self.point_data_arrays.get( self.threshold_target, None)
+        var_data = self.point_data_arrays.get( self.threshold_target, None).flatten()
         if not isNone(var_data):
             arange = self.axis_bounds.get( self.threshold_target )
             if arange:
