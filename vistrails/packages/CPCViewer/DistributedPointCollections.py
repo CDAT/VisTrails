@@ -501,6 +501,7 @@ class vtkSubProcPointCloud( vtkPointCloud ):
             self.grid = result['grid']
             self.nlevels = result['nlevels']
             self.grid_bounds = result['bounds']
+#            print "getResults: Set grid bounds: %s " % str( self.grid_bounds )
             self.current_scalar_range = self.vrange
 #            self.printLogMessage( " update vrange %s " % str(self.vrange) )      
         elif result.type == ExecutionDataPacket.INDICES:
@@ -542,6 +543,7 @@ class vtkSubProcPointCloud( vtkPointCloud ):
 #            print " processResults[ %d ] : POINTS" % self.pcIndex; sys.stdout.flush()
             self.setPointHeights( result.data )
             self.grid_bounds = result['bounds']
+#            print "processResults: Set grid bounds: %s " % str( self.grid_bounds )
         return True
         
     def waitForData( self, dtype ):
@@ -581,6 +583,7 @@ class vtkLocalPointCloud( vtkPointCloud ):
         self.point_collection.execute( op_specs ) 
         self.setPointHeights( self.point_collection.getPointHeights()  )   
         self.grid_bounds = self.point_collection.getBounds()
+#        print "generateZScaling: Set grid bounds: %s " % str( self.grid_bounds )
 #         self.polydata.Modified()
 #         self.mapper.Modified()
 #         self.actor.Modified()
@@ -616,6 +619,7 @@ class vtkLocalPointCloud( vtkPointCloud ):
         self.vardata = self.point_collection.getVarData()
         self.updateScalars() 
         self.grid_bounds = self.point_collection.getBounds()
+#        print "initialize: Set grid bounds: %s " % str( self.grid_bounds )
         self.nlevels = self.point_collection.getNLevels()
         self.actor.VisibilityOff()
     
