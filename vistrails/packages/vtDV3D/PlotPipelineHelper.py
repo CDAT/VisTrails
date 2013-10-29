@@ -14,7 +14,7 @@ Created on Feb 29, 2012
 import core.db.io, sys, os, traceback, api, time, copy, inspect
 import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
-from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader
+from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader, CDMS_PointReader
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.vtDV3D.DV3DCell import MapCell3D, CloudCell3D
 from packages.vtDV3D import ModuleStore
@@ -1144,7 +1144,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             action = DV3DPipelineHelper.addParameterChangesAction( controller.current_pipeline,  controller,  controller.vistrail, controller.current_version, aliases, iter(cell_specs) )        
     #        if action: controller.change_selected_version( action.id )   
             
-            reader_1v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader ] )
+            reader_1v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_PointReader ] )
             reader_3v_modules = PlotPipelineHelper.find_modules_by_type( controller.current_pipeline, [ CDMS_VectorReader ] )
             reader_modules = reader_1v_modules + reader_3v_modules
             ops = []           

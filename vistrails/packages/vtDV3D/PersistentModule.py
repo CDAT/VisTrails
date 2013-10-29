@@ -180,7 +180,7 @@ class InputSpecs:
     def initializeInput( self, inputIndex, moduleID ): 
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
         if self.inputModule:
-            raw_input = self.inputModule.getOutput() 
+#            raw_input = self.inputModule.getOutput() 
             plotIndex = DV3DPipelineHelper.getPlotIndex( moduleID, inputIndex ) 
 #            print "InitializeInput for module %d, inputIndex=%d, plotIndex=%d" % ( moduleID, inputIndex, plotIndex)     
             self._input =  self.selectInputArray( raw_input, plotIndex )                             

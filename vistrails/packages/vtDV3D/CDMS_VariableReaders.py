@@ -811,6 +811,19 @@ class CDMS_VolumeReader(WorkflowModule):
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args)     
 
+class PM_CDMS_PointReader( PM_CDMSDataReader ):
+
+    def __init__(self, mid, **args):
+        self.outputType = CDMSDataType.Points
+        PM_CDMSDataReader.__init__( self, mid, **args)
+
+class CDMS_PointReader(WorkflowModule):
+    
+    PersistentModuleClass = PM_CDMS_PointReader
+    
+    def __init__( self, **args ):
+        WorkflowModule.__init__(self, **args)     
+
 class PM_CDMS_HoffmullerReader( PM_CDMSDataReader ):
 
     def __init__(self, mid, **args):
@@ -1165,6 +1178,14 @@ class CDMS_VolumeReaderConfigurationWidget(CDMSReaderConfigurationWidget):
     def getParameters( self, module ):
         CDMSReaderConfigurationWidget.getParameters( self, module ) 
 
+class CDMS_PointReaderConfigurationWidget(CDMSReaderConfigurationWidget):
+
+    def __init__(self, module, controller, parent=None):
+        CDMSReaderConfigurationWidget.__init__(self, module, controller, CDMSDataType.Points, parent)
+
+    def getParameters( self, module ):
+        CDMSReaderConfigurationWidget.getParameters( self, module ) 
+        
 class CDMS_SliceReaderConfigurationWidget(CDMSReaderConfigurationWidget):
 
     def __init__(self, module, controller, parent=None):

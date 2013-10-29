@@ -72,7 +72,7 @@ from packages.vtDV3D.DV3DCell import *
 
 def initialize(*args, **keywords):
     import core.modules.module_registry
-    from packages.vtDV3D.CDMS_VariableReaders import CDMSVariableSource, CDMSTransientVariable, CDMS_HoffmullerReader, CDMS_VolumeReader, CDMS_ChartDataReader, CDMS_SliceReader, CDMS_VectorReader, CDMS_HoffmullerReaderConfigurationWidget, CDMS_VolumeReaderConfigurationWidget, CDMS_ChartDataConfigurationWidget, CDMS_SliceReaderConfigurationWidget, CDMS_VectorReaderConfigurationWidget 
+    from packages.vtDV3D.CDMS_VariableReaders import CDMSVariableSource, CDMS_PointReader, CDMSTransientVariable, CDMS_HoffmullerReader, CDMS_VolumeReader, CDMS_ChartDataReader, CDMS_SliceReader, CDMS_VectorReader, CDMS_HoffmullerReaderConfigurationWidget, CDMS_PointReaderConfigurationWidget, CDMS_VolumeReaderConfigurationWidget, CDMS_ChartDataConfigurationWidget, CDMS_SliceReaderConfigurationWidget, CDMS_VectorReaderConfigurationWidget 
     from packages.vtDV3D.VolumeSlicerModule import VolumeSlicer
     from packages.vtDV3D.VolumeRenderModule import VolumeRenderer
     from packages.vtDV3D.ParallelCoordinatesModule import ParallelCoordinateViewer
@@ -90,6 +90,7 @@ def initialize(*args, **keywords):
     from packages.vtDV3D.WorkflowModule import WorkflowModule
     from packages.vtDV3D.VectorCutPlaneModule import GlyphArrayCutPlane, StreamlineCutPlane 
     from packages.vtDV3D.VectorVolumeModule import VectorVolume 
+    from packages.vtDV3D.CPCViewer import CPCViewer, CPCViewerConfigurationWidget
     from packages.spreadsheet.basic_widgets import CellLocation
     from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
     import api
@@ -187,12 +188,24 @@ def initialize(*args, **keywords):
     reg.add_output_port( CDMS_HoffmullerReader, "volume", AlgorithmOutputModule3D ) 
     CDMS_HoffmullerReader.registerConfigurableFunctions( reg )
 
+    reg.add_module( CPCViewer, configureWidgetType=CPCViewerConfigurationWidget, namespace='vtk' )   
+    reg.add_input_port( CPCViewer, "pointCloud", AlgorithmOutputModule3D )      
+    reg.add_input_port( CPCViewer, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
+    reg.add_output_port( CPCViewer, "pointCloud", AlgorithmOutputModule3D ) 
+    CPCViewer.registerConfigurableFunctions( reg )
+
     reg.add_module( CDMS_VolumeReader, configureWidgetType=CDMS_VolumeReaderConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_VolumeReader, "dataset", CDMSDataset )      
     reg.add_input_port( CDMS_VolumeReader, "variable", Variable )      
     reg.add_input_port( CDMS_VolumeReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( CDMS_VolumeReader, "volume", AlgorithmOutputModule3D ) 
     CDMS_VolumeReader.registerConfigurableFunctions( reg )
+
+    reg.add_module( CDMS_PointReader, configureWidgetType=CDMS_PointReaderConfigurationWidget, namespace='cdms' )   
+    reg.add_input_port( CDMS_PointReader, "variable", Variable )      
+    reg.add_input_port( CDMS_PointReader, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
+    reg.add_output_port( CDMS_PointReader, "pointCloud", AlgorithmOutputModule3D ) 
+    CDMS_PointReader.registerConfigurableFunctions( reg )
 
     reg.add_module( CDMS_ChartDataReader, configureWidgetType=CDMS_ChartDataConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_ChartDataReader, "dataset", CDMSDataset )      
