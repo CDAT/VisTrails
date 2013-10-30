@@ -32,7 +32,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         datafiles = metrics.io.findfiles.dirtree_datafiles( self.path1 )
         self.filetable1 = datafiles.setup_filetable( self.tmppth, "model" )
         # ...was self.filetable1 = metrics.frontend.uvcdat.setup_filetable(self.path1,self.tmppth)
-        self.filetable2 = []
+        self.datafiles2 = metrics.io.findfiles.dirtree_datafiles( self.path2 )
+        self.obs_menu = self.datafiles2.check_filespec()
+        self.observations = self.obs_menu.keys()
 
         #initialize data
         #@todo: maybe move data to external file to be read in
@@ -67,7 +69,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         self.DiagnosticGroup = None
         self.diagnostic_set = None
         self.variables = ['N/A',]
-        self.observations = ['AIRS', 'ARM', 'CALIPSOCOSP', 'CERES', 'CERES-EBAF', 'CERES2', 'CLOUDSAT', 'CLOUDSATCOSP', 'CRU', 'ECMWF', 'EP.ERAI', 'ERA40', 'ERAI', 'ERBE', 'ERS', 'GPCP', 'HadISST', 'ISCCP', 'ISCCPCOSP', 'ISCCPD1', 'ISCCPFD', 'JRA25', 'LARYEA', 'LEGATES', 'MISRCOSP', 'MODIS', 'MODISCOSP', 'NCEP', 'NVAP', 'SHEBA', 'SSMI', 'TRMM', 'UWisc', 'WARREN', 'WHOI', 'WILLMOTT', 'XIEARKIN']
+        # jfp was:
+        #self.observations = ['AIRS', 'ARM', 'CALIPSOCOSP', 'CERES', 'CERES-EBAF', 'CERES2', 'CLOUDSAT', 'CLOUDSATCOSP', 'CRU', 'ECMWF', 'EP.ERAI', 'ERA40', 'ERAI', 'ERBE', 'ERS', 'GPCP', 'HadISST', 'ISCCP', 'ISCCPCOSP', 'ISCCPD1', 'ISCCPFD', 'JRA25', 'LARYEA', 'LEGATES', 'MISRCOSP', 'MODIS', 'MODISCOSP', 'NCEP', 'NVAP', 'SHEBA', 'SSMI', 'TRMM', 'UWisc', 'WARREN', 'WHOI', 'WILLMOTT', 'XIEARKIN']
         self.seasons = None # will be set when DiagnosticGroup is made
         #...was self.seasons = ['DJF', 'JJA', 'MJJ', 'ASO', 'ANN']
         
@@ -88,6 +91,13 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         self.comboBoxObservation.addItems(self.observations)
         i = self.comboBoxObservation.findText("NCEP")
         self.comboBoxObservation.setCurrentIndex(i)
+
+        self.observation = str(self.comboBoxObservation.currentText())
+        #filt2="filt=f_startswith('%s')" % self.observation
+        filt2 = self.obs_menu[self.observation]
+        self.datafiles2 = metrics.io.findfiles.dirtree_datafiles( self.path2, filt2 )
+        self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
+
         self.comboBoxSeason.addItems(self.seasons)
         
     def setupDiagnosticsMenu(self):
@@ -116,9 +126,13 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         txt = item.text(item.columnCount()-1)
 
         self.observation = str(self.comboBoxObservation.currentText())
-        filt2="filt=f_startswith('%s')" % self.observation
-        datafiles = metrics.io.findfiles.dirtree_datafiles( self.path2, filt2 )
-        self.filetable2 = datafiles.setup_filetable( self.tmppth, "obs" )
+        #filt2="filt=f_startswith('%s')" % self.observation
+        if type(self.observation) is str and len(self.observation)>0:
+            filt2 = self.obs_menu[self.observation]
+        else:
+            filt2 = None
+        self.datafiles2 = metrics.io.findfiles.dirtree_datafiles( self.path2, filt2 )
+        self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
 
         # formerly was:
         # self.variables = metrics.frontend.uvcdat.list_variables(self.filetable1, diagnostic_set=txt)
@@ -188,7 +202,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         # This stuff should go elsewhere...
         import os
         #...was self.filetable2 = setup_filetable(self.path2,self.tmppth,search_filter=filt2)
-        # ( replacement moved to setupDiagnosticTree)
+        # ( replacement moved to __init__ and plotsetchanged)
         self.plot_set = self.ds_menu[diagnostic](
             self.filetable1, self.filetable2, variable, season )
         ps = self.plot_set
