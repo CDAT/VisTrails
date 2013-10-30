@@ -758,7 +758,7 @@ class PersistentModule( QObject ):
 #        print "  ***** Updating %s Module, id = %d ***** " % ( self.__class__.__name__, self.moduleID )
         self.initializeInputs( **args )     
         self.updateHyperwall()
-        if self.input() or self.inputModuleList() or not self.requiresPrimaryInput:
+        if self.input() or self.inputModuleList() or self.inputModule() or not self.requiresPrimaryInput:
             self.execute( **args )
             self.initializeConfiguration()
         elif self.requiresPrimaryInput:
@@ -910,7 +910,7 @@ class PersistentModule( QObject ):
         for inputIndex, inputPort in enumerate( inputPorts ):
             ispec = InputSpecs()
             self.inputSpecs[ inputIndex ] = ispec
-            inputList = self.getPrimaryInputList( port=inputPort, **args )
+#            inputList = self.getPrimaryInputList( port=inputPort, **args )
             if self.allowMultipleInputs.get( inputIndex, False ):
                 try:
                     ispec.setInputModule(  self.getPrimaryInputList( port=inputPort, **args ) )

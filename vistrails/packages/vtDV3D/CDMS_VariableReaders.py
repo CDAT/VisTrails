@@ -402,7 +402,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             oRecMgr = OutputRecManager() 
 #            varCombo = QComboBox()
 #            for var in varRecs: varCombo.addItem( str(var) ) 
-            orec = OutputRec( 'volume', ndim=3, varList=varRecs )  # varComboList=[ varCombo ], 
+            otype = 'pointCloud' if ( self.outputType == CDMSDataType.Points ) else 'volume'
+            orec = OutputRec( otype, ndim=3, varList=varRecs )   
             oRecMgr.addOutputRec( self.datasetId, orec ) 
         else:
             portData = self.getPortData()
@@ -412,11 +413,15 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         orecs = oRecMgr.getOutputRecs( self.datasetId ) if oRecMgr else None
         if not orecs: raise ModuleError( self, 'No Variable selected for dataset %s.' % self.datasetId )             
         for orec in orecs:
-            cachedImageDataName = self.getImageData( orec, **args ) 
-            if cachedImageDataName: 
-                cachedImageData = self.getCachedImageData( cachedImageDataName, cell_coords )            
-                if   orec.ndim >= 3: self.set3DOutput( name=orec.name,  output=cachedImageData )
-                elif orec.ndim == 2: self.set2DOutput( name=orec.name,  output=cachedImageData )
+            if orec.name == 'pointCloud':
+                self.getFileMetadata( orec, **args ) 
+                self.set3DOutput( name=orec.name )
+            else:
+                cachedImageDataName = self.getImageData( orec, **args ) 
+                if cachedImageDataName: 
+                    cachedImageData = self.getCachedImageData( cachedImageDataName, cell_coords )            
+                    if   orec.ndim >= 3: self.set3DOutput( name=orec.name,  output=cachedImageData )
+                    elif orec.ndim == 2: self.set2DOutput( name=orec.name,  output=cachedImageData )
         self.currentTime = self.getTimestep()
      
     def getTimestep( self ):
@@ -425,6 +430,66 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
 
     def setCurrentLevel(self, level ): 
         self.currentLevel = level
+
+    def getFileMetadata( self, orec, **args ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
+        varList = orec.varList
+        if len( varList ) == 0: return False
+        varDataIds = []
+        intersectedRoi = args.get('roi', None )
+        if intersectedRoi: self.cdmsDataset.setRoi( intersectedRoi )
+        dsid = None
+        fieldData = self.getFieldData()
+        if fieldData:
+            na = fieldData.GetNumberOfArrays()
+            for ia in range(na):
+                aname = fieldData.GetArrayName(ia)
+                if (aname <> None) and aname.startswith('metadata'):
+                    fieldData.RemoveArray(aname)
+        vars = []
+        for varRec in varList:
+            range_min, range_max, scale, shift  = 0.0, 0.0, 1.0, 0.0   
+            imageDataName = getItem( varRec )
+            varNameComponents = imageDataName.split('*')
+            if len( varNameComponents ) == 1:
+                dsid = self.cdmsDataset.getReferenceDsetId() 
+                varName = varNameComponents[0]
+            else:
+                dsid = varNameComponents[0]
+                varName = varNameComponents[1]
+            ds = self.cdmsDataset[ dsid ]
+            if ds:
+                var = ds.getVariable( varName )
+                self.setupTimeAxis( var, **args )
+            portName = orec.name
+            selectedLevel = orec.getSelectedLevel() if ( self.currentLevel == None ) else self.currentLevel
+            ndim = 3 if ( orec.ndim == 4 ) else orec.ndim
+            default_dtype = np.float32
+            scalar_dtype = args.get( "dtype", default_dtype )
+            self._max_scalar_value = getMaxScalarValue( scalar_dtype )
+            self._range = [ 0.0, self._max_scalar_value ]  
+            datatype = getDatatypeString( scalar_dtype )
+            if (self.outputType == CDMSDataType.Hoffmuller):
+                if ( selectedLevel == None ):
+                    varDataIdIndex = 0
+                else:
+                    varDataIdIndex = selectedLevel  
+                                      
+            iTimestep = self.timeIndex if ( varName <> '__zeros__' ) else 0
+            varDataIdIndex = iTimestep  
+            cell_coords = DV3DPipelineHelper.getCellCoordinates( self.moduleID ) 
+            roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] ) if self.cdmsDataset.gridBounds else ""
+            varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), roiStr )
+            vmd = {}         
+            vmd[ 'dsid' ] = dsid                 
+            vmd[ 'varName' ] = varName                 
+            vmd[ 'outputType' ] = self.outputType                 
+            vmd[ 'varDataIdIndex' ] = varDataIdIndex               
+            enc_mdata = encodeToString( vmd ) 
+            if enc_mdata and fieldData: 
+                fieldData.AddArray( getStringDataArray( 'metadata:%s' % varName,   [ enc_mdata ]  ) ) 
+                vars.append( varName )                   
+        fieldData.AddArray( getStringDataArray( 'varlist',  vars  ) )                       
                
     def getImageData( self, orec, **args ):
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper

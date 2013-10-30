@@ -921,69 +921,70 @@ class PM_MapCell3D( PM_DV3DCell ):
     def buildRendering(self):
         PM_DV3DCell.buildRendering( self )
         md = self.getInputSpec().getMetadata()
-        latLonGrid = md.get( 'latLonGrid', True )
-        self.enableBasemap = self.getInputValue( "enable_basemap", True )
-        if latLonGrid and self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
-            if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
-            world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None 
-            map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
-#            cell_location = self.getInputValue( "cell_location", "00"  )
-                
-            self.y0 = -90.0  
-            dataPosition = None
-            if world_map == None:
-                self.map_file = defaultMapFile
-                self.map_cut = defaultMapCut
-            else:
-                self.map_file = world_map[0].name
-                self.map_cut = world_map[1]
-            
-            self.world_cut = self.getInputValue( "world_cut", -1 ) # wmod.forceGetInputFromPort( "world_cut", -1 )  if wmod else getFunctionParmStrValues( module, "world_cut", -1 )
-            roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
-            map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
-            if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
-            if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
-#            data_origin = self.input().GetOrigin() if self.input() else [ 0, 0, 0 ]
-                      
-            if self.world_cut == -1: 
-                if  (self.roi <> None): 
-                    if roi_size[0] > 180:             
-                        self.ComputeCornerPosition()
-                        self.world_cut = self.NormalizeMapLon( self.x0 )
-                    else:
-                        dataPosition = [ ( self.roi[1] + self.roi[0] ) / 2.0, ( self.roi[3] + self.roi[2] ) / 2.0 ]
-                else:
-                    self.world_cut = self.map_cut
-            
-            self.imageInfo = vtk.vtkImageChangeInformation()        
-            image_reader = vtk.vtkJPEGReader()      
-            image_reader.SetFileName(  self.map_file )
-            baseImage = image_reader.GetOutput() 
-            new_dims, scale = None, None
-            if dataPosition == None:    
-                baseImage = self.RollMap( baseImage ) 
-                new_dims = baseImage.GetDimensions()
-                scale = [ 360.0/new_dims[0], 180.0/new_dims[1], 1 ]
-            else:                       
-                baseImage, new_dims = self.getBoundedMap( baseImage, dataPosition, map_cut_size, map_border_size )             
-                scale = [ map_cut_size[0]/new_dims[0], map_cut_size[1]/new_dims[1], 1 ]
-    #        printArgs( " baseMap: ", extent=baseImage.GetExtent(), spacing=baseImage.GetSpacing(), origin=baseImage.GetOrigin() )        
-                              
-            self.baseMapActor = vtk.vtkImageActor()
-            self.baseMapActor.SetOrigin( 0.0, 0.0, 0.0 )
-            self.baseMapActor.SetScale( scale )
-            self.baseMapActor.SetOrientation( 0.0, 0.0, 0.0 )
-            self.baseMapActor.SetOpacity( self.map_opacity[0] )
-    #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
-#            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
-            mapCorner = [ self.x0, self.y0 ]
-#            if ( ( self.roi[0]-map_border_size ) < 0.0 ): mapCorner[0] = mapCorner[0] - 360.0
-#            print " DV3DCell, mapCorner = %s, dataPosition = %s, cell_location = %s " % ( str(mapCorner), str(dataPosition), cell_location )
+        if md:
+            latLonGrid = md.get( 'latLonGrid', True )
+            self.enableBasemap = self.getInputValue( "enable_basemap", True )
+            if latLonGrid and self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
+                if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
+                world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None 
+                map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
+    #            cell_location = self.getInputValue( "cell_location", "00"  )
                     
-            self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
-            self.baseMapActor.SetInput( baseImage )
-            self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]        
-            self.renderer.AddActor( self.baseMapActor )
+                self.y0 = -90.0  
+                dataPosition = None
+                if world_map == None:
+                    self.map_file = defaultMapFile
+                    self.map_cut = defaultMapCut
+                else:
+                    self.map_file = world_map[0].name
+                    self.map_cut = world_map[1]
+                
+                self.world_cut = self.getInputValue( "world_cut", -1 ) # wmod.forceGetInputFromPort( "world_cut", -1 )  if wmod else getFunctionParmStrValues( module, "world_cut", -1 )
+                roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
+                map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
+                if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
+                if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
+    #            data_origin = self.input().GetOrigin() if self.input() else [ 0, 0, 0 ]
+                          
+                if self.world_cut == -1: 
+                    if  (self.roi <> None): 
+                        if roi_size[0] > 180:             
+                            self.ComputeCornerPosition()
+                            self.world_cut = self.NormalizeMapLon( self.x0 )
+                        else:
+                            dataPosition = [ ( self.roi[1] + self.roi[0] ) / 2.0, ( self.roi[3] + self.roi[2] ) / 2.0 ]
+                    else:
+                        self.world_cut = self.map_cut
+                
+                self.imageInfo = vtk.vtkImageChangeInformation()        
+                image_reader = vtk.vtkJPEGReader()      
+                image_reader.SetFileName(  self.map_file )
+                baseImage = image_reader.GetOutput() 
+                new_dims, scale = None, None
+                if dataPosition == None:    
+                    baseImage = self.RollMap( baseImage ) 
+                    new_dims = baseImage.GetDimensions()
+                    scale = [ 360.0/new_dims[0], 180.0/new_dims[1], 1 ]
+                else:                       
+                    baseImage, new_dims = self.getBoundedMap( baseImage, dataPosition, map_cut_size, map_border_size )             
+                    scale = [ map_cut_size[0]/new_dims[0], map_cut_size[1]/new_dims[1], 1 ]
+        #        printArgs( " baseMap: ", extent=baseImage.GetExtent(), spacing=baseImage.GetSpacing(), origin=baseImage.GetOrigin() )        
+                                  
+                self.baseMapActor = vtk.vtkImageActor()
+                self.baseMapActor.SetOrigin( 0.0, 0.0, 0.0 )
+                self.baseMapActor.SetScale( scale )
+                self.baseMapActor.SetOrientation( 0.0, 0.0, 0.0 )
+                self.baseMapActor.SetOpacity( self.map_opacity[0] )
+        #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
+    #            print "Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
+                mapCorner = [ self.x0, self.y0 ]
+    #            if ( ( self.roi[0]-map_border_size ) < 0.0 ): mapCorner[0] = mapCorner[0] - 360.0
+    #            print " DV3DCell, mapCorner = %s, dataPosition = %s, cell_location = %s " % ( str(mapCorner), str(dataPosition), cell_location )
+                        
+                self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
+                self.baseMapActor.SetInput( baseImage )
+                self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]        
+                self.renderer.AddActor( self.baseMapActor )
 
     def ComputeCornerPosition( self ):
         if (self.roi[0] >= -180) and (self.roi[1] <= 180) and (self.roi[1] > self.roi[0]):

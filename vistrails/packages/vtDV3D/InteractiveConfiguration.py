@@ -20,6 +20,7 @@ from collections import OrderedDict
 from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
 from sets import *
+from Cython.Compiler.Symtab import classmethod_utility_code
 
 
 class CDMSDataType:
@@ -30,6 +31,12 @@ class CDMSDataType:
     ChartData = 5
     VariableSpace = 6
     Points = 7
+    
+    @classmethod
+    def getName( cls, type ):
+        if type == cls.Volume: return "volume"
+        if type == cls.Points: return "points"
+        if type == cls.Vector: return "vector"
     
 class ConfigPopupManager( QObject ):
     
