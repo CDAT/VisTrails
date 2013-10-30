@@ -35,6 +35,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         self.datafiles2 = metrics.io.findfiles.dirtree_datafiles( self.path2 )
         self.obs_menu = self.datafiles2.check_filespec()
         self.observations = self.obs_menu.keys()
+        if self.observations==None:
+            print "WARNING: No data in second (obs) data set"
 
         #initialize data
         #@todo: maybe move data to external file to be read in
@@ -88,13 +90,17 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         i=self.comboBoxType.findText("3- Line Plots of  Zonal Means")
         if i>-1:
             self.comboBoxType.setCurrentindex(i)
-        self.comboBoxObservation.addItems(self.observations)
-        i = self.comboBoxObservation.findText("NCEP")
-        self.comboBoxObservation.setCurrentIndex(i)
+        if type(self.observations) is list:
+            self.comboBoxObservation.addItems(self.observations)
+            i = self.comboBoxObservation.findText("NCEP")
+            self.comboBoxObservation.setCurrentIndex(i)
 
-        self.observation = str(self.comboBoxObservation.currentText())
-        #filt2="filt=f_startswith('%s')" % self.observation
-        filt2 = self.obs_menu[self.observation]
+        if type(self.observations) is list:
+            self.observation = str(self.comboBoxObservation.currentText())
+            #filt2="filt=f_startswith('%s')" % self.observation
+            filt2 = self.obs_menu[self.observation]
+        else:
+            filt2 = None
         self.datafiles2 = metrics.io.findfiles.dirtree_datafiles( self.path2, filt2 )
         self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
 
@@ -125,10 +131,13 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         import metrics.frontend.uvcdat
         txt = item.text(item.columnCount()-1)
 
-        self.observation = str(self.comboBoxObservation.currentText())
-        #filt2="filt=f_startswith('%s')" % self.observation
-        if type(self.observation) is str and len(self.observation)>0:
-            filt2 = self.obs_menu[self.observation]
+        if type(self.observations) is list:
+            self.observation = str(self.comboBoxObservation.currentText())
+            #filt2="filt=f_startswith('%s')" % self.observation
+            if type(self.observation) is str and len(self.observation)>0:
+                filt2 = self.obs_menu[self.observation]
+            else:
+                filt2 = None
         else:
             filt2 = None
         self.datafiles2 = metrics.io.findfiles.dirtree_datafiles( self.path2, filt2 )
