@@ -250,7 +250,10 @@ class QAnimationView(QtGui.QWidget):
         self.updatePlayStopIcon()
         
     def save(self):
-        self.canvas.animate.save(str(QtGui.QFileDialog.getSaveFileName(None,"MP4 file name...",filter="MP4 file (*.mp4, *.mpeg)")))
+        fnm = str(QtGui.QFileDialog.getSaveFileName(None,"MP4 file name...",filter="MP4 file (*.mp4, *.mpeg)"))
+        if fnm[-3:].lower() not in ["mp4","mov"]:
+            fnm+=".mp4"
+        self.canvas.animate.save(fnm)
 
     def load(self):
         pass
