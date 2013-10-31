@@ -484,7 +484,12 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             vmd[ 'dsid' ] = dsid                 
             vmd[ 'varName' ] = varName                 
             vmd[ 'outputType' ] = self.outputType                 
-            vmd[ 'varDataIdIndex' ] = varDataIdIndex               
+            vmd[ 'varDataIdIndex' ] = varDataIdIndex
+            vmd['datatype'] = datatype
+            vmd['timeIndex']= iTimestep
+            vmd['timeValue']= self.timeValue.value
+            vmd['latLonGrid']= self.cdmsDataset.latLonGrid
+            vmd['timeUnits' ] = self.referenceTimeUnits              
             enc_mdata = encodeToString( vmd ) 
             if enc_mdata and fieldData: 
                 fieldData.AddArray( getStringDataArray( 'metadata:%s' % varName,   [ enc_mdata ]  ) ) 

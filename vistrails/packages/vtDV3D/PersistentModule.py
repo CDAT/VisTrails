@@ -363,7 +363,12 @@ class InputSpecs:
                 self.fieldData = self.input().GetFieldData()         
             elif self.inputModule:
                 self.fieldData = self.inputModule.getFieldData() 
-
+             
+            arr_names = [] 
+            for iF in range( self.fieldData.GetNumberOfArrays() ):
+                arr_names.append( self.fieldData.GetArrayName(iF) )
+            print " updateMetadata: getFieldData, arrays = ", str( arr_names ) ; sys.stdout.flush()
+            
             if self.fieldData == None:
                 diagnosticWriter.log( self, ' NULL field data in updateMetadata: ispec[%x]  ' % id(self)  ) 
                 self.initializeMetadata() 
