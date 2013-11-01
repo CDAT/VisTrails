@@ -1376,10 +1376,10 @@ if __name__ == '__main__':
 #    pointCollectionMgrThread.start()
 
     configDialog = CPCConfigGui()
-    configDialog.build( vertical_vars=height_varnames )   
-    configDialog.connect( configDialog, QtCore.SIGNAL("ConfigCmd"), g.processConfigCmd )
+    w = configDialog.getConfigWidget()
+    w.connect( w, QtCore.SIGNAL("ConfigCmd"), g.processConfigCmd )
 #    configDialog.connect( g, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )
-    configDialog.activate()
+    configDialog.show()
     
     app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
     app.connect( widget, QtCore.SIGNAL("Close"), configDialog.closeDialog ) 
