@@ -251,7 +251,7 @@ class QAnimationView(QtGui.QWidget):
         
     def save(self):
         fnm = str(QtGui.QFileDialog.getSaveFileName(None,"MP4 file name...",filter="MP4 file (*.mp4, *.mpeg)"))
-        if fnm[-3:].lower() not in ["mp4","mov"]:
+        if fnm[-4:].lower() not in [".mp4",".mov",".avi"]:
             fnm+=".mp4"
         self.canvas.animate.save(fnm)
 
