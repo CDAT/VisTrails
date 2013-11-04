@@ -2088,7 +2088,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 configFunct = self.configurableFunctions[pname]
                 param_value = configFunct.reset() 
                 if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                
-        elif ( md and ( md['plotType']=='xyz' ) and ( key == 't' )  ):
+        elif ( md and ( md.get('plotType','')=='xyz' ) and ( key == 't' )  ):
             self.showInteractiveLens = not self.showInteractiveLens 
             self.render() 
         else:

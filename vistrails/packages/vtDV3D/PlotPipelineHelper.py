@@ -677,6 +677,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     cfg_cmds = {}
     actionMap = {}
     activationMap = {}
+    cpcWidgets = {}
     moduleMap = {} 
     actionMenus = {}
     plotIndexMap = {}
@@ -1648,13 +1649,19 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return active_cells
 
 
-    @staticmethod
-    def getActiveCellStrs():
-        active_cells = DV3DPipelineHelper.getActiveCells()
+    @classmethod
+    def getActiveCellStrs(cls):
+        active_cells = cls.getActiveCells()
         return [ "%s%d" % ( chr(ord('A') + cell[1] ), cell[0]+1 ) for cell in active_cells ]
-    
-    @staticmethod
-    def show_configuration_widget( controller, version, plot_objs=[ None ] ):
+
+    @classmethod
+    def setCPCWidget( cls, mid, w ):
+        ( sheetID, (row,col) ) = cls.getCellCoordinates( mid )
+        cellStr = "%s%s" % ( chr(ord('A') + col ), row+1)
+        cls.cpcWidgets[cellStr] = w
+
+    @classmethod
+    def show_configuration_widget(  cls, controller, version, plot_objs=[ None ] ):
         """  Config Command Filtering:
         This method controls what config commands will be displayed in the DV3D configuration panel when a given plot is clicked upon.
         Config commands for all selected (blue rimmed) plots are displayed.   To display only the config commands for a single plot (type),
@@ -1663,43 +1670,49 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         and, as a result, are not displayed in the configuration panel.    
         
         """
-        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper, CDMSPlotWidget           
-        pmods = set()
-        memoryLogger.log( "show_configuration_widget" )
-        DV3DPipelineHelper.reset()
-        configFuncs = ConfigurableFunction.getActiveFunctionList( ) 
-        active_cells = DV3DPipelineHelper.getActiveCellStrs()
-        for configFunc in configFuncs:
-            if configFunc.isValid():
-                action_key = ( str( configFunc.label ), str( configFunc.name ) )
-                config_key = configFunc.key 
-                pmod = configFunc.module
-                cell_loc = pmod.getCellLocation()
-                if cell_loc:
-                    isActive = pmod.onCurrentPage() and ( cell_loc[-1] in active_cells )
-                    DV3DPipelineHelper.addAction( configFunc.group, pmod, action_key, config_key, isActive ) 
-                    pmods.add(pmod)
-                                        
-        for pmod in pmods:
-            DV3DPipelineHelper.addAction( ConfigGroup.Utilities, pmod, [ 'Help', 'help' ], 'h' )
-            DV3DPipelineHelper.addAction( ConfigGroup.Color,     pmod, [ 'Show Colorbar', 'colorbar' ], 'l' )
-            DV3DPipelineHelper.addAction( ConfigGroup.Utilities, pmod, [ 'Reset', 'reset' ], 'r' )
+        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper, CDMSPlotWidget   
+        active_cells = cls.getActiveCellStrs()
         
-        DV3DPipelineHelper.config_widget = DV3DConfigControlPanel( DV3DPipelineHelper.actionMenus, controller, version, plot_objs[0] )
-        for pmod in pmods:
-            cmdList = pmod.getConfigFunctions( [ 'leveling', 'uvcdat-gui' ] )
-            for cmd in cmdList:
-                DV3DPipelineHelper.addConfigCommand( pmod.moduleID, cmd )
-            pmod.resetNavigation()
-        return DV3DPipelineHelper.config_widget
+        if controller.name == "CPCViewer":
+            for active_cell in active_cells:
+                w = cls.cpcWidgets.get( active_cell, None )
+                if w: return w
+        else:        
+            pmods = set()
+            memoryLogger.log( "show_configuration_widget" )
+            cls.reset()
+            configFuncs = ConfigurableFunction.getActiveFunctionList( ) 
+            for configFunc in configFuncs:
+                if configFunc.isValid():
+                    action_key = ( str( configFunc.label ), str( configFunc.name ) )
+                    config_key = configFunc.key 
+                    pmod = configFunc.module
+                    cell_loc = pmod.getCellLocation()
+                    if cell_loc:
+                        isActive = pmod.onCurrentPage() and ( cell_loc[-1] in active_cells )
+                        cls.addAction( configFunc.group, pmod, action_key, config_key, isActive ) 
+                        pmods.add(pmod)
+                                            
+            for pmod in pmods:
+                cls.addAction( ConfigGroup.Utilities, pmod, [ 'Help', 'help' ], 'h' )
+                cls.addAction( ConfigGroup.Color,     pmod, [ 'Show Colorbar', 'colorbar' ], 'l' )
+                cls.addAction( ConfigGroup.Utilities, pmod, [ 'Reset', 'reset' ], 'r' )
+            
+            cls.config_widget = DV3DConfigControlPanel( cls.actionMenus, controller, version, plot_objs[0] )
+            for pmod in pmods:
+                cmdList = pmod.getConfigFunctions( [ 'leveling', 'uvcdat-gui' ] )
+                for cmd in cmdList:
+                    cls.addConfigCommand( pmod.moduleID, cmd )
+                pmod.resetNavigation()
+            return cls.config_widget
 
-    @staticmethod
-    def getGuiKernel( ):
-        return DV3DPipelineHelper.config_widget.configWidget if DV3DPipelineHelper.config_widget else None
+    @classmethod
+    def getGuiKernel( cls ):
+        return cls.config_widget.configWidget if cls.config_widget else None
     
-    @staticmethod
-    def isEligibleFunction( configFn ):
-        return DV3DPipelineHelper.config_widget.isEligibleCommand( configFn )
+    @classmethod
+    def isEligibleFunction( cls, configFn ):
+        return cls.config_widget.isEligibleCommand( configFn )
          
     @staticmethod
     def get_plot_by_vistrail_version(plot_type, vistrail, version):

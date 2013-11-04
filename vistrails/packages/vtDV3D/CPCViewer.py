@@ -5,6 +5,7 @@ Created on Oct 29, 2013
 '''
 from packages.vtDV3D.PersistentModule import *
 from packages.CPCViewer.PointCloudViewer import CPCPlot, kill_all_zombies
+from packages.CPCViewer.ControlPanel import CPCConfigGui, CPCConfigConfigurationWidget
 from  packages.vtDV3D.CDMS_VariableReaders import  CDMSReaderConfigurationWidget
 
 class PM_CPCViewer(PersistentVisualizationModule):
@@ -48,13 +49,22 @@ class PM_CPCViewer(PersistentVisualizationModule):
             self.set3DOutput( name="pointCloud" )
         
     def activateEvent( self, caller, event ):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
         PersistentVisualizationModule.activateEvent( self, caller, event )
         if self.renwin <> None:
             if self.plotter == None:
                 self.plotter = CPCPlot( self.renwin )  
                 self.plotter.init( init_args = ( self.grid_file, self.data_file, self.varname, self.height_varname ), n_overview_points=self.n_overview_points ) # , n_subproc_points=100000000 )
+
+                self.configDialog = CPCConfigGui()
+                w = self.configDialog.getConfigWidget()
+                w.connect( w, QtCore.SIGNAL("ConfigCmd"), self.plotter.processConfigCmd )
+            #    configDialog.connect( g, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )
+                self.configDialog.activate()
+                DV3DPipelineHelper.setCPCWidget( self.moduleID, w )
                 self.render()
-        
+ 
+         
 from packages.vtDV3D.WorkflowModule import WorkflowModule
 
 class CPCViewer(WorkflowModule):
@@ -65,12 +75,27 @@ class CPCViewer(WorkflowModule):
         WorkflowModule.__init__(self, **args) 
         
         
-class CPCViewerConfigurationWidget(DV3DConfigurationWidget):
+class CPCViewerConfigurationWidget(StandardModuleConfigurationWidget):
 
-    def __init__(self, module, controller, parent=None):
-        DV3DConfigurationWidget.__init__(self, module, controller, CDMSDataType.Hoffmuller, parent)
+    def __init__(self, module, controller, title, parent=None):
+        StandardModuleConfigurationWidget.__init__(self, module, controller, parent)
+        self.setWindowTitle( title )
+        self.moduleId = module.id
+#        self.pmod = module.module_descriptor.module.forceGetPersistentModule( module.id ) # self.module_descriptor.module.forceGetPersistentModule( module.id )
+        self.getParameters( module )        
+        self.cfg_widget = CPCConfigConfigurationWidget()    
+        self.setLayout( QVBoxLayout() )
+        self.layout().setMargin(0)
+        self.layout().setSpacing(0)
+
+        self.tabbedWidget = QTabWidget()
+        self.layout().addWidget( self.cfg_widget ) 
+        self.createButtonLayout() 
+        
+#        self.cfg_widget.build()
+#        self.cfg_widget.activate()
 
     def getParameters( self, module ):
-        CDMSReaderConfigurationWidget.getParameters( self, module ) 
+        pass
 
 kill_all_zombies()

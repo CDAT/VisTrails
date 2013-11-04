@@ -891,6 +891,8 @@ class CPCConfigGui( ConfigurationGui ):
         self.cfg_widget = CPCConfigConfigurationWidget()    
         ConfigurationGui.__init__(self,self.cfg_widget)
         self.cfg_widget.build()
+        
+    def activate(self):
         self.cfg_widget.activate()
         
     def getConfigWidget(self):

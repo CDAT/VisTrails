@@ -1379,6 +1379,8 @@ if __name__ == '__main__':
     w = configDialog.getConfigWidget()
     w.connect( w, QtCore.SIGNAL("ConfigCmd"), g.processConfigCmd )
 #    configDialog.connect( g, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )
+    configDialog.activate()
+    
     configDialog.show()
     
     app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
