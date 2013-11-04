@@ -4,7 +4,7 @@ Created on Oct 29, 2013
 @author: tpmaxwel
 '''
 from packages.vtDV3D.PersistentModule import *
-from packages.CPCViewer.PointCloudViewer import CPCPlot
+from packages.CPCViewer.PointCloudViewer import CPCPlot, kill_all_zombies
 from  packages.vtDV3D.CDMS_VariableReaders import  CDMSReaderConfigurationWidget
 
 class PM_CPCViewer(PersistentVisualizationModule):
@@ -50,9 +50,10 @@ class PM_CPCViewer(PersistentVisualizationModule):
     def activateEvent( self, caller, event ):
         PersistentVisualizationModule.activateEvent( self, caller, event )
         if self.renwin <> None:
-            self.plotter = CPCPlot( self.renwin )  
-            self.plotter.init( init_args = ( self.grid_file, self.data_file, self.varname, self.height_varname ), n_overview_points=self.n_overview_points ) # , n_subproc_points=100000000 )
-            self.render()
+            if self.plotter == None:
+                self.plotter = CPCPlot( self.renwin )  
+                self.plotter.init( init_args = ( self.grid_file, self.data_file, self.varname, self.height_varname ), n_overview_points=self.n_overview_points ) # , n_subproc_points=100000000 )
+                self.render()
         
 from packages.vtDV3D.WorkflowModule import WorkflowModule
 
@@ -64,11 +65,12 @@ class CPCViewer(WorkflowModule):
         WorkflowModule.__init__(self, **args) 
         
         
-class CPCViewerConfigurationWidget(CDMSReaderConfigurationWidget):
+class CPCViewerConfigurationWidget(DV3DConfigurationWidget):
 
     def __init__(self, module, controller, parent=None):
-        CDMSReaderConfigurationWidget.__init__(self, module, controller, CDMSDataType.Hoffmuller, parent)
+        DV3DConfigurationWidget.__init__(self, module, controller, CDMSDataType.Hoffmuller, parent)
 
     def getParameters( self, module ):
         CDMSReaderConfigurationWidget.getParameters( self, module ) 
 
+kill_all_zombies()

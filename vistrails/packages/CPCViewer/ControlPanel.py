@@ -723,22 +723,38 @@ class ConfigControlContainer(QtGui.QWidget):
         
     def categorySelected( self, iCatIndex ):
         self.emit( QtCore.SIGNAL("ConfigCmd"), ( "CategorySelected",  self.tabWidget.tabText(iCatIndex) ) )
-        
+
 class ConfigurationGui(QtGui.QDialog):
 
+    def __init__(self, config_widget ):    
+        QtGui.QDialog.__init__(self, None)
+                
+        self.setWindowFlags(QtCore.Qt.Window)
+        self.setModal(False)
+        self.setWindowTitle('CPC Plot Config')
+        layout = QtGui.QVBoxLayout()
+        self.setLayout(layout)
+        
+        layout.addWidget( config_widget ) 
+        self.config_widget = config_widget     
+        self.resize(600, 450)
+
+    def closeDialog( self ):
+        self.config_widget.saveConfg()
+        self.close()
+        
+class ConfigurationWidget(QtGui.QWidget):
+
     def __init__(self, parent=None):    
-        QtGui.QDialog.__init__(self, parent)
+        QtGui.QWidget.__init__(self, parent)
+        layout = QtGui.QVBoxLayout()
+        self.setLayout(layout)
         self.config_params = {}
 
         self.cfgFile = None
         self.cfgDir = None
         self.tagged_controls = {}
-                
-        self.setWindowFlags(QtCore.Qt.Window)
-        self.setModal(False)
-        self.setWindowTitle('CPC Plot Config')
-        self.setLayout(QtGui.QVBoxLayout())
-        
+                        
         self.scrollArea = QtGui.QScrollArea(self) 
         self.scrollArea.setFrameStyle(QtGui.QFrame.NoFrame)      
         self.scrollArea.setWidgetResizable(True)
@@ -746,9 +762,8 @@ class ConfigurationGui(QtGui.QDialog):
         self.configContainer = ConfigControlContainer( self.scrollArea )
         self.scrollArea.setWidget( self.configContainer )
         self.scrollArea.setSizePolicy( QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding )
-        self.layout().addWidget(self.scrollArea)       
+        layout.addWidget(self.scrollArea)       
         self.connect( self.configContainer, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
-        self.resize(600, 450)
 
     def addControl( self, iCatIndex, config_ctrl, id = None ):
         config_list = self.configContainer.getCategoryConfigList( iCatIndex )
@@ -788,12 +803,7 @@ class ConfigurationGui(QtGui.QDialog):
     def activate(self):
         self.initParameters()
         self.configContainer.selectCategory( self.iSubsetCatIndex )
-        self.show()
-            
-    def closeDialog( self ):
-        self.saveConfg()
-        self.close()
-        
+                    
     def build(self):
         pass
 
@@ -831,10 +841,10 @@ class ConfigurationGui(QtGui.QDialog):
         for config_item in self.config_params.items():
             self.emit( QtCore.SIGNAL("ConfigCmd"), ( "InitParm",  config_item[0], config_item[1] ) )
 
-class CPCConfigGui( ConfigurationGui ):
+class CPCConfigConfigurationWidget( ConfigurationWidget ):
 
     def __init__(self, parent=None): 
-        super( CPCConfigGui, self ).__init__( parent )   
+        super( CPCConfigConfigurationWidget, self ).__init__( parent )   
 
 #    def externalUpdate( self, args ):   
 #        if args[0] == "SetSlicePosition":
@@ -874,14 +884,24 @@ class CPCConfigGui( ConfigurationGui ):
         self.AnalysisCatIndex = self.addCategory( 'Analysis' )
         cparm = self.addParameter( self.AnalysisCatIndex, "Animation" )
         self.addConfigControl( self.AnalysisCatIndex, AnimationControl( cparm ) )
+ 
+class CPCConfigGui( ConfigurationGui ):
+
+    def __init__(self):
+        self.cfg_widget = CPCConfigConfigurationWidget()    
+        ConfigurationGui.__init__(self,self.cfg_widget)
+        self.cfg_widget.build()
+        self.cfg_widget.activate()
         
+    def getConfigWidget(self):
+        return self.cfg_widget
+       
 if __name__ == '__main__':
     app = QtGui.QApplication(['CPC Config Dialog'])
     
     configDialog = CPCConfigGui()
-    configDialog.build()   
-    configDialog.activate()
-    
+    configDialog.show()
+     
     app.connect( app, QtCore.SIGNAL("aboutToQuit()"), configDialog.closeDialog ) 
     app.exec_() 
  
