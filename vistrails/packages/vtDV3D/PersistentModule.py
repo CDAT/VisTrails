@@ -395,18 +395,18 @@ class InputSpecs:
                 attributes = self.metadata.get( 'attributes' , None )
                 if attributes:
                     self.units = attributes.get( 'units' , '' )
-                    range = attributes.get( 'range', None )
-                    if range: 
+                    srange = attributes.get( 'range', None )
+                    if srange: 
         #                print "\n ***************** ScalarRange = %s, md[%d], var_md[%d] *****************  \n" % ( str(range), id(metadata), id(var_md) )
-                        self.scalarRange = list( range )
+                        self.scalarRange = list( srange )
                         self.scalarRange.append( 1 )
                         if not self.seriesScalarRange:
-                            self.seriesScalarRange = list(range)
+                            self.seriesScalarRange = list(srange)
                         else:
-                            if self.seriesScalarRange[0] > range[0]:
-                                self.seriesScalarRange[0] = range[0] 
-                            if self.seriesScalarRange[1] < range[1]:
-                                self.seriesScalarRange[1] = range[1] 
+                            if self.seriesScalarRange[0] > srange[0]:
+                                self.seriesScalarRange[0] = srange[0] 
+                            if self.seriesScalarRange[1] < srange[1]:
+                                self.seriesScalarRange[1] = srange[1] 
 
     def getUnits(self):
         return self.units
