@@ -126,7 +126,14 @@ class QAnimationView(QtGui.QWidget):
         self.frameCount = self.player.addLabel("Frame: 0",align=QtCore.Qt.AlignCenter)
         self.player.addWidget(self.framesSlider,newRow=True)
         self.doLoop = self.player.addCheckBox("Loop",newRow=False)
-        self.doLoop.setChecked(True)
+        
+        self.speedSlider = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.speedSlider.setMinimum(0.1)
+        self.speedSlider.setMaximum(60)
+        self.speedSlider.setToolTip("Frames per second")
+        self.player.addWidget(self.speedSlider, newRow=True)
+        self.connect(self.speedSlider,QtCore.SIGNAL("sliderMoved(int)"),self.speedChanged)
+        
         self.player.setEnabled(False)
         controlsFrame.addWidget(self.player,newRow=True)
 
@@ -167,6 +174,8 @@ class QAnimationView(QtGui.QWidget):
         
         self.doLoop.setChecked(canvas.animate.loop)
         
+        self.speedSlider.setValue(canvas.animate.fps())
+        
         created = (canvas.animate.create_flg == 1)
         self.createButton.setEnabled(not created)
         self.player.setEnabled(created)
@@ -177,6 +186,10 @@ class QAnimationView(QtGui.QWidget):
         
     def changedFrame(self,value):
         self.canvas.animate.frame(value)
+    
+    def speedChanged(self, value):
+        self.canvas.animate.fps(value)
+        
 
     def createOrStopClicked(self):
         ### Creates or stops creating animation
