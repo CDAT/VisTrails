@@ -677,7 +677,8 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     cfg_cmds = {}
     actionMap = {}
     activationMap = {}
-    cpcWidgets = {}
+    cpcModules = {}
+    currentCPCWidget = None 
     moduleMap = {} 
     actionMenus = {}
     plotIndexMap = {}
@@ -688,12 +689,22 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     def __init__(self):
         QObject.__init__( self )
         PlotPipelineHelper.__init__( self )
-        '''
-        Constructor
-        '''
-    @staticmethod
-    def clearActionMap():
-        for currentActionList in DV3DPipelineHelper.actionMap.values():
+
+    @classmethod
+    def disconnectCPCWidgets(cls):
+        if cls.currentCPCWidget <> None:
+            active_cells = cls.getActiveCellStrs()
+            for active_cell in active_cells:
+                cpc_mid = cls.cpcModules.get( active_cell, None )
+                if cpc_mid:
+                    cpcModule = ModuleStore.getModule( cpc_mid )
+                    cpcModule.persistCPCParameters() 
+#                     QObject.disconnect( cls.currentCPCWidget, QtCore.SIGNAL("ConfigCmd"), cpcModule.getPlotter(), 'processConfigCmd' )
+            cls.currentCPCWidget = None
+
+    @classmethod
+    def clearActionMap(cls):
+        for currentActionList in cls.actionMap.values():
             nItems = len( currentActionList )
             for index in range(nItems-1,-1,-1):
                 ( moduleID, key, fn ) = currentActionList[ index ]
@@ -1655,11 +1666,11 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         return [ "%s%d" % ( chr(ord('A') + cell[1] ), cell[0]+1 ) for cell in active_cells ]
 
     @classmethod
-    def setCPCWidget( cls, mid, w ):
+    def denoteCPCViewer( cls, mid ):
         ( sheetID, (row,col) ) = cls.getCellCoordinates( mid )
         cellStr = "%s%s" % ( chr(ord('A') + col ), row+1)
-        cls.cpcWidgets[cellStr] = w
-
+        cls.cpcModules[cellStr] = mid
+        
     @classmethod
     def show_configuration_widget(  cls, controller, version, plot_objs=[ None ] ):
         """  Config Command Filtering:
@@ -1672,11 +1683,25 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
         """
         from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper, CDMSPlotWidget   
         active_cells = cls.getActiveCellStrs()
+        try:
+            pname = plot_objs[0].name
+        except:
+            print>>sys.stderr, "No plots!"
+            return
         
-        if controller.name == "CPCViewer":
-            for active_cell in active_cells:
-                w = cls.cpcWidgets.get( active_cell, None )
-                if w: return w
+        cls.currentCPCWidget = None
+        if pname == "Unstructured Grid Visualization":
+            for active_cell in active_cells:               
+                cpc_mid = cls.cpcModules.get( active_cell, None )
+                if cpc_mid:
+                    cpcModule = ModuleStore.getModule( cpc_mid ) 
+                    w = cpcModule.getConfigWidget()
+                    plotter = cpcModule.getPlotter()  
+                    if cls.currentCPCWidget == None:
+                        cls.currentCPCWidget = w                        
+                    QObject.connect( cls.currentCPCWidget,  QtCore.SIGNAL("ConfigCmd"),     plotter.processConfigCmd  )
+                    QObject.connect( w,                     QtCore.SIGNAL("ConfigCmd"),     plotter.processConfigCmd  )
+            return cls.currentCPCWidget
         else:        
             pmods = set()
             memoryLogger.log( "show_configuration_widget" )

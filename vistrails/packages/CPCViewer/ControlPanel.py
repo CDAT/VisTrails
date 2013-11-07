@@ -724,24 +724,30 @@ class ConfigControlContainer(QtGui.QWidget):
     def categorySelected( self, iCatIndex ):
         self.emit( QtCore.SIGNAL("ConfigCmd"), ( "CategorySelected",  self.tabWidget.tabText(iCatIndex) ) )
 
-class ConfigurationGui(QtGui.QDialog):
+class CPCConfigGui(QtGui.QDialog):
 
-    def __init__(self, config_widget ):    
-        QtGui.QDialog.__init__(self, None)
+    def __init__(self, parent=None ):    
+        QtGui.QDialog.__init__( self, parent )
                 
         self.setWindowFlags(QtCore.Qt.Window)
         self.setModal(False)
         self.setWindowTitle('CPC Plot Config')
         layout = QtGui.QVBoxLayout()
         self.setLayout(layout)
-        
-        layout.addWidget( config_widget ) 
-        self.config_widget = config_widget     
+        self.config_widget = CPCConfigConfigurationWidget()
+        self.layout().addWidget( self.config_widget ) 
+        self.config_widget.build()
         self.resize(600, 450)
 
     def closeDialog( self ):
         self.config_widget.saveConfg()
         self.close()
+
+    def activate(self):
+        self.config_widget.activate()
+        
+    def getConfigWidget(self):
+        return self.config_widget
         
 class ConfigurationWidget(QtGui.QWidget):
 
@@ -850,6 +856,10 @@ class CPCConfigConfigurationWidget( ConfigurationWidget ):
 #        if args[0] == "SetSlicePosition":
 #            slicerCtrl = self.getConfigControl( "SlicerControl" )
 #            slicerCtrl.setSlicePosition( args[1] )
+
+    def askToSaveChanges(self):
+        pass
+#        self.disconnect( self, QtCore.SIGNAL("ConfigCmd") )
         
     def build( self, **args ):
         self.iColorCatIndex = self.addCategory( 'Color' )
@@ -884,20 +894,7 @@ class CPCConfigConfigurationWidget( ConfigurationWidget ):
         self.AnalysisCatIndex = self.addCategory( 'Analysis' )
         cparm = self.addParameter( self.AnalysisCatIndex, "Animation" )
         self.addConfigControl( self.AnalysisCatIndex, AnimationControl( cparm ) )
- 
-class CPCConfigGui( ConfigurationGui ):
-
-    def __init__(self):
-        self.cfg_widget = CPCConfigConfigurationWidget()    
-        ConfigurationGui.__init__(self,self.cfg_widget)
-        self.cfg_widget.build()
-        
-    def activate(self):
-        self.cfg_widget.activate()
-        
-    def getConfigWidget(self):
-        return self.cfg_widget
-       
+               
 if __name__ == '__main__':
     app = QtGui.QApplication(['CPC Config Dialog'])
     

@@ -7,6 +7,8 @@ from packages.vtDV3D.PersistentModule import *
 from packages.CPCViewer.PointCloudViewer import CPCPlot, kill_all_zombies
 from packages.CPCViewer.ControlPanel import CPCConfigGui, CPCConfigConfigurationWidget
 from  packages.vtDV3D.CDMS_VariableReaders import  CDMSReaderConfigurationWidget
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
 
 class PM_CPCViewer(PersistentVisualizationModule):
     """
@@ -45,7 +47,7 @@ class PM_CPCViewer(PersistentVisualizationModule):
             mdList = extractMetadata( cdms_var.fieldData )
             md = mdList[0]
             self.varname = md[ 'varName' ]
-            self.data_file = md[ 'dsid' ]
+            self.data_file = md[ 'file' ]
             self.set3DOutput( name="pointCloud" )
         
     def activateEvent( self, caller, event ):
@@ -55,16 +57,27 @@ class PM_CPCViewer(PersistentVisualizationModule):
             if self.plotter == None:
                 self.plotter = CPCPlot( self.renwin )  
                 self.plotter.init( init_args = ( self.grid_file, self.data_file, self.varname, self.height_varname ), n_overview_points=self.n_overview_points ) # , n_subproc_points=100000000 )
-
-                self.configDialog = CPCConfigGui()
-                w = self.configDialog.getConfigWidget()
-                w.connect( w, QtCore.SIGNAL("ConfigCmd"), self.plotter.processConfigCmd )
-            #    configDialog.connect( g, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )
-                self.configDialog.activate()
-                DV3DPipelineHelper.setCPCWidget( self.moduleID, w )
+                self.getConfigWidget()
+                DV3DPipelineHelper.denoteCPCViewer( self.moduleID )
                 self.render()
- 
-         
+
+    def persistCPCParameters(self):
+        if self.config_widget:
+            serializedParameters = self.config_widget.getParameterData()
+            parmRecList = [ ( 'cpcConfigData', [ serializedParameters, 0 ] ) ]
+            self.change_parameters( parmRecList )        
+                 
+    def getConfigWidget( self ):
+        self.config_widget = CPCConfigConfigurationWidget()
+        self.config_widget.build()
+        QObject.connect( self.config_widget, QtCore.SIGNAL("ConfigCmd"), self.plotter.processConfigCmd )
+    #    configDialog.connect( g, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )
+        self.config_widget.activate()
+        return self.config_widget
+    
+    def getPlotter(self):
+        return self.plotter
+     
 from packages.vtDV3D.WorkflowModule import WorkflowModule
 
 class CPCViewer(WorkflowModule):
@@ -73,8 +86,7 @@ class CPCViewer(WorkflowModule):
     
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args) 
-        
-        
+                
 class CPCViewerConfigurationWidget(StandardModuleConfigurationWidget):
 
     def __init__(self, module, controller, title, parent=None):
@@ -97,5 +109,9 @@ class CPCViewerConfigurationWidget(StandardModuleConfigurationWidget):
 
     def getParameters( self, module ):
         pass
+
+
+
+
 
 kill_all_zombies()

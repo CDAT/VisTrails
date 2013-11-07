@@ -190,7 +190,7 @@ def initialize(*args, **keywords):
 
     reg.add_module( CPCViewer, configureWidgetType=CPCViewerConfigurationWidget, namespace='vtk' )   
     reg.add_input_port( CPCViewer, "pointCloud", AlgorithmOutputModule3D )      
-    reg.add_input_port( CPCViewer, "portData",   [ ( String, 'serializedPortData' ), ( Integer, 'version' ) ], True   ) 
+    reg.add_input_port( CPCViewer, "cpcConfigData",   [ ( String, 'serializedConfigData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( CPCViewer, "pointCloud", AlgorithmOutputModule3D ) 
     CPCViewer.registerConfigurableFunctions( reg )
 

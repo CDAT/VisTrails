@@ -1800,10 +1800,12 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 #        return listContainer 
          
     def closeEvent(self, event):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
         self.askToSaveChanges()
         w = self.getTopLevelWidget()
         w.close()
-        
+        DV3DPipelineHelper.disconnectCPCWidgets()
+                
     def getTopLevelWidget(self):
         topWidget = self
         while True:
