@@ -1,4 +1,4 @@
-import sys
+import sys, collections
 import os.path
 import vtk, time
 from PyQt4 import QtCore, QtGui
@@ -8,7 +8,20 @@ POS_VECTOR_COMP = [ 'xpos', 'ypos', 'zpos' ]
 SLICE_WIDTH_LR_COMP = [ 'xlrwidth', 'ylrwidth', 'zlrwidth' ]
 SLICE_WIDTH_HR_COMP = [ 'xhrwidth', 'yhrwidth', 'zhrwidth' ]
 
+def deserialize_value( sval ):
+    try:
+        return int(sval)
+    except ValueError:
+        try:
+            return float(sval)
+        except ValueError:
+            return sval
 
+def get_value_decl( val ):
+    if isinstance( val, int ): return "int"
+    if isinstance( val, float ): return "float"
+    return "str"
+       
 class ConfigParameter( QtCore.QObject ):
     
     @staticmethod
@@ -22,7 +35,30 @@ class ConfigParameter( QtCore.QObject ):
         super( ConfigParameter, self ).__init__() 
         self.name = name 
         self.values = args
+        self.valueKeyList.extend( args.keys() ) 
         
+    def addValueKey( self, key ):
+        if not (key in self.valueKeyList):
+            self.valueKeyList.append( key ) 
+    
+    def values_decl(self):
+        decl = []
+        for key in self.valueKeyList:
+            val = self.values.get( key, None )
+            if val: decl.append( get_value_decl( val )  ) 
+        return decl
+                            
+    def pack( self ):
+        try:
+            return ( self.name, [ str( self.values[key] ) for key in self.valueKeyList ] )
+        except KeyError:
+            print "Error packing parameter %s%s. Values = %s " % ( self.name, str(self.valueKeyList), str(self.values))
+
+    def unpack( self, value_strs ):
+        if len( value_strs ) <> len( self.values.keys() ): print>>sys.stderr, " Error: parameter structure mismatch in %s ( %d vs %d )" % ( self.name,  len( value_strs ), len( self.values.keys() ) )
+        for ( key, str_val ) in enumerate( self.valueKeyList, value_strs ):
+            self.values[key] = deserialize_value( str_val ) 
+            
     def __len__(self):
         return len(self.values)
 
@@ -32,12 +68,14 @@ class ConfigParameter( QtCore.QObject ):
     def __setitem__(self, key, value ):
         self.values[key] = value 
         self.emit( QtCore.SIGNAL("ValueChanged"), ( self.name, key, value ) )
+        self.addValueKey( key )
 
     def __call__(self, **args ):
         self.values.update( args )
         args1 = [ self.name ]
         for item in args.items():
             args1.extend( list(item) )
+            self.addValueKey( item[0] )
         self.emit( QtCore.SIGNAL("ValueChanged"), args1 )
          
     def getName(self):
@@ -45,6 +83,7 @@ class ConfigParameter( QtCore.QObject ):
     
     def initialize( self, config_str ):
         self.values = eval( config_str )
+        self.sort()
 
     def serialize( self ):
         return str( self.values )
@@ -54,6 +93,7 @@ class ConfigParameter( QtCore.QObject ):
 
     def setValue( self, key, val ):
         self.values[ key ] = val
+        self.addValueKey( key )
 
     def incrementValue( self, index, inc ):
         self.values[ index ] = self.values[ index ] + inc
@@ -858,8 +898,28 @@ class CPCConfigConfigurationWidget( ConfigurationWidget ):
 #            slicerCtrl.setSlicePosition( args[1] )
 
     def askToSaveChanges(self):
-        pass
+        self.emit( QtCore.SIGNAL("Close"), self.getParameterPersistenceList() )
 #        self.disconnect( self, QtCore.SIGNAL("ConfigCmd") )
+
+    def getParameterPersistenceList(self):
+        plist = []
+        for cfg_item in self.config_params.items():
+            key = cfg_item[0]
+            cfg_spec = cfg_item[1].pack()
+            plist.append( ( key, cfg_spec ) )
+        return plist
+
+    def initialize( self, parm_name, parm_values ):
+        cfg_parm = self.config_params.get( parm_name, None )
+        if cfg_parm: cfg_parm.unpack( parm_values )
+
+    def getPersistentParameterSpecs(self):
+        plist = []
+        for cfg_item in self.config_params.items():
+            key = cfg_item[0]
+            values_decl = cfg_item[1].values_decl()
+            plist.append( ( key, values_decl ) )
+        return plist
         
     def build( self, **args ):
         self.iColorCatIndex = self.addCategory( 'Color' )
@@ -879,8 +939,6 @@ class CPCConfigConfigurationWidget( ConfigurationWidget ):
         self.addConfigControl( self.iPointsCatIndex, PointSizeSliderControl( cparm ) )
         cparm = self.addParameter( self.iPointsCatIndex, "Max Resolution", value=1.0 )
         self.addConfigControl( self.iPointsCatIndex, SliderControl( cparm ) )
-
-
         self.GeometryCatIndex = self.addCategory( 'Geometry' )
         cparm = self.addParameter( self.GeometryCatIndex, "Projection", choices = [ "Lat/Lon", "Spherical" ], init_index=0 )
         self.addConfigControl( self.GeometryCatIndex, RadioButtonSelectionControl( cparm ) )

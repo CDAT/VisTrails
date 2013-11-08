@@ -6,15 +6,23 @@ Created on Oct 29, 2013
 from packages.vtDV3D.PersistentModule import *
 from packages.CPCViewer.PointCloudViewer import CPCPlot, kill_all_zombies
 from packages.CPCViewer.ControlPanel import CPCConfigGui, CPCConfigConfigurationWidget
-from  packages.vtDV3D.CDMS_VariableReaders import  CDMSReaderConfigurationWidget
+from packages.vtDV3D.CDMS_VariableReaders import  CDMSReaderConfigurationWidget
+from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+
+def get_vt_decl( val_decl_str ):
+    import core.modules.basic_modules as basic_modules
+    if val_decl_str == "int":   return basic_modules.Integer 
+    if val_decl_str == "float": return basic_modules.Float 
+    if val_decl_str == "str":   return basic_modules.String 
 
 class PM_CPCViewer(PersistentVisualizationModule):
     """
         This module wraps the CPCViewer package. 
 
-    """       
+    """
+    PortSpecs = None       
     
     def __init__(self, mid, **args):
         PersistentVisualizationModule.__init__(self, mid, **args)
@@ -25,6 +33,7 @@ class PM_CPCViewer(PersistentVisualizationModule):
         self.varname = None
         self.height_varname = None
         self.plotter = None
+        self.addConfigurableFunctions()
 
     def initializeInputs( self, **args ):        
         isAnimation = args.get( 'animate', False )
@@ -51,7 +60,6 @@ class PM_CPCViewer(PersistentVisualizationModule):
             self.set3DOutput( name="pointCloud" )
         
     def activateEvent( self, caller, event ):
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
         PersistentVisualizationModule.activateEvent( self, caller, event )
         if self.renwin <> None:
             if self.plotter == None:
@@ -59,19 +67,33 @@ class PM_CPCViewer(PersistentVisualizationModule):
                 self.plotter.init( init_args = ( self.grid_file, self.data_file, self.varname, self.height_varname ), n_overview_points=self.n_overview_points ) # , n_subproc_points=100000000 )
                 self.getConfigWidget()
                 DV3DPipelineHelper.denoteCPCViewer( self.moduleID )
-                self.render()
+                self.render()       
 
-    def persistCPCParameters(self):
-        if self.config_widget:
-            serializedParameters = self.config_widget.getParameterData()
-            parmRecList = [ ( 'cpcConfigData', [ serializedParameters, 0 ] ) ]
-            self.change_parameters( parmRecList )        
-                 
+    def closeCPCWidget( self, parmRecList ):
+        DV3DPipelineHelper.disconnectCPCWidgets()
+        self.change_parameters( parmRecList ) 
+        
+    def addConfigurableFunctions( self ):
+        if PM_CPCViewer.PortSpecs == None:
+            config_widget = CPCConfigConfigurationWidget()
+            config_widget.build()
+            PM_CPCViewer.PortSpecs = config_widget.getPersistentParameterSpecs()
+        for port_spec in PM_CPCViewer.PortSpecs:
+            name = port_spec[0]
+            values_decl_list = port_spec[1]
+            signature = [ get_vt_decl(val_decl_str) for val_decl_str in values_decl_list]
+            self.configurableFunctions[name] = ConfigurableFunction( name, signature )
+                       
     def getConfigWidget( self ):
         self.config_widget = CPCConfigConfigurationWidget()
         self.config_widget.build()
         QObject.connect( self.config_widget, QtCore.SIGNAL("ConfigCmd"), self.plotter.processConfigCmd )
+        QObject.connect( self.config_widget, QtCore.SIGNAL("Close"), self.closeCPCWidget )
     #    configDialog.connect( g, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )
+        for port_spec in PM_CPCViewer.PortSpecs:
+            pname = port_spec[0]
+            parm_values = self.getInputValue( pname )
+            if parm_values: self.config_widget.initialize( pname, parm_values )
         self.config_widget.activate()
         return self.config_widget
     
