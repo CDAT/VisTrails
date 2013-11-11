@@ -31,7 +31,6 @@ from gui.uvcdat.plot import PlotProperties
 from gui.uvcdat.dockcalculator import DockCalculator
 from gui.uvcdat import animationWidget
 from gui.uvcdat.cdmsCache import CdmsCacheWidget
-from gui.uvcdat.diagnosticsDockWidget import DiagnosticsDockWidget
 
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 import gui.uvcdat.uvcdat_rc
@@ -163,6 +162,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         try:
             # For now only puts the diagnostics widget if the metrics module is present
             import metrics
+            from gui.uvcdat.diagnosticsDockWidget import DiagnosticsDockWidget
             self.diagnosticsWidget = DiagnosticsDockWidget(self)
             self.diagnosticsWidget.hide()
             self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.diagnosticsWidget)
