@@ -35,7 +35,7 @@ class ConfigParameter( QtCore.QObject ):
         super( ConfigParameter, self ).__init__() 
         self.name = name 
         self.values = args
-        self.valueKeyList.extend( args.keys() ) 
+        self.valueKeyList = list( args.keys() )
         
     def addValueKey( self, key ):
         if not (key in self.valueKeyList):
@@ -45,7 +45,7 @@ class ConfigParameter( QtCore.QObject ):
         decl = []
         for key in self.valueKeyList:
             val = self.values.get( key, None )
-            if val: decl.append( get_value_decl( val )  ) 
+            if ( val <> None ): decl.append( get_value_decl( val )  ) 
         return decl
                             
     def pack( self ):
@@ -55,7 +55,8 @@ class ConfigParameter( QtCore.QObject ):
             print "Error packing parameter %s%s. Values = %s " % ( self.name, str(self.valueKeyList), str(self.values))
 
     def unpack( self, value_strs ):
-        if len( value_strs ) <> len( self.values.keys() ): print>>sys.stderr, " Error: parameter structure mismatch in %s ( %d vs %d )" % ( self.name,  len( value_strs ), len( self.values.keys() ) )
+        if len( value_strs ) <> len( self.values.keys() ): 
+            print>>sys.stderr, " Error: parameter structure mismatch in %s ( %d vs %d )" % ( self.name,  len( value_strs ), len( self.values.keys() ) )
         for ( key, str_val ) in enumerate( self.valueKeyList, value_strs ):
             self.values[key] = deserialize_value( str_val ) 
             
@@ -906,7 +907,7 @@ class CPCConfigConfigurationWidget( ConfigurationWidget ):
         for cfg_item in self.config_params.items():
             key = cfg_item[0]
             cfg_spec = cfg_item[1].pack()
-            plist.append( ( key, cfg_spec ) )
+            plist.append( ( key, cfg_spec[1] ) )
         return plist
 
     def initialize( self, parm_name, parm_values ):

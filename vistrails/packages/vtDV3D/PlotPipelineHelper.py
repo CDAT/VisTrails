@@ -692,15 +692,16 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 
     @classmethod
     def disconnectCPCWidgets(cls):
-        if cls.currentCPCWidget <> None:
-            active_cells = cls.getActiveCellStrs()
-            for active_cell in active_cells:
-                cpc_mid = cls.cpcModules.get( active_cell, None )
-                if cpc_mid:
-                    cpcModule = ModuleStore.getModule( cpc_mid )
-                    cpcModule.persistCPCParameters() 
-#                     QObject.disconnect( cls.currentCPCWidget, QtCore.SIGNAL("ConfigCmd"), cpcModule.getPlotter(), 'processConfigCmd' )
-            cls.currentCPCWidget = None
+        cls.currentCPCWidget = None
+        
+#         if cls.currentCPCWidget <> None:
+#             active_cells = cls.getActiveCellStrs()
+#             for active_cell in active_cells:
+#                 cpc_mid = cls.cpcModules.get( active_cell, None )
+#                 if cpc_mid:
+#                     cpcModule = ModuleStore.getModule( cpc_mid )
+#                     cpcModule.persistCPCParameters() 
+# #                     QObject.disconnect( cls.currentCPCWidget, QtCore.SIGNAL("ConfigCmd"), cpcModule.getPlotter(), 'processConfigCmd' )
 
     @classmethod
     def clearActionMap(cls):

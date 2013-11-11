@@ -32,8 +32,11 @@ class PM_CPCViewer(PersistentVisualizationModule):
         self.data_file = None
         self.varname = None
         self.height_varname = None
+        try:
+            self.addConfigurableFunctions()
+        except Exception, err:
+            print str(err)
         self.plotter = None
-        self.addConfigurableFunctions()
 
     def initializeInputs( self, **args ):        
         isAnimation = args.get( 'animate', False )
@@ -93,7 +96,8 @@ class PM_CPCViewer(PersistentVisualizationModule):
         for port_spec in PM_CPCViewer.PortSpecs:
             pname = port_spec[0]
             parm_values = self.getInputValue( pname )
-            if parm_values: self.config_widget.initialize( pname, parm_values )
+            if parm_values <> None: 
+                self.config_widget.initialize( pname, parm_values )
         self.config_widget.activate()
         return self.config_widget
     
@@ -108,6 +112,7 @@ class CPCViewer(WorkflowModule):
     
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args) 
+        print " "
                 
 class CPCViewerConfigurationWidget(StandardModuleConfigurationWidget):
 
