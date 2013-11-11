@@ -367,17 +367,18 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                         
     def adjustSheetDimensions(self, row, col ):
         sheetTabWidget = getSheetTabWidget()
-        ( rc, cc ) = sheetTabWidget.getDimension()
-        rowChanged, colChanged = False, False
-        if row >= rc: 
-            rc = row + 1
-            rowChanged = True
-        if col >= cc: 
-            cc = col + 1
-            colChanged = True
-        if rowChanged or colChanged:    sheetTabWidget.setDimension( rc, cc )
-        if rowChanged:                  sheetTabWidget.rowSpinBoxChanged()            
-        if colChanged:                  sheetTabWidget.colSpinBoxChanged()
+        if sheetTabWidget:
+            ( rc, cc ) = sheetTabWidget.getDimension()
+            rowChanged, colChanged = False, False
+            if row >= rc: 
+                rc = row + 1
+                rowChanged = True
+            if col >= cc: 
+                cc = col + 1
+                colChanged = True
+            if rowChanged or colChanged:    sheetTabWidget.setDimension( rc, cc )
+            if rowChanged:                  sheetTabWidget.rowSpinBoxChanged()            
+            if colChanged:                  sheetTabWidget.colSpinBoxChanged()
 
     def getSelectedCells(self):
         cells = []
@@ -516,7 +517,8 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.render()  
         
     def clearWidget(self, sheetName, row, col ): 
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper      
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
+        from packages.uvcdat_cdms.init import StandardGrid    
         from packages.vtDV3D.InteractiveConfiguration import IVModuleConfigurationDialog, UVCDATGuiConfigFunction
         if ( self.location.row == row ) and ( self.location.col == col ):
             ( cell_sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
@@ -531,12 +533,13 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
             cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )  
     #        print " --- Clearing Cell %s ---" % cell_address
             pipeline = DV3DPipelineHelper.getPipeline( cell_address, sheetName )
-            if pipeline:  
-                UVCDATGuiConfigFunction.clearModules( pipeline )
+            if pipeline == None: pipeline = self.getCurrentPipeline()
+            if pipeline: UVCDATGuiConfigFunction.clearModules( pipeline )
             
             IVModuleConfigurationDialog.reset()
+            StandardGrid.clear_cache()
             self.cellWidget = None 
-            self.builtCellWidget = False                        
+            self.builtCellWidget = False                                 
         
     def buildWidget(self): 
         from packages.spreadsheet.spreadsheet_controller import spreadsheetController 
@@ -577,13 +580,17 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 
                 cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )
                 PersistentVisualizationModule.renderMap[ cell_address ] = self.iren
-                prj_controller = api.get_current_project_controller()
-                sheetName = prj_controller.current_sheetName
-                cell_location = [ prj_controller.name, sheetName, cell_address ]
-                pipeline = self.getCurrentPipeline()             
-                for mid in pipeline.modules.keys():
-                    pmod = ModuleStore.getModule( mid ) 
-                    if pmod: pmod.setCellLocation( cell_location )
+                prj_controller = self.get_current_project_controller()
+                if prj_controller:
+                    sheetName = prj_controller.current_sheetName
+                    cell_location = [ prj_controller.name, sheetName, cell_address ]
+                else:
+                    cell_location = [ "Project 1", "Sheet 1", cell_address ]
+                pipeline = self.getCurrentPipeline() 
+                if pipeline:            
+                    for mid in pipeline.modules.keys():
+                        pmod = ModuleStore.getModule( mid ) 
+                        if pmod: pmod.setCellLocation( cell_location )
                     
                 self.builtCellWidget = True
                 
@@ -873,7 +880,7 @@ class PM_MapCell3D( PM_DV3DCell ):
         self.baseMapActor = None
         self.enableBasemap = True
         self.map_opacity = [ 0.4, 0.4 ]
-        self.addConfigurableLevelingFunction( 'map_opacity', 'M', label='Base Map Opacity', rangeBounds=[ 0.0, 1.0 ],  setLevel=self.setMapOpacity, activeBound='min',  getLevel=self.getMapOpacity, isDataValue=False, layerDependent=True, bound = False )
+        self.addConfigurableLevelingFunction( 'map_opacity', 'M', label='Base Map Opacity', rangeBounds=[ 0.0, 1.0 ],  setLevel=self.setMapOpacity, activeBound='min',  getLevel=self.getMapOpacity, isDataValue=False, layerDependent=True, group=ConfigGroup.BaseMap, bound = False )
 
     def updateModule( self, **args ):
 #        print "Update DV3D Cell, mid = %s, location = %s, time = %s" % ( str(self.moduleID), str((self.location.col,self.location.row)), str(self.timeIndex) )
@@ -907,13 +914,16 @@ class PM_MapCell3D( PM_DV3DCell ):
         self.updateMapOpacity() 
 
     def updateMapOpacity(self, cmap_index=0 ):
-        self.baseMapActor.SetOpacity( self.map_opacity[0] )
-        self.render()
+        if self.baseMapActor:
+            self.baseMapActor.SetOpacity( self.map_opacity[0] )
+            self.render()
         
     def buildRendering(self):
         PM_DV3DCell.buildRendering( self )
+        md = self.getInputSpec().getMetadata()
+        latLonGrid = md.get( 'latLonGrid', True )
         self.enableBasemap = self.getInputValue( "enable_basemap", True )
-        if self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
+        if latLonGrid and self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
             if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
             world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None 
             map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
@@ -974,18 +984,6 @@ class PM_MapCell3D( PM_DV3DCell ):
             self.baseMapActor.SetInput( baseImage )
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]        
             self.renderer.AddActor( self.baseMapActor )
-            
-#            self.testPlotUtils()
-
-
-#    def testPlotUtils(self):
-#        from api import get_current_project_controller
-#        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
-#        pipeline = self.getCurrentPipeline()
-#        plot_modules = DV3DPipelineHelper.find_dv3d_plot_modules( pipeline )
-#        vars = DV3DPipelineHelper.find_variables_connected_to_plot_module( pipeline,  plot_modules[0] )
-#        print ""
-
 
     def ComputeCornerPosition( self ):
         if (self.roi[0] >= -180) and (self.roi[1] <= 180) and (self.roi[1] > self.roi[0]):

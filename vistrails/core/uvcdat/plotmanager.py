@@ -34,7 +34,7 @@
 
 import os, copy
 import ConfigParser
-from PyQt4 import QtCore
+from PyQt4 import QtCore, QtGui
 from core.uvcdat.plot_registry import PlotRegistry
 from core.uvcdat.utils import UVCDATInternalError
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
@@ -129,7 +129,7 @@ class PlotManager(QtCore.QObject):
                     print "Error when loading package_config_file: %s" % plot_package_config_file, str(e)
                     import traceback
                     traceback.print_exc()
-                    
+                                
     def load_vcs_plots(self):
         from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
         from gui.uvcdat.uvcdatCommons import plotTypes, gmInfos

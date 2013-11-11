@@ -1,4 +1,7 @@
 """Main file for the VisTrails distribution."""
+import sys, os
+system_stderr = sys.stderr
+system_stdout = sys.stdout
 
 def disable_lion_restore():
     """ Prevent Mac OS 10.7 to restore windows state since it would
@@ -26,8 +29,6 @@ def execute_vistrail( *args, **kwargs ):
 
     from PyQt4 import QtGui
     import gui.application
-    import sys
-    import os
     try:
         v = gui.application.start_application()
         if v != 0:
@@ -46,9 +47,9 @@ def execute_vistrail( *args, **kwargs ):
         app = gui.application.get_vistrails_application()
         if app:
             app.finishSession()
-        print "Uncaught exception on initialization: %s" % e
+        print>>original_stderr, "Uncaught exception on initialization: %s" % e
         import traceback
-        traceback.print_exc()
+        traceback.print_exc( None, original_stderr )
         sys.exit(255)
 
     resource_path = kwargs.get( 'dir', None )
@@ -99,7 +100,7 @@ if __name__ == '__main__':
         print "Uncaught exception on initialization: %s" % e
         import traceback
         traceback.print_exc()
-        sys.exit(255)
+ 
     ## trying to load up file/var
     print app.uvcdatLoadFileStart,app.uvcdatLoadVariableStart
     if app.uvcdatLoadFileStart is not None:

@@ -1215,10 +1215,9 @@ class QAxisList(QtGui.QWidget):
         return self.cdmsFile.id
 
     def getVar(self):
-        if self.cdmsFile is None:
-            return self.var
-        else:
+        if self.cdmsFile is not None and isinstance(self.var, basestring):
             return self.cdmsFile[self.var]
+        return self.var
 
     def getVarID(self):
         return self.var.id

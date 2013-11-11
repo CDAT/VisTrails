@@ -246,9 +246,13 @@ class InputSpecs:
             gridOrigin = self.input().GetOrigin()
             world_coords = [ gridOrigin[i] + image_coords[i]*gridSpacing[i] for i in range(3) ]
         return world_coords
-    def getWorldCoord( self, image_coord, iAxis ):
-        plotType = self.metadata[ 'plotType' ]                   
-        axisNames = [ 'Longitude', 'Latitude', 'Time' ] if plotType == 'zyt'  else [ 'Longitude', 'Latitude', 'Level' ]
+    
+    def getWorldCoord( self, image_coord, iAxis, latLonGrid  ):
+        plotType = self.metadata[ 'plotType' ] 
+        if plotType == 'zyt':                  
+            axisNames = [ 'Longitude', 'Latitude', 'Time' ] if latLonGrid else [ 'X', 'Y', 'Time' ]
+        else:
+            axisNames =  [ 'Longitude', 'Latitude', 'Level' ] if latLonGrid else [ 'X', 'Y', 'Level' ]
         try:
             axes = [ 'lon', 'lat', 'time' ] if plotType == 'zyt'  else [ 'lon', 'lat', 'lev' ]
             world_coord = self.metadata[ axes[iAxis] ][ image_coord ]
@@ -507,9 +511,9 @@ class PersistentModule( QObject ):
         self.timeValue = cdtime.reltime( 0.0, self.referenceTimeUnits ) 
         self.required_dtype = {}
         if self.createColormap:
-            self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Colormap', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True )
+            self.addUVCDATConfigGuiFunction( 'colormap', ColormapConfigurationDialog, 'c', label='Choose Colormap', setValue=self.setColormap, getValue=self.getColormap, layerDependent=True, group=ConfigGroup.Color )
 #        self.addConfigurableGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue )
-        self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue, persist=False, cellsOnly=True )
+        self.addUVCDATConfigGuiFunction( self.timeStepName, AnimationConfigurationDialog, 'a', label='Animation', setValue=self.setTimeValue, getValue=self.getTimeValue, persist=False, cellsOnly=True, group=ConfigGroup.Display )
         
 #        print "**********************************************************************"
 #        print "Create Module [%d] : %s (%x)" % ( self.moduleID, self.__class__.__name__, id(self) )
@@ -548,8 +552,11 @@ class PersistentModule( QObject ):
 
     def onCurrentPage(self):
         import api
-        prj_controller = api.get_current_project_controller()
-        return ( self.cell_location[0] == prj_controller.name ) and ( self.cell_location[1] == prj_controller.current_sheetName )
+        try:
+            prj_controller = api.get_current_project_controller()
+            return ( self.cell_location[0] == prj_controller.name ) and ( self.cell_location[1] == prj_controller.current_sheetName )
+        except:
+            return True
         
     def clearReferrents(self):
         
@@ -660,25 +667,30 @@ class PersistentModule( QObject ):
 
     def initiateParameterUpdate( self, parmName ):
         self.parmUpdating[parmName] = True     
-     
-#    def addAnnotation( self, id, note ): 
-#        if self.isClient: return 
-#        import api
-#        controller = api.get_current_controller()
-#        try:
-#            controller.add_annotation( (id, str(note)), self.moduleID ) 
-#        except: pass
-        
+             
     def getOutputRecord( self, ndim  ):
         return None
     
     def setLabel( self, label ):      
         if self.isClient: return
-        import api
-        controller = api.get_current_controller()
+        controller = self.get_current_controller()
         controller.add_annotation( ('__desc__', str(label)), self.moduleID ) 
         controller.current_pipeline_view.recreate_module( controller.current_pipeline, self.moduleID )
         pass
+    
+    def get_current_controller(self):
+        try:
+            import api
+            return api.get_current_controller()
+        except:
+            return self.wmod.moduleInfo.get( 'controller', None ) if self.wmod else None 
+
+    def get_current_project_controller(self):
+        try:
+            import api
+            return api.get_current_project_controller()
+        except:
+            return None
 
     def updateTextDisplay( self, text = None, **args ):
         pass
@@ -714,9 +726,8 @@ class PersistentModule( QObject ):
         layerCache[parameter_name] = value 
 
     def getTaggedParameterValue(self, parameter_name ):
-        import api
         tag = self.getParameterId()
-        ctrl = api.get_current_controller()
+        ctrl = self.get_current_controller()
         pval = None
         if tag <> None: 
             try:
@@ -801,7 +812,6 @@ class PersistentModule( QObject ):
 #            self.addAnnotation( 'datasetId', self.datasetId  ) 
     
     def getInputValue1( self, inputName, default_value = None, **args ):
-        import api
         if inputName == 'task':
             pass
         self.getDatasetId( **args )
@@ -810,7 +820,7 @@ class PersistentModule( QObject ):
         if self.wmod and ( self.isClient or not ( isLayerDep and self.newLayerConfiguration ) ):
             pval = self.wmod.forceGetInputFromPort( inputName, default_value ) 
         else:
-            ctrl, tag = api.get_current_controller(), self.getParameterId()
+            ctrl, tag = self.get_current_controller(), self.getParameterId()
             tagged_version_number = ctrl.current_version
             if isLayerDep:
                 versions = self.getTaggedVersionList( tag )
@@ -832,11 +842,10 @@ class PersistentModule( QObject ):
         return pval
 
     def getInputValue( self, inputName, default_value = None, **args ):
-        import api
         self.getDatasetId( **args )
         pval = self.getParameter( inputName, None )
 #        if inputName == 'levelRangeScale':
-#            controller = api.get_current_controller()
+#            controller = self.get_current_controller()
 #            print ' Input levelRangeScale value, MID[%d], ctrl_version=%d, parameter value = %s, (defval=%s)'  % ( self.moduleID, controller.current_version, str(pval), str(default_value) )            
         if (pval == None) and (self.wmod <> None):
             pval = self.wmod.forceGetInputFromPort( inputName, default_value )             
@@ -845,7 +854,6 @@ class PersistentModule( QObject ):
         return pval
 
     def getInputValues( self, inputName, **args ):
-        import api
         self.getDatasetId( **args )
         pval = self.getParameter( inputName, None )
         if (pval == None) and (self.wmod <> None):
@@ -1223,19 +1231,7 @@ class PersistentModule( QObject ):
             if (configFunct.type == 'leveling') or (configFunct.type == 'generic'):
                 return True
         return False
-    
-#    def updateFunction(self, parameter_name, output ):
-#        import api 
-#        param_values_str = [ str(x) for x in output ] if isList(output) else str( output ) 
-#        controller = api.get_current_controller()
-#        module = controller.current_pipeline.modules[ self.moduleID ]
-#        try:
-#            controller.update_function( module, parameter_name, param_values_str, -1L, []  )
-#        except IndexError, err:
-#            print "Error updating parameter %s on module %s: %s" % ( parameter_name, getClassName( self ), str(err) )
-#            pass 
-#        return controller
-        
+            
     def getParameterId( self, parmName = None, input_index=0 ):
         parmIdList = []
         ispec = self.inputSpecs.get( input_index, None )
@@ -1246,8 +1242,7 @@ class PersistentModule( QObject ):
         return 'all' 
     
     def tagCurrentVersion( self, tag ):
-        import api
-        ctrl = api.get_current_controller()  
+        ctrl = self.get_current_controller()  
         versionList = self.taggedVersionMap.setdefault( tag, [] )
         if (not versionList) or (versionList[-1] < ctrl.current_version):
             versionList.append( ctrl.current_version )
@@ -1256,110 +1251,23 @@ class PersistentModule( QObject ):
 
     def getTaggedVersionList( self, tag ):
         return self.taggedVersionMap.get( tag, None )
-    
-#    def persistVersionMap( self ): 
-#        serializedVersionMap = encodeToString( self.taggedVersionMap ) 
-#        self.addAnnotation( 'taggedVersionMap', serializedVersionMap )
-        
-#    def getAnnotation( self, key, default_value = None ):
-#        module = self.getRegisteredModule()
-#        if (module and module.has_annotation_with_key(key)): return module.get_annotation_by_key(key).value
-#        return default_value
-
-#    def initVersionMap( self ): 
-#        if (self.moduleID >= 0):
-#            serializedVersionMap = self.getAnnotation('taggedVersionMap')
-#            if serializedVersionMap: 
-#                try:
-#                    self.taggedVersionMap = decodeFromString( serializedVersionMap.strip(), {} ) 
-#                    for tagItem in self.taggedVersionMap.items():
-#                        for version in tagItem[1]:
-#                            self.versionTags[ version ] = tagItem[0]
-#                except Exception, err:
-#                    print "Error unpacking taggedVersionMap, serialized data: %s, err: %s" % ( serializedVersionMap, str(err) )
-#                    self.taggedVersionMap = {}
-                
+                    
     def getTaggedVersion( self, tag ):
         versionList = self.taggedVersionMap.get( tag, None )
         return versionList[-1] if versionList else -1                     
 
-#    def persistParameter( self, parameter_name, output, **args ):
-#        if output <> None: 
-#            import api
-#            DV3DConfigurationWidget.savingChanges = True
-#            ctrl = api.get_current_controller()
-#            param_values_str = [ str(x) for x in output ] if isList(output) else str( output )  
-#            v0 = ctrl.current_version
-#            api.change_parameter( self.moduleID, parameter_name, param_values_str )
-#            v1 = ctrl.current_version
-#            tag = self.getParameterId()             
-#            taggedVersion = self.tagCurrentVersion( tag )
-#            new_parameter_id = args.get( 'parameter_id', tag )
-#            self.setParameter( parameter_name, output, new_parameter_id )
-#            print " PM: Persist Parameter %s -> %s, tag = %s, taggedVersion=%d, new_id = %s, version => ( %d -> %d ), module = %s" % ( parameter_name, str(output), tag, taggedVersion, new_parameter_id, v0, v1, getClassName( self ) )
-#            DV3DConfigurationWidget.savingChanges = False
 
     def refreshVersion(self):
         pass
 
-#    def change_parameters1( self, parmRecList, controller ): 
-#        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper         
-#        """change_parameters(
-#                            parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
-#                            controller: VistrailController,
-#                            ) -> None
-#        Note: param_list is a list of strings no matter what the parameter type!
-#        """
-#        try:
-##            controller.current_pipeline = self.pipeline # DV3DPipelineHelper.getPipeline( cell_address )
-##            module = self.pipeline.modules[self.moduleID]            #    controller.update_functions( module, parmRecList )
-# #    controller.update_functions( module, parmRecList )
-#            cur_version = None
-#            try:
-#                module = controller.current_pipeline.modules[self.moduleID] 
-#            except KeyError:
-#                if hasattr(controller, 'uvcdat_controller'):
-#                    cur_version = controller.current_version
-#                    ( sheetName, cell_addr ) = DV3DPipelineHelper.getCellAddress( self.pipeline )
-#                    coords = ( ord(cell_addr[0])-ord('A'), int( cell_addr[1] ) - 1 )
-#                    cell = controller.uvcdat_controller.sheet_map[ sheetName ][ coords ]
-#                    controller.change_selected_version( cell.current_parent_version )
-#                    print " _________________________________ Changing controller version: %d -> %d based on cell [%s]%s  _________________________________ " % ( cur_version, cell.current_parent_version, sheetName, str(coords) )
-#                    module = controller.current_pipeline.modules[ self.moduleID ] 
-#                else:
-#                    print>>sys.stderr, "Error changing parameter in module %d, parm: %s: Wrong controller version." % ( self.moduleID, str(parmRecList) )                          
-#            op_list = []
-#            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
-#            for parmRec in parmRecList:  op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
-#            action = create_action( op_list ) 
-#            controller.add_new_action(action)
-#            controller.perform_action(action)
-#            if cur_version: controller.change_selected_version(cur_version) 
-#            if hasattr(controller, 'uvcdat_controller'):
-#                controller.uvcdat_controller.cell_was_changed(action)
-#        except Exception, err:
-#            print>>sys.stderr, "Error changing parameter in module %d: parm: %s, error: %s" % ( self.moduleID, str(parmRecList), str(err) )
-
-#    def adjustControllerVersion( self, controller ):
-#        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper         
-#        cur_version = None
-#        if hasattr(controller, 'uvcdat_controller') and not self.moduleID in controller.current_pipeline.modules :
-#            cur_version = controller.current_version
-#            ( sheetName, address ) = DV3DPipelineHelper.getCellAddress( self.pipeline )
-#            sheetName = sheetTabWidget.getSheetName()
-#            coords = ( ord(cell_addr[0])-ord('A'), int( cell_addr[1] ) - 1 )
-#            cell = controller.uvcdat_controller.sheet_map[ sheetName ][ coords ]
-#            controller.change_selected_version( cell.current_parent_version )
-#            print " _________________________________ Changing controller version: %d -> %d based on cell [%s]%s  _________________________________ " % ( cur_version, cell.current_parent_version, sheetName, str(coords) )
-#        return cur_version
-#            
-
     def getCurrentPipeline( self ):
-        import api
         from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
         try:
             ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
-            proj_controller = api.get_current_project_controller()
+            proj_controller = self.get_current_project_controller()
+            if proj_controller == None:
+                controller = self.get_current_controller()
+                return controller.current_pipeline if controller else None
             controller =  proj_controller.vt_controller 
             if self.update_proj_controller:
                 pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
@@ -1389,18 +1297,20 @@ class PersistentModule( QObject ):
         config_list = []
         try:
             ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
-            proj_controller = api.get_current_project_controller()
-            if ( sheetName <> proj_controller.current_sheetName ): return
-            controller =  proj_controller.vt_controller 
-            if self.update_proj_controller:
-                pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
-                if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
-                    proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
-                else: pcoords = None 
-            cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
-            current_version = cell.current_parent_version 
-            print " Change parameters, current version = %d, current_parent_version = %d " % ( controller.current_version, current_version )
-            controller.change_selected_version( current_version )
+            proj_controller = self.get_current_project_controller()
+            if proj_controller == None:
+                controller = self.get_current_controller()
+            else:
+                if ( sheetName <> proj_controller.current_sheetName ): return
+                controller =  proj_controller.vt_controller 
+                if self.update_proj_controller:
+                    pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
+                    if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
+                        proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+                    else: pcoords = None 
+                cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
+                current_version = cell.current_parent_version 
+                controller.change_selected_version( current_version )
             pipeline = controller.vistrail.getPipeline( current_version )
         except Exception, err:
             print>>sys.stderr, "Error getting current pipeline: %s " % str( err )
@@ -1626,13 +1536,15 @@ class PersistentVisualizationModule( PersistentModule ):
     def setInputZScale( self, zscale_data, input_index=0, **args  ):
         ispec = self.inputSpecs[ input_index ] 
         if ispec.input() <> None:
-            spacing = ispec.input().GetSpacing()
+            input = ispec.input()
+            ns = input.GetNumberOfScalarComponents()
+            spacing = input.GetSpacing()
             ix, iy, iz = spacing
             sz = zscale_data[1]
             if iz <> sz:
 #                print " PVM >---------------> Change input zscale: %.4f -> %.4f" % ( iz, sz )
-                ispec.input().SetSpacing( ix, iy, sz )  
-                ispec.input().Modified() 
+                input.SetSpacing( ix, iy, sz )  
+                input.Modified() 
                 self.processScaleChange( spacing, ( ix, iy, sz ) )
                 return True
         return False
@@ -1689,8 +1601,7 @@ class PersistentVisualizationModule( PersistentModule ):
              
     def getDownstreamCellModules( self, selectedOnly=False ): 
         from packages.vtDV3D import ModuleStore
-        import api
-        controller = api.get_current_controller()
+        controller = self.get_current_controller()
         moduleIdList = [ self.moduleID ]
         rmodList = []
         while moduleIdList:
@@ -2332,17 +2243,26 @@ class PersistentVisualizationModule( PersistentModule ):
              
     def onKeyPress( self, caller, event ):
         return 0
+    
+    def getSheetAddress(self):
+        sheet_addr = "Project 1:Sheet 1"
+        try:
+            from api import get_current_project_controller
+            prj_controller = get_current_project_controller() 
+            sheet_addr = "%s:%s" % ( prj_controller.name, prj_controller.current_sheetName )            
+        except: pass
+        return sheet_addr
          
     def getActiveRens(self):
-        from api import get_current_project_controller
-        sheetTabWidget = getSheetTabWidget()
-        prj_controller = get_current_project_controller() 
-        selected_cells = sheetTabWidget.getSelectedLocations() 
         rens = []
-        for cell in selected_cells:
-            cell_spec = "%s:%s:%s%s" % ( prj_controller.name, prj_controller.current_sheetName, chr(ord('A') + cell[1] ), cell[0]+1 )
-            winid = PersistentVisualizationModule.renderMap.get( cell_spec, None )
-            if winid: rens.append( winid )
+        sheetTabWidget = getSheetTabWidget()
+        if sheetTabWidget:
+            sheet_addr = getSheetAddress(self)
+            selected_cells = sheetTabWidget.getSelectedLocations() 
+            for cell in selected_cells:
+                cell_spec = "%s:%s%s" % ( sheet_addr, chr(ord('A') + cell[1] ), cell[0]+1 )
+                winid = PersistentVisualizationModule.renderMap.get( cell_spec, None )
+                if winid: rens.append( winid )
         return rens
        
     def onAnyEvent(self, caller, event ):

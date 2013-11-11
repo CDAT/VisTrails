@@ -195,6 +195,11 @@ class QPreferencesDialog(QtGui.QDialog):
         self.squeeze.setChecked(customizeUVCDAT.squeezeVariables)
         l.addWidget(self.squeeze)
         
+        self.deselect = QtGui.QCheckBox("Deselect after plotting")
+        self.deselect.setEnabled(True)
+        self.deselect.setChecked(customizeUVCDAT.deselectVariables)
+        l.addWidget(self.deselect)
+        
         h=QtGui.QHBoxLayout()
         lb=QtGui.QLabel("Dimensions Aliases")
         self.aliases = QtGui.QComboBox()
@@ -358,10 +363,11 @@ class QPreferencesDialog(QtGui.QDialog):
             cdms2.setNetcdfDeflateLevelFlag(self.ncDeflateLevel.value())
 
     def saveState(self):
-        fnm=os.path.join(os.environ["HOME"],"PCMDI_GRAPHICS","customizeUVCDAT.py")
+        fnm=os.path.join(os.environ["HOME"],".uvcdat","customizeUVCDAT.py")
         f=open(fnm,"w")
         customizeUVCDAT.defaultPlot = self.defaultPlot.currentText()
         customizeUVCDAT.squeezeVariables=self.squeeze.isChecked()
+        customizeUVCDAT.deselectVariables=self.deselect.isChecked()
         customizeUVCDAT.ncShuffle=cdms2.getNetcdfShuffleFlag()
         customizeUVCDAT.ncDeflate=cdms2.getNetcdfDeflateFlag()
         customizeUVCDAT.ncDeflateLevel=cdms2.getNetcdfDeflateLevelFlag()

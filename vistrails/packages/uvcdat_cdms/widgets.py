@@ -1,4 +1,10 @@
 import ast
+
+try:
+    import cPickle as pickle
+except:
+    import pickle
+    
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import Qt
 from core.utils import InstanceObject
@@ -97,24 +103,37 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             
         #set aspect ratio
         self.ratio = self.getValueFromFunction('ratio')
-        if self.ratio is None or self.ratio == 'autot':
-            self.gmEditor.aspectAuto.setCheckState(Qt.Checked)
-        else:
-            #if the ratio cannot cast to float, check auto in gui
-            try:
-                self.gmEditor.aspectRatio.setText(str(float(self.ratio)))
-                self.gmEditor.aspectAuto.setCheckState(Qt.Unchecked)
-            except ValueError:
+        
+        #taylor diagram does not have aspectAuto
+        if hasattr(self.gmEditor, 'aspectAuto'):
+            if self.ratio is None or self.ratio == 'autot':
                 self.gmEditor.aspectAuto.setCheckState(Qt.Checked)
+            else:
+                #if the ratio cannot cast to float, check auto in gui
+                try:
+                    self.gmEditor.aspectRatio.setText(str(float(self.ratio)))
+                    self.gmEditor.aspectAuto.setCheckState(Qt.Unchecked)
+                except ValueError:
+                    self.gmEditor.aspectAuto.setCheckState(Qt.Checked)
         
     def getValueFromFunction(self, fun):
         if fun in self.fun_map:
             fid = self.fun_map[fun]
             f = self.module.functions[fid]
             try:
-                value = f.params[0].value()
-            except:
-                value = ast.literal_eval(f.params[0].strValue)
+                if fun == "skillColor":
+                    value = int(f.params[0].strValue)
+                else:
+                    value = f.params[0].value()
+                    if fun == 'Marker':
+                        value = pickle.loads(value)
+            except Exception, e:
+                if fun == "skillColor":
+                    #if skillColor failed to parse as int, it should be string
+                    from init import get_canvas
+                    value = get_canvas().match_color(f.params[0].strValue)
+                else:
+                    value = ast.literal_eval(f.params[0].strValue)
             return value
         else:
             return None
@@ -156,16 +175,17 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
                 self.attributes[attr] = newval
         
         #continents
-        gui_continent = self.gmEditor.continents.currentIndex() + 1
-        if self.continents is None:
-            func_obj = self.controller.create_function(self.module, 
-                                                       'continents', 
-                                                       [str(gui_continent)])
-            action1 = self.controller.add_function_action(self.module, func_obj)
-            self.continents = gui_continent
-        elif gui_continent != self.continents:
-            functions.append(('continents',[str(gui_continent)]))
-            self.continents = gui_continent
+        if hasattr(self.gmEditor, 'continents') :
+            gui_continent = self.gmEditor.continents.currentIndex() + 1
+            if self.continents is None:
+                func_obj = self.controller.create_function(self.module, 
+                                                           'continents', 
+                                                           [str(gui_continent)])
+                action1 = self.controller.add_function_action(self.module, func_obj)
+                self.continents = gui_continent
+            elif gui_continent != self.continents:
+                functions.append(('continents',[str(gui_continent)]))
+                self.continents = gui_continent
             
         # aspect ratio
         gui_ratio = self.gmEditor.getAspectRatio()
@@ -198,7 +218,7 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
                     break
         
         #check if continents or ratios changed
-        if not changed:
+        if not changed and hasattr(self.gmEditor, 'continents'):
             if self.continents is None:
                 if self.gmEditor.continents.currentIndex() != 0:
                     changed = True

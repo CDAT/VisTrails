@@ -53,7 +53,7 @@ import gui.theme
 import os.path
 import getpass
 import sys
-
+import gui.uvcdat.anonymous
 ################################################################################
 
 class VistrailsApplicationSingleton(VistrailsApplicationInterface,
@@ -212,6 +212,17 @@ parameters from other instances")
         if self.temp_configuration.time > 0:
             QtCore.QTimer().singleShot(self.temp_configuration.time*1000, 
                                        self.uvcdatWindow.quit)
+        
+        if self.temp_configuration.testUVCDAT:
+           from tests.uvcdat.test_manager import UVCDATTestManager
+           cdat_source_dir = self.temp_configuration.cdatSourceDir
+           testManager = UVCDATTestManager(cdat_source_dir, self.uvcdatWindow)
+           specificTest = self.temp_configuration.specificTest
+           failCount = testManager.run_tests(specificTest)
+           
+           #use a single shot timer to ensure _exec has ran before trying to quit
+           quit_function = lambda: QtCore.QCoreApplication.exit(failCount)
+           QtCore.QTimer().singleShot(0, quit_function)
         
         self.uvcdatWindow.preferences.setupDefaultPlotOptions()
             
@@ -495,8 +506,44 @@ parameters from other instances")
         
         """
         if self.temp_configuration.check('showSplash'):
-            splashPath = (system.vistrails_root_directory() +
-                          "/gui/uvcdat/resources/images/splash.png")
+            from core.system import vistrails_root_directory
+            import tempfile
+            import cdat_info
+            import core.uvcdat
+            splashPath = os.path.join(vistrails_root_directory(),"..","dist","common","splash","uv-cdat-splash.svg")
+            f,nm = tempfile.mkstemp()
+            f=open(splashPath)
+            s=f.read().replace("${UVCDAT-VERSION}",cdat_info.Version)
+            if isinstance(cdat_info.version()[-1],int):
+                fsize=39
+                vtxt=""
+            else:
+                fsize=22
+                vtxt = """
+<text
+   transform="translate(605,187)"
+   font-size="18"
+   id="text300"
+   style="font-size:12px;fill:#00ff00;font-family:MyriadPro-Bold">Vistrails</text>
+<text
+   transform="translate(615,205)"
+   font-size="18"
+   id="text300"
+   style="font-size:10px;fill:#00ff00;font-family:MyriadPro-Bold">%s</text>
+<text
+   transform="translate(615,225)"
+   font-size="18"
+   id="text300"
+   style="font-size:10px;fill:#00ff00;font-family:MyriadPro-Bold">%s</text>
+                """ % (core.uvcdat.uvcdat_vistrails_branch(),core.uvcdat.uvcdat_revision().replace("uvcdat-",""))
+            s=s.replace("${VISTRAILS-VERSION",vtxt)
+            s=s.replace("${FONT1}",str(fsize))
+            f.close()
+            f=open(nm,"w")
+            f.write(s)
+            f.close()
+            splashPath=nm
+
             pixmap = QtGui.QPixmap(splashPath)
             self.splashScreen = QtGui.QSplashScreen(pixmap, QtCore.Qt.WindowStaysOnTopHint)
             self.splashScreen.setFont(gui.theme.CurrentTheme.SPLASH_SCREEN_FONT)
@@ -664,6 +711,7 @@ parameters from other instances")
 def start_application(optionsDict=None):
     """Initializes the application singleton."""
     VistrailsApplication = get_vistrails_application()
+
     if VistrailsApplication:
         debug.critical("Application already started.")
         return
@@ -677,6 +725,7 @@ def start_application(optionsDict=None):
                e.requirement)
         debug.critical("Missing requirement", msg)
         sys.exit(1)
+    gui.uvcdat.anonymous.check()
     x = VistrailsApplication.init(optionsDict)
     if x == True:
         return 0

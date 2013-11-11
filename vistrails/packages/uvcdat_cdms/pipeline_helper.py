@@ -1,4 +1,10 @@
 import copy
+
+try:
+    import cPickle as pickle
+except:
+    import pickle
+
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
 from core.uvcdat.plot_registry import get_plot_registry
 from core.modules.module_registry import get_module_registry
@@ -13,7 +19,7 @@ from PyQt4.QtCore import pyqtSlot, pyqtSignal
 from PyQt4.QtGui import QApplication
 from init import CDMSPlot, CDMSVariable, CDMSCell, CDMSVariableOperation, \
        CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, \
-       CDMSNaryVariableOperation
+       CDMSNaryVariableOperation, CDMSGrowerOperation
 from widgets import GraphicsMethodConfigurationWidget
 from gui.theme import CurrentTheme
 from gui.common_widgets import QDockPushButton
@@ -176,10 +182,14 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             axisAttributes = varop.axisAttributes
             timeBounds = varop.timeBounds
             
+        uvcdat_ctrl = controller.uvcdat_controller
         if len(vars) == 1:
             op_class = CDMSUnaryVariableOperation
         elif len(vars) == 2:
-            op_class = CDMSBinaryVariableOperation
+            if varname in uvcdat_ctrl.grower_varname2:
+                op_class = CDMSGrowerOperation
+            else:
+                op_class = CDMSBinaryVariableOperation
         else:
             op_class = CDMSNaryVariableOperation
         op_class_inst = op_class(varname=varname,
@@ -189,16 +199,31 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                                  attributes=attributes,
                                  axisAttributes=axisAttributes,
                                  timeBounds=timeBounds)
+        
+        
+        if varname in uvcdat_ctrl.grower_varname2:
+            op_class_inst.varname2 = uvcdat_ctrl.grower_varname2[varname]
+        
         op_module = op_class_inst.to_module(controller)
         ops = []
         ops.append(('add', op_module))
         
+        conns = []
         for i, var in enumerate(vars):
             oport = CDMSPipelineHelper.get_output_port_name(
                 var.module_descriptor.module)
+            if varname in uvcdat_ctrl.grower_varname:
+                oport = 'output_var2'
             iport = CDMSPipelineHelper.get_input_port_name(len(vars), i)
             conn = controller.create_connection(var, oport, op_module, iport)
             ops.append(('add', conn))
+            conns.append(conn)
+        
+        layout_ops = controller.layout_modules_ops(
+                preserve_order=True, 
+                no_gaps=True, 
+                new_modules=[op_module],
+                new_connections=conns)
 
         action = core.db.action.create_action(ops)
         controller.change_selected_version(version)
@@ -241,13 +266,17 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         plot_module = controller.create_module_from_descriptor(plot_descriptor)
         plot_functions =  [('graphicsMethodName', [plot_gm])]
         if plot_obj.template is not None:
-            plot_functions.append(('template', plot_obj.template))
+            plot_functions.append(('template', [plot_obj.template]))
         if order is not None:
             plot_functions.append(('plotOrder', [str(order)]))
 
         initial_values = desc.get_initial_values(plot_gm)
         for attr in desc.gm_attributes:
-            plot_functions.append((attr,[getattr(initial_values,attr)]))
+            if attr == 'Marker' and plot_type == 'Taylordiagram':
+                #pickle the marker object
+                plot_functions.append((attr,[pickle.dumps(getattr(initial_values,attr))]))
+            else:
+                plot_functions.append((attr,[getattr(initial_values,attr)]))
         
         functions = controller.create_functions(plot_module,plot_functions)
         for f in functions:
@@ -320,7 +349,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                 no_gaps=True, 
                 new_modules=var_modules + plot_modules + [cell_module, loc_module],
                 new_connections=conns + [loc_conn])
-        
+            
         action = core.db.action.create_action(ops + layout_ops)
         controller.change_selected_version(version)
         controller.add_new_action(action)

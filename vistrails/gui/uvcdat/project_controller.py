@@ -57,6 +57,8 @@ from gui.application import get_vistrails_application
 
 import cdms2
 
+class UnknownVariableName(Exception): pass
+
 class ProjectController(QtCore.QObject):
     """ProjecController is the class that interfaces between GUI actions in
     UVCDATWindow and SpreadsheetWindow and the VistrailController.
@@ -70,6 +72,8 @@ class ProjectController(QtCore.QObject):
         self.defined_variables = {}
         self.computed_variables = {}
         self.computed_variables_ops = {}
+        self.grower_varname = {}
+        self.grower_varname2 = {}
         self.sheet_map = {}
         self.plot_registry = get_plot_registry()
         self.plot_manager = get_plot_manager()
@@ -132,6 +136,12 @@ class ProjectController(QtCore.QObject):
                     del self.computed_variables_ops[oldname]
                     var.name = newname
                     self.computed_variables_ops[newname] = var
+                if oldname in self.grower_varname:
+                    self.grower_varname[newname] = self.grower_varname[oldname]
+                    del self.grower_varname[oldname]
+                elif oldname in self.grower_varname2:
+                    self.grower_varname2[newname] = self.grower_varname2[oldname]
+                    del self.grower_varname2[oldname]
             else:
                 debug.warning("Variable was not renamed: name '%s' already used." %newname)
         else:
@@ -145,10 +155,10 @@ class ProjectController(QtCore.QObject):
         """
         (res, cvars) = self.var_used_in_computed_variable(name)
         if res:
-            msg = name + " is used to derive other variables. Delete those first."
+            msg = "%s is used to derive other variables. Delete those first." % name
             if not force:
-                QMessageBox(msg)._exec()
-            return
+                QMessageBox.critical(None, "Can't delete variable", msg)
+            return False
         if self.promt_delete_var_plots(name, force):
             if name in self.defined_variables:
                 del self.defined_variables[name]
@@ -156,10 +166,13 @@ class ProjectController(QtCore.QObject):
                 del self.computed_variables[name]
                 if name in self.computed_variables_ops:
                     del self.computed_variables_ops[name]
-            
+
             #remove from global main dict
             self.removeVarFromMainDict(name)
-                                    
+            return True
+        else:
+            return False
+
     def promt_delete_var_plots(self, name, force = False):
         """checks if var is being used by any plots, and if so prompts
         user to delete said plots. Returns true if user agrees to delete plots,
@@ -183,7 +196,10 @@ class ProjectController(QtCore.QObject):
         
         found = False
         
+        workspace = get_vistrails_application().uvcdatWindow.workspace
+        
         for sheetName, sheet in self.sheet_map.iteritems():
+            tabController = workspace.currentProject.sheet_to_tab[sheetName]
             for (row,col), cell in sheet.iteritems():
                 cell_plot_count = len(cell.plots)
                 for i in reversed(range(cell_plot_count)):
@@ -195,7 +211,8 @@ class ProjectController(QtCore.QObject):
                         cell_changed = True
                         cell.remove_plot(cell.plots[i])
                 if len(cell.plots) < cell_plot_count:
-                    self.clear_cell(sheetName, row, col)
+                    tabController.deleteCell(row, col)
+                    #self.clear_cell(sheetName, row, col)
                     #self.check_update_cell(sheetName, row, col, True)
                     #cell.pushUndoVersion()
                     
@@ -216,68 +233,57 @@ class ProjectController(QtCore.QObject):
                 result = True
                 cvars.append(cname)
         return (result, cvars)
+    
+    def _get_or_create_computed_opvar(self, varname):
+        from packages.uvcdat_cdms.init import CDMSVariable
+        if not varname in self.computed_variables_ops:
+            self.computed_variables_ops[varname] = CDMSVariable(name=varname)
+        return self.computed_variables_ops[varname]
+    
+    def _get_change_var(self, varname):
+        """Returns defined var or opvar for computed variables
+        """
+        if varname in self.defined_variables:
+            return self.defined_variables[varname]
+        if varname in self.computed_variables:
+            return self._get_or_create_computed_opvar(varname)
+        raise UnknownVariableName("Unknown variable name %s" % varname)
             
     def change_defined_variable_attribute(self, varname, attr, attrval):
-        from packages.uvcdat_cdms.init import CDMSVariable
-        if varname in self.defined_variables:
-            var = self.defined_variables[varname]
-            if var.attributes is None:
-                var.attributes = {}
-            var.attributes[attr] = attrval
-        elif varname in self.computed_variables:
-            if not varname in self.computed_variables_ops:
-                var = CDMSVariable(name=varname)
-                self.computed_variables_ops[varname] = var
-            var = self.computed_variables_ops[varname]
-            if var.attributes is None:
-                var.attributes = {}
-            var.attributes[attr] = attrval
+        var = self._get_change_var(varname)
+        if var.attributes is None:
+            var.attributes = {}
+        var.attributes[attr] = attrval
             
     def remove_defined_variable_attribute(self, varname, attr):
-        if varname in self.defined_variables:
-            var = self.defined_variables[varname]
-            if var.attributes is not None and attr in var.attributes:
-                del var.attributes[attr]
-        elif varname in self.computed_variables:
-            if varname in self.computed_variables_ops:
-                var = self.computed_variables_ops[varname]
-                if var.attributes is not None and attr in var.attributes:
-                    del var.attributes[attr]
+        var = self._get_change_var(varname)
+        if var.attributes is not None and attr in var.attributes:
+            del var.attributes[attr]
                 
     def change_defined_variable_axis_attribute(self, varname, axname, attr, 
                                                attrval):
-        from packages.uvcdat_cdms.init import CDMSVariable
-        if varname in self.defined_variables:
-            var = self.defined_variables[varname]
-            if var.axisAttributes is None:
-                var.axisAttributes = {}
-            if axname not in var.axisAttributes:
-                var.axisAttributes[axname] = {}    
-            var.axisAttributes[axname][attr] = attrval
-        elif varname in self.computed_variables:
-            if not varname in self.computed_variables_ops:
-                var = CDMSVariable(name=varname)
-                self.computed_variables_ops[varname] = var
-            var = self.computed_variables_ops[varname]
-            if var.axisAttributes is None:
-                var.axisAttributes = {}
-            if axname not in var.axisAttributes:
-                var.axisAttributes[axname] = {}    
-            var.axisAttributes[axname][attr] = attrval
+        var = self._get_change_var(varname)
+        if var.axisAttributes is None:
+            var.axisAttributes = {}
+        if axname not in var.axisAttributes:
+            var.axisAttributes[axname] = {}    
+        var.axisAttributes[axname][attr] = attrval
                 
     def remove_defined_variable_axis_attribute(self, varname, axname, attr):
-        if varname in self.defined_variables:
-            var = self.defined_variables[varname]
-            if var.axisAttributes and axname in var.axisAttributes:
-                if var.axisAttributes[axname] and attr in var.axisAttributes[axname]:
-                    del var.axisAttributes[axname][attr]
+        var = self._get_change_var(varname)
+        if var.axisAttributes and axname in var.axisAttributes:
+            if var.axisAttributes[axname] and attr in var.axisAttributes[axname]:
+                del var.axisAttributes[axname][attr]
                 
     def change_defined_variable_time_bounds(self, varname, timebounds):
-        if varname in self.defined_variables:
-            var = self.defined_variables[varname]
-            var.timeBounds = timebounds
+        var = self._get_change_var(varname)
+        var.timeBounds = timebounds
            
     def calculator_command(self, vars, txt, st, varname):
+        #varname may be tuple
+        varnames = varname.split(',')
+        varname = varnames[0].strip()
+        
         if varname in self.defined_variables:
             if varname in vars:
                 #if the variable was already defined, this means that the user
@@ -293,6 +299,23 @@ class ProjectController(QtCore.QObject):
                 #we can just remove it as it is not used to compute this variable
                 self.remove_defined_variable(varname)
         self.computed_variables[varname] = (vars, txt, st, varname)
+        
+        if len(varnames) == 2:
+            varname2 = varnames[1].strip()
+            if varname2 in self.defined_variables:
+                if varname2 in vars:
+                    newname = "var" + str(uuid.uuid1())[:8]
+                    self.rename_defined_variable(varname2, newname)
+                    st = st.replace(varname2,newname)
+                    i = vars.index(varname2)
+                    vars[i] = newname
+                else:
+                    self.remove_defined_variable(varname2)
+            self.computed_variables[varname2] = ([varname], txt, varname2, varname2)
+            self.grower_varname[varname2] = varname
+            self.grower_varname2[varname] = varname2
+        elif len(varnames) > 2:
+            print "Warning: more than 2 variables in calculator command"
         
     def process_typed_calculator_command(self, varname, command):
         from packages.uvcdat_cdms.init import CDMSVariableOperation 
@@ -339,9 +362,11 @@ class ProjectController(QtCore.QObject):
         from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
         _app = get_vistrails_application()
         if isinstance(var, CDMSVariable):
-            _app.uvcdatWindow.dockVariable.widget().addVariable(var.to_python())
+            varObj = self.create_exec_new_variable_pipeline(var.name)
+            if varObj is not None:
+                _app.uvcdatWindow.dockVariable.widget().addVariable(varObj)
         elif isinstance(var, CDMSVariableOperation):
-            varObj = var.to_python()
+            varObj = self.create_exec_new_variable_pipeline(var.varname)
             if isinstance(varObj, cdms2.tvariable.TransientVariable):
                 _app.uvcdatWindow.dockVariable.widget().addVariable(varObj)
             
@@ -477,6 +502,12 @@ class ProjectController(QtCore.QObject):
     def variable_was_dropped(self, info):
         """variable_was_dropped(info: (varName, sheetName, row, col) """
         (varName, sheetName, row, col) = info
+        
+        from gui.application import get_vistrails_application
+        window = get_vistrails_application().uvcdatWindow
+        if window.preferences.deselect.isChecked():
+            window.dockVariable.widget().unselectVariableFromName(varName)
+        
         self.current_sheetName = sheetName
         self.current_cell_coords = (row, col)
         if sheetName in self.sheet_map:
@@ -500,12 +531,11 @@ class ProjectController(QtCore.QObject):
             
 
         if len(self.sheet_map[sheetName][(row,col)].plots) == 0:
-            from gui.application import get_vistrails_application
-            gui_app = get_vistrails_application()
-            defaultPlot = gui_app.uvcdatWindow.preferences.getDefaultPlot()
+            defaultPlot = window.preferences.getDefaultPlot()
             if defaultPlot is not None:
                 self.plot_was_dropped((defaultPlot, sheetName, row, col))
                 self.sheet_map[sheetName][(row,col)].usingDefaultPlot = True
+            
         
     def template_was_dropped(self, info):
         """template_was_dropped(info: (varName, sheetName, row, col) """
@@ -576,6 +606,65 @@ class ProjectController(QtCore.QObject):
         self.emit(QtCore.SIGNAL("update_cell"), sheetName, row, col, None, None,
                   plot_type, cell.current_parent_version)
         
+    def search_and_emit_variables(self, pipeline, helper, cell=None):
+        from packages.uvcdat.init import Variable
+        from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
+        var_modules = helper.find_modules_by_type(pipeline, 
+                                                  [Variable])
+        if len(var_modules) > 0:
+            if cell is None:
+                cell = lambda:None
+                cell.current_parent_version = 0L
+            self.load_variables_from_modules(var_modules, helper, cell)
+            
+        #pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
+        #this will give me the modules in topological order
+        #so when I try to reconstruct the operations they will be on the
+        #right order
+        
+        op_modules = helper.find_topo_sort_modules_by_types(pipeline, 
+                                                 [CDMSVariableOperation])
+        op_tuples = []
+        computed_ops = {}
+        if len(op_modules) > 0:
+            info = {}
+            op_info = {}
+            for opm in op_modules:
+                varname = helper.get_variable_name_from_module(opm)
+                mvars= helper.find_variables_connected_to_operation_module(self.vt_controller,
+                                                                           pipeline, opm.id)
+                ivars= [helper.get_variable_name_from_module(iv) for iv in mvars]
+                op = opm.module_descriptor.module.from_module(opm)
+                opvars = []
+                for mv in mvars:
+                    if mv in computed_ops:
+                        #this means this operation uses another operation that
+                        #was already processed. We need only to create a new variable
+                        # and associate the computed cdms variable
+                        var =  CDMSVariable(filename=None,name=computed_ops[mv].varname)
+                    else:
+                        #using a simple variable. Just recreate it
+                        var = mv.module_descriptor.module.from_module(mv)
+                        var.var = self.create_exec_new_variable_pipeline(var.name)
+                    opvars.append(var)
+                op.set_variables(opvars)
+                op_tuples.append((opm,op))
+                computed_ops[opm] = op
+                txt = opm.get_annotation_by_key("__desc__").value
+                info[varname] = (ivars, txt, op.python_command, varname)
+                if (op.axes is not None or op.axesOperations is not None or
+                    op.attributes is not None or op.axisAttributes is not None or
+                    op.timeBounds is not None):
+                    #we store the attributes in a variable
+                    op_info[varname] = CDMSVariable(name=varname, axes=op.axes,
+                                           axesOperations=op.axesOperations,
+                                           attributes=op.attributes,
+                                           axisAttributes=op.axisAttributes,
+                                           timeBounds=op.timeBounds)
+            self.load_computed_variables_from_modules(op_tuples, info, op_info, 
+                                                      helper)
+        return var_modules
+        
     def search_and_emit_new_variables(self, cell):
         """search_and_emit_new_variables(cell) -> None
         It will go through the variables in the cell and define them if they are 
@@ -589,61 +678,12 @@ class ProjectController(QtCore.QObject):
 #            if var not in self.defined_variables:
 #                not_found = True
         if not_found:
-            from packages.uvcdat.init import Variable
-            from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
+            from packages.uvcdat_cdms.init import CDMSVariable
             helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
             pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
-            var_modules = helper.find_modules_by_type(pipeline, 
-                                                      [Variable])
-            if len(var_modules) > 0:
-                self.load_variables_from_modules(var_modules, helper, cell)
-                
-            pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
-            #this will give me the modules in topological order
-            #so when I try to reconstruct the operations they will be on the
-            #right order
-            op_modules = helper.find_topo_sort_modules_by_types(pipeline, 
-                                                     [CDMSVariableOperation])
-            op_tuples = []
-            computed_ops = {}
-            if len(op_modules) > 0:
-                info = {}
-                op_info = {}
-                for opm in op_modules:
-                    varname = helper.get_variable_name_from_module(opm)
-                    mvars= helper.find_variables_connected_to_operation_module(self.vt_controller,
-                                                                               pipeline, opm.id)
-                    ivars= [helper.get_variable_name_from_module(iv) for iv in mvars]
-                    op = opm.module_descriptor.module.from_module(opm)
-                    opvars = []
-                    for mv in mvars:
-                        if mv in computed_ops:
-                            #this means this operation uses another operation that
-                            #was already processed. We need only to create a new variable
-                            # and associate the computed cdms variable
-                            var =  CDMSVariable(filename=None,name=computed_ops[mv].varname) 
-                            var.var = computed_ops[mv].to_python()
-                        else:
-                            #using a simple variable. Just recreate it
-                            var = mv.module_descriptor.module.from_module(mv)
-                            var.var = var.to_python()
-                        opvars.append(var)
-                    op.set_variables(opvars)
-                    op_tuples.append((opm,op))
-                    computed_ops[opm] = op
-                    txt = opm.get_annotation_by_key("__desc__").value
-                    info[varname] = (ivars, txt, op.python_command, varname)
-                    if (op.axes is not None or op.axesOperations is not None or
-                        op.attributes is not None or op.axisAttributes is not None or
-                        op.timeBounds is not None):
-                        #we store the attributes in a variable
-                        op_info[varname] = CDMSVariable(name=varname, axes=op.axes,
-                                               axesOperations=op.axesOperations,
-                                               attributes=op.attributes,
-                                               axisAttributes=op.axisAttributes,
-                                               timeBounds=op.timeBounds)
-                self.load_computed_variables_from_modules(op_tuples, info, op_info, 
-                                                          helper)
+            
+            var_modules = self.search_and_emit_variables(pipeline, helper, cell)
+            
             if len(var_modules) == 0:
                 #when all workflows are updated to include the variable modules.
                 #they will be included in the case above. For now we need to 
@@ -792,6 +832,31 @@ class ProjectController(QtCore.QObject):
             plot_prop.set_controller(None)
             plot_prop.updateProperties(None, sheetName,row,col)
         self.checkEnableUndoRedo(cell)
+        
+        #update animation widget
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
+        animationWidget = _app.uvcdatWindow.dockAnimate.widget()
+        
+        #get cell widget
+        cellWidget = None
+        sheetWidget = self.get_sheet_widget(sheetName)
+        if sheetWidget is not None:
+            cellWidget = sheetWidget.getCell(row, col)
+
+        if (cellWidget is not None and
+                hasattr(cellWidget, 'canvas') and
+                hasattr(cellWidget.canvas, 'animate')):
+            animationWidget.setCanvas(cellWidget.canvas)
+        else:
+            animationWidget.setCanvas(None)
+            
+    def get_sheet_widget(self, sheetName):
+        ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+        tabController = ssheetWindow.get_current_tab_controller()
+        for i in range(tabController.count()):
+            if tabController.tabText(i) == sheetName:
+                return tabController.widget(i)
                 
     def get_python_script(self, sheetName, row, col):
         script = None
@@ -832,7 +897,9 @@ class ProjectController(QtCore.QObject):
         except KeyError, err:
             traceback.print_exc( 100, sys.stderr )
             
-    def get_var_module(self, varname, cell, helper, var_dict={}):
+    def get_var_module(self, varname, cell, helper, var_dict=None):
+        if var_dict is None:
+            var_dict = dict()
         if varname in var_dict:
             return var_dict[varname]
         if varname not in self.computed_variables:
@@ -876,6 +943,11 @@ class ProjectController(QtCore.QObject):
         cell = self.sheet_map[sheetName][(row,col)]
         helper = CDMSPipelineHelper
         # helper = self.plot_manager.get_plot_helper(cell.plots[0].package)
+        
+        #reusing the workflow appears to be broken, getting 
+        #Pipeline Error, module not found: id=#
+        reuse_workflow = False
+        
         if not reuse_workflow:
             self.reset_workflow(cell)
         else:
@@ -1085,3 +1157,39 @@ class ProjectController(QtCore.QObject):
             self.removeVarFromMainDict(name)
         for name in self.defined_variables:
             self.removeVarFromMainDict(name)
+            
+    def create_exec_new_variable_pipeline(self, targetId):
+        # pass dummy cell to get_var_module, it's only used to check
+        # (and update, which is harmless for this) current_parent_version
+        dummyCell = lambda: None
+        dummyCell.current_parent_version = 0L #VisTrails root
+        self.vt_controller.change_selected_version(dummyCell.current_parent_version)
+        self.get_var_module(targetId, dummyCell, CDMSPipelineHelper)
+        result = self.vt_controller.execute_current_workflow()
+        workflow_result = result[0][0]
+        
+        if len(workflow_result.errors) > 0:
+            import logging
+            for key in workflow_result.errors:
+                logging.exception(workflow_result.errors[key])
+            QMessageBox.warning( None, "Workflow Error", 
+                                 "Error executing variable pipeline. See log for details.");
+            return None
+        
+        #import pdb; pdb.set_trace()
+        
+        from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation
+        modules = workflow_result.objects
+
+        for id, module in modules.iteritems():
+            #print module
+            if isinstance(module, CDMSVariable):
+                #print module.name
+                if module.name == targetId:
+                    return module.var
+            elif isinstance(module, CDMSVariableOperation):
+                #print module.varname
+                if module.varname == targetId:
+                    return module.outvar.var
+                
+        return None

@@ -13,21 +13,52 @@
 # Version:      6.0                                                           #
 #                                                                             #
 ###############################################################################
-import types
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import Qt
 import vcs
 import uvcdatCommons
+from uvcdatCommons import QSimpleMessageBox
 from gui.application import get_vistrails_application
 
+GM_LEGEND_TOOLTIP_TEXT = "Specify the desired legend labels.\nFor example:\n None -- Allow VCS to generate legend labels\n(), or [ ], or { } -- No legend  labels\n [0, 10, 20] or { 0:'0', 10:'10', 20:'20' }\n[ 0, 10 ] or { 0:'text', 10:'more text'}"
+
 def round_number( N ):
-   import numpy
-   P = 10.0 ** ( numpy.floor(numpy.log10(abs(N) ) ) )
-   return( sign(N) * int( abs(N)/P + 0.5) * P )
+    import numpy
+    P = 10.0 ** ( numpy.floor(numpy.log10(abs(N) ) ) )
+    return( sign(N) * int( abs(N)/P + 0.5) * P )
 
 def sign ( N ):
-   if (N < 0): return -1
-   else: return 1
+    if (N < 0): return -1
+    else: return 1
+
+def setGMLegend(gm, lineEdit):
+    def set_legend_none_alert():
+        gm.legend = 'None'
+        format = "Invalid legend '%s', using 'None' instead.\n\n%s"
+        msg = format % (lineEdit.text(), GM_LEGEND_TOOLTIP_TEXT)
+        QtGui.QMessageBox.information( None, "Plot Legend", msg )
+        lineEdit.setText("'None'")
+        
+    def check_valid_values(value):
+        return isinstance(value, (list, dict, tuple)) or value is None
+        
+    try:
+        result = eval(str(lineEdit.text()))
+        if isinstance(result, basestring):
+            try:
+                value = eval(result)
+                if check_valid_values(value):
+                    gm.legend = result
+                else:
+                    set_legend_none_alert()
+            except Exception, e:
+                set_legend_none_alert()
+        elif check_valid_values(result):
+            gm.legend = str(lineEdit.text())
+        else:
+            set_legend_none_alert()
+    except Exception, e:
+        set_legend_none_alert()
 
 class VCSGMs():
     def saveOriginalValues(self):
@@ -39,7 +70,7 @@ class VCSGMs():
                 
             else:
                 self.originalValues[a] = getattr(self.gm,a)
-            
+                
     def restoreOriginalValues(self):
         for a in self.gmAttributes:
             if a.find(".")>-1:
@@ -242,14 +273,16 @@ class VCSGMs():
             gm.yaxisconvert = str(self.yaxisconvert.buttonGroup.button(self.yaxisconvert.buttonGroup.checkedId()).text())
 
     def saveChanges(self,click):
-       self.applyChanges()
-       self.root.record(self.changesString())
+        self.applyChanges()
+        self.root.record(self.changesString())
         
     def aspectClicked(self,checkState):
         self.aspectRatio.label.setEnabled(checkState == Qt.Unchecked)
         self.aspectRatio.setEnabled(checkState == Qt.Unchecked)
         
     def getAspectRatio(self):
+        if not hasattr(self, 'aspectAuto'):
+            return
         if self.aspectAuto.checkState() == Qt.Checked:
             return 'autot'
         try:
@@ -261,7 +294,7 @@ class VCSGMs():
 class VCSGMs1D:
 
     def saveChanges(self,click):
-       self.applyChanges()
+        self.applyChanges()
     def setupLines(self, target):
         self.lineType = target.addLabeledComboBox('Type: ',
                                                   ["solid", "dash", "dot", "dash-dot", "long-dash"])
@@ -484,8 +517,9 @@ class VCSGMRanges:
 
         self.rangeLineEdit.setText(str(values))
         if self.allBlack.isChecked():
-           colors=[1,]
+            colors=[1,]
         self.colorsLineEdit.setText(str(colors))
+
     def clearCustomSettings(self):
         self.rangeLineEdit.setText('')
         self.colorsLineEdit.setText('')
@@ -527,13 +561,13 @@ class VCSGMRanges:
         if enable == True:
             self.expLineEdit.setToolTip("Smallest exponent for negative values")
             self.negDecadesLineEdit.setToolTip("Number of negative decades.")
-	    self.minValLineEdit.label.setText("Smallest Exponent for Positive Values:")
-	    self.minValLineEdit.setToolTip("Smallest exponent for positive values.")
-       	    self.maxValLineEdit.label.setText("Number of Positive Decades:")
-       	    self.maxValLineEdit.setToolTip("Number of Positive Decades:")
-	    self.nIntervals.label.setText("Levels per Decade:")
- 	    self.nIntervals.setToolTip ("Levels per Decade") 
-	else:
+            self.minValLineEdit.label.setText("Smallest Exponent for Positive Values:")
+            self.minValLineEdit.setToolTip("Smallest exponent for positive values.")
+            self.maxValLineEdit.label.setText("Number of Positive Decades:")
+            self.maxValLineEdit.setToolTip("Number of Positive Decades:")
+            self.nIntervals.label.setText("Levels per Decade:")
+            self.nIntervals.setToolTip ("Levels per Decade") 
+        else:
             self.expLineEdit.setToolTip("Disabled. Not in use for linear spacing.")
             self.negDecadesLineEdit.setToolTip("Disabled. Not in use for linear spacing.")            
             self.minValLineEdit.label.setText('Minimum Value:')
@@ -541,9 +575,9 @@ class VCSGMRanges:
             self.maxValLineEdit.label.setText('Maximum Value:')
             self.maxValLineEdit.setToolTip("The last level")
             self.nIntervals.label.setText('Number of Intervals:')
-	    self.nIntervals.setToolTip("The number of intervals between each contour level. Maximum number range [2 to 223].")
+            self.nIntervals.setToolTip("The number of intervals between each contour level. Maximum number range [2 to 223].")
 
-        
+
 ## class QGraphicsMethodAttributeWindow(QtGui.QWidget):
 
 ##     def __init__(self, canvas=None, parent=None):
@@ -880,7 +914,7 @@ class QTaylorDiagramEditor(VCSGMs,QtGui.QScrollArea):
             gm.cticlabels1 = eval(str(self.corLabels.text()))
             gm.cmtics1 = eval(str(self.corTicks.text()))
 
-            markersTab.applyChanges(gm)
+            self.markersTab.applyChanges(gm)
         
 
 class QTaylorMarkers(QtGui.QScrollArea):
@@ -1571,7 +1605,7 @@ class QMeshfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
             gm = self.gm
         if gm:
             self.applyCommonChanges(gm)
-            gm.legend = eval(str(self.legendLineEdit.text()))
+            setGMLegend(gm, self.legendLineEdit)
             gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
             gm.ext_2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
             gm.missing = eval(str(self.missingLineEdit.text()))
@@ -1585,7 +1619,7 @@ class QMeshfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.missingLineEdit.setToolTip("Set the missing color index value. The colormap\nranges from 0 to 255, enter the desired color index value 0\nthrough 255.")
         self.ext1ButtonGroup.setToolTip("Turn on 1st arrow on legend")
         self.ext2ButtonGroup.setToolTip("Turn on 2nd arrow on legend")
-        self.legendLineEdit.setToolTip("Specify the desired legend labels.\nFor example:\n None -- Allow VCS to generate legend labels\n(), or [ ], or { } -- No legend  labels\n [0, 10, 20] or { 0:'0', 10:'10', 20:'20' }\n[ 0, 10 ] or { 0:'text', 10:'more text'}")
+        self.legendLineEdit.setToolTip(GM_LEGEND_TOOLTIP_TEXT)
         self.xWrap.setToolTip("Set the wrapping along X axis, 0 means no wrapping")
         self.yWrap.setToolTip("Set the wrapping along Y axis, 0 means no wrapping")
 
@@ -1664,13 +1698,12 @@ class QIsofillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.missingLineEdit.setToolTip("Set the missing color index value. The colormap\nranges from 0 to 255, enter the desired color index value 0\nthrough 255.")
         self.ext1ButtonGroup.setToolTip("Turn on 1st arrow on legend")
         self.ext2ButtonGroup.setToolTip("Turn on 2nd arrow on legend")
-        self.legendLineEdit.setToolTip("Specify the desired legend labels.\nFor example:\n None -- Allow VCS to generate legend labels\n(), or [ ], or { } -- No legend  labels\n [0, 10, 20] or { 0:'0', 10:'10', 20:'20' }\n[ 0, 10 ] or { 0:'text', 10:'more text'}")
+        self.legendLineEdit.setToolTip(GM_LEGEND_TOOLTIP_TEXT)
     def applyChanges(self, gm=None):
         if gm is None:
             gm = self.gm
         self.applyCommonChanges(gm)
-        
-        gm.legend = eval(str(self.legendLineEdit.text()))
+        setGMLegend(gm, self.legendLineEdit)
         gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
         gm.ext_2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
         gm.missing = eval(str(self.missingLineEdit.text()))
@@ -1781,6 +1814,7 @@ class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         
 class QContourEditor():
     def contoursSettings(self, target):
+        frame = uvcdatCommons.QFramedWidget()
         
         frame.addWidget(QtGui.QLabel('Define iso level range values:'))
         self.includeZeroButtonGroup = frame.addRadioFrame('Include Zero:',
@@ -1811,6 +1845,7 @@ class QContourEditor():
         genRangesButton = frame.addButton('Generate Ranges')
         clearButton = frame.addButton('Clear All', newRow=False)
 
+        vbox = QtGui.QVBoxLayout()
         vbox.addWidget(frame)
         self.frame = frame
 
@@ -1922,14 +1957,14 @@ class QContourEditor():
         if enable == True:
             self.smallestExp.setToolTip("Smallest exponent for negative values")
             self.numNegDec.setToolTip("Number of negative decades.")
-	    self.minValLineEdit.label.setText("Smallest Exponent for Positive Values:")
-	    self.minValLineEdit.setToolTip("Smallest exponent for positive values.")
-       	    self.maxValLineEdit.label.setText("Number of Positive Decades:")
-       	    self.maxValLineEdit.setToolTip("Number of Positive Decades:")
-	    self.nIntervals.label.setText("Levels per Decade:")
- 	    self.nIntervals.setToolTip ("Levels per Decade") 
-	    self.update()
-	else:
+            self.minValLineEdit.label.setText("Smallest Exponent for Positive Values:")
+            self.minValLineEdit.setToolTip("Smallest exponent for positive values.")
+            self.maxValLineEdit.label.setText("Number of Positive Decades:")
+            self.maxValLineEdit.setToolTip("Number of Positive Decades:")
+            self.nIntervals.label.setText("Levels per Decade:")
+            self.nIntervals.setToolTip ("Levels per Decade") 
+            self.update()
+        else:
             self.smallestExp.setToolTip("Disabled. Not in use for linear spacing.")
             self.numNegDec.setToolTip("Disabled. Not in use for linear spacing.")            
             self.minValLineEdit.setText('Minimum Value:')
@@ -1937,7 +1972,7 @@ class QContourEditor():
             self.maxValLineEdit.label.setText('Maximum Value:')
             self.maxValLineEdit.setToolTip("The last level")
             self.nIntervals.label.setText('Number of Intervals:')
-	    self.nIntervals.setToolTip("The number of intervals between each contour level. Maximum number range [2 to 223].")
+            self.nIntervals.setToolTip("The number of intervals between each contour level. Maximum number range [2 to 223].")
 
     def setToolTips(self):
         self.ranges.setToolTip("The iso level range values. (e.g., 10, 20, 30, 40, 50).")
@@ -1949,7 +1984,7 @@ class QContourEditor():
         self.arrowSpacing.setToolTip("Spacing factor for arrows")
         self.angle.setToolTip("Angle of Arrows heads")
         self.labelButtonGroup.setToolTip("Toggle 'Isoline Labels' on or off.")
-        self.legendLabels.setToolTip("Specify the desired legend labels.\nFor example:\nNone -- Allow VCS to generate legend labels\n( ), or [ ], or { } -- No legend labels\n[ 0, 10, 20 ]  or  { 0:'0', 10:'10', 20:'20' }\n[ 0, 10 ]  or  { 0:'text', 10:'more text' }")
+        self.legendLabels.setToolTip(GM_LEGEND_TOOLTIP_TEXT)
         self.minVal.setToolTip("The minimum contour level.")
         self.maxVal.setToolTip("The maximum contour level.")
         self.nIntervals.setToolTip("The number of intervals between each contour level. Maximum number range [2 to 223].")
@@ -2104,7 +2139,7 @@ class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
             gm.level_2 = eval(str(self.level2LineEdit.text()))
             gm.color_1 = eval(str(self.color1LineEdit.text()))
             gm.color_2 = eval(str(self.color2LineEdit.text()))
-            gm.legend = eval(str(self.legendLineEdit.text()))
+            setGMLegend(gm, self.legendLineEdit)
             gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
             gm.ext_2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
             gm.missing = eval(str(self.missingLineEdit.text()))
@@ -2160,7 +2195,7 @@ class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.missingLineEdit.setToolTip("Set the missing color index value. The colormap\nranges from 0 to 255, enter the desired color index value 0\nthrough 255.")
         self.ext1ButtonGroup.setToolTip("Turn on 1st arrow on legend")
         self.ext2ButtonGroup.setToolTip("Turn on 2nd arrow on legend")
-        self.legendLineEdit.setToolTip("Specify the desired legend labels.\nFor example:\n None -- Allow VCS to generate legend labels\n(), or [ ], or { } -- No legend  labels\n [0, 10, 20] or { 0:'0', 10:'10', 20:'20' }\n[ 0, 10 ] or { 0:'text', 10:'more text'}")
+        self.legendLineEdit.setToolTip(GM_LEGEND_TOOLTIP_TEXT)
         self.level1LineEdit.setToolTip("The minimum data value. If level 1 is set to '1e+20',\nthen VCS will select the level.")
         self.level2LineEdit.setToolTip("The maximum data value. If level 2 is set to '1e+20',\nthen VCS will select the level.")
         self.color1LineEdit.setToolTip("The minimum color range index value. The colormap\nranges from 0 to 255, but only color indices 0\nthrough 239 can be changed.")
