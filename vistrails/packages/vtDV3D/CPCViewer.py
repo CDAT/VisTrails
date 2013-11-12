@@ -13,6 +13,7 @@ from PyQt4.QtGui import *
 
 def get_vt_decl( val_decl_str ):
     import core.modules.basic_modules as basic_modules
+    if val_decl_str == "bool":  return basic_modules.Boolean 
     if val_decl_str == "int":   return basic_modules.Integer 
     if val_decl_str == "float": return basic_modules.Float 
     if val_decl_str == "str":   return basic_modules.String 
@@ -74,7 +75,9 @@ class PM_CPCViewer(PersistentVisualizationModule):
 
     def closeCPCWidget( self, parmRecList ):
         DV3DPipelineHelper.disconnectCPCWidgets()
-        self.change_parameters( parmRecList ) 
+        self.change_parameters( parmRecList )
+        for parmRec in parmRecList:
+            self.setParameter( parmRec[0],  parmRec[1] ) 
         
     def addConfigurableFunctions( self ):
         if PM_CPCViewer.PortSpecs == None:
@@ -136,9 +139,5 @@ class CPCViewerConfigurationWidget(StandardModuleConfigurationWidget):
 
     def getParameters( self, module ):
         pass
-
-
-
-
 
 kill_all_zombies()

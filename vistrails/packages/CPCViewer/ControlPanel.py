@@ -18,6 +18,7 @@ def deserialize_value( sval ):
             return sval
 
 def get_value_decl( val ):
+    if isinstance( val, bool ): return "bool"
     if isinstance( val, int ): return "int"
     if isinstance( val, float ): return "float"
     return "str"
@@ -57,7 +58,7 @@ class ConfigParameter( QtCore.QObject ):
     def unpack( self, value_strs ):
         if len( value_strs ) <> len( self.values.keys() ): 
             print>>sys.stderr, " Error: parameter structure mismatch in %s ( %d vs %d )" % ( self.name,  len( value_strs ), len( self.values.keys() ) )
-        for ( key, str_val ) in enumerate( self.valueKeyList, value_strs ):
+        for ( key, str_val ) in zip( self.valueKeyList, value_strs ):
             self.values[key] = deserialize_value( str_val ) 
             
     def __len__(self):
@@ -364,7 +365,7 @@ class TabbedControl( ConfigControl ):
         cbox_index = len( self.widgets ) 
         checkBox = QtGui.QCheckBox(label)
         layout.addWidget( checkBox )
-        self.connect( checkBox, QtCore.SIGNAL("stateChanged(int)"), lambda cbvalue, cbname=label: self.processWidgetConfigCmd(str(cbname),cbvalue) ) 
+        self.connect( checkBox, QtCore.SIGNAL("stateChanged(int)"), lambda cbvalue, cbname=label: self.processWidgetConfigCmd( str(cbname), int(cbvalue) ) ) 
         ival = self.cparm.getValue( label, False )
         checkBox.setCheckState( QtCore.Qt.Checked if ival else QtCore.Qt.Unchecked )
         self.widgets[cbox_index] = checkBox
@@ -926,7 +927,7 @@ class CPCConfigConfigurationWidget( ConfigurationWidget ):
         self.iColorCatIndex = self.addCategory( 'Color' )
         cparm = self.addParameter( self.iColorCatIndex, "Color Scale", wpos=0.5, wsize=1.0, ctype = 'Leveling' )
         self.addConfigControl( self.iColorCatIndex, ColorScaleControl( cparm ) )       
-        cparm = self.addParameter( self.iColorCatIndex, "Color Map", Colormap="jet", Invert=True, Stereo=False, Smooth=True  )
+        cparm = self.addParameter( self.iColorCatIndex, "Color Map", Colormap="jet", Invert=1, Stereo=0, Smooth=0  )
         self.addConfigControl( self.iColorCatIndex, ColormapControl( cparm ) )  
              
         self.iSubsetCatIndex = self.addCategory( 'Subsets' )

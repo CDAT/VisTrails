@@ -22,6 +22,14 @@ VTK_NOTATION_SIZE = 14
 VTK_INSTRUCTION_SIZE = 24
 MIN_LINE_LEN = 50
 
+def getBool( val ):
+    if isinstance( val, str ):
+        if( val.lower()[0] == 't' ): return True
+        if( val.lower()[0] == 'f' ): return False
+        try:    val = int(val)
+        except: pass
+    return bool( val )
+    
 def dump_np_array1( a, label=None ):
     print "\n-------------------------------------------------------------------------------------------------"
     if label: print label
@@ -310,9 +318,9 @@ class CPCPlot(QtCore.QObject):
         
     def setColormap( self, data, **args ):
         colormapName = str(data[0])
-        invertColormap = int( data[1] )
-        enableStereo = int( data[2] )
-        smoothColormap = int( data[3] ) if ( len( data ) > 3 ) else 1 
+        invertColormap = getBool( data[1] ) 
+        enableStereo = getBool( data[2] )
+        smoothColormap = getBool( data[3] ) if ( len( data ) > 3 ) else 1 
         cmap_index = args.get( 'index', 0 )
         cm_title = args.get( 'title', '' )
         self.updateStereo( enableStereo )
