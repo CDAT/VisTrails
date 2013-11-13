@@ -63,13 +63,27 @@ class UVCDATTestManager:
             
         loadVariableWidget.defineVarCloseClicked()
         
+    def varname_from_index(self, index):
+        """Variable name based on it's index in the defined variables widget
+        """
+        definedVariableWidget = self.uvcdat_window.dockVariable.widget()
+        variableItems = definedVariableWidget.getItems()
+        return variableItems[index].getVarName()
+    
+    def selectVariable(self, varname):
+        definedVariableWidget = self.uvcdat_window.dockVariable.widget()
+        definedVariableWidget.selectVariableFromName(varname)
+    
+    def deselectVariables(self):
+        definedVariableWidget = self.uvcdat_window.dockVariable.widget()
+        selectedItems = definedVariableWidget.getSelectedItems()
+        definedVariableWidget.unselectItems(selectedItems)
+
     def simulate_variable_drag_and_drop(self, varname_or_index=0, 
                                         sheet="Sheet 1", col=0, row=0, 
                                         projectController=None):
-        definedVariableWidget = self.uvcdat_window.dockVariable.widget()
         if isinstance( varname_or_index, ( int, long ) ):
-            variableItems = definedVariableWidget.getItems()
-            varname_or_index = variableItems[0].getVarName()
+            varname_or_index = self.varname_from_index(varname_or_index)
         dropInfo = (varname_or_index, sheet, col, row)
         
         if projectController is None:
@@ -77,7 +91,7 @@ class UVCDATTestManager:
         projectController.variable_was_dropped(dropInfo)
         
     def simulate_plot_drag_and_drop(self, package="VCS", name="Boxfill", 
-                                    method="ASD", sheet="Sheet 1", col=0, 
+                                    method="default", sheet="Sheet 1", col=0, 
                                     row=0, projectController=None):
         """
         @param method: Only used if package is VCS
@@ -125,6 +139,44 @@ class UVCDATTestManager:
         self.simulate_load_variable()
         self.simulate_plot_drag_and_drop()
         self.simulate_variable_drag_and_drop()
+        
+    def simulate_calculator_command(self, command):
+        self.uvcdat_window.dockCalculator.widget().le.setText(command)
+        self.uvcdat_window.dockCalculator.widget().run_command()
+        
+    def get_sub_menu(self, menu, name):
+        """Retrieves the subMenu by name from menu 
+        """
+        for subMenu in menu.children()[1:]:
+            if subMenu.menuAction().text() == name:
+                return subMenu
+        
+    def get_menu_action(self, menu, name):
+        """Retrieves the action by name from menu 
+        """
+        for action in menu.actions():
+            if action.text() == name:
+                return action
+        
+    def trigger_pcmdi_menu_action(self, *args):
+        """Takes a list of ordered strings representing the menu path
+        
+        e.g. ['Statistics','Mean']
+        """
+        menu = self.uvcdat_window.mainMenu.pcmdiTools
+        for i in range(len(args)-1):
+            menu = self.get_sub_menu(menu, args[i])
+        
+        #the last arg should be an action, not another menu  
+        action = self.get_menu_action(menu, args[-1])
+        action.trigger()
+        
+    def simulate_mean_operation(self, varname):
+        self.deselectVariables()
+        self.selectVariable(varname)
+        
+        self.trigger_pcmdi_menu_action(['Statistics', 'Mean'])
+        
         
     def close_project(self):
         from gui.vistrails_window import _app
@@ -181,10 +233,41 @@ class UVCDATTestManager:
         if len(cellController.plots[0].variables) > 0:
             raise Exception("1D variable longitude should have been prevented "
                             "from being added to Isofill plot")
+            
+    @UVCDATTest
+    def test_time_bounds_computed_vars(self):
+        
+        #load test variable
+        self.simulate_load_variable()
+        
+        #do a simple computation (x*2)
+        varname = self.varname_from_index(0)
+        self.simulate_calculator_command("computed_var=%s*2" % varname)
+        
+        #select the new compute var
+        self.deselectVariables()
+        self.selectVariable("computed_var")
+        
+        #set monthly time bounds
+        menuPath = ['Time Tools', 'Bounds Set', 'Set Bounds For Monthly Data']
+        self.trigger_pcmdi_menu_action(*menuPath)
+        
+        #perform mean
+        self.trigger_pcmdi_menu_action('Statistics', 'Mean')
+        
+        #set the action to 'sum' on the popup widget
+        from gui.uvcdat.uvcdatCommons import QRadioButtonFrame
+        for choice in self.uvcdat_window.mainMenu.pop.choices:
+            if (isinstance(choice, QRadioButtonFrame) and
+                    choice.label.text() == 'action'):
+                choice.setChecked("'average'")
+                
+        #trigger ok on pop up widget
+        self.uvcdat_window.mainMenu.pop.ok()
         
     innerFail = False
         
-    def run_tests(self):
+    def run_tests(self, specificTest=None):
         """
         Executes all @UVCDATTest decorated functions defined on self, prints
         exceptions, and returns number of fails.
@@ -208,6 +291,8 @@ class UVCDATTestManager:
             if not hasattr(testFunction, '__call__'): continue
             if not hasattr(testFunction, 'isUVCDATTest'): continue
             if not testFunction.isUVCDATTest: continue
+            if specificTest is not None and attribute != specificTest:
+                continue
 
             print "RUNNING TEST %s" % attribute
 

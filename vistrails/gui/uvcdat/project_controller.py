@@ -57,6 +57,8 @@ from gui.application import get_vistrails_application
 
 import cdms2
 
+class UnknownVariableName(Exception): pass
+
 class ProjectController(QtCore.QObject):
     """ProjecController is the class that interfaces between GUI actions in
     UVCDATWindow and SpreadsheetWindow and the VistrailController.
@@ -231,66 +233,51 @@ class ProjectController(QtCore.QObject):
                 result = True
                 cvars.append(cname)
         return (result, cvars)
+    
+    def _get_or_create_computed_opvar(self, varname):
+        from packages.uvcdat_cdms.init import CDMSVariable
+        if not varname in self.computed_variables_ops:
+            self.computed_variables_ops[varname] = CDMSVariable(name=varname)
+        return self.computed_variables_ops[varname]
+    
+    def _get_change_var(self, varname):
+        """Returns defined var or opvar for computed variables
+        """
+        if varname in self.defined_variables:
+            return self.defined_variables[varname]
+        if varname in self.computed_variables:
+            return self._get_or_create_computed_opvar(varname)
+        raise UnknownVariableName("Unknown variable name %s" % varname)
             
     def change_defined_variable_attribute(self, varname, attr, attrval):
-        from packages.uvcdat_cdms.init import CDMSVariable
-        if varname in self.defined_variables:
-            var = self.defined_variables[varname]
-            if var.attributes is None:
-                var.attributes = {}
-            var.attributes[attr] = attrval
-        elif varname in self.computed_variables:
-            if not varname in self.computed_variables_ops:
-                var = CDMSVariable(name=varname)
-                self.computed_variables_ops[varname] = var
-            var = self.computed_variables_ops[varname]
-            if var.attributes is None:
-                var.attributes = {}
-            var.attributes[attr] = attrval
+        var = self._get_change_var(varname)
+        if var.attributes is None:
+            var.attributes = {}
+        var.attributes[attr] = attrval
             
     def remove_defined_variable_attribute(self, varname, attr):
-        if varname in self.defined_variables:
-            var = self.defined_variables[varname]
-            if var.attributes is not None and attr in var.attributes:
-                del var.attributes[attr]
-        elif varname in self.computed_variables:
-            if varname in self.computed_variables_ops:
-                var = self.computed_variables_ops[varname]
-                if var.attributes is not None and attr in var.attributes:
-                    del var.attributes[attr]
+        var = self._get_change_var(varname)
+        if var.attributes is not None and attr in var.attributes:
+            del var.attributes[attr]
                 
     def change_defined_variable_axis_attribute(self, varname, axname, attr, 
                                                attrval):
-        from packages.uvcdat_cdms.init import CDMSVariable
-        if varname in self.defined_variables:
-            var = self.defined_variables[varname]
-            if var.axisAttributes is None:
-                var.axisAttributes = {}
-            if axname not in var.axisAttributes:
-                var.axisAttributes[axname] = {}    
-            var.axisAttributes[axname][attr] = attrval
-        elif varname in self.computed_variables:
-            if not varname in self.computed_variables_ops:
-                var = CDMSVariable(name=varname)
-                self.computed_variables_ops[varname] = var
-            var = self.computed_variables_ops[varname]
-            if var.axisAttributes is None:
-                var.axisAttributes = {}
-            if axname not in var.axisAttributes:
-                var.axisAttributes[axname] = {}    
-            var.axisAttributes[axname][attr] = attrval
+        var = self._get_change_var(varname)
+        if var.axisAttributes is None:
+            var.axisAttributes = {}
+        if axname not in var.axisAttributes:
+            var.axisAttributes[axname] = {}    
+        var.axisAttributes[axname][attr] = attrval
                 
     def remove_defined_variable_axis_attribute(self, varname, axname, attr):
-        if varname in self.defined_variables:
-            var = self.defined_variables[varname]
-            if var.axisAttributes and axname in var.axisAttributes:
-                if var.axisAttributes[axname] and attr in var.axisAttributes[axname]:
-                    del var.axisAttributes[axname][attr]
+        var = self._get_change_var(varname)
+        if var.axisAttributes and axname in var.axisAttributes:
+            if var.axisAttributes[axname] and attr in var.axisAttributes[axname]:
+                del var.axisAttributes[axname][attr]
                 
     def change_defined_variable_time_bounds(self, varname, timebounds):
-        if varname in self.defined_variables:
-            var = self.defined_variables[varname]
-            var.timeBounds = timebounds
+        var = self._get_change_var(varname)
+        var.timeBounds = timebounds
            
     def calculator_command(self, vars, txt, st, varname):
         #varname may be tuple
@@ -655,7 +642,6 @@ class ProjectController(QtCore.QObject):
                         #was already processed. We need only to create a new variable
                         # and associate the computed cdms variable
                         var =  CDMSVariable(filename=None,name=computed_ops[mv].varname)
-                        var.var = self.create_exec_new_variable_pipeline(var.name)
                     else:
                         #using a simple variable. Just recreate it
                         var = mv.module_descriptor.module.from_module(mv)
@@ -846,6 +832,31 @@ class ProjectController(QtCore.QObject):
             plot_prop.set_controller(None)
             plot_prop.updateProperties(None, sheetName,row,col)
         self.checkEnableUndoRedo(cell)
+        
+        #update animation widget
+        from gui.application import get_vistrails_application
+        _app = get_vistrails_application()
+        animationWidget = _app.uvcdatWindow.dockAnimate.widget()
+        
+        #get cell widget
+        cellWidget = None
+        sheetWidget = self.get_sheet_widget(sheetName)
+        if sheetWidget is not None:
+            cellWidget = sheetWidget.getCell(row, col)
+
+        if (cellWidget is not None and
+                hasattr(cellWidget, 'canvas') and
+                hasattr(cellWidget.canvas, 'animate')):
+            animationWidget.setCanvas(cellWidget.canvas)
+        else:
+            animationWidget.setCanvas(None)
+            
+    def get_sheet_widget(self, sheetName):
+        ssheetWindow = spreadsheetController.findSpreadsheetWindow(show=False)
+        tabController = ssheetWindow.get_current_tab_controller()
+        for i in range(tabController.count()):
+            if tabController.tabText(i) == sheetName:
+                return tabController.widget(i)
                 
     def get_python_script(self, sheetName, row, col):
         script = None
