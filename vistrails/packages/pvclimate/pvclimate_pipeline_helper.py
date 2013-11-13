@@ -134,13 +134,11 @@ class PVClimatePipelineHelper(PlotPipelineHelper):
                 #// @Aashish: I am expecting that every time we drop a variable, we will get a
                 #// pipeline that does not have modules from the previous execution. I need to verify
                 #// this but for now this assumption seems to hold.
-                if issubclass(var_modules[0].module_descriptor.module, CDMSVariable):
-                    conn = controller.create_connection(var_module, 'self',
-                                                        plot_module, 'cdms_variable')
-                else:
-                    pass
-#                    conn = controller.create_connection(var_module, 'self',
-#                                                        plot_module, 'variable')
+                
+                oport = CDMSPipelineHelper.get_output_port_name(
+                        var_module.module_descriptor.module)
+                conn = controller.create_connection(var_module, oport,
+                                                    plot_module, 'cdms_variable')
                 ops.append(('add', conn))
 
                 loc_module = controller.create_module_from_descriptor(

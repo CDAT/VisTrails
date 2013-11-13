@@ -264,6 +264,19 @@ class UVCDATTestManager:
                 
         #trigger ok on pop up widget
         self.uvcdat_window.mainMenu.pop.ok()
+            
+    @UVCDATTest
+    def test_pvclimate_computed_vars(self):
+        
+        #load test variable
+        self.simulate_load_variable()
+        
+        #do a simple computation (x*2)
+        varname = self.varname_from_index(0)
+        self.simulate_calculator_command("computed_var=%s*2" % varname)
+        
+        self.simulate_plot_drag_and_drop(package="PVClimate", name="PV Contour Representation")
+        self.simulate_variable_drag_and_drop('computed_var')
         
     innerFail = False
         
