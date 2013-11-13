@@ -239,7 +239,7 @@ class PVCDMSReader():
         vtk_data_array.SetNumberOfComponents(1)
         vtk_data_array.SetNumberOfTuples(no_tuples)
         vtk_data_array.SetVoidArray(data_array, data_array.size, 1)
-        vtk_data_array.SetName(cdms_var.varNameInFile)
+        vtk_data_array.SetName(cdms_var.varname)
 
         image_point_data = image_data.GetPointData()
         image_point_data.SetScalars(vtk_data_array)
