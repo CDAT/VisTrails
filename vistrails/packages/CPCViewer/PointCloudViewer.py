@@ -766,7 +766,7 @@ class CPCPlot(QtCore.QObject):
         else:
             if res == ProcessMode.LowRes:  return self.sliceProperties[ SLICE_WIDTH_LR_COMP[ slice_index ] ]
             if res == ProcessMode.HighRes: return self.sliceProperties[ SLICE_WIDTH_HR_COMP[ slice_index ] ]
-       
+            
     def getSlicePosition(self, slice_index = -1 ):
         if slice_index == -1: slice_index = self.sliceAxisIndex
         return self.sliceProperties[ POS_VECTOR_COMP[ slice_index ] ]
@@ -789,6 +789,7 @@ class CPCPlot(QtCore.QObject):
             pmax = min( self.getSlicePosition() + slice_radius, 1.0 )
             pmax = max( pmax, slice_radius )
             slice_bounds.append( (pmin,pmax) )
+        print " && ExecCurrentSlice, slice properties: %s " % ( str( self.sliceProperties ) ); sys.stdout.flush()
         self.updateSlicing( self.sliceAxisIndex, slice_bounds, **args )
     
     def pushSlice( self, slice_pos ):

@@ -1414,8 +1414,9 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             cell_specs = []
             cell_addresses = []
             for j in range(plot_obj.cellnum):
-                ccell = plot_obj.cells[j] 
-                location = ccell.address_name if ccell.address_name else 'location%d' % (j+1)   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
+#                 ccell = plot_obj.cells[j] 
+#                 location = ccell.address_name if ccell.address_name else 'location%d' % (j+1)   # address_name defined using 'address_alias=...' in cell section of plot cfg file.
+                location =  'location%d' % (j+1) 
                 cell_spec = "%s%s" % ( chr(ord('A') + col+j ), row+1)
                 cell_specs.append( '%s!%s' % ( location, cell_spec ) )
                 cell_addresses.append( cell_spec )

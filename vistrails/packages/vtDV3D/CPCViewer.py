@@ -5,7 +5,7 @@ Created on Oct 29, 2013
 '''
 from packages.vtDV3D.PersistentModule import *
 from packages.CPCViewer.PointCloudViewer import CPCPlot, kill_all_zombies
-from packages.CPCViewer.ControlPanel import CPCConfigGui, CPCConfigConfigurationWidget
+from packages.CPCViewer.ControlPanel import CPCConfigConfigurationWidget
 from packages.vtDV3D.CDMS_VariableReaders import  CDMSReaderConfigurationWidget
 from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
 from PyQt4.QtCore import *
@@ -99,9 +99,11 @@ class PM_CPCViewer(PersistentVisualizationModule):
         for port_spec in PM_CPCViewer.PortSpecs:
             pname = port_spec[0]
             parm_values = self.getInputValue( pname )
-            if parm_values <> None: 
+            if parm_values <> None:
+                print "*** Initialize Parameter %s: %s " % ( pname, str(parm_values) );
                 self.config_widget.initialize( pname, parm_values )
         self.config_widget.activate()
+        sys.stdout.flush()
         return self.config_widget
     
     def getPlotter(self):

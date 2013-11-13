@@ -9,6 +9,8 @@ SLICE_WIDTH_LR_COMP = [ 'xlrwidth', 'ylrwidth', 'zlrwidth' ]
 SLICE_WIDTH_HR_COMP = [ 'xhrwidth', 'yhrwidth', 'zhrwidth' ]
 
 def deserialize_value( sval ):
+    if isinstance( sval, float ): 
+        return sval
     try:
         return int(sval)
     except ValueError:
@@ -37,7 +39,10 @@ class ConfigParameter( QtCore.QObject ):
         self.name = name 
         self.values = args
         self.valueKeyList = list( args.keys() )
-        
+     
+    def __str__(self):
+        return " ConfigParameter[%s]: %s " % ( self.name, str( self.values ) )
+   
     def addValueKey( self, key ):
         if not (key in self.valueKeyList):
             self.valueKeyList.append( key ) 
@@ -57,9 +62,10 @@ class ConfigParameter( QtCore.QObject ):
 
     def unpack( self, value_strs ):
         if len( value_strs ) <> len( self.values.keys() ): 
-            print>>sys.stderr, " Error: parameter structure mismatch in %s ( %d vs %d )" % ( self.name,  len( value_strs ), len( self.values.keys() ) )
+            print>>sys.stderr, " Error: parameter structure mismatch in %s ( %d vs %d )" % ( self.name,  len( value_strs ), len( self.values.keys() ) ); sys.stderr.flush()
         for ( key, str_val ) in zip( self.valueKeyList, value_strs ):
             self.values[key] = deserialize_value( str_val ) 
+        print " && Unpack parameter %s: %s " % ( self.name, str( self.values ) ); sys.stdout.flush()
             
     def __len__(self):
         return len(self.values)
@@ -861,6 +867,7 @@ class ConfigurationWidget(QtGui.QWidget):
             for config_item in self.config_params.items():
                 cfg_str = " %s = %s " % ( config_item[0], config_item[1].serialize() )
                 f.write( cfg_str )
+            f.close()
         except IOError:
             print>>sys.stderr, "Can't open config file: %s" % self.cfgFile
 
@@ -912,6 +919,8 @@ class CPCConfigConfigurationWidget( ConfigurationWidget ):
         return plist
 
     def initialize( self, parm_name, parm_values ):
+        if not ( isinstance(parm_values,list) or isinstance(parm_values,tuple) ):
+            parm_values = [ parm_values ]
         cfg_parm = self.config_params.get( parm_name, None )
         if cfg_parm: cfg_parm.unpack( parm_values )
 
@@ -924,6 +933,7 @@ class CPCConfigConfigurationWidget( ConfigurationWidget ):
         return plist
         
     def build( self, **args ):
+
         self.iColorCatIndex = self.addCategory( 'Color' )
         cparm = self.addParameter( self.iColorCatIndex, "Color Scale", wpos=0.5, wsize=1.0, ctype = 'Leveling' )
         self.addConfigControl( self.iColorCatIndex, ColorScaleControl( cparm ) )       
