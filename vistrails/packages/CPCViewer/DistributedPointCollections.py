@@ -671,6 +671,10 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
             if rv <> ExecutionDataPacket.NONE:
                 return pc_item, rv 
         return None, None
+
+    def terminate(self):
+        for pc_item in self.point_clouds.items():
+            pc_item[1].terminate()
                     
     def checkProcQueues(self):
         pc_item, rv = self.processProcQueue()

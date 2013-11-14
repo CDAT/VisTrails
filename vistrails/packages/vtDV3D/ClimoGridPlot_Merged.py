@@ -1339,5 +1339,4 @@ if __name__ == '__main__':
     app.connect( app, QtCore.SIGNAL("aboutToQuit()"), multicore_exec.terminate()  ) 
     widget.show()   
     app.exec_() 
-    multicore_exec.terminate()  
 

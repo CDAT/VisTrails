@@ -50,7 +50,6 @@ class PM_CPCViewer(PersistentVisualizationModule):
 #            inputList = self.getPrimaryInputList( port=inputPort, **args )
             inMod = self.getPrimaryInput( port=inputPort, **args )
             if inMod: ispec.inputModule = inMod
-                
         
     def execute(self, **args ):
         self.initializeRendering()
@@ -64,6 +63,7 @@ class PM_CPCViewer(PersistentVisualizationModule):
             self.set3DOutput( name="pointCloud" )
         
     def activateEvent( self, caller, event ):
+        from gui.application import get_vistrails_application
         PersistentVisualizationModule.activateEvent( self, caller, event )
         if self.renwin <> None:
             if self.plotter == None:
@@ -71,6 +71,8 @@ class PM_CPCViewer(PersistentVisualizationModule):
                 self.plotter.init( init_args = ( self.grid_file, self.data_file, self.varname, self.height_varname ), n_overview_points=self.n_overview_points ) # , n_subproc_points=100000000 )
                 self.getConfigWidget()
                 DV3DPipelineHelper.denoteCPCViewer( self.moduleID )
+                app = get_vistrails_application()
+                app.connect( app, QtCore.SIGNAL("aboutToQuit()"), self.plotter.terminate ) 
                 self.render()       
 
     def closeCPCWidget( self, parmRecList ):

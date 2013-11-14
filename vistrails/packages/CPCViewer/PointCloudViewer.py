@@ -435,6 +435,9 @@ class CPCPlot(QtCore.QObject):
 #    def clearColoredPoint( self, iPtIndex ):
 #        self.vtk_color_data.SetValue( iPtIndex, 0 )   
 
+#     def terminate(self):
+#         self.partitioned_point_cloud.terminate()
+
     def onRightButtonPress( self, caller, event ):
         shift = caller.GetShiftKey()
         if not shift: return
@@ -1210,7 +1213,7 @@ class CPCPlot(QtCore.QObject):
         cup = cam.GetViewUp()
         camera_pos = (cpos,cfol,cup)
         print "%s: Camera => %s " % ( label, str(camera_pos) )
-        
+                
     def initCollections( self, nCollections, init_args, **args ):
         if nCollections > 1:
             self.partitioned_point_cloud = vtkPartitionedPointCloud( nCollections, init_args, **args )
