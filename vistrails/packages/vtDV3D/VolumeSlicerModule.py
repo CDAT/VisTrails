@@ -667,6 +667,7 @@ class VolumeSlicer(WorkflowModule):
     
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args)    
+        print " "
     
     
     

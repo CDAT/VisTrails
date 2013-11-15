@@ -327,7 +327,7 @@ def extractMetadata( fieldData ):
     mdList = []
     inputVarList = []
     varlist = fieldData.GetAbstractArray( 'varlist' ) 
-    if varlist == None:  
+    if varlist == None:   # module.getFieldData() 
         print>>sys.stderr, " Can't get Metadata!" 
     else: 
         nvar = varlist.GetNumberOfValues()

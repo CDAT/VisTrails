@@ -663,7 +663,11 @@ class VistrailController(object):
                 op_list.append(('delete', function, module.vtType, module.id))
             else:
                 for i, new_param_value in enumerate(param_values):
-                    old_param = function.params[i]
+                    try:
+                        old_param = function.params[i]
+                    except IndexError:
+                        print>>sys.stderr, "Index error in update function '%s': %s vs %s " % ( function_name, str(old_param), str(param_values) )
+                        continue
                     if ((len(aliases) > i and old_param.alias != aliases[i]) or
                         (len(query_methods) > i and 
                          old_param.queryMethod != query_methods[i]) or
