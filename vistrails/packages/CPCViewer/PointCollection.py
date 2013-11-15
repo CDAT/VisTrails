@@ -232,13 +232,14 @@ class PointCollection():
 
     def stepTime( self, **args ):
         process = args.get( 'process', True )
+        update_points = args.get( 'update_points', True )
         self.iTimeStep = self.iTimeStep + 1
-#        print " PC[%d/%d]: stepTime[%d]: %s  " % ( self.istart, self.istep, self.iTimeStep, str( process ) )
+        print " PC[%d/%d]: stepTime[%d]: %s  " % ( self.istart, self.istep, self.iTimeStep, str( process ) )
         if self.iTimeStep >= self.time.shape[0]:
             self.iTimeStep = 0
         if process:
             var_data = self.var_data_cache.get( self.iTimeStep, None ) 
-            if var_data == None:
+            if id(var_data) == id(None):
                 np_var_data_block = self.getDataBlock(self.var).flatten()     
                 if self.missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False )
                 else: var_data = np_var_data_block

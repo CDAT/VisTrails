@@ -1700,9 +1700,9 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
                     w = cpcModule.getConfigWidget()
                     plotter = cpcModule.getPlotter()  
                     if cls.currentCPCWidget == None:
-                        cls.currentCPCWidget = w                        
-                    QObject.connect( cls.currentCPCWidget,  QtCore.SIGNAL("ConfigCmd"),     plotter.processConfigCmd  )
-                    QObject.connect( w,                     QtCore.SIGNAL("ConfigCmd"),     plotter.processConfigCmd  )
+                        cls.currentCPCWidget = w 
+                    elif( cls.currentCPCWidget != w ):                       
+                        QObject.connect( cls.currentCPCWidget,  QtCore.SIGNAL("ConfigCmd"),     plotter.processConfigCmd  )
             return cls.currentCPCWidget
         else:        
             pmods = set()

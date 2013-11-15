@@ -633,7 +633,9 @@ class vtkLocalPointCloud( vtkPointCloud ):
     
     def stepTime(self, **args): 
         if self.point_collection.stepTime( **args ):
+            update_points = args.get( 'update_points', True )
             self.vardata = self.point_collection.getVarData()
+            if update_points: self.generateSubset()
             self.updateScalars() 
                   
 class vtkPartitionedPointCloud( QtCore.QObject ):
@@ -760,6 +762,8 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
  
     def stepTime(self, **args ):
         self.runProcess( PCProc.Timestep, **args )
+        update_points = args.get( 'update_points', True )
+        if update_points: self.generateSubset()
       
     def clearProcQueues(self):
         for pc_item in self.point_clouds.items():
