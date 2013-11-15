@@ -4,7 +4,7 @@ Created on Oct 29, 2013
 @author: tpmaxwel
 '''
 from packages.vtDV3D.PersistentModule import *
-from packages.CPCViewer.PointCloudViewer import CPCPlot, kill_all_zombies
+from packages.CPCViewer.PointCloudViewer import CPCPlot
 from packages.CPCViewer.ControlPanel import CPCConfigConfigurationWidget
 from packages.vtDV3D.CDMS_VariableReaders import  CDMSReaderConfigurationWidget
 from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
@@ -102,7 +102,7 @@ class PM_CPCViewer(PersistentVisualizationModule):
             pname = port_spec[0]
             parm_values = self.getInputValue( pname )
             if parm_values <> None:
-                print "*** Initialize Parameter %s: %s " % ( pname, str(parm_values) );
+#                print "*** Initialize Parameter %s: %s " % ( pname, str(parm_values) );
                 self.config_widget.initialize( pname, parm_values )
         self.config_widget.activate()
         sys.stdout.flush()
@@ -131,17 +131,15 @@ class CPCViewerConfigurationWidget(StandardModuleConfigurationWidget):
         self.getParameters( module )        
         self.cfg_widget = CPCConfigConfigurationWidget()    
         self.setLayout( QVBoxLayout() )
-        self.layout().setMargin(0)
-        self.layout().setSpacing(0)
+#        self.layout().setMargin(0)
+#        self.layout().setSpacing(0)
 
         self.tabbedWidget = QTabWidget()
         self.layout().addWidget( self.cfg_widget ) 
-        self.createButtonLayout() 
+#        self.createButtonLayout() 
         
 #        self.cfg_widget.build()
 #        self.cfg_widget.activate()
 
     def getParameters( self, module ):
         pass
-
-kill_all_zombies()

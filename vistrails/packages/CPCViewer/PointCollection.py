@@ -273,7 +273,7 @@ class PointCollection():
         self.point_data_arrays['vardata'] = var_data
         self.vrange = ( var_data.min(), var_data.max() ) 
         self.var_data_cache[ self.iTimeStep ] = var_data
-        print "Read %d points." % self.getNumberOfPoints(); sys.stdout.flush()
+#        print "Read %d points." % self.getNumberOfPoints(); sys.stdout.flush()
         
     def getPoints(self):
         point_comps = [ self.point_data_arrays[comp].flat for comp in [ 'x', 'y', 'z'] ]

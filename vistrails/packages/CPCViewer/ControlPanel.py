@@ -65,7 +65,7 @@ class ConfigParameter( QtCore.QObject ):
             print>>sys.stderr, " Error: parameter structure mismatch in %s ( %d vs %d )" % ( self.name,  len( value_strs ), len( self.values.keys() ) ); sys.stderr.flush()
         for ( key, str_val ) in zip( self.valueKeyList, value_strs ):
             self.values[key] = deserialize_value( str_val ) 
-        print " && Unpack parameter %s: %s " % ( self.name, str( self.values ) ); sys.stdout.flush()
+#        print " && Unpack parameter %s: %s " % ( self.name, str( self.values ) ); sys.stdout.flush()
             
     def __len__(self):
         return len(self.values)
