@@ -127,6 +127,7 @@ class QAnimationView(QtGui.QWidget):
         self.player.addWidget(self.framesSlider,newRow=True)
         self.doLoop = self.player.addCheckBox("Loop",newRow=False)
         self.doLoop.setChecked(True)
+        self.doLoop.clicked.connect(self.loopClicked)
         self.player.setEnabled(False)
         controlsFrame.addWidget(self.player,newRow=True)
 
@@ -134,6 +135,9 @@ class QAnimationView(QtGui.QWidget):
 
         self.setCanvas(canvas)
         self.stopCreating()
+        
+    def loopClicked(self, checked):
+        self.canvas.animate.loop = checked
         
     def horizPanned(self,value):
         self.canvas.animate.horizontal(value)
@@ -227,7 +231,6 @@ class QAnimationView(QtGui.QWidget):
 
     def playStopClicked(self):
         if self.canvas.animate.create_flg == 1:
-            self.canvas.animate.loop = self.doLoop.isChecked()
             if self.canvas.animate.run_flg == 0:
                 self.canvas.animate.run()
             else:
@@ -245,6 +248,7 @@ class QAnimationView(QtGui.QWidget):
 
     def drew(self):
         self.framesSlider.setValue(self.canvas.animate.current_frame)
+        self.frameCount.setText("Frame: %d" % self.canvas.animate.current_frame)
         
     def paused(self):
         self.updatePlayStopIcon()
