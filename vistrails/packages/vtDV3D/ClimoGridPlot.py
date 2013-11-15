@@ -21,7 +21,7 @@ from vtk.util import numpy_support
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
 VTK_CONTROL_MODIFIER    = 2        
-VTK_BACKGROUND_COLOR = ( 0.5, 0.5, 0.5 )
+VTK_BACKGROUND_COLOR = ( 0.0, 0.0, 0.0 )
 VTK_FOREGROUND_COLOR = ( 1.0, 1.0, 1.0 )
 VTK_TITLE_SIZE = 14
 VTK_NOTATION_SIZE = 14
@@ -329,7 +329,7 @@ class GridLevel:
             indexing = args.get( 'indexing', 'C' )
             
             self.ncells = self.quad_corners.shape[1] if ncells_cutoff <= 0 else ncells_cutoff
-            element_corners_data = quad_corners[:,0:self.ncells].raw_data().astype( numpy.int64 )
+            element_corners_data = quad_corners[:,0:self.ncells].data.astype( numpy.int64 )
             if self.indexing == 'F': element_corners_data = element_corners_data - 1
             np_cell_size_data = numpy.empty( [ self.ncells ], numpy.int64 )
             np_cell_size_data.fill(4)
@@ -634,7 +634,7 @@ class GridTest:
 #         if len( self.var.shape ) == 3:
 #             self.var_data = self.level_cache.get( self.iLevel, None )
 #             if id(self.var_data) == id(None):
-#                 self.var_data = self.var[ 0, self.iLevel, 0:self.npoints ].raw_data()
+#                 self.var_data = self.var[ 0, self.iLevel, 0:self.npoints ].data
 #                 self.level_cache[ self.iLevel ] = self.var_data
 #             self.vtk_color_data = numpy_support.numpy_to_vtk( self.var_data ) 
 #             self.polydata.GetPointData().SetScalars( self.vtk_color_data )
@@ -670,8 +670,8 @@ class GridTest:
         self.lat_data = lat[0:self.npoints]
         self.lon_data = lon[0:self.npoints]
         if self.lon_data.__class__.__name__ == "TransientVariable":
-            self.lat_data = self.lat_data.raw_data()
-            self.lon_data = self.lon_data.raw_data()        
+            self.lat_data = self.lat_data.data
+            self.lon_data = self.lon_data.data        
         xmax, xmin = self.lon_data.max(), self.lon_data.min()
         self.xcenter =  ( xmax + xmin ) / 2.0       
         self.xwidth =  ( xmax - xmin ) 
@@ -726,9 +726,9 @@ class GridTest:
     def getDataBlock( self ):
         if self.lev == None:
             if len( self.var.shape ) == 2:
-                np_var_data_block = self.var[ self.iTimeStep, : ].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, : ].data
             elif len( self.var.shape ) == 3:
-                np_var_data_block = self.var[ self.iTimeStep, :, : ].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, :, : ].data
                 np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0] * np_var_data_block.shape[1], ] )
             self.nLevels = 1
         else:
@@ -739,9 +739,9 @@ class GridTest:
                         self.iLevel = self.nLevels - 1 
                     self.inverted_levels = True 
             if len( self.var.shape ) == 3:               
-                np_var_data_block = self.var[ self.iTimeStep, :, : ].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, :, : ].data
             elif len( self.var.shape ) == 4:
-                np_var_data_block = self.var[ self.iTimeStep, :, :, : ].raw_data()
+                np_var_data_block = self.var[ self.iTimeStep, :, :, : ].data
                 np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0], np_var_data_block.shape[1] * np_var_data_block.shape[2] ] )
             
         return np_var_data_block
@@ -799,6 +799,7 @@ class GridTest:
             if missing_value: var_data = numpy.ma.masked_equal( var_data, missing_value, False )
             glev.createPolydata( ( iLev == self.iLevel ), lon=self.lon_data, lat=self.lat_data )
             self.appendLayers.AddInput( glev.polydata )
+            self.updateAllLevels()
             lut = self.get_LUT( invert = True, number_of_colors = 1024 )
             glev.setVarData( var_data, lut )          
             glev.createVertices( geometry ) # quads = quad_corners, indexing = 'F' )
@@ -1025,4 +1026,4 @@ if __name__ == '__main__':
         varname = "u"   
 
     g = GridTest()
-    g.plot( data_file, grid_file, varname, topo=PlotType.Planar, roi=(0, 180, 0, 90), grid=PlotType.Points, indexing='F', max_npts=-1, max_ncells=-1, level = 0, data_format = data_type )
+    g.plot( data_file, grid_file, varname, topo=PlotType.Planar, roi=(0, 180, 0, 90), grid=PlotType.Points, indexing='F', max_npts=-1, max_ncells=1000, data_format = data_type )

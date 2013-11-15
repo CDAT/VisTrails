@@ -20,6 +20,7 @@ from collections import OrderedDict
 from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
 from sets import *
+from Cython.Compiler.Symtab import classmethod_utility_code
 
 
 class CDMSDataType:
@@ -29,6 +30,13 @@ class CDMSDataType:
     Hoffmuller = 4
     ChartData = 5
     VariableSpace = 6
+    Points = 7
+    
+    @classmethod
+    def getName( cls, type ):
+        if type == cls.Volume: return "volume"
+        if type == cls.Points: return "points"
+        if type == cls.Vector: return "vector"
     
 class ConfigPopupManager( QObject ):
     
@@ -363,7 +371,7 @@ class ConfigurableFunction( QObject ):
     
     ConfigurableFunctions = {}    
     
-    def __init__( self, name, function_args, key, **args ):
+    def __init__( self, name, function_args, key=None, **args ):
         QObject.__init__(self)
         self.name = name
         self.activateByCellsOnly = args.get( 'cellsOnly', False )
@@ -1792,10 +1800,11 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 #        return listContainer 
          
     def closeEvent(self, event):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
         self.askToSaveChanges()
         w = self.getTopLevelWidget()
         w.close()
-        
+                
     def getTopLevelWidget(self):
         topWidget = self
         while True:
