@@ -610,7 +610,10 @@ class CPCPlot(QtCore.QObject):
     def processCategorySelectionCommand( self, args ):
         op = args[0]
         if op == 'Subsets':
-            self.enableSlicing()
+            if (self.process_mode == ProcessMode.Slicing) or (self._current_subset_specs == None): 
+                self.enableSlicing()
+            elif self.process_mode == ProcessMode.Thresholding:  
+                self.enableThresholding()
         elif op == 'Color':
             self.enableColorConfig() 
         elif op == 'Points':

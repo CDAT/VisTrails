@@ -6,6 +6,7 @@ Created on Sep 18, 2013
 
 import sys, os
 import numpy
+from cdms2.error import CDMSError
 import vtk,  time,  math
 from vtk.util import numpy_support
 from PointCollection import PointCollection, PlotType, isNone
@@ -160,9 +161,15 @@ class vtkPointCloud(QtCore.QObject):
         self.actor.SetMapper( self.mapper )
       
     def getPoint( self, iPt ):
-        dval = self.vardata[ iPt ]
-        pt = self.vtk_planar_points.GetPoint( iPt ) 
-        self.printLogMessage( " getPoint: dval=%s, pt=%s " % ( str(dval), str(pt) ) ) 
+        try:
+            vdata = self.vardata.data
+            dval = vdata[ iPt ]
+            pt = self.vtk_planar_points.GetPoint( iPt ) 
+            self.printLogMessage( " getPoint: dval=%s, pt=%s " % ( str(dval), str(pt) ) ) 
+        except CDMSError, err:
+            print>>sys.stderr, "Pick Error for point %d: %s" % ( iPt, str(err) )
+            print>>sys.stderr, "Vardata(%s) shape: %s " % ( vdata.__class__.__name__, str( vdata.shape ) )
+            return None, None
         return pt, dval
         
     def printLogMessage(self, msg_str, **args ):
