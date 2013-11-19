@@ -2281,7 +2281,10 @@ class PersistentVisualizationModule( PersistentModule ):
         return rens
        
     def onAnyEvent(self, caller, event ):
-        global ecount
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        global ecount       
+        rw = DV3DPipelineHelper.getRenderWindow( 'A1' ) 
+        print " "
 #        if self.cell_location:
 #            addr = self.cell_location[-1]
 #            if event == "ModifiedEvent" and addr == "A2":

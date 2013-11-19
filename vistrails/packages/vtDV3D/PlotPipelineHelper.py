@@ -1241,7 +1241,16 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #                    DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline
                   
         return action
-
+    
+    @classmethod
+    def getRenderWindow( cls, cell_address, sheetName = None ):
+        pipeline = cls.getPipeline(cell_address, sheetName)
+        if pipeline <> None:
+            for mod in pipeline.modules.items():
+                if mod[1].db_name in [ "MapCell3D" ]:
+                    pmod = ModuleStore.getModule( mod[0] ) 
+                    return pmod.renwin
+  
     @staticmethod
     def getPipeline( cell_address, sheetName = None ):
         if sheetName == None:    
