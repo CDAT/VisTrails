@@ -497,7 +497,8 @@ class CPCPlot(QtCore.QObject):
     def processEvent(self, eventArgs ):
         if eventArgs[0] == "KeyEvent":
             self.onKeyEvent( eventArgs[1:])
-        print " -- Event: %s " % str( eventArgs )
+        print " -- Event: %s " % str( eventArgs ); sys.stdout.flush()
+#        SetEnabled    (     int          )
         
 #        self.emit( QtCore.SIGNAL('Close')  )
             
@@ -548,6 +549,14 @@ class CPCPlot(QtCore.QObject):
             self.planeWidgetOff()
             self.shiftThresholding( 0, 0 )  
         elif keysym == "i":  self.setPointIndexBounds( 5000, 7000 )
+        elif keysym == "x":  self.toggleSlicePlaneInteraction()
+        
+    def toggleSlicePlaneInteraction(self):
+        if self.planeWidget <> None:
+            enabled = bool( self.planeWidget.GetEnabled() )
+            enabled = int( not enabled )
+            self.planeWidget.SetEnabled( enabled )
+            print "Toggle Slice Plane Interaction: %d" % (enabled); sys.stdout.flush()
         
     def enableSlicing( self ):
         self.process_mode = ProcessMode.Slicing 
@@ -602,7 +611,7 @@ class CPCPlot(QtCore.QObject):
             self.planeWidget.DrawPlaneOff()
             self.planeWidget.TubingOff() 
             self.planeWidget.GetNormalProperty().SetOpacity(0.0)
-            self.planeWidget.SetInteractor( self.renderWindowInteractor )
+#            self.planeWidget.SetInteractor( self.renderWindowInteractor )
             self.planeWidget.KeyPressActivationOff()
             self.widget_bounds = self.point_cloud_overview.getBounds()
             self.planeWidget.PlaceWidget( self.widget_bounds )

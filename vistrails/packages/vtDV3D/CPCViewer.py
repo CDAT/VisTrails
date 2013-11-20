@@ -39,6 +39,16 @@ class PM_CPCViewer(PersistentVisualizationModule):
             print str(err)
         self.plotter = None
 
+    def processKeyEvent( self, key, caller=None, event=None ):
+        PersistentVisualizationModule.processKeyEvent( self, key, caller, event )
+        shift = caller.GetShiftKey()
+        alt   = caller.GetAltKey()
+        ctrl  = caller.GetControlKey()
+        mods = Qt.ShiftModifier if shift else 0
+        eventArgs = [ caller.GetKeyCode(), caller.GetKeySym(), mods ]
+        self.plotter.onKeyEvent( eventArgs )
+#        print "Process Key Event: key = %s, mods = %s" % ( key, str((shift,alt,ctrl)) )
+
     def initializeInputs( self, **args ):        
         isAnimation = args.get( 'animate', False )
         restarting = args.get( 'restarting', False )
