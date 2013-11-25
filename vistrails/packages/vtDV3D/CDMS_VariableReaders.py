@@ -337,7 +337,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     self.addCDMSVariable( cdms_var2, iVar )
                     intersectedRoi = self.getIntersectedRoi( cdms_var2, intersectedRoi )
                     
-            self.generateOutput(roi=intersectedRoi)
+            if hasattr(cdms_var,'url'): self.generateOutput( roi=intersectedRoi, url=cdms_var.url )
+            else:                       self.generateOutput( roi=intersectedRoi )
 #            if self.newDataset: self.addAnnotation( "datasetId", self.datasetId )
         else:
             dset = self.getInputValue( "dataset"  ) 
@@ -437,6 +438,7 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         if len( varList ) == 0: return False
         varDataIds = []
         intersectedRoi = args.get('roi', None )
+        url = args.get('url', None )
         if intersectedRoi: self.cdmsDataset.setRoi( intersectedRoi )
         dsid = None
         fieldData = self.getFieldData()
@@ -481,7 +483,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] ) if self.cdmsDataset.gridBounds else ""
             varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), roiStr )
             vmd = {}         
-            vmd[ 'dsid' ] = dsid                 
+            vmd[ 'dsid' ] = dsid 
+            vmd[ 'file' ] = url if url else dsid              
             vmd[ 'varName' ] = varName                 
             vmd[ 'outputType' ] = self.outputType                 
             vmd[ 'varDataIdIndex' ] = varDataIdIndex
@@ -489,7 +492,8 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             vmd['timeIndex']= iTimestep
             vmd['timeValue']= self.timeValue.value
             vmd['latLonGrid']= self.cdmsDataset.latLonGrid
-            vmd['timeUnits' ] = self.referenceTimeUnits              
+            vmd['timeUnits' ] = self.referenceTimeUnits 
+            vmd[ 'bounds' ] = self.cdmsDataset.gridBounds          
             enc_mdata = encodeToString( vmd ) 
             if enc_mdata and fieldData: 
                 fieldData.AddArray( getStringDataArray( 'metadata:%s' % varName,   [ enc_mdata ]  ) ) 

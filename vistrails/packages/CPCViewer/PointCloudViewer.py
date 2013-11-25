@@ -22,6 +22,14 @@ VTK_NOTATION_SIZE = 14
 VTK_INSTRUCTION_SIZE = 24
 MIN_LINE_LEN = 50
 
+def getBool( val ):
+    if isinstance( val, str ):
+        if( val.lower()[0] == 't' ): return True
+        if( val.lower()[0] == 'f' ): return False
+        try:    val = int(val)
+        except: pass
+    return bool( val )
+    
 def dump_np_array1( a, label=None ):
     print "\n-------------------------------------------------------------------------------------------------"
     if label: print label
@@ -310,9 +318,9 @@ class CPCPlot(QtCore.QObject):
         
     def setColormap( self, data, **args ):
         colormapName = str(data[0])
-        invertColormap = int( data[1] )
-        enableStereo = int( data[2] )
-        smoothColormap = int( data[3] ) if ( len( data ) > 3 ) else 1 
+        invertColormap = getBool( data[1] ) 
+        enableStereo = getBool( data[2] )
+        smoothColormap = getBool( data[3] ) if ( len( data ) > 3 ) else 1 
         cmap_index = args.get( 'index', 0 )
         cm_title = args.get( 'title', '' )
         self.updateStereo( enableStereo )
@@ -426,6 +434,9 @@ class CPCPlot(QtCore.QObject):
 #
 #    def clearColoredPoint( self, iPtIndex ):
 #        self.vtk_color_data.SetValue( iPtIndex, 0 )   
+
+#     def terminate(self):
+#         self.partitioned_point_cloud.terminate()
 
     def onRightButtonPress( self, caller, event ):
         shift = caller.GetShiftKey()
@@ -758,7 +769,7 @@ class CPCPlot(QtCore.QObject):
         else:
             if res == ProcessMode.LowRes:  return self.sliceProperties[ SLICE_WIDTH_LR_COMP[ slice_index ] ]
             if res == ProcessMode.HighRes: return self.sliceProperties[ SLICE_WIDTH_HR_COMP[ slice_index ] ]
-       
+            
     def getSlicePosition(self, slice_index = -1 ):
         if slice_index == -1: slice_index = self.sliceAxisIndex
         return self.sliceProperties[ POS_VECTOR_COMP[ slice_index ] ]
@@ -781,6 +792,7 @@ class CPCPlot(QtCore.QObject):
             pmax = min( self.getSlicePosition() + slice_radius, 1.0 )
             pmax = max( pmax, slice_radius )
             slice_bounds.append( (pmin,pmax) )
+#        print " && ExecCurrentSlice, slice properties: %s " % ( str( self.sliceProperties ) ); sys.stdout.flush()
         self.updateSlicing( self.sliceAxisIndex, slice_bounds, **args )
     
     def pushSlice( self, slice_pos ):
@@ -1201,7 +1213,7 @@ class CPCPlot(QtCore.QObject):
         cup = cam.GetViewUp()
         camera_pos = (cpos,cfol,cup)
         print "%s: Camera => %s " % ( label, str(camera_pos) )
-        
+                
     def initCollections( self, nCollections, init_args, **args ):
         if nCollections > 1:
             self.partitioned_point_cloud = vtkPartitionedPointCloud( nCollections, init_args, **args )
@@ -1330,7 +1342,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
     parser.add_argument( 'PATH' )
     parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
-    parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="WRF", help='input data type')
+    parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CAM", help='input data type')
     ns = parser.parse_args( sys.argv )
     
     kill_all_zombies()

@@ -98,6 +98,7 @@ class PointCollectionExecutionTarget:
         self.results.put( data_packet )
 
     def packVarData(self):
+#        print "Pack VARDATA"; sys.stdout.flush()
         data_packet = ExecutionDataPacket( ExecutionDataPacket.VARDATA, self.collection_index, self.point_collection.getVarData() )
         data_packet[ 'vrange' ] = self.point_collection.getVarDataRange() 
         data_packet[ 'grid' ] = self.point_collection.getGridType()  
@@ -106,6 +107,7 @@ class PointCollectionExecutionTarget:
         return data_packet
 
     def packPointsData( self ):
+#        print "Pack POINTS"; sys.stdout.flush()
         data_packet = ExecutionDataPacket( ExecutionDataPacket.POINTS, self.collection_index, self.point_collection.getPoints() )
         return data_packet
 
@@ -496,6 +498,7 @@ class vtkSubProcPointCloud( vtkPointCloud ):
         except Exception:
             return False
         if result.type == ExecutionDataPacket.VARDATA:
+#            print "Got VARDATA"
             self.vardata = result.data 
             self.vrange = result['vrange']
             self.grid = result['grid']
@@ -505,12 +508,14 @@ class vtkSubProcPointCloud( vtkPointCloud ):
             self.current_scalar_range = self.vrange
 #            self.printLogMessage( " update vrange %s " % str(self.vrange) )      
         elif result.type == ExecutionDataPacket.INDICES:
+#            print "Got INDICES"
             self.np_index_seq = result.data 
             self.trange = result['trange']
             self.threshold_target = result['target']
 #             if self.pcIndex == 1: 
 #                 self.printLogMessage(  " vtkSubProcPointCloud --->> Get Results, Args: %s " % str(result['args']) )
         elif result.type == ExecutionDataPacket.POINTS:
+#            print "Got POINTS"
             self.np_points_data = result.data
         return True
     
@@ -671,6 +676,10 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
             if rv <> ExecutionDataPacket.NONE:
                 return pc_item, rv 
         return None, None
+
+    def terminate(self):
+        for pc_item in self.point_clouds.items():
+            pc_item[1].terminate()
                     
     def checkProcQueues(self):
         pc_item, rv = self.processProcQueue()

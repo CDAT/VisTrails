@@ -371,7 +371,7 @@ class ConfigurableFunction( QObject ):
     
     ConfigurableFunctions = {}    
     
-    def __init__( self, name, function_args, key, **args ):
+    def __init__( self, name, function_args, key=None, **args ):
         QObject.__init__(self)
         self.name = name
         self.activateByCellsOnly = args.get( 'cellsOnly', False )
@@ -1800,10 +1800,11 @@ class DV3DConfigurationWidget(StandardModuleConfigurationWidget):
 #        return listContainer 
          
     def closeEvent(self, event):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
         self.askToSaveChanges()
         w = self.getTopLevelWidget()
         w.close()
-        
+                
     def getTopLevelWidget(self):
         topWidget = self
         while True:

@@ -8,6 +8,7 @@ import vtk, sys, time, threading, inspect, gui, traceback
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from core.modules.vistrails_module import Module, ModuleError
+from core.modules.module_registry import get_module_registry, MissingPort
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.vtDV3D.InteractiveConfiguration import *
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
@@ -1335,12 +1336,16 @@ class PersistentModule( QObject ):
             op_list = []
 #            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
             for parmRec in parmRecList: 
-                op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
-                config_fn = self.getConfigFunction( parmRec[0] )
-                if config_fn: 
-                    config_list.append( config_fn )
-                else: 
-                    pass
+                try:
+                    op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+                    config_fn = self.getConfigFunction( parmRec[0] )
+                    if config_fn: 
+                        config_list.append( config_fn )
+                    else: 
+                        pass
+                except MissingPort:
+                    print>>sys.stderr, "Missing input port %s in controller, parmRecList = %s " % ( parmRec[0], str( parmRecList ) )
+                    
 #                    print>>sys.stderr, "Unrecognized config function %s in module %d (%s)" % ( parmRec[0], self.moduleID, self.__class__.__name__ )
             action = create_action( op_list ) 
             controller.add_new_action(action)
