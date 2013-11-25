@@ -884,6 +884,10 @@ class CPCConfigConfigurationWidget( ConfigurationWidget ):
         self.AnalysisCatIndex = self.addCategory( 'Analysis' )
         cparm = self.addParameter( self.AnalysisCatIndex, "Animation" )
         self.addConfigControl( self.AnalysisCatIndex, AnimationControl( cparm ) )
+        
+    def askToSaveChanges(self):
+        pass
+
  
 class CPCConfigGui( ConfigurationGui ):
 
