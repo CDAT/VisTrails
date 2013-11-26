@@ -560,10 +560,10 @@ class ProjectController(QtCore.QObject):
                                                                   current_parent_version=0L)
         
     def vis_was_dropped(self, info):
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
-        import vtk
-        renderer = vtk.vtkRenderer() 
-        DV3DPipelineHelper.setRenderer( renderer, cell='A1' )  
+#        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+#        import vtk
+#        renderer = vtk.vtkRenderer() 
+#        DV3DPipelineHelper.setRenderer( renderer, cell='A1' )  
         
         """vis_was_dropped(info: (controller, version, sheetName, row, col) """
         (controller, version, sheetName, row, col, plot_type) = info

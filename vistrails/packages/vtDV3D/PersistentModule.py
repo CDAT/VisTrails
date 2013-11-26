@@ -1595,8 +1595,6 @@ class PersistentVisualizationModule( PersistentModule ):
                 port = ispec.inputModule.getOutputPort()
                 if port: args[ 'port' ] = port
                 else:    args[ 'output' ] = ispec.inputModule.getOutput()
-        if self.renderer == None: 
-            self.renderer = vtk.vtkRenderer()
         outputModule = AlgorithmOutputModule3D( self.renderer, fieldData=fieldData, **args )
         output =  outputModule.getOutput() 
 #        print "Setting 3D output for port %s" % ( portName ) 
