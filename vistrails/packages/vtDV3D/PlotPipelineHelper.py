@@ -681,6 +681,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
     currentCPCWidget = None 
     moduleMap = {} 
     actionMenus = {}
+    renderWindows = {}
     plotIndexMap = {}
     inputVariableMap = {}
     inputCounter = 0
@@ -1241,15 +1242,34 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #                    DV3DPipelineHelper.pipelineMap[ ( sheetName, cell_address ) ] = controller.current_pipeline
                   
         return action
+
+    @classmethod
+    def getCellAddress( cls, **args ):
+        mid = args.get( 'mid', None )
+        if mid:
+            cell_address = cls.moduleMap[mid]
+        else:
+            cell = args.get( 'cell', None )
+            sheet = args.get( 'sheet', "Sheet 1" )
+            cell_address = [ sheet, cell ]
+        return ":".join(cell_address)
     
     @classmethod
-    def getRenderWindow( cls, cell_address, sheetName = None ):
-        pipeline = cls.getPipeline(cell_address, sheetName)
+    def getRenderer( cls, **args ):
+        cell_address = cls.getCellAddress( **args )
+        rw = cls.renderWindows.get( cell_address, None )
+        if rw: return rw
+        pipeline = cls.getPipeline( cell_address[0], cell_address[1] )
         if pipeline <> None:
             for mod in pipeline.modules.items():
                 if mod[1].db_name in [ "MapCell3D" ]:
                     pmod = ModuleStore.getModule( mod[0] ) 
                     return pmod.renwin
+
+    @classmethod
+    def setRenderer( cls, rw, **args ):
+        cell_address = cls.getCellAddress( **args )
+        cls.renderWindows[ cell_address ] = rw
   
     @staticmethod
     def getPipeline( cell_address, sheetName = None ):

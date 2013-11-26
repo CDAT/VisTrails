@@ -1794,9 +1794,16 @@ class PersistentVisualizationModule( PersistentModule ):
         else:                                   self._max_scalar_value = self.getRangeBounds()[1]  
                 
     def initializeRendering(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
         inputModule = self.getPrimaryInput()
         renderer_import = inputModule.getRenderer() if  inputModule <> None else None 
-        self.renderer = vtk.vtkRenderer() if renderer_import == None else renderer_import
+        if renderer_import == None:             
+            self.renderer = DV3DPipelineHelper.getRenderer( mid=self.moduleID )
+            if self.renderer == None:
+                self.renderer = vtk.vtkRenderer()
+                DV3DPipelineHelper.setRenderer( self.renderer, mid=self.moduleID )            
+        else: 
+            self.renderer = renderer_import
         self.addObserver( self.renderer, 'ModifiedEvent', self.activateEvent )
         self.labelBuff = "NA                          "
 #        if self.createColormap: 
@@ -1999,7 +2006,7 @@ class PersistentVisualizationModule( PersistentModule ):
         if self.renderer == None:
             print>>sys.stderr, "Error, no renderer available for activation."
         else:
-            self.renwin = self.renderer.GetRenderWindow( )
+            self.renwin = self.renderer.GetRenderWindow()
             if self.renwin <> None:
                 iren = self.renwin.GetInteractor() 
                 if ( iren <> None ) and not self.isConfigStyle( iren ):
