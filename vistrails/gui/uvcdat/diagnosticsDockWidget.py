@@ -6,7 +6,7 @@ from ui_diagnosticsDockWidget import Ui_DiagnosticDockWidget
 import tempfile
 
 import metrics.frontend.uvcdat
-import metrics.io.findfiles
+import metrics.fileio.findfiles
 import metrics.diagnostic_groups
 
 class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
@@ -29,10 +29,11 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         self.tmppth = os.path.join(os.environ['HOME'],"tmp")
         if not os.path.exists(self.tmppth):
             os.makedirs(self.tmppth)
-        datafiles = metrics.io.findfiles.dirtree_datafiles( self.path1 )
+        datafiles = metrics.fileio.findfiles.dirtree_datafiles( self.path1 )
+        self.diagnostic_set_name = "Not implemented"
         self.filetable1 = datafiles.setup_filetable( self.tmppth, "model" )
         # ...was self.filetable1 = metrics.frontend.uvcdat.setup_filetable(self.path1,self.tmppth)
-        self.datafiles2 = metrics.io.findfiles.dirtree_datafiles( self.path2 )
+        self.datafiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.path2 )
         self.obs_menu = self.datafiles2.check_filespec()
         self.observations = self.obs_menu.keys()
         if self.observations==None:
@@ -91,6 +92,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         if i>-1:
             self.comboBoxType.setCurrentindex(i)
         if type(self.observations) is list:
+            self.observations.sort()
             self.comboBoxObservation.addItems(self.observations)
             i = self.comboBoxObservation.findText("NCEP")
             self.comboBoxObservation.setCurrentIndex(i)
@@ -101,7 +103,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             filt2 = self.obs_menu[self.observation]
         else:
             filt2 = None
-        self.datafiles2 = metrics.io.findfiles.dirtree_datafiles( self.path2, filt2 )
+        self.datafiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.path2, filt2 )
         self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
 
         self.comboBoxSeason.addItems(self.seasons)
@@ -130,6 +132,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
     def plotsetchanged(self,item,column):
         import metrics.frontend.uvcdat
         txt = item.text(item.columnCount()-1)
+        self.diagnostic_set_name = str(txt)
 
         if type(self.observations) is list:
             self.observation = str(self.comboBoxObservation.currentText())
@@ -140,12 +143,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
                 filt2 = None
         else:
             filt2 = None
-        self.datafiles2 = metrics.io.findfiles.dirtree_datafiles( self.path2, filt2 )
+        self.datafiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.path2, filt2 )
         self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
 
-        # formerly was:
-        # self.variables = metrics.frontend.uvcdat.list_variables(self.filetable1, diagnostic_set=txt)
-        self.diagnostic_set_name = "Not implemented"
         self.variables = self.DiagnosticGroup.list_variables( self.filetable1, self.filetable2,
                                                               self.diagnostic_set_name )
         for i in range(self.comboBoxVariable.count()):
@@ -155,6 +155,23 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         i = self.comboBoxVariable.findText("TREFHT")
         if i>-1:
             self.comboBoxVariable.setCurrentIndex(i)
+        self.comboBoxVariable.currentIndexChanged.connect(self.variablechanged)
+        self.variablechanged(i)
+
+    def variablechanged(self,index):
+        # Variable's auxiliary options
+        self.varmenu = self.DiagnosticGroup.all_variables( self.filetable1, self.filetable2,
+                                                           self.diagnostic_set_name )
+        varname = str(self.comboBoxVariable.currentText())
+        if varname in self.varmenu.keys():
+            variable = self.varmenu[varname]( varname, self.diagnostic_set_name, self.DiagnosticGroup )
+            self.auxmenu = variable.varoptions()
+        else:
+            self.auxmenu = None
+        for i in range(self.comboBoxAux.count()):
+            self.comboBoxAux.removeItem(0)
+        if self.auxmenu is not None:
+            self.comboBoxAux.addItems( sorted(self.auxmenu.keys()) )
         
 
     def setupDiagnosticTree(self, index):
@@ -203,33 +220,39 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         #Never name something 'type', it's a reserved word! type = str(self.comboBoxType.currentText())
         variable = str(self.comboBoxVariable.currentText())
         season = str(self.comboBoxSeason.currentText())
+        auxname = str(self.comboBoxAux.currentText())
         print "diagnostic: %s" % diagnostic
         print "observation: %s" % self.observation
-        print "variable: %s" % variable
         print "season: %s" % season
+        print "variable: %s" % variable
+        print "auxiliary option: %s" % auxname
         # initial test, first cut:
         # This stuff should go elsewhere...
         import os
         #...was self.filetable2 = setup_filetable(self.path2,self.tmppth,search_filter=filt2)
         # ( replacement moved to __init__ and plotsetchanged)
-        self.plot_set = self.ds_menu[diagnostic](
-            self.filetable1, self.filetable2, variable, season )
-        ps = self.plot_set
-        #...was:
-        #plot_set = diagnostic[0:diagnostic.find('-')] # e.g. '3','4a', etc.
-        #ps = get_plot_data( plot_set, self.filetable1, self.filetable2, variable, season )
+        if self.auxmenu is None:
+            aux = None
+        else:
+            aux = self.auxmenu[auxname]
+        self.diagnostic_set_name = diagnostic
+        self.plot_spec = self.ds_menu[diagnostic](
+            self.filetable1, self.filetable2, variable, season, aux )
+        ps = self.plot_spec
         if ps is None:
-            print "Can't plot, plot_set is None!!!!"
+            print "Can't plot, plot_spec is None!!!!"
             return None
-        res = ps.results()
+        print "computing plot....",
+        res = ps.compute()
+        print "...finished computing plot"
         if res is None:
-            print "Can't plot, plot_set results were None!"
+            print "Can't plot, plot_spec results were None!"  # TO DO: should be printed in plot window
             return None
-        # Note: it would be useful to get some immediate feedback as to whether the code is
+        # TO DO: it would be useful to get some immediate feedback as to whether the code is
         # busy, or finished with the current task.
         # For now, print the first result.  Really, we want to plot them all...
         if type(res) is list:
-            print "res was list nothing more happens!"
+            print "Plot data is a list.  We'll just use the first item"   # TO DO: show all the plots!
             res30 = res[0]
         else:
             res30 = res
@@ -251,6 +274,12 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         #Clear the cell
         projectController.clear_cell(sheet,col,row)
         for V in pvars:
+            # We really need to fix the 2-line plots.  Scale so that both variables use the
+            # same axes!  The Diagnostics package can provide upper and lower bounds for the
+            # axes (important for a composite plot) and the graphics should follow that.
+            # That's for contour (Isofill) as well as line (Yxvsx) and other plots.
+            #V[0]=220  # temporary kludge for TREFHT, plot set 3
+            #V[1]=305  # temporary kludge for TREFHT, plot set 3
             # Until I know better storing vars in tempfile....
             f = tempfile.NamedTemporaryFile()
             filename = f.name
