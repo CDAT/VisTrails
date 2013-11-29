@@ -158,7 +158,17 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockVariable)
         #self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.varProp)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockCalculator)
-        self.tabifyDockWidget(self.dockCalculator, self.plotProp)
+        self.tabifyDockWidget(self.dockCalculator, self.plotProp) 
+        try:
+            # For now only puts the diagnostics widget if the metrics module is present
+            import metrics
+            from gui.uvcdat.diagnosticsDockWidget import DiagnosticsDockWidget
+            self.diagnosticsWidget = DiagnosticsDockWidget(self)
+            self.diagnosticsWidget.hide()
+            self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.diagnosticsWidget)
+            self.tabifyDockWidget(self.plotProp, self.diagnosticsWidget)
+        except:
+            pass
 
 
     def createActions(self):
