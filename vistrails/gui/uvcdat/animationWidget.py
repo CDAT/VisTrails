@@ -127,6 +127,17 @@ class QAnimationView(QtGui.QWidget):
         self.player.addWidget(self.framesSlider,newRow=True)
         self.doLoop = self.player.addCheckBox("Loop",newRow=False)
         self.doLoop.setChecked(True)
+        self.doLoop.clicked.connect(self.loopClicked)
+        
+        self.player.newRow()
+        self.player.addLabel("Playback Speed",align=QtCore.Qt.AlignLeft)
+        self.speedSlider = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.speedSlider.setMinimum(0.1)
+        self.speedSlider.setMaximum(60)
+        self.speedSlider.setToolTip("Frames per second")
+        self.player.addWidget(self.speedSlider, newRow=True)
+        self.connect(self.speedSlider,QtCore.SIGNAL("sliderMoved(int)"),self.speedChanged)
+
         self.player.setEnabled(False)
         controlsFrame.addWidget(self.player,newRow=True)
 
@@ -134,6 +145,9 @@ class QAnimationView(QtGui.QWidget):
 
         self.setCanvas(canvas)
         self.stopCreating()
+        
+    def loopClicked(self, checked):
+        self.canvas.animate.loop = checked
         
     def horizPanned(self,value):
         self.canvas.animate.horizontal(value)
@@ -167,6 +181,8 @@ class QAnimationView(QtGui.QWidget):
         
         self.doLoop.setChecked(canvas.animate.loop)
         
+        self.speedSlider.setValue(canvas.animate.fps())
+        
         created = (canvas.animate.create_flg == 1)
         self.createButton.setEnabled(not created)
         self.player.setEnabled(created)
@@ -177,6 +193,10 @@ class QAnimationView(QtGui.QWidget):
         
     def changedFrame(self,value):
         self.canvas.animate.frame(value)
+    
+    def speedChanged(self, value):
+        self.canvas.animate.fps(value)
+        
 
     def createOrStopClicked(self):
         ### Creates or stops creating animation
@@ -227,7 +247,6 @@ class QAnimationView(QtGui.QWidget):
 
     def playStopClicked(self):
         if self.canvas.animate.create_flg == 1:
-            self.canvas.animate.loop = self.doLoop.isChecked()
             if self.canvas.animate.run_flg == 0:
                 self.canvas.animate.run()
             else:
@@ -245,6 +264,7 @@ class QAnimationView(QtGui.QWidget):
 
     def drew(self):
         self.framesSlider.setValue(self.canvas.animate.current_frame)
+        self.frameCount.setText("Frame: %d" % self.canvas.animate.current_frame)
         
     def paused(self):
         self.updatePlayStopIcon()
