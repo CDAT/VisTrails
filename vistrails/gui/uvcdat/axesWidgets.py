@@ -1196,6 +1196,35 @@ class QAxisList(QtGui.QWidget):
         operation to be done on the axis such as: def, sum, avg, etc ... """
         
         axisOpsDict = {}
+        
+        #init with values from var module if any
+        varname = None
+        if self.var is not None:
+            if hasattr(self.var, 'id'):
+                varname = self.var.id
+            elif isinstance(self.var, basestring):
+                varname = self.var
+            else:
+                print "Warning: unkown self.var param in axis list"
+            
+            
+        if varname is not None:
+            projectController = self.root.get_current_project_controller()
+            
+            varModule = None
+            
+            if varname in projectController.defined_variables:
+                varModule = projectController.defined_variables[varname]
+            elif varname in projectController.computed_variables_ops:
+                varModule = projectController.computed_variables_ops[varname]
+            
+            if varModule is not None and varModule.axesOperations.strip() != '':
+                try:
+                    axisOpsDict = eval(varModule.axesOperations)
+                except:
+                    format = "Warning: invalid string 'axesOperations': %s"
+                    print format % str(varModule.axesOperations)
+        
         for axis in self.axisWidgets:
             op = str(axis.getAxisOperationsButton().text()).strip()
             axisOpsDict[axis.getID()] = op
