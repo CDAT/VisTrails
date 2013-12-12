@@ -61,9 +61,13 @@ class ColorMapManager():
             self.colorBarActor.SetLookupTable( self.getDisplayLookupTable() )
             self.colorBarActor.Modified() 
         return self.colorBarActor
-           
-    def setAlphaRange( self, range ):
-        self.alpha_range = range
+       
+    def getAlphaRange( self ):
+        return self.alpha_range
+        
+    def setAlphaRange( self, arange ):
+        self.alpha_range = arange
+        print "setAlphaRange: ", str( arange ); sys.stdout.flush()
         self.load_lut()
      
     @staticmethod
@@ -175,7 +179,12 @@ class ColorMapManager():
                     
     def load_lut_from_list(self, list):
         self.set_lut(self.lut, list) 
-        self.lut.Modified()                   
+        self.lut.Modified()  
+        
+    def getColor( self, dval ):
+        color = [ 0, 0, 0 ]
+        self.lut.GetColor( dval, color )  
+        return color           
 
     def load_lut(self, value=None):
         if( value <> None ): self.colormapName = str( value )

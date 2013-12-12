@@ -162,13 +162,12 @@ class vtkPointCloud(QtCore.QObject):
       
     def getPoint( self, iPt ):
         try:
-            vdata = self.vardata.data
-            dval = vdata[ iPt ]
+            dval = self.vardata[ iPt ]
             pt = self.vtk_planar_points.GetPoint( iPt ) 
-            self.printLogMessage( " getPoint: dval=%s, pt=%s " % ( str(dval), str(pt) ) ) 
+            self.printLogMessage( " getPoint[%d/%d]: dval=%s, pt=%s " % ( iPt, self.vardata.shape[0], str(dval), str(pt) ) ) 
         except CDMSError, err:
             print>>sys.stderr, "Pick Error for point %d: %s" % ( iPt, str(err) )
-            print>>sys.stderr, "Vardata(%s) shape: %s " % ( vdata.__class__.__name__, str( vdata.shape ) )
+            print>>sys.stderr, "Vardata(%s) shape: %s " % ( self.vardata.__class__.__name__, str( self.vardata.shape ) )
             return None, None
         return pt, dval
         

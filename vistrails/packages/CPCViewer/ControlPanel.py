@@ -937,6 +937,8 @@ class CPCConfigConfigurationWidget( ConfigurationWidget ):
         self.iColorCatIndex = self.addCategory( 'Color' )
         cparm = self.addParameter( self.iColorCatIndex, "Color Scale", wpos=0.5, wsize=1.0, ctype = 'Leveling' )
         self.addConfigControl( self.iColorCatIndex, ColorScaleControl( cparm ) )       
+        cparm = self.addParameter( self.iColorCatIndex, "Opacity Scale", value=0.0 )
+        self.addConfigControl( self.iColorCatIndex, SliderControl( cparm ) )       
         cparm = self.addParameter( self.iColorCatIndex, "Color Map", Colormap="jet", Invert=1, Stereo=0, Smooth=0  )
         self.addConfigControl( self.iColorCatIndex, ColormapControl( cparm ) )  
              

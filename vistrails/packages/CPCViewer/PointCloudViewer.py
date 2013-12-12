@@ -286,6 +286,7 @@ class CPCPlot(QtCore.QObject):
         self._current_subset_specs = None
         self.scalarRange = None
         self.volumeThresholdRange = None
+        self.sphere_source = None
 
     @property
     def current_subset_specs(self):
@@ -438,6 +439,28 @@ class CPCPlot(QtCore.QObject):
 #     def terminate(self):
 #         self.partitioned_point_cloud.terminate()
 
+    def getSphere(self):
+        if self.sphere_source == None:
+            self.createSphere()
+        return self.sphere_source
+    
+    def configSphere( self, center, color ):
+        sphere = self.getSphere()
+        sphere.SetCenter( center )        
+        self.sphere_actor.GetProperty().SetColor(color)
+
+    def createSphere(self, center=(0,0,0), radius=0.2 ):
+        self.sphere_source = vtk.vtkSphereSource()
+        self.sphere_source.SetCenter(center)
+        self.sphere_source.SetRadius(radius)        
+        # mapper
+        mapper = vtk.vtkPolyDataMapper()
+        if vtk.VTK_MAJOR_VERSION <= 5:  mapper.SetInput(self.sphere_source.GetOutput())
+        else:                           mapper.SetInputConnection(self.sphere_source.GetOutputPort())
+        self.sphere_actor = vtk.vtkActor()
+        self.sphere_actor.SetMapper(mapper)
+        self.renderer.AddActor( self.sphere_actor )
+         
     def onRightButtonPress( self, caller, event ):
         shift = caller.GetShiftKey()
         if not shift: return
@@ -450,6 +473,8 @@ class CPCPlot(QtCore.QObject):
             if iPt >= 0:
                 if self.partitioned_point_cloud and self.partitioned_point_cloud.hasActiveCollections():                
                     pick_pos, dval = self.partitioned_point_cloud.getPoint( actor, iPt ) 
+                    color = self.getColormapManager().getColor( dval )
+                    self.configSphere( pick_pos, color )
                 else:
                     pick_pos, dval = self.point_cloud_overview.getPoint( iPt ) 
 #                 if self.topo == PlotType.Spherical:
@@ -856,6 +881,8 @@ class CPCPlot(QtCore.QObject):
             self.processsInitParameter( args[1], args[2] )
         elif args[0] =='Point Size':
             self.processPointSizeCommand( args[1:] )
+        elif args[0] =='Opacity Scale':
+            self.processOpacityScalingCommand( args[1:] )
         elif args[0] =='Vertical Scaling':
             self.processVerticalScalingCommand( args[1:] )
 
@@ -912,6 +939,9 @@ class CPCPlot(QtCore.QObject):
                 self.colorMapCfg = config_param 
                 self.connect( self.colorMapCfg, QtCore.SIGNAL('ValueChanged'), self.processColorMapCommand ) 
                 self.processColorMapCommand()
+            elif paramKeys[1] == 'Opacity Scale':
+                self.oscale = config_param   
+                self.connect( self.oscale, QtCore.SIGNAL('ValueChanged'), self.processOpacityScalingCommand ) 
         elif paramKeys[0] == 'Subsets':
             if paramKeys[1] == 'Slice Planes':
                 self.sliceProperties = config_param
@@ -950,6 +980,14 @@ class CPCPlot(QtCore.QObject):
         if not self.partitioned_point_cloud.hasActiveCollections():
             self.render_mode = ProcessMode.LowRes
         self.render()
+
+    def processOpacityScalingCommand(self, args=None ):
+        oval = self.oscale.getValue()
+        colormapManager = self.getColormapManager()
+        alpha_range = colormapManager.getAlphaRange()
+        if abs( oval - alpha_range[0] ) > 0.1:
+            colormapManager.setAlphaRange( [ oval, 1.0 ] )
+            self.render()
                 
     def processVerticalScalingCommand(self, args=None ):
         if args and args[0] == "StartConfig":
@@ -1152,7 +1190,8 @@ class CPCPlot(QtCore.QObject):
         self.renderWindowInteractor.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )  
         self.textDisplayMgr = TextDisplayMgr( self.renderer )             
         self.pointPicker = vtk.vtkPointPicker()
-        self.pointPicker.PickFromListOn()    
+        self.pointPicker.PickFromListOn()   
+        self.pointPicker.InitializePickList()             
         self.renderWindowInteractor.SetPicker(self.pointPicker) 
         self.clipper = vtk.vtkBoxWidget()
         self.clipper.RotationEnabledOff()
@@ -1237,7 +1276,7 @@ class CPCPlot(QtCore.QObject):
         self.createRenderer()
         self.low_res_actor = self.point_cloud_overview.actor
         self.renderer.AddActor( self.low_res_actor )
-        self.pointPicker.AddPickList( self.low_res_actor )
+#        self.pointPicker.AddPickList( self.low_res_actor )
         
         if self.partitioned_point_cloud:
             for point_cloud in  self.partitioned_point_cloud.values():     
@@ -1305,11 +1344,13 @@ class CPCPlot(QtCore.QObject):
         init_args = args[ 'init_args' ]      
         n_overview_points = args.get( 'n_overview_points', 500000 )    
         n_subproc_points = args.get( 'n_subproc_points', 1000000 )    
+        n_cores = args.get( 'n_cores', 32 )    
         self.point_cloud_overview = vtkLocalPointCloud( 0, max_points=n_overview_points ) 
         lut = self.getLUT()
         self.point_cloud_overview.initialize( init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
         nInputPoints = self.point_cloud_overview.getNumberOfInputPoints()
-        nCollections = min( nInputPoints / n_subproc_points, 10  )
+        nPartitions = min( nInputPoints / n_subproc_points, 10  )
+        nCollections = min( nPartitions, n_cores )
         print " Init PCViewer, nInputPoints = %d, n_overview_points = %d, n_subproc_points = %d, nCollections = %d, overview skip index = %s" % ( nInputPoints, n_overview_points, n_subproc_points, nCollections, self.point_cloud_overview.getSkipIndex() )
         self.initCollections( nCollections, init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
  
@@ -1394,7 +1435,7 @@ if __name__ == '__main__':
         
     g = CPCPlot( widget.GetRenderWindow() ) 
     widget.connect( widget, QtCore.SIGNAL('event'), g.processEvent )  
-    g.init( init_args = ( grid_file, data_file, varname, height_varname ), n_overview_points=n_overview_points ) # , n_subproc_points=100000000 )
+    g.init( init_args = ( grid_file, data_file, varname, height_varname ), n_overview_points=n_overview_points, n_cores=2 ) # , n_subproc_points=100000000 )
     
 #     pointCollectionMgrThread = QPointCollectionMgrThread( g, init_args = ( grid_file, data_file, varname ), nCollections=nCollections )
 #     pointCollectionMgrThread.init()
