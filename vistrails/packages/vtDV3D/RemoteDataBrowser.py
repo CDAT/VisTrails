@@ -557,6 +557,138 @@ class RemoteDataBrowser(QtGui.QFrame):
     def loadMetadata( self ):
         pass
 
+class AnalyticServiceBrowser(QtGui.QFrame):
+    new_data_element = QtCore.SIGNAL("new_data_element")
+    server_file_path = os.path.expanduser( '~/.vistrails/analysis_server_list' )
+    default_server_list = [ 'http://mas.nasa.gov' ]
+
+    def __init__( self, parent = None, **args ):
+        QtGui.QFrame.__init__( self, parent )
+        self.inputDialog = QtGui.QInputDialog()
+        self.autoRetrieveBaseCatalogs = args.get("autoretrieve",False)
+        self.data_element_address = None
+        self.metadata = None
+        self.treeWidget = QtGui.QTreeWidget()
+        self.treeWidget.setColumnCount(1)
+        self.treeWidget.setMinimumHeight( 250 )
+        self.treeWidget.connect( self.treeWidget, QtCore.SIGNAL("itemClicked(QTreeWidgetItem *,int)"), self.retrieveItem ) 
+        layout = QtGui.QVBoxLayout(self)
+        self.setLayout(layout)
+                
+        layout.addWidget( self.treeWidget )
+        self.setWindowTitle( "Analytic Service Browser" )
+        self.treeWidget.setHeaderLabel ( "Analysis Servers" )
+
+        self.view = QtWebKit.QWebView( self )
+        f = QtGui.QFrame( self )
+        f.setFrameStyle( QtGui.QFrame.StyledPanel | QtGui.QFrame.Raised )
+        f.setLineWidth(2)
+        f_layout = QtGui.QVBoxLayout(f)
+        f.setLayout( f_layout )
+        f_layout.addWidget( self.view )
+        layout.addWidget( f )
+                
+        button_list_layout = QtGui.QHBoxLayout()
+        
+        new_server_button = QtGui.QPushButton( "New Server" )  
+        new_server_button.setToolTip( "Add new Analysis server")  
+        self.connect( new_server_button, QtCore.SIGNAL('clicked(bool)'), self.addNewServer )
+        button_list_layout.addWidget( new_server_button )
+             
+        self.discard_server_button = QtGui.QPushButton( "Remove Server"  )   
+        self.discard_server_button.setToolTip( "Remove selected Analysis server")        
+        self.connect( self.discard_server_button, QtCore.SIGNAL('clicked(bool)'), self.removeSelectedServer )
+        button_list_layout.addWidget( self.discard_server_button )
+        self.discard_server_button.setEnabled ( False )
+
+        self.useCloseButton = args.get( 'closeButton', False )
+        if self.useCloseButton:
+            close_button = QtGui.QPushButton( "Close"  )       
+            button_list_layout.addWidget( close_button )       
+            self.connect( close_button, QtCore.SIGNAL('clicked(bool)'), self.close)
+
+        self.load_mdata_button = QtGui.QPushButton( "Show Metadata"  )   
+        self.load_mdata_button.setToolTip( "Display complete metadata listing")        
+        self.connect( self.load_mdata_button, QtCore.SIGNAL('clicked(bool)'), self.loadMetadata )
+#        button_list_layout.addWidget( self.load_mdata_button )
+        self.load_mdata_button.setEnabled ( False )
+
+        self.load_data_button = QtGui.QPushButton( "Open"  )   
+        self.load_data_button.setToolTip( "Open Selected Dataset in UVCDAT")        
+        self.connect( self.load_data_button, QtCore.SIGNAL('clicked(bool)'), self.loadData )
+        button_list_layout.addWidget( self.load_data_button )
+        self.load_data_button.setEnabled ( False )
+        
+        layout.addLayout( button_list_layout )
+        self.initServerFile()
+        self.readServerList()
+     
+    def readServerList( self ):
+        try:    server_file = open( self.server_file_path )
+        except: return
+        while True:
+            address = server_file.readline().strip()
+            if not address: break
+            base_node = CatalogNode( str(address), self.treeWidget ) 
+            if self.autoRetrieveBaseCatalogs: base_node.retrieveContent() 
+        server_file.close()               
+
+    def updateServerList( self ):
+        try:    server_file = open( self.server_file_path, "w" )
+        except: return
+        nservers = self.treeWidget.topLevelItemCount() 
+        for si in range( nservers ):
+            serverItem = self.treeWidget.topLevelItem( si )
+            server_file.write( serverItem.url + "\n" )
+        server_file.close()
+
+    def initServerFile( self ):
+        if not os.path.isfile( self.server_file_path ):
+            try:    server_file = open( self.server_file_path, "w" )
+            except: return
+            for server in self.default_server_list:
+                server_file.write( server + "\n" )
+            server_file.close()
+                                       
+    def addNewServer(self): 
+        url, ok = self.inputDialog.getText( self, 'Add Analysis Server', 'Enter new server url:')     
+        if ok and url:
+            base_node = CatalogNode( str(url), self.treeWidget ) 
+            if self.autoRetrieveBaseCatalogs: base_node.retrieveContent() 
+            self.updateServerList()
+    
+    @staticmethod          
+    def notify( msg ):
+            QtGui.QMessageBox.information( self, "AnalyticServicesBrowser", msg )
+        
+    def removeSelectedServer(self): 
+        currentItem = self.treeWidget.currentItem()
+        if currentItem and currentItem.isTopLevel(): 
+            removed_item = self.treeWidget.takeTopLevelItem( self.treeWidget.indexOfTopLevelItem( currentItem ) )
+            del removed_item
+            self.updateServerList()
+        else:
+            self.notify( "Must select a server." )
+            self.discard_server_button.setEnabled ( False )
+                
+    def retrieveItem( self, item, index ):
+        self.discard_server_button.setEnabled( item.isTopLevel() )
+        try:
+            (self.data_element_address, self.metadata) = item.retrieveContent()
+            if self.metadata: self.view.setHtml( self.metadata )
+        except Exception, err:
+            print>>sys.stderr, "Error retrieving data item: %s\n Item: %s" % ( str(err), str(item) )
+            (self.data_element_address, self.metadata) = ( None, None )
+        self.load_data_button.setEnabled ( self.data_element_address <> None ) 
+#        self.load_mdata_button.setEnabled( self.data_element_address <> None ) 
+           
+    def loadData( self ):
+        self.emit(  self.new_data_element, self.data_element_address )
+        print "Loading URL: ", self.data_element_address
+
+    def loadMetadata( self ):
+        pass
+
 class RemoteDataBrowserDialog(QtGui.QDialog):
 
     def __init__( self, parent = None ):

@@ -114,6 +114,7 @@ class VariableProperties(QtGui.QDialog):
         self.createFileTab()
         self.createESGFTab()
         self.createOpenDAPTab()
+        self.createAnalyticServicesTab()
         self.createEditTab()
         self.createInfoTab()
         for i in range(self.originTabWidget.count()):
@@ -294,7 +295,13 @@ class VariableProperties(QtGui.QDialog):
         browser = RemoteDataBrowser()
         self.connect( browser, RemoteDataBrowser.new_data_element, self.processDataAddress )
         self.originTabWidget.addTab(browser,"OpenDAP")
-        
+
+    def createAnalyticServicesTab(self):
+        from packages.vtDV3D.RemoteDataBrowser import AnalyticServiceBrowser
+        browser = AnalyticServiceBrowser()
+        self.connect( browser, AnalyticServiceBrowser.new_data_element, self.processDataAddress )
+        self.originTabWidget.addTab(browser,"Analytic Services")
+         
     def processDataAddress( self, address ):
         self.originTabWidget.setCurrentIndex( 0 )
         self.fileEdit.setText( address )
