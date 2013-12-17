@@ -2,6 +2,7 @@ import urllib2, sys, os, copy, time, httplib
 from HTMLParser import HTMLParser
 from urlparse import *
 from PyQt4 import QtCore, QtGui
+from vtUtilities import isList
 #useWebKit = False
     
 #        split_url = urlsplit(catalog_url) urlunsplit(split_url)
@@ -504,8 +505,10 @@ class RemoteDataBrowser(QtGui.QFrame):
         try:    server_file = open( self.server_file_path )
         except: return
         while True:
-            address = server_file.readline().strip()
-            if not address: break
+            input_line = server_file.readline()
+            if not input_line: break
+            address_rec = input_line.strip().split(',')
+            address = address_rec[-1] 
             base_node = CatalogNode( str(address), self.treeWidget ) 
             if self.autoRetrieveBaseCatalogs: base_node.retrieveContent() 
         server_file.close()               
