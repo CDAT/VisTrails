@@ -1,8 +1,9 @@
-
 import urllib2, sys, os, copy, time, httplib
 from HTMLParser import HTMLParser
 from urlparse import *
-from PyQt4 import QtCore, QtGui, QtWebKit
+from PyQt4 import QtCore, QtGui
+useWebKit = False
+    
 #        split_url = urlsplit(catalog_url) urlunsplit(split_url)
 
 #class HTMLState:
@@ -447,13 +448,21 @@ class RemoteDataBrowser(QtGui.QFrame):
         self.setWindowTitle( "Remote Data Browser" )
         self.treeWidget.setHeaderLabel ( "Data Servers" )
 
-        self.view = QtWebKit.QWebView( self )
+        if useWebKit: 
+            from PyQt4 import QtWebKit  
+            self.view = QtWebKit.QWebView( self ) 
+            self.textFrame = self.view 
+        else:           
+            self.view = QtGui.QTextDocument( self )
+            self.textFrame = QtGui.QTextEdit()
+            self.textFrame.setDocument ( self.view )
+       
         f = QtGui.QFrame( self )
         f.setFrameStyle( QtGui.QFrame.StyledPanel | QtGui.QFrame.Raised )
         f.setLineWidth(2)
         f_layout = QtGui.QVBoxLayout(f)
         f.setLayout( f_layout )
-        f_layout.addWidget( self.view )
+        f_layout.addWidget( self.textFrame )
         layout.addWidget( f )
                 
         button_list_layout = QtGui.QHBoxLayout()
@@ -543,7 +552,8 @@ class RemoteDataBrowser(QtGui.QFrame):
         self.discard_server_button.setEnabled( item.isTopLevel() )
         try:
             (self.data_element_address, self.metadata) = item.retrieveContent()
-            if self.metadata: self.view.setHtml( self.metadata )
+            if self.metadata:
+                self.view.setHtml( self.metadata )
         except Exception, err:
             print>>sys.stderr, "Error retrieving data item: %s\n Item: %s" % ( str(err), str(item) )
             (self.data_element_address, self.metadata) = ( None, None )
