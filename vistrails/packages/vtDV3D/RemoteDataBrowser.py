@@ -2,7 +2,7 @@ import urllib2, sys, os, copy, time, httplib
 from HTMLParser import HTMLParser
 from urlparse import *
 from PyQt4 import QtCore, QtGui
-useWebKit = False
+#useWebKit = False
     
 #        split_url = urlsplit(catalog_url) urlunsplit(split_url)
 
@@ -448,14 +448,14 @@ class RemoteDataBrowser(QtGui.QFrame):
         self.setWindowTitle( "Remote Data Browser" )
         self.treeWidget.setHeaderLabel ( "Data Servers" )
 
-        if useWebKit: 
-            from PyQt4 import QtWebKit  
-            self.view = QtWebKit.QWebView( self ) 
-            self.textFrame = self.view 
-        else:           
-            self.view = QtGui.QTextDocument( self )
-            self.textFrame = QtGui.QTextEdit()
-            self.textFrame.setDocument ( self.view )
+#         if useWebKit: 
+#             from PyQt4 import QtWebKit  
+#             self.view = QtWebKit.QWebView( self ) 
+#             self.textFrame = self.view 
+          
+        self.view = QtGui.QTextDocument( self )
+        self.textFrame = QtGui.QTextEdit()
+        self.textFrame.setDocument ( self.view )
        
         f = QtGui.QFrame( self )
         f.setFrameStyle( QtGui.QFrame.StyledPanel | QtGui.QFrame.Raised )
