@@ -1358,7 +1358,7 @@ class QCDATWidgetToolBar(QCellToolBar):
         self.appendAction(QCDATWidgetPrint(self))
         self.appendAction(QCDATWidgetExport(self))
         self.appendAction(QCDATWidgetColormap(self))
-        self.appendAction(QCDATWidgetAnimation(self))
+        #self.appendAction(QCDATWidgetAnimation(self))
         
     def updateStatus(self, cellWidget):
         if (cellWidget is not None and
