@@ -242,11 +242,11 @@ class UVCDATTestManager:
         
         #do a simple computation (x*2)
         varname = self.varname_from_index(0)
-        self.simulate_calculator_command("computed_var=%s*2" % varname)
+        self.simulate_calculator_command("computed_var_time_bounds=%s*2" % varname)
         
         #select the new compute var
         self.deselectVariables()
-        self.selectVariable("computed_var")
+        self.selectVariable("computed_var_time_bounds")
         
         #set monthly time bounds
         menuPath = ['Time Tools', 'Bounds Set', 'Set Bounds For Monthly Data']
@@ -273,10 +273,10 @@ class UVCDATTestManager:
         
         #do a simple computation (x*2)
         varname = self.varname_from_index(0)
-        self.simulate_calculator_command("computed_var=%s*2" % varname)
+        self.simulate_calculator_command("computed_var_pvclimate=%s*2" % varname)
         
         self.simulate_plot_drag_and_drop(package="PVClimate", name="PV Contour Representation")
-        self.simulate_variable_drag_and_drop('computed_var')
+        self.simulate_variable_drag_and_drop('computed_var_pvclimate')
         
     innerFail = False
         
