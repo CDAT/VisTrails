@@ -379,6 +379,8 @@ disallowed_classes = set(
     'vtkBooleanTexture',  #Not working for VTK 5.7.0
     'vtkImageMaskBits',   #Not working for VTK 5.7.0
     'vtkHardwareSelector',#Not working for VTK 5.7.0
+    'vtkView',                          #  VTK 6
+    'vtkPVServerSideAnimationPlayer', 
      ])
 
 def is_class_allowed(module):

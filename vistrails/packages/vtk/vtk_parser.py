@@ -48,6 +48,8 @@ import vtk
 import class_tree
 import core.debug
 
+from sets import Set
+
 log      = core.debug.log
 warning  = core.debug.warning
 critical = core.debug.critical
@@ -450,6 +452,12 @@ class VTKMethodParser(object):
                             values.insert(0, [x[0], val])
         return meths
 
+    _segfault_classes = Set([
+            'vtkSMPlotMatrixViewProxy',
+            'vtkPolyData',
+            'vtkXYChartRepresentation',
+            ])
+
     def _find_get_set_methods(self, klass, methods):
         """Find/store methods of the form {Get,Set}Prop in the given
         `methods` and returns the remaining list of methods.
@@ -486,8 +494,8 @@ class VTKMethodParser(object):
             if obj:
                 klass_name = klass.__name__
                 for key, value in gsm.items():
-                    if klass_name == 'vtkPolyData':
-                        # Evil hack, this class segfaults!
+                    if klass_name in VTKMethodParser._segfault_classes:
+                        # Evil hack, these classes segfault!
                         default = None
                     else:
                         try:
