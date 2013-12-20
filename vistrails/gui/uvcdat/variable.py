@@ -91,7 +91,7 @@ class VariableProperties(QtGui.QDialog):
         self.btnCancel=QDockPushButton("Close")
 
         # defaults?
-        self.btnDefine.setDefault(False)
+        self.btnDefine.setDefault(True)
         self.btnDefineClose.setDefault(False)
         self.btnDefineAs.setDefault(False)
         self.selectRoiButton.setDefault(False)
