@@ -21,6 +21,51 @@ import customizeUVCDAT
 from esgf import QEsgfBrowser
 from core.uvcdat.plotmanager import get_plot_manager
 
+class QRangesDialog(QtGui.QDialog):
+    def __init__(self,parent):
+        QtGui.QDialog.__init__(self, parent)
+        self.parent=parent
+        self.root=parent.root
+        self.dim=str(self.root.preferences.defRanges.currentText())
+        self.setWindowTitle('Default Range for %s' % self.dim)
+        v = QtGui.QVBoxLayout(self)
+        v.setMargin(0)
+        v.setSpacing(0)
+        self.setLayout(v)
+        ranges = uvcdatCommons.QFramedWidget("Ranges for %s" % self.dim)
+        self.start = ranges.addLabeledLineEdit("First Value:")
+        self.stop  = ranges.addLabeledLineEdit("Last Value:")
+        drange = getattr(customizeUVCDAT,"%sRange" % self.dim,None)
+        if drange is not None:
+            self.start.setText("%f" % drange[0])
+            self.stop.setText("%f" % drange[1])
+        v.addWidget(ranges)
+
+        b=QtGui.QPushButton("Apply")
+        v.addWidget(b)
+        self.connect(b,QtCore.SIGNAL("clicked()"),self.applyRange)
+        
+        b=QtGui.QPushButton("Close")
+        v.addWidget(b)
+        self.connect(b,QtCore.SIGNAL("clicked()"),self.close)
+    def applyRange(self,*args):
+        saved = getattr(customizeUVCDAT,"%sRange" % self.dim,None)
+        s = str(self.start.text()).strip()
+        S = str(self.stop.text()).strip()
+        if s=="" and S=="":
+            new = None
+        else:
+            try:
+                s = float(s)
+                S = float(S)
+                new = [s,S]
+            except:
+                if saved is not None:
+                    new = saved
+                mbox = QtGui.QMessageBox()
+                mbox.warning(self,"%s Range" % self.dim, "Error translating %s %s to floats" % (s,S))
+        setattr(customizeUVCDAT,"%sRange" % self.dim,new)
+
 class QAliasesDialog(QtGui.QDialog):
     def __init__(self,parent):
         QtGui.QDialog.__init__(self, parent)
@@ -63,7 +108,6 @@ class QAliasesDialog(QtGui.QDialog):
         b=QtGui.QPushButton("Done")
         v.addWidget(b)
         self.connect(b,QtCore.SIGNAL("clicked()"),self.close)
-
     def add(self):
         alias = str(self.le.text())
         if self.dim=="time":
@@ -96,6 +140,7 @@ class QAliasesDialog(QtGui.QDialog):
                 cdms2.axis.longitude_aliases.remove(alias)
         except:
             pass
+
 
 class QPreferencesDialog(QtGui.QDialog):
 
@@ -189,6 +234,7 @@ class QPreferencesDialog(QtGui.QDialog):
         tab= QtGui.QFrame()
         l=QtGui.QVBoxLayout()
         tab.setLayout(l)
+
         
         self.squeeze = QtGui.QCheckBox("Squeeze Dimensions")
         self.squeeze.setEnabled(True)
@@ -201,6 +247,14 @@ class QPreferencesDialog(QtGui.QDialog):
         l.addWidget(self.deselect)
         
         h=QtGui.QHBoxLayout()
+        lb=QtGui.QLabel("Dimensions Default Ranges")
+        self.defRanges = QtGui.QComboBox()
+        self.defRanges.addItems(["choose","time","level","latitude","longitude"])
+        h.addWidget(lb)
+        h.addWidget(self.defRanges)
+        l.addLayout(h)
+        h=QtGui.QHBoxLayout()
+
         lb=QtGui.QLabel("Dimensions Aliases")
         self.aliases = QtGui.QComboBox()
         self.aliases.addItems(["choose","time","level","latitude","longitude"])
@@ -215,6 +269,7 @@ class QPreferencesDialog(QtGui.QDialog):
         dh.addWidget(self.defaultPlot)
         l.addLayout(dh)
         
+        self.connect(self.defRanges,QtCore.SIGNAL('activated(int)'),self.showRanges)
         self.connect(self.aliases,QtCore.SIGNAL('activated(int)'),self.showAliases)
         return tab
     
@@ -250,6 +305,12 @@ class QPreferencesDialog(QtGui.QDialog):
         else:
             return None
 
+    def showRanges(self):
+        if str(self.root.preferences.defRanges.currentText())=="choose":
+            return
+        d= QRangesDialog(self)
+        d.exec_()
+        
     def showAliases(self):
         if str(self.root.preferences.aliases.currentText())=="choose":
             return
