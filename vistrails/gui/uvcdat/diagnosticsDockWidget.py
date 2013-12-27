@@ -13,7 +13,7 @@ import uvcdatCommons
 class QDiagnosticsDataLocationWindow(QtGui.QDialog):
     def __init__(self, parent=None):
         import os
-        QtGui.QDialog.__init__(self,parent=parent)
+        super(QDiagnosticsDataLocationWindow,self).__init__(parent)
         v = QtGui.QVBoxLayout()
         self.setLayout(v)
         f = uvcdatCommons.QFramedWidget("Where to find the data")
@@ -131,20 +131,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
         if i>-1:
             self.comboBoxType.setCurrentindex(i)
-        if type(self.observations) is list:
-            self.observations.sort()
-            self.comboBoxObservation.addItems(self.observations)
-            i = self.comboBoxObservation.findText("NCEP")
-            self.comboBoxObservation.setCurrentIndex(i)
-
-        if type(self.observations) is list:
-            self.observation = str(self.comboBoxObservation.currentText())
-            #filt2="filt=f_startswith('%s')" % self.observation
-            filt2 = self.obs_menu[self.observation]
-        else:
-            filt2 = None
-        self.datafiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.path2, filt2 )
-        self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
 
         self.comboBoxSeason.addItems(self.seasons)
         
@@ -163,6 +149,23 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         if self.observations==None:
             print "WARNING: No data in second (obs) data set"
         print "Scanned files",self.path1,self.path2
+        if type(self.observations) is list:
+            self.observations.sort()
+            self.comboBoxObservation.setDuplicatesEnabled(False)
+            self.comboBoxObservation.addItems(self.observations)
+            i = self.comboBoxObservation.findText("NCEP")
+            self.comboBoxObservation.setCurrentIndex(i)
+
+        if type(self.observations) is list:
+            self.observation = str(self.comboBoxObservation.currentText())
+            #filt2="filt=f_startswith('%s')" % self.observation
+            filt2 = self.obs_menu[self.observation]
+        else:
+            filt2 = None
+        self.datafiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.path2, filt2 )
+        self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
+        if self.path1 is not None:
+            self.setupDiagnosticTree(0)
 
     def setupDiagnosticsMenu(self):
         menu = self.parent().menuBar().addMenu('&Diagnostics')
