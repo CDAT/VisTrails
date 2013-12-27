@@ -48,6 +48,7 @@ class QRangesDialog(QtGui.QDialog):
         b=QtGui.QPushButton("Close")
         v.addWidget(b)
         self.connect(b,QtCore.SIGNAL("clicked()"),self.close)
+
     def applyRange(self,*args):
         saved = getattr(customizeUVCDAT,"%sRange" % self.dim,None)
         s = str(self.start.text()).strip()
@@ -64,7 +65,10 @@ class QRangesDialog(QtGui.QDialog):
                     new = saved
                 mbox = QtGui.QMessageBox()
                 mbox.warning(self,"%s Range" % self.dim, "Error translating %s %s to floats" % (s,S))
+                setattr(customizeUVCDAT,"%sRange" % self.dim,new)
+                return
         setattr(customizeUVCDAT,"%sRange" % self.dim,new)
+        self.close()
 
 class QAliasesDialog(QtGui.QDialog):
     def __init__(self,parent):
