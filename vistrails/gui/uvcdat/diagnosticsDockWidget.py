@@ -12,29 +12,44 @@ import uvcdatCommons
 
 class QDiagnosticsDataLocationWindow(QtGui.QDialog):
     def __init__(self, parent=None):
+        import os
         QtGui.QDialog.__init__(self,parent=parent)
         v = QtGui.QVBoxLayout()
         self.setLayout(v)
-        f = uvcdatCommons..QFramedWidget("Where to find the data")
-        l = f.addLabeledLineEdit("Observation Top directory")
-        l.connect(QTCore.SIGNAL("editingFinshed()"),self.setObsPath)
+        f = uvcdatCommons.QFramedWidget("Where to find the data")
+        self.obsPath = f.addLabeledLineEdit("Observation Top directory")
+        self.obsPath.setText(os.path.join(os.environ['HOME'],'obs_data'))
         b = f.addButton("...",newRow=False)
-        b.connect(QtCore.SIGNAL("clicked()"),self.getObsPath)
+        self.connect(b,QtCore.SIGNAL("clicked()"),self.getObsPath)
         v.addWidget(f)
-        f = uvcdatCommons..QFramedWidget("Data is at:")
-        l = f.addLabeledLineEdit("Data Top directory")
-        l.connect(QTCore.SIGNAL("editingFinshed()"),self.setObsPath)
+        f = uvcdatCommons.QFramedWidget("Data is at:")
+        self.dataPath = f.addLabeledLineEdit("Data Top directory")
+        self.dataPath.setText(os.path.join(os.environ["HOME"],'cam_output'))
         b = f.addButton("...",newRow=False)
-        b.connect(QtCore.SIGNAL("clicked()"),self.getDataPath)
+        self.connect(b,QtCore.SIGNAL("clicked()"),self.getDataPath)
         v.addWidget(f)
-    def setObsPath(self):
-        self.parent.
-    def setDataPath(self):
-        print "This will bring a window to select a directory"
+        h=QtGui.QHBoxLayout()
+        b=QtGui.QPushButton("Apply")
+        self.connect(b,QtCore.SIGNAL("clicked()"),self.apply)
+        h.addWidget(b)
+        b=QtGui.QPushButton("Close")
+        self.connect(b,QtCore.SIGNAL("clicked()"),self.hide)
+        h.addWidget(b)
+        v.addLayout(h)
+
+    def apply(self):
+        self.parent().path1 = str(self.dataPath.text())
+        self.parent().path2 = str(self.obsPath.text())
+        self.parent().scanFiles()
+        self.hide()
+
     def getObsPath(self):
-        print "This will bring a window to select a directory"
+        d = QtGui.QFileDialog.getExistingDirectory(self,"Select Obs Top Directory",self.obsPath.text())
+        self.obsPath.setText(d)
+
     def getDataPath(self):
-        print "This will bring a window to select a directory"
+        d = QtGui.QFileDialog.getExistingDirectory(self,"Select Data Top Directory",self.dataPath.text())
+        self.dataPath.setText(d)
 
 
 class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
@@ -45,28 +60,24 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
     DisabledTypes = list( set(standard_alltypes) - set(Types) )
     AllTypes = Types + DisabledTypes
 
+
     def __init__(self, parent=None):
         super(DiagnosticsDockWidget, self).__init__(parent)
         self.setupUi(self)
        
         import metrics.frontend.uvcdat
         import os
+        # Path selection window
+        self.dataLocationWindow = QDiagnosticsDataLocationWindow(self)
+        self.dataLocationWindow.hide()
         # The paths have to be chosen by the user, unless we know something about the system...
-        self.path1 = os.path.join(os.environ["HOME"],'cam_output/b30.009.cam2.h0.06.xml')
-        self.path2 = os.path.join(os.environ["HOME"],'obs_data')
+        self.path1 = None
+        self.path2 = None
         self.tmppth = os.path.join(os.environ['HOME'],"tmp")
         if not os.path.exists(self.tmppth):
             os.makedirs(self.tmppth)
-        datafiles = metrics.fileio.findfiles.dirtree_datafiles( self.path1 )
-        self.diagnostic_set_name = "Not implemented"
-        self.filetable1 = datafiles.setup_filetable( self.tmppth, "model" )
-        # ...was self.filetable1 = metrics.frontend.uvcdat.setup_filetable(self.path1,self.tmppth)
-        self.datafiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.path2 )
-        self.obs_menu = self.datafiles2.check_filespec()
-        self.observations = self.obs_menu.keys()
-        if self.observations==None:
-            print "WARNING: No data in second (obs) data set"
 
+        self.scanFiles()
         #initialize data
         #@todo: maybe move data to external file to be read in
         """ formerly was...
@@ -117,8 +128,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         
         self.comboBoxType.addItems(DiagnosticsDockWidget.Types)
         i=self.comboBoxType.findText("3- Line Plots of  Zonal Means")
-        self.dataLocationWindow = QDiagnosticsDataLocationWindow(self)
-        self.dataLocationWindow.hide()
 
         if i>-1:
             self.comboBoxType.setCurrentindex(i)
@@ -139,6 +148,22 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
         self.comboBoxSeason.addItems(self.seasons)
         
+    def scanFiles(self):
+        if self.path1 is not None:
+            datafiles = metrics.fileio.findfiles.dirtree_datafiles( self.path1 )
+            self.filetable1 = datafiles.setup_filetable( self.tmppth, "model" )
+            # ...was self.filetable1 = metrics.frontend.uvcdat.setup_filetable(self.path1,self.tmppth)
+        if self.path2 is not None:
+            self.datafiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.path2 )
+            self.obs_menu = self.datafiles2.check_filespec()
+            self.observations = self.obs_menu.keys()
+        else:
+            self.observations = None
+        self.diagnostic_set_name = "Not implemented"
+        if self.observations==None:
+            print "WARNING: No data in second (obs) data set"
+        print "Scanned files",self.path1,self.path2
+
     def setupDiagnosticsMenu(self):
         menu = self.parent().menuBar().addMenu('&Diagnostics')
         
@@ -148,7 +173,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             return callBack
         
         #Adding an action for settings
-        action = QtGui.QAction("Set Data Location")
+        action = QtGui.QAction("Set Data Location",self)
         action.setStatusTip("how to access data")
         action.triggered.connect(self.dataLocationWindow.show)
         menu.addAction(action)
@@ -167,6 +192,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         self.raise_()
         
     def plotsetchanged(self,item,column):
+        if self.path1 is None or self.path2 is None:
+            return
         import metrics.frontend.uvcdat
         txt = item.text(item.columnCount()-1)
         self.diagnostic_set_name = str(txt)
@@ -196,6 +223,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         self.variablechanged(i)
 
     def variablechanged(self,index):
+        if self.path1 is None or self.path2 is None:
+            return
         # Variable's auxiliary options
         self.varmenu = self.DiagnosticGroup.all_variables( self.filetable1, self.filetable2,
                                                            self.diagnostic_set_name )
