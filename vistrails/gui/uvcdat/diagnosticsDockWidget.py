@@ -8,6 +8,34 @@ import tempfile
 import metrics.frontend.uvcdat
 import metrics.fileio.findfiles
 import metrics.diagnostic_groups
+import uvcdatCommons
+
+class QDiagnosticsDataLocationWindow(QtGui.QDialog):
+    def __init__(self, parent=None):
+        QtGui.QDialog.__init__(self,parent=parent)
+        v = QtGui.QVBoxLayout()
+        self.setLayout(v)
+        f = uvcdatCommons..QFramedWidget("Where to find the data")
+        l = f.addLabeledLineEdit("Observation Top directory")
+        l.connect(QTCore.SIGNAL("editingFinshed()"),self.setObsPath)
+        b = f.addButton("...",newRow=False)
+        b.connect(QtCore.SIGNAL("clicked()"),self.getObsPath)
+        v.addWidget(f)
+        f = uvcdatCommons..QFramedWidget("Data is at:")
+        l = f.addLabeledLineEdit("Data Top directory")
+        l.connect(QTCore.SIGNAL("editingFinshed()"),self.setObsPath)
+        b = f.addButton("...",newRow=False)
+        b.connect(QtCore.SIGNAL("clicked()"),self.getDataPath)
+        v.addWidget(f)
+    def setObsPath(self):
+        self.parent.
+    def setDataPath(self):
+        print "This will bring a window to select a directory"
+    def getObsPath(self):
+        print "This will bring a window to select a directory"
+    def getDataPath(self):
+        print "This will bring a window to select a directory"
+
 
 class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
     
@@ -89,6 +117,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         
         self.comboBoxType.addItems(DiagnosticsDockWidget.Types)
         i=self.comboBoxType.findText("3- Line Plots of  Zonal Means")
+        self.dataLocationWindow = QDiagnosticsDataLocationWindow(self)
+        self.dataLocationWindow.hide()
+
         if i>-1:
             self.comboBoxType.setCurrentindex(i)
         if type(self.observations) is list:
@@ -116,6 +147,12 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
                 self.diagnosticTriggered(x)
             return callBack
         
+        #Adding an action for settings
+        action = QtGui.QAction("Set Data Location")
+        action.setStatusTip("how to access data")
+        action.triggered.connect(self.dataLocationWindow.show)
+        menu.addAction(action)
+
         for diagnosticType in DiagnosticsDockWidget.AllTypes:
             action = QtGui.QAction(diagnosticType, self)
             action.setEnabled(diagnosticType in DiagnosticsDockWidget.Types)
