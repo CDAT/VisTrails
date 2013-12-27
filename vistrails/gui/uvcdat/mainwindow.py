@@ -167,7 +167,8 @@ class UVCDATMainWindow(QtGui.QMainWindow):
             self.diagnosticsWidget.hide()
             self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.diagnosticsWidget)
             self.tabifyDockWidget(self.plotProp, self.diagnosticsWidget)
-        except:
+        except Exception,err:
+            print "import metrics section error:",err
             pass
 
 
