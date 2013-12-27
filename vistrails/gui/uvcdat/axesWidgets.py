@@ -310,7 +310,7 @@ class QSliderCombo(QtGui.QWidget):
                     modulo=360.
                 else:
                     modulo = None
-            if modulo is not None:
+            if modulo is not None and self.isModuloed is False:
                 self.isModuloed = True
                 n=len(axis)
                 self.axisValues=numpy.concatenate((self.axisValues[n/2:]-modulo,self.axisValues,self.axisValues[:n/2]+modulo))
@@ -496,7 +496,7 @@ class QAxis(QtGui.QWidget):
         parent.gridLayout.addWidget(vline, row+1, 0, 1,
                                   parent.gridLayout.columnCount())
 
-        #Nowturn off if can be replacedby lat/lon virtual
+        #Nowturn off if can be replaced by lat/lon virtual
         if self.virtual==-1:
             self.hide()
             self.axisOperationsButton.hide()
@@ -1013,10 +1013,9 @@ class QAxisComboWidget(QtGui.QComboBox):
 
         minValue = result.group(1)
         maxValue = result.group(2)
-        minIndex,maxIndex = self.parent().parent().axis.mapInterval((float(minValue),float(maxValue)))
-        #minIndex = self.findData(QtCore.QVariant(QtCore.QStringList(['variables', str(minValue)])))
-        #maxIndex = self.findData(QtCore.QVariant(QtCore.QStringList(['variables', str(maxValue)])))
-
+        #minIndex,maxIndex = self.parent().parent().axis.mapInterval((float(minValue),float(maxValue)))
+        minIndex = self.findData(QtCore.QVariant(QtCore.QStringList(['variables', str(minValue)])))
+        maxIndex = self.findData(QtCore.QVariant(QtCore.QStringList(['variables', str(maxValue)])))
         # If min or max values are not in the list of values do nothing
         if (minIndex == -1 or maxIndex == -1):
             return
@@ -1196,6 +1195,35 @@ class QAxisList(QtGui.QWidget):
         operation to be done on the axis such as: def, sum, avg, etc ... """
         
         axisOpsDict = {}
+        
+        #init with values from var module if any
+        varname = None
+        if self.var is not None:
+            if hasattr(self.var, 'id'):
+                varname = self.var.id
+            elif isinstance(self.var, basestring):
+                varname = self.var
+            else:
+                print "Warning: unkown self.var param in axis list"
+            
+            
+        if varname is not None:
+            projectController = self.root.get_current_project_controller()
+            
+            varModule = None
+            
+            if varname in projectController.defined_variables:
+                varModule = projectController.defined_variables[varname]
+            elif varname in projectController.computed_variables_ops:
+                varModule = projectController.computed_variables_ops[varname]
+            
+            if varModule is not None and varModule.axesOperations.strip() != '':
+                try:
+                    axisOpsDict = eval(varModule.axesOperations)
+                except:
+                    format = "Warning: invalid string 'axesOperations': %s"
+                    print format % str(varModule.axesOperations)
+        
         for axis in self.axisWidgets:
             op = str(axis.getAxisOperationsButton().text()).strip()
             axisOpsDict[axis.getID()] = op

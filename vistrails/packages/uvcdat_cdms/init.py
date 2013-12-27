@@ -109,6 +109,11 @@ class CDMSVariable(Variable):
         self.axisAttributes = axisAttributes
         self.timeBounds = timeBounds
         self.var = None
+        
+        if varNameInFile is None:
+            self.varname = name
+        else:
+            self.varname = varNameInFile
 
     def __copy__(self):
         """__copy__() -> CDMSVariable - Returns a clone of itself"""
@@ -120,6 +125,7 @@ class CDMSVariable(Variable):
         cp.name = self.name
         cp.load = self.load
         cp.varNameInFile = self.varNameInFile
+        cp.varname = self.varname
         cp.axes = self.axes
         cp.axesOperations = self.axesOperations
         cp.attributes = self.attributes
@@ -312,6 +318,8 @@ class CDMSVariable(Variable):
         var.axes = CDMSPipelineHelper.get_value_from_function(module, 'axes')
         var.axesOperations = CDMSPipelineHelper.get_value_from_function(module, 'axesOperations')
         var.varNameInFile = CDMSPipelineHelper.get_value_from_function(module, 'varNameInFile')
+        if var.varNameInFile is not None:
+            var.varname = var.varNameInFile
         attrs = CDMSPipelineHelper.get_value_from_function(module, 'attributes')
         if attrs is not None:
             var.attributes = ast.literal_eval(attrs)
@@ -333,6 +341,8 @@ class CDMSVariable(Variable):
         self.axes = self.forceGetInputFromPort("axes")
         self.axesOperations = self.forceGetInputFromPort("axesOperations")
         self.varNameInFile = self.forceGetInputFromPort("varNameInFile")
+        if self.varNameInFile is not None:
+            self.varname = self.varNameInFile
         self.attributes = self.forceGetInputFromPort("attributes")
         self.axisAttributes = self.forceGetInputFromPort("axisAttributes")
         self.timeBounds = self.forceGetInputFromPort("setTimeBounds")
@@ -1348,7 +1358,7 @@ class QCDATWidgetToolBar(QCellToolBar):
         self.appendAction(QCDATWidgetPrint(self))
         self.appendAction(QCDATWidgetExport(self))
         self.appendAction(QCDATWidgetColormap(self))
-        self.appendAction(QCDATWidgetAnimation(self))
+        #self.appendAction(QCDATWidgetAnimation(self))
         
     def updateStatus(self, cellWidget):
         if (cellWidget is not None and

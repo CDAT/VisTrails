@@ -95,7 +95,7 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
             programmable_source.UpdatePipeline()
             pvsp.SetActiveSource(programmable_source)
 
-            self.slice_by_var_name = cdms_var.varNameInFile
+            self.slice_by_var_name = cdms_var.varname
             self.slice_by_var_type = 'POINTS'
 
             if not reader.is_three_dimensional(cdms_var):

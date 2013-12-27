@@ -80,7 +80,7 @@ vtk.vtkDataObject.SetPointDataActiveScalarInfo(outInfo, dataType, numberOfCompon
             ProgrammableSource1.UpdatePipeline()
             pvsp.SetActiveSource(ProgrammableSource1)
 
-            self.contour_var_name = str(cdms_var.varNameInFile)
+            self.contour_var_name = str(cdms_var.varname)
 
             #// If the data is three dimensional, then don't draw the background imagery
             #// since it may hide the contours
