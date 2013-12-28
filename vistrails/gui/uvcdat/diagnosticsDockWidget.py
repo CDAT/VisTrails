@@ -320,11 +320,28 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         # TO DO: it would be useful to get some immediate feedback as to whether the code is
         # busy, or finished with the current task.
         # For now, print the first result.  Really, we want to plot them all...
+        row = 0 
+        column = 0
+        Ncolumns = 2 # TODO: Figure out how columns are actually displayed so we switch row accordingly
+        Nrows = 2 # TODO: Figure out how many rows are displayed so that we can warn users some plots may need scrolling
         if type(res) is list:
             print "Plot data is a list.  We'll just use the first item"   # TO DO: show all the plots!
             res30 = res[0]
         else:
             res30 = res
+        for res30 in res:
+            self.displayCell(res30,row,column)
+            column+=1
+            if column == Ncolumns:
+                column=0
+                row+=1
+        if row>Nrows:
+            mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning,"This diagnostics generated more rows than the number currently disaplyed by your spreadsheet, don't forget to scroll down")
+            mbox._exec()
+        print "Finished"
+
+    def displayCell(self,res30,row,column,sheet="Sheet 1"):
+        """Display result into one cell defined by row/column args"""
         pvars = res30.vars
         labels = res30.labels
         title = res30.title
@@ -334,14 +351,11 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         print "title:",title
         print "presentation:",presentation
         #define where to drag and drop
-        sheet = "Sheet 1"
-        row = 0
-        col = 0
         import cdms2
         from packages.uvcdat_cdms.init import CDMSVariable
         projectController = self.parent().get_current_project_controller()
         #Clear the cell
-        projectController.clear_cell(sheet,col,row)
+        projectController.clear_cell(sheet,column,row)
         for V in pvars:
             # We really need to fix the 2-line plots.  Scale so that both variables use the
             # same axes!  The Diagnostics package can provide upper and lower bounds for the
@@ -387,10 +401,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             plot = projectController.plot_manager.new_plot('VCS', res30.type, "default" )
             plotDropInfo = (plot, sheet, col, row)
             projectController.plot_was_dropped(plotDropInfo)
-
-
-        print "Finished"
-            
 
     def cancelClicked(self):
         self.close()
