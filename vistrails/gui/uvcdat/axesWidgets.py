@@ -8,6 +8,7 @@ import re, copy
 import cdtime
 import MV2
 from gui.application import get_vistrails_application
+import customizeUVCDAT
 
 pins = {}
 
@@ -163,6 +164,11 @@ class QSliderCombo(QtGui.QWidget):
 #        self.initialAxis = copy_axis( axis )
         self.initAxisValues(axis)
         self.setSlidersMinMax()
+        reload(customizeUVCDAT)
+        Trange = getattr(customizeUVCDAT,"timeRange",None)
+        Zrange = getattr(customizeUVCDAT,"levelRange",None)
+        Yrange = getattr(customizeUVCDAT,"latitudeRange",None)
+        Xrange = getattr(customizeUVCDAT,"longitudeRange",None)
         if self.isModuloed:
             self.updateTopSlider(self.findAxisIndex(axis[0]))
         else:
@@ -185,7 +191,28 @@ class QSliderCombo(QtGui.QWidget):
         self.connect(self.axisCombo,
                      QtCore.SIGNAL('axisComboMaxValueChanged (int)'),
                      self.updateBottomSlider)
-        if self.isModuloed:
+
+        if axis.isTime() and Trange is not None:
+            self.topSlider.setValue(self.findAxisIndex(Trange[0]))
+            self.updateMin(self.findAxisIndex(Trange[0]))
+            self.bottomSlider.setValue(self.findAxisIndex(Trange[1]))
+            self.updateMax(self.findAxisIndex(Trange[1]))
+        elif axis.isLevel() and Zrange is not None:
+            self.topSlider.setValue(self.findAxisIndex(Zrange[0]))
+            self.updateMin(self.findAxisIndex(Zrange[0]))
+            self.bottomSlider.setValue(self.findAxisIndex(Zrange[1]))
+            self.updateMax(self.findAxisIndex(Zrange[1]))
+        elif axis.isLatitude() and Yrange is not None:
+            self.topSlider.setValue(self.findAxisIndex(Yrange[0]))
+            self.updateMin(self.findAxisIndex(Yrange[0]))
+            self.bottomSlider.setValue(self.findAxisIndex(Yrange[1]))
+            self.updateMax(self.findAxisIndex(Yrange[1]))
+        elif axis.isLongitude() and Xrange is not None:
+            self.topSlider.setValue(self.findAxisIndex(Xrange[0]))
+            self.updateMin(self.findAxisIndex(Xrange[0]))
+            self.bottomSlider.setValue(self.findAxisIndex(Xrange[1]))
+            self.updateMax(self.findAxisIndex(Xrange[1]))
+        elif self.isModuloed and not (axis.isLongitude() and Xrange is not None):
             self.updateMin(self.findAxisIndex(axis[0]))
             self.updateMax(self.findAxisIndex(axis[-1]))
 
@@ -207,8 +234,8 @@ class QSliderCombo(QtGui.QWidget):
             if axis.isTime():
                 v1=cdtime.s2r(v1,axis.units,axis.getCalendar()).value
                 v2=cdtime.s2r(v2,axis.units,axis.getCalendar()).value
-            try: # If this falis then we don't need to worry about restting or pinning this guy he's outside the range
-                # But if it faisl other should still be able to be pinned
+            try: # If this fails then we don't need to worry about resetting or pinning this guy he's outside the range
+                # But if it fails other should still be able to be pinned
                 i1,i2=axis.mapInterval((v1,v2))
                 self.updateTopSlider(i1)
                 self.updateBottomSlider(i2)
