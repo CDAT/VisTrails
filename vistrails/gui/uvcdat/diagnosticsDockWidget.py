@@ -139,12 +139,12 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             datafiles = metrics.fileio.findfiles.dirtree_datafiles( self.path1 )
             self.filetable1 = datafiles.setup_filetable( self.tmppth, "model" )
             # ...was self.filetable1 = metrics.frontend.uvcdat.setup_filetable(self.path1,self.tmppth)
+        self.observations = None
         if self.path2 is not None:
             self.datafiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.path2 )
             self.obs_menu = self.datafiles2.check_filespec()
-            self.observations = self.obs_menu.keys()
-        else:
-            self.observations = None
+            if type(self.obs_menu) is dict:
+                self.observations = self.obs_menu.keys()
         self.diagnostic_set_name = "Not implemented"
         if self.observations==None:
             print "WARNING: No data in second (obs) data set"
@@ -329,15 +329,16 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             res30 = res[0]
         else:
             res30 = res
-        for res30 in res:
+        for res30 in res[0:2]:
             self.displayCell(res30,row,column)
             column+=1
             if column == Ncolumns:
                 column=0
                 row+=1
-        if row>Nrows:
-            mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning,"This diagnostics generated more rows than the number currently disaplyed by your spreadsheet, don't forget to scroll down")
-            mbox._exec()
+            if row>=Nrows:
+                mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning,"This diagnostics generated more rows than the number currently disaplyed by your spreadsheet, don't forget to scroll down")
+                mbox._exec()
+                break
         print "Finished"
 
     def displayCell(self,res30,row,column,sheet="Sheet 1"):
@@ -389,7 +390,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             projectController.add_defined_variable(cdmsVar)
 
             # simulate drop variable
-            varDropInfo = (name_in_var_widget, sheet, col, row)
+            varDropInfo = (name_in_var_widget, sheet, column, row)
             projectController.variable_was_dropped(varDropInfo)
 
             # Trying to add method to plot list....
@@ -399,7 +400,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             # simulate drop plot
             #plot = projectController.plot_manager.new_plot('VCS', res30.type, res30.presentation )
             plot = projectController.plot_manager.new_plot('VCS', res30.type, "default" )
-            plotDropInfo = (plot, sheet, col, row)
+            plotDropInfo = (plot, sheet, column, row)
             projectController.plot_was_dropped(plotDropInfo)
 
     def cancelClicked(self):
