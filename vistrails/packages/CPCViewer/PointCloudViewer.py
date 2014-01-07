@@ -288,6 +288,17 @@ class CPCPlot(QtCore.QObject):
         self.volumeThresholdRange = None
         self.sphere_source = None
 
+    def createConfigDialog(self):
+        self.configDialog = CPCConfigGui()
+        w = self.configDialog.getConfigWidget()
+        w.connect( w, QtCore.SIGNAL("ConfigCmd"), self.processConfigCmd )
+    #    configDialog.connect( self, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )
+        self.configDialog.activate()        
+        self.configDialog.show()
+
+    def closeConfigDialog(self):
+        self.configDialog.closeDialog()
+
     @property
     def current_subset_specs(self):
         return self._current_subset_specs
@@ -1267,7 +1278,7 @@ class CPCPlot(QtCore.QObject):
         print "%s: Camera => %s " % ( label, str(camera_pos) )
                 
     def initCollections( self, nCollections, init_args, **args ):
-        if nCollections > 1:
+        if nCollections > 0:
             self.partitioned_point_cloud = vtkPartitionedPointCloud( nCollections, init_args, **args )
             self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('newDataAvailable'), self.newDataAvailable )
         else:
@@ -1342,8 +1353,8 @@ class CPCPlot(QtCore.QObject):
       
     def init(self, **args ):
         init_args = args[ 'init_args' ]      
-        n_overview_points = args.get( 'n_overview_points', 500000 )    
-        n_subproc_points = args.get( 'n_subproc_points', 1000000 )    
+        n_overview_points = args.get( 'n_overview_points', 600000 )    
+        n_subproc_points = args.get( 'n_subproc_points', 600000 )    
         n_cores = args.get( 'n_cores', 32 )    
         self.point_cloud_overview = vtkLocalPointCloud( 0, max_points=n_overview_points ) 
         lut = self.getLUT()
@@ -1353,6 +1364,7 @@ class CPCPlot(QtCore.QObject):
         nCollections = min( nPartitions, n_cores )
         print " Init PCViewer, nInputPoints = %d, n_overview_points = %d, n_subproc_points = %d, nCollections = %d, overview skip index = %s" % ( nInputPoints, n_overview_points, n_subproc_points, nCollections, self.point_cloud_overview.getSkipIndex() )
         self.initCollections( nCollections, init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
+        self.createConfigDialog()
  
     def update(self):
         pass
@@ -1396,7 +1408,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
     parser.add_argument( 'PATH' )
     parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
-    parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CAM", help='input data type')
+    parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="GEOD", help='input data type')
     ns = parser.parse_args( sys.argv )
     
     kill_all_zombies()
@@ -1410,6 +1422,7 @@ if __name__ == '__main__':
     height_varname = None
     data_dir = os.path.expanduser( ns.data_dir )
     height_varnames = []
+    var_proc_op = None
     
     if ns.data_type == "WRF":
         data_file = os.path.join( data_dir, "WRF/wrfout_d01_2013-07-01_00-00-00.nc" )
@@ -1432,25 +1445,19 @@ if __name__ == '__main__':
         data_file = os.path.join( data_dir, "MMF/diag_prs.20080101.nc" )
         grid_file = None
         varname = "u"
+    elif ns.data_type == "GEOD":
+        file_name =  "temperature_19010101_000000.nc" # "vorticity_19010102_000000.nc" # 
+        data_file = os.path.join( data_dir, "GeodesicGrid", file_name )
+        grid_file = os.path.join( data_dir, "GeodesicGrid", "grid.nc" )
+        varname = "temperature_ifc" # "vorticity" # 
+        var_proc_op = None
         
     g = CPCPlot( widget.GetRenderWindow() ) 
     widget.connect( widget, QtCore.SIGNAL('event'), g.processEvent )  
-    g.init( init_args = ( grid_file, data_file, varname, height_varname ), n_overview_points=n_overview_points, n_cores=2 ) # , n_subproc_points=100000000 )
-    
-#     pointCollectionMgrThread = QPointCollectionMgrThread( g, init_args = ( grid_file, data_file, varname ), nCollections=nCollections )
-#     pointCollectionMgrThread.init()
-#    pointCollectionMgrThread.start()
-
-    configDialog = CPCConfigGui()
-    w = configDialog.getConfigWidget()
-    w.connect( w, QtCore.SIGNAL("ConfigCmd"), g.processConfigCmd )
-#    configDialog.connect( g, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )
-    configDialog.activate()
-    
-    configDialog.show()
-    
+    g.init( init_args = ( grid_file, data_file, varname, height_varname, var_proc_op ), n_overview_points=n_overview_points, n_cores=2 ) # , n_subproc_points=100000000 )
+        
     app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
-    app.connect( widget, QtCore.SIGNAL("Close"), configDialog.closeDialog ) 
+    app.connect( widget, QtCore.SIGNAL("Close"), g.closeConfigDialog  ) 
     widget.show()  
     app.exec_() 
     g.terminate() 

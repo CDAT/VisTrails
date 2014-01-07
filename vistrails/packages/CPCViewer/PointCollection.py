@@ -3,9 +3,9 @@ Created on Sep 18, 2013
 
 @author: tpmaxwel
 '''
-import sys
+import sys, math
 import numpy
-import cdms2
+import cdms2, cdutil
 
 def isNone(obj):
     return ( id(obj) == id(None) )
@@ -68,8 +68,14 @@ class PointCollection():
         
     def getGridType(self):
         return self.point_layout
+    
+    def getCoordIndex( self, var, coord ):
+        axis_order = var.getOrder()
+        return axis_order.index(coord)
        
     def getDataBlock( self, var ):
+        iTimeIndex = self.getCoordIndex( var, 't' )
+        if iTimeIndex <> 0:  print>>sys.stderr, "Unimplemented axis order: %s " % var.getOrder()
         if self.lev == None:
             if len( var.shape ) == 2:
                 np_var_data_block = var[ self.iTimeStep, self.istart::self.istep ].data
@@ -78,8 +84,15 @@ class PointCollection():
                 np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0] * np_var_data_block.shape[1], ] )
             self.nLevels = 1
         else:
-            if len( var.shape ) == 3:               
-                np_var_data_block = var[ self.iTimeStep, :, self.istart::self.istep ].data
+            iLevIndex = self.getCoordIndex( var, 'z' )
+            if len( var.shape ) == 3: 
+                if iLevIndex == 1:              
+                    np_var_data_block = var[ self.iTimeStep, :, self.istart::self.istep ].data
+                elif iLevIndex == 2:     
+                    np_var_data_block = var[ self.iTimeStep, self.istart::self.istep, : ].data
+                    np_var_data_block = numpy.swapaxes( np_var_data_block, 0, 1 )
+                else:
+                    print>>sys.stderr, "Unimplemented axis order: %s " % var.getOrder()
             elif len( var.shape ) == 4:
                 lev_data_arrays = []
                 for ilev in range( var.shape[1] ):
@@ -103,6 +116,12 @@ class PointCollection():
         if self.lat_data.__class__.__name__ == "TransientVariable":
             self.lat_data = self.lat_data.data
             self.lon_data = self.lon_data.data        
+        try:
+            if lat.units == "radians":
+                radian_conversion_factor = ( 180.0 / math.pi )
+                self.lat_data = self.lat_data * radian_conversion_factor
+                self.lon_data = self.lon_data * radian_conversion_factor                    
+        except: pass
         xmax, xmin = self.lon_data.max(), self.lon_data.min()
         ymax, ymin = self.lat_data.max(), self.lat_data.min()
         self.axis_bounds[ 'x' ] = ( xmin, xmax )
@@ -177,23 +196,38 @@ class PointCollection():
 
     def getPointsLayout( self ):
         return PlotType.getPointsLayout( self.grid )
+    
+    def getAxisIds( self, var ):
+        if not hasattr( var, "coordinates" ):
+            return None
+        axis_ids = var.coordinates.strip().split(' ')  
+        try: 
+            axis_ids[0].lower().index('lat') 
+            return [ axis_ids[1], axis_ids[0] ]  
+        except:
+            return axis_ids
 
     def getLatLon( self, varname, **args ):
-        data_file = args.get('df',self.df)
-        grid_file = args.get('dg',self.gf)
+        data_file = self.df
+        grid_file = self.gf
         if grid_file:
             lat = grid_file['lat']
             lon = grid_file['lon']
             if PlotType.validCoords( lat, lon ): 
                 return  self.processCoordinates( lat, lon )
-        Var = data_file[ varname ]
-        if isNone(Var):
-            print>>sys.stderr, "Error, can't find variable '%s' in data file." % ( varname )
-            return None, None
-        if hasattr( Var, "coordinates" ):
-            axis_ids = Var.coordinates.strip().split(' ')
-            lat = data_file( axis_ids[1], squeeze=1 )  
-            lon = data_file( axis_ids[0], squeeze=1 )
+        Var = self.var        
+        axis_ids = self.getAxisIds( Var )
+        if axis_ids:
+            try:
+                if grid_file:
+                    lon = grid_file( axis_ids[0], squeeze=1 )
+                    lat = grid_file( axis_ids[1], squeeze=1 )  
+                else:
+                    lon = data_file( axis_ids[0], squeeze=1 )
+                    lat = data_file( axis_ids[1], squeeze=1 )  
+            except cdms2.error.CDMSError:
+                print>>sys.stderr, "Can't find lat/lon coordinate variables in file(s)."
+                return None, None
             if PlotType.validCoords( lat, lon ): 
                 return  self.processCoordinates( lat, lon )
         elif hasattr( Var, "stagger" ):
@@ -220,13 +254,14 @@ class PointCollection():
         self.max_points = args.get( 'max_points', -1 )
         
     def getLevel(self, var ):
-        lev_aliases =  [ "isobaric", "bottom_top" ]
+        lev_aliases =  [ "isobaric", "bottom_top", "layers", "interfaces" ]
         lev = var.getLevel()
         if lev == None:
             for axis_spec in var.domain:
                 axis = axis_spec[0]
                 if axis.id in lev_aliases:
                     lev = axis
+                    axis.designateLevel()
                     break
         return lev
 
@@ -247,13 +282,22 @@ class PointCollection():
             self.point_data_arrays['vardata'] = var_data
             self.vrange = ( var_data.min(), var_data.max() ) 
         return process
+    
+    def getProcessedVariable( self, varname, var_proc_op ):
+        var = self.df[ varname ]
+        if isNone( var ):
+            print>>sys.stderr, "Error, can't find variable '%s' in data file." % ( varname )
+            return None
+        if var_proc_op == "anomaly_t":
+            var_ave = cdutil.averager( var, axis='time' )
+        return var
 
     def initialize( self, args, **cfg_args ): 
         self.configure( **cfg_args )
-        ( grid_file, data_file, varname, height_varname ) = args
+        ( grid_file, data_file, varname, height_varname, var_proc_op ) = args
         self.gf = cdms2.open( grid_file ) if grid_file else None
         self.df = cdms2.open( data_file )       
-        self.var = self.df[ varname ]
+        self.var = self.getProcessedVariable( varname, var_proc_op )
         self.grid = self.var.getGrid()
         self.lev = self.getLevel(self.var)
         lon, lat = self.getLatLon( varname )                              
