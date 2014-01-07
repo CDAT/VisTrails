@@ -345,10 +345,10 @@ class CDMSDatasetRecord():
         
         if ( (referenceVar==None) or ( ( referenceVar[0] == self.cdmsFile ) and ( referenceVar[1] == varName ) ) ) and ( decimationFactor == 1):
             if levBounds <> None:
-                args1['lev'] =  levbounds[0] if ( len( levbounds ) == 1 ) else levbounds                        
+                args1['lev'] =  levBounds[0] if ( len( levBounds ) == 1 ) else levBounds                        
             else:
-                levbounds = self.getLevBounds( referenceLev )
-                if levbounds: args1['lev'] = levbounds
+                levBounds = self.getLevBounds( referenceLev )
+                if levBounds: args1['lev'] = levBounds
             args1['order'] = order
             rv = varData( **args1 )
         else:

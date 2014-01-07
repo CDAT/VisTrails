@@ -65,6 +65,7 @@ original_stdout = sys.stdout
 original_stderr = sys.stderr
 new_stdout = sys.stdout
 new_stderr = sys.stderr
+LevelAliases = [ 'isobaric', 'height' ]
 
 class DiagnosticWriter:
      def __init__( self, **args ):
@@ -581,7 +582,7 @@ def getSigString( klass ):
 
 def isLevelAxis( axis ):
     if axis.isLevel(): return True
-    if ( axis.id == 'isobaric' ): 
+    if ( axis.id in LevelAliases ): 
         axis.designateLevel(1)
         return True
     return False
