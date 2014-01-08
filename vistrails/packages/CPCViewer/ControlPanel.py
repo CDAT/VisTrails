@@ -31,6 +31,8 @@ class ConfigParameter( QtCore.QObject ):
     def getParameter( config_name, **args ):
         if args.get('ctype') == 'Leveling':
             return LevelingConfigParameter( config_name, **args )
+        if args.get('ctype') == 'Range':
+            return RangeConfigParameter( config_name, **args )
         else:
             return ConfigParameter( config_name, **args )
 
@@ -198,6 +200,45 @@ class LevelingConfigParameter( ConfigParameter ):
     def getWindow(self):
         return ( self.wpos, self.wsize )
 
+    def getRange( self ):
+        return ( self.rmin, self.rmax )
+
+class RangeConfigParameter( ConfigParameter ):
+    
+    def __init__(self, name, **args ):
+        super( RangeConfigParameter, self ).__init__( name, **args ) 
+        self.scaling_bounds = None
+        
+    @property
+    def rmin(self):
+        return self['rmin']
+
+    @rmin.setter
+    def rmin(self, value):
+        self['rmin'] = value
+        
+    @property
+    def rmax(self):
+        return self['rmax']
+
+    @rmax.setter
+    def rmax(self, value):
+        self['rmax'] = value
+        
+    def setScalingBounds( self, sbounds ):
+        self.scaling_bounds = sbounds
+        
+    def getScaledRange(self):
+        if self.scaling_bounds:
+            ds = self.scaling_bounds[1] - self.scaling_bounds[0]
+            return ( self.scaling_bounds[0] + self.rmin * ds, self.scaling_bounds[0] + self.rmax * ds )
+        else:
+            return self.getRange()
+
+    def setRange(self, range ):
+        self.rmin = min( max( range[0], 0.0 ), 1.0 )
+        self.rmax = max( min( range[1], 1.0 ), 0.0 )
+        
     def getRange( self ):
         return ( self.rmin, self.rmax )
 
@@ -499,7 +540,8 @@ class ColormapControl( TabbedControl ):
         cbox_layout = self.addWidgetBox( tab_layout )
         self.addCheckbox( 'Invert', cbox_layout  )
         self.addCheckbox( 'Stereo', cbox_layout  )
-        self.addCheckbox( 'Smooth', cbox_layout  )
+        self.addCheckbox( 'Colorbar', cbox_layout  )
+#        self.addCheckbox( 'Smooth', cbox_layout  )
 
 class SliderControl( TabbedControl ):
 
@@ -617,6 +659,49 @@ class LevelingSliderControl( TabbedControl ):
     def sliderMoved( self, slider_index, raw_slider_value, scaled_slider_value ):
         ( wsize, wpos ) = self.getLevelingRange( slider_index, scaled_slider_value )
         self.cparm.setWindow( wpos, wsize )
+
+class RangeSliderControl( TabbedControl ):
+    
+    def __init__(self, cparm, **args ):  
+        super( RangeSliderControl, self ).__init__( cparm, **args )
+        self.range_tab_index = -1
+        self.args = args
+        
+    def build(self):
+        super( RangeSliderControl, self ).build()
+        rmax = self.cparm[ 'rmax' ]
+        rmin = self.cparm[ 'rmin' ]
+        self.range_tab_index, tab_layout = self.addTab('Opacity Ramp Function')
+        self.minvIndex = self.addSlider( "Bottom Opacity Value:", tab_layout, scaled_init_value=rmin, **self.args )
+        self.maxvIndex = self.addSlider( "Top Opacity Value:", tab_layout, scaled_init_value=rmax, **self.args )
+        
+    def updateTabPanel(self, current_tab_index = -1 ): 
+        self.updatingTabPanel = True
+        if self.range_tab_index >= 0:
+            self.updateMinMaxSliders()
+        self.updatingTabPanel = False
+            
+    def configValueChanged(self): 
+        if not self.updatingTabPanel:
+            self.updateTabPanel()
+            
+    def updateMinMaxSliders(self):
+        minSlider = self.widgets[ self.minvIndex ]
+        maxSlider = self.widgets[ self.maxvIndex ]
+        if not minSlider.isTracking() and not maxSlider.isTracking():
+            vrange  = self.cparm.getRange()
+            print "Update Min Max sliders: %s " % str( vrange ); 
+            minSlider.setSliderValue( vrange[0] )
+            maxSlider.setSliderValue( vrange[1] )
+
+    def getRange(self, slider_index, value ):
+        vmin = self.widgets[self.minvIndex].getSliderValue() if slider_index <> self.minvIndex else value
+        vmax = self.widgets[self.maxvIndex].getSliderValue() if slider_index <> self.maxvIndex else value
+        return ( vmin, vmax )
+
+    def sliderMoved( self, slider_index, raw_slider_value, scaled_slider_value ):
+        vrange = self.getRange( slider_index, scaled_slider_value )
+        self.cparm.setRange( vrange )
 
 class ColorScaleControl( LevelingSliderControl ):
  
@@ -937,9 +1022,9 @@ class CPCConfigConfigurationWidget( ConfigurationWidget ):
         self.iColorCatIndex = self.addCategory( 'Color' )
         cparm = self.addParameter( self.iColorCatIndex, "Color Scale", wpos=0.5, wsize=1.0, ctype = 'Leveling' )
         self.addConfigControl( self.iColorCatIndex, ColorScaleControl( cparm ) )       
-        cparm = self.addParameter( self.iColorCatIndex, "Opacity Scale", value=0.0 )
-        self.addConfigControl( self.iColorCatIndex, SliderControl( cparm ) )       
-        cparm = self.addParameter( self.iColorCatIndex, "Color Map", Colormap="jet", Invert=1, Stereo=0, Smooth=0  )
+        cparm = self.addParameter( self.iColorCatIndex, "Opacity Scale", rmin=0.0, rmax=1.0, ctype = 'Range'  )
+        self.addConfigControl( self.iColorCatIndex, RangeSliderControl( cparm ) )       
+        cparm = self.addParameter( self.iColorCatIndex, "Color Map", Colormap="jet", Invert=1, Stereo=0, Colorbar=0  )
         self.addConfigControl( self.iColorCatIndex, ColormapControl( cparm ) )  
              
         self.iSubsetCatIndex = self.addCategory( 'Subsets' )

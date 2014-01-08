@@ -587,6 +587,9 @@ class vtkLocalPointCloud( vtkPointCloud ):
         vtkPointCloud.__init__( self )
         self.point_collection = PointCollection()
         self.point_collection.setDataSlice( istart, **args )
+        
+    def getMetadata( self ):
+        return self.point_collection.getMetadata()
 
     def generateZScaling(self, **args ):
         z_subset_spec = args.get('spec', None )

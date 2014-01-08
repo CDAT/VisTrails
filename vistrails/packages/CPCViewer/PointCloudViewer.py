@@ -246,11 +246,12 @@ class CPCPlot(QtCore.QObject):
     
     sliceAxes = [ 'x', 'y', 'z' ]  
 
-    def __init__( self, vtk_render_window, **args ):
+    def __init__( self, vtk_render_window = None , **args ):
         QtCore.QObject.__init__( self )
+        self.widget = None
         self.partitioned_point_cloud = None
         self.point_cloud_overview = None
-        self.renderWindow = vtk_render_window
+        self.renderWindow = vtk_render_window if ( vtk_render_window <> None ) else self.createRenderWindow()
         self.renderWindowInteractor = self.renderWindow.GetInteractor()
         style = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
         self.renderWindowInteractor.SetInteractorStyle( style )
@@ -288,6 +289,14 @@ class CPCPlot(QtCore.QObject):
         self.volumeThresholdRange = None
         self.sphere_source = None
 
+    def createRenderWindow(self):
+        self.widget = QVTKAdaptor()
+        self.widget.Initialize()
+        self.widget.Start()        
+        self.connect( self.widget, QtCore.SIGNAL('event'), self.processEvent )  
+        self.connect( self.widget, QtCore.SIGNAL("Close"), self.closeConfigDialog  ) 
+        return self.widget.GetRenderWindow()
+
     def createConfigDialog(self):
         self.configDialog = CPCConfigGui()
         w = self.configDialog.getConfigWidget()
@@ -312,6 +321,11 @@ class CPCPlot(QtCore.QObject):
     def getLUT( self, cmap_index=0  ):
         colormapManager = self.getColormapManager( index=cmap_index )
         return colormapManager.lut
+
+    def toggleColormapVisibility(self):
+        for colormapManager in self.colormapManagers.values():
+            colormapManager.toggleColormapVisibility()
+        self.render()
     
     def getColormapManager( self, **args ):
         cmap_index = args.get('index',0)
@@ -332,15 +346,18 @@ class CPCPlot(QtCore.QObject):
         colormapName = str(data[0])
         invertColormap = getBool( data[1] ) 
         enableStereo = getBool( data[2] )
-        smoothColormap = getBool( data[3] ) if ( len( data ) > 3 ) else 1 
+        show_colorBar = getBool( data[3] ) if ( len( data ) > 3 ) else 0 
         cmap_index = args.get( 'index', 0 )
-        cm_title = args.get( 'title', '' )
+        metadata = self.point_cloud_overview.getMetadata()
+        var_name = metadata.get( 'var_name', '')
+        var_units = metadata.get( 'var_units', '')
         self.updateStereo( enableStereo )
-        colormapManager = self.getColormapManager( name=colormapName, invert=invertColormap, smooth=smoothColormap, index=cmap_index, units=self.getUnits(cmap_index) )
+        colormapManager = self.getColormapManager( name=colormapName, invert=invertColormap, index=cmap_index, units=var_units )
         if( colormapManager.colorBarActor == None ): 
+            cm_title = str.replace( "%s (%s)" % ( var_name, var_units ), " ", "\n" )
             cmap_pos = [ 0.9, 0.2 ] if (cmap_index==0) else [ 0.02, 0.2 ]
-            units = self.getUnits( cmap_index )
             self.renderer.AddActor( colormapManager.createActor( pos=cmap_pos, title=cm_title ) )
+        colormapManager.setColorbarVisibility( show_colorBar )
         self.render() 
         return True
         return False 
@@ -418,7 +435,10 @@ class CPCPlot(QtCore.QObject):
         return self.textDisplayMgr.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
 
     def updateTextDisplay( self, text, render=False ):
-        self.labelBuff = str(text)
+        metadata = self.point_cloud_overview.getMetadata()
+        var_name = metadata.get( 'var_name', '')
+        var_units = metadata.get( 'var_units', '')
+        self.labelBuff = "%s (%s)\n%s" % ( var_name, var_units, str(text) )
         self.getLabelActor().VisibilityOn() 
         if render: self.render()     
     
@@ -804,7 +824,8 @@ class CPCPlot(QtCore.QObject):
             pass                 
         elif args and args[0] == "Color Scale":
             norm_range = self.scalarRange.getScaledRange() 
-            self.point_cloud_overview.setScalarRange( norm_range )          
+            self.point_cloud_overview.setScalarRange( norm_range ) 
+            self.setColorbarRange( norm_range )         
         self.render()
 
                      
@@ -936,7 +957,11 @@ class CPCPlot(QtCore.QObject):
             self.execCurrentSlice()
         elif op in POS_VECTOR_COMP: 
             self.updatePlaneWidget()          
-            self.execCurrentSlice()      
+            self.execCurrentSlice()   
+            
+    def setColorbarRange( self, cbar_range, cmap_index=0 ):
+        colormapManager = self.getColormapManager( index=cmap_index )
+        colormapManager.setDisplayRange( cbar_range )   
 
     def processsInitParameter( self, parameter_key, config_param ):
         paramKeys = parameter_key.split(':') 
@@ -945,7 +970,9 @@ class CPCPlot(QtCore.QObject):
                 self.scalarRange = config_param  
                 self.scalarRange.setScalingBounds( self.point_cloud_overview.getValueRange()  )  
                 self.connect( self.scalarRange, QtCore.SIGNAL('ValueChanged'), self.processColorScaleCommand ) 
-                self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )       
+                norm_range = self.scalarRange.getScaledRange() 
+                self.point_cloud_overview.setScalarRange( norm_range )  
+                self.setColorbarRange( norm_range )              
             elif paramKeys[1] == 'Color Map':
                 self.colorMapCfg = config_param 
                 self.connect( self.colorMapCfg, QtCore.SIGNAL('ValueChanged'), self.processColorMapCommand ) 
@@ -993,11 +1020,11 @@ class CPCPlot(QtCore.QObject):
         self.render()
 
     def processOpacityScalingCommand(self, args=None ):
-        oval = self.oscale.getValue()
+        arange = self.oscale.getRange()
         colormapManager = self.getColormapManager()
         alpha_range = colormapManager.getAlphaRange()
-        if abs( oval - alpha_range[0] ) > 0.1:
-            colormapManager.setAlphaRange( [ oval, 1.0 ] )
+        if ( abs( arange[0] - alpha_range[0] ) > 0.1 ) or ( abs( arange[1] - alpha_range[0] ) > 0.1 ):
+            colormapManager.setAlphaRange( arange )
             self.render()
                 
     def processVerticalScalingCommand(self, args=None ):
@@ -1041,7 +1068,7 @@ class CPCPlot(QtCore.QObject):
             print>>sys.stderr, "Can't find projection: %s " % str( seleted_projection )
 
     def processColorMapCommand( self, args=None ):
-        colorCfg = [ self.colorMapCfg.getValue('Colormap'), self.colorMapCfg.getValue('Invert'), self.colorMapCfg.getValue('Stereo'), self.colorMapCfg.getValue('Smooth') ]
+        colorCfg = [ self.colorMapCfg.getValue('Colormap'), self.colorMapCfg.getValue('Invert'), self.colorMapCfg.getValue('Stereo'), self.colorMapCfg.getValue('Colorbar') ]
         self.setColormap( colorCfg )  
 
     def updateSlicing( self, sliceIndex, slice_bounds, **args ):
@@ -1258,7 +1285,7 @@ class CPCPlot(QtCore.QObject):
             
     def initCamera(self):
         fp = self.point_cloud_overview.getCenter() 
-        self.renderer.GetActiveCamera().SetPosition( fp[0], fp[1], fp[0]*2 )
+        self.renderer.GetActiveCamera().SetPosition( fp[0], fp[1], fp[3] )
         self.renderer.GetActiveCamera().SetFocalPoint( fp[0], fp[1], 0 )
         self.renderer.GetActiveCamera().SetViewUp( 0, 1, 0 )  
         self.renderer.ResetCameraClippingRange()     
@@ -1364,7 +1391,7 @@ class CPCPlot(QtCore.QObject):
         nCollections = min( nPartitions, n_cores )
         print " Init PCViewer, nInputPoints = %d, n_overview_points = %d, n_subproc_points = %d, nCollections = %d, overview skip index = %s" % ( nInputPoints, n_overview_points, n_subproc_points, nCollections, self.point_cloud_overview.getSkipIndex() )
         self.initCollections( nCollections, init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
-        self.createConfigDialog()
+        if self.widget: self.widget.show()  
  
     def update(self):
         pass
@@ -1414,9 +1441,6 @@ if __name__ == '__main__':
     kill_all_zombies()
 
     app = QtGui.QApplication(['Point Cloud Plotter'])
-    widget = QVTKAdaptor()
-    widget.Initialize()
-    widget.Start()        
     point_size = 1
     n_overview_points = 500000
     height_varname = None
@@ -1452,13 +1476,11 @@ if __name__ == '__main__':
         varname = "temperature_ifc" # "vorticity" # 
         var_proc_op = None
         
-    g = CPCPlot( widget.GetRenderWindow() ) 
-    widget.connect( widget, QtCore.SIGNAL('event'), g.processEvent )  
+    g = CPCPlot() 
     g.init( init_args = ( grid_file, data_file, varname, height_varname, var_proc_op ), n_overview_points=n_overview_points, n_cores=2 ) # , n_subproc_points=100000000 )
+    g.createConfigDialog()
         
     app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
-    app.connect( widget, QtCore.SIGNAL("Close"), g.closeConfigDialog  ) 
-    widget.show()  
     app.exec_() 
     g.terminate() 
     

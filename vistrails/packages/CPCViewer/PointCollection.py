@@ -13,6 +13,16 @@ def isNone(obj):
 def lsize( axis ):
     try:     return axis.size()
     except:  return axis.size
+    
+def getVarAttribute( var, attribute_name_list ):
+    for attribute_name in attribute_name_list:
+        try:
+            attr_val =  getattr( var, attribute_name )
+            return attr_val
+        except AttributeError:
+            attr_val = var.attributes.get( attribute_name )
+            if attr_val: return attr_val
+    return None
 
 class PlotType:
     Planar = 0
@@ -291,6 +301,13 @@ class PointCollection():
         if var_proc_op == "anomaly_t":
             var_ave = cdutil.averager( var, axis='time' )
         return var
+    
+    def extractMetadata( self ):
+        self.metadata['var_name'] = getVarAttribute( self.var, [ 'long_name', 'name_in_file', 'id' ] )             
+        self.metadata['var_units'] = getVarAttribute( self.var, [ 'units' ] )        
+
+    def getMetadata( self ):
+        return self.metadata
 
     def initialize( self, args, **cfg_args ): 
         self.configure( **cfg_args )
@@ -298,6 +315,7 @@ class PointCollection():
         self.gf = cdms2.open( grid_file ) if grid_file else None
         self.df = cdms2.open( data_file )       
         self.var = self.getProcessedVariable( varname, var_proc_op )
+        self.extractMetadata()
         self.grid = self.var.getGrid()
         self.lev = self.getLevel(self.var)
         lon, lat = self.getLatLon( varname )                              
