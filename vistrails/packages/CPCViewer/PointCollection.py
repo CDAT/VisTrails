@@ -80,8 +80,11 @@ class PointCollection():
         return self.point_layout
     
     def getCoordIndex( self, var, coord ):
-        axis_order = var.getOrder()
-        return axis_order.index(coord)
+        try:
+            axis_order = var.getOrder()
+            return axis_order.index(coord)
+        except ValueError, err:
+            print>>sys.stderr, "Can't find axis %s in axis order spec '%s' " % ( coord, axis_order )
        
     def getDataBlock( self, var ):
         iTimeIndex = self.getCoordIndex( var, 't' )
@@ -148,12 +151,17 @@ class PointCollection():
     def getNumberOfPoints(self): 
         return len( self.point_data_arrays['x'] ) 
     
+    def levelsAreAscending(self):
+        lev_positive_direction = self.lev.attributes.get('positive','up')
+        dlev = ( self.lev[-1] - self.lev[0] )
+        ascending = ( ( dlev > 0.0 ) and ( lev_positive_direction == 'down' ) ) or ( ( dlev < 0.0 ) and ( lev_positive_direction == 'up' ) )
+        return ascending
+    
     def setPointHeights( self, **args ): 
         height_varname = args.get( 'height_var', None )
         z_scaling = args.get( 'z_scale', 1.0 )
         self.data_height = args.get( 'data_height', None )
-        ascending = True
-        if self.lev.attributes.get('positive',None) == "down": ascending = False
+        ascending = self.levelsAreAscending()
         
         nz = len( self.lev ) 
         if height_varname and (height_varname <> self.hgt_var) and (height_varname <> 'Levels' ):
@@ -269,10 +277,17 @@ class PointCollection():
         if lev == None:
             for axis_spec in var.domain:
                 axis = axis_spec[0]
+                grid_lev = None
+                if self.gf:
+                    try:
+                        grid_lev = self.gf[ axis.id ]
+                        if grid_lev.isLevel():
+                            axis.designateLevel()
+                            return grid_lev
+                    except: pass
                 if axis.id in lev_aliases:
-                    lev = axis
                     axis.designateLevel()
-                    break
+                    return grid_lev if ( grid_lev <> None ) else axis
         return lev
 
     def stepTime( self, **args ):
