@@ -251,6 +251,7 @@ class CPCPlot(QtCore.QObject):
         self.widget = None
         self.partitioned_point_cloud = None
         self.point_cloud_overview = None
+        self.labelBuff = ""
         self.renderWindow = vtk_render_window if ( vtk_render_window <> None ) else self.createRenderWindow()
         self.renderWindowInteractor = self.renderWindow.GetInteractor()
         style = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
@@ -432,13 +433,17 @@ class CPCPlot(QtCore.QObject):
         self.updateThresholding( 'vardata', self.volumeThresholdRange.getRange() )    
              
     def getLabelActor(self):
-        return self.textDisplayMgr.getTextActor( 'label', self.labelBuff, (.01, .95), size = VTK_NOTATION_SIZE, bold = True  )
+        return self.textDisplayMgr.getTextActor( 'label', self.labelBuff, (.01, .90), size = VTK_NOTATION_SIZE, bold = True  )
 
+    def onResizeEvent(self):
+        self.updateTextDisplay( None, True )
+        
     def updateTextDisplay( self, text, render=False ):
-        metadata = self.point_cloud_overview.getMetadata()
-        var_name = metadata.get( 'var_name', '')
-        var_units = metadata.get( 'var_units', '')
-        self.labelBuff = "%s (%s)\n%s" % ( var_name, var_units, str(text) )
+        if text <> None:
+            metadata = self.point_cloud_overview.getMetadata()
+            var_name = metadata.get( 'var_name', '')
+            var_units = metadata.get( 'var_units', '')
+            self.labelBuff = "%s (%s)\n%s" % ( var_name, var_units, str(text) )
         self.getLabelActor().VisibilityOn() 
         if render: self.render()     
     
@@ -553,7 +558,9 @@ class CPCPlot(QtCore.QObject):
     def processEvent(self, eventArgs ):
         if eventArgs[0] == "KeyEvent":
             self.onKeyEvent( eventArgs[1:])
-        print " -- Event: %s " % str( eventArgs ); sys.stdout.flush()
+        if eventArgs[0] == "ResizeEvent":
+            self.onResizeEvent()           
+#        print " -- Event: %s " % str( eventArgs ); sys.stdout.flush()
 #        SetEnabled    (     int          )
         
 #        self.emit( QtCore.SIGNAL('Close')  )
@@ -1412,6 +1419,10 @@ class QVTKAdaptor( QVTKRenderWindowInteractor ):
     def closeEvent( self, event ):
         self.emit( QtCore.SIGNAL('Close') )
         QVTKRenderWindowInteractor.closeEvent( self, event )
+
+    def resizeEvent( self, event ):
+        self.emit( QtCore.SIGNAL('event'), ( 'ResizeEvent', 0 ) )
+        QVTKRenderWindowInteractor.resizeEvent( self, event )
     
 class QPointCollectionMgrThread( QtCore.QThread ):
     

@@ -46,7 +46,7 @@ class ColorMapManager():
             pos = args.get( 'pos', [ 0.9, 0.2 ] )
             title = args.get( 'title', '' )
             self.colorBarActor = vtk.vtkScalarBarActor()
-            self.colorBarActor.SetMaximumWidthInPixels( 50 )
+#            self.colorBarActor.SetMaximumWidthInPixels( 50 )
             self.colorBarActor.SetNumberOfLabels(9)
             labelFormat = vtk.vtkTextProperty()
             labelFormat.SetFontSize( 160 )
@@ -62,6 +62,7 @@ class ColorMapManager():
             self.colorBarActor.SetTitle( title )
             self.colorBarActor.SetLookupTable( self.getDisplayLookupTable() )
             self.colorBarActor.SetVisibility(0)
+            self.colorBarActor.SetMaximumWidthInPixels(75)
         else:
             self.colorBarActor.SetLookupTable( self.getDisplayLookupTable() )
             self.colorBarActor.Modified() 
