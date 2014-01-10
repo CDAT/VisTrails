@@ -77,8 +77,9 @@ class PM_CPCViewer(PersistentVisualizationModule):
         PersistentVisualizationModule.activateEvent( self, caller, event )
         if self.renwin <> None:
             if self.plotter == None:
-                self.plotter = CPCPlot( self.renwin )  
-                self.plotter.init( init_args = ( self.grid_file, self.data_file, self.varname, self.height_varname ), n_overview_points=self.n_overview_points ) # , n_subproc_points=100000000 )
+                self.plotter = CPCPlot( self.renwin ) 
+                op = None 
+                self.plotter.init( init_args = ( self.grid_file, self.data_file, self.varname, self.height_varname, op ), n_overview_points=self.n_overview_points ) # , n_subproc_points=100000000 )
                 self.getConfigWidget()
                 DV3DPipelineHelper.denoteCPCViewer( self.moduleID )
                 app = get_vistrails_application()
