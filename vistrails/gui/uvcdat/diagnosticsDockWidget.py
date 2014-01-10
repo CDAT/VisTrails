@@ -324,25 +324,24 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         column = 0
         Ncolumns = 2 # TODO: Figure out how columns are actually displayed so we switch row accordingly
         Nrows = 2 # TODO: Figure out how many rows are displayed so that we can warn users some plots may need scrolling
-        if type(res) is list:
-            print "Plot data is a list.  We'll just use the first item"   # TO DO: show all the plots!
-            res30 = res[0]
-        else:
-            res30 = res
-        for res30 in res[0:2]:
+        if type(res) is not list:
+            res = [res]
+        for res30 in res:
+            if row>=Nrows:
+                mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning,"This diagnostics generated more rows than the number currently disaplyed by your spreadsheet, don't forget to scroll down")
+                mbox._exec()
+                break
             self.displayCell(res30,row,column)
             column+=1
             if column == Ncolumns:
                 column=0
                 row+=1
-            if row>=Nrows:
-                mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning,"This diagnostics generated more rows than the number currently disaplyed by your spreadsheet, don't forget to scroll down")
-                mbox._exec()
-                break
         print "Finished"
 
     def displayCell(self,res30,row,column,sheet="Sheet 1"):
         """Display result into one cell defined by row/column args"""
+        if res30 is None:
+            return
         pvars = res30.vars
         labels = res30.labels
         title = res30.title
