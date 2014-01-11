@@ -397,6 +397,11 @@ class QSliderCombo(QtGui.QWidget):
         """ Set min value, update the slider label and the comboBox line edit
         to show the new min value"""
         
+        ## For longitude bug 373 requests that we cannot flip them, not sure it's right thing to do but "fixing" it.
+        bindex = self.bottomSlider.value()
+        if self.isLon and minIndex > bindex:
+            minIndex = bindex
+            self.topSlider.setValue(minIndex)
         if not minIndex is None:
             self.minIndex = minIndex
             
@@ -419,6 +424,12 @@ class QSliderCombo(QtGui.QWidget):
         """ Set max value, update the slider label and the comboBox line edit
         to show the new max value"""
         
+        ## For longitude bug 373 requests that we cannot flip them, not sure it's right thing to do but "fixing" it.
+        tindex = self.topSlider.value()
+        if self.isLon and maxIndex < tindex:
+            maxIndex = tindex
+            self.bottomSlider.setValue(maxIndex)
+
         if not maxIndex is None:
             self.maxIndex = self.boundIndex( maxIndex )
             
