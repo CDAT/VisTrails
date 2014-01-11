@@ -3,6 +3,7 @@ from PyQt4.QtCore import Qt, QString
 from PyQt4.QtGui import QListWidgetItem
      
 from ui_diagnosticsDockWidget import Ui_DiagnosticDockWidget
+from pprint import pprint
 import tempfile
 
 import metrics.frontend.uvcdat
@@ -17,13 +18,13 @@ class QDiagnosticsDataLocationWindow(QtGui.QDialog):
         v = QtGui.QVBoxLayout()
         self.setLayout(v)
         f = uvcdatCommons.QFramedWidget("Where to find the data")
-        self.obsPath = f.addLabeledLineEdit("Observation Top directory")
+        self.obsPath = f.addLabeledLineEdit("Observation (or reference model) Top directory")
         self.obsPath.setText(os.path.join(os.environ['HOME'],'obs_data'))
         b = f.addButton("...",newRow=False)
         self.connect(b,QtCore.SIGNAL("clicked()"),self.getObsPath)
         v.addWidget(f)
         f = uvcdatCommons.QFramedWidget("Data is at:")
-        self.dataPath = f.addLabeledLineEdit("Data Top directory")
+        self.dataPath = f.addLabeledLineEdit("Model Top directory")
         self.dataPath.setText(os.path.join(os.environ["HOME"],'cam_output'))
         b = f.addButton("...",newRow=False)
         self.connect(b,QtCore.SIGNAL("clicked()"),self.getDataPath)
@@ -319,43 +320,64 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             return None
         # TO DO: it would be useful to get some immediate feedback as to whether the code is
         # busy, or finished with the current task.
-        # For now, print the first result.  Really, we want to plot them all...
-        row = 0 
-        column = 0
-        Ncolumns = 2 # TODO: Figure out how columns are actually displayed so we switch row accordingly
-        Nrows = 2 # TODO: Figure out how many rows are displayed so that we can warn users some plots may need scrolling
+
+        tabcont = self.parent().spreadsheetWindow.get_current_tab_controller()
+        for t in tabcont.tabWidgets:
+            # I actually expect this loop body to be hit exactly once.
+            # Otherwise, I don't know what the GUI is doing.
+            dim = t.getDimension()
+            Nrows = dim[0]
+            Ncolumns = dim[1]
         if type(res) is not list:
             res = [res]
-        for res30 in res:
-            if row>=Nrows:
-                mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning,"This diagnostics generated more rows than the number currently disaplyed by your spreadsheet, don't forget to scroll down")
-                mbox._exec()
-                break
-            self.displayCell(res30,row,column)
-            column+=1
-            if column == Ncolumns:
-                column=0
-                row+=1
+        # I'm keeping this old message as a reminder of scrollable panes, a feature which would be
+        # nice to have in the future (but it doesn't work now)...
+        #mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning,"This diagnostics generated more rows than the number currently disaplyed by your spreadsheet, don't forget to scroll down")
+
+        if len(res)>Nrows*Ncolumns:
+            msg = "This diagnostics generated a composite of %s simple plots, which is more than your spreadsheet can dispaly. So some will be lost."%len(res)
+            mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning,msg, QString(msg))
+            mbox.exec_()
+        ires = 0
+        for row in range(Nrows):
+            for col in range(Ncolumns):
+                print "jfp displaying cell for row,column=",row,col
+                if ires<len(res):
+                    res30 = res[ires]
+                else:
+                    res30 = None
+                self.displayCell( res30, row, col )
+                ires += 1
+        # Here's the old loop, with messages omitted.  The above new loop will clear all the panes.
+        #row = 0 
+        #column = 0
+        #for res30 in res:
+        #     if row>=Nrows:
+        #        break
+        #    self.displayCell(res30,row,column)
+        #    column+=1
+        #    if column == Ncolumns:
+        #        column=0
+        #        row+=1
         print "Finished"
 
     def displayCell(self,res30,row,column,sheet="Sheet 1"):
         """Display result into one cell defined by row/column args"""
+        projectController = self.parent().get_current_project_controller()
+        projectController.clear_cell(sheet,row,column) # There's no visible clearing!
         if res30 is None:
             return
         pvars = res30.vars
         labels = res30.labels
         title = res30.title
         presentation = res30.presentation
-        print "pvars:",pvars
+        print "pvars:",[p.id for p in pvars]
         print "labels:",labels
         print "title:",title
         print "presentation:",presentation
         #define where to drag and drop
         import cdms2
         from packages.uvcdat_cdms.init import CDMSVariable
-        projectController = self.parent().get_current_project_controller()
-        #Clear the cell
-        projectController.clear_cell(sheet,column,row)
         for V in pvars:
             # We really need to fix the 2-line plots.  Scale so that both variables use the
             # same axes!  The Diagnostics package can provide upper and lower bounds for the
@@ -389,7 +411,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             projectController.add_defined_variable(cdmsVar)
 
             # simulate drop variable
-            varDropInfo = (name_in_var_widget, sheet, column, row)
+            varDropInfo = (name_in_var_widget, sheet, row, column)
             projectController.variable_was_dropped(varDropInfo)
 
             # Trying to add method to plot list....
@@ -399,7 +421,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             # simulate drop plot
             #plot = projectController.plot_manager.new_plot('VCS', res30.type, res30.presentation )
             plot = projectController.plot_manager.new_plot('VCS', res30.type, "default" )
-            plotDropInfo = (plot, sheet, column, row)
+            plotDropInfo = (plot, sheet, row, column)
             projectController.plot_was_dropped(plotDropInfo)
 
     def cancelClicked(self):
