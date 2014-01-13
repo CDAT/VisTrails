@@ -326,6 +326,14 @@ class QPreferencesDialog(QtGui.QDialog):
         tab= QtGui.QFrame()
         l=QtGui.QVBoxLayout()
         tab.setLayout(l)
+
+        dh=QtGui.QHBoxLayout()
+        dlb=QtGui.QLabel("Default Plot")
+        self.defaultPlot = QtGui.QComboBox()
+        dh.addWidget(dlb)
+        dh.addWidget(self.defaultPlot)
+        l.addLayout(dh)
+        
         self.confirmB4Exit = QtGui.QCheckBox("Confirm Before Exiting")
         self.confirmB4Exit.setChecked(customizeUVCDAT.confirmB4Exit)
         self.confirmB4Exit.setEnabled(True)
