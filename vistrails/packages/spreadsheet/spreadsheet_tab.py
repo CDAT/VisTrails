@@ -702,8 +702,19 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         Handle the number of row changed
         
         """
-        if self.toolBar.rowSpinBox.value()!=self.sheet.rowCount():
-            self.sheet.setRowCount(self.toolBar.rowSpinBox.value())
+        
+        newRowCount = self.toolBar.rowSpinBox.value()
+        oldRowCount = self.sheet.rowCount()
+        if newRowCount != oldRowCount:
+            #manually call deleteLater on all cell widgets that may be deleted at this point
+            if newRowCount < oldRowCount:
+                for row in range(newRowCount, oldRowCount):
+                    for col in range(self.sheet.columnCount()):
+                        widget = self.sheet.cellWidget(row, col)
+                        if widget is not None and widget.widget() is not None:
+                            widget.widget().deleteLater()
+
+            self.sheet.setRowCount(newRowCount)
             self.sheet.stretchCells()
             self.displayPrompt()
             self.setEditingMode(self.tabWidget.editingMode)
@@ -712,11 +723,21 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         
     def colSpinBoxChanged(self):
         """ colSpinBoxChanged() -> None
-        Handle the number of row changed
+        Handle the number of columns changed
         
         """
-        if self.toolBar.colSpinBox.value()!=self.sheet.columnCount():
-            self.sheet.setColumnCount(self.toolBar.colSpinBox.value())
+        newColumnCount = self.toolBar.colSpinBox.value()
+        oldColumnCount = self.sheet.columnCount()
+        if newColumnCount != oldColumnCount:
+            #manually call deleteLater on all cell widgets that may be deleted at this point
+            if newColumnCount < oldColumnCount:
+                for col in range(newColumnCount, oldColumnCount):
+                    for row in range(self.sheet.rowCount()):
+                        widget = self.sheet.cellWidget(row, col)
+                        if widget is not None and widget.widget() is not None:
+                            widget.widget().deleteLater()
+                
+            self.sheet.setColumnCount(newColumnCount)
             self.sheet.stretchCells()
             self.displayPrompt()
             self.setEditingMode(self.tabWidget.editingMode)
