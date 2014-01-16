@@ -375,6 +375,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         print "labels:",labels
         print "title:",title
         print "presentation:",presentation
+        print "res",res30.type
         #define where to drag and drop
         import cdms2
         from packages.uvcdat_cdms.init import CDMSVariable
@@ -419,8 +420,22 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             #_app = get_vistrails_application()
             #d = _app.uvcdatWindow.dockPlot
             # simulate drop plot
-            #plot = projectController.plot_manager.new_plot('VCS', res30.type, res30.presentation )
-            plot = projectController.plot_manager.new_plot('VCS', res30.type, "default" )
+            pm = projectController.plot_manager
+            print pm._plot_list.keys()
+            V=pm._plot_list["VCS"]
+            print V.keys()
+            gm = res30.presentation
+            from packages.uvcdat_cdms.init import get_canvas
+            from gui.uvcdat.uvcdatCommons import gmInfos
+            Gtype = res30.type
+            G = V[Gtype]
+            print "G:",G.keys()
+            print get_canvas().listelements(Gtype.lower())
+            if not gm.name in G.keys():
+                G[gm.name] = pm._registry.add_plot(gm.name,"VCS",None,None,Gtype)
+                G[gm.name].varnum = int(gmInfos[Gtype]["nSlabs"])
+            #plot = projectController.plot_manager.new_plot('VCS', Gtype, gm.name )
+            plot = projectController.plot_manager.new_plot('VCS', Gtype, "default" )
             plotDropInfo = (plot, sheet, row, column)
             projectController.plot_was_dropped(plotDropInfo)
 
