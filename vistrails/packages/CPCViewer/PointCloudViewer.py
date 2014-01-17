@@ -1446,7 +1446,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
     parser.add_argument( 'PATH' )
     parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
-    parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="GEOD", help='input data type')
+    parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CAM", help='input data type')
     ns = parser.parse_args( sys.argv )
     
     kill_all_zombies()
@@ -1464,7 +1464,7 @@ if __name__ == '__main__':
         grid_file = None
         varname = "U"        
     elif ns.data_type == "CAM":
-        data_file = os.path.join( data_dir, "CAM/f1850c5_t2_ANN_climo-native.nc" )
+        data_file = os.path.join( data_dir, "CAM/CAM_data.nc" )
         grid_file = os.path.join( data_dir, "CAM/ne120np4_latlon.nc" )
         varname = "U"
         height_varnames = [ "Z3" ]
