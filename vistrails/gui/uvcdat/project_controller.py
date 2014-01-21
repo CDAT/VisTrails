@@ -732,6 +732,11 @@ class ProjectController(QtCore.QObject):
 
     def sheetsize_was_changed(self, sheet, dim):
         self.emit(QtCore.SIGNAL("sheet_size_changed"), sheet, dim)
+        
+        #clear all cells that are no longer visible
+        for (row, col), cell in self.sheet_map[sheet].iteritems():
+            if row >= dim[0] or col >= dim[1]:
+                cell.clear()
 
     def current_cell_changed(self, sheetName, row, col):
         if (row <> self.current_cell_coords[0] or 
