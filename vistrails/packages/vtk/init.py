@@ -381,6 +381,12 @@ disallowed_classes = set(
     'vtkHardwareSelector',#Not working for VTK 5.7.0
     'vtkView',                          #  VTK 6
     'vtkPVServerSideAnimationPlayer', 
+    'vtkCaveSynchronizedRenderers',
+    'vtkSMSession',
+    'vtkSICollaborationManager',
+    'vtkOverlappingAMR',
+    'vtkGenericAttributeCollection',
+    'vtkSMMultiServerSourceProxy'
      ])
 
 def is_class_allowed(module):
