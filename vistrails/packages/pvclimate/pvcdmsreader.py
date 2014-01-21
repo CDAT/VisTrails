@@ -216,13 +216,13 @@ class PVCDMSReader():
         scalar_dtype = cdms_var.var.dtype
 
         if scalar_dtype == np.ushort:
-            image_data.SetScalarTypeToUnsignedShort()
+            image_data.SetScalarType(vtk.VTK_UNSIGNED_SHORT, image_data.GetInformation())
         if scalar_dtype == np.int32:
-            image_data.SetScalarTypeToInt()
+            image_data.SetScalarType(vtk.VTK_INT, image_data.GetInformation())
         if scalar_dtype == np.ubyte:
-            image_data.SetScalarTypeToUnsignedChar()
+            image_data.SetScalarType(vtk.VTK_UNSIGNED_CHAR, image_data.GetInformation())
         if scalar_dtype == np.float32:
-            image_data.SetScalarTypeToFloat()
+            image_data.SetScalarType(vtk.VTK_FLOAT, image_data.GetInformation())
 
         origin = var_data_specs['outputOrigin']
         image_data.SetOrigin(origin[0], origin[1], origin[2])
