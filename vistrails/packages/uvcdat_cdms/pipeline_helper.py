@@ -1264,27 +1264,28 @@ class CDMSPlotWidget(QtGui.QWidget):
         return action
     
     def update_templates(self, ori_action):
-        if ori_action is not None:
-            version = ori_action.id
-        else:
-            version = self.version
-        action = None
-        #check if the template changed and update provenance
-        for i in range(self.plot_table.topLevelItemCount()):
-            plot_item = self.plot_table.topLevelItem(i)
-            pipeline = self.controller.vistrail.getPipeline(version)
-            if plot_item.module.id in pipeline.modules:
-                plot_module = pipeline.modules[plot_item.module.id]
-                functions = [('template', [plot_item.template])]
-                action = self.controller.update_functions(plot_module, 
-                                                          functions)
-                if action is not None:
-                    version = action.id
-        
-        if action is not None:
-            return action
-        else:
-            return ori_action
+        return ori_action #templates should not change in uvcdat gui
+#        if ori_action is not None:
+#            version = ori_action.id
+#        else:
+#            version = self.version
+#        action = None
+#        #check if the template changed and update provenance
+#        for i in range(self.plot_table.topLevelItemCount()):
+#            plot_item = self.plot_table.topLevelItem(i)
+#            pipeline = self.controller.vistrail.getPipeline(version)
+#            if plot_item.module.id in pipeline.modules:
+#                plot_module = pipeline.modules[plot_item.module.id]
+#                functions = [('template', [plot_item.template])]
+#                action = self.controller.update_functions(plot_module, 
+#                                                          functions)
+#                if action is not None:
+#                    version = action.id
+#        
+#        if action is not None:
+#            return action
+#        else:
+#            return ori_action
             
     @pyqtSlot(bool)
     def save_triggered(self, checked):
