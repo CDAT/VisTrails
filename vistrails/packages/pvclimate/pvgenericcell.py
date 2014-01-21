@@ -10,7 +10,6 @@ from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.spreadsheet.spreadsheet_cell import QCellWidget
 
 import paraview.simple as pvsp
-import paraview.pvfilters
 import vtk
 
 #// Needed for configuration
