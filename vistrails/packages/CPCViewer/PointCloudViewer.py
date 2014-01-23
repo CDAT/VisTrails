@@ -1464,7 +1464,7 @@ if __name__ == '__main__':
         grid_file = None
         varname = "U"        
     elif ns.data_type == "CAM":
-        data_file = os.path.join( data_dir, "CAM/CAM_data.nc" )
+        data_file = os.path.join( data_dir, "CAM/f1850c5_t2_ANN_climo-native.nc" )
         grid_file = os.path.join( data_dir, "CAM/ne120np4_latlon.nc" )
         varname = "U"
         height_varnames = [ "Z3" ]
