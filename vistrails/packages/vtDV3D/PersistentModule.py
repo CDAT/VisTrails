@@ -109,8 +109,7 @@ class AlgorithmOutputModule( Module ):
             if iPort < 0:   algorithm.SetInputConnection( self.algoOutputPort )
             else:           algorithm.SetInputConnection( iPort, self.algoOutputPort )
         else: 
-            output = self.getOutput() 
-            algorithm.SetInput( output )
+            algorithm.SetInputConnection( output.GetOutputPort() )   
             algorithm.Modified()
 
 class AlgorithmOutputModule3D( AlgorithmOutputModule ):
@@ -191,8 +190,8 @@ class InputSpecs:
         
     def input( self ):
         if self.clipper:
+            self.clipper.Update()
             input = self.clipper.GetOutput()
-            input.Update()
             return input
         return self._input
         
@@ -359,7 +358,6 @@ class InputSpecs:
             scalars = None
             if self.input() <> None:
                 fd = self.input().GetFieldData() 
-                self.input().Update()
                 self.fieldData = self.input().GetFieldData()         
             elif self.inputModule:
                 self.fieldData = self.inputModule.getFieldData() 
@@ -1931,7 +1929,7 @@ class PersistentVisualizationModule( PersistentModule ):
         linelen = len(text_lines[-1])
         if linelen < MIN_LINE_LEN: text += (' '*(MIN_LINE_LEN-linelen)) 
         text += '.'
-        textActor.SetInput( text )
+        textActor.SetInputData( text )
         textActor.Modified()
         return textActor
     

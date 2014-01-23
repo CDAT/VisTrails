@@ -137,7 +137,7 @@ class PM_Voxelizer(PersistentVisualizationModule):
             print>>sys.stderr, "Must supply 'volume' port input to Voxelizer"
             return
               
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetExtent()       
         spacing = self.input().GetSpacing()
         sx, sy, sz = spacing       
         origin = self.input().GetOrigin()

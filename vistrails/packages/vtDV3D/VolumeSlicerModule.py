@@ -257,14 +257,14 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         # The 3 image plane widgets are used to probe the dataset.    
 #        print " Volume Slicer buildPipeline, id = %s " % str( id(self) )
         self.sliceOutput = vtk.vtkImageData()  
-        xMin, xMax, yMin, yMax, zMin, zMax = primaryInput.GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = primaryInput.GetExtent()       
         self.slicePosition = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
         dataType = primaryInput.GetScalarTypeAsString()
         bounds = list(primaryInput.GetBounds()) 
         origin = primaryInput.GetOrigin()
         if (dataType <> 'float') and (dataType <> 'double'):
              self.setMaxScalarValue( primaryInput.GetScalarType() )
-#        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s, slicePosition=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input().GetWholeExtent()), str(origin), str(bounds), str(self.slicePosition)  )
+#        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s, slicePosition=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input().GetExtent()), str(origin), str(bounds), str(self.slicePosition)  )
       
         # The shared picker enables us to use 3 planes at one time
         # and gets the picking order right
@@ -536,10 +536,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
                 if self.generateContours:
                     slice_data = caller.GetReslice2Output()
                     if slice_data:
-                        slice_data.Update()    
+                        caller.Update()    
                         iextent =  slice_data.GetExtent()            
                         ispacing =  slice_data.GetSpacing()            
-                        self.contours.SetInput( slice_data )
+                        self.contours.SetInputData( slice_data )
                         self.contours.Modified()
                         origin = caller.GetOrigin()
                         contourLineActor = self.getContourActor( iAxis )
@@ -591,7 +591,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         return ext       
 
     def getAdjustedSliceSpacing( self, outputData ):
-        padded_extent = outputData.GetWholeExtent()
+        padded_extent = outputData.GetExtent()
         padded_shape = [ padded_extent[1]-padded_extent[0]+1, padded_extent[3]-padded_extent[2]+1, 1 ]
         padded_spacing = outputData.GetSpacing()
         scale_factor = [ padded_shape[0]/float(self.sliceOutputShape[0]), padded_shape[1]/float(self.sliceOutputShape[1]) ]

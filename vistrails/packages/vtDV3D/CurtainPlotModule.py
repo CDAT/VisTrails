@@ -109,7 +109,7 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         
     def refreshCurtain( self, **args ): 
         curtain = self.createCurtain( **args )                
-        self.probeFilter.SetInput( curtain )
+        self.probeFilter.SetInputData( curtain )
      
     def setInputZScale( self, zscale_data, **args  ): 
         rv = PersistentVisualizationModule.setInputZScale( self,  zscale_data, **args ) 

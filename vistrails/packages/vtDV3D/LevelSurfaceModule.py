@@ -448,7 +448,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         """ 
         
         texture_ispec = self.getInputSpec(  1 )                
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetExtent()       
         self.sliceCenter = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
         spacing = self.input().GetSpacing()
         sx, sy, sz = spacing 
@@ -523,7 +523,7 @@ class PM_LevelSurface(PersistentVisualizationModule):
         self.clipper.AddObserver( 'EndInteractionEvent', self.executeClip )
         
         mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInput(self.cursor.GetOutput())
+        mapper.SetInputConnection( self.cursor.GetOutputPort() )   
         self.cursorActor.SetMapper(mapper)        
         self.createDefaultProperties() 
                                                             

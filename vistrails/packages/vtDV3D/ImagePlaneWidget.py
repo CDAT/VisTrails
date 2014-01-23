@@ -687,8 +687,7 @@ class ImagePlaneWidget:
             print>>sys.stderr, "SetInput() before setting plane orientation."
             return
                
-        self.ImageData.UpdateInformation()
-        extent = self.ImageData.GetWholeExtent()
+        extent = self.ImageData.GetExtent()
         origin = self.ImageData.GetOrigin()
         spacing = self.ImageData.GetSpacing()
         
@@ -751,7 +750,7 @@ class ImagePlaneWidget:
         if(  not self.ImageData ):       
             # If None is passed, remove any reference that Reslice had
             # on the old ImageData
-            self.Reslice.SetInput(None)
+            self.Reslice.SetInputData(None)
             return
                    
         scalar_range = self.ImageData.GetScalarRange()
@@ -760,7 +759,7 @@ class ImagePlaneWidget:
             self.LookupTable.SetTableRange( scalar_range[0], scalar_range[1] )
             self.LookupTable.Build()
             
-        self.Reslice.SetInput(self.ImageData)
+        self.Reslice.SetInputData(self.ImageData)
         self.Reslice.Modified()
         dims = self.ImageData.GetDimensions()
         self.InputDims = 3 if ( ( len(dims) > 2 ) and ( dims[2] > 1 ) ) else 2
@@ -769,9 +768,9 @@ class ImagePlaneWidget:
         self.ResliceInterpolate = -1 # Force change
         self.SetResliceInterpolate(interpolate)
                 
-        self.ColorMap.SetInput(self.Reslice.GetOutput())
+        self.ColorMap.SetInputConnection( self.Reslice.GetOutputPort() )   
         
-        self.Texture.SetInput(self.ColorMap.GetOutput())
+        self.Texture.SetInputConnection( self.ColorMap.GetOutputPort() )   
         self.Texture.SetInterpolate(self.TextureInterpolate)
         
 #        self.SetPlaneOrientation(self.PlaneOrientation)
@@ -785,10 +784,10 @@ class ImagePlaneWidget:
            
         # Calculate appropriate pixel spacing for the reslicing
         #
-        self.ImageData.UpdateInformation()
+#        self.ImageData.UpdateInformation()
         spacing = self.ImageData.GetSpacing()
         origin = self.ImageData.GetOrigin()
-        extent = self.ImageData.GetWholeExtent()        
+        extent = self.ImageData.GetExtent()        
         bounds = [ origin[0] + spacing[0]*extent[0], origin[0] + spacing[0]*extent[1],  origin[1] + spacing[1]*extent[2],  origin[1] + spacing[1]*extent[3],  origin[2] + spacing[2]*extent[4],  origin[2] + spacing[2]*extent[5] ]    
         
         for j in range( 3 ): 
@@ -869,7 +868,7 @@ class ImagePlaneWidget:
             self.ContourInputDims = 3 if ( ( len(dims2) > 2 ) and ( dims2[2] > 1 ) ) else 2
             self.Reslice2 = vtk.vtkImageReslice()
             self.Reslice2.TransformInputSamplingOff()
-            self.Reslice2.SetInput(self.ImageData2)
+            self.Reslice2.SetInputData(self.ImageData2)
             self.Reslice2.Modified()
         
         if self.Reslice2:
@@ -1008,7 +1007,7 @@ class ImagePlaneWidget:
         self.ImageData  = self.Reslice.GetInput()
         if (  not self.ImageData ): return
          
-        self.ImageData.UpdateInformation()
+#        self.ImageData.UpdateInformation()
         origin = self.ImageData.GetOrigin()
         spacing = self.ImageData.GetSpacing()
         planeOrigin = list( self.PlaneSource.GetOrigin() )
@@ -1053,7 +1052,7 @@ class ImagePlaneWidget:
         self.ImageData  = self.Reslice.GetInput()
         if (  not  self.ImageData ): return 0
          
-        self.ImageData.UpdateInformation()
+#        self.ImageData.UpdateInformation()
         origin = self.ImageData.GetOrigin()
         spacing = self.ImageData.GetSpacing()
         planeOrigin = self.PlaneSource.GetOrigin()
@@ -1081,6 +1080,7 @@ class ImagePlaneWidget:
 
     def UpdateCursor( self, X, Y ):
         
+        self.Reslice.Update()
         self.ImageData  = self.Reslice.GetInput()
         if (  not self.ImageData ): return
         
@@ -1089,7 +1089,6 @@ class ImagePlaneWidget:
         # up to date already, this call doesn't cost very much.  If we don't make
         # this call and the data is not up to date, the GetScalar... call will
         # cause a segfault.
-        self.ImageData.Update()
         
         self.PlanePicker.Pick(X,Y,0.0,self.CurrentRenderer)
         self.CurrentImageValue = vtk.VTK_DOUBLE_MAX
@@ -1293,7 +1292,7 @@ class ImagePlaneWidget:
         self.PlaneOutlinePolyData.SetLines(cells)
         
         planeOutlineMapper  = vtk.vtkPolyDataMapper()
-        planeOutlineMapper.SetInput( self.PlaneOutlinePolyData )
+        planeOutlineMapper.SetInputData( self.PlaneOutlinePolyData )
         planeOutlineMapper.SetResolveCoincidentTopologyToPolygonOffset()
         self.PlaneOutlineActor.SetMapper(planeOutlineMapper)
         self.PlaneOutlineActor.PickableOff()    
@@ -1310,7 +1309,7 @@ class ImagePlaneWidget:
         self.ColorMap.PassAlphaToOutputOn()
         
         texturePlaneMapper  = vtk.vtkPolyDataMapper()
-        texturePlaneMapper.SetInput( self.PlaneSource.GetOutput() )
+        texturePlaneMapper.SetInputConnection( self.PlaneSource.GetOutputPort() )   
         
         self.Texture.SetQualityTo32Bit()
         self.Texture.MapColorScalarsThroughLookupTableOff()
@@ -1345,7 +1344,7 @@ class ImagePlaneWidget:
         self.CursorPolyData.SetPoints(points)
         self.CursorPolyData.SetLines(cells)        
         cursorMapper  = vtk.vtkPolyDataMapper()
-        cursorMapper.SetInput(self.CursorPolyData)
+        cursorMapper.SetInputData(self.CursorPolyData)
         cursorMapper.SetResolveCoincidentTopologyToPolygonOffset()
         self.CursorActor.SetMapper(cursorMapper)
         self.CursorActor.PickableOff()

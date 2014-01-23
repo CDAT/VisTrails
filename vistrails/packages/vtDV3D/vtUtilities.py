@@ -691,7 +691,7 @@ class vtkImageExportToArray:
 
     # set the input
     def SetInput(self,input):
-        return self.__export.SetInput(input)
+        return self.__export.SetInputData(input)
 
     def GetInput(self):
         return self.__export.GetInput()
@@ -699,7 +699,7 @@ class vtkImageExportToArray:
     def GetArray(self):
         input = self.__export.GetInput()
         type = input.GetScalarType()
-        extent = input.GetWholeExtent()
+        extent = input.GetExtent()
         numComponents = input.GetNumberOfScalarComponents()
         dim = (extent[5]-extent[4]+1,
                extent[3]-extent[2]+1,
@@ -725,7 +725,7 @@ class vtkImageExportToArray:
         return imArray
         
     def GetDataExtent(self):
-        return self.__export.GetInput().GetWholeExtent()
+        return self.__export.GetInput().GetExtent()
     
     def GetDataSpacing(self):
         return self.__export.GetInput().GetSpacing()
