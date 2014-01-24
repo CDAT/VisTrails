@@ -292,7 +292,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         season = str(self.comboBoxSeason.currentText())
         auxname = str(self.comboBoxAux.currentText())
         print "diagnostic: %s" % diagnostic
-        print "observation: %s" % self.observation
+        #print "observation: %s" % self.observation
         print "season: %s" % season
         print "variable: %s" % variable
         print "auxiliary option: %s" % auxname
