@@ -1047,7 +1047,20 @@ class CDMSPlot(Plot, NotCacheable):
     @classmethod    
     def get_initial_values(klass, gmName):
         global original_gm_attributes
-        return original_gm_attributes[klass.plot_type][gmName]
+        if klass.plot_type in original_gm_attributes:
+            if gmName in original_gm_attributes[klass.plot_type]:
+                return original_gm_attributes[klass.plot_type][gmName]
+            
+            #return first attributes object if not found
+            for _, attributes in original_gm_attributes[klass.plot_type].iteritems():
+                return attributes
+            
+            
+        #return first value
+        for _, attributes_dict in original_gm_attributes.iteritems():
+            for _, attributes in attributes_dict.iteritems():
+                return attributes
+            
 #        cgm = CDMSPlot.get_canvas_graphics_method(klass.plot_type, gmName)
 #        attribs = {}
 #        for attr in klass.gm_attributes:

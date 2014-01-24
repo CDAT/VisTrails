@@ -40,6 +40,7 @@ class DockPlot(QtGui.QDockWidget):
         ## layout.addWidget(self.plotTree)
         ## self.ui.mainWidget.setLayout(layout)
         #self.initVCSTree()
+        self.vcs_item_map = {}
         
     def initVCSTree(self):
         for k in sorted(plotTypes.keys()):
@@ -73,7 +74,10 @@ class DockPlot(QtGui.QDockWidget):
         return item
         
     def newPlotType(self, plot):
-        self.addCustomPlotType(plot.package, plot.name, plot)
+        parent_item = None
+        if plot.parent in self.vcs_item_map:
+            parent_item = self.vcs_item_map[plot.parent]
+        self.addCustomPlotType(plot.package, plot.name, plot, parent_item)
         
     def link_registry(self):
         self.update_from_plot_registry()
@@ -93,6 +97,7 @@ class DockPlot(QtGui.QDockWidget):
                     item = QtGui.QTreeWidgetItem(baritem, 
                                                  QtCore.QStringList(plottype),
                                                  self.VCS_CONTAINER_ITEM)
+                    self.vcs_item_map[plottype] = item
                     item.setFlags(item.flags() & ~QtCore.Qt.ItemIsDragEnabled)
                     ## Special section here for VCS GMs they have one more layer
                     for plot in registry.plots[plot_package][plottype].itervalues():
