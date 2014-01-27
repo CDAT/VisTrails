@@ -264,8 +264,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         origin = primaryInput.GetOrigin()
         if (dataType <> 'float') and (dataType <> 'double'):
              self.setMaxScalarValue( primaryInput.GetScalarType() )
-#        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s, slicePosition=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input().GetExtent()), str(origin), str(bounds), str(self.slicePosition)  )
-      
+        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s, slicePosition=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input().GetExtent()), str(origin), str(bounds), str(self.slicePosition)  )
+        sys.stdout.flush()
+        
         # The shared picker enables us to use 3 planes at one time
         # and gets the picking order right
         lut = self.getLut()
