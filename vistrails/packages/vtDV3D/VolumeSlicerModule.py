@@ -3,7 +3,7 @@ Created on Dec 2, 2010
 
 @author: tpmaxwel
 '''
-import vtk, math, traceback
+import vtk, math, traceback, sys
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import core.modules.module_registry
@@ -264,8 +264,10 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         origin = primaryInput.GetOrigin()
         if (dataType <> 'float') and (dataType <> 'double'):
              self.setMaxScalarValue( primaryInput.GetScalarType() )
-        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s, slicePosition=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input().GetExtent()), str(origin), str(bounds), str(self.slicePosition)  )
+        print "Data Type = %s, extent = %s, origin = %s, bounds=%s, slicePosition=%s" % ( dataType, str(primaryInput.GetExtent()), str(origin), str(bounds), str(self.slicePosition)  )
         sys.stdout.flush()
+#        ns = primaryInput.GetNumberOfScalarComponents()
+#        import pdb; pdb.set_trace()
         
         # The shared picker enables us to use 3 planes at one time
         # and gets the picking order right
