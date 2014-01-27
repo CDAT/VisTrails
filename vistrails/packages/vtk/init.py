@@ -386,7 +386,8 @@ disallowed_classes = set(
     'vtkSICollaborationManager',
     'vtkOverlappingAMR',
     'vtkGenericAttributeCollection',
-    'vtkSMMultiServerSourceProxy'
+    'vtkSMMultiServerSourceProxy',
+    'vtkSessionIterator'
      ])
 
 def is_class_allowed(module):
