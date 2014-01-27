@@ -340,8 +340,8 @@ class QSliderCombo(QtGui.QWidget):
             if modulo is not None and self.isModuloed is False:
                 self.isModuloed = True
                 n=len(axis)
-                self.axisValues=numpy.concatenate((self.axisValues[n/2:]-modulo,self.axisValues,self.axisValues[:n/2]+modulo))
-                self.axisIndices=numpy.concatenate((self.axisIndices[n/2:],self.axisIndices,self.axisIndices[:n/2]))
+                self.axisValues=numpy.concatenate((self.axisValues[:]-modulo,self.axisValues,self.axisValues[:]+modulo))
+                self.axisIndices=numpy.concatenate((self.axisIndices[:],self.axisIndices,self.axisIndices[:]))
         self.updateMin(0)
         self.updateMax(len(self.axisValues) - 1)
         nticks = len(self.axisValues)
