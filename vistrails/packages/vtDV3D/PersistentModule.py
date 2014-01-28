@@ -1929,7 +1929,7 @@ class PersistentVisualizationModule( PersistentModule ):
         linelen = len(text_lines[-1])
         if linelen < MIN_LINE_LEN: text += (' '*(MIN_LINE_LEN-linelen)) 
         text += '.'
-        textActor.SetInputData( text )
+        textActor.SetInput( text )
         textActor.Modified()
         return textActor
     

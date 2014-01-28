@@ -264,7 +264,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
         origin = primaryInput.GetOrigin()
         if (dataType <> 'float') and (dataType <> 'double'):
              self.setMaxScalarValue( primaryInput.GetScalarType() )
-#        print "Data Type = %s, range = (%f,%f), extent = %s, origin = %s, bounds=%s, slicePosition=%s" % ( dataType, self.rangeBounds[0], self.rangeBounds[1], str(self.input().GetExtent()), str(origin), str(bounds), str(self.slicePosition)  )
+#        print " Data Type = %s, extent = %s, origin = %s, bounds=%s, sample val = %f " % ( dataType, str(self.input().GetExtent()), str(origin), str(bounds), self.input().GetScalarComponentAsFloat(50, 50, 5, 0 )  )
       
         # The shared picker enables us to use 3 planes at one time
         # and gets the picking order right
@@ -607,6 +607,9 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
     def scaleColormap( self, ctf_data, cmap_index=0, **args ):
         ispec = self.inputSpecs[ cmap_index ]
         if ispec and ispec.input(): 
+#             print '-'*50
+#             print " Volume Slicer[%d]: Scale Colormap: ( %.4g, %.4g ) " % ( self.moduleID, ctf_data[0], ctf_data[1] )
+#             print '-'*50
             colormapManager = self.getColormapManager( index=cmap_index )
 #            if not colormapManager.matchDisplayRange( ctf_data ):
             imageRange = self.getImageValues( ctf_data[0:2], cmap_index ) 
@@ -614,9 +617,6 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             if self.contourLineMapperer: 
                 self.contourLineMapperer.Modified()
             ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } )
-#            print '-'*50
-#            print " Volume Slicer[%d]: Scale Colormap: ( %.4g, %.4g ) " % ( self.moduleID, ctf_data[0], ctf_data[1] )
-#            print '-'*50
                 
     def finalizeLeveling( self, cmap_index=0 ):
         isLeveling =  PersistentVisualizationModule.finalizeLeveling( self )
