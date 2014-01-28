@@ -918,7 +918,7 @@ class PM_MapCell3D( PM_DV3DCell ):
         PM_DV3DCell.buildRendering( self )
         md = self.getInputSpec().getMetadata()
         latLonGrid = md.get( 'latLonGrid', True )
-        self.enableBasemap = False # self.getInputValue( "enable_basemap", True )
+        self.enableBasemap = self.getInputValue( "enable_basemap", True )
         if latLonGrid and self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
             if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
             world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None 
@@ -954,6 +954,7 @@ class PM_MapCell3D( PM_DV3DCell ):
             self.imageInfo = vtk.vtkImageChangeInformation()        
             image_reader = vtk.vtkJPEGReader()      
             image_reader.SetFileName(  self.map_file )
+            image_reader.Update()
             baseImage = image_reader.GetOutput() 
             new_dims, scale = None, None
             if dataPosition == None:    
@@ -1033,8 +1034,8 @@ class PM_MapCell3D( PM_DV3DCell ):
         imageInfo.SetOutputExtentStart( 0, 0, 0 )
         imageInfo.SetOutputSpacing( baseSpacing[0], baseSpacing[1], baseSpacing[2] )
         
-        result = imageInfo.GetOutput() 
         imageInfo.Update()
+        result = imageInfo.GetOutput() 
         return result
 
     def NormalizeMapLon( self, lon ): 
