@@ -109,7 +109,7 @@ class AlgorithmOutputModule( Module ):
             if iPort < 0:   algorithm.SetInputConnection( self.algoOutputPort )
             else:           algorithm.SetInputConnection( iPort, self.algoOutputPort )
         else: 
-            algorithm.SetInputConnection( output.GetOutputPort() )   
+            algorithm.SetInputData( self.algoOutput )   
             algorithm.Modified()
 
 class AlgorithmOutputModule3D( AlgorithmOutputModule ):
