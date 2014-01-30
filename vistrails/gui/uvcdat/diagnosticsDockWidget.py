@@ -6,6 +6,10 @@ from ui_diagnosticsDockWidget import Ui_DiagnosticDockWidget
 from pprint import pprint
 import tempfile
 
+from core.utils import InstanceObject
+from packages.uvcdat_cdms.init import original_gm_attributes, \
+        get_gm_attributes, get_canvas
+
 import metrics.frontend.uvcdat
 import metrics.fileio.findfiles
 import metrics.diagnostic_groups
@@ -363,6 +367,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
     def displayCell(self,res30,row,column,sheet="Sheet 1"):
         """Display result into one cell defined by row/column args"""
+        global original_gm_attributes
         projectController = self.parent().get_current_project_controller()
         projectController.clear_cell(sheet,row,column) # There's no visible clearing!
         if res30 is None:
@@ -425,7 +430,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             V=pm._plot_list["VCS"]
             print V.keys()
             gm = res30.presentation
-            from packages.uvcdat_cdms.init import get_canvas
             from gui.uvcdat.uvcdatCommons import gmInfos
             Gtype = res30.type
             G = V[Gtype]
@@ -434,8 +438,19 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             if not gm.name in G.keys():
                 G[gm.name] = pm._registry.add_plot(gm.name,"VCS",None,None,Gtype)
                 G[gm.name].varnum = int(gmInfos[Gtype]["nSlabs"])
-            #plot = projectController.plot_manager.new_plot('VCS', Gtype, gm.name )
-            plot = projectController.plot_manager.new_plot('VCS', Gtype, "default" )
+                
+            #add initial attributes to global dict
+            canvas = get_canvas()
+            method_name = "get"+Gtype.lower()
+            attributes = get_gm_attributes(Gtype)
+
+            attrs = {}
+            for attr in attributes:
+                attrs[attr] = getattr(gm,attr)
+            original_gm_attributes[Gtype][gm.name] = InstanceObject(**attrs)
+                
+            plot = projectController.plot_manager.new_plot('VCS', Gtype, gm.name )
+            #plot = projectController.plot_manager.new_plot('VCS', Gtype, "default" )
             plotDropInfo = (plot, sheet, row, column)
             projectController.plot_was_dropped(plotDropInfo)
 
