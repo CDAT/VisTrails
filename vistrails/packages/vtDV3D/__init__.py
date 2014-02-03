@@ -74,6 +74,7 @@ def initialize(*args, **keywords):
     import core.modules.module_registry
     from packages.vtDV3D.CDMS_VariableReaders import CDMSVariableSource, CDMSTransientVariable, CDMS_HoffmullerReader, CDMS_VolumeReader, CDMS_ChartDataReader, CDMS_SliceReader, CDMS_VectorReader, CDMS_HoffmullerReaderConfigurationWidget, CDMS_VolumeReaderConfigurationWidget, CDMS_ChartDataConfigurationWidget, CDMS_SliceReaderConfigurationWidget, CDMS_VectorReaderConfigurationWidget 
     from packages.vtDV3D.VolumeSlicerModule import VolumeSlicer
+    from packages.vtDV3D.MultiVolumeSlicerModule import MultiVolumeSlicer
     from packages.vtDV3D.VolumeRenderModule import VolumeRenderer
     from packages.vtDV3D.ParallelCoordinatesModule import ParallelCoordinateViewer
     from packages.vtDV3D.WorldMapModule import WorldFrame
@@ -227,6 +228,13 @@ def initialize(*args, **keywords):
     reg.add_input_port( VolumeSlicer, "volume", AlgorithmOutputModule3D  )
     reg.add_output_port( VolumeSlicer, "volume", AlgorithmOutputModule3D ) 
     VolumeSlicer.registerConfigurableFunctions( reg )
+
+    reg.add_module( MultiVolumeSlicer, namespace='vtk' )
+    reg.add_output_port( MultiVolumeSlicer, "slice",  AlgorithmOutputModule  )
+    reg.add_input_port( MultiVolumeSlicer, "contours", AlgorithmOutputModule3D  )
+    reg.add_input_port( MultiVolumeSlicer, "volume", AlgorithmOutputModule3D  )
+    reg.add_output_port( MultiVolumeSlicer, "volume", AlgorithmOutputModule3D ) 
+    MultiVolumeSlicer.registerConfigurableFunctions( reg )
 
     reg.add_module( Gradient, namespace='vtk|experimental'  ) 
     reg.add_input_port( Gradient, "computeVorticity", Integer  )   
