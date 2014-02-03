@@ -46,6 +46,11 @@ class QPromptCellWidget(QCellContainer):
         self.plot_prompt = QPromptWidget()
         self.plot_prompt.setPromptText("Drag and drop a plot type here")
         self.plot_prompt.showPrompt()
+
+        prompt_font_size = 16
+        self.var_prompt.promptFont.setPointSize(prompt_font_size) 
+        self.plot_prompt.promptFont.setPointSize(prompt_font_size)
+
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.var_prompt)
         layout.addWidget(self.plot_prompt)

@@ -196,6 +196,9 @@ class StandardWidgetSheet(QtGui.QTableWidget):
         
         """
         QtGui.QTableWidget.__init__(self, 0, 0, parent)
+        palette = QtGui.QPalette()
+        palette.setColor(QtGui.QPalette.Highlight, QtGui.QColor(235,235,235))
+        self.setPalette(palette)
         self.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
         self.fitToWindow = False
         self.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
