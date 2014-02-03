@@ -22,10 +22,11 @@ class ImagePlaneWidget:
     Moving = 3
     Outside  = 4
     
-    def __init__( self, actionHandler, picker, planeIndex, **args ):  
+    def __init__( self, actionHandler, picker, planeIndex, orientation = None, **args ):  
         self.State  = ImagePlaneWidget.Start            
         self.Interaction  = 1
         self.PlaneIndex = planeIndex
+        self.Orientation = orientation if ( orientation <> None ) else planeIndex
         self.ActionHandler = actionHandler
         self.Interactor = None
         self.Enabled = False
@@ -1044,6 +1045,10 @@ class ImagePlaneWidget:
         self.Modified()
 
 
+    def getSliceExtent(self):
+        print " Get Slice Extent: PlaneIndex = %d, Orientation = %d " % ( self.PlaneIndex, self.Orientation )
+        extent = self.ImageData.GetExtent()
+        return ( extent[ 2*self.Orientation ], extent[ 2*self.Orientation + 1 ] )
 #----------------------------------------------------------------------------
 
     def GetSliceIndex(self):

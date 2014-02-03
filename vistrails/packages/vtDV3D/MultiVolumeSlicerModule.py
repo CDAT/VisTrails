@@ -3,27 +3,64 @@ Created on Dec 2, 2010
 
 @author: tpmaxwel
 '''
-import vtk, math, traceback
+import vtk, os, traceback
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-import core.modules.module_registry
-from core.modules.vistrails_module import Module, ModuleError
-from core.modules.module_registry import get_module_registry
-from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
-from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
-from packages.vtk.base_module import vtkBaseModule
+#import core.modules.module_registry
+#from core.modules.vistrails_module import Module, ModuleError
+#from core.modules.module_registry import get_module_registry
+#from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
+#from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
+#from packages.vtk.base_module import vtkBaseModule
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
 from packages.vtDV3D.WorkflowModule import WorkflowModule 
 from packages.vtDV3D.PersistentModule import * 
-from packages.vtDV3D.vtUtilities import *
+from collections import OrderedDict 
+#from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.ImagePlaneWidget import *
-from packages.vtDV3D import HyperwallManager
+#from packages.vtDV3D import HyperwallManager
 MultiVolumeSlicerModules = {}
 
 packagePath = os.path.dirname( __file__ )  
 defaultMapDir = os.path.join( packagePath, 'data' )
 defaultOutlineMapFile = os.path.join( defaultMapDir,  'political_map.png' )
 
+class InitilizationForm(QDialog):
+
+    def __init__(self, parent=None):
+        QDialog.__init__(self, parent)
+        self.setModal(True)
+        self.setWindowTitle("Configure Slice Planes")
+        self.comboLabels = [ 'x', 'y', 'z' ]
+        self.combos = OrderedDict()
+        self.setLayout( QVBoxLayout() )
+        self.layout().addStrut(600)
+        for comboLabel in self.comboLabels:
+            self.layout().addLayout(  self.createSelector( comboLabel ) )
+        self.closeButton = QPushButton('Ok', self)
+        self.layout().addWidget(self.closeButton)
+        self.connect(self.closeButton, SIGNAL('clicked(bool)'), self.close)
+        self.closeButton.setShortcut('Enter')
+        
+    def getConfigResult(self):
+        result = []
+        for combo in self.combos.values():
+            sval = str( combo.currentText() )
+            result.append( int( sval) )
+        return result
+        
+    def createSelector( self, orientation ):
+        layout = QVBoxLayout()
+        layout.addWidget( QLabel(" Number of %s-perpendicular planes:" % orientation ) )
+        combo = QComboBox()
+        self.combos[orientation] = combo 
+        for iVal in range(4):
+            combo.insertItem( iVal, QString(str(iVal)) )
+        combo.setCurrentIndex(1)
+        layout.addWidget( combo )
+        return layout
+
+        
 class PM_MultiVolumeSlicer(PersistentVisualizationModule):
     """
         This module generates dragable slices through 3D volumetric (<i>vtkImagedata</i>) data.  Three slice planes are provided 
@@ -50,7 +87,7 @@ class PM_MultiVolumeSlicer(PersistentVisualizationModule):
 
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0, group=ConfigGroup.Color )
         self.addConfigurableLevelingFunction( 'opacity', 'O', label='Slice Plane Opacity', rangeBounds=[ 0.0, 1.0 ],  setLevel=self.setOpacity, activeBound='min',  getLevel=self.getOpacity, isDataValue=False, layerDependent=True, bound = False, group=ConfigGroup.Rendering )
-        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ], group=ConfigGroup.Display )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 10.0, 10.0, 1 ], group=ConfigGroup.Display )
         self.addConfigurableLevelingFunction( 'contourDensity', 'g', label='Contour Density', activeBound='max', setLevel=self.setContourDensity, getLevel=self.getContourDensity, layerDependent=True, windowing=False, rangeBounds=[ 3.0, 30.0, 1 ], bound=False, isValid=self.hasContours, group=ConfigGroup.Rendering )
         self.addConfigurableLevelingFunction( 'contourColorScale', 'S', label='Contour Colormap Scale', units='data', setLevel=self.scaleContourColormap, getLevel=lambda:self.getDataRangeBounds(1), layerDependent=True, adjustRangeInput=1, isValid=self.hasContours, group=ConfigGroup.Color )
         self.addConfigurableLevelingFunction( 'coastlines_Line', 'm0', label='Coastline Line', setLevel=self.setBasemapCoastlineLineSpecs, getLevel=self.getBasemapCoastlineLineSpecs, sliderLabels=[ 'Thickness', 'Density' ], layerDependent=False, rangeBounds=[ 0.0, 3.49 ], initRange=[ 1.0, 1.0, 1 ], group=ConfigGroup.BaseMap )
@@ -60,7 +97,7 @@ class PM_MultiVolumeSlicer(PersistentVisualizationModule):
         self.addUVCDATConfigGuiFunction( 'contourColormap', ColormapConfigurationDialog, 'K', label='Choose Contour Colormap', setValue=lambda data: self.setColormap(data,1) , getValue=lambda: self.getColormap(1), layerDependent=True, isValid=self.hasContours, group=ConfigGroup.Color )
         self.sliceOutputShape = args.get( 'slice_shape', [ 100, 50 ] )
         self.polygonActor = None
-        self.opacity = [ 1.0, 1.0 ]
+        self.opacity = [ 0.0, 1.0 ]
         self.iOrientation = 0
         self.updatingPlacement = False
         self.isSlicing = False
@@ -80,6 +117,13 @@ class PM_MultiVolumeSlicer(PersistentVisualizationModule):
             MultiVolumeSlicerModules[mid] = self
         except api.NoVistrail:
             pass
+        
+        if mid >= 0:
+            init_form = InitilizationForm()
+            init_form.exec_()
+            self.pwSpecs = init_form.getConfigResult()
+        else: 
+            self.pwSpecs = []
 
     def setBasemapLineSpecs( self, shapefile_type, value ):
         self.basemapLineSpecs[shapefile_type] = value
@@ -132,16 +176,10 @@ class PM_MultiVolumeSlicer(PersistentVisualizationModule):
         sys.stdout.flush()
         PersistentVisualizationModule.clearReferrents(self)
         del MultiVolumeSlicerModules[ self.moduleID ]
-        del self.planeWidgetX
-        del self.planeWidgetY
-        del self.planeWidgetZ
-        self.planeWidgetX = None
-        self.planeWidgetY = None
-        self.planeWidgetZ = None
+        self.planeWidgets = []
         self.latLonGrid = True
         del self.sliceOutput
         self.sliceOutput = None 
-        self.pwSpecs = []
         if self.contours:
             del self.contours
             self.contours = None    
@@ -165,16 +203,43 @@ class PM_MultiVolumeSlicer(PersistentVisualizationModule):
 
     def getContourDensity( self ):
         return [ 3.0, self.NumContours, 1 ]
+
+    def getWidgetLocation(self, iPlaneIndex, iOrientation ):
+        orientedWidgets = self.getWidgets( [ iOrientation ] )
+        nWidgets = len( orientedWidgets )
+        if nWidgets < 2: return ( 0, nWidgets )
+        for widgetEnum in enumerate( orientedWidgets ): 
+            if widgetEnum[1].PlaneIndex == iPlaneIndex:
+                return widgetEnum[0], nWidgets
+        return ( 0, nWidgets )
+
+    def getWidgets(self, orientation_list ):
+        verticalWidgets = []
+        for planeWidget in self.planeWidgets: 
+            if planeWidget.Orientation in orientation_list:
+                verticalWidgets.append( planeWidget )
+        return verticalWidgets
+    
+    def getVerticalWidgets(self):
+        return self.getWidgets( [ 0, 1 ] )
+ 
+
+    def getHorizontalWidgets(self):
+        return self.getWidgets( [ 2 ] )
+
     
     def setZScale( self, zscale_data, **args ):
         self.setInputZScale( zscale_data )
-        if self.planeWidgetX <> None:
+        verticalWidgets = self.getVerticalWidgets()
+        if len( verticalWidgets ):
+            vertWidget = verticalWidgets[0]
             primaryInput = self.input()
             bounds = list( primaryInput.GetBounds() ) 
-            if not self.planeWidgetX.MatchesBounds( bounds ):
-                self.planeWidgetX.PlaceWidget( bounds )        
-                self.planeWidgetY.PlaceWidget( bounds ) 
-                self.render()               
+            if not vertWidget.MatchesBounds( bounds ):
+                for vertWidget in verticalWidgets:
+                    vertWidget.PlaceWidget( bounds )
+        self.setWidgetPositions( [2] )        
+        self.render()               
 
     def setInputZScale( self, zscale_data, **args  ):
         rv = PersistentVisualizationModule.setInputZScale(self,  zscale_data, **args ) 
@@ -216,28 +281,33 @@ class PM_MultiVolumeSlicer(PersistentVisualizationModule):
 #        self.updatingPlacement = False
 
     def enableVisualizationInteraction(self): 
-#        print>>sys.stderr, "enable Visualization Interaction"
-        if self.planeWidgetX <> None: self.planeWidgetX.EnableInteraction()                                                
-        if self.planeWidgetY <> None:self.planeWidgetY.EnableInteraction()                                                
-        if self.planeWidgetZ <> None:self.planeWidgetZ.EnableInteraction()  
+        for planeWidget in self.planeWidgets: 
+            planeWidget.EnableInteraction()                                                
 
     def disableVisualizationInteraction(self):
-#        print>>sys.stderr, "disable Visualization Interaction" 
-        if self.planeWidgetX <> None: self.planeWidgetX.DisableInteraction()                                                
-        if self.planeWidgetY <> None:self.planeWidgetY.DisableInteraction()                                                
-        if self.planeWidgetZ <> None:self.planeWidgetZ.DisableInteraction()  
+        for planeWidget in self.planeWidgets: 
+            planeWidget.DisableInteraction()                                                
 
     def updatingColormap( self, cmap_index, colormapManager ):
         if cmap_index == 0:
-            if self.planeWidgetX <> None: self.planeWidgetX.SetTextureInterpolate( colormapManager.smoothColormap )
-            if self.planeWidgetY <> None: self.planeWidgetY.SetTextureInterpolate( colormapManager.smoothColormap )
-            if self.planeWidgetZ <> None: self.planeWidgetZ.SetTextureInterpolate( colormapManager.smoothColormap )
+            for planeWidget in self.planeWidgets: 
+                planeWidget.SetTextureInterpolate( colormapManager.smoothColormap )                                               
             self.updateModule()
             
-    def addPlaneWidget(self, orientation, picker, lut, primaryInput, contourInput, bounds ):
-        planeWidget = ImagePlaneWidget( self, picker, orientation )
-        self.planeWidgetZ.SetRenderer( self.renderer )
+    def setWidgetPositions(self, orientation_list = None ):
+        for planeWidget in self.planeWidgets: 
+            if ( orientation_list == None ) or ( planeWidget.Orientation in orientation_list ):
+                widgetLocation = self.getWidgetLocation( planeWidget.PlaneIndex, planeWidget.Orientation )
+                relativePos = 0.0 if ( widgetLocation[1] < 2 ) else ( float( widgetLocation[0] ) / ( widgetLocation[1] - 1 ) )
+                slice_extent = planeWidget.getSliceExtent()
+                planeWidget.SetSliceIndex( relativePos*( slice_extent[1] - slice_extent[0] ) )
+                    
+    def addPlaneWidget(self, planeIndex, orientation, picker, lut, primaryInput, contourInput, bounds ):
+        print " Add Plane Widget: PlaneIndex = %d, Orientation = %d " % ( planeIndex, orientation )
+        planeWidget = ImagePlaneWidget( self, picker, planeIndex, orientation )
+        planeWidget.SetRenderer( self.renderer )
         self.observerTargets.add( planeWidget )
+        self.planeWidgets.append( planeWidget )
 #            self.planeWidgetZ.SetSliceIndex( self.slicePosition[2] )
         prop3 = planeWidget.GetPlaneProperty()
         prop3.SetColor(0, 0, 1)
@@ -298,9 +368,13 @@ class PM_MultiVolumeSlicer(PersistentVisualizationModule):
         picker.SetTolerance(0.005) 
         
         if len( self.planeWidgets ) == 0:
-            for pwSpec in self.pwSpecs:
-                self.addPlaneWidget( pwSpec, picker, lut, primaryInput, contourInput, bounds )
+            planeIndex = 0
+            for pwSpec in enumerate(self.pwSpecs):
+                for iPlane in range( pwSpec[1] ):
+                    self.addPlaneWidget( planeIndex, pwSpec[0], picker, lut, primaryInput, contourInput, bounds )
+                    planeIndex = planeIndex + 1
                 
+        self.setWidgetPositions()       
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
         self.updateOpacity() 
         
@@ -394,9 +468,8 @@ class PM_MultiVolumeSlicer(PersistentVisualizationModule):
         primaryInput = self.input()
         contour_ispec = self.getInputSpec(  1 )       
         contourInput = contour_ispec.input() if contour_ispec <> None else None
-        if self.planeWidgetX <> None: self.planeWidgetX.SetInput( primaryInput, contourInput )         
-        if self.planeWidgetY <> None: self.planeWidgetY.SetInput( primaryInput, contourInput )         
-        if self.planeWidgetZ <> None: self.planeWidgetZ.SetInput( primaryInput, contourInput ) 
+        for planeWidget in self.planeWidgets:
+            planeWidget.SetInput( primaryInput, contourInput )         
         self.set3DOutput()
            
     def TestObserver( self, caller=None, event = None ):
@@ -427,24 +500,28 @@ class PM_MultiVolumeSlicer(PersistentVisualizationModule):
             density = int( round( line_specs[1] ) ) if line_specs else 1
             resTypes = [ "invisible", "low", "medium", "high" ]
             if (thickness > 0) and ( density > 0 ):
-                rgb=self.getLayerColor( type ) 
-                textFilePath = os.path.join( os.path.dirname(__file__), "data", type, "index.txt" )
-                s=shapeFileReader()
-                s.setColors(rgb)
-                s.setWidth( thickness )
-                polys=s.getPolyLines( self.roi, textFilePath, resTypes[ density ] )        
-                self.renderer.AddActor(polys)
-                origin = self.planeWidgetZ.GetOrigin()
-                pos = polys.GetPosition()
-                pos1 = [ pos[0], pos[1], origin[2] ]
-                polys.SetPosition( pos1 )
-                polys_list = self.shapefilePolylineActors.get( type, [ None, None, None, None, None ] ) 
-                polys_list[ density ] = polys
-                self.shapefilePolylineActors[ type ] = polys_list
+                horizontalWidgets = self.getHorizontalWidgets()
+                if len( horizontalWidgets ):
+                    planeWidgetZ = horizontalWidgets[0]
+                    rgb=self.getLayerColor( type ) 
+                    textFilePath = os.path.join( os.path.dirname(__file__), "data", type, "index.txt" )
+                    s=shapeFileReader()
+                    s.setColors(rgb)
+                    s.setWidth( thickness )
+                    polys=s.getPolyLines( self.roi, textFilePath, resTypes[ density ] )        
+                    self.renderer.AddActor(polys)
+                    origin = planeWidgetZ.GetOrigin()
+                    pos = polys.GetPosition()
+                    pos1 = [ pos[0], pos[1], origin[2] ]
+                    polys.SetPosition( pos1 )
+                    polys_list = self.shapefilePolylineActors.get( type, [ None, None, None, None, None ] ) 
+                    polys_list[ density ] = polys
+                    self.shapefilePolylineActors[ type ] = polys_list
         
     def ProcessIPWAction( self, caller, event, **args ):
         action = args.get( 'action', caller.State )
         iAxis = caller.PlaneIndex
+        iOrientation = caller.Orientation
 
         if event == ImagePlaneWidget.InteractionUpdateEvent:
             
@@ -487,7 +564,7 @@ class PM_MultiVolumeSlicer(PersistentVisualizationModule):
                     HyperwallManager.getInstance().setInteractionState( 'VolumeSlicer.Slicing' )
                     self.isSlicing = True 
                 sliceIndex = caller.GetSliceIndex() 
-                axisName, spos = ispec.getWorldCoord( sliceIndex, iAxis, latLonGrid )
+                axisName, spos = ispec.getWorldCoord( sliceIndex, iOrientation, latLonGrid )
                 textDisplay = " %s = %s ." % ( axisName, spos )
                 if iAxis == 0:
                     p1 = caller.GetPoint1()
@@ -495,7 +572,7 @@ class PM_MultiVolumeSlicer(PersistentVisualizationModule):
                 self.slicePosition[ iAxis ] = sliceIndex                  
                 self.updateTextDisplay( textDisplay ) 
 
-                if (iAxis == 2):              
+                if (iOrientation == 2):              
                     origin = caller.GetOrigin()
                     for type in ( 'coastline', 'countries', 'states', 'lakes' ): 
                         line_specs = self.basemapLineSpecs.get( type, None )
@@ -516,7 +593,7 @@ class PM_MultiVolumeSlicer(PersistentVisualizationModule):
                         self.contours.SetInput( slice_data )
                         self.contours.Modified()
                         origin = caller.GetOrigin()
-                        contourLineActor = self.getContourActor( iAxis )
+                        contourLineActor = self.getContourActor( iAxis, iOrientation )
                         contourLineActor.SetPosition( origin[0], origin[1], origin[2] )
         #                contourLineActor.SetOrigin( origin[0], origin[1], origin[2] )
                         self.setVisibleContour( iAxis )
@@ -539,7 +616,7 @@ class PM_MultiVolumeSlicer(PersistentVisualizationModule):
         pass
 
                                      
-    def getContourActor( self, iAxis, **args ):
+    def getContourActor( self, iAxis, iOrientation, **args ):
         contourLineActor = self.contourLineActors.get( iAxis, None )
         if contourLineActor == None:
             contourLineActor = vtk.vtkActor()
@@ -547,7 +624,7 @@ class PM_MultiVolumeSlicer(PersistentVisualizationModule):
             contourLineActor.GetProperty().SetLineWidth(2)     
             self.renderer.AddActor( contourLineActor ) 
             self.contourLineActors[iAxis] = contourLineActor
-            self.setContourActorOrientation( iAxis, contourLineActor )
+            self.setContourActorOrientation( iOrientation, contourLineActor )
 #            print " GetContourActor %d, origin = %s, position = %s " % ( iAxis, str( contourLineActor.GetOrigin() ), str( contourLineActor.GetPosition() ) )
         return contourLineActor
 
@@ -642,9 +719,16 @@ class MultiVolumeSlicer(WorkflowModule):
     def __init__( self, **args ):
         WorkflowModule.__init__(self, **args)    
         print " "
-    
-    
-    
+
+if __name__ == '__main__':
+
+    app = QtGui.QApplication(sys.argv)
+    widget = InitilizationForm( )
+    widget.show()
+
+    sys.exit(app.exec_())
+   
+ 
 #        self.spacing = self.input().GetSpacing()
 #        sx, sy, sz = self.spacing       
 #        origin = self.input().GetOrigin()
