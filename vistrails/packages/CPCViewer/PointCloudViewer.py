@@ -249,11 +249,11 @@ class CPCPlot(QtCore.QObject):
     def __init__( self, vtk_render_window = None , **args ):
         QtCore.QObject.__init__( self )
         self.widget = None
+        self.useGui = args.get( 'gui', True )
         self.partitioned_point_cloud = None
         self.point_cloud_overview = None
         self.labelBuff = ""
         self.renderWindow = vtk_render_window if ( vtk_render_window <> None ) else self.createRenderWindow()
-        self.renderWindowInteractor = self.renderWindow.GetInteractor()
         style = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
         self.renderWindowInteractor.SetInteractorStyle( style )
         self.process_mode = ProcessMode.Default
@@ -291,12 +291,19 @@ class CPCPlot(QtCore.QObject):
         self.sphere_source = None
 
     def createRenderWindow(self):
-        self.widget = QVTKAdaptor()
-        self.widget.Initialize()
-        self.widget.Start()        
-        self.connect( self.widget, QtCore.SIGNAL('event'), self.processEvent )  
-        self.connect( self.widget, QtCore.SIGNAL("Close"), self.closeConfigDialog  ) 
-        return self.widget.GetRenderWindow()
+        if self.useGui:
+            self.widget = QVTKAdaptor()
+            self.widget.Initialize()
+            self.widget.Start()        
+            self.connect( self.widget, QtCore.SIGNAL('event'), self.processEvent )  
+            self.connect( self.widget, QtCore.SIGNAL("Close"), self.closeConfigDialog  ) 
+            renwin = self.widget.GetRenderWindow()
+            self.renderWindowInteractor = self.renderWindow.GetInteractor()
+        else:
+            renwin = vtk.vtkRenderWindow()
+            self.renderWindowInteractor = vtk.vtkGenericRenderWindowInteractor()
+            self.renderWindowInteractor.SetRenderWindow( renwin )
+        return renwin
 
     def createConfigDialog( self, show=False ):
         self.configDialog = CPCConfigGui()
