@@ -24,6 +24,7 @@ height_varname = None
 data_dir = os.path.expanduser( ns.data_dir )
 height_varnames = []
 var_proc_op = None
+showGui = False
 
 if ns.data_type == "WRF":
     data_file = os.path.join( data_dir, "WRF/wrfout_d01_2013-07-01_00-00-00.nc" )
@@ -53,9 +54,11 @@ elif ns.data_type == "GEOD":
     varname = "temperature_ifc" # "vorticity" # 
     var_proc_op = None
     
-g = CPCPlot() 
-g.init( init_args = ( grid_file, data_file, varname, height_varname, var_proc_op ), n_overview_points=n_overview_points, n_cores=2 ) # , n_subproc_points=100000000 )
-g.createConfigDialog()
+g = CPCPlot( ) 
+g.init( init_args = ( grid_file, data_file, varname, height_varname, var_proc_op ), n_overview_points=n_overview_points, n_cores=2, show=showGui  )
+g.createConfigDialog( showGui )
+
+renderWindow = g.renderWindow
     
 app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
 app.exec_() 

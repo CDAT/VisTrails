@@ -298,13 +298,13 @@ class CPCPlot(QtCore.QObject):
         self.connect( self.widget, QtCore.SIGNAL("Close"), self.closeConfigDialog  ) 
         return self.widget.GetRenderWindow()
 
-    def createConfigDialog(self):
+    def createConfigDialog( self, show=False ):
         self.configDialog = CPCConfigGui()
         w = self.configDialog.getConfigWidget()
         w.connect( w, QtCore.SIGNAL("ConfigCmd"), self.processConfigCmd )
     #    configDialog.connect( self, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )
         self.configDialog.activate()        
-        self.configDialog.show()
+        if show: self.configDialog.show()
 
     def closeConfigDialog(self):
         self.configDialog.closeDialog()
@@ -1388,7 +1388,8 @@ class CPCPlot(QtCore.QObject):
     def init(self, **args ):
         init_args = args[ 'init_args' ]      
         n_overview_points = args.get( 'n_overview_points', 600000 )    
-        n_subproc_points = args.get( 'n_subproc_points', 600000 )    
+        n_subproc_points = args.get( 'n_subproc_points', 600000 )  
+        show = args.get( 'show', False )  
         n_cores = args.get( 'n_cores', 32 )    
         self.point_cloud_overview = vtkLocalPointCloud( 0, max_points=n_overview_points ) 
         lut = self.getLUT()
@@ -1398,7 +1399,7 @@ class CPCPlot(QtCore.QObject):
         nCollections = min( nPartitions, n_cores )
         print " Init PCViewer, nInputPoints = %d, n_overview_points = %d, n_subproc_points = %d, nCollections = %d, overview skip index = %s" % ( nInputPoints, n_overview_points, n_subproc_points, nCollections, self.point_cloud_overview.getSkipIndex() )
         self.initCollections( nCollections, init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
-        if self.widget: self.widget.show()  
+        if self.widget and show: self.widget.show()  
  
     def update(self):
         pass
