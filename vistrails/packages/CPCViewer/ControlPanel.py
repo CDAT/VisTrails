@@ -888,10 +888,8 @@ class ConfigurationWidget(QtGui.QWidget):
         QtGui.QWidget.__init__(self, parent)
         layout = QtGui.QVBoxLayout()
         self.setLayout(layout)
-        self.config_params = {}
+        self.cfgManager = ConfigManager( self )
 
-        self.cfgFile = None
-        self.cfgDir = None
         self.tagged_controls = {}
                         
         self.scrollArea = QtGui.QScrollArea(self) 
@@ -913,7 +911,7 @@ class ConfigurationWidget(QtGui.QWidget):
         categoryName = self.configContainer.getCategoryName( iCatIndex )
         cparm = ConfigParameter.getParameter( config_name, **args )
         key = ':'.join( [ categoryName, config_name ] )
-        self.config_params[ key ] = cparm
+        self.cfgManager.addParam( key, cparm )
         self.connect( cparm, QtCore.SIGNAL("ValueChanged"), self.parameterValueChanged )
         return cparm
     
@@ -938,14 +936,26 @@ class ConfigurationWidget(QtGui.QWidget):
     def addControlRow( self, tab_index ):
         cfgList = self.configContainer.getCategoryConfigList( tab_index )
         cfgList.addControlRow()
-   
+        
     def activate(self):
-        self.initParameters()
+        self.cfgManager.initParameters()
         self.configContainer.selectCategory( self.iSubsetCatIndex )
-                    
+                       
     def build(self):
         pass
+              
+class ConfigManager(QtCore.QObject):
+    
+    def __init__( self, controller=None ): 
+        QtCore.QObject.__init__( self )
+        self.cfgFile = None
+        self.cfgDir = None
+        self.controller = controller
+        self.config_params = {}
 
+    def addParam(self, key ,cparm ):
+        self.config_params[ key ] = cparm
+                     
     def saveConfg( self ):
         try:
             f = open( self.cfgFile, 'w' )
@@ -979,7 +989,8 @@ class ConfigurationWidget(QtGui.QWidget):
             self.readConfg()
             
         for config_item in self.config_params.items():
-            self.emit( QtCore.SIGNAL("ConfigCmd"), ( "InitParm",  config_item[0], config_item[1] ) )
+            emitter = self.controller if self.controller else self
+            emitter.emit( QtCore.SIGNAL("ConfigCmd"), ( "InitParm",  config_item[0], config_item[1] ) )
 
 class CPCConfigConfigurationWidget( ConfigurationWidget ):
 
