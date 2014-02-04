@@ -348,7 +348,7 @@ class vtkPointCloud(QtCore.QObject):
     def initializePointsActor( self, polydata, **args ):
         lut = args.get( 'lut', None )
         if lut == None: lut = self.create_LUT() 
-        self.mapper.SetInput( self.polydata ) 
+        self.mapper.SetInputData( self.polydata ) 
         if lut:  self.mapper.SetLookupTable( lut )                
 #        if self.vrange:
 #            self.mapper.SetScalarRange( self.vrange[0], self.vrange[1] ) 

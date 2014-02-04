@@ -60,11 +60,11 @@ class MapManager( QtCore.QObject ):
             mesh = self.sphere.GetOutput()
             
             self.sphereTexmapper = vtk.vtkTextureMapToSphere()
-            self.sphereTexmapper.SetInput(mesh)
+            self.sphereTexmapper.SetInputData(mesh)
             self.sphereTexmapper.PreventSeamOff()
             
             self.sphereMapper = vtk.vtkPolyDataMapper()
-            self.sphereMapper.SetInput(self.sphereTexmapper.GetOutput())
+            self.sphereMapper.SetInputConnection(self.sphereTexmapper.GetOutputPort())
            
 #             imageFlipper = vtk.vtkImageReslice()
 #             imageFlipper.SetInput( self.baseImage )
@@ -75,11 +75,11 @@ class MapManager( QtCore.QObject ):
 #             imageFlipper.SetResliceAxes( resliceAxes )
                         
             imageFlipper = vtk.vtkImageFlip()
-            imageFlipper.SetInput( self.sphericalBaseImage )
+            imageFlipper.SetInputData( self.sphericalBaseImage )
             imageFlipper.SetFilteredAxis( 1 ) 
             
             self.sphereTexture = vtk.vtkTexture()
-            self.sphereTexture.SetInput( imageFlipper.GetOutput()  )
+            self.sphereTexture.SetInputConnection( imageFlipper.GetOutputPort()  )
             
             self.sphereActor = vtk.vtkActor()
             self.sphereActor.SetMapper(self.sphereMapper)
@@ -126,6 +126,7 @@ class MapManager( QtCore.QObject ):
             self.imageInfo = vtk.vtkImageChangeInformation()        
             self.image_reader = vtk.vtkJPEGReader()      
             self.image_reader.SetFileName(  self.map_file )
+            self.image_reader.Update()
             world_image = self.image_reader.GetOutput() 
             self.sphericalBaseImage = self.RollMap( world_image )  
             new_dims, scale = None, None
@@ -144,7 +145,7 @@ class MapManager( QtCore.QObject ):
             self.baseMapActor.SetOpacity( self.map_opacity )
             mapCorner = [ self.x0, self.y0 ]
             self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
-            self.baseMapActor.SetInput( self.baseImage )
+            self.baseMapActor.SetInputData( self.baseImage )
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]  
             
     def getBaseMapActor(self):
@@ -181,7 +182,6 @@ class MapManager( QtCore.QObject ):
         return os.path.join( self.data_dir, filename ) 
         
     def RollMap( self, baseImage ):
-        baseImage.Update()
         if self.world_cut  == self.map_cut: return baseImage
         baseExtent = baseImage.GetExtent()
         baseSpacing = baseImage.GetSpacing()
@@ -197,27 +197,27 @@ class MapManager( QtCore.QObject ):
         
         extent[0:2] = [ x0, x0 + sliceCoord - 1 ]
         clip0 = vtk.vtkImageClip()
-        clip0.SetInput( baseImage )
+        clip0.SetInputData( baseImage )
         clip0.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
         
         extent[0:2] = [ x0 + sliceCoord, x1 ]
         clip1 = vtk.vtkImageClip()
-        clip1.SetInput( baseImage )
+        clip1.SetInputData( baseImage )
         clip1.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
         
         append = vtk.vtkImageAppend()
         append.SetAppendAxis( 0 )
-        append.AddInput( clip1.GetOutput() )          
-        append.AddInput( clip0.GetOutput() )
+        append.AddInputConnection( clip1.GetOutputPort() )          
+        append.AddInputConnection( clip0.GetOutputPort() )
         
         imageInfo = vtk.vtkImageChangeInformation()
         imageInfo.SetInputConnection( append.GetOutputPort() ) 
         imageInfo.SetOutputOrigin( 0.0, 0.0, 0.0 )
         imageInfo.SetOutputExtentStart( 0, 0, 0 )
         imageInfo.SetOutputSpacing( baseSpacing[0], baseSpacing[1], baseSpacing[2] )
+        imageInfo.Update()
         
         result = imageInfo.GetOutput() 
-        result.Update()
         return result
 
     def NormalizeMapLon( self, lon ): 

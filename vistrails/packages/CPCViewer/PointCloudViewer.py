@@ -249,6 +249,7 @@ class CPCPlot(QtCore.QObject):
     def __init__( self, vtk_render_window = None , **args ):
         QtCore.QObject.__init__( self )
         self.widget = None
+        self.enableClip = False
         self.useGui = args.get( 'gui', True )
         self.partitioned_point_cloud = None
         self.point_cloud_overview = None
@@ -298,7 +299,7 @@ class CPCPlot(QtCore.QObject):
             self.connect( self.widget, QtCore.SIGNAL('event'), self.processEvent )  
             self.connect( self.widget, QtCore.SIGNAL("Close"), self.closeConfigDialog  ) 
             renwin = self.widget.GetRenderWindow()
-            self.renderWindowInteractor = self.renderWindow.GetInteractor()
+            self.renderWindowInteractor = renwin.GetInteractor()
         else:
             renwin = vtk.vtkRenderWindow()
             self.renderWindowInteractor = vtk.vtkGenericRenderWindowInteractor()
@@ -556,11 +557,13 @@ class CPCPlot(QtCore.QObject):
         else:                           self.clipOn()
         
     def clipOn(self):
-        self.clipper.On()
-        self.executeClip()
+        if self.enableClip:
+            self.clipper.On()
+            self.executeClip()
 
     def clipOff(self):
-        self.clipper.Off()      
+        if self.enableClip:
+            self.clipper.Off()      
 
     def processEvent(self, eventArgs ):
         if eventArgs[0] == "KeyEvent":
@@ -668,7 +671,7 @@ class CPCPlot(QtCore.QObject):
             self.planeWidget = vtk.vtkImplicitPlaneWidget()
             self.planeWidget.SetInteractor( self.renderWindowInteractor )
             self.planeWidget.SetPlaceFactor( 1.5 )
-            self.planeWidget.SetInput( self.point_cloud_overview.getPolydata() )
+            self.planeWidget.SetInputData( self.point_cloud_overview.getPolydata() )
             self.planeWidget.AddObserver("StartInteractionEvent", self.processStartInteractionEvent )
             self.planeWidget.AddObserver("EndInteractionEvent", self.processEndInteractionEvent )
             self.planeWidget.AddObserver("InteractionEvent", self.processInteractionEvent )
@@ -1222,11 +1225,7 @@ class CPCPlot(QtCore.QObject):
         earth_polydata = earth_source.GetOutput()
         self.earth_mapper = vtk.vtkPolyDataMapper()
 
-        if vtk.VTK_MAJOR_VERSION <= 5:
-            self.earth_mapper.SetInput(earth_polydata)
-        else:
-            self.earth_mapper.SetInputData(earth_polydata)
-
+        self.earth_mapper.SetInputData(earth_polydata)
         self.earth_actor = vtk.vtkActor()
         self.earth_actor.SetMapper( self.earth_mapper )
         self.earth_actor.GetProperty().SetColor(0,0,0)
@@ -1245,14 +1244,15 @@ class CPCPlot(QtCore.QObject):
         self.pointPicker.PickFromListOn()   
         self.pointPicker.InitializePickList()             
         self.renderWindowInteractor.SetPicker(self.pointPicker) 
-        self.clipper = vtk.vtkBoxWidget()
-        self.clipper.RotationEnabledOff()
-        self.clipper.SetPlaceFactor( 1.0 ) 
-        self.clipper.KeyPressActivationOff()
-        self.clipper.SetInteractor( self.renderWindowInteractor )    
-        self.clipper.SetHandleSize( 0.005 )
-        self.clipper.SetEnabled( True )
-        self.clipper.InsideOutOn()  
+        if self.enableClip:
+            self.clipper = vtk.vtkBoxWidget()
+            self.clipper.RotationEnabledOff()
+            self.clipper.SetPlaceFactor( 1.0 ) 
+            self.clipper.KeyPressActivationOff()
+            self.clipper.SetInteractor( self.renderWindowInteractor )    
+            self.clipper.SetHandleSize( 0.005 )
+            self.clipper.SetEnabled( True )
+            self.clipper.InsideOutOn()  
            
 #        self.clipper.AddObserver( 'StartInteractionEvent', self.startClip )
 #        self.clipper.AddObserver( 'EndInteractionEvent', self.endClip )
