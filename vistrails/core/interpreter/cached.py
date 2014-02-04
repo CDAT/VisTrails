@@ -32,7 +32,7 @@
 ##
 ###############################################################################
 
-import base64
+import base64, sys
 from core import modules
 from core.common import *
 from core.data_structures.bijectivedict import Bidict
@@ -229,9 +229,9 @@ class CachedInterpreter(core.interpreter.base.BaseInterpreter):
                             connector = ModuleConnector(constant, 'value')
                             tupleModule.set_input_port(j, connector)
                         except ValueError, e:
-                            err = ModuleError(self, "Cannot convert parameter "
-                                              "value '%s'\n" % p.strValue + \
-                                                  str(e))
+                            err_str = " Cannot convert parameter value '%s'\n" % p.strValue + str(e)
+                            print>>sys.stderr, err_str
+                            err = ModuleError( self, err_str )
                             errors[i] = err
                             to_delete.append(obj.id)
                         except Exception, e:

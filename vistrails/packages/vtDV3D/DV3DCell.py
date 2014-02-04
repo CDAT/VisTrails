@@ -917,35 +917,38 @@ class PM_MapCell3D( PM_DV3DCell ):
     def buildRendering(self):
         PM_DV3DCell.buildRendering( self )
         md = self.getInputSpec().getMetadata()
-        latLonGrid = md.get( 'latLonGrid', True )
-        self.enableBasemap = self.getInputValue( "enable_basemap", True )
-        if latLonGrid and self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
-            if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
-            world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None 
-            map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
-#            cell_location = self.getInputValue( "cell_location", "00"  )
+        if md:
+            latLonGrid = md.get( 'latLonGrid', True )
+            self.enableBasemap = self.getInputValue( "enable_basemap", True )
+            if latLonGrid and self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
+                if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
+                world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None 
+                map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
+    #            cell_location = self.getInputValue( "cell_location", "00"  )
+                    
+                self.y0 = -90.0  
+                dataPosition = None
+                if world_map == None:
+                    self.map_file = defaultMapFile
+                    self.map_cut = defaultMapCut
+                else:
+                    self.map_file = world_map[0].name
+                    self.map_cut = world_map[1]
                 
-            self.y0 = -90.0  
-            dataPosition = None
-            if world_map == None:
-                self.map_file = defaultMapFile
-                self.map_cut = defaultMapCut
-            else:
-                self.map_file = world_map[0].name
-                self.map_cut = world_map[1]
-            
-            self.world_cut = self.getInputValue( "world_cut", -1 ) # wmod.forceGetInputFromPort( "world_cut", -1 )  if wmod else getFunctionParmStrValues( module, "world_cut", -1 )
-            roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
-            map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
-            if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
-            if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
-#            data_origin = self.input().GetOrigin() if self.input() else [ 0, 0, 0 ]
-                      
-            if self.world_cut == -1: 
-                if  (self.roi <> None): 
-                    if roi_size[0] > 180:             
-                        self.ComputeCornerPosition()
-                        self.world_cut = self.NormalizeMapLon( self.x0 )
+                self.world_cut = self.getInputValue( "world_cut", -1 ) # wmod.forceGetInputFromPort( "world_cut", -1 )  if wmod else getFunctionParmStrValues( module, "world_cut", -1 )
+                roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
+                map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
+                if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
+                if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
+    #            data_origin = self.input().GetOrigin() if self.input() else [ 0, 0, 0 ]
+                          
+                if self.world_cut == -1: 
+                    if  (self.roi <> None): 
+                        if roi_size[0] > 180:             
+                            self.ComputeCornerPosition()
+                            self.world_cut = self.NormalizeMapLon( self.x0 )
+                        else:
+                            dataPosition = [ ( self.roi[1] + self.roi[0] ) / 2.0, ( self.roi[3] + self.roi[2] ) / 2.0 ]
                     else:
                         dataPosition = [ ( self.roi[1] + self.roi[0] ) / 2.0, ( self.roi[3] + self.roi[2] ) / 2.0 ]
                 else:
@@ -981,6 +984,7 @@ class PM_MapCell3D( PM_DV3DCell ):
             self.baseMapActor.SetInputData( baseImage )
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]        
             self.renderer.AddActor( self.baseMapActor )
+
 
     def ComputeCornerPosition( self ):
         if (self.roi[0] >= -180) and (self.roi[1] <= 180) and (self.roi[1] > self.roi[0]):

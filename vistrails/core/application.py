@@ -111,6 +111,7 @@ class VistrailsApplicationInterface(object):
             default = None,
             help="display the builder and spreadsheet on different screens "
             "(if available)")
+        add("-K", "--kill_all_zombies", action="store_true", default = None, help="Kill all orphaned CPC subprocesses" )
         add("-x", "--maximized", action="store_true",
             default = None,
             help="Maximize VisTrails windows at startup")
