@@ -255,8 +255,6 @@ class CPCPlot(QtCore.QObject):
         self.point_cloud_overview = None
         self.labelBuff = ""
         self.renderWindow = vtk_render_window if ( vtk_render_window <> None ) else self.createRenderWindow()
-        style = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
-        self.renderWindowInteractor.SetInteractorStyle( style )
         self.process_mode = ProcessMode.Default
         self.config_mode = ConfigMode.Default
         self.xcenter = 100.0
@@ -304,6 +302,9 @@ class CPCPlot(QtCore.QObject):
             renwin = vtk.vtkRenderWindow()
             self.renderWindowInteractor = vtk.vtkGenericRenderWindowInteractor()
             self.renderWindowInteractor.SetRenderWindow( renwin )
+            
+        style = vtk.vtkInteractorStyleTrackballCamera()   
+        self.renderWindowInteractor.SetInteractorStyle( style )
         return renwin
 
     def createConfigDialog( self, show=False ):
@@ -671,7 +672,8 @@ class CPCPlot(QtCore.QObject):
             self.planeWidget = vtk.vtkImplicitPlaneWidget()
             self.planeWidget.SetInteractor( self.renderWindowInteractor )
             self.planeWidget.SetPlaceFactor( 1.5 )
-            self.planeWidget.SetInputData( self.point_cloud_overview.getPolydata() )
+            if vtk.VTK_MAJOR_VERSION <= 5:  self.planeWidget.SetInput( self.point_cloud_overview.getPolydata() )
+            else:                           self.planeWidget.SetInputData( self.point_cloud_overview.getPolydata() )        
             self.planeWidget.AddObserver("StartInteractionEvent", self.processStartInteractionEvent )
             self.planeWidget.AddObserver("EndInteractionEvent", self.processEndInteractionEvent )
             self.planeWidget.AddObserver("InteractionEvent", self.processInteractionEvent )
@@ -1224,8 +1226,8 @@ class CPCPlot(QtCore.QObject):
         earth_source.OutlineOn()
         earth_polydata = earth_source.GetOutput()
         self.earth_mapper = vtk.vtkPolyDataMapper()
-
-        self.earth_mapper.SetInputData(earth_polydata)
+        if vtk.VTK_MAJOR_VERSION <= 5:  self.earth_mapper.SetInput(earth_polydata)
+        else:                           self.earth_mapper.SetInputData(earth_polydata)        
         self.earth_actor = vtk.vtkActor()
         self.earth_actor.SetMapper( self.earth_mapper )
         self.earth_actor.GetProperty().SetColor(0,0,0)
@@ -1373,8 +1375,9 @@ class CPCPlot(QtCore.QObject):
             self.decrementOverviewResolution()
             self.partitioned_point_cloud.postDataQueueEvent()
             pc.setScalarRange( self.scalarRange.getScaledRange() )
-            self.updateZRange( pc ) 
-            text = " Thresholding Range[%d]: %s \n Colormap Range: %s " % ( pcIndex, str( pc.getThresholdingRange() ), str( self.scalarRange.getRange() ) )
+            self.updateZRange( pc )
+            trng = pc.getThresholdingRange() 
+            text = " Thresholding Range[%d]: ( %.3f, %.3f )\n Colormap Range: %s " % ( pcIndex, trng[0], trng[1], str( self.scalarRange.getRange() ) )
             self.updateTextDisplay( text )
     #        print " Subproc[%d]--> new Thresholding Data Available: %s " % ( pcIndex, str( pc.getThresholdingRange() ) ); sys.stdout.flush()
     #        self.reset( ) # pcIndex )

@@ -18,7 +18,7 @@ ns = parser.parse_args( sys.argv )
 kill_all_zombies()
 app = QtGui.QApplication(['Point Cloud Plotter'])
 point_size = 1
-n_overview_points = 50000000
+n_overview_points = 500000
 height_varname = None
 data_dir = os.path.expanduser( ns.data_dir )
 height_varnames = []
@@ -54,7 +54,7 @@ elif ns.data_type == "GEOD":
     var_proc_op = None
     
 g = CPCPlot( ) 
-g.init( init_args = ( grid_file, data_file, varname, height_varname, var_proc_op ), n_overview_points=n_overview_points, n_cores=1, show=showGui  )
+g.init( init_args = ( grid_file, data_file, varname, height_varname, var_proc_op ), n_overview_points=n_overview_points, n_cores=2, show=showGui  )
 g.createConfigDialog( showGui )
 
 renderWindow = g.renderWindow

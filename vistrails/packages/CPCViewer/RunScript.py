@@ -10,6 +10,24 @@ from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
 from packages.CPCViewer.PointCloudViewer import CPCPlot
 from packages.CPCViewer.ControlPanel import ConfigManager
 
+def displayRenderWindowQt( renderWindow ):
+    from packages.CPCViewer.PointCloudViewer import QVTKAdaptor
+    import vtk
+       
+    app = QtGui.QApplication(['Point Cloud Plotter'])    
+    widget = QVTKAdaptor( rw=renderWindow )
+    widget.Initialize()
+    widget.Start()        
+    renderWindowInteractor = renderWindow.GetInteractor()           
+    style = vtk.vtkInteractorStyleTrackballCamera()   
+    renderWindowInteractor.SetInteractorStyle( style )
+    g.connect( widget, QtCore.SIGNAL('event'), g.processEvent )  
+    g.connect( widget, QtCore.SIGNAL("Close"), g.closeConfigDialog  ) 
+    widget.show()      
+    app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
+    app.exec_() 
+    g.terminate() 
+
 parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
 parser.add_argument( 'PATH' )
 parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
@@ -18,7 +36,7 @@ ns = parser.parse_args( sys.argv )
 
 kill_all_zombies()
 point_size = 1
-n_overview_points = 500000
+n_overview_points = 50000000
 height_varname = None
 data_dir = os.path.expanduser( ns.data_dir )
 height_varnames = []
@@ -53,12 +71,16 @@ elif ns.data_type == "GEOD":
     var_proc_op = None
     
 g = CPCPlot( gui=False ) 
-g.init( init_args = ( grid_file, data_file, varname, height_varname, var_proc_op ), n_overview_points=n_overview_points, n_cores=2  )
+g.init( init_args = ( grid_file, data_file, varname, height_varname, var_proc_op ), n_overview_points=n_overview_points, n_cores=1  )
 
 cfgManager = ConfigManager()
 cfgManager.connect( cfgManager, QtCore.SIGNAL("ConfigCmd"), g.processConfigCmd )
+cfgManager.build()
 cfgManager.initParameters()
 
-renderWindow = g.renderWindow
-    
+g.processCategorySelectionCommand( [ 'Subsets' ] )
 
+renderWindow = g.renderWindow
+
+# verification code:
+displayRenderWindowQt( renderWindow )
