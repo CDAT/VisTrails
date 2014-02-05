@@ -3,6 +3,50 @@ Created on Sep 18, 2013
 
 @author: tpmaxwel
 '''
+from __future__ import with_statement
+from __future__ import division
+
+_TRY_PYSIDE = True
+
+try:
+    if not _TRY_PYSIDE:
+        raise ImportError()
+    import PySide.QtCore as _QtCore
+    QtCore = _QtCore
+    USES_PYSIDE = True
+except ImportError:
+    import sip
+    try: sip.setapi('QString', 2)
+    except: pass
+    try: sip.setapi('QVariant', 2)
+    except: pass
+    import PyQt4.QtCore as _QtCore
+    QtCore = _QtCore
+    USES_PYSIDE = False
+
+
+# def _pyside_import_module(moduleName):
+#     pyside = __import__('PySide', globals(), locals(), [moduleName], -1)
+#     return getattr(pyside, moduleName)
+# 
+# 
+# def _pyqt4_import_module(moduleName):
+#     pyside = __import__('PyQt4', globals(), locals(), [moduleName], -1)
+#     return getattr(pyside, moduleName)
+# 
+# 
+# if USES_PYSIDE:
+#     import_module = _pyside_import_module
+# 
+#     Signal = QtCore.Signal
+#     Slot = QtCore.Slot
+#     Property = QtCore.Property
+# else:
+#     import_module = _pyqt4_import_module
+# 
+#     Signal = QtCore.pyqtSignal
+#     Slot = QtCore.pyqtSlot
+#     Property = QtCore.pyqtProperty
 
 import sys, os
 import numpy
@@ -11,7 +55,6 @@ import vtk,  time,  math
 from vtk.util import numpy_support
 from PointCollection import PointCollection, PlotType, isNone
 from multiprocessing import Process, Queue
-from PyQt4 import QtCore # import SIGNAL, QObject
 
 class ScalarRangeType:         
     Full = 0
@@ -429,10 +472,11 @@ class vtkPointCloud(QtCore.QObject):
         self.mapper.RemoveAllClippingPlanes()    
 
     def setPointSize( self, point_size ):
-        try:
-            self.actor.GetProperty().SetPointSize( point_size )
-        except TypeError:
-            print>>sys.stderr, "Error setting point size: value = %s " % str( point_size )
+        if point_size <> None:
+            try:
+                self.actor.GetProperty().SetPointSize( point_size )
+            except TypeError:
+                print>>sys.stderr, "Error setting point size: value = %s " % str( point_size )
 
     def getPointSize( self ):
         return self.actor.GetProperty().GetPointSize()

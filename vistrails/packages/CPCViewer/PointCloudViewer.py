@@ -4,15 +4,63 @@ Created on Aug 29, 2013
 @author: tpmaxwel
 '''
 
+from __future__ import with_statement
+from __future__ import division
+
+_TRY_PYSIDE = True
+
+try:
+    if not _TRY_PYSIDE:
+        raise ImportError()
+    import PySide.QtCore as _QtCore
+    QtCore = _QtCore
+    import PySide.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = True
+except ImportError:
+    import sip
+    try: sip.setapi('QString', 2)
+    except: pass
+    try: sip.setapi('QVariant', 2)
+    except: pass
+    import PyQt4.QtCore as _QtCore
+    QtCore = _QtCore
+    import PyQt4.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = False
+
+
+# def _pyside_import_module(moduleName):
+#     pyside = __import__('PySide', globals(), locals(), [moduleName], -1)
+#     return getattr(pyside, moduleName)
+# 
+# 
+# def _pyqt4_import_module(moduleName):
+#     pyside = __import__('PyQt4', globals(), locals(), [moduleName], -1)
+#     return getattr(pyside, moduleName)
+# 
+# 
+# if USES_PYSIDE:
+#     import_module = _pyside_import_module
+# 
+#     Signal = QtCore.Signal
+#     Slot = QtCore.Slot
+#     Property = QtCore.Property
+# else:
+#     import_module = _pyqt4_import_module
+# 
+#     Signal = QtCore.pyqtSignal
+#     Slot = QtCore.pyqtSlot
+#     Property = QtCore.pyqtProperty
+
 import sys, cdms2
 import os.path, traceback
 import vtk, time
-from PyQt4 import QtCore, QtGui
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType, kill_all_zombies
-from ControlPanel import CPCConfigGui, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP
-from ColorMapManager import *
-from MapManager import MapManager
+from packages.CPCViewer.DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType, kill_all_zombies
+from packages.CPCViewer.ControlPanel import CPCConfigGui, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP
+from packages.CPCViewer.ColorMapManager import *
+from packages.CPCViewer.MapManager import MapManager
 
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
@@ -254,6 +302,7 @@ class CPCPlot(QtCore.QObject):
         self.partitioned_point_cloud = None
         self.point_cloud_overview = None
         self.labelBuff = ""
+        self.configDialog = None
         self.renderWindow = vtk_render_window if ( vtk_render_window <> None ) else self.createRenderWindow()
         self.process_mode = ProcessMode.Default
         self.config_mode = ConfigMode.Default
@@ -306,6 +355,9 @@ class CPCPlot(QtCore.QObject):
         style = vtk.vtkInteractorStyleTrackballCamera()   
         self.renderWindowInteractor.SetInteractorStyle( style )
         return renwin
+    
+    def start(self):
+        self.renderWindowInteractor.Start()
 
     def createConfigDialog( self, show=False ):
         self.configDialog = CPCConfigGui()
@@ -316,7 +368,8 @@ class CPCPlot(QtCore.QObject):
         if show: self.configDialog.show()
 
     def closeConfigDialog(self):
-        self.configDialog.closeDialog()
+        if self.configDialog:
+            self.configDialog.closeDialog()
 
     @property
     def current_subset_specs(self):

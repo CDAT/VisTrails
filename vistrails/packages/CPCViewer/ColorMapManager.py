@@ -248,44 +248,44 @@ class ColorMapManager():
         self.display_lut.SetValueRange( self.lut.GetValueRange() )
         self.display_lut.Modified()
                   
-if __name__ == '__main__':  
-    from PyQt4.QtCore import *
-    from PyQt4.QtGui import *
-    
-#    new_colormaps = {}
-#    for colormapName in colormaps:
-#        cmap = colormaps[ colormapName ]
-#        new_colormaps[colormapName] = cmap
-#
-#    pkl_path = os.path.join( os.path.dirname( __file__ ), 'colormaps1.pkl' )
-#    colormap_file = open( pkl_path, 'wb' )
-#    colormaps = cPickle.dump( new_colormaps, colormap_file )
-#    colormap_file.close()
-              
-    app = QApplication(['ImageSlicerTest'])
-    renWin = vtk.vtkRenderWindow() 
-       
-    for key in colormaps:
-        print "%s" % key
-        
-    lut = vtk.vtkLookupTable()
-    cm = ColorMapManager( lut )
-    cm.load_lut('gist_earth')
-
-    colorBarActor = vtk.vtkScalarBarActor()
-    colorBarActor.SetLookupTable( lut )
- 
-    iren = vtk.vtkRenderWindowInteractor()
-    iren.SetRenderWindow(renWin)    
-    
-    aRenderer = vtk.vtkRenderer()
-    renWin.AddRenderer(aRenderer)
-    aRenderer.AddActor( colorBarActor )
-   
-    iren.Initialize()
-    renWin.Render()
-    iren.Start()
-    
-    app.exec_()   
+# if __name__ == '__main__':  
+#     from PyQt4.QtCore import *
+#     from PyQt4.QtGui import *
+#     
+# #    new_colormaps = {}
+# #    for colormapName in colormaps:
+# #        cmap = colormaps[ colormapName ]
+# #        new_colormaps[colormapName] = cmap
+# #
+# #    pkl_path = os.path.join( os.path.dirname( __file__ ), 'colormaps1.pkl' )
+# #    colormap_file = open( pkl_path, 'wb' )
+# #    colormaps = cPickle.dump( new_colormaps, colormap_file )
+# #    colormap_file.close()
+#               
+#     app = QApplication(['ImageSlicerTest'])
+#     renWin = vtk.vtkRenderWindow() 
+#        
+#     for key in colormaps:
+#         print "%s" % key
+#         
+#     lut = vtk.vtkLookupTable()
+#     cm = ColorMapManager( lut )
+#     cm.load_lut('gist_earth')
+# 
+#     colorBarActor = vtk.vtkScalarBarActor()
+#     colorBarActor.SetLookupTable( lut )
+#  
+#     iren = vtk.vtkRenderWindowInteractor()
+#     iren.SetRenderWindow(renWin)    
+#     
+#     aRenderer = vtk.vtkRenderer()
+#     renWin.AddRenderer(aRenderer)
+#     aRenderer.AddActor( colorBarActor )
+#    
+#     iren.Initialize()
+#     renWin.Render()
+#     iren.Start()
+#     
+#     app.exec_()   
 
  

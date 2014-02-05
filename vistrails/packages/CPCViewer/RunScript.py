@@ -82,5 +82,7 @@ g.processCategorySelectionCommand( [ 'Subsets' ] )
 
 renderWindow = g.renderWindow
 
+g.start()
+
 # verification code:
-displayRenderWindowQt( renderWindow )
+# displayRenderWindowQt( renderWindow )

@@ -4,8 +4,56 @@ Created on Feb 4, 2014
 @author: tpmaxwel
 '''
 
-import os.path, sys, argparse
-from PyQt4 import QtCore, QtGui
+from __future__ import with_statement
+from __future__ import division
+
+_TRY_PYSIDE = True
+
+try:
+    if not _TRY_PYSIDE:
+        raise ImportError()
+    import PySide.QtCore as _QtCore
+    QtCore = _QtCore
+    import PySide.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = True
+except ImportError:
+    import sip
+    try: sip.setapi('QString', 2)
+    except: pass
+    try: sip.setapi('QVariant', 2)
+    except: pass
+    import PyQt4.QtCore as _QtCore
+    QtCore = _QtCore
+    import PyQt4.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = False
+
+
+# def _pyside_import_module(moduleName):
+#     pyside = __import__('PySide', globals(), locals(), [moduleName], -1)
+#     return getattr(pyside, moduleName)
+# 
+# 
+# def _pyqt4_import_module(moduleName):
+#     pyside = __import__('PyQt4', globals(), locals(), [moduleName], -1)
+#     return getattr(pyside, moduleName)
+# 
+# 
+# if USES_PYSIDE:
+#     import_module = _pyside_import_module
+# 
+#     Signal = QtCore.Signal
+#     Slot = QtCore.Slot
+#     Property = QtCore.Property
+# else:
+#     import_module = _pyqt4_import_module
+# 
+#     Signal = QtCore.pyqtSignal
+#     Slot = QtCore.pyqtSlot
+#     Property = QtCore.pyqtProperty
+
+import os.path, sys, argparse, time
 from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
 from packages.CPCViewer.PointCloudViewer import CPCPlot
 
@@ -58,7 +106,7 @@ g.init( init_args = ( grid_file, data_file, varname, height_varname, var_proc_op
 g.createConfigDialog( showGui )
 
 renderWindow = g.renderWindow
-    
+ 
 app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
 app.exec_() 
 g.terminate() 
