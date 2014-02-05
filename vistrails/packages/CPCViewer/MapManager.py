@@ -3,11 +3,53 @@ Created on Oct 10, 2013
 
 @author: tpmaxwell
 '''
+from __future__ import with_statement
+from __future__ import division
 
+_TRY_PYSIDE = True
+
+try:
+    if not _TRY_PYSIDE:
+        raise ImportError()
+    import PySide.QtCore as _QtCore
+    QtCore = _QtCore
+    USES_PYSIDE = True
+except ImportError:
+    import sip
+    try: sip.setapi('QString', 2)
+    except: pass
+    try: sip.setapi('QVariant', 2)
+    except: pass
+    import PyQt4.QtCore as _QtCore
+    QtCore = _QtCore
+    USES_PYSIDE = False
+
+# def _pyside_import_module(moduleName):
+#     pyside = __import__('PySide', globals(), locals(), [moduleName], -1)
+#     return getattr(pyside, moduleName)
+# 
+# 
+# def _pyqt4_import_module(moduleName):
+#     pyside = __import__('PyQt4', globals(), locals(), [moduleName], -1)
+#     return getattr(pyside, moduleName)
+# 
+# 
+# if USES_PYSIDE:
+#     import_module = _pyside_import_module
+# 
+#     Signal = QtCore.Signal
+#     Slot = QtCore.Slot
+#     Property = QtCore.Property
+# else:
+#     import_module = _pyqt4_import_module
+# 
+#     Signal = QtCore.pyqtSignal
+#     Slot = QtCore.pyqtSlot
+#     Property = QtCore.pyqtProperty
+    
 import sys
 import os.path
 import vtk, time
-from PyQt4 import QtCore, QtGui
 import numpy as np
 import os, vtk
 from PointCollection import PlotType
@@ -60,7 +102,8 @@ class MapManager( QtCore.QObject ):
             mesh = self.sphere.GetOutput()
             
             self.sphereTexmapper = vtk.vtkTextureMapToSphere()
-            self.sphereTexmapper.SetInputData(mesh)
+            if vtk.VTK_MAJOR_VERSION <= 5:  self.sphereTexmapper.SetInput(mesh)
+            else:                           self.sphereTexmapper.SetInputData(mesh)        
             self.sphereTexmapper.PreventSeamOff()
             
             self.sphereMapper = vtk.vtkPolyDataMapper()
@@ -75,7 +118,8 @@ class MapManager( QtCore.QObject ):
 #             imageFlipper.SetResliceAxes( resliceAxes )
                         
             imageFlipper = vtk.vtkImageFlip()
-            imageFlipper.SetInputData( self.sphericalBaseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  imageFlipper.SetInput(self.sphericalBaseImage)
+            else:                           imageFlipper.SetInputData(self.sphericalBaseImage)        
             imageFlipper.SetFilteredAxis( 1 ) 
             
             self.sphereTexture = vtk.vtkTexture()
@@ -145,7 +189,8 @@ class MapManager( QtCore.QObject ):
             self.baseMapActor.SetOpacity( self.map_opacity )
             mapCorner = [ self.x0, self.y0 ]
             self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
-            self.baseMapActor.SetInputData( self.baseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  self.baseMapActor.SetInput(self.baseImage)
+            else:                           self.baseMapActor.SetInputData(self.baseImage)        
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]  
             
     def getBaseMapActor(self):
@@ -197,12 +242,14 @@ class MapManager( QtCore.QObject ):
         
         extent[0:2] = [ x0, x0 + sliceCoord - 1 ]
         clip0 = vtk.vtkImageClip()
-        clip0.SetInputData( baseImage )
+        if vtk.VTK_MAJOR_VERSION <= 5:  clip0.SetInput(baseImage)
+        else:                           clip0.SetInputData(baseImage)        
         clip0.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
         
         extent[0:2] = [ x0 + sliceCoord, x1 ]
         clip1 = vtk.vtkImageClip()
-        clip1.SetInputData( baseImage )
+        if vtk.VTK_MAJOR_VERSION <= 5:  clip1.SetInput(baseImage)
+        else:                           clip1.SetInputData(baseImage)        
         clip1.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
         
         append = vtk.vtkImageAppend()
