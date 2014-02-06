@@ -1,5 +1,6 @@
 
 import vtk, sys, gc
+from vtUtilities import versionAgnosticSetInput
 
 VTK_NEAREST_RESLICE = 0
 VTK_LINEAR_RESLICE  = 1
@@ -750,7 +751,7 @@ class ImagePlaneWidget:
         if(  not self.ImageData ):       
             # If None is passed, remove any reference that Reslice had
             # on the old ImageData
-            self.Reslice.SetInputData(None)
+            versionAgnosticSetInput( self.Reslice, None )
             return
                    
         scalar_range = self.ImageData.GetScalarRange()
@@ -759,7 +760,7 @@ class ImagePlaneWidget:
             self.LookupTable.SetTableRange( scalar_range[0], scalar_range[1] )
             self.LookupTable.Build()
             
-        self.Reslice.SetInputData(self.ImageData)
+        versionAgnosticSetInput( self.Reslice, self.ImageData )
         self.Reslice.Modified()
         dims = self.ImageData.GetDimensions()
         self.InputDims = 3 if ( ( len(dims) > 2 ) and ( dims[2] > 1 ) ) else 2
@@ -868,7 +869,7 @@ class ImagePlaneWidget:
             self.ContourInputDims = 3 if ( ( len(dims2) > 2 ) and ( dims2[2] > 1 ) ) else 2
             self.Reslice2 = vtk.vtkImageReslice()
             self.Reslice2.TransformInputSamplingOff()
-            self.Reslice2.SetInputData(self.ImageData2)
+            versionAgnosticSetInput( self.Reslice2, self.ImageData2 )
             self.Reslice2.Modified()
         
         if self.Reslice2:
@@ -1292,7 +1293,7 @@ class ImagePlaneWidget:
         self.PlaneOutlinePolyData.SetLines(cells)
         
         planeOutlineMapper  = vtk.vtkPolyDataMapper()
-        planeOutlineMapper.SetInputData( self.PlaneOutlinePolyData )
+        versionAgnosticSetInput( planeOutlineMapper, self.PlaneOutlinePolyData )
         planeOutlineMapper.SetResolveCoincidentTopologyToPolygonOffset()
         self.PlaneOutlineActor.SetMapper(planeOutlineMapper)
         self.PlaneOutlineActor.PickableOff()    
@@ -1344,7 +1345,7 @@ class ImagePlaneWidget:
         self.CursorPolyData.SetPoints(points)
         self.CursorPolyData.SetLines(cells)        
         cursorMapper  = vtk.vtkPolyDataMapper()
-        cursorMapper.SetInputData(self.CursorPolyData)
+        versionAgnosticSetInput( cursorMapper, self.CursorPolyData )
         cursorMapper.SetResolveCoincidentTopologyToPolygonOffset()
         self.CursorActor.SetMapper(cursorMapper)
         self.CursorActor.PickableOff()

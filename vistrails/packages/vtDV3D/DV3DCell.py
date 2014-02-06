@@ -981,7 +981,8 @@ class PM_MapCell3D( PM_DV3DCell ):
 #            print " DV3DCell, mapCorner = %s, dataPosition = %s, cell_location = %s " % ( str(mapCorner), str(dataPosition), cell_location )
                     
             self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
-            self.baseMapActor.SetInputData( baseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  self.baseMapActor.SetInput(baseImage)
+            else:                           self.baseMapActor.SetInputData(baseImage)        
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]        
             self.renderer.AddActor( self.baseMapActor )
 
@@ -1019,12 +1020,14 @@ class PM_MapCell3D( PM_DV3DCell ):
         
         extent[0:2] = [ x0, x0 + sliceCoord - 1 ]
         clip0 = vtk.vtkImageClip()
-        clip0.SetInputData( baseImage )
+        if vtk.VTK_MAJOR_VERSION <= 5:  clip0.SetInput(baseImage)
+        else:                           clip0.SetInputData(baseImage)        
         clip0.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
         
         extent[0:2] = [ x0 + sliceCoord, x1 ]
         clip1 = vtk.vtkImageClip()
-        clip1.SetInputData( baseImage )
+        if vtk.VTK_MAJOR_VERSION <= 5:  clip1.SetInput(baseImage)
+        else:                           clip1.SetInputData(baseImage)        
         clip1.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
         
         append = vtk.vtkImageAppend()
@@ -1078,7 +1081,8 @@ class PM_MapCell3D( PM_DV3DCell ):
             extent = list( baseExtent )         
             extent[0:2] = [ x0, x0 + sliceCoord - 1 ]
             clip0 = vtk.vtkImageClip()
-            clip0.SetInputData( baseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  clip0.SetInput(baseImage)
+            else:                           clip0.SetInputData(baseImage)        
             clip0.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             size0 = extent[1] - extent[0] + 1
         
@@ -1088,7 +1092,8 @@ class PM_MapCell3D( PM_DV3DCell ):
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[0:2] = [ x0 + sliceCoord, x1 ]
             clip1 = vtk.vtkImageClip()
-            clip1.SetInputData( baseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  clip1.SetInput(baseImage)
+            else:                           clip1.SetInputData(baseImage)        
             clip1.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             size1 = extent[1] - extent[0] + 1
 #            print "Set Corner pos: %s, cuts: %s " % ( str(self.x0), str( (cut0, cut1) ) )
@@ -1115,7 +1120,8 @@ class PM_MapCell3D( PM_DV3DCell ):
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[1] = x0 + sliceCoord
             clip = vtk.vtkImageClip()
-            clip.SetInputData( baseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  clip.SetInput(baseImage)
+            else:                           clip.SetInputData(baseImage)        
             clip.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             bounded_dims = ( extent[1] - extent[0] + 1, vertExtent[1] - vertExtent[0] + 1 )
 #            print "Set Corner pos: %s, dataXLoc: %s " % ( str(self.x0), str( (dataXLoc, selectionDim[0]) ) )

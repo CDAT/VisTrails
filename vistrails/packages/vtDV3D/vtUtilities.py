@@ -162,6 +162,10 @@ def flt2str( fval ):
 
 def pt2str( pt ): return "( %.2f, %.2f )" % ( pt.x(), pt.y() ) 
 
+def versionAgnosticSetInput( algorithm, algo_input ):
+    if vtk.VTK_MAJOR_VERSION <= 5:  algorithm.SetInput(algo_input)
+    else:                           algorithm.SetInputData(algo_input)        
+
 def printTime( label ):
     global currentTime
     t = time.time()
@@ -691,7 +695,8 @@ class vtkImageExportToArray:
 
     # set the input
     def SetInput(self,input):
-        return self.__export.SetInputData(input)
+        if vtk.VTK_MAJOR_VERSION <= 5:  self.__export.SetInput(input) 
+        else:                           self.__export.SetInputData(input)        
 
     def GetInput(self):
         return self.__export.GetInput()

@@ -110,7 +110,8 @@ class AlgorithmOutputModule( Module ):
             if iPort < 0:   algorithm.SetInputConnection( self.algoOutputPort )
             else:           algorithm.SetInputConnection( iPort, self.algoOutputPort )
         else: 
-            algorithm.SetInputData( self.algoOutput )   
+            if vtk.VTK_MAJOR_VERSION <= 5:  algorithm.SetInput(self.algoOutput)
+            else:                           algorithm.SetInputData(self.algoOutput)        
             algorithm.Modified()
 
 class AlgorithmOutputModule3D( AlgorithmOutputModule ):
