@@ -84,21 +84,15 @@ class MapManager( QtCore.QObject ):
         self.updateMapOpacity() 
         
     def getSphericalMap( self, **args ):
-        thetaResolution = args.get( "thetaRes", 64 )
-        phiResolution = args.get( "phiRes", 64 )
+        thetaResolution = args.get( "thetaRes", 32 )
+        phiResolution = args.get( "phiRes", 32 )
         radius = args.get( "radius", 100 )
-        lon_range = args.get( "lon_range", [ -180.0, 180.0 ] )
-        lat_range = args.get( "lat_range", [ 90.0, -90.0 ] )
         if self.sphereActor == None: 
             self.sphere = vtk.vtkSphereSource()
             self.sphere.SetThetaResolution( thetaResolution )
             self.sphere.SetPhiResolution( phiResolution )
-            self.sphere.SetRadius( radius )
-#             self.sphere.SetStartTheta( lon_range[0] )        
-#             self.sphere.SetEndTheta( lon_range[1] ) 
-#             self.sphere.SetStartPhi( lat_range[0] )        
-#             self.sphere.SetEndPhi( lat_range[1] )        
-       
+            self.sphere.SetRadius( radius )   
+            self.sphere.SetEndTheta( 359.999 )    
             mesh = self.sphere.GetOutput()
             
             self.sphereTexmapper = vtk.vtkTextureMapToSphere()
@@ -108,15 +102,7 @@ class MapManager( QtCore.QObject ):
             
             self.sphereMapper = vtk.vtkPolyDataMapper()
             self.sphereMapper.SetInputConnection(self.sphereTexmapper.GetOutputPort())
-           
-#             imageFlipper = vtk.vtkImageReslice()
-#             imageFlipper.SetInput( self.baseImage )
-#             resliceAxes = vtk.vtkMatrix4x4()
-#             resliceAxes.Identity()
-#             resliceAxes.SetElement( 1, 1, -1 )
-#             imageFlipper.SetResliceAxesOrigin( 0, 0, 0 )              
-#             imageFlipper.SetResliceAxes( resliceAxes )
-                        
+                                   
             imageFlipper = vtk.vtkImageFlip()
             if vtk.VTK_MAJOR_VERSION <= 5:  imageFlipper.SetInput(self.sphericalBaseImage)
             else:                           imageFlipper.SetInputData(self.sphericalBaseImage)        
