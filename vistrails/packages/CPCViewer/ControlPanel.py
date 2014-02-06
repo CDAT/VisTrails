@@ -962,6 +962,7 @@ class ConfigurationWidget(QtGui.QWidget):
         config_ctrl.build()
         self.addControl( iCatIndex, config_ctrl, id )
         self.connect( config_ctrl, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
+        self.connect( config_ctrl.getParameter(), QtCore.SIGNAL("ValueChanged"), self.parameterValueChanged )
         
     def getConfigControl( self, id ):
         return self.tagged_controls.get( id, None )
@@ -1019,6 +1020,9 @@ class ConfigurationWidget(QtGui.QWidget):
         self.AnalysisCatIndex = self.addCategory( 'Analysis' )
         cparm = self.cfgManager.addParameter( self.AnalysisCatIndex, "Animation" )
         self.addConfigControl( self.AnalysisCatIndex, AnimationControl( cparm ) )
+        
+    def saveConfig(self):
+        self.cfgManager.saveConfig()
 
               
 class ConfigManager(QtCore.QObject):
@@ -1051,8 +1055,6 @@ class ConfigManager(QtCore.QObject):
         cparm = ConfigParameter.getParameter( config_name, **args )
         key = ':'.join( [ categoryName, config_name ] )
         self.addParam( key, cparm )
-        if self.controller:
-            self.connect( cparm, QtCore.SIGNAL("ValueChanged"), self.controller.parameterValueChanged )
         return cparm
 
     def readConfg( self ):
@@ -1108,23 +1110,23 @@ class ConfigManager(QtCore.QObject):
         return self.iCatIndex
     
         
-    def build( self, **args ):
-        self.iColorCatIndex = self.addCategory( 'Color' )
-        cparm = self.addParameter( self.iColorCatIndex, "Color Scale", wpos=0.5, wsize=1.0, ctype = 'Leveling' )
-        cparm = self.addParameter( self.iColorCatIndex, "Opacity Scale", rmin=0.0, rmax=1.0, ctype = 'Range'  )
-        cparm = self.addParameter( self.iColorCatIndex, "Color Map", Colormap="jet", Invert=1, Stereo=0, Colorbar=0  )
-        self.iSubsetCatIndex = self.addCategory( 'Subsets' )
-        cparm = self.addParameter( self.iSubsetCatIndex, "Slice Planes",  xpos=0.5, ypos=0.5, zpos=0.5, xhrwidth=0.0025, xlrwidth=0.005, yhrwidth=0.0025, ylrwidth=0.005 )
-        cparm = self.addParameter( self.iSubsetCatIndex, "Threshold Range", wpos=0.5, wsize=0.2, ctype = 'Leveling' )   
-        self.iPointsCatIndex = self.addCategory( 'Points' )     
-        cparm = self.addParameter( self.iPointsCatIndex, "Point Size",  cats = [ ("Low Res", "# Pixels", 1, 20, 10 ), ( "High Res", "# Pixels",  1, 10, 3 ) ] )
-        cparm = self.addParameter( self.iPointsCatIndex, "Max Resolution", value=1.0 )
-        self.GeometryCatIndex = self.addCategory( 'Geometry' )
-        cparm = self.addParameter( self.GeometryCatIndex, "Projection", choices = [ "Lat/Lon", "Spherical" ], init_index=0 )
-        cparm = self.addParameter( self.GeometryCatIndex, "Vertical Scaling", value=0.5 )
-        cparm = self.addParameter( self.GeometryCatIndex, "Vertical Variable", choices = [], init_index=0  )
-        self.AnalysisCatIndex = self.addCategory( 'Analysis' )
-        cparm = self.addParameter( self.AnalysisCatIndex, "Animation" )
+#     def build( self, **args ):
+#         self.iColorCatIndex = self.addCategory( 'Color' )
+#         cparm = self.addParameter( self.iColorCatIndex, "Color Scale", wpos=0.5, wsize=1.0, ctype = 'Leveling' )
+#         cparm = self.addParameter( self.iColorCatIndex, "Opacity Scale", rmin=0.0, rmax=1.0, ctype = 'Range'  )
+#         cparm = self.addParameter( self.iColorCatIndex, "Color Map", Colormap="jet", Invert=1, Stereo=0, Colorbar=0  )
+#         self.iSubsetCatIndex = self.addCategory( 'Subsets' )
+#         cparm = self.addParameter( self.iSubsetCatIndex, "Slice Planes",  xpos=0.5, ypos=0.5, zpos=0.5, xhrwidth=0.0025, xlrwidth=0.005, yhrwidth=0.0025, ylrwidth=0.005 )
+#         cparm = self.addParameter( self.iSubsetCatIndex, "Threshold Range", wpos=0.5, wsize=0.2, ctype = 'Leveling' )   
+#         self.iPointsCatIndex = self.addCategory( 'Points' )     
+#         cparm = self.addParameter( self.iPointsCatIndex, "Point Size",  cats = [ ("Low Res", "# Pixels", 1, 20, 10 ), ( "High Res", "# Pixels",  1, 10, 3 ) ] )
+#         cparm = self.addParameter( self.iPointsCatIndex, "Max Resolution", value=1.0 )
+#         self.GeometryCatIndex = self.addCategory( 'Geometry' )
+#         cparm = self.addParameter( self.GeometryCatIndex, "Projection", choices = [ "Lat/Lon", "Spherical" ], init_index=0 )
+#         cparm = self.addParameter( self.GeometryCatIndex, "Vertical Scaling", value=0.5 )
+#         cparm = self.addParameter( self.GeometryCatIndex, "Vertical Variable", choices = [], init_index=0  )
+#         self.AnalysisCatIndex = self.addCategory( 'Analysis' )
+#         cparm = self.addParameter( self.AnalysisCatIndex, "Animation" )
                
 if __name__ == '__main__':
     app = QtGui.QApplication(['CPC Config Dialog'])
