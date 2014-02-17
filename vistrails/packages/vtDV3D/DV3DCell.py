@@ -931,6 +931,7 @@ class PM_MapCell3D( PM_DV3DCell ):
     #            cell_location = self.getInputValue( "cell_location", "00"  )
                     
                 self.y0 = -90.0  
+                self.x0 =  0.0  
                 dataPosition = None
                 if world_map == None:
                     self.map_file = defaultMapFile
@@ -940,11 +941,15 @@ class PM_MapCell3D( PM_DV3DCell ):
                     self.map_cut = world_map[1]
                 
                 self.world_cut = self.getInputValue( "world_cut", -1 ) # wmod.forceGetInputFromPort( "world_cut", -1 )  if wmod else getFunctionParmStrValues( module, "world_cut", -1 )
-                roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
-                map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
-                if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
-                if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
-    #            data_origin = self.input().GetOrigin() if self.input() else [ 0, 0, 0 ]
+                if  (self.roi <> None): 
+                    roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
+                    map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
+                    if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
+                    if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
+        #            data_origin = self.input().GetOrigin() if self.input() else [ 0, 0, 0 ]
+                else:
+                    map_cut_size = [ 360, 180 ]
+                    
                           
                 if self.world_cut == -1: 
                     if  (self.roi <> None): 
