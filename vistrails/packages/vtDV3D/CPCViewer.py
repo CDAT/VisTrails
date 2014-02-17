@@ -94,7 +94,7 @@ class PM_CPCViewer(PersistentVisualizationModule):
         
     def addConfigurableFunctions( self ):
         if PM_CPCViewer.PortSpecs == None:
-            config_widget = CPCConfigConfigurationWidget()
+            config_widget = ConfigurationWidget()
             config_widget.build()
             PM_CPCViewer.PortSpecs = config_widget.getPersistentParameterSpecs()
         for port_spec in PM_CPCViewer.PortSpecs:
@@ -104,7 +104,7 @@ class PM_CPCViewer(PersistentVisualizationModule):
             self.configurableFunctions[name] = ConfigurableFunction( name, signature )
                        
     def getConfigWidget( self ):
-        self.config_widget = CPCConfigConfigurationWidget()
+        self.config_widget = ConfigurationWidget()
         self.config_widget.build()
         QObject.connect( self.config_widget, QtCore.SIGNAL("ConfigCmd"), self.plotter.processConfigCmd )
         QObject.connect( self.config_widget, QtCore.SIGNAL("Close"), self.closeCPCWidget )
