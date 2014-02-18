@@ -1444,15 +1444,16 @@ class CPCPlot(QtCore.QObject):
       
     def init(self, **args ):
         init_args = args[ 'init_args' ]      
-        n_overview_points = args.get( 'n_overview_points', 600000 )    
-        n_subproc_points = args.get( 'n_subproc_points', 600000 )  
+        n_overview_points = args.get( 'n_overview_points', 500000 )    
+        n_subproc_points = args.get( 'n_subproc_points', 500000 )  
         show = args.get( 'show', False )  
         n_cores = args.get( 'n_cores', 32 )    
         self.point_cloud_overview = vtkLocalPointCloud( 0, max_points=n_overview_points ) 
         lut = self.getLUT()
         self.point_cloud_overview.initialize( init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
         nInputPoints = self.point_cloud_overview.getNumberOfInputPoints()
-        nPartitions = min( nInputPoints / n_subproc_points, 10  )
+        if ( n_subproc_points > nInputPoints ): n_subproc_points = nInputPoints
+        nPartitions = int( round( min( nInputPoints / n_subproc_points, 10  ) ) )
         nCollections = min( nPartitions, n_cores )
         print " Init PCViewer, nInputPoints = %d, n_overview_points = %d, n_subproc_points = %d, nCollections = %d, overview skip index = %s" % ( nInputPoints, n_overview_points, n_subproc_points, nCollections, self.point_cloud_overview.getSkipIndex() )
         self.initCollections( nCollections, init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
