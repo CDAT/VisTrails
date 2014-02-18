@@ -698,11 +698,11 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
         QtCore.QObject.__init__( self )
         self.point_clouds = {}
         self.point_cloud_map = {}
-        self.nPartitions = nPartitions
+        self.nPartitions = int( round( nPartitions ) )
         self.nActiveCollections =  self.nPartitions 
         self.current_spec = {}
         self.timerId = 0
-        for pcIndex in range( nPartitions ):
+        for pcIndex in range( self.nPartitions ):
             pc = vtkSubProcPointCloud( pcIndex, nPartitions )
             pc.start_subprocess( init_args )
             self.point_clouds[ pcIndex ] = pc

@@ -60,7 +60,7 @@ from packages.CPCViewer.PointCloudViewer import CPCPlot
 parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
 parser.add_argument( 'PATH' )
 parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
-parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CAM", help='input data type')
+parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="MMF", help='input data type')
 ns = parser.parse_args( sys.argv )
 
 kill_all_zombies()
@@ -102,7 +102,7 @@ elif ns.data_type == "GEOD":
     var_proc_op = None
     
 g = CPCPlot( ) 
-g.init( init_args = ( grid_file, data_file, varname, height_varname, var_proc_op ), n_overview_points=n_overview_points, n_cores=2, show=showGui  )
+g.init( init_args = ( grid_file, data_file, varname, height_varname, var_proc_op ), n_overview_points=n_overview_points, n_cores=1, show=showGui  )
 g.createConfigDialog( showGui )
 
 renderWindow = g.renderWindow
