@@ -289,6 +289,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
     def applyClicked(self):
         from metrics.frontend.uvcdat import setup_filetable, get_plot_data
 
+        if self.checkedItem is None:
+            print "Can't plot.  Try choosing a plot set."
         diagnostic = str(self.checkedItem.text(0))
         #group = str(self.checkedItem.parent().text(0))
         #Never name something 'type', it's a reserved word! type = str(self.comboBoxType.currentText())
@@ -349,7 +351,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
                 if ires<len(res):
                     res30 = res[ires]
                 else:
-                    res30 = None
+                    #res30 = None
+                    #...Instead, use the following because it forces a blank cell:
+                    res30 = metrics.frontend.uvcdat.uvc_zero_plotspec()
                 self.displayCell( res30, row, col )
                 ires += 1
         # Here's the old loop, with messages omitted.  The above new loop will clear all the panes.
@@ -370,6 +374,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         global original_gm_attributes
         projectController = self.parent().get_current_project_controller()
         projectController.clear_cell(sheet,row,column) # There's no visible clearing!
+        #...This is necessary to make the cell internally clear; without it the new plot
+        # will be overlaid over the old plot.  But this isn't enough to give you a blank cell
         if res30 is None:
             return
         pvars = res30.vars
@@ -380,17 +386,13 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         print "labels:",labels
         print "title:",title
         print "presentation:",presentation
+        print "x min,max:",presentation.datawc_x1, presentation.datawc_x2
+        print "y min,max:",presentation.datawc_y1, presentation.datawc_y2
         print "res",res30.type
         #define where to drag and drop
         import cdms2
         from packages.uvcdat_cdms.init import CDMSVariable
         for V in pvars:
-            # We really need to fix the 2-line plots.  Scale so that both variables use the
-            # same axes!  The Diagnostics package can provide upper and lower bounds for the
-            # axes (important for a composite plot) and the graphics should follow that.
-            # That's for contour (Isofill) as well as line (Yxvsx) and other plots.
-            #V[0]=220  # temporary kludge for TREFHT, plot set 3
-            #V[1]=305  # temporary kludge for TREFHT, plot set 3
             # Until I know better storing vars in tempfile....
             f = tempfile.NamedTemporaryFile()
             filename = f.name
@@ -426,15 +428,15 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             #d = _app.uvcdatWindow.dockPlot
             # simulate drop plot
             pm = projectController.plot_manager
-            print pm._plot_list.keys()
+            #print pm._plot_list.keys()
             V=pm._plot_list["VCS"]
-            print V.keys()
+            #print V.keys()
             gm = res30.presentation
             from gui.uvcdat.uvcdatCommons import gmInfos
             Gtype = res30.type
             G = V[Gtype]
-            print "G:",G.keys()
-            print get_canvas().listelements(Gtype.lower())
+            #print "G:",G.keys()
+            #print get_canvas().listelements(Gtype.lower())
             if not gm.name in G.keys():
                 G[gm.name] = pm._registry.add_plot(gm.name,"VCS",None,None,Gtype)
                 G[gm.name].varnum = int(gmInfos[Gtype]["nSlabs"])
