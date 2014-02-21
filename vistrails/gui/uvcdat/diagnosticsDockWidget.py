@@ -120,6 +120,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         #self.observations = ['AIRS', 'ARM', 'CALIPSOCOSP', 'CERES', 'CERES-EBAF', 'CERES2', 'CLOUDSAT', 'CLOUDSATCOSP', 'CRU', 'ECMWF', 'EP.ERAI', 'ERA40', 'ERAI', 'ERBE', 'ERS', 'GPCP', 'HadISST', 'ISCCP', 'ISCCPCOSP', 'ISCCPD1', 'ISCCPFD', 'JRA25', 'LARYEA', 'LEGATES', 'MISRCOSP', 'MODIS', 'MODISCOSP', 'NCEP', 'NVAP', 'SHEBA', 'SSMI', 'TRMM', 'UWisc', 'WARREN', 'WHOI', 'WILLMOTT', 'XIEARKIN']
         self.seasons = None # will be set when DiagnosticGroup is made
         #...was self.seasons = ['DJF', 'JJA', 'MJJ', 'ASO', 'ANN']
+        self.auxmenu = None
         
         #setup signals
         self.comboBoxType.currentIndexChanged.connect(self.setupDiagnosticTree)
@@ -163,11 +164,14 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
         if type(self.observations) is list:
             self.observation = str(self.comboBoxObservation.currentText())
-            #filt2="filt=f_startswith('%s')" % self.observation
-            filt2 = self.obs_menu[self.observation]
+            if len(str(self.comboBoxObservation.currentText()).strip())>0:
+                #self.filt2="filt=f_startswith('%s')" % self.observation
+                self.filt2 = self.obs_menu[self.observation]
+            else:
+                self.filt2 = None
         else:
-            filt2 = None
-        self.datafiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.path2, filt2 )
+            self.filt2 = None
+        self.datafiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.path2, self.filt2 )
         self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
         if self.path1 is not None:
             self.setupDiagnosticTree(0)
@@ -215,20 +219,23 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
                 filt2 = None
         else:
             filt2 = None
-        self.datafiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.path2, filt2 )
-        self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
+        if filt2!=self.filt2:
+            self.filt2 = filt2
+            self.datafiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.path2, self.filt2 )
+            self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
 
-        self.variables = self.DiagnosticGroup.list_variables( self.filetable1, self.filetable2,
+        variables = self.DiagnosticGroup.list_variables( self.filetable1, self.filetable2,
                                                               self.diagnostic_set_name )
-        for i in range(self.comboBoxVariable.count()):
-            self.comboBoxVariable.removeItem(0)
-
-        self.comboBoxVariable.addItems(self.variables)
-        i = self.comboBoxVariable.findText("TREFHT")
-        if i>-1:
-            self.comboBoxVariable.setCurrentIndex(i)
-        self.comboBoxVariable.currentIndexChanged.connect(self.variablechanged)
-        self.variablechanged(i)
+        if variables!=self.variables:
+            self.variables = variables
+            for i in range(self.comboBoxVariable.count()):
+                self.comboBoxVariable.removeItem(0)
+            self.comboBoxVariable.addItems(self.variables)
+            i = self.comboBoxVariable.findText("TREFHT")
+            if i>-1:
+                self.comboBoxVariable.setCurrentIndex(i)
+                self.comboBoxVariable.currentIndexChanged.connect(self.variablechanged)
+                self.variablechanged(i)
 
     def variablechanged(self,index):
         if self.path1 is None or self.path2 is None:
@@ -276,8 +283,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             diagnosticItem = QtGui.QTreeWidgetItem(self.treeWidget, [diagnostic_set])
             diagnosticItem.setFlags(diagnosticItem.flags() & (~Qt.ItemIsSelectable))
             diagnosticItem.setCheckState(0, Qt.Unchecked)
-
-
         
     def buttonClicked(self, button):
         role = self.buttonBox.buttonRole(button) 
