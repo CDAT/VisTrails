@@ -208,7 +208,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             return
         import metrics.frontend.uvcdat
         txt = item.text(item.columnCount()-1)
-        self.diagnostic_set_name = str(txt)
+        diagnostic_set_name = str(txt)
 
         if type(self.observations) is list:
             self.observation = str(self.comboBoxObservation.currentText())
@@ -225,8 +225,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
 
         variables = self.DiagnosticGroup.list_variables( self.filetable1, self.filetable2,
-                                                              self.diagnostic_set_name )
-        if variables!=self.variables:
+                                                              diagnostic_set_name )
+        if variables!=self.variables or diagnostic_set_name!=self.diagnostic_set_name:
+            self.diagnostic_set_name = diagnostic_set_name
             self.variables = variables
             for i in range(self.comboBoxVariable.count()):
                 self.comboBoxVariable.removeItem(0)
