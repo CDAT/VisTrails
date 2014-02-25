@@ -143,7 +143,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
     def scanFiles(self):
         if self.path1 is not None:
             datafiles = metrics.fileio.findfiles.dirtree_datafiles( self.path1 )
-            self.filetable1 = datafiles.setup_filetable( self.tmppth, "model" )
+            #self.filetable1 = datafiles.setup_filetable( self.tmppth, "model" )
+            #present synchronize_ranges uses a suffix from filetable id, assumes it's 1 or 2:
+            self.filetable1 = datafiles.setup_filetable( self.tmppth, "1" )
             # ...was self.filetable1 = metrics.frontend.uvcdat.setup_filetable(self.path1,self.tmppth)
         self.observations = None
         if self.path2 is not None:
@@ -166,13 +168,15 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             self.observation = str(self.comboBoxObservation.currentText())
             if len(str(self.comboBoxObservation.currentText()).strip())>0:
                 #self.filt2="filt=f_startswith('%s')" % self.observation
-                self.filt2 = self.obs_menu[self.observation]
+                self.filt2 = self.obs_menu.get( self.observation, None )
             else:
                 self.filt2 = None
         else:
             self.filt2 = None
         self.datafiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.path2, self.filt2 )
-        self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
+        #self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
+        #present synchronize_ranges uses a suffix from filetable id, assumes it's 1 or 2:
+        self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "2" )
         if self.path1 is not None:
             self.setupDiagnosticTree(0)
 
@@ -214,7 +218,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             self.observation = str(self.comboBoxObservation.currentText())
             #filt2="filt=f_startswith('%s')" % self.observation
             if type(self.observation) is str and len(self.observation)>0:
-                filt2 = self.obs_menu[self.observation]
+                filt2 = self.obs_menu.get( self.observation, None )
             else:
                 filt2 = None
         else:
@@ -222,7 +226,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         if filt2!=self.filt2:
             self.filt2 = filt2
             self.datafiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.path2, self.filt2 )
-            self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
+            #self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "obs" )
+            #present synchronize_ranges uses a suffix from filetable id, assumes it's 1 or 2:
+            self.filetable2 = self.datafiles2.setup_filetable( self.tmppth, "2" )
 
         variables = self.DiagnosticGroup.list_variables( self.filetable1, self.filetable2,
                                                               diagnostic_set_name )
@@ -353,7 +359,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         ires = 0
         for row in range(Nrows):
             for col in range(Ncolumns):
-                print "jfp displaying cell for row,column=",row,col
+                print "displaying cell for row,column=",row,col
                 if ires<len(res):
                     res30 = res[ires]
                 else:
