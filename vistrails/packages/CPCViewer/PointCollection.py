@@ -117,7 +117,7 @@ class PointCollection():
     
     def processCoordinates( self, lat, lon ):
         self.point_layout = self.getPointsLayout()
-        nz = len( self.lev ) 
+        nz = len( self.lev ) if self.lev else 1
         self.n_input_points = lsize(lat) * nz if ( self.point_layout == PlotType.List ) else lsize(lat) * lsize(lon) * nz
         if self.istep <= 0: self.istep = max( self.n_input_points / self.max_points, 1 )
         if lon.__class__.__name__ == "TransientVariable":
@@ -152,54 +152,64 @@ class PointCollection():
         return len( self.point_data_arrays['x'] ) 
     
     def levelsAreAscending(self):
+        if self.lev == None: return True
         lev_positive_direction = self.lev.attributes.get('positive','up')
         dlev = ( self.lev[-1] - self.lev[0] )
         ascending = ( ( dlev > 0.0 ) and ( lev_positive_direction == 'down' ) ) or ( ( dlev < 0.0 ) and ( lev_positive_direction == 'up' ) )
         return ascending
     
-    def setPointHeights( self, **args ): 
-        height_varname = args.get( 'height_var', None )
-        z_scaling = args.get( 'z_scale', 1.0 )
-        self.data_height = args.get( 'data_height', None )
-        ascending = self.levelsAreAscending()
-        
-        nz = len( self.lev ) 
-        if height_varname and (height_varname <> self.hgt_var) and (height_varname <> 'Levels' ):
-            hgt_var = self.df[ height_varname ]
-            if hgt_var:
-                self.hgt_var = height_varname
-                np_hgt_var_data_block = self.getDataBlock(hgt_var).flatten() 
-                if self.missing_value: np_hgt_var_data_block = numpy.ma.masked_equal( np_hgt_var_data_block, self.missing_value, False )
-                zdata = np_hgt_var_data_block.astype( numpy.float32 ) 
-#                print " setPointHeights: zdata shape = %s " % str( zdata.shape ); sys.stdout.flush()
-                self.vertical_bounds = ( zdata.min(), zdata.max() )  
-                if self.data_height == None: self.data_height = ( self.vertical_bounds[1] - self.vertical_bounds[0] )
-                self.point_data_arrays['z'] = zdata * ( ( self.maxStageHeight * z_scaling ) / self.data_height ) 
+    def setPointHeights( self, **args ):
+        if self.lev == None:
+            stage_height = 0.0
+            if self.point_layout == PlotType.List:
+                z_data = numpy.empty( self.lon_data.shape, self.lon_data.dtype ) 
+            elif self.point_layout == PlotType.Grid: 
+                z_data = numpy.empty( [ self.lon_data.shape[0] * self.lat_data.shape[0] ], self.lon_data.dtype ) 
+            z_data.fill( stage_height )
+            self.point_data_arrays['z'] = z_data
+        else: 
+            height_varname = args.get( 'height_var', None )
+            z_scaling = args.get( 'z_scale', 1.0 )
+            self.data_height = args.get( 'data_height', None )
+            ascending = self.levelsAreAscending()
+            
+            nz = len( self.lev ) if self.lev else 1
+            if height_varname and (height_varname <> self.hgt_var) and (height_varname <> 'Levels' ):
+                hgt_var = self.df[ height_varname ]
+                if hgt_var:
+                    self.hgt_var = height_varname
+                    np_hgt_var_data_block = self.getDataBlock(hgt_var).flatten() 
+                    if self.missing_value: np_hgt_var_data_block = numpy.ma.masked_equal( np_hgt_var_data_block, self.missing_value, False )
+                    zdata = np_hgt_var_data_block.astype( numpy.float32 ) 
+    #                print " setPointHeights: zdata shape = %s " % str( zdata.shape ); sys.stdout.flush()
+                    self.vertical_bounds = ( zdata.min(), zdata.max() )  
+                    if self.data_height == None: self.data_height = ( self.vertical_bounds[1] - self.vertical_bounds[0] )
+                    self.point_data_arrays['z'] = zdata * ( ( self.maxStageHeight * z_scaling ) / self.data_height ) 
+                else:
+                    print>>sys.stderr, "Can't find height var: %s " % height_varname
             else:
-                print>>sys.stderr, "Can't find height var: %s " % height_varname
-        else:
-            if ( z_scaling <> self.z_scaling ) or ( (height_varname <> self.hgt_var) and (height_varname == 'Levels' ) ):
-                self.z_scaling = z_scaling
-                if height_varname: self.hgt_var = height_varname
-                np_points_data_list = []
-                stage_height = ( self.maxStageHeight * z_scaling )
-                zstep = stage_height / nz
-                for iz in range( nz ):
-                    zvalue = iz * zstep
-                    if self.point_layout == PlotType.List:
-                        z_data = numpy.empty( self.lon_data.shape, self.lon_data.dtype ) 
-                    elif self.point_layout == PlotType.Grid: 
-                        z_data = numpy.empty( [ self.lon_data.shape[0] * self.lat_data.shape[0] ], self.lon_data.dtype ) 
-                    z_data.fill( zvalue )
-                    if ascending: np_points_data_list.append( z_data.flat )
-                    else: np_points_data_list.insert( 0, z_data.flat )
-    #            print "Sample z data value: %s" % str( np_points_data_list[0][0] )
-                self.point_data_arrays['z'] = numpy.concatenate( np_points_data_list ).astype( numpy.float32 ) 
-                self.vertical_bounds =  ( 0.0, stage_height )  
-            self.axis_bounds[ 'z' ] = self.vertical_bounds
+                if ( z_scaling <> self.z_scaling ) or ( (height_varname <> self.hgt_var) and (height_varname == 'Levels' ) ):
+                    self.z_scaling = z_scaling
+                    if height_varname: self.hgt_var = height_varname
+                    np_points_data_list = []
+                    stage_height = ( self.maxStageHeight * z_scaling )
+                    zstep = stage_height / nz
+                    for iz in range( nz ):
+                        zvalue = iz * zstep
+                        if self.point_layout == PlotType.List:
+                            z_data = numpy.empty( self.lon_data.shape, self.lon_data.dtype ) 
+                        elif self.point_layout == PlotType.Grid: 
+                            z_data = numpy.empty( [ self.lon_data.shape[0] * self.lat_data.shape[0] ], self.lon_data.dtype ) 
+                        z_data.fill( zvalue )
+                        if ascending: np_points_data_list.append( z_data.flat )
+                        else: np_points_data_list.insert( 0, z_data.flat )
+        #            print "Sample z data value: %s" % str( np_points_data_list[0][0] )
+                    self.point_data_arrays['z'] = numpy.concatenate( np_points_data_list ).astype( numpy.float32 ) 
+        self.vertical_bounds =  ( 0.0, stage_height )  
+        self.axis_bounds[ 'z' ] = self.vertical_bounds
 
     def computePoints( self, **args ):
-        nz = len( self.lev ) 
+        nz = len( self.lev ) if self.lev else 1
         if self.point_layout == PlotType.List:
             self.point_data_arrays['x'] = numpy.tile( self.lon_data.astype( numpy.float32 ), nz ) 
             self.point_data_arrays['y'] = numpy.tile( self.lat_data.astype( numpy.float32 ), nz )  
@@ -225,7 +235,7 @@ class PointCollection():
         except:
             return axis_ids
 
-    def getLatLon( self, varname, **args ):
+    def getLatLon( self, varname, grid_coords, **args ):
         data_file = self.df
         grid_file = self.gf
         if grid_file:
@@ -260,8 +270,11 @@ class PointCollection():
         if PlotType.validCoords( lat, lon ): 
             return  self.processCoordinates( lat.getValue(), lon.getValue() )
         
-        lat = data_file( "XLAT", squeeze=1 )  
-        lon = data_file( "XLONG", squeeze=1 )
+        
+        lon_coord = grid_coords[0] if grid_coords[0] else "XLONG"
+        lon = data_file( lon_coord, squeeze=1 )
+        lat_coord = grid_coords[1] if grid_coords[1] else "XLAT"
+        lat = data_file( lat_coord, squeeze=1 )  
         if PlotType.validCoords( lat, lon ): 
             return  self.processCoordinates( lat, lon )       
         return None, None
@@ -326,14 +339,14 @@ class PointCollection():
 
     def initialize( self, args, **cfg_args ): 
         self.configure( **cfg_args )
-        ( grid_file, data_file, varname, height_varname, var_proc_op ) = args
+        ( grid_file, data_file, varname, grid_coords, var_proc_op ) = args
         self.gf = cdms2.open( grid_file ) if grid_file else None
         self.df = cdms2.open( data_file )       
         self.var = self.getProcessedVariable( varname, var_proc_op )
         self.extractMetadata()
         self.grid = self.var.getGrid()
         self.lev = self.getLevel(self.var)
-        lon, lat = self.getLatLon( varname )                              
+        lon, lat = self.getLatLon( varname, grid_coords )                              
         self.time = self.var.getTime()
         z_scale = 0.5
         self.missing_value = self.var.attributes.get( 'missing_value', None )
@@ -343,8 +356,8 @@ class PointCollection():
                 if PlotType.isLevelAxis( axis[0].id.lower() ):
                     self.lev = axis[0]
                     break        
-        self.computePoints()
-        self.setPointHeights( height_var=height_varname, z_scale=z_scale )
+        self.computePoints() 
+        self.setPointHeights( height_var=grid_coords[2], z_scale=z_scale )
         np_var_data_block = self.getDataBlock(self.var).flatten()     
         if self.missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False )
         else: var_data = np_var_data_block
@@ -376,7 +389,7 @@ class PointCollection():
         return self.threshold_target
     
     def getNLevels(self):
-        return len( self.lev )
+        return len( self.lev ) if self.lev else 1
     
     def computeThresholdRange( self, args ):
         try:

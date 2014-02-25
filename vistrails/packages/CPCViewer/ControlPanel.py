@@ -769,7 +769,17 @@ class AnimationControl( TabbedControl ):
         super( AnimationControl, self ).build()
         self.x_tab_index, tab_layout = self.addTab('Run Controls')
         self.addButtonBox( [ "Run", "Step", "Stop" ], tab_layout )
-                
+ 
+class InfoGridControl( TabbedControl ): 
+    
+    def __init__(self, cparm, **args ):  
+        super( InfoGridControl, self ).__init__( cparm, **args )
+
+    def build(self):
+        super( InfoGridControl, self ).build()
+        self.x_tab_index, tab_layout = self.addTab('Run Controls')
+        self.addButtonBox( [ "Run", "Step", "Stop" ], tab_layout )
+              
 class VolumeControl( LevelingSliderControl ):
  
     def __init__(self, cparm, **args ):  
@@ -1020,6 +1030,8 @@ class ConfigurationWidget(QtGui.QWidget):
         self.AnalysisCatIndex = self.addCategory( 'Analysis' )
         cparm = self.cfgManager.addParameter( self.AnalysisCatIndex, "Animation" )
         self.addConfigControl( self.AnalysisCatIndex, AnimationControl( cparm ) )
+        cparm = self.cfgManager.addParameter( self.AnalysisCatIndex, "InfoGrid" )
+        self.addConfigControl( self.AnalysisCatIndex, InfoGridControl( cparm ) )
         
     def saveConfig(self):
         self.cfgManager.saveConfig()
@@ -1040,7 +1052,7 @@ class ConfigManager(QtCore.QObject):
         self.config_params[ key ] = cparm
 #        print "Add param[%s]" % key
                      
-    def saveConfg( self ):
+    def saveConfig( self ):
         try:
             f = open( self.cfgFile, 'w' )
             for config_item in self.config_params.items():
@@ -1057,7 +1069,7 @@ class ConfigManager(QtCore.QObject):
         self.addParam( key, cparm )
         return cparm
 
-    def readConfg( self ):
+    def readConfig( self ):
         try:
             f = open( self.cfgFile, 'r' )
             while( True ):
@@ -1077,7 +1089,7 @@ class ConfigManager(QtCore.QObject):
         if not self.cfgFile:
             self.cfgFile = os.path.join( self.cfgDir, "cpcConfig.txt" )
         else:
-            self.readConfg()            
+            self.readConfig()            
         emitter = self.controller if self.controller else self
         for config_item in self.config_params.items():
             emitter.emit( QtCore.SIGNAL("ConfigCmd"), ( "InitParm",  config_item[0], config_item[1] ) )
