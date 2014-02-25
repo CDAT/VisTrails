@@ -78,8 +78,9 @@ class PM_CPCViewer(PersistentVisualizationModule):
         if self.renwin <> None:
             if self.plotter == None:
                 self.plotter = CPCPlot( self.renwin ) 
-                op = None 
-                self.plotter.init( init_args = ( self.grid_file, self.data_file, self.varname, self.height_varname, op ), n_overview_points=self.n_overview_points ) # , n_subproc_points=100000000 )
+                op = None
+                grid_specs = ( None, None, None, self.height_varname) 
+                self.plotter.init( init_args = ( self.grid_file, self.data_file, self.varname, grid_specs, op ), n_overview_points=self.n_overview_points ) # , n_subproc_points=100000000 )
                 self.getConfigWidget()
                 DV3DPipelineHelper.denoteCPCViewer( self.moduleID )
                 app = get_vistrails_application()
@@ -96,7 +97,7 @@ class PM_CPCViewer(PersistentVisualizationModule):
         if PM_CPCViewer.PortSpecs == None:
             config_widget = ConfigurationWidget()
             config_widget.build()
-            PM_CPCViewer.PortSpecs = config_widget.getPersistentParameterSpecs()
+            PM_CPCViewer.PortSpecs = config_widget.cfgManager.getPersistentParameterSpecs()
         for port_spec in PM_CPCViewer.PortSpecs:
             name = port_spec[0]
             values_decl_list = port_spec[1]
