@@ -158,6 +158,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             print "WARNING: No data in second (obs) data set"
         print "Scanned files",self.path1,self.path2
         if type(self.observations) is list:
+            for i in range(self.comboBoxObservation.count()):
+                self.comboBoxObservation.removeItem(0)
             self.observations.sort()
             self.comboBoxObservation.setDuplicatesEnabled(False)
             self.comboBoxObservation.addItems(self.observations)
