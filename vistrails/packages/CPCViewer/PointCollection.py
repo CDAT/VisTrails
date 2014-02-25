@@ -116,6 +116,7 @@ class PointCollection():
         return np_var_data_block
     
     def processCoordinates( self, lat, lon ):
+#        print "Process Coordinates, lat = %s%s, lon = %s%s " % ( lat.id, str(lat.shape), lon.id, str(lon.shape)  )
         self.point_layout = self.getPointsLayout()
         nz = len( self.lev ) if self.lev else 1
         self.n_input_points = lsize(lat) * nz if ( self.point_layout == PlotType.List ) else lsize(lat) * lsize(lon) * nz
@@ -238,11 +239,11 @@ class PointCollection():
     def getLatLon( self, varname, grid_coords, **args ):
         data_file = self.df
         grid_file = self.gf
-        if grid_file:
-            lat = grid_file['lat']
-            lon = grid_file['lon']
-            if PlotType.validCoords( lat, lon ): 
-                return  self.processCoordinates( lat, lon )
+#         if grid_file:
+#             lat = grid_file['lat']
+#             lon = grid_file['lon']
+#             if PlotType.validCoords( lat, lon ): 
+#                 return  self.processCoordinates( lat, lon )
         Var = self.var        
         axis_ids = self.getAxisIds( Var )
         if axis_ids:
@@ -270,13 +271,32 @@ class PointCollection():
         if PlotType.validCoords( lat, lon ): 
             return  self.processCoordinates( lat.getValue(), lon.getValue() )
         
-        
-        lon_coord = grid_coords[0] if grid_coords[0] else "XLONG"
-        lon = data_file( lon_coord, squeeze=1 )
-        lat_coord = grid_coords[1] if grid_coords[1] else "XLAT"
-        lat = data_file( lat_coord, squeeze=1 )  
+        lon_coord = grid_coords[0] 
+        lon = data_file( lon_coord, squeeze=1 ) if lon_coord else None
+        lat_coord = grid_coords[1] 
+        lat = data_file( lat_coord, squeeze=1 )  if lat_coord else None 
         if PlotType.validCoords( lat, lon ): 
-            return  self.processCoordinates( lat, lon )       
+            return  self.processCoordinates( lat, lon )   
+        
+        axis_ids = []
+        longitude_names = [ 'longitude', 'column longitude' ]
+        latitude_names = [ 'latitude', 'column latitude' ]
+        for axis_spec in Var.getDomain():
+            if not ( axis_spec[0].isLevel() or axis_spec[0].isTime() ):
+                axis_ids.append( axis_spec[0].id ) 
+        for dset in [ data_file, grid_file ]:
+            if dset:
+                for cvar_name in dset.variables:
+                    cvar = dset[ cvar_name ]
+                    cvar_axis_ids = cvar.getAxisIds()
+                    if ( len( cvar_axis_ids ) == 1 ) and ( cvar_axis_ids[0] in axis_ids ):
+                        if hasattr( cvar, 'long_name' ):
+                            if ( cvar.long_name.lower() in longitude_names ):
+                                lon = dset( cvar.id, squeeze=1 )   
+                            elif ( cvar.long_name.lower() in latitude_names ):
+                                lat = dset( cvar.id, squeeze=1 )   
+        if PlotType.validCoords( lat, lon ): 
+            return  self.processCoordinates( lat, lon )   
         return None, None
     
     def setDataSlice(self, istart, **args ):
@@ -357,7 +377,7 @@ class PointCollection():
                     self.lev = axis[0]
                     break        
         self.computePoints() 
-        self.setPointHeights( height_var=grid_coords[2], z_scale=z_scale )
+        self.setPointHeights( height_var=grid_coords[3], z_scale=z_scale )
         np_var_data_block = self.getDataBlock(self.var).flatten()     
         if self.missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False )
         else: var_data = np_var_data_block

@@ -60,14 +60,14 @@ from packages.CPCViewer.PointCloudViewer import CPCPlot
 parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
 parser.add_argument( 'PATH' )
 parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
-parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CubedSphere", help='input data type')
+parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CAM", help='input data type')
 ns = parser.parse_args( sys.argv )
 
 kill_all_zombies()
 app = QtGui.QApplication(['Point Cloud Plotter'])
 point_size = 1
-n_overview_points = 500000
-grid_coords = ( None, None, None )
+n_overview_points = 500000000
+grid_coords = ( None, None, None, None )
 data_dir = os.path.expanduser( ns.data_dir )
 height_varnames = []
 var_proc_op = None
@@ -101,11 +101,11 @@ elif ns.data_type == "GEOD":
     varname = "temperature_ifc" # "vorticity" # 
     var_proc_op = None
 elif ns.data_type == "CubedSphere":
-    file_name =  "vsnow79-05.cam.h0.1979-06-02-00000.nc" # "vorticity_19010102_000000.nc" # 
-    data_file = os.path.join( data_dir, "CubedSphere", file_name )
+    file_name =  "vsnow00-10.cam.h1.2006-12-01-00000.nc" # "vorticity_19010102_000000.nc" # 
+    data_file = os.path.join( data_dir, "CubedSphere/3d", file_name )
     grid_file = None
-    grid_coords = ( 'lon', 'lat', 'lev' )
-    varname = "U850" # "vorticity" # 
+#    grid_coords = ( 'lon', 'lat', 'lev', None )
+    varname = "U"
     
 g = CPCPlot( ) 
 g.init( init_args = ( grid_file, data_file, varname, grid_coords, var_proc_op ), n_overview_points=n_overview_points, n_cores=1, show=showGui  )
