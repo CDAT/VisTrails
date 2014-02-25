@@ -776,9 +776,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 axis = None
                 if iCoord == 0: axis = tvar.getLongitude()
                 if iCoord == 1: axis = tvar.getLatitude()
+                if axis == None: return current_roi
                 axisvals = axis.getValue()          
                 if ( len( axisvals.shape) > 1 ):
-#                    displayMessage( "Curvilinear grids not currently supported by DV3D.  Please regrid. ")
                     return current_roi
                 newRoi[ iCoord ] = axisvals[0] # max( current_roi[iCoord], roiBounds[0] ) if current_roi else roiBounds[0]
                 newRoi[ 2+iCoord ] = axisvals[-1] # min( current_roi[2+iCoord], roiBounds[1] ) if current_roi else roiBounds[1]

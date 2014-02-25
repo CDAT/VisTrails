@@ -298,6 +298,9 @@ class CPCPlot(QtCore.QObject):
         self.labelBuff = ""
         self.configDialog = None
         self.renderWindow = vtk_render_window if ( vtk_render_window <> None ) else self.createRenderWindow()
+        self.renderWindowInteractor = self.renderWindow.GetInteractor()
+        style = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
+        self.renderWindowInteractor.SetInteractorStyle( style )
         self.process_mode = ProcessMode.Default
         self.config_mode = ConfigMode.Default
         self.xcenter = 100.0
