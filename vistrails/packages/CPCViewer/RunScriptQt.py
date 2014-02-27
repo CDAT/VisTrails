@@ -60,7 +60,7 @@ from packages.CPCViewer.PointCloudViewer import CPCPlot
 parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
 parser.add_argument( 'PATH' )
 parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
-parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CAM", help='input data type')
+parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CSU", help='input data type')
 ns = parser.parse_args( sys.argv )
 
 kill_all_zombies()
@@ -99,14 +99,18 @@ elif ns.data_type == "GEOD":
     data_file = os.path.join( data_dir, "GeodesicGrid", file_name )
     grid_file = os.path.join( data_dir, "GeodesicGrid", "grid.nc" )
     varname = "temperature_ifc" # "vorticity" # 
-    var_proc_op = None
 elif ns.data_type == "CubedSphere":
     file_name =  "vsnow00-10.cam.h1.2006-12-01-00000.nc" # "vorticity_19010102_000000.nc" # 
     data_file = os.path.join( data_dir, "CubedSphere/3d", file_name )
     grid_file = None
 #    grid_coords = ( 'lon', 'lat', 'lev', None )
     varname = "U"
-    
+elif ns.data_type == "CSU":
+    file_name =  "psfc.nc" 
+    data_file = os.path.join( data_dir, "ColoState", file_name )
+    grid_file = os.path.join( data_dir, "ColoState", "grid.nc" )
+    varname = "pressure" 
+
 g = CPCPlot( ) 
 g.init( init_args = ( grid_file, data_file, varname, grid_coords, var_proc_op ), n_overview_points=n_overview_points, n_cores=1, show=showGui  )
 g.createConfigDialog( showGui )
