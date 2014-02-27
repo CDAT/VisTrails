@@ -420,7 +420,7 @@ class LabeledSliderWidget( QtGui.QWidget ):
         if not self.useScaledValue: return slider_value
         fvalue = ( slider_value - self.minValue ) / float( self.maxValue - self.minValue ) 
         svalue = self.scaledMinValue + fvalue * ( self.scaledMaxValue - self.scaledMinValue )
-        print " getSliderValue: %s %d %f %f" % ( str(svalue), slider_value, fvalue, svalue )
+#        print " getSliderValue: %s %d %f %f" % ( str(svalue), slider_value, fvalue, svalue )
         return svalue
 
     def sliderMoved( self, raw_slider_value ):
@@ -680,7 +680,7 @@ class LevelingSliderControl( TabbedControl ):
         maxSlider = self.widgets[ self.maxvIndex ]
         if not minSlider.isTracking() and not maxSlider.isTracking():
             ( rmin, rmax )  = self.cparm.getRange()
-            print "Update Min Max sliders: %s " % str( ( rmin, rmax ) ); sys.stdout.flush()
+#            print "Update Min Max sliders: %s " % str( ( rmin, rmax ) ); sys.stdout.flush()
             minSlider.setSliderValue( rmin )
             maxSlider.setSliderValue( rmax )
                 
@@ -739,7 +739,7 @@ class RangeSliderControl( TabbedControl ):
         maxSlider = self.widgets[ self.maxvIndex ]
         if not minSlider.isTracking() and not maxSlider.isTracking():
             vrange  = self.cparm.getRange()
-            print "Update Min Max sliders: %s " % str( vrange ); 
+#            print "Update Min Max sliders: %s " % str( vrange ); 
             minSlider.setSliderValue( vrange[0] )
             maxSlider.setSliderValue( vrange[1] )
 

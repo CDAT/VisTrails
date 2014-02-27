@@ -155,9 +155,11 @@ class PointCollection():
     def levelsAreAscending(self):
         if self.lev == None: return True
         lev_positive_direction = self.lev.attributes.get('positive','up')
-        dlev = ( self.lev[-1] - self.lev[0] )
-        ascending = ( ( dlev > 0.0 ) and ( lev_positive_direction == 'down' ) ) or ( ( dlev < 0.0 ) and ( lev_positive_direction == 'up' ) )
-        return ascending
+        lev_values_ascending = ( self.lev[-1] > self.lev[0] )
+        if ( lev_positive_direction == 'down' ):
+            return not lev_values_ascending
+        else:
+            return lev_values_ascending
     
     def setPointHeights( self, **args ):
         if self.lev == None:
@@ -429,9 +431,23 @@ class PointCollection():
         if not isNone(var_data):
             arange = self.axis_bounds.get( self.threshold_target )
             if arange:
-                dv = arange[1] - arange[0]
-                vmin = arange[0] + rmin * dv
-                vmax = arange[0] + rmax * dv  
+                if ( self.threshold_target == 'z' ):
+                    nLev = len( self.lev )
+                    rave = (rmin + rmax)/2
+                    if not self.levelsAreAscending():
+                        dv = arange[1] - arange[0]
+                        vmin = arange[0] + rmin * dv
+                        vmax = arange[0] + rmax * dv  
+                        iLev = int(  nLev * (1.0-rave)  )    
+                    else:
+                        dv = arange[1] - arange[0]
+                        vmin = arange[1] - rmax * dv
+                        vmax = arange[1] - rmin * dv  
+                        iLev = int(  nLev * rave  )                
+                else:
+                    dv = arange[1] - arange[0]
+                    vmin = arange[0] + rmin * dv
+                    vmax = arange[0] + rmax * dv  
             elif self.threshold_target == 'vardata':
                 dv = self.vrange[1] - self.vrange[0]
                 try:
@@ -440,7 +456,12 @@ class PointCollection():
                 except TypeError, err:
                     pass
             if vmin <> None:
-                self.thresholded_range = [ vmin, vmax ]
+                if ( self.threshold_target == 'z' ):
+                    lev_val = self.lev[ iLev ]
+                    self.thresholded_range = [ lev_val, lev_val ]
+                    print "Z threshold Range: %d %f " % ( iLev, lev_val )
+                else:
+                    self.thresholded_range = [ vmin, vmax ]
                 return var_data, vmin, vmax
         return None, None, None
                     
