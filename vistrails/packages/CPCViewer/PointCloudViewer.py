@@ -941,7 +941,16 @@ class CPCPlot(QtCore.QObject):
         self.updateSlicing( self.sliceAxisIndex, slice_bounds, **args )
     
     def pushSlice( self, slice_pos ):
-        self.updateTextDisplay( " Slice Position: %s " % str( slice_pos ) )
+        if ( self.sliceAxisIndex  == 2 ):
+            lev = self.point_cloud_overview.point_collection.lev
+            if lev:
+                dw = self.widget_bounds[1] - self.widget_bounds[0]
+                iLev = int( (slice_pos-self.widget_bounds[0]) / dw )
+                self.updateTextDisplay( " Slice Position: %s " % str(  lev[ iLev ] ) )
+            else:
+                self.updateTextDisplay( " Slice Position: %s " % str( slice_pos ) )
+        else:
+            self.updateTextDisplay( " Slice Position: %s " % str( slice_pos ) )
         bounds = self.point_cloud_overview.getBounds()
         sindex = 2*self.sliceAxisIndex  
         self.setSlicePosition( ( slice_pos - bounds[sindex] ) / ( bounds[sindex+1] - bounds[sindex] ) )

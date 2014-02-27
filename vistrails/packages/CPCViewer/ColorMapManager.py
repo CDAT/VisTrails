@@ -73,7 +73,7 @@ class ColorMapManager():
         
     def setAlphaRange( self, arange ):
         self.alpha_range = arange
-        print "setAlphaRange: ", str( arange ); sys.stdout.flush()
+#        print "setAlphaRange: ", str( arange ); sys.stdout.flush()
         self.load_lut()
      
     @staticmethod
