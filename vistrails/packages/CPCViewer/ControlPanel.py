@@ -415,11 +415,13 @@ class LabeledSliderWidget( QtGui.QWidget ):
         self.value_pane.setText( str( scaled_slider_value ) )
         self.slider.setValue( index_value )      
 
-    def getSliderValue( self, slider_value = None ):
-        slider_value = self.slider.value() if not slider_value else slider_value
+    def getSliderValue( self, svalue = None ):
+        slider_value = self.slider.value() if ( svalue == None ) else svalue
         if not self.useScaledValue: return slider_value
         fvalue = ( slider_value - self.minValue ) / float( self.maxValue - self.minValue ) 
-        return self.scaledMinValue + fvalue * ( self.scaledMaxValue - self.scaledMinValue )
+        svalue = self.scaledMinValue + fvalue * ( self.scaledMaxValue - self.scaledMinValue )
+        print " getSliderValue: %s %d %f %f" % ( str(svalue), slider_value, fvalue, svalue )
+        return svalue
 
     def sliderMoved( self, raw_slider_value ):
         scaled_slider_value = self.getSliderValue( raw_slider_value )
