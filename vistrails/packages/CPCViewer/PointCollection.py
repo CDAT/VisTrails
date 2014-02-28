@@ -431,23 +431,9 @@ class PointCollection():
         if not isNone(var_data):
             arange = self.axis_bounds.get( self.threshold_target )
             if arange:
-                if ( self.threshold_target == 'z' ):
-                    nLev = len( self.lev )
-                    rave = (rmin + rmax)/2
-                    if not self.levelsAreAscending():
-                        dv = arange[1] - arange[0]
-                        vmin = arange[0] + rmin * dv
-                        vmax = arange[0] + rmax * dv  
-                        iLev = int(  nLev * (1.0-rave)  )    
-                    else:
-                        dv = arange[1] - arange[0]
-                        vmin = arange[1] - rmax * dv
-                        vmax = arange[1] - rmin * dv  
-                        iLev = int(  nLev * rave  )                
-                else:
-                    dv = arange[1] - arange[0]
-                    vmin = arange[0] + rmin * dv
-                    vmax = arange[0] + rmax * dv  
+                dv = arange[1] - arange[0]
+                vmin = arange[0] + rmin * dv
+                vmax = arange[0] + rmax * dv  
             elif self.threshold_target == 'vardata':
                 dv = self.vrange[1] - self.vrange[0]
                 try:
@@ -457,9 +443,12 @@ class PointCollection():
                     pass
             if vmin <> None:
                 if ( self.threshold_target == 'z' ):
+                    nLev = len( self.lev )
+                    rave = (rmin + rmax)/2
+                    iLev = int(  nLev * rave  )  if self.levelsAreAscending() else int(  nLev * (1.0-rave)  ) 
                     lev_val = self.lev[ iLev ]
                     self.thresholded_range = [ lev_val, lev_val ]
-                    print "Z threshold Range: %d %f " % ( iLev, lev_val )
+#                    print "Z threshold Range: %d %f " % ( iLev, lev_val )
                 else:
                     self.thresholded_range = [ vmin, vmax ]
                 return var_data, vmin, vmax
