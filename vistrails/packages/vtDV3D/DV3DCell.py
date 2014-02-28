@@ -1029,11 +1029,17 @@ class PM_MapCell3D( PM_DV3DCell ):
         if vtk.VTK_MAJOR_VERSION <= 5:  clip1.SetInput(baseImage)
         else:                           clip1.SetInputData(baseImage)        
         clip1.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
+        clip0.Update(); clip1.Update()
         
         append = vtk.vtkImageAppend()
-        append.SetAppendAxis( 0 )
-        append.SetInputConnection( clip1.GetOutputPort() )          
-        append.SetInputConnection( clip0.GetOutputPort() )   
+        append.SetAppendAxis( 0 )        
+        if vtk.VTK_MAJOR_VERSION <= 5: 
+            append.SetInput( 0, clip1.GetOutput() )          
+            append.SetInput( 1, clip0.GetOutput() ) 
+        else:   
+            append.SetInputData( 0, clip1.GetOutput() )          
+            append.SetInputData( 1, clip0.GetOutput() )         
+        append.Update()
         
         imageInfo = vtk.vtkImageChangeInformation()
         imageInfo.SetInputConnection( append.GetOutputPort() ) 
@@ -1043,6 +1049,7 @@ class PM_MapCell3D( PM_DV3DCell ):
         
         imageInfo.Update()
         result = imageInfo.GetOutput() 
+        resultExtent = result.GetExtent()
         return result
 
     def NormalizeMapLon( self, lon ): 
