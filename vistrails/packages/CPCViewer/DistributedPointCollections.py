@@ -657,7 +657,9 @@ class vtkLocalPointCloud( vtkPointCloud ):
         vmin, vmax = self.point_collection.execute( op_specs )       
         self.np_index_seq = self.point_collection.selected_index_array
         if self.threshold_target == "vardata": self.trange = ( vmin, vmax )
-        else: self.crange = ( vmin, vmax )
+        else: 
+            self.crange = ( vmin, vmax )
+            print "Set crange: ", str( self.crange )
         self.grid = self.point_collection.getGridType()
         self.current_scalar_range = self.vrange
         self.updateVertices() 
