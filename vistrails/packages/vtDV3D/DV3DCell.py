@@ -530,6 +530,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 return
             cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )  
     #        print " --- Clearing Cell %s ---" % cell_address
+            self.renderer.RemoveAllViewProps()
             pipeline = DV3DPipelineHelper.getPipeline( cell_address, sheetName )
             if pipeline == None: pipeline = self.getCurrentPipeline()
             if pipeline: UVCDATGuiConfigFunction.clearModules( pipeline )

@@ -1543,6 +1543,9 @@ class PersistentVisualizationModule( PersistentModule ):
  
     def disableVisualizationInteraction(self): 
         pass
+    
+    def clearWidget(self, sheetName, row, col ): 
+        pass
                       
     def setInputZScale( self, zscale_data, input_index=0, **args  ):
         ispec = self.inputSpecs[ input_index ] 

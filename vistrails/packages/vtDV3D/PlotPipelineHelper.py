@@ -1074,8 +1074,17 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
 #        from packages.uvcdat_cdms.init import CDMSVariableOperation 
 #        ConfigurableFunction.clear()
 #        memoryLogger.log( " start build_plot_pipeline_action" )
-        controller.change_selected_version(version)
+
+
+        db = ModuleStore.getDatabase()
+        for persistentModule in db.values():
+            try:
+                ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( persistentModule.moduleID ) 
+                persistentModule.clearWidget( sheetName, row, col )
+            except: pass
         DV3DPipelineHelper.plotIndexMap = {}
+        controller.change_selected_version(version)
+
 #        print "[%d,%d] ~~~~~~~~~~~~~~~>> build_plot_pipeline_action, version=%d, controller.current_version=%d" % ( row, col, version, controller.current_version )
 #        print " --> plot_modules = ",  str( controller.current_pipeline.modules.keys() )
 #        print " --> var_modules = ",  str( [ var.id for var in var_modules ] )
