@@ -800,7 +800,7 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
     def runProcess(self, procType, **args):
         process_spec = args.get( 'spec', None )
         if process_spec: self.current_spec[ procType ] = process_spec
-        else:            process_spec = self.current_spec[ procType ]
+        else:            process_spec = self.current_spec.get( procType, None )
         pc_base_index = args.get( 'pc_base_index', 0 )
         allow_processing =  args.get( 'allow_processing', True )
         if self.nActiveCollections > pc_base_index:

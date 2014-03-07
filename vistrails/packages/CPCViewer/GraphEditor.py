@@ -51,7 +51,50 @@ class TransferFunction( QtCore.QObject ):
         self.points = []
                 
     def setType(self, tf_type ):
-        self.type = tf_type    
+        self.type = tf_type
+
+    def getTransferFunctionPoints( self, data ):
+        self.data = [ list(data_pt) for data_pt in data ]
+        self.points = []
+        for data_pt in data:
+            args = data_pt[2] if len( data_pt ) > 2 else {}
+            n = NodeData( dx0=data_pt[0], y0=data_pt[1],  **args )
+            self.points.append( n )
+        return self.points
+    
+    def setDataPoint( self, index, x, y ):
+        data_pt = self.data[ index ]
+        data_pt[0] = x
+        data_pt[1] = y
+        
+    def getScaledData( self, xbounds ):
+        dx = xbounds[1] - xbounds[0]
+        sdata = [ ( ( d[0]-xbounds[0] ) / dx, d[1] ) for d in self.data ] 
+        return sdata
+
+    def addTransferFunctionPoint( self, new_data_pt, **args ):
+        new_points = []
+        new_data = []
+        new_node = None
+        bounds=[ self.data[0][0], 0.0, self.data[-1][0], 1.0 ]
+        for node, data_pt in zip( self.points, self.data ): 
+            if (new_node == None) and ( new_data_pt[0] < data_pt[0] ):
+                new_node = NodeData( dx0=new_data_pt[0], y0=new_data_pt[1], bounds=bounds,  **args )
+                new_points.append( new_node )
+                new_data.append( list(new_data_pt) )
+            new_points.append( node )
+            new_data.append( list(data_pt) )
+        self.points = new_points
+        self.data = new_data
+        return new_points
+    
+#    def updateBounds(self):
+#        num_nodes = len( self.points )
+#        for iN in range( 1, num_nodes-1 ):
+#            d0 = self.data[ iN-1 ]
+#            n = self.points[ iN ]
+#            d1 = self.data[ iN+1 ]
+#            n.setXBounds( d0[0], d1[0] )
                     
 def getScaledPoint( p ):   
     if len(p) > 4: return ( p[0] + p[4] * ( p[2] - p[0] ), p[1] + p[4] * ( p[3] - p[1] ) )
@@ -152,6 +195,7 @@ class NodeData( QtCore.QObject ):
         self.index =  args.get( "index", -1 )
         self.dx0 = args.get( "x", None )
         self.dx1 = args.get( "dx1", None )
+        self.xbound = args.get( "xbound", False )
         self.spt0 = None
         self.spt1 = None
         self.vector = None
@@ -209,6 +253,7 @@ class Node( QtGui.QGraphicsItem ):
         self.setFlag(QtGui.QGraphicsItem.ItemSendsGeometryChanges)
         self.setCacheMode(QtGui.QGraphicsItem.DeviceCoordinateCache)
         self.setZValue(1)
+        self.xbounded = False
         self.reset()
         
     def reset(self):
@@ -265,6 +310,9 @@ class Node( QtGui.QGraphicsItem ):
         self.setFlag( QtGui.QGraphicsItem.ItemIsMovable, isMovable )
         for edge in self.edgeList: edge.adjust()
         
+    def setXBounded( self, xbounded ):
+        self.xbounded = xbounded
+        
     def isMovable(self):
         return ( self.flags() & QtGui.QGraphicsItem.ItemIsMovable )
 
@@ -319,7 +367,8 @@ class Node( QtGui.QGraphicsItem ):
             for edge in self.edgeList: edge.adjust()
             if self.isSelected():
                 self.setSelected(True)
-                newPos = value.toPointF()                  
+                try:    newPos = value.toPointF() 
+                except: newPos = value                 
                 scaledPos = self.posConstraintVector.getScaling( newPos ) if self.posConstraintVector else float('NaN')                
                 self.graph.itemMoved( self.id, newPos.x(), newPos.y(), scaledPos )
             else: self.setSelected(False)
@@ -385,6 +434,7 @@ class GraphWidget(QtGui.QGraphicsView):
     configShape = 2 
     
     nodeMovedSignal = QtCore.SIGNAL("nodeMoved(int,float,float,float)") 
+    transferFunctionEditedSignal = QtCore.SIGNAL("transferFunctionEditedSignal") 
     moveCompletedSignal = QtCore.SIGNAL("moveCompleted()") 
     
     def __init__(self, **args ):
@@ -404,6 +454,7 @@ class GraphWidget(QtGui.QGraphicsView):
         self.buildTickLabelRects()
         self.configType = args.get( 'configType', self.configNone )
         self.hasChanges = False
+        self.needsRebuild = True
 
         scene = GraphScene(self)
         scene.setItemIndexMethod(QtGui.QGraphicsScene.NoIndex)
@@ -511,65 +562,19 @@ class GraphWidget(QtGui.QGraphicsView):
         font.setBold(True)
         painter.setFont(font)
         painter.setPen( QtCore.Qt.black )
-        dR = ( self.bounds[iAxis][1] - self.bounds[iAxis][0] ) / ( self.nticks[iAxis] - 1 )
+        bounds = self.bounds[0] if iAxis == 0 else self.bounds[1]
+        dR = ( bounds[1] - bounds[0] ) / ( self.nticks[iAxis] - 1 )
         for iTick in range( self.nticks[iAxis] ): 
             rect = self.tickLabels[iAxis][iTick]
-            coord_value = self.bounds[iAxis][0] + dR * iTick
+            coord_value = bounds[0] + dR * iTick
             painter.drawText( rect, self.labelTextAlignment[iAxis], flt2str( coord_value ) )
                      
-#    def createGraphTest( self, xbounds, ybounds, data ):
-#        self.data = []
-#        pre_points = None
-#        for point in data:
-#            if point[0] > xbounds[0]:
-#                if len(pre_points) > 0:
-#                    for point in pre_points:
-#                        s = ( xbounds[0] - last_point[0] ) / ( point[0] - pre_point[0] )
-#                        yval = pre_point[1] + ( point[1] - pre_point[1] ) * s
-#                        self.data.append( (xbounds[0],yval,False) )
-#                    pre_points = []
-#                self.data.append( point )
-#            else: pre_points.append( point )
-#        self.bounds = ( xbounds, ybounds )
-#        if len( self.nodes ) == 0: self.buildGraph()
-#        for iP in range( len( self.data ) ):
-#            ptdata = self.data[iP]
-#            if len( ptdata ) == 3:
-#                x, y = self.getScenePoint( ptdata, xbounds, ybounds )
-#                self.nodes[iP].setPos ( x, y )
-#                self.nodes[iP].setMovable( ptdata[2] )
-#            else:
-#                x0, y0 = self.getScenePoint( ptdata[0:2], xbounds, ybounds )
-#                x1, y1 = self.getScenePoint( ptdata[2:4], xbounds, ybounds )
-#                vector = MovementConstraintVector( QtCore.QPointF( x0, y0 ), QtCore.QPointF( x1, y1 ) )
-#                pt0 = vector.getPoint( ptdata[4] )
-#                self.nodes[iP].setPos ( pt0 )
-#                self.nodes[iP].setVector ( vector )
-#                if len( ptdata ) > 5: self.nodes[iP].addCoupledNode( self.nodes[ ptdata[5] ] )
-#        for iP in range( len( self.data ), self.maxNNodes ):
-#            self.nodes[iP].setPos ( self.size[0], self.size[1] )
-#            self.nodes[iP].setMovable( False )
-#        self.update()
 
-#    def createGraphWithPreNodes( self, xbounds, ybounds, data ):
-#        self.data = []
-#        pre_nodes = []
-#        for nodeData in data:
-#            point = nodeData.getDataPosition()
-#            if point[0] > xbounds[0]:
-#                if len(pre_nodes) > 0:
-#                    for pre_node in pre_nodes:
-#                        s = ( xbounds[0] - pre_node[0] ) / ( point[0] - pre_node[0] )
-#                        yval = pre_node[1] + ( point[1] - pre_node[1] ) * s
-#                        self.data.append( NodeData( dx0=xbounds[0], y0=yval ) )
-#                    pre_nodes = []
-#                self.data.append( nodeData )
-#            else: pre_nodes.append( point )
-#        self.bounds = ( xbounds, ybounds )
-#        if len( self.nodes ) == 0: self.buildGraph()
-#        self.updateGraph()
-
-    def createGraph( self, xbounds, ybounds ):
+    def createGraph( self, xbounds, ybounds, data=None ):
+        self.data = []
+        if data:
+            for nodeData in data:
+                self.data.append( nodeData )
         self.bounds = ( xbounds, ybounds )
         if len( self.nodes ) == 0: self.buildGraph()
         self.updateGraph()
@@ -595,6 +600,7 @@ class GraphWidget(QtGui.QGraphicsView):
             node.setMovable( nodeData.free )                
             node.setPos ( nodeData.getScenePosition() ) 
             node.setVisible ( True )
+            node.setXBounded( nodeData.xbound ) 
 #            bnds = nodeData.getBounds()
 #            if bnds:
 #                sbnds0 = self.getScenePoint( bnds[0:2] )
@@ -615,18 +621,20 @@ class GraphWidget(QtGui.QGraphicsView):
         num_nodes = len( self.nodes )
         for iP in range( num_nodes ):
             node = self.nodes[iP]
-            if iP == 0:
-                node.setBounds( [ 0, 0, 0, self.size[1] ] ) 
-            elif iP == (num_nodes-1):
-                node.setBounds( [ self.size[0], 0, self.size[0], self.size[1] ] ) 
+#            if iP == 0:
+#                node.setBounds( [ 0, 0, 0, self.size[1] ] ) 
+#            elif iP == (num_nodes-1):
+#                node.setBounds( [ self.size[0], 0, self.size[0], self.size[1] ] ) 
+            if node.xbounded:
+                node.setBounds( [ node.x(), 0, node.x(), self.size[1] ] ) 
             else:
-                n0 = self.nodes[iP-1].pos()
-                n1 = self.nodes[iP+1].pos()
+                n0 = node.pos() if iP == (num_nodes-1) else self.nodes[iP-1].pos()
+                n1 = node.pos() if iP == (num_nodes-1) else self.nodes[iP+1].pos()
                 node.setBounds( [ n0.x(), 0, n1.x(), self.size[1] ] ) 
         self.update()
             
     def getScenePoint(self, point ):
-        xbounds = self.bounds[0] 
+        xbounds = self.bounds[0]
         ybounds = self.bounds[1]
         dx = ( point[0] - xbounds[0] ) / ( xbounds[1] - xbounds[0] )
         dy = ( point[1] - ybounds[0] ) / ( ybounds[1] - ybounds[0] )
@@ -660,8 +668,14 @@ class GraphWidget(QtGui.QGraphicsView):
 #        print 'updateNode %d Data' % index, str( (x,y ) )
         nodeData = self.data[index]
         nodeData.setDataPoint( x, y )
+<<<<<<< HEAD
 #         if self.currentTransferFunction:
 #             self.currentTransferFunction.setDataPoint( index, x, y ) 
+=======
+        if self.currentTransferFunction:
+            self.currentTransferFunction.setDataPoint( index, x, y ) 
+            self.emit( self.transferFunctionEditedSignal, self.currentTransferFunction.getScaledData( self.bounds[0] ) )
+>>>>>>> Add opacity graph editor
 
     def mouseReleaseEvent( self, event ):
         super(GraphWidget, self).mouseReleaseEvent(event)
@@ -723,7 +737,7 @@ class GraphWidget(QtGui.QGraphicsView):
 
         # Text.
         textRect = QtCore.QRectF(sceneRect.left() + 4, sceneRect.top() - 20, sceneRect.width() - 4, sceneRect.height() - 4)
-        message =  "Drag the nodes, or drag in the Spreadsheet cell."
+        message =  "Drag graph nodes, shift-click on graph to add nodes."
 
         font = painter.font()
         font.setBold(True)
@@ -835,7 +849,13 @@ if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
     
     dialog = TransferFunctionConfigurationDialog()
+<<<<<<< HEAD
     dialog.createGraph( vrange )
+=======
+    vrange = [ -25.3, 35.6 ]
+    data = [ ( vrange[0], 0.0, { 'xbound': True } ), ( (vrange[0]+vrange[1])/2.0, 0.5, { } ),  ( vrange[1], 1.0, { 'xbound': True } ) ]
+    dialog.updateGraph( vrange, [ 0.0, 1.0 ], data )
+>>>>>>> Add opacity graph editor
     dialog.show()
     
 #    widget = GraphWidget( size=(400,300), nticks=(4,4) )

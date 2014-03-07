@@ -1,5 +1,6 @@
 from __future__ import with_statement
 from __future__ import division
+from GraphEditor import *
 
 _TRY_PYSIDE = True
 
@@ -161,7 +162,8 @@ class LevelingConfigParameter( ConfigParameter ):
         super( LevelingConfigParameter, self ).__init__( name, **args ) 
         self.wposSensitivity = args.get( 'pos_s', 0.05 )
         self.wsizeSensitivity = args.get( 'width_s', 0.05 )
-        self.computeRange()
+        if 'rmin' in args:  self.computeWindow()
+        else:               self.computeRange()
         self.scaling_bounds = None
         
     @property
@@ -299,6 +301,12 @@ class ConfigControl(QtGui.QWidget):
         
     def configValueChanged( self, args ): 
         pass
+    
+    def processParameterChange( self, args ):
+        pass
+
+    def processExtConfigCmd( self, args ):
+        pass
         
     def getName(self):
         return self.cparm.getName()
@@ -358,6 +366,9 @@ class ConfigControl(QtGui.QWidget):
             self.control_button = QtGui.QPushButton( self.getName() )
             self.connect( self.control_button,  QtCore.SIGNAL('clicked(bool)'), self.open )
             self.setMinimumWidth(450)
+            
+    def refresh(self):
+        pass
         
     def getButton(self):
         return self.control_button
@@ -371,8 +382,28 @@ class ConfigControl(QtGui.QWidget):
          
     def cancel(self):
         self.emit( QtCore.SIGNAL("ConfigCmd"), ( self.getName(), "Close", False ) )
+
+class ConfigWidget( QtGui.QWidget ):
+
+    def __init__(self, parent=None,  **args ): 
+        QtGui.QWidget .__init__( self, parent ) 
+        self.cparm = None
+        
+    def setParameters( self, cparm, widget_index, **args ):
+        self.cparm = cparm
+        self.widget_index = widget_index
+        self.args = args
+        
+    def sendConfigCmd( self, cfg_cmd ):
+        self.emit( QtCore.SIGNAL('ConfigCmd'), cfg_cmd )
+        
+    def processParameterChange( self, args ):
+        pass
+
+    def processExtConfigCmd( self, args ):
+        pass
       
-class LabeledSliderWidget( QtGui.QWidget ):
+class LabeledSliderWidget( ConfigWidget ):
     
     def __init__(self, index, label, **args ):  
         super( LabeledSliderWidget, self ).__init__()
@@ -437,9 +468,10 @@ class LabeledSliderWidget( QtGui.QWidget ):
 
     def configEnd( self ):
         self.emit( QtCore.SIGNAL('ConfigCmd'), 'End', self.slider_index ) 
+        
 
 class TabbedControl( ConfigControl ):
-    
+        
     def __init__(self, cparm, **args ):  
         ConfigControl.__init__( self, cparm, **args )
         self.args = args
@@ -452,6 +484,24 @@ class TabbedControl( ConfigControl ):
         layout.addWidget( slider  ) 
         self.widgets[slider_index] = slider
         return slider_index
+
+    def addConfigWidget(self, widget, layout, **args ):
+        widget_index = len( self.widgets ) 
+        widget.setParameters( self.cparm, widget_index, **args )
+        self.connect( widget, QtCore.SIGNAL('ConfigCmd'), self.processConfigCmd )
+        layout.addWidget( widget  ) 
+        self.widgets[widget_index] = widget
+        return widget_index
+
+    def processParameterChange( self, args ):
+        for cfg_widget in self.widgets.values():
+            try: cfg_widget.processParameterChange( args )
+            except: pass
+
+    def processExtConfigCmd( self, args ):
+        for cfg_widget in self.widgets.values():
+            try: cfg_widget.processExtConfigCmd( args )
+            except: pass
 
     def getTitle( self, widget_index ):
         w = self.widgets[widget_index]
@@ -514,6 +564,10 @@ class TabbedControl( ConfigControl ):
         else:
             self.cparm[ widget_name ] = widget_value
 #        self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), cbox_name, cbox_value ) )
+
+    def processConfigCmd(self, cmd ):
+#        self.cparm[ widget_index ] = values 
+        self.emit( QtCore.SIGNAL("ConfigCmd"),  cmd ) #[ self.getName(), cmd, widget_index, values ] )
 
 
     def getId( self, slider_index ):
@@ -708,25 +762,104 @@ class LevelingSliderControl( TabbedControl ):
     def sliderMoved( self, slider_index, raw_slider_value, scaled_slider_value ):
         ( wsize, wpos ) = self.getLevelingRange( slider_index, scaled_slider_value )
         self.cparm.setWindow( wpos, wsize )
-
-class RangeSliderControl( TabbedControl ):
-    
-    def __init__(self, cparm, **args ):  
-        super( RangeSliderControl, self ).__init__( cparm, **args )
-        self.range_tab_index = -1
-        self.args = args
         
+class OpacityGraphWidget( ConfigWidget ):
+
+    def __init__( self, parent ):
+        ConfigWidget.__init__( self, parent )  
+        self.graph = GraphWidget( size=(400,300), nticks=(5,5) )
+        self.connect( self.graph, GraphWidget.transferFunctionEditedSignal, self.transferFunctionEdited )
+#        self.connect( self.graph, GraphWidget.nodeMovedSignal, self.graphAdjusted )
+#        self.connect( self.graph, GraphWidget.moveCompletedSignal, self.doneConfig )
+        self.setLayout(QtGui.QVBoxLayout())
+        self.layout().addWidget( self.graph )         
+        self.trange = [ 0.0, 1.0 ]
+        
+    def processParameterChange( self, args ):
+#        print "OpacityGraphWidget.parameterValueChanged: ", str(args)
+        if ( args[0] == 'Threshold Range' ) and ( len(args) >= 5 ):
+            trange = [ None, None ]
+            for iArg in range(1,5):
+                if args[iArg] == 'rmin':
+                    trange[0] = args[iArg+1]
+                elif args[iArg] == 'rmax':
+                    trange[1] = args[iArg+1]
+            if trange[0] <> None:
+                self.graph.updateThresholdRange( trange )
+
+    def processExtConfigCmd( self, args ):
+        pass
+    
+    def doneConfig( self ):
+        self.emit( QtCore.SIGNAL('doneConfig()') )    
+    
+    def transferFunctionEdited(self, tfData ):
+        self.sendConfigCmd( [ 'Opacity Graph', tfData ] )
+            
+    def updateGraph( self, xbounds, ybounds, data=[] ):
+        self.graph.redrawGraph( xbounds, ybounds, data )
+
+class OpacityScaleControl( TabbedControl ):
+    
+    def __init__(self, cparm, tcparm, **args ):  
+        super( OpacityScaleControl, self ).__init__( cparm, **args )
+        self.threshold_cparm = tcparm
+        self.opacity_ramp_tab_index = -1
+        self.vbounds = args.get('vbounds', [ 0.0, 1.0 ] )
+        self.computeTBounds()
+        self.graph_widget = None
+        
+    def computeTBounds(self):
+        vrng = self.vbounds[1] - self.vbounds[0]
+        self.tbounds = [ self.vbounds[0] + vrng*self.threshold_cparm.rmin, self.vbounds[0] + vrng*self.threshold_cparm.rmax ]
+                           
     def build(self):
-        super( RangeSliderControl, self ).build()
+        super( OpacityScaleControl, self ).build()
         rmax = self.cparm[ 'rmax' ]
         rmin = self.cparm[ 'rmin' ]
-        self.range_tab_index, tab_layout = self.addTab('Opacity Ramp Function')
+        self.opacity_ramp_tab_index, tab_layout = self.addTab('Opacity Ramp Function')
         self.minvIndex = self.addSlider( "Bottom Opacity Value:", tab_layout, scaled_init_value=rmin, **self.args )
         self.maxvIndex = self.addSlider( "Top Opacity Value:", tab_layout, scaled_init_value=rmax, **self.args )
+        self.opacity_graph_tab_index, tab_layout = self.addTab('Opacity Graph Function')
+        self.graph_widget = OpacityGraphWidget(self)
+        self.build_graph()
+        self.graphIndex = self.addConfigWidget( self.graph_widget, tab_layout )
+                
+    def build_graph(self):
+        if self.tbounds[0]*self.tbounds[1] < 0.0:
+            midpoint = ( 0.0, 0.0, { 'xbound': True } ) 
+            if ( self.tbounds[1] > abs(self.tbounds[0]) ):
+                startpoint = ( self.tbounds[0], abs(self.tbounds[0]/self.tbounds[1]), { 'xbound': True }  ) 
+                end_point = ( self.tbounds[1], 1.0, { 'xbound': True }  ) 
+            else: 
+                startpoint = ( self.tbounds[0], 1.0, { 'xbound': True }  )
+                end_point =  ( self.tbounds[1], abs(self.tbounds[1]/self.tbounds[0]), { 'xbound': True }  ) 
+        else:
+            midpoint = ( (self.tbounds[0]+self.tbounds[1])/2.0, 0.5, {} ) 
+            startpoint = ( self.tbounds[0], 0.0, { 'xbound': True }  ) 
+            end_point = ( self.tbounds[1], 1.0, { 'xbound': True }  )
+        data = [ startpoint, midpoint,  end_point ]
+        print " Build Graph, tbounds = %s, data = %s " % ( str(self.tbounds), str(data) )
+        self.graph_widget.updateGraph( self.tbounds, [ 0.0, 1.0 ], data )
+        
+    def refresh(self):
+        self.computeTBounds()
+        self.build_graph()
+
+#    def processParameterChange( self, args ):
+#        TabbedControl.processParameterChange( self, args )
+#        if ( args[0] == 'Threshold Range' ) and ( len(args) >= 5 ):
+#            trange = [ None, None ]
+#            for iArg in range(1,5):
+#                if args[iArg] == 'rmin':
+#                    self.trange[0] = args[iArg+1]
+#                elif args[iArg] == 'rmax':
+#                    self.trange[1] = args[iArg+1]
+#            if self.trange[0] <> None: self.computeTBounds()
         
     def updateTabPanel(self, current_tab_index = -1 ): 
         self.updatingTabPanel = True
-        if self.range_tab_index >= 0:
+        if self.opacity_ramp_tab_index >= 0:
             self.updateMinMaxSliders()
         self.updatingTabPanel = False
             
@@ -738,10 +871,10 @@ class RangeSliderControl( TabbedControl ):
         minSlider = self.widgets[ self.minvIndex ]
         maxSlider = self.widgets[ self.maxvIndex ]
         if not minSlider.isTracking() and not maxSlider.isTracking():
-            vrange  = self.cparm.getRange()
-#            print "Update Min Max sliders: %s " % str( vrange ); 
-            minSlider.setSliderValue( vrange[0] )
-            maxSlider.setSliderValue( vrange[1] )
+            srange  = self.cparm.getRange()
+            print "Update Min Max sliders: %s " % str( srange ); 
+            minSlider.setSliderValue( srange[0] )
+            maxSlider.setSliderValue( srange[1] )
 
     def getRange(self, slider_index, value ):
         vmin = self.widgets[self.minvIndex].getSliderValue() if slider_index <> self.minvIndex else value
@@ -749,8 +882,8 @@ class RangeSliderControl( TabbedControl ):
         return ( vmin, vmax )
 
     def sliderMoved( self, slider_index, raw_slider_value, scaled_slider_value ):
-        vrange = self.getRange( slider_index, scaled_slider_value )
-        self.cparm.setRange( vrange )
+        vbounds = self.getRange( slider_index, scaled_slider_value )
+        self.cparm.setRange( vbounds )
 
 class ColorScaleControl( LevelingSliderControl ):
  
@@ -868,6 +1001,11 @@ class ConfigControlList(QtGui.QWidget):
     def clear(self):
         self.stackedWidget.setCurrentIndex ( self.blankWidgetIndex )
         
+    def refresh(self):
+        for ctrl in self.controls.values():
+            try: ctrl.refresh()
+            except: pass
+        
     def addControlRow(self):
         self.current_control_row = self.current_control_row + 1
         self.current_control_col = 0
@@ -915,21 +1053,22 @@ class ConfigControlContainer(QtGui.QWidget):
         
     def categorySelected( self, iCatIndex ):
         self.emit( QtCore.SIGNAL("ConfigCmd"), ( "CategorySelected",  self.tabWidget.tabText(iCatIndex) ) )
+        config_list = self.tabWidget.widget ( iCatIndex ) 
+        config_list.refresh()
 
 class CPCConfigGui(QtGui.QDialog):
 
-    def __init__(self, parent=None ):    
-        QtGui.QDialog.__init__( self, parent )
-                
+    def __init__(self, metadata={} ):    
+        QtGui.QDialog.__init__( self )     
         self.setWindowFlags(QtCore.Qt.Window)
         self.setModal(False)
         self.setWindowTitle('CPC Plot Config')
         layout = QtGui.QVBoxLayout()
         self.setLayout(layout)
-        self.config_widget = ConfigurationWidget()
+        self.config_widget = ConfigurationWidget( self, metadata )
         self.layout().addWidget( self.config_widget ) 
         self.config_widget.build()
-        self.resize(600, 450)
+        self.resize(700, 700)
 
     def closeDialog( self ):
         self.config_widget.saveConfig()
@@ -943,13 +1082,14 @@ class CPCConfigGui(QtGui.QDialog):
         
 class ConfigurationWidget(QtGui.QWidget):
 
-    def __init__(self, parent=None):    
+    def __init__(self, parent=None, metadata={} ):    
         QtGui.QWidget.__init__(self, parent)
+        self.metadata = metadata 
         layout = QtGui.QVBoxLayout()
         self.setLayout(layout)
         self.cfgManager = ConfigManager( self )
 
-        self.tagged_controls = {}
+        self.tagged_controls = []
                         
         self.scrollArea = QtGui.QScrollArea(self) 
         self.scrollArea.setFrameStyle(QtGui.QFrame.NoFrame)      
@@ -964,23 +1104,25 @@ class ConfigurationWidget(QtGui.QWidget):
     def addControl( self, iCatIndex, config_ctrl, id = None ):
         config_list = self.configContainer.getCategoryConfigList( iCatIndex )
         config_list.addControl( iCatIndex, config_ctrl )
-        self.tagged_controls[ id ] = config_ctrl
+        self.tagged_controls.append( config_ctrl )
     
     def parameterValueChanged( self, args ):
-        pass
-#        print "parameterValueChanged", str(args)
-        
+#        print "parameterValueChanged: ", str(args)
+        for config_ctrl in self.tagged_controls:
+            if config_ctrl:
+                config_ctrl.processParameterChange( args )
+                    
     def addConfigControl(self, iCatIndex, config_ctrl, id = None ):
         config_ctrl.build()
         self.addControl( iCatIndex, config_ctrl, id )
         self.connect( config_ctrl, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
         self.connect( config_ctrl.getParameter(), QtCore.SIGNAL("ValueChanged"), self.parameterValueChanged )
-        
-    def getConfigControl( self, id ):
-        return self.tagged_controls.get( id, None )
-        
+                
     def configTriggered( self, args ):
         self.emit( QtCore.SIGNAL("ConfigCmd"), args )
+        for config_ctrl in self.tagged_controls:
+            if config_ctrl:
+                config_ctrl.processExtConfigCmd( args )
 
     def addCategory(self, categoryName ):
         return self.configContainer.addCategory( categoryName )
@@ -1003,16 +1145,17 @@ class ConfigurationWidget(QtGui.QWidget):
         self.iColorCatIndex = self.addCategory( 'Color' )
         cparm = self.cfgManager.addParameter( self.iColorCatIndex, "Color Scale", wpos=0.5, wsize=1.0, ctype = 'Leveling' )
         self.addConfigControl( self.iColorCatIndex, ColorScaleControl( cparm ) )       
-        cparm = self.cfgManager.addParameter( self.iColorCatIndex, "Opacity Scale", rmin=0.0, rmax=1.0, ctype = 'Range'  )
-        self.addConfigControl( self.iColorCatIndex, RangeSliderControl( cparm ) )       
         cparm = self.cfgManager.addParameter( self.iColorCatIndex, "Color Map", Colormap="jet", Invert=1, Stereo=0, Colorbar=0  )
         self.addConfigControl( self.iColorCatIndex, ColormapControl( cparm ) )  
              
         self.iSubsetCatIndex = self.addCategory( 'Subsets' )
         cparm = self.cfgManager.addParameter( self.iSubsetCatIndex, "Slice Planes",  xpos=0.5, ypos=0.5, zpos=0.5, xhrwidth=0.0025, xlrwidth=0.005, yhrwidth=0.0025, ylrwidth=0.005 )
         self.addConfigControl( self.iSubsetCatIndex, SlicerControl( cparm, wrange=[ 0.0001, 0.02 ] ) ) # , "SlicerControl" )
-        cparm = self.cfgManager.addParameter( self.iSubsetCatIndex, "Threshold Range", wpos=0.5, wsize=0.2, ctype = 'Leveling' )
-        self.addConfigControl( self.iSubsetCatIndex, VolumeControl( cparm ) )
+        thresh_cparm = self.cfgManager.addParameter( self.iSubsetCatIndex, "Threshold Range", rmin=0.6, rmax=1.0, ctype = 'Leveling' )
+        self.addConfigControl( self.iSubsetCatIndex, VolumeControl( thresh_cparm ) )
+
+        op_cparm = self.cfgManager.addParameter( self.iColorCatIndex, "Opacity Scale", rmin=0.0, rmax=1.0, ctype = 'Range'  )
+        self.addConfigControl( self.iColorCatIndex, OpacityScaleControl( op_cparm, thresh_cparm, vbounds=self.metadata.get('vbounds', [ 0.0, 1.0 ] ) ) )       
                 
         self.iPointsCatIndex = self.addCategory( 'Points' )
         cparm = self.cfgManager.addParameter( self.iPointsCatIndex, "Point Size",  cats = [ ("Low Res", "# Pixels", 1, 20, 10 ), ( "High Res", "# Pixels",  1, 10, 3 ) ] )

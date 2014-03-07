@@ -53,20 +53,20 @@ except ImportError:
 #     Slot = QtCore.pyqtSlot
 #     Property = QtCore.pyqtProperty
 
-import os.path, sys, argparse, time
+import os, os.path, sys, argparse, time, multiprocessing
 from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
 from packages.CPCViewer.PointCloudViewer import CPCPlot
 
 parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
 parser.add_argument( 'PATH' )
 parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
-parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="MMF", help='input data type')
+parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="ECMWF", help='input data type')
 ns = parser.parse_args( sys.argv )
 
 kill_all_zombies()
 app = QtGui.QApplication(['Point Cloud Plotter'])
 point_size = 1
-n_overview_points = 500000000
+n_overview_points = 500000
 grid_coords = ( None, None, None, None )
 data_dir = os.path.expanduser( ns.data_dir )
 height_varnames = []
@@ -112,7 +112,7 @@ elif ns.data_type == "CSU":
     varname = "pressure" 
 
 g = CPCPlot( ) 
-g.init( init_args = ( grid_file, data_file, varname, grid_coords, var_proc_op ), n_overview_points=n_overview_points, n_cores=1, show=showGui  )
+g.init( init_args = ( grid_file, data_file, varname, grid_coords, var_proc_op ), n_overview_points=n_overview_points, n_cores=multiprocessing.cpu_count(), show=showGui  )
 g.createConfigDialog( showGui )
 
 renderWindow = g.renderWindow
