@@ -139,7 +139,7 @@ class PointCollection():
         xmax, xmin = self.lon_data.max(), self.lon_data.min()
         ymax, ymin = self.lat_data.max(), self.lat_data.min()
         self.axis_bounds[ 'x' ] = ( xmin, xmax )
-        self.axis_bounds[ 'y' ] = ( self.lat_data.min(), self.lat_data.max() )
+        self.axis_bounds[ 'y' ] = ( ymin, ymax )
         self.xcenter =  ( xmax + xmin ) / 2.0       
         self.xwidth =  ( xmax - xmin ) 
         self.ycenter =  ( ymax + ymin ) / 2.0       
@@ -155,9 +155,11 @@ class PointCollection():
     def levelsAreAscending(self):
         if self.lev == None: return True
         lev_positive_direction = self.lev.attributes.get('positive','up')
-        dlev = ( self.lev[-1] - self.lev[0] )
-        ascending = ( ( dlev > 0.0 ) and ( lev_positive_direction == 'down' ) ) or ( ( dlev < 0.0 ) and ( lev_positive_direction == 'up' ) )
-        return ascending
+        lev_values_ascending = ( self.lev[-1] > self.lev[0] )
+        if ( lev_positive_direction == 'down' ):
+            return not lev_values_ascending
+        else:
+            return lev_values_ascending
     
     def setPointHeights( self, **args ):
         if self.lev == None:
@@ -295,8 +297,14 @@ class PointCollection():
                                 lon = dset( cvar.id, squeeze=1 )   
                             elif ( cvar.long_name.lower() in latitude_names ):
                                 lat = dset( cvar.id, squeeze=1 )   
+                        if hasattr( cvar, 'standard_name' ):
+                            if ( cvar.standard_name.lower() in longitude_names ):
+                                lon = dset( cvar.id, squeeze=1 )   
+                            elif ( cvar.standard_name.lower() in latitude_names ):
+                                lat = dset( cvar.id, squeeze=1 )   
         if PlotType.validCoords( lat, lon ): 
-            return  self.processCoordinates( lat, lon )   
+            return  self.processCoordinates( lat, lon ) 
+        print>>sys.stdout, "Error, Can't find grid axes!"  
         return None, None
     
     def setDataSlice(self, istart, **args ):
@@ -316,7 +324,7 @@ class PointCollection():
                         grid_lev = self.gf[ axis.id ]
                         if grid_lev.isLevel():
                             axis.designateLevel()
-                            return grid_lev
+                            return grid_lev if ( grid_lev.shape[0] == axis.shape[0] ) else axis
                     except: pass
                 if axis.id in lev_aliases:
                     axis.designateLevel()
@@ -366,26 +374,26 @@ class PointCollection():
         self.extractMetadata()
         self.grid = self.var.getGrid()
         self.lev = self.getLevel(self.var)
-        lon, lat = self.getLatLon( varname, grid_coords )                              
-        self.time = self.var.getTime()
-        z_scale = 0.5
-        self.missing_value = self.var.attributes.get( 'missing_value', None )
-        if self.lev == None:
-            domain = self.var.getDomain()
-            for axis in domain:
-                if PlotType.isLevelAxis( axis[0].id.lower() ):
-                    self.lev = axis[0]
-                    break        
-        self.computePoints() 
-        self.setPointHeights( height_var=grid_coords[3], z_scale=z_scale )
-        np_var_data_block = self.getDataBlock(self.var).flatten()     
-        if self.missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False )
-        else: var_data = np_var_data_block
-        self.point_data_arrays['vardata'] = var_data
-        self.vrange = ( var_data.min(), var_data.max() ) 
-        self.var_data_cache[ self.iTimeStep ] = var_data
-        self.metadata['vbounds'] = self.vrange
-#        print "Read %d points." % self.getNumberOfPoints(); sys.stdout.flush()
+        lon, lat = self.getLatLon( varname, grid_coords )  
+        if ( id(lon) <> id(None) ) and ( id(lat) <> id(None) ):                                 
+            self.time = self.var.getTime()
+            z_scale = 0.5
+            self.missing_value = self.var.attributes.get( 'missing_value', None )
+            if self.lev == None:
+                domain = self.var.getDomain()
+                for axis in domain:
+                    if PlotType.isLevelAxis( axis[0].id.lower() ):
+                        self.lev = axis[0]
+                        break        
+            self.computePoints() 
+            self.setPointHeights( height_var=grid_coords[3], z_scale=z_scale )
+            np_var_data_block = self.getDataBlock(self.var).flatten()     
+            if self.missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False )
+            else: var_data = np_var_data_block
+            self.point_data_arrays['vardata'] = var_data
+            self.vrange = ( var_data.min(), var_data.max() ) 
+            self.var_data_cache[ self.iTimeStep ] = var_data
+            self.metadata['vbounds'] = self.vrange
         
     def getPoints(self):
         point_comps = [ self.point_data_arrays[comp].flat for comp in [ 'x', 'y', 'z'] ]
@@ -434,7 +442,15 @@ class PointCollection():
                 except TypeError, err:
                     pass
             if vmin <> None:
-                self.thresholded_range = [ vmin, vmax ]
+                if ( self.threshold_target == 'z' ):
+                    nLev = len( self.lev )
+                    rave = (rmin + rmax)/2
+                    iLev = int(  nLev * rave  )  if self.levelsAreAscending() else int(  nLev * (1.0-rave)  ) 
+                    lev_val = self.lev[ iLev ]
+                    self.thresholded_range = [ lev_val, lev_val ]
+#                    print "Z threshold Range: %d %f " % ( iLev, lev_val )
+                else:
+                    self.thresholded_range = [ vmin, vmax ]
                 return var_data, vmin, vmax
         return None, None, None
                     
@@ -442,8 +458,9 @@ class PointCollection():
         op = args[0] 
         if op == 'indices':    
             var_data, vmin, vmax = self.computeThresholdRange( args[1:] )
+            print " computeThresholdRange: %f %f " % ( vmin, vmax )
             if not isNone(var_data):
-                threshold_mask = numpy.logical_and( numpy.greater( var_data, vmin ), numpy.less( var_data, vmax ) ) 
+                threshold_mask = numpy.logical_and( numpy.greater_equal( var_data, vmin ), numpy.less_equal( var_data, vmax ) ) 
                 index_array = numpy.arange( 0, len(var_data) )
                 self.selected_index_array = index_array[ threshold_mask ]  
             return vmin, vmax   

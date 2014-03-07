@@ -87,14 +87,6 @@ class TransferFunction( QtCore.QObject ):
         self.points = new_points
         self.data = new_data
         return new_points
-    
-#    def updateBounds(self):
-#        num_nodes = len( self.points )
-#        for iN in range( 1, num_nodes-1 ):
-#            d0 = self.data[ iN-1 ]
-#            n = self.points[ iN ]
-#            d1 = self.data[ iN+1 ]
-#            n.setXBounds( d0[0], d1[0] )
                     
 def getScaledPoint( p ):   
     if len(p) > 4: return ( p[0] + p[4] * ( p[2] - p[0] ), p[1] + p[4] * ( p[3] - p[1] ) )
@@ -202,6 +194,12 @@ class NodeData( QtCore.QObject ):
 
     def getDataPoint(self):
         return ( self.dx0, self.y0  )
+
+    def x(self):
+        return self.dx0
+
+    def y(self):
+        return self.y0
 
     def setDataPoint(self, x, y ):
         self.dx0 = x 
@@ -469,7 +467,26 @@ class GraphWidget(QtGui.QGraphicsView):
         self.currentTransferFunction = None
         self.defaultTransferFunctionType = args.get( 'default_type', AbsValueTransferFunction )
         self.addTransferFunction( 'default' )
-               
+
+#    def getTransferFunctionPoints( self, node_data, **args ):
+#        self.data = []
+#        for data_pt in node_data: 
+#            n = NodeData( x=data_pt[0], y=data_pt[1],  **args )
+#            self.data.append( n )
+#        return self.data
+#    
+#    def addTransferFunctionPoint( self, new_data_pt, **args ):
+#        new_points = []
+#        new_node = None
+#        bounds=[ self.data[0].x(), 0.0, self.data[-1].x(), 1.0 ]
+#        for node in self.data:
+#            if (new_node == None) and ( new_data_pt[0] < node.x() ):
+#                new_node = NodeData( x=new_data_pt[0], y=new_data_pt[1], bounds=bounds,  **args )
+#                new_points.append( new_node )
+#            new_points.append( node )
+#        self.data = new_points
+#        return new_points
+        
     def clearSelection( self ):
         self.selectedNodeIndex = -99
         
@@ -558,9 +575,6 @@ class GraphWidget(QtGui.QGraphicsView):
         self.createGraph( xbounds, ybounds, nodes )
         
     def updateSelection( self, index ):
-        if index == 1004:
-            pass
-        print "updateSelection: ", str( index )
         self.selectedNodeIndex = index        
             
     def updateGraph(self):
@@ -642,7 +656,7 @@ class GraphWidget(QtGui.QGraphicsView):
         self.updateNodeBounds()
         
     def updateNodeData( self, index, x, y ):
-        print 'updateNode %d Data' % index, str( (x,y ) )
+#        print 'updateNode %d Data' % index, str( (x,y ) )
         nodeData = self.data[index]
         nodeData.setDataPoint( x, y )
         if self.currentTransferFunction:
@@ -661,7 +675,7 @@ class GraphWidget(QtGui.QGraphicsView):
             x, y = self.getDataPoint( spt.x(), spt.y() )
 #            print "Add point: ", str( [ x, y ] ), str( ( spt.x(), spt.y() ) )
             nodes = self.currentTransferFunction.addTransferFunctionPoint( [ x, y ] )
-            self.createGraph( self.bounds[0], self.bounds[1], nodes )
+            self.createGraph( self.tbounds, self.bounds[1], nodes )
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -677,13 +691,6 @@ class GraphWidget(QtGui.QGraphicsView):
             self.scaleView(1.2)
         elif key == QtCore.Qt.Key_Minus:
             self.scaleView(1 / 1.2)
-#        elif key == QtCore.Qt.Key_Space or key == QtCore.Qt.Key_Enter:
-#            xbounds = [ random.random()*0.4, 0.6 + random.random()*0.4 ]
-#            ybounds = [ 0.0, 1.0 ]
-#            npts = 7
-#            dx = ( xbounds[1]-xbounds[0] ) / ( npts - 1 )
-#            data = [ ( xbounds[0]+dx*i, random.random(), (random.random() > 0.5) ) for i in range(npts) ]
-#            self.createGraph( xbounds, ybounds, data )
         else:
             super(GraphWidget, self).keyPressEvent(event)
 
