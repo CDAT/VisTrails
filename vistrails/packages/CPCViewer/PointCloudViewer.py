@@ -363,7 +363,7 @@ class CPCPlot(QtCore.QObject):
         self.renderWindowInteractor.Start()
 
     def createConfigDialog( self, show=False ):
-        self.configDialog = CPCConfigGui()
+        self.configDialog = CPCConfigGui( self.point_cloud_overview.getMetadata() )
         w = self.configDialog.getConfigWidget()
         w.connect( w, QtCore.SIGNAL("ConfigCmd"), self.processConfigCmd )
     #    configDialog.connect( self, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )
@@ -990,6 +990,8 @@ class CPCPlot(QtCore.QObject):
             self.processPointSizeCommand( args[1:] )
         elif args[0] =='Opacity Scale':
             self.processOpacityScalingCommand( args[1:] )
+        elif args[0] =='Opacity Graph':
+            self.processOpacityGraphCommand( args[1:] )
         elif args[0] =='Vertical Scaling':
             self.processVerticalScalingCommand( args[1:] )
 
@@ -1101,6 +1103,11 @@ class CPCPlot(QtCore.QObject):
         if ( abs( arange[0] - alpha_range[0] ) > 0.1 ) or ( abs( arange[1] - alpha_range[0] ) > 0.1 ):
             colormapManager.setAlphaRange( arange )
             self.render()
+            
+    def processOpacityGraphCommand(self, args=None ):
+        colormapManager = self.getColormapManager()
+        colormapManager.setAlphaGraph( args[0] )
+        self.render()
                 
     def processVerticalScalingCommand(self, args=None ):
         if args and args[0] == "StartConfig":

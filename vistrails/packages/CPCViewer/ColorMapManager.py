@@ -16,13 +16,66 @@ colormap_file = open( pkl_path, 'rb' )
 colormaps = cPickle.load( colormap_file )
 colormap_file.close()
 
+class AlphaManager():
+    
+    def __init__( self ): 
+        self.graph_data = None
+        self.alpha_range = [ 0.0, 1.0 ]
+        self.ascale = None
+        self.n_col = None
+        self.graphEnabled = False
+        self.currentGraphNode = 0
+
+    def setNumberOfColors( self, n_col ):
+        self.n_col = n_col
+        self.ascale = ( self.alpha_range[1] - self.alpha_range[0] ) / ( n_col - 1 )
+
+    def getAlphaRange(self ):
+        return self.alpha_range
+        
+    def setAlphaRange(self, arange ):
+        self.alpha_range = arange
+        if self.n_col: self.ascale = ( self.alpha_range[1] - self.alpha_range[0] ) / ( self.n_col - 1 )
+        self.graphEnabled = False
+        
+    def enableGraph( self, enable ):
+        self.graphEnabled = enable
+        
+    def setGraphData( self, data ):
+        print " set Graph Data: ", str(data); sys.stdout.flush()
+        self.graph_data = data
+        self.graphEnabled = True
+        
+    def getAlphaValue( self, iCol ):
+        assert self.n_col, "Must call setNumberOfColors" 
+        if self.graphEnabled:
+            dval = iCol / float( self.n_col - 1 )
+            if iCol == 0: 
+                self.currentGraphNode = 0
+                gn0 = self.graph_data[0] 
+                return gn0[1]
+            elif iCol == ( self.n_col - 1 ): 
+                self.currentGraphNode = 0
+                gn0 = self.graph_data[-1] 
+                return gn0[1]
+            print " getAlphaValue [%d/%d]: %f, ig = %d, ng = %d: %s " % ( iCol, self.n_col, dval, self.currentGraphNode, len(self.graph_data), str(self.graph_data) ); sys.stdout.flush()
+            gn1 = self.graph_data[self.currentGraphNode+1]
+            if dval >= gn1[0]:
+                self.currentGraphNode = self.currentGraphNode+1
+                gn1 = self.graph_data[self.currentGraphNode+1]
+            gn0 = self.graph_data[self.currentGraphNode]            
+            s = ( gn1[1] - gn0[1] ) / ( gn1[0] - gn0[0] )
+            return gn0[1] + s * ( dval - gn0[0] )
+        else:
+            return self.alpha_range[0] + iCol*self.ascale
+
 class ColorMapManager():
     
     def __init__(self, lut, display_lut = None, **args ): 
         self.lut = lut   
         self.display_lut = vtk.vtkLookupTable() 
         self.number_of_colors =  args.get('ncolors',256)
-        self.alpha_range = [ 1.0, 1.0 ]
+        self.alphaManager = AlphaManager()
         self.colormapName = 'Spectral'
         self.colorBarActor = None
         self.invertColormap = 1
@@ -69,11 +122,14 @@ class ColorMapManager():
         return self.colorBarActor
        
     def getAlphaRange( self ):
-        return self.alpha_range
+        return self.alphaManager.getAlphaRange()
         
     def setAlphaRange( self, arange ):
-        self.alpha_range = arange
-        print "setAlphaRange: ", str( arange ); sys.stdout.flush()
+        self.alphaManager.setAlphaRange(arange) 
+        self.load_lut()
+
+    def setAlphaGraph(self, data ):
+        self.alphaManager.setGraphData( data ) 
         self.load_lut()
      
     @staticmethod
@@ -112,10 +168,10 @@ class ColorMapManager():
         n_col = len(lut_lst)
         vtk_lut.SetNumberOfColors( n_col )
         vtk_lut.Build()
-        ascale = ( self.alpha_range[1] - self.alpha_range[0] ) / ( n_col - 1 )
+        self.alphaManager.setNumberOfColors( n_col )
         for i in range(0, n_col):
             lt = lut_lst[i]
-            alpha = self.alpha_range[0] + i*ascale
+            alpha = self.alphaManager.getAlphaValue( i )
             vtk_lut.SetTableValue(i, lt[0], lt[1], lt[2], alpha )
     
     def check_lut_first_line(self, line, file_name=''):
@@ -186,7 +242,7 @@ class ColorMapManager():
     def load_lut_from_list(self, list):
         self.set_lut(self.lut, list) 
         self.lut.Modified()  
-        
+                
     def getColor( self, dval ):
         color = [ 0, 0, 0 ]
         self.lut.GetColor( dval, color )  
@@ -213,36 +269,8 @@ class ColorMapManager():
             if not n_color >= n_total:
                 lut = lut[::round(n_total/float(n_color))]
             self.load_lut_from_list(lut.tolist())
-        elif self.colormapName == 'blue-red':
-            if reverse:
-                hue_range = 0.0, 0.6667
-                saturation_range = 1.0, 1.0
-                value_range = 1.0, 1.0
-            else:
-                hue_range = 0.6667, 0.0
-                saturation_range = 1.0, 1.0
-                value_range = 1.0, 1.0
-        elif self.colormapName == 'black-white':
-            if reverse:
-                hue_range = 0.0, 0.0
-                saturation_range = 0.0, 0.0
-                value_range = 1.0, 0.0
-            else:
-                hue_range = 0.0, 0.0
-                saturation_range = 0.0, 0.0
-                value_range = 0.0, 1.0
         else:
             print>>sys.stderr, "Error-- Unrecognized colormap: %s" % self.colormapName
-        
-        if hue_range:        
-            self.lut.SetHueRange( hue_range )
-            self.lut.SetSaturationRange( saturation_range )
-            self.lut.SetValueRange( value_range )
-            self.lut.SetAlphaRange( self.alpha_range )
-            self.lut.SetNumberOfTableValues( self.number_of_colors )
-            self.lut.SetRampToSQRT()            
-            self.lut.Modified()
-            self.lut.ForceBuild()
             
         self.display_lut.SetTable( self.lut.GetTable() )
         self.display_lut.SetValueRange( self.lut.GetValueRange() )
