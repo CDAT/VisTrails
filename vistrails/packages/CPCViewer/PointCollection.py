@@ -360,7 +360,16 @@ class PointCollection():
     
     def extractMetadata( self ):
         self.metadata['var_name'] = getVarAttribute( self.var, [ 'long_name', 'name_in_file', 'id' ] )             
-        self.metadata['var_units'] = getVarAttribute( self.var, [ 'units' ] )        
+        self.metadata['var_units'] = getVarAttribute( self.var, [ 'units' ] ) 
+        vars = self.df.variables
+        ds_mdata = []
+        for var_item in  vars.items():
+            id = var_item[0] 
+            var =  var_item[1] 
+            name = var.long_name
+            units = var.units 
+            ds_mdata.append( [ id, name, units ] )  
+        self.metadata['dset_metadata'] = ds_mdata
 
     def getMetadata( self ):
         return self.metadata
