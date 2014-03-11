@@ -58,9 +58,13 @@ import os.path, traceback
 import vtk, time
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from packages.CPCViewer.DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType, kill_all_zombies
-from packages.CPCViewer.ControlPanel import CPCConfigGui, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP
+from packages.CPCViewer.ControlPanel import CPCConfigGui, CPCInfoVisGui, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP
 from packages.CPCViewer.ColorMapManager import *
 from packages.CPCViewer.MapManager import MapManager
+
+class InterfaceType:
+    ClimatePointCloud = 0
+    InfoVis = 1
 
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
@@ -361,9 +365,13 @@ class CPCPlot(QtCore.QObject):
     
     def start(self):
         self.renderWindowInteractor.Start()
+        
+    def getConfigGui(self, metadata, interface ):
+        if interface == InterfaceType.ClimatePointCloud: return CPCConfigGui(metadata)
+        if interface == InterfaceType.InfoVis: return CPCInfoVisGui(metadata)
 
-    def createConfigDialog( self, show=False ):
-        self.configDialog = CPCConfigGui( self.point_cloud_overview.getMetadata() )
+    def createConfigDialog( self, show=False, interface=InterfaceType.ClimatePointCloud ):
+        self.configDialog = self.getConfigGui( self.point_cloud_overview.getMetadata(), interface )
         w = self.configDialog.getConfigWidget()
         w.connect( w, QtCore.SIGNAL("ConfigCmd"), self.processConfigCmd )
     #    configDialog.connect( self, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )

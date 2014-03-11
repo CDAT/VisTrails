@@ -52,6 +52,8 @@ import os.path
 import vtk, time
 from compiler.ast import Name
 from ColorMapManager import ColorMapManager
+import vtk.util.numpy_support as VN
+
 POS_VECTOR_COMP = [ 'xpos', 'ypos', 'zpos' ]
 SLICE_WIDTH_LR_COMP = [ 'xlrwidth', 'ylrwidth', 'zlrwidth' ]
 SLICE_WIDTH_HR_COMP = [ 'xhrwidth', 'yhrwidth', 'zhrwidth' ]
@@ -1079,6 +1081,153 @@ class CPCConfigGui(QtGui.QDialog):
         
     def getConfigWidget(self):
         return self.config_widget
+
+class CPCInfoVisGui(QtGui.QDialog):
+
+    def __init__(self, metadata={} ):    
+        QtGui.QDialog.__init__( self )     
+                
+        self.setWindowFlags(QtCore.Qt.Window)
+        self.setModal(False)
+        self.setWindowTitle('CPC InfoVis Config')
+        layout = QtGui.QVBoxLayout()
+        self.setLayout(layout)
+        self.config_widget = InfoVisWidget( self, metadata )
+        self.layout().addWidget( self.config_widget ) 
+        self.config_widget.build()
+        self.resize(600, 450)
+
+    def closeDialog( self ):
+        self.config_widget.saveConfig()
+        self.close()
+
+    def activate(self):
+        self.config_widget.activate()
+        
+    def getConfigWidget(self):
+        return self.config_widget
+
+class InfoVisWidget(QtGui.QWidget):
+
+    def __init__(self, parent=None, metadata={} ):    
+        QtGui.QWidget.__init__(self, parent)
+        self.metadata = metadata 
+        layout = QtGui.QVBoxLayout()
+        self.setLayout(layout)
+        self.cfgManager = ConfigManager( self )
+
+        self.tagged_controls = []
+                        
+        self.scrollArea = QtGui.QScrollArea(self) 
+        self.scrollArea.setFrameStyle(QtGui.QFrame.NoFrame)      
+        self.scrollArea.setWidgetResizable(True)
+        
+        self.configContainer = ConfigControlContainer( self.scrollArea )
+        self.scrollArea.setWidget( self.configContainer )
+        self.scrollArea.setSizePolicy( QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding )
+        layout.addWidget(self.scrollArea)       
+        self.connect( self.configContainer, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
+
+    def addControl( self, iCatIndex, config_ctrl, id = None ):
+        config_list = self.configContainer.getCategoryConfigList( iCatIndex )
+        config_list.addControl( iCatIndex, config_ctrl )
+        self.tagged_controls.append( config_ctrl )
+    
+    def parameterValueChanged( self, args ):
+#        print "parameterValueChanged: ", str(args)
+        for config_ctrl in self.tagged_controls:
+            if config_ctrl:
+                config_ctrl.processParameterChange( args )
+                    
+    def addConfigControl(self, iCatIndex, config_ctrl, id = None ):
+        config_ctrl.build()
+        self.addControl( iCatIndex, config_ctrl, id )
+        self.connect( config_ctrl, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
+        self.connect( config_ctrl.getParameter(), QtCore.SIGNAL("ValueChanged"), self.parameterValueChanged )
+                
+    def configTriggered( self, args ):
+        self.emit( QtCore.SIGNAL("ConfigCmd"), args )
+        for config_ctrl in self.tagged_controls:
+            if config_ctrl:
+                config_ctrl.processExtConfigCmd( args )
+
+    def addCategory(self, categoryName ):
+        return self.configContainer.addCategory( categoryName )
+
+    def addControlRow( self, tab_index ):
+        cfgList = self.configContainer.getCategoryConfigList( tab_index )
+        cfgList.addControlRow()
+        
+    def activate(self):
+        self.cfgManager.initParameters()
+        self.configContainer.selectCategory( self.iVariableCatIndex )
+                           
+    def getCategoryName( self, iCatIndex ):
+        return self.configContainer.getCategoryName( iCatIndex )
+    
+    def askToSaveChanges(self):
+        self.emit( QtCore.SIGNAL("Close"), self.getParameterPersistenceList() )
+
+    def build( self, **args ):
+        self.iVariablesCatIndex = self.addCategory( 'Variables' )
+
+    def saveConfig(self):
+        self.cfgManager.saveConfig()
+
+    def generateParallelCoordinatesChart( self ):
+        input = self.inputModule().getOutput() 
+        ptData = input.GetPointData()
+        narrays = ptData.GetNumberOfArrays()
+        arrays = []
+        # Create a table with some points in it...
+        table = vtk.vtkTable()
+        for iArray in range( narrays ):
+            table.AddColumn(  ptData.GetArray( iArray ) )                  
+        
+        # Set up a 2D scene, add an XY chart to it
+        view = vtk.vtkContextView()
+#        view.SetRenderer( self.renderer )    
+#        view.SetRenderWindow( self.renderer.GetRenderWindow() )
+        view.GetRenderer().SetBackground(1.0, 1.0, 1.0)
+        view.GetRenderWindow().SetSize(600,300)
+        
+        chart = vtk.vtkChartParallelCoordinates()
+        
+        brush = vtk.vtkBrush()
+        brush.SetColorF (0.1,0.1,0.1)
+        chart.SetBackgroundBrush(brush)
+        
+        # Create a annotation link to access selection in parallel coordinates view
+        annotationLink = vtk.vtkAnnotationLink()
+        # If you don't set the FieldType explicitly it ends up as UNKNOWN (as of 21 Feb 2010)
+        # See vtkSelectionNode doc for field and content type enum values
+        annotationLink.GetCurrentSelection().GetNode(0).SetFieldType(1)     # Point
+        annotationLink.GetCurrentSelection().GetNode(0).SetContentType(4)   # Indices
+        # Connect the annotation link to the parallel coordinates representation
+        chart.SetAnnotationLink(annotationLink)
+        
+        view.GetScene().AddItem(chart)
+                
+        
+        chart.GetPlot(0).SetInput(table)
+        
+        def selectionCallback(caller, event):
+                annSel = annotationLink.GetCurrentSelection()
+                if annSel.GetNumberOfNodes() > 0:
+                        idxArr = annSel.GetNode(0).GetSelectionList()
+                        if idxArr.GetNumberOfTuples() > 0:
+                                print VN.vtk_to_numpy(idxArr)
+        
+        # Set up callback to update 3d render window when selections are changed in 
+        #       parallel coordinates view
+        annotationLink.AddObserver("AnnotationChangedEvent", selectionCallback)
+                
+#        view.ResetCamera()
+#        view.Render()       
+#        view.GetInteractor().Start()
+        return view 
+
+
         
 class ConfigurationWidget(QtGui.QWidget):
 

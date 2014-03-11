@@ -55,12 +55,12 @@ except ImportError:
 
 import os, os.path, sys, argparse, time, multiprocessing
 from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
-from packages.CPCViewer.PointCloudViewer import CPCPlot
+from packages.CPCViewer.PointCloudViewer import CPCPlot, InterfaceType
 
 parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
 parser.add_argument( 'PATH' )
 parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
-parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="ECMWF", help='input data type')
+parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CAM", help='input data type')
 ns = parser.parse_args( sys.argv )
 
 kill_all_zombies()
@@ -72,6 +72,8 @@ data_dir = os.path.expanduser( ns.data_dir )
 height_varnames = []
 var_proc_op = None
 showGui = True
+interface = InterfaceType.InfoVis
+
 
 if ns.data_type == "WRF":
     data_file = os.path.join( data_dir, "WRF/wrfout_d01_2013-07-01_00-00-00.nc" )
@@ -113,8 +115,7 @@ elif ns.data_type == "CSU":
 
 g = CPCPlot( ) 
 g.init( init_args = ( grid_file, data_file, varname, grid_coords, var_proc_op ), n_overview_points=n_overview_points, n_cores=multiprocessing.cpu_count(), show=showGui  )
-g.createConfigDialog( showGui )
-
+g.createConfigDialog( showGui, interface )
 renderWindow = g.renderWindow
  
 app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
