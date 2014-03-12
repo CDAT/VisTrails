@@ -55,7 +55,8 @@ except ImportError:
 
 import os, os.path, sys, argparse, time, multiprocessing
 from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
-from packages.CPCViewer.PointCloudViewer import CPCPlot, InterfaceType
+from packages.CPCViewer.PointCloudViewer import CPCPlot
+from packages.CPCViewer.MultiVarPointCollection import InterfaceType
 
 parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
 parser.add_argument( 'PATH' )
@@ -72,7 +73,7 @@ data_dir = os.path.expanduser( ns.data_dir )
 height_varnames = []
 var_proc_op = None
 showGui = True
-interface = InterfaceType.InfoVis
+interface = InterfaceType.ClimatePointCloud
 
 
 if ns.data_type == "WRF":
@@ -114,8 +115,8 @@ elif ns.data_type == "CSU":
     varname = "pressure" 
 
 g = CPCPlot( ) 
-g.init( init_args = ( grid_file, data_file, varname, grid_coords, var_proc_op ), n_overview_points=n_overview_points, n_cores=multiprocessing.cpu_count(), show=showGui  )
-g.createConfigDialog( showGui, interface )
+g.init( init_args = ( grid_file, data_file, interface, varname, grid_coords, var_proc_op ), n_overview_points=n_overview_points, n_cores=multiprocessing.cpu_count(), show=showGui  )   # multiprocessing.cpu_count()       
+g.createConfigDialog( showGui )
 renderWindow = g.renderWindow
  
 app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
