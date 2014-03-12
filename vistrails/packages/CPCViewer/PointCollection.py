@@ -376,7 +376,7 @@ class PointCollection():
 
     def initialize( self, args, **cfg_args ): 
         self.configure( **cfg_args )
-        ( grid_file, data_file, varname, grid_coords, var_proc_op ) = args
+        ( grid_file, data_file, interface, varname, grid_coords, var_proc_op ) = args
         self.gf = cdms2.open( grid_file ) if grid_file else None
         self.df = cdms2.open( data_file )       
         self.var = self.getProcessedVariable( varname, var_proc_op )
@@ -419,13 +419,13 @@ class PointCollection():
     def getVarData(self):
         return  self.point_data_arrays.get( 'vardata', None )
 
-    def getVarDataRange(self):
+    def getVarDataRange( self ):
         return self.vrange
 
     def getThresholdedRange(self):
         return self.thresholded_range
     
-    def getThresholdTarget(self):
+    def getThresholdTargetType(self):
         return self.threshold_target
     
     def getNLevels(self):
@@ -468,8 +468,8 @@ class PointCollection():
     def execute( self, args, **kwargs ): 
         op = args[0] 
         if op == 'indices':    
-            var_data, vmin, vmax = self.computeThresholdRange( args[1:] )
-            print " computeThresholdRange: %f %f " % ( vmin, vmax )
+            var_data, vmin, vmax = self.computeThresholdRange( args[1] )
+#            print " computeThresholdRange: %f %f " % ( vmin, vmax )
             if not isNone(var_data):
                 threshold_mask = numpy.logical_and( numpy.greater_equal( var_data, vmin ), numpy.less_equal( var_data, vmax ) ) 
                 index_array = numpy.arange( 0, len(var_data) )

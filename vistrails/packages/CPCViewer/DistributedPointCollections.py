@@ -53,7 +53,8 @@ import numpy
 from cdms2.error import CDMSError
 import vtk,  time,  math
 from vtk.util import numpy_support
-from PointCollection import PointCollection, PlotType, isNone
+from MultiVarPointCollection import MultiVarPointCollection, PlotType, isNone
+from PointCollection import PointCollection
 from multiprocessing import Process, Queue
 
 class ScalarRangeType:         
@@ -106,7 +107,7 @@ class ExecutionDataPacket:
 class PointCollectionExecutionTarget:
 
     def __init__( self, collection_index, ncollections, init_args=None, **cfg_args ):
-        self.point_collection = PointCollection() 
+        self.point_collection = MultiVarPointCollection() 
         self.point_collection.setDataSlice( collection_index, istep=ncollections )
         self.collection_index = collection_index
         self.ncollections = ncollections
@@ -163,10 +164,11 @@ class PointCollectionExecutionTarget:
 
     def packIndexData( self ):
         data_packet = ExecutionDataPacket( ExecutionDataPacket.INDICES, self.collection_index, self.point_collection.getPointIndices() )
-        target = self.point_collection.getThresholdTarget()
-        range_type = 'trange' if ( target == "vardata" ) else "crange"
-        data_packet[ range_type ] = self.point_collection.getThresholdedRange() 
+        target = self.point_collection.getThresholdTargetType()
+#        range_type = 'trange' if ( target == "vardata" ) else "crange"
+#        data_packet[ target ] = self.point_collection.getThresholdTargetType() 
         data_packet[ 'target' ] = target
+        data_packet[ 'trange' ] = self.point_collection.getThresholdedRange()
         return data_packet
 
 class vtkPointCloud(QtCore.QObject):
@@ -234,7 +236,7 @@ class vtkPointCloud(QtCore.QObject):
     def getThresholdingRange(self):       
         return self.trange if ( self.threshold_target == "vardata" ) else self.crange
     
-    def getValueRange( self, range_type = ScalarRangeType.Full ):
+    def getValueRange( self, var_name=None, range_type = ScalarRangeType.Full ):
         return self.vrange if ( range_type == ScalarRangeType.Full ) else self.trange
    
     def generateSubset(self, **args ):
@@ -529,7 +531,7 @@ class vtkSubProcPointCloud( vtkPointCloud ):
             self.np_index_seq = None
 #             if self.pcIndex == 1: 
 #                 self.printLogMessage( " vtkSubProcPointCloud --->> Generate subset: %s " % str(self.current_subset_specs) )
-            op_specs = [ 'indices' ] + list(self.current_subset_specs)
+            op_specs = [ 'indices', list(self.current_subset_specs) ]
             self.arg_queue.put( op_specs,  False ) 
 
     def generateZScaling(self, **args ):
@@ -594,7 +596,7 @@ class vtkSubProcPointCloud( vtkPointCloud ):
 #             if self.pcIndex == 1:
 #                 self.printLogMessage(  " vtkSubProcPointCloud --->> Process Results, Args: %s " % str(result['args']) )
             self.updateVertices()  
-#            print " processResults[ %d ] : INDICES" % self.pcIndex; sys.stdout.flush()
+#            print " processResults[ %d ] : INDICES, metadata = %s " % ( self.pcIndex, str(result.metadata)); sys.stdout.flush()
         elif result.type == ExecutionDataPacket.HEIGHTS:
 #            print " processResults[ %d ] : POINTS" % self.pcIndex; sys.stdout.flush()
             self.setPointHeights( result.data )
@@ -630,7 +632,7 @@ class vtkLocalPointCloud( vtkPointCloud ):
 
     def __init__( self, istart, **args ):
         vtkPointCloud.__init__( self )
-        self.point_collection = PointCollection()
+        self.point_collection = MultiVarPointCollection()
         self.point_collection.setDataSlice( istart, **args )
         
     def getMetadata( self ):
@@ -653,13 +655,13 @@ class vtkLocalPointCloud( vtkPointCloud ):
 #         if self.current_subset_specs[0] == 'Z3':
 #             print " vtkLocalPointCloud[%d]: current_subset_specs: %s (%s) " % ( self.pcIndex, self.current_subset_specs, str(args) )
         self.threshold_target = self.current_subset_specs[0]
-        op_specs = [ 'indices' ] + list(self.current_subset_specs)
+        op_specs = [ 'indices', list(self.current_subset_specs) ]
         vmin, vmax = self.point_collection.execute( op_specs )       
         self.np_index_seq = self.point_collection.selected_index_array
         if self.threshold_target == "vardata": self.trange = ( vmin, vmax )
         else: 
             self.crange = ( vmin, vmax )
-            print "Set crange: ", str( self.crange )
+#            print "Set crange: ", str( self.crange )
         self.grid = self.point_collection.getGridType()
         self.current_scalar_range = self.vrange
         self.updateVertices() 
@@ -674,7 +676,7 @@ class vtkLocalPointCloud( vtkPointCloud ):
     def initialize(self, init_args, **args ):
         self.point_collection.initialize( init_args, **args )
         self.np_points_data = self.point_collection.getPoints()
-        self.vrange = self.point_collection.vrange
+        self.vrange = self.point_collection.getVarDataRange()
         self.initPoints( **args ) 
         self.createPolydata( **args )
         self.vardata = self.point_collection.getVarData()
@@ -839,7 +841,7 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
     def applyColorRange( self, range_type ):
         color_range = [ float("inf"), -float("inf") ]
         for pc in self.point_clouds.values():
-            crange = pc.getValueRange( range_type )
+            crange = pc.getValueRange( None, range_type )
             color_range[0] = min( color_range[0], crange[0])
             color_range[1] = max( color_range[1], crange[1])
         self.setScalarRange( color_range )

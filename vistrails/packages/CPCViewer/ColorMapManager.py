@@ -58,7 +58,7 @@ class AlphaManager():
                 self.currentGraphNode = 0
                 gn0 = self.graph_data[-1] 
                 return gn0[1]
-            print " getAlphaValue [%d/%d]: %f, ig = %d, ng = %d: %s " % ( iCol, self.n_col, dval, self.currentGraphNode, len(self.graph_data), str(self.graph_data) ); sys.stdout.flush()
+#            print " getAlphaValue [%d/%d]: %f, ig = %d, ng = %d: %s " % ( iCol, self.n_col, dval, self.currentGraphNode, len(self.graph_data), str(self.graph_data) ); sys.stdout.flush()
             gn1 = self.graph_data[self.currentGraphNode+1]
             if dval >= gn1[0]:
                 self.currentGraphNode = self.currentGraphNode+1

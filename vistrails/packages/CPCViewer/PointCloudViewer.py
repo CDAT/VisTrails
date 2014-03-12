@@ -55,10 +55,7 @@ from packages.CPCViewer.DistributedPointCollections import vtkPartitionedPointCl
 from packages.CPCViewer.ControlPanel import CPCConfigGui, CPCInfoVisGui, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP
 from packages.CPCViewer.ColorMapManager import *
 from packages.CPCViewer.MapManager import MapManager
-
-class InterfaceType:
-    ClimatePointCloud = 0
-    InfoVis = 1
+from packages.CPCViewer.MultiVarPointCollection import InterfaceType
 
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
@@ -1451,8 +1448,9 @@ class CPCPlot(QtCore.QObject):
             pc.setScalarRange( self.scalarRange.getScaledRange() )
             self.updateZRange( pc )
             trng = pc.getThresholdingRange() 
-            text = " Thresholding Range[%d]: ( %.3f, %.3f )\n Colormap Range: %s " % ( pcIndex, trng[0], trng[1], str( self.scalarRange.getRange() ) )
-            self.updateTextDisplay( text )
+            if trng:
+                text = " Thresholding Range[%d]: ( %.3f, %.3f )\n Colormap Range: %s " % ( pcIndex, trng[0], trng[1], str( self.scalarRange.getRange() ) )
+                self.updateTextDisplay( text )
     #        print " Subproc[%d]--> new Thresholding Data Available: %s " % ( pcIndex, str( pc.getThresholdingRange() ) ); sys.stdout.flush()
     #        self.reset( ) # pcIndex )
             self.render() 
