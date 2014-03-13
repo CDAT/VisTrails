@@ -43,6 +43,7 @@ from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_event import (DisplayCellEvent,
                                                     BatchDisplayCellEvent)
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
+import os
 import shutil
 ################################################################################
 
@@ -82,6 +83,8 @@ class SVGCellWidget(QCellWidget):
         
         self.controlBarType = None
         self.fileSrc = None
+
+        self.toolBarType = SVGToolBar
 
     def updateContents(self, inputPorts):
         """ updateContents(inputPorts: tuple) -> None
@@ -169,17 +172,25 @@ class SVGSaveAction(QtGui.QAction):
         
         """
         cellWidget = self.toolBar.getSnappedWidget()
-        
-        fn = QtGui.QFileDialog.getSaveFileName(None, "Save svg as...",
-                                               "screenshot.png",
-                                               "SVG (*.svg);;PDF files (*.pdf)")
+
+        fn = QtGui.QFileDialog.getSaveFileName(
+                None, "Save svg as...",
+                "screenshot.png",
+                "SVG (*.svg);;PDF files (*.pdf);;Images (*.png *.xpm *.jpg)")
         if not fn:
             return
-        if fn.endsWith(QtCore.QString("svg"), QtCore.Qt.CaseInsensitive):
-            cellWidget.dumpToFile(str(fn))
-        elif fn.endsWith(QtCore.QString("pdf"), QtCore.Qt.CaseInsensitive):
-            cellWidget.saveToPDF(str(fn))
-        
+        ext = os.path.splitext(fn)[1].lower()
+        if ext == ".svg":
+            cellWidget.dumpToFile(fn)
+        elif ext == ".pdf":
+            cellWidget.saveToPDF(fn)
+        elif ext in ('.png', '.xpm', '.jpg'):
+            cellWidget.grabWindowPixmap().save(fn)
+        else:
+            QtGui.QMessageBox.critical(cellWidget,
+                                       "Save cell",
+                                       "Unknown file extension")
+
 class SVGToolBar(QCellToolBar):
     """
     ImageViewerToolBar derives from CellToolBar to give the ImageViewerCellWidget
