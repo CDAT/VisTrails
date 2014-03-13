@@ -634,6 +634,9 @@ class vtkLocalPointCloud( vtkPointCloud ):
         vtkPointCloud.__init__( self )
         self.point_collection = MultiVarPointCollection()
         self.point_collection.setDataSlice( istart, **args )
+
+    def getPointCollection( self ):
+        return self.point_collection
         
     def getMetadata( self ):
         return self.point_collection.getMetadata()
