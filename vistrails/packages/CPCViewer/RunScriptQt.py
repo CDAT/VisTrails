@@ -116,7 +116,6 @@ elif ns.data_type == "CSU":
 
 g = CPCPlot( ) 
 g.init( init_args = ( grid_file, data_file, interface, varname, grid_coords, var_proc_op ), n_overview_points=n_overview_points, n_cores=multiprocessing.cpu_count(), show=showGui  )   # multiprocessing.cpu_count()       
-g.createConfigDialog( showGui )
 renderWindow = g.renderWindow
  
 app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 

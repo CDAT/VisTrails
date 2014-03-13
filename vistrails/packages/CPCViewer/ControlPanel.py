@@ -53,6 +53,7 @@ import vtk, time
 from compiler.ast import Name
 from ColorMapManager import ColorMapManager
 import vtk.util.numpy_support as VN
+import numpy
 
 POS_VECTOR_COMP = [ 'xpos', 'ypos', 'zpos' ]
 SLICE_WIDTH_LR_COMP = [ 'xlrwidth', 'ylrwidth', 'zlrwidth' ]
@@ -219,14 +220,14 @@ class LevelingConfigParameter( ConfigParameter ):
                      
     def computeRange(self):
         window_radius = self.wsize/2.0    
-        rmin = max( self.wpos - window_radius, 0.0 )
-        rmax = min( self.wpos + window_radius, 1.0 )
-        self( rmin = min( rmin, 1.0 - self.wsize ), rmax =  max( rmax, self.wsize ) )
+        rmin = self.wpos - window_radius # max( self.wpos - window_radius, 0.0 )
+        rmax = self.wpos + window_radius # min( self.wpos + window_radius, 1.0 )
+        self( rmin = rmin, rmax = rmax ) # min( rmin, 1.0 - self.wsize ), rmax =  max( rmax, self.wsize ) )
 
     def computeWindow(self):
         wpos = ( self.rmax + self.rmin ) / 2.0
         wwidth = ( self.rmax - self.rmin ) 
-        self( wpos = min( max( wpos, 0.0 ), 1.0 ), wsize = max( min( wwidth, 1.0 ), 0.0 ) )
+        self( wpos = wpos, wsize = wwidth ) # min( max( wpos, 0.0 ), 1.0 ), wsize = max( min( wwidth, 1.0 ), 0.0 ) )
         
     def getScaledRange(self):
         if self.scaling_bounds:
@@ -241,12 +242,12 @@ class LevelingConfigParameter( ConfigParameter ):
         self.wsizeSensitivity = width_s
 
     def setRange(self, range ):
-        self.rmin = min( max( range[0], 0.0 ), 1.0 )
-        self.rmax = max( min( range[1], 1.0 ), 0.0 )
+        self.rmin = range[0] # min( max( range[0], 0.0 ), 1.0 )
+        self.rmax = range[1] # max( min( range[1], 1.0 ), 0.0 )
         
     def setWindow( self, wpos, wwidth ):
-        self.wpos =   min( max( wpos, 0.0 ), 1.0 )
-        self.wsize =      max( min( wwidth, 1.0 ), 0.0 )      
+        self.wpos =   wpos # min( max( wpos, 0.0 ), 1.0 )
+        self.wsize =  wwidth #     max( min( wwidth, 1.0 ), 0.0 )      
 
     def getWindow(self):
         return ( self.wpos, self.wsize )
@@ -287,8 +288,8 @@ class RangeConfigParameter( ConfigParameter ):
             return self.getRange()
 
     def setRange(self, range ):
-        self.rmin = min( max( range[0], 0.0 ), 1.0 )
-        self.rmax = max( min( range[1], 1.0 ), 0.0 )
+        self.rmin = range[0] # min( max( range[0], 0.0 ), 1.0 )
+        self.rmax = range[1] # max( min( range[1], 1.0 ), 0.0 )
         
     def getRange( self ):
         return ( self.rmin, self.rmax )
@@ -298,6 +299,8 @@ class ConfigControl(QtGui.QWidget):
     def __init__(self, cparm, **args ):  
         super( ConfigControl, self ).__init__() 
         self.cparm = cparm
+        self.title = args.get('title',None)
+        self.units = args.get('units',None)
         self.tabWidget = None 
         self.connect( cparm, QtCore.SIGNAL('ValueChanged'), self.configValueChanged )
         
@@ -318,7 +321,7 @@ class ConfigControl(QtGui.QWidget):
     
     def getTabLayout(self, tab_index ):
         return self.tabWidget.widget(tab_index).layout() 
-                
+                    
     def addTab( self, tabname ):
         self.tabWidget.setEnabled(True)
         tabContents = QtGui.QWidget( self.tabWidget )
@@ -355,11 +358,16 @@ class ConfigControl(QtGui.QWidget):
     def updateTabPanel(self, current_tab_index=-1 ):
         if current_tab_index == -1: current_tab_index = self.tabWidget.currentIndex() 
         self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), "UpdateTabPanel", current_tab_index ) )
+
+    def getGuiLabel(self):
+        if self.title == None: return self.getName()
+        if self.units == None: return self.title
+        return "%s (%s)" % ( self.title, self.units )
       
     def build(self):
         if self.layout() == None:
             self.setLayout(QtGui.QVBoxLayout())
-            title_label = QtGui.QLabel( self.getName()  )
+            title_label = QtGui.QLabel( self.getGuiLabel() )
             self.layout().addWidget( title_label  )
             self.tabWidget = QtGui.QTabWidget(self)
             self.layout().addWidget( self.tabWidget )
@@ -442,7 +450,13 @@ class LabeledSliderWidget( ConfigWidget ):
     def getTitle(self):
         return self.title
         
-    def setSliderValue( self, normailzed_slider_value ): 
+    def setSliderValue( self, slider_value ): 
+        normalized_slider_value = ( slider_value - self.scaledMinValue ) / ( self.scaledMaxValue - self.scaledMinValue )
+        index_value = int( round( self.minValue + normalized_slider_value * ( self.maxValue - self.minValue ) ) )
+        self.value_pane.setText( str( slider_value ) )
+        self.slider.setValue( index_value )      
+
+    def setSliderNormalizedValue( self, normailzed_slider_value ): 
         index_value = int( round( self.minValue + normailzed_slider_value * ( self.maxValue - self.minValue ) ) )
         scaled_slider_value = self.scaledMinValue + normailzed_slider_value * ( self.scaledMaxValue - self.scaledMinValue )
         self.value_pane.setText( str( scaled_slider_value ) )
@@ -689,7 +703,9 @@ class LevelingSliderControl( TabbedControl ):
         self.leveling_tab_index = None
         self.minmax_tab_index = None
         self.updatingTabPanel = False
-        
+        self.args[ 'scaled_max_value' ] = cparm.rmax
+        self.args[ 'scaled_min_value' ] = cparm.rmin
+       
     def getMinMax(self, wpos, wsize):
         smin = max( wpos - wsize/2.0, 0.0 ) 
         smax = min( wpos + wsize/2.0, 1.0 ) 
@@ -921,6 +937,11 @@ class VolumeControl( LevelingSliderControl ):
  
     def __init__(self, cparm, **args ):  
         super( VolumeControl, self ).__init__( cparm, **args )
+
+class VarRangeControl( LevelingSliderControl ):
+ 
+    def __init__(self, cparm, **args ):  
+        super( VarRangeControl, self ).__init__( cparm, **args )
               
 class SlicerControl( TabbedControl ):
     
@@ -1084,7 +1105,7 @@ class CPCConfigGui(QtGui.QDialog):
 
 class CPCInfoVisGui(QtGui.QDialog):
 
-    def __init__(self, metadata={} ):    
+    def __init__(self, point_collection ):    
         QtGui.QDialog.__init__( self )     
                 
         self.setWindowFlags(QtCore.Qt.Window)
@@ -1092,10 +1113,10 @@ class CPCInfoVisGui(QtGui.QDialog):
         self.setWindowTitle('CPC InfoVis Config')
         layout = QtGui.QVBoxLayout()
         self.setLayout(layout)
-        self.config_widget = InfoVisWidget( self, metadata )
+        self.config_widget = InfoVisWidget( point_collection, self )
         self.layout().addWidget( self.config_widget ) 
         self.config_widget.build()
-        self.resize(600, 450)
+        self.resize(800, 600)
 
     def closeDialog( self ):
         self.config_widget.saveConfig()
@@ -1109,36 +1130,38 @@ class CPCInfoVisGui(QtGui.QDialog):
 
 class InfoVisWidget(QtGui.QWidget):
 
-    def __init__(self, parent=None, metadata={} ):    
+    def __init__(self, point_collection, parent=None ):    
         QtGui.QWidget.__init__(self, parent)
-        self.metadata = metadata 
+        self.point_collection = point_collection
+        self.metadata = point_collection.getMetadata()
         layout = QtGui.QVBoxLayout()
         self.setLayout(layout)
         self.cfgManager = ConfigManager( self )
-
         self.tagged_controls = []
-                        
-        self.scrollArea = QtGui.QScrollArea(self) 
-        self.scrollArea.setFrameStyle(QtGui.QFrame.NoFrame)      
-        self.scrollArea.setWidgetResizable(True)
-        
-        self.configContainer = ConfigControlContainer( self.scrollArea )
-        self.scrollArea.setWidget( self.configContainer )
-        self.scrollArea.setSizePolicy( QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding )
-        layout.addWidget(self.scrollArea)       
-        self.connect( self.configContainer, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
-
+                            
     def addControl( self, iCatIndex, config_ctrl, id = None ):
         config_list = self.configContainer.getCategoryConfigList( iCatIndex )
         config_list.addControl( iCatIndex, config_ctrl )
         self.tagged_controls.append( config_ctrl )
     
     def parameterValueChanged( self, args ):
-#        print "parameterValueChanged: ", str(args)
+        self.processParameterChange( args )
+        print "parameterValueChanged: ", str(args)
         for config_ctrl in self.tagged_controls:
             if config_ctrl:
                 config_ctrl.processParameterChange( args )
-                    
+
+    def processParameterChange( self, args ):
+        if ( len(args) >= 5 ):
+            trange = [ None, None ]
+            for iArg in range(1,5):
+                if args[iArg] == 'rmin':
+                    trange[0] = args[iArg+1]
+                elif args[iArg] == 'rmax':
+                    trange[1] = args[iArg+1]
+            if trange[0] <> None:
+                self.pc_widget.setSelectionRange( args[0], trange[0], trange[1] )
+                                    
     def addConfigControl(self, iCatIndex, config_ctrl, id = None ):
         config_ctrl.build()
         self.addControl( iCatIndex, config_ctrl, id )
@@ -1146,10 +1169,13 @@ class InfoVisWidget(QtGui.QWidget):
         self.connect( config_ctrl.getParameter(), QtCore.SIGNAL("ValueChanged"), self.parameterValueChanged )
                 
     def configTriggered( self, args ):
+        print "configTriggered: ", str(args)
         self.emit( QtCore.SIGNAL("ConfigCmd"), args )
         for config_ctrl in self.tagged_controls:
             if config_ctrl:
                 config_ctrl.processExtConfigCmd( args )
+        if args[1] == 'EndConfig':
+            self.pc_widget.Render()
 
     def addCategory(self, categoryName ):
         return self.configContainer.addCategory( categoryName )
@@ -1160,7 +1186,7 @@ class InfoVisWidget(QtGui.QWidget):
         
     def activate(self):
         self.cfgManager.initParameters()
-        self.configContainer.selectCategory( self.iVariableCatIndex )
+        self.configContainer.selectCategory( self.iVariablesCatIndex )
                            
     def getCategoryName( self, iCatIndex ):
         return self.configContainer.getCategoryName( iCatIndex )
@@ -1169,66 +1195,188 @@ class InfoVisWidget(QtGui.QWidget):
         self.emit( QtCore.SIGNAL("Close"), self.getParameterPersistenceList() )
 
     def build( self, **args ):
+        self.pc_widget = ParallelCoordinatesWidget()
+        self.layout().addWidget( self.pc_widget )
+        self.pc_widget.createTable( self.metadata, self.point_collection )
+        
+        self.configContainer = ConfigControlContainer( self )
+        self.layout().addWidget( self.configContainer )       
+        self.connect( self.configContainer, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
+
         self.iVariablesCatIndex = self.addCategory( 'Variables' )
+        
+        for var_id in self.metadata:
+            raw_data = self.point_collection.getVarData( var_id )
+            if id(raw_data) <> id(None):
+                var_rec = self.metadata[ var_id ]
+                vrange = var_rec[2]
+                thresh_cparm = self.cfgManager.addParameter( self.iVariablesCatIndex, var_id, rmin=vrange[0], rmax=vrange[1], ctype = 'Leveling' )
+                self.addConfigControl( self.iVariablesCatIndex, VarRangeControl( thresh_cparm, title=var_rec[0], units=var_rec[1] ) )
 
     def saveConfig(self):
         self.cfgManager.saveConfig()
 
-    def generateParallelCoordinatesChart( self ):
-        input = self.inputModule().getOutput() 
-        ptData = input.GetPointData()
-        narrays = ptData.GetNumberOfArrays()
-        arrays = []
-        # Create a table with some points in it...
-        table = vtk.vtkTable()
-        for iArray in range( narrays ):
-            table.AddColumn(  ptData.GetArray( iArray ) )                  
+#     def generateParallelCoordinatesChart( self ):
+#         from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+#         w = QtGui.QFrame()
+#         iren = QVTKRenderWindowInteractor( w )
+#         
+# #        from QVTKWidget import QVTKWidget
+# #         input = self.inputModule().getOutput() 
+# #         ptData = input.GetPointData()
+# #         narrays = ptData.GetNumberOfArrays()
+#         arrays = []
+#         # Create a table with some points in it...
+#         table = vtk.vtkTable()
+#         for varid in self.metadata.keys():
+#             var_rec = self.metadata[ varid ]
+#             raw_data = self.point_collection.getVarData( varid )
+#             if id(raw_data) <> id(None):
+#                 col = vtk.vtkFloatArray()
+#                 col.SetName( varid )
+#                 nTup = raw_data.size
+#                 col.SetNumberOfTuples( nTup )
+#                 col.SetNumberOfComponents(1)
+#                 col.SetVoidArray( raw_data, nTup, 1 )
+#                 table.AddColumn( col  )                  
+#         
+#         # Set up a 2D scene, add an XY chart to it
+#         view = vtk.vtkContextView()
+# #        view.SetRenderer( self.renderer )    
+# #        view.SetRenderWindow( self.renderer.GetRenderWindow() )
+#         renderer = view.GetRenderer()
+#         renderer.SetBackground(1.0, 1.0, 1.0)
+#         renwin = view.GetRenderWindow()
+#         renwin.RemoveRenderer(renderer)
+#         iren.AddRenderer( renderer )
+# 
+#         
+#         chart = vtk.vtkChartParallelCoordinates()
+#         
+# #         brush = vtk.vtkBrush()
+# #         brush.SetColorF (0.1,0.1,0.1)
+# #         chart.SetBackgroundBrush(brush)
+#         
+#         # Create a annotation link to access selection in parallel coordinates view
+#         annotationLink = vtk.vtkAnnotationLink()
+#         # If you don't set the FieldType explicitly it ends up as UNKNOWN (as of 21 Feb 2010)
+#         # See vtkSelectionNode doc for field and content type enum values
+#         annotationLink.GetCurrentSelection().GetNode(0).SetFieldType(1)     # Point
+#         annotationLink.GetCurrentSelection().GetNode(0).SetContentType(4)   # Indices
+#         # Connect the annotation link to the parallel coordinates representation
+#         chart.SetAnnotationLink(annotationLink)
+#         
+#         view.GetScene().AddItem(chart)
+#                 
+#         
+#         chart.GetPlot(0).SetInput(table)
+#         
+#         def selectionCallback(caller, event):
+#                 annSel = annotationLink.GetCurrentSelection()
+#                 if annSel.GetNumberOfNodes() > 0:
+#                         idxArr = annSel.GetNode(0).GetSelectionList()
+#                         if idxArr.GetNumberOfTuples() > 0:
+#                                 print VN.vtk_to_numpy(idxArr)
+#         
+#         # Set up callback to update 3d render window when selections are changed in 
+#         #       parallel coordinates view
+#         annotationLink.AddObserver("AnnotationChangedEvent", selectionCallback)
+#                 
+# #        view.ResetCamera()
+# #        view.Render()       
+# #        view.GetInteractor().Start()
+#         return w 
+
+
+class ParallelCoordinatesWidget(QtGui.QWidget):
+    
+    def __init__(self, parent=None):
+        from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+        QtGui.QWidget.__init__(self, parent)
+        self.axisMap = {}
         
-        # Set up a 2D scene, add an XY chart to it
-        view = vtk.vtkContextView()
-#        view.SetRenderer( self.renderer )    
-#        view.SetRenderWindow( self.renderer.GetRenderWindow() )
-        view.GetRenderer().SetBackground(1.0, 1.0, 1.0)
-        view.GetRenderWindow().SetSize(600,300)
-        
-        chart = vtk.vtkChartParallelCoordinates()
-        
-        brush = vtk.vtkBrush()
-        brush.SetColorF (0.1,0.1,0.1)
-        chart.SetBackgroundBrush(brush)
-        
+        centralLayout = QtGui.QVBoxLayout()
+        self.setLayout(centralLayout)
+        centralLayout.setMargin(0)
+        centralLayout.setSpacing(0)
+                
+        self.view = vtk.vtkContextView()
+        self.widget = QVTKRenderWindowInteractor(self,  rw=self.view.GetRenderWindow(), iren=self.view.GetInteractor() )
+        self.chart = vtk.vtkChartParallelCoordinates()
+        self.view.GetScene().AddItem(self.chart)
+
+        self.layout().addWidget(self.widget)
+
         # Create a annotation link to access selection in parallel coordinates view
-        annotationLink = vtk.vtkAnnotationLink()
+        self.annotationLink = vtk.vtkAnnotationLink()
         # If you don't set the FieldType explicitly it ends up as UNKNOWN (as of 21 Feb 2010)
         # See vtkSelectionNode doc for field and content type enum values
-        annotationLink.GetCurrentSelection().GetNode(0).SetFieldType(1)     # Point
-        annotationLink.GetCurrentSelection().GetNode(0).SetContentType(4)   # Indices
+        self.annotationLink.GetCurrentSelection().GetNode(0).SetFieldType(1)     # Point
+        self.annotationLink.GetCurrentSelection().GetNode(0).SetContentType(4)   # Indices
         # Connect the annotation link to the parallel coordinates representation
-        chart.SetAnnotationLink(annotationLink)
-        
-        view.GetScene().AddItem(chart)
-                
-        
-        chart.GetPlot(0).SetInput(table)
-        
-        def selectionCallback(caller, event):
-                annSel = annotationLink.GetCurrentSelection()
-                if annSel.GetNumberOfNodes() > 0:
-                        idxArr = annSel.GetNode(0).GetSelectionList()
-                        if idxArr.GetNumberOfTuples() > 0:
-                                print VN.vtk_to_numpy(idxArr)
-        
-        # Set up callback to update 3d render window when selections are changed in 
-        #       parallel coordinates view
-        annotationLink.AddObserver("AnnotationChangedEvent", selectionCallback)
-                
-#        view.ResetCamera()
-#        view.Render()       
-#        view.GetInteractor().Start()
-        return view 
+        self.chart.SetAnnotationLink(self.annotationLink)
+        self.annotationLink.AddObserver("AnnotationChangedEvent", self.selectionCallback)
 
+    def Render(self):
+        self.view.GetRenderWindow().Render()
+                
+    def updateSelection(self, selectedIds):
+        if len(selectedIds)==0: return
 
+        Ids = VN.numpy_to_vtkIdTypeArray( numpy.array(selectedIds), deep=True )
+
+        node = vtk.vtkSelectionNode()
+        node.SetContentType(vtk.vtkSelectionNode.INDICES)
+        node.SetFieldType(vtk.vtkSelectionNode.POINT)
+        node.SetSelectionList(Ids)
         
+        selection = vtk.vtkSelection()
+        selection.AddNode(node)
+        
+        self.annotationLink.SetCurrentSelection(selection)
+        self.widget.Render()
+        
+    def setSelectionRange(self, colName, min, max ):
+        plot = self.chart.GetPlot(0)
+        iAxis = self.axisMap[colName]
+        print " SetSelectionRange[%d]: %s " % ( iAxis, str( ( min, max ) ) )
+        plot.SetSelectionRange( iAxis, min, max )
+        
+    def createTable(self, metadata, point_collection ):
+        table = vtk.vtkTable()
+        ranges = []
+        for varid in metadata.keys():
+            var_rec = metadata[ varid ]
+            raw_data = point_collection.getVarData( varid )
+            if id(raw_data) <> id(None):
+                col = vtk.vtkFloatArray()
+                self.axisMap[ varid ] = len( ranges )
+                col.SetName( varid )
+                nTup = raw_data.size
+                col.SetNumberOfTuples( nTup )
+                col.SetNumberOfComponents(1)
+                col.SetVoidArray( raw_data, nTup, 1 )
+                table.AddColumn( col  ) 
+                ranges.append( var_rec[2] )  
+        self.chart.GetPlot(0).SetInput(table)
+
+        na = self.chart.GetNumberOfAxes()
+        for i in range(na):
+            vrange = ranges[i]
+            self.chart.GetAxis(i).SetRange(vrange[0], vrange[1])
+            self.chart.GetAxis(i).SetBehavior(vtk.vtkAxis.FIXED)
+#            self.chart.GetAxis(i).SetPosition(vtk.vtkAxis.LEFT)
+#            self.chart.GetAxis(i).GetTitleProperties().SetOrientation(30)
+        self.widget.Initialize()
+
+    def selectionCallback(self, caller, event):        
+        annSel = self.annotationLink.GetCurrentSelection()
+        if annSel.GetNumberOfNodes() > 0:
+            idxArr = annSel.GetNode(0).GetSelectionList()
+            if idxArr.GetNumberOfTuples() > 0:
+                selection_indices = VN.vtk_to_numpy(idxArr)
+                print " Selected %d nodes " % selection_indices.size   
+                     
 class ConfigurationWidget(QtGui.QWidget):
 
     def __init__(self, parent=None, metadata={} ):    

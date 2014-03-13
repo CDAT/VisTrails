@@ -363,12 +363,12 @@ class CPCPlot(QtCore.QObject):
     def start(self):
         self.renderWindowInteractor.Start()
         
-    def getConfigGui(self, metadata, interface ):
-        if interface == InterfaceType.ClimatePointCloud: return CPCConfigGui(metadata)
-        if interface == InterfaceType.InfoVis: return CPCInfoVisGui(metadata)
+    def getConfigGui(self, point_cloud, interface ):
+        if interface == InterfaceType.ClimatePointCloud: return CPCConfigGui(point_cloud.getMetaData())
+        if interface == InterfaceType.InfoVis: return CPCInfoVisGui( point_cloud.getPointCollection() )
 
     def createConfigDialog( self, show=False, interface=InterfaceType.ClimatePointCloud ):
-        self.configDialog = self.getConfigGui( self.point_cloud_overview.getMetadata(), interface )
+        self.configDialog = self.getConfigGui( self.point_cloud_overview, interface )
         w = self.configDialog.getConfigWidget()
         w.connect( w, QtCore.SIGNAL("ConfigCmd"), self.processConfigCmd )
     #    configDialog.connect( self, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )
@@ -1488,7 +1488,9 @@ class CPCPlot(QtCore.QObject):
         nCollections = min( nPartitions, n_cores )
         print " Init PCViewer, nInputPoints = %d, n_overview_points = %d, n_subproc_points = %d, nCollections = %d, overview skip index = %s" % ( nInputPoints, n_overview_points, n_subproc_points, nCollections, self.point_cloud_overview.getSkipIndex() )
         self.initCollections( nCollections, init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
-        if self.widget and show: self.widget.show()  
+        interface = init_args[2]
+        if self.widget and show: self.widget.show()
+        self.createConfigDialog( show, interface )
  
     def update(self):
         pass
