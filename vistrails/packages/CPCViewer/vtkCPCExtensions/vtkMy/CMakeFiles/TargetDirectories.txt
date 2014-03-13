@@ -1,0 +1,10 @@
+/Developer/Projects/EclipseWorkspace/vistrails/vistrails/packages/CPCViewer/vtkCPCExtensions/vtkMy/Common/CMakeFiles/vtkmyCommon.dir
+/Developer/Projects/EclipseWorkspace/vistrails/vistrails/packages/CPCViewer/vtkCPCExtensions/vtkMy/Common/CMakeFiles/vtkmyCommonPython.dir
+/Developer/Projects/EclipseWorkspace/vistrails/vistrails/packages/CPCViewer/vtkCPCExtensions/vtkMy/Common/CMakeFiles/vtkmyCommonPythonD.dir
+/Developer/Projects/EclipseWorkspace/vistrails/vistrails/packages/CPCViewer/vtkCPCExtensions/vtkMy/Examples/Cxx/Ex1/CMakeFiles/vtkmyEx1.dir
+/Developer/Projects/EclipseWorkspace/vistrails/vistrails/packages/CPCViewer/vtkCPCExtensions/vtkMy/Imaging/CMakeFiles/vtkmyImaging.dir
+/Developer/Projects/EclipseWorkspace/vistrails/vistrails/packages/CPCViewer/vtkCPCExtensions/vtkMy/Imaging/CMakeFiles/vtkmyImagingPython.dir
+/Developer/Projects/EclipseWorkspace/vistrails/vistrails/packages/CPCViewer/vtkCPCExtensions/vtkMy/Imaging/CMakeFiles/vtkmyImagingPythonD.dir
+/Developer/Projects/EclipseWorkspace/vistrails/vistrails/packages/CPCViewer/vtkCPCExtensions/vtkMy/Unsorted/CMakeFiles/vtkmyUnsorted.dir
+/Developer/Projects/EclipseWorkspace/vistrails/vistrails/packages/CPCViewer/vtkCPCExtensions/vtkMy/Unsorted/CMakeFiles/vtkmyUnsortedPython.dir
+/Developer/Projects/EclipseWorkspace/vistrails/vistrails/packages/CPCViewer/vtkCPCExtensions/vtkMy/Unsorted/CMakeFiles/vtkmyUnsortedPythonD.dir
