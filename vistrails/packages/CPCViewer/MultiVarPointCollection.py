@@ -11,6 +11,7 @@ class InterfaceType:
     ClimatePointCloud = 0
     InfoVis = 1
 
+
 def isNone(obj):
     return ( id(obj) == id(None) )
 
@@ -98,30 +99,33 @@ class MultiVarPointCollection():
         return None
        
     def getDataBlock( self, var ):
+        np_var_data_block = None
         iTimeIndex = self.getCoordIndex( var, 't' )
-        if iTimeIndex <> 0:  print>>sys.stderr, "Unimplemented axis order: %s " % var.getOrder()
-        if self.lev == None:
-            if len( var.shape ) == 2:
-                np_var_data_block = var[ self.iTimeStep, self.istart::self.istep ].data
-            elif len( var.shape ) == 3:
-                np_var_data_block = var[ self.iTimeStep, :, self.istart::self.istep ].data
-                np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0] * np_var_data_block.shape[1], ] )
-            self.nLevels = 1
+        if iTimeIndex <> 0:  
+            print>>sys.stderr, "Unimplemented axis order: %s " % var.getOrder()
         else:
-            iLevIndex = self.getCoordIndex( var, 'z' )
-            if len( var.shape ) == 3: 
-                if iLevIndex == 1:              
+            if self.lev == None:
+                if len( var.shape ) == 2:
+                    np_var_data_block = var[ self.iTimeStep, self.istart::self.istep ].data
+                elif len( var.shape ) == 3:
                     np_var_data_block = var[ self.iTimeStep, :, self.istart::self.istep ].data
-                elif iLevIndex == 2:     
-                    np_var_data_block = var[ self.iTimeStep, self.istart::self.istep, : ].data
-                    np_var_data_block = numpy.swapaxes( np_var_data_block, 0, 1 )
-                else:
-                    print>>sys.stderr, "Unimplemented axis order: %s " % var.getOrder()
-            elif len( var.shape ) == 4:
-                lev_data_arrays = []
-                for ilev in range( var.shape[1] ):
-                    lev_data_arrays.append( var[ self.iTimeStep, ilev ].flatten()[self.istart::self.istep] )
-                np_var_data_block = numpy.concatenate( lev_data_arrays ).astype( numpy.float32 )     
+                    np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0] * np_var_data_block.shape[1], ] )
+                self.nLevels = 1
+            else:
+                iLevIndex = self.getCoordIndex( var, 'z' )
+                if len( var.shape ) == 3: 
+                    if iLevIndex == 1:              
+                        np_var_data_block = var[ self.iTimeStep, :, self.istart::self.istep ].data
+                    elif iLevIndex == 2:     
+                        np_var_data_block = var[ self.iTimeStep, self.istart::self.istep, : ].data
+                        np_var_data_block = numpy.swapaxes( np_var_data_block, 0, 1 )
+                    else:
+                        print>>sys.stderr, "Unimplemented axis order: %s " % var.getOrder()
+                elif len( var.shape ) == 4:
+                    lev_data_arrays = []
+                    for ilev in range( var.shape[1] ):
+                        lev_data_arrays.append( var[ self.iTimeStep, ilev ].flatten()[self.istart::self.istep] )
+                    np_var_data_block = numpy.concatenate( lev_data_arrays ).astype( numpy.float32 )     
 #            print " GetDataBlock, var.shape = %s, grid = %s, ts = %d, newshape = %s " % ( str(var.shape), str((self.istart,self.istep)), self.iTimeStep, str(np_var_data_block.shape) )
 
         return np_var_data_block
@@ -384,12 +388,12 @@ class MultiVarPointCollection():
         self.grid = self.var.getGrid()
         self.lev = self.getLevel(self.var)
         lon, lat = self.getLatLon( grid_varname, grid_coords )  
-        if ( id(lon) <> id(None) ) and ( id(lat) <> id(None) ): 
+        if not ( isNone(lat) or isNone(lon) ): 
             self.vars[ 'lat' ] = lat
-            self.metadata[ 'lat' ] = ( lat.long_name, lat.units, self.axis_bounds.get( 'y', None ) )  
+            self.metadata[ 'lat' ] = ( getattr( lat, 'long_name', 'Latitude' ), getattr( lat, 'units', None ), self.axis_bounds.get( 'y', None ) )  
             self.point_data_arrays[ 'lat' ] = self.getCoordDataBlock( lat )                            
             self.vars[ 'lon' ] = lon 
-            self.metadata[ 'lon' ] = ( lon.long_name, lon.units, self.axis_bounds.get( 'x', None ) )  
+            self.metadata[ 'lon' ] = ( getattr( lon, 'long_name', 'Longitude' ), getattr( lon, 'units', None ), self.axis_bounds.get( 'x', None ) )  
             self.point_data_arrays[ 'lon' ] = self.getCoordDataBlock( lon )                                
             self.time = self.var.getTime()
             z_scale = 0.5
@@ -410,16 +414,18 @@ class MultiVarPointCollection():
                 if ( interface == InterfaceType.InfoVis ) or ( varname == grid_varname ):
                     var = self.df[ varname ]
                     self.vars[ varname ] = var
-                    np_var_data_block = self.getDataBlock( var ).flatten()     
-                    if self.missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False )
-                    else: var_data = np_var_data_block
-                    self.point_data_arrays[ varname ] = var_data
-                    vrng = ( var_data.min(), var_data.max() )
-                    self.vrange[ varname ] = vrng 
-    #                self.var_data_cache[ self.iTimeStep ] = var_data
-                    var_long_name = getVarAttribute( var, [ 'long_name', 'name_in_file', 'id' ] )             
-                    var_units = getVarAttribute( var, [ 'units' ] ) 
-                    self.metadata[ varname ] = ( var_long_name, var_units, vrng )
+                    np_var_data = self.getDataBlock( var )
+                    if not isNone( np_var_data ):
+                        np_var_data_block = np_var_data.flatten()     
+                        if self.missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False )
+                        else: var_data = np_var_data_block
+                        self.point_data_arrays[ varname ] = var_data
+                        vrng = ( var_data.min(), var_data.max() )
+                        self.vrange[ varname ] = vrng 
+        #                self.var_data_cache[ self.iTimeStep ] = var_data
+                        var_long_name = getVarAttribute( var, [ 'long_name', 'name_in_file', 'id' ] )             
+                        var_units = getVarAttribute( var, [ 'units' ] ) 
+                        self.metadata[ varname ] = ( var_long_name, var_units, vrng )
         
     def getPoints(self):
         point_comps = [ self.point_data_arrays[comp].flat for comp in [ 'x', 'y', 'z'] ]

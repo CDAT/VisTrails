@@ -293,11 +293,13 @@ class CPCPlot(QtCore.QObject):
         QtCore.QObject.__init__( self )
         self.widget = None
         self.enableClip = False
+        self.variables = {}
         self.useGui = args.get( 'gui', True )
         self.partitioned_point_cloud = None
         self.point_cloud_overview = None
         self.labelBuff = ""
         self.configDialog = None
+        self.infovisDialog = None
         self.renderWindow = vtk_render_window if ( vtk_render_window <> None ) else self.createRenderWindow()
         self.renderWindowInteractor = self.renderWindow.GetInteractor()
         style = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
@@ -357,21 +359,25 @@ class CPCPlot(QtCore.QObject):
     def start(self):
         self.renderWindowInteractor.Start()
         
-    def getConfigGui(self, point_cloud, interface ):
-        if interface == InterfaceType.ClimatePointCloud: return CPCConfigGui(point_cloud.getMetaData())
-        if interface == InterfaceType.InfoVis: return CPCInfoVisGui( point_cloud.getPointCollection() )
+    def activateConfigDialog(self, dialog, show=False ):
+            w = dialog.getConfigWidget()
+            w.connect( w, QtCore.SIGNAL("ConfigCmd"), self.processConfigCmd )
+        #    dialog.connect( self, QtCore.SIGNAL("UpdateGui"), dialog.externalUpdate )
+            dialog.activate()        
+            if show: dialog.show()
 
     def createConfigDialog( self, show=False, interface=InterfaceType.ClimatePointCloud ):
-        self.configDialog = self.getConfigGui( self.point_cloud_overview, interface )
-        w = self.configDialog.getConfigWidget()
-        w.connect( w, QtCore.SIGNAL("ConfigCmd"), self.processConfigCmd )
-    #    configDialog.connect( self, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )
-        self.configDialog.activate()        
-        if show: self.configDialog.show()
-
+        self.configDialog = CPCConfigGui( self.point_cloud_overview.getMetadata() )
+        self.activateConfigDialog( self.configDialog, show )       
+        if interface == InterfaceType.InfoVis:
+            self.infovisDialog = CPCInfoVisGui( self.point_cloud_overview.getPointCollection() )
+            self.activateConfigDialog( self.infovisDialog, show )
+ 
     def closeConfigDialog(self):
         if self.configDialog:
             self.configDialog.closeDialog()
+        if self.infovisDialog:
+            self.infovisDialog.closeDialog()
 
     @property
     def current_subset_specs(self):
@@ -828,7 +834,11 @@ class CPCPlot(QtCore.QObject):
             self.render()
         elif args and args[0] == "SelectSlice":
             self.sliceAxisIndex =  args[1]
-            self.enableSlicing()            
+            self.enableSlicing()  
+            
+    def processVariableCommand( self, args = None ):
+        print " -------------------->>> Process Variable Command: ", str( args ) 
+        self.processThresholdRangeCommand( args )        
     
     def processThresholdRangeCommand( self, args = None ):
         if args and args[0] == "StartConfig":
@@ -981,7 +991,7 @@ class CPCPlot(QtCore.QObject):
         sys.stdout.flush()
 
     def processConfigCmd( self, args ):
-#        print " processConfigCmd: %s " % str(args); sys.stdout.flush()
+#        print " >>>>>>>>>> processConfigCmd: %s " % str(args); sys.stdout.flush()
         if args[0] =='Color Scale':
             self.processColorScaleCommand( args[1:] )
         elif args[0] =='Animation':
@@ -1095,6 +1105,9 @@ class CPCPlot(QtCore.QObject):
             elif paramKeys[1] == 'Vertical Variable':
                 self.vertVar = config_param   
                 self.connect( self.vertVar, QtCore.SIGNAL('ValueChanged'), self.processVerticalVariableCommand )
+        elif paramKeys[0] == 'Variables':
+            self.variables[ paramKeys[1] ] = config_param
+            self.connect( config_param, QtCore.SIGNAL('ValueChanged'), self.processVariableCommand )
                 
     def processMaxResolutionCommand(self, args=None ):
         max_res_spec =  self.maxRes.getValue() 
