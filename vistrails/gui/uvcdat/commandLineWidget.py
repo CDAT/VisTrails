@@ -567,8 +567,9 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
 #            self.te.insertPlainText(errorText.getvalue())
 
 #        res = self.root.stick_main_dict_into_defvar(None)
+
         #-----------------------------------------------------------------------
-        # record the command for preproducibility
+        # record the command for reproducibility
         #-----------------------------------------------------------------------
         clist = command.split("=", 1)
         varname = clist[0].strip()
@@ -588,12 +589,21 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
             #send command to project controller to be stored as provenance
             from api import get_current_project_controller
             prj_controller = get_current_project_controller()
-            prj_controller.process_typed_calculator_command(varname,pycommand)
-            
-            tmp = prj_controller.create_exec_new_variable_pipeline(varname)
-            if tmp is not None:
-                tmp.id = varname
-                self.root.dockVariable.widget().addVariable(tmp)
+
+            # returns if we have existing variables involved, otherwise
+            # we assume it's a generic command
+            if prj_controller.process_typed_calculator_command(varname,
+                                                               pycommand):
+                tmp = prj_controller.create_exec_new_variable_pipeline(varname)
+                if tmp is not None:
+                    tmp.id = varname
+                    self.root.dockVariable.widget().addVariable(tmp)
+                processed = True
+
+        if not processed:
+            # try to run things "normally"
+            exec(compile(command, "<string>", "single"), __main__.__dict__)
+
         self.le.clear()
         self.dumpToWindow = False
         return varname
