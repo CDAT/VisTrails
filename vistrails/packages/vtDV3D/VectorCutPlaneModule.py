@@ -81,7 +81,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
             print>>sys.stderr, "Must supply 'volume' port input to VectorCutPlane"
             return
               
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetExtent()       
         self.sliceCenter = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
         spacing = self.input().GetSpacing()
         sx, sy, sz = spacing       
@@ -119,24 +119,22 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
 #        self.plane.SetNormal( 0.0, 0.0, 1.0 )
 
         self.resample = vtk.vtkExtractVOI()
-        self.resample.SetInput( self.input() ) 
+        self.resample.SetInputData( self.input() ) 
         self.resample.SetVOI( self.initialExtent )
         lut = self.getLut()
        
         if self.colorInputModule <> None:
-            colorInput = self.colorInputModule.getOutput()
             self.color_resample = vtk.vtkExtractVOI()
-            self.color_resample.SetInput( colorInput ) 
+            self.color_resample.SetInputPort( self.colorInputModule.getOutputPort() )
             self.color_resample.SetVOI( self.initialExtent )
             self.color_resample.SetSampleRate( sampleRate, sampleRate, 1 )
 #            self.probeFilter = vtk.vtkProbeFilter()
 #            self.probeFilter.SetSourceConnection( self.resample.GetOutputPort() )           
 #            colorInput = self.colorInputModule.getOutput()
 #            self.probeFilter.SetInput( colorInput )
-            resampledColorInput = self.color_resample.GetOutput()
             shiftScale = vtk.vtkImageShiftScale()
             shiftScale.SetOutputScalarTypeToFloat ()           
-            shiftScale.SetInput( resampledColorInput ) 
+            shiftScale.SetInputPort( self.color_resample.getOutputPort() )
             valueRange = self.getScalarRange()
             shiftScale.SetShift( valueRange[0] )
             shiftScale.SetScale ( (valueRange[1] - valueRange[0]) / 65535 )
@@ -147,9 +145,8 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
             self.colorScalars.SetName('color')
             lut.SetTableRange( valueRange ) 
          
-        self.cutterInput = self.resample.GetOutput() 
         self.planeWidget = vtk.vtkImplicitPlaneWidget()
-        self.planeWidget.SetInput( self.cutterInput  )
+        self.planeWidget.SetInputPort( self.resample.getOutputPort() )
 #        self.planeWidget.SetInput( self.input()  )
         self.planeWidget.DrawPlaneOff()
         self.planeWidget.ScaleEnabledOff()
@@ -159,7 +156,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
         self.addObserver( self.planeWidget, 'InteractionEvent', self.SliceObserver )
 #        print "Data bounds %s, origin = %s, spacing = %s, extent = %s, widget origin = %s " % ( str( self.dataBounds ), str( self.initialOrigin ), str( self.initialSpacing ), str( self.initialExtent ), str( self.planeWidget.GetOrigin( ) ) )
         self.cutter = vtk.vtkCutter()
-        self.cutter.SetInput( self.cutterInput )
+        self.cutter.SetInputPort( self.resample.getOutputPort() )
         
         self.cutter.SetGenerateCutScalars(0)
         self.glyph = vtk.vtkGlyph3DMapper() 
@@ -252,13 +249,12 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
     def UpdateCut(self): 
 #        print " Cut Plane: origin = %s, normal = %s" % ( str( self.plane.GetOrigin() ), str( self.plane.GetNormal() ) ) 
         self.cutter.SetCutFunction ( self.plane  )
-        self.cutterInput.Update()
         if self.colorInputModule <> None:
             pointData = self.cutterInput.GetPointData()
             pointData.AddArray( self.colorScalars ) 
             pointData.SetActiveScalars( 'color' )
+        self.cutter.Update()
         cutterOutput = self.cutter.GetOutput()
-        cutterOutput.Update()
         points = cutterOutput.GetPoints()
         if points <> None:
             np = points.GetNumberOfPoints()
@@ -372,7 +368,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
             print>>sys.stderr, "Must supply 'volume' port input to VectorCutPlane"
             return
               
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetExtent()       
         self.sliceCenter = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
         spacing = self.input().GetSpacing()
         sx, sy, sz = spacing       
@@ -410,29 +406,27 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
 #        self.plane.SetNormal( 0.0, 0.0, 1.0 )
 
         self.resample = vtk.vtkExtractVOI()
-        self.resample.SetInput( self.input() ) 
+        self.resample.SetInputData( self.input() ) 
         self.resample.SetVOI( self.initialExtent )
         lut = self.getLut()
         
-        if self.colorInputModule <> None:
-            colorInput = self.colorInputModule.getOutput()
+        if self.colorInputModule <> None: 
             self.color_resample = vtk.vtkExtractVOI()
-            self.color_resample.SetInput( colorInput ) 
+            self.color_resample.SetInputConnection( self.colorInputModule.getOutputPort() ) 
             self.color_resample.SetVOI( self.initialExtent )
             self.color_resample.SetSampleRate( sampleRate, sampleRate, 1 )
 #            self.probeFilter = vtk.vtkProbeFilter()
 #            self.probeFilter.SetSourceConnection( self.resample.GetOutputPort() )           
 #            colorInput = self.colorInputModule.getOutput()
 #            self.probeFilter.SetInput( colorInput )
-            resampledColorInput = self.color_resample.GetOutput()
             shiftScale = vtk.vtkImageShiftScale()
             shiftScale.SetOutputScalarTypeToFloat ()           
-            shiftScale.SetInput( resampledColorInput ) 
+            shiftScale.SetInputConnection( self.color_resample.GetOutputPort() ) 
             valueRange = self.getScalarRange()
             shiftScale.SetShift( valueRange[0] )
             shiftScale.SetScale ( (valueRange[1] - valueRange[0]) / 65535 )
+            shiftScale.Update()
             colorFloatInput = shiftScale.GetOutput() 
-            colorFloatInput.Update()
             colorInput_pointData = colorFloatInput.GetPointData()     
             self.colorScalars = colorInput_pointData.GetScalars()
             self.colorScalars.SetName('color')
@@ -440,9 +434,8 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         
         scalarRange = self.getScalarRange() 
         self.glyphRange = max( abs(scalarRange[0]), abs(scalarRange[1]) )
-        self.cutterInput = self.resample.GetOutput() 
         self.planeWidget = vtk.vtkImplicitPlaneWidget()
-        self.planeWidget.SetInput( self.cutterInput  )
+        self.planeWidget.SetInputConnection( self.resample.GetOutputPort()   )
 #        self.planeWidget.SetInput( self.input()  )
         self.planeWidget.DrawPlaneOff()
         self.planeWidget.ScaleEnabledOff()
@@ -452,7 +445,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
         self.addObserver( self.planeWidget, 'InteractionEvent', self.SliceObserver )
 #        print "Data bounds = %s, Data extents = %s, origin = %s, spacing = %s, extent = %s, widget origin = %s " % ( str( self.dataBounds ), str( dataExtents ), str( self.initialOrigin ), str( self.initialSpacing ), str( self.initialExtent ), str( self.planeWidget.GetOrigin( ) ) )
         self.cutter = vtk.vtkCutter()
-        self.cutter.SetInput( self.cutterInput )        
+        self.cutter.SetInputConnection( self.resample.GetOutputPort()  )        
         self.cutter.SetGenerateCutScalars(0)
         sliceOutputPort = self.cutter.GetOutputPort()
         lut.SetVectorModeToMagnitude()
@@ -502,10 +495,9 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
 #        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
 
     def updateModule(self, **args ):
-        self.resample.SetInput( self.input() ) 
-        self.cutterInput = self.resample.GetOutput() 
-        self.planeWidget.SetInput( self.cutterInput  )
-        self.cutter.SetInput( self.cutterInput ) 
+        self.resample.SetInputData( self.input() ) 
+        self.planeWidget.SetInputConnection( self.resample.GetOutputPort()   )
+        self.cutter.SetInputConnection( self.resample.GetOutputPort()   ) 
         self.cutter.Update()
         self.glyphMapper.Modified()
         self.glyphMapper.Update()
@@ -732,7 +724,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
             print>>sys.stderr, "Must supply 'volume' port input to VectorCutPlane"
             return
               
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetExtent()       
         self.sliceCenter = [ (xMax-xMin)/2, (yMax-yMin)/2, (zMax-zMin)/2  ]       
         spacing = self.input().GetSpacing()
         sx, sy, sz = spacing       
@@ -771,31 +763,29 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
 #        self.plane.SetNormal( 0.0, 0.0, 1.0 )
         
         if self.colorInputModule <> None:
-            colorInput = self.colorInputModule.getOutput()
             self.color_resample = vtk.vtkExtractVOI()
-            self.color_resample.SetInput( colorInput ) 
+            self.color_resample.SetInput( self.colorInputModule.getOutputPort() ) 
             self.color_resample.SetVOI( self.initialExtent )
             self.color_resample.SetSampleRate( sampleRate, sampleRate, 1 )
 #            self.probeFilter = vtk.vtkProbeFilter()
 #            self.probeFilter.SetSourceConnection( self.resample.GetOutputPort() )           
 #            colorInput = self.colorInputModule.getOutput()
 #            self.probeFilter.SetInput( colorInput )
-            resampledColorInput = self.color_resample.GetOutput()
             shiftScale = vtk.vtkImageShiftScale()
             shiftScale.SetOutputScalarTypeToFloat ()           
-            shiftScale.SetInput( resampledColorInput ) 
+            shiftScale.SetInputConnection( self.color_resample.GetOutputPort() )
             valueRange = self.getScalarRange()
             shiftScale.SetShift( valueRange[0] )
             shiftScale.SetScale ( (valueRange[1] - valueRange[0]) / 65535 )
+            shiftScale.Update()
             colorFloatInput = shiftScale.GetOutput() 
-            colorFloatInput.Update()
             colorInput_pointData = colorFloatInput.GetPointData()     
             self.colorScalars = colorInput_pointData.GetScalars()
             self.colorScalars.SetName('color')
             lut.SetTableRange( valueRange ) 
          
         self.planeWidget = vtk.vtkImplicitPlaneWidget()
-        self.planeWidget.SetInput( self.input()  )
+        self.planeWidget.SetInputData( self.input()  )
         self.planeWidget.DrawPlaneOff()
         self.planeWidget.ScaleEnabledOff()
         self.planeWidgetBounds = ( self.dataBounds[0]-dataExtents[0], self.dataBounds[1]+dataExtents[0], self.dataBounds[2]-dataExtents[1], self.dataBounds[3]+dataExtents[1], self.dataBounds[4]-dataExtents[2], self.dataBounds[5]+dataExtents[2] ) 
@@ -809,7 +799,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         
         self.streamer = vtk.vtkStreamLine()
 #        self.streamer.SetInputConnection( sliceOutputPort )
-        self.streamer.SetInput( self.input() )
+        self.streamer.SetInputData( self.input() )
         self.streamer.SetIntegrationDirectionToForward ()
         self.streamer.SetEpsilon(1.0e-10)   # Increase this value if integrations go unstable (app hangs)  
         self.streamer.SpeedScalarsOff()
@@ -833,8 +823,8 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.set3DOutput( wmod=self.wmod, output=self.input() ) 
  
     def updateModule(self, **args ):
-        self.planeWidget.SetInput( self.input()  )        
-        self.streamer.SetInput( self.input() )
+        self.planeWidget.SetInputData( self.input()  )        
+        self.streamer.SetInputData( self.input() )
         self.streamer.Modified()
         self.streamer.Update()
         self.set3DOutput()

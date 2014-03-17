@@ -96,7 +96,7 @@ class PM_WorldFrame(PersistentVisualizationModule):
 #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
 #Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
         self.baseMapActor.SetPosition( self.x0, self.y0, 0.1 )
-        self.baseMapActor.SetInput( baseImage )
+        self.baseMapActor.SetInputData( baseImage )
         
         self.renderer.AddActor( self.baseMapActor )
             
@@ -105,13 +105,12 @@ class PM_WorldFrame(PersistentVisualizationModule):
         extent= self.input().GetExtent()
         input_spacing = self.input().GetSpacing()            
 #        printArgs( "World Map input: ", extent= extent, spacing= self.input().GetSpacing(), origin= self.input().GetOrigin() )
-        self.imageInfo.SetInput( self.input() ) 
+        self.imageInfo.SetInputData( self.input() ) 
         self.imageInfo.SetOutputExtentStart( extent[0], extent[2], extent[4] )
         self.imageInfo.SetOutputSpacing( input_spacing[0], input_spacing[1], input_spacing[2]*zscale )       
         self.imageInfo.Modified()
         self.imageInfo.Update() 
         output =  self.imageInfo.GetOutput()
-        output.Update()
         self.set3DOutput( port=self.imageInfo.GetOutputPort() )
         
     def activateWidgets( self, iren ):
@@ -142,7 +141,6 @@ class PM_WorldFrame(PersistentVisualizationModule):
         return cut % 360  
     
     def RollMap( self, baseImage ):
-        baseImage.Update()
         if self.world_cut  == self.map_cut: return baseImage
         baseExtent = baseImage.GetExtent()
         baseSpacing = baseImage.GetSpacing()
@@ -157,12 +155,12 @@ class PM_WorldFrame(PersistentVisualizationModule):
         
         extent[0:2] = [ x0, x0 + sliceCoord - 1 ]
         clip0 = vtk.vtkImageClip()
-        clip0.SetInput( baseImage )
+        clip0.SetInputData( baseImage )
         clip0.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
         
         extent[0:2] = [ x0 + sliceCoord, x1 ]
         clip1 = vtk.vtkImageClip()
-        clip1.SetInput( baseImage )
+        clip1.SetInputData( baseImage )
         clip1.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
         
         append = vtk.vtkImageAppend()
@@ -176,12 +174,11 @@ class PM_WorldFrame(PersistentVisualizationModule):
         imageInfo.SetOutputExtentStart( 0, 0, 0 )
         imageInfo.SetOutputSpacing( baseSpacing[0], baseSpacing[1], baseSpacing[2] )
         
+        imageInfo.Update()
         result = imageInfo.GetOutput() 
-        result.Update()
         return result
 
     def getBoundedMap( self, baseImage, dataLocation, map_cut_size ):
-        baseImage.Update()
         baseExtent = baseImage.GetExtent()
         baseSpacing = baseImage.GetSpacing()
         x0 = baseExtent[0]
@@ -218,7 +215,7 @@ class PM_WorldFrame(PersistentVisualizationModule):
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[1] = x0 + sliceCoord
             clip = vtk.vtkImageClip()
-            clip.SetInput( baseImage )
+            clip.SetInputData( baseImage )
             clip.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             self.x0 = cut0
             bounded_dims = ( extent[1] - extent[0] + 1, vertExtent[1] - vertExtent[0] + 1 )
@@ -232,7 +229,7 @@ class PM_WorldFrame(PersistentVisualizationModule):
             extent = list( baseExtent )         
             extent[0:2] = [ x0, x0 + sliceCoord - 1 ]
             clip0 = vtk.vtkImageClip()
-            clip0.SetInput( baseImage )
+            clip0.SetInputData( baseImage )
             clip0.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             size0 = extent[1] - extent[0] + 1
         
@@ -241,7 +238,7 @@ class PM_WorldFrame(PersistentVisualizationModule):
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[0:2] = [ x0 + sliceCoord, x1 ]
             clip1 = vtk.vtkImageClip()
-            clip1.SetInput( baseImage )
+            clip1.SetInputData( baseImage )
             clip1.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             size1 = extent[1] - extent[0] + 1
             self.x0 = cut1
@@ -258,8 +255,8 @@ class PM_WorldFrame(PersistentVisualizationModule):
         imageInfo.SetOutputExtentStart( 0, 0, 0 )
         imageInfo.SetOutputSpacing( baseSpacing[0], baseSpacing[1], baseSpacing[2] )
         
+        imageInfo.Update()
         result = imageInfo.GetOutput() 
-        result.Update()
         return result, bounded_dims
 
 class WorldFrame(WorkflowModule):

@@ -75,7 +75,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
             print>>sys.stderr, "Must supply 'volume' port input to VectorCutPlane"
             return
               
-        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetWholeExtent()       
+        xMin, xMax, yMin, yMax, zMin, zMax = self.input().GetExtent()       
         spacing = self.input().GetSpacing()
         sx, sy, sz = spacing       
         origin = self.input().GetOrigin()
@@ -104,30 +104,28 @@ class PM_VectorVolume(PersistentVisualizationModule):
         if ( (self.initialOrigin[0] + self.pos[0]) < 0.0): self.pos[0] = self.pos[0] + 360.0
 
         self.resample = vtk.vtkExtractVOI()
-        self.resample.SetInput( self.input() ) 
+        self.resample.SetInputData( self.input() ) 
         self.resample.SetVOI( self.initialExtent )
         self.ApplyGlyphDecimationFactor()
         lut = self.getLut()
         
         if self.colorInputModule <> None:
-            colorInput = self.colorInputModule.getOutput()
             self.color_resample = vtk.vtkExtractVOI()
-            self.color_resample.SetInput( colorInput ) 
+            self.color_resample.SetInputConnection( self.colorInputModule.getOutputPort() ) 
             self.color_resample.SetVOI( self.initialExtent )
             self.color_resample.SetSampleRate( sampleRate, sampleRate, 1 )
 #            self.probeFilter = vtk.vtkProbeFilter()
 #            self.probeFilter.SetSourceConnection( self.resample.GetOutputPort() )           
 #            colorInput = self.colorInputModule.getOutput()
 #            self.probeFilter.SetInput( colorInput )
-            resampledColorInput = self.color_resample.GetOutput()
             shiftScale = vtk.vtkImageShiftScale()
             shiftScale.SetOutputScalarTypeToFloat ()           
-            shiftScale.SetInput( resampledColorInput ) 
+            shiftScale.SetInputConnection( self.color_resample.GetOutputPort() ) 
             valueRange = self.getScalarRange()
             shiftScale.SetShift( valueRange[0] )
             shiftScale.SetScale ( (valueRange[1] - valueRange[0]) / 65535 )
+            shiftScale.Update()
             colorFloatInput = shiftScale.GetOutput() 
-            colorFloatInput.Update()
             colorInput_pointData = colorFloatInput.GetPointData()     
             self.colorScalars = colorInput_pointData.GetScalars()
             self.colorScalars.SetName('color')
@@ -154,7 +152,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.set3DOutput(wmod=self.wmod) 
 
     def updateModule(self, **args ):
-        self.resample.SetInput( self.input() ) 
+        self.resample.SetInputData( self.input() ) 
         self.glyph.Modified()
         self.glyph.Update()
         self.set3DOutput(wmod=self.wmod)

@@ -152,7 +152,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.colorbarAxes = self.fig.add_axes([0.05, 0.08, 0.85, 0.04], label=self.units )
         
     def getPythonInput( self ):
-        self.input.Update()
+        self.imageExport.Update()
         image_data = self.imageExport.GetArray()
         if (self.dataScaling <> None) and (self.dataType <> 'Float'):
             image_data = (image_data/self.dataScaling[1])  - self.dataScaling[0]
@@ -168,7 +168,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         
     def getPlotShape( self, dataset ):
         new_dim = []  
-        extent = dataset.GetWholeExtent()
+        extent = dataset.GetExtent()
         dim = ( extent[5]-extent[4]+1, extent[3]-extent[2]+1, extent[1]-extent[0]+1)
         for x in dim: 
             if x > 1: new_dim.append( x )
@@ -277,7 +277,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         """      
         self.addObserver( self.input, "RenderEvent", self.SliceObserver )
         self.imageExport = vtkImageExportToArray()
-        self.imageExport.SetInput( self.input )
+        self.imageExport.SetInputData( self.input )
         input_dims = self.input.GetDimensions()
         md = extractMetadata( self.input.GetFieldData() )
               

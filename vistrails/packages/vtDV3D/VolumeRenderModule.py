@@ -371,7 +371,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
 #        if ( (origin[0] + self.pos[0]) < 0.0): self.pos[0] = self.pos[0] + 360.0
         bounds = [ ( origin[i/2] + spacing[i/2]*extent[i] ) for i in range(6) ]
         print " @@@VolumeRenderer@@@   Data Type = %s, range = (%f,%f), max_scalar = %s" % ( dataType, rangeBounds[0], rangeBounds[1], self._max_scalar_value )
-        print "Extent: %s " % str( self.input().GetWholeExtent() )
+        print "Extent: %s " % str( self.input().GetExtent() )
         print "Spacing: %s " % str( spacing )
         print "Origin: %s " % str( origin )
         print "Dimensions: %s " % str( self.input().GetDimensions() )
@@ -549,7 +549,7 @@ class PM_VolumeRenderer(PersistentVisualizationModule):
         
     def EventWatcher( self, caller, event ): 
         print "Event %s on class %s "  % ( event, caller.__class__.__name__ ) 
-#        print "  --- Volume Input Extent: %s " % str( self.input().GetWholeExtent() )
+#        print "  --- Volume Input Extent: %s " % str( self.input().GetExtent() )
         pass          
 
 #    def onAnyEvent(self, caller, event ):

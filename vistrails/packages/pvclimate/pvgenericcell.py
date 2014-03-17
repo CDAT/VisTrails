@@ -10,7 +10,6 @@ from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.spreadsheet.spreadsheet_cell import QCellWidget
 
 import paraview.simple as pvsp
-import paraview.pvfilters
 import vtk
 
 #// Needed for configuration
@@ -98,7 +97,7 @@ class QPVIsoSurfaceWidget(QVTKWidget):
             reader.Update()
 
             imageActor = vtk.vtkImageActor()
-            imageActor.SetInput(reader.GetOutput())
+            imageActor.SetInputData(reader.GetOutput())
 
             self.overlayRenderer = vtk.vtkRenderer()
             self.overlayRenderer.AddActor(imageActor)
@@ -140,7 +139,7 @@ class QPVIsoSurfaceWidget(QVTKWidget):
         image.UnRegister(None)
 
         writer = vtk.vtkPNGWriter()
-        writer.SetInput(image)
+        writer.SetInputData(image)
         if filename!=None:
             writer.SetFileName(filename)
         else:

@@ -674,11 +674,10 @@ class BoxWidgetWrapper( IVModuleWidgetWrapper ):
         self.boxWidget.SetEnabled(0)
                          
     def createContent( self ):
-        input =  self.module.inputModule.getOutput()  
         self.boxWidget = vtk.vtkBoxWidget()
         self.boxWidget.SetRotationEnabled(0)
         self.boxWidget.SetPlaceFactor(1.0)
-        self.boxWidget.SetInput( input )
+        self.boxWidget.SetInputConnection( self.module.inputModule.getOutputPort()   )
         self.planes = vtk.vtkPlanes()
         self.boxWidget.AddObserver("StartInteractionEvent", self.startConfiguration )
         self.boxWidget.AddObserver("InteractionEvent",      self.updateConfiguration )

@@ -5,7 +5,6 @@ from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.spreadsheet.spreadsheet_cell import QCellWidget
 from PVBase import PVModule
 import paraview.simple as pvsp
-import paraview.pvfilters
 import vtk
 
 class PVCell(SpreadsheetCell):

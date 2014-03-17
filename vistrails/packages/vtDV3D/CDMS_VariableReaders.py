@@ -543,16 +543,15 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
             outputOrigin = varDataSpecs[ 'outputOrigin' ]
             outputExtent = varDataSpecs[ 'outputExtent' ]
             gridSpacing = varDataSpecs[ 'gridSpacing' ]
-            if   scalar_dtype == np.ushort: image_data.SetScalarTypeToUnsignedShort()
-            elif scalar_dtype == np.ubyte:  image_data.SetScalarTypeToUnsignedChar()
-            elif scalar_dtype == np.float32:  image_data.SetScalarTypeToFloat()
-            elif scalar_dtype == np.float64:  image_data.SetScalarTypeToDouble()
+#             if   scalar_dtype == np.ushort: image_data.SetScalarTypeToUnsignedShort()
+#             elif scalar_dtype == np.ubyte:  image_data.SetScalarTypeToUnsignedChar()
+#             elif scalar_dtype == np.float32:  image_data.SetScalarTypeToFloat()
+#             elif scalar_dtype == np.float64:  image_data.SetScalarTypeToDouble()
             image_data.SetOrigin( outputOrigin[0], outputOrigin[1], outputOrigin[2] )
 #            image_data.SetOrigin( 0.0, 0.0, 0.0 )
             if ndim == 3: extent = [ outputExtent[0], outputExtent[1], outputExtent[2], outputExtent[3], outputExtent[4], outputExtent[5] ]   
             elif ndim == 2: extent = [ outputExtent[0], outputExtent[1], outputExtent[2], outputExtent[3], 0, 0 ]   
             image_data.SetExtent( extent )
-            image_data.SetWholeExtent( extent )
             image_data.SetSpacing(  gridSpacing[0], gridSpacing[1], gridSpacing[2] )
 #            print " ********************* Create Image Data, extent = %s, spacing = %s ********************* " % ( str(extent), str(gridSpacing) )
 #            offset = ( -gridSpacing[0]*gridExtent[0], -gridSpacing[1]*gridExtent[2], -gridSpacing[2]*gridExtent[4] )
