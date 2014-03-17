@@ -333,7 +333,9 @@ class ProjectController(QtCore.QObject):
                 findcommand=CDMSVariableOperation.replace_variable_in_command(findcommand,v,"")
                 
         self.calculator_command(usedvarnames, "calculator command", command, varname)
-        
+        # signal whether we're doing anything with existing variables
+        return len(usedvarnames) > 0
+
     def copy_computed_variable(self, oldname, newname, axes=None, 
                                axesOperations=None):
         from packages.uvcdat_cdms.init import CDMSVariable
