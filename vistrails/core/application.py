@@ -183,7 +183,9 @@ The builder window can be accessed by a spreadsheet menu option.")
              help=("Run UVCDAT for a set amount of seconds and then quit."))
         add ("-o", "--output", action="store", type="string", dest="output", 
              default="uvcdatsession.log", 
-             help=("Set output log filename (empty string for stdout e.g. -o \"\")"))
+             help=("Set output log filename (use --output-std for stdout/stderr)"))
+        add ("--output-std", action="store_true", dest="outputStd",
+             help=("Use stdout/stderr for output instead of a log file"))
         add ("-N", "--noErrorReporting", action="store_true",
              help=("Do not prompt to send anonymous error information."))
         add ("-C", "--testUVCDAT", action="store_true",
@@ -296,7 +298,9 @@ The builder window can be accessed by a spreadsheet menu option.")
         if get('cdatSourceDir')!=None:
             self.temp_configuration.cdatSourceDir = get("cdatSourceDir")
         self.temp_configuration.specificTest = get("specificTest")
-        if get('output')!=None:
+        if get('outputStd'):
+            self.temp_configuration.output = ""
+        elif get('output')!=None:
             self.temp_configuration.output = get("output")
         if get('noErrorReporting')!=None:
             self.temp_configuration.noErrorReporting = bool(get('noErrorReporting'))
