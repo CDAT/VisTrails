@@ -34,6 +34,7 @@
 ################################################################################
 # ImageViewer widgets/toolbar implementation
 ################################################################################
+import os
 from PyQt4 import QtCore, QtGui
 from core.modules.vistrails_module import Module
 from packages.spreadsheet.basic_widgets import SpreadsheetCell
@@ -115,7 +116,19 @@ class ImageViewerCellWidget(QCellWidget):
         if pixmap and (not pixmap.isNull()):
             return pixmap.save(filename)
         return False
-    
+
+    def dumpToFile(self, filename):
+        """ dumpToFile(filename: str) -> None
+        Dumps the cell as an image file
+
+        """
+        pixmap = self.label.pixmap()
+        if pixmap and (not pixmap.isNull()):
+            if not os.path.splitext(filename)[1]:
+                pixmap.save(filename, 'PNG')
+            else:
+                pixmap.save(filename)
+
     def saveToPDF(self, filename):
         """ saveToPDF(filename: str) -> bool
         Save the current widget contents to a pdf file
@@ -181,41 +194,6 @@ class ImageViewerFitToCellAction(QtGui.QAction):
         """
         (sheet, row, col, cellWidget) = info
         self.setChecked(cellWidget.label.hasScaledContents())
-
-class ImageViewerSaveAction(QtGui.QAction):
-    """
-    ImageViewerSaveAction is the action to save the image to file
-    
-    """
-    def __init__(self, parent=None):
-        """ ImageViewerSaveAction(parent: QWidget) -> ImageViewerSaveAction
-        Setup the image, status tip, etc. of the action
-        
-        """
-        QtGui.QAction.__init__(self,
-                               QtGui.QIcon(":/images/save.png"),
-                               "&Save image as...",
-                               parent)
-        self.setStatusTip("Save image to file")
-        
-    def triggeredSlot(self, checked=False):
-        """ toggledSlot(checked: boolean) -> None
-        Execute the action when the button is clicked
-        
-        """
-        cellWidget = self.toolBar.getSnappedWidget()
-        if not cellWidget.label.pixmap() or cellWidget.label.pixmap().isNull():
-            return
-        fn = QtGui.QFileDialog.getSaveFileName(None, "Save image as...",
-                                               "screenshot.png",
-                                               "Images (*.png);;PDF files (*.pdf)")
-        if not fn:
-            return
-        if fn.endsWith(QtCore.QString("png"), QtCore.Qt.CaseInsensitive):
-            cellWidget.label.pixmap().toImage().save(fn, "png")
-        elif fn.endsWith(QtCore.QString("pdf"), QtCore.Qt.CaseInsensitive):
-            cellWidget.saveToPDF(str(fn))
-        
 
 class ImageViewerZoomSlider(QtGui.QSlider):
     """
@@ -358,7 +336,6 @@ class ImageViewerToolBar(QCellToolBar):
         
         """
         self.appendAction(ImageViewerFitToCellAction(self))
-        self.appendAction(ImageViewerSaveAction(self))
         self.appendAction(ImageViewerRotateAction(self))
         self.appendAction(ImageViewerFlipAction(self))
         self.slider = ImageViewerZoomSlider(self)
