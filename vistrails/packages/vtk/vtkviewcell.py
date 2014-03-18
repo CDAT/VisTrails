@@ -125,6 +125,8 @@ class QVTKViewWidget(QCellWidget):
     vtkRenderer inside a Qt QWidget
     
     """
+    save_formats = ["PNG image (*.png)"]
+
     def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
         """ QVTKViewWidget(parent: QWidget, f: WindowFlags) -> QVTKViewWidget
         Initialize QVTKViewWidget with a toolbar with its own device
@@ -985,14 +987,6 @@ class QVTKViewWidgetToolBar(QCellToolBar):
         """
         self.addAnimationButtons()
         self.appendAction(QVTKViewWidgetSaveCamera(self))
-
-    def saveAsImageTriggered(self, checked=False):
-        cell = self.sheet.getCell(self.row, self.col)
-        filename = QtGui.QFileDialog.getSaveFileName(
-                self, "Select a File to Export the Sheet", ".",
-                "PNG image (*.png)")
-        if filename:
-            cell.dumpToFile(filename)
 
 def registerSelf():
     """ registerSelf() -> None
